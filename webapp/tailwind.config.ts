@@ -21,6 +21,195 @@ const BRAND = '#393BFF'
 // that was already approved in a browser, not a fresh invention.
 const SHADOW_TINT = (alpha: number) => `rgba(19, 16, 48, ${alpha})`
 
+// One status line of the `/features` start card, as a keyframe.
+//
+// THE STAGGER IS IN HERE AND NOT IN AN `animation-delay`, and that is a correctness
+// fix rather than a style choice. A delay on an `infinite` animation applies to the
+// FIRST iteration only — every later cycle starts the instant the previous one ends.
+// So five lines delayed 2.4s…6.4s each keep their own phase for ever: line one wraps
+// back to hidden at 13.4s, line five at 17.4s, and `caret-type` (no delay) wraps at
+// 11s. The command retypes itself while all five lines are still on screen, and the
+// panel never actually resets.
+//
+// Baked into the keyframes, every element shares one duration and one start, so every
+// cycle boundary lands on the same instant: the list clears and the command retypes
+// together, which is what a session starting over looks like.
+//
+// `hidden` and `shown` are percentages of the shared 11s loop. Both ends are stated so
+// the line holds hidden from 0 and holds shown to 100 — no fill mode required.
+// One strike-through being drawn, as a keyframe: a bar whose WIDTH grows across the
+// label it crosses.
+//
+// WIDTH AND NOT OPACITY, which is the whole effect. A line that fades in has already
+// crossed the word before you see it; one that grows reads as the pen moving, which is
+// what "struck through" looks like when it happens rather than when it is done. It costs
+// a keyframe per row because the timing is per row, the same way the ticks are.
+//
+// `text-decoration: line-through` would have been the obvious tool and cannot be
+// animated at all — there is no interpolable value between "none" and "line-through" —
+// so the bar is an element.
+const strikeAt = (at: number) => ({
+  '0%': { width: '0%' },
+  [`${at}%`]: { width: '0%' },
+  [`${at + 4}%`]: { width: '100%' },
+  '100%': { width: '100%' },
+})
+
+// One CI check settling, as a PAIR of keyframes — the spinner leaving and the tick
+// arriving at the same instant.
+//
+// TWO AND NOT ONE, and it is not for want of trying to make it one. A lucide icon is a
+// stroked SVG with a transparent middle, so stacking a tick under a spinner and fading
+// only the spinner leaves both sets of strokes visible through each other for the whole
+// crossfade — a smudge, not a transition. Each has to carry its own opacity.
+//
+// `at` is the percentage of the shared loop where the check resolves; the swap takes 4%
+// of it. Both end on the settled state, so `motion-reduce:animate-none` shows a passed
+// check rather than a frozen spinner — see the note on `statusIn` below for why the
+// stagger lives in these percentages and not in an `animation-delay`.
+const ciSettled = (at: number) => ({
+  '0%': { opacity: '0' },
+  [`${at}%`]: { opacity: '0' },
+  [`${at + 4}%`]: { opacity: '1' },
+  '100%': { opacity: '1' },
+})
+
+const ciPending = (at: number) => ({
+  '0%': { opacity: '1' },
+  [`${at}%`]: { opacity: '1' },
+  [`${at + 4}%`]: { opacity: '0' },
+  '100%': { opacity: '0' },
+})
+
+const statusIn = (hidden: number, shown: number) => ({
+  '0%': { opacity: '0', translate: '0 0.25rem' },
+  [`${hidden}%`]: { opacity: '0', translate: '0 0.25rem' },
+  [`${shown}%`]: { opacity: '1', translate: '0 0' },
+  '100%': { opacity: '1', translate: '0 0' },
+})
+
+// THE CARD TONES. Four gradients, declared here and used as `bg-tone-<name>`.
+//
+// Named and centralised for exactly the reason the elevation scale is: a
+// `bg-[linear-gradient(135deg,#6366f1,#393BFF)]` pasted at a call site renders
+// perfectly and passes every check, and what it costs is the ability to retune the
+// family later — one card would carry a gradient nobody will find again.
+// `lib/designTokens.test.ts` pins the four.
+//
+// FOUR AND NOT EIGHT, though eight cards use them. A tone is a SURFACE in a family,
+// not an identity: cycling four across the eight skills gives the grid the
+// light/dark rhythm it is built on without turning the palette into a legend the
+// reader has to learn. It also means adding a ninth skill costs no new colour.
+//
+// TWO LIGHT, TWO DARK, in that order, which is what makes the cycle work — a grid of
+// four columns lands one of each per row, so no two neighbours are the same weight.
+// The text colour that goes with each is NOT here: it belongs with the component
+// that draws the card, so a tone and its ink can never be paired wrongly. See
+// `CARD_TONES` in `components/ui.tsx`.
+//
+// 135deg — top-left to bottom-right — on all four, so a row of cards reads as one
+// light source rather than four.
+//
+// The stops are spelled as literals because THIS is their declaration site, the same
+// way `SHADOW_TINT` spells its rgba here. `mist` and `sky` open on `softblue`
+// (#D9E8FF), the wash the hero already fades through; `indigo` runs the two blues
+// the design system already owns, `accent` into `brand`; `midnight` runs `ink` into
+// a deepened `brand` rather than into `brand` itself, which at full saturation would
+// end the card brighter than the page it sits on.
+const BRAND_DEEP = '#1B1C6B'
+
+// The green tone's two stops.
+//
+// PALE, AND THAT IS THE POINT. This started saturated — a #2F9E68 into a near-black
+// green, white type on it — and read as a warning rather than as a finish: a dark
+// saturated green at the bottom of a grid of blues is the loudest thing on the page,
+// and `/magic:done` is the quietest moment in the loop.
+//
+// So it is built like `mist` and `sky` instead: two pale stops, dark ink on top. That is
+// what lets it be a different HUE without being a different volume — the card reads as
+// green, and as the end of something, without shouting.
+//
+// `green` in the palette above (#22c55e) is a STATUS token — it means "this finished" on
+// a check, a diff's additions, a passing gauge. These stops are not it, deliberately: a
+// ground is not a status, and spending the status colour on decoration is how a green
+// stops meaning "ok" anywhere.
+const MINT_LIGHT = '#E4F6EB'
+const MINT_DEEP = '#BCE3CD'
+
+const TONES = {
+  /** Palest of the four: barely a tint, for a card that carries a busy visual. */
+  'tone-mist': `linear-gradient(135deg, #E8F0FF 0%, #F7FAFF 100%)`,
+  /**
+   * The soft blue deepening into a light indigo. Still dark-ink territory.
+   *
+   * THE SWEEP IS WIDER THAN IT WAS — #D9E8FF → #BDC5F7 originally, which is 8 points of
+   * luminance and read as a flat wash rather than as a gradient. Beside `midnight`,
+   * whose two stops are a black and a blue, the light cards looked like they had simply
+   * been filled. Opening the top stop and deepening the bottom one gives this tone the
+   * same VISIBLE travel the dark ones have, without changing what it is: both stops are
+   * still light enough for `text-ink`, which is the constraint that decides how far this
+   * can go and is checked by `lib/designTokens.test.ts`'s ink pairing.
+   */
+  'tone-sky': `linear-gradient(135deg, #E6F0FF 0%, #A3B2F0 100%)`,
+  /** Saturated: the design system's own two blues, `accent` into `brand`. */
+  'tone-indigo': `linear-gradient(135deg, #6366F1 0%, ${BRAND} 100%)`,
+  /** The dark one. `ink` into a deepened brand, never into `brand` at full. */
+  'tone-midnight': `linear-gradient(135deg, #0A0A0A 0%, ${BRAND_DEEP} 100%)`,
+  /**
+   * THE ONE TONE THAT IS NOT IN THE BLUE FAMILY, and it is earned rather than added:
+   * it dresses the card for `/magic:done`, which is the end of the loop. Green is
+   * already what this product says "finished" with — the check in the start card's
+   * terminal, a diff's additions, a passing gauge — so the closing card being green is
+   * the palette agreeing with itself, not a second accent.
+   *
+   * LIGHT, like `mist` and `sky`, and it takes the dark ink they take. See the note on
+   * its stops above for why it is not the saturated green it started as.
+   *
+   * It is NOT in `CARD_TONE_CYCLE`. The cycle is positional and means nothing in
+   * particular; this one means something, so it is asked for by name.
+   */
+  'tone-mint': `linear-gradient(135deg, ${MINT_LIGHT} 0%, ${MINT_DEEP} 100%)`,
+}
+
+// THE PRODUCT PLATES. One gradient per integration, declared here and used as
+// `bg-plate-<name>` by `LogoPlate` in `components/ui.tsx`.
+//
+// A SECOND NAMESPACE RATHER THAN FIVE MORE `TONES`, and the split is the point. A tone
+// is a SURFACE IN A FAMILY — four of them cycle across eight skill cards precisely
+// because none of them means anything, and a ninth skill costs no new colour. A plate
+// is the opposite: it is a product's own hue, it means exactly one thing, and it is
+// asked for by name. Mixing the two would have made `CARD_TONE_CYCLE` able to deal a
+// card the GitHub grey.
+//
+// COLOURS BORROWED FROM SOMEBODY ELSE'S BRAND, so the same rule the retired `vendor`
+// namespace was written under applies: nothing outside a plate may reach for these, and
+// a `bg-[linear-gradient(...)]` at a call site is the unfindable value this file exists
+// to prevent. `lib/designTokens.test.ts` pins the five.
+//
+// 135deg on all five, like the tones, so a column of plates reads as one light source.
+//
+// WHY THEY CAN ALL BE SATURATED. Every mark that lands on one sits on a white tile —
+// see `LogoPlate` — so the plate never has to be light enough for a logo to survive on
+// it. That is what lets `plate-vscode` be VS Code's own blue under VS Code's own blue
+// mark, which drawn directly on the ground would have been a mark you could not see.
+//
+// `plate-magic` is OURS and not a borrowed one: it dresses the row about the app setting
+// itself up. It runs `brand` into `BRAND_DEEP` rather than reusing `tone-indigo`'s
+// `accent → brand`, so the two are a different gradient rather than one value spelled
+// twice.
+const PLATES = {
+  /** Atlassian blue, light into deep. */
+  'plate-jira': `linear-gradient(135deg, #2684FF 0%, #0747A6 100%)`,
+  /** GitHub's own greys, which are very nearly its black. */
+  'plate-github': `linear-gradient(135deg, #3D444D 0%, #0D1117 100%)`,
+  /** VS Code blue. */
+  'plate-vscode': `linear-gradient(135deg, #3AA0DE 0%, #0065A9 100%)`,
+  /** Claude's coral, the hue `claudecode-color.png` is drawn in (#D97757). */
+  'plate-claude': `linear-gradient(135deg, #E08A6B 0%, #A8452A 100%)`,
+  /** Ours. `brand` into the deepened brand the midnight tone ends on. */
+  'plate-magic': `linear-gradient(135deg, ${BRAND} 0%, ${BRAND_DEEP} 100%)`,
+}
+
 const config: Config = {
   content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
   theme: {
@@ -173,15 +362,81 @@ const config: Config = {
           tint: 'rgba(57, 59, 255, 0.05)',
           rail: BRAND,
         },
+        // macOS'S NOTIFICATION BANNER, sampled from a real one, for the drawing beside
+        // the Notifications row on `/features`.
+        //
+        // Somebody else's UI, so the same rule the product plates are under: a borrowed
+        // value pasted at a call site is the one nobody dares retune later because nobody
+        // can tell whether it was chosen or copied. These three were read off a screenshot
+        // of the actual banner in dark mode — a neutral #3A3A3A ground with #E1E1E1 for
+        // BOTH the title and the body (the title is semibold, not brighter) and a dimmer
+        // #B1B1B1 for the age in the corner.
+        //
+        // Neutral greys, not this site's blue-tinted ink: Apple does not tint them, and a
+        // banner in our ink would be a banner from a different operating system.
+        macos: {
+          /** The banner's ground, dark mode. */
+          notification: '#3A3A3A',
+          /** Its title and its body — the same value for both. */
+          'notification-ink': '#E1E1E1',
+          /** The age in its corner. */
+          'notification-dim': '#B1B1B1',
+        },
+        // THE DESKTOP APP'S OWN TWO INKS, for the reproductions on `/features`.
+        //
+        // SOLID, AND THAT IS THE WHOLE POINT. The `onink` ramp above is white at an
+        // alpha, which is right for the footer plate it was built for — one surface, one
+        // known ground. A drawing of the app is not that: it stacks a panel on a panel on
+        // a window, so a glyph at 50% white takes its colour from whatever happens to be
+        // behind it and comes out a different grey in each. Magnified, that reads as
+        // washed out rather than as quiet.
+        //
+        // These are the values `desktop/src/themes.ts` actually declares — `textSecondary`
+        // (161 161 170) and `icon` (138 138 146) — so a reproduction using them is not
+        // merely more solid, it is more accurate. Nothing outside a mockup may reach for
+        // them; the site's own dark ground is `onink`.
+        appink: {
+          /** `text-text-secondary`: a row's label, and a list's rows. */
+          DEFAULT: '#A1A1AA',
+          /** `text-icon`: the glyph in an icon-only control. */
+          icon: '#8A8A92',
+          /** `text-icon-muted`: decoration — the pencil beside an editable field. */
+          muted: '#65656A',
+        },
         purple: '#a855f7',
         green: '#22c55e',
         red: '#ef4444',
         yellow: '#eab308',
+        // TWO MORE OF THE APP'S TONES, for the two info-sidebar cards on `/features`.
+        // `orange` is the context gauge between 40% and 70%, and that turn is the
+        // picture; `blue` is the "in review" status pill. Both are `themes.ts`'s values.
+        // Nothing outside a mockup may reach for them.
+        orange: '#f97316',
+        blue: '#3b82f6',
+        // Two more for the status table under the ticket card: `planned`/`committed` wear
+        // cyan, `review addressed` teal. `themes.ts`'s values, like the two above.
+        cyan: '#22d3ee',
+        teal: '#2dd4bf',
+        // THE APP'S THREE BACKGROUNDS AND ITS BORDER, `themes.ts`'s dark values, for the
+        // menus and pills the repository and PR cards on `/features` reproduce. Solid,
+        // for the reason `appink` is: a menu floats over a card over a panel, and an
+        // alpha would come out a different grey on each.
+        appbg: {
+          DEFAULT: '#0a0a0b',
+          secondary: '#141416',
+          tertiary: '#1c1c1f',
+        },
+        appline: '#27272a',
       },
       fontFamily: {
         sans: ['Avenir', 'system-ui', '-apple-system', 'sans-serif'],
         display: ['"Cera Pro"', 'system-ui', 'sans-serif'],
       },
+      // Spread rather than written out twice: `TONES` and `PLATES` above are the
+      // declarations and their comments, and a second copy here is the copy that would
+      // go stale. Two objects and not one merged constant, because they are two
+      // different KINDS of ground — see the note on `PLATES`.
+      backgroundImage: { ...TONES, ...PLATES },
       // The elevation scale. Four rungs, deliberately few: a white-on-white
       // interface separates things by space and by a whisper of a shadow, and a
       // seven-step ramp only invites two neighbouring surfaces to differ by an
@@ -218,6 +473,31 @@ const config: Config = {
         // sorted by class NAME, not in declaration order, so any comment promising
         // that "declared last wins" was describing an alphabetical coincidence.
         lift: `0 16px 36px -18px ${SHADOW_TINT(0.4)}`,
+        // `lift` on the mint tone: the same shape, tinted with a green two steps deeper
+        // than the plate's own — a grey shadow on a green ground reads as dirt, a green one
+        // as depth. For the usage card's panel and nothing else.
+        'lift-mint': '0 12px 32px -8px rgba(21, 94, 58, 0.45), 0 2px 6px -2px rgba(21, 94, 58, 0.3)',
+        // THE ONLY RUNG THAT CASTS SIDEWAYS, and it exists because the other four
+        // cannot: every one of them is a DOWNWARD shadow with a negative spread, which
+        // is right for a card sitting on a page and useless for a panel whose only
+        // visible boundary is a vertical edge.
+        //
+        // That is exactly the Agents drawing on `/features`: the application is cut by
+        // its frame on three sides, so the one edge with a boundary to sell is the left
+        // one, against the plate's blue band. `lift` there resolved to nothing — 16px
+        // down and 18px in contracts to zero horizontally — and a shadow you cannot see
+        // is a shadow nobody can tell was asked for.
+        //
+        // Two layers, for `button`'s reason: the wide soft one is the depth, the tight
+        // one gives the edge something to sit on so the panel does not float free of the
+        // ground it is cut against.
+        //
+        // THE OFFSET HAS TO BEAT THE SPREAD, which is the one number worth checking if
+        // this is ever retuned. A negative spread pulls the shadow's box in from every
+        // side, so an offset smaller than it leaves nothing to spill past the edge — the
+        // first attempt here was `-6px 0 20px -6px` and rendered, correctly, as almost
+        // nothing at all.
+        edge: `-10px 0 24px -4px ${SHADOW_TINT(0.25)}, -1px 0 2px ${SHADOW_TINT(0.1)}`,
       },
       borderRadius: {
         // The soft radius of the button. `rounded-xl` (0.75rem) rather than the
@@ -292,6 +572,103 @@ const config: Config = {
           from: { opacity: '0', translate: '0 var(--reveal-from, 0.75rem)' },
           to: { opacity: '1', translate: '0 0' },
         },
+        // ── The `/features` start card's terminal ────────────────────────────────
+        //
+        // A LOOP, unlike the two above, which play once on entry. This one is the
+        // visual inside a card in a grid: a reader arrives at it by scrolling, at a
+        // moment nothing can predict, so a run that had already finished would be a
+        // still image. It restarts instead, and the long tail on each keyframe is
+        // what keeps that from reading as a GIF stuck on repeat.
+        //
+        // ELEVEN SECONDS, and the whole sequence is timed against that one number:
+        // typing, then five lines arriving in order, then the panel scrolling the
+        // prompt away as the last of them lands. Change the duration in the
+        // `animation` block below and every percentage here moves with it.
+        //
+        // `caret-type` drives a `max-width` in ch units on the command, so the reveal
+        // is per character without a JS scheduler. It only reads as typing because
+        // the text is monospace: `steps()` over a proportional face would jump by
+        // uneven amounts. TWENTY-ONE CHARACTERS — `/magic:start PROJ-142` — so both
+        // the `ch` and the `steps()` below are that number, and both have to change
+        // together if the command does.
+        'caret-type': {
+          '0%': { maxWidth: '0ch' },
+          // ~1.9s of the 11s loop for 21 characters: around 11 a second, a person
+          // typing a command they know.
+          '17%, 100%': { maxWidth: '21ch' },
+        },
+        'caret-blink': {
+          '0%, 45%': { opacity: '1' },
+          '50%, 95%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        // Five keyframes, one per line, and the order lives in their percentages —
+        // see `statusIn` at the top of this file for why it cannot live in a delay.
+        //
+        // The arrival times are ~2.4s, 3.3s, 4.2s, 5.2s and 6.4s of the 11s loop.
+        // Each holds hidden until just before its turn and shown for the rest of the
+        // loop, so the finished list is what the card shows most of the time.
+        'status-1': statusIn(21, 27),
+        'status-2': statusIn(29, 35),
+        'status-3': statusIn(37, 43),
+        'status-4': statusIn(46, 52),
+        // The last one is the step still running when the loop rests, so it gets a
+        // longer beat after the fourth than the others get between them — the pause
+        // before work starts is the one this sequence is about.
+        'status-5': statusIn(57, 63),
+        // ── The `/features` PR card's checks ─────────────────────────────────────
+        //
+        // Three checks resolving in order over an 8s loop, at 30%, 48% and 66% — a
+        // beat and a half apart, because CI jobs do not finish together and three
+        // ticks landing at once would read as a progress bar reaching the end.
+        'ci-pending-1': ciPending(30),
+        'ci-settled-1': ciSettled(30),
+        'ci-pending-2': ciPending(48),
+        'ci-settled-2': ciSettled(48),
+        'ci-pending-3': ciPending(66),
+        'ci-settled-3': ciSettled(66),
+        // ── The `/features` Agents sidebar ───────────────────────────────────────
+        //
+        // TWO ANIMATIONS LIFTED FROM THE APP'S OWN `index.css`, keyframe for keyframe,
+        // because the sidebar drawing beside them is a reproduction and a state that
+        // moves differently there is a state the reader will not recognise.
+        //
+        // `wave-bar` is `WaveLoader`: three parallel bars scaled on the Y axis, the
+        // middle one tallest, 1.2s, with the three copies 0.15s apart. The stagger is an
+        // `animation-delay` at the call site rather than three keyframes here, exactly as
+        // the app does it.
+        'wave-bar': {
+          '0%, 100%': { transform: 'scaleY(1)' },
+          '35%': { transform: 'scaleY(0.55)' },
+          '70%': { transform: 'scaleY(1.1)' },
+        },
+        // `ask-arrive` is the `waiting` badge: the question bubble ARRIVES rather than
+        // gestures — a small lift with a tilt into it, a settle back past level, then
+        // rest — because that state is the agent asking you something, not the agent
+        // being slow. One arrival per 3s loop, and the rest is most of it. The lift is a
+        // PERCENTAGE of the glyph's own height, so it reads the same at any size.
+        'ask-arrive': {
+          '0%, 44%, 100%': { transform: 'translateY(0) rotate(0deg)' },
+          '14%': { transform: 'translateY(-14%) rotate(-5deg)' },
+          '30%': { transform: 'translateY(0) rotate(2deg)' },
+        },
+        // ── The `/features` done card's checklist ────────────────────────────────
+        //
+        // Five boxes ticking 400ms apart on a 5s loop, so each is 8% further in: 8, 16,
+        // 24, 32, 40. `statusIn`'s 2% ramp is 100ms at this duration, which is what
+        // makes them read as ticking rather than fading.
+        'done-1': statusIn(6, 8),
+        'done-2': statusIn(14, 16),
+        'done-3': statusIn(22, 24),
+        'done-4': statusIn(30, 32),
+        'done-5': statusIn(38, 40),
+        // The strike-throughs, on the same five beats as the ticks above so a line is
+        // drawn as its box is filled.
+        'strike-1': strikeAt(6),
+        'strike-2': strikeAt(14),
+        'strike-3': strikeAt(22),
+        'strike-4': strikeAt(30),
+        'strike-5': strikeAt(38),
       },
       // `backwards` and not `both`: the fill has to hold the FROM state through the
       // stagger's delay, but once the animation is over the element belongs to the
@@ -301,6 +678,49 @@ const config: Config = {
       animation: {
         'reveal-a': 'reveal-a 600ms ease-out backwards',
         'reveal-b': 'reveal-b 600ms ease-out backwards',
+        // The start card's run: one 11s loop, and EVERY animation in it shares that
+        // duration with no delay on any of them. That is what keeps them in phase —
+        // see `statusIn` at the top of this file. The order the lines arrive in is in
+        // their keyframes, not out here.
+        //
+        // `steps(21)` for the twenty-one characters of `/magic:start PROJ-142`.
+        // `linear` on the lines: an eased status line arriving looks like it is being
+        // placed, and these are meant to look like they are landing.
+        //
+        // No `backwards` anywhere any more. It was there to hold the from-state
+        // through a delay, and there is no delay left to hold.
+        'caret-type': 'caret-type 11s steps(21, end) infinite',
+        'caret-blink': 'caret-blink 1.1s step-end infinite',
+        'status-1': 'status-1 11s linear infinite',
+        'status-2': 'status-2 11s linear infinite',
+        'status-3': 'status-3 11s linear infinite',
+        'status-4': 'status-4 11s linear infinite',
+        'status-5': 'status-5 11s linear infinite',
+        // The PR card's checks: one 8s loop, no delay on any of them, the order in the
+        // keyframes. Same discipline as the five status lines above, and for the same
+        // reason — a delay on an `infinite` animation applies to the first iteration
+        // only, so delayed siblings drift out of phase for ever.
+        'ci-pending-1': 'ci-pending-1 8s linear infinite',
+        'ci-settled-1': 'ci-settled-1 8s linear infinite',
+        'ci-pending-2': 'ci-pending-2 8s linear infinite',
+        'ci-settled-2': 'ci-settled-2 8s linear infinite',
+        'ci-pending-3': 'ci-pending-3 8s linear infinite',
+        'ci-settled-3': 'ci-settled-3 8s linear infinite',
+        // The sidebar's two states. The wave's stagger is a delay at the call site, so
+        // one animation serves all three bars.
+        'wave-bar': 'wave-bar 1.2s ease-in-out infinite',
+        'ask-arrive': 'ask-arrive 3s ease-in-out infinite',
+        // The done checklist: 400ms between ticks means a 5s loop and 8% steps.
+        'done-1': 'done-1 5s linear infinite',
+        'done-2': 'done-2 5s linear infinite',
+        'done-3': 'done-3 5s linear infinite',
+        'done-4': 'done-4 5s linear infinite',
+        'done-5': 'done-5 5s linear infinite',
+        'strike-1': 'strike-1 5s linear infinite',
+        'strike-2': 'strike-2 5s linear infinite',
+        'strike-3': 'strike-3 5s linear infinite',
+        'strike-4': 'strike-4 5s linear infinite',
+        'strike-5': 'strike-5 5s linear infinite',
       },
     },
   },

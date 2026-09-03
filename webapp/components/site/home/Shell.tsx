@@ -60,10 +60,15 @@ const SECTION_PADDING = {
   /** Every band. ~10rem of nothing between two of them, ~14rem from `md` up. */
   band: 'py-20 md:py-28',
   /**
-   * The hero only. The bar is `fixed`, 52px tall and 12px from the top, so the first
-   * band owes it ~7rem before its own first line. The BOTTOM is a band's bottom — only
-   * the top is taller — which is what the old `pt-32 md:pt-40` over `py-20 md:py-28`
-   * amounted to once the cascade had settled, so this is the same pixels by intent.
+   * A page's FIRST band, whatever the page. The bar is `fixed` and flush at `h-16`, so
+   * whatever opens a page owes it ~7rem before its own first line. The BOTTOM is a
+   * band's bottom — only the top is taller — which is what the old `pt-32 md:pt-40`
+   * over `py-20 md:py-28` amounted to once the cascade had settled, so this is the same
+   * pixels by intent.
+   *
+   * Named `hero` because the homepage's hero was the only caller when it was extracted.
+   * `/features` opens on it too now, and the name stayed rather than churning the two
+   * call sites: what the slot means is "the band under the bar", which is what a hero is.
    */
   hero: 'pt-32 pb-20 md:pt-40 md:pb-28',
   /**

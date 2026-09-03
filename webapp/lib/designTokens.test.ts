@@ -128,6 +128,103 @@ describe('design tokens', () => {
   })
 
   /**
+   * THE CARD TONES, held to the same rule as the shadows and for the same reason: a
+   * `bg-[linear-gradient(135deg,#6366f1,#393BFF)]` at a call site renders perfectly,
+   * passes `tsc`, ESLint and `next build`, and costs the ability to retune the family
+   * — one card would carry a gradient nobody finds again.
+   *
+   * Two halves, and the second is the one that actually bites:
+   *
+   *   1. the four gradients are DECLARED in the config, so `bg-tone-*` resolves;
+   *   2. every tone in `CARD_TONES` pairs its ground with the ink that can be read on
+   *      it. That pairing is the whole point of the table — `text-ink` on `midnight`
+   *      is invisible, and it renders, and nothing else here would catch it.
+   */
+  it('declares the four card tones in the Tailwind config', () => {
+    const declaredTones = literalKeys(objectLiteral(config, 'TONES'))
+    expect(declaredTones.sort()).toEqual([
+      'tone-indigo',
+      'tone-midnight',
+      'tone-mint',
+      'tone-mist',
+      'tone-sky',
+    ])
+  })
+
+  /**
+   * THE PRODUCT PLATES, held to the same rule as the tones and for a sharper reason: the
+   * five gradients here are somebody ELSE'S brand colours, and a borrowed colour pasted
+   * at a call site is the one nobody dares retune later because nobody can tell whether
+   * it was chosen or copied.
+   *
+   * Pinned as an exact set rather than a subset. A sixth plate is a sixth product, which
+   * is a decision — it should not be possible to make it by adding a line to a config.
+   */
+  it('declares the five product plates in the Tailwind config', () => {
+    const declaredPlates = literalKeys(objectLiteral(config, 'PLATES'))
+    expect(declaredPlates.sort()).toEqual([
+      'plate-claude',
+      'plate-github',
+      'plate-jira',
+      'plate-magic',
+      'plate-vscode',
+    ])
+  })
+
+  it('keeps the plates out of the card tones, and the tones out of the plates', () => {
+    // The two tables are two different KINDS of ground — a tone is a surface in a family
+    // and cycles, a plate is a product's hue and is always named — and the failure this
+    // guards is a plate landing in `CARD_TONE_CYCLE`, where a skill card would be dealt
+    // the GitHub grey. Cheapest possible check: neither table may name the other's
+    // prefix.
+    const tones = literalKeys(objectLiteral(config, 'TONES'))
+    const plates = literalKeys(objectLiteral(config, 'PLATES'))
+    expect(tones.filter((key) => key.startsWith('plate-'))).toEqual([])
+    expect(plates.filter((key) => key.startsWith('tone-'))).toEqual([])
+  })
+
+  it('gives every plate in the design system a ground the config declares', () => {
+    // `PLATE_GROUNDS` in `components/ui.tsx` is what a call site names, and this config
+    // is what makes those names resolve. A name in one and not the other paints a plate
+    // with no ground: no error, no colour.
+    const ui = readFileSync(UI, 'utf8')
+    const grounds = objectLiteral(ui, 'PLATE_GROUNDS')
+    const declaredPlates = literalKeys(objectLiteral(config, 'PLATES'))
+    for (const plate of declaredPlates) {
+      expect(grounds, `${plate} is declared but nothing names it`).toContain(`'bg-${plate}'`)
+    }
+  })
+
+  it('pairs every card tone with an ink that can be read on it', () => {
+    const ui = readFileSync(UI, 'utf8')
+    const tones = objectLiteral(ui, 'CARD_TONES')
+
+    // The two light grounds take the page's own ink; the two dark ones take white and
+    // the declared white-on-dark body alpha. Written out rather than derived from the
+    // source — deriving the expectation from the thing under test is how this stops
+    // being a check.
+    for (const [tone, ink] of [
+      ['mist', 'text-ink'],
+      ['sky', 'text-ink'],
+      ['indigo', 'text-white'],
+      ['midnight', 'text-white'],
+      ['mint', 'text-ink'],
+    ]) {
+      const row = tones.split('\n').find((line) => line.trim().startsWith(`${tone}:`))
+      expect(row, `CARD_TONES.${tone} is missing`).toBeTruthy()
+      expect(row, `CARD_TONES.${tone}`).toContain(`bg-tone-${tone}`)
+      expect(row, `CARD_TONES.${tone}`).toContain(ink)
+    }
+
+    // And the dark pair must not reach for `ink` at all, which is the mistake this
+    // exists to prevent rather than merely to describe.
+    for (const dark of ['indigo', 'midnight']) {
+      const row = tones.split('\n').find((line) => line.trim().startsWith(`${dark}:`)) ?? ''
+      expect(row, `CARD_TONES.${dark} must not use the light ink`).not.toContain('text-ink')
+    }
+  })
+
+  /**
    * The rule that USED to live here asserted `lift` was declared last, on the belief
    * that Tailwind emits `boxShadow` utilities in the order of the keys, so the last
    * one wins on an element carrying two. It does not: the utilities come out sorted
