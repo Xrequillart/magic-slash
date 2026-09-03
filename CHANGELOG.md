@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.88.0] - 2026-09-03
+
+### Added
+
+- **Landing**: The landing page is rebuilt from scratch
+- **Webapp**: A development-only design system page
+- **Webapp**: Elevation tokens and a four-rung button ladder
+- **Desktop**: The scripts of every package in a monorepo are offered, not just the root ones
+- **Docs**: Every skill wears a flat picto icon, `/magic:plan` included — it had none before
+
+### Changed
+
+- **Landing**: The components no band renders are dropped
+- **Desktop**: The pull request checklist rows sit edge to edge at one height
+
+### Fixed
+
+- **Desktop**: The connectivity gate is split so its test resolves without react
+- **Desktop**: A lost connection is announced in a toast rather than a wall
+- **Desktop**: A checkout its own worktree replaces is hidden
+
 ## [0.87.0] - 2026-09-02
 
 ### Added
@@ -2613,6 +2634,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.88.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.88.0
 [0.87.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.87.0
 [0.86.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.6
 [0.86.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.5
