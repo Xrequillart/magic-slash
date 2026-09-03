@@ -30,10 +30,14 @@ const WEBAPP_TILES = 'webapp/lib/skills.ts'
 
 // The two command rows: what a user can type in the launcher, and what the landing page
 // lists. Neither could be imported here even from a collected path — one is a renderer TSX
-// pulling in the i18n catalogue, the other a Next.js component — so both are read as text
-// like everything else. Where the file lives has no bearing on whether its list can drift.
+// pulling in the i18n catalogue, the other lives in a Next.js app — so both are read as
+// text like everything else. Where the file lives has no bearing on whether its list can
+// drift, and the landing one has now moved twice: it was `docs/`, then
+// `webapp/components/site/home/HowSection.tsx`, and #268 lifted it OUT of the component
+// into `webapp/lib/commands.ts` so the webapp's own test suite could read it without
+// pulling React in. That is why the path is a named constant.
 const LAUNCHER_COMMANDS = 'desktop/src/renderer/pages/QuickLaunch/index.tsx'
-const LANDING_COMMANDS = 'webapp/components/site/home/HowSection.tsx'
+const LANDING_COMMANDS = 'webapp/lib/commands.ts'
 
 // The three tile rows that spell their own column count out as a Tailwind literal. The
 // number is the length of an array the row already maps over, so nothing connects the two:
@@ -112,15 +116,23 @@ function uninstallLoop(source: string): string[] {
 /**
  * A `COMMANDS = [{ name: … }, …]` row, as skill-folder names.
  *
- * Two surfaces keep one, and they spell the command differently: the launcher stores the
- * typed form (`/magic:plan`), the landing page the bare verb (`plan`). Normalising both to
- * the folder name is what lets them be compared against the same source of truth.
+ * Two surfaces keep one, under two different KEYS: the launcher spells it `name`,
+ * `webapp/lib/commands.ts` spells it `command`. The key alternation is irreducible —
+ * neither file is going to rename its field for a test — but the VALUE is one shape in
+ * both (`'/magic:plan'`), and matching the prefix rather than stripping it afterwards is
+ * what makes the parse an assertion: a row that is not a typed command does not match,
+ * where a looser `'([^']+)'` would happily read `icon: 'NotebookPen'` as a skill.
+ *
+ * Reading `command` rather than `id` on the webapp side costs nothing, even though `id`
+ * is the field its icon map and its descriptions are keyed by: `webapp/lib/commands.ts`
+ * types `command` as `` `/magic:${MagicCommandId}` ``, so `tsc` will not let the two
+ * spellings diverge, and `webapp/lib/commands.test.ts` pins it again in this same run.
  */
 function commandSkills(relativePath: string): string[] {
   const match = read(relativePath).match(/COMMANDS[^=]*=\s*\[([\s\S]*?)\n\]/)
   if (!match) return []
-  return [...match[1].matchAll(/name:\s*'([^']+)'/g)].map(
-    (m) => `magic-${m[1].replace(/^\/magic:/, '')}`,
+  return [...match[1].matchAll(/(?:name|command):\s*'\/magic:([a-z]+)'/g)].map(
+    (m) => `magic-${m[1]}`,
   )
 }
 

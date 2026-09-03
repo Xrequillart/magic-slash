@@ -4,7 +4,7 @@ import {
   INITIAL_GATE,
   FAILURES_BEFORE_OFFLINE,
   type GateState,
-} from './useConnectivity'
+} from './connectivityGate'
 
 const online: GateState = { status: 'ok', everOk: true, failures: 0 }
 

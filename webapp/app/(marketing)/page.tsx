@@ -1,61 +1,71 @@
 import type { Metadata } from 'next'
-import { Hero } from '@/components/site/home/Hero'
-import { HowSection } from '@/components/site/home/HowSection'
-import { YourProductSection } from '@/components/site/home/YourProductSection'
-import { ParallelSection } from '@/components/site/home/ParallelSection'
-import { YourWaySection } from '@/components/site/home/YourWaySection'
-import { WhereItStandsSection } from '@/components/site/home/WhereItStandsSection'
-import { WhySection } from '@/components/site/home/WhySection'
-import { FaqSection } from '@/components/site/home/FaqSection'
-import { CtaSection } from '@/components/site/home/CtaSection'
+import { HeroSection } from '@/components/site/home/HeroSection'
+import { HowItWorksSection } from '@/components/site/home/HowItWorksSection'
+import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 
 /**
  * magic-slash.io — the landing page.
  *
- * Eight sections, in the order they argue: the promise, then how it actually works,
- * then that it runs on the product you already have, then that you can run several jobs
- * at once, then that it follows your conventions, then that you can see where each job
- * stands, then why we built it, then the questions and the ask.
+ * THREE SECTIONS: the promise, what using it feels like, the ask. It was rebuilt as six
+ * and cut to three by the product owner, band by band — "on the product you already
+ * have", then "the eight commands", then the feature grid.
  *
- * ⑥ was added last and answers the question ④ raises: twelve jobs in flight is only
- * bearable if each one says where it is, so the panel that says so gets its own section
- * rather than a bullet inside ④.
+ * ONE OF THOSE CUTS COSTS AN ACCEPTANCE CRITERION, and it is written here rather than
+ * left for someone to rediscover. Criterion 2 of issue #268 reads "homepage features are
+ * presented as clickable cards leading to the features page; a card with no detail page
+ * leads to the matching section rather than a 404" — and there is no longer a card grid
+ * on this page for it to be true of. The decision was explicit and it is the product
+ * owner's to make; what follows from it is that #268 cannot claim that criterion, and
+ * that story #269 (the `/features` page) now has no homepage entry point to link back
+ * from.
  *
- * The order IS the pitch. It opens on the outcome and only reaches the mechanism in ②,
- * where the eight commands live — the page used to lead with them ("7 skills. Entire
- * workflow.", as it was then) and that is what made it read as a tool for engineers
- * only. `/skills` and
- * `/desktop` are gone; what they said that still needed saying is folded into ② and ④,
- * and the reference is in the documentation.
+ * THE CUT BANDS' COMPONENTS ARE GONE, not parked. They were kept on disk for one round —
+ * unrendered, so that restoring a band was one import and one line — and the review
+ * (Greptile, PR #278) rightly called that what it was: this PR ADDING dead code, which is
+ * worse than a PR retaining some. `FeaturesSection.tsx`, `FeatureCard.tsx` and
+ * `CommandsSection.tsx` were deleted in the same PR that introduced them, so #269 writes
+ * its own card component and reads the grid out of this PR's history rather than off the
+ * branch.
  *
- * `page-wrapper` only ever wrapped the hero and the sections below it; the header sits
- * outside it and the other pages do not use it at all. Its job is `overflow: clip`,
- * which keeps the hero's decorative overflow from widening the document — so it has to
- * stay, and it has to stay HERE rather than in the layout.
+ * `lib/commands.ts` is the exception and stays: `desktop/src/main/skills-registry.test.ts`
+ * reads it as one of the eight duplicated skill lists, and `lib/commands.test.ts` pins its
+ * order — it is exercised data, not an unrendered component.
  *
- * `content-sections` groups the closing run the same way the original did.
+ * The knock-on: `/#features` and `/#commands` were live same-page anchors from the
+ * header's Product menu and the footer's Product column. Both bands are gone, so both
+ * links are repointed at `/documentation#skills` — see the notes at those two call
+ * sites. `#how` is the only same-page anchor left.
+ *
+ * Every retired band's copy stays in the catalogues, unreferenced (`site.yourProduct.*`,
+ * `site.features.*`, `site.how.commandsTitle`, `site.mockup.*`), alongside the other
+ * families this rebuild retired — nothing tests for an unused key, and pruning them
+ * means editing `i18n.test.ts`'s exact `SAME_IN_BOTH` allow-list in lockstep.
+ *
+ * Rebuilt from zero on the design system landed by #267. There is no `marketing.css`
+ * behind any of this — the `(marketing)` layout no longer imports it — so every band is
+ * Tailwind over the tokens in `tailwind.config.ts` and the primitives in
+ * `components/ui.tsx`. What that replaces: eight sections dressed by ~5,000 lines of
+ * ported stylesheet, eleven rival button definitions among them.
+ *
+ * `bg-canvas` IS HERE AND NOT IN THE LAYOUT, on purpose. That layout wraps `/story` too,
+ * and `/story` is on `softblue` — painting `#F4F7FE` one level up would cover it.
+ *
+ * The `page-wrapper` / `content-sections` wrappers are gone with the stylesheet that
+ * gave them meaning: `page-wrapper` existed for an `overflow: clip` that kept the old
+ * hero's decorative overflow from widening the document, and nothing here overflows.
  */
 
 export const metadata: Metadata = {
   title: 'magic-slash',
-  description:
-    "Describe what's next. Magic Slash builds it, on the product you already have.",
+  description: 'Your ideas become AI-powered features. The app for product builders.',
 }
 
 export default function Home() {
   return (
-    <div className="page-wrapper">
-      <Hero />
-      <HowSection />
-      <YourProductSection />
-      <div className="content-sections">
-        <ParallelSection />
-        <YourWaySection />
-        <WhereItStandsSection />
-        <WhySection />
-        <FaqSection />
-        <CtaSection />
-      </div>
+    <div className="bg-canvas">
+      <HeroSection />
+      <HowItWorksSection />
+      <FinalCtaSection />
     </div>
   )
 }

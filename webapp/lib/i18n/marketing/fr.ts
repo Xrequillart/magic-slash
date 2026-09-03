@@ -14,6 +14,9 @@ import type { marketingEn } from './en'
 export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // ── Nav ────────────────────────────────────────────────────────────────────
   'site.nav.howItWorks': 'Comment ça marche',
+  'site.nav.menu': 'Menu du site',
+  'site.nav.product': 'Produit',
+  'site.nav.allFeatures': 'Toutes les fonctionnalités',
   'site.nav.resources': 'Ressources',
   'site.nav.signIn': 'Connexion',
   'site.nav.account': 'Votre compte',
@@ -29,11 +32,11 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.nav.ourStory': 'Notre histoire',
 
   // ── Hero ───────────────────────────────────────────────────────────────────
-  'site.hero.title': 'Vous décrivez.<br>Ça se construit.',
-  'site.hero.subtitle':
-    'Magic Slash travaille sur le produit que vous avez déjà — et mène chaque chantier jusqu’au bout.',
+  'site.hero.title': 'Vos idées deviennent<br>des fonctionnalités boostées à l’IA.',
+  'site.hero.subtitle': 'L’application pour product builders.',
   'site.hero.cta': 'Commencer gratuitement',
   'site.hero.howCta': 'Voir comment ça marche',
+  'site.hero.downloadCta': 'Télécharger pour Mac',
 
   // ── ② Comment ça marche ────────────────────────────────────────────────────
   'site.how.title': 'Comment ça marche, vraiment.',
@@ -63,6 +66,47 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.how.resolveDesc': '<strong>/magic:resolve</strong> applique les retours de review.',
   'site.how.doneDesc': '<strong>/magic:done</strong> clôture et nettoie derrière.',
   'site.how.seeDocs': 'Voir la doc',
+
+  // ── Les huit commandes ─────────────────────────────────────────────────────
+  'site.commands.subtitle':
+    'Une par étape du cycle. Tapez <strong>/magic:</strong> et Claude Code les liste toutes.',
+  'site.commands.plan': 'Transforme une idée floue en épic et en stories.',
+  'site.commands.start': 'Lit le ticket, prépare la branche et attaque le chantier.',
+  'site.commands.continue': 'Reprend un chantier là où vous l’avez laissé.',
+  'site.commands.commit':
+    'Découpe le travail en commits atomiques, chacun avec un message clair.',
+  'site.commands.pr': 'Pousse, ouvre la pull request, met à jour le ticket.',
+  'site.commands.review': 'Relit le diff à l’aune des conventions de votre projet.',
+  'site.commands.resolve': 'Applique les retours de review et force-push la correction.',
+  'site.commands.done': 'Clôture le ticket après le merge et nettoie derrière.',
+
+  // ── La grille de fonctionnalités ───────────────────────────────────────────
+  'site.features.title': 'Tout ce qu’il embarque.',
+  'site.features.subtitle':
+    'Neuf choses que fait le produit — et où chacune est documentée.',
+  'site.features.learnMore': 'En savoir plus',
+  'site.features.commandsTitle': 'Huit commandes',
+  'site.features.commandsDesc': 'Une par étape, de la première idée au merge.',
+  'site.features.workflowsTitle': 'Enchaînements',
+  'site.features.workflowsDesc': 'Les chaînes de commandes qui portent une tâche entière.',
+  'site.features.desktopTitle': 'L’app desktop',
+  'site.features.desktopDesc': 'Jusqu’à douze agents à la fois, chacun dans son worktree.',
+  'site.features.multiRepoTitle': 'Plusieurs dépôts',
+  'site.features.multiRepoDesc': 'Dix projets, dix jeux d’habitudes, une seule fenêtre.',
+  'site.features.configurationTitle': 'Vos conventions',
+  'site.features.configurationDesc':
+    'Format de commit, langues, modèles — réglés une fois par projet.',
+  'site.features.integrationsTitle': 'GitHub et Jira',
+  'site.features.integrationsDesc':
+    'Tickets, issues et pull requests, lus et écrits sur place.',
+  'site.features.hooksTitle': 'Hooks et notifications',
+  'site.features.hooksDesc': 'Votre Mac vous prévient dès qu’un chantier vous attend.',
+  'site.features.securityTitle': 'Sécurité',
+  'site.features.securityDesc':
+    'Ce qui tourne où, ce qui quitte votre machine, et ce qui n’en sort jamais.',
+  'site.features.troubleshootingTitle': 'Dépannage',
+  'site.features.troubleshootingDesc':
+    'Les correctifs des ratés, écrits plutôt que mémorisés.',
 
   // ── ③ Sur le produit que vous avez déjà ────────────────────────────────────
   'site.yourProduct.title': 'Sur le produit que vous avez déjà.',
@@ -130,6 +174,12 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.faq.viewAll': 'Voir toute la FAQ',
 
   // ── CTA de fin ─────────────────────────────────────────────────────────────
+  // ── CTA de clôture (page d'accueil) ────────────────────────────────────────
+  'site.finalCta.title':
+    'Faites passer votre workflow de product builder à la vitesse supérieure.',
+  'site.finalCta.subtitle': 'Essayez Magic Slash.',
+  'site.finalCta.button': 'Obtenir Magic Slash pour Mac',
+
   'site.cta.title': 'Commencez à construire.',
   'site.cta.subtitle': 'Gratuit, et une minute suffit pour l’installer.',
   'site.cta.button': 'Commencer gratuitement',
@@ -332,6 +382,9 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // ── Footer ─────────────────────────────────────────────────────────────────
   'site.footer.tagline': 'Votre produit, construit.',
   'site.footer.product': 'Produit',
+  'site.footer.features': 'Fonctionnalités',
+  'site.footer.commands': 'Les commandes',
+  'site.footer.download': 'Télécharger',
   'site.footer.howItWorks': 'Comment ça marche',
   'site.footer.gettingStarted': 'Démarrage rapide',
   'site.footer.updates': 'Mises à jour',
@@ -341,6 +394,8 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.footer.documentation': 'Documentation',
   'site.footer.faq': 'FAQ',
   'site.footer.ourStory': 'Notre histoire',
+  'site.footer.legal': 'Légal',
+  'site.footer.security': 'Politique de sécurité',
   'site.footer.company': 'Entreprise',
   'site.footer.license': 'Licence',
   'site.footer.reportIssue': 'Signaler un problème',

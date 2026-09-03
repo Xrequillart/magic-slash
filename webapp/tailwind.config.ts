@@ -38,6 +38,46 @@ const config: Config = {
         // as the button's own outline. `primary` reserves the same 1px in
         // `border-transparent`, so the two are the same box — see `BUTTON_BASE`.
         hairline: 'rgba(10, 10, 10, 0.08)',
+        // Text and the filet on a DARK ground — the inverse of `ink` / `muted` /
+        // `hairline` above, for the one surface on the public site that inverts: the
+        // `bg-ink` footer plate, and the language picker in the `footer` dress it wears
+        // down there (`components/site/SiteFooter.tsx`,
+        // `components/site/LanguageMenu.tsx`). A light footer under a light page has
+        // nothing to end the page with, so that plate is dark and everything on it
+        // needs its own ladder; `muted` on `#0a0a0a` is unreadable.
+        //
+        // It exists because those two files were spelling that ladder out at every call
+        // site — `text-white/60`, `text-white/50`, `text-white/40`, `border-white/10`,
+        // `bg-white/10`, `hover:bg-white/5` — which is the same failure an arbitrary
+        // `shadow-[…]` is: six alphas repeated across ten call sites, with nothing
+        // saying which of them is a link row and which is a heading, and no way to
+        // retune the footer without finding all ten.
+        //
+        // Three text rungs, loudest first, named by ROLE the way `regie.dim` is rather
+        // than by weight: `body` is a link row and the picker's own label, `dim` is the
+        // tagline and the GitHub glyph beside it, `faint` is a column heading and the
+        // copyright. Full-strength white stays Tailwind's own `text-white` — it is the
+        // hover target of all three and needs no name of its own.
+        //
+        // `rule` and not `hairline`: the light ground's filet is 8% ink and this one is
+        // 10% white, so they are two different values, and `lib/designTokens.test.ts`
+        // anchors on a line beginning `hairline:` — a second key by that name would
+        // satisfy that guard from in HERE and let the real token be deleted in silence.
+        // `regie.rule` is the precedent for a namespaced filet.
+        //
+        // `tint` is the hover fill under a language option and `selected` the plate
+        // under the chosen one. `selected` carries `rule`'s value today and is still
+        // its own key: one is an edge, the other is a surface. Two spellings of one
+        // number rather than a link, on purpose — the same call the `button` radius
+        // makes further down.
+        onink: {
+          body: 'rgba(255, 255, 255, 0.6)',
+          dim: 'rgba(255, 255, 255, 0.5)',
+          faint: 'rgba(255, 255, 255, 0.4)',
+          rule: 'rgba(255, 255, 255, 0.1)',
+          tint: 'rgba(255, 255, 255, 0.05)',
+          selected: 'rgba(255, 255, 255, 0.1)',
+        },
         // ── `brand` IS the primary CTA. `accent` is NON-CTA ONLY ─────────────
         //
         // This reversed once, and the note is kept in that shape on purpose so the
@@ -194,6 +234,73 @@ const config: Config = {
         // not buttons, and there is no `borderRadius.card` because `rounded-2xl` is
         // already the surface convention everywhere.
         button: '0.75rem',
+      },
+      // The public site's column. One number, 1100px, and it was written by hand in
+      // three files before it had a name — the header pill, the footer plate and every
+      // band of the homepage (`components/site/home/Shell.tsx`) each carried their own
+      // `max-w-[1100px]`, which is the same failure an arbitrary `shadow-[…]` is: the
+      // width of the site cannot be retuned without finding all three, and a fourth
+      // structural component would be a coin toss between 1100 and 1120.
+      //
+      // Named `site` rather than `container` because it is not Tailwind's `container`
+      // (that one is a component with its own breakpoint map and centring behaviour,
+      // and shadowing the name would make `max-w-container` read as a reference to it)
+      // and not `page` because `/admin` is full-bleed on purpose — see the `regie`
+      // note above. This is the width of the MARKETING column specifically.
+      //
+      // The signed-in product does not use it: its pages are on `max-w-*` sizes from
+      // Tailwind's own scale, tuned per page, and nothing here changes them.
+      maxWidth: {
+        site: '1100px',
+      },
+      // THE ENTRANCE OF THE PUBLIC SITE'S FIRST SCREEN — the header bar, and each
+      // element of the hero staggered behind it by an `animation-delay`. Named here and
+      // used only through `components/site/Reveal.tsx`; read the note at the top of
+      // that file for why the resting state is the ABSENCE of these classes.
+      //
+      // AN ANIMATION AND NOT A TRANSITION, which is the whole reason the entrance is
+      // in the config at all instead of being two utility classes at the call site. A
+      // transition needs its from-state to be in the markup and resolved by the browser
+      // before the to-state lands — and the only state the server may emit is the
+      // resting one, because the page has to be readable without JavaScript. Driving
+      // that from React means rendering a from-state and then a to-state and trusting
+      // the browser to resolve a style between two commits React is free to batch;
+      // measured, it does not, and the entrance silently never plays. These frames
+      // carry their own from-state, so adding the class is enough.
+      //
+      // `translate` — the individual transform property — and NOT `transform`: the
+      // header centres itself with `-translate-x-1/2`, and a keyframe writing
+      // `transform` would replace that for the length of the animation and throw the
+      // bar half its own width to the right. `translate` composes with `transform`
+      // rather than overwriting it.
+      //
+      // `--reveal-from` is how far, and which way. Unset, an element rises 12px, which
+      // is the `translate-y-3` the hero used to spell out; the bar drops in from 20px
+      // above and asks for that with `[--reveal-from:-1.25rem]` at its own call site.
+      //
+      // TWO NAMES, IDENTICAL FRAMES, and the duplication is load-bearing rather than a
+      // copy-paste: the entrance REPLAYS on a language change (the copy is what it
+      // introduces, so new copy earns a new entrance) and the only thing that restarts
+      // a CSS animation is a change of `animation-name`. `Reveal` alternates between
+      // the two. Do not "clean this up" into one.
+      keyframes: {
+        'reveal-a': {
+          from: { opacity: '0', translate: '0 var(--reveal-from, 0.75rem)' },
+          to: { opacity: '1', translate: '0 0' },
+        },
+        'reveal-b': {
+          from: { opacity: '0', translate: '0 var(--reveal-from, 0.75rem)' },
+          to: { opacity: '1', translate: '0 0' },
+        },
+      },
+      // `backwards` and not `both`: the fill has to hold the FROM state through the
+      // stagger's delay, but once the animation is over the element belongs to the
+      // cascade again — an end state pinned by `both` would keep `translate: 0 0` on
+      // the bar for the life of the page and quietly outrank anything that wanted to
+      // move it later.
+      animation: {
+        'reveal-a': 'reveal-a 600ms ease-out backwards',
+        'reveal-b': 'reveal-b 600ms ease-out backwards',
       },
     },
   },
