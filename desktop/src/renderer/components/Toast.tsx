@@ -19,10 +19,21 @@ interface Toast {
 
 let toastId = 0
 const listeners = new Set<(toast: Toast) => void>()
+const dismissals = new Set<(id: number) => void>()
 
-export function showToast(message: string, type: ToastType = 'success', options?: { actions?: ToastAction[], persistent?: boolean }) {
+export function showToast(message: string, type: ToastType = 'success', options?: { actions?: ToastAction[], persistent?: boolean }): number {
   const toast: Toast = { id: ++toastId, message, type, ...options }
   listeners.forEach(listener => listener(toast))
+  return toast.id
+}
+
+/**
+ * Closes a toast from the outside, for the persistent ones whose condition can
+ * clear on its own (the offline warning, once the backend answers again).
+ * Harmless on a toast the user already dismissed.
+ */
+export function dismissToast(id: number) {
+  dismissals.forEach(dismiss => dismiss(id))
 }
 
 export function ToastContainer() {
@@ -38,8 +49,14 @@ export function ToastContainer() {
       }
     }
 
+    const dismiss = (id: number) => setToasts(prev => prev.filter(t => t.id !== id))
+
     listeners.add(listener)
-    return () => { listeners.delete(listener) }
+    dismissals.add(dismiss)
+    return () => {
+      listeners.delete(listener)
+      dismissals.delete(dismiss)
+    }
   }, [])
 
   const removeToast = useCallback((id: number) => {
