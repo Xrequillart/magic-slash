@@ -111,8 +111,9 @@ const BUTTON_ICON_SIZES = {
 } as const
 
 /**
- * FOUR RUNGS OF COMMITMENT, loudest first: `primary` commits, `secondary` is the
- * safe alternative beside it, `ghost` dismisses, `danger` destroys.
+ * FIVE RUNGS OF COMMITMENT, loudest first: `primary` commits, `secondary` is the
+ * safe alternative beside it, `ghost` dismisses, `link` merely goes somewhere, and
+ * `danger` destroys.
  *
  * `primary` is `brand` blue with white text. It was white with a drop shadow for
  * one iteration of this scale, and the white recipe did not go away — it became
@@ -130,6 +131,10 @@ const BUTTON_ICON_SIZES = {
  *     rather than in it, and `text-ink` at full strength. Hover moves the shadow
  *     only.
  *   • `ghost` — no plate and no edge, so its text colour is the whole state.
+ *   • `link` — the same, one shade louder: the colour is the brand blue rather
+ *     than `muted`, which is what says "this goes somewhere" instead of "this
+ *     dismisses". See its own note below for why it is a rung and not a `ghost`
+ *     with a colour appended at the call site.
  *   • `danger` — enough fill that dimming the whole thing still reads as a button.
  *
  * The RANKING is the point, not any one recipe. `primary` and its neighbour sit
@@ -167,6 +172,29 @@ const BUTTON_VARIANTS = {
   // button beside an edged white button is one button wearing two names.
   ghost:
     'border-transparent text-muted hover:bg-black/[0.04] hover:text-ink disabled:text-black/40',
+  // A ghost that GOES somewhere. Same shape exactly — no plate, no edge, the same
+  // transparent 1px reserved for the same reason — and the colour is the only
+  // difference: `brand`, the blue the `primary` fill is made of.
+  //
+  // WHY IT IS A RUNG AND NOT A `className` ON `ghost`, which is how it arrived and
+  // why this note is here. There is no `tailwind-merge` in this file (see the
+  // header): a `className="text-brand"` handed to a recipe that already says
+  // `text-muted` is a CONFLICTING utility, and which of the two wins is decided by
+  // where `.text-brand` and `.text-muted` happen to land in the emitted sheet —
+  // alphabetical order, not intent. The same race `BAND_TITLE`'s two inks were
+  // split apart to avoid. So the colour is named here, once, and a caller that
+  // wants a blue text button asks for one by name.
+  //
+  // ITS PLACE ON THE LADDER is between `ghost` and `secondary`, and it is not a
+  // second `primary`: the blue arrives as INK on nothing rather than as a fill, so
+  // it still loses to any filled button beside it. That is what makes the pair
+  // legible where the homepage uses both — a filled `primary` that starts the
+  // product, and this one further down that only opens another page.
+  //
+  // `disabled` is `ghost`'s, for `ghost`'s reason: 0.5 × whatever this says is what
+  // a disabled `<fieldset>` actually renders (see the note above `secondary`), so
+  // fading the blue itself would leave a pale periwinkle nobody can read.
+  link: 'border-transparent text-brand hover:bg-brand/[0.06] disabled:text-black/40',
   danger: 'border-transparent bg-red text-white hover:bg-red/90 disabled:opacity-40',
 } as const
 
@@ -528,9 +556,31 @@ const TONE_HEIGHT = 'min-h-80'
  */
 export type ToneCardLayout = 'stacked' | 'beside'
 
+/**
+ * WHERE A STACKED VISUAL SITS in the height the card has left, and it is a slot for the
+ * reason this component's `children` note already gives: "the card owns the box; the
+ * visual owns what is inside it". A drawing that positioned itself was a drawing that had
+ * to know it was inside a flex column, and that stopped being true the day `beside`
+ * arrived.
+ *
+ * `end` is the default and what a cropped panel wants: pushed to the bottom edge whatever
+ * the copy above it measures, so a pair of cards in a grid row line up along their
+ * bottoms and a panel that runs off the card is cut by the card's own radius.
+ *
+ * `center` is for a visual that is an OBJECT rather than a crop — one bar, one switch,
+ * one tile, complete in itself and narrower than the space. Pinned to the bottom, an
+ * object leaves a pool of empty ground above it that reads as a mistake rather than as
+ * air; centred, the card reads as a thing with something in the middle of it.
+ *
+ * IGNORED IN A `beside` ROW, where the visual is already centred on the row's cross axis
+ * and there is no leftover height to place it in.
+ */
+export type ToneCardVisual = 'end' | 'center'
+
 export function ToneCard({
   tone = 'mist',
   layout = 'stacked',
+  visual = 'end',
   title,
   description,
   children,
@@ -540,6 +590,8 @@ export function ToneCard({
   tone?: CardTone
   /** Copy over visual, or copy beside it. See `ToneCardLayout`. */
   layout?: ToneCardLayout
+  /** Where a STACKED visual sits in the leftover height. See `ToneCardVisual`. */
+  visual?: ToneCardVisual
   title: string
   description: string
   /**
@@ -596,13 +648,20 @@ export function ToneCard({
       </div>
 
       {children ? (
-        // Stacked: pushed to the bottom edge whatever the copy above it measures, so a
-        // pair of cards in a grid row still line up.
+        // Stacked: placed by the `visual` slot — `mt-auto` pins it to the bottom edge so
+        // a pair of cards in a grid row line up, `my-auto` centres an object in the
+        // leftover height. See `ToneCardVisual` for which is which.
         // Beside: takes the rest of the row and centres, because a panel aligned to the
         // bottom of a card taller than itself leaves a gap above it that reads as a
         // mistake. `min-w-0` because a flex item's automatic minimum is its content, and
         // these visuals are deliberately wider than their box.
-        <div className={beside ? 'min-w-0 flex-1 md:self-center' : 'mt-auto'}>{children}</div>
+        <div
+          className={
+            beside ? 'min-w-0 flex-1 md:self-center' : visual === 'center' ? 'my-auto' : 'mt-auto'
+          }
+        >
+          {children}
+        </div>
       ) : null}
     </div>
   )

@@ -118,6 +118,63 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.workflow.doneDesc':
     'Une fois le merge confirmé : ticket clôturé, branche supprimée des deux côtés, worktree retiré. Votre machine revient à son point de départ.',
 
+  // ── La bande sous la fenêtre de l’app : pour qui elle est faite ────────────
+  //
+  // LES TITRES SONT DES NOMS, pas les impératifs de la bande workflow : celle-ci parle de
+  // ce que l’app EST, l’autre de ce que VOUS faites.
+  //
+  // « Tasks » devient « Tâches » : c’est ainsi que l’app nomme l’écran en français
+  // (`tasks.title` dans `desktop/src/i18n/fr.ts`), et le mockup de `/features` imprime déjà
+  // le même mot. « Spotlight » ne bouge pas — c’est un nom propre, celui que la page
+  // features emploie dans les deux langues.
+  'site.builtFor.title': 'Fait pour les développeurs. Pas seulement pour eux.',
+  // « pas comme nous » est tombé, et le tiret cadratin avec : demande du propriétaire.
+  // La phrase n’a pas besoin d’un adversaire — « réglée comme vous travaillez » dit déjà
+  // tout — et la virgule fait la même jointure que le tiret en se lisant plus vite.
+  'site.builtFor.subtitle':
+    'La fenêtre où vivent vos tickets, vos agents et vos terminaux : sur votre Mac, sous vos doigts, à un raccourci de là où vous étiez déjà, et réglée comme vous travaillez.',
+  'site.builtFor.tasksTitle': 'Tâches',
+  'site.builtFor.tasksDesc':
+    'Chaque issue ouverte et chaque ticket du backlog, GitHub comme Jira, regroupés par dépôt dans une seule fenêtre. Un clic et un agent démarre dessus — aucun identifiant à copier, aucun onglet à retrouver.',
+  // « Navigation par clavier » et non « Raccourcis clavier », que le propriétaire a
+  // renommé : c'est le mot juste pour ce que l'antisèche montre — se déplacer — et il
+  // évite de calquer le nom de la section Réglages de l'app, qui, elle, s'appelle bien
+  // « Raccourcis clavier » et en liste huit.
+  'site.builtFor.shortcutsTitle': 'Navigation par clavier',
+  'site.builtFor.shortcutsDesc':
+    'Un nouvel agent, le suivant, la vue divisée : chaque geste de l’app a son raccourci. Vos mains ne quittent jamais le clavier.',
+  // Les sept lignes de l’antisèche, dans l’ordre où elles sont dessinées. Ce sont les
+  // libellés de l’app elle-même (`settings.shortcuts.*` dans `desktop/src/i18n/fr.ts`),
+  // « Vue divisée » étant le nom que la barre de titre donne au mode.
+  //
+  // DEUX EXCEPTIONS, les deux bascules : l’app dit « Afficher/masquer la liste des agents »
+  // et « Afficher/masquer les infos de l’agent », qui font trois lignes face à une paire de
+  // touches sur une card d’un tiers de large. Le nom seul désigne la même chose. Voir la
+  // note côté anglais.
+  'site.builtFor.shortcutNew': 'Nouvel agent',
+  'site.builtFor.shortcutNext': 'Agent suivant',
+  'site.builtFor.shortcutPrev': 'Agent précédent',
+  'site.builtFor.shortcutSplit': 'Vue divisée',
+  'site.builtFor.shortcutAgents': 'Liste des agents',
+  'site.builtFor.shortcutInfo': 'Infos de l’agent',
+  'site.builtFor.shortcutClose': 'Archiver l’agent',
+  // « natif » est le mot du métier et il n’a pas d’équivalent : on dit une app native.
+  'site.builtFor.macTitle': 'Vraiment natif sur Mac',
+  'site.builtFor.macDesc':
+    'Conçu spécifiquement pour le Mac, pensé pour la vitesse, la mémoire et l’autonomie. Pas une page web dans une fenêtre.',
+  // Le thème d'abord, et « pliez-la » pour finir : c'est la demande du propriétaire —
+  // le thème ajouté, « réglé une fois, par dépôt » supprimé, et l'idée que l'app se
+  // façonne vraiment à vos besoins mise à la place. Voir la note côté anglais.
+  'site.builtFor.yoursTitle': 'À votre main',
+  'site.builtFor.yoursDesc':
+    'Le thème de l’application, les raccourcis clavier, le format des commits, le template de pull request, la langue de chaque surface et la latitude laissée à l’agent. Pliez-la jusqu’à ce qu’elle travaille comme vous.',
+  // « Quick Launch » reste en anglais : c’est le nom de la fenêtre dans l’app, y compris
+  // en français (`settings.shortcuts.quickLaunch` dit « Lancement rapide » pour la LIGNE
+  // de réglage, mais la fenêtre elle-même n’est jamais renommée).
+  'site.builtFor.spotlightTitle': 'Spotlight',
+  'site.builtFor.spotlightDesc':
+    'Un raccourci global ouvre Quick Launch d’où que vous soyez. Tapez un ticket, entrée, et l’agent tourne déjà quand vous revenez.',
+
   // ── ② Comment ça marche ────────────────────────────────────────────────────
   'site.how.title': 'Comment ça marche, vraiment.',
   'site.how.subtitle': 'Vous décrivez. Ça construit. Vous validez.',

@@ -53,7 +53,7 @@ import {
  *  - the background switch, because a white-on-white system is entirely a
  *    question of shadow, and a shadow reads differently on white than on the
  *    `canvas` blue every product page actually uses;
- *  - the four rungs side by side, because the ladder is the design and any two of
+ *  - the five rungs side by side, because the ladder is the design and any two of
  *    them collapsing into each other is the failure mode;
  *  - a row of buttons that swap variant on click, because a variant without a
  *    border is a smaller box and the layout used to jump on every press;
@@ -69,7 +69,7 @@ import {
  * hiding the piece most likely to break when the tokens around it move.
  */
 
-const BUTTON_VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'ghost', 'danger']
+const BUTTON_VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'ghost', 'link', 'danger']
 const BADGE_TONES: BadgeTone[] = ['neutral', 'accent', 'green', 'yellow', 'red', 'purple']
 
 /** The rungs declared in `tailwind.config.ts`, plus the absence of one. */
@@ -201,8 +201,8 @@ export function Gallery() {
         </div>
 
         <Block
-          title="The ladder — four rungs of commitment"
-          why="primary commits, secondary is the safe alternative beside it, ghost dismisses, danger destroys. The ranking is the point, not any one recipe: these sit side by side in every modal footer and settings row, and if you cannot tell which one commits, the ladder has collapsed."
+          title="The ladder — five rungs of commitment"
+          why="primary commits, secondary is the safe alternative beside it, ghost dismisses, link merely goes somewhere, danger destroys. The ranking is the point, not any one recipe: these sit side by side in every modal footer and settings row, and if you cannot tell which one commits, the ladder has collapsed. `link` is the newest rung and the one to watch here — it is a ghost carrying the brand blue, so it must read as louder than ghost and still lose to a filled primary beside it."
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <Card className="p-6">

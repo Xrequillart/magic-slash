@@ -363,6 +363,140 @@ export const marketingEn = {
   'site.workflow.doneDesc':
     'Once the merge is confirmed: the ticket closed, the branch deleted on both ends, the worktree removed. Your machine back where it started.',
 
+  // ── The band under the app window: who it is built for ─────────────────────
+  //
+  // FIVE CARDS AND A HEADING, and the family is `site.builtFor.*` rather than
+  // `site.desktop.*` on purpose: that family belongs to the band ABOVE this one, which
+  // shows the window itself. These are five claims about living in it, and keeping them
+  // apart is what lets either band be reworded without the other's copy moving.
+  //
+  // THE CARD TITLES ARE NOUNS, not the imperatives the workflow band uses. That band is
+  // about what YOU do — "Make the plan", "Commit and open the PR" — and this one is about
+  // what the APP IS, so a verb here would be the page telling the reader to go and use a
+  // feature rather than saying the feature exists.
+  //
+  // WHAT IS NOT IN THE CATALOGUE: the shortcuts themselves. ⌘N, ⌘↓, ⌘/ and ⌃Space are
+  // printed by the drawing in `BuiltForArt.tsx`, spelled from what the app actually
+  // registers, for the same reason the workflow band keeps the command names out of here
+  // — a keystroke is not prose, and a translator editing one would have the site teaching
+  // a shortcut the product does not have.
+  /**
+   * TWO SENTENCES AND THE SECOND IS THE POINT. "Built for developers" on its own is what
+   * every developer tool says; the second half is the product owner's own brief ("build
+   * pour le developer mais pas que") and it is the half that does work — a lead, a
+   * designer or a PM reading the page has just been shown a terminal and needs telling
+   * that the window is for them too.
+   */
+  'site.builtFor.title': 'Built for developers. Not only for developers.',
+  /**
+   * ONE LINE THAT NAMES THE FIVE CARDS WITHOUT LISTING THEM: the backlog, the keyboard,
+   * the Mac, the settings, the shortcut that summons it. A subtitle that enumerated them
+   * would be read instead of the grid rather than into it.
+   *
+   * IT ENDED "rather than the way we do" AND NO LONGER DOES, at the product owner's
+   * request. The clause set the reader against us to make its point, and the sentence does
+   * not need an adversary: "set up the way you work" already says the whole thing, and
+   * saying only that is the more confident line.
+   *
+   * NO EM DASH EITHER, and it went in the same pass — the owner asked for it out. The list
+   * of three places was hinged to the closing clause with one, which is a punctuation mark
+   * this catalogue reaches for rather a lot; a comma carries the same join here, and the
+   * sentence reads faster without the pause.
+   */
+  'site.builtFor.subtitle':
+    'The window your tickets, your agents and your terminals live in: on your Mac, on your keyboard, one shortcut away from wherever you already were, and set up the way you work.',
+  /**
+   * The Tasks card, and its title is the app's own name for the screen — the same call
+   * `/features` makes for its Tasks row. The line under it says the whole claim rather
+   * than half of it: not only that the backlog is in the window, but that a ticket in it
+   * is one click from an agent running on it.
+   */
+  'site.builtFor.tasksTitle': 'Tasks',
+  'site.builtFor.tasksDesc':
+    'Every open issue and every backlog ticket, from GitHub and from Jira, grouped by repository in one window. Click one and an agent starts on it — no id to copy, no tab to go and find.',
+  /**
+   * The keyboard card. "Your hands never leave it" is the promise; the drawing beside
+   * this prints three real chords, so the sentence is free to make the claim rather than
+   * spend itself listing keys.
+   *
+   * IT WAS "Keyboard shortcuts" AND THE OWNER RENAMED IT to "Keyboard navigation", which
+   * is the narrower and the better word. A shortcut is any key that saves a click; what
+   * the three rows below actually show is MOVING — a new agent, the next one, the split
+   * view — and "navigation" is the claim a reader can check against the drawing. It also
+   * stops the card from reading as a duplicate of the app's own Settings section, which
+   * is called Keyboard Shortcuts and lists eight of them.
+   */
+  'site.builtFor.shortcutsTitle': 'Keyboard navigation',
+  'site.builtFor.shortcutsDesc':
+    'A new agent, the next one, the split view: every move in the app has a chord. Your hands never leave the keyboard.',
+  // The seven rows of the shortcut sheet, in the order they are drawn. They MIRROR the
+  // app's own `settings.shortcuts.*` labels rather than paraphrasing them, so the site and
+  // the Settings pane call the same key the same thing. "Split View" is the app's own name
+  // for the mode and is capitalised as the app capitalises it.
+  //
+  // IT WAS THREE ROWS AND THE OWNER ASKED FOR MORE, to fill a card that grew taller when
+  // the Tasks window beside it went full width. These seven are every chord in the app
+  // that MOVES you; ⌘D, which duplicates an agent, is the one left out because duplicating
+  // is not navigating.
+  //
+  // TWO OF THEM ARE SHORTER THAN THE APP'S OWN, and it is the only place this family bends
+  // that rule. The app says "Toggle agents list" and "Toggle agent info"; in French those
+  // are "Afficher/masquer la liste des agents" and its twin, which against a pair of
+  // keycaps on a third-width card wrap to three lines and stop being a sheet. The nouns
+  // alone name the same thing and are what anyone says out loud.
+  'site.builtFor.shortcutNew': 'New agent',
+  'site.builtFor.shortcutNext': 'Next agent',
+  'site.builtFor.shortcutPrev': 'Previous agent',
+  'site.builtFor.shortcutSplit': 'Split View',
+  'site.builtFor.shortcutAgents': 'Agents list',
+  'site.builtFor.shortcutInfo': 'Agent info',
+  'site.builtFor.shortcutClose': 'Archive agent',
+  /**
+   * The Mac card. The product owner supplied this one nearly word for word with the
+   * reference — speed, memory, battery — and the three of them together are what "native"
+   * means to somebody who has been handed a browser in a frame before and noticed.
+   */
+  'site.builtFor.macTitle': 'Truly Mac-native',
+  // "Not a web page in a window" IS THE LINE THIS CARD NEEDS, and it went away for a round.
+  // While the drawing was a capture of the macOS menu bar, the sentence named the menu bar
+  // too — picture and copy agreeing. The drawing is Apple's own mark now, which says the
+  // platform in one glyph and leaves the sentence free to say the thing the glyph cannot:
+  // that this is not Electron chrome wearing a Mac's clothes. The menu bar has its own row
+  // on `/features` (`site.features.menuBar*`), which is where that fact belongs.
+  'site.builtFor.macDesc':
+    'Built specifically for Mac, with speed, low memory use and battery life in mind. Not a web page in a window.',
+  /**
+   * The settings card. The reference was a screenshot from another product; the wording is
+   * ours, and every item named is something the app really exposes.
+   *
+   * REWRITTEN AT THE OWNER'S REQUEST, and the two changes pull in the same direction. The
+   * THEME went in — "j'aimerais qu'on ajoute à la description le fait qu'on puisse changer
+   * le theme de l'application" — and it belongs at the FRONT, because it is the one item
+   * on the list a non-developer recognises as theirs to change; a sentence that opened on
+   * commit formats was a sentence that told half the readers of this band that this card
+   * was not for them.
+   *
+   * "Set once, per repository" CAME OUT, and it was doing real damage for one line of
+   * precision. It is true of the middle of the list and false of the theme and the
+   * shortcuts, which are per-machine; and its job was to reassure a developer that the
+   * configuration does not have to be repeated, which is a worry you only have once you
+   * have decided to configure something. The sentence it was crowding out is the card's
+   * actual claim, and the owner asked for it in as many words: the app bends to how you
+   * work. That is what closes the line now.
+   */
+  'site.builtFor.yoursTitle': 'Make it yours',
+  'site.builtFor.yoursDesc':
+    'The app’s theme, the keyboard shortcuts, the commit format, the pull request template, the language each surface speaks and how far an agent may go on its own. Bend it until it works the way you do.',
+  /**
+   * The Spotlight card. "Wherever you are" is literal and is the whole feature: the
+   * shortcut is global, so the bar comes up over the editor, the browser or nothing at
+   * all. "Quick Launch" is the window's own name inside the app, which is why it appears
+   * in the sentence — the reader will meet it there.
+   */
+  'site.builtFor.spotlightTitle': 'Spotlight',
+  'site.builtFor.spotlightDesc':
+    'One global shortcut opens Quick Launch wherever you are. Type a ticket, press enter, and the agent is already running by the time you switch back.',
+
   // ── ② How it works ─────────────────────────────────────────────────────────
   'site.how.title': 'How it actually works.',
   'site.how.subtitle': 'You describe. It builds. You approve.',

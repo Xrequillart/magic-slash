@@ -199,6 +199,27 @@ const ROSE_DEEP = '#F5A8C4'
 const LEMON_LIGHT = '#FFF6D9'
 const LEMON_DEEP = '#F5CE5A'
 
+/**
+ * THE GRADIENT THE APPLE MARK IS FILLED WITH, on the homepage's "Truly Mac-native" card.
+ *
+ * NOT A TONE AND NOT A PLATE, which is why it is a table of its own with one entry. A tone
+ * is a card's GROUND and cycles; a plate is another PRODUCT's own hue, always named. This
+ * is neither — it is the fill of one glyph, and it is deliberately not anybody's brand
+ * colour: Apple's mark has no official colour to borrow, and the reference the product
+ * owner supplied fills it with a cool sweep rather than with silver.
+ *
+ * ITS THREE STOPS ARE THE REFERENCE'S: a sky blue, the design system's own `accent` one
+ * step lighter, and an orchid. They are literals here for `PLATES`' reason — a gradient
+ * belonging to one mark is a value that means one thing, and pointing it at `accent` would
+ * invite somebody to retune the CTA blue and silently repaint a logo.
+ *
+ * IT IS APPLIED AS A MASK, not as a fill: `public/img/apple-mark.png` is an alpha mask over
+ * a div wearing this. See `MacNativeArt` for why the mark is a bitmap rather than a path.
+ */
+const MARKS = {
+  'mark-apple': `linear-gradient(135deg, #7DD3FC 0%, #A5B4FC 50%, #F0ABFC 100%)`,
+}
+
 const TONES = {
   /** Palest of the four: barely a tint, for a card that carries a busy visual. */
   'tone-mist': `linear-gradient(135deg, #E8F0FF 0%, #F7FAFF 100%)`,
@@ -552,7 +573,7 @@ const config: Config = {
       // declarations and their comments, and a second copy here is the copy that would
       // go stale. Two objects and not one merged constant, because they are two
       // different KINDS of ground — see the note on `PLATES`.
-      backgroundImage: { ...TONES, ...PLATES },
+      backgroundImage: { ...TONES, ...PLATES, ...MARKS },
       // The elevation scale. Four rungs, deliberately few: a white-on-white
       // interface separates things by space and by a whisper of a shadow, and a
       // seven-step ramp only invites two neighbouring surfaces to differ by an
@@ -828,6 +849,78 @@ const config: Config = {
         'strike-3': strikeAt(22),
         'strike-4': strikeAt(30),
         'strike-5': strikeAt(38),
+        // ── The homepage's "Make it yours" switch ────────────────────────────────
+        //
+        // ONE CLICK, ON AND OFF AGAIN, over a 4.8s loop. Three keyframes rather than one
+        // because three different properties move on three different elements — the
+        // knob's position, the track's colour and the pointer's press — and a single
+        // keyframe cannot address three boxes. They share the same percentages, which is
+        // what keeps them one gesture: change a beat here and change it in all three.
+        //
+        // THE BEATS: rest to 15%, the press at 15–20% (the knob's travel and the track's
+        // turn happen inside it), on and at rest to 60%, the second press at 60–65%, then
+        // off and at rest for the last third. The rest either side is deliberately the
+        // majority of the loop — a switch flicking continuously is a fidget, and what the
+        // card is illustrating is that the app HAS switches, not that they are being
+        // thrashed. The OFF rest is longer than the ON one so the loop's seam lands in the
+        // middle of a still, where nobody sees it.
+        //
+        // 5% IS ~240ms AT THIS DURATION, which is what makes the move read as a mechanism
+        // rather than as a fade. macOS's own switch settles in about that.
+        // A TIMING FUNCTION INSIDE A KEYFRAME GOVERNS THE SEGMENT THAT STARTS THERE, and
+        // getting that backwards is what made the first version wrong in a way the product
+        // owner spotted immediately: "j'aime bien l'animation de la désactivation, mais
+        // l'animation de l'activation est trop lente". The two moves were the same length,
+        // so it was not the duration — the bezier was declared on the `20%` keyframe, which
+        // governs 20→65 and therefore the move OFF. The move ON ran on the shorthand's
+        // `linear` and had no snap at all, which at this size reads as slow rather than as
+        // flat. The curve now sits on the keyframes the moves START from.
+        //
+        // AND THE ON IS NOW GENUINELY FASTER THAN THE OFF: 16→19 against 60→65, ~145ms
+        // against ~240ms. Deliberately asymmetric, and it is how a switch behaves — the one
+        // that answers you is the one you pressed FOR, so it wants to arrive; going back is
+        // an undo and can take its time. The owner liked the off exactly as it was, so only
+        // the on moved.
+        'switch-knob': {
+          // `cubic-bezier(.32,1.4,.55,1)` overshoots slightly on arrival, which is the
+          // difference between a knob that slides and one that is thrown. Declared INSIDE
+          // the keyframe, as `timeline-run` does: a function on the shorthand would apply
+          // to every segment, including the two long rests where there is nothing to ease.
+          '0%, 16%': { transform: 'translateX(0)', animationTimingFunction: 'cubic-bezier(.32,1.4,.55,1)' },
+          '19%, 60%': { transform: 'translateX(3rem)', animationTimingFunction: 'cubic-bezier(.32,1.4,.55,1)' },
+          '65%, 100%': { transform: 'translateX(0)' },
+        },
+        // 3rem IS NOT A GUESS: the track is `w-28` (112px) with `p-2` (8px a side), so its
+        // inside measures 96px and the knob is `h-12 w-12`. 96 − 48 = 48 = 3rem. The three
+        // numbers have to agree, which is why they are written out here as well as at the
+        // call site.
+        'switch-track': {
+          // OFF is ink at 12% — the switch's own off state on a light ground, not a grey
+          // token, because it has to sit on the card's gradient without picking a fight
+          // with it. ON is `brand`, the same blue the primary button is filled with.
+          //
+          // THE SAME BEATS AS THE KNOB, to the percent. A track still turning after the
+          // knob has arrived is a switch with a lag in it.
+          '0%, 16%': { backgroundColor: 'rgba(10, 10, 10, 0.12)' },
+          '19%, 60%': { backgroundColor: BRAND },
+          '65%, 100%': { backgroundColor: 'rgba(10, 10, 10, 0.12)' },
+        },
+        // The pointer: a small dip towards the click and back. It does NOT travel with the
+        // knob — a cursor that follows the thing it just switched is a DRAG, which is not
+        // how a switch is operated. It presses and stays where it is.
+        //
+        // The dip is a percentage of the glyph and the scale is 0.9, both small on
+        // purpose: a cursor that visibly shrinks reads as a cartoon, and all this has to
+        // convey is the instant of contact.
+        // THE PRESS HAS TO BEGIN BEFORE THE KNOB MOVES, or the cursor is reacting to the
+        // switch instead of causing it. It goes down at 14% and the knob leaves at 16%;
+        // down at 59% and the knob leaves at 60%. Two percent is ~96ms, which is about the
+        // gap between a real click landing and a real switch answering it.
+        'switch-cursor': {
+          '0%, 11%, 23%, 56%, 69%, 100%': { transform: 'translate(0, 0) scale(1)' },
+          '14%, 18%': { transform: 'translate(-4%, 5%) scale(0.9)' },
+          '59%, 63%': { transform: 'translate(-4%, 5%) scale(0.9)' },
+        },
       },
       // `backwards` and not `both`: the fill has to hold the FROM state through the
       // stagger's delay, but once the animation is over the element belongs to the
@@ -924,6 +1017,22 @@ const config: Config = {
         'strike-3': 'strike-3 5s linear infinite',
         'strike-4': 'strike-4 5s linear infinite',
         'strike-5': 'strike-5 5s linear infinite',
+        // The switch. `linear` on the shorthand and the easing inside the keyframes, for
+        // `timeline-run`'s reason: two of the three beats are RESTS, and a curve applied
+        // to the whole cycle would ease its way through them for no effect while flattening
+        // the one move that wants a curve. The three share a duration to the millisecond —
+        // they are one gesture drawn on three elements, and a knob arriving a frame before
+        // its track changes colour is a switch that looks broken.
+        //
+        // THE CARD USED TO MOVE WITH THEM and no longer does. Three more keyframes turned
+        // the card's own ground dark while the switch was on, ink and all; the product
+        // owner tried it and cut it — "retire le changement de background sur À votre
+        // main". Worth recording because it was not a bug: it worked, and a card that
+        // repaints itself twice every five seconds is simply louder than a grid of five
+        // wants. The switch is the thing that moves; the card holds still around it.
+        'switch-knob': 'switch-knob 4.8s linear infinite',
+        'switch-track': 'switch-track 4.8s linear infinite',
+        'switch-cursor': 'switch-cursor 4.8s ease-in-out infinite',
       },
     },
   },

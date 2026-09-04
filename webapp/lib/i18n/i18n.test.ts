@@ -249,6 +249,11 @@ describe('message catalogues', () => {
         'site.features.groupCloudTitle',
         // The desktop family's Notifications row: one word, and the same one in French.
         'site.features.hooksTitle',
+        // The homepage's "built for" band names one of its five cards after the feature
+        // itself, and "Spotlight" is a proper noun in both languages — `/features` heads
+        // its own row with the same word for the same reason. Everything else in that
+        // family is real French: the Tasks card is "Tâches", as the app calls the screen.
+        'site.builtFor.spotlightTitle',
         // Quick Launch's placeholder, which is a ticket id followed by a command and
         // therefore the same string on both screens — the app's own catalogues hold it
         // identically too.

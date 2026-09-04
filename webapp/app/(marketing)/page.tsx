@@ -3,17 +3,19 @@ import { HeroSection } from '@/components/site/home/HeroSection'
 import { PillarsSection } from '@/components/site/home/PillarsSection'
 import { WorkflowSection } from '@/components/site/home/WorkflowSection'
 import { DesktopSection } from '@/components/site/home/DesktopSection'
+import { BuiltForSection } from '@/components/site/home/BuiltForSection'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 
 /**
  * magic-slash.io — the landing page.
  *
- * FIVE SECTIONS: the promise, what the product IS, what working with it is actually like,
- * what its window looks like, then the ask. It was rebuilt as six and cut band by band by
- * the product owner — "on the product you already have", then "the eight commands", then
- * the feature grid, and then "how it works" as well — which at its thinnest left the
- * headline that names the cycle and the one button at the end of it, with nothing between
- * them. The three middle bands were then built back, for three different jobs:
+ * SIX SECTIONS: the promise, what the product IS, what working with it is actually like,
+ * what its window looks like, who that window is for, then the ask. It was rebuilt as six
+ * and cut band by band by the product owner — "on the product you already have", then
+ * "the eight commands", then the feature grid, and then "how it works" as well — which at
+ * its thinnest left the headline that names the cycle and the one button at the end of
+ * it, with nothing between them. The four middle bands were then built back, for four
+ * different jobs:
  *
  *   • `PillarsSection` answers WHAT IT IS in two cards, one per half of the product — the
  *     eight skills, and the app that drives them — closing on the line that names the
@@ -21,6 +23,12 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  *   • `WorkflowSection` answers WHAT A DAY WITH IT LOOKS LIKE: the loop as five steps,
  *     one coloured card each, a drawing apiece, and one button out to `/workflow`.
  *   • `DesktopSection` then shows the app's own window at length, drawn faithfully.
+ *   • `BuiltForSection` answers WHO THAT WINDOW IS FOR, in five coloured cards: the
+ *     backlog inside it, the keyboard, the Mac, the switches and the global shortcut. It
+ *     is the page body's one DIRECT link to `/features` (the workflow band's button goes
+ *     via `/workflow`), and it sits immediately under the window on purpose — five claims
+ *     about living somewhere only land next to a picture of the place. Its headline is
+ *     the owner's brief: "build pour le developer mais pas que".
  *
  * THE ORDER OF THE MIDDLE THREE CHANGED ONCE, and the reasoning changed with it rather
  * than being retrofitted. The workflow band shipped BELOW the window, on the argument that
@@ -157,6 +165,7 @@ export default function Home() {
       <PillarsSection />
       <WorkflowSection />
       <DesktopSection />
+      <BuiltForSection />
       <FinalCtaSection />
     </div>
   )
