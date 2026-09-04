@@ -1,6 +1,7 @@
 'use client'
 
 import { useId, useState } from 'react'
+import Link from 'next/link'
 import { ChevronDown, type LucideIcon } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
 
@@ -260,7 +261,14 @@ export function Button({
   )
 }
 
-/** Anchor styled as a Button — for external links (downloads) that must stay <a>. */
+/**
+ * Anchor styled as a Button — for external links (downloads) that must stay <a>.
+ *
+ * AND FOR CROSS-ORIGIN ROUTES, which is the case the parenthesis above does not name:
+ * `LOGIN_PATH` leaves the marketing site for the app host, and there is no client-side
+ * navigation across origins to lose. `ButtonNavLink` below is the one to reach for
+ * INSIDE one origin.
+ */
 export function ButtonLink({
   variant,
   size,
@@ -274,6 +282,41 @@ export function ButtonLink({
     <a className={buttonClass({ variant, size, icon, className, children })} {...props}>
       {buttonContent(icon, children, truncate)}
     </a>
+  )
+}
+
+/**
+ * `next/link` styled as a Button — for a CTA that points at a route on THIS origin.
+ *
+ * WHY IT EXISTS, given that `ButtonLink` above renders an anchor that would resolve
+ * `/workflow` perfectly well: a bare `<a>` costs a full document load, and this site
+ * already decided that question everywhere else. The header's nav rows, the footer's
+ * columns and the Product dropdown are all `next/link`, so a primary CTA that reloaded
+ * the page would be the ONE internal link on the site that does — the reader notices it
+ * as the button that feels slower than the menu above it.
+ *
+ * It is the third component to share `buttonClass`, which is the whole point of that
+ * function: the recipe, the size table and the icon rule are stated once and the three
+ * differ only in the element they render. `Link` takes `href` as a required prop and
+ * passes the rest through to its own anchor, so `ButtonShape` reaches it unchanged.
+ *
+ * NOT FOR THE APP HOST. `LOGIN_PATH` and the `.dmg` are other origins, and `Link`
+ * prefetching an origin it cannot render is a request that buys nothing — those stay on
+ * `ButtonLink`.
+ */
+export function ButtonNavLink({
+  variant,
+  size,
+  icon,
+  truncate = false,
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof Link> & ButtonShape) {
+  return (
+    <Link className={buttonClass({ variant, size, icon, className, children })} {...props}>
+      {buttonContent(icon, children, truncate)}
+    </Link>
   )
 }
 
