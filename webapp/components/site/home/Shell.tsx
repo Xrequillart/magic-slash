@@ -144,6 +144,13 @@ export function HomeSection({
  *
  * The headline is an `h2` in every band — the page has one `h1`, in the hero — so the
  * outline stays honest without the caller having to remember which level it is on.
+ *
+ * NOTHING RENDERS THIS TODAY. Its one consumer was the "how it works" band, cut from the
+ * homepage by the product owner; the closing band draws on `BAND_TITLE` instead (it
+ * needs the dark ink and its own width, see above) and `/features` writes its headline
+ * out. It stays because it is this file's shared vocabulary rather than a retired band's
+ * component — the next band on the page is meant to reach for it and not restate these
+ * four classes. See `app/(marketing)/page.tsx` for what went.
  */
 export function HomeHeading({
   eyebrow,

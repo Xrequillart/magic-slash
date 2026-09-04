@@ -68,7 +68,9 @@ const COLUMNS: Column[] = [
       // Its `site.footer.commands` key stays in the catalogues unreferenced, like every
       // other family this rebuild retired.
       { href: '/features', label: 'site.footer.features' },
-      { href: '/#how', label: 'site.footer.howItWorks' },
+      // "How it works" does not survive either: it was a `/#how` anchor, and the band it
+      // scrolled to was cut from the homepage. `site.footer.howItWorks` stays in the
+      // catalogues unreferenced, like `site.footer.commands` above it.
       // The .dmg itself, not a releases page — see `DESKTOP_DOWNLOAD_URL`. A plain
       // anchor because GitHub answers it with `Content-Disposition: attachment`, so
       // the page the reader is on never changes.

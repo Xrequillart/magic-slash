@@ -41,8 +41,12 @@ import { useT } from '@/lib/i18n/useLanguage'
  * The Jira mark — `TrackerIcons.tsx`'s three stacked chevrons in Atlassian's two blues,
  * the same paths the Tasks drawing above uses. Kept as a vector rather than pointed at
  * `/img/jira-logo.png` so it takes `currentColor`-free exact fills at `w-3.5`.
+ *
+ * EXPORTED, the way `TasksModalMockup` exports `GithubMark`: the homepage's drawn app
+ * window (`home/AppWindowMockup.tsx`) shows the same Jira ticket in its info panel, and a
+ * third copy of these four paths is the copy that goes stale when Atlassian restyles.
  */
-function JiraMark({ className }: { className?: string }) {
+export function JiraMark({ className }: { className?: string }) {
   const gradientId = useId()
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true">

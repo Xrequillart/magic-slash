@@ -481,6 +481,22 @@ const config: Config = {
           'notification-ink': '#E1E1E1',
           /** The age in its corner. */
           'notification-dim': '#B1B1B1',
+          // THE THREE WINDOW BUTTONS, for the drawn app window on the homepage
+          // (`components/site/home/AppWindowMockup.tsx`).
+          //
+          // Here for the same reason the banner above is: macOS draws these, the desktop
+          // app's markup only leaves the 64px gutter they sit in, and a web page has no
+          // native chrome to fill it. So the mockup draws them — and a borrowed colour
+          // pasted at that call site is the one nobody dares retune later, because nobody
+          // can tell whether it was chosen or copied. Sampled from the real buttons in
+          // their ACTIVE state (the window is focused in the drawing); an unfocused window
+          // greys all three to one value, which nothing here needs.
+          /** The close button, leftmost. */
+          close: '#FF5F57',
+          /** Minimise, in the middle. */
+          minimize: '#FEBC2E',
+          /** Zoom, rightmost. */
+          zoom: '#28C840',
         },
         // THE DESKTOP APP'S OWN TWO INKS, for the reproductions on `/features`.
         //
@@ -664,6 +680,49 @@ const config: Config = {
       // a CSS animation is a change of `animation-name`. `Reveal` alternates between
       // the two. Do not "clean this up" into one.
       keyframes: {
+        /**
+         * The homepage timeline (`components/site/home/SkillsTimeline.tsx`): one ticket's
+         * life, played out and then rewound.
+         *
+         * FOUR BEATS, and the percentages are the whole choreography:
+         *
+         *   0 → 4%    still at the start, so the first stops can be read before anything
+         *             moves. A row already sliding when you arrive has no beginning.
+         *   4 → 70%   the run. Two thirds of the cycle spent covering the distance, which
+         *             is what makes it read as work being done rather than as a carousel.
+         *   70 → 88%  THE HALT. The run ends on the merge, and the row stops dead there
+         *             for a fifth of the cycle — the beat the whole drawing is built
+         *             around, because a merged pull request is where a ticket's story
+         *             actually lands.
+         *   88 → 92%  the rewind, and it is deliberately violent: the same distance the
+         *             run took 16 seconds to cover, taken in one. Back to the plan, ready
+         *             for the next idea.
+         *   92 → 100% still at the start again, so the snap has somewhere to land.
+         *
+         * `-65%` IS A PERCENTAGE OF THE TRACK, not a pixel count, so it survives a stop
+         * being added or the pitch changing. It is the distance that brings the LAST stop
+         * to the card's right edge at the two-column width; on a wider card the run simply
+         * ends with a little more rail showing past `Done`.
+         */
+        'timeline-run': {
+          '0%, 3%': {
+            transform: 'translateX(0)',
+            // Governs the RUN, 5% → 55%. The curve is the reason the row reads as
+            // something being scrolled rather than something being conveyed: it leaves
+            // the plan gently, covers the middle at speed, and settles onto the merge
+            // instead of hitting it. `linear` was correct while the loop was seamless and
+            // wrong the moment it grew a beginning and an end.
+            animationTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+          },
+          '68%, 82%': {
+            transform: 'translateX(calc(-100% + 480px))',
+            // Governs the REWIND, 76% → 84%. Steeper in the middle than the run's curve
+            // and symmetrical, so the way back reads as one flick rather than as the run
+            // played backwards.
+            animationTimingFunction: 'cubic-bezier(0.6, 0, 0.4, 1)',
+          },
+          '88%, 100%': { transform: 'translateX(0)' },
+        },
         'reveal-a': {
           from: { opacity: '0', translate: '0 var(--reveal-from, 0.75rem)' },
           to: { opacity: '1', translate: '0 0' },
@@ -776,6 +835,50 @@ const config: Config = {
       // the bar for the life of the page and quietly outrank anything that wanted to
       // move it later.
       animation: {
+        /**
+         * The timeline. `linear`, and that is what makes the four beats read as four:
+         * every segment's SPEED is then just its distance over its slice of the cycle, so
+         * the slow run, the dead stop and the snap back all come out of one keyframe with
+         * no easing to soften the contrast between them.
+         *
+         * 24s, and the RHYTHM is what these numbers are tuned against rather than the
+         * pixel speed — a stop passing the card is the event a reader tracks, not a
+         * distance. The run takes 65% of the cycle: 15.6s for ~1250px, about 80px a
+         * second, and with columns averaging ~166px a stop passes every ~2.1s. Then 3.4s
+         * of halt on the merge, 1.4s for the way back, and 2.9s at rest.
+         *
+         * IT WAS 26s AND THE OWNER ASKED FOR "A TOUCH FASTER", so the cycle came down by
+         * two seconds — about 11% off the time a stop takes to cross. The history is worth
+         * keeping because the speed has been wrong in both directions: 16s was too fast at
+         * ~145px a second, 30s too slow once the columns tightened, and every change to
+         * the spacing moves the distance underneath all of it.
+         *
+         * `calc(-100% + 560px)` RATHER THAN A PERCENTAGE, and this is the fix for a
+         * fragility that has cost four rounds. The halt has to land with `Done` near the
+         * card's right edge, and a percentage of the track cannot express that: the track
+         * is as wide as its labels happen to set, so every reword moved the ending. It was
+         * 65%, then 66, 67, 70, 71 — each one re-measured against a screenshot after a
+         * label changed, and wrong again the next time one did.
+         *
+         * `-100%` puts the track's RIGHT EDGE at the viewport's left; adding 480px puts it
+         * 480px in instead. `Done` is the last column, so its bead sits a fixed ~77px from
+         * that edge whatever the labels ahead of it do — which means the run now ends in
+         * the same place by construction, and a reword changes only how far it travels to
+         * get there.
+         *
+         * WHY 480 AND NOT 560. The number IS the padding to the right of `Done`, which is
+         * what makes it worth reading as one: the bead lands at `value − 77 + 24` from the
+         * card's left edge (the 24 being the drawing's own `pl-6`), so against a ~550px
+         * card, 560 left it 43px from the right edge and looking jammed against it. 480
+         * gives ~123px — `Done` reads as having ARRIVED somewhere rather than as having
+         * been stopped by the frame. Lower it further to bring the ending further in.
+         *
+         * NO TIMING FUNCTION OUT HERE, which is the change that matters: each beat carries
+         * its own inside the keyframe. A function declared on the shorthand would apply to
+         * EVERY segment, including the two holds, and would fight the two curves that make
+         * the run and the rewind feel different from each other.
+         */
+        'timeline-run': 'timeline-run 24s infinite',
         'reveal-a': 'reveal-a 600ms ease-out backwards',
         'reveal-b': 'reveal-b 600ms ease-out backwards',
         // The start card's run: one 11s loop, and EVERY animation in it shares that

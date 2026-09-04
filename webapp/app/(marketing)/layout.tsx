@@ -13,9 +13,12 @@ import { SiteFooter } from '@/components/site/SiteFooter'
  * (`components/ui.tsx` over the tokens in `tailwind.config.ts`), and `/story` keeps its
  * own `story.css`, which now carries the handful of closing-CTA rules it used to borrow.
  * `app/(docs)/layout.tsx` was the last importer; `/documentation` is deleted and `/faq`
- * stands in its place. The file itself STAYS on disk, and not out of sentiment: it
- * defines the ~81 `mk-*` classes `components/site/home/AppMockup.tsx` is written
- * against, which issue #270 needs. `lib/marketingCss.test.ts` still reads it.
+ * stands in its place. The file itself STAYS on disk, and the reason has changed: it
+ * used to be held here by the ~86 `mk-*` classes `components/site/home/AppMockup.tsx`
+ * was written against, and #270 deleted that component rather than porting it (see
+ * `page.tsx`). Those rules are now stranded — nothing references them — so what keeps the
+ * file is `app/(docs)/layout.tsx` and `lib/marketingCss.test.ts`, which still reads it.
+ * Pruning the dead block is a follow-up.
  *
  * Nothing global takes its place. The background is painted by whichever page owns it
  * (`bg-canvas` on the homepage's and `/features`'s own roots, `html body` in

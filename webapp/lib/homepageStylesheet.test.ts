@@ -26,12 +26,14 @@ import { describe, expect, it } from 'vitest'
  *
  * NOTHING IMPORTS `marketing.css` ANY MORE, which is new and changes what rule 1 is
  * guarding. `app/(docs)/layout.tsx` was the last importer, and `/documentation` has been
- * deleted (`/faq` replaced it; see `lib/faq.test.ts`). The FILE stays on disk on purpose
- * and that is not sentiment: it defines the ~81 `mk-*` classes that dress
- * `components/site/home/AppMockup.tsx`, which issue #270 brings back scroll-driven and
- * has to bring the styling with it. `marketingCss.test.ts` still reads it. So the rule
- * is no longer "the homepage is off a stylesheet the docs still use" — it is "nothing is
- * on it, and the homepage least of all".
+ * deleted (`/faq` replaced it; see `lib/faq.test.ts`). The FILE stays on disk, but no
+ * longer because anything is dressed by it: the ~86 `mk-*` classes that held it here used
+ * to dress `components/site/home/AppMockup.tsx`, and #270 DELETED that component instead
+ * of porting it — the homepage's window is `home/AppWindowMockup.tsx` now, drawn in
+ * tokens. Those rules are stranded. So the rule is no longer "the homepage is off a
+ * stylesheet the docs still use" — it is "nothing is on it, and the homepage least of
+ * all". `marketingCss.test.ts` still reads the file, which is what keeps it honest until
+ * the dead block is pruned.
  *
  * TEXT, and only text. The root suite runs on the ROOT `node_modules` and CI never
  * installs `webapp/`'s dependencies, so nothing here may import `react`, `next/*`,
@@ -113,12 +115,11 @@ function importsMarketingCss(source: string): boolean {
  * The eleven-way button pile from `marketing.css`, by name.
  *
  * MATCHED ON A BOUNDARY THAT TREATS `-` AS PART OF THE WORD, not as a `btn-` substring.
- * `AppMockup.tsx` is in the scanned tree (it is kept for #270 — see the note at the top
- * of that file) and it carries `mk-panel-btn--right`, which is one of ~81 `mk-*` class
- * names belonging to the animated mockup and is not a button recipe at all. A
- * `/btn-/`-style scan fails on it, and a `\b` boundary would let a hypothetical
- * `mk-status-btn` match `status-btn` for the same reason. So: no `-` and no word
- * character on either side.
+ * The case that forced it is gone — `AppMockup.tsx` carried `mk-panel-btn--right`, one of
+ * ~86 `mk-*` class names belonging to the animated mockup and not a button recipe at all,
+ * and #270 deleted that component. The boundary STAYS: a `/btn-/`-style scan would have
+ * failed on that class, and a `\b` boundary would let a hypothetical `mk-status-btn` match
+ * `status-btn` for the same reason. So: no `-` and no word character on either side.
  */
 const MARKETING_BUTTON_CLASSES = [
   'btn-get-started',

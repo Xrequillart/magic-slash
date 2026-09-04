@@ -32,11 +32,49 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.nav.ourStory': 'Notre histoire',
 
   // ── Hero ───────────────────────────────────────────────────────────────────
-  'site.hero.title': 'Vos idées deviennent<br>des fonctionnalités boostées à l’IA.',
-  'site.hero.subtitle': 'L’application pour product builders.',
+  'site.hero.title': 'De l’idée à la PR mergée.',
+  'site.hero.subtitle':
+    'Plusieurs agents en parallèle, dans une seule application. Elle sait qui travaille sur quoi, vous gardez la tête libre.',
   'site.hero.cta': 'Commencer gratuitement',
   'site.hero.howCta': 'Voir comment ça marche',
   'site.hero.downloadCta': 'Télécharger pour Mac',
+
+  // ── Les deux piliers ───────────────────────────────────────────────────────
+  // « product builder » reste en anglais : c'est le terme que le métier emploie en
+  // français, et le hero le portait déjà avant de céder sa place au parallélisme.
+  'site.pillars.skillsTitle': '8 skills Claude Code',
+  'site.pillars.skillsDesc':
+    'De /magic:plan à /magic:done, elles déroulent le cycle entier dans votre terminal : la spec, la branche, les commits, la pull request, la review, le ticket refermé derrière vous.',
+  // Nomme l'acte, comme les étapes voisines : c'est ce que `/magic:plan` produit, et ce
+  // que la marque Jira à côté désigne. « Tickets » reste le mot du métier, non traduit.
+  'site.pillars.timelineTickets': 'Écriture des tickets',
+  'site.pillars.timelineValidation': 'Validation du plan',
+  // « Création de la Pull request » nomme l'ACTE et non l'objet : à côté de « Pull request
+  // approuvée », deux étapes portant le nom de la même chose ne disaient pas laquelle
+  // l'ouvre. « Mergée » s'accorde avec « la PR », comme le H1 du hero.
+  'site.pillars.timelinePr': 'Création de la Pull request',
+  'site.pillars.timelineMerged': 'Mergée',
+  'site.pillars.timelineApproved': 'Pull request approuvée',
+  'site.pillars.desktopTitle': 'Une app desktop pour les piloter',
+  'site.pillars.desktopDesc':
+    'Une fenêtre native pour lancer un agent, voir où en est chacun, répondre à celui qui vous attend et ouvrir la pull request sans quitter l’écran.',
+  'site.pillars.kicker':
+    'À eux deux, ils accélèrent tout votre workflow de product builder, de l’idée à la production.',
+
+  // ── La bande desktop ───────────────────────────────────────────────────────
+  // Le titre est le nom du produit : identique dans les deux catalogues, d'où sa ligne
+  // dans la liste `SAME_IN_BOTH.site` de `i18n.test.ts`. « worktree » reste tel quel,
+  // comme partout dans l'app et la documentation : c'est le mot de git.
+  'site.desktop.title': 'Magic Slash',
+  'site.desktop.subtitle':
+    'Plusieurs agents Claude au travail en même temps, chacun dans son worktree. Suivez-les, pilotez-les et répondez-leur d’une seule fenêtre.',
+  'site.desktop.archiveAgent': 'Archiver l’agent',
+  /** Les quatre atouts sous la fenêtre. « Worktree » reste tel quel, comme dans le
+      sous-titre au-dessus et dans toute l’application. */
+  'site.desktop.highlightParallel': 'Douze agents en parallèle',
+  'site.desktop.highlightContext': 'Tout le contexte sauvegardé',
+  'site.desktop.highlightTrackers': 'Jira et GitHub connectés',
+  'site.desktop.highlightCommands': 'Les huit commandes /magic:',
 
   // ── ② Comment ça marche ────────────────────────────────────────────────────
   'site.how.title': 'Comment ça marche, vraiment.',
@@ -709,7 +747,8 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // ── Maquette du hero ───────────────────────────────────────────────────────
   // Uniquement le chrome de la fenêtre. Les lignes du terminal ne sont PAS ici : c'est
   // le log que le vrai produit imprime, et il l'imprime en anglais — elles vivent en dur
-  // dans `AppMockup.tsx`. `{n}` est remplacé par l'animation.
+  // dans `AppMockup.tsx` (composant supprimé ; `home/AppWindowMockup.tsx` garde ses
+  // littéraux de la même façon). `{n}` est remplacé par l'animation.
   'site.mockup.menuNewAgent': 'Nouvel agent',
   'site.mockup.menuSkills': 'Skills',
   'site.mockup.menuTeam': 'Équipe',

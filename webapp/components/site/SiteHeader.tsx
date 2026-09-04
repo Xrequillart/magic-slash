@@ -49,9 +49,10 @@ import { useRevealClass } from './Reveal'
  * used to ship collapsed (`max-width: 0`) so it would not compete with the hero's CTA.
  * That button is a plain `ButtonLink` now and is visible from the first paint, which
  * leaves the 600px threshold with nothing to switch. Both thresholds are still read on
- * MOUNT as well as on scroll: a visitor arriving on `/#how` starts mid-page, and a bar
- * that only reacted to the first scroll EVENT would paint transparent over content
- * until they moved.
+ * MOUNT as well as on scroll: a visitor arriving on `/features#workflow`, or coming
+ * BACK to a page the browser restores mid-scroll, starts below the fold, and a bar that
+ * only reacted to the first scroll EVENT would paint transparent over content until they
+ * moved.
  *
  * `useSession` stays, and so does what it renders BEFORE it resolves: the signed-out
  * label. That is the right answer for almost every visitor to a public page, and it is
@@ -132,7 +133,6 @@ import { useRevealClass } from './Reveal'
  */
 const NAV_LINKS: { href: string; label: MessageKey }[] = [
   { href: '/features', label: PAGE_CHROME.allFeatures },
-  { href: '/#how', label: 'site.nav.howItWorks' },
 ]
 
 /**
@@ -325,9 +325,11 @@ export function SiteHeader() {
               row is where they start to disagree, and the bar showing a nav the mobile
               panel does not is a failure nothing announces.
 
-              `/#how` is an anchor rather than a route — it works from the homepage
-              without a navigation, and there is no page to point it at. `Link` handles
-              both shapes, so a mixed list needs no branch.
+              THE ARRAY IS DOWN TO ONE ROW AGAIN, and it stays an array. `/#how` was
+              the second, and it went with the band it scrolled to; the argument above is
+              exactly why the row that survives did not move back inline. `Link` also
+              handles an anchor as happily as a route, so putting a same-page row back
+              here needs no branch.
 
               `NAV_ITEM` is the bar's own control recipe; it used to be shared with the
               Product trigger that stood here, and it stays in `NavDropdown.tsx` because

@@ -60,16 +60,46 @@ export const marketingEn = {
   'site.nav.ourStory': 'Our Story',
 
   // ── Hero ───────────────────────────────────────────────────────────────────
-  'site.hero.title': 'Your ideas become<br>AI-powered features.',
   /**
-   * One line, and it names the AUDIENCE rather than the mechanism. The band that used
-   * to carry the "works on your existing product" claim is gone, and the feature grid
-   * says what the thing does — so the hero's job here is to tell a reader whether the
-   * page is addressed to them.
+   * THE WHOLE CYCLE NAMED BY ITS TWO ENDS, which is the change worth recording. The
+   * headline this replaces — "Your ideas become AI-powered features." — promised an
+   * outcome without saying what the product does to reach it, and "AI-powered" is a
+   * claim every tool in this market makes. An idea going in and a merged pull request
+   * coming out is the one sentence only this product can say.
+   *
+   * No `<br>` any more: the old line carried one because it ran to two lines at `md`
+   * and broke in the wrong place. This one is five words and breaks nowhere.
    */
-  'site.hero.subtitle': 'The app for product builders.',
+  'site.hero.title': 'From idea to merged PR.',
+  /**
+   * WHAT THE HEADLINE CANNOT SAY: the headline is one run, start to finish, and the
+   * product's actual claim is that there are SEVERAL of them going at once. So this
+   * line carries the three things the reader has to be told for that to land — the
+   * parallelism, the single place it happens in, and what they stop having to do.
+   *
+   * "AGENTS" AND NOT "TASKS" in the first clause, which is what makes the second one
+   * parse. "Who is working on what" over a line about tasks reads as teammates and a
+   * standup; over a line about agents it reads as the machine keeping the ledger. The
+   * word is already the site's (`site.features.desktopDesc` — "up to twelve agents at
+   * once"), and it is the desktop app's own, in the sidebar's AGENTS section.
+   *
+   * "SO YOU DON'T HAVE TO" is the mental-load half, and it is deliberately the LAST
+   * thing said rather than the claim the line opens on. A hero that opens on relief
+   * has to describe the burden first, and this page has one line to spend.
+   *
+   * It replaced two earlier jobs in two passes: "The app for product builders." named
+   * the AUDIENCE, then a describe/build/approve line named the MECHANISM. The mechanism
+   * went back to the headline's two ends when the "how it works" band was cut — see
+   * `app/(marketing)/page.tsx` — which is what freed this line for the argument above.
+   */
+  'site.hero.subtitle':
+    'Several agents in parallel, in a single app. It tracks who is working on what, so you don’t have to.',
   'site.hero.cta': 'Start free',
-  /** Scrolls to the "how it works" section rather than leaving for the docs. */
+  /**
+   * RETIRED WITH THE BAND IT POINTED AT. It scrolled to `#how`, and that section was
+   * cut by the product owner — there is no anchor left to reach. Unreferenced, and kept
+   * in the catalogues like every other family this rebuild retired.
+   */
   'site.hero.howCta': 'See how it works',
   /**
    * The hero's SECOND button — `secondary`, the safe alternative beside the blue
@@ -78,6 +108,161 @@ export const marketingEn = {
    * artifact the release workflow publishes.
    */
   'site.hero.downloadCta': 'Download for Mac',
+
+  // ── The two pillars ────────────────────────────────────────────────────────
+  /**
+   * THE BAND THAT OPENS THE PAGE'S BODY — `components/site/home/PillarsSection.tsx`. Two
+   * cards, because the product is two things, and a reader arriving from the hero knows
+   * the OUTCOME but not yet what they would be installing.
+   *
+   * "8" IS A NUMERAL AND NOT A WORD, which is a deliberate reversal: this read "Eight"
+   * first, on the ordinary typographic rule that a small number under ten is spelled out
+   * in running prose. A card title is not running prose — it is a label, read at a glance
+   * and out of the corner of an eye, and a digit is what survives that. It is also the
+   * count itself that is doing the selling here.
+   *
+   * The count is one the whole site is built on (`MAGIC_COMMANDS` in `lib/features.ts`
+   * holds it, and `features.test.ts` pins the inventory), so it is stated rather than
+   * hedged. The two commands named are the ENDS of the loop and not a sample: `plan` turns
+   * an idea into tickets, `done` closes the ticket and cleans up, and naming both is what
+   * tells the reader the cycle is closed rather than partial.
+   *
+   * `site.desktop.highlightCommands` further down still SPELLS IT OUT ("the eight /magic:
+   * commands"), and that is not an oversight left behind: it sits in running prose under
+   * the window, where the ordinary rule applies again.
+   */
+  'site.pillars.skillsTitle': '8 Claude Code skills',
+  'site.pillars.skillsDesc':
+    'From /magic:plan to /magic:done, they run the whole cycle in your terminal: the spec, the branch, the commits, the pull request, the review, the ticket closed behind you.',
+  /**
+   * WHAT THE APP IS, and deliberately not what it does at scale. The parallel-agents claim
+   * belongs to `site.desktop.subtitle` further down, whose whole sentence is built on it;
+   * repeating it here would give the page two openings. So this line lists the four things
+   * a person actually does in the window, in the order they do them.
+   */
+  /**
+   * The one stop on `SkillsTimeline` that is not a command: what `/magic:plan` produces
+   * and what `/magic:start` picks up. The four beside it come from `commandLabel`, which
+   * is why they are not here.
+   *
+   * IT NAMES THE ACT, like the stops around it. The wording has been through three: "The
+   * tickets" (an article, which made it the only stop reading as prose), then bare
+   * "Tickets" (an object, where every neighbour is something HAPPENING), and now the
+   * writing of them — which is what `/magic:plan` actually produces and what the Jira mark
+   * beside it is pointing at.
+   *
+   * That last change took it OUT of `i18n.test.ts`'s `SAME_IN_BOTH.site`: "Tickets" was
+   * the same word in French and "Tickets written" is not, and a key listed there and then
+   * translated fails that test.
+   */
+  'site.pillars.timelineTickets': 'Tickets written',
+  /**
+   * The HUMAN beat on `SkillsTimeline`, between planning and building, and the only stop
+   * on the rail that nothing automates: somebody reads the plan and says yes. It is on the
+   * rail because a row of five machine steps would say the product runs without you.
+   *
+   * Its label sits ABOVE the rail rather than under it — see that file's note, where the
+   * position turns out to be what makes six stops fit inside the card at all.
+   */
+  'site.pillars.timelineValidation': 'Plan approved',
+  /**
+   * Two more stops on `SkillsTimeline`, and both are here rather than coming from
+   * `commandLabel` for a reason of their own.
+   *
+   * `timelinePr` OVERRIDES the command's own label. `COMMAND_LABELS` gives `/magic:pr` the
+   * name "PR", which is right in a grid of eight commands where the row is already headed
+   * by a slash; on a timeline of a ticket's life the step is the artefact.
+   *
+   * IT NAMES THE CREATION, not the thing. It read "Pull request" for a round, and beside a
+   * later stop called "Pull request approved" that was ambiguous — two stops named after
+   * the same object, with nothing saying which one opens it. "Pull request created" is the
+   * ACT, which is what a step on a timeline is. It is no longer the same string in French
+   * ("Création de la Pull request"), so it came OUT of `i18n.test.ts`'s `SAME_IN_BOTH.site`
+   * when the wording changed — a key listed there and then translated fails that test.
+   *
+   * `timelineMerged` is NOT A COMMAND AT ALL. Nothing runs to make a pull request merged;
+   * somebody clicks the button, and `/magic:done` is what follows it. It sits between `pr`
+   * and `done` because that is where the wait is, and a row that jumped straight from
+   * opening a PR to closing the ticket would be a row claiming the review is ours to skip.
+   */
+  'site.pillars.timelinePr': 'Pull request created',
+  'site.pillars.timelineMerged': 'Merged',
+  /**
+   * The SECOND human beat on the rail, after `resolve`: a reviewer approves once the
+   * comments they left have been answered. It carries GitHub's mark for the same reason
+   * the pull-request stop does — that is where the approving happens.
+   *
+   * It is also the LONGEST label on the row at ~218px, which is what sets the 240px pitch
+   * every stop is spaced by. See the geometry note in `SkillsTimeline.tsx` before making
+   * it any longer.
+   */
+  'site.pillars.timelineApproved': 'Pull request approved',
+  'site.pillars.desktopTitle': 'A desktop app to drive them',
+  'site.pillars.desktopDesc':
+    'A native window to launch an agent, see where each one stands, answer the one that is waiting for you, and open the pull request without leaving the screen.',
+  /**
+   * THE LINE THAT ADDS THE TWO UP, at the foot of the band. It names the reader — product
+   * builder — which is where that positioning went when the hero's subtitle gave it up for
+   * the parallelism (see `site.hero.subtitle`): the audience is still worth stating once,
+   * and a conclusion is a better place for it than a headline.
+   */
+  'site.pillars.kicker':
+    'Between them, they speed up your whole product-builder workflow, from the idea to production.',
+
+  // ── The desktop band ───────────────────────────────────────────────────────
+  /**
+   * THE BAND DIRECTLY UNDER THE HERO — `components/site/home/DesktopSection.tsx`, which
+   * puts the app's own window on the page for the first time.
+   *
+   * The title is the PRODUCT'S NAME and is therefore the same string in both catalogues,
+   * which is why it has a line in `i18n.test.ts`'s exact `SAME_IN_BOTH.site` allow-list.
+   * THE BARE NAME, and it lost a word to get there: it read "Magic Slash desktop" first,
+   * on the argument that the band had to say which of the product's surfaces this is. It
+   * does not. The window under the heading is unmistakably an application, the subtitle
+   * says agents run in it, and "desktop" was a category label doing work the picture had
+   * already done — the kind of word a title keeps only until someone reads it aloud.
+   */
+  'site.desktop.title': 'Magic Slash',
+  /**
+   * TWO LINES, and it is a length rather than a break — there is no `<br>` in it, because
+   * a hard break at this width becomes four lines on a phone. See the note in
+   * `DesktopSection.tsx`.
+   *
+   * THREE THINGS, IN THIS ORDER, because each one is what makes the next land: several
+   * agents at once (the claim only this product can make), each in its own worktree (the
+   * mechanism that makes the first one true rather than a slogan — they are not sharing a
+   * checkout and stepping on each other), and then the single window you watch and steer
+   * them from. The hero's own subtitle states the parallelism; this is where the
+   * parallelism gets its explanation and its place.
+   *
+   * "WORKTREE" IS LEFT AS IT IS in the French, as it is throughout the app and the
+   * documentation: it is git's own word, and every French developer who has one calls it
+   * that.
+   */
+  'site.desktop.subtitle':
+    'Several Claude agents at work at once, each in its own worktree. Watch, steer and answer them from one window.',
+  /**
+   * The titlebar's own button in the drawn window, `agentInfo.closeAgent` in the app's
+   * catalogues. A key rather than a literal because the APP translates it — the literals
+   * in that drawing are the ones the product prints in English whatever the language
+   * (branch names, commit subjects, `v0.88.0`, ticket ids).
+   */
+  'site.desktop.archiveAgent': 'Archive the agent',
+  /**
+   * THE FOUR HIGHLIGHTS under the window, and every one of them is a fact this site
+   * already states somewhere else — see the note on `HIGHLIGHTS` in `DesktopSection.tsx`
+   * for where each comes from. Four words or so each, because they are set on two lines
+   * under a 48px tile and a fifth word makes a third.
+   *
+   * "Twelve" is `site.features.desktopDesc`'s own number, spelled out as that line spells
+   * it. "Worktree" stays as it is in the French, as it does in the subtitle above and
+   * throughout the app. And `/magic:` is typed the way it is typed — the colon belongs to
+   * the command, and the eight of them are what `lib/features.ts` holds.
+   */
+  'site.desktop.highlightParallel': 'Twelve agents in parallel',
+  'site.desktop.highlightContext': 'All your context, saved',
+  'site.desktop.highlightTrackers': 'Jira and GitHub connected',
+  'site.desktop.highlightCommands': 'The eight /magic: commands',
 
   // ── ② How it works ─────────────────────────────────────────────────────────
   'site.how.title': 'How it actually works.',
@@ -905,7 +1090,9 @@ export const marketingEn = {
   // ── Hero mockup ────────────────────────────────────────────────────────────
   // The window CHROME of the animated app mockup, and only that. The terminal's own
   // lines are not here: they are the log the real product prints, and it prints English,
-  // so they live as literals in `AppMockup.tsx` beside the run they belong to. `{n}` is
+  // so they lived as literals in `AppMockup.tsx` beside the run they belonged to — that
+  // component is deleted, and `home/AppWindowMockup.tsx` holds its own the same way.
+  // `{n}` is
   // substituted by the animation, which reads these off `data-` attributes so it never
   // has to know a user-facing string itself.
   'site.mockup.menuNewAgent': 'New agent',

@@ -35,9 +35,13 @@ import { HomeSection } from './Shell'
  * same tokens as the rest of the page. That is gone too, and the hero is a centred
  * column of type.
  *
- * Story #270 is what puts a visual back, as the scroll-driven scene it was always meant
- * to be. Its insertion point is the end of the column below, and `AppMockup.tsx` — kept
- * on disk, rendered nowhere — is the engine it converts. Nothing here has to move for it.
+ * STORY #270 PUT THE VISUAL BACK IN A BAND OF ITS OWN and not in this one, which is why
+ * nothing here moved for it. `DesktopSection` sits directly under this band and draws the
+ * whole desktop window, cropped by its own bottom edge; a hero that is one centred column
+ * of type reads better against it than it would with a second window inside it. It is a
+ * static reproduction rather than the scroll-driven conversion of the old `AppMockup.tsx`
+ * that story originally planned — that component and its two helpers are deleted, and
+ * `app/(marketing)/page.tsx` records why.
  *
  * The `order` props are the entrance sequence, which spans the header too — the bar is
  * 0, and these continue from 1 in the order they are read. There is no `order={4}` any
@@ -63,10 +67,30 @@ export function HeroSection() {
     // The WASH, which is additive and so does belong in `className`: the page is
     // `canvas`, and the hero fades `softblue` into it, so the header's own
     // `softblue/70` at rest has something to sit on rather than reading as a stray tint.
+    //
+    // AND THE 80vh, which travels the same way for the same reason. `HomeSection`'s
+    // `className` is documented as additive and NEVER a padding or a width — a height is
+    // neither, and there is no `display` or `min-height` in that recipe for these three
+    // utilities to race, so nothing here is decided by class-name order the way the old
+    // `pt-32` over `py-20` was. A slot would be the answer if a second band ever asked
+    // for a set height; one caller does not earn one.
+    //
+    // `min-h-` AND NOT `h-`: 80vh is a floor, not a measurement. The French copy is a
+    // line longer than the English, and a landscape phone is under 400px tall — an exact
+    // height would crop the CTAs in both cases, and it looks identical to `h-[80vh]`
+    // whenever the content does fit.
+    //
+    // `flex-col justify-center` rather than `items-center`, which is not interchangeable
+    // here: the column inside is `mx-auto max-w-site`, and in a flex ROW it would shrink
+    // to its content and hand `mx-auto` the wrong box to centre. In a COLUMN the cross
+    // axis is the horizontal one, the child stretches to full width as it does in normal
+    // flow, and `justify-center` is what centres it vertically. The `hero` padding stays
+    // underneath: it is asymmetric (`pt-40 pb-28`) precisely to clear the `fixed` bar, so
+    // the content settles a hair below the true centre, which is where it should be.
     <HomeSection
       padding="hero"
       backdrop={<Bloom />}
-      className="bg-gradient-to-b from-softblue to-canvas"
+      className="flex min-h-[80vh] flex-col justify-center bg-gradient-to-b from-softblue to-canvas"
     >
       {/* ONE CENTRED COLUMN. This was a two-column grid with the copy on the left and a
           drawn app window on the right; the window is gone and the copy is centred on
@@ -76,9 +100,12 @@ export function HeroSection() {
           element. */}
       <div className="mx-auto max-w-3xl text-center">
         <div>
-          {/* The headline carries a `<br>`, so it goes through `RichText`. `Reveal` wraps
-              it rather than rendering it, which is the split that let `Fade`'s
-              markup-rendering half be deleted instead of ported. */}
+          {/* `RichText` even though the headline no longer carries a `<br>` — it is five
+              words now and breaks nowhere. The key is still markup-bearing by contract
+              (`<br>`, `<strong>`, `<code>`, `<em>` are what `i18n.test.ts` allows in a
+              value), so the renderer stays and a future line break costs no code here.
+              `Reveal` WRAPS it rather than rendering it, which is the split that let
+              `Fade`'s markup-rendering half be deleted instead of ported. */}
           <Reveal order={1}>
             <RichText
               k="site.hero.title"
