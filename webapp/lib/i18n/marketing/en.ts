@@ -143,7 +143,7 @@ export const marketingEn = {
   'site.features.commandsDesc': 'One per step, from the first idea to the merge.',
   'site.features.workflowsTitle': 'Workflows',
   'site.features.workflowsDesc': 'The chains of commands that carry a whole task.',
-  'site.features.desktopTitle': 'The application',
+  'site.features.desktopTitle': 'Features',
   'site.features.desktopDesc': 'Up to twelve agents at once, each in its own worktree.',
   'site.features.multiRepoTitle': 'Several repositories',
   // The row is drawn (`ReposSettingsMockup`), so the line under it carries the whole

@@ -94,7 +94,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.features.commandsDesc': 'Une par étape, de la première idée au merge.',
   'site.features.workflowsTitle': 'Enchaînements',
   'site.features.workflowsDesc': 'Les chaînes de commandes qui portent une tâche entière.',
-  'site.features.desktopTitle': 'L’application',
+  'site.features.desktopTitle': 'Fonctionnalités',
   'site.features.desktopDesc': 'Jusqu’à douze agents à la fois, chacun dans son worktree.',
   'site.features.multiRepoTitle': 'Plusieurs dépôts',
   'site.features.multiRepoDesc':
