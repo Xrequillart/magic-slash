@@ -83,9 +83,11 @@ const EXPECTED: { family: string; anchor: string; layout: string; features: stri
       'multiRepo',
       'commitFormat',
       'pullRequests',
+      // The profile reads BEFORE the languages: who the app is talking to comes before
+      // which language it says it in.
+      'profile',
       'languages',
       'permissionModes',
-      'profile',
     ],
   },
   {
@@ -417,6 +419,7 @@ describe('FEATURE_FAMILIES', () => {
       'reposSettings',
       'commitConfig',
       'prConfig',
+      'profileArt',
       'languagesArt',
       'launchModes',
       'resolvedThreads',
@@ -473,6 +476,9 @@ describe('FEATURE_FAMILIES', () => {
       'configuration/multiRepo',
       'configuration/commitFormat',
       'configuration/pullRequests',
+      // The profile and the languages row are a pair, and they are drawn as one: two
+      // showcase cards, one over the other, with the same plate under each mark.
+      'configuration/profile',
       'configuration/languages',
       'configuration/permissionModes',
     ])
@@ -485,7 +491,7 @@ describe('FEATURE_FAMILIES', () => {
     const shapes = EVERY_FEATURE.filter(({ feature }) => feature.visual).map(
       ({ feature }) => feature.shape ?? 'block',
     )
-    expect(shapes.filter((shape) => shape === 'showcase')).toHaveLength(5)
+    expect(shapes.filter((shape) => shape === 'showcase')).toHaveLength(6)
   })
 
   it('points every picto at a file that is actually on disk', () => {

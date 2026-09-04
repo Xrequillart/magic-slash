@@ -376,9 +376,12 @@ export type FeaturePlateFit = 'inset' | 'bleed'
  *
  * `block` SET EXPLICITLY ON A ROW WITH NO VISUAL is the heading without the drawing: the
  * same `h3` and paragraph, full width, nothing under them. It is for a row that sits
- * among blocks and would otherwise be the one compact line in a family of headings —
- * the profile row in `configuration` is the case. On a row with a visual it changes
- * nothing, since `block` is what an omitted shape already means.
+ * among blocks and would otherwise be the one compact line in a family of headings. NO ROW
+ * ASKS FOR IT TODAY — the profile row was the one that did, until it was paired with the
+ * languages row and took a showcase card of its own — and it is kept because the case it
+ * answers is a real one: a capability with nothing to photograph, in a family where
+ * everything else is a screen. On a row with a visual it changes nothing, since `block` is
+ * what an omitted shape already means.
  */
 export type FeatureShape = 'block' | 'showcase' | 'card'
 
@@ -411,6 +414,7 @@ export type FeatureVisual =
   | 'reposSettings'
   | 'commitConfig'
   | 'prConfig'
+  | 'profileArt'
   | 'languagesArt'
   | 'launchModes'
   | 'ticketCard'
@@ -959,6 +963,30 @@ export const FEATURE_FAMILIES: readonly FeatureFamily[] = [
         visual: 'prConfig',
       },
       {
+        // THE LANGUAGES ROW'S TWIN, and built as one on purpose: same `showcase` shape,
+        // same plate, same 96px mark centred on it. The two are a pair — who the app is
+        // talking to, and which language it says it in — and a pair reads as one only if
+        // both halves are drawn the same way.
+        //
+        // IT SITS ABOVE `languages`, which is the other half of that: who is being
+        // spoken to comes before which language it is said in. Read the other way round,
+        // the profile arrives as an afterthought to a settings list it is in fact the
+        // premise of.
+        //
+        // IT WAS A BARE HEADING, and the reason it could not stay one is the pairing. The
+        // onboarding form is a six-step wizard and the profile itself is a markdown file,
+        // so there is no screen to reproduce here — which is why this row spent a long
+        // time as the one heading in the family with nothing under it, and read as a
+        // footnote to its neighbour rather than its equal. `profileArt` answers with a
+        // sign rather than a surface; see the note in that file.
+        id: 'profile',
+        icon: 'UserRound',
+        title: 'site.features.profileTitle',
+        description: 'site.features.profileDesc',
+        visual: 'profileArt',
+        shape: 'showcase',
+      },
+      {
         // SHOWCASE, the quieter of the two shapes: the sentence lists the five surfaces
         // a language is set on, and the art is one glyph beside it rather than a tab
         // that would list them again.
@@ -978,18 +1006,6 @@ export const FEATURE_FAMILIES: readonly FeatureFamily[] = [
         title: 'site.features.permissionModesTitle',
         description: 'site.features.permissionModesDesc',
         visual: 'launchModes',
-      },
-      {
-        // THE HEADING WITHOUT A DRAWING. Every row above it in this family is a block
-        // or a card, and a 16px row with a tile under four 24px headings read as a
-        // footnote to the family rather than its fifth member. Nothing to draw here —
-        // the onboarding form is a wizard, six steps deep — so the shape is set by hand
-        // and the renderer prints the heading and the paragraph alone.
-        id: 'profile',
-        icon: 'UserRound',
-        title: 'site.features.profileTitle',
-        description: 'site.features.profileDesc',
-        shape: 'block',
       },
     ],
   },

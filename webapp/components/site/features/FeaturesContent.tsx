@@ -69,6 +69,7 @@ import { ReposSettingsMockup } from './ReposSettingsMockup'
 import { CommitConfigMockup, PRConfigMockup } from './RepoConfigMockup'
 import { LanguagesArt } from './LanguagesArt'
 import { LaunchModesGrid } from './LaunchModesGrid'
+import { ProfileArt } from './ProfileArt'
 import { ResolvedThreadsMockup } from './ResolvedThreadsMockup'
 import { ReviewDrawerMockup } from './ReviewDrawerMockup'
 import { ReviewThreadsMockup } from './ReviewThreadsMockup'
@@ -279,6 +280,7 @@ const VISUALS: Record<FeatureVisual, () => React.ReactElement> = {
   reposSettings: ReposSettingsMockup,
   commitConfig: CommitConfigMockup,
   prConfig: PRConfigMockup,
+  profileArt: ProfileArt,
   languagesArt: LanguagesArt,
   launchModes: LaunchModesGrid,
   resolvedThreads: ResolvedThreadsMockup,
