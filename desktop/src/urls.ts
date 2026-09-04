@@ -22,15 +22,21 @@
 export const SITE_URL = 'https://magic-slash.io'
 
 /**
- * The reference.
+ * The release history — a PAGE now, not a fragment.
  *
- * Reachable from the app only: the site's header and footer no longer link to it
- * while it is being reworked, so these links are how a user gets there.
+ * This was `${SITE_URL}/documentation#changelog`, derived from a `DOCUMENTATION_URL`
+ * constant beside it, and both halves of that are gone. The changelog moved onto a route
+ * of its own; `/documentation` was retired after it, replaced by `/faq` for the questions
+ * it was really being read for (`webapp/lib/hostRouting.ts` 308s the old URL there). The
+ * old link would therefore still have RESOLVED — via a redirect, to a page with no
+ * `#changelog` anchor on it, landing the reader at the top of a FAQ instead of at the
+ * release they pressed the button to read.
+ *
+ * `DOCUMENTATION_URL` itself is not replaced. Nothing in the app linked to it — it
+ * existed only as the base of this constant, its own note explaining that the site had
+ * stopped linking to the page "while it is being reworked". The rework was a deletion.
  */
-export const DOCUMENTATION_URL = `${SITE_URL}/documentation`
-
-/** The changelog section of the documentation. */
-export const CHANGELOG_URL = `${DOCUMENTATION_URL}#changelog`
+export const CHANGELOG_URL = `${SITE_URL}/changelog`
 
 export const GITHUB_URL = 'https://github.com/xrequillart/magic-slash'
 
