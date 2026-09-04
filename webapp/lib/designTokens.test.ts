@@ -140,18 +140,30 @@ describe('design tokens', () => {
    *
    * Two halves, and the second is the one that actually bites:
    *
-   *   1. the four gradients are DECLARED in the config, so `bg-tone-*` resolves;
+   *   1. every gradient is DECLARED in the config, so `bg-tone-*` resolves;
    *   2. every tone in `CARD_TONES` pairs its ground with the ink that can be read on
    *      it. That pairing is the whole point of the table — `text-ink` on `midnight`
    *      is invisible, and it renders, and nothing else here would catch it.
    */
-  it('declares the four card tones in the Tailwind config', () => {
+  it('declares the eight card tones in the Tailwind config', () => {
+    // An EXACT set, like the plates below and for a softer version of the same reason: a
+    // ninth ground should not be able to arrive by pasting a line into a config.
+    //
+    // Note what this does NOT police: whether a declared tone is used. Four of these
+    // cycle, two are named by `/features`, and `rose` and `lemon` are named by nothing
+    // yet — which is the point of declaring them, since the alternative is a page
+    // inventing a gradient at a call site. The tighter rule, that ONE GRID may name at
+    // most a couple of grounds before the palette becomes a legend, belongs to that page
+    // and is pinned in `features.test.ts`.
     const declaredTones = literalKeys(objectLiteral(config, 'TONES'))
     expect(declaredTones.sort()).toEqual([
+      'tone-amber',
       'tone-indigo',
+      'tone-lemon',
       'tone-midnight',
       'tone-mint',
       'tone-mist',
+      'tone-rose',
       'tone-sky',
     ])
   })
@@ -204,7 +216,7 @@ describe('design tokens', () => {
     const ui = readFileSync(UI, 'utf8')
     const tones = objectLiteral(ui, 'CARD_TONES')
 
-    // The two light grounds take the page's own ink; the two dark ones take white and
+    // The six light grounds take the page's own ink; the two dark ones take white and
     // the declared white-on-dark body alpha. Written out rather than derived from the
     // source — deriving the expectation from the thing under test is how this stops
     // being a check.
@@ -214,6 +226,9 @@ describe('design tokens', () => {
       ['indigo', 'text-white'],
       ['midnight', 'text-white'],
       ['mint', 'text-ink'],
+      ['amber', 'text-ink'],
+      ['rose', 'text-ink'],
+      ['lemon', 'text-ink'],
     ]) {
       const row = tones.split('\n').find((line) => line.trim().startsWith(`${tone}:`))
       expect(row, `CARD_TONES.${tone} is missing`).toBeTruthy()

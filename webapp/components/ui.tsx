@@ -383,6 +383,29 @@ export const CARD_TONES = {
   // not a detail — it changed with the ground, and `lib/designTokens.test.ts` is what
   // makes sure the two moved together.
   mint: { surface: 'bg-tone-mint', title: 'text-ink', body: 'text-ink/60' },
+  // Orange, and the second tone outside the blue family. Same standing as `mint` and
+  // earned the same way: it dresses the card for `/magic:start`, where work ENTERS the
+  // loop, so the grid opens warm and closes green. See the note on `tone-amber` in
+  // `tailwind.config.ts` for why it sweeps as wide as `sky` rather than as gently as
+  // `mint`, and for the two colours it is deliberately not — `yellow`, which is a
+  // status, and Claude's coral, which is somebody else's brand.
+  //
+  // Light ground, so it takes the same dark ink `mist`, `sky` and `mint` take. Absent
+  // from the cycle below, for `mint`'s reason: it MEANS something, so it is asked for by
+  // name.
+  amber: { surface: 'bg-tone-amber', title: 'text-ink', body: 'text-ink/60' },
+  // Pink and yellow, and their standing is deliberately different from the two above:
+  // `mint` and `amber` MEAN something on `/features`, these are grounds the palette
+  // offers and nothing names yet. Declared rather than left out because the alternative
+  // is a page inventing a gradient at a call site — see the note on `tone-rose` in
+  // `tailwind.config.ts`, and on `yellow` there for why `lemon` is not the status token
+  // of the same colour.
+  //
+  // Light grounds, so both take the dark ink every light tone here takes. Out of the
+  // cycle below with `mint` and `amber`: the cycle is positional and deals four, and
+  // widening it would change the rhythm of a grid neither of these is on.
+  rose: { surface: 'bg-tone-rose', title: 'text-ink', body: 'text-ink/60' },
+  lemon: { surface: 'bg-tone-lemon', title: 'text-ink', body: 'text-ink/60' },
 } as const
 
 export type CardTone = keyof typeof CARD_TONES
@@ -392,6 +415,20 @@ export type CardTone = keyof typeof CARD_TONES
  * light then two dark, so a four-column row lands one of each and no two neighbours
  * carry the same weight. Exported because the cycling belongs to the caller — it
  * knows how many cards it has and how wide its grid is.
+ *
+ * FOUR OF THE EIGHT. The other four — `mint`, `amber`, `rose`, `lemon` — are asked for
+ * by name and are never dealt to whichever card happens to land on their index. Two of
+ * them mean something today (`amber` opens the loop on `/magic:start`, `mint` closes it
+ * on `/magic:done`); the other two are grounds the palette offers and nothing names yet.
+ *
+ * WIDENING THE CYCLE IS NOT THE WAY TO USE THEM. Two light then two dark is what makes a
+ * four-column row land one of each, so a fifth entry would put two neighbours on the
+ * same weight — and dealing a MEANINGFUL ground positionally is exactly what naming one
+ * was meant to stop.
+ *
+ * A card that names a tone simply does not consume its position here; the cards around
+ * it keep theirs, because the index is the card's own and not a running counter. See
+ * `FeaturesContent`.
  */
 export const CARD_TONE_CYCLE: readonly CardTone[] = ['mist', 'sky', 'indigo', 'midnight']
 

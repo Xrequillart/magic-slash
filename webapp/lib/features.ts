@@ -303,15 +303,22 @@ export type Feature = {
   /**
    * The card's ground, when the positional cycle is the wrong answer for it.
    *
-   * `undefined` — every card but one — means "take whatever the cycle gives you", which
-   * is right precisely because a tone usually means NOTHING: it is a surface in a
-   * family, and cycling four across eight cards is what gives the grid its light/dark
-   * rhythm without turning the palette into a legend.
+   * `undefined` — every card but the two below — means "take whatever the cycle gives
+   * you", which is right precisely because a tone usually means NOTHING: it is a surface
+   * in a family, and cycling four across eight cards is what gives the grid its
+   * light/dark rhythm without turning the palette into a legend.
    *
-   * `done` is the exception, and it is an exception on purpose: green is already how
-   * this product says "finished", so the card that closes the loop being green is the
-   * palette agreeing with itself. That is a fact about the command, not about its
-   * position in a grid — reorder the eight and it should still be green.
+   * THE TWO EXCEPTIONS ARE THE BOOKENDS, and they are exceptions on purpose: `done` is
+   * green because green is already how this product says "finished", and `start` is
+   * orange because it is where a piece of work ENTERS the loop. The grid therefore opens
+   * warm and closes green, which says the shape of the thing before a word of the copy
+   * is read. Both are facts about the COMMAND rather than about its position in a grid —
+   * reorder the eight and each should keep its ground, which a positional tone would not.
+   *
+   * TWO, AND THAT IS THE NUMBER TO DEFEND. A third named tone is where the palette stops
+   * being a rhythm and starts being a key the reader has to learn, and it would arrive as
+   * a one-word edit with nothing on screen to argue with it — hence the exact assertion
+   * in `features.test.ts`.
    *
    * A STRING AND NOT `CardTone`, the same trick `icon` and `visual` use: `CardTone`
    * lives in `components/ui.tsx`, which imports React, and this module has to stay
@@ -342,11 +349,18 @@ export type Feature = {
 }
 
 /**
- * The tones a card may ask for by name. A subset of `CARD_TONES` in
- * `components/ui.tsx` — only the ones that mean something — kept as its own union here
+ * The tones a card on THIS page may ask for by name. A deliberate subset of `CARD_TONES`
+ * in `components/ui.tsx` — only the ones that mean something here — kept as its own union
  * for the purity reason above.
+ *
+ * `CARD_TONES` declares eight grounds and this union admits two. That gap is the design
+ * rather than a lag: four of the eight are the positional cycle and must not be nameable
+ * (naming one would defeat the point of cycling them), and `rose` and `lemon` are grounds
+ * the palette offers that mean nothing about a command — widening this union to include
+ * them would make "which colour is `/magic:review`?" a question with an answer, which is
+ * exactly the legend the cycle exists to avoid.
  */
-export type FeatureTone = 'mint'
+export type FeatureTone = 'mint' | 'amber'
 
 /**
  * The plates a row may sit its mark on. A subset of `PLATE_GROUNDS` in
@@ -516,10 +530,17 @@ const CARD_VISUALS: Partial<Record<MagicCommandId, FeatureVisual>> = {
 }
 
 /**
- * The commands whose card ground is chosen rather than cycled. One, so far. See the note
- * on `Feature.tone`.
+ * The commands whose card ground is chosen rather than cycled: the two BOOKENDS, and
+ * nothing between them. `start` opens the loop and `done` closes it, so the grid runs
+ * warm to green — see the note on `Feature.tone` for why two is the number to defend,
+ * and `features.test.ts` for the assertion that keeps it there.
+ *
+ * They are also the two commands whose ground would otherwise be an accident of the
+ * cycle: `start` sits at index 1 and `done` at index 7, which is `sky` and `midnight`,
+ * and neither says anything about the command underneath it.
  */
 const CARD_TONES_BY_COMMAND: Partial<Record<MagicCommandId, FeatureTone>> = {
+  start: 'amber',
   done: 'mint',
 }
 

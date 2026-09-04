@@ -88,18 +88,32 @@ const statusIn = (hidden: number, shown: number) => ({
   '100%': { opacity: '1', translate: '0 0' },
 })
 
-// THE CARD TONES. Four gradients, declared here and used as `bg-tone-<name>`.
+// THE CARD TONES. Eight gradients, declared here and used as `bg-tone-<name>`.
 //
 // Named and centralised for exactly the reason the elevation scale is: a
 // `bg-[linear-gradient(135deg,#6366f1,#393BFF)]` pasted at a call site renders
 // perfectly and passes every check, and what it costs is the ability to retune the
 // family later — one card would carry a gradient nobody will find again.
-// `lib/designTokens.test.ts` pins the four.
+// `lib/designTokens.test.ts` pins them all.
 //
-// FOUR AND NOT EIGHT, though eight cards use them. A tone is a SURFACE in a family,
-// not an identity: cycling four across the eight skills gives the grid the
+// FOUR OF THEM CYCLE, though eight cards use them. A tone is normally a SURFACE in a
+// family, not an identity: cycling four across the eight skills gives the grid the
 // light/dark rhythm it is built on without turning the palette into a legend the
 // reader has to learn. It also means adding a ninth skill costs no new colour.
+//
+// THE OTHER FOUR ARE NAMED, never dealt: `mint`, `amber`, `rose` and `lemon` are asked
+// for by name, so a card that carries one keeps it through a reorder. See the note on
+// each, and `CARD_TONE_CYCLE` in `components/ui.tsx`.
+//
+// DECLARED HERE IS NOT THE SAME AS USED ON A PAGE, and the distinction is the thing to
+// hold on to. This table is the design system's palette of grounds — what a card MAY be
+// — and the tighter question is how many of them one grid is allowed to name at once.
+// `/features` names exactly two of the four (amber on `/magic:start`, mint on
+// `/magic:done` — the loop's bookends) and `features.test.ts` pins that as an exact
+// list, because a third named ground in a grid of eight is where a rhythm turns into a
+// legend the reader has to learn. `rose` and `lemon` are therefore available rather than
+// unused: a ground a later page can ask for without inventing a gradient at a call site,
+// which is the one thing this file exists to prevent.
 //
 // TWO LIGHT, TWO DARK, in that order, which is what makes the cycle work — a grid of
 // four columns lands one of each per row, so no two neighbours are the same weight.
@@ -136,6 +150,55 @@ const BRAND_DEEP = '#1B1C6B'
 const MINT_LIGHT = '#E4F6EB'
 const MINT_DEEP = '#BCE3CD'
 
+// The orange tone's two stops.
+//
+// BUILT LIKE `sky` AND NOT LIKE `mint`, which is the one decision in here. Both of those
+// are light grounds under dark ink, and the difference between them is TRAVEL: `mint` is
+// two pale stops eight points apart because `/magic:done` is the quietest moment in the
+// loop, and `sky` opens wide on purpose because a flat wash beside `midnight` reads as a
+// card someone forgot to fill. This tone dresses `/magic:start`, which is the loudest
+// moment — it is the command somebody actually types to find out whether any of this is
+// real — so it takes `sky`'s wide sweep rather than `mint`'s whisper, and the grid opens
+// warm and closes green.
+//
+// STILL LIGHT ENOUGH FOR `text-ink` AT BOTH STOPS, which is the constraint that decides
+// how far the deep end can go: #F9A96A against #0a0a0a is far past any contrast floor,
+// and `lib/designTokens.test.ts`'s ink pairing is what keeps the two moving together if
+// it is ever retuned.
+//
+// NOT `yellow` (#eab308) AND NOT `plate-claude`'s coral, and both near-misses are worth
+// naming. `yellow` is a STATUS token — it means "changed" on a changelog dot and
+// "watch this" on a gauge — and spending it on a ground is how a colour stops meaning
+// anything, the same argument the note above `MINT_LIGHT` makes about `green`. Claude's
+// coral (#D97757) belongs to the PLATES, which are somebody else's brand: an orange card
+// close enough to it would read as "this is the Claude one", which is a claim about the
+// card that is not true.
+const AMBER_LIGHT = '#FFE4CC'
+const AMBER_DEEP = '#F9A96A'
+
+// The pink and the yellow, both on `sky`'s and `amber`'s construction: a pale top stop
+// into a saturated-but-still-light bottom one, ~35 points of luminance apart, so the
+// gradient TRAVELS visibly instead of reading as a card someone forgot to fill.
+//
+// Both stay light enough for `text-ink` at the deep end, which is the constraint that
+// decides how far either can go — #F5A8C4 and #F5CE5A are both far past any contrast
+// floor against #0a0a0a, and `lib/designTokens.test.ts`'s ink pairing is what keeps the
+// ground and its ink moving together if either is retuned.
+//
+// `LEMON_DEEP` IS NOT `yellow` (#eab308), and the near-miss is the same one `AMBER_*`
+// notes above: `yellow` is a STATUS token — "changed" on a changelog dot, "watch this"
+// on a gauge — and a status spent on decoration is a status that stops meaning anything.
+// This is a paler, warmer yellow chosen to be a surface, and it is deliberately far
+// enough from `AMBER_DEEP` that the two do not read as one colour at two strengths.
+//
+// `ROSE_DEEP` likewise is not `red` (#ef4444) or `purple` (#a855f7), for the same
+// reason and with an extra one: red is what this product draws a destructive action in,
+// and a card that ships in it is a card that looks like a warning.
+const ROSE_LIGHT = '#FFE1EC'
+const ROSE_DEEP = '#F5A8C4'
+const LEMON_LIGHT = '#FFF6D9'
+const LEMON_DEEP = '#F5CE5A'
+
 const TONES = {
   /** Palest of the four: barely a tint, for a card that carries a busy visual. */
   'tone-mist': `linear-gradient(135deg, #E8F0FF 0%, #F7FAFF 100%)`,
@@ -169,6 +232,43 @@ const TONES = {
    * particular; this one means something, so it is asked for by name.
    */
   'tone-mint': `linear-gradient(135deg, ${MINT_LIGHT} 0%, ${MINT_DEEP} 100%)`,
+  /**
+   * THE SECOND TONE OUTSIDE THE BLUE FAMILY, and earned the same way `mint` is: it
+   * dresses the card for `/magic:start`, which is where a piece of work ENTERS the loop.
+   * The grid now opens warm and closes green, which says the shape of the thing before a
+   * word of the copy is read — and it is a fact about the command, not about its
+   * position, so reordering the eight leaves it where it belongs.
+   *
+   * Light, like `mist`, `sky` and `mint`, and it takes the dark ink they take. See the
+   * note on its stops above for why it sweeps as wide as `sky` rather than as gently as
+   * `mint`, and for the two colours it is deliberately not.
+   *
+   * It is NOT in `CARD_TONE_CYCLE`, for `mint`'s reason: the cycle is positional and
+   * means nothing in particular, and this one means something.
+   */
+  'tone-amber': `linear-gradient(135deg, ${AMBER_LIGHT} 0%, ${AMBER_DEEP} 100%)`,
+  /**
+   * Pink. A named ground with no page asking for it yet, which is a different standing
+   * from `mint` and `amber` and worth being straight about: those two MEAN something on
+   * `/features`, this one is a surface the palette offers.
+   *
+   * That is not the same as unused. The failure this file exists to prevent is a
+   * `bg-[linear-gradient(...)]` pasted at a call site — a colour nobody can find again
+   * and nobody dares retune — and a declared ground is what a page reaches for instead.
+   * Light, so it takes the dark ink the other light tones take. Not `red` and not
+   * `purple`; see the note on its stops above.
+   */
+  'tone-rose': `linear-gradient(135deg, ${ROSE_LIGHT} 0%, ${ROSE_DEEP} 100%)`,
+  /**
+   * Yellow, on the same standing as `rose` above: declared and available, named by
+   * nothing yet.
+   *
+   * IT IS NOT THE `yellow` IN THE PALETTE, which is the one thing to know about it. That
+   * one is a status — see the note on its stops — and this is a ground. Kept far enough
+   * from `amber` that a grid carrying both reads as two colours rather than as one at
+   * two strengths, which is the risk with any two warm tones in one table.
+   */
+  'tone-lemon': `linear-gradient(135deg, ${LEMON_LIGHT} 0%, ${LEMON_DEEP} 100%)`,
 }
 
 // THE PRODUCT PLATES. One gradient per integration, declared here and used as

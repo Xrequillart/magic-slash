@@ -361,16 +361,20 @@ describe('FEATURE_FAMILIES', () => {
     }
   })
 
-  it('gives the chosen ground to the command that closes the loop, and to the limits card', () => {
-    // Every other card takes whatever the positional cycle hands it, which is what
-    // keeps the palette from becoming a legend. A second named tone would arrive as a
-    // one-word edit with nothing on screen to argue with it.
+  it('gives a chosen ground to the two commands that bookend the loop, and to the limits card', () => {
+    // Every other card takes whatever the positional cycle hands it, which is what keeps
+    // the palette from becoming a legend rather than a rhythm. A THIRD named tone in the
+    // skills grid would arrive as a one-word edit with nothing on screen to argue with
+    // it, which is why this is an exact list and not a `toContain`.
     const named = FEATURE_FAMILIES.flatMap((family) =>
       family.features.filter((feature) => feature.tone).map((feature) => feature.id),
     )
-    // `usage` is the second, and it asks for the same green: the Claude Code limits are
-    // two gauges, and green is what a gauge with room left says in this product.
-    expect(named).toEqual(['done', 'usage'])
+    // In reading order: `start` opens the loop in orange, `done` closes it in green — the
+    // two bookends, and the two whose cycled ground (`sky`, `midnight`) said nothing
+    // about the command under it. `usage` is the third and it is in another family: the
+    // Claude Code limits are two gauges, and green is what a gauge with room left says in
+    // this product, so it asks for `done`'s ground rather than a colour of its own.
+    expect(named).toEqual(['start', 'done', 'usage'])
   })
 
   it('closes the skills and the info sidebar families with a note, and no other', () => {

@@ -650,7 +650,7 @@ export function Gallery() {
         </Block>
 
         <Block
-          title="The coloured card — five tones, and the ink comes with them"
+          title="The coloured card — eight tones, and the ink comes with them"
           why="Card is the product's surface: white, a hairline, one shadow rung, ~35 screens where the CONTENT is what should be read. ToneCard is the marketing pages' counterpart — the ground carries the colour, so the copy has to change ink with it. That pairing is why tone is a slot and not a className: a text-ink title on midnight is invisible, renders fine, and passes every check. Naming the tone names the ink. The gradients are declared in the Tailwind config, so an inline linear-gradient at a call site is the same unfindable value an arbitrary shadow is."
         >
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
@@ -661,22 +661,59 @@ export function Gallery() {
                 <ToneCard
                   tone={tone}
                   title="Every command"
-                  description="Two light grounds take the page's own ink; the two dark ones take white and the declared white-on-dark body alpha."
+                  description="Six light grounds take the page's own ink; the two dark ones take white and the declared white-on-dark body alpha."
                   className="w-full"
                 />
               </Spec>
             ))}
           </div>
           <p className="mt-5 max-w-2xl text-sm text-muted">
-            FOUR of them cycle and the fifth does not, and that split is the idea. A tone is normally a
-            SURFACE in a family rather than an identity, so{' '}
-            <code className="font-mono text-ink">CARD_TONE_CYCLE</code> runs four across the eight skills on{' '}
+            FOUR of them CYCLE and four are NAMED, and that split is the whole idea. A tone is normally a
+            surface in a family rather than an identity, so{' '}
+            <code className="font-mono text-ink">CARD_TONE_CYCLE</code> runs{' '}
+            <code className="font-mono text-ink">mist</code> → <code className="font-mono text-ink">sky</code>{' '}
+            → <code className="font-mono text-ink">indigo</code> →{' '}
+            <code className="font-mono text-ink">midnight</code> across the eight skills on{' '}
             <code className="font-mono text-ink">/features</code> — two light then two dark, so a four-column
-            row lands one of each and no two neighbours carry the same weight, and a ninth skill costs no new
-            colour. <code className="font-mono text-ink">mint</code> is out of that cycle because it MEANS
-            something: it dresses the card for <code className="font-mono text-ink">/magic:done</code>, and
-            green is already how this product says finished. A tone that means something is asked for by
-            name, so it survives a reorder.
+            row lands one of each, no two neighbours carry the same weight, and a ninth skill costs no new
+            colour. Widening that cycle to five would break the alternation, which is why the four below sit
+            beside it rather than in it.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            <code className="font-mono text-ink">mint</code> and{' '}
+            <code className="font-mono text-ink">amber</code> are named because they MEAN something, and they
+            are the loop&apos;s two BOOKENDS: amber dresses{' '}
+            <code className="font-mono text-ink">/magic:start</code>, where work enters, and mint dresses{' '}
+            <code className="font-mono text-ink">/magic:done</code>, where it leaves — green being already how
+            this product says finished. So the skills grid opens warm and closes green, which says the shape of
+            the thing before a word of the copy is read. Named and not cycled means it survives a reorder of
+            the eight.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            <code className="font-mono text-ink">rose</code> and{' '}
+            <code className="font-mono text-ink">lemon</code> have a THIRD standing, and it is worth being
+            straight about rather than dressing up: they are declared and no page names them yet. That is not
+            the same as unused. The thing this table exists to prevent is a{' '}
+            <code className="font-mono text-ink">bg-[linear-gradient(...)]</code> pasted into a page — a colour
+            nobody can find again and nobody dares retune — so a ground waiting here is what the next page
+            reaches for instead of inventing one. What is deliberately NOT widened is{' '}
+            <code className="font-mono text-ink">FeatureTone</code> in{' '}
+            <code className="font-mono text-ink">lib/features.ts</code>, which still admits two:{' '}
+            <code className="font-mono text-ink">features.test.ts</code> pins the skills grid to exactly those
+            named grounds, because a third in a grid of eight is where a rhythm turns into a key the reader has
+            to learn.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            The four warm and pink tones are all built like{' '}
+            <code className="font-mono text-ink">sky</code> rather than like{' '}
+            <code className="font-mono text-ink">mint</code>: light grounds under dark ink, ~35 points of
+            luminance between the stops so the gradient TRAVELS instead of reading as a card someone forgot to
+            fill. Mint is the exception at eight points, because{' '}
+            <code className="font-mono text-ink">/magic:done</code> is the quietest moment in the loop. None of
+            them is a status token — not <code className="font-mono text-ink">yellow</code>, not{' '}
+            <code className="font-mono text-ink">red</code> — since a status spent on decoration is a status
+            that stops meaning anything; and amber is kept clear of Claude&apos;s coral in the plates below,
+            which would make the card read as &ldquo;the Claude one&rdquo;.
           </p>
           <div className="mt-8">
             <Spec name={'layout="beside"'} note="stacks below md">
