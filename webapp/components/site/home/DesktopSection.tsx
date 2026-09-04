@@ -12,11 +12,18 @@ import { BAND_TITLE, HomeSection } from './Shell'
  * window — drawn faithfully, lit from behind, and WHOLE — then a row of four highlights
  * under it.
  *
- * WHY IT IS HERE AT ALL. The hero is type only, and the page above it names the promise
- * ("from idea to merged PR") without ever showing the thing that keeps it. This is the
- * first screen after that promise and it does one job: put the product on the page. See
- * `AppWindowMockup.tsx` for what is inside the window and which file each band of it was
- * read out of; this file is only the composition around it.
+ * WHY IT IS HERE AT ALL. The page above it names a promise ("from idea to merged PR"),
+ * says what the product is in two cards, and walks the five steps of the loop — all of it
+ * in type and diagrams, and none of it the thing itself. This band does one job: put the
+ * PRODUCT on the page. See `AppWindowMockup.tsx` for what is inside the window and which
+ * file each band of it was read out of; this file is only the composition around it.
+ *
+ * IT WAS THE THIRD BAND AND IS NOW THE FOURTH. `WorkflowSection` shipped below it and the
+ * product owner moved it above, so the window is no longer the first thing a reader meets
+ * after the hero's promise — it is what they reach having been told what the product is and
+ * what a day with it looks like. That is a better place for it and it cost this file
+ * nothing but this paragraph: the composition below never depended on what preceded it.
+ * `app/(marketing)/page.tsx` holds the order and the argument for all three middle bands.
  *
  * ── THE COMPOSITION ───────────────────────────────────────────────────────────────
  *
@@ -92,8 +99,9 @@ import { BAND_TITLE, HomeSection } from './Shell'
  *
  * THE DEFAULT `band` PADDING, and it used to be `follow`. That rung is for the band
  * DIRECTLY under the hero, whose bottom is already a band's bottom — and this band is no
- * longer that one: `PillarsSection` was inserted above it and took the rung with it. A
- * band in the middle of a stack owes the full gap on both sides.
+ * longer that one: `PillarsSection` was inserted above it and took the rung with it, and
+ * `WorkflowSection` now sits between the two as well. A band in the middle of a stack owes
+ * the full gap on both sides.
  * Nothing is passed through `className` — `HomeSection`'s is documented as additive and
  * never a padding or a width, and this band needs neither.
  */

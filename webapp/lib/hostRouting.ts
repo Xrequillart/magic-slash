@@ -53,6 +53,12 @@ const PUBLIC_PATHS = new Set([
   '/faq',
   '/features',
   '/story',
+  // The homepage's workflow band links straight here, which is what makes this entry
+  // load-bearing rather than housekeeping: absent from this list, `/workflow` is decided
+  // to belong to the app and a reader following the band's own button lands on a login
+  // form. `lib/workflow.ts` owns the path (`WORKFLOW_PATH`) and `workflow.test.ts` reads
+  // this file to pin the two together.
+  '/workflow',
   // NOT A PAGE ANY MORE. `/documentation` is in `RETIRED_PATHS` below and 308s to
   // `/faq`, and it has to stay listed HERE for that redirect to be the one that fires:
   // drop it and `canonicalHost` decides it belongs to the app, which 307s the reader to

@@ -145,12 +145,19 @@ export function HomeSection({
  * The headline is an `h2` in every band — the page has one `h1`, in the hero — so the
  * outline stays honest without the caller having to remember which level it is on.
  *
- * NOTHING RENDERS THIS TODAY. Its one consumer was the "how it works" band, cut from the
- * homepage by the product owner; the closing band draws on `BAND_TITLE` instead (it
- * needs the dark ink and its own width, see above) and `/features` writes its headline
- * out. It stays because it is this file's shared vocabulary rather than a retired band's
- * component — the next band on the page is meant to reach for it and not restate these
- * four classes. See `app/(marketing)/page.tsx` for what went.
+ * IT WENT ONE ROUND WITH NOTHING RENDERING IT, and that is why it is still here. Its one
+ * consumer was the "how it works" band, cut from the homepage by the product owner — and
+ * it was kept on the argument that this is the file's shared vocabulary rather than a
+ * retired band's component, so the next band on the page would reach for it instead of
+ * restating these four classes. `WorkflowSection` is that band, and it needed no change
+ * here: `max-w-2xl`, left-aligned, an `h2` at the page's own headline size is exactly
+ * what a heading with a button beside it wants.
+ *
+ * The two bands that do NOT use it both have a reason. The closing band draws on
+ * `BAND_TITLE` because it needs the dark ink and its own width (see above), and
+ * `DesktopSection` writes its headline out because its whole composition is a centred
+ * axis — passing `text-center` into this would be a caller dressing a component. See
+ * `app/(marketing)/page.tsx` for the band that went.
  */
 export function HomeHeading({
   eyebrow,

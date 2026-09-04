@@ -76,6 +76,48 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.desktop.highlightTrackers': 'Jira et GitHub connectés',
   'site.desktop.highlightCommands': 'Les huit commandes /magic:',
 
+  // ── La bande workflow, et la page qu’elle ouvre ─────────────────────────────
+  // Les noms de commandes ne sont PAS ici : ils sont imprimés par les dessins, épelés
+  // depuis `lib/commands.ts`. Voir la note du catalogue anglais.
+  //
+  // « workflow », « pull request », « working tree », « worktree », « commit » et
+  // « merge » restent tels quels, comme partout dans l’app et la documentation : ce sont
+  // les mots que le métier emploie en français, et « arbre de travail » ne nomme rien que
+  // le lecteur reconnaisse. « epic » et « stories » de même — ce sont les mots de Jira,
+  // affichés tels quels dans son interface française.
+  //
+  // LES TITRES SONT À L’IMPÉRATIF, comme en anglais : la bande parle de ce que VOUS
+  // faites. « Committez » et « Mergez » sont les verbes que le métier conjugue, y compris
+  // dans les messages de commit de ce dépôt.
+  'site.workflow.title': 'Travailler avec Magic Slash.',
+  // « surcouche » en un mot, qui est le terme du métier ; « booste » conjugué, pas le
+  // franglais « boost ». « charge mentale » est l'expression que le propriétaire a
+  // employée et elle n'a pas d'équivalent anglais plus court — la version anglaise dit
+  // « that much less to hold in your head ».
+  'site.workflow.subtitle':
+    'Magic Slash est une surcouche à Claude Code : il booste l’agent que vous lancez déjà et garde le contexte de chaque ticket dans l’app desktop — autant de charge mentale en moins.',
+  'site.workflow.cta': 'Voir tout le workflow',
+  // « Issues » reste tel quel : c'est le mot que GitHub emploie dans son interface
+  // française. Seul le participe s'accorde.
+  'site.workflow.planIssuesCreated': 'Issues créées',
+  'site.workflow.more':
+    'Chaque commande, chaque panneau et chaque réglage livrés avec l’app sont sur la page features.',
+  'site.workflow.planTitle': 'Faites le plan',
+  'site.workflow.planDesc':
+    'Décrivez l’idée avec vos mots. La spec revient pour relecture, et dès que vous l’avez validée l’epic et ses stories sont créées sur Jira ou GitHub.',
+  'site.workflow.startTitle': 'Démarrez avec Claude Code',
+  'site.workflow.startDesc':
+    'Un identifiant de ticket suffit. Le worktree, la branche et l’agent sont prêts, ticket lu et plan rédigé avant que vous ayez tapé autre chose.',
+  'site.workflow.commitTitle': 'Committez et ouvrez la PR',
+  'site.workflow.commitDesc':
+    'Le working tree est découpé en commits atomiques aux messages conventionnels, poussés, et la pull request s’écrit toute seule avec le ticket lié.',
+  'site.workflow.reviewTitle': 'Traitez la review',
+  'site.workflow.reviewDesc':
+    'Le diff est relu comme le relirait un reviewer, puis chaque commentaire reçoit un correctif, un commit et une réponse dans son fil.',
+  'site.workflow.doneTitle': 'Mergez et nettoyez',
+  'site.workflow.doneDesc':
+    'Une fois le merge confirmé : ticket clôturé, branche supprimée des deux côtés, worktree retiré. Votre machine revient à son point de départ.',
+
   // ── ② Comment ça marche ────────────────────────────────────────────────────
   'site.how.title': 'Comment ça marche, vraiment.',
   'site.how.subtitle': 'Vous décrivez. Ça construit. Vous validez.',

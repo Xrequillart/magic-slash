@@ -21,6 +21,11 @@ describe('canonicalHost', () => {
       // own, and a route of its own is a route this list has to know about.
       expect(canonicalHost('magic-slash.io', '/changelog')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/story')).toBeNull()
+      // `/workflow`, which the homepage's workflow band points its one button at. Same
+      // failure mode as `/features` above and one click closer to it: the button is on
+      // the landing page itself, so its absence here would read as the site signing the
+      // reader out mid-scroll.
+      expect(canonicalHost('magic-slash.io', '/workflow')).toBeNull()
       // `/faq`, which replaced `/documentation` and is what the footer's Resources
       // column now points at.
       expect(canonicalHost('magic-slash.io', '/faq')).toBeNull()
@@ -55,6 +60,7 @@ describe('canonicalHost', () => {
       expect(canonicalHost('magic-slash.io', '/features/')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/changelog/')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/faq/')).toBeNull()
+      expect(canonicalHost('magic-slash.io', '/workflow/')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/documentation/')).toBeNull()
     })
 
@@ -162,7 +168,7 @@ describe('retiredPath', () => {
   })
 
   it('leaves every live page alone', () => {
-    for (const path of ['/', '/faq', '/features', '/changelog', '/story', '/dashboard']) {
+    for (const path of ['/', '/faq', '/features', '/changelog', '/story', '/workflow', '/dashboard']) {
       expect(retiredPath('magic-slash.io', path), path).toBeNull()
     }
   })
@@ -196,6 +202,7 @@ describe('resolveRewrite', () => {
       expect(resolveRewrite('magic-slash.io', '/features')).toBeNull()
       expect(resolveRewrite('magic-slash.io', '/changelog')).toBeNull()
       expect(resolveRewrite('magic-slash.io', '/faq')).toBeNull()
+      expect(resolveRewrite('magic-slash.io', '/workflow')).toBeNull()
       // A retired path never reaches this rule — the middleware redirects it before
       // asking — but it must not grow a rewrite of its own if it ever does.
       expect(resolveRewrite('magic-slash.io', '/documentation')).toBeNull()

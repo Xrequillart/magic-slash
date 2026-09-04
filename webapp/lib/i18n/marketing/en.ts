@@ -264,6 +264,105 @@ export const marketingEn = {
   'site.desktop.highlightTrackers': 'Jira and GitHub connected',
   'site.desktop.highlightCommands': 'The eight /magic: commands',
 
+  // ── The workflow band, and the page it opens ───────────────────────────────
+  //
+  // ONE FAMILY FOR TWO SURFACES. `lib/workflow.ts` is the list both of them read — the
+  // homepage's five cards and `/workflow`'s five sections — so there is no second set of
+  // keys for the page. A step reworded here is reworded in both places, which is the
+  // whole reason that module exists.
+  //
+  // WHAT THE COPY DELIBERATELY DOES NOT CONTAIN IS A COMMAND NAME. `/magic:plan` and its
+  // seven siblings are printed by the DRAWINGS, spelled from `lib/commands.ts` — whose
+  // template-literal type makes `/magic:pln` a compile error. In a catalogue they would be
+  // eight strings a translator can edit and nothing can check, and the site would
+  // eventually name a command the product does not have.
+  //
+  // THE TITLES ARE IMPERATIVES — "Make the plan", not "Planning". The band is about what
+  // YOU do; the app is the thing doing the typing, and a page of gerunds reads as a
+  // feature list rather than as a day of work.
+  'site.workflow.title': 'Working with Magic Slash.',
+  /**
+   * TWO LINES, as a length rather than a break — no `<br>`, because a hard break at this
+   * width becomes four lines on a phone. Same call as the hero's and the desktop band's.
+   *
+   * IT SAYS WHAT MAGIC SLASH *IS* IN RELATION TO CLAUDE CODE, which is the product owner's
+   * own framing and replaces a line that never named the relationship: "Magic-slash est une
+   * sur couche à Claude code ! il boost votre claude code et vous fait gagner de la charge
+   * mentale avec le context sauvegardé dans l'application desktop."
+   *
+   * WHY THAT IS THE RIGHT LINE HERE and the old one was not. The band draws five steps and
+   * eight commands, so a reader who has not placed the product yet reads them as a rival to
+   * the tool they already use — and it is the opposite: a LAYER on top of it. The previous
+   * copy ("five commands carry one ticket from an idea to a merged pull request… you approve
+   * every step") described the mechanism the five cards below already describe, card by
+   * card, in more detail. Saying it twice bought nothing; saying what the thing IS buys the
+   * only sentence on this screen the cards cannot draw.
+   *
+   * THREE CLAUSES, IN THIS ORDER: it is a layer (so nothing you know is thrown away), it
+   * makes the agent you already run better, and the context lives in the app — which is
+   * where the mental-load claim comes from and is worth being precise about. What the app
+   * holds is one agent per ticket, each in its own worktree with its own session, so
+   * "keeping the context" is a fact about the product and not a slogan.
+   */
+  'site.workflow.subtitle':
+    'Magic Slash is a layer on top of Claude Code: it boosts the agent you already run and keeps every ticket’s context in the desktop app — that much less to hold in your head.',
+  'site.workflow.cta': 'See the whole workflow',
+  /**
+   * The last line of the plan card's drawing: the tracker's mark, this, and a green tick.
+   *
+   * A KEY AND NOT A LITERAL, unlike the commit subjects and the branch names in those same
+   * drawings. The rule `WorkflowArt.tsx` states is that a literal stays English when it is a
+   * string the TOOL or the platform prints — and this is neither. It is the drawing's own
+   * caption, written by us, saying what just happened. "Issues" stays as it is inside the
+   * French because it is what GitHub calls them there too.
+   */
+  'site.workflow.planIssuesCreated': 'Issues created',
+  /** The line that closes `/workflow`, pointing at the full inventory. */
+  'site.workflow.more': 'Every command, panel and switch the app ships with is on the features page.',
+  /**
+   * ① `/magic:plan`. "Reviewable" is the load-bearing word: the skill writes a spec and
+   * STOPS, and nothing is opened on the tracker until you say so — which is also what the
+   * drawing beside this shows (`approved`, then the epic and its three stories).
+   */
+  'site.workflow.planTitle': 'Make the plan',
+  'site.workflow.planDesc':
+    'Describe the idea in your own words. The spec comes back for review, and once you have approved it the epic and its stories are opened on Jira or GitHub.',
+  /**
+   * ② `/magic:start`. "A ticket id is the whole command" is literally true — the skill
+   * takes `PROJ-123` or `#142` and derives the rest — and it is the concrete detail that
+   * makes the card believable where "gets you started" would not.
+   */
+  'site.workflow.startTitle': 'Start with Claude Code',
+  'site.workflow.startDesc':
+    'A ticket id is the whole command. The worktree, the branch and the agent are ready, with the ticket read and a plan drafted before you type anything else.',
+  /**
+   * ③ `/magic:commit` and `/magic:pr`. "Atomic" and "conventional" are the two words the
+   * skill's own contract uses (one commit, one logical change; `type(scope): subject`,
+   * enforced by commitlint), and a developer reading them knows exactly what they are
+   * being promised.
+   */
+  'site.workflow.commitTitle': 'Commit and open the PR',
+  'site.workflow.commitDesc':
+    'The working tree is split into atomic commits with conventional messages, pushed, and the pull request writes itself with the ticket linked.',
+  /**
+   * ④ `/magic:review` and `/magic:resolve`. "In its own thread" is the half people do not
+   * expect: the fix is one thing, the REPLY on the conversation that asked for it is what
+   * makes a review actually close.
+   */
+  'site.workflow.reviewTitle': 'Resolve the review',
+  'site.workflow.reviewDesc':
+    'The diff gets read the way a reviewer reads it, then every comment gets a fix, a commit and an answer in its own thread.',
+  /**
+   * ⑤ `/magic:done`. "Once the merge is confirmed" is not a flourish — the skill verifies
+   * the merge first and does nothing at all if it cannot, and this card is the one on the
+   * page that could most easily promise a cleanup the tool does not perform. The three
+   * items are `site.doneCard.*`'s three, which were audited against
+   * `skills/magic-done/SKILL.md` line by line.
+   */
+  'site.workflow.doneTitle': 'Merge and clean up',
+  'site.workflow.doneDesc':
+    'Once the merge is confirmed: the ticket closed, the branch deleted on both ends, the worktree removed. Your machine back where it started.',
+
   // ── ② How it works ─────────────────────────────────────────────────────────
   'site.how.title': 'How it actually works.',
   'site.how.subtitle': 'You describe. It builds. You approve.',

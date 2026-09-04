@@ -1,26 +1,49 @@
 import type { Metadata } from 'next'
 import { HeroSection } from '@/components/site/home/HeroSection'
 import { PillarsSection } from '@/components/site/home/PillarsSection'
+import { WorkflowSection } from '@/components/site/home/WorkflowSection'
 import { DesktopSection } from '@/components/site/home/DesktopSection'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 
 /**
  * magic-slash.io — the landing page.
  *
- * FOUR SECTIONS: the promise, what the product IS, what its window looks like, then the
- * ask. It was rebuilt as six and cut band by band by the product owner — "on the product
- * you already have", then "the eight commands", then the feature grid, and then "how it
- * works" as well — which at its thinnest left the headline that names the cycle and the
- * one button at the end of it, with nothing between them. The two middle bands were then
- * built back, in this order and for two different jobs:
+ * FIVE SECTIONS: the promise, what the product IS, what working with it is actually like,
+ * what its window looks like, then the ask. It was rebuilt as six and cut band by band by
+ * the product owner — "on the product you already have", then "the eight commands", then
+ * the feature grid, and then "how it works" as well — which at its thinnest left the
+ * headline that names the cycle and the one button at the end of it, with nothing between
+ * them. The three middle bands were then built back, for three different jobs:
  *
  *   • `PillarsSection` answers WHAT IT IS in two cards, one per half of the product — the
  *     eight skills, and the app that drives them — closing on the line that names the
  *     reader. A visitor who has only read the hero knows the outcome and not the thing.
+ *   • `WorkflowSection` answers WHAT A DAY WITH IT LOOKS LIKE: the loop as five steps,
+ *     one coloured card each, a drawing apiece, and one button out to `/workflow`.
  *   • `DesktopSection` then shows the app's own window at length, drawn faithfully.
  *
- * The order matters and is the reason the `follow` padding rung sits on the first of them:
- * a picture answers "what is it" only for a reader who already had the words.
+ * THE ORDER OF THE MIDDLE THREE CHANGED ONCE, and the reasoning changed with it rather
+ * than being retrofitted. The workflow band shipped BELOW the window, on the argument that
+ * a sequence of five steps lands better for a reader who has already seen the thing that
+ * runs them. The product owner moved it above — "tu peux mettre cette partie juste avant
+ * Magic-slash et le mockup de l'application ?" — and the page reads better for it, because
+ * the three bands now go from the most abstract to the most concrete without a step back:
+ * what it is, what you do with it, and then the window where all of that happens. The
+ * window is the PAYOFF of the five steps instead of their preface, and a reader arrives at
+ * it already knowing what the panels in it are for.
+ *
+ * What follows from the move: the `follow` padding rung stays on `PillarsSection`, which
+ * is still the band directly under the hero, and `DesktopSection` keeps the default `band`
+ * rung it took when it stopped being that one.
+ *
+ * THE MIDDLE BAND IS NOT "HOW IT WORKS" COMING BACK, and the difference is worth being
+ * exact about because the cut below is documented at length. That band described the
+ * MECHANISM in the abstract — you describe, it builds, you approve — which is the part the
+ * owner judged a landing page does not owe a reader. `WorkflowSection`'s five are
+ * COMMANDS, in the order you type them, each drawn as the artefact it produces: a spec
+ * becoming tickets, a ticket becoming an agent, commits becoming a pull request, a thread
+ * being answered, a branch being cleaned up. `site.how.*` stays retired; nothing reads it.
+ * `lib/workflow.ts` holds the five, and `/workflow` renders the same list in depth.
  *
  * THE MIDDLE BAND IS WHAT #270 PUT BACK, and it is not one of the cut bands returning.
  * `DesktopSection` shows the desktop app's own window — titlebar, agent list, terminal,
@@ -71,9 +94,12 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  *
  * WHAT #269 DID ABOUT IT: `/features` shipped anyway, and the homepage reached it from
  * the END of the "how it works" band rather than from a grid of cards — one link where
- * there would have been nine. That link went with the band, so the page body no longer
- * reaches `/features` at all; the HEADER's nav row and the footer's Product column both
- * still do, which is why the cut does not orphan the page. The hero's two buttons stay
+ * there would have been nine. That link went with the band, and for one round the page
+ * body reached `/features` nowhere at all — only the HEADER's nav row and the footer's
+ * Product column, which is why the cut did not orphan the page. The workflow band gives
+ * the body a link out again, though not to that page: its button opens `/workflow`, and
+ * `/workflow` is what links on to `/features#workflow`. One hop further than the grid
+ * would have been, and it lands on the same eight commands. The hero's two buttons stay
  * as they are — start free, or download — for the reasons `HeroSection.tsx` sets out.
  *
  * THE CUT BANDS' COMPONENTS ARE GONE, not parked. They were kept on disk for one round —
@@ -93,7 +119,9 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * header's Product menu and the footer's Product column. Both bands are gone; the
  * footer's "Features" row now points at the `/features` PAGE, and "The commands" is not
  * back — the eight live there too, under `#workflow`. With `#how` cut as well, this page
- * publishes NO same-page anchor: every nav row that names it now names a route.
+ * publishes NO same-page anchor: every nav row that names it now names a route. THE
+ * WORKFLOW BAND DOES NOT BREAK THAT and deliberately takes no `id`: its button is a route
+ * (`/workflow`), so there is nothing on this page for a nav row to point into.
  *
  * Every retired band's copy stays in the catalogues (`site.yourProduct.*`,
  * `site.features.*`, `site.how.commandsTitle`, `site.whereItStands.*`, `site.mockup.*`),
@@ -127,6 +155,7 @@ export default function Home() {
     <div className="bg-canvas">
       <HeroSection />
       <PillarsSection />
+      <WorkflowSection />
       <DesktopSection />
       <FinalCtaSection />
     </div>
