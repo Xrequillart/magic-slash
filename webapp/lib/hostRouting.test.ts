@@ -16,6 +16,10 @@ describe('canonicalHost', () => {
       // 404, so a reader following a link off the homepage would think the site had
       // signed them out rather than that a page was missing.
       expect(canonicalHost('magic-slash.io', '/features')).toBeNull()
+      // `/changelog`, which the desktop app's update notice and every release note link
+      // straight to. It moved out of `/documentation#changelog` and onto a route of its
+      // own, and a route of its own is a route this list has to know about.
+      expect(canonicalHost('magic-slash.io', '/changelog')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/story')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/documentation')).toBeNull()
     })
@@ -41,6 +45,7 @@ describe('canonicalHost', () => {
       // first, and an unmatched public page here is not re-rendered, it is sent away.
       expect(canonicalHost('magic-slash.io', '/story/')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/features/')).toBeNull()
+      expect(canonicalHost('magic-slash.io', '/changelog/')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/documentation/')).toBeNull()
     })
 
@@ -129,6 +134,7 @@ describe('resolveRewrite', () => {
       // the ROOT of a host is ever rewritten, so a new public page needs no rule of its
       // own here — this pins that, since the failure would be a rewrite nobody wrote.
       expect(resolveRewrite('magic-slash.io', '/features')).toBeNull()
+      expect(resolveRewrite('magic-slash.io', '/changelog')).toBeNull()
       // Unlinked from the site's nav, but still reachable — the desktop app links here.
       expect(resolveRewrite('magic-slash.io', '/documentation')).toBeNull()
     })

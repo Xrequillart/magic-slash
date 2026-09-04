@@ -79,7 +79,11 @@ const COLUMNS: Column[] = [
       { href: '/documentation', label: 'site.footer.documentation' },
       { href: '/documentation#quick-start', label: 'site.footer.gettingStarted' },
       { href: '/documentation#configuration', label: 'site.footer.configuration' },
-      { href: '/documentation#changelog', label: 'site.footer.changelog' },
+      // A PAGE NOW, not the fragment at the bottom of the manual this row used to
+      // point at. `/documentation#changelog` still resolves — the section is there and
+      // links here — but sending a reader through it would land them at the end of a
+      // 16-section document to reach a page that is one hop away.
+      { href: '/changelog', label: 'site.footer.changelog' },
       { href: '/story', label: 'site.footer.ourStory' },
       { href: GITHUB_REPO_URL, label: 'GitHub', external: true },
     ],

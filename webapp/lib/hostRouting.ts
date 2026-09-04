@@ -44,7 +44,7 @@ const SHARED_DOMAIN = 'magic-slash.io'
  * and nobody notices. Enumerating the public ones means a new marketing page redirects
  * to `app.` — wrong, but wrong in the face of whoever loads it, on the first try.
  */
-const PUBLIC_PATHS = new Set(['/', '/features', '/documentation', '/story'])
+const PUBLIC_PATHS = new Set(['/', '/changelog', '/features', '/documentation', '/story'])
 
 /**
  * Public path prefixes — `/invite/<token>` and nothing else.

@@ -865,6 +865,25 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.story.ctaDesc': 'Installez magic-slash et voyez la différence.',
   'site.story.ctaBtn': 'Commencer gratuitement',
 
+  // ── Page changelog ─────────────────────────────────────────────────────────
+  // Le chrome de `/changelog`, et rien d'autre. Les versions elles-mêmes sont lues
+  // dans `CHANGELOG.md` au moment du build et affichées telles quelles : elles sont
+  // écrites à partir des messages de commit à chaque release et n'ont pas de source
+  // française. Les trois noms de catégorie ci-dessous sont donc les seuls mots de
+  // cette page qu'un traducteur touche.
+  // "Changelog" est le mot employé dans les deux langues — c'est celui que le footer
+  // et la documentation utilisent déjà — d'où sa ligne dans `SAME_IN_BOTH.site`.
+  'site.changelog.title': 'Changelog',
+  'site.changelog.lead':
+    'Chaque version de magic-slash, de la plus récente à la plus ancienne — ce qui a été ajouté, modifié, corrigé.',
+  'site.changelog.readOnGithub': 'Lire CHANGELOG.md sur GitHub',
+  'site.changelog.showMore': 'Afficher les versions plus anciennes',
+  'site.changelog.unavailable':
+    'Le changelog n’a pas pu être lu au moment de la construction de cette page.',
+  'site.changelog.added': 'Ajouts',
+  'site.changelog.changed': 'Modifications',
+  'site.changelog.fixed': 'Corrections',
+
   // ── Footer ─────────────────────────────────────────────────────────────────
   'site.footer.tagline': 'Votre produit, construit.',
   'site.footer.product': 'Produit',

@@ -1055,6 +1055,26 @@ export const marketingEn = {
   'site.story.ctaDesc': 'Install magic-slash and see the difference.',
   'site.story.ctaBtn': 'Start free',
 
+  // ── Changelog page ─────────────────────────────────────────────────────────
+  // The chrome of `/changelog`, and ONLY the chrome. The releases themselves are
+  // parsed out of `CHANGELOG.md` at build time and rendered as written — they come
+  // from commit messages at release time and have no French source, which is why the
+  // three category names below are the only words on that page a translator touches.
+  // The keys are declared in `lib/changelogPage.ts` so `changelogPage.test.ts` looks
+  // every one of them up here for real.
+  'site.changelog.title': 'Changelog',
+  'site.changelog.lead':
+    'Every release of magic-slash, newest first — what was added, what changed, what was fixed.',
+  'site.changelog.readOnGithub': 'Read CHANGELOG.md on GitHub',
+  'site.changelog.showMore': 'Show older versions',
+  'site.changelog.unavailable': 'The changelog could not be read when this page was built.',
+  // The three headings `parseChangelog` recognises. Nouns rather than the past
+  // participles the file itself uses ("Added"): these label a GROUP of entries, and a
+  // group is a thing rather than an action.
+  'site.changelog.added': 'Added',
+  'site.changelog.changed': 'Changed',
+  'site.changelog.fixed': 'Fixed',
+
   // ── Footer ─────────────────────────────────────────────────────────────────
   'site.footer.tagline': 'Your product, built.',
   'site.footer.product': 'Product',

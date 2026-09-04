@@ -4,17 +4,16 @@ import { ExternalLink } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
 import { RichText } from '@/components/site/RichText'
 import { DESKTOP_DOWNLOAD_URL } from '@/lib/desktopRelease'
-import type { ChangelogVersion } from '@/lib/changelog'
-import { Changelog } from './Changelog'
 import { useCodeCopyButtons } from './useCodeCopyButtons'
 
 /**
- * The Documentation page's body — sixteen sections, from Quick Start to the changelog.
+ * The Documentation page's body — sixteen sections, from Quick Start to the changelog,
+ * which is now a signpost to `/changelog` rather than the list itself.
  *
  * Mechanically converted from the static page in `docs/`; the classes and structure
  * are the original's, so the ported stylesheet applies unchanged.
  */
-export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
+export function DocContent() {
   const { t } = useT()
   // Every <pre> gets a copy button, as it did on the static page.
   useCodeCopyButtons()
@@ -2044,12 +2043,34 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
                         </div>
                     </div>
 
-                    {/* ── Changelog ── */}
+                    {/* ── Changelog ──
+                        A SIGNPOST NOW, not the changelog. The releases used to be
+                        rendered here — a paginated list at the bottom of a 16-section
+                        manual, on this page's dark chrome — and they live at
+                        `/changelog` on the public site instead. See the note in
+                        `app/(marketing)/changelog/page.tsx` for why they moved.
+
+                        The section STAYS rather than being deleted with them, and the
+                        rail's row with it: `/documentation#changelog` is in the wild —
+                        the footer pointed at it, and so does anything anybody
+                        bookmarked — and a fragment that resolves to nothing scrolls a
+                        reader to a random point in the page with no explanation. Two
+                        sentences and a link is what that fragment should now do. */}
                     <div className="doc-section" id="changelog">
                         <h2>{t('site.doc.changelog.1')}</h2>
+                        <p>{t('site.doc.changelog.moved')}</p>
+                        <p>
+                            {/* A plain `<a>`, as everywhere else on this page. It is
+                                also a genuine document navigation: `/changelog` is under
+                                `(marketing)` and this page is under `(docs)`, so the two
+                                do not share a layout and there is no client transition
+                                for `Link` to make. */}
+                            <a className="doc-changelog-link" href="/changelog">{t('site.doc.changelog.openPage')}</a>
+                        </p>
                         <p>
                             {t('site.doc.changelog.intro')}{' '}
                             <a
+                                className="doc-changelog-link"
                                 href="https://github.com/xrequillart/magic-slash/blob/main/CHANGELOG.md"
                                 target="_blank"
                                 rel="noreferrer"
@@ -2057,7 +2078,6 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
                                 CHANGELOG.md
                             </a>
                         </p>
-                        <Changelog versions={versions} />
                     </div>
     </>
   )

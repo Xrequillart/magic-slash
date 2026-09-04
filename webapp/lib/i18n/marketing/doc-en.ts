@@ -776,8 +776,13 @@ export const docEn = {
   'site.doc.plans.29': 'One switch, <strong>Sync plan specs</strong>, under Application &rarr; Features on app.magic-slash.io. It is <strong>on by default</strong>, and it is the only setting in the product that decides whether the contents of a file leave your machine. Switch it off and nothing is uploaded &mdash; the spec is still written, the tickets are still created, and the Plans page simply stops filling up.',
 
   // ── Changelog ───────────────────────────────────────────────────────────
+  // The section is a SIGNPOST now: the releases moved to `/changelog` on the public
+  // site, and this points at them. `.2` ("Loading changelog…"), `.showMore`, `.empty`,
+  // `.unavailable` and `.viewOnGithub` went with the list that used them.
   'site.doc.changelog.1': 'Changelog',
-  'site.doc.changelog.2': 'Loading changelog...',
+  'site.doc.changelog.moved':
+    'Every release of magic-slash now has a page of its own, with the date, the version and everything each one carried.',
+  'site.doc.changelog.openPage': 'Open the changelog',
 
   // ── Sidebar & changelog chrome ─────────────────────────────────────────
   'site.doc.nav.docs': 'Docs',
@@ -803,11 +808,7 @@ export const docEn = {
   'site.doc.nav.changelog': 'Changelog',
   'site.doc.nav.links': 'Links',
   'site.doc.nav.themeToggle': 'Toggle theme',
-  'site.doc.changelog.showMore': 'Show more versions',
-  'site.doc.changelog.empty': 'No changelog entries found.',
-  'site.doc.changelog.unavailable': 'Changelog unavailable at build time.',
-  'site.doc.changelog.viewOnGithub': 'View on GitHub',
-  'site.doc.changelog.intro': 'All notable changes to magic-slash, loaded from',
+  'site.doc.changelog.intro': 'The releases are read at build time from the file itself:',
   'site.doc.tag.lifecycle': 'Lifecycle',
   'site.doc.tag.git': 'Git',
   'site.doc.tag.review': 'Review',

@@ -771,8 +771,12 @@ export const docFr: Record<keyof typeof docEn, string> = {
   'site.doc.plans.29': 'Un seul interrupteur, <strong>Synchroniser les specs de plan</strong>, dans Application &rarr; Fonctionnalit&eacute;s sur app.magic-slash.io. Il est <strong>activ&eacute; par d&eacute;faut</strong>, et c&rsquo;est le seul r&eacute;glage du produit qui d&eacute;cide si le contenu d&rsquo;un fichier quitte votre machine. Coupez-le et rien n&rsquo;est envoy&eacute; &mdash; la spec est toujours &eacute;crite, les tickets sont toujours cr&eacute;&eacute;s, et la page Plans cesse simplement de se remplir.',
 
   // ── Changelog ───────────────────────────────────────────────────────────
+  // Voir la note du catalogue anglais : la section n'est plus qu'un panneau
+  // indicateur vers `/changelog`, et les clés de l'ancienne liste sont parties avec.
   'site.doc.changelog.1': 'Changelog',
-  'site.doc.changelog.2': 'Chargement du changelog...',
+  'site.doc.changelog.moved':
+    'Chaque version de magic-slash a désormais sa propre page, avec la date, le numéro de version et tout ce que chacune apportait.',
+  'site.doc.changelog.openPage': 'Ouvrir le changelog',
 
   // ── Sidebar & chrome du changelog ──────────────────────────────────────
   'site.doc.nav.docs': 'Docs',
@@ -798,11 +802,7 @@ export const docFr: Record<keyof typeof docEn, string> = {
   'site.doc.nav.changelog': 'Changelog',
   'site.doc.nav.links': 'Liens',
   'site.doc.nav.themeToggle': 'Basculer le thème',
-  'site.doc.changelog.showMore': 'Afficher plus de versions',
-  'site.doc.changelog.empty': 'Aucune entrée de changelog trouvée.',
-  'site.doc.changelog.unavailable': 'Changelog indisponible au moment du build.',
-  'site.doc.changelog.viewOnGithub': 'Voir sur GitHub',
-  'site.doc.changelog.intro': 'Toutes les évolutions notables de magic-slash, chargées depuis',
+  'site.doc.changelog.intro': 'Les versions sont lues au moment du build depuis le fichier lui-même :',
   'site.doc.tag.lifecycle': 'Cycle de vie',
   'site.doc.tag.git': 'Git',
   'site.doc.tag.review': 'Revue',

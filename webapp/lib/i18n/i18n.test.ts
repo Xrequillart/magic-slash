@@ -269,6 +269,11 @@ describe('message catalogues', () => {
         'site.nav.documentationCategory',
         'site.nav.faq',
         'site.nav.changelog',
+        // The `/changelog` page's own `h1`. "Changelog" is the word both languages
+        // use — the footer row and the documentation heading above are the same
+        // borrowing — and translating this one alone would leave the site calling the
+        // same page two different things in French.
+        'site.changelog.title',
         'site.faq.title',
         // The hero mockup mirrors the app's own chrome, and these four labels are the
         // same word in French — "Skills" is the product's name for them, and AGENTS /

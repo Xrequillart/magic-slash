@@ -629,123 +629,38 @@
             }
         }
 
-        /* ── Changelog ── */
-        .changelog-version {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 16px;
-            padding: 1.75rem;
-            margin-bottom: 1.25rem;
-            transition: border-color 0.2s, box-shadow 0.2s, background 0.3s;
-        }
-        .changelog-version:hover {
-            border-color: rgba(57, 59, 255, 0.15);
-            box-shadow: 0 4px 20px rgba(57, 59, 255, 0.05);
-        }
-        .changelog-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 1rem;
-        }
-        .changelog-version-tag {
-            font-family: "JetBrains Mono", monospace;
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: var(--text);
-            transition: color 0.3s;
-        }
-        .changelog-date {
-            font-family: "Cera Pro", system-ui, sans-serif;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            transition: color 0.3s;
-        }
-        .changelog-category {
-            margin-bottom: 0.75rem;
-        }
-        .changelog-category:last-child {
-            margin-bottom: 0;
-        }
-        .changelog-badge {
-            display: inline-block;
-            font-family: "Cera Pro", system-ui, sans-serif;
-            font-size: 0.6rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            padding: 3px 8px;
-            border-radius: 6px;
-            margin-bottom: 0.5rem;
-        }
-        .changelog-badge-added {
-            color: #22c55e;
-            background: rgba(34, 197, 94, 0.12);
-        }
-        .changelog-badge-changed {
+        /* ── Changelog ──
+           The rules are GONE, all twenty of them, along with the section that used
+           them. The releases moved to `/changelog` under `(marketing)`, where they are
+           dressed by the design system (`components/ui.tsx` over the tokens in
+           `tailwind.config.ts`) rather than by a stylesheet of this page's own — see
+           `app/(marketing)/changelog/page.tsx`. What is left at `#changelog` in the
+           manual is two paragraphs and a link, and `.doc-section` already styles those.
+
+           Nothing replaces them here on purpose: a `.changelog-version` left behind
+           would be a rule with no markup, and the next reader would have to open the
+           page to find that out. */
+        /* The one thing the section still owns: its two links — out to `/changelog`,
+           and out to the file itself.
+           Prose links on this page inherit their paragraph's colour and carry no
+           underline — that has always been true here, and it is the reason this rule
+           exists rather than a reason to leave it alone. Every other link in the manual
+           sits inside a sentence that explains it; these two ARE the section, since
+           nothing is left in it but the pointers, and a signpost nobody can see is
+           worse than the list it replaced.
+           Deliberately scoped to this class rather than to `.doc-page a`: colouring
+           every link in a 16-section manual is a change to the whole document, and this
+           story is not it.
+           `--sidebar-active-text` is the page's own accent in both themes, so it costs
+           no new value and follows the dark toggle for free. */
+        .doc-changelog-link {
             color: var(--sidebar-active-text);
-            background: var(--sidebar-active);
-        }
-        .changelog-badge-fixed {
-            color: #f97316;
-            background: rgba(249, 115, 22, 0.12);
-        }
-        .changelog-items {
-            list-style: none;
-            padding: 0;
-            margin: 0 0 0 0.25rem;
-        }
-        .changelog-items li {
-            font-family: "Cera Pro", system-ui, sans-serif;
-            font-size: 0.92rem;
-            color: var(--text-secondary);
-            line-height: 1.6;
-            padding: 0.2rem 0;
-            padding-left: 1rem;
-            position: relative;
-            transition: color 0.3s;
-        }
-        .changelog-items li::before {
-            content: "";
-            position: absolute;
-            left: 0;
-            top: 0.7rem;
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-            background: var(--text-muted);
-        }
-        .changelog-component {
             font-weight: 600;
-            color: var(--text);
-            transition: color 0.3s;
+            text-decoration: none;
+            border-bottom: 1px solid currentColor;
+            padding-bottom: 1px;
+            transition: opacity 0.2s, color 0.3s;
         }
-        .changelog-load-more {
-            display: block;
-            width: 100%;
-            padding: 0.75rem;
-            margin-top: 0.5rem;
-            font-family: "Cera Pro", system-ui, sans-serif;
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--sidebar-active-text);
-            background: var(--sidebar-active);
-            border: 1px solid transparent;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: background 0.2s, border-color 0.2s;
-        }
-        .changelog-load-more:hover {
-            border-color: rgba(57, 59, 255, 0.2);
-        }
-        .changelog-loading,
-        .changelog-error {
-            font-family: "Cera Pro", system-ui, sans-serif;
-            font-size: 0.95rem;
-            color: var(--text-muted);
-            text-align: center;
-            padding: 2rem 0;
-        }
-        .changelog-error {
-            color: #ef4444;
+        .doc-changelog-link:hover {
+            opacity: 0.7;
         }
