@@ -118,6 +118,10 @@ export const LITERAL_TITLES = [
   // also how "Split View" and "Spotlight" below have always been handled.
   'Tasks',
   'Agents',
+  // The window's own title bar, and the rail heading inside it. `sidebar.skills` is
+  // "Skills" in the app's French catalogue too, so translating it here would be the page
+  // and the app using two words for one screen.
+  'Skills',
   'Jira',
   'GitHub',
   'VS Code',
@@ -396,7 +400,7 @@ export type FeatureVisual =
   | 'resolvedThreads'
   | 'reviewDrawer'
   | 'reviewThreads'
-  | 'skillsPage'
+  | 'skillsModal'
   | 'splitView'
   | 'spotlightBar'
   | 'startTerminal'
@@ -670,14 +674,25 @@ export const FEATURE_FAMILIES: readonly FeatureFamily[] = [
         visual: 'tasksModal',
       },
       {
-        // SHOWCASE, like Split View below: the page is a list, and a sentence says what
-        // it lists; the drawing only has to show a list with two kinds of note on it.
+        // A BLOCK, AND IT WAS A SHOWCASE — a sentence with a light drawing of a list
+        // beside it. What that shape could not say is that this window is not a list at
+        // all: it is a rail of every skill on the machine, a budget gauge scaled to the
+        // model that is running, and a warnings band that offers to fix what it found.
+        // Three things, and a thumbnail beside a paragraph shows none of them.
+        //
+        // So it takes the shape `Agents` takes, two rows down: a heading, a paragraph,
+        // the screen at full width, and a legend under it naming the parts of the screen
+        // that a still image cannot explain.
+        //
+        // "Skills" AND NOT "The Skills page", for the reason `Tasks` and `Agents` are
+        // headed the way they are: it is the word on the window's own title bar, in both
+        // languages, and heading the row with anything else would be the page and the
+        // app disagreeing about the name of a screen.
         id: 'skillsPage',
         icon: 'Layers',
-        title: 'site.features.skillsPageTitle',
+        title: 'Skills',
         description: 'site.features.skillsPageDesc',
-        visual: 'skillsPage',
-        shape: 'showcase',
+        visual: 'skillsModal',
       },
       {
         // "Agents", the sidebar's own heading for the list — the same call `Tasks` above
@@ -944,8 +959,8 @@ export const FEATURE_FAMILIES: readonly FeatureFamily[] = [
         visual: 'prConfig',
       },
       {
-        // SHOWCASE, the Skills page's shape: the sentence lists the five surfaces a
-        // language is set on, and the art is one glyph beside it rather than a tab
+        // SHOWCASE, the quieter of the two shapes: the sentence lists the five surfaces
+        // a language is set on, and the art is one glyph beside it rather than a tab
         // that would list them again.
         id: 'languages',
         icon: 'Languages',

@@ -522,11 +522,61 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.status.reviewAddressedDesc': 'Les changements demandés sont poussés ; la revue peut reprendre.',
   'site.status.prMerged': 'PR mergée',
   'site.status.prMergedDesc': 'La pull request est mergée ; /magic:done ferme le ticket.',
-  // The Skills page drawing — `SkillsPageMockup`.
-  'site.features.skillsPageTitle': 'La page Skills',
-  'site.features.skillsPageDesc': 'Toutes les skills que connaît Claude Code, classées par projet, avec une alerte sur celles qui consomment beaucoup de tokens et un conseil d’usage pour chacune.',
-  'site.skillsCard.heavy': '~12 k tokens',
-  'site.skillsCard.tip': 'À lancer sur une branche propre',
+  // ── La fenêtre Skills — `SkillsModalMockup` ─────────────────────────────
+  //
+  // Voir la note côté anglais : le titre de la ligne est « Skills », le mot de la barre
+  // de titre de la fenêtre, et c'est un `LiteralTitle` dans `lib/features.ts` — pas une
+  // entrée de catalogue.
+  'site.features.skillsPageDesc':
+    'Toutes les skills que Claude Code peut atteindre, dans une seule fenêtre : celles que Magic Slash embarque, celles que vous avez écrites, et celles que portent vos dépôts. À côté, ce que leurs descriptions coûtent à chaque message, et une alerte dès qu’un doublon ou une description trop longue commence à grignoter ce budget.',
+  // CE QUE DIT L'APPLICATION, clé pour clé — les phrases des catalogues du desktop plutôt
+  // que de nouvelles : qui ouvre l'application après cette page doit y retrouver les mêmes
+  // mots. Elles vivent dans `desktop/src/i18n/*.ts`.
+  'site.skillsCard.allSkills': 'Tous les skills',
+  'site.skillsCard.builtIn': 'Intégrés',
+  'site.skillsCard.builtInHelp': 'Les skills cœur de Magic Slash, qui pilotent le cycle de développement',
+  'site.skillsCard.custom': 'Personnalisés',
+  'site.skillsCard.customHelp': 'Vos skills, disponibles dans tous les projets',
+  'site.skillsCard.repos': 'Skills des dépôts',
+  'site.skillsCard.reposHelp':
+    'Skills définis dans vos dépôts enregistrés (.claude/skills/ et .claude/commands/)',
+  'site.skillsCard.deployPreview': 'Déploie la branche sur un environnement de préversion et publie l’URL.',
+  'site.skillsCard.releaseNotes': 'Transforme les pull requests mergées depuis le dernier tag en notes de version.',
+  'site.skillsCard.dbMigrate': 'Écrit la migration, la joue sur une base jetable et la relit.',
+  'site.skillsCard.import': 'Importer',
+  'site.skillsCard.new': 'Nouveau skill',
+  'site.skillsCard.sourceBuiltIn': 'intégré',
+  'site.skillsCard.warnings': 'Avertissements',
+  'site.skillsCard.longDesc':
+    '2 skills dont les descriptions dépassent 110 mots. Envisagez de les optimiser pour de meilleures performances.',
+  'site.skillsCard.words': '{count} mots',
+  'site.skillsCard.openInVSCode': 'Ouvrir dans VS Code',
+  'site.skillsCard.fixWithAgent': 'Corriger avec un agent',
+  'site.skillsCard.budgetSection': 'Budget des skills',
+  'site.skillsCard.budgetHelp': 'Ce que coûtent les descriptions de vos skills, à chaque message.',
+  'site.skillsCard.windowLabel': 'Fenêtre de contexte',
+  'site.skillsCard.windowHint': 'Détectée sur l’agent en cours.',
+  'site.skillsCard.chars': 'Caractères (budget réel)',
+  'site.skillsCard.charsValue': '32 400 / 40 000',
+  'site.skillsCard.unitChars': 'car.',
+  'site.skillsCard.tokens': 'Tokens (estimation)',
+  'site.skillsCard.tokensValue': '8 100 / 10 000',
+  'site.skillsCard.unitTokens': 'tokens',
+  'site.skillsCard.how': 'Comment c’est calculé',
+  'site.skillsCard.details': 'Détail par skill',
+  // ── La légende sous le dessin ──────────────────────────────────────────
+  'site.skillsCard.legendRailTitle': 'Toutes les skills de la machine',
+  'site.skillsCard.legendRailDesc':
+    'Le rail liste les trois origines d’un coup : les huit que Magic Slash embarque, celles que vous vous êtes écrites, et celles que chaque dépôt enregistré porte dans .claude/. Un clic ouvre la skill à côté de la liste.',
+  'site.skillsCard.legendBudgetTitle': 'Un budget qui suit le modèle',
+  'site.skillsCard.legendBudgetDesc':
+    'Claude Code dépense environ 1 % de la fenêtre de contexte à lister vos skills. Les jauges sont calées sur la fenêtre que rapporte l’agent en cours : la même bibliothèque est confortable sur un modèle à 1M et serrée sur un 200K.',
+  'site.skillsCard.legendWarningsTitle': 'Elle vous dit ce qui cloche',
+  'site.skillsCard.legendWarningsDesc':
+    'Un nom défini deux fois, une description au-delà de 110 mots, tout ce qui est coupé avant que Claude ne le voie : chaque cas est nommé, avec le fichier à ouvrir et un agent qui le réécrit pour vous.',
+  'site.skillsCard.legendEditTitle': 'Écrire, importer, partager',
+  'site.skillsCard.legendEditDesc':
+    'Une skill est un fichier markdown. Cette fenêtre en crée un, importe le dossier qu’on vous a envoyé, modifie les instructions sur place et réexporte le tout.',
   'site.infoSidebar.justNow': 'à l’instant',
   'site.infoSidebar.session': 'Session',
   'site.infoSidebar.context': 'Contexte',

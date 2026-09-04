@@ -686,11 +686,69 @@ export const marketingEn = {
   'site.status.reviewAddressedDesc': 'The requested changes are pushed; the review can resume.',
   'site.status.prMerged': 'PR merged',
   'site.status.prMergedDesc': 'The pull request is merged; /magic:done closes the ticket.',
-  // The Skills page drawing — `SkillsPageMockup`.
-  'site.features.skillsPageTitle': 'The Skills page',
-  'site.features.skillsPageDesc': 'Every skill Claude Code knows, sorted by project, with a warning on the ones that burn tokens and a tip on how to use each.',
-  'site.skillsCard.heavy': '~12k tokens',
-  'site.skillsCard.tip': 'Run it on a clean branch',
+  // ── The Skills window — `SkillsModalMockup` ─────────────────────────────
+  //
+  // The row's own copy first, then the drawing's. The heading is not here: the row is
+  // titled "Skills", the word on the window's own title bar, which is a `LiteralTitle`
+  // in `lib/features.ts` rather than a catalogue entry — see the note there.
+  'site.features.skillsPageDesc':
+    'Every skill Claude Code can reach, in one window: the ones Magic Slash ships, the ones you wrote, and the ones your repositories carry. Beside them, what their descriptions cost in every single message, and a warning the moment a duplicate or an over-long one starts eating that budget.',
+  // WHAT THE APP ITSELF SAYS, key for key. The window's own chrome is translated by the
+  // desktop catalogues, so these are those sentences rather than new ones: a reader who
+  // opens the app after this page should meet the same words. `desktop/src/i18n/*.ts` is
+  // where each of them lives.
+  'site.skillsCard.allSkills': 'All skills',
+  'site.skillsCard.builtIn': 'Built-in',
+  'site.skillsCard.builtInHelp': 'Magic Slash core skills, powering the development workflow',
+  'site.skillsCard.custom': 'Custom',
+  'site.skillsCard.customHelp': 'User-level skills, available across all projects',
+  'site.skillsCard.repos': 'Repository Skills',
+  'site.skillsCard.reposHelp':
+    'Skills defined in your registered repositories (.claude/skills/ and .claude/commands/)',
+  // The three invented skills the cards below the built-in ones are headed with — two of
+  // the reader's own and one a repository carries. Their NAMES are directories on disk, so
+  // they are literals in the component; these are the descriptions a person wrote.
+  'site.skillsCard.deployPreview': 'Ships the branch to a preview environment and posts the URL.',
+  'site.skillsCard.releaseNotes': 'Turns the merged pull requests since the last tag into release notes.',
+  'site.skillsCard.dbMigrate': 'Writes the migration, runs it against a scratch database, and checks it back.',
+  'site.skillsCard.import': 'Import',
+  'site.skillsCard.new': 'New skill',
+  'site.skillsCard.sourceBuiltIn': 'built-in',
+  // The warnings band, and the two controls it offers on the long descriptions.
+  'site.skillsCard.warnings': 'Warnings',
+  'site.skillsCard.longDesc':
+    '2 skills with descriptions longer than 110 words. Consider optimizing them for better performance.',
+  'site.skillsCard.words': '{count} words',
+  'site.skillsCard.openInVSCode': 'Open in VS Code',
+  'site.skillsCard.fixWithAgent': 'Fix with agent',
+  // The budget gauge. The two figures are drawn as the app draws them — grouped for the
+  // reader's own locale — so they are copy here rather than a number formatted in the
+  // component.
+  'site.skillsCard.budgetSection': 'Skills Budget',
+  'site.skillsCard.budgetHelp': 'What your skill descriptions cost in every single message.',
+  'site.skillsCard.windowLabel': 'Context window',
+  'site.skillsCard.windowHint': 'Detected from the running agent.',
+  'site.skillsCard.chars': 'Characters (enforced)',
+  'site.skillsCard.charsValue': '32,400 / 40,000',
+  'site.skillsCard.unitChars': 'chars',
+  'site.skillsCard.tokens': 'Tokens (estimate)',
+  'site.skillsCard.tokensValue': '8,100 / 10,000',
+  'site.skillsCard.unitTokens': 'tokens',
+  'site.skillsCard.how': 'How this is computed',
+  'site.skillsCard.details': 'Details by skill',
+  // ── The legend under the drawing ───────────────────────────────────────
+  'site.skillsCard.legendRailTitle': 'Every skill on the machine',
+  'site.skillsCard.legendRailDesc':
+    'The rail lists all three origins at once: the eight Magic Slash ships, the ones you wrote for yourself, and the ones each registered repository carries in .claude/. Click one and it opens beside the list.',
+  'site.skillsCard.legendBudgetTitle': 'A budget that follows the model',
+  'site.skillsCard.legendBudgetDesc':
+    'Claude Code spends about 1% of the context window listing your skills. The gauges are scaled to the window the running agent reports, so the same library reads comfortable on a 1M model and tight on a 200K one.',
+  'site.skillsCard.legendWarningsTitle': 'It tells you what is wrong',
+  'site.skillsCard.legendWarningsDesc':
+    'A name defined twice, a description past 110 words, anything cut before Claude sees it — each one is named, with the file to open and an agent that will rewrite it for you.',
+  'site.skillsCard.legendEditTitle': 'Write, import, share',
+  'site.skillsCard.legendEditDesc':
+    'A skill is a markdown file. This window creates one, imports a folder somebody sent you, edits the instructions in place and exports the whole thing back out.',
   'site.infoSidebar.justNow': 'just now',
   'site.infoSidebar.session': 'Session',
   'site.infoSidebar.context': 'Context',

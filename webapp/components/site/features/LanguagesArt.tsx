@@ -24,7 +24,7 @@ import type { LanguageId } from "@/lib/i18n/languages";
  * `useId` on the clip path, for the reason `UnionFlag` gives: `url(#id)` resolves
  * against the whole document, so a fixed id breaks the moment the flag is drawn twice.
  *
- * `bg-tone-mist`, `rounded-xl`, `min-h-44` — `SkillsPageMockup`'s plate exactly, so the
+ * `bg-tone-mist`, `rounded-xl`, `min-h-44` — `SplitViewMockup`'s plate exactly, so the
  * showcase cards on this page read as one series.
  *
  * `aria-hidden`: it is a drawing, and the language menu in the footer is where the

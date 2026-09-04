@@ -292,6 +292,11 @@ describe('message catalogues', () => {
         // languages, and so is "Agents" — the label over the list, which the app's French
         // catalogue also leaves as it is.
         'site.agentsCard.skills',
+        // The Skills window's gauge prints its own unit under each bar, and the app's
+        // French catalogue spells "tokens" exactly the same way — `skills.budget.unitTokens`
+        // in `desktop/src/i18n/fr.ts`. The characters unit beside it is NOT the same word
+        // ("car."), which is why only this half is listed.
+        'site.skillsCard.unitTokens',
         // The info sidebar's cards print the app's own labels, and the app keeps these
         // in English in both languages: a card heading, a menu, its script categories.
         'site.infoSidebar.session',

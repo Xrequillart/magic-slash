@@ -422,7 +422,7 @@ describe('FEATURE_FAMILIES', () => {
       'resolvedThreads',
       'reviewDrawer',
       'reviewThreads',
-      'skillsPage',
+      'skillsModal',
       'splitView',
       'spotlightBar',
       'startTerminal',
@@ -479,13 +479,13 @@ describe('FEATURE_FAMILIES', () => {
 
     // And the SHAPE each of them takes, pinned separately because it is a different
     // decision from "does this row have a picture at all". `block` is full width and
-    // costs a third of a section; the desktop family carries two of them — Tasks and
-    // Agents — and a third arriving as an omitted field is
-    // exactly the change nothing else would notice.
+    // costs a third of a section; the desktop family carries three of them — Tasks,
+    // Skills and Agents — and a fourth arriving as an omitted field is exactly the
+    // change nothing else would notice.
     const shapes = EVERY_FEATURE.filter(({ feature }) => feature.visual).map(
       ({ feature }) => feature.shape ?? 'block',
     )
-    expect(shapes.filter((shape) => shape === 'showcase')).toHaveLength(6)
+    expect(shapes.filter((shape) => shape === 'showcase')).toHaveLength(5)
   })
 
   it('points every picto at a file that is actually on disk', () => {

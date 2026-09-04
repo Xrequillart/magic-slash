@@ -72,7 +72,7 @@ import { LaunchModesGrid } from './LaunchModesGrid'
 import { ResolvedThreadsMockup } from './ResolvedThreadsMockup'
 import { ReviewDrawerMockup } from './ReviewDrawerMockup'
 import { ReviewThreadsMockup } from './ReviewThreadsMockup'
-import { SkillsPageMockup } from './SkillsPageMockup'
+import { SkillsModalMockup } from './SkillsModalMockup'
 import { SpecPanelMockup } from './SpecPanelMockup'
 import { SplitViewMockup } from './SplitViewMockup'
 import { SpotlightBarMockup } from './SpotlightBarMockup'
@@ -284,7 +284,7 @@ const VISUALS: Record<FeatureVisual, () => React.ReactElement> = {
   resolvedThreads: ResolvedThreadsMockup,
   reviewDrawer: ReviewDrawerMockup,
   reviewThreads: ReviewThreadsMockup,
-  skillsPage: SkillsPageMockup,
+  skillsModal: SkillsModalMockup,
   startTerminal: StartTerminal,
   tasksModal: TasksModalMockup,
   ticketCard: TicketCardMockup,
