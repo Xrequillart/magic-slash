@@ -20,12 +20,15 @@
  * product, and `app.magic-slash.io/admin/users` says so more plainly than a fourth
  * domain to provision, certify and remember.
  *
- * Two rules, asked in this order, because they answer different questions:
+ * Three rules, asked in this order, because they answer different questions:
  *
  *  - `canonicalHost` — does this path belong on ANOTHER host? A single deployment
  *    answers on every host, so every page was reachable on every one of them:
  *    `magic-slash.io/dashboard` served the product from the public site's domain. That
  *    is a redirect, and it has to be settled before anything is rewritten.
+ *  - `retiredPath` — is this a public page we DELETED, and where did it go? Asked before
+ *    the host question, because a retired path is a public path: it has to reach its
+ *    successor rather than be sent to the app.
  *  - `resolveRewrite` — given that this path belongs here, which route renders it?
  */
 
@@ -44,7 +47,44 @@ const SHARED_DOMAIN = 'magic-slash.io'
  * and nobody notices. Enumerating the public ones means a new marketing page redirects
  * to `app.` — wrong, but wrong in the face of whoever loads it, on the first try.
  */
-const PUBLIC_PATHS = new Set(['/', '/changelog', '/features', '/documentation', '/story'])
+const PUBLIC_PATHS = new Set([
+  '/',
+  '/changelog',
+  '/faq',
+  '/features',
+  '/story',
+  // NOT A PAGE ANY MORE. `/documentation` is in `RETIRED_PATHS` below and 308s to
+  // `/faq`, and it has to stay listed HERE for that redirect to be the one that fires:
+  // drop it and `canonicalHost` decides it belongs to the app, which 307s the reader to
+  // a login form on `app.magic-slash.io` — the one outcome worse than a 404.
+  '/documentation',
+])
+
+/**
+ * Public pages we deleted → where their readers should land instead.
+ *
+ * A REDIRECT AND NOT A 404, because these URLs do not stop existing when the route
+ * does. `/documentation` is in the README, in release notes, in the desktop app's own
+ * history and in whatever anybody bookmarked, and the page it named is gone — split
+ * between `/changelog`, `/features` and `/faq`, which is where the questions it was
+ * really being read for ended up.
+ *
+ * HERE RATHER THAN IN `next.config.mjs`'s `redirects()`, which is the obvious home for
+ * it and the wrong one. Two reasons, and the second is the one that decides it:
+ *   • this file is where the public site's paths are already enumerated, and a rule
+ *     about a public path that lives somewhere else is a rule the next person editing
+ *     `PUBLIC_PATHS` will not see;
+ *   • the relative order of a config redirect and the middleware is a framework detail
+ *     we would be betting a link on. Asked here, in `middleware.ts`, before
+ *     `canonicalHost` gets a say, the order is ours and `hostRouting.test.ts` pins it.
+ *
+ * A 308 and not the 307 `canonicalHost` produces: that one is a hosting decision that
+ * could be revisited, this one is a page that has been deleted. Permanent is the honest
+ * answer and it is what search engines need to move the ranking across.
+ */
+const RETIRED_PATHS: Record<string, string> = {
+  '/documentation': '/faq',
+}
 
 /**
  * Public path prefixes — `/invite/<token>` and nothing else.
@@ -73,14 +113,47 @@ function isProductionHost(host: string): boolean {
   return name === SHARED_DOMAIN || name.endsWith(`.${SHARED_DOMAIN}`)
 }
 
+/**
+ * `/story/` is `/story`. Next normalises the trailing slash itself, but not reliably
+ * ahead of every rule below — and a public page that fails to match `isPublicPath` is
+ * not served differently, it is sent to another host, which is not a mistake worth
+ * betting on the framework's ordering to avoid.
+ *
+ * Shared with `retiredPath` so `/documentation/` retires the same as `/documentation`.
+ * MEASURED, on a production build: Next answers `/documentation/` with its own 308 to
+ * `/documentation` BEFORE the middleware sees it, so that URL reaches `/faq` in two hops
+ * rather than one. Correct either way, and this normalisation is what keeps it correct
+ * if that ordering — or the `trailingSlash` option — ever changes.
+ */
+function normalise(pathname: string): string {
+  return pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname
+}
+
 function isPublicPath(pathname: string): boolean {
-  // `/story/` is `/story`. Next normalises the trailing slash itself, but it does so in
-  // the routing layer — this runs before that, on whatever was typed, and a public page
-  // that fails to match here is not served differently, it is sent to another host.
-  const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname
+  const path = normalise(pathname)
 
   if (PUBLIC_PATHS.has(path)) return true
   return PUBLIC_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))
+}
+
+/**
+ * The page this deleted path should hand its reader to, or null if it is not one.
+ *
+ * NOT SCOPED TO PRODUCTION, unlike the two rules below it. Those are about which of
+ * three hosts answers; this one is about a route that genuinely no longer exists, which
+ * is equally true of `localhost:3000/documentation` and of a preview deploy. Scoping it
+ * would leave the redirect untestable in the one place anybody would test it.
+ *
+ * `invite.` IS EXEMPT, for the same reason it is exempt from `canonicalHost`: every path
+ * on that host is a TOKEN rather than a route, so `invite.magic-slash.io/documentation`
+ * is a request for an invitation that happens to be named `documentation`. Sending it to
+ * `/faq` would answer a wrong-token message with a page about uninstalling the app. The
+ * host is checked by PREFIX and not by `isProductionHost`, so a preview of the invite
+ * host is exempt too.
+ */
+export function retiredPath(host: string, pathname: string): string | null {
+  if (host.startsWith('invite.')) return null
+  return RETIRED_PATHS[normalise(pathname)] ?? null
 }
 
 /**

@@ -641,23 +641,59 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Alors on a automatisé les parties ennuyeuses — et on a continué jusqu’à ce que l’ensemble se construise tout seul.',
   'site.why.cta': 'Lire notre histoire',
 
-  // ── ⑧ FAQ ──────────────────────────────────────────────────────────────────
-  'site.faq.title': 'FAQ & Troubleshooting',
-  'site.faq.q1': 'Faut-il être développeur ?',
-  'site.faq.a1':
+  // ── FAQ (`/faq`) ───────────────────────────────────────────────────────────
+  //
+  // Voir la note dans `en.ts` : clés par sujet et non par position, une réponse d'un
+  // paragraphe, et `site.faq.viewAll` supprimée avec la bande ⑧ de la page d'accueil.
+  'site.faq.title': 'Questions fréquentes',
+  'site.faq.lead':
+    'Tout sur l’installation de Magic Slash, sa configuration, et son usage au quotidien.',
+  'site.faq.stillStuck': 'Toujours bloqué ? Écrivez-nous.',
+  'site.faq.openIssue': 'Ouvrir une issue sur GitHub',
+
+  'site.faq.developer.q': 'Faut-il être développeur ?',
+  'site.faq.developer.a':
     'Il faut un projet de code et un minimum d’aisance avec Git. Vous n’avez pas besoin d’écrire le code — c’est justement le principe — mais ce n’est pas un outil no-code : il travaille sur de vrais projets.',
-  'site.faq.q2': 'Magic Slash est-il gratuit ?',
-  'site.faq.a2':
-    'Oui. Magic Slash est open-source et gratuit. Il suffit d’un abonnement Claude Code.',
-  'site.faq.q3': 'Est-ce compatible avec GitHub Issues ?',
-  'site.faq.a3': 'Tout à fait. Magic Slash supporte Jira et GitHub Issues nativement.',
-  'site.faq.q4': 'Puis-je personnaliser le format de commit ?',
-  'site.faq.a4':
-    'Oui. Choisissez entre Conventional Commits, Angular, Gitmoji, ou définissez votre propre format par projet.',
-  'site.faq.q5': 'Est-ce compatible avec tous les langages ?',
-  'site.faq.a5':
-    'Oui. Magic Slash est agnostique au langage — il fonctionne avec tout projet que Claude Code peut gérer.',
-  'site.faq.viewAll': 'Voir toute la FAQ',
+
+  'site.faq.price.q': 'Magic Slash est-il gratuit ?',
+  'site.faq.price.a':
+    'Oui. Magic Slash est open source et gratuit. La seule chose qu’il suppose déjà en place, c’est <strong>Claude Code</strong>, puisque toutes les commandes s’exécutent dedans.',
+
+  'site.faq.prerequisites.q': 'Que faut-il avant de l’installer ?',
+  'site.faq.prerequisites.a':
+    'Trois choses : <strong>Claude Code</strong>, installé et authentifié ; <strong>Node.js 20</strong> ou plus récent, sur lequel tournent les serveurs MCP Jira et GitHub ; et <strong>Git 2.20</strong> ou plus récent, pour les worktrees. Au premier lancement, l’app vérifie les trois, installe les huit skills dans <code>~/.claude/skills/</code> et configure les serveurs MCP — il n’y a aucun script à lancer.',
+
+  'site.faq.platforms.q': 'Quels systèmes d’exploitation sont supportés ?',
+  'site.faq.platforms.a':
+    'L’app de bureau est une application macOS native, universelle Intel et Apple Silicon. Les commandes, elles, sont des skills Claude Code : elles fonctionnent partout où Claude Code fonctionne — macOS, Linux, et Windows via WSL 2.',
+
+  'site.faq.trackers.q': 'Est-ce compatible avec GitHub Issues, ou seulement Jira ?',
+  'site.faq.trackers.a':
+    'Les deux, nativement, et le choix se fait dépôt par dépôt. Une clé Jira comme <code>PROJ-123</code> passe par le serveur MCP Atlassian ; un numéro comme <code>#456</code> est cherché comme issue GitHub dans les dépôts que vous avez configurés.',
+
+  'site.faq.languages.q': 'Est-ce compatible avec tous les langages ?',
+  'site.faq.languages.a':
+    'Oui — Magic Slash est agnostique au langage, et fonctionne sur tout projet que Claude Code sait lire. Il détecte votre gestionnaire de paquets à partir du lockfile (npm, pnpm, yarn, bun, pip, poetry, cargo, go, bundler, composer), pour qu’un nouveau worktree démarre avec ses dépendances installées.',
+
+  'site.faq.commitFormat.q': 'Puis-je changer le format des commits et des pull requests ?',
+  'site.faq.commitFormat.a':
+    'Oui, dépôt par dépôt. Choisissez <strong>Conventional Commits</strong>, <strong>Angular</strong> ou <strong>Gitmoji</strong> pour le message, définissez vos préfixes de branche, et choisissez indépendamment la langue de vos commits, de vos pull requests et de vos commentaires de ticket.',
+
+  'site.faq.terminal.q': 'Suis-je obligé d’utiliser l’app de bureau ?',
+  'site.faq.terminal.a':
+    'Non. Les huit commandes fonctionnent dans n’importe quel terminal, dans VS Code et dans les IDE JetBrains — partout où tourne Claude Code. L’app apporte ce qu’un terminal ne peut pas : plusieurs agents côte à côte, le suivi en direct de ce que chacun fait, le ticket à côté du code, et une notification quand l’un d’eux a besoin de vous.',
+
+  'site.faq.credentials.q': 'Où sont stockés mes identifiants ?',
+  'site.faq.credentials.a':
+    'Magic Slash ne détient aucun token. Jira s’authentifie via le serveur MCP Atlassian, en OAuth dans votre navigateur, et GitHub utilise un token personnel conservé dans <code>~/.claude/settings.json</code>, que les skills ne lisent jamais directement. Le pont entre Claude Code et l’app écoute sur <code>127.0.0.1</code>, sur un port tiré au hasard à chaque session : rien n’en est joignable depuis votre réseau.',
+
+  'site.faq.updates.q': 'Comment se passent les mises à jour ?',
+  'site.faq.updates.a':
+    'L’app interroge les GitHub Releases au lancement, télécharge la nouvelle version en arrière-plan, puis propose <strong>Redémarrer</strong> ou <strong>Plus tard</strong> dans la barre latérale — rien ne prend l’écran. Les huit skills intégrés sont resynchronisés au même moment ; les skills que vous avez écrits ne sont jamais touchés.',
+
+  'site.faq.uninstall.q': 'Comment le désinstaller ?',
+  'site.faq.uninstall.a':
+    'Un seul script : <code>install/uninstall.sh</code>. Il retire les huit skills, les serveurs MCP Jira et GitHub, toutes les permissions ajoutées à <code>~/.claude/settings.json</code>, l’app elle-même et <code>~/.config/magic-slash/</code>. Vos dépôts et votre installation de Claude Code restent exactement en l’état.',
 
   // ── CTA de fin ─────────────────────────────────────────────────────────────
   // ── CTA de clôture (page d'accueil) ────────────────────────────────────────

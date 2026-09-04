@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { canonicalHost, resolveRewrite } from '@/lib/hostRouting'
+import { canonicalHost, resolveRewrite, retiredPath } from '@/lib/hostRouting'
 
 /**
  * One Next.js deployment, four sites — the apex plus the app, admin and invite
@@ -14,7 +14,17 @@ export function middleware(request: NextRequest) {
   const host = request.headers.get('host') ?? ''
   const { pathname, search } = request.nextUrl
 
-  // Wrong host first: a rewrite would render the page right here, which is the thing
+  // A DELETED PAGE FIRST, before the host question. `/documentation` is a path the
+  // public site owns and no longer serves, so it has to reach its successor rather than
+  // be handed to `canonicalHost` — which, reading a path with no route behind it, would
+  // send the reader to a login form on the app host. 308 because the page is gone for
+  // good; see `RETIRED_PATHS`. `search` is carried for the same reason it is below.
+  const successor = retiredPath(host, pathname)
+  if (successor) {
+    return NextResponse.redirect(new URL(`${successor}${search}`, request.url), 308)
+  }
+
+  // Wrong host next: a rewrite would render the page right here, which is the thing
   // being corrected. `search` is carried by hand — the target is built from a bare host
   // and path, so anything not named is dropped, and `?lang=` or a future `?next=` on the
   // login route is what that loses. The fragment needs no help: it never leaves the

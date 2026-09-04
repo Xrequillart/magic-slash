@@ -29,9 +29,11 @@ import { GITHUB_REPO_URL, LICENSE_URL, NEW_ISSUE_URL, SECURITY_URL } from './lin
  * `site.footer.legal` in the catalogue.
  *
  * Every destination here EXISTS, and an internal one has to be a path `PUBLIC_PATHS` in
- * `lib/hostRouting.ts` enumerates: a footer link to `/faq` or `/pricing` would not 404 on
- * production — it would 307 the reader to a login form, which is worse. That list is
- * named rather than copied, for the reason given on `LICENSE_URL` in `links.ts`.
+ * `lib/hostRouting.ts` enumerates: a footer link to a path absent from that list would
+ * not 404 on production — it would 307 the reader to a login form, which is worse. That
+ * list is named rather than copied, for the reason given on `LICENSE_URL` in `links.ts`.
+ * `/faq` was the standing example of the mistake in this very paragraph until the page
+ * existed; it is a row in the Resources column now, and an entry in that list.
  */
 
 /**
@@ -76,13 +78,21 @@ const COLUMNS: Column[] = [
   {
     title: 'site.footer.resources',
     rows: [
-      { href: '/documentation', label: 'site.footer.documentation' },
-      { href: '/documentation#quick-start', label: 'site.footer.gettingStarted' },
-      { href: '/documentation#configuration', label: 'site.footer.configuration' },
-      // A PAGE NOW, not the fragment at the bottom of the manual this row used to
-      // point at. `/documentation#changelog` still resolves — the section is there and
-      // links here — but sending a reader through it would land them at the end of a
-      // 16-section document to reach a page that is one hop away.
+      // THREE ROWS OF DOCUMENTATION LEFT THIS COLUMN, and the reason is not that the
+      // links broke — it is that the page did. `/documentation`, `#quick-start` and
+      // `#configuration` were the manual, its first section and one of its later ones:
+      // three footer rows spending most of a column on one destination nothing else on
+      // the site linked to. The page is deleted (see `RETIRED_PATHS` in
+      // `lib/hostRouting.ts`, which 308s the URL here), and `/faq` is the one row that
+      // replaces all three — the eleven things people were opening that manual to find.
+      //
+      // Their `site.footer.{documentation,gettingStarted,configuration}` keys stay in
+      // the catalogues unreferenced, like every other family this rebuild has retired:
+      // nothing tests for an unused key, and pruning them means editing `i18n.test.ts`'s
+      // exact `SAME_IN_BOTH` allow-list in lockstep.
+      { href: '/faq', label: 'site.footer.faq' },
+      // A PAGE NOW, not the fragment at the bottom of the manual this row used to point
+      // at — which is the change that started the manual's retirement.
       { href: '/changelog', label: 'site.footer.changelog' },
       { href: '/story', label: 'site.footer.ourStory' },
       { href: GITHUB_REPO_URL, label: 'GitHub', external: true },

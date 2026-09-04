@@ -3,8 +3,6 @@ import { en } from './en'
 import { fr } from './fr'
 import { marketingEn } from './marketing/en'
 import { marketingFr } from './marketing/fr'
-import { docEn } from './marketing/doc-en'
-import { docFr } from './marketing/doc-fr'
 
 /**
  * Translation, as a plain function of (key, language).
@@ -16,19 +14,23 @@ import { docFr } from './marketing/doc-fr'
  */
 
 /**
- * Three catalogues, one namespace.
+ * Two catalogues, one namespace.
  *
  * `en`/`fr` are the signed-in app's copy. `marketingEn`/`marketingFr` are the public
- * site's. `docEn`/`docFr` are the Documentation page, which is on its own because it
- * is 675 keys of prose — an order of magnitude more than the rest of the site, and
- * edited as a document rather than as UI copy.
+ * site's.
+ *
+ * THERE WERE THREE. `docEn`/`docFr` carried `/documentation` — 675 positional keys of
+ * prose, an order of magnitude more than the rest of the site put together, and edited
+ * as a document rather than as UI copy, which is why it had a file of its own. The page
+ * is gone and so are they; `/faq` is what stands in its place, and its ~25 keys are
+ * ordinary site copy that belongs in the site catalogue with everything else.
  *
  * Every key outside the app catalogue is prefixed `site.`, so they can never collide;
  * `i18n.test.ts` enforces that rather than trusting it. They merge here, so `useT()`
- * is the SAME hook on a landing page, in the docs and on the dashboard — which is why
- * the language switcher works everywhere without knowing where it is.
+ * is the SAME hook on a landing page and on the dashboard — which is why the language
+ * switcher works everywhere without knowing where it is.
  */
-export type MessageKey = keyof typeof en | keyof typeof marketingEn | keyof typeof docEn
+export type MessageKey = keyof typeof en | keyof typeof marketingEn
 
 /**
  * A translate function with the language already bound — what `useT()` returns.
@@ -38,11 +40,11 @@ export type MessageKey = keyof typeof en | keyof typeof marketingEn | keyof type
 export type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string
 
 const CATALOGUES: Record<LanguageId, Record<MessageKey, string>> = {
-  en: { ...en, ...marketingEn, ...docEn },
-  fr: { ...fr, ...marketingFr, ...docFr },
+  en: { ...en, ...marketingEn },
+  fr: { ...fr, ...marketingFr },
 }
 
-export { en, fr, marketingEn, marketingFr, docEn, docFr }
+export { en, fr, marketingEn, marketingFr }
 
 /**
  * Translate `key` into `lang`, substituting `{name}` placeholders from `vars`.

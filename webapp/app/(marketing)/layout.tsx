@@ -3,15 +3,19 @@ import { SiteHeader } from '@/components/site/SiteHeader'
 import { SiteFooter } from '@/components/site/SiteFooter'
 
 /**
- * The public site's shell — the header and footer `/`, `/features` and `/story` share.
+ * The public site's shell — the header and footer `/`, `/features`, `/changelog`,
+ * `/faq` and `/story` share.
  *
- * `marketing.css` IS NO LONGER IMPORTED HERE. It was the old static site's stylesheet,
- * ~5,000 lines of it, and every page under this layout is off it: the homepage and
- * `/features` are built on the design system (`components/ui.tsx` over the tokens in
- * `tailwind.config.ts`), and `/story` keeps its own `story.css`, which now carries the
- * handful of closing-CTA rules it used to borrow. The file itself STAYS on disk —
- * `app/(docs)/layout.tsx` still imports it for the Documentation page's typography, and
- * `lib/marketingCss.test.ts` reads it from disk.
+ * `marketing.css` IS NO LONGER IMPORTED HERE, and as of the Documentation page's
+ * removal it is no longer imported ANYWHERE. It was the old static site's stylesheet,
+ * ~5,000 lines of it, and every page under this layout is off it: the homepage,
+ * `/features`, `/changelog` and `/faq` are built on the design system
+ * (`components/ui.tsx` over the tokens in `tailwind.config.ts`), and `/story` keeps its
+ * own `story.css`, which now carries the handful of closing-CTA rules it used to borrow.
+ * `app/(docs)/layout.tsx` was the last importer; `/documentation` is deleted and `/faq`
+ * stands in its place. The file itself STAYS on disk, and not out of sentiment: it
+ * defines the ~81 `mk-*` classes `components/site/home/AppMockup.tsx` is written
+ * against, which issue #270 needs. `lib/marketingCss.test.ts` still reads it.
  *
  * Nothing global takes its place. The background is painted by whichever page owns it
  * (`bg-canvas` on the homepage's and `/features`'s own roots, `html body` in

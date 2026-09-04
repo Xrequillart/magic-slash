@@ -43,8 +43,13 @@ const SCANNED_EXTENSIONS = ['.ts', '.tsx', '.css']
 /**
  * Out of scope for the rebuild, and each one carries hand-tuned shadows that belong
  * to a page with its own stylesheet rather than to the app's token scale.
+ *
+ * `doc.css` was the third and is deleted with `/documentation` — see `lib/faq.test.ts`
+ * for what replaced that page. Its name is dropped rather than left as a harmless
+ * no-op: an exclusion for a file that does not exist reads as a page still carrying
+ * untokenised shadows, which is a claim about the codebase that is no longer true.
  */
-const EXCLUDED_FILES = ['marketing.css', 'story.css', 'doc.css']
+const EXCLUDED_FILES = ['marketing.css', 'story.css']
 
 /** Tailwind's own `boxShadow` scale, which needs no declaration of ours. */
 const BUILT_IN_SHADOWS = ['sm', 'md', 'lg', 'xl', '2xl', 'inner', 'none']

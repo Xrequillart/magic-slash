@@ -12,8 +12,6 @@ import { en } from './en'
 import { fr } from './fr'
 import { marketingEn } from './marketing/en'
 import { marketingFr } from './marketing/fr'
-import { docEn } from './marketing/doc-en'
-import { docFr } from './marketing/doc-fr'
 import { localeOf, t } from '.'
 
 /**
@@ -23,8 +21,8 @@ import { localeOf, t } from '.'
  */
 
 const CATALOGUES: Record<LanguageId, Record<string, string>> = {
-  en: { ...en, ...marketingEn, ...docEn },
-  fr: { ...fr, ...marketingFr, ...docFr },
+  en: { ...en, ...marketingEn },
+  fr: { ...fr, ...marketingFr },
 }
 
 /**
@@ -64,66 +62,18 @@ describe('message catalogues', () => {
     // They are merged into one flat lookup, so a key defined in both would resolve to
     // whichever spreads last — silently, and differently per language if only one side
     // has the clash. The `site.` prefix is what prevents it; this is what enforces it.
+    //
+    // THERE WERE THREE catalogues here, the third being `docEn`/`docFr` — the
+    // Documentation page's 675 positional keys, which had a file of their own because
+    // they were prose rather than UI copy. That page is gone; `/faq` replaced it, and
+    // its keys are ordinary `site.faq.*` entries in the catalogue below. `faq.test.ts`
+    // is what keeps the family from creeping back in.
     const appKeys = Object.keys(en)
     const siteKeys = Object.keys(marketingEn)
-    const docKeys = Object.keys(docEn)
 
-    for (const [name, keys] of [
-      ['site', siteKeys],
-      ['doc', docKeys],
-    ] as const) {
-      expect(keys.filter((key) => !key.startsWith('site.')), `unprefixed ${name} keys`).toEqual([])
-    }
+    expect(siteKeys.filter((key) => !key.startsWith('site.')), 'unprefixed site keys').toEqual([])
     expect(appKeys.filter((key) => key.startsWith('site.')), 'app keys in the site namespace').toEqual([])
-    expect(Object.keys(CATALOGUES.en)).toHaveLength(
-      appKeys.length + siteKeys.length + docKeys.length,
-    )
-  })
-
-  it('translates the documentation prose, not just its headings', () => {
-    // The doc catalogue is 675 entries of prose — an exact allow-list of "legitimately
-    // identical" would be unmaintainable and would stop being read. So the rule is
-    // about LENGTH instead: a short entry may match (a filename, a config value, a
-    // status name), but five words of English on a French page is a hole, and the few
-    // long entries that genuinely must not be translated are named here.
-    const LITERAL = new Set([
-      // Trigger phrases are typed verbatim; translating them names a phrase that does
-      // not trigger anything. Both the English and the French ones are literal.
-      'site.doc.skills.13',
-      'site.doc.skills.27',
-      'site.doc.skills.28',
-      'site.doc.skills.68',
-      'site.doc.skills.69',
-      'site.doc.skills.79',
-      'site.doc.skills.80',
-      'site.doc.skills.90',
-      'site.doc.skills.91',
-      'site.doc.skills.118',
-      'site.doc.skills.119',
-      // Config values, commit-format examples and API field values.
-      'site.doc.skills.38',
-      'site.doc.configuration.22',
-      'site.doc.configuration.23',
-      'site.doc.configuration.24',
-      'site.doc.desktop.37',
-      'site.doc.hooks.27',
-      'site.doc.environments.36',
-      // Lists of MCP tool names.
-      'site.doc.hooks.33',
-      'site.doc.hooks.34',
-      // Jira status names, which are the literal strings on the board.
-      'site.doc.troubleshooting.34',
-      'site.doc.troubleshooting.35',
-      // "Via WSL 2 (Windows Subsystem for Linux)" is the same sentence in French.
-      'site.doc.environments.8',
-    ])
-
-    const words = (message: string) => message.replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean)
-
-    const untranslated = (Object.keys(docEn) as (keyof typeof docEn)[]).filter(
-      (key) => docEn[key] === docFr[key] && words(docEn[key]).length >= 5 && !LITERAL.has(key),
-    )
-    expect(untranslated).toEqual([])
+    expect(Object.keys(CATALOGUES.en)).toHaveLength(appKeys.length + siteKeys.length)
   })
 
   it('keeps the same placeholders in every language', () => {
@@ -141,18 +91,15 @@ describe('message catalogues', () => {
   })
 
   it('keeps the same inline markup in every language', () => {
-    // The site and doc copy carries `<br>`, `<strong>`, `<code>` and `<em>`, rendered
-    // by `RichText` via dangerouslySetInnerHTML. A translation that drops a
-    // `</strong>` does not just lose bold — it leaks the tag into the rest of the page.
+    // The site copy carries `<br>`, `<strong>`, `<code>` and `<em>`, rendered by
+    // `RichText` via dangerouslySetInnerHTML. A translation that drops a `</strong>`
+    // does not just lose bold — it leaks the tag into the rest of the page.
     const tags = (message: string) => (message.match(/<\/?[a-z]+>/g) ?? []).sort()
 
-    for (const [source, target] of [
-      [marketingEn as Record<string, string>, marketingFr as Record<string, string>],
-      [docEn as Record<string, string>, docFr as Record<string, string>],
-    ] as const) {
-      for (const key of Object.keys(source)) {
-        expect(tags(target[key]), `fr.${key} markup`).toEqual(tags(source[key]))
-      }
+    const source = marketingEn as Record<string, string>
+    const target = marketingFr as Record<string, string>
+    for (const key of Object.keys(source)) {
+      expect(tags(target[key]), `fr.${key} markup`).toEqual(tags(source[key]))
     }
   })
 
@@ -163,7 +110,7 @@ describe('message catalogues', () => {
     // would put a URL in a translator's hands, and a `<script>` would end the argument.
     const ALLOWED = /^<\/?(br|strong|code|em)>$/
 
-    for (const catalogue of [marketingEn, marketingFr, docEn, docFr]) {
+    for (const catalogue of [marketingEn, marketingFr]) {
       for (const [key, message] of Object.entries(catalogue)) {
         for (const tag of message.match(/<[^>]+>/g) ?? []) {
           expect(ALLOWED.test(tag), `${key} contains ${tag}`).toBe(true)
@@ -270,11 +217,16 @@ describe('message catalogues', () => {
         'site.nav.faq',
         'site.nav.changelog',
         // The `/changelog` page's own `h1`. "Changelog" is the word both languages
-        // use — the footer row and the documentation heading above are the same
-        // borrowing — and translating this one alone would leave the site calling the
-        // same page two different things in French.
+        // use — the two nav rows above are the same borrowing — and translating this
+        // one alone would leave the site calling the same page two different things in
+        // French.
+        //
+        // `site.faq.title` used to be listed right here, at "FAQ & Troubleshooting" in
+        // both languages, and it is NOT any more: the `/faq` page's `h1` is "Frequently
+        // asked questions" against "Questions fréquentes". The three-letter LABEL is
+        // still the same word in both (`site.nav.faq` and `site.footer.faq`, both still
+        // listed) — an acronym French borrowed whole. A whole heading is not.
         'site.changelog.title',
-        'site.faq.title',
         // The hero mockup mirrors the app's own chrome, and these four labels are the
         // same word in French — "Skills" is the product's name for them, and AGENTS /
         // SESSION / Commits are borrowed whole, exactly as they are in the app.

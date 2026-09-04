@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { APP_HOST, canonicalHost, resolveRewrite } from './hostRouting'
+import { APP_HOST, canonicalHost, resolveRewrite, retiredPath } from './hostRouting'
 import { APP_URL } from './inviteLink'
 
 /**
@@ -21,6 +21,14 @@ describe('canonicalHost', () => {
       // own, and a route of its own is a route this list has to know about.
       expect(canonicalHost('magic-slash.io', '/changelog')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/story')).toBeNull()
+      // `/faq`, which replaced `/documentation` and is what the footer's Resources
+      // column now points at.
+      expect(canonicalHost('magic-slash.io', '/faq')).toBeNull()
+      // `/documentation` has no route behind it any more — `retiredPath` below 308s it
+      // to `/faq`, and the middleware asks that FIRST. It stays in `PUBLIC_PATHS`
+      // regardless, because this rule runs on the raw path and would otherwise decide a
+      // deleted public page belongs to the app: a reader following an old link would get
+      // a login form instead of the page that replaced it.
       expect(canonicalHost('magic-slash.io', '/documentation')).toBeNull()
     })
 
@@ -46,6 +54,7 @@ describe('canonicalHost', () => {
       expect(canonicalHost('magic-slash.io', '/story/')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/features/')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/changelog/')).toBeNull()
+      expect(canonicalHost('magic-slash.io', '/faq/')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/documentation/')).toBeNull()
     })
 
@@ -117,6 +126,57 @@ describe('canonicalHost', () => {
 })
 
 /**
+ * The pages we deleted, and where their readers land.
+ *
+ * The rule matters more than its one entry: a public page that stops existing has three
+ * possible fates and only one of them is acceptable. It can 404, which throws away every
+ * inbound link. It can fall out of `PUBLIC_PATHS` and 307 to the app host, which answers
+ * a missing page with a login form — worse than a 404, because it reads as having been
+ * signed out. Or it can redirect to whatever replaced it, which is this.
+ */
+describe('retiredPath', () => {
+  it('sends the documentation page to the FAQ that replaced it', () => {
+    // `/documentation` is in the README, in release notes, and in whatever anybody
+    // bookmarked over the releases it was linked from. The manual is gone — split
+    // between `/changelog`, `/features` and `/faq` — and the FAQ is the part of it
+    // people were actually opening it for.
+    expect(retiredPath('magic-slash.io', '/documentation')).toBe('/faq')
+  })
+
+  it('retires the path however it was typed', () => {
+    // On a production build Next answers `/documentation/` with its own 308 to
+    // `/documentation` before the middleware runs, so this normalisation is belt and
+    // braces rather than the thing carrying that URL today — measured, two hops to
+    // `/faq`. It stays because the ordering is the framework's to change and the
+    // `trailingSlash` option is ours: without it, either change turns an old link into
+    // a 404 silently.
+    expect(retiredPath('magic-slash.io', '/documentation/')).toBe('/faq')
+  })
+
+  it('answers off production too, where the route is just as absent', () => {
+    // Unlike `canonicalHost`, this is not a hosting decision — the page does not exist
+    // in development either, so scoping it to the real domains would leave the redirect
+    // untestable in the one place anybody would try it.
+    expect(retiredPath('localhost:3000', '/documentation')).toBe('/faq')
+    expect(retiredPath('magic-slash-git-branch.vercel.app', '/documentation')).toBe('/faq')
+  })
+
+  it('leaves every live page alone', () => {
+    for (const path of ['/', '/faq', '/features', '/changelog', '/story', '/dashboard']) {
+      expect(retiredPath('magic-slash.io', path), path).toBeNull()
+    }
+  })
+
+  it('exempts the invite host, where a path is a token and not a route', () => {
+    // `invite.magic-slash.io/documentation` is a request for an invitation that happens
+    // to be named `documentation`. Redirecting it would answer a wrong-token message
+    // with a page about uninstalling the app — the same reason that host is exempt from
+    // `canonicalHost`.
+    expect(retiredPath('invite.magic-slash.io', '/documentation')).toBeNull()
+  })
+})
+
+/**
  * Host routing decides what three different audiences see at `/`, so a mistake here
  * is not a broken page — it is the wrong PRODUCT answering the door. The invite
  * rules get the most attention because they are the only ones that touch paths
@@ -135,7 +195,9 @@ describe('resolveRewrite', () => {
       // own here — this pins that, since the failure would be a rewrite nobody wrote.
       expect(resolveRewrite('magic-slash.io', '/features')).toBeNull()
       expect(resolveRewrite('magic-slash.io', '/changelog')).toBeNull()
-      // Unlinked from the site's nav, but still reachable — the desktop app links here.
+      expect(resolveRewrite('magic-slash.io', '/faq')).toBeNull()
+      // A retired path never reaches this rule — the middleware redirects it before
+      // asking — but it must not grow a rewrite of its own if it ever does.
       expect(resolveRewrite('magic-slash.io', '/documentation')).toBeNull()
     })
   })

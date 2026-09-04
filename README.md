@@ -586,8 +586,7 @@ magic-slash/
 │   ├── magic-done/SKILL.md       # Finalize after merge
 │   └── evals/                    # Eval set and results
 ├── webapp/                # Next.js app — public site + web product (Vercel)
-│   ├── app/(marketing)/   # magic-slash.io — landing page, story
-│   ├── app/(docs)/        # /documentation — linked from the desktop app only
+│   ├── app/(marketing)/   # magic-slash.io — landing, features, FAQ, changelog, story
 │   ├── app/dashboard/     # app.magic-slash.io
 │   ├── app/admin/         # app.magic-slash.io/admin — back-office
 │   ├── app/invite/        # invite.magic-slash.io — invitation funnel

@@ -20,10 +20,18 @@ import { describe, expect, it } from 'vitest'
  *   2. NO `marketing.css` BUTTON CLASS may reappear on the homepage. That stylesheet
  *      holds eleven rival button definitions; the rebuild replaced all of them with the
  *      single `Button` / `ButtonLink` recipe in `components/ui.tsx`. A pasted
- *      `className="btn-get-started"` would look right — the class still exists on disk,
- *      and the Documentation page still loads the file that defines it — so this is the
- *      only thing standing between the homepage and a twelfth button. Acceptance
- *      criterion 4.
+ *      `className="btn-get-started"` would look right — the class is still on disk — so
+ *      this is the only thing standing between the homepage and a twelfth button.
+ *      Acceptance criterion 4.
+ *
+ * NOTHING IMPORTS `marketing.css` ANY MORE, which is new and changes what rule 1 is
+ * guarding. `app/(docs)/layout.tsx` was the last importer, and `/documentation` has been
+ * deleted (`/faq` replaced it; see `lib/faq.test.ts`). The FILE stays on disk on purpose
+ * and that is not sentiment: it defines the ~81 `mk-*` classes that dress
+ * `components/site/home/AppMockup.tsx`, which issue #270 brings back scroll-driven and
+ * has to bring the styling with it. `marketingCss.test.ts` still reads it. So the rule
+ * is no longer "the homepage is off a stylesheet the docs still use" — it is "nothing is
+ * on it, and the homepage least of all".
  *
  * TEXT, and only text. The root suite runs on the ROOT `node_modules` and CI never
  * installs `webapp/`'s dependencies, so nothing here may import `react`, `next/*`,
@@ -36,22 +44,24 @@ const WEBAPP = new URL('../', import.meta.url)
 const path = (relative: string) => fileURLToPath(new URL(relative, WEBAPP))
 
 const MARKETING_LAYOUT = path('app/(marketing)/layout.tsx')
-const DOCS_LAYOUT = path('app/(docs)/layout.tsx')
 
 /**
  * The homepage's own tree: the route, the six bands, and the chrome the layout wraps
  * them in.
  *
  * `components/site` is walked RECURSIVELY so a new band or a new shared control is
- * covered the day it is written, with two subtrees cut out — and they are cut out
- * because they legitimately still use these classes rather than to make the test pass:
+ * covered the day it is written, with ONE subtree cut out — and it is cut out because it
+ * legitimately still uses these classes rather than to make the test pass:
  *   • `story/` — `/story` keeps its own `story.css`, which now carries the closing-CTA
  *     rules it used to borrow, `.btn-get-started` and `.cta-btn` among them. Those are
  *     in `StoryContent.tsx` on purpose.
- *   • `documentation/` — `app/(docs)/layout.tsx` still imports `marketing.css` for that
- *     page's typography (see rule 1's second half), so it is not off the stylesheet yet.
+ *
+ * `documentation/` was the second, exempted while `app/(docs)/layout.tsx` was still
+ * importing `marketing.css` for that page's typography. Both are deleted, so the
+ * exemption went with them — and `faq/`, the tree that replaced it, is scanned like
+ * every other.
  */
-const EXCLUDED_SUBTREES = ['story', 'documentation']
+const EXCLUDED_SUBTREES = ['story']
 
 const SCANNED_EXTENSIONS = ['.ts', '.tsx']
 
@@ -129,21 +139,28 @@ const BUTTON_CLASS_PATTERN = new RegExp(
 )
 
 describe('the homepage is off marketing.css', () => {
-  it('does not import the stylesheet in the (marketing) layout — and (docs) still does', () => {
+  it('does not import the stylesheet in the (marketing) layout', () => {
     expect(
       importsMarketingCss(readFileSync(MARKETING_LAYOUT, 'utf8')),
       '`app/(marketing)/layout.tsx` imports `marketing.css` again. The homepage is built on the design system (`components/ui.tsx` over the tokens in `tailwind.config.ts`); that stylesheet is the old static site and re-importing it dresses every element on the page a second time.',
     ).toBe(false)
+  })
 
-    // The other half of the rule, and it is what keeps the first half from passing
-    // vacuously: if `importsMarketingCss` ever stopped recognising an import — a
-    // renamed file, a broken pattern — the assertion above would go green on a
-    // stylesheet that was right there. `(docs)` must keep the import until a later
-    // story takes the Documentation page off it too.
-    expect(
-      importsMarketingCss(readFileSync(DOCS_LAYOUT, 'utf8')),
-      '`app/(docs)/layout.tsx` no longer imports `marketing.css`. The Documentation page still gets its typography and its logo from that file, so either the page just lost its styles or this test can no longer see an import at all.',
-    ).toBe(true)
+  it('would still notice an import if one came back', () => {
+    /**
+     * THE ASSERTION ABOVE IS A NEGATIVE, so it passes just as happily when the detector
+     * is broken as when the code is right — a renamed file or a mangled pattern would
+     * turn it green over a stylesheet that was right there.
+     *
+     * It used to be held up by the other half of a pair: `app/(docs)/layout.tsx` DID
+     * import the file, and asserting that kept the pattern honest. `/documentation` is
+     * deleted and nothing imports `marketing.css` any longer, so there is no real
+     * importer left to point at — hence a synthetic one. Same tripwire, no page required.
+     */
+    expect(importsMarketingCss("import '../(marketing)/marketing.css'")).toBe(true)
+    expect(importsMarketingCss("import styles from './marketing.css'")).toBe(true)
+    expect(importsMarketingCss("require('../(marketing)/marketing.css')")).toBe(true)
+    expect(importsMarketingCss("import './story.css'")).toBe(false)
   })
 
   it('uses none of the stylesheet’s button classes', () => {

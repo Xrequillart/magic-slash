@@ -18,8 +18,9 @@
  * with the reference living in the documentation.
  *
  * The one thing deliberately NOT promised anywhere: that a non-developer can use this.
- * `site.faq.q1` says so outright. The page is meant to read wide and stay honest — a
- * visitor who converts and then cannot onboard costs more than one who never converted.
+ * `site.faq.developer.a` says so outright, and it is the first row of `/faq` on purpose.
+ * The site is meant to read wide and stay honest — a visitor who converts and then
+ * cannot onboard costs more than one who never converted.
  *
  * ── Markup in the values ──
  * Some values carry HTML, because the copy needs a line break in a headline or a bold
@@ -817,26 +818,75 @@ export const marketingEn = {
     'So we automated the boring parts — and kept going until the whole thing built itself.',
   'site.why.cta': 'Read our story',
 
-  // ── ⑧ FAQ ──────────────────────────────────────────────────────────────────
-  'site.faq.title': 'FAQ & Troubleshooting',
-  // First on purpose. The page reads wide; this is where it stays honest about who
-  // the product actually serves today.
-  'site.faq.q1': 'Do I need to be a developer?',
-  'site.faq.a1':
+  // ── FAQ (`/faq`) ───────────────────────────────────────────────────────────
+  //
+  // A PAGE NOW, and it used to be band ⑧ of the homepage. Five of these questions were
+  // written for that band and outlived it: the band was cut in the rebuild and the keys
+  // sat here unread, which is why `site.faq.viewAll` — the row that pointed at a FAQ
+  // that did not exist yet — is gone rather than renumbered.
+  //
+  // KEYED BY SUBJECT (`site.faq.<subject>.{q,a}`) rather than by position. The doc
+  // catalogue this replaces was `site.doc.<section>.<n>`, positional because 675
+  // paragraphs of prose have no stable identity but their place in the document. Eleven
+  // questions do: each one is ABOUT something, the page's order is `QUESTIONS` in
+  // `lib/faq.ts` rather than the numbering here, and a question that gets reordered or
+  // dropped should not renumber the ten around it.
+  //
+  // ANSWERS ARE ONE PARAGRAPH, three sentences at the outside. A collapsed row is a
+  // promise that opening it is cheap; an answer that turns out to be a page of prose
+  // breaks it, and the reader who needed that much detail was never going to find it
+  // inside an accordion.
+  'site.faq.title': 'Frequently asked questions',
+  'site.faq.lead':
+    'Everything about installing Magic Slash, configuring it, and living with it day to day.',
+  'site.faq.stillStuck': 'Still stuck? Ask us directly.',
+  'site.faq.openIssue': 'Open an issue on GitHub',
+
+  // First on purpose. The site reads wide; this is where it stays honest about who the
+  // product actually serves today — see the note at the top of this file.
+  'site.faq.developer.q': 'Do I need to be a developer?',
+  'site.faq.developer.a':
     "You need a codebase and a little comfort with Git. You don't need to write the code — that's the point — but this isn't a no-code tool: it works on real projects.",
-  'site.faq.q2': 'Is Magic Slash free?',
-  'site.faq.a2':
-    'Yes. Magic Slash is open-source and free to use. You just need a Claude Code subscription.',
-  'site.faq.q3': 'Does it work with GitHub Issues?',
-  'site.faq.a3':
-    'Absolutely. Magic Slash supports both Jira and GitHub Issues out of the box.',
-  'site.faq.q4': 'Can I customize the commit format?',
-  'site.faq.a4':
-    'Yes. Choose between Conventional Commits, Angular, Gitmoji, or define your own format per project.',
-  'site.faq.q5': 'Does it work with any language or framework?',
-  'site.faq.a5':
-    'Yes. Magic Slash is language-agnostic — it works with any codebase Claude Code can handle.',
-  'site.faq.viewAll': 'View all FAQ',
+
+  'site.faq.price.q': 'Is Magic Slash free?',
+  'site.faq.price.a':
+    'Yes. Magic Slash is open source and free to use. The one thing it assumes you already have is <strong>Claude Code</strong>, since every command runs inside it.',
+
+  'site.faq.prerequisites.q': 'What do I need before installing it?',
+  'site.faq.prerequisites.a':
+    'Three things: <strong>Claude Code</strong>, installed and authenticated; <strong>Node.js 20</strong> or newer, which the Jira and GitHub MCP servers run on; and <strong>Git 2.20</strong> or newer, for worktree support. The first launch checks all three, installs the eight skills into <code>~/.claude/skills/</code> and configures the MCP servers — there is no script to run.',
+
+  'site.faq.platforms.q': 'Which operating systems are supported?',
+  'site.faq.platforms.a':
+    'The desktop app is a native macOS build, universal for Intel and Apple Silicon. The commands themselves are Claude Code skills, so they run wherever Claude Code does — macOS, Linux, and Windows through WSL 2.',
+
+  'site.faq.trackers.q': 'Does it work with GitHub Issues, or only Jira?',
+  'site.faq.trackers.a':
+    'Both, natively, and you pick which one per repository. A Jira key like <code>PROJ-123</code> goes through the Atlassian MCP server; a number like <code>#456</code> is looked up as a GitHub issue across the repositories you configured.',
+
+  'site.faq.languages.q': 'Does it work with any language or framework?',
+  'site.faq.languages.a':
+    'Yes — Magic Slash is language-agnostic, and works on any codebase Claude Code can read. It detects your package manager from the lockfile (npm, pnpm, yarn, bun, pip, poetry, cargo, go, bundler, composer) so a fresh worktree comes up with its dependencies installed.',
+
+  'site.faq.commitFormat.q': 'Can I change the commit and pull request format?',
+  'site.faq.commitFormat.a':
+    'Yes, per repository. Pick <strong>Conventional Commits</strong>, <strong>Angular</strong> or <strong>Gitmoji</strong> for the message, set your own branch prefixes, and choose the language of your commits, pull requests and ticket comments independently.',
+
+  'site.faq.terminal.q': 'Do I have to use the desktop app?',
+  'site.faq.terminal.a':
+    'No. The eight commands work in any terminal, in VS Code and in the JetBrains IDEs — anywhere Claude Code runs. The app is what adds the parts a terminal cannot: several agents side by side, live tracking of what each one is doing, the ticket beside the code, and a notification when one of them needs you.',
+
+  'site.faq.credentials.q': 'Where are my credentials stored?',
+  'site.faq.credentials.a':
+    'Magic Slash holds no tokens of its own. Jira authenticates through the Atlassian MCP server over OAuth in your browser, and GitHub uses a personal access token kept in <code>~/.claude/settings.json</code>, which the skills never read directly. The bridge between Claude Code and the app binds to <code>127.0.0.1</code> on a random port per session, so nothing of it is reachable from your network.',
+
+  'site.faq.updates.q': 'How do updates work?',
+  'site.faq.updates.a':
+    'The app checks GitHub Releases at launch, downloads a new version in the background, then offers <strong>Restart</strong> or <strong>Later</strong> in the sidebar — nothing takes over your screen. The eight built-in skills are re-synced at the same time; skills you wrote yourself are never touched.',
+
+  'site.faq.uninstall.q': 'How do I uninstall it?',
+  'site.faq.uninstall.a':
+    'One script: <code>install/uninstall.sh</code>. It removes the eight skills, the Jira and GitHub MCP servers, every permission the setup added to <code>~/.claude/settings.json</code>, the app itself and <code>~/.config/magic-slash/</code>. Your repositories and your Claude Code install are left exactly as they were.',
 
   // ── Closing CTA ────────────────────────────────────────────────────────────
   // ── Closing CTA (homepage) ─────────────────────────────────────────────────
