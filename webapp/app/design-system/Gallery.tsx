@@ -23,6 +23,7 @@ import {
   Button,
   ButtonLink,
   Card,
+  Collapse,
   Eyebrow,
   Input,
   Label,
@@ -172,6 +173,9 @@ export function Gallery() {
   const [rows, setRows] = useState(6)
   const [swap, setSwap] = useState<ButtonVariant>('primary')
   const [viewTab, setViewTab] = useState('general')
+  // The accordion specimen below. `null` is "all closed", which is the state `/faq`
+  // never enters — it is here so the one-at-a-time mode can be judged from a cold start.
+  const [openRow, setOpenRow] = useState<string | null>('grid')
 
   return (
     <div className={onCanvas ? 'min-h-screen bg-canvas' : 'min-h-screen bg-white'}>
@@ -757,6 +761,105 @@ export function Gallery() {
             coloured box inside a white box; filling the tile, the artwork simply becomes the tile and
             takes its corner. Jira&apos;s mark and ours are the two that bleed — which is why they are
             the two specimens above that have no white margin.
+          </p>
+        </Block>
+
+        <Block
+          title="Collapse — the row that opens"
+          why="A rounded plate that lights up under the pointer and stays lit while open, measured off cleanshot.com/faq — their radius, their 5% ink wash for both states, their 18px title, their 20px chevron turning 180° over 300ms, their 24px of air above the answer. It is also the one control on this page with an animated, content-measured part, and its failure modes are things you have to PRESS to see: a stutter, a long answer cut short, a keyboard tab landing inside something invisible. Hence live specimens rather than two static states."
+        >
+          <div className="grid gap-5 lg:grid-cols-2">
+            <Card className="p-6">
+              <p className="mb-4 font-mono text-[11px] text-muted">
+                uncontrolled — rows open independently, which is what /faq renders
+              </p>
+              {/* `flex flex-col gap-1` and NOTHING ELSE. No border, no dividers: the
+                  reference puts 5px between tiles and draws no lines at all, and the row
+                  carries no margin of its own so a lone `Collapse` ships with no space
+                  under it. This is the shape every caller is expected to build. */}
+              <div className="flex flex-col gap-1">
+                <Collapse title="Two open at once, on purpose" defaultOpen>
+                  Press the row under this one without closing this one. Two answers side by
+                  side is the case a one-at-a-time accordion makes impossible, and on a FAQ
+                  it is the common one — see the note in <code className="font-mono">FaqContent.tsx</code>.
+                </Collapse>
+                <Collapse title="An answer long enough to catch a height bug">
+                  The height is animated with <code className="font-mono">grid-template-rows</code>,
+                  0fr to 1fr, which opens to the CONTENT rather than to a guessed number. The
+                  reference animates <code className="font-mono">max-height</code> instead, and
+                  this paragraph is what that costs: a transition towards a height the content
+                  never reaches finishes early and snaps, and anything longer than the cap is
+                  simply cut off at it. Watch the bottom edge, not the chevron.
+                </Collapse>
+                <Collapse title="Anything focusable inside a closed row">
+                  The content stays in the DOM while closed, which is what makes the animation
+                  possible and what lets find-on-page reach an answer nobody opened. The cost is
+                  that a closed row is invisible but still laid out — so{' '}
+                  <code className="font-mono">inert</code> takes it out of the tab order.{' '}
+                  <button type="button" className="font-medium text-brand underline underline-offset-2">
+                    Close this row and tab through the page
+                  </button>{' '}
+                  — the keyboard must skip this link entirely.
+                </Collapse>
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <p className="mb-4 font-mono text-[11px] text-muted">
+                controlled — one at a time, for a panel tall enough to lose your place
+              </p>
+              <div className="flex flex-col gap-1">
+                {[
+                  { id: 'grid', title: 'Driven by the caller' },
+                  { id: 'inert', title: 'Opening one closes the others' },
+                  { id: 'reduce', title: 'Under reduced motion' },
+                ].map((row) => (
+                  <Collapse
+                    key={row.id}
+                    title={row.title}
+                    open={openRow === row.id}
+                    onToggle={(next) => setOpenRow(next ? row.id : null)}
+                  >
+                    {row.id === 'reduce' ? (
+                      <>
+                        Every transition here is{' '}
+                        <code className="font-mono">motion-reduce:transition-none</code> — the wash,
+                        the track and the chevron. Turn the OS setting on and the rows still open,
+                        they just arrive rather than travel, which is the whole contract.
+                      </>
+                    ) : (
+                      <>
+                        Pass <code className="font-mono">open</code> and{' '}
+                        <code className="font-mono">onToggle</code> and the row stops keeping its own
+                        state. Note that <code className="font-mono">onToggle</code> fires in both
+                        modes: a caller that passes it alone, to log the press, does not lose the
+                        toggle.
+                      </>
+                    )}
+                  </Collapse>
+                ))}
+              </div>
+              <p className="mt-4 text-sm text-muted">
+                Pressing the open row closes it — <code className="font-mono text-ink">onToggle(false)</code>{' '}
+                sets the group back to none open, which is the state the wash is worth checking in:
+                nothing lit, and a hover still lights one. A group that cannot be fully closed is the
+                other reasonable design, and it is the caller&apos;s call rather than the primitive&apos;s.
+              </p>
+            </Card>
+          </div>
+
+          <p className="mt-5 max-w-2xl text-sm text-muted">
+            Two things the reference does that this does not, both of them bugs rather than design:
+            it animates <code className="font-mono text-ink">max-height</code> (see the second
+            specimen), and its trigger is a bare{' '}
+            <code className="font-mono text-ink">div</code> — no role, no{' '}
+            <code className="font-mono text-ink">aria-expanded</code>, no keyboard. Here it is a real{' '}
+            <code className="font-mono text-ink">button</code> inside an{' '}
+            <code className="font-mono text-ink">h3</code>, so a screen reader gets a list of
+            headings to navigate rather than eleven unnamed rows. Not{' '}
+            <code className="font-mono text-ink">&lt;details&gt;</code> either: a native disclosure
+            snaps open, and the ways round that are supported in some of the browsers reading the
+            site and not the rest.
           </p>
         </Block>
 

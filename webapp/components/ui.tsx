@@ -1,6 +1,7 @@
 'use client'
 
-import type { LucideIcon } from 'lucide-react'
+import { useId, useState } from 'react'
+import { ChevronDown, type LucideIcon } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
 
 /**
@@ -781,6 +782,236 @@ export function Badge({
     <span className={cx('rounded-full px-2.5 py-0.5 text-[11px] font-medium', BADGE_TONES[tone], className)}>
       {children}
     </span>
+  )
+}
+
+// ── Collapse ─────────────────────────────────────────────────────────────────
+
+/**
+ * One disclosure row: a question you press, and the answer that opens under it.
+ *
+ * ── THE DRESS IS CLEANSHOT'S, MEASURED OFF `cleanshot.com/faq` ──────────────────────
+ *
+ * Their `.question` is a ROUNDED PLATE and not a ruled row, which is the whole character
+ * of the thing and the easiest part to get wrong. Read off their stylesheet:
+ *
+ *   • `border-radius: 10px; padding: 15px; margin-bottom: 5px` — a stack of soft tiles
+ *     with a hairline of air between them. NO borders and NO dividers anywhere.
+ *   • `background: #1616180d` on `:hover` AND on `.-active` — the same 5% ink wash for
+ *     "you are pointing at this" and "this is open". One state, two causes.
+ *   • title `18px / 600 / line-height 1.67`, laid out `space-between` with the marker,
+ *     `user-select: none`.
+ *   • marker: a 20px chevron, `margin-left: 20px`, `transition: all .3s`, and
+ *     `transform: rotate(180deg)` while open.
+ *   • answer `15px / 450 / 1.6`, full ink rather than a greyed-down rung, `max-height: 0`
+ *     with `overflow: hidden`, and `margin-top: 24px` once open.
+ *
+ * Translated into this system rather than transcribed: `rounded-xl` is 12px against
+ * their 10 and `p-4` is 16px against their 15, because those are the DECLARED radius and
+ * spacing rungs and a 10px corner would be an arbitrary value on a page whose whole
+ * point is that there are none. Their 15px of plate padding is therefore spent as the
+ * trigger's `p-4` plus the answer's `px-4 pb-4` — see the note at the button, which is
+ * about which element owns it rather than about the number. `bg-ink/5` is their wash — `ink` is #0a0a0a where theirs
+ * is #161618, which is the same decision one notch cooler. `text-lg` is exactly their
+ * 18px and `text-[15px]` exactly their 15px, the latter already established by
+ * `ChangelogContent.tsx`. Weight 450 does not exist in our two families, so the answer
+ * takes `font-normal` and the plate carries the hierarchy the half-step would have.
+ *
+ * THE ANSWER IS FULL `text-ink`, which looks like an oversight beside `/changelog`'s
+ * `text-ink/70` entries and is not: on a row with no rule under it, the ONLY thing
+ * separating the answer from the question above it is 24px of air and a weight step. Fade
+ * the answer and the row stops reading as one block of text and starts reading as a
+ * heading with a caption. It is their call and it is right.
+ *
+ * TWO THINGS DELIBERATELY NOT COPIED, both of them their bugs rather than their design:
+ *
+ *   1. `max-height` FOR THE ANIMATION. It only works against a number, and a number no
+ *      content reaches means the transition eases towards a height that is never used —
+ *      so a short answer finishes early and snaps, and one longer than the cap is simply
+ *      cut off. `grid-template-rows: 0fr → 1fr` opens to the CONTENT's own height with
+ *      no number in it at all. It is the one technique that does; the alternative is
+ *      reading `scrollHeight` in an effect, which is a layout read per row on mount and
+ *      goes stale on every language switch — and `useT()` re-renders these with French in
+ *      them. The grid needs THREE elements and each is load-bearing: the track (which
+ *      transitions), an `overflow-hidden` clipper (a grid item at `0fr` is zero-height
+ *      but does not hide what spills out of it), and the content. Collapsing the middle
+ *      one into either neighbour breaks it.
+ *
+ *   2. A `div` FOR THE TRIGGER, which is what theirs is — no role, no `aria-expanded`, no
+ *      keyboard. Here it is a real `button` inside an `h3`: pressed with Space as well as
+ *      Enter, announced as expanded or collapsed, and giving a screen reader a list of
+ *      headings to navigate rather than eleven unnamed rows. The `h3` wraps the button
+ *      instead of replacing it, which is what the ARIA accordion pattern asks for and
+ *      costs an element with no styles on it.
+ *
+ * ── WHY NOT `<details>`/`<summary>` ─────────────────────────────────────────────────
+ *
+ * The same widget with none of the code, and it loses on the animation: a native
+ * `details` SNAPS open, its height is not animatable, and the ways round that
+ * (`::details-content`, `interpolate-size`) are new enough that the transition would be
+ * present in some of the browsers reading the page and absent in the rest. Its marker is
+ * also awkward to replace consistently across engines, and `summary`'s implicit role does
+ * not take the `aria-expanded` this needs.
+ *
+ * ── SPACING BETWEEN ROWS BELONGS TO THE CALLER ──────────────────────────────────────
+ *
+ * CleanShot puts `margin-bottom: 5px` on the row itself with a `:last-of-type` rule to
+ * take it back off. This carries no margin at all: a group is `flex flex-col gap-1`,
+ * which is the same 4px of air with no exception to state and no margin on a lone row
+ * that has nothing under it. `motion-reduce:transition-none` throughout, because all of
+ * this is decoration on a state change.
+ *
+ * ── CONTROLLED OR NOT ───────────────────────────────────────────────────────────────
+ *
+ * Pass `open` and `onToggle` for an accordion that closes its siblings; pass neither and
+ * the row owns its own state, which is what a FAQ wants — see the note in
+ * `FaqContent.tsx` on why comparing two answers beats one-at-a-time.
+ */
+export function Collapse({
+  title,
+  open,
+  onToggle,
+  defaultOpen = false,
+  id,
+  className,
+  children,
+}: {
+  /** The pressable line. A string in every current call site; `ReactNode` so a row can carry a badge. */
+  title: React.ReactNode
+  /** Controlled state. Omit both this and `onToggle` to let the row keep its own. */
+  open?: boolean
+  onToggle?: (open: boolean) => void
+  /** Uncontrolled only — ignored when `open` is passed. */
+  defaultOpen?: boolean
+  /** An anchor target on the row, so `#credentials` addresses one question. */
+  id?: string
+  /** ADDITIVE layout only. See the rule at the top of this file. */
+  className?: string
+  children: React.ReactNode
+}) {
+  const [ownOpen, setOwnOpen] = useState(defaultOpen)
+  const isOpen = open ?? ownOpen
+
+  const panelId = useId()
+  const triggerId = useId()
+
+  const toggle = () => {
+    // Both, always: a controlled caller gets its callback, an uncontrolled row moves its
+    // own state. Branching on which mode we are in would mean a caller that passes
+    // `onToggle` alone (to log the press, say) silently loses the toggle.
+    onToggle?.(!isOpen)
+    if (open === undefined) setOwnOpen((was) => !was)
+  }
+
+  return (
+    // THE PLATE. `bg-ink/5` while open and on hover — their one wash for two states — and
+    // `bg-transparent` at rest, stated rather than left off so the transition has
+    // something to leave from. `group` is what lets the marker inside react to a hover on
+    // the whole row.
+    //
+    // `scroll-mt-24` for the reason `HomeSection` carries one: the site's bar is `fixed`
+    // and 64px tall, so a bare fragment would drop the question underneath it.
+    <div
+      id={id}
+      className={cx(
+        'group scroll-mt-24 rounded-xl transition-colors duration-150 motion-reduce:transition-none',
+        isOpen ? 'bg-ink/5' : 'bg-transparent hover:bg-ink/5',
+        className,
+      )}
+    >
+      <h3>
+        {/* THE PADDING IS ON THE BUTTON, NOT ON THE PLATE, and that is a correctness fix
+            rather than a preference. With `p-4` on the plate the trigger only covers the
+            line of text, so the 16px of plate around it looks pressable and is not; and
+            the obvious repair — `-m-4 p-4` to stretch the button back out — makes the
+            16px ABOVE THE ANSWER part of the button, so a click near the first line of an
+            open answer collapses the row. Padding the trigger gives the closed plate the
+            reference's 16px on every side with the whole of it pressable, and leaves the
+            answer's own edges to the answer.
+
+            `text-left` because a `button` centres its text by default and these are
+            sentences; `select-none` because a row you press should not be picking up a
+            text selection when someone double-clicks it — their call too. The focus ring
+            is `ink`, the same neutral one `BUTTON_BASE` uses; see the note up there for
+            why it is not `brand`. `rounded-xl` on the button as well so the ring follows
+            the plate's corner rather than cutting across it. */}
+        <button
+          type="button"
+          id={triggerId}
+          aria-expanded={isOpen}
+          aria-controls={panelId}
+          onClick={toggle}
+          className="flex w-full select-none items-center justify-between gap-5 rounded-xl p-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+        >
+          <span className="font-display text-lg font-semibold leading-relaxed text-ink">
+            {title}
+          </span>
+          {/* The marker TURNS, it does not swap. A plus that becomes a minus is two
+              glyphs and a frame where neither is right; a chevron rotating 180° is one
+              element the whole way through, and the rotation itself says which direction
+              the row is going. Their 20px, their 300ms, their 180°.
+
+              `text-ink/40` at rest and full ink under the row's hover, which is what the
+              `group` on the plate is for: the marker is the only thing on the row that
+              reacts to the pointer beyond the wash, since darkening the question would
+              read as the question changing rather than as the control lighting up.
+
+              `gap-5` above is their `margin-left: 20px`, moved onto the flex row so the
+              marker cannot end up flush against a question long enough to fill the line. */}
+          <ChevronDown
+            aria-hidden
+            className={cx(
+              'h-5 w-5 shrink-0 text-ink/40 transition-transform duration-300 ease-out group-hover:text-ink motion-reduce:transition-none',
+              isOpen ? 'rotate-180' : '',
+            )}
+          />
+        </button>
+      </h3>
+
+      <div
+        className={cx(
+          'grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none',
+          isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+        )}
+      >
+        {/* THE CLIPPER. Not decoration: a grid item in a `0fr` track has zero height but
+            its content still paints outside it. */}
+        <div className="overflow-hidden">
+          <div
+            id={panelId}
+            role="region"
+            aria-labelledby={triggerId}
+            // `inert` is a boolean attribute, so its PRESENCE is what counts — hence the
+            // empty string when closed and nothing at all when open. It is what pays for
+            // keeping the content in the DOM: a closed row is invisible but still laid
+            // out, so anything focusable inside would be a tab into nothing. This takes
+            // the subtree out of the tab order and out of the accessibility tree, which
+            // is what `aria-expanded={false}` on the trigger has already promised.
+            //
+            // Cast because React 18's `HTMLAttributes` has no `inert` (React 19 added it,
+            // and this app is on 18.3). The alternative is a module augmentation for one
+            // attribute on one element, which is a bigger footprint than a cast with a
+            // comment on it. Drop both the spread and this note when React 19 lands.
+            {...((isOpen ? {} : { inert: '' }) as React.HTMLAttributes<HTMLDivElement>)}
+            // THE REFERENCE'S 24px BETWEEN QUESTION AND ANSWER, spent in two parts
+            // because the trigger above already owns the first 16 of it as its own
+            // bottom padding — so `mt-2` is the remaining 8, not a number picked by eye.
+            // `px-4 pb-4` are the plate's other three edges, which the trigger cannot
+            // provide for a box that is not inside it.
+            //
+            // ALL OF IT INSIDE THE COLLAPSING TRACK, margin included: put the margin on
+            // the track and a closed row keeps 8px of empty space under its question.
+            //
+            // `pr-9` rather than `pr-4` on the right: the marker's column is 20px plus
+            // the trigger's `gap-5`, and matching it lands the answer's right edge on the
+            // same vertical as the question's rather than under the chevron.
+            className="mt-2 px-4 pb-4 pr-9 text-[15px] font-normal leading-relaxed text-ink"
+          >
+            {children}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
