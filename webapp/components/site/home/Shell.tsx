@@ -72,6 +72,14 @@ const SECTION_PADDING = {
    */
   hero: 'pt-32 pb-20 md:pt-40 md:pb-28',
   /**
+   * The band DIRECTLY UNDER a hero, when the hero is its own band. A hero's bottom is
+   * already a band's bottom (5rem, 7rem from `md`), so the follower owes it only the
+   * difference between that and the air a page wants between its opening and its first
+   * content — `/features` puts 7rem (10rem from `md`) there, and this is the remainder.
+   * Its bottom is a band's bottom.
+   */
+  follow: 'pt-8 pb-20 md:pt-12 md:pb-28',
+  /**
    * The closing band. Taller than a band on both sides because it is not a band in a
    * stack — it is a dark sheet the page ends on, with one icon, one headline and one
    * button in the middle of it, and that composition needs room above and below to read

@@ -135,8 +135,14 @@ export function HeroSection() {
  * contrast with it. `brand` carries the depth, `accent` widens it, and both sit behind
  * the type rather than under it — the column above is `relative`, so the text is never
  * inside the blur.
+ *
+ * EXPORTED, because `/features` opens on the same wash. The one thing that differs
+ * between the two pages is the ground the bloom has to land on — `canvas` here, white
+ * there — so the fade at the bottom takes its `to-*` class as a prop rather than being
+ * copied with one token changed. The caller's band gradient MUST end on the same colour,
+ * or the fade lands on a ground the band then leaves.
  */
-function Bloom() {
+export function Bloom({ fadeTo = 'to-canvas' }: { fadeTo?: 'to-canvas' | 'to-white' }) {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0">
       <div className="absolute left-1/2 top-0 h-2/3 w-2/3 -translate-x-1/2 rounded-full bg-brand/20 blur-3xl" />
@@ -144,7 +150,7 @@ function Bloom() {
       <div className="absolute -right-1/4 top-1/4 h-1/2 w-1/2 rounded-full bg-accent/15 blur-3xl" />
       {/* Fades the bloom out into the page below, so the band's own
           `from-softblue to-canvas` still lands on `canvas` at its bottom edge. */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-canvas" />
+      <div className={`absolute inset-0 bg-gradient-to-b from-transparent via-transparent ${fadeTo}`} />
     </div>
   )
 }

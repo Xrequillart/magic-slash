@@ -50,6 +50,7 @@ import { Fragment } from 'react'
 import { Card, CARD_TONE_CYCLE, LogoPlate, ShowcaseCard, ToneCard } from '@/components/ui'
 import type { Translate } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
+import { Bloom } from '../home/HeroSection'
 import { HomeSection } from '../home/Shell'
 import { GithubIcon } from '../icons'
 import { FeaturesSidebar } from './FeaturesSidebar'
@@ -317,11 +318,23 @@ export function FeaturesContent() {
     // layout also wraps `/story` (on `softblue`) and the homepage (on `canvas`), so each
     // page paints its own ground. See the ink note above for why this one is white.
     <div className="bg-white">
-      {/* ONE `HomeSection`, and `padding="hero"` because this is the page's first band —
-          the bar is `fixed` and 64px tall, so the first line owes it the taller top pad.
-          The component also supplies the `max-w-site` column every other page of the
-          site is capped on, which is the reason not to hand-roll a wrapper here. */}
-      <HomeSection padding="hero">
+      {/* TWO `HomeSection`s, where there used to be one. The opening is its own band so
+          it can carry the homepage hero's wash — `softblue` fading down, with the blue
+          `Bloom` behind the headline — without that wash running under thirty rows of
+          list. `padding="hero"` because this is the page's first band: the bar is
+          `fixed` and 64px tall, so the first line owes it the taller top pad. The
+          component also supplies the `max-w-site` column every other page of the site
+          is capped on, which is the reason not to hand-roll a wrapper here.
+
+          THE GRADIENT ENDS ON WHITE, NOT `canvas`, and so does the bloom's own fade
+          (`fadeTo="to-white"`): this page's ground is white (see the ink note above),
+          and a band that fades to `canvas` over a white page leaves a blue-grey step at
+          its bottom edge. Same recipe as `HeroSection`, one token changed. */}
+      <HomeSection
+        padding="hero"
+        backdrop={<Bloom fadeTo="to-white" />}
+        className="bg-gradient-to-b from-softblue to-white"
+      >
         {/*
           The headline is written out instead of going through `HomeHeading`, and the
           reason is the heading LEVEL: that component emits an `h2`, because on the
@@ -350,19 +363,19 @@ export function FeaturesContent() {
             The GRID BELOW STAYS LEFT-ALIGNED. Centring an opening is a way of saying
             "this is the page"; centring thirty rows of prose would just make them
             harder to scan. */}
-        {/* THE AIR IS MARGIN, NOT PADDING, and that distinction is load-bearing here.
-            `HomeSection`'s own padding arrives through the `padding` slot precisely so a
-            caller cannot race it — a `pt-40` appended through `className` against the
-            slot's `pt-32` is a CONFLICTING utility, and which one lands is decided by
-            Tailwind sorting class names rather than by anything written here (see
-            `SECTION_PADDING` in `Shell.tsx`). So the extra room this page wants is a
-            margin below the block and a bigger one above the grid; both compose with the
-            section's padding instead of fighting it.
+        {/* THE AIR BETWEEN THE OPENING AND THE GRID IS THE TWO BANDS' PADDING, and none
+            of it is written here. `HomeSection`'s padding arrives through the `padding`
+            slot precisely so a caller cannot race it — a `pt-40` appended through
+            `className` against the slot's `pt-32` is a CONFLICTING utility, and which
+            one lands is decided by Tailwind sorting class names rather than by anything
+            written here (see `SECTION_PADDING` in `Shell.tsx`).
 
             The reference gives its own heading 80px above and 48px below, then starts
-            the columns 80px further down. `pb-4 md:pb-8` here plus the grid's
-            `mt-24 lg:mt-32` is that rhythm on this page's scale. */}
-        <div className="mx-auto max-w-3xl pb-4 text-center md:pb-8">
+            the columns 80px further down. The hero band's bottom plus the next band's
+            `follow` top is that rhythm on this page's scale — the same 7rem (10rem from
+            `md`) the old `pb-4 md:pb-8` + `mt-24 lg:mt-32` margins came to, before the
+            opening became a band of its own. */}
+        <div className="mx-auto max-w-3xl text-center">
           <h1 className="font-display text-4xl font-black leading-[1.1] text-ink md:text-6xl">
             {t(PAGE_CHROME.title)}
           </h1>
@@ -370,13 +383,15 @@ export function FeaturesContent() {
             {t(PAGE_CHROME.lead)}
           </p>
         </div>
+      </HomeSection>
 
+      <HomeSection padding="follow">
         {/* The rail's width is fixed and the content column takes the rest.
             `minmax(0,1fr)` and not `1fr`: a grid track's automatic minimum is its
             content, so a long unbroken string in a row would push the column wider than
             the page instead of wrapping inside it. Single-column below `lg`, where the
             sidebar is hidden anyway. */}
-        <div className="mt-24 grid gap-12 lg:mt-32 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-16">
+        <div className="grid gap-12 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-16">
           <FeaturesSidebar />
 
           <div className="flex flex-col">
