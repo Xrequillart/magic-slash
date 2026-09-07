@@ -169,6 +169,46 @@ describe('design tokens', () => {
   })
 
   /**
+   * EVERY TONE SEEDS ITS WASH ON ITS OWN NAME, which is the one way the composition can
+   * go wrong silently.
+   *
+   * `mesh()` draws every position and size in a tone's seven layers from `seeded(seed)`,
+   * so the seed IS the composition: two tones passing the same string are two grounds
+   * wearing identical blooms in identical places — which is the mechanical stamped look
+   * the dice exist to prevent, arriving in the one form nobody spots by reading a diff.
+   * It is a plausible edit, too: the way a ninth tone gets added is by copying the line
+   * above it, and the seed is the argument you would forget to change.
+   *
+   * READ AS TEXT, like everything else here, and that is a constraint rather than a
+   * preference — this suite runs on the ROOT `node_modules`, so it may not import the
+   * webapp's config. What that buys anyway: the check is on the CALL SITE, which is where
+   * the mistake would live. Evaluating `mesh()` and comparing the eight strings would
+   * also catch it, but it would pass just as happily on a seed of `'tone-mist'` or
+   * `'Mist'` — near-misses that work today and stop matching the day something else keys
+   * off a tone's name.
+   *
+   * It does NOT check the ranges or the layer count: those are the design, they are meant
+   * to be retuned, and a test that pinned them would be a test that fails every time the
+   * wash is adjusted on purpose. The invariants worth a test are the ones a reviewer
+   * cannot see — this one, and the ink pairing below.
+   */
+  it('seeds every card tone on its own name', () => {
+    const tones = objectLiteral(config, 'TONES')
+
+    for (const line of tones.split('\n')) {
+      const call = /^'?tone-([a-z]+)'?:\s*mesh\('([^']*)'/.exec(line.trim())
+      if (!call) continue
+
+      const [, tone, seed] = call
+      expect(seed, `\`tone-${tone}\` seeds its wash on '${seed}' rather than on its own name`).toBe(tone)
+    }
+
+    // The loop above is vacuously true if the shape of a call site ever changes, so hold
+    // it to the count: eight tones, eight seeded calls.
+    expect(tones.match(/mesh\('/g)).toHaveLength(8)
+  })
+
+  /**
    * THE PRODUCT PLATES, held to the same rule as the tones and for a sharper reason: the
    * five gradients here are somebody ELSE'S brand colours, and a borrowed colour pasted
    * at a call site is the one nobody dares retune later because nobody can tell whether

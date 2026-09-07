@@ -715,6 +715,63 @@ export function Gallery() {
             that stops meaning anything; and amber is kept clear of Claude&apos;s coral in the plates below,
             which would make the card read as &ldquo;the Claude one&rdquo;.
           </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            NONE OF THE EIGHT IS A STRAIGHT SWEEP any more, and that is one recipe rather than eight values:{' '}
+            <code className="font-mono text-ink">mesh()</code> in{' '}
+            <code className="font-mono text-ink">tailwind.config.ts</code> takes a tone&apos;s two stops and
+            builds the same DIFFUSE WASH out of them — a pale field holding the top of the card, where the
+            title and the description sit, the deep stop gathering toward the bottom in pools that do not line
+            up with the card&apos;s own edges, and the bottom corners dropped into shadow. A 135° gradient
+            arrives at an even rate the whole way across, which is what made a coloured card read as FILLED
+            rather than as lit; <code className="font-mono text-ink">FinalCtaSection</code>&apos;s wash on the
+            homepage was already built this way, so the cards now belong to the same page as that band.
+            Neither stop changed on any tone, and the ink pairing is what it was — the wash cannot lighten the
+            corner the copy sits in, because that corner is the quiet stop by construction, which is also why{' '}
+            <code className="font-mono text-ink">midnight</code> and{' '}
+            <code className="font-mono text-ink">indigo</code> stay safe under{' '}
+            <code className="font-mono text-ink">text-white</code>.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            NO TWO TONES ARE THE SAME COMPOSITION, and that is the part to see rather than read: every
+            position and size in those seven layers is DRAWN, from the tone&apos;s own name through{' '}
+            <code className="font-mono text-ink">seeded()</code> — so picking a different tone for a card
+            moves its blooms instead of only recolouring them. One composition across eight grounds was one
+            gradient stamped eight times, eight cards lit by the same three lamps, which is most obvious
+            exactly where cards sit side by side. Seeded and not{' '}
+            <code className="font-mono text-ink">Math.random()</code> because this runs when Tailwind loads
+            its config: a live random would deal a different wash into the stylesheet on every build, and a
+            card that looked right when it was reviewed would ship as something else. Seeded on the NAME and
+            not on the stops, because the name is the tone&apos;s identity and the stops are what we expect to
+            tune — retuning <code className="font-mono text-ink">AMBER_DEEP</code> by two points should not
+            reshuffle every bloom on thirty surfaces.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            THE RANGES ARE THE DESIGN; the draw only decides where in each one a given ground lands, and every
+            value in every range is a card we would have drawn by hand. TWO THINGS ARE NEVER DRAWN, and they
+            are the two that could break a card rather than restyle it. The pale field&apos;s anchor stays
+            past the top-left corner on every tone — that is the corner the copy sits in, and a draw that
+            moved the light to the right would leave a title over the deep end, which renders perfectly and
+            is unreadable. And the SHADOW is a named rung: it is{' '}
+            <code className="font-mono text-ink">ink</code> at an alpha rather than a darker version of the
+            tone — darkening a ground in its own hue would mean a third literal per tone, and a corner that
+            drifts off-hue the day the deep stop is retuned — and{' '}
+            <code className="font-mono text-ink">SHADE</code> gives it four rungs, chosen by how much white is
+            in the ground: 17% of black on <code className="font-mono text-ink">mist</code>, which is very
+            nearly white, is not a shadow but a smudge, and{' '}
+            <code className="font-mono text-ink">indigo</code> is the one tone saturated enough to take 20%.
+            How dark a corner goes is legible and arguable, which is why it is a rung a reviewer can move and
+            not a number the dice hand out.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            THESE ARE ALSO EVERY ILLUSTRATION&apos;S GROUND, which is the part that is easy to miss from this
+            page: <code className="font-mono text-ink">bg-tone-*</code> is the plate behind every mockup on{' '}
+            <code className="font-mono text-ink">/features</code> and on the homepage —{' '}
+            <code className="font-mono text-ink">mist</code> under the drawings that are mostly dark window,{' '}
+            <code className="font-mono text-ink">sky</code> and{' '}
+            <code className="font-mono text-ink">indigo</code> under the rest. So the wash is what a drawing of
+            the app is photographed against, and retuning{' '}
+            <code className="font-mono text-ink">mesh()</code> moves ~30 surfaces at once.
+          </p>
           <div className="mt-8">
             <Spec name={'layout="beside"'} note="stacks below md">
               {/* A full-row card. The `beside` slot turns it into a row and caps the copy

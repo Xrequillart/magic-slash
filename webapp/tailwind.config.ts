@@ -13,6 +13,18 @@ import type { Config } from 'tailwindcss'
 // can be retuned independently.
 const BRAND = '#393BFF'
 
+// The page's own black, and the one every tone's shadow is cast in.
+//
+// A CONSTANT NOW BECAUSE THREE PLACES SPELL IT: the `ink` colour below, `midnight`'s top
+// stop, and `mesh()`'s two shadow layers. It was a literal in each while it was only a
+// colour, which was fine — a shadow that has to STAY the page's black is what makes it
+// worth naming, since an ink that drifted and a shadow that did not would be two blacks
+// nobody would think to compare. Note this is deliberately NOT `SHADOW_TINT`: the
+// elevation scale is cast in a desaturated indigo because it falls on the blue canvas,
+// where a neutral black reads as soot. A tone's shadow falls on the tone itself, and a
+// blue-tinted shadow on `amber` or `lemon` reads as a bruise rather than as depth.
+const INK = '#0A0A0A'
+
 // Every shadow in the scale is cast in the same desaturated indigo rather than in
 // black. On the blue canvas (#F4F7FE) a neutral-black shadow reads as grey soot
 // under the card; tinted towards the page it reads as depth. The value comes from
@@ -121,8 +133,28 @@ const statusIn = (hidden: number, shown: number) => ({
 // that draws the card, so a tone and its ink can never be paired wrongly. See
 // `CARD_TONES` in `components/ui.tsx`.
 //
-// 135deg — top-left to bottom-right — on all four, so a row of cards reads as one
-// light source rather than four.
+// NONE OF THEM IS A LINEAR GRADIENT ANY MORE, and that is the one change to know
+// about: every tone is now the same DIFFUSE WASH — a pale field where the copy sits, the
+// colour gathering toward the bottom in soft off-centre pools, and the bottom corners
+// dropped into shadow so the card reads as LIT rather than as filled. `mesh()` below
+// builds it and holds the whole argument for it, and `SHADE` says how hard the shadow
+// falls on which grounds. What did not change is either stop: each tone is still the two
+// colours it was, and a row of cards still reads as one light source — that light now
+// comes from the top-left corner instead of travelling across the card on a 135° line.
+//
+// NO TWO OF THEM ARE THE SAME COMPOSITION, which is the other thing to know before
+// reading a card as "wrong". Every position and size in those seven layers is drawn from
+// the tone's own name through `seeded()` — same name, same numbers, every build — so
+// picking a different tone for a card moves its blooms rather than only recolouring
+// them. One composition across eight grounds was one gradient stamped eight times, and
+// it read as exactly that.
+//
+// EVERY ILLUSTRATION ON THE SITE IS ON ONE OF THESE, which is worth knowing before
+// retuning any of them. `bg-tone-*` is not only the marketing cards' ground: it is the
+// plate behind every mockup on `/features` and on the homepage — `SplitViewMockup`,
+// `AgentsSidebarMockup`, `TasksModalMockup`, `RepoCardMockup` and a dozen more all sit on
+// `mist`, `sky` or `indigo`. So these seven layers are what a drawing of the app is
+// photographed against, and a change here moves ~30 surfaces at once.
 //
 // The stops are spelled as literals because THIS is their declaration site, the same
 // way `SHADOW_TINT` spells its rgba here. `mist` and `sky` open on `softblue`
@@ -220,9 +252,209 @@ const MARKS = {
   'mark-apple': `linear-gradient(135deg, #7DD3FC 0%, #A5B4FC 50%, #F0ABFC 100%)`,
 }
 
+/**
+ * THE COMPOSITION'S DICE. A tone's name in, a stream of numbers out, the same numbers
+ * every time.
+ *
+ * WHY A TONE'S WASH IS RANDOM AT ALL. One composition applied to eight grounds is one
+ * gradient STAMPED eight times: identical blooms in identical places, eight cards lit by
+ * the same three lamps, which is the mechanical look the wash was there to replace. It is
+ * most obvious where two cards sit side by side — the homepage's pillars, the four-column
+ * skills grid — because the eye reads the repeated shape before it reads either colour.
+ * Mirroring the pools left/right was the first answer to that and it only ever had two
+ * shapes, so a grid of eight still showed each of them four times. Now every ground gets
+ * a composition of its own: pick a different tone for a card and its blooms move, which
+ * is what was asked for.
+ *
+ * SEEDED ON THE TONE'S NAME, and both halves of that matter.
+ *
+ * SEEDED, not `Math.random()`: this runs when Tailwind loads its config, so a live random
+ * would deal a different wash into the stylesheet on every build. That is a rebuild
+ * whose CSS diff is noise, a screenshot test that can never pass twice, and — worst —
+ * a card that looked right when it was reviewed and ships as something else. Same name,
+ * same numbers, for ever.
+ *
+ * ON THE NAME rather than on the stops, which is the less obvious half. Seeding on the
+ * colours would be the more literal reading of "a pattern per colour", and it means
+ * retuning `AMBER_DEEP` by two points RESHUFFLES amber's whole composition — a colour
+ * correction that silently moves every bloom on ~30 surfaces. The name is the tone's
+ * identity and the thing that is stable; the stops are what we expect to tune.
+ *
+ * FNV-1a INTO XORSHIFT32, both textbook, neither cryptographic and neither needs to be.
+ * What is actually required of this is: same input → same output, small changes in the
+ * name → an unrelated stream, and a flat enough spread that a range like 74–94 is not
+ * always answered with 74. `Math.imul` is in here because FNV's multiply overflows 32
+ * bits and `*` would silently go through a double.
+ *
+ * EVERY DRAW IS BOUNDED BY THE CALL SITE, which is what makes a random composition safe
+ * to ship without eyes on every future tone: the ranges in `mesh()` are narrow, and each
+ * one is a range within which any value is a card we would have drawn by hand. Nothing
+ * is drawn for the pale field's anchor or for the ink pairing — see `mesh()`.
+ */
+const seeded = (seed: string) => {
+  let h = 2166136261
+  for (let i = 0; i < seed.length; i += 1) {
+    h ^= seed.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  // One draw, rounded to a whole percent — a gradient stop does not need decimals, and
+  // the config reads as something a person could have typed.
+  return (min: number, max: number) => {
+    h ^= h << 13
+    h ^= h >>> 17
+    h ^= h << 5
+    return Math.round(min + (((h >>> 0) % 1000) / 1000) * (max - min))
+  }
+}
+
+/**
+ * HOW HARD THE SHADOW FALLS, in the bottom corners of a tone. An alpha on `ink`, spelled
+ * as the two hex digits `mesh()` appends to it.
+ *
+ * IT IS A SHADOW AND NOT A COLOUR, which is the whole reason this can be one table for
+ * eight tones: darkening a ground in its own hue would mean a third literal per tone —
+ * eight more colours to keep in tune with the two they sit between — and a card whose
+ * bottom corner drifted off-hue the day somebody retuned the deep stop. `ink` under the
+ * colour reads as the ground turning away from the light, which is what the reference
+ * actually shows.
+ *
+ * FOUR RUNGS AND NOT A NUMBER PER TONE, for the reason the elevation scale has four: two
+ * neighbouring grounds differing by an amount nobody can see is a value nobody can
+ * defend. What decides the rung is how much white is in the ground — `faint` exists
+ * because `mist` is very nearly white, and 17% of black on very nearly white does not
+ * read as a shadow, it reads as a smudge somebody left on the plate. The saturated
+ * grounds take the most: `indigo` at 20% is the only tone whose own colour is strong
+ * enough to hide it.
+ *
+ * IT IS NOT DRAWN FROM THE DICE, deliberately. Every other number in the composition is,
+ * because a bloom four percent to the left is a bloom nobody can tell you moved — but
+ * how dark a card's corner goes is legible, it is the difference between depth and dirt
+ * on the pale grounds, and it is the one value a reviewer would want to argue with.
+ */
+const SHADE = {
+  /** `mist`, and anything else that is essentially white. */
+  faint: '0F',
+  /** The quiet grounds — `mint`, and the dark ones, where the shadow is nearly free. */
+  soft: '24',
+  /** The light saturated grounds: `sky`, `amber`, `rose`, `lemon`. */
+  normal: '2B',
+  /** `indigo` only. */
+  deep: '33',
+}
+
+/**
+ * THE SHAPE EVERY TONE IS BUILT IN. A name and two colours in, one diffuse wash out.
+ *
+ * A tone used to be `linear-gradient(135deg, light, deep)`: one straight sweep, corner to
+ * corner, the colour arriving at an even rate the whole way across. It read as a card
+ * that had been FILLED — the same amount of gradient everywhere, and the copy in the
+ * top-left sitting on a tint rather than on a light. The reference the product owner
+ * supplied is the opposite: a pale field holding the top of the card, the colour gathering
+ * in the lower half in soft blooms that do not line up with the card's edges, and the
+ * corner furthest from the light noticeably DARKER than the ground it sits in, so the
+ * card reads as lit rather than as filled. `FinalCtaSection`'s `Wash` already does this
+ * on `ink` with three blurred discs, which is where the recipe comes from — the cards now
+ * belong to the same page as that band instead of being flat next to it.
+ *
+ * SEVEN LAYERS, and the order is the composition read front to back, because CSS paints
+ * the FIRST layer nearest the viewer:
+ *
+ *   1. a pale lift high on the right, which keeps the top of the card from reading as one
+ *      straight horizontal band;
+ *   2. the shadow in the near bottom corner — `ink` at `shade`, the deepest point of the
+ *      card and the layer that put the word "ombre" in the brief;
+ *   3. a second, smaller shadow in the far bottom corner, so the darkening is not one
+ *      symmetrical smudge across the bottom edge;
+ *   4. a small tight pool of the deep stop, high enough to break the boundary between the
+ *      pale top and the coloured bottom into something irregular;
+ *   5. a tall pool off the side, which is what stops the colour reading as a horizontal
+ *      band across the bottom;
+ *   6. the wide pool under the near bottom corner, the card's most saturated ground;
+ *   7. the base, and it is a RADIAL one anchored past the top-left corner, not a linear
+ *      sweep. This is the layer that decides whether the whole thing reads as linear: a
+ *      `linear-gradient` arrives at an even rate along one axis and the eye reads the
+ *      straight boundary through everything painted over it, where a corner-anchored
+ *      radial falls off on a curve and never presents an edge to find. Its pale stop is
+ *      held past 18% so the copy has a flat field to sit on rather than a gradient
+ *      starting under the first line of it.
+ *
+ * EVERY POSITION AND SIZE IS DRAWN FROM THE TONE'S OWN DICE — see `seeded` for why the
+ * dice exist and why they are not `Math.random()`. The ranges are the design; the draw
+ * only decides where in each range this ground lands, and any value in any of them is a
+ * card we would have drawn by hand. Which bottom corner the colour gathers in is drawn
+ * too, as `flip`, and it mirrors layers 2–6 as a set so the shadow always falls on the
+ * side the colour pools on.
+ *
+ * NONE OF THE RANGES IS CENTRED ON A ROUND NUMBER, and that is the point rather than
+ * fussiness — pools at 0/50/100 line up with the card's own middle and corners, and
+ * lined-up blooms read as a pattern. Several ranges sit past 100%: a bloom whose centre
+ * is off the card shows only its shoulder, which is how it stays a wash instead of
+ * becoming a visible disc.
+ *
+ * TWO THINGS ARE NEVER DRAWN, and they are the two that could break a card rather than
+ * restyle it. The PALE FIELD's anchor — layer 7's `at` — stays past the top-left corner
+ * on every tone, because that is the corner the title and the description sit in and the
+ * quiet stop is what makes them readable; a draw that moved the light to the right would
+ * leave the copy over the deep end, which renders perfectly and is unreadable. And
+ * `shade` is a named rung, not a draw: see `SHADE`.
+ *
+ * IT IS A FUNCTION AND NOT EIGHT SPELLED-OUT VALUES, which is a departure from how
+ * `PLATES` and `MARKS` below spell theirs, and deliberate: this is one recipe applied
+ * eight times, ~700 characters each. Written out, retuning the family means editing eight
+ * near-identical blocks and hoping they stay near-identical — which is the same failure
+ * this file exists to prevent, just committed inside the file instead of at a call site.
+ * The tones' IDENTITIES stay where they were, as literal stops at the call sites below.
+ *
+ * THE FADE-OUT STOPS ARE THE SAME COLOUR AT ZERO ALPHA (`${c}00`), never `transparent`.
+ * `transparent` is rgba(0,0,0,0), so interpolating to it drags every bloom through grey
+ * and leaves a dirty halo where it meets the base — the classic gradient artefact. This
+ * is why `top`, `deep` and `ink` must all be 6-DIGIT HEX: the alpha is appended as a
+ * suffix, which is also how `shade` is spelled.
+ *
+ * WHAT `top` AND `deep` MEAN, since the names matter more than "first" and "second": `top`
+ * is the quiet stop, the one the copy has to be readable on, and `deep` is the vivid one
+ * that pools at the bottom. For the six light tones that is pale → saturated; for `indigo`
+ * and `midnight` it is dark → less dark, and the pale field of layer 7 is a NEAR-BLACK
+ * field there. That is what keeps `text-white` safe on them — the wash cannot lighten the
+ * corner the title sits in, because that corner is what `top` paints. `mist` is the one
+ * tone whose two stops swapped places when this landed: it was written deep-stop-first,
+ * being the only tone that got LIGHTER toward the bottom, and it now runs the family's
+ * way round like everything else.
+ *
+ * `seed` IS THE TONE'S OWN NAME, and `lib/designTokens.test.ts` pins that each call site
+ * passes its own: two tones sharing a seed is one line pasted and half-edited, and what
+ * it produces is two grounds wearing the same composition — the exact thing the dice are
+ * here to prevent, in the one form nobody would notice by reading the diff.
+ */
+const mesh = (seed: string, top: string, deep: string, shade: string) => {
+  const d = seeded(seed)
+  // Which bottom corner the colour gathers in. Layers 2-6 mirror as a set; the pale
+  // field and the base anchor are absent from this and stay in the top-left.
+  const flip = d(0, 1) === 1
+  const x = (at: number) => (flip ? 100 - at : at)
+  return [
+    `radial-gradient(${d(40, 58)}% ${d(26, 36)}% at ${d(74, 94)}% ${d(1, 15)}%, ${top} 0%, ${top}00 58%)`,
+    `radial-gradient(${d(52, 66)}% ${d(38, 48)}% at ${x(d(6, 24))}% ${d(92, 104)}%, ${INK}${shade} 0%, ${INK}00 66%)`,
+    `radial-gradient(${d(34, 46)}% ${d(26, 34)}% at ${x(d(88, 102))}% ${d(100, 112)}%, ${INK}${shade} 0%, ${INK}00 60%)`,
+    `radial-gradient(${d(38, 50)}% ${d(24, 32)}% at ${x(d(52, 74))}% ${d(74, 90)}%, ${deep} 0%, ${deep}00 56%)`,
+    `radial-gradient(${d(42, 52)}% ${d(58, 74)}% at ${x(d(104, 116))}% ${d(48, 70)}%, ${deep} 0%, ${deep}00 60%)`,
+    `radial-gradient(${d(92, 110)}% ${d(50, 62)}% at ${x(d(-8, 12))}% ${d(104, 118)}%, ${deep} 0%, ${deep}00 66%)`,
+    `radial-gradient(${d(118, 134)}% ${d(88, 102)}% at ${d(4, 14)}% ${d(-24, -12)}%, ${top} 0%, ${top} ${d(18, 27)}%, ${deep} ${d(84, 94)}%)`,
+  ].join(', ')
+}
+
 const TONES = {
-  /** Palest of the four: barely a tint, for a card that carries a busy visual. */
-  'tone-mist': `linear-gradient(135deg, #E8F0FF 0%, #F7FAFF 100%)`,
+  /**
+   * Palest of the four: barely a tint, for a card that carries a busy visual.
+   *
+   * ITS TWO STOPS ARE THE WAY ROUND THEY ARE, and this is the tone where that reads as a
+   * typo: the near-white is the `top` and the fractionally bluer #E8F0FF is what pools at
+   * the bottom. It was written the other way when a tone was one 135° sweep — mist being
+   * the only one that got LIGHTER toward its far corner — and `mesh()` gives the family
+   * one direction, so it runs with the others now. Neither colour changed, and at eight
+   * points of luminance apart the wash is barely visible on this tone by design.
+   */
+  'tone-mist': mesh('mist', '#F7FAFF', '#E8F0FF', SHADE.faint),
   /**
    * The soft blue deepening into a light indigo. Still dark-ink territory.
    *
@@ -234,11 +466,11 @@ const TONES = {
    * still light enough for `text-ink`, which is the constraint that decides how far this
    * can go and is checked by `lib/designTokens.test.ts`'s ink pairing.
    */
-  'tone-sky': `linear-gradient(135deg, #E6F0FF 0%, #A3B2F0 100%)`,
+  'tone-sky': mesh('sky', '#E6F0FF', '#A3B2F0', SHADE.normal),
   /** Saturated: the design system's own two blues, `accent` into `brand`. */
-  'tone-indigo': `linear-gradient(135deg, #6366F1 0%, ${BRAND} 100%)`,
+  'tone-indigo': mesh('indigo', '#6366F1', BRAND, SHADE.deep),
   /** The dark one. `ink` into a deepened brand, never into `brand` at full. */
-  'tone-midnight': `linear-gradient(135deg, #0A0A0A 0%, ${BRAND_DEEP} 100%)`,
+  'tone-midnight': mesh('midnight', INK, BRAND_DEEP, SHADE.soft),
   /**
    * THE ONE TONE THAT IS NOT IN THE BLUE FAMILY, and it is earned rather than added:
    * it dresses the card for `/magic:done`, which is the end of the loop. Green is
@@ -252,7 +484,7 @@ const TONES = {
    * It is NOT in `CARD_TONE_CYCLE`. The cycle is positional and means nothing in
    * particular; this one means something, so it is asked for by name.
    */
-  'tone-mint': `linear-gradient(135deg, ${MINT_LIGHT} 0%, ${MINT_DEEP} 100%)`,
+  'tone-mint': mesh('mint', MINT_LIGHT, MINT_DEEP, SHADE.soft),
   /**
    * THE SECOND TONE OUTSIDE THE BLUE FAMILY, and earned the same way `mint` is: it
    * dresses the card for `/magic:start`, which is where a piece of work ENTERS the loop.
@@ -267,7 +499,7 @@ const TONES = {
    * It is NOT in `CARD_TONE_CYCLE`, for `mint`'s reason: the cycle is positional and
    * means nothing in particular, and this one means something.
    */
-  'tone-amber': `linear-gradient(135deg, ${AMBER_LIGHT} 0%, ${AMBER_DEEP} 100%)`,
+  'tone-amber': mesh('amber', AMBER_LIGHT, AMBER_DEEP, SHADE.normal),
   /**
    * Pink. A named ground with no page asking for it yet, which is a different standing
    * from `mint` and `amber` and worth being straight about: those two MEAN something on
@@ -279,7 +511,7 @@ const TONES = {
    * Light, so it takes the dark ink the other light tones take. Not `red` and not
    * `purple`; see the note on its stops above.
    */
-  'tone-rose': `linear-gradient(135deg, ${ROSE_LIGHT} 0%, ${ROSE_DEEP} 100%)`,
+  'tone-rose': mesh('rose', ROSE_LIGHT, ROSE_DEEP, SHADE.normal),
   /**
    * Yellow, on the same standing as `rose` above: declared and available, named by
    * nothing yet.
@@ -289,7 +521,7 @@ const TONES = {
    * from `amber` that a grid carrying both reads as two colours rather than as one at
    * two strengths, which is the risk with any two warm tones in one table.
    */
-  'tone-lemon': `linear-gradient(135deg, ${LEMON_LIGHT} 0%, ${LEMON_DEEP} 100%)`,
+  'tone-lemon': mesh('lemon', LEMON_LIGHT, LEMON_DEEP, SHADE.normal),
 }
 
 // THE PRODUCT PLATES. One gradient per integration, declared here and used as
@@ -336,7 +568,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: '#0a0a0a',
+        ink: INK,
         muted: '#52525b',
         softblue: '#D9E8FF',
         canvas: '#F4F7FE',
