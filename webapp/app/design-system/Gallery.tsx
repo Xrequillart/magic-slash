@@ -704,63 +704,106 @@ export function Gallery() {
             to learn.
           </p>
           <p className="mt-3 max-w-2xl text-sm text-muted">
-            The four warm and pink tones are all built like{' '}
-            <code className="font-mono text-ink">sky</code> rather than like{' '}
-            <code className="font-mono text-ink">mint</code>: light grounds under dark ink, ~35 points of
-            luminance between the stops so the gradient TRAVELS instead of reading as a card someone forgot to
-            fill. Mint is the exception at eight points, because{' '}
-            <code className="font-mono text-ink">/magic:done</code> is the quietest moment in the loop. None of
-            them is a status token — not <code className="font-mono text-ink">yellow</code>, not{' '}
-            <code className="font-mono text-ink">red</code> — since a status spent on decoration is a status
-            that stops meaning anything; and amber is kept clear of Claude&apos;s coral in the plates below,
-            which would make the card read as &ldquo;the Claude one&rdquo;.
+            EVERY TONE IS TUNED BY ITS TRAVEL, and the number is the L* range of the RENDERED wash rather
+            than the gap between its two stops — the honest way to compare grounds of different hue, since
+            HSL lightness says two colours match at brightnesses an eye reads as nothing alike.{' '}
+            <code className="font-mono text-ink">sky</code> anchors the scale at 30 points because it is the
+            traced reference; the rest were rendered and measured against it.{' '}
+            <code className="font-mono text-ink">indigo</code> and{' '}
+            <code className="font-mono text-ink">midnight</code> sit together at ~17, the two dark grounds
+            carrying the same weight so a row that lands both shows neither as flat.{' '}
+            <code className="font-mono text-ink">mint</code> and{' '}
+            <code className="font-mono text-ink">amber</code> sit together at ~15, which is the two bookends
+            of the loop at one volume rather than two values chosen apart.{' '}
+            <code className="font-mono text-ink">lemon</code> is 13,{' '}
+            <code className="font-mono text-ink">rose</code> and{' '}
+            <code className="font-mono text-ink">mist</code> are 11 — mist being the quietest on purpose,
+            because it is what the mockups are photographed against and a ground that competes with the
+            drawing has stopped being a ground.
           </p>
           <p className="mt-3 max-w-2xl text-sm text-muted">
-            NONE OF THE EIGHT IS A STRAIGHT SWEEP any more, and that is one recipe rather than eight values:{' '}
+            THREE OF THEM WERE RETUNED WHEN THE WASH LANDED, all in the same direction and for the same
+            reason: their stops were close enough together to work only while there was an ink shadow faking
+            the depth.{' '}
+            <code className="font-mono text-ink">mist</code> was three points and read as pure white,{' '}
+            <code className="font-mono text-ink">mint</code> six and read as an unfinished tint, and{' '}
+            <code className="font-mono text-ink">indigo</code> — running{' '}
+            <code className="font-mono text-ink">accent</code> into{' '}
+            <code className="font-mono text-ink">brand</code>, five points apart — was the flattest of the
+            eight. Mist keeps its near-white field and gains a real light blue, in{' '}
+            <code className="font-mono text-ink">sky</code>&apos;s hue so the two blue grounds pool in the
+            same blue; mint keeps its field and gets its green back; indigo keeps{' '}
+            <code className="font-mono text-ink">accent</code> as the field and takes a brand blue driven to
+            45% lightness, which makes the brand hue a LADDER — brand at 61%,{' '}
+            <code className="font-mono text-ink">INDIGO_DEEP</code> at 45%,{' '}
+            <code className="font-mono text-ink">BRAND_DEEP</code> at 26% — rather than three separate blues.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            None of the warm tones is a status token — not{' '}
+            <code className="font-mono text-ink">yellow</code>, not{' '}
+            <code className="font-mono text-ink">red</code>, and mint&apos;s deeper green is deliberately not{' '}
+            <code className="font-mono text-ink">green</code> either — since a status spent on decoration is a
+            status that stops meaning anything; and amber is kept clear of Claude&apos;s coral in the plates
+            below, which would make the card read as &ldquo;the Claude one&rdquo;.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            NONE OF THE EIGHT IS A STRAIGHT SWEEP, and the recipe is TRACED rather than composed:{' '}
             <code className="font-mono text-ink">mesh()</code> in{' '}
             <code className="font-mono text-ink">tailwind.config.ts</code> takes a tone&apos;s two stops and
-            builds the same DIFFUSE WASH out of them — a pale field holding the top of the card, where the
-            title and the description sit, the deep stop gathering toward the bottom in pools that do not line
-            up with the card&apos;s own edges, and the bottom corners dropped into shadow. A 135° gradient
-            arrives at an even rate the whole way across, which is what made a coloured card read as FILLED
-            rather than as lit; <code className="font-mono text-ink">FinalCtaSection</code>&apos;s wash on the
-            homepage was already built this way, so the cards now belong to the same page as that band.
-            Neither stop changed on any tone, and the ink pairing is what it was — the wash cannot lighten the
-            corner the copy sits in, because that corner is the quiet stop by construction, which is also why{' '}
+            builds one DIFFUSE WASH out of them — a flat pale field holding the top of the card, where the
+            title and the description sit, and six soft blooms gathering the colour into the lower half. The
+            six come from FITTING a reference image the product owner supplied, and they land within 2.5/255
+            of it, so <code className="font-mono text-ink">sky</code> — whose two stops are that picture&apos;s
+            own — is the reference rather than a reading of it. A 135° gradient arrives at an even rate the
+            whole way across, which is what made a coloured card read as FILLED rather than as lit.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            THE FIELD IS FLAT AND IT IS THE LAST LAYER, which is what makes the top-left corner readable by
+            construction: CSS paints the first background layer nearest the viewer, so the solid{' '}
+            <code className="font-mono text-ink">top</code> sits under everything, and nothing in the
+            composition reaches the corner the copy occupies. Not approximately, and not until somebody nudges
+            a bloom — that corner IS the quiet stop, which is also why{' '}
             <code className="font-mono text-ink">midnight</code> and{' '}
             <code className="font-mono text-ink">indigo</code> stay safe under{' '}
-            <code className="font-mono text-ink">text-white</code>.
+            <code className="font-mono text-ink">text-white</code>. Put the field first instead and it paints
+            over all six blooms on ~30 surfaces at once, with the whole wash still in the stylesheet;{' '}
+            <code className="font-mono text-ink">designTokens.test.ts</code> holds the order for that reason.
           </p>
           <p className="mt-3 max-w-2xl text-sm text-muted">
-            NO TWO TONES ARE THE SAME COMPOSITION, and that is the part to see rather than read: every
-            position and size in those seven layers is DRAWN, from the tone&apos;s own name through{' '}
-            <code className="font-mono text-ink">seeded()</code> — so picking a different tone for a card
-            moves its blooms instead of only recolouring them. One composition across eight grounds was one
-            gradient stamped eight times, eight cards lit by the same three lamps, which is most obvious
-            exactly where cards sit side by side. Seeded and not{' '}
-            <code className="font-mono text-ink">Math.random()</code> because this runs when Tailwind loads
-            its config: a live random would deal a different wash into the stylesheet on every build, and a
-            card that looked right when it was reviewed would ship as something else. Seeded on the NAME and
-            not on the stops, because the name is the tone&apos;s identity and the stops are what we expect to
-            tune — retuning <code className="font-mono text-ink">AMBER_DEEP</code> by two points should not
-            reshuffle every bloom on thirty surfaces.
+            A TONE HAS A THIRD COLOUR NOW, and it is derived rather than declared. Measure the reference&apos;s
+            hue along its bottom edge and it runs 223 on the left and 210 on the right: not one light at two
+            strengths but TWO LIGHTS of slightly different colour, which is the whole difference between the
+            picture and every earlier attempt at it. So{' '}
+            <code className="font-mono text-ink">cooled()</code> swings the deep stop −13° of hue and lifts it
+            five points — the far lamp being the lighter one — and a tone stays two colours. Declaring a third
+            literal per tone would be eight more values to keep in tune with the two they sit between, and a
+            table where the relationship that MAKES the effect is invisible. The same swing runs on the warm
+            tones, where −13° is a step toward coral rather than toward cyan; what survives the translation is
+            the thing that matters, which is that the two pools are adjacent instead of identical.
           </p>
           <p className="mt-3 max-w-2xl text-sm text-muted">
-            THE RANGES ARE THE DESIGN; the draw only decides where in each one a given ground lands, and every
-            value in every range is a card we would have drawn by hand. TWO THINGS ARE NEVER DRAWN, and they
-            are the two that could break a card rather than restyle it. The pale field&apos;s anchor stays
-            past the top-left corner on every tone — that is the corner the copy sits in, and a draw that
-            moved the light to the right would leave a title over the deep end, which renders perfectly and
-            is unreadable. And the SHADOW is a named rung: it is{' '}
-            <code className="font-mono text-ink">ink</code> at an alpha rather than a darker version of the
-            tone — darkening a ground in its own hue would mean a third literal per tone, and a corner that
-            drifts off-hue the day the deep stop is retuned — and{' '}
-            <code className="font-mono text-ink">SHADE</code> gives it four rungs, chosen by how much white is
-            in the ground: 17% of black on <code className="font-mono text-ink">mist</code>, which is very
-            nearly white, is not a shadow but a smudge, and{' '}
-            <code className="font-mono text-ink">indigo</code> is the one tone saturated enough to take 20%.
-            How dark a corner goes is legible and arguable, which is why it is a rung a reviewer can move and
-            not a number the dice hand out.
+            THE FALLOFF IS THE HALF NOBODY EXPECTS TO MATTER. A two-stop radial fades LINEARLY, so its alpha
+            has a corner at each end: a peak at the centre, which shows as a bright dot, and a kink at the
+            last stop, which shows the bloom&apos;s own ellipse as a faint ring. Both are plainly visible on a
+            card 400px wide and both are what makes a hand-rolled mesh gradient look hand-rolled. The
+            reference has neither, because it was never gradients — it is blurred discs, and a Gaussian is flat
+            at the top and flat at the tail. So every bloom carries five stops sampled off{' '}
+            <code className="font-mono text-ink">0.5(1 + cos πu)</code>, and the last one is the same colour at
+            zero alpha rather than <code className="font-mono text-ink">transparent</code>, which is
+            rgba(0,0,0,0) and drags the fade through grey.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            TWO THINGS THE OLD WASH HAD AND THIS ONE DOES NOT, both worth knowing before reading a card as
+            wrong. There is no SHADOW: every previous version darkened the bottom corners with{' '}
+            <code className="font-mono text-ink">ink</code> at a named alpha, and the reference does not — its
+            darkest point is 71% luminance and it is the periwinkle itself, not black under the periwinkle.
+            Side by side, the ink layer is what made the old cards look dusty. And all eight now share ONE
+            composition, where the arrangement this replaced drew every position from the tone&apos;s own name
+            so that no two grounds were laid out alike. The picture we were asked to match is a single picture,
+            so matching it means every card carries it and what distinguishes two neighbours is their colour
+            alone. If a grid of eight starts reading as one gradient stamped eight times again, the fix is to
+            jitter the traced rows per tone — the old dice, applied to a composition now known to be right —
+            rather than to go back to eight compositions.
           </p>
           <p className="mt-3 max-w-2xl text-sm text-muted">
             THESE ARE ALSO EVERY ILLUSTRATION&apos;S GROUND, which is the part that is easy to miss from this

@@ -65,9 +65,10 @@ export function SpecPanelMockup() {
           meant to hover over the card, it is meant to be the document lying in it.
 
           `bg-white`, AND THE GROUND IT SITS ON IS WHY. A panel has to clear its own
-          CARD, not the page — and this card is `tone-mist`, which runs #E8F0FF to
-          #F7FAFF. `canvas` (#F4F7FE) sits inside that range, so the panel and the card
-          were the same colour and the filet was doing all the work. The two panels on
+          CARD, not the page — and this card is `tone-mist`, whose field is #F7FAFF.
+          `canvas` (#F4F7FE) sits inside a hair of that, so the panel and the card were
+          the same colour and the filet was doing all the work. Mist's pool is a real
+          light blue now (#B3D2F7), which only widens the gap this relies on. The two panels on
           dark cards go the other way and are `canvas`, because there pure white was the
           thing that read as a hole in the page. Same rule, opposite answer.
 

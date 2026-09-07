@@ -169,43 +169,76 @@ describe('design tokens', () => {
   })
 
   /**
-   * EVERY TONE SEEDS ITS WASH ON ITS OWN NAME, which is the one way the composition can
-   * go wrong silently.
+   * EVERY TONE IS BUILT BY `mesh()`, WITH BOTH OF ITS STOPS. Two silent failures, one
+   * check.
    *
-   * `mesh()` draws every position and size in a tone's seven layers from `seeded(seed)`,
-   * so the seed IS the composition: two tones passing the same string are two grounds
-   * wearing identical blooms in identical places — which is the mechanical stamped look
-   * the dice exist to prevent, arriving in the one form nobody spots by reading a diff.
-   * It is a plausible edit, too: the way a ninth tone gets added is by copying the line
-   * above it, and the seed is the argument you would forget to change.
+   * THE FIRST is a tone that spells its own gradient. `mesh()` is the shape the whole
+   * family shares — six blooms traced off a reference, plus the flat field — and a
+   * `'tone-x': 'radial-gradient(…)'` pasted in beside the others renders perfectly,
+   * matches nothing, and cannot be retuned with the rest. It is the same failure an
+   * arbitrary `shadow-[…]` at a call site is, which is what this file exists to prevent,
+   * committed one level up: inside the declaration site itself.
+   *
+   * THE SECOND is a call with one argument. `mesh(top)` leaves `deep` undefined, so the
+   * five blooms that carry the colour interpolate `undefined00` — an invalid stop, which
+   * CSS drops by discarding THE WHOLE DECLARATION. The card comes out with no background
+   * at all: no error, no warning, and on the white pages it lands on, not obviously
+   * wrong. It is also the plausible edit, because the way a ninth tone gets added is by
+   * copying the line above it.
    *
    * READ AS TEXT, like everything else here, and that is a constraint rather than a
    * preference — this suite runs on the ROOT `node_modules`, so it may not import the
-   * webapp's config. What that buys anyway: the check is on the CALL SITE, which is where
-   * the mistake would live. Evaluating `mesh()` and comparing the eight strings would
-   * also catch it, but it would pass just as happily on a seed of `'tone-mist'` or
-   * `'Mist'` — near-misses that work today and stop matching the day something else keys
-   * off a tone's name.
+   * webapp's config. What it buys anyway: the check lands on the CALL SITE, which is
+   * where both mistakes live.
    *
-   * It does NOT check the ranges or the layer count: those are the design, they are meant
-   * to be retuned, and a test that pinned them would be a test that fails every time the
-   * wash is adjusted on purpose. The invariants worth a test are the ones a reviewer
-   * cannot see — this one, and the ink pairing below.
+   * It does NOT check the composition — the six blooms, their positions, the falloff.
+   * Those are the design; they are traced from a picture today and a test that pinned
+   * them would fail the next time the picture changes on purpose. The invariants worth a
+   * test are the ones a reviewer cannot see: these two, and the ink pairing below.
    */
-  it('seeds every card tone on its own name', () => {
+  it('builds every card tone through mesh(), with both of its stops', () => {
     const tones = objectLiteral(config, 'TONES')
+    const declared = literalKeys(tones)
+    expect(declared).toHaveLength(8)
 
-    for (const line of tones.split('\n')) {
-      const call = /^'?tone-([a-z]+)'?:\s*mesh\('([^']*)'/.exec(line.trim())
-      if (!call) continue
+    for (const key of declared) {
+      const row = tones.split('\n').find((line) => line.trim().startsWith(`'${key}':`))
+      expect(row, `\`${key}\` is declared but this test cannot find its line`).toBeTruthy()
 
-      const [, tone, seed] = call
-      expect(seed, `\`tone-${tone}\` seeds its wash on '${seed}' rather than on its own name`).toBe(tone)
+      const call = /:\s*mesh\(([^)]*)\)/.exec(row as string)
+      expect(call, `\`${key}\` does not build its ground with mesh() — a tone may not spell its own gradient`).toBeTruthy()
+
+      const stops = (call as RegExpExecArray)[1].split(',').map((arg) => arg.trim())
+      expect(stops, `\`${key}\` passes ${stops.length} stop(s) to mesh(); it takes a quiet one and a deep one`).toHaveLength(2)
+      for (const stop of stops) expect(stop, `\`${key}\` passes an empty stop to mesh()`).not.toBe('')
     }
+  })
 
-    // The loop above is vacuously true if the shape of a call site ever changes, so hold
-    // it to the count: eight tones, eight seeded calls.
-    expect(tones.match(/mesh\('/g)).toHaveLength(8)
+  /**
+   * THE FLAT FIELD IS THE LAST LAYER `mesh()` RETURNS, and this is the one ordering in
+   * the design system that is catastrophic rather than merely wrong.
+   *
+   * CSS paints the FIRST background layer nearest the viewer, so the field — a solid
+   * `top`, spelled as a `linear-gradient` because `backgroundImage` is where a tone is
+   * declared — has to come last, underneath the six blooms. Move it anywhere else and it
+   * paints OVER them: every one of the eight grounds comes out as a flat rectangle of its
+   * quiet stop, on ~30 surfaces at once, with the whole wash still in the stylesheet and
+   * nothing in the diff to say what happened.
+   *
+   * It is a plausible edit for a specific reason: read as prose, "the field" sounds like
+   * the thing you lay down FIRST, and the array in `mesh()` reads top to bottom. The
+   * comment there says which way round CSS is; this makes the suite say it too.
+   */
+  it('paints the tones on a flat field, declared last', () => {
+    const layers = /const mesh = [^]*?\.join\(', '\)/.exec(config)
+    expect(layers, '`mesh()` not found — this test is reading the wrong file').toBeTruthy()
+
+    const body = (layers as RegExpExecArray)[0]
+    expect(body).toContain('`linear-gradient(${top}, ${top})`')
+    expect(
+      body.indexOf('`linear-gradient(${top}, ${top})`'),
+      'the flat field must come after the blooms, or it paints over all six',
+    ).toBeGreaterThan(body.indexOf('WASH.map'))
   })
 
   /**
