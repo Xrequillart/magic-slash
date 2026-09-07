@@ -719,7 +719,10 @@ export function Gallery() {
             <code className="font-mono text-ink">rose</code> and{' '}
             <code className="font-mono text-ink">mist</code> are 11 — mist being the quietest on purpose,
             because it is what the mockups are photographed against and a ground that competes with the
-            drawing has stopped being a ground.
+            drawing has stopped being a ground. All of those are measured on the TRACED composition, before
+            the dice: the jitter below moves each bloom&apos;s peak alpha by up to five points, so what a
+            tone actually renders sits a point or two either side of its number. Tuning the stops against one
+            fixed composition is what makes two tones comparable at all.
           </p>
           <p className="mt-3 max-w-2xl text-sm text-muted">
             THREE OF THEM WERE RETUNED WHEN THE WASH LANDED, all in the same direction and for the same
@@ -793,17 +796,41 @@ export function Gallery() {
             rgba(0,0,0,0) and drags the fade through grey.
           </p>
           <p className="mt-3 max-w-2xl text-sm text-muted">
-            TWO THINGS THE OLD WASH HAD AND THIS ONE DOES NOT, both worth knowing before reading a card as
-            wrong. There is no SHADOW: every previous version darkened the bottom corners with{' '}
-            <code className="font-mono text-ink">ink</code> at a named alpha, and the reference does not — its
-            darkest point is 71% luminance and it is the periwinkle itself, not black under the periwinkle.
-            Side by side, the ink layer is what made the old cards look dusty. And all eight now share ONE
-            composition, where the arrangement this replaced drew every position from the tone&apos;s own name
-            so that no two grounds were laid out alike. The picture we were asked to match is a single picture,
-            so matching it means every card carries it and what distinguishes two neighbours is their colour
-            alone. If a grid of eight starts reading as one gradient stamped eight times again, the fix is to
-            jitter the traced rows per tone — the old dice, applied to a composition now known to be right —
-            rather than to go back to eight compositions.
+            THERE IS NO SHADOW, which is the one thing the old wash had and this one does not. Every previous
+            version darkened the bottom corners with <code className="font-mono text-ink">ink</code> at a
+            named alpha, on the reasoning that a ground turning away from the light is what makes a card read
+            as lit; the reference does not — its darkest point is 71% luminance and it is the periwinkle
+            itself, not black under the periwinkle. Side by side, the ink layer is what made the old cards
+            look dusty. The depth here is entirely the near pool being deeper than the field.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            NO TWO TONES ARE THE SAME ARRANGEMENT, and that is the part to see rather than read. One
+            composition across eight grounds is one gradient STAMPED eight times — eight cards lit by the same
+            six lamps — and the eye reads the repeated shape before it reads either colour, most obviously
+            where two cards sit side by side. So seven of the eight pass their own NAME to{' '}
+            <code className="font-mono text-ink">mesh()</code>, and the dice it seeds decide whether the whole
+            set MIRRORS and where each bloom lands inside its budget: picking a different tone for a card
+            moves its blooms instead of only recolouring them. Seeded and not{' '}
+            <code className="font-mono text-ink">Math.random()</code> because this runs when Tailwind loads
+            its config — a live random deals a different composition into the stylesheet on every build, and a
+            card that looked right when it was reviewed ships as something else. Seeded on the NAME and not on
+            the stops, because the name is the tone&apos;s identity and the stops are what we expect to tune;
+            retuning <code className="font-mono text-ink">AMBER_DEEP</code> by two points should not reshuffle
+            every bloom on thirty surfaces.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            THE BUDGETS ARE PER BLOOM AND NOT PER TABLE, which is the part worth not undoing. One global ±10%
+            gives every bloom the same licence, and two of the six cannot take it: the row that carries the
+            hue transition is 68% TALL, so a few points of extra height and a nudge upward turns it into a
+            column running the full card and the colour stops pooling at the bottom at all — which is what a
+            uniform budget produced on <code className="font-mono text-ink">rose</code> and{' '}
+            <code className="font-mono text-ink">amber</code>, and it is a different picture rather than the
+            same one rearranged. What the budgets protect was checked by rendering all eight and measuring,
+            not by eye: the colour&apos;s centroid stays at y ≈ 75% on every tone, its deepest point stays
+            below y = 83%, and the top-left 62%×34% — where <code className="font-mono text-ink">ToneCard</code>{' '}
+            puts the title and the description — never drifts further from the field than the reference&apos;s
+            own corner does. And <code className="font-mono text-ink">sky</code> passes no name at all: it IS
+            the traced picture, so the anchor does not move.
           </p>
           <p className="mt-3 max-w-2xl text-sm text-muted">
             THESE ARE ALSO EVERY ILLUSTRATION&apos;S GROUND, which is the part that is easy to miss from this

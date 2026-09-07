@@ -150,11 +150,12 @@ const statusIn = (hidden: number, shown: number) => ({
 // 2.5/255 of it. So the numbers in `WASH` are a measurement, and `tone-sky` — whose two
 // stops are the reference's own — is that picture rather than a reading of it.
 //
-// ALL EIGHT SHARE THE ONE COMPOSITION, so what distinguishes two neighbouring cards is
-// their colour and nothing else. That reverses the arrangement this replaced, which drew
-// every position from the tone's own name so no two grounds were laid out alike; see the
-// last note on `WASH` for why, and for what to do if a grid of eight starts reading as
-// one gradient stamped eight times again.
+// NO TWO OF THEM ARE THE SAME ARRANGEMENT, though, which is the other thing to know
+// before reading a card as "wrong". Seven of the eight pass their own NAME to `mesh()`,
+// and the dice it seeds decide which side the near pool gathers on and where each of the
+// six blooms lands inside the budget `WASH` gives it — so picking a different tone for a
+// card moves its blooms rather than only recolouring them. `tone-sky` is the exception
+// and passes no name: it is the traced picture, and the anchor does not move.
 //
 // EVERY ILLUSTRATION ON THE SITE IS ON ONE OF THESE, which is worth knowing before
 // retuning any of them. `bg-tone-*` is not only the marketing cards' ground: it is the
@@ -251,6 +252,13 @@ const SKY_DEEP = '#4D77EE'
 // the loop's bookends, amber opening it and mint closing it, so a grid that shows both
 // should show them at the same volume. Dark ink still reads on it, which is the
 // constraint that decides how far this can go.
+//
+// EVERY TRAVEL QUOTED IN THIS FILE IS MEASURED ON THE TRACED COMPOSITION, before the
+// dice. `mesh()` jitters each bloom's peak alpha by up to five points and moves the pools
+// around, so what a given tone actually renders lands a point or two either side of its
+// number — mint at 16, amber at 13. Tuning the stops against the traced composition is
+// what makes two tones comparable at all; quoting the post-dice figure would be quoting an
+// arrangement rather than a colour.
 //
 // L* AND NOT HSL LIGHTNESS, on that measurement, because HSL is the wrong instrument for
 // comparing two hues: #74CA9C and a blue at the same HSL lightness are nowhere near the
@@ -493,13 +501,12 @@ const bloom = (colour: string, x: number, y: number, w: number, h: number, peak:
 /**
  * THE COMPOSITION. Six blooms, in CSS's own order — FIRST is nearest the viewer.
  *
- * THESE SIX NUMBERS PER ROW ARE TRACED, not composed. The reference is a bitmap; this
- * table is the result of fitting six blooms plus a flat field to it, and the fit lands
- * within 2.5/255 RMSE of the original with the largest single-pixel error inside the
- * steepest part of the left-hand pool. So the rows are not a designer's reading of the
- * picture, they ARE the picture, and that is the reason to leave them alone: nudging one
- * value here is not a taste decision that can be argued, it is a step away from a
- * measurement.
+ * THE FIRST SIX NUMBERS IN EACH ROW ARE TRACED, not composed. The reference is a bitmap;
+ * this table is the result of fitting six blooms plus a flat field to it, and the fit
+ * lands within 2.5/255 RMSE of the original with the largest single-pixel error inside
+ * the steepest part of the left-hand pool. So they are not a designer's reading of the
+ * picture, they ARE the picture — which is why the way to vary a tone is the four
+ * budgets after them and never these six.
  *
  * WHAT EACH ROW IS, read as the composition rather than as coordinates:
  *
@@ -527,33 +534,100 @@ const bloom = (colour: string, x: number, y: number, w: number, h: number, peak:
  * periwinkle — and side by side the ink layer is what made the old cards look dusty. The
  * depth here is entirely the near pool being deeper than the field.
  *
- * ONE COMPOSITION FOR ALL EIGHT TONES, which is a REVERSAL of the arrangement this
- * replaced and worth being honest about. That one drew every position and size from the
- * tone's own name, so eight grounds meant eight different arrangements of the same idea,
- * specifically so that a row of cards would not read as one gradient stamped eight times.
- * The picture we were asked to match is a single picture, so matching it means every card
- * carries it and the variation is gone: what distinguishes two neighbouring cards now is
- * their colour and nothing else. If a grid of eight starts to read as a pattern again,
- * the fix is to jitter these rows per tone — the old `seeded()` dice, applied to a
- * composition that is now known to be right — and not to go back to eight compositions.
+ * `dx` `dy` `ds` `da` ARE THE JITTER BUDGETS, and they are the other half of this table:
+ * how far `mesh()`'s dice may move that particular bloom on a tone that asks for a
+ * composition of its own. One composition across eight grounds is one gradient STAMPED
+ * eight times — eight cards lit by the same six lamps — and the eye reads the repeated
+ * shape before it reads either colour, most obviously where two cards sit side by side.
+ * So the traced rows are the CENTRE of a range rather than the whole answer.
+ *
+ * A BUDGET PER ROW AND NOT ONE FOR THE TABLE, which is the part that took the longest and
+ * is worth not undoing. One global ±10% moves every bloom by the same licence, and two of
+ * these rows cannot take it: row 4 is 68% TALL, so a few points of extra height and a
+ * nudge upward turns it into a column running the full card and the colour stops reading
+ * as pooling at the bottom at all — which is what a uniform budget produced on `rose` and
+ * `amber`, and it is a different picture rather than the same one rearranged. Row 4's
+ * height budget is therefore half of everything else's, and rows 2 and 3 — wide, faint,
+ * far from the copy — carry the widest.
+ *
+ * WHAT THE BUDGETS PROTECT, checked by rendering all eight and measuring rather than by
+ * eye: the colour's centroid stays at y ≈ 75% on every tone (it is 76% on the reference),
+ * the deepest point stays below y = 83%, and the top-left — 62% of the width by 34% of the
+ * height, which is where `ToneCard` puts the title and the description — never drifts
+ * further from the field than the reference's own corner does. A composition that broke
+ * any of those would be a card the copy is unreadable on, which renders perfectly.
  */
-const WASH: [lamp: 'top' | 'deep' | 'cool', x: number, y: number, w: number, h: number, peak: number][] = [
-  ['top', 34, 51, 22, 52, 0.7],
-  ['deep', 67, 48, 30, 40, 0.23],
-  ['cool', 73, 85, 30, 32, 0.65],
-  ['cool', 51, 88, 23, 68, 0.58],
-  ['deep', 10, 95, 66, 43, 0.62],
-  ['deep', 34, 78, 49, 43, 0.63],
+const WASH: [
+  lamp: 'top' | 'deep' | 'cool',
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  peak: number,
+  dx: number,
+  dy: number,
+  ds: number,
+  da: number,
+][] = [
+  ['top', 34, 51, 22, 52, 0.7, 11, 5, 12, 5],
+  ['deep', 67, 48, 30, 40, 0.23, 13, 6, 15, 4],
+  ['cool', 73, 85, 30, 32, 0.65, 11, 5, 15, 5],
+  ['cool', 51, 88, 23, 68, 0.58, 9, 4, 8, 5],
+  ['deep', 10, 95, 66, 43, 0.62, 11, 4, 11, 5],
+  ['deep', 34, 78, 49, 43, 0.63, 11, 5, 13, 5],
 ]
 
 /**
- * THE SHAPE EVERY TONE IS BUILT IN. Two colours in, one diffuse wash out.
+ * THE COMPOSITION'S DICE. A tone's name in, a stream of numbers out, the same numbers
+ * every time.
+ *
+ * SEEDED, not `Math.random()`: this runs when Tailwind loads its config, so a live random
+ * would deal a different composition into the stylesheet on every build. That is a
+ * rebuild whose CSS diff is noise, a screenshot test that can never pass twice, and —
+ * worst — a card that looked right when it was reviewed and ships as something else. Same
+ * name, same numbers, for ever.
+ *
+ * ON THE NAME rather than on the stops, which is the less obvious half. Seeding on the
+ * colours would be the more literal reading of "a pattern per colour", and it means
+ * retuning `AMBER_DEEP` by two points RESHUFFLES amber's whole composition — a colour
+ * correction that silently moves every bloom on ~30 surfaces. The name is the tone's
+ * identity and the thing that is stable; the stops are what we expect to tune.
+ *
+ * FNV-1a INTO XORSHIFT32, both textbook, neither cryptographic and neither needs to be.
+ * What is actually required of this is: same input → same output, small changes in the
+ * name → an unrelated stream, and a flat enough spread that a range like −11..11 is not
+ * always answered with −11. `Math.imul` is in here because FNV's multiply overflows 32
+ * bits and `*` would silently go through a double.
+ *
+ * EVERY DRAW IS BOUNDED BY `WASH`, which is what makes a random composition safe to ship
+ * without eyes on every future tone: the budgets there are narrow, and each is a range
+ * within which any value is a card we would have drawn by hand. See `WASH` for what they
+ * are and what they protect.
+ */
+const seeded = (seed: string) => {
+  let h = 2166136261
+  for (let i = 0; i < seed.length; i += 1) {
+    h ^= seed.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  // One draw, rounded to a whole number — a gradient stop does not need decimals, and
+  // the composition reads as something a person could have typed.
+  return (min: number, max: number) => {
+    h ^= h << 13
+    h ^= h >>> 17
+    h ^= h << 5
+    return Math.round(min + (((h >>> 0) % 1000) / 1000) * (max - min))
+  }
+}
+
+/**
+ * THE SHAPE EVERY TONE IS BUILT IN. Two colours and, optionally, a name in; one diffuse
+ * wash out.
  *
  * A tone used to be `linear-gradient(135deg, light, deep)`: one straight sweep, corner to
  * corner, the colour arriving at an even rate the whole way across. It read as a card
  * that had been FILLED — the same amount of gradient everywhere, and the copy in the
- * top-left sitting on a tint rather than on a light. What replaced it was a wash of seven
- * seeded blooms, which was the right idea and the wrong picture. This is the picture: the
+ * top-left sitting on a tint rather than on a light. This is the picture instead: the
  * reference the product owner supplied, traced. See `WASH` for the composition and
  * `BLOOM_RAMP` for the falloff, which is the half that decides whether it reads as paint.
  *
@@ -564,10 +638,29 @@ const WASH: [lamp: 'top' | 'deep' | 'cool', x: number, y: number, w: number, h: 
  * flat field is both what that is and what makes the wash's own edges impossible to find.
  *
  * IT ALSO SETTLES THE ONE THING THAT COULD BREAK A CARD RATHER THAN RESTYLE IT. The copy
- * sits in the top-left; the title has to be readable there; `top` is the stop chosen so
- * it is. With a flat field, the top-left corner IS `top` — not approximately, not until
- * somebody retunes a bloom, but because nothing in `WASH` reaches it. The old recipe held
- * that invariant by keeping one hand-guarded value out of the dice.
+ * sits in the top-left; the title has to be readable there; `top` is the stop chosen so it
+ * is. With a flat field, the top-left corner IS `top` — not approximately and not until
+ * somebody retunes a bloom, because nothing in `WASH` reaches it at any draw the budgets
+ * allow.
+ *
+ * `seed` IS THE TONE'S OWN NAME, and passing it is what buys a composition of its own:
+ * the whole set of blooms mirrors or does not, and each one is nudged inside its budget.
+ * `lib/designTokens.test.ts` pins that each call site passes ITS OWN name, because two
+ * tones sharing a seed is one line pasted and half-edited, and what it produces is two
+ * grounds wearing the same arrangement — the exact thing the dice are here to prevent, in
+ * the one form nobody would notice by reading the diff.
+ *
+ * OMITTING IT IS ALSO A CHOICE, and exactly one tone makes it. `sky`'s two stops are the
+ * reference's own, so `bg-tone-sky` IS the picture rather than a variation on it, and
+ * jittering it would mean the design system no longer contains the thing it was traced
+ * from. The anchor does not move; everything else is measured against it.
+ *
+ * MIRRORING IS DRAWN FIRST AND APPLIES TO THE WHOLE SET, never per bloom. Which side the
+ * near pool gathers on is the composition's single loudest fact — it is what somebody
+ * describes when they describe one of these cards — and flipping it doubles the shapes
+ * available for free. Flipping blooms INDIVIDUALLY would not: the six would come apart
+ * into an arrangement that no longer has a near pool and a far one, which is not a
+ * variation on the reference but the loss of it.
  *
  * WHAT `top` AND `deep` MEAN, since the names matter more than "first" and "second":
  * `top` is the quiet stop, the one the copy has to be readable on, and `deep` is the
@@ -576,10 +669,25 @@ const WASH: [lamp: 'top' | 'deep' | 'cool', x: number, y: number, w: number, h: 
  * one there. That is what keeps `text-white` safe on them: the wash cannot lighten the
  * corner the title sits in, because nothing paints that corner.
  */
-const mesh = (top: string, deep: string) => {
+const mesh = (top: string, deep: string, seed?: string) => {
   const lamp = { top, deep, cool: cooled(deep) }
+  const d = seed === undefined ? null : seeded(seed)
+  // Drawn before the rows so it belongs to the tone rather than to a bloom, and drawn
+  // first so adding a row later cannot change which side an existing tone pools on.
+  const flip = d !== null && d(0, 1) === 1
   return [
-    ...WASH.map(([which, x, y, w, h, peak]) => bloom(lamp[which], x, y, w, h, peak)),
+    ...WASH.map(([which, x, y, w, h, peak, dx, dy, ds, da]) => {
+      if (d === null) return bloom(lamp[which], x, y, w, h, peak)
+      const at = x + d(-dx, dx)
+      return bloom(
+        lamp[which],
+        flip ? 100 - at : at,
+        y + d(-dy, dy),
+        Math.round(w * (1 + d(-ds, ds) / 100)),
+        Math.round(h * (1 + d(-ds, ds) / 100)),
+        peak + d(-da, da) / 100,
+      )
+    }),
     `linear-gradient(${top}, ${top})`,
   ].join(', ')
 }
@@ -591,7 +699,7 @@ const TONES = {
    * one. See `MIST_DEEP` for what it was and why three points was not a whisper but
    * nothing at all.
    */
-  'tone-mist': mesh(MIST_LIGHT, MIST_DEEP),
+  'tone-mist': mesh(MIST_LIGHT, MIST_DEEP, 'mist'),
   /**
    * THE REFERENCE ITSELF. `mesh()` is traced from one picture; this is the tone whose two
    * stops are that picture's own, so `bg-tone-sky` is not an interpretation of it — the
@@ -611,15 +719,15 @@ const TONES = {
   'tone-sky': mesh(SKY_LIGHT, SKY_DEEP),
   /**
    * Saturated: `accent` as the field, and a brand blue driven past `brand`'s own
-   * lightness as the lamp. Eighteen points of travel, which is `midnight`'s number — the
-   * two dark grounds carry the same weight, so a four-column row that lands both does not
-   * read as one of them having been left flat. It ran `accent` into `brand` itself until
+   * lightness as the lamp. Eighteen points of travel, the deepest of the two dark grounds
+   * and enough that a four-column row landing both does not read as one of them having
+   * been left flat. It ran `accent` into `brand` itself until
    * the wash was traced; see `INDIGO_DEEP` for why five points of lightness could not
    * survive losing the ink shadow.
    */
-  'tone-indigo': mesh(ACCENT, INDIGO_DEEP),
+  'tone-indigo': mesh(ACCENT, INDIGO_DEEP, 'indigo'),
   /** The dark one. `ink` into a deepened brand, never into `brand` at full. */
-  'tone-midnight': mesh(INK, BRAND_DEEP),
+  'tone-midnight': mesh(INK, BRAND_DEEP, 'midnight'),
   /**
    * THE ONE TONE THAT IS NOT IN THE BLUE FAMILY, and it is earned rather than added:
    * it dresses the card for `/magic:done`, which is the end of the loop. Green is
@@ -628,14 +736,15 @@ const TONES = {
    * the palette agreeing with itself, not a second accent.
    *
    * LIGHT, like `mist` and `sky`, and it takes the dark ink they take. Fifteen points of
-   * travel, which is `amber`'s — the two bookends of the loop at the same volume. See the
+   * travel on the traced composition, which is `amber`'s — the loop's two bookends tuned
+   * to one volume, give or take what the dice do to each. See the
    * note on its stops above for why it is neither the saturated green it started as nor
    * the tint it briefly became.
    *
    * It is NOT in `CARD_TONE_CYCLE`. The cycle is positional and means nothing in
    * particular; this one means something, so it is asked for by name.
    */
-  'tone-mint': mesh(MINT_LIGHT, MINT_DEEP),
+  'tone-mint': mesh(MINT_LIGHT, MINT_DEEP, 'mint'),
   /**
    * THE SECOND TONE OUTSIDE THE BLUE FAMILY, and earned the same way `mint` is: it
    * dresses the card for `/magic:start`, which is where a piece of work ENTERS the loop.
@@ -650,7 +759,7 @@ const TONES = {
    * It is NOT in `CARD_TONE_CYCLE`, for `mint`'s reason: the cycle is positional and
    * means nothing in particular, and this one means something.
    */
-  'tone-amber': mesh(AMBER_LIGHT, AMBER_DEEP),
+  'tone-amber': mesh(AMBER_LIGHT, AMBER_DEEP, 'amber'),
   /**
    * Pink. A named ground with no page asking for it yet, which is a different standing
    * from `mint` and `amber` and worth being straight about: those two MEAN something on
@@ -662,7 +771,7 @@ const TONES = {
    * Light, so it takes the dark ink the other light tones take. Not `red` and not
    * `purple`; see the note on its stops above.
    */
-  'tone-rose': mesh(ROSE_LIGHT, ROSE_DEEP),
+  'tone-rose': mesh(ROSE_LIGHT, ROSE_DEEP, 'rose'),
   /**
    * Yellow, on the same standing as `rose` above: declared and available, named by
    * nothing yet.
@@ -672,7 +781,7 @@ const TONES = {
    * from `amber` that a grid carrying both reads as two colours rather than as one at
    * two strengths, which is the risk with any two warm tones in one table.
    */
-  'tone-lemon': mesh(LEMON_LIGHT, LEMON_DEEP),
+  'tone-lemon': mesh(LEMON_LIGHT, LEMON_DEEP, 'lemon'),
 }
 
 // THE PRODUCT PLATES. One gradient per integration, declared here and used as

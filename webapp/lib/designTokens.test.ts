@@ -169,8 +169,8 @@ describe('design tokens', () => {
   })
 
   /**
-   * EVERY TONE IS BUILT BY `mesh()`, WITH BOTH OF ITS STOPS. Two silent failures, one
-   * check.
+   * EVERY TONE IS BUILT BY `mesh()`, WITH BOTH ITS STOPS AND ITS OWN NAME. Three silent
+   * failures, one check.
    *
    * THE FIRST is a tone that spells its own gradient. `mesh()` is the shape the whole
    * family shares — six blooms traced off a reference, plus the flat field — and a
@@ -186,31 +186,56 @@ describe('design tokens', () => {
    * wrong. It is also the plausible edit, because the way a ninth tone gets added is by
    * copying the line above it.
    *
+   * THE THIRD is a tone seeded on somebody else's name. The seed IS the arrangement: it
+   * decides which side the near pool gathers on and where all six blooms land inside
+   * their budgets, so two tones passing the same string are two grounds wearing identical
+   * blooms in identical places — the mechanical stamped look the dice exist to prevent,
+   * arriving in the one form nobody spots by reading a diff. It is the same copied line
+   * as the second failure, one argument along.
+   *
+   * `sky` IS THE ONE TONE ALLOWED TO PASS NO SEED, and the exception is the point rather
+   * than an oversight: its two stops are the reference's own, so `bg-tone-sky` IS the
+   * traced picture and jittering it would mean the design system no longer contains the
+   * thing every other tone was measured against. So the rule is two arguments for `sky`
+   * and three for everybody else — which also catches the reverse mistake, a `sky` that
+   * somebody helpfully seeds to make the table look consistent.
+   *
    * READ AS TEXT, like everything else here, and that is a constraint rather than a
    * preference — this suite runs on the ROOT `node_modules`, so it may not import the
    * webapp's config. What it buys anyway: the check lands on the CALL SITE, which is
-   * where both mistakes live.
+   * where all three mistakes live. Evaluating `mesh()` and comparing the eight strings
+   * would catch the third too, but it would pass just as happily on a seed of
+   * `'tone-mist'` or `'Mist'` — near-misses that work today and stop matching the day
+   * something else keys off a tone's name.
    *
-   * It does NOT check the composition — the six blooms, their positions, the falloff.
-   * Those are the design; they are traced from a picture today and a test that pinned
-   * them would fail the next time the picture changes on purpose. The invariants worth a
-   * test are the ones a reviewer cannot see: these two, and the ink pairing below.
+   * It does NOT check the composition — the six blooms, their budgets, the falloff. Those
+   * are the design; they are traced from a picture today and a test that pinned them
+   * would fail the next time the picture changes on purpose. The invariants worth a test
+   * are the ones a reviewer cannot see: these three, and the ink pairing below.
    */
-  it('builds every card tone through mesh(), with both of its stops', () => {
+  it('builds every card tone through mesh(), with both stops and its own seed', () => {
     const tones = objectLiteral(config, 'TONES')
     const declared = literalKeys(tones)
     expect(declared).toHaveLength(8)
 
     for (const key of declared) {
+      const tone = key.replace(/^tone-/, '')
       const row = tones.split('\n').find((line) => line.trim().startsWith(`'${key}':`))
       expect(row, `\`${key}\` is declared but this test cannot find its line`).toBeTruthy()
 
       const call = /:\s*mesh\(([^)]*)\)/.exec(row as string)
       expect(call, `\`${key}\` does not build its ground with mesh() — a tone may not spell its own gradient`).toBeTruthy()
 
-      const stops = (call as RegExpExecArray)[1].split(',').map((arg) => arg.trim())
-      expect(stops, `\`${key}\` passes ${stops.length} stop(s) to mesh(); it takes a quiet one and a deep one`).toHaveLength(2)
-      for (const stop of stops) expect(stop, `\`${key}\` passes an empty stop to mesh()`).not.toBe('')
+      const args = (call as RegExpExecArray)[1].split(',').map((arg) => arg.trim())
+      for (const arg of args) expect(arg, `\`${key}\` passes an empty argument to mesh()`).not.toBe('')
+
+      if (tone === 'sky') {
+        expect(args, '`tone-sky` is the traced reference and must pass no seed — see mesh()').toHaveLength(2)
+        continue
+      }
+
+      expect(args, `\`${key}\` passes ${args.length} argument(s) to mesh(); it takes two stops and its own name`).toHaveLength(3)
+      expect(args[2], `\`${key}\` seeds its composition on ${args[2]} rather than on its own name`).toBe(`'${tone}'`)
     }
   })
 
