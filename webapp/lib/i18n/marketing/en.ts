@@ -363,6 +363,71 @@ export const marketingEn = {
   'site.workflow.doneDesc':
     'Once the merge is confirmed: the ticket closed, the branch deleted on both ends, the worktree removed. Your machine back where it started.',
 
+  // ── The skills band, between the workflow and the app window ───────────────
+  //
+  // A HEADING, A PARAGRAPH, THREE CLAIMS AND A BUTTON, beside a terminal running seven of
+  // the eight commands. `lib/skillsBand.ts` is the module that names every key below and
+  // `skillsBand.test.ts` looks each one up here and in the French — which is the whole
+  // reason that module exists, since `t()` has no per-key fallback and a renamed entry
+  // would ship as a heading with a hole under it.
+  //
+  // NO COMMAND NAME APPEARS IN ANY OF IT, the same division the workflow band's own note
+  // above describes: the commands are printed by the DRAWING, spelled from
+  // `lib/commands.ts`, whose template-literal type makes `/magic:pln` a compile error. In
+  // a catalogue they would be eight strings a translator can edit and nothing can check.
+  //
+  // EIGHT IN THE COPY, SEVEN IN THE DRAWING, and neither is wrong. Eight is what ships;
+  // seven is the path one ticket takes through them, because `/magic:continue` is not a
+  // stage of a ticket's life but how you re-enter one you left. `lib/workflow.ts` sets that
+  // out at length and `workflow.test.ts` pins it.
+  /**
+   * The band's `h2`. It names a COUNT and a SPAN — how many there are, and that between
+   * them they cover the lot — because those are the two things a reader cannot get from
+   * the drawing beside it, which shows a sequence without ever saying how long it is or
+   * whether anything comes after.
+   *
+   * A NUMERAL AND NOT THE WORD, by the product owner's call ("peux-tu remplacer les
+   * 'Huit' par '8'"), here and on the first claim below. It reads as a spec rather than
+   * as prose, which is what a count of commands is, and it is the same shape as the
+   * `/magic:` tokens in the drawing beside it. `skillsBand.test.ts` pins the digit in
+   * both catalogues against `MAGIC_COMMANDS.length`, so it cannot drift from the eight
+   * the product actually ships.
+   */
+  'site.skillsBand.title': '8 skills do the whole cycle.',
+  /**
+   * ONE PARAGRAPH, and what it adds to the title is the DIVISION OF LABOUR: what the agent
+   * does, and what is left for you. The three verbs are the three artefacts the terminal
+   * beside it prints — the tracker read, the code written, the pull request opened and its
+   * review answered — so the copy and the drawing are making one argument rather than two.
+   *
+   * IT ENDS ON WHAT YOU KEEP rather than on what you are spared. "Almost no human
+   * interaction" was the brief and it would be the wrong sentence: the product stops for
+   * approval twice on purpose, and a band that claimed otherwise would promise something
+   * `skills/magic-plan/SKILL.md` explicitly does not do. See the note on the third claim.
+   *
+   * TWO SENTENCES AND NOT ONE WITH AN EM DASH IN IT, by the owner's call ("retire le
+   * grand — entre à sa review et ce qu'il vous reste"). The dash was doing a full stop's
+   * job in a paragraph that already has a comma-separated list of three verbs in front of
+   * it, and at this width it landed mid-line where it read as a hyphen between two
+   * clauses rather than as the turn it was meant to be. The hero and the desktop band
+   * still use one; this paragraph is longer than either.
+   */
+  'site.skillsBand.subtitle':
+    'One command per moment of a ticket’s life. The agent reads the tracker, writes the code, opens the pull request and answers its review. What is left for you is reading it and saying yes.',
+  /** The button, out to the inventory of all eight on `/features`. */
+  'site.skillsBand.cta': 'See the workflow',
+  /** ① The count, which is the one claim a reader can check against the page. */
+  'site.skillsBand.pointSkills': '8 skills, one per step of the cycle',
+  /** ② The span, named by its two ENDS — the same shape as the page's own headline. */
+  'site.skillsBand.pointCycle': 'From the first idea to the merged pull request',
+  /**
+   * ③ What is left for you. It names the ONE approval that gates everything downstream
+   * rather than counting them, because the number depends on how you run it and the claim
+   * should not: nothing is opened on the tracker and no code is written until you have
+   * said yes to a plan.
+   */
+  'site.skillsBand.pointHands': 'You approve the plan, the rest runs itself',
+
   // ── The band under the app window: who it is built for ─────────────────────
   //
   // FIVE CARDS AND A HEADING, and the family is `site.builtFor.*` rather than

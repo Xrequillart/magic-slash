@@ -118,6 +118,22 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.workflow.doneDesc':
     'Une fois le merge confirmé : ticket clôturé, branche supprimée des deux côtés, worktree retiré. Votre machine revient à son point de départ.',
 
+  // ── La bande des skills, entre le workflow et la fenêtre de l’app ──────────
+  //
+  // AUCUN NOM DE COMMANDE ICI : les commandes sont imprimées par le DESSIN, épelées depuis
+  // `lib/commands.ts`. Huit dans le texte, sept dans le terminal — `/magic:continue` n’est
+  // pas une étape de la vie d’un ticket mais la façon d’y revenir. Voir l’anglais.
+  //
+  // « skills » RESTE EN ANGLAIS, comme dans le reste du site et dans l’app : c’est le mot
+  // que Claude Code emploie pour ces fichiers, et « compétences » désignerait autre chose.
+  'site.skillsBand.title': '8 skills font tout le cycle.',
+  'site.skillsBand.subtitle':
+    'Une commande par moment de la vie d’un ticket. L’agent lit le tracker, écrit le code, ouvre la pull request et répond à sa review. Ce qu’il vous reste, c’est de lire et de dire oui.',
+  'site.skillsBand.cta': 'Voir le workflow',
+  'site.skillsBand.pointSkills': '8 skills, une par étape du cycle',
+  'site.skillsBand.pointCycle': 'De la première idée à la pull request mergée',
+  'site.skillsBand.pointHands': 'Vous validez le plan, le reste se déroule seul',
+
   // ── La bande sous la fenêtre de l’app : pour qui elle est faite ────────────
   //
   // LES TITRES SONT DES NOMS, pas les impératifs de la bande workflow : celle-ci parle de

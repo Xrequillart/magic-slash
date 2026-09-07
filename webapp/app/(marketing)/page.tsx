@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { HeroSection } from '@/components/site/home/HeroSection'
 import { PillarsSection } from '@/components/site/home/PillarsSection'
 import { WorkflowSection } from '@/components/site/home/WorkflowSection'
+import { SkillsSection } from '@/components/site/home/SkillsSection'
 import { DesktopSection } from '@/components/site/home/DesktopSection'
 import { BuiltForSection } from '@/components/site/home/BuiltForSection'
 import { FaqSection } from '@/components/site/home/FaqSection'
@@ -10,19 +11,27 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 /**
  * magic-slash.io — the landing page.
  *
- * SEVEN SECTIONS: the promise, what the product IS, what working with it is actually
- * like, what its window looks like, who that window is for, what is still holding the
- * reader back, then the ask. It was rebuilt as six and cut band by band by the product
- * owner — "on the product you already have", then "the eight commands", then the feature
+ * EIGHT SECTIONS: the promise, what the product IS, what working with it is actually
+ * like, what you type to do it, what its window looks like, who that window is for, what
+ * is still holding the reader back, then the ask. It was rebuilt as six and cut band by
+ * band by the product owner — "on the product you already have", then "the eight commands", then the feature
  * grid, and then "how it works" as well — which at its thinnest left the headline that
  * names the cycle and the one button at the end of it, with nothing between them. The
- * five middle bands were then built back, for five different jobs:
+ * middle bands were then built back, six of them now, for six different jobs:
  *
  *   • `PillarsSection` answers WHAT IT IS in two cards, one per half of the product — the
  *     eight skills, and the app that drives them — closing on the line that names the
  *     reader. A visitor who has only read the hero knows the outcome and not the thing.
  *   • `WorkflowSection` answers WHAT A DAY WITH IT LOOKS LIKE: the loop as five steps,
  *     one coloured card each, a drawing apiece, and one button out to `/workflow`.
+ *   • `SkillsSection` answers WHAT YOU ACTUALLY TYPE, and it is the page's only band
+ *     built on `SplitFeature` — a heading, a paragraph and three claims beside a Claude
+ *     Code session running seven of the eight commands one after the other. It follows
+ *     the workflow band because a reader who has been shown the five moments of a day can
+ *     read a transcript of them; the same panel above that band would be a list of
+ *     commands with nothing to hang on. It carries the page body's one DIRECT link to the
+ *     command inventory (`/features#workflow`), where the workflow band's button reaches
+ *     the same anchor one hop later, via `/workflow`.
  *   • `DesktopSection` then shows the app's own window at length, drawn faithfully.
  *   • `BuiltForSection` answers WHO THAT WINDOW IS FOR, in five coloured cards: the
  *     backlog inside it, the keyboard, the Mac, the switches and the global shortcut. It
@@ -36,7 +45,7 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  *     it does any work — a reader who has read five bands and not pressed the button is
  *     held up by one of those five things.
  *
- * THE ORDER OF THE MIDDLE THREE CHANGED ONCE, and the reasoning changed with it rather
+ * THE ORDER OF THE FIRST THREE CHANGED ONCE, and the reasoning changed with it rather
  * than being retrofitted. The workflow band shipped BELOW the window, on the argument that
  * a sequence of five steps lands better for a reader who has already seen the thing that
  * runs them. The product owner moved it above — "tu peux mettre cette partie juste avant
@@ -113,8 +122,10 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * Product column, which is why the cut did not orphan the page. The workflow band gives
  * the body a link out again, though not to that page: its button opens `/workflow`, and
  * `/workflow` is what links on to `/features#workflow`. One hop further than the grid
- * would have been, and it lands on the same eight commands. The hero's two buttons stay
- * as they are — start free, or download — for the reasons `HeroSection.tsx` sets out.
+ * would have been, and it lands on the same eight commands. `SkillsSection`, added under
+ * it, closes that gap properly — its button IS `/features#workflow`, so the page body now
+ * reaches the command inventory in one hop as well as two. The hero's two buttons stay as
+ * they are — start free, or download — for the reasons `HeroSection.tsx` sets out.
  *
  * THE CUT BANDS' COMPONENTS ARE GONE, not parked. They were kept on disk for one round —
  * unrendered, so that restoring a band was one import and one line — and the review
@@ -133,9 +144,11 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * header's Product menu and the footer's Product column. Both bands are gone; the
  * footer's "Features" row now points at the `/features` PAGE, and "The commands" is not
  * back — the eight live there too, under `#workflow`. With `#how` cut as well, this page
- * publishes NO same-page anchor: every nav row that names it now names a route. THE
- * WORKFLOW BAND DOES NOT BREAK THAT and deliberately takes no `id`: its button is a route
- * (`/workflow`), so there is nothing on this page for a nav row to point into.
+ * publishes NO same-page anchor: every nav row that names it now names a route. NEITHER
+ * OF THE TWO BANDS ADDED SINCE BREAKS THAT, and both deliberately take no `id`: the
+ * workflow band's button is a route (`/workflow`) and the skills band's is a route with
+ * someone ELSE's anchor on it (`/features#workflow`), so there is nothing on this page for
+ * a nav row to point into.
  *
  * Every retired band's copy stays in the catalogues (`site.yourProduct.*`,
  * `site.features.*`, `site.how.commandsTitle`, `site.whereItStands.*`, `site.mockup.*`),
@@ -170,6 +183,7 @@ export default function Home() {
       <HeroSection />
       <PillarsSection />
       <WorkflowSection />
+      <SkillsSection />
       <DesktopSection />
       <BuiltForSection />
       <FaqSection />
