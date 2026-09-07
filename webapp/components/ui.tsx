@@ -1003,8 +1003,14 @@ export function Badge({
  * ── CONTROLLED OR NOT ───────────────────────────────────────────────────────────────
  *
  * Pass `open` and `onToggle` for an accordion that closes its siblings; pass neither and
- * the row owns its own state, which is what a FAQ wants — see the note in
- * `FaqContent.tsx` on why comparing two answers beats one-at-a-time.
+ * the row owns its own state.
+ *
+ * BOTH ARE IN USE, and the two call sites disagree on purpose — which is why this is a
+ * slot and not a decision baked in here. `/faq` is uncontrolled: its rows get compared
+ * against each other, and `FaqContent.tsx` argues that out. The homepage's FAQ band is
+ * an accordion, because there its rows are one COLUMN of a two-column band sitting
+ * directly above the download button, so a row that stays open pushes the ask down the
+ * page and unbalances the band — `FaqSection.tsx` has the rest of it.
  */
 export function Collapse({
   title,

@@ -1254,6 +1254,24 @@ export const marketingEn = {
   // promise that opening it is cheap; an answer that turns out to be a page of prose
   // breaks it, and the reader who needed that much detail was never going to find it
   // inside an accordion.
+  // ── The FAQ band on the homepage ───────────────────────────────────────────
+  //
+  // BAND ⑧ IS BACK, and it is not the one that was cut. That band WAS the FAQ — five
+  // questions and nothing else, on a page with no FAQ to send anyone to. This one is a
+  // WINDOW onto `/faq`: the five questions that stop a reader pressing the download
+  // button, beside a title, a line and a button out to the other six. `HOME_QUESTION_IDS`
+  // in `lib/faq.ts` says which five and why.
+  //
+  // ITS OWN THREE KEYS, not `site.faq.title` and `site.faq.lead` — the band and the page
+  // are two surfaces, and sharing copy between two surfaces is the mistake
+  // `site.finalCta.*` exists to have fixed. "Frequently asked questions" is an `h1` over
+  // eleven rows; a band arriving after five screens of product can be warmer than that,
+  // and its line has to account for showing five of the eleven.
+  'site.homeFaq.title': 'Still wondering.',
+  'site.homeFaq.subtitle':
+    'The five we get asked before anyone installs it. Commit formats, credentials, updates, uninstalling — the rest is on the FAQ.',
+  'site.homeFaq.cta': 'Read the FAQ',
+
   'site.faq.title': 'Frequently asked questions',
   'site.faq.lead':
     'Everything about installing Magic Slash, configuring it, and living with it day to day.',

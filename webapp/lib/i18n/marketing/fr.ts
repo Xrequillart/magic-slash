@@ -782,6 +782,15 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   //
   // Voir la note dans `en.ts` : clés par sujet et non par position, une réponse d'un
   // paragraphe, et `site.faq.viewAll` supprimée avec la bande ⑧ de la page d'accueil.
+  // ── La bande FAQ de la page d'accueil ──────────────────────────────────────
+  //
+  // Voir la note dans `en.ts` : une fenêtre sur `/faq` et non la bande ⑧ d'origine, avec
+  // ses trois clés propres plutôt que celles de la page.
+  'site.homeFaq.title': 'Il vous reste un doute.',
+  'site.homeFaq.subtitle':
+    'Les cinq questions posées avant d’installer. Format des commits, identifiants, mises à jour, désinstallation : le reste est sur la FAQ.',
+  'site.homeFaq.cta': 'Lire la FAQ',
+
   'site.faq.title': 'Questions fréquentes',
   'site.faq.lead':
     'Tout sur l’installation de Magic Slash, sa configuration, et son usage au quotidien.',

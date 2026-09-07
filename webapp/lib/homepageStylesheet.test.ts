@@ -48,7 +48,7 @@ const path = (relative: string) => fileURLToPath(new URL(relative, WEBAPP))
 const MARKETING_LAYOUT = path('app/(marketing)/layout.tsx')
 
 /**
- * The homepage's own tree: the route, the six bands, and the chrome the layout wraps
+ * The homepage's own tree: the route, the seven bands, and the chrome the layout wraps
  * them in.
  *
  * `components/site` is walked RECURSIVELY so a new band or a new shared control is

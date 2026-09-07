@@ -4,18 +4,19 @@ import { PillarsSection } from '@/components/site/home/PillarsSection'
 import { WorkflowSection } from '@/components/site/home/WorkflowSection'
 import { DesktopSection } from '@/components/site/home/DesktopSection'
 import { BuiltForSection } from '@/components/site/home/BuiltForSection'
+import { FaqSection } from '@/components/site/home/FaqSection'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 
 /**
  * magic-slash.io — the landing page.
  *
- * SIX SECTIONS: the promise, what the product IS, what working with it is actually like,
- * what its window looks like, who that window is for, then the ask. It was rebuilt as six
- * and cut band by band by the product owner — "on the product you already have", then
- * "the eight commands", then the feature grid, and then "how it works" as well — which at
- * its thinnest left the headline that names the cycle and the one button at the end of
- * it, with nothing between them. The four middle bands were then built back, for four
- * different jobs:
+ * SEVEN SECTIONS: the promise, what the product IS, what working with it is actually
+ * like, what its window looks like, who that window is for, what is still holding the
+ * reader back, then the ask. It was rebuilt as six and cut band by band by the product
+ * owner — "on the product you already have", then "the eight commands", then the feature
+ * grid, and then "how it works" as well — which at its thinnest left the headline that
+ * names the cycle and the one button at the end of it, with nothing between them. The
+ * five middle bands were then built back, for five different jobs:
  *
  *   • `PillarsSection` answers WHAT IT IS in two cards, one per half of the product — the
  *     eight skills, and the app that drives them — closing on the line that names the
@@ -29,6 +30,11 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  *     via `/workflow`), and it sits immediately under the window on purpose — five claims
  *     about living somewhere only land next to a picture of the place. Its headline is
  *     the owner's brief: "build pour le developer mais pas que".
+ *   • `FaqSection` answers WHAT IS STILL HOLDING THE READER BACK: the five questions
+ *     asked before anyone installs it, as disclosure rows beside a heading and a button
+ *     out to `/faq`. It is the last band before the ask because that is the only place
+ *     it does any work — a reader who has read five bands and not pressed the button is
+ *     held up by one of those five things.
  *
  * THE ORDER OF THE MIDDLE THREE CHANGED ONCE, and the reasoning changed with it rather
  * than being retrofitted. The workflow band shipped BELOW the window, on the argument that
@@ -166,6 +172,7 @@ export default function Home() {
       <WorkflowSection />
       <DesktopSection />
       <BuiltForSection />
+      <FaqSection />
       <FinalCtaSection />
     </div>
   )

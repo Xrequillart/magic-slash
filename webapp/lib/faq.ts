@@ -40,6 +40,42 @@ export const PAGE_CHROME = {
   faq: 'site.footer.faq',
 } as const satisfies Record<string, MessageKey>
 
+/**
+ * The route, next to the page's own data for `lib/workflow.ts`'s reason: a band on the
+ * homepage links here, and a component should not have to know the site's URL shape to
+ * do it.
+ *
+ * NOT PLUMBED THROUGH THE FOOTER, which spells `/faq` itself. Its columns are a table of
+ * route literals — `/features`, `/changelog`, `/story` — and importing a constant for one
+ * row of five would read as that row being special when it is not.
+ */
+export const FAQ_PATH = '/faq'
+
+/**
+ * The chrome of the FAQ BAND on the homepage, which is a different surface from this page
+ * and therefore has its own copy.
+ *
+ * ITS OWN KEYS AND NOT `PAGE_CHROME`'s, and that is a fix rather than a preference —
+ * `FinalCtaSection` learned it the hard way, and its header records it: `site.cta.*` was
+ * shared with `/story`, so retuning the homepage's closing band through those keys
+ * silently rewrote a page nobody had opened. The two surfaces also want different
+ * sentences. This page's `title` is "Frequently asked questions", which is what an `h1`
+ * over eleven rows should say and is a poor thing to put on a band a reader arrives at
+ * after five screens of product; and its `lead` describes the whole page, where the band
+ * has to account for showing five questions out of eleven.
+ *
+ * WHAT IS SHARED IS THE QUESTIONS, and only them: see `HOME_QUESTION_IDS`. The band is a
+ * window onto this list, not a copy of part of it.
+ */
+export const HOME_CHROME = {
+  /** The band's `h2`. */
+  title: 'site.homeFaq.title',
+  /** The line under it, which is also where the five-out-of-eleven is accounted for. */
+  subtitle: 'site.homeFaq.subtitle',
+  /** The button out to this page. */
+  cta: 'site.homeFaq.cta',
+} as const satisfies Record<string, MessageKey>
+
 /** One row of the page: a question, its answer, and the id its anchor is built from. */
 type Question = {
   /**
@@ -101,3 +137,53 @@ export const QUESTIONS = [
   { id: 'updates', question: 'site.faq.updates.q', answer: 'site.faq.updates.a' },
   { id: 'uninstall', question: 'site.faq.uninstall.q', answer: 'site.faq.uninstall.a' },
 ] as const satisfies readonly Question[]
+
+/**
+ * THE FIVE THE HOMEPAGE BAND SHOWS, by id, in the order it shows them.
+ *
+ * NAMED AND NOT SLICED. `QUESTIONS.slice(0, 5)` is the same five rows today and it is
+ * the wrong mechanism: the order up there is an ARGUMENT about how a reader arrives at
+ * the eleven, and it is expected to move — insert a question at the top and the homepage
+ * silently drops `trackers` for it, with nothing in either file to say the homepage had
+ * an opinion. Naming them is what makes the band survive a reorder of the page, the same
+ * call `CARD_TONE_CYCLE` makes about a tone that means something.
+ *
+ * WHY THESE FIVE. The band sits after five screens of product and immediately before the
+ * download, so its job is the doubt that stops a reader pressing the button — not the
+ * doubt that arrives a week later. Those are the two DISQUALIFYING questions (is this
+ * for me, what does it cost) and the three about whether it will run at all here
+ * (prerequisites, platforms, tracker). Deliberately NOT on the band: `credentials`,
+ * `updates` and `uninstall`, which nobody asks before installing, and `commitFormat` and
+ * `languages`, which are reassurance a reader has to already be interested to want.
+ *
+ * FIVE IS THE PRODUCT OWNER'S NUMBER, and it happens to be the length the layout wants:
+ * the band is a two-column row, and five collapsed plates beside a title, a paragraph
+ * and a button is roughly the same height on either side. Change the count and the
+ * shorter column starts floating.
+ *
+ * IDS RATHER THAN THE ROWS THEMSELVES, so this list cannot drift out of step with the
+ * page: the band renders whatever `QUESTIONS` currently says about `developer`, and a
+ * reworded question or a corrected answer reaches both surfaces at once. `faq.test.ts`
+ * pins that every id here is one the page actually has — a typo would otherwise be a
+ * silently missing row.
+ */
+export const HOME_QUESTION_IDS = [
+  'developer',
+  'price',
+  'prerequisites',
+  'platforms',
+  'trackers',
+] as const satisfies readonly (typeof QUESTIONS)[number]['id'][]
+
+/**
+ * The same five as rows, resolved against `QUESTIONS` — which is what the band maps over.
+ *
+ * `find` rather than a lookup table, because eleven entries do not want an index, and
+ * the `!` is safe for a reason a reader can check rather than take on trust: the type of
+ * `HOME_QUESTION_IDS` is the union of `QUESTIONS`'s own ids, so an id that is not in the
+ * list fails `tsc` at the declaration above. `faq.test.ts` asserts it again for CI, where
+ * `tsc` never runs on this tree.
+ */
+export const HOME_QUESTIONS = HOME_QUESTION_IDS.map(
+  (id) => QUESTIONS.find((entry) => entry.id === id)!,
+)
