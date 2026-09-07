@@ -849,6 +849,179 @@ export function ShowcaseCard({
   )
 }
 
+// ── The split feature ────────────────────────────────────────────────────────
+
+/**
+ * WHICH SIDE THE ARTWORK TAKES, as the two literal class lists the arrangement deals in.
+ *
+ * BOTH ARE `flex-row` VARIANTS OVER ONE DOM ORDER, which is the whole reason this is a
+ * slot rather than two components or a caller-supplied `order-*`. The copy is ALWAYS
+ * first in the markup: that is the reading order a screen reader gets, the order the
+ * column stacks in below `md`, and the order the keyboard reaches a button in. Flipping
+ * the side is then purely visual — `flex-row-reverse` — and cannot take the reading order
+ * with it.
+ *
+ * WHY IT HAS TO FLIP AT ALL. A page that puts every picture on the same side reads as a
+ * template; alternating them is what makes a stack of these read as a page. So the side is
+ * an option on the block instead of something the next band reinvents with an `order-1`.
+ *
+ * `left` IS THE DEFAULT because the reference this was drawn from puts the artwork there,
+ * and because the first band to use it does.
+ */
+const SPLIT_MEDIA = {
+  /** Artwork on the left, copy on the right. */
+  left: 'md:flex-row-reverse',
+  /** Copy on the left, artwork on the right. */
+  right: 'md:flex-row',
+} as const
+
+export type SplitMedia = keyof typeof SPLIT_MEDIA
+
+/**
+ * A BAND'S WORTH OF COPY BESIDE A BIG PIECE OF ARTWORK, either way round.
+ *
+ * The fourth arrangement in this file, and the gap it fills is the one none of the other
+ * three can: `Card` and `ToneCard` are SURFACES a few hundred pixels wide, `ShowcaseCard`
+ * is a surface with a panel in the corner of it. This is not a surface at all — no ground,
+ * no border, no radius — it is a full band split in two, where the artwork is large enough
+ * to be looked at and the copy beside it is a heading rather than a caption. Measured off
+ * a reference the product owner brought: media a little over half the row, copy centred
+ * against it, and a short list of claims under the paragraph.
+ *
+ * IT OWNS THE ARRANGEMENT AND NOTHING ELSE, which is the decision worth defending because
+ * the obvious shape — `title` / `description` / `points` props, like `ToneCard` has — was
+ * tried first and is wrong here. The copy in this block is a band's HEADING: on the
+ * homepage it is the `h2` that names the band, at the size every other band's headline is
+ * set in, and that recipe already has exactly one home (`BAND_TITLE` in
+ * `components/site/home/Shell.tsx`, which `HomeHeading` renders). A `title` prop here
+ * would have to respell it, and this file's own header is explicit that nothing may copy a
+ * recipe back out — so the block takes the heading as `children` and the marketing page
+ * hands it the component that already owns the type. `art` is a slot for the same reason
+ * `ShowcaseCard`'s is: the arrangement knows how a band is split, not what a terminal
+ * looks like.
+ *
+ * WHAT GOES IN `children`, in practice: a `HomeHeading`, a `FeaturePoints` under it, and
+ * usually one button. The block puts no space between them — that is the caller's stack to
+ * build, and a component that injected margins between slots it cannot see would be
+ * guessing.
+ *
+ * `grow-[6]` FOR THE ART AGAINST `grow-[5]` FOR THE COPY — 54.5/45.5, which is the
+ * reference's own share. A share and not a `max-w`, for `ShowcaseCard`'s reason: a fixed
+ * copy width leaves a band of empty page on a wide viewport, where a share scales with it.
+ *
+ * `md:items-center`, so the copy sits on the artwork's middle. A drawing tall enough to be
+ * worth this much of a band is taller than three paragraphs, and copy pinned to its top
+ * edge leaves a pool of nothing under it that reads as a layout that ran out.
+ *
+ * IT STACKS BELOW `md`, copy first. Same call `ShowcaseCard` makes and the same reasoning:
+ * a readable measure of type and a large drawing do not both fit on a phone, and of the
+ * two the copy is what has to lead.
+ */
+export function SplitFeature({
+  media = 'left',
+  art,
+  children,
+  className,
+}: {
+  /** Which side the artwork takes from `md` up. See `SPLIT_MEDIA`. */
+  media?: SplitMedia
+  /**
+   * The artwork. Rendered UNPADDED and with no ground of its own — a drawing this size
+   * brings its own plate, the way every mockup on this site sits on a `bg-tone-*`.
+   */
+  art: React.ReactNode
+  /** The copy column: a heading, a paragraph, whatever goes under them. */
+  children: React.ReactNode
+  /** Additive layout only: never the arrangement, the shares, or the gaps. */
+  className?: string
+}) {
+  return (
+    <div
+      className={cx(
+        'flex flex-col gap-10 md:items-center md:gap-12 lg:gap-16',
+        SPLIT_MEDIA[media],
+        className,
+      )}
+    >
+      <div className="md:basis-0 md:grow-[5]">{children}</div>
+      {/* `min-w-0` because a flex item's automatic minimum is its content, and a drawing
+          that crops itself — a terminal with lines wider than its window, say — would
+          otherwise widen this column until it fitted and take the copy's share with it. */}
+      <div className="min-w-0 md:basis-0 md:grow-[6]">{art}</div>
+    </div>
+  )
+}
+
+export type FeaturePoint = {
+  icon: LucideIcon
+  label: string
+}
+
+/**
+ * THE CLAIMS UNDER A PARAGRAPH: an outline icon, a short bold line, three or four of them.
+ *
+ * A LIST AND NOT A GRID, and not a set of cards either. Each row is one claim about the
+ * thing in the artwork beside it, read top to bottom in one pass — which is what makes
+ * this the cheapest way to say three things after a paragraph has said one. A grid of
+ * three would ask the reader to compare them; they are not alternatives.
+ *
+ * THE TYPE IS A STEP UNDER THE HEADING AND A STEP OVER THE BODY, and finding that step
+ * took two passes. A claim set in body type reads as more prose and gets skipped; set at
+ * heading size and weight it stops being a claim and becomes a second headline. The
+ * reference sets these very nearly as large as its own headline, which at this scale's
+ * headline size gives the block two competing voices — so it was tried at `font-bold`
+ * 18/20px first and the product owner called it: "je la trouve très forte".
+ *
+ * WHAT IT IS NOW: `font-display` SEMIBOLD at 16/18px against the paragraph's 16px
+ * regular. The size gives up a step and the weight gives up a step, which is one move
+ * rather than two — at 20px semibold the rows still read as headings, and at 16px bold
+ * they still shout. What separates them from the paragraph is now the FACE and the weight
+ * doing the work together instead of the size doing it alone, and on `Cera Pro` that is
+ * enough: 600 in the display face is heavier than 400 in the body face at the same
+ * nominal size.
+ *
+ * `text-brand` ON THE ICON, and it is the one place on a marketing band where the primary
+ * button's own blue appears on something that is not a button. That is deliberate rather
+ * than an oversight: the icons are 20px glyphs at a hairline weight with no fill and no
+ * plate, so there is nothing about them that could be mistaken for a control — and the
+ * blue is what ties three otherwise plain rows to the page. See "Blue that is not the
+ * button" in the design system gallery, which is where that judgement gets checked.
+ *
+ * THEY CAME DOWN WITH THE TYPE, from 24px, and had to: a glyph the full height of two
+ * lines of its own label stops reading as a bullet and starts reading as an illustration
+ * of the row. 20px sits just over the 16px cap height, which is what a marker does.
+ *
+ * `aria-hidden` ON THE ICON: it repeats the label beside it, and a bullet is not content.
+ * The `ul` stays a real list, so the rows are announced as three of three.
+ */
+export function FeaturePoints({
+  points,
+  className,
+}: {
+  points: readonly FeaturePoint[]
+  /** Additive layout only — the space above the list, typically. */
+  className?: string
+}) {
+  return (
+    <ul className={cx('flex flex-col gap-6', className)}>
+      {points.map(({ icon: Icon, label }) => (
+        <li key={label} className="flex items-start gap-4">
+          {/* `strokeWidth={1.75}` rather than lucide's own 2: on a light ground the
+              default reads as a filled shape at a glance, which is exactly the thing the
+              note above says these must not do. It stays 1.75 at 20px — a smaller glyph
+              at a lighter stroke would have thinned out rather than quietened down, and
+              the size is what came down. `mt-0.5` sits the glyph's optical middle on the
+              label's cap height instead of on its box. */}
+          <Icon aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-brand" strokeWidth={1.75} />
+          <span className="font-display text-base font-semibold leading-snug text-ink md:text-lg">
+            {label}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 export function Section({
   title,
   description,
