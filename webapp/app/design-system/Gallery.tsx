@@ -13,6 +13,7 @@ import {
   Settings2,
   Sparkles,
   SquareTerminal,
+  GitMerge,
   Trash2,
   Users,
   X,
@@ -35,6 +36,9 @@ import {
   SectionHeader,
   Select,
   ShowcaseCard,
+  SplitFeature,
+  FeaturePoints,
+  type SplitMedia,
   Textarea,
   type BadgeTone,
   type ButtonVariant,
@@ -42,6 +46,8 @@ import {
   ToneCard,
   type CardTone,
 } from '@/components/ui'
+import { HomeHeading } from '@/components/site/home/Shell'
+import { SkillsRunTerminal } from '@/components/site/home/SkillsRunTerminal'
 
 /**
  * The workbench. See `page.tsx` for why it is development-only.
@@ -925,6 +931,92 @@ export function Gallery() {
             coloured box inside a white box; filling the tile, the artwork simply becomes the tile and
             takes its corner. Jira&apos;s mark and ours are the two that bleed — which is why they are
             the two specimens above that have no white margin.
+          </p>
+        </Block>
+
+        <Block
+          title="The split feature — a band cut in two, either way round"
+          why="The fourth arrangement, and the only one that is not a surface: no ground, no border, no radius. Card and ToneCard are objects a few hundred pixels wide and ShowcaseCard is a surface with a panel in the corner of it; this is a whole band split into a drawing large enough to look at and a heading large enough to be the band's own. Two things are worth pressing on here rather than reading. FIRST, the flip: both specimens below are the same DOM order — copy, then art — and only the flex direction differs, so tab through them and the button comes in the same place both times, and narrow the window and the copy leads in both. A page that put every picture on the same side would read as a template, and an `order-1` at the call site would have taken the reading order with it. SECOND, the copy arrives as children and not as title/description props, which is the one decision that looks like an omission: the heading in this block IS a band's h2, at the size every band on the homepage sets its headline in, and that recipe has exactly one home — BAND_TITLE in components/site/home/Shell.tsx, rendered by the HomeHeading you see below. A title prop here would have had to respell it, which is the thing this file's header forbids."
+        >
+          <div className="space-y-16">
+            {(['left', 'right'] as SplitMedia[]).map((media) => (
+              <Spec key={media} name={`media="${media}"`} note="grow-6 art / grow-5 copy · stacks below md">
+                <SplitFeature
+                  media={media}
+                  art={
+                    media === 'left' ? (
+                      <SkillsRunTerminal />
+                    ) : (
+                      // `art` IS A SLOT, and this is what proves it: the homepage band
+                      // hands it a 24-second terminal, and anything that wants to be a
+                      // panel beside a heading goes in here instead. It brings its own
+                      // ground — a drawing this size sits on a `bg-tone-*` the way every
+                      // mockup on the site does, because the arrangement has no fill of
+                      // its own to put behind it.
+                      <div
+                        aria-hidden
+                        className="flex h-72 items-center justify-center rounded-2xl bg-tone-lemon"
+                      >
+                        <span className="font-mono text-xs text-ink/50">
+                          any panel — art is a slot
+                        </span>
+                      </div>
+                    )
+                  }
+                >
+                  <HomeHeading
+                    title="8 skills do the whole cycle."
+                    subtitle="One command per moment of a ticket’s life. The agent reads the tracker, writes the code, opens the pull request and answers its review. What is left for you is reading it and saying yes."
+                  />
+                  <FeaturePoints
+                    className="mt-10"
+                    points={[
+                      { icon: SquareTerminal, label: '8 skills, one per step of the cycle' },
+                      { icon: GitMerge, label: 'From the first idea to the merged pull request' },
+                      { icon: Sparkles, label: 'You approve the plan, the rest runs itself' },
+                    ]}
+                  />
+                  <div className="mt-10">
+                    <ButtonLink variant="secondary" size="lg" icon={ArrowRight}>
+                      See the workflow
+                    </ButtonLink>
+                  </div>
+                </SplitFeature>
+              </Spec>
+            ))}
+          </div>
+          <p className="mt-6 max-w-2xl text-sm text-muted">
+            The three claims are their own primitive,{' '}
+            <code className="font-mono text-ink">FeaturePoints</code>, and the thing to check on them
+            is the TYPE STEP: <code className="font-mono text-ink">font-display</code> semibold at
+            16/18px against the paragraph&apos;s 16px regular. Set in body type they read as more prose
+            and get skipped; set at the heading&apos;s own size and weight they stop being claims and
+            become a second headline. The reference sets them very nearly as large as its headline,
+            which at this scale&apos;s headline size does exactly that — and it shipped one step short
+            of it, at bold 18/20px, until the product owner called the weight. What separates them
+            from the paragraph now is the FACE and the weight together rather than the size alone.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            The icons are the one place on a marketing band where the primary button&apos;s own{' '}
+            <code className="font-mono text-ink">brand</code> blue lands on something that is not a
+            button — see &ldquo;Blue that is not the button&rdquo; at the end of this page, which is
+            where that judgement gets checked. What makes it safe is that they are 20px glyphs at{' '}
+            <code className="font-mono text-ink">strokeWidth 1.75</code> with no fill and no plate:
+            there is nothing about them a reader could try to press. At lucide&apos;s own stroke of 2
+            they start reading as filled shapes at a glance, which is the whole reason that number is
+            not the default. The stroke stayed at 1.75 when the size came down with the type — a
+            smaller glyph at a lighter stroke thins out rather than quietens down.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            The terminal in the first specimen is the homepage band&apos;s real drawing,{' '}
+            <code className="font-mono text-ink">SkillsRunTerminal</code>, on a 24-second loop: seven
+            commands typed one after the other, one line of output each, then an empty prompt. It is
+            here rather than mocked because it is the thing this arrangement was measured against —
+            and because it is worth watching a full cycle to judge whether the copy column holds its
+            own beside something that moves. Note that it has no window chrome: it shipped with a
+            titlebar and three macOS lights, and the product owner cut both. The band below it on the
+            homepage draws the app&apos;s own window WITH its titlebar, so the page carries exactly
+            one set of traffic lights and they are on the picture of the real product.
           </p>
         </Block>
 
