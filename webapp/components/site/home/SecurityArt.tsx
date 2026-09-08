@@ -510,27 +510,48 @@ export function GdprArt({ label }: { label: string }) {
  * same thing, a commit that did not happen, and painting half of it in the history's own
  * ink said the first half had happened.
  *
- * THE CROSS STANDS WHERE THE COMMIT WOULD HAVE GONE rather than being drawn across a normal
- * commit dot, and both readings were considered. A red cross over a commit says "this commit
- * is broken"; a disc occupying the position says "there is no commit here", which is the
- * true one. It is also larger than the three real commits, because it is the one thing on
- * this card a reader needs to catch without looking for it.
+ * THE DISC STANDS WHERE THE COMMIT WOULD HAVE GONE rather than being drawn across a normal
+ * commit dot, and both readings were considered. A mark over a commit says "this commit is
+ * broken"; a disc occupying the position says "there is no commit here", which is the true
+ * one. It is also larger than the three real commits, because it is the one thing on this
+ * card a reader needs to catch without looking for it — two and a half times their size
+ * since the owner asked for it bigger, which is a RATIO the drawing is built around rather
+ * than a number. The element carries what that cost.
+ *
+ * AND IT HOLDS A SHIELD WITH A KEYHOLE IN IT, which is the owner's own swap out of the
+ * white cross that stood there first. The disc is unchanged; only the glyph is. The two
+ * were saying the same word — a red circle already says the commit was refused, so a
+ * cross inside it only says it again — where a shield says the part the disc cannot: not
+ * that something failed, but that something is being guarded. The full argument, and the
+ * geometry, sit on the element itself.
  *
  * `red` IS THE DECLARED STATUS TOKEN, spelled as a literal here for the reason every colour
  * in this file is: an SVG `fill` cannot take a Tailwind class. It is the only saturated
  * colour in the band, and it is spent on the only thing in the band that is a refusal.
  *
  * THE COMMITS CARRY THE SAME GRADIENT AND THE SAME LIGHT as the bubble beside them —
- * near-black, lit from the top-left. At fifteen pixels across that is nearly subliminal, and
- * it is what keeps three dots from looking like three dots.
+ * near-black, lit from the top-left. At twenty-six pixels across that is still nearly
+ * subliminal, and it is what keeps three dots from looking like three dots.
  */
 export function CommitGuardArt() {
   const id = useSvgId()
   /**
-   * Where the four visible commits sit. The position after the last is the refusal, and the
-   * line enters from off-frame to the left of the first — see the crop note below.
+   * Where the three visible commits sit. The position after the last is the refusal, and
+   * the line enters from off-frame to the left of the first — see the crop note below.
+   *
+   * THREE, AT A PITCH OF 90. It was four at 80, and the owner asked for fewer — "mettre
+   * moins de commit" — in the same breath as more zoom, which is one request rather than
+   * two: a drawing gets bigger either by growing its contents or by having fewer of them,
+   * and doing both at once is what keeps the graph from running out of card. The pitch
+   * grew with the scale so the dots keep the air between them they had; a denser row at a
+   * bigger size would have read as a different drawing rather than as the same one closer.
+   *
+   * THE FIRST ONE STAYS AT ~23 whatever else changes, because that number is the CROP and
+   * not a margin: it is how much line shows before the first dot, and at this scale it is
+   * ~40px, the same lead the drawing has always had. Pushing the run right to keep the
+   * pitch would have bought spacing by spending the one detail the left edge is for.
    */
-  const COMMITS = [22, 102, 182, 262]
+  const COMMITS = [23, 113, 203]
   return (
     // `-ml-2` AND NO LEFT PADDING: the line runs off the card's left edge and `ToneCard`'s
     // `overflow-hidden` cuts it there, which is the same technique the secrets panel uses
@@ -543,14 +564,14 @@ export function CommitGuardArt() {
           THE VIEWBOX IS THE DRAWING'S OWN BOX AND NOT A SQUARE, which was the fix for the
           first attempt: that one was 208×128 with everything happening in a 54px band
           through the middle, so `ToneCard`'s `center` slot dutifully centred a box that was
-          mostly empty and the graph looked like it was floating low on the card. At 460×58
+          mostly empty and the graph looked like it was floating low on the card. At 400×66
           the box IS the graph — one row for the branch name, one for the line.
 
-          ── THE SCALE, IN FOUR ROUNDS ────────────────────────────────────────────
+          ── THE SCALE, IN FIVE ROUNDS ────────────────────────────────────────────
 
           `w-full` MAKES THE DRAWING'S SIZE A FUNCTION OF THE CARD'S, and the viewBox's
           width is therefore the only dial: fewer units across the same pixels is a bigger
-          drawing. The history is worth keeping because three of the four rounds were wrong
+          drawing. The history is worth keeping because four of the five rounds were wrong
           in a way the numbers alone did not show:
 
             1. 244 units, uncapped. The day the band went to two-column cards this one was
@@ -560,34 +581,34 @@ export function CommitGuardArt() {
                and far too SMALL for a card that wide. The owner said so.
             3. 560 units, cap moved out to `max-w-3xl`. Scale 1.26, `master` at ~16px.
                Better, and still short — "encore plus zoomé".
-            4. 460 units. Scale ~1.53 on the long card: the bar is 4.6px, the commits 23px
-               across, the refusal 46px. `master` drops to `fontSize` 11 so it lands at
-               ~17px rather than 20 — a mono ref a hair above the body copy reads as
-               deliberate, one at 20px reads as a heading nobody asked for. That is the one
-               place this zoom is NOT uniform, and it is on purpose.
+            4. 460 units. Scale ~1.53: the bar 4.6px, the commits 23px across, the refusal
+               46px. Approved, and asked to go further once more.
+            5. 400 units. Scale ~1.76 on the long card: the bar is 5.3px, the commits 26px
+               across, the refusal 67px. `master` drops again, from `fontSize` 11 to 10, so
+               it lands at ~18px rather than 19 — a mono ref a hair above the body copy
+               reads as deliberate, one at 20px reads as a heading nobody asked for. That is
+               the one place this zoom is NOT uniform, and it is on purpose; it has taken a
+               step down at every round since the third for exactly the same reason.
+
+          THE BOX GREW TALLER IN THE SAME ROUND, 58 units to 66, and that is the refusal's
+          doing rather than the zoom's — see the disc below. Everything vertical moved with
+          it: the line from y=34 to y=36, the contact shadow from 54 to 61. The chip did not
+          move, because it is measured from the TOP edge and the top edge did not move.
 
           `max-w-3xl` (768px) IS A GUARD, not the size: the long card offers ~705px, so the
           cap is never reached. It exists so a future wider card cannot restart round 1.
           `w-full` still does the work below `lg`, where scaling down is what should happen.
 
-          THE DRAWING DELIBERATELY STOPS SHORT OF THE VIEWBOX, ending at 365 of 460 units,
-          and the empty 95 on the right are the whole reason: the owner asked for the
-          refused commit "un peu plus au centre de la card (mais pas au centre totalement)",
-          and moving it left is the ONE change that cannot be made by touching the scale.
+          THE DRAWING DELIBERATELY STOPS SHORT OF THE VIEWBOX, ending at ~316 of 400, and
+          the empty ~84 on the right are the whole reason: the owner asked for the refused
+          commit "un peu plus au centre de la card (mais pas au centre totalement)", and
+          moving it left is the ONE change that cannot be made by touching the scale.
           Shrinking the viewBox to fit the drawing would render it wider again and put the
-          cross straight back against the right edge. So the box keeps its 460 units — the
-          scale, and therefore every element's size, is exactly what the previous round
-          settled on — and the drawing simply sits in the left four fifths of it. The
-          refusal's centre lands at ~73% across the card: clear of the edge, and clearly not
-          centred.
-
-          FOUR COMMITS, NOT FIVE, and the pitch stays at 80. Something had to give when the
-          drawing lost 82 units off its right end, and of the two options — five commits at
-          a 60 pitch, or four at 80 — the pitch is the one worth keeping: it is the spacing
-          the previous round was approved at, and a denser row of dots would have read as a
-          different drawing. A four-commit history plus a crop at the left edge says exactly
-          what five did. */}
-      <svg viewBox="0 0 460 58" className="h-auto w-full max-w-3xl" fill="none">
+          refusal straight back against the right edge. So the box keeps units the drawing
+          does not use, and the disc's centre lands at ~74% across the card: clear of the
+          edge, and clearly not centred. That figure has survived every rescale, which is
+          the point of writing it down rather than the coordinate. */}
+      <svg viewBox="0 0 400 66" className="h-auto w-full max-w-3xl" fill="none">
         <defs>
           <linearGradient id={`${id}node`} x1="0.15" y1="0" x2="0.85" y2="1">
             <stop offset="0%" stopColor="#43434E" />
@@ -607,11 +628,12 @@ export function CommitGuardArt() {
             and it is the only arrangement here where the lock is unambiguously ABOUT the
             name. The lock kept its own 15×15 badge for one round, which put two rounded
             shapes side by side and read as a chip that had grown a second chip.
-            
+
             IT SAYS IN ONE GLYPH WHAT THE CARD'S FIRST SENTENCE SAYS IN FOUR BRANCH NAMES,
             and it is the reason the refusal further down the line is not arbitrary: without
-            it the red cross is a decision nobody explained, and with it the cross is a
-            consequence.
+            it the red disc is a decision nobody explained, and with it the refusal is a
+            consequence — the lock on the ref and the shield on the disc are the same claim,
+            stated once at each end of the line.
 
             A ROUNDED RECT AND NOT A PILL. `rx=6` on a 19-unit box, which is the shape a ref
             chip has everywhere it appears; `rx=9.5` would have made it a capsule, and a
@@ -623,15 +645,15 @@ export function CommitGuardArt() {
             like the problem. A protected branch is a normal branch.
 
             THE GEOMETRY IS MEASURED OFF THE TYPE, which is why the numbers look arbitrary
-            and are not: `master` is six characters of monospace at `fontSize` 11, so ~6.6
-            units each and ~40 across. Six units of padding, the 6.4-wide lock, a 3.6 gap,
-            the 40 of text, six more — 64 units, which is the chip's width. Rename the
-            branch and this number moves. */}
+            and are not: `master` is six characters of monospace at `fontSize` 10, so ~6
+            units each and ~36 across. Seven units of padding, the 6.4-wide lock, a 3.6 gap,
+            the 36 of text, seven more — 60 units, which is the chip's width. It was 64 at
+            `fontSize` 11. Rename the branch or resize the type and this number moves. */}
         <g>
           <rect
             x="16"
             y="3.5"
-            width="64"
+            width="60"
             height="19"
             rx="6"
             fill="#0A0A0A"
@@ -659,7 +681,7 @@ export function CommitGuardArt() {
             y="13"
             dominantBaseline="central"
             className="font-mono"
-            fontSize="11"
+            fontSize="10"
             fill="#0A0A0A"
             fillOpacity="0.6"
           >
@@ -674,6 +696,11 @@ export function CommitGuardArt() {
             premise the whole card rests on, since a guard rail only matters on a branch
             that already has something worth protecting.
 
+            IT IS ALSO WHAT MAKES THREE COMMITS ENOUGH. A graph that showed its whole
+            history would need enough dots to look like a history; one that is cut off needs
+            only enough to establish a rhythm, and three is the smallest number that has
+            one. Two dots are a pair, three are a series continuing off the left edge.
+
             `ink` AT FULL STRENGTH, the same black as the commits, by the owner's call —
             "mettre le trail gris clair de la même couleur que les points noir". It was
             `0.2` before, a hairline the dots sat on rather than a line they belonged to,
@@ -685,7 +712,7 @@ export function CommitGuardArt() {
             which on a 10px dot is a lit sphere and on a line spanning the whole card is a
             left-to-right fade — the same values doing the opposite job. `ink` is the
             gradient's own dark stop, so the two read as one black. */}
-        <path d={`M0 34H${COMMITS.at(-1)}`} stroke="#0A0A0A" strokeWidth="3" />
+        <path d={`M0 36H${COMMITS.at(-1)}`} stroke="#0A0A0A" strokeWidth="3" />
         {/* THE COMMIT THAT DOES NOT EXIST: one dashed connector, ALL RED, running from the
             last real commit right up to the refusal. See the header for why it is dashed.
 
@@ -696,25 +723,26 @@ export function CommitGuardArt() {
             and colouring half of it like the history said the first half was history.
 
             `3 4` IS NOT AN ARBITRARY DASH — it is what keeps the connector glued to the
-            disc with no offset to tune. The span is 73 units (last commit at 344, the
-            disc's left edge at 417) and 73 = 10×7 + 3, so with a 7-unit period the eleventh
+            disc with no offset to tune. The span is 73 units (last commit at 203, the
+            disc's left edge at 276) and 73 = 10×7 + 3, so with a 7-unit period the eleventh
             dash occupies 70–73 and lands exactly on the disc's edge. THE SPAN IS NOT FREE
             FOR THAT REASON: it has to stay ≡ 3 (mod 7), so the next lengths up and down are
             66 and 80, not 72 and 74.
 
-            73 HAS SURVIVED EVERY RESCALE AND THE SHIFT, which is why it is still 73: it
-            was 45 when the graph was 244 wide (18% of it, which read), 8% once the box
-            reached 560, and 73 put it back to 13%. At 460 the same 73 is 16%, and moving
-            the whole run left changed nothing at all — the glue depends on the span modulo
-            the dash period, not on where the span sits or how wide the box is. The dashed
-            run is the part of the drawing that says the commit never happened, so it cannot
-            be the part that disappears when the box moves.
+            73 HAS SURVIVED EVERY RESCALE, EVERY SHIFT AND A BIGGER DISC, which is why it is
+            still 73: it was 45 when the graph was 244 wide, 8% once the box reached 560, and
+            73 put it back to 13%. At 400 the same 73 is 18%. THE CONSTRAINT IS WHAT MOVED
+            EVERYTHING ELSE in the last round: growing the disc pulled its left edge left, so
+            the last commit had to follow it by exactly the same amount to hold the span —
+            which is why `COMMITS` ends at 203 and not at a round number. The dashed run is
+            the part of the drawing that says the commit never happened, so it cannot be the
+            part that comes unstuck when the disc changes size.
 
             BUTT CAPS, not round: a round cap adds its radius at both ends of every dash,
             so a `3` dash renders 6 long and the gaps close up. An earlier `4 6` round-capped
             version was reading as very nearly solid for exactly that reason. */}
         <path
-          d={`M${COMMITS.at(-1)} 34H335`}
+          d={`M${COMMITS.at(-1)} 36H276`}
           stroke="#EF4444"
           strokeOpacity="0.9"
           strokeWidth="3"
@@ -722,18 +750,66 @@ export function CommitGuardArt() {
         />
 
         {COMMITS.map((x) => (
-          <circle key={x} cx={x} cy="34" r="7.5" fill={`url(#${id}node)`} />
+          <circle key={x} cx={x} cy="36" r="7.5" fill={`url(#${id}node)`} />
         ))}
 
-        {/* THE REFUSAL. The contact shadow is what stops it floating over the line. */}
-        <ellipse cx="350" cy="54" rx="17" ry="4" fill={`url(#${id}cast)`} />
-        <circle cx="350" cy="34" r="15" fill="#EF4444" />
+        {/* THE REFUSAL, AT r=19. It was 15, and the owner asked for it bigger — "mettre plus
+            gros le point rouge" — which is a change that cost more than a number: at 19 the
+            disc plus its contact shadow no longer fit in a 58-unit box, so the box went to
+            66 and every vertical coordinate below the chip moved with it. Growing the disc
+            inside the old box was the other option and is the wrong one; it would have
+            pinned the shadow against the bottom edge and cropped the thing whose whole job
+            is to sit under the disc.
+
+            IT IS NOW 2.5× THE COMMITS rather than 2×, and that ratio is the point of the
+            change. The three real commits are history and read as a texture; the disc is
+            the one event on this card, and at 67px against their 26px it is caught before
+            the eye has finished arriving. The commits did NOT grow with it, deliberately —
+            widening the gap is what "bigger" was asking for.
+
+            The contact shadow is what stops it floating over the line. */}
+        <ellipse cx="295" cy="61" rx="21.5" ry="5" fill={`url(#${id}cast)`} />
+        <circle cx="295" cy="36" r="19" fill="#EF4444" />
+        {/* THE SHIELD, KEYHOLED. It was a white cross for several rounds and the owner
+            swapped the glyph — "tu peux mettre un shield-keyhole à la place de la croix" —
+            and the disc under it did not move, which is the whole point of the change: the
+            red circle standing where the fourth commit would have gone is what says NO
+            COMMIT HERE, and the glyph inside it only has to say WHY. A cross says the same
+            word twice; a shield says the second half of the sentence.
+
+            IT IS ALSO THE SHIELD THIS CARD ONCE WAS, at a twentieth of the size and doing a
+            job the full-card version could not. See this component's header: the drawing
+            replaced a shield precisely because a shield alone is a symbol of protection IN
+            GENERAL rather than a picture of this guard rail. Twenty-one units across,
+            sitting on the position of a refused commit, it is no longer alone — the graph
+            supplies the specifics and the glyph supplies the reason, which is the
+            arrangement the padlock already has inside the `master` chip. Two protective
+            glyphs on one drawing, one on the ref and one on the refusal, and they rhyme
+            rather than compete.
+
+            A KEYHOLE AND NOT A BARE SHIELD, and it is what keeps the glyph legible: an
+            empty shield is a solid white blob on a red disc, where the notch reads as an
+            object with a mechanism in it. It is CUT rather than drawn — knocked through in
+            the disc's own `#EF4444` rather than stroked — for the reason the two-part
+            padlocks in this file are built the way they are: a hole is an absence of the
+            shape it is in, so painting it in the ground behind is truer than outlining it,
+            and it cannot drift out of register when the glyph is rescaled.
+
+            IT SCALED WITH THE DISC AND NOT WITH THE ZOOM, by exactly 19/15, which is why
+            every coordinate here has a decimal: the glyph's proportion to the circle around
+            it is the whole of its design, so the two numbers that matter are ratios rather
+            than sizes. Every corner still sits inside the disc with room to spare — the
+            crest 11.4 units from the centre, the widest corners 13.1, the bottom point 11.9
+            against a radius of 19 — so the white never touches the red edge and the disc
+            keeps reading as a disc. The keyhole's two parts share the shield's OPTICAL
+            middle rather than its bounding box's, which is why the bore sits above centre
+            at y=34.2 and not at 36. */}
         <path
-          d="M343.5 27.5l13 13M356.5 27.5l-13 13"
-          stroke="#FFFFFF"
-          strokeWidth="3.4"
-          strokeLinecap="round"
+          d="M284.4 28.4L295 24.6l10.6 3.8v8.1c0 5.7-4.4 9.6-10.6 11.4-6.2-1.8-10.6-5.7-10.6-11.4z"
+          fill="#FFFFFF"
         />
+        <circle cx="295" cy="34.2" r="3.3" fill="#EF4444" />
+        <path d="M292.85 36.1h4.3l.9 5.7h-6.1z" fill="#EF4444" />
       </svg>
     </div>
   )
