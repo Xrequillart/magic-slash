@@ -576,6 +576,31 @@ export const marketingEn = {
   // claim to land. Everything else a translator could get wrong — the glob patterns the
   // commit skill resets, the name of the switch — stays out of the catalogue and is
   // described rather than quoted.
+  //
+  // NO EM DASH IN THIS BLOCK, on the owner's instruction — the four card descriptions
+  // first, then the subtitle in a second pass. The only one left is in the retired
+  // `injection` pair, which nothing renders; it takes the rule the day the card comes back.
+  //
+  // EVERY DASH BECAME WHATEVER THAT DASH WAS DOING, and no word moved — the constraint that
+  // matters in a family where the sentences were each checked against a source file:
+  //
+  //   • `gdprDesc` and `guardDesc` had a dash standing in for a sentence break, so they got
+  //     the full stop it was standing in for;
+  //   • `secretsDesc` had a MATCHED PAIR around a parenthetical, so it got commas;
+  //   • the SUBTITLE also had a matched pair, and commas were wrong there. The pair scoped
+  //     three items to the word "configuration" and left the skill name outside it, which
+  //     is the whole distinction the sentence exists to draw: the three ARE your config,
+  //     the skill name is telemetry. Flattened to commas, all four read as one list and the
+  //     sentence quietly starts calling telemetry configuration. So the colon takes the
+  //     scoping the opening dash was doing and a full stop takes the closing one, which
+  //     gives the skill name its own sentence — where it is more exposed than it was, not
+  //     less. See the note on the subtitle itself for why that is the right direction.
+  //
+  // IT IS A HOUSE-STYLE RULE AND NOT A TYPOGRAPHIC ONE, so nothing tests for it: the rest
+  // of this catalogue — and these very comments — use the em dash freely, and a guard here
+  // would either be wrong everywhere else or would have to carve out this one block, which
+  // is more machinery than a preference is worth. If it ever becomes the page's rule rather
+  // than this block's, that is the point to write the test.
   /**
    * The band's `h2`. A CLAIM rather than the category label the product owner named the
    * block with ("Security & Privacy"): every other headline on this page is a sentence,
@@ -595,9 +620,23 @@ export const marketingEn = {
    * "The name of the skill you ran" is precise and deliberately unflattering — it would
    * have been easy to leave the telemetry out of a paragraph about privacy, and a reader
    * who later found it would be right to conclude the page had been drafted around it.
+   *
+   * THE COLON IS LOAD-BEARING and replaced a pair of em dashes when the owner asked for the
+   * dashes out of this block. It scopes the three items to the word "configuration" and
+   * leaves the skill name outside that scope, which is the sentence's whole point: those
+   * three ARE your config, and the skill name is telemetry sitting beside it. A comma in
+   * the colon's place would have made one flat list of four and quietly filed telemetry
+   * under configuration — a small slip, in the one family on this page where a small slip
+   * is a false statement about privacy.
+   *
+   * WHICH IS WHY THE SKILL NAME NOW HAS ITS OWN SENTENCE rather than a subordinate clause.
+   * That is MORE prominence than the dash gave it, not less, and it is the right direction
+   * for the reason the paragraph above gives: the telemetry is the one item here a reader
+   * would be annoyed to discover later, so the punctuation should never be what makes it
+   * easy to skim past.
    */
   'site.security.subtitle':
-    'The skills run in your own terminal, on your own clone. What the cloud holds is your configuration — your repositories, your languages, your commit format — and the name of the skill you ran. Not a prompt, not an argument, not a line of code.',
+    'The skills run in your own terminal, on your own clone. What the cloud holds is your configuration: your repositories, your languages, your commit format. And the name of the skill you ran. Not a prompt, not an argument, not a line of code.',
   /**
    * The acronym inside the European emblem on the GDPR card. The regulation has a French
    * name, and a French reader does not recognise the English one — which is why this is a
@@ -616,7 +655,7 @@ export const marketingEn = {
    */
   'site.security.gdprTitle': 'The data we hold, in one line',
   'site.security.gdprDesc':
-    'Your account, your repository settings, and how many hours each skill ran. That is the list. No source, no prompts, no diffs — and one switch stops the hours being counted at all.',
+    'Your account, your repository settings, and how many hours each skill ran. That is the list. No source, no prompts, no diffs. And one switch stops the hours being counted at all.',
   /**
    * ③ The commit guard rail. THE BRANCH NAMES ARE SPELLED OUT because they are what makes
    * the claim concrete: a reader recognises their own default branch in that list, and
@@ -624,7 +663,7 @@ export const marketingEn = {
    */
   'site.security.guardTitle': 'A guard rail on every commit',
   'site.security.guardDesc':
-    'It will not write on main, master, develop or staging without stopping to ask you — it offers to cut a branch instead. One setting turns that question into a permanent no.',
+    'It will not write on main, master, develop or staging without stopping to ask you. It offers to cut a branch instead. One setting turns that question into a permanent no.',
   /**
    * ④ Secrets. "Even when your gitignore let them through" IS THE CARD. Everyone believes
    * their gitignore is right; the claim is only worth making because it holds when it is
@@ -632,7 +671,7 @@ export const marketingEn = {
    */
   'site.security.secretsTitle': 'Secrets never make it into a commit',
   'site.security.secretsDesc':
-    'Environment files, credentials, private keys and certificates are pulled back out of the staging area before a commit is written — even when your gitignore let them through — and you are told which ones.',
+    'Environment files, credentials, private keys and certificates are pulled back out of the staging area before a commit is written, even when your gitignore let them through, and you are told which ones.',
   /**
    * RETIRED, AND KEPT. This pair dressed a fifth card — "a ticket cannot give the agent
    * orders" — cut when the band went to two rows of two. It stays in the catalogue for the

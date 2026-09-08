@@ -202,9 +202,15 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   //
   // LES NOMS DE BRANCHES RESTENT EN ANGLAIS : ce sont les mots de git, identiques dans les
   // deux langues, et c’est ce que le lecteur doit reconnaître pour que la carte porte.
+  //
+  // PAS DE TIRET CADRATIN DANS CE BLOC, sur demande du propriétaire : les quatre cartes
+  // d’abord, puis le sous-titre. Chaque tiret est devenu ce qu’il faisait — un point, une
+  // paire de virgules, ou dans le sous-titre un deux-points puis un point — sans qu’un seul
+  // mot bouge. L’anglais porte l’argument complet, et notamment pourquoi les virgules
+  // étaient le mauvais choix dans le sous-titre.
   'site.security.title': 'Magic Slash ne voit jamais votre code.',
   'site.security.subtitle':
-    'Les skills tournent dans votre terminal, sur votre clone. Ce que le cloud garde, c’est votre configuration — vos dépôts, vos langues, votre format de commit — et le nom du skill que vous avez lancé. Pas un prompt, pas un argument, pas une ligne de code.',
+    'Les skills tournent dans votre terminal, sur votre clone. Ce que le cloud garde, c’est votre configuration : vos dépôts, vos langues, votre format de commit. Et le nom du skill que vous avez lancé. Pas un prompt, pas un argument, pas une ligne de code.',
   /** Le sigle au centre de l’emblème européen : la version française du nom du règlement. */
   'site.security.gdprMark': 'RGPD',
   'site.security.repoTitle': 'Votre dépôt reste le vôtre',
@@ -212,13 +218,13 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Rien n’est cloné sur un serveur. L’agent travaille dans un worktree sur la machine devant vous, et la seule chose qui nous parvienne de votre code, ce sont les dépôts que vous avez déclarés dans l’app.',
   'site.security.gdprTitle': 'Ce qu’on stocke, en une ligne',
   'site.security.gdprDesc':
-    'Votre compte, les réglages de vos dépôts, et le nombre d’heures par skill. C’est toute la liste. Pas de source, pas de prompts, pas de diffs — et un interrupteur arrête même le comptage des heures.',
+    'Votre compte, les réglages de vos dépôts, et le nombre d’heures par skill. C’est toute la liste. Pas de source, pas de prompts, pas de diffs. Et un interrupteur arrête même le comptage des heures.',
   'site.security.guardTitle': 'Un garde-fou sur chaque commit',
   'site.security.guardDesc':
-    'Il n’écrit pas sur main, master, develop ou staging sans s’arrêter pour vous demander — il propose de créer une branche à la place. Un réglage transforme cette question en non définitif.',
+    'Il n’écrit pas sur main, master, develop ou staging sans s’arrêter pour vous demander. Il propose de créer une branche à la place. Un réglage transforme cette question en non définitif.',
   'site.security.secretsTitle': 'Les secrets n’atteignent jamais un commit',
   'site.security.secretsDesc':
-    'Fichiers d’environnement, credentials, clés privées et certificats sont retirés du staging avant l’écriture du commit — même si votre gitignore les a laissés passer — et on vous dit lesquels.',
+    'Fichiers d’environnement, credentials, clés privées et certificats sont retirés du staging avant l’écriture du commit, même si votre gitignore les a laissés passer, et on vous dit lesquels.',
   // RETIRÉ, ET CONSERVÉ : cette paire habillait une cinquième carte, coupée quand la bande
   // est passée à deux lignes de deux. Voir l’anglais.
   'site.security.injectionTitle': 'Un ticket ne donne pas d’ordres à l’agent',
