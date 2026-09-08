@@ -7,6 +7,7 @@ import { commentFileKey, SPEC_FINGERPRINT, type CommentTarget } from '../../util
 import {
   collectDocumentComments, type ReviewComment, type ReviewCommentGroup,
 } from '../../utils/reviewComments'
+import { RepoMark } from './RepoMark'
 import { StatusPill } from './StatusPill'
 import { TicketMark } from './TicketMark'
 import { AgentTitleField, type AgentIdentity } from './AgentIdentityFields'
@@ -207,7 +208,16 @@ export function SpecPanel({
               cards are gone for a planning agent, so the spec card takes over their
               header: what is being planned against, said once and said plainly. It
               replaces a label that only ever named the card the panel already is. */}
-          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {/* The same tinted tile RepositoryCard puts before a repo name, so a
+                planner and a coder pointed at one repository are recognisable as the
+                same repository — the colour is the identity, and it is set once in
+                Settings. One mark per attached repo: a full-stack plan spans two, and
+                a single mark would have to pick one of the two colours and be wrong
+                about the other. None at all when no repository is attached, because
+                the heading then falls back to the spec's file name and a repository
+                tile in front of a file name would name something that is not there. */}
+            {repoNames.map(name => <RepoMark key={name} repoName={name} />)}
             <span className="text-ink/90 font-medium text-sm truncate" title={heading}>
               {heading}
             </span>

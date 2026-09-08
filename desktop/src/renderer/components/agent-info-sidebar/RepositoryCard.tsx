@@ -1,5 +1,6 @@
-import { GitBranch, Copy, Check, ArrowRight, X, FolderGit2 } from 'lucide-react'
+import { GitBranch, Copy, Check, ArrowRight, X } from 'lucide-react'
 import { GitHubIcon, VSCodeIcon } from './icons'
+import { RepoMark } from './RepoMark'
 import { ScriptsDropdown } from './ScriptsDropdown'
 import { PRWatchCard } from './PRWatchCard'
 import { RunningScripts } from './RunningScripts'
@@ -8,7 +9,6 @@ import { useT } from '../../i18n'
 import type { RepoGitData } from './types'
 import type { RepositoryMetadata } from '../../../types'
 import { useStore } from '../../store'
-import { getProjectColorMap } from '../../utils/projectColors'
 
 interface RepositoryCardProps {
   repoPath: string
@@ -46,11 +46,6 @@ export function RepositoryCard({
 }: RepositoryCardProps) {
   const t = useT()
   const openRepoReview = useStore(s => s.openRepoReview)
-  const repositories = useStore(s => s.config?.repositories)
-  /* The icon wears the colour the repo was given in its settings. The map is built
-     over the FULL repository list, not this card alone, so a repo with no colour set
-     still gets the same palette fallback the dots on Dashboard and Tasks give it. */
-  const repoColor = getProjectColorMap(Object.keys(repositories ?? {}), repositories)[repoName]
   const hasChanges = gitData?.stats?.isGitRepo && gitData.stats.filesChanged > 0
   const hasCommits = gitData?.commits && gitData.commits.commits.length > 0
   /* The parent branch is only worth a card of its own when it is somewhere else:
@@ -63,14 +58,7 @@ export function RepositoryCard({
     <div className="bg-surface rounded-xl p-3">
       {/* Repo header */}
       <div className="flex items-center gap-2 mb-2">
-        {/* The webapp's repository tile, at sidebar scale: the colour tints the icon
-            and its backdrop rather than standing alone as a dot. */}
-        <span
-          className="flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0"
-          style={{ backgroundColor: `${repoColor}1f`, color: repoColor }}
-        >
-          <FolderGit2 className="w-3.5 h-3.5" />
-        </span>
+        <RepoMark repoName={repoName} />
         <span className="text-ink/90 font-medium text-sm truncate" title={repoPath}>
           {repoName}
         </span>
