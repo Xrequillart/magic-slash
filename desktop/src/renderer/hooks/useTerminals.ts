@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useStore } from '../store'
-import type { TerminalState, TerminalInfo, TerminalMetadata, InitialPromptMode } from '../../types'
+import type { TerminalState, TerminalInfo, TerminalMetadata, InitialPromptMode, LaunchMetadata } from '../../types'
 
 export function useTerminals() {
   const {
@@ -161,9 +161,13 @@ export function useTerminals() {
     // Left undefined by every caller that just wants the prompt run, which is the
     // main process's own default — see `InitialPromptMode`.
     promptMode?: InitialPromptMode,
+    // The ticket the agent is on and what to call it, when the caller already knows
+    // — set at creation rather than patched in after, so the agent never renders as
+    // an unattached "Claude 3" first. See `LaunchMetadata`.
+    metadata?: LaunchMetadata,
   ) => {
     const id = `claude-${Date.now()}`
-    const result = await window.electronAPI.terminal.launchClaude(id, name, cwd, initialPrompt, promptMode)
+    const result = await window.electronAPI.terminal.launchClaude(id, name, cwd, initialPrompt, promptMode, metadata)
 
     const terminalInfo: TerminalInfo = {
       id: result.id,

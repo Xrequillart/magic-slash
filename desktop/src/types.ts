@@ -913,6 +913,27 @@ export interface TerminalMetadata {
   usage?: TerminalUsage
 }
 
+/**
+ * The metadata a caller may put on an agent AT CREATION, before it has said a word.
+ *
+ * A deliberately tiny subset of `TerminalMetadata`, and the smallness is the point:
+ * everything else in that type is something the agent REPORTS as it works — its
+ * branch, its status, the spec it is writing — and a creator that could preset those
+ * would be inventing a history the session never had. These two are identity: which
+ * ticket the agent is on, and what to call it in the list.
+ *
+ * `status` is conspicuously absent. An agent starts with no status whatever created
+ * it (see `createDefaultMetadata`), because no status is the honest answer until a
+ * skill has done something worth reporting — the Tasks page's "Discuss" button in
+ * particular starts a conversation, not a piece of work.
+ */
+export interface LaunchMetadata {
+  /** Shown in place of the generated "Claude N" — see `TerminalMetadata.title`. */
+  title?: string
+  /** The ticket this agent is about, in the form `agents.ticket_id` holds. */
+  ticketId?: string
+}
+
 export interface TerminalInfo {
   id: string
   name: string

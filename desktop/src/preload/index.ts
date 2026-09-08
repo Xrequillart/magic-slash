@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, TasksSnapshot, TaskIssueDetail, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode } from '../types'
+import type { AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, TasksSnapshot, TaskIssueDetail, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -180,8 +180,12 @@ const terminalApi = {
   // `promptMode` decides what happens to `initialPrompt`: 'run' hands it to
   // `claude` as an argument, 'draft' types it into the input box and waits for the
   // person to press Return. See `InitialPromptMode` in types.ts.
-  launchClaude: (id: string, name: string, cwd: string, initialPrompt?: string, promptMode?: InitialPromptMode) =>
-    ipcRenderer.invoke('terminal:launchClaude', { id, name, cwd, initialPrompt, promptMode }),
+  //
+  // `metadata` is the identity the caller already knows — which ticket the agent is
+  // on and what to call it — set at creation rather than patched in afterwards, so
+  // the agent is never briefly a nameless "Claude 3" attached to nothing.
+  launchClaude: (id: string, name: string, cwd: string, initialPrompt?: string, promptMode?: InitialPromptMode, metadata?: LaunchMetadata) =>
+    ipcRenderer.invoke('terminal:launchClaude', { id, name, cwd, initialPrompt, promptMode, metadata }),
 
   // `Promise<boolean>` spelled out rather than left to `invoke`'s `any`: the answer is
   // load-bearing for a caller that destroys state once the write has landed, and an

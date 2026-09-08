@@ -37,7 +37,7 @@ import { isValidAgentType, DEFAULT_AGENT_TYPE } from '../config/defaults'
 import { checkRepoPath } from '../config/repo-validation'
 import { ensureHydrated } from '../store/hydrate'
 import { flushPlanSpec } from '../store/plan-sync'
-import type { HistoryAction } from '../../types'
+import type { HistoryAction, LaunchMetadata } from '../../types'
 
 /**
  * Strict repo-path guard used on agent creation (⌘N). When the launch cwd maps
@@ -58,6 +58,38 @@ function assertLaunchTargetValid(cwd: unknown): void {
   if (!valid) {
     const detail = reason === 'missing' ? 'the folder no longer exists' : 'it is not a git repository'
     throw new Error(`Repository "${name}" is invalid: ${detail}. Re-point the folder in Settings before launching an agent.`)
+  }
+}
+
+/**
+ * The identity a renderer may set on an agent at creation, taken apart and checked
+ * one field at a time.
+ *
+ * NOT `metadata as TerminalMetadata`. This crosses the IPC boundary and lands in the
+ * record the whole product reads afterwards, so a spread would let a caller preset a
+ * status it never earned, a branch it is not on, or a spec path pointing anywhere on
+ * disk. Two fields are allowed through, both plain strings — see `LaunchMetadata`.
+ *
+ * Control characters are stripped rather than the whole value rejected: a ticket id
+ * carrying a newline is meaningless as an identifier, but it arrives from tracker
+ * data, and losing the launch over it would be worse than losing the character. The
+ * cap is the same reasoning — a title is a row in a sidebar.
+ */
+const LAUNCH_FIELD_MAX = 200
+
+function launchMetadataFrom(value: unknown): LaunchMetadata {
+  if (typeof value !== 'object' || value === null) return {}
+  const raw = value as Record<string, unknown>
+  const clean = (field: unknown): string | undefined => {
+    if (typeof field !== 'string') return undefined
+    const text = field.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, LAUNCH_FIELD_MAX)
+    return text.length > 0 ? text : undefined
+  }
+  const title = clean(raw.title)
+  const ticketId = clean(raw.ticketId)
+  return {
+    ...(title ? { title } : {}),
+    ...(ticketId ? { ticketId } : {}),
   }
 }
 
@@ -490,7 +522,7 @@ export function setupTerminalHandlers(
   })
 
   // Launch Claude in a new terminal
-  ipcMain.handle('terminal:launchClaude', async (_event, { id, name, cwd, initialPrompt, promptMode, agentType }) => {
+  ipcMain.handle('terminal:launchClaude', async (_event, { id, name, cwd, initialPrompt, promptMode, agentType, metadata }) => {
     if (typeof id !== 'string' || typeof name !== 'string') {
       throw new Error('terminal:launchClaude requires id (string) and name (string)')
     }
@@ -513,7 +545,17 @@ export function setupTerminalHandlers(
       // caller may name one; otherwise the user's configured default applies, and
       // `coder` backs that up. Written at creation, so an agent has a kind from its
       // very first render — the gap that made status-based inference unworkable.
-      { type: isValidAgentType(agentType) ? agentType : (readConfig().defaultAgentType ?? DEFAULT_AGENT_TYPE) },
+      //
+      // Alongside it, whatever identity the caller already knew: the Tasks page's
+      // "Discuss" button opens an agent about a ticket it can name, so the agent is
+      // attached to that ticket and titled after it from its first render rather than
+      // being a nameless "Claude 3" somebody has to fill in by hand. Everything else
+      // in the record stays at its default — including the status, which is empty
+      // because nothing has happened yet.
+      {
+        type: isValidAgentType(agentType) ? agentType : (readConfig().defaultAgentType ?? DEFAULT_AGENT_TYPE),
+        ...launchMetadataFrom(metadata),
+      },
       callbacks.onRepositoriesChange,
       undefined,
       typeof initialPrompt === 'string' ? initialPrompt : undefined,

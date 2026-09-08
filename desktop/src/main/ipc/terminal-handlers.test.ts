@@ -21,6 +21,7 @@ const term = vi.hoisted(() => ({
   getTerminal: vi.fn(),
   createTerminal: vi.fn(),
   killTerminal: vi.fn(),
+  launchClaude: vi.fn(),
   // Routed through `term` rather than mocked inline in the factory below, because one test
   // needs to CONTROL its answer: the handler is supposed to hand that boolean back.
   writeToTerminal: vi.fn((..._args: unknown[]): boolean => true),
@@ -37,7 +38,13 @@ vi.mock('../pty/terminal-manager', () => ({
     term.createTerminal(...args)
     return { id: args[0], name: args[1], state: 'idle', repositories: [], branchName: null }
   },
-  launchClaude: vi.fn(),
+  launchClaude: (...args: unknown[]) => {
+    term.launchClaude(...args)
+    // Shaped like the real return so the handler can save and report it. `metadata`
+    // is echoed back from the initialMetadata argument, which is what the launch
+    // metadata cases below read.
+    return { id: args[0], name: args[1], state: 'idle', repositories: ['/repo'], metadata: args[8] }
+  },
   writeToTerminal: (...args: unknown[]) => term.writeToTerminal(...args),
   resizeTerminal: vi.fn(),
   killTerminal: (...args: unknown[]) => term.killTerminal(...args),
@@ -308,6 +315,65 @@ describe('the status contract with the skills', () => {
     const fromStatuses: string[] = ['planning', 'planned', 'started', 'committed', 'ready_for_pr',
       'pr_created', 'ci_green', 'review', 'review_changes_requested', 'review_addressed', 'merged']
     expect([...produced].sort()).toEqual([...fromStatuses].sort())
+  })
+})
+
+// ── The identity an agent is created with (terminal:launchClaude) ───────────
+//
+// The Tasks page's "Discuss" button opens an agent ABOUT a ticket, so it hands the
+// ticket and a title over at creation. That payload crosses the IPC boundary, which
+// is why only two fields of it are believed.
+
+describe('the metadata an agent is launched with (terminal:launchClaude)', () => {
+  /** The initialMetadata argument the handler passed down to launchClaude. */
+  function launchedMetadata(): Record<string, unknown> {
+    return term.launchClaude.mock.calls[0][8] as Record<string, unknown>
+  }
+
+  it('attaches the ticket and the title the caller named', async () => {
+    await invoke('terminal:launchClaude', {
+      id: 'claude-1',
+      name: 'Claude 1',
+      cwd: '/repo',
+      metadata: { title: 'Discuss PROJ-123', ticketId: 'PROJ-123' },
+    })
+
+    expect(launchedMetadata()).toMatchObject({ title: 'Discuss PROJ-123', ticketId: 'PROJ-123' })
+  })
+
+  it('leaves the agent with no status, whatever the caller asked for', async () => {
+    // A status is something an agent EARNS by doing work — a discussion has done
+    // none. Presetting one here would also fake the activity event it stands for.
+    await invoke('terminal:launchClaude', {
+      id: 'claude-2',
+      name: 'Claude 2',
+      cwd: '/repo',
+      metadata: { title: 'Discuss PROJ-1', status: 'in progress', specPath: '/etc/passwd' },
+    })
+
+    expect(launchedMetadata()).not.toHaveProperty('status')
+    expect(launchedMetadata()).not.toHaveProperty('specPath')
+  })
+
+  it('survives a caller that sends nothing at all', async () => {
+    // ⌘N and the sidebar's "+" do exactly this, and they must keep working.
+    await invoke('terminal:launchClaude', { id: 'claude-3', name: 'Claude 3', cwd: '/repo' })
+
+    expect(launchedMetadata()).not.toHaveProperty('title')
+    expect(launchedMetadata()).toHaveProperty('type')
+  })
+
+  it('strips control characters instead of losing the launch over them', async () => {
+    await invoke('terminal:launchClaude', {
+      id: 'claude-4',
+      name: 'Claude 4',
+      cwd: '/repo',
+      metadata: { ticketId: 'PROJ-9\r\n', title: '  ' },
+    })
+
+    expect(launchedMetadata()).toMatchObject({ ticketId: 'PROJ-9' })
+    // A title of nothing but spaces is no title: the sidebar falls back to the name.
+    expect(launchedMetadata()).not.toHaveProperty('title')
   })
 })
 

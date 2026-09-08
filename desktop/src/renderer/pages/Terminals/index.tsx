@@ -3,7 +3,7 @@ import { Bot } from 'lucide-react'
 import { useTerminals } from '../../hooks/useTerminals'
 import { useOrderedTerminals } from '../../hooks/useOrderedTerminals'
 import { useStore } from '../../store'
-import type { InitialPromptMode } from '../../../types'
+import type { InitialPromptMode, LaunchMetadata } from '../../../types'
 import { TerminalView } from '../../components/TerminalView'
 import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
@@ -32,6 +32,12 @@ export interface NewTerminalDetail {
    * there for the person to finish. Absent means run it — see `InitialPromptMode`.
    */
   promptMode?: InitialPromptMode
+  /**
+   * The identity the dispatcher already knows: which ticket the agent is about, and
+   * what to call it in the list. Absent for the three callers above, which know
+   * neither — an agent opened from the sidebar is about whatever you then type.
+   */
+  metadata?: LaunchMetadata
 }
 
 export function TerminalsPage() {
@@ -99,7 +105,7 @@ export function TerminalsPage() {
     setIsCreating(true)
     try {
       const name = getNextTerminalName()
-      const terminal = await launchClaudeTerminal(name, detail?.cwd || DEFAULT_PATH, detail?.initialPrompt, detail?.promptMode)
+      const terminal = await launchClaudeTerminal(name, detail?.cwd || DEFAULT_PATH, detail?.initialPrompt, detail?.promptMode, detail?.metadata)
       if (pane === 'right') {
         moveTerminalToPane(terminal.id, 'right')
         setSplitTerminalId(terminal.id)

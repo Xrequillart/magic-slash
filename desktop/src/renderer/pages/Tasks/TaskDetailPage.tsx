@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObjec
 import { ArrowLeft, CircleCheck, CircleDot, ExternalLink, MessageSquare, MessagesSquare, Play } from 'lucide-react'
 import type {
   InitialPromptMode,
+  LaunchMetadata,
   TicketComment,
   JiraTaskIssue,
   JiraTaskIssueDetail,
@@ -20,6 +21,7 @@ import { StatusPill } from '../Dashboard/parts'
 import type { NewTerminalDetail } from '../Terminals'
 import { JiraEpicBadge, JiraErrorLines, JiraPriorityBadge, JiraStatusPill, TaskErrorLines } from './TasksRepoSection'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
+import { discussAgentTitle, discussPrompt } from '../../utils/discussPrompt'
 import { TrackerTile } from '../../components/icons/TrackerIcons'
 
 /**
@@ -649,7 +651,15 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
    * is typed into the input box, where a Return IS the send — a two-line draft would post
    * its first line and leave the second behind.
    */
-  const openAgent = useCallback(async (initialPrompt: string, promptMode: InitialPromptMode = 'run') => {
+  const openAgent = useCallback(async (
+    initialPrompt: string,
+    promptMode: InitialPromptMode = 'run',
+    // The identity the new agent starts with, for the caller that has one. "Start"
+    // has none to give: `/magic:start` attaches the ticket and names the agent
+    // itself, out of the ticket it has just read, and a title set here would be
+    // overwritten by a better one seconds later.
+    metadata?: LaunchMetadata,
+  ) => {
     if (startable.length === 0) return
     const only = startable.length === 1 ? startable[0].config?.path : undefined
     setStartFailed(false)
@@ -679,7 +689,7 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
       // The agents page owns every guard on creating one (max agents, unreachable
       // repositories, which pane it lands in), so this asks for an agent the same
       // way the sidebar's "+" does rather than launching one itself.
-      const launch: NewTerminalDetail = { ...(cwd ? { cwd } : {}), initialPrompt, promptMode }
+      const launch: NewTerminalDetail = { ...(cwd ? { cwd } : {}), initialPrompt, promptMode, ...(metadata ? { metadata } : {}) }
       window.dispatchEvent(new CustomEvent<NewTerminalDetail>('new-terminal', { detail: launch }))
     } catch {
       // Never `err.message`: pickUpTask throws an English sentence with no
@@ -706,30 +716,31 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
    * The other thing a reader might want from a ticket: to think about it rather than do it.
    *
    * A plain-prose prompt rather than a skill, because there is no `/magic:` verb for this and
-   * inventing one would be a second surface to keep in step with eight others. It is a prompt
-   * addressed to Claude and not text the reader sees, which is why it is a literal here rather
-   * than a catalogue key — the agent's language is the repository's, not the app's.
+   * inventing one would be a second surface to keep in step with eight others.
    *
    * A GitHub issue is named by its URL, which is what `gh` reads it through; a Jira ticket is
    * named by its KEY, which is what the Atlassian MCP server resolves. Both are prerequisites
    * the app already checks for.
    *
-   * The "do not implement" clause is load-bearing. Without it an agent handed a ticket in a
-   * repository does the obvious thing and starts implementing it, which is precisely what the
-   * button above is for and precisely what this one is not.
-   *
    * DRAFTED, not run, and that is the difference between the two buttons: starting work needs
    * no elaboration, whereas a discussion is worth little without the sentence the person wanted
    * to say — which side of it they want to talk about, what they are unsure of, who asked. So
    * this fills the input box and stops, and the trailing space is where they carry on typing.
+   * Everything the draft used to spell out about not implementing it lived in the way of that
+   * sentence; see `discussPrompt`, which also picks the repository's discussion language.
+   *
+   * It is the only launch that names its agent, and it has to: `/magic:start` titles its own
+   * agent off the ticket it reads, whereas nothing in a discussion ever would — so without
+   * this it would sit in the sidebar as "Claude 3", attached to no ticket. The ticket goes on
+   * `ticketId` for the same reason it does there: it is what the Tasks page, the info sidebar
+   * and the org roster all read to know what an agent is about. NO status goes with it — the
+   * agent has done nothing yet, and a discussion is not a workflow step.
    */
   const discussAgent = useCallback(() => openAgent(
-    (tracker === 'jira'
-      ? `Let's discuss Jira ticket ${issueKey} — read it first, then help me explain, summarise, `
-      : `Let's discuss GitHub issue ${url} — read it first, then help me explain, summarise, `)
-    + 'refine or rewrite it. Do not implement it and do not create a branch. ',
+    discussPrompt(tracker === 'jira' ? issueKey : url, primary.config?.languages),
     'draft',
-  ), [openAgent, tracker, issueKey, url])
+    { title: discussAgentTitle(ticketId), ticketId },
+  ), [openAgent, tracker, issueKey, url, ticketId, primary.config])
 
   const openedOn = formatIssueDate(createdAt, locale)
 
