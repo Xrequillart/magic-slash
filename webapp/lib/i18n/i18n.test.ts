@@ -216,6 +216,18 @@ describe('message catalogues', () => {
         'site.nav.documentationCategory',
         'site.nav.faq',
         'site.nav.changelog',
+        // Three of the Product menu's six rows. "Workflow", "Application" and "Cloud"
+        // are the product's own vocabulary and the words the French UI uses — the same
+        // borrowing as `site.features.groupCloudTitle` further down, and as the app's
+        // own `nav.application`. The menu's other three are real French: "Produit",
+        // "Toutes les fonctionnalités", "Télécharger".
+        //
+        // A `site.nav.skills` was the fourth until its page was cut for duplicating
+        // `/workflow`. This list is EXACT rather than an inclusion, so the key had to
+        // leave the catalogues and this line with it.
+        'site.nav.workflow',
+        'site.nav.application',
+        'site.nav.cloud',
         // The `/changelog` page's own `h1`. "Changelog" is the word both languages
         // use — the two nav rows above are the same borrowing — and translating this
         // one alone would leave the site calling the same page two different things in

@@ -59,6 +59,28 @@ const PUBLIC_PATHS = new Set([
   // form. `lib/workflow.ts` owns the path (`WORKFLOW_PATH`) and `workflow.test.ts` reads
   // this file to pin the two together.
   '/workflow',
+  // THE HEADER'S OWN NEW PAGES, which are load-bearing for the same reason
+  // `/workflow` above is and one click closer to it: they are in the HEADER, on every
+  // public page, so a row absent from this list does not 404 — it 307s the reader to a
+  // login form on `app.magic-slash.io`, and a bar whose own menu appears to sign you
+  // out is worse than a bar with fewer rows. `lib/siteNav.ts` owns the paths and
+  // `siteNav.test.ts` reads this file to pin each one against its page.
+  //
+  // `/desktop` is the marketing page for the macOS app, and it is NOT `/application`:
+  // that path belongs to the app's own settings section on `app.magic-slash.io`, where
+  // it is decided by this list's own default (absent → the app host).
+  //
+  // THERE WAS A `/skills` HERE, cut with its page for duplicating `/workflow`. It is not
+  // in `RETIRED_PATHS` and needs no redirect: the path never shipped, so no link to it
+  // exists to keep alive — which is the whole difference between this and
+  // `/documentation` below.
+  '/desktop',
+  '/cloud',
+  '/download',
+  // AND THE HELP MENU'S OWN NEW ROW, listed for the same reason as the three above it:
+  // it is in the bar on every public page. `/faq` is already in this list, further up —
+  // it predates both menus.
+  '/best-practices',
   // NOT A PAGE ANY MORE. `/documentation` is in `RETIRED_PATHS` below and 308s to
   // `/faq`, and it has to stay listed HERE for that redirect to be the one that fires:
   // drop it and `canonicalHost` decides it belongs to the app, which 307s the reader to

@@ -29,6 +29,19 @@ describe('canonicalHost', () => {
       // `/faq`, which replaced `/documentation` and is what the footer's Resources
       // column now points at.
       expect(canonicalHost('magic-slash.io', '/faq')).toBeNull()
+      // THE HEADER'S FOUR NEW PAGES, which are the worst of this failure mode rather
+      // than another instance of it: they are in the HEADER, so they are on every public
+      // page at once — a reader who opened either menu anywhere would be handed a login
+      // form. `siteNav.test.ts` pins each of them to a page as well; this is the routing
+      // half.
+      for (const path of ['/desktop', '/cloud', '/download', '/best-practices']) {
+        expect(canonicalHost('magic-slash.io', path), path).toBeNull()
+      }
+      // AND `/application` IS NOT ONE OF THEM, though the menu row that opens `/desktop`
+      // is labelled "Application": that path is the app's own settings section, and it
+      // goes where the rest of the product goes.
+      expect(canonicalHost('magic-slash.io', '/application')).toBe(APP_HOST)
+      expect(canonicalHost('magic-slash.io', '/application/appearance')).toBe(APP_HOST)
       // `/documentation` has no route behind it any more — `retiredPath` below 308s it
       // to `/faq`, and the middleware asks that FIRST. It stays in `PUBLIC_PATHS`
       // regardless, because this rule runs on the raw path and would otherwise decide a
@@ -61,6 +74,7 @@ describe('canonicalHost', () => {
       expect(canonicalHost('magic-slash.io', '/changelog/')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/faq/')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/workflow/')).toBeNull()
+      expect(canonicalHost('magic-slash.io', '/download/')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/documentation/')).toBeNull()
     })
 
@@ -168,7 +182,7 @@ describe('retiredPath', () => {
   })
 
   it('leaves every live page alone', () => {
-    for (const path of ['/', '/faq', '/features', '/changelog', '/story', '/workflow', '/dashboard']) {
+    for (const path of ['/', '/faq', '/features', '/changelog', '/story', '/workflow', '/desktop', '/cloud', '/download', '/best-practices', '/dashboard']) {
       expect(retiredPath('magic-slash.io', path), path).toBeNull()
     }
   })
@@ -203,6 +217,12 @@ describe('resolveRewrite', () => {
       expect(resolveRewrite('magic-slash.io', '/changelog')).toBeNull()
       expect(resolveRewrite('magic-slash.io', '/faq')).toBeNull()
       expect(resolveRewrite('magic-slash.io', '/workflow')).toBeNull()
+      // The header's four new pages. Nothing on the apex is rewritten but the root, and the
+      // reason to say so per path is that a rewrite rule added for one of them would be
+      // silent: the page still renders, just not the one the URL names.
+      for (const path of ['/desktop', '/cloud', '/download', '/best-practices']) {
+        expect(resolveRewrite('magic-slash.io', path), path).toBeNull()
+      }
       // A retired path never reaches this rule — the middleware redirects it before
       // asking — but it must not grow a rewrite of its own if it ever does.
       expect(resolveRewrite('magic-slash.io', '/documentation')).toBeNull()

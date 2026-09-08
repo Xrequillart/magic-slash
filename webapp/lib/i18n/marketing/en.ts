@@ -37,13 +37,43 @@ export const marketingEn = {
       accessible name and not a tooltip beside one. Static while the glyph toggles,
       because `aria-expanded` on the button already announces open from closed. */
   'site.nav.menu': 'Site menu',
-  /** The header's Product dropdown: its trigger, then the entry that opens the
-      homepage's own features grid. Its five other entries reuse the documentation
-      keys below — `skillsReference`, `gettingStarted`, `configuration`,
-      `documentationCategory` and `changelog` were orphaned when the Resources menu
-      lost its columns, and are back rather than retyped under new names. */
+  /**
+   * THE HEADER'S TWO MENUS AND THE EIGHT ROWS UNDER THEM. `product` and `help` are the
+   * two triggers; `workflow`, `application`, `cloud`, `allFeatures`, `changelog` and
+   * `download` are the first one's rows, in that order, and `bestPractices` with `faq`
+   * are the second's. `lib/siteNav.ts` owns the order and the destinations, and
+   * `siteNav.test.ts` looks every one of these keys up in BOTH catalogues — a key that
+   * does not exist renders as an empty row rather than as an error, `t()` having no
+   * per-key fallback.
+   *
+   * FOUR OF THEM ARE THE SAME WORD IN FRENCH, which is why they are one-word entries
+   * with an allow-list line each in `i18n.test.ts`: "Workflow", "Application" and
+   * "Cloud" are what the French UI calls them too — the product's own vocabulary, as
+   * `site.features.groupCloudTitle` already is — and "Changelog" was listed there long
+   * before this menu existed. `download` is NOT one of them ("Télécharger"), and
+   * neither is the trigger ("Produit").
+   *
+   * `allFeatures` moved rather than changed: it was the bar's single link, and it is
+   * now a row in the menu pointing at the same `/features`. `faq` moved the same way and
+   * one release later — it was the bar's second CONTROL, and it is a row of the Help
+   * menu now, pointing at the same `/faq`. Neither key was rewritten, because neither
+   * destination was.
+   *
+   * THERE WAS A `site.nav.skills` ROW HERE, with a `/skills` page behind it, and both
+   * were cut for duplicating `/workflow` — one loop, described twice. Its keys are gone
+   * rather than parked: an unreferenced key normally costs nothing to keep, but an
+   * en/fr pair that is identical also costs a line in `i18n.test.ts`'s EXACT allow-list,
+   * and a name in that list with nothing behind it is a fact about the site that is no
+   * longer true.
+   */
   'site.nav.product': 'Product',
+  'site.nav.workflow': 'Workflow',
+  'site.nav.application': 'Application',
+  'site.nav.cloud': 'Cloud',
   'site.nav.allFeatures': 'All features',
+  'site.nav.download': 'Download',
+  'site.nav.help': 'Help',
+  'site.nav.bestPractices': 'Best practices',
   'site.nav.resources': 'Resources',
   /** The header's account control, signed out. Signed in it shows the email instead. */
   'site.nav.signIn': 'Sign in',
@@ -58,6 +88,35 @@ export const marketingEn = {
   'site.nav.updatesCategory': 'Updates',
   'site.nav.changelog': 'Changelog',
   'site.nav.ourStory': 'Our Story',
+
+  // ── The four pages that are not written yet ─────────────────────────────────
+  /**
+   * `/desktop`, `/cloud`, `/download` and `/best-practices`: the header's four new
+   * rows, each a title and one lead, printed by
+   * `components/site/PlaceholderContent.tsx`.
+   *
+   * THEY EXIST BECAUSE THE MENU DOES. A row pointing at a path `PUBLIC_PATHS` does not
+   * list 307s the reader to a login form on `app.magic-slash.io`, so the routes had to
+   * ship with the menu — see `PLACEHOLDER_PAGES` in `lib/siteNav.ts`. The copy is
+   * therefore a PROMISE OF SCOPE and nothing more: what each page will hold, so a
+   * reader who followed the row learns something rather than meeting an empty band.
+   *
+   * `site.desktopPage.title` is not `site.desktop.title`, which is the homepage band's
+   * heading and is the product's own name ("Magic Slash") in both catalogues.
+   */
+  'site.pageSoon.note': 'Page in preparation',
+  'site.desktopPage.title': 'The desktop application',
+  'site.desktopPage.lead':
+    'The native macOS app — what the window holds, how it runs several agents at once, and what it keeps track of while you work. This page is being written.',
+  'site.cloudPage.title': 'The cloud',
+  'site.cloudPage.lead':
+    'Your configuration, your team and your usage, on every machine you sign in on — with nothing to copy across by hand. This page is being written.',
+  'site.downloadPage.title': 'Download Magic Slash',
+  'site.downloadPage.lead':
+    'The installer, what it needs on your machine, and what the first launch sets up for you. This page is being written.',
+  'site.bestPracticesPage.title': 'Best practices',
+  'site.bestPracticesPage.lead':
+    'How to shape the work so the agents can carry it — one ticket per branch, a spec before an epic, and when to let an agent run unattended. This page is being written.',
 
   // ── Hero ───────────────────────────────────────────────────────────────────
   /**

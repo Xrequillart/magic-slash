@@ -16,7 +16,15 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.nav.howItWorks': 'Comment ça marche',
   'site.nav.menu': 'Menu du site',
   'site.nav.product': 'Produit',
+  // Trois des six rangées du menu Produit sont le mot français : c'est le vocabulaire
+  // du produit, celui que l'app emploie déjà en français. Voir la note côté anglais.
+  'site.nav.workflow': 'Workflow',
+  'site.nav.application': 'Application',
+  'site.nav.cloud': 'Cloud',
   'site.nav.allFeatures': 'Toutes les fonctionnalités',
+  'site.nav.download': 'Télécharger',
+  'site.nav.help': 'Aide',
+  'site.nav.bestPractices': 'Bonnes pratiques',
   'site.nav.resources': 'Ressources',
   'site.nav.signIn': 'Connexion',
   'site.nav.account': 'Votre compte',
@@ -30,6 +38,21 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.nav.updatesCategory': 'Mises à jour',
   'site.nav.changelog': 'Changelog',
   'site.nav.ourStory': 'Notre histoire',
+
+  // ── Les quatre pages encore à écrire ────────────────────────────────────────
+  'site.pageSoon.note': 'Page en préparation',
+  'site.desktopPage.title': 'L’application de bureau',
+  'site.desktopPage.lead':
+    'L’app macOS native — ce que contient la fenêtre, comment elle fait tourner plusieurs agents à la fois, et ce qu’elle suit pour vous pendant que vous travaillez. Cette page est en cours d’écriture.',
+  'site.cloudPage.title': 'Le cloud',
+  'site.cloudPage.lead':
+    'Votre configuration, votre équipe et votre usage, sur chaque machine où vous vous connectez — sans rien à recopier à la main. Cette page est en cours d’écriture.',
+  'site.downloadPage.title': 'Télécharger Magic Slash',
+  'site.downloadPage.lead':
+    'L’installeur, ce qu’il attend de votre machine, et ce que le premier lancement met en place pour vous. Cette page est en cours d’écriture.',
+  'site.bestPracticesPage.title': 'Bonnes pratiques',
+  'site.bestPracticesPage.lead':
+    'Comment découper le travail pour que les agents puissent le porter — un ticket par branche, une spec avant un epic, et quand laisser un agent tourner sans surveillance. Cette page est en cours d’écriture.',
 
   // ── Hero ───────────────────────────────────────────────────────────────────
   'site.hero.title': 'De l’idée à la PR mergée.',
