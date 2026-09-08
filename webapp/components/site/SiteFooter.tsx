@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useT } from '@/lib/i18n/useLanguage'
 import type { MessageKey } from '@/lib/i18n'
-import { DESKTOP_DOWNLOAD_URL } from '@/lib/desktopRelease'
+import { HELP_MENU, HELP_MENU_LABEL, PRODUCT_MENU, type SiteNavRow } from '@/lib/siteNav'
 import { LanguageMenu } from './LanguageMenu'
 import { GithubIcon } from './icons'
-import { GITHUB_REPO_URL, LICENSE_URL, NEW_ISSUE_URL, SECURITY_URL } from './links'
+import { GITHUB_REPO_URL, NEW_ISSUE_URL } from './links'
 
 /**
  * The public site's footer — brand, three link columns, copyright, language picker.
@@ -22,18 +22,35 @@ import { GITHUB_REPO_URL, LICENSE_URL, NEW_ISSUE_URL, SECURITY_URL } from './lin
  * alphas repeated across ten call sites, which is the one hardcoded value the design
  * brief's allowance for new structural components does not permit.
  *
- * THREE COLUMNS, and the split is by what a reader is looking for rather than by where
- * the link goes: Product is the pitch (the page's own sections, and the build itself),
- * Resources is the reference, Legal is the paperwork. Every Legal entry leaves for
- * GitHub on purpose — see the note on `LICENSE_URL` in `links.ts`, and the one on
- * `site.footer.legal` in the catalogue.
+ * THREE COLUMNS, AND THE FIRST TWO ARE THE HEADER'S TWO MENUS. That is the change worth
+ * reading twice, because the table below no longer decides most of what is in it: the
+ * Product column IS `PRODUCT_MENU`, the Help column IS `HELP_MENU` — both read from
+ * `lib/siteNav.ts`, heading included — so a row added to a menu appears here, and a
+ * footer that disagrees with the bar about where "Download" goes is no longer possible.
+ * It was possible until today, and the two did disagree: see the note on the Product
+ * column.
+ *
+ * WHICH LEAVES RESOURCES AS WHAT THE FOOTER ALONE CARRIES: `/story`, the issue tracker
+ * and the repository. That is the honest content of the column rather than a leftover —
+ * a bar of two menus has no room for a company's story, and the bottom of a page
+ * somebody read to the end is exactly where it belongs. The three rows are also why
+ * this stayed at three columns when the Legal one went: two columns left a third of the
+ * row empty and read as a column that had failed to render.
+ *
+ * THERE WAS A LEGAL COLUMN — the licence, the security policy and the issue tracker,
+ * three links that all left for GitHub. It is gone by request. "Report an issue" moved
+ * into Resources, where it reads as one of the ways to get help rather than as
+ * paperwork, and the other two links are NOT on this site any more: nothing links to
+ * `LICENSE` or `SECURITY.md` from the public pages now. `links.ts` still exports both
+ * URLs and says so; whoever gives those two pages a route (story #273) has somewhere to
+ * point them from.
  *
  * Every destination here EXISTS, and an internal one has to be a path `PUBLIC_PATHS` in
  * `lib/hostRouting.ts` enumerates: a footer link to a path absent from that list would
- * not 404 on production — it would 307 the reader to a login form, which is worse. That
- * list is named rather than copied, for the reason given on `LICENSE_URL` in `links.ts`.
- * `/faq` was the standing example of the mistake in this very paragraph until the page
- * existed; it is a row in the Resources column now, and an entry in that list.
+ * not 404 on production — it would 307 the reader to a login form, which is worse. The
+ * rows that come from `lib/siteNav.ts` are pinned against that list by
+ * `siteNav.test.ts`; the three this file adds are `/story`, which has been in it since
+ * the page shipped, and two external URLs, which are not its business.
  */
 
 /**
@@ -50,62 +67,75 @@ type Column = {
 }
 
 /**
- * At module scope: every value in here is a `MessageKey` literal or a module constant,
- * so there is nothing to resolve per render — the labels go through `t()` down in the
- * markup. Same shape as the homepage's `FEATURES` and `STEPS`.
+ * A menu's rows, as footer rows.
+ *
+ * The nav carries a glyph and a family colour per row (see `SiteNavRow`) and the footer
+ * wants neither: this column is ten words on an ink plate, and a tinted icon beside each
+ * would turn the quietest surface on the site into the loudest. So the mapping drops
+ * everything but the destination and its label — which is also the whole of what the two
+ * surfaces have to agree about.
+ *
+ * Nothing here is `external`: every row of both menus is a page on this site.
+ */
+const asRows = (rows: SiteNavRow[]): Column['rows'] =>
+  rows.map((row) => ({ href: row.href, label: row.label }))
+
+/**
+ * At module scope: every value in here is a `MessageKey` literal, a module constant or a
+ * mapping over one, so there is nothing to resolve per render — the labels go through
+ * `t()` down in the markup. Same shape as the homepage's `FEATURES` and `STEPS`.
  */
 const COLUMNS: Column[] = [
   {
     title: 'site.footer.product',
-    rows: [
-      // Both of these were same-page anchors — `/#features` and `/#commands` — and both
-      // bands are gone. "Features" survives and now points at the page that replaced
-      // the grid: `/features`, the whole inventory read out of `lib/features.ts`. It
-      // spent one release pointing at `/documentation#skills`, which was the closest
-      // thing that existed at the time and listed the eight commands only. "The
-      // commands" does not survive, because there is nothing left that is about the
-      // commands specifically — and `/features#workflow` is where they live now anyway.
-      // Its `site.footer.commands` key stays in the catalogues unreferenced, like every
-      // other family this rebuild retired.
-      { href: '/features', label: 'site.footer.features' },
-      // "How it works" does not survive either: it was a `/#how` anchor, and the band it
-      // scrolled to was cut from the homepage. `site.footer.howItWorks` stays in the
-      // catalogues unreferenced, like `site.footer.commands` above it.
-      // The .dmg itself, not a releases page — see `DESKTOP_DOWNLOAD_URL`. A plain
-      // anchor because GitHub answers it with `Content-Disposition: attachment`, so
-      // the page the reader is on never changes.
-      { href: DESKTOP_DOWNLOAD_URL, label: 'site.footer.download', external: true },
-    ],
+    // THE HEADER'S PRODUCT MENU, IN ITS ORDER, and this column used to be two rows that
+    // were nobody's copy of anything: `/features` under a `site.footer.features` key of
+    // its own, and the `.dmg` itself under `site.footer.download`.
+    //
+    // BOTH OF THOSE WERE DRIFT, and the second was a real disagreement rather than an
+    // untidiness: the bar's Download row opens `/download` — the page that will hold the
+    // button, the prerequisites and the release notes — while this row started the
+    // download outright. One label, two destinations, on one page. The menu's version
+    // wins because it is the one a reader can be told about ("it's under Product"), and
+    // `DESKTOP_DOWNLOAD_URL` is now named where it belongs: by the page that asks for it.
+    //
+    // `site.footer.{features,download,commands,howItWorks}` stay in the catalogues
+    // unreferenced, like every other family this rebuild has retired: nothing tests for
+    // an unused key, and pruning them means editing `i18n.test.ts`'s exact `SAME_IN_BOTH`
+    // allow-list in lockstep.
+    rows: asRows(PRODUCT_MENU),
+  },
+  {
+    // THE HEADER'S OWN HEADING, `site.nav.help` — "Help" / "Aide" — and not a
+    // `site.footer.help` twin of it. Every other column here is titled from the footer's
+    // own family because those names differ from the bar's ("Product" is a menu up there
+    // and a category down here); this one is the same word for the same two rows, and a
+    // second key would be a second thing to keep in step for nothing.
+    title: HELP_MENU_LABEL,
+    // Best practices, then the FAQ — the menu's order, for the reason it has that order:
+    // the teaching before the troubleshooting. `site.footer.faq` is retired with the rest
+    // of the family; the row is `site.nav.faq` now, so the two surfaces cannot come to
+    // call one page two things.
+    rows: asRows(HELP_MENU),
   },
   {
     title: 'site.footer.resources',
+    // WHAT NEITHER MENU CARRIES, which is what this column is now — and it is a column
+    // of its own rather than three rows appended to Help because these three are not
+    // help: one is who we are, one is where to file a bug, one is the source.
     rows: [
-      // THREE ROWS OF DOCUMENTATION LEFT THIS COLUMN, and the reason is not that the
-      // links broke — it is that the page did. `/documentation`, `#quick-start` and
-      // `#configuration` were the manual, its first section and one of its later ones:
-      // three footer rows spending most of a column on one destination nothing else on
-      // the site linked to. The page is deleted (see `RETIRED_PATHS` in
-      // `lib/hostRouting.ts`, which 308s the URL here), and `/faq` is the one row that
-      // replaces all three — the eleven things people were opening that manual to find.
-      //
-      // Their `site.footer.{documentation,gettingStarted,configuration}` keys stay in
-      // the catalogues unreferenced, like every other family this rebuild has retired:
-      // nothing tests for an unused key, and pruning them means editing `i18n.test.ts`'s
-      // exact `SAME_IN_BOTH` allow-list in lockstep.
-      { href: '/faq', label: 'site.footer.faq' },
-      // A PAGE NOW, not the fragment at the bottom of the manual this row used to point
-      // at — which is the change that started the manual's retirement.
-      { href: '/changelog', label: 'site.footer.changelog' },
+      // `/story` stays here by request and it belongs here: a bar has no room for a
+      // company's story and the bottom of a page has nothing better to offer.
       { href: '/story', label: 'site.footer.ourStory' },
-      { href: GITHUB_REPO_URL, label: 'GitHub', external: true },
-    ],
-  },
-  {
-    title: 'site.footer.legal',
-    rows: [
-      { href: LICENSE_URL, label: 'site.footer.license', external: true },
-      { href: SECURITY_URL, label: 'site.footer.security', external: true },
+      // MOVED OUT OF THE LEGAL COLUMN, which is gone. Under "Legal" this read as
+      // paperwork; here, between the story and the repository, it reads as what it is —
+      // the next thing to try when the FAQ did not have the answer.
       { href: NEW_ISSUE_URL, label: 'site.footer.reportIssue', external: true },
+      { href: GITHUB_REPO_URL, label: 'GitHub', external: true },
+      // `/changelog` LEFT THIS COLUMN, and it is the one row that moved rather than
+      // arrived: it is in the Product menu, so it is in the Product column now. What
+      // changed is where it belongs — a changelog is a fact about the build, and the
+      // header decided that before this file did.
     ],
   },
 ]
@@ -170,6 +200,10 @@ export function SiteFooter({ serverYear }: { serverYear: number }) {
             </a>
           </div>
 
+          {/* STILL THREE, though not the same three: Legal left and Help arrived. Which is
+              also why this row is untouched — `grid-cols-2` below `sm` wraps the third
+              column under the first two, and `sm:grid-cols-3` sets all three across, at
+              the widths these labels have always had. */}
           <div className="grid grid-cols-2 gap-x-10 gap-y-8 sm:grid-cols-3">
             {COLUMNS.map((column) => (
               <div key={column.title}>
