@@ -42,15 +42,19 @@ export function groupKeyOf(terminal: TerminalWithRepos): string {
 
 /**
  * The same name as the sidebar's group header shows it: first letter up, the rest
- * down — `poppins-pex` reads "Poppins-pex".
+ * left EXACTLY as configured — `poppins-pex` reads "Poppins-pex", `API` stays "API".
  *
  * Done here rather than with `text-transform` because CSS `capitalize` capitalises
  * after the hyphen too ("Poppins-Pex"), and the header deliberately drops the
  * `uppercase` its AGENTS sibling carries: a repo name is data, and shouting it makes
  * it harder to match against the name Settings shows.
+ *
+ * The rest is never lower-cased, for the same reason: `API` and `myRepo` are the names
+ * the user typed, and every other repo view in the app shows them verbatim. Only the
+ * first character is touched, and only when it is a letter.
  */
 export function repoLabel(name: string): string {
-  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()
+  return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
 /**

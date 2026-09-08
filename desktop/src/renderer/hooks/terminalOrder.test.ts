@@ -144,12 +144,19 @@ describe('orderTerminals', () => {
     })
 
     it('reads a repository name with only its first letter capitalised', () => {
-      // Not `capitalize`: CSS would capitalise after the hyphen too.
+      // Not `capitalize`: CSS would capitalise after the hyphen too ("Poppins-Pex").
       expect(repoLabel('poppins-pex')).toBe('Poppins-pex')
       expect(repoLabel('magic-slash')).toBe('Magic-slash')
-      expect(repoLabel('MILA-cia')).toBe('Mila-cia')
       expect(repoLabel('a')).toBe('A')
       expect(repoLabel('')).toBe('')
+    })
+
+    it('leaves the rest of a repository name exactly as configured', () => {
+      // The name the user typed is what every other repo view shows: never flattened.
+      expect(repoLabel('API')).toBe('API')
+      expect(repoLabel('myRepo')).toBe('MyRepo')
+      expect(repoLabel('MILA-cia')).toBe('MILA-cia')
+      expect(repoLabel('NextJS')).toBe('NextJS')
     })
   })
 
