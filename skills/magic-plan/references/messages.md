@@ -703,6 +703,9 @@ La spec est intacte — rien en elle ne dépend de la disponibilité de {tracker
 
   /magic:start {first_ticket_id}    — start the {first_ticket_scope}
 
+This planning agent is done — you can close it (⌘W) and open a new one to run
+/magic:start. A fresh agent begins the implementation with a clean context.
+
 The spec stays at {spec_path} in the main checkout. `/magic:start` creates a
 worktree, where an untracked spec does not follow — so read it from there.
 ```
@@ -714,12 +717,23 @@ worktree, where an untracked spec does not follow — so read it from there.
 
   /magic:start {first_ticket_id}    — attaquer {first_ticket_scope}
 
+Cet agent de planification a terminé — tu peux le fermer (⌘W) et en ouvrir un
+nouveau pour lancer /magic:start. Un agent neuf démarre l'implémentation avec un
+contexte propre.
+
 La spec reste dans {spec_path}, dans le checkout principal. `/magic:start` crée un
 worktree, où une spec non trackée ne suit pas — c'est donc là qu'il faut la lire.
 ```
 
 > `{first_ticket_id}` is the first story on an epic breakdown, not the epic: an epic is not
 > something you check out a branch for. `{first_ticket_scope}` is that story's short title.
+>
+> The closing line is only truthful once Step 7.1 has sent `status=planned`: the desktop offers a
+> planner's close button at that status and nowhere else, so a message that mentions ⌘W while the
+> agent still reads *planning* points at a button that is not on screen. Keep the two in that
+> order, and keep the line even when the app is closed — the shortcut still works, and the user
+> reading this in a bare terminal is being told the same true thing: this session has nothing left
+> to do, and the next one starts fresh.
 
 ## MSG_ABANDONED
 

@@ -532,6 +532,16 @@ and becomes the record: months later it is the only place holding why the epic w
 
 ### 7.1: Metadata — third write
 
+**This is the write that ends the planning phase, and it is not optional.** `status=planned` is the
+planner's terminal status, and the agent stays at `planning` until this call lands — a session whose
+tickets are already filed still showing as *planning* reads as one that is still thinking, its
+`planned` event never reaches the history the flow metrics are computed from, and the desktop keeps
+the agent's close button hidden, because it only offers it at a workflow's end. So the transition is
+part of the deliverable: the tickets exist, and the agent has to say so.
+
+Send it as soon as the tickets exist — before Step 8, whose message tells the user they may close
+this agent. The button has to be there by the time they read the line that mentions it.
+
 Write `{TICKET_ID}: {TICKET_TITLE}` to `.magic/.mp-title` with the `Write` tool, then:
 
 ```bash
@@ -553,8 +563,11 @@ output and the tickets carry their own bodies; there is nothing left for a summa
 about the **agent metadata** field only: the ticket descriptions composed in `trackers.md` §3.3 are
 a tracker field and are unaffected.
 
-Run this call even after a partial failure, carrying whatever ticket id does exist. A half-created
-plan is still a plan the sidebar should show.
+Run this call even after a partial failure, carrying whatever ticket id does exist — and carrying
+`status=planned` all the same. A half-created plan is still a plan the sidebar should show, and the
+planning is over either way: what is missing is tickets, not a decision. Leaving such an agent at
+`planning` would make the one case where the user most needs to act on the result the one case where
+the sidebar hides that there is a result.
 
 ### 7.2: The created tickets
 
@@ -613,6 +626,14 @@ for — those are two different questions and this is the one about branches.
 Remind the user, in the one line `MSG_NEXT_STEPS` already carries, that the spec lives in the main
 checkout: `/magic:start` creates a worktree, and an untracked `.magic/spec-*.md` does not appear
 there.
+
+`MSG_NEXT_STEPS` also says that this agent has finished and can be closed, and that `/magic:start`
+belongs in a **new** one. That is not a courtesy line. A planner's work ends at `planned`: it holds
+no branch and no worktree, and everything it has to hand on is already in the spec and in the
+tickets — so the conversation behind it is spent context, and continuing in it would start the
+implementation with the window mostly full of a debate that has been settled. The close button the
+line points at is on this agent at `planned` (Step 7.1), so the instruction matches something the
+user can actually see and click.
 
 ## Step 9: Record the run
 
