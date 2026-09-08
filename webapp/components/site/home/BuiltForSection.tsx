@@ -18,9 +18,11 @@ import {
 /**
  * The band under the app's own window: WHO THE APP IS FOR, in five coloured cards.
  *
- * WHY IT IS HERE, directly after `DesktopSection` and nowhere else. That band shows the
- * window — one screenshot, drawn faithfully, with four claims under it — and a window is
- * a thing a reader looks at rather than a thing they are told about. What it cannot say
+ * WHY IT IS HERE, directly after `AppSection` and nowhere else. That band shows the
+ * window — drawn faithfully, beside a paragraph about it — and a window is a thing a
+ * reader looks at rather than a thing they are told about. (It showed it larger, with
+ * four claims under it, until that composition moved to `/desktop`; the picture got
+ * smaller and this band's reason for following it did not change.) What it cannot say
  * is what living in that window is LIKE: that the backlog is in it, that you never have
  * to touch the mouse, that it is a Mac app and not a browser in a frame, that it bends to
  * you, and that it comes to you from whatever you were doing. Five claims, one card each,

@@ -48,8 +48,14 @@ import { JiraMark } from '../features/TicketCardMockup'
  * technique and the reason this is a reproduction rather than an illustration: the
  * sidebar is 230px because the app's is, the panel is 500px because the app's is, the
  * titlebar is `h-10` and the terminal ground is `p-2`. Not one of those may be nudged to
- * make the page fit — `DesktopSection.tsx` applies a uniform `scale` instead, so the
- * proportions survive exactly and only the viewing distance changes.
+ * make the page fit — the callers apply a uniform `scale` instead, so the proportions
+ * survive exactly and only the viewing distance changes.
+ *
+ * THERE ARE TWO CALLERS NOW, at two viewing distances, and neither one is in this file's
+ * business: `desktop/DesktopContent.tsx` shows the window at up to 0.85 on the page about
+ * the app, and `home/AppSection.tsx` at up to 0.425 beside a paragraph on the homepage.
+ * Each owns its own table of scale rungs, derived from the column it has to fit — which is
+ * exactly why the drawing states the app's pixels and nothing else.
  *
  * ── TYPE: THE APP'S OWN FAMILY, AT THE APP'S OWN WEIGHTS ──────────────────────────
  *
@@ -627,7 +633,7 @@ export function AppWindowMockup() {
     // `rounded-xl` ON ALL FOUR CORNERS, which it was not: this window used to be cropped
     // by its band and only ever showed a top edge, so the two bottom corners were left
     // square on the argument that nobody would see them. The product owner asked to see
-    // the whole app, so they are seen — see the note at the top of `DesktopSection.tsx`.
+    // the whole app, so they are seen — see the note at the top of `DesktopContent.tsx`.
     // 12px is the radius macOS gives a window, and the app asks for no other: it is
     // `titleBarStyle: 'hidden'` over `transparent` with `vibrancy` (main/index.ts:200-203)
     // and leaves `roundedCorners` at its default, so the platform's own curve is the one
@@ -638,8 +644,9 @@ export function AppWindowMockup() {
     // rather than a border, so the 1px costs the layout nothing and every measurement
     // inside stays the app's (the same call `components/Flag.tsx` makes), and being inset
     // it follows the radius all the way round. `shadow-lift` is the top rung of the
-    // declared elevation scale; the aura behind the window is `DesktopSection`'s, built
-    // out of blurred blobs for the reason that file gives.
+    // declared elevation scale; the aura behind the window on `/desktop` is
+    // `DesktopContent`'s, built out of blurred blobs for the reason that file gives. The
+    // homepage's smaller copy has none — see the note in `AppSection.tsx`.
     //
     // `font-display` and NOT `font-sans` — see the TYPE section at the top of this file.
     // On this site `font-sans` is Avenir; the app is Cera Pro, and this class is the

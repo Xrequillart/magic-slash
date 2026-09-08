@@ -129,13 +129,18 @@ export type SiteNavRow = {
 }
 
 /**
- * THE FOUR PAGES THAT DO NOT EXIST YET, and what each one will be about.
+ * THE THREE PAGES THAT DO NOT EXIST YET, and what each one will be about.
  *
  * They are placeholders on purpose and the shape says so: a path, the label the menu
  * gives it, and the two lines the page itself prints — a title and one lead — with
  * `PLACEHOLDER_NOTE` below them. `components/site/PlaceholderContent.tsx` renders all
- * four, so the four `page.tsx` files under `app/(marketing)` are a `metadata` export and
- * one component call each.
+ * three, so the three `page.tsx` files under `app/(marketing)` are a `metadata` export
+ * and one component call each.
+ *
+ * `/desktop` WAS THE FOURTH AND IS A REAL PAGE NOW: the homepage's own app band moved
+ * onto it whole (`components/site/desktop/DesktopContent.tsx`), which is why its row
+ * below is written out rather than mapped from here — and why `site.desktopPage.*` is
+ * gone from the catalogues. A page with content has no use for a promise of scope.
  *
  * A ROUTE HAD TO EXIST THE DAY THE MENU SHIPPED, which is the same argument
  * `WORKFLOW_PATH` records: the alternative to a thin page is a menu row that 307s to a
@@ -159,12 +164,6 @@ export type PlaceholderPage = {
 }
 
 export const PLACEHOLDER_PAGES = {
-  desktop: {
-    path: '/desktop',
-    label: 'site.nav.application',
-    title: 'site.desktopPage.title',
-    lead: 'site.desktopPage.lead',
-  },
   cloud: {
     path: '/cloud',
     label: 'site.nav.cloud',
@@ -191,7 +190,7 @@ export const PLACEHOLDER_PAGES = {
 /**
  * The line every unfinished page carries where its content will go.
  *
- * ONE KEY FOR ALL FOUR, and it is deliberately a plain statement rather than a promise
+ * ONE KEY FOR ALL THREE, and it is deliberately a plain statement rather than a promise
  * with a date on it: "in preparation" ages, "shipping in March" is wrong in April.
  */
 export const PLACEHOLDER_NOTE: MessageKey = 'site.pageSoon.note'
@@ -201,7 +200,7 @@ export const PLACEHOLDER_NOTE: MessageKey = 'site.pageSoon.note'
  *
  * The glyph and the tone are arguments rather than fields on `PLACEHOLDER_PAGES`: what a
  * page is called and what it will hold belong to the page, and how the MENU dresses the
- * row that opens it belongs to the menu. The four pages would keep their copy if the
+ * row that opens it belongs to the menu. The three pages would keep their copy if the
  * menu were redrawn tomorrow.
  */
 const row = (
@@ -216,6 +215,24 @@ const row = (
   tone,
   tile,
 })
+
+/**
+ * The page about the app — the one Product row that is neither a placeholder nor owned by
+ * a module of its own.
+ *
+ * HERE RATHER THAN IN A `lib/desktopPage.ts`, and that is a judgement rather than an
+ * omission: `lib/workflow.ts` and `lib/faq.ts` own their paths because they own their
+ * pages' DATA — five steps, eleven questions — and a component should not have to know
+ * the site's URL shape to link to them. `/desktop` has no such data. Its copy is
+ * `site.desktop.*`, the family the homepage band brought with it, and its composition is
+ * the component. So the path lives with the menu that names it, and `siteNav.test.ts`
+ * pins it against `PUBLIC_PATHS` and against the page like every other row.
+ *
+ * `/desktop` AND NOT `/application`, though the row is labelled "Application": the
+ * product owns `/application/*` on `app.magic-slash.io` — its own settings section — and
+ * two route branches resolving one path is a build question rather than a naming one.
+ */
+export const DESKTOP_PATH = '/desktop'
 
 /** The Product menu's trigger. */
 export const PRODUCT_MENU_LABEL: MessageKey = 'site.nav.product'
@@ -250,7 +267,7 @@ export const PRODUCT_MENU_GROUPS: SiteNavRow[][] = [
   // THE PRODUCT ITSELF — the one group whose glyphs are tiled. See `tile` above.
   [
     { href: WORKFLOW_PATH, label: 'site.nav.workflow', icon: 'Workflow', tone: 'accent', tile: true },
-    row(PLACEHOLDER_PAGES.desktop, 'AppWindow', 'accent', true),
+    { href: DESKTOP_PATH, label: 'site.nav.application', icon: 'AppWindow', tone: 'accent', tile: true },
     row(PLACEHOLDER_PAGES.cloud, 'Cloud', 'accent', true),
   ],
   [

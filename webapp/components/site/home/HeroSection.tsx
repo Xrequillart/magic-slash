@@ -36,9 +36,11 @@ import { HomeSection } from './Shell'
  * column of type.
  *
  * STORY #270 PUT THE VISUAL BACK IN A BAND OF ITS OWN and not in this one, which is why
- * nothing here moved for it. `DesktopSection` sits directly under this band and draws the
- * whole desktop window, cropped by its own bottom edge; a hero that is one centred column
- * of type reads better against it than it would with a second window inside it. It is a
+ * nothing here moved for it. The window is drawn three bands below, by `AppSection`, and
+ * whole rather than cropped; a hero that is one centred column of type reads better
+ * against it than it would with a second window inside it. (It was one band down and
+ * larger when this note was written — the composition is `/desktop`'s now — and neither
+ * move touched anything here.) It is a
  * static reproduction rather than the scroll-driven conversion of the old `AppMockup.tsx`
  * that story originally planned — that component and its two helpers are deleted, and
  * `app/(marketing)/page.tsx` records why.

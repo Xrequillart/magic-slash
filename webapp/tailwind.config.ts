@@ -1127,6 +1127,37 @@ const config: Config = {
         // first attempt here was `-6px 0 20px -6px` and rendered, correctly, as almost
         // nothing at all.
         edge: `-10px 0 24px -4px ${SHADOW_TINT(0.25)}, -1px 0 2px ${SHADOW_TINT(0.1)}`,
+        // THE RUNG THAT CASTS NOWHERE IN PARTICULAR, for a panel cut by its plate on TWO
+        // sides at once.
+        //
+        // That is the homepage's app band (`home/AppSection.tsx`): the window is inset
+        // from the plate's top and left and runs off its bottom and right, so BOTH a
+        // horizontal and a vertical boundary are on show. `edge` above answers the
+        // one-vertical-edge case and casts only leftward, which leaves the top edge sitting
+        // on the blue with nothing under it; `lift` casts only downward and, as the note on
+        // `edge` records, resolves to nothing at all on an edge that is not the bottom one.
+        //
+        // So this one has NO OFFSET: it spills evenly, and both visible edges get the same
+        // boundary. That is also the honest reading of the composition — a screenshot
+        // floating on a coloured plate is not lit from anywhere in particular, where a card
+        // sitting on the page is lit from above like everything else on it.
+        //
+        // THE BLUR HAS TO BEAT THE SPREAD, which is `edge`'s rule in the form it takes
+        // when the offset is zero: the negative spread pulls the shadow's box in from every
+        // side, and with nothing pushing it out it is the blur alone that spills past the
+        // edge.
+        //
+        // AND IT IS HALF THE BLUR, not the blur — which is the arithmetic this rung got
+        // wrong on its first pass and is worth stating so nobody redoes it. A CSS blur of
+        // `n` fades over `n`, centred on the shadow's edge, so only `n/2` of it lands
+        // OUTSIDE. `0 0 40px -12px` therefore spilled 20 − 12 = 8px, not the ~28 it was
+        // written for, and rendered as a smudge you had to look for. 64 against −8 spills
+        // 24px, and that is a number the plate's 16-32px of visible ground can show.
+        //
+        // Two layers, for `button`'s reason: the wide soft one is the depth, the tight one
+        // gives the silhouette something to sit on so the window does not float free of
+        // the ground it is cut against.
+        panel: `0 0 64px -8px ${SHADOW_TINT(0.42)}, 0 0 4px ${SHADOW_TINT(0.16)}`,
       },
       borderRadius: {
         // The soft radius of the button. `rounded-xl` (0.75rem) rather than the

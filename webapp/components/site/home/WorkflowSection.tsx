@@ -30,7 +30,7 @@ import {
  * merged PR" is a claim about a SEQUENCE, so a page that never shows the sequence is
  * asking to be taken on faith. This band is that sequence, in five cards, once.
  *
- * IT SHIPPED BELOW `DesktopSection` AND THE OWNER MOVED IT ABOVE, which is worth recording
+ * IT SHIPPED BELOW THE APP BAND AND THE OWNER MOVED IT ABOVE, which is worth recording
  * because the original argument was not a bad one: five steps land better for a reader who
  * has already seen the thing that runs them. What the move buys is a page that goes from
  * abstract to concrete without a step back — what it is, what you do with it, then the

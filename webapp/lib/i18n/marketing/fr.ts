@@ -41,9 +41,6 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
 
   // ── Les quatre pages encore à écrire ────────────────────────────────────────
   'site.pageSoon.note': 'Page en préparation',
-  'site.desktopPage.title': 'L’application de bureau',
-  'site.desktopPage.lead':
-    'L’app macOS native — ce que contient la fenêtre, comment elle fait tourner plusieurs agents à la fois, et ce qu’elle suit pour vous pendant que vous travaillez. Cette page est en cours d’écriture.',
   'site.cloudPage.title': 'Le cloud',
   'site.cloudPage.lead':
     'Votre configuration, votre équipe et votre usage, sur chaque machine où vous vous connectez — sans rien à recopier à la main. Cette page est en cours d’écriture.',
@@ -98,6 +95,21 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.desktop.highlightContext': 'Tout le contexte sauvegardé',
   'site.desktop.highlightTrackers': 'Jira et GitHub connectés',
   'site.desktop.highlightCommands': 'Les huit commandes /magic:',
+
+  // ── La bande « application » de la home ────────────────────────────────────
+  // Le titre ne reprend pas celui du hero : le hero annonce le parallélisme, cette bande
+  // répond à l'objection qui suit — plusieurs agents, c'est plusieurs choses à suivre, et
+  // c'est la fenêtre qui les suit. Voir la note côté anglais.
+  // TUTOIEMENT, ET C'EST LA SEULE LIGNE DU SITE QUI EN FAIT. Le titre est celui demandé
+  // par le product owner, mot pour mot. Le reste du catalogue vouvoie — voir la note en
+  // tête de ce fichier, qui dit pourquoi : un visiteur qui lit le hero puis la page
+  // histoire serait sinon adressé de deux façons sur le même site. Ici les deux se
+  // suivent à un écran d'intervalle. La version vouvoyée serait « Vos tâches, vos agents
+  // dans une seule app. »
+  'site.appBand.title': 'Tes tâches, tes agents en une seule app.',
+  'site.appBand.subtitle':
+    'Chaque agent a son worktree et son terminal, et l’app garde le contexte de chaque session. Elle lit vos tickets depuis Jira ou GitHub, suit les pull requests qu’elle a ouvertes, et vous prévient quand quelque chose vous attend.',
+  'site.appBand.cta': 'Voir l’application',
 
   // ── La bande workflow, et la page qu’elle ouvre ─────────────────────────────
   // Les noms de commandes ne sont PAS ici : ils sont imprimés par les dessins, épelés

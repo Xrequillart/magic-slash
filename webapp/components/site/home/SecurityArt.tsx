@@ -81,7 +81,7 @@ import { Fragment, useId } from 'react'
  * NO TAILWIND SHADOW ANYWHERE IN HERE, and it is not merely unused: `lib/designTokens.test.ts`
  * fails the build on any shadow written as an arbitrary value, and none of the four rungs
  * of the declared elevation scale describes a contact shadow under a drawn object. That
- * rule scans this file as TEXT, comments included — the same note `DesktopSection` carries
+ * rule scans this file as TEXT, comments included — the same note `DesktopContent` carries
  * — so the offending class cannot even be spelled here to say it is unwanted.
  *
  * `useId()` FOR EVERY GRADIENT AND MASK ID. SVG ids are document-global, so two of these

@@ -6,6 +6,7 @@ import { marketingFr } from './i18n/marketing/fr'
 import {
   ALL_NAV_GROUPS,
   ALL_NAV_ROWS,
+  DESKTOP_PATH,
   FAQ_NAV_ROW,
   HELP_MENU,
   HELP_MENU_LABEL,
@@ -98,7 +99,20 @@ describe('the site header nav', () => {
     // So the page is `/desktop`, and adding `/application` to that list would quietly
     // move a signed-in section of the product onto the public site.
     expect(routing()).not.toContain("'/application',")
-    expect(PLACEHOLDER_PAGES.desktop.path).toBe('/desktop')
+    expect(DESKTOP_PATH).toBe('/desktop')
+  })
+
+  it('leaves `/desktop` out of the placeholders, because it is a real page now', () => {
+    // The homepage's app band moved onto it whole, so it heads itself with
+    // `site.desktop.title` and renders `DesktopContent` — no `PlaceholderContent`, and no
+    // promise of scope. The row is written out in `PRODUCT_MENU_GROUPS` for that reason;
+    // this is what stops it drifting back into a table it no longer belongs in, which
+    // would put "Page in preparation" under a finished page.
+    expect(Object.values(PLACEHOLDER_PAGES).map((page) => page.path)).not.toContain(DESKTOP_PATH)
+
+    const page = readFileSync(webapp(`../app/(marketing)${DESKTOP_PATH}/page.tsx`), 'utf8')
+    expect(page).toContain('<DesktopContent />')
+    expect(page).not.toContain('PlaceholderContent')
   })
 
   it('draws every row in both menus with a glyph and a family colour', () => {

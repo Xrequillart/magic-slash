@@ -155,8 +155,10 @@ export function HomeSection({
  *
  * The two bands that do NOT use it both have a reason. The closing band draws on
  * `BAND_TITLE` because it needs the dark ink and its own width (see above), and
- * `DesktopSection` writes its headline out because its whole composition is a centred
- * axis — passing `text-center` into this would be a caller dressing a component. See
+ * `desktop/DesktopContent` writes its headline out because its whole composition is a
+ * centred axis — passing `text-center` into this would be a caller dressing a component.
+ * (That was a band on this page until it moved to `/desktop`; the band that replaced it,
+ * `AppSection`, is a split and uses `HomeHeading` like the rest.) See
  * `app/(marketing)/page.tsx` for the band that went.
  */
 export function HomeHeading({

@@ -101,13 +101,11 @@ export const marketingEn = {
    * therefore a PROMISE OF SCOPE and nothing more: what each page will hold, so a
    * reader who followed the row learns something rather than meeting an empty band.
    *
-   * `site.desktopPage.title` is not `site.desktop.title`, which is the homepage band's
-   * heading and is the product's own name ("Magic Slash") in both catalogues.
+   * THERE WAS A `site.desktopPage.*` PAIR HERE, for `/desktop`. That page is real now —
+   * the homepage's app band moved onto it whole — so the promise of scope had nothing
+   * left to promise, and the page heads itself with `site.desktop.title` below.
    */
   'site.pageSoon.note': 'Page in preparation',
-  'site.desktopPage.title': 'The desktop application',
-  'site.desktopPage.lead':
-    'The native macOS app — what the window holds, how it runs several agents at once, and what it keeps track of while you work. This page is being written.',
   'site.cloudPage.title': 'The cloud',
   'site.cloudPage.lead':
     'Your configuration, your team and your usage, on every machine you sign in on — with nothing to copy across by hand. This page is being written.',
@@ -268,10 +266,16 @@ export const marketingEn = {
   'site.pillars.kicker':
     'Between them, they speed up your whole product-builder workflow, from the idea to production.',
 
-  // ── The desktop band ───────────────────────────────────────────────────────
+  // ── The /desktop page, and the homepage band that points at it ─────────────
   /**
-   * THE BAND DIRECTLY UNDER THE HERO — `components/site/home/DesktopSection.tsx`, which
-   * puts the app's own window on the page for the first time.
+   * THE WHOLE OF `/desktop` — `components/site/desktop/DesktopContent.tsx`, which puts
+   * the app's own window on the screen at length.
+   *
+   * IT WAS A HOMEPAGE BAND under these same keys, directly under the hero and then
+   * fourth in the stack. The product owner moved the composition onto a page of its own;
+   * the family moved with it, unrenamed, because a key family names the copy and not the
+   * surface it happens to be printed on. `site.appBand.*` below is the new band that
+   * replaced it up there, and it is a different argument in different words.
    *
    * The title is the PRODUCT'S NAME and is therefore the same string in both catalogues,
    * which is why it has a line in `i18n.test.ts`'s exact `SAME_IN_BOTH.site` allow-list.
@@ -285,7 +289,7 @@ export const marketingEn = {
   /**
    * TWO LINES, and it is a length rather than a break — there is no `<br>` in it, because
    * a hard break at this width becomes four lines on a phone. See the note in
-   * `DesktopSection.tsx`.
+   * `DesktopContent.tsx`.
    *
    * THREE THINGS, IN THIS ORDER, because each one is what makes the next land: several
    * agents at once (the claim only this product can make), each in its own worktree (the
@@ -309,7 +313,7 @@ export const marketingEn = {
   'site.desktop.archiveAgent': 'Archive the agent',
   /**
    * THE FOUR HIGHLIGHTS under the window, and every one of them is a fact this site
-   * already states somewhere else — see the note on `HIGHLIGHTS` in `DesktopSection.tsx`
+   * already states somewhere else — see the note on `HIGHLIGHTS` in `DesktopContent.tsx`
    * for where each comes from. Four words or so each, because they are set on two lines
    * under a 48px tile and a fifth word makes a third.
    *
@@ -322,6 +326,47 @@ export const marketingEn = {
   'site.desktop.highlightContext': 'All your context, saved',
   'site.desktop.highlightTrackers': 'Jira and GitHub connected',
   'site.desktop.highlightCommands': 'The eight /magic: commands',
+
+  // ── The homepage's app band ────────────────────────────────────────────────
+  /**
+   * THE BAND THAT REPLACED THE ONE ABOVE ON THE HOMEPAGE —
+   * `components/site/home/AppSection.tsx`: a heading, a paragraph and a button beside the
+   * same window at two-fifths the size.
+   *
+   * ITS OWN FAMILY AND NOT `site.desktop.*`, which is the decision worth stating. The two
+   * surfaces are not the same argument at two lengths: that page HEADS ITSELF with the
+   * product's name and then describes the window, because a reader who opened it has
+   * already decided to look at the app. This band has to earn that click from a reader
+   * who is still scrolling, so it names what the window DOES for them — and a landing
+   * band whose headline is a product name is a band that says nothing.
+   *
+   * THE HEADLINE NAMES THE TWO THINGS THE WINDOW HOLDS — your tasks and your agents —
+   * and it is the product owner's own line, given in French and translated here.
+   *
+   * IT ECHOES THE HERO, which is worth recording rather than hiding: `site.hero.subtitle`
+   * already says "Several agents in parallel, in a single app", and this headline is two
+   * bands below it. The earlier draft avoided the overlap on purpose (it read "One window
+   * that knows who is working on what", answering the objection the hero's claim raises
+   * rather than restating the claim). The owner chose the restatement; a landing page
+   * that says its one differentiator twice is a defensible choice, and it is theirs.
+   *
+   * THE FRENCH USES "tu", alone on this site. See the note beside it in `fr.ts`.
+   *
+   * THE PARAGRAPH IS THREE FACTS, in the order that makes each one land: what you see
+   * (who is on what), what the app remembers for you (each session's context), and what
+   * it talks to on your behalf (Jira and GitHub). It stops short of the eight commands —
+   * the skills band directly above is where those live, and a paragraph that lists
+   * everything is a paragraph nobody finishes.
+   *
+   * THE BUTTON'S LABEL NAMES THE PAGE and not the action ("See the app" rather than
+   * "Learn more"): a reader deciding whether to spend a click wants to know where it
+   * goes. It is also the word the header's own row uses for that page, which is what lets
+   * somebody be told "it's under Product → Application" and find the same thing.
+   */
+  'site.appBand.title': 'Your tasks, your agents, in a single app.',
+  'site.appBand.subtitle':
+    'Every agent gets its own worktree and its own terminal, and the app keeps the context of each session. It reads your tickets from Jira or GitHub, follows the pull requests it opened, and tells you when something needs you.',
+  'site.appBand.cta': 'See the application',
 
   // ── The workflow band, and the page it opens ───────────────────────────────
   //

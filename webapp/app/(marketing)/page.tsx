@@ -3,7 +3,7 @@ import { HeroSection } from '@/components/site/home/HeroSection'
 import { PillarsSection } from '@/components/site/home/PillarsSection'
 import { WorkflowSection } from '@/components/site/home/WorkflowSection'
 import { SkillsSection } from '@/components/site/home/SkillsSection'
-import { DesktopSection } from '@/components/site/home/DesktopSection'
+import { AppSection } from '@/components/site/home/AppSection'
 import { BuiltForSection } from '@/components/site/home/BuiltForSection'
 import { SecuritySection } from '@/components/site/home/SecuritySection'
 import { FaqSection } from '@/components/site/home/FaqSection'
@@ -33,12 +33,18 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  *     commands with nothing to hang on. It carries the page body's one DIRECT link to the
  *     command inventory (`/features#workflow`), where the workflow band's button reaches
  *     the same anchor one hop later, via `/workflow`.
- *   • `DesktopSection` then shows the app's own window at length, drawn faithfully.
+ *   • `AppSection` then says the app exists and shows it: a heading, a paragraph and a
+ *     button beside the app's own window, drawn faithfully at two-fifths size. It is the
+ *     page's SECOND `SplitFeature` and it faces the other way — artwork right, where the
+ *     skills band puts it left — because two adjacent splits on one side read as a
+ *     template. It carries the page body's one link to `/desktop`, which is where that
+ *     window used to be shown at length: see below.
  *   • `BuiltForSection` answers WHO THAT WINDOW IS FOR, in five coloured cards: the
  *     backlog inside it, the keyboard, the Mac, the switches and the global shortcut. It
  *     is the page body's one DIRECT link to `/features` (the workflow band's button goes
- *     via `/workflow`), and it sits immediately under the window on purpose — five claims
- *     about living somewhere only land next to a picture of the place. Its headline is
+ *     via `/workflow`), and it still sits immediately under a picture of the window —
+ *     smaller than the one it used to follow, and the reason it follows it is unchanged:
+ *     five claims about living somewhere only land next to a picture of the place. Its headline is
  *     the owner's brief: "build pour le developer mais pas que".
  *   • `FaqSection` answers WHAT IS STILL HOLDING THE READER BACK: the five questions
  *     asked before anyone installs it, as disclosure rows beside a heading and a button
@@ -57,7 +63,7 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * it already knowing what the panels in it are for.
  *
  * What follows from the move: the `follow` padding rung stays on `PillarsSection`, which
- * is still the band directly under the hero, and `DesktopSection` keeps the default `band`
+ * is still the band directly under the hero, and the app band keeps the default `band`
  * rung it took when it stopped being that one.
  *
  * THE MIDDLE BAND IS NOT "HOW IT WORKS" COMING BACK, and the difference is worth being
@@ -69,14 +75,23 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * being answered, a branch being cleaned up. `site.how.*` stays retired; nothing reads it.
  * `lib/workflow.ts` holds the five, and `/workflow` renders the same list in depth.
  *
- * THE MIDDLE BAND IS WHAT #270 PUT BACK, and it is not one of the cut bands returning.
- * `DesktopSection` shows the desktop app's own window — titlebar, agent list, terminal,
- * info panel — reproduced from `desktop/src/renderer/` at the app's own pixel values and
- * then scaled, over a diffuse multi-colour aura. The page had gone from naming a promise
- * straight to asking for the download without ever showing the thing that keeps it; this
- * is the screen that shows it. See `components/site/home/DesktopSection.tsx` for the
- * composition and `AppWindowMockup.tsx` for which source file each band of the window was
- * read out of.
+ * THE APP BAND IS WHAT #270 PUT BACK, and it is not one of the cut bands returning. The
+ * page had gone from naming a promise straight to asking for the download without ever
+ * showing the thing that keeps it; the window — titlebar, agent list, terminal, info
+ * panel, reproduced from `desktop/src/renderer/` at the app's own pixel values and then
+ * scaled — is what shows it. `AppWindowMockup.tsx` says which source file each band of
+ * that window was read out of.
+ *
+ * IT SHIPPED AS A FULL BAND AND IS NOW A SPLIT, which is the one change to this page's
+ * shape since. `DesktopSection` was the window at up to 0.85 scale, centred under a
+ * headline of its own, with four highlights closing it — about 1,100px of page for one
+ * drawing, in a stack whose other bands make one claim each and move on. The product
+ * owner moved that composition onto `/desktop` (`components/site/desktop/
+ * DesktopContent.tsx`, unchanged but for its heading level and its padding) and asked
+ * for "un block titre + description et une illustration sur la droite" in its place.
+ * `AppSection` is that block: the claim in a paragraph, the window as evidence beside it,
+ * and a button for the reader who wants the subject rather than the claim. The aura went
+ * with the window.
  *
  * IT REPLACED, RATHER THAN JOINED, THE OLD MOCKUP. `AppMockup.tsx`, `mockupAnimation.ts`
  * and `MkLoader.tsx` were kept on disk for #270 — unrendered, with a note on each saying
@@ -185,7 +200,7 @@ export default function Home() {
       <PillarsSection />
       <WorkflowSection />
       <SkillsSection />
-      <DesktopSection />
+      <AppSection />
       <BuiltForSection />
       <SecuritySection />
       <FaqSection />

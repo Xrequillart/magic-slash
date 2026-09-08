@@ -66,8 +66,8 @@ import { HomeSection } from './Shell'
  *     would be the one that drifts. It is propless, so there is nothing to configure.
  *
  * WHAT THE COPY DELIBERATELY DOES NOT SAY. The desktop card does not repeat the parallel-
- * agents claim — that belongs to `DesktopSection` below, whose subtitle is built on it,
- * and saying it twice on one screen reads as a page with two openings. This card says
+ * agents claim — that belongs to `AppSection` below, whose paragraph is built on it, and
+ * saying it twice on one screen reads as a page with two openings. This card says
  * what the app IS; that one says what it does at scale.
  */
 export function PillarsSection() {
@@ -76,7 +76,7 @@ export function PillarsSection() {
   return (
     // `padding="follow"` because THIS is now the band under the hero — the rung exists for
     // exactly that position ("the band DIRECTLY UNDER a hero", `Shell.tsx`), and it moved
-    // here from `DesktopSection` when this band was inserted above it.
+    // here from the app band when this band was inserted above it.
     <HomeSection padding="follow">
       <div className="grid gap-6 md:grid-cols-2">
         <Reveal order={1}>

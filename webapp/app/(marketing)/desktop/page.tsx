@@ -1,10 +1,15 @@
 import type { Metadata } from 'next'
+import { DesktopContent } from '@/components/site/desktop/DesktopContent'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
-import { PlaceholderContent } from '@/components/site/PlaceholderContent'
-import { PLACEHOLDER_PAGES } from '@/lib/siteNav'
 
 /**
- * magic-slash.io/desktop — the native macOS app. NOT WRITTEN YET.
+ * magic-slash.io/desktop — the native macOS app, shown.
+ *
+ * IT WAS A PLACEHOLDER FOR ONE COMMIT. What fills it is the homepage's own app band,
+ * moved here whole by the product owner: the headline, the two lines under it, the
+ * window at up to 0.85 scale and the four highlights that close it. The homepage kept a
+ * heading, a paragraph and the same window at two-fifths the size, with a button that
+ * opens this page — `components/site/home/AppSection.tsx`.
  *
  * A SERVER COMPONENT whose only job is the `metadata`, with the page in a client
  * component next door: the copy needs `useT()`, and `metadata` cannot be exported from a
@@ -14,19 +19,18 @@ import { PLACEHOLDER_PAGES } from '@/lib/siteNav'
  * `/desktop` AND NOT `/application`, though the header's row says "Application": the
  * product already owns `/application/*` on `app.magic-slash.io` — its own settings
  * section, under `app/application/` — and two route branches resolving one path is a
- * build question rather than a naming one. See `PLACEHOLDER_PAGES` in `lib/siteNav.ts`,
- * which owns the path, the label and the two keys below.
+ * build question rather than a naming one. `DESKTOP_PATH` in `lib/siteNav.ts` owns the
+ * path and says the same thing at greater length.
  *
- * WHAT THIS PAGE OWES, when its turn comes: the window itself (the split view, the
- * agents rail, the info sidebar), several agents at once and how the app keeps them
- * apart, and the prerequisites the first launch checks. `components/site/home/*` already
- * draws most of that chrome for the homepage's bands.
+ * WHAT THE PAGE STILL OWES, now that it is a page rather than a promise of one: what the
+ * split view is for, how the app keeps several agents apart, the info sidebar, and the
+ * prerequisites the first launch checks. `components/site/features/*` draws most of that
+ * chrome already, for the inventory — this page can borrow it rather than invent it.
  *
  * IT CLOSES ON THE HOMEPAGE'S LAST BAND, like `/features`, `/faq` and `/workflow` and
- * unlike `/changelog`: a reader here is still deciding, so `FinalCtaSection` is the right
- * thing to meet them. Both it and the band above are on `ink`, so the page ends on one
- * dark sheet — which is also what keeps a placeholder from being a screen and a half of
- * nothing.
+ * unlike `/changelog`: a reader who has just been shown the app is deciding, so
+ * `FinalCtaSection` is the right thing to meet them. Both it and the aura'd band above
+ * are on their own grounds, so the page ends on one dark sheet.
  */
 
 export const metadata: Metadata = {
@@ -36,11 +40,9 @@ export const metadata: Metadata = {
 }
 
 export default function DesktopPage() {
-  const page = PLACEHOLDER_PAGES.desktop
-
   return (
     <>
-      <PlaceholderContent title={page.title} lead={page.lead} />
+      <DesktopContent />
       <FinalCtaSection />
     </>
   )

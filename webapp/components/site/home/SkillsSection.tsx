@@ -21,10 +21,14 @@ import { HomeHeading, HomeSection } from './Shell'
  * WHY IT IS HERE AND NOT SOMEWHERE ELSE ON THE PAGE. The band above it names the five
  * MOMENTS of a working day and draws each as the artefact it produces; this one names the
  * TOOL those moments are made of, and it has to come second because a reader who has not
- * been shown the day has no use for a list of eight commands. It sits before
- * `DesktopSection` for the same reason that band sits where it does: the page runs from
- * the most abstract to the most concrete without a step back — what it is, what a day with
- * it looks like, what you type, and then the window all of it happens in.
+ * been shown the day has no use for a list of eight commands. It sits before `AppSection`
+ * for the same reason that band sits where it does: the page runs from the most abstract
+ * to the most concrete without a step back — what it is, what a day with it looks like,
+ * what you type, and then the window all of it happens in.
+ *
+ * IT IS ALSO THE FIRST OF THE PAGE'S TWO SPLITS, and this one puts its artwork on the
+ * LEFT so the next one can put it on the right: see `SPLIT_MEDIA` in `components/ui.tsx`
+ * for why two adjacent bands may not share a side.
  *
  * IT IS NOT "the eight commands" COMING BACK, and the difference is worth being exact
  * about because that band's cut is documented at length in `app/(marketing)/page.tsx`.

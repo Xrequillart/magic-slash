@@ -4,26 +4,34 @@ import { Columns, Plug, ScrollText, Sparkles } from 'lucide-react'
 import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
 import { Reveal } from '../Reveal'
-import { AppWindowMockup } from './AppWindowMockup'
-import { BAND_TITLE, HomeSection } from './Shell'
+import { AppWindowMockup } from '../home/AppWindowMockup'
+import { BAND_TITLE, HomeSection } from '../home/Shell'
 
 /**
- * The band directly under the hero: a headline, two lines of type, the desktop app's own
- * window — drawn faithfully, lit from behind, and WHOLE — then a row of four highlights
- * under it.
+ * THE WHOLE OF `/desktop`: a headline, two lines of type, the desktop app's own window —
+ * drawn faithfully, lit from behind, and WHOLE — then a row of four highlights under it.
  *
- * WHY IT IS HERE AT ALL. The page above it names a promise ("from idea to merged PR"),
- * says what the product is in two cards, and walks the five steps of the loop — all of it
- * in type and diagrams, and none of it the thing itself. This band does one job: put the
- * PRODUCT on the page. See `AppWindowMockup.tsx` for what is inside the window and which
- * file each band of it was read out of; this file is only the composition around it.
+ * IT WAS A BAND ON THE HOMEPAGE, `home/DesktopSection.tsx`, and it is the same
+ * composition: the product owner moved it onto a page of its own, and what replaced it up
+ * there is `home/AppSection.tsx` — a heading, a paragraph and the same window at
+ * two-fifths the size, with a button that opens this page. The argument for the move is
+ * the one that argues for the whole header rebuild: a landing page can say the app exists,
+ * and only a page about the app can show it at length.
  *
- * IT WAS THE THIRD BAND AND IS NOW THE FOURTH. `WorkflowSection` shipped below it and the
- * product owner moved it above, so the window is no longer the first thing a reader meets
- * after the hero's promise — it is what they reach having been told what the product is and
- * what a day with it looks like. That is a better place for it and it cost this file
- * nothing but this paragraph: the composition below never depended on what preceded it.
- * `app/(marketing)/page.tsx` holds the order and the argument for all three middle bands.
+ * SO THE MOVE CHANGED THREE THINGS AND NOTHING ELSE, all of them marked below: the `h2`
+ * became an `h1`, the band's padding became a page's opening padding, and the two imports
+ * that used to be siblings now reach into `home/`. The window, the aura, the scale rungs,
+ * the highlights and every note explaining them are exactly as they were — which is the
+ * point of moving a file rather than rewriting one.
+ *
+ * WHY THE COMPOSITION EXISTS AT ALL. The pages around it are type and diagrams; this one
+ * does one job, which is to put the PRODUCT on the screen. See `AppWindowMockup.tsx` for
+ * what is inside the window and which file each band of it was read out of; this file is
+ * only the composition around it.
+ *
+ * THE PAGE STILL CLOSES ON THE HOMEPAGE'S LAST BAND — `FinalCtaSection`, from
+ * `app/(marketing)/desktop/page.tsx` — like `/features`, `/faq` and `/workflow`: a reader
+ * who has just been shown the app is deciding, and that is what a decision needs to meet.
  *
  * ── THE COMPOSITION ───────────────────────────────────────────────────────────────
  *
@@ -194,14 +202,24 @@ const HIGHLIGHTS: readonly { id: string; icon: typeof Columns; label: MessageKey
   { id: 'commands', icon: Sparkles, label: 'site.desktop.highlightCommands' },
 ]
 
-export function DesktopSection() {
+export function DesktopContent() {
   const { t } = useT()
 
   return (
-    <HomeSection backdrop={<Aura />}>
+    // `padding="hero"` — THE ONE THING THE MOVE CHANGED IN THIS COMPOSITION. On the
+    // homepage this was a band in a stack, with the hero's own air above it; here it is
+    // the first thing on the page, and the bar is `fixed` at `h-16`, so whatever opens a
+    // page owes it ~7rem before its own first line. Every other page in this group opens
+    // on the same slot. See `SECTION_PADDING` in `home/Shell.tsx`.
+    <HomeSection padding="hero" backdrop={<Aura />}>
       <div className="mx-auto max-w-3xl text-center">
         <Reveal order={1}>
-          <h2 className={BAND_TITLE.onLight}>{t('site.desktop.title')}</h2>
+          {/* AN `h1` HERE WHERE IT WAS AN `h2`, which is the other thing the move
+              changed and the one a reader would never see: a page with no `h1` is a page
+              a screen reader cannot summarise and a crawler reads as a fragment. The
+              TYPE is unchanged — `BAND_TITLE.onLight` is the one place the site's
+              headline size lives, and it is a recipe rather than a level. */}
+          <h1 className={BAND_TITLE.onLight}>{t('site.desktop.title')}</h1>
         </Reveal>
         <Reveal order={2}>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted">
