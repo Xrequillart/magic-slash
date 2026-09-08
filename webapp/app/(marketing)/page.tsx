@@ -5,15 +5,16 @@ import { WorkflowSection } from '@/components/site/home/WorkflowSection'
 import { SkillsSection } from '@/components/site/home/SkillsSection'
 import { DesktopSection } from '@/components/site/home/DesktopSection'
 import { BuiltForSection } from '@/components/site/home/BuiltForSection'
+import { SecuritySection } from '@/components/site/home/SecuritySection'
 import { FaqSection } from '@/components/site/home/FaqSection'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 
 /**
  * magic-slash.io — the landing page.
  *
- * EIGHT SECTIONS: the promise, what the product IS, what working with it is actually
- * like, what you type to do it, what its window looks like, who that window is for, what
- * is still holding the reader back, then the ask. It was rebuilt as six and cut band by
+ * NINE SECTIONS: the promise, what the product IS, what working with it is actually like,
+ * what you type to do it, what its window looks like, who that window is for, what it
+ * does with your code, what is still holding the reader back, then the ask. It was rebuilt as six and cut band by
  * band by the product owner — "on the product you already have", then "the eight commands", then the feature
  * grid, and then "how it works" as well — which at its thinnest left the headline that
  * names the cycle and the one button at the end of it, with nothing between them. The
@@ -186,6 +187,7 @@ export default function Home() {
       <SkillsSection />
       <DesktopSection />
       <BuiltForSection />
+      <SecuritySection />
       <FaqSection />
       <FinalCtaSection />
     </div>

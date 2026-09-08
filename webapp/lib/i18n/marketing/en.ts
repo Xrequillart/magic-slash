@@ -562,6 +562,93 @@ export const marketingEn = {
   'site.builtFor.spotlightDesc':
     'One global shortcut opens Quick Launch wherever you are. Type a ticket, press enter, and the agent is already running by the time you switch back.',
 
+  // ── Security and privacy, under the band about who the app is for ─────────
+  //
+  // THE ONE FAMILY ON THIS PAGE WHERE A WRONG SENTENCE IS A LIE ABOUT SECURITY, so every
+  // string below was written against the source and `lib/security.ts` records, card by
+  // card, which file each claim was checked in. Two things are deliberately NOT said —
+  // "your code never leaves your machine", which is false because Claude Code sends it to
+  // Anthropic, and any statement of compliance, hosting or certification, which is the
+  // company's to make and not a landing page's. That module's header holds both arguments.
+  //
+  // NO PATH, NO FLAG AND NO FILE NAME IS SPELLED HERE except the branch names, which are
+  // git's own words in both languages and are what the reader has to recognise for the
+  // claim to land. Everything else a translator could get wrong — the glob patterns the
+  // commit skill resets, the name of the switch — stays out of the catalogue and is
+  // described rather than quoted.
+  /**
+   * The band's `h2`. A CLAIM rather than the category label the product owner named the
+   * block with ("Security & Privacy"): every other headline on this page is a sentence,
+   * and a heading that only names a topic reads as a section divider in a document.
+   *
+   * IT IS ALSO THE STRONGEST TRUE THING THE BAND CAN SAY. "Your code never leaves your
+   * machine" is stronger and false; this one is exactly what
+   * `desktop/src/main/usage/skill-invocations.ts` states of itself.
+   */
+  'site.security.title': 'Magic Slash never sees your code.',
+  /**
+   * WHAT THE CLOUD HOLDS, ITEMISED, because a privacy claim a reader cannot check is worth
+   * nothing. Three items and then three denials, in that order: the list is short enough to
+   * print, which is the whole argument, and the denials are what a developer actually wants
+   * ruled out.
+   *
+   * "The name of the skill you ran" is precise and deliberately unflattering — it would
+   * have been easy to leave the telemetry out of a paragraph about privacy, and a reader
+   * who later found it would be right to conclude the page had been drafted around it.
+   */
+  'site.security.subtitle':
+    'The skills run in your own terminal, on your own clone. What the cloud holds is your configuration — your repositories, your languages, your commit format — and the name of the skill you ran. Not a prompt, not an argument, not a line of code.',
+  /**
+   * The acronym inside the European emblem on the GDPR card. The regulation has a French
+   * name, and a French reader does not recognise the English one — which is why this is a
+   * catalogue key and not a literal in the drawing. See `SECURITY_CHROME.gdprMark`.
+   */
+  'site.security.gdprMark': 'GDPR',
+  /** ① The repository. "The machine you are sitting at" rather than "locally", because the
+   * abstraction is the thing a reader is trying to see through. */
+  'site.security.repoTitle': 'Your repository stays yours',
+  'site.security.repoDesc':
+    'Nothing is cloned to a server. The agent works in a worktree on the machine you are sitting at, and the only thing about your code that ever reaches us is which repositories you told the app about.',
+  /**
+   * ② GDPR. IT SAYS WHAT IS STORED AND STOPS THERE. Naming the three things is a fact about
+   * the code and can be checked; "we are GDPR compliant" is a legal position, and a card
+   * cannot hold one. The badge beside it carries the signal.
+   */
+  'site.security.gdprTitle': 'The data we hold, in one line',
+  'site.security.gdprDesc':
+    'Your account, your repository settings, and how many hours each skill ran. That is the list. No source, no prompts, no diffs — and one switch stops the hours being counted at all.',
+  /**
+   * ③ The commit guard rail. THE BRANCH NAMES ARE SPELLED OUT because they are what makes
+   * the claim concrete: a reader recognises their own default branch in that list, and
+   * "protected branches" is a phrase that could mean anything.
+   */
+  'site.security.guardTitle': 'A guard rail on every commit',
+  'site.security.guardDesc':
+    'It will not write on main, master, develop or staging without stopping to ask you — it offers to cut a branch instead. One setting turns that question into a permanent no.',
+  /**
+   * ④ Secrets. "Even when your gitignore let them through" IS THE CARD. Everyone believes
+   * their gitignore is right; the claim is only worth making because it holds when it is
+   * not, and that is precisely what the skill's own comment says the patterns are for.
+   */
+  'site.security.secretsTitle': 'Secrets never make it into a commit',
+  'site.security.secretsDesc':
+    'Environment files, credentials, private keys and certificates are pulled back out of the staging area before a commit is written — even when your gitignore let them through — and you are told which ones.',
+  /**
+   * RETIRED, AND KEPT. This pair dressed a fifth card — "a ticket cannot give the agent
+   * orders" — cut when the band went to two rows of two. It stays in the catalogue for the
+   * reason every other retired family on this page does (`app/(marketing)/page.tsx` keeps
+   * that list): nothing tests for an unused key, and bringing the card back should cost one
+   * row in `lib/security.ts` rather than a rewrite.
+   *
+   * IT IS WORTH BRINGING BACK. The last sentence is the part nobody else advertises: an
+   * agent that silently ignored an injected instruction would be safe and useless to you,
+   * because you would never learn somebody had put one in your pull request. Reporting it
+   * is what all eight skills actually require.
+   */
+  'site.security.injectionTitle': 'A ticket cannot give the agent orders',
+  'site.security.injectionDesc':
+    'Tickets, review comments and pull request descriptions are read as data about a change, never as instructions. An instruction hidden in one is quoted back to you rather than followed — so you find out it was there.',
+
   // ── ② How it works ─────────────────────────────────────────────────────────
   'site.how.title': 'How it actually works.',
   'site.how.subtitle': 'You describe. It builds. You approve.',

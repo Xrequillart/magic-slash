@@ -191,6 +191,40 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.builtFor.spotlightDesc':
     'Un raccourci global ouvre Quick Launch d’où que vous soyez. Tapez un ticket, entrée, et l’agent tourne déjà quand vous revenez.',
 
+  // ── Sécurité et confidentialité, sous la bande « pour qui c’est fait » ─────
+  //
+  // LA SEULE FAMILLE DE CETTE PAGE OÙ UNE PHRASE FAUSSE EST UN MENSONGE SUR LA SÉCURITÉ.
+  // Deux choses ne sont volontairement PAS dites : « votre code ne quitte jamais votre
+  // machine », qui est faux puisque Claude Code l’envoie à Anthropic, et toute affirmation
+  // de conformité ou d’hébergement, qui relève de l’entreprise et pas d’une landing page.
+  // `lib/security.ts` tient les deux arguments et note, carte par carte, dans quel fichier
+  // chaque affirmation a été vérifiée.
+  //
+  // LES NOMS DE BRANCHES RESTENT EN ANGLAIS : ce sont les mots de git, identiques dans les
+  // deux langues, et c’est ce que le lecteur doit reconnaître pour que la carte porte.
+  'site.security.title': 'Magic Slash ne voit jamais votre code.',
+  'site.security.subtitle':
+    'Les skills tournent dans votre terminal, sur votre clone. Ce que le cloud garde, c’est votre configuration — vos dépôts, vos langues, votre format de commit — et le nom du skill que vous avez lancé. Pas un prompt, pas un argument, pas une ligne de code.',
+  /** Le sigle au centre de l’emblème européen : la version française du nom du règlement. */
+  'site.security.gdprMark': 'RGPD',
+  'site.security.repoTitle': 'Votre dépôt reste le vôtre',
+  'site.security.repoDesc':
+    'Rien n’est cloné sur un serveur. L’agent travaille dans un worktree sur la machine devant vous, et la seule chose qui nous parvienne de votre code, ce sont les dépôts que vous avez déclarés dans l’app.',
+  'site.security.gdprTitle': 'Ce qu’on stocke, en une ligne',
+  'site.security.gdprDesc':
+    'Votre compte, les réglages de vos dépôts, et le nombre d’heures par skill. C’est toute la liste. Pas de source, pas de prompts, pas de diffs — et un interrupteur arrête même le comptage des heures.',
+  'site.security.guardTitle': 'Un garde-fou sur chaque commit',
+  'site.security.guardDesc':
+    'Il n’écrit pas sur main, master, develop ou staging sans s’arrêter pour vous demander — il propose de créer une branche à la place. Un réglage transforme cette question en non définitif.',
+  'site.security.secretsTitle': 'Les secrets n’atteignent jamais un commit',
+  'site.security.secretsDesc':
+    'Fichiers d’environnement, credentials, clés privées et certificats sont retirés du staging avant l’écriture du commit — même si votre gitignore les a laissés passer — et on vous dit lesquels.',
+  // RETIRÉ, ET CONSERVÉ : cette paire habillait une cinquième carte, coupée quand la bande
+  // est passée à deux lignes de deux. Voir l’anglais.
+  'site.security.injectionTitle': 'Un ticket ne donne pas d’ordres à l’agent',
+  'site.security.injectionDesc':
+    'Tickets, commentaires de review et descriptions de pull request sont lus comme des données sur un changement, jamais comme des instructions. Un ordre caché dedans vous est cité au lieu d’être exécuté — vous apprenez donc qu’il y était.',
+
   // ── ② Comment ça marche ────────────────────────────────────────────────────
   'site.how.title': 'Comment ça marche, vraiment.',
   'site.how.subtitle': 'Vous décrivez. Ça construit. Vous validez.',

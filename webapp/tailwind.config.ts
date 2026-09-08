@@ -1413,6 +1413,78 @@ const config: Config = {
           '14%, 18%': { transform: 'translate(-4%, 5%) scale(0.9)' },
           '59%, 63%': { transform: 'translate(-4%, 5%) scale(0.9)' },
         },
+        // ── The security band's secrets table ────────────────────────────────────
+        //
+        // TWO SECRETS DISSOLVING INTO BIG PIXELS, one after the other, over a 7-second
+        // loop — the drawing in `SecuritySection`'s secrets card, `home/SecurityArt.tsx`.
+        //
+        // WHAT IS ANIMATED IS AN OPACITY, AND THAT IS THE WHOLE POINT. The mosaic is
+        // ALWAYS there, underneath, with a static SVG filter on it; what moves is a
+        // readable copy of the same string lying on top of it, fading away. So each row is
+        // legible for a beat, dissolves into its own blocks, and STAYS unreadable for the
+        // rest of the cycle — five of the seven seconds, which is what makes "we cannot
+        // read this" the panel's resting state rather than a moment in it.
+        //
+        // IT ANIMATED `filter` DIRECTLY FIRST, AND IT SNAPPED. The product owner spotted it
+        // — "j'ai l'impression qu'elle sacade un peu" — and the cause is worth writing down
+        // precisely, because the obvious explanation is the wrong one.
+        //
+        // IT WAS NOT A PERFORMANCE PROBLEM. The first diagnosis was that an active
+        // animation on `filter` forces the browser to re-evaluate an expensive SVG filter
+        // every frame; that was measured, in Chromium, against a page with three of these
+        // cells, and it is false. Both versions hold a steady frame interval with nothing
+        // over 24ms across four seconds. Nothing was being dropped.
+        //
+        // WHAT IT WAS: `filter: url(...)` IS NOT INTERPOLABLE. CSS falls back to DISCRETE
+        // interpolation between two filter references, so the old animation did not move at
+        // all — it JUMPED, none → 3px → 5px, three states and two hard cuts. That is what
+        // "saccade" describes, and no amount of frame budget would have smoothed it.
+        //
+        // SO THE FIX IS TO ANIMATE SOMETHING THAT CAN BE INTERPOLATED. `opacity` can, so
+        // the readable copy now travels continuously over ~0.35s where the filter used to
+        // cut. The filtered layer underneath is static, which is a real if incidental
+        // saving: it is rasterised once and never looked at again.
+        //
+        // IT WAS A `blur()` BEFORE EITHER OF THOSE, and the owner asked for pixels. The
+        // change is not cosmetic: a blur says the text is out of FOCUS, which is a property
+        // of whoever is looking, where a mosaic says the RESOLUTION is gone, which is a
+        // property of what was kept. The second is the claim the card actually makes.
+        //
+        // ONE ANIMATION PER ROW AND NOT TWO, which falls out of stacking them in that
+        // order: the mosaic needs no animation because it is never hidden, so the readable
+        // copy fading out is the entire effect. Cross-fading two layers would have been two
+        // keyframes per row saying the same thing twice.
+        //
+        // THE STAGGER IS IN THE PERCENTAGES, not in an `animation-delay`, for the reason
+        // `statusIn` at the top of this file sets out at length: a delay on an `infinite`
+        // animation applies to the FIRST iteration only, so the second row would keep its
+        // own phase for ever and by the third cycle the two would be dissolving in the
+        // wrong order.
+        //
+        // FIVE WAVES AND NOT TWO, since the table went from three rows to five. Two
+        // staggers alternated across five rows would have read as the table going dark in
+        // two clumps; four percent apart, top to bottom, it reads as one pass sweeping
+        // down it. The last row still has its ~4.5 seconds redacted.
+        'secret-reveal-1': {
+          '0%, 18%': { opacity: '1' },
+          '23%, 100%': { opacity: '0' },
+        },
+        'secret-reveal-2': {
+          '0%, 22%': { opacity: '1' },
+          '27%, 100%': { opacity: '0' },
+        },
+        'secret-reveal-3': {
+          '0%, 26%': { opacity: '1' },
+          '31%, 100%': { opacity: '0' },
+        },
+        'secret-reveal-4': {
+          '0%, 30%': { opacity: '1' },
+          '35%, 100%': { opacity: '0' },
+        },
+        'secret-reveal-5': {
+          '0%, 34%': { opacity: '1' },
+          '39%, 100%': { opacity: '0' },
+        },
       },
       // `backwards` and not `both`: the fill has to hold the FROM state through the
       // stagger's delay, but once the animation is over the element belongs to the
@@ -1525,6 +1597,21 @@ const config: Config = {
         'switch-knob': 'switch-knob 4.8s linear infinite',
         'switch-track': 'switch-track 4.8s linear infinite',
         'switch-cursor': 'switch-cursor 4.8s ease-in-out infinite',
+        // The secrets table's two rows: one 7s loop, no delay on either, the order in
+        // the keyframes.
+        //
+        // `ease-in`, and it is the first curve in this table that changes anything the eye
+        // can see: the property being animated is now interpolable (see the keyframes), so
+        // the easing actually governs a travel rather than decorating a cut. The readable
+        // copy holds nearly still through the start of its fade and then goes, which reads
+        // as being taken away rather than as dimming steadily. ~0.35s — long enough to see
+        // the text become its own blocks, short enough that the superimposed frames in the
+        // middle never look like a rendering fault.
+        'secret-reveal-1': 'secret-reveal-1 7s ease-in infinite',
+        'secret-reveal-2': 'secret-reveal-2 7s ease-in infinite',
+        'secret-reveal-3': 'secret-reveal-3 7s ease-in infinite',
+        'secret-reveal-4': 'secret-reveal-4 7s ease-in infinite',
+        'secret-reveal-5': 'secret-reveal-5 7s ease-in infinite',
       },
     },
   },
