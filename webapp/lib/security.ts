@@ -93,10 +93,29 @@ export type SecurityArt = 'privateRepo' | 'gdpr' | 'commitGuard' | 'secrets'
  *   • the branch graph is near-black ink on a hairline, with one red disc, so its card must
  *     be light — `sky`. It replaced a black shield, which wanted the same thing for the
  *     same reason, so the ground survived the change of drawing;
- *   • the GDPR seal brings its own blue disc and can sit anywhere, so it takes the palest
- *     ground and lets the emblem be the only saturated thing on the card — `mist`.
+ *   • the GDPR seal brings its own blue disc and can sit anywhere, which is what makes its
+ *     ground the only free choice of the four. It sat on `mist` for that reason — the
+ *     palest ground on the site, chosen so the emblem was the only saturated thing on the
+ *     card — and the owner moved it to `mint`. See below for what that changes.
  *
- * THE SECRETS TABLE IS THE EXCEPTION, and it is the owner's call rather than the rule's.
+ * `mint` IS THE BAND'S ONLY NON-BLUE GROUND, and it is the owner's call. It is the one card
+ * here whose drawing does not care what is under it, so it is the one that could take it
+ * without costing anything: the seal's blue disc reads on a pale green as well as it read on
+ * `mist`, and `components/ui.tsx` gives `mint` the same dark ink every light tone in this
+ * band already uses, so nothing about the type changes either.
+ *
+ * WHAT IT COSTS IS `mint`'S MEANING SOMEWHERE ELSE. `CARD_TONES` records that green is
+ * "earned rather than added" and is asked for BY NAME because it MEANS something — on
+ * `/features` it dresses `/magic:done`, where the loop closes. A second green on the home
+ * page dilutes that by exactly one card. It is worth saying out loud rather than discovering
+ * later: this band is not the loop, so the two greens do not contradict each other, but the
+ * argument for naming a tone is weaker the more places name it.
+ *
+ * WHAT IT BUYS is the one warm-adjacent note in four blues, on the card a reader is most
+ * likely to skim past — "what we store" is the least visual claim in the band, and it now
+ * has the ground that makes it the card the eye lands on.
+ *
+ * THE SECRETS TABLE IS THE OTHER EXCEPTION, and it is the owner's call rather than the rule's.
  * It shipped on `indigo` because its panel is the site's off-white and a pale panel wants a
  * saturated ground under it — the mirror of `StartTerminal`'s rule. The owner moved it to
  * `sky`, and what that costs is written down rather than argued: `sky`'s field is #E2EEFC
@@ -109,9 +128,15 @@ export type SecurityArt = 'privateRepo' | 'gdpr' | 'commitGuard' | 'secrets'
  * `midnight`, then `indigo` beside `mist`. It is now `sky`, `midnight`, `mist`, `sky`:
  * three light grounds and one dark, with the only dark card in the top-right corner. The
  * band is lighter and flatter than it was, which is a legitimate thing to want and not
- * something that fell out of the pairing rule.
+ * something that fell out of the pairing rule. The GDPR card's move to `mint` since then
+ * makes the run `sky`, `midnight`, `mint`, `sky` — same weights, one of them no longer
+ * blue.
+ *
+ * `mist` AND `indigo` ARE STILL IN THIS UNION with no card on them, and deliberately: it is
+ * the set of grounds this band is allowed to use, not an inventory of the four in use today.
+ * Both were on cards one round ago and either could come back.
  */
-export type SecurityTone = 'midnight' | 'mist' | 'sky' | 'indigo'
+export type SecurityTone = 'midnight' | 'mist' | 'sky' | 'indigo' | 'mint'
 
 export type SecurityCard = {
   id: SecurityArt
@@ -190,7 +215,7 @@ export const SECURITY_CARDS: readonly SecurityCard[] = [
    */
   {
     id: 'gdpr',
-    tone: 'mist',
+    tone: 'mint',
     title: 'site.security.gdprTitle',
     description: 'site.security.gdprDesc',
   },

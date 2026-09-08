@@ -107,7 +107,11 @@ describe('the security band', () => {
     const on = (id: string) => SECURITY_CARDS.find((card) => card.id === id)?.tone ?? ''
     expect(isDark(on('privateRepo')), 'the white padlock needs a dark card').toBe(true)
     expect(isDark(on('commitGuard')), 'the ink branch graph needs a light card').toBe(false)
-    expect(isDark(on('gdpr')), 'the seal takes the palest ground of the four').toBe(false)
+    // The seal is the one drawing here that could sit on anything, so its ground is the
+    // owner's free choice — `mist` first, `mint` now. What is still asserted is the only
+    // part that is not free: the emblem is a blue disc on a pale field, so the card under
+    // it has to be light whichever light ground it is given.
+    expect(isDark(on('gdpr')), 'the seal needs a light card whichever one it takes').toBe(false)
   })
 
   it('still has a commit guard rail to promise', () => {
