@@ -155,6 +155,9 @@ export const en = {
   'sidebar.sort.status.help': 'Waiting and failed first. The list moves as agents work.',
   'sidebar.sort.repository': 'By repository',
   'sidebar.sort.repository.help': 'Grouped by project, A to Z. Unlinked agents last.',
+  // The header of the last group in `repository` mode: the agents whose working
+  // directory matches no configured repository. Decoration, never selectable.
+  'sidebar.group.noRepository': 'No repository',
   // A count above the list, not a group header: the agents it counts keep their row.
   'sidebar.needsAttention': 'Needs attention',
   'sidebar.paneLeft': 'Left',

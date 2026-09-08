@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, memo } from 'react'
-import { Plus, Sparkles, Users, ListTodo, AlertTriangle } from 'lucide-react'
+import { useState, useEffect, useCallback, memo, Fragment } from 'react'
+import { Plus, Sparkles, Users, ListTodo, AlertTriangle, FolderGit2 } from 'lucide-react'
 import { useStore, type ModalId } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos } from '../hooks/useOrderedTerminals'
+import { groupKeyOf, isGroupStart, repoLabel } from '../hooks/terminalOrder'
 import { AgentSortButton } from './AgentSortButton'
 import { SidebarUsageCard } from './SidebarUsageCard'
 import { SidebarUpdateButton } from './SidebarUpdateButton'
@@ -86,9 +87,13 @@ const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, o
   )
 })
 
-// Flat agent list, in whatever order `useOrderedTerminals` handed it: newest first by
+// The agent list, in whatever order `useOrderedTerminals` handed it: newest first by
 // default, so a row stays exactly where the user last saw it, and grouped by status or
 // by repository when they have asked for that instead.
+//
+// In `repository` mode it interleaves group headers between the rows. The ARRAY stays
+// flat — that is `flatVisualOrder`, the keyboard-nav order — and only the rendering
+// gains the headers.
 interface AgentListProps {
   terminals: TerminalWithRepos[]
   activeTerminalId: string | null
@@ -97,6 +102,8 @@ interface AgentListProps {
   onSelectTerminal: (id: string, e: React.MouseEvent) => void
   now: number
   draggable?: boolean
+  showRepoHeaders: boolean
+  colorMap: Record<string, string>
 }
 
 const AgentList = memo(function AgentList({
@@ -107,22 +114,53 @@ const AgentList = memo(function AgentList({
   onSelectTerminal,
   now,
   draggable,
+  showRepoHeaders,
+  colorMap,
 }: AgentListProps) {
+  const t = useT()
+
   if (terminals.length === 0) return null
 
   return (
     <div className="flex flex-col gap-1">
-      {terminals.map(terminal => (
-        <AgentItem
-          key={terminal.id}
-          terminal={terminal}
-          isActive={activeTerminalId === terminal.id}
-          isSplitTarget={isSplitMode && splitTerminalId === terminal.id}
-          onSelect={(e) => onSelectTerminal(terminal.id, e)}
-          now={now}
-          draggable={draggable}
-        />
-      ))}
+      {terminals.map((terminal, index) => {
+        const groupKey = groupKeyOf(terminal)
+        // Group starts are read from THIS list, never from one global pass: each split
+        // pane gets its own filtered array, and a shared pass would leave the right
+        // pane opening mid-group with no header above it.
+        const opensGroup = showRepoHeaders && isGroupStart(terminals, index)
+
+        return (
+          <Fragment key={terminal.id}>
+            {/* The repo's icon, bare and tinted rather than in its backdrop: the
+                sidebar is 230px wide (SIDEBAR_WIDTH), so a filled w-6 h-6 tile
+                would outweigh both the agent rows under it and the AGENTS header
+                above, and eat width the repo name needs to stay readable. The
+                colour still comes across — it is the same one Settings and the
+                agent chips use for this repo.
+                A <div>, never a <button>, and with no tabIndex: these headers are
+                decoration. They stay out of `flatVisualOrder`, so ⌘↑/⌘↓ visit
+                exactly the agents they visited before.
+                The last group has no repo, so `colorMap['']` is undefined and the icon
+                inherits the header's muted colour. That is the intent, not an oversight:
+                there is no repository to be the colour of. */}
+            {opensGroup && (
+              <div className="flex items-center gap-2 px-2 pt-2 pb-1 text-xs text-text-secondary/50 tracking-wider">
+                <FolderGit2 className="w-3 h-3 flex-shrink-0" style={{ color: colorMap[groupKey] }} />
+                <span className="truncate">{groupKey ? repoLabel(groupKey) : t('sidebar.group.noRepository')}</span>
+              </div>
+            )}
+            <AgentItem
+              terminal={terminal}
+              isActive={activeTerminalId === terminal.id}
+              isSplitTarget={isSplitMode && splitTerminalId === terminal.id}
+              onSelect={(e) => onSelectTerminal(terminal.id, e)}
+              now={now}
+              draggable={draggable}
+            />
+          </Fragment>
+        )
+      })}
     </div>
   )
 })
@@ -142,8 +180,14 @@ export function Sidebar() {
 
   // Agents in the order the person picked from the header control — newest first
   // unless they said otherwise (see hooks/terminalOrder.ts).
-  const { ordered } = useOrderedTerminals()
-  const { leftTerminals, rightTerminals } = useSplitOrderedTerminals()
+  const { ordered, colorMap, sort } = useOrderedTerminals()
+  const { leftTerminals, rightTerminals, colorMap: splitColorMap } = useSplitOrderedTerminals()
+
+  // Compared against the sort the ordering resolved, not against raw `config.agentSort`:
+  // one value with the default already applied, so the headers cannot describe a grouping
+  // the list is not in. `useSplitOrderedTerminals` resolves the same value from the same
+  // store field, so one flag is right for all three branches.
+  const showRepoHeaders = sort === 'repository'
 
   // Drag & drop state for split zones
   const [dragOverZone, setDragOverZone] = useState<'left' | 'right' | null>(null)
@@ -363,6 +407,8 @@ export function Sidebar() {
                 onSelectTerminal={handleSelectLeftTerminal}
                 now={now}
                 draggable
+                showRepoHeaders={showRepoHeaders}
+                colorMap={splitColorMap}
               />
               {leftTerminals.length === 0 && (
                 <div className="text-text-secondary/30 text-xs text-center py-3">
@@ -394,6 +440,8 @@ export function Sidebar() {
                 onSelectTerminal={handleSelectRightTerminal}
                 now={now}
                 draggable
+                showRepoHeaders={showRepoHeaders}
+                colorMap={splitColorMap}
               />
               {rightPaneTerminalIds.length === 0 && (
                 <div className="text-text-secondary/30 text-xs text-center py-3">
@@ -412,6 +460,8 @@ export function Sidebar() {
               isSplitMode={isSplitMode}
               onSelectTerminal={handleSelectTerminal}
               now={now}
+              showRepoHeaders={showRepoHeaders}
+              colorMap={colorMap}
             />
           </>
         )}

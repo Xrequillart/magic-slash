@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { orderTerminals } from './terminalOrder'
+import { orderTerminals, groupKeyOf, isGroupStart, repoLabel } from './terminalOrder'
 import type { TerminalInfo, TerminalState, TerminalMetadata } from '../../types'
 
 const terminal = (
@@ -114,6 +114,42 @@ describe('orderTerminals', () => {
         'repository',
       )
       expect(ordered.map(t => t.id)).toEqual(['web', 'loose'])
+    })
+
+    it('names the group of an agent by its first matching repository', () => {
+      const ordered = orderTerminals([inRepo('web', 100, '/code/web/src')], config, 'repository')
+      expect(groupKeyOf(ordered[0])).toBe('web')
+    })
+
+    it('gives the agents that belong to no repository an empty group key', () => {
+      const ordered = orderTerminals([inRepo('loose', 100)], config, 'repository')
+      expect(groupKeyOf(ordered[0])).toBe('')
+    })
+
+    it('opens a group on the first agent, and on every change of repository', () => {
+      const ordered = orderTerminals(
+        [
+          inRepo('loose', 50),
+          inRepo('web-old', 100, '/code/web/src'),
+          inRepo('api', 200, '/code/api'),
+          inRepo('web-new', 300, '/code/web'),
+        ],
+        config,
+        'repository',
+      )
+      expect(ordered.map(t => t.id)).toEqual(['api', 'web-new', 'web-old', 'loose'])
+      // api opens the list, web-new opens the next repository, web-old continues it,
+      // and the unlinked agent opens the last group.
+      expect(ordered.map((_, index) => isGroupStart(ordered, index))).toEqual([true, true, false, true])
+    })
+
+    it('reads a repository name with only its first letter capitalised', () => {
+      // Not `capitalize`: CSS would capitalise after the hyphen too.
+      expect(repoLabel('poppins-pex')).toBe('Poppins-pex')
+      expect(repoLabel('magic-slash')).toBe('Magic-slash')
+      expect(repoLabel('MILA-cia')).toBe('Mila-cia')
+      expect(repoLabel('a')).toBe('A')
+      expect(repoLabel('')).toBe('')
     })
   })
 

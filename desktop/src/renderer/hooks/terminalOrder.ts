@@ -29,6 +29,42 @@ function byNewest(a: TerminalWithRepos, b: TerminalWithRepos): number {
 }
 
 /**
+ * The repository an agent is filed under in `repository` mode — its FIRST matching
+ * project, or `''` for the agents that belong to no configured repository.
+ *
+ * The single source of truth shared by the sort below and the sidebar's group
+ * headers: the two cannot disagree about where a group starts if they both ask
+ * this one question.
+ */
+export function groupKeyOf(terminal: TerminalWithRepos): string {
+  return terminal.matchingProjects[0] ?? ''
+}
+
+/**
+ * The same name as the sidebar's group header shows it: first letter up, the rest
+ * down — `poppins-pex` reads "Poppins-pex".
+ *
+ * Done here rather than with `text-transform` because CSS `capitalize` capitalises
+ * after the hyphen too ("Poppins-Pex"), and the header deliberately drops the
+ * `uppercase` its AGENTS sibling carries: a repo name is data, and shouting it makes
+ * it harder to match against the name Settings shows.
+ */
+export function repoLabel(name: string): string {
+  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()
+}
+
+/**
+ * Whether the agent at `index` opens a new repository group in an ALREADY ORDERED
+ * list — the first row, or the first row whose key differs from the row above it.
+ *
+ * Same source of truth as `groupKeyOf`, and the sidebar's only test for "does this
+ * row need a header above it".
+ */
+export function isGroupStart(list: TerminalWithRepos[], index: number): boolean {
+  return index === 0 || groupKeyOf(list[index]) !== groupKeyOf(list[index - 1])
+}
+
+/**
  * The sidebar order, in the mode the person picked (the control beside the "new
  * agent" button; the choice follows their account).
  *
@@ -74,8 +110,8 @@ export function orderTerminals(
     // no configured repository go last — an empty name would otherwise sort to the
     // top and open the list with the ones that have no group at all.
     return enriched.sort((a, b) => {
-      const nameA = a.matchingProjects[0] ?? ''
-      const nameB = b.matchingProjects[0] ?? ''
+      const nameA = groupKeyOf(a)
+      const nameB = groupKeyOf(b)
       if (nameA !== nameB) {
         if (!nameA) return 1
         if (!nameB) return -1

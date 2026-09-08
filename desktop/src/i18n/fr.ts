@@ -128,6 +128,7 @@ export const fr: Record<keyof typeof en, string> = {
   'sidebar.sort.status.help': 'En attente et en erreur d’abord. La liste bouge quand les agents travaillent.',
   'sidebar.sort.repository': 'Par dépôt',
   'sidebar.sort.repository.help': 'Regroupés par projet, de A à Z. Les agents sans dépôt à la fin.',
+  'sidebar.group.noRepository': 'Sans dépôt',
   // Un compteur au-dessus de la liste, pas un en-tête de groupe : les agents
   // comptés gardent leur ligne.
   'sidebar.needsAttention': 'Demande une action',
