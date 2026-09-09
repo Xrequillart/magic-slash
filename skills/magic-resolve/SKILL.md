@@ -186,7 +186,7 @@ For each found worktree, check if there is a PR with unresolved review comments:
 
 1. Get the branch name: `git -C {WORKTREE_PATH} branch --show-current`
 2. Use `mcp__github__list_pull_requests` to find open PRs matching the branch
-3. Use `mcp__github__get_pull_request_comments` to check for unresolved comments
+3. Use `mcp__github__pull_request_read` with `method: "get_review_comments"` to check for unresolved comments
 
 Keep only the worktrees that have a PR with unresolved review comments.
 
@@ -347,12 +347,14 @@ This step builds the complete picture of what needs to be fixed. Reading thread 
 
 Gather all unresolved review comments:
 
-1. Use `mcp__github__get_pull_request_reviews` to get all reviews
+1. Use `mcp__github__pull_request_read` with `method: "get_reviews"` to get all reviews
    - Keep only reviews with `state: "CHANGES_REQUESTED"` or `state: "COMMENTED"`
    - Ignore reviews with `state: "APPROVED"` or `state: "DISMISSED"`
    - **Store the reviewer usernames** (login) from `CHANGES_REQUESTED` reviews — these will be needed in Step 7.5 for re-requesting review
-2. Use `mcp__github__get_pull_request_comments` to get inline review comments
-   - Each comment has: `id`, `path` (file), `line` or `original_line`, `body`, `original_commit_id`, `in_reply_to_id`
+2. Use `mcp__github__pull_request_read` with `method: "get_review_comments"` to get inline review comments
+   - This returns review **threads**, already grouped by code location: thread metadata plus the comments made on it, each with `line`/`start_line` and `original_line`/`original_start_line` (the current coordinates are omitted for an outdated comment)
+   - Because the grouping is done for you, the reply chains in point 3 come straight off each thread — no matching on `in_reply_to_id` needed
+   - Step 7 still needs each comment's **numeric** id to reply to it: that is the `#discussion_r...` id, not the `PRRT_...` thread node id
    - Identify root comments (those without `in_reply_to_id`) — these are the actionable review items
    - A comment with `position: null` means the code has been changed since the comment — it may be outdated (checked further in Step 4.1)
 3. **Read thread context for each root comment**: For each root comment, collect its reply chain (comments where `in_reply_to_id` matches the root comment's `id`). Read the full thread to detect:
@@ -663,7 +665,9 @@ For each resolved comment, reply in-thread on GitHub to indicate the fix has bee
 
 ### Why `gh api`
 
-No MCP GitHub tool currently supports replying in-thread to a pull request review comment. The `mcp__github__add_issue_comment` tool only creates top-level issue comments, not threaded replies on specific review comments. Therefore, `gh api` (invoked via the Bash tool, which is allowed by `Bash(*)`) is the primary method for this step.
+`gh api` (invoked via the Bash tool, which `Bash(*)` allows) is the primary method here because it takes the numeric comment id Step 3 already stored, and one call posts one reply.
+
+`mcp__github__add_reply_to_pull_request_comment` does the same job and is the fallback below — it wants that same numeric id (the `#discussion_r...` one, never the `PRRT_...` thread node id). What does *not* work is `mcp__github__add_issue_comment`: it only creates top-level issue comments, never a threaded reply on a specific review comment.
 
 ### Primary: `gh api` (with retry)
 
@@ -702,9 +706,11 @@ Count the characters before posting. If the body is over its cap, cut it rather 
 
 At `minimal` and `normal`, also leave out **acknowledgements** — "good catch", "you were right that…", "thanks, this was a real defect". They are warm and they are noise at those levels. `detailed` is the level that exists for a reply that reads like a person talking, so it may open with one.
 
-### Fallback: `mcp__github__add_issue_comment`
+### Fallback: reply over MCP, then a consolidated comment
 
-If the `gh` CLI is not available or all `gh api` calls fail, fall back to creating a single consolidated top-level comment using `mcp__github__add_issue_comment`.
+If the `gh` CLI is not available or all `gh api` calls fail, try `mcp__github__add_reply_to_pull_request_comment` (`owner`, `repo`, `pullNumber`, `commentId`, `body`) for each comment. It keeps the replies in-thread, which is the whole point of this step.
+
+Only if that also fails, fall back to a single consolidated top-level comment using `mcp__github__add_issue_comment`.
 
 Use **`MSG_REPLY_FALLBACK`** for the fallback comment body, substituting `{COMMIT_SHA}` and the list of resolved comments (each with `{file}`, `{line}`, `{fix_summary}`). Render it in `$RESOLVE_REPLY_LANG`.
 
