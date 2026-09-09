@@ -181,7 +181,7 @@ For each found worktree, find the associated PR:
 
 ## Step 3: Verify PR is merged
 
-For each found PR, use `mcp__github__get_pull_request` and check the `merged` field.
+For each found PR, use `mcp__github__pull_request_read` with `method: "get"` and check the `merged` field.
 
 ### If the PR is NOT merged
 
