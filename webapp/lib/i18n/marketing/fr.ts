@@ -106,7 +106,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.hero.titleTail': 'Vous avez juste dit',
   'site.hero.eyebrow': '8 skills Claude Code + une app desktop',
   'site.hero.subtitle':
-    '8 skills qui enchaînent spec, branche, commits, pull request, review et clôture du ticket. Une app qui vous montre les tâches à prendre et les agents qui tournent. Vous, vous arbitrez.',
+    '8 skills qui enchaînent spec, tickets, worktree, commits, pull request, review et clôture du ticket. Une app qui vous montre les tâches à prendre et les agents qui tournent. Vous, vous arbitrez.',
   'site.hero.cta': 'Commencer gratuitement',
   'site.hero.howCta': 'Voir comment ça marche',
   'site.hero.downloadCta': 'Télécharger pour Mac',
@@ -438,7 +438,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // « développeurs » est barré et « product builders » le remplace : voir la note côté
   // anglais. Le terme reste en anglais, avec le pluriel français après « les », comme
   // dans la pilule de `/desktop`.
-  'site.builtFor.title': 'Fait pour les <em>développeurs</em>, product builders.',
+  'site.builtFor.title': 'Fait pour les <em>développeurs</em>, les product builders.',
   // « pas comme nous » est tombé, et le tiret cadratin avec : demande du propriétaire.
   // La phrase n’a pas besoin d’un adversaire — « réglée comme vous travaillez » dit déjà
   // tout — et la virgule fait la même jointure que le tiret en se lisant plus vite.
