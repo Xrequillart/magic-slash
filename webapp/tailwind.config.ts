@@ -1131,6 +1131,25 @@ const config: Config = {
         // first attempt here was `-6px 0 20px -6px` and rendered, correctly, as almost
         // nothing at all.
         edge: `-10px 0 24px -4px ${SHADOW_TINT(0.25)}, -1px 0 2px ${SHADOW_TINT(0.1)}`,
+        // THE FOUR RUNGS THE `/desktop` OPENING AND THE HOMEPAGE HERO ADDED, named for what
+        // casts them rather than for a height, because none of them is a surface rung a
+        // second caller should reach for by size.
+        //
+        // `window`: the app's drawn window rising out of a band's floor — long, soft and
+        // heavy, in the indigo tint, because it is the one object on either page meant to
+        // read as SITTING on the canvas rather than floating a hair above it.
+        window: `0 40px 80px -30px ${SHADOW_TINT(0.55)}`,
+        // `pane` and `bubble`: the "before" pile's grey windows and the two speech
+        // bubbles over them. Neutral black, NOT the indigo tint, on purpose: the pile is
+        // `grayscale` and the bubbles sit on it, so a tinted shadow would be the one
+        // coloured thing in a panel drawn to have no colour.
+        pane: '0 20px 40px -20px rgba(0, 0, 0, 0.6)',
+        bubble: '0 8px 20px -10px rgba(0, 0, 0, 0.4)',
+        // `ring-green`: not a shadow at all but a halo — a 4px spread of the success
+        // green at 18% around the check that closes the hero's ladder. A `ring` utility
+        // would do the same job and take the element's own `ring-offset` colour with it;
+        // this keeps the halo in the shadow scale where the test can see it.
+        'ring-green': '0 0 0 4px rgba(34, 197, 94, 0.18)',
         // THE RUNG THAT CASTS NOWHERE IN PARTICULAR, for a panel cut by its plate on TWO
         // sides at once.
         //
@@ -1274,6 +1293,13 @@ const config: Config = {
         'reveal-a': {
           from: { opacity: '0', translate: '0 var(--reveal-from, 0.75rem)' },
           to: { opacity: '1', translate: '0 0' },
+        },
+        // The `/desktop` headline's strike-through, drawn once across the word it
+        // crosses: a bar that GROWS from the left, for the reason `strikeAt` gives above
+        // — a bar that fades in has already crossed the word before you see it.
+        'strike-in': {
+          from: { transform: 'scaleX(0)' },
+          to: { transform: 'scaleX(1)' },
         },
         'reveal-b': {
           from: { opacity: '0', translate: '0 var(--reveal-from, 0.75rem)' },
@@ -1677,6 +1703,8 @@ const config: Config = {
         'timeline-run': 'timeline-run 24s infinite',
         'reveal-a': 'reveal-a 600ms ease-out backwards',
         'reveal-b': 'reveal-b 600ms ease-out backwards',
+        // Starts once the headline has landed (the copy's reveal is 600ms), and holds.
+        'strike-in': 'strike-in 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) 700ms both',
         // The start card's run: one 11s loop, and EVERY animation in it shares that
         // duration with no delay on any of them. That is what keeps them in phase —
         // see `statusIn` at the top of this file. The order the lines arrive in is in
