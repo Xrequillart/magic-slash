@@ -148,12 +148,16 @@ Update the status to "in review":
 
 ## Step 5: Retrieve PR details
 
-Gather all necessary information about the PR. For each MCP call below, if it fails (timeout, auth error), retry once. If `get_pull_request` or `get_pull_request_files` fails after retry, ask the user for the PR URL. If `get_pull_request_comments` or `get_pull_request_reviews` fails after retry, continue without that data — the review can proceed with partial information.
+Gather all necessary information about the PR. Every read below is the same tool, `mcp__github__pull_request_read`, with a different `method` — plus `owner`, `repo` and `pullNumber` on each call.
 
-1. **PR details**: Use `mcp__github__get_pull_request` to get the PR description, title, base branch, head branch
-2. **Changed files**: Use `mcp__github__get_pull_request_files` to get the list of modified files
-3. **Existing comments**: Use `mcp__github__get_pull_request_comments` to see any existing review comments
-4. **Existing reviews**: Use `mcp__github__get_pull_request_reviews` to see previous reviews
+| # | What | `method` |
+| - | ---- | -------- |
+| 1 | **PR details** — description, title, base branch, head branch | `get` |
+| 2 | **Changed files** | `get_files` |
+| 3 | **Existing review comments** — the threads already on the diff | `get_review_comments` |
+| 4 | **Existing reviews** | `get_reviews` |
+
+For each call, if it fails (timeout, auth error), retry once. If `get` or `get_files` fails after retry, ask the user for the PR URL — there is no review to write without the diff. If `get_review_comments` or `get_reviews` fails after retry, continue without that data: the review can proceed on partial information, it just may repeat a point somebody already made.
 
 ## Step 6: Read the source code
 
@@ -187,7 +191,15 @@ Perform a thorough analysis covering these categories:
 
 ## Step 8: Submit the review on GitHub
 
-Use `mcp__github__create_pull_request_review` to submit the review.
+A review carrying inline comments is **three calls, in this order**. There is no single call that posts a body and its inline comments together, and the middle step only works while a pending review exists — so do not submit before the comments are attached.
+
+1. **Open a pending review** — `mcp__github__pull_request_review_write` with `method: "create"`, `owner`, `repo`, `pullNumber`, and **no `event`**. Passing `event` here submits the review immediately and there is then no pending review left to attach anything to.
+2. **Attach each inline comment** — `mcp__github__add_comment_to_pending_review` with `owner`, `repo`, `pullNumber`, `path`, `body`, `subjectType: "LINE"`, `line`, and `side: "RIGHT"` (use `LEFT` to comment on a removed line). For a range, add `startLine` and `startSide`. To comment on a file as a whole rather than a line, pass `subjectType: "FILE"` and omit `line`.
+3. **Submit** — `mcp__github__pull_request_review_write` with `method: "submit_pending"`, `owner`, `repo`, `pullNumber`, the `body` from below, and the `event` chosen below.
+
+When the review has **no** inline comments at all, steps 1–3 collapse into one call: `method: "create"` with `body` and `event` together.
+
+If step 2 or 3 fails after one retry, the pending review is still open and invisible to the reviewer — a half-written review nobody can see is worse than none. Either retry the submit, or clear it with `method: "delete_pending"` and tell the user the review was not posted.
 
 ### Determine the review event
 
@@ -206,7 +218,7 @@ Write a clear, structured review summary. Include:
 3. List of suggestions (if any)
 4. Praise for well-done code (if any)
 
-For inline comments, use the `comments` parameter with file path, line number, and comment body.
+Inline comments are not a parameter on the submit call — they are attached one at a time in step 2 above, each with its own `path` and `line`.
 
 ## Step 9: Update Magic Slash metadata
 
