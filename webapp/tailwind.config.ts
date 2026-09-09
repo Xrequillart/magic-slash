@@ -1707,9 +1707,12 @@ const config: Config = {
          * the run and the rewind feel different from each other.
          */
         'timeline-run': 'timeline-run 24s infinite',
-        'reveal-a': 'reveal-a 600ms ease-out backwards',
-        'reveal-b': 'reveal-b 600ms ease-out backwards',
-        // Starts once the headline has landed (the copy's reveal is 600ms), and holds.
+        // 400ms, down from 600: the entrance plays when a band scrolls into view now, and
+        // a rise that took most of a second after the reader had arrived read as slow.
+        // See `STEP_MS` in `components/site/Reveal.tsx`, which came down with it.
+        'reveal-a': 'reveal-a 400ms ease-out backwards',
+        'reveal-b': 'reveal-b 400ms ease-out backwards',
+        // Starts once the headline has landed (the copy's reveal is 400ms), and holds.
         'strike-in': 'strike-in 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) 700ms both',
         // The start card's run: one 11s loop, and EVERY animation in it shares that
         // duration with no delay on any of them. That is what keeps them in phase —

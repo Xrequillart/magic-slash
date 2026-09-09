@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useLanguage } from '@/lib/i18n/useLanguage'
 
 /**
@@ -19,7 +19,7 @@ import { useLanguage } from '@/lib/i18n/useLanguage'
  * This replaces `Fade.tsx`, and the difference is where the styling comes from: `Fade`
  * emitted `hero-fade` / `visible`, both defined only in `marketing.css`, and that
  * stylesheet no longer reaches these routes. `animate-reveal-*` says the same thing —
- * 12px up, 600ms, opacity and translate together — from `tailwind.config.ts`.
+ * 12px up, 400ms, opacity and translate together — from `tailwind.config.ts`.
  *
  * `Fade`'s other half did NOT come along: it took an optional message `k` and rendered
  * it through `dangerouslySetInnerHTML`, which is `RichText`'s entire job. Wrap a
@@ -66,10 +66,52 @@ import { useLanguage } from '@/lib/i18n/useLanguage'
  * bounded flicker for people on bad connections, instead of a permanently blank first
  * screen for everyone without JavaScript. On a normal load hydration lands within a
  * frame or two of the first paint and it looks as it always did.
+ *
+ * ── THE ENTRANCE PLAYS ON ARRIVAL, NOT ON LOAD ─────────────────────────────────────
+ *
+ * `Reveal` used to play every element's entrance the moment the page mounted, whatever
+ * its position: a band five screens down had risen into place long before anyone
+ * scrolled to it, and arrived looking like it had always been there. The product owner
+ * asked for the opposite ("dès qu'on arrive dans une section les blocs s'affichent un
+ * par un, du bas vers le haut"), on the homepage and on `/desktop` — and since every
+ * band on both pages is built from this component, it is done here once.
+ *
+ * So an element now WAITS. On mount it measures itself: in the viewport already (the
+ * header, the hero) and it plays at once, as before; below the fold and it is held at
+ * `opacity-0` and handed to an `IntersectionObserver`, which plays it the first time it
+ * crosses into view. `order` still staggers: the elements of one band cross the fold
+ * together and start 80ms apart, bottom of the band last, which is the "one by one"
+ * asked for. The keyframes are the same 12px rise, so an element arrives from below.
+ *
+ * `useLayoutEffect` AND NOT `useEffect` for the measurement, and it is the difference
+ * between a page that works and one that blinks: a layout effect runs before the
+ * browser paints the committed render, so an element that is below the fold is at
+ * `opacity-0` before it is ever painted, and one that is in view has its animation class
+ * before its first frame. A passive effect would paint the resting state first and hide
+ * it a frame later — the blink the section above describes, on every element instead of
+ * only on a slow connection.
+ *
+ * THE SERVER STILL RENDERS THE RESTING STATE, and so does the first client render, for
+ * the reason the section above sets out: `waiting` is a state only the layout effect
+ * ever sets, so nothing is hidden until the client has measured it. Someone who asked for
+ * less motion never leaves the resting state — nothing is hidden, nothing has to arrive.
+ * A language change replays the entrance of what is on screen, as it always did; what
+ * is still below the fold is simply re-armed.
+ *
+ * `-8%` OF ROOT MARGIN at the bottom: an element plays once its top is a little way into
+ * the viewport rather than the instant a pixel of it appears, so the rise is seen and
+ * not merely started at the screen's edge.
  */
 
-/** How far apart consecutive elements start, matching the original's timers. */
-const STEP_MS = 150
+/**
+ * How far apart consecutive elements start. It was 150ms, the original's timers, and
+ * came down once the entrance played on arrival rather than on load: a band of six
+ * blocks at 150ms apart took nearly a second to finish rising after the reader had
+ * already scrolled to it, and the product owner called it ("trop lent à venir"). 80ms
+ * still reads as one by one; the rise itself came down with it (see the `reveal-*`
+ * durations in `tailwind.config.ts`).
+ */
+const STEP_MS = 80
 
 /**
  * The two spellings of one entrance, alternated on every replay.
@@ -85,7 +127,8 @@ const REVEAL_ANIMATION = ['animate-reveal-a', 'animate-reveal-b'] as const
 /**
  * The animation class for one element of the entrance, or `''` for nothing at all.
  * Exported because the header needs it without the wrapper element — it applies the
- * entrance to the bar itself.
+ * entrance to the bar itself. The header is always in view, so it plays on load; `Reveal`
+ * below plays on arrival instead and keeps its own state.
  *
  * REPLAYS on a language change, as the original did: the copy is what the animation is
  * introducing, so new copy earns a new entrance. That is what `lang` is doing in the
@@ -129,6 +172,13 @@ export function useRevealClass(): string {
  * `animation-*` longhand, so the delay has to arrive after it, and an inline style is
  * the one thing that always does.
  */
+/**
+ * Where one element of the entrance stands: at rest (the server's state, and the reduced
+ * motion one), waiting below the fold, or playing — the number counting the replays, so
+ * each swaps the animation for its twin (see `REVEAL_ANIMATION`).
+ */
+type RevealState = 'rest' | 'waiting' | number
+
 export function Reveal({
   order = 0,
   className,
@@ -138,10 +188,47 @@ export function Reveal({
   className?: string
   children?: React.ReactNode
 }) {
-  const reveal = useRevealClass()
+  const lang = useLanguage()
+  const ref = useRef<HTMLDivElement>(null)
+  const plays = useRef(0)
+  const [state, setState] = useState<RevealState>('rest')
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      setState('rest')
+      return
+    }
+    const play = () => {
+      plays.current += 1
+      setState(plays.current)
+    }
+    const rect = el.getBoundingClientRect()
+    if (rect.top < window.innerHeight && rect.bottom > 0) {
+      play()
+      return
+    }
+    setState('waiting')
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          play()
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '0px 0px -8% 0px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [lang])
+
+  const reveal =
+    state === 'rest' ? '' : state === 'waiting' ? 'opacity-0' : REVEAL_ANIMATION[state % REVEAL_ANIMATION.length]
 
   return (
     <div
+      ref={ref}
       className={[reveal, className].filter(Boolean).join(' ')}
       style={{ animationDelay: `${order * STEP_MS}ms` }}
     >
