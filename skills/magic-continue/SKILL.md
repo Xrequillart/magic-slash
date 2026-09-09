@@ -158,7 +158,7 @@ Parse `owner/repo` from either `git@github.com:owner/repo.git` or `https://githu
 
 ### 2B.3: Search for the issue
 
-Use `mcp__github__get_issue` for each repo — launch all calls in parallel for speed. Collect all found issues. If an MCP call fails, retry once; if still failing, skip that repo and continue with the others.
+Use `mcp__github__issue_read` with `method: "get"` for each repo — launch all calls in parallel for speed. Collect all found issues. If an MCP call fails, retry once; if still failing, skip that repo and continue with the others.
 
 ### 2B.4: Resolution
 
@@ -204,7 +204,7 @@ Updating ticket status keeps the board accurate for teammates. This step never b
 ### 2.6B: GitHub issue
 
 1. Check if a progress label exists: "in-progress", "wip", "in progress", "working"
-2. If found: Add via `mcp__github__update_issue` (keep existing labels)
+2. If found: Add via `mcp__github__issue_write` with `method: "update"` — read the current labels first (`mcp__github__issue_read`, `method: "get_labels"`) and pass the **whole** set, because `labels` replaces the list rather than appending to it
 3. If not found: Continue without modification (do not create a label)
 4. On failure: Display `MSG_LABEL_FAILED`
 
