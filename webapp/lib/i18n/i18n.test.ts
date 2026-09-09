@@ -239,14 +239,11 @@ describe('message catalogues', () => {
         // still the same word in both (`site.nav.faq` and `site.footer.faq`, both still
         // listed) — an acronym French borrowed whole. A whole heading is not.
         'site.changelog.title',
-        // The homepage's desktop band names the PRODUCT, and nothing else: "Magic Slash"
-        // is a proper noun, so it is the same string in both catalogues by definition.
-        // (It read "Magic Slash desktop" for one round, which needed this same line for a
-        // longer reason — the third word being what French calls a desktop app anyway.
-        // The word is gone and the entry is simply a name now.) Translating it would have
-        // the site calling its own app something the app never calls itself. The band's
-        // subtitle beside it is real French and is not listed here.
-        'site.desktop.title',
+        // `/desktop`'s line of reassurance under its two buttons is three facts, and the
+        // middle one is a platform's name: "macOS" is spelled the same way in every
+        // language. (`site.desktop.title` sat here while it read "Magic Slash", a proper
+        // noun; it is a sentence now, and translated.)
+        'site.desktop.reassureMac',
         // The hero mockup mirrors the app's own chrome, and these four labels are the
         // same word in French — "Skills" is the product's name for them, and AGENTS /
         // SESSION / Commits are borrowed whole, exactly as they are in the app.

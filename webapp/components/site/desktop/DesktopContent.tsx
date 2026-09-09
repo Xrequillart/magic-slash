@@ -1,200 +1,266 @@
 'use client'
 
-import { Columns, Plug, ScrollText, Sparkles } from 'lucide-react'
+import { Columns, Download, Plug, ScrollText, Sparkles } from 'lucide-react'
+import { ButtonNavLink } from '@/components/ui'
 import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
+import { PLACEHOLDER_PAGES } from '@/lib/siteNav'
+import { WORKFLOW_PATH } from '@/lib/workflow'
 import { Reveal } from '../Reveal'
+import { RichText } from '../RichText'
 import { AppWindowMockup } from '../home/AppWindowMockup'
-import { BAND_TITLE, HomeSection } from '../home/Shell'
+import { HomeSection, STRUCK_WORD } from '../home/Shell'
 
 /**
- * THE WHOLE OF `/desktop`: a headline, two lines of type, the desktop app's own window —
- * drawn faithfully, lit from behind, and WHOLE — then a row of four highlights under it.
+ * magic-slash.io/desktop — the app, sold on what it takes off your mind.
  *
- * IT WAS A BAND ON THE HOMEPAGE, `home/DesktopSection.tsx`, and it is the same
- * composition: the product owner moved it onto a page of its own, and what replaced it up
- * there is `home/AppSection.tsx` — a heading, a paragraph and the same window at
- * two-fifths the size, with a button that opens this page. The argument for the move is
- * the one that argues for the whole header rebuild: a landing page can say the app exists,
- * and only a page about the app can show it at length.
+ * THE PAGE OPENS ON THE PAIN, NOT THE PRODUCT. The headline is the sentence a product
+ * builder with three Claude Code sessions in three terminals says to themself at four in
+ * the afternoon, with the verb struck through; the line under it says the app does the
+ * remembering. The product owner picked this direction for THIS page and not the homepage
+ * on purpose: relieving the mental load — looking at what changed rather than at what
+ * each agent is doing — is what the desktop app is for, where the homepage's job is to
+ * show the whole cycle. The design mockup he chose from called it "mental load".
  *
- * SO THE MOVE CHANGED THREE THINGS AND NOTHING ELSE, all of them marked below: the `h2`
- * became an `h1`, the band's padding became a page's opening padding, and the two imports
- * that used to be siblings now reach into `home/`. The window, the aura, the scale rungs,
- * the highlights and every note explaining them are exactly as they were — which is the
- * point of moving a file rather than rewriting one.
+ * THEN A BEFORE AND AN AFTER. "Before" is four windows drawn grey and crooked on purpose —
+ * terminals, a Jira board, a PR — with the two questions floating over them; "after" is
+ * the app's own window in colour, sidebar and all, at the size the column allows. The
+ * grey half is deliberately the uglier half of the screen: it is the thing the app
+ * replaces, and it has to look like it.
  *
- * WHY THE COMPOSITION EXISTS AT ALL. The pages around it are type and diagrams; this one
- * does one job, which is to put the PRODUCT on the screen. See `AppWindowMockup.tsx` for
- * what is inside the window and which file each band of it was read out of; this file is
- * only the composition around it.
+ * THE STRIKE-THROUGH IS AN `<em>`, drawn by `STRUCK_WORD` — the recipe this page and the
+ * homepage's "built for" band share, in `home/Shell.tsx`, which is where the why of it
+ * is written down.
  *
- * THE PAGE STILL CLOSES ON THE HOMEPAGE'S LAST BAND — `FinalCtaSection`, from
- * `app/(marketing)/desktop/page.tsx` — like `/features`, `/faq` and `/workflow`: a reader
- * who has just been shown the app is deciding, and that is what a decision needs to meet.
- *
- * ── THE COMPOSITION ───────────────────────────────────────────────────────────────
- *
- * CENTRED, top to bottom: headline, a two-line subtitle narrower than it, then the window
- * wide underneath. The reference is CleanShot's own product page, which the product owner
- * brought as the target, and every part of that stack is deliberate:
- *
- *   • THE HEADING IS WRITTEN OUT rather than reaching for `HomeHeading`. That component is
- *     `max-w-2xl` and LEFT-aligned, which is right for a band whose content sits beside it
- *     and wrong for one whose whole point is a centred axis — passing `text-center` into it
- *     would be the caller dressing a component, which is exactly the conflict
- *     `components/ui.tsx`'s header warns about. `/features` writes its headline out for the
- *     same reason and documents it; this follows. What IS shared is the type:
- *     `BAND_TITLE.onLight` is the one place the page's headline size lives.
- *
- *   • THE SUBTITLE IS TWO LINES, on `max-w-2xl` at `text-lg leading-relaxed`. Two is a
- *     length rather than a break: there is no `<br>` in the copy, because a hard break at
- *     this width becomes four lines on a phone. `max-w-2xl` inside a centred column still
- *     needs `mx-auto` — a max-width narrower than its parent has to be told where to sit,
- *     the same note the hero's own subtitle carries. The French runs a little longer than
- *     the English, as it does in the hero, and is allowed to.
- *
- *   • THE WINDOW IS WHOLE — all 1280×800 of it, its bottom edge and its four corners
- *     included. IT WAS CROPPED, and the argument for the crop was a real one: a window
- *     seen partly reads as a thing photographed, where one drawn to fit its frame reads
- *     as a diagram. The product owner overruled it — "tu n'es pas obligé de couper
- *     l'application en bas ! j'aimerai la voir en entier" — and the second reference
- *     screenshot they brought shows the same CleanShot block with its window complete, so
- *     the aesthetic argument was not even the reference's. Nothing here crops any more:
- *     the frame is exactly the size of the scaled window, and `AppWindowMockup` rounds
- *     all four corners instead of two.
- *
- *   • FOUR HIGHLIGHTS CLOSE THE BAND, from the same reference: a row of icon tiles with a
- *     short bold label under each, hairline rules BETWEEN the columns and none around
- *     them. See `Highlights` below for what each of the four claims and where the wording
- *     comes from.
- *
- * ── THE SCALE, AND WHY THE WRAPPER IS STILL SIZED ─────────────────────────────────
- *
- * The window is drawn at 1280×800 — the app's own pixels, every padding and type step the
- * source's number — and then sized for the page with a UNIFORM `scale`. That is
- * `features/AgentsSidebarMockup.tsx`'s technique and the reason this is a reproduction:
- * proportions survive a transform exactly, so nothing inside had to be nudged to fit.
- *
- * A TRANSFORM DOES NOT CHANGE THE BOX IT CAME FROM, which is why the wrapper still
- * carries explicit pixels now that there is nothing to crop: the scaled window still
- * occupies 1280×800 of LAYOUT, and left in flow it would leak 800px of nothing below the
- * drawing and widen the document by 180px, in silence. So the mechanic is unchanged and
- * only the numbers moved — the frame is `FRAME_SIZE`, the size the window actually
- * renders at, with the drawing `absolute` inside it and pinned `origin-top-left` so the
- * two coincide exactly. No `overflow-hidden`: there is nothing outside the frame to clip,
- * and clipping would cut the `shadow-lift` the window casts.
- *
- * ONE ANCHORING NOW, AND IT IS CENTRED AT EVERY WIDTH. The left-anchored, right-cropped
- * variant below `lg` existed only to keep the type readable while the crop hid the rest;
- * with the whole window on the page there is nothing to anchor to but the middle, so the
- * frame is `mx-auto` and the scale simply follows the column. THE TYPE GETS SMALL ON A
- * PHONE and there is no way round it — at 375px the window is 256px wide, so the
- * sidebar's 12px rows render at 2.4px. That is the cost of the owner's call, and the
- * alternative (cropping) is the thing they asked us to stop doing.
- *
- * ── THE AURA ──────────────────────────────────────────────────────────────────────
- *
- * `Aura` below, and it is BLURRED BLOBS OF DECLARED TOKENS rather than a shadow. That is
- * not a stylistic preference: `lib/designTokens.test.ts` fails the build on any shadow
- * written as an arbitrary value, and the diffuse multi-colour glow this band is built
- * around has no rung of the four-step elevation scale that could express it. (That rule
- * scans this file as TEXT, comments included, so the offending class cannot even be
- * spelled here to say it is unwanted — the same note `FinalCtaSection.tsx` carries.)
- * `Bloom` in `HeroSection.tsx` and `Wash` in `FinalCtaSection.tsx` both solve it the same
- * way and are the house precedent. The window's own contact shadow is `shadow-lift`, a
- * real rung, applied in `AppWindowMockup`.
- *
- * THE DEFAULT `band` PADDING, and it used to be `follow`. That rung is for the band
- * DIRECTLY under the hero, whose bottom is already a band's bottom — and this band is no
- * longer that one: `PillarsSection` was inserted above it and took the rung with it, and
- * `WorkflowSection` now sits between the two as well. A band in the middle of a stack owes
- * the full gap on both sides.
- * Nothing is passed through `className` — `HomeSection`'s is documented as additive and
- * never a padding or a width, and this band needs neither.
+ * THE WINDOW THAT USED TO STAND HERE at up to 0.85 scale, alone under a two-line heading,
+ * is now the "after" panel: the same drawing, smaller, beside what it replaces. The four
+ * highlights under it stayed where they were.
  */
-/**
- * THE LADDER: how big the window is drawn at each width, as two lists of literal classes.
- *
- * ONE RULE PRODUCES THE WHOLE TABLE. `HomeSection` is `px-6`, so the column is the
- * viewport less 48px (capped at `max-w-site`, 1100). Each rung is the largest 0.05 step of
- * the app's own 1280 that fits, and its breakpoint is that width plus the 48px of gutters
- * plus 32 more — a classic desktop scrollbar is up to ~17px of the viewport that `100vw`
- * counts and the layout does not, and a rung that changed a hair too early would put the
- * window's right edge under `HomeSection`'s `overflow-hidden`:
- *
- *     scale   window      breakpoint
- *     0.20    256 × 160   —          (down to a 304px viewport)
- *     0.25    320 × 200   400
- *     0.35    448 × 280   528
- *     0.45    576 × 360   656
- *     0.55    704 × 440   784
- *     0.65    832 × 520   912
- *     0.75    960 × 600   1040
- *     0.85   1088 × 680   1168       (and 1088 ≤ 1100, so it fits `max-w-site` too)
- *
- * EVERY RUNG IS A `min-[…]` VARIANT AND NOT `sm:` / `md:` / `lg:`, which is the one thing
- * here worth defending. The breakpoints above are derived from the DRAWING's width, and
- * not one of them is a Tailwind screen — `sm` would change the scale at 640 where 656 is
- * the width that fits. Keeping them all in one variant family also keeps them sorted
- * among themselves by width, which is what makes the last matching rung win.
- *
- * Both lists are written out as literal strings because Tailwind reads SOURCE: a scale
- * assembled from a number at runtime is a class that was never generated.
- */
-const FRAME_SIZE = [
-  'h-[160px] w-[256px]',
-  'min-[400px]:h-[200px] min-[400px]:w-[320px]',
-  'min-[528px]:h-[280px] min-[528px]:w-[448px]',
-  'min-[656px]:h-[360px] min-[656px]:w-[576px]',
-  'min-[784px]:h-[440px] min-[784px]:w-[704px]',
-  'min-[912px]:h-[520px] min-[912px]:w-[832px]',
-  'min-[1040px]:h-[600px] min-[1040px]:w-[960px]',
-  'min-[1168px]:h-[680px] min-[1168px]:w-[1088px]',
-].join(' ')
+export function DesktopContent() {
+  const { t } = useT()
 
-const WINDOW_SCALE = [
-  'scale-[0.2]',
-  'min-[400px]:scale-[0.25]',
-  'min-[528px]:scale-[0.35]',
-  'min-[656px]:scale-[0.45]',
-  'min-[784px]:scale-[0.55]',
-  'min-[912px]:scale-[0.65]',
-  'min-[1040px]:scale-[0.75]',
-  'min-[1168px]:scale-[0.85]',
-].join(' ')
+  return (
+    <HomeSection padding="hero" backdrop={<Aura />}>
+      <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
+        <Reveal order={1}>
+          <span className="inline-flex items-center rounded-full border border-hairline bg-white px-3.5 py-1.5 text-xs font-bold text-muted">
+            {t('site.desktop.eyebrow')}
+          </span>
+        </Reveal>
+
+        <Reveal order={2}>
+          <RichText
+            k="site.desktop.title"
+            as="h1"
+            className={`font-display text-4xl font-black leading-[1.05] tracking-tight text-ink md:text-[3.6rem] [text-wrap:balance] ${STRUCK_WORD}`}
+          />
+        </Reveal>
+
+        <Reveal order={3}>
+          <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted">
+            {t('site.desktop.subtitle')}
+          </p>
+        </Reveal>
+
+        <Reveal order={4} className="flex flex-wrap items-center justify-center gap-3">
+          {/* The download PAGE, not the .dmg — same call as the homepage hero's primary. */}
+          <ButtonNavLink href={PLACEHOLDER_PAGES.download.path} variant="primary" size="lg" icon={Download}>
+            {t('site.hero.downloadCta')}
+          </ButtonNavLink>
+          <ButtonNavLink href={WORKFLOW_PATH} variant="secondary" size="lg">
+            {t('site.desktop.howCta')}
+          </ButtonNavLink>
+        </Reveal>
+
+        <Reveal order={5}>
+          <p className="flex flex-wrap items-center justify-center gap-2.5 text-sm text-muted">
+            <span>{t('site.desktop.reassureFree')}</span>
+            <Dot />
+            <span>{t('site.desktop.reassureMac')}</span>
+            <Dot />
+            <span>{t('site.desktop.reassureTrackers')}</span>
+          </p>
+        </Reveal>
+      </div>
+
+      {/* ONE ROW, TWO COLUMNS, ONE HEIGHT. `items-stretch` (the grid default, named here
+          because it is the point) gives both columns the row's height, and the row's
+          height is the "after" window's: its frame is `aspect-[16/10]` and nothing else
+          in the row has a height of its own. Each column is a flex column — caption on
+          top, panel filling the rest — so the two captions share a line and the two
+          panels share a floor. The "before" pile draws itself in percentages of that
+          panel, so it takes whatever height the window gives it. */}
+      <Reveal order={6} className="mt-12 grid items-stretch gap-6 md:mt-16 md:grid-cols-[0.85fr_1.15fr]">
+        <div className="flex flex-col">
+          <Caption>{t('site.desktop.beforeLabel')}</Caption>
+          <Before />
+        </div>
+        <div className="flex flex-col">
+          <Caption tone="after">{t('site.desktop.afterLabel')}</Caption>
+          <After />
+        </div>
+      </Reveal>
+
+      <Reveal order={7} className="mt-16 sm:mt-20">
+        <Highlights />
+      </Reveal>
+    </HomeSection>
+  )
+}
+
+function Dot() {
+  return <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/50" />
+}
+
+function Caption({ tone = 'before', children }: { tone?: 'before' | 'after'; children: React.ReactNode }) {
+  return (
+    <p
+      className={`mb-2.5 text-left text-xs font-black uppercase tracking-[0.14em] ${
+        tone === 'after' ? 'text-brand' : 'text-muted'
+      }`}
+    >
+      {children}
+    </p>
+  )
+}
 
 /**
- * THE FOUR HIGHLIGHTS, and each one is a fact about the product rather than a line of
- * marketing — which is the whole test a row like this has to pass, because four short
- * bold phrases under a screenshot are read as claims.
+ * The four windows. Every position and size is a PERCENTAGE of the panel — both axes —
+ * so the pile keeps its shape whatever height the row hands it, and nothing in it
+ * reaches the panel's edge: the tallest window ends at 91%, the lowest bubble sits at
+ * 5% from the floor. The panel is `grayscale` and dimmed as a whole rather than window
+ * by window, so the two speech bubbles on top of it stay in full colour. The terminal
+ * text is terminal text — `git status`, `gh pr view` — and stays as it is in every
+ * language.
  *
- *   1. TWELVE AGENTS IN PARALLEL is the site's own number, not a new one:
- *      `site.features.desktopDesc` already says "up to twelve agents at once, each in its
- *      own worktree". `Columns` is the glyph `lib/features.ts` gives `splitView` — agents
- *      side by side in one window, which is exactly what the drawing above shows.
- *   2. ALL YOUR CONTEXT, SAVED, and this one is about the PERSON rather than the
- *      machine. It read "one worktree per task" first, which is true — the skills do run
- *      `git worktree add ../${REPO_NAME}-$TICKET_ID` (`skills/magic-start/SKILL.md:404`)
- *      — but a worktree is plumbing, and stating it here spent one of four slots telling
- *      the reader how the trick is done instead of what they get. What they get is that
- *      the ticket, the branch, the description, the session and its cost are held per
- *      agent, so dropping a task and coming back to it costs nothing: the window
- *      remembers, and the reader does not have to. That is the claim the hero's own
- *      subtitle makes ("vous gardez la tête libre"), and this is where the app backs it.
- *      `ScrollText` for the record that is kept — `features.ts` gives it to the rows
- *      about written history, and it is the union's nearest thing to a saved transcript.
- *   3. JIRA AND GITHUB CONNECTED — the two trackers every skill reads and writes. `Plug`
- *      is `features.ts`'s glyph for what the app plugs itself into (`machineSetup`).
- *   4. THE EIGHT /MAGIC: COMMANDS, which is the count `lib/features.ts` holds in
- *      `MAGIC_COMMANDS` and the number the whole site is built on. `Sparkles` is the
- *      APP's own glyph for them — Sidebar.tsx:295 heads its Skills action with it, and the
- *      window above draws that row.
- *
- * GLYPHS BORROWED, NOT INVENTED, for the reason `features.ts`'s icon union gives: this
- * site has a small icon vocabulary and a fifth idea drawn with a fifth family of marks
- * reads as a different site. All four are already in that union.
+ * `flex-1` takes the column's height under the caption; `min-h` is for the one layout
+ * where there is no window beside it to set that height — a single column, under `md`.
  */
+function Before() {
+  const { t } = useT()
+
+  return (
+    <div className="relative min-h-[260px] flex-1 overflow-hidden rounded-2xl md:min-h-0">
+      <div className="absolute inset-0 opacity-75 grayscale">
+        <Pane title="Terminal — zsh" className="left-0 top-[7%] h-[62%] w-[62%]">
+          ❯ claude
+          <br />…
+          <br />
+          <span className="text-amber-300">? Continue? (y/n)</span>
+          <br />▍
+        </Pane>
+        <Pane title="Terminal — zsh (2)" className="left-[18%] top-[20%] h-[62%] w-[62%]">
+          ❯ git status
+          <br />
+          On branch feat/auth
+          <br />
+          Your branch is ahead by 3 commits
+          <br />
+          <span className="text-red-400">✗ 2 tests failed</span>
+        </Pane>
+        <Pane title="Jira — MS-268" light className="left-[38%] top-[33%] h-[58%] w-[60%]">
+          MS-268 · In progress
+          <br />
+          MS-270 · To do
+          <br />
+          MS-271 · In review
+          <br />
+          MS-273 · To do
+          <br />
+          MS-274 · To do
+        </Pane>
+        <Pane title="Terminal — zsh (3)" className="left-[8%] top-[50%] h-[40%] w-[55%]">
+          ❯ gh pr view 409
+          <br />
+          #409 · changes requested
+          <br />2 comments unresolved
+        </Pane>
+      </div>
+      <Bubble className="right-[6%] top-[8%]">{t('site.desktop.bubbleWhich')}</Bubble>
+      <Bubble className="bottom-[5%] left-[4%]">{t('site.desktop.bubbleBranch')}</Bubble>
+    </div>
+  )
+}
+
+function Pane({
+  title,
+  light = false,
+  className,
+  children,
+}: {
+  title: string
+  light?: boolean
+  className: string
+  children: React.ReactNode
+}) {
+  return (
+    <div
+      className={`absolute overflow-hidden rounded-[10px] border px-3 pb-3 pt-7 font-mono text-[0.62rem] leading-relaxed shadow-pane ${
+        light ? 'border-hairline bg-white text-[#374151]' : 'border-white/10 bg-[#1c1f26] text-[#9aa0ad]'
+      } ${className}`}
+    >
+      <span className="absolute left-3 top-2 font-sans text-[0.58rem] font-bold text-[#6b7280]">{title}</span>
+      {children}
+    </div>
+  )
+}
+
+function Bubble({ className, children }: { className: string; children: React.ReactNode }) {
+  return (
+    <span
+      className={`absolute rounded-full border border-hairline bg-white px-3 py-1.5 text-xs font-bold text-[#374151] shadow-bubble ${className}`}
+    >
+      {children}
+    </span>
+  )
+}
+
+/**
+ * THE APP'S WINDOW, scaled to the column — the WHOLE column, to its right edge, which is
+ * what the product owner asked for once the fixed-size frame left a strip of canvas
+ * beside it.
+ *
+ * `AppWindowMockup` draws itself at a fixed 1280×800 (see `WINDOW` there), and a
+ * transform does not shrink the layout box, so the frame has to be sized from the
+ * column and the drawing scaled to the frame. The frame is a CONTAINER
+ * (`container-type: inline-size`), which makes its own width readable inside it as
+ * `100cqw`; the drawing is then scaled by `100cqw / 1280px` — exactly the ratio that
+ * lays 1280 drawn pixels across however wide the column is, at every width, with no
+ * breakpoint table. (The band that stood here before had one, eight rungs long, because
+ * it predates the unit.) `aspect-[16/10]` is the drawing's own 1280×800, so the whole
+ * window shows — the product owner asked for no crop at either edge — and it is this
+ * frame's height that the row, and the "before" pile beside it, take.
+ *
+ * `tan(atan2(100cqw, 1280px))` AND NOT `calc(100cqw / 1280)`, which is what this read
+ * first and what rendered the window at full size: `calc` cannot divide a length by a
+ * length, and a length divided by a number is still a length, which `scale()` rejects
+ * and the browser drops whole. `atan2` takes two lengths and returns an angle; `tan`
+ * of that angle is their ratio as a bare number. It is the one way CSS has to turn two
+ * lengths into a number, and every engine has shipped it. `aspect-[1280/705]` is the frame's height: short of the
+ * drawing's 800, so the window's bottom is cut by the band's floor and the window reads
+ * as rising out of it — the crop the mockup the product owner chose has.
+ *
+ * `md:mx-0` is gone with the fixed width: a block as wide as its column has nothing to
+ * centre.
+ */
+const WINDOW_WIDTH = 1280
+
+function After() {
+  return (
+    <div
+      className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl shadow-window"
+      style={{ containerType: 'inline-size' }}
+    >
+      <div
+        className="absolute left-0 top-0 origin-top-left"
+        style={{ transform: `scale(tan(atan2(100cqw, ${WINDOW_WIDTH}px)))` }}
+      >
+        <AppWindowMockup />
+      </div>
+    </div>
+  )
+}
+
 const HIGHLIGHTS: readonly { id: string; icon: typeof Columns; label: MessageKey }[] = [
   { id: 'parallel', icon: Columns, label: 'site.desktop.highlightParallel' },
   { id: 'context', icon: ScrollText, label: 'site.desktop.highlightContext' },
@@ -202,87 +268,6 @@ const HIGHLIGHTS: readonly { id: string; icon: typeof Columns; label: MessageKey
   { id: 'commands', icon: Sparkles, label: 'site.desktop.highlightCommands' },
 ]
 
-export function DesktopContent() {
-  const { t } = useT()
-
-  return (
-    // `padding="hero"` — THE ONE THING THE MOVE CHANGED IN THIS COMPOSITION. On the
-    // homepage this was a band in a stack, with the hero's own air above it; here it is
-    // the first thing on the page, and the bar is `fixed` at `h-16`, so whatever opens a
-    // page owes it ~7rem before its own first line. Every other page in this group opens
-    // on the same slot. See `SECTION_PADDING` in `home/Shell.tsx`.
-    <HomeSection padding="hero" backdrop={<Aura />}>
-      <div className="mx-auto max-w-3xl text-center">
-        <Reveal order={1}>
-          {/* AN `h1` HERE WHERE IT WAS AN `h2`, which is the other thing the move
-              changed and the one a reader would never see: a page with no `h1` is a page
-              a screen reader cannot summarise and a crawler reads as a fragment. The
-              TYPE is unchanged — `BAND_TITLE.onLight` is the one place the site's
-              headline size lives, and it is a recipe rather than a level. */}
-          <h1 className={BAND_TITLE.onLight}>{t('site.desktop.title')}</h1>
-        </Reveal>
-        <Reveal order={2}>
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted">
-            {t('site.desktop.subtitle')}
-          </p>
-        </Reveal>
-      </div>
-
-      <Reveal order={3} className="mt-12 sm:mt-16">
-        {/* THE FRAME, and it no longer crops anything: it is exactly the size the window
-            renders at, so the only thing it still does is hold the layout box the
-            transform does not shrink. `mx-auto` centres it; `origin-top-left` on the
-            drawing inside makes the scaled pixels start at the frame's own corner, so the
-            two boxes coincide and nothing leaks in any direction. See `FRAME_SIZE`. */}
-        <div className={`relative mx-auto ${FRAME_SIZE}`}>
-          <div className={`absolute left-0 top-0 origin-top-left ${WINDOW_SCALE}`}>
-            <AppWindowMockup />
-          </div>
-        </div>
-      </Reveal>
-
-      {/* GENEROUS AIR ABOVE THE ROW, which the reference has and which this band needs
-          more than the reference does: the window now ENDS above it, so the gap is what
-          separates the app's own bottom edge from a row of the site's own type. Under the
-          crop there was no bottom edge for anything to sit under. */}
-      <Reveal order={4} className="mt-16 sm:mt-20">
-        <Highlights />
-      </Reveal>
-    </HomeSection>
-  )
-}
-
-/**
- * The row that closes the band: four icon tiles, a short bold label under each, and
- * hairline rules BETWEEN the columns.
- *
- * RULES BETWEEN AND NOT AROUND, which is the reference's own detail and the reason this
- * is a grid of `border-l` rather than a bordered box: a frame around four claims reads as
- * a table of specifications, four columns divided by a filet read as one row of things
- * that belong together. `border-hairline` is the site's one filet weight — the note on it
- * in `tailwind.config.ts` is explicit that there is exactly one.
- *
- * THE RULE IS ON THE LEFT OF EVERY COLUMN THAT IS NOT FIRST IN ITS ROW, which is what
- * keeps a dangling filet off the end when the row wraps. Two columns on a phone and four
- * from `md`, so the third cell STARTS a row below `md` and must have no rule there, then
- * gains one at `md` where it is mid-row: that is the one index needing a variant, and it
- * is why the border side is computed per index rather than written once. Grid cells
- * stretch to their row's height, so each rule runs the full height of the row — as it
- * does on the reference — without anything being told how tall it is.
- *
- * `LegendTile` IS NOT REUSED, and deliberately. It is this repo's icon-tile recipe with
- * several call sites (`features/FeatureLegend.tsx`), but it is a 32px tile whose GROUND is
- * the caller's `tone` — a state tint behind a coloured glyph, which is what a legend
- * annotating a drawing needs. This row's tiles are the reference's: ~48px, a white face
- * on a hairline with the quietest rung of the elevation scale under it, and the glyph in
- * the brand blue. Passing that through `tone` would mean also overriding `h-8 w-8` from
- * the call site — the caller dressing a component, which is the exact conflict
- * `components/ui.tsx`'s header warns about, and it would leave both call sites wrong to
- * read. So the tile is written out here, once, and this paragraph is the reason.
- *
- * `shadow-card`, the quietest declared rung, because that is what "a whisper" is: the
- * tiles sit on the page's own blue canvas, and anything more reads as four buttons.
- */
 function Highlights() {
   const { t } = useT()
 
@@ -317,36 +302,6 @@ function Highlights() {
   )
 }
 
-/**
- * The glow behind the window: pink, violet and amber bleeding outward and fading to
- * nothing. The product owner's word for it on the reference page was "le dégradé
- * box-shadow qui est trop stylé", and it is the signature of the whole composition.
- *
- * FOUR BLURRED DISCS AND NOT A SHADOW, for the reason the header above gives. `blur-3xl`
- * on each, which is 64px — the same reach `Bloom` and `Wash` use, and what turns a disc
- * into a field rather than a shape you can see the edge of.
- *
- * THE COLOURS ARE DECLARED TOKENS, and two of them are doing a job their name does not
- * quite say. There is no `pink` in this palette and inventing one for a single band is the
- * unfindable value the config exists to prevent, so the pink is `red` at 25%: at that
- * alpha, blurred, over the blue `canvas`, #ef4444 reads as rose rather than as red —
- * which is the call `FinalCtaSection`'s `Wash` already makes with `bg-red/20`, one step down.
- * The amber is `orange` (#f97316), declared for the app's context gauge. `purple` carries
- * the violet, and `accent` sits under the middle of the window to tie the whole thing to
- * the page's own blue rather than letting it float off into a sunset.
- *
- * POSITIONED IN THE LOWER TWO-THIRDS of the band, so the glow belongs to the window and
- * not to the headline: type over a colour field loses the contrast that makes it a
- * headline. The column above is `relative`, so the words are never inside the blur.
- *
- * THE BOTTOM FADE is the one non-disc layer. This band's ground is `canvas` and the band
- * BELOW it is the closing dark sheet, so the aura has to be gone by the time the two meet
- * — otherwise a violet haze runs under the seam and reads as a rendering fault rather
- * than as light.
- *
- * `aria-hidden` and `pointer-events-none`, as `HomeSection`'s `backdrop` slot requires:
- * it is decoration, and there is nothing in it to announce.
- */
 function Aura() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0">

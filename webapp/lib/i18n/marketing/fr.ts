@@ -102,9 +102,22 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // Le titre est le nom du produit : identique dans les deux catalogues, d'où sa ligne
   // dans la liste `SAME_IN_BOTH.site` de `i18n.test.ts`. « worktree » reste tel quel,
   // comme partout dans l'app et la documentation : c'est le mot de git.
-  'site.desktop.title': 'Magic Slash',
+  'site.desktop.title':
+    'Vous ne devriez pas avoir à <em>vous souvenir</em> de ce que font vos agents.',
+  // « product builders » : le terme reste anglais, comme partout ailleurs sur le site
+  // (voir la note sur `site.pillars.kicker`), mais il prend le pluriel français après
+  // « les » — c'est un nom commun emprunté, pas une marque.
+  'site.desktop.eyebrow': 'Pour les product builders qui font tourner plusieurs agents',
+  'site.desktop.howCta': 'Comment ça marche',
+  'site.desktop.reassureFree': 'Gratuit',
+  'site.desktop.reassureMac': 'macOS',
+  'site.desktop.reassureTrackers': 'Vos tickets Jira et vos PR GitHub, déjà branchés',
+  'site.desktop.beforeLabel': 'Avant · six onglets, zéro vue d’ensemble',
+  'site.desktop.afterLabel': 'Avec Magic Slash · une fenêtre, tout est là',
+  'site.desktop.bubbleWhich': 'C’était lequel qui attendait ?',
+  'site.desktop.bubbleBranch': 'J’ai commité sur la bonne branche ?',
   'site.desktop.subtitle':
-    'Plusieurs agents Claude au travail en même temps, chacun dans son worktree. Suivez-les, pilotez-les et répondez-leur d’une seule fenêtre.',
+    'Magic Slash s’en souvient pour vous. Les tâches à prendre s’affichent dans l’app, chaque agent vous dit s’il a besoin de vous, et vous passez de l’un à l’autre sans perdre le fil.',
   'site.desktop.archiveAgent': 'Archiver l’agent',
   /** Les quatre atouts sous la fenêtre. « Worktree » reste tel quel, comme dans le
       sous-titre au-dessus et dans toute l’application. */

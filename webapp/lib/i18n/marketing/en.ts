@@ -325,7 +325,31 @@ export const marketingEn = {
    * says agents run in it, and "desktop" was a category label doing work the picture had
    * already done — the kind of word a title keeps only until someone reads it aloud.
    */
-  'site.desktop.title': 'Magic Slash',
+  'site.desktop.title':
+    'You shouldn’t have to <em>remember</em> what your agents are doing.',
+  /**
+   * The pill above the headline names the reader rather than the product: the page is
+   * for the product builder who already has three Claude Code sessions in three
+   * terminals. "PRODUCT BUILDER" AND NOT "DEVELOPER", which is the product owner's own
+   * word for who this is for and the one the site already uses twice — see
+   * `site.pillars.kicker` and the closing band. It is also the wider claim: the person
+   * running three agents is shipping a product, not only writing the code.
+   */
+  'site.desktop.eyebrow': 'For product builders running several agents',
+  'site.desktop.howCta': 'How it works',
+  /** The line of reassurance under the two buttons, three short facts and no verb. */
+  'site.desktop.reassureFree': 'Free',
+  'site.desktop.reassureMac': 'macOS',
+  'site.desktop.reassureTrackers': 'Your Jira tickets and GitHub PRs, already wired',
+  /**
+   * THE BEFORE / AFTER under the copy. "Before" is six windows drawn grey and crooked on
+   * purpose, with the two questions a developer asks themself at 4pm floating over them;
+   * "after" is the app's own window, in colour. The two captions name the two halves.
+   */
+  'site.desktop.beforeLabel': 'Before · six tabs, no overview',
+  'site.desktop.afterLabel': 'With Magic Slash · one window, all of it',
+  'site.desktop.bubbleWhich': 'Which one was waiting on me?',
+  'site.desktop.bubbleBranch': 'Did I commit on the right branch?',
   /**
    * TWO LINES, and it is a length rather than a break — there is no `<br>` in it, because
    * a hard break at this width becomes four lines on a phone. See the note in
@@ -343,7 +367,7 @@ export const marketingEn = {
    * that.
    */
   'site.desktop.subtitle':
-    'Several Claude agents at work at once, each in its own worktree. Watch, steer and answer them from one window.',
+    'Magic Slash remembers for you. The tasks to pick up show in the app, every agent tells you when it needs you, and you move from one to the next without losing the thread.',
   /**
    * The titlebar's own button in the drawn window, `agentInfo.closeAgent` in the app's
    * catalogues. A key rather than a literal because the APP translates it — the literals
