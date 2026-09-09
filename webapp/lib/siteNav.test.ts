@@ -16,6 +16,7 @@ import {
   PRODUCT_MENU,
   PRODUCT_MENU_GROUPS,
   PRODUCT_MENU_LABEL,
+  STORY_NAV_ROW,
 } from './siteNav'
 
 /**
@@ -200,8 +201,9 @@ describe('the site header nav', () => {
       DOWNLOAD_PATH,
     ])
     // And the Help menu is a fourth group in the mobile panel rather than two more rows
-    // of the ask.
-    expect(ALL_NAV_GROUPS.at(-1)).toEqual(HELP_MENU)
+    // of the ask. It is no longer the LAST group — the bar's own bare link is a fifth,
+    // below it — so this pins the boundary rather than the end of the array.
+    expect(ALL_NAV_GROUPS.at(-2)).toEqual(HELP_MENU)
   })
 
   it('names glyphs the header can actually draw', () => {
@@ -239,7 +241,26 @@ describe('the site header nav', () => {
     // control fewer — which is exactly why it is asserted.
     expect(PRODUCT_MENU.map((row) => row.href)).not.toContain(FAQ_NAV_ROW.href)
     expect(HELP_MENU).toContain(FAQ_NAV_ROW)
-    expect(ALL_NAV_ROWS).toEqual([...PRODUCT_MENU, ...HELP_MENU])
+    expect(ALL_NAV_ROWS).toEqual([...PRODUCT_MENU, ...HELP_MENU, STORY_NAV_ROW])
+  })
+
+  it('keeps the story in the bar, in neither menu', () => {
+    // IT IS A BARE LINK BESIDE THE TWO TRIGGERS, which is the shape the FAQ had for a
+    // release, and the reason is that `/story` has no siblings: a menu of one is
+    // furniture. Both halves are asserted because both are invisible in a diff — a row
+    // tidied INTO the Help menu costs the bar a control and reads as a third answer to
+    // "how do I get good at this", and a row dropped from `ALL_NAV_GROUPS` leaves the
+    // mobile panel without the only page the bar shows in the open.
+    expect(PRODUCT_MENU).not.toContain(STORY_NAV_ROW)
+    expect(HELP_MENU).not.toContain(STORY_NAV_ROW)
+    expect(ALL_NAV_GROUPS.at(-1)).toEqual([STORY_NAV_ROW])
+
+    // And the bar draws it from this constant rather than from a path typed into JSX —
+    // the whole reason the nav is a module (see the note at the top of `siteNav.ts`).
+    // Read as text, like the glyph and tone assertions below.
+    const header = readFileSync(webapp('../components/site/SiteHeader.tsx'), 'utf8')
+    expect(header).toContain('STORY_NAV_ROW.href')
+    expect(header).not.toContain(`href="${STORY_NAV_ROW.href}"`)
   })
 
   it('asks last', () => {

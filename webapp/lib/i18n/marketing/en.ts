@@ -37,6 +37,11 @@ export const marketingEn = {
       accessible name and not a tooltip beside one. Static while the glyph toggles,
       because `aria-expanded` on the button already announces open from closed. */
   'site.nav.menu': 'Site menu',
+  /** Names the header's language picker. Its visible label is the code of the current
+      language (`EN`), which says what is chosen and not what the control DOES, so the
+      accessible name has to be the noun — and the panel's options are autonyms in their
+      own language (see `LANGUAGE_AUTONYM`), which is deliberately untranslated. */
+  'site.nav.language': 'Language',
   /**
    * THE HEADER'S TWO MENUS AND THE EIGHT ROWS UNDER THEM. `product` and `help` are the
    * two triggers; `workflow`, `application`, `cloud`, `allFeatures`, `changelog` and

@@ -3,7 +3,8 @@ import type { MessageKey } from './i18n'
 import { WORKFLOW_PATH } from './workflow'
 
 /**
- * THE PUBLIC SITE'S HEADER NAV, as data: two menus, and the eight rows behind them.
+ * THE PUBLIC SITE'S HEADER NAV, as data: two menus, the eight rows behind them, and the
+ * one link the bar carries in the open (`STORY_NAV_ROW`).
  *
  * The bar used to carry ONE link — `/features`, mapped from a one-row array that
  * `SiteHeader.tsx` still explains at length. This is the shape that array was left an
@@ -53,13 +54,20 @@ import { WORKFLOW_PATH } from './workflow'
  * to RESOLVE one. `components/site/SiteHeader.tsx` holds the map from these names to
  * lucide's components, beside the markup that renders them.
  *
- * ALL SEVEN ARE LUCIDE EXPORTS, checked against the `^1.26.0` in `webapp/package.json`
+ * ALL NINE ARE LUCIDE EXPORTS, checked against the `^1.26.0` in `webapp/package.json`
  * rather than guessed — v1 dropped the brand glyphs and renamed a family of others
  * (`HelpCircle` is `CircleHelp` here), and a name lucide does not ship is a `tsc` error
  * at the map and a refused Vercel build. The map keeps a fallback behind that anyway.
+ *
+ * WHICH IS ALSO WHY GITHUB'S MARK IS NOT IN HERE. The bar links to the repository, and
+ * that glyph is the one lucide will not ship: `components/site/icons.tsx` draws it, and
+ * the link that uses it is written out in `SiteHeader.tsx` rather than being a row here.
+ * A `SiteNavIcon` is a name the ICONS map can resolve; a name it cannot is worse than
+ * an exception stated once.
  */
 export type SiteNavIcon =
   | 'AppWindow'
+  | 'BookOpen'
   | 'CircleHelp'
   | 'Cloud'
   | 'Download'
@@ -97,9 +105,11 @@ export type SiteNavRow = {
   href: string
   label: MessageKey
   /**
-   * The glyph beside the label, IN THE PANELS. Nothing in the bar itself draws one — it
-   * is two triggers and their chevrons, and a 64px bar of icons beside two words is a
-   * toolbar rather than a nav.
+   * The glyph beside the label, IN THE PANELS. Nothing in the NAV draws one — two
+   * triggers, their chevrons and one bare link, because a 64px bar of icons beside three
+   * words is a toolbar rather than a nav. (The bar's right-hand cluster does carry one
+   * icon-only control, the link to the repository, and it is not a nav row: it leaves
+   * the site.)
    *
    * Every row has one, which was not true while the FAQ stood in the bar as a link: the
    * one bare label in a column reads as a row that failed to load, so the rule is all or
@@ -352,7 +362,35 @@ export const HELP_MENU: SiteNavRow[] = [
 ]
 
 /**
- * THE WHOLE NAV AS GROUPS — the Product menu's three families, then the Help menu.
+ * The page about where this came from — and the ONE row the bar shows itself.
+ *
+ * A BARE LINK BESIDE THE TWO TRIGGERS, which is the shape the FAQ had for a release
+ * before it got a neighbour and became a menu. The bar can hold a third control as long
+ * as it is a control and not a family: "Our story" has no siblings — there is one such
+ * page and there will not be a second — so a menu of one is furniture, and hiding it
+ * behind "Help" would file the founding story under troubleshooting.
+ *
+ * ITS PATH IS SPELLED HERE. `/story` has no module of its own (its copy is
+ * `site.story.*` and its composition is `components/site/story/StoryContent.tsx`, which
+ * also keeps the one remaining `story.css`), so the menu is where the site's paths are
+ * listed — the same argument `DESKTOP_PATH` and `DOWNLOAD_PATH` above record.
+ *
+ * A GLYPH AND A TONE, THOUGH THE BAR DRAWS NEITHER. Nothing in the bar has an icon (see
+ * `icon` on `SiteNavRow`), but this row is also in `ALL_NAV_GROUPS`, and below `md` it
+ * lands in a column where every other row has one — so the rule there is all or none.
+ * `purple` because it is reference, the family `/features`, `/changelog` and the whole
+ * Help menu are in: a page you go to READ. `BookOpen` for the same reason.
+ */
+export const STORY_NAV_ROW: SiteNavRow = {
+  href: '/story',
+  label: 'site.nav.ourStory',
+  icon: 'BookOpen',
+  tone: 'purple',
+}
+
+/**
+ * THE WHOLE NAV AS GROUPS — the Product menu's three families, the Help menu, then the
+ * one row the bar carries itself.
  *
  * This is what the MOBILE panel renders. Below `md` there are no dropdowns at all: the
  * panel is one column of links, so it draws every row in the bar's own order with a rule
@@ -367,7 +405,15 @@ export const HELP_MENU: SiteNavRow[] = [
  * reason `SiteHeader`'s note gives: the bar showing a nav the panel does not is a failure
  * nothing announces.
  */
-export const ALL_NAV_GROUPS: SiteNavRow[][] = [...PRODUCT_MENU_GROUPS, HELP_MENU]
+export const ALL_NAV_GROUPS: SiteNavRow[][] = [
+  ...PRODUCT_MENU_GROUPS,
+  HELP_MENU,
+  // A GROUP OF ONE, and last, because that is where the bar puts it: right of the Help
+  // trigger. It is a group rather than a row appended to the Help menu for the reason
+  // that made it a bare link up there — it is nobody's sibling, and under that rule it
+  // would read as a third answer to "how do I get good at this".
+  [STORY_NAV_ROW],
+]
 
 /**
  * Every row the bar can reach, flat — both menus' rows — for the question "what does the

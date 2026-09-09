@@ -31,12 +31,12 @@ import type { SiteNavTone } from '@/lib/siteNav'
  */
 
 /**
- * A control in the bar itself. Both of them are this component's own trigger today; it
- * stays exported because the bar has twice held a plain `Link` beside a menu (the
- * "How it works" anchor, then `/faq`), and either could come back.
+ * EVERY CONTROL IN THE BAR, and that is now literally every one: the two nav triggers,
+ * the language picker, the two bare links (`/story` and the repository) and the way in.
+ * One recipe, one baseline, one focus ring, one hover.
  *
- * Shared because the drift already happened once: that "How it works" link was written
- * out separately and arrived without the focus ring, so two adjacent controls announced
+ * Shared because the drift already happened once: a "How it works" link was written out
+ * separately and arrived without the focus ring, so two adjacent controls announced
  * keyboard focus differently. Call sites append only what differs (`sm:block`), which
  * is additive and cannot race the recipe — see the rule in `components/ui.tsx`.
  *
@@ -52,47 +52,62 @@ import type { SiteNavTone } from '@/lib/siteNav'
  *
  * `text-ink/80` and not `text-ink`: full ink puts the nav at the wordmark's exact weight,
  * and 80% is the one step back that keeps the mark first while staying unmistakably
- * dark. `hover:text-ink` closes that gap on the row under the cursor.
+ * dark. `hover:text-ink` closes that gap on the control under the cursor.
  *
  * `rounded-full` is not a new token — the radius scale in `tailwind.config.ts` is for
  * boxes, and a pill is what `Badge` already uses for the same reason: it is a SHAPE, not
  * a rung.
  *
- * NO GROUND IN HERE. The pill's grey fill is `NAV_ITEM_GROUND` below, and it belongs to
- * a TRIGGER rather than to this recipe — a control that opens something answers the
- * cursor with a chip, a control that navigates does not. That distinction cost nothing
- * while the bar held one of each; it is what keeps the rule honest now that both
- * controls are menus and the fill looks like it could simply live here.
+ * THE GREY CHIP IS IN HERE, BY DECISION OF THE OWNER, and it is the one line of this
+ * note that reversed. It used to be `NAV_ITEM_GROUND_HOVER`, a separate constant two
+ * call sites appended, on the rule that a control which OPENS something answers the
+ * cursor with a chip while a control that merely navigates does not. That distinction
+ * is gone: the bar's links and its dropdowns are meant to be one format, so the chip
+ * belongs to the recipe rather than to a subset of its call sites — which also means a
+ * link added to the bar tomorrow cannot arrive without it, the way the focus ring once
+ * did. `NAV_ITEM_GROUND` below is what is left of the split, and it is a different
+ * state: a chip with no cursor on it, for a menu that is OPEN.
+ *
+ * `hover:bg-black/[0.05]` IS SPELLED OUT, never a variant wrapped around an
+ * interpolated constant — Tailwind
+ * extracts candidates from the raw TEXT of a file, so an interpolated variant is a class
+ * it never sees and never emits. (This shipped that way for about a minute.) The
+ * interpolations below are safe because the literal they splice in already carries its
+ * own variant; a variant added AROUND one has to be written where the scanner reads it.
  */
-export const NAV_ITEM =
-  'rounded-full px-3.5 py-2 font-display text-sm font-semibold text-ink/80 transition hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
+const NAV_ITEM_BASE =
+  'rounded-full font-display text-sm font-semibold text-ink/80 transition hover:bg-black/[0.05] hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
 
 /**
- * The pill's fill, for a control that is HOVERED or OPEN.
+ * A control with a LABEL in it — which, since the repository link went from a mark to
+ * the word "GitHub", is all of them.
+ *
+ * THE PADDING IS THE SLOT, and the base holds everything else, for the mechanical reason
+ * `POPOVER_ROW_BASE` states one level down: a `p-2` handed to a string that already says
+ * `px-3.5 py-2` does not win by being later in it — both are utilities in the same
+ * group, so the one Tailwind emitted LAST in the sheet wins, and it emits padding by
+ * ascending value. The split cost nothing to keep, and it is what a second shape (an
+ * icon-only control, which the bar held for exactly one iteration) would need again.
+ */
+export const NAV_ITEM = `px-3.5 py-2 ${NAV_ITEM_BASE}`
+
+/**
+ * The pill's fill with NO CURSOR ON IT — for a control whose menu is open, and for the
+ * way in, which rests on it.
  *
  * `black/[0.05]` is the same tint `POPOVER_ROW_REST` uses for a hovered row, one point
  * up: a chip in the bar is read against a white sheet (or against the hero, at rest,
- * where nothing is behind it at all), and 4% disappears there.
+ * where nothing is behind it at all), and 4% disappears there. It is the same value the
+ * hover in `NAV_ITEM_BASE` fades in, which is the point — an open menu looks exactly
+ * like the control you are pointing at, because it is the one you pointed at.
  *
- * WHY IT IS NOT PERMANENT. Above the fold the bar has no surface of its own — no fill,
- * no rule, no blur, just the controls floating on the hero (see `SiteHeader`) — and a
- * grey chip sitting on that wash is a small box of nothing in the middle of the bloom.
- * On hover it is an answer to the cursor; while the menu is open it is what says which
- * control the panel belongs to.
+ * WHY IT IS NOT IN THE RECIPE. Above the fold the bar has no surface of its own — no
+ * fill, no rule, no blur, just the controls floating on the hero (see `SiteHeader`) —
+ * and a row of grey chips sitting on that wash is a strip of small boxes in the middle
+ * of the bloom. Resting on nothing is what makes the chip mean something when it
+ * arrives.
  */
 export const NAV_ITEM_GROUND = 'bg-black/[0.05]'
-
-/**
- * The same fill, as a hover.
- *
- * SPELLED OUT AND NOT `hover:${NAV_ITEM_GROUND}`, which is the version this shipped with
- * for about a minute and which produces NOTHING: Tailwind extracts candidates from the
- * raw TEXT of a file, so an interpolated variant is a class it never sees and never
- * emits. The rest of this file's recipes interpolate safely because the literal they
- * splice in already carries its own variant; a variant added AROUND one has to be
- * written where the scanner can read it.
- */
-const NAV_ITEM_GROUND_HOVER = 'hover:bg-black/[0.05]'
 
 /**
  * The floating panel, minus the edge it hangs from and how wide it is — those differ
@@ -143,8 +158,15 @@ const POPOVER_ROW_GROUND = 'hover:bg-black/[0.04]'
 
 /**
  * A row's colours at rest — the QUIET dress, for a popover whose rows are options rather
- * than destinations. `LanguageMenu`'s two are what this is for now.
- */
+ * than destinations.
+ *
+ * NOTHING WEARS IT TODAY. `LanguageMenu`'s two options did, which is what it was written
+ * for, and they took `POPOVER_ROW_NAV` instead when the picker moved back into the bar:
+ * two panels hanging off the same header, one of them at `muted` body weight and the
+ * other semibold ink, read as one menu and one disabled menu. It is kept rather than
+ * deleted for the reason the picker's own `header` dress was kept through the release it
+ * spent unused — and because it is the dress `FeaturesSidebar` measures its own rail
+ * against, in a note that only makes sense while this exists to be compared to.
 export const POPOVER_ROW_REST = `text-muted ${POPOVER_ROW_GROUND} hover:text-ink`
 
 /**
@@ -153,7 +175,8 @@ export const POPOVER_ROW_REST = `text-muted ${POPOVER_ROW_GROUND} hover:text-ink
  * Measured off the reference menu: its rows are near-black and semibold in the display
  * face, the same as the bar above them, because they are the site's own destinations and
  * not settings. `text-muted` — what these rows wore, and what `POPOVER_ROW_REST` still
- * is — read as a list of things that had been disabled.
+ * is — read as a list of things that had been disabled. The language picker's options
+ * now take THIS one, for the same reason one step further out: see the note above it.
  *
  * A SEPARATE CONSTANT AND NOT AN APPENDED CLASS, and that is the mechanical half: two
  * text colours in one string do not resolve by their order in the string, they resolve
@@ -319,14 +342,13 @@ export function NavDropdown({
 
   return (
     <div ref={root} className="relative">
-      {/* THE PILL. `hover:` here rather than in `NAV_ITEM` because the bar's other
-          control must not take it (see `NAV_ITEM_GROUND`), and the OPEN state carries the
-          same fill without a cursor: a panel hanging off a control that looks untouched
-          is a panel with no owner. `gap-1.5` sets the chevron off the label at the weight
-          the label now has. */}
+      {/* THE PILL. The hover is `NAV_ITEM`'s own now (every control in the bar takes it);
+          what is added here is the OPEN state — the same fill without a cursor, because a
+          panel hanging off a control that looks untouched is a panel with no owner.
+          `gap-1.5` sets the chevron off the label at the weight the label now has. */}
       <button
         type="button"
-        className={`flex items-center gap-1.5 ${NAV_ITEM} ${NAV_ITEM_GROUND_HOVER} ${
+        className={`flex items-center gap-1.5 ${NAV_ITEM} ${
           open ? `${NAV_ITEM_GROUND} text-ink` : ''
         }`}
         onClick={() => setOpen((was) => !was)}

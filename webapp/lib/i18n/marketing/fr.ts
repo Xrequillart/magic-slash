@@ -15,6 +15,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // ── Nav ────────────────────────────────────────────────────────────────────
   'site.nav.howItWorks': 'Comment ça marche',
   'site.nav.menu': 'Menu du site',
+  'site.nav.language': 'Langue',
   'site.nav.product': 'Produit',
   // Trois des six rangées du menu Produit sont le mot français : c'est le vocabulaire
   // du produit, celui que l'app emploie déjà en français. Voir la note côté anglais.
