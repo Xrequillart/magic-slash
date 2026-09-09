@@ -43,7 +43,7 @@ export function SplitViewMockup() {
 function Pane({ ticket, typing = false }: { ticket: string; typing?: boolean }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-3 px-4 py-4">
-      <span className="text-[11px] font-medium uppercase tracking-wider text-appink-icon">
+      <span className="whitespace-nowrap text-[11px] font-medium uppercase tracking-wider text-appink-icon">
         {ticket}
       </span>
       <div className="flex flex-col gap-2">

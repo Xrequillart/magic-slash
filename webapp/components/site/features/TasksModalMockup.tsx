@@ -367,7 +367,12 @@ const LEGEND: readonly {
   },
 ];
 
-export function TasksModalMockup() {
+/**
+ * `legend` — the box of definitions under the drawing. On by default, which is what
+ * `/features` wants; `/desktop` shows the same drawing beside its own paragraph and
+ * turns it off, because that paragraph is the legend there.
+ */
+export function TasksModalMockup({ legend = true }: { legend?: boolean } = {}) {
   const { t } = useT();
 
   return (
@@ -581,18 +586,20 @@ export function TasksModalMockup() {
           before you see it, and the two cards are two different reads. `FeatureLegend` is
           the same one the Agents drawing uses further down — one closed box, no gutters,
           because these annotate the picture rather than standing on their own. */}
-      <FeatureLegend
-        items={LEGEND.map((entry) => ({
-          id: entry.id,
-          mark: (
-            <LegendTile tone="bg-accent/10 text-accent">
-              <entry.icon className="h-4 w-4" />
-            </LegendTile>
-          ),
-          name: entry.name,
-          description: entry.description,
-        }))}
-      />
+      {legend ? (
+        <FeatureLegend
+          items={LEGEND.map((entry) => ({
+            id: entry.id,
+            mark: (
+              <LegendTile tone="bg-accent/10 text-accent">
+                <entry.icon className="h-4 w-4" />
+              </LegendTile>
+            ),
+            name: entry.name,
+            description: entry.description,
+          }))}
+        />
+      ) : null}
     </div>
   );
 }

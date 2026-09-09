@@ -209,7 +209,12 @@ const STATE_TONE: Record<AgentStateId, string> = {
   error: "text-red",
 };
 
-export function AgentsSidebarMockup() {
+/**
+ * `legend` — the box of definitions under the drawing. On by default, which is what
+ * `/features` wants; `/desktop` shows the same drawing beside its own paragraph and
+ * turns it off, because that paragraph is the legend there.
+ */
+export function AgentsSidebarMockup({ legend = true }: { legend?: boolean } = {}) {
   const { t } = useT();
 
   return (
@@ -370,18 +375,20 @@ export function AgentsSidebarMockup() {
           The marks are the app's OWN badges, animation and all, on a tile in each
           state's own tint, so the reader can match one to the list above without looking
           twice. */}
-      <FeatureLegend
-        items={AGENT_STATES.map((state) => ({
-          id: state.id,
-          mark: (
-            <LegendTile tone={`${state.tint} ${state.tone}`}>
-              <AgentStateGlyph state={state.id} />
-            </LegendTile>
-          ),
-          name: state.name,
-          description: state.description,
-        }))}
-      />
+      {legend ? (
+        <FeatureLegend
+          items={AGENT_STATES.map((state) => ({
+            id: state.id,
+            mark: (
+              <LegendTile tone={`${state.tint} ${state.tone}`}>
+                <AgentStateGlyph state={state.id} />
+              </LegendTile>
+            ),
+            name: state.name,
+            description: state.description,
+          }))}
+        />
+      ) : null}
     </div>
   );
 }

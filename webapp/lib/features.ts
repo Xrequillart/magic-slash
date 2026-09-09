@@ -1,5 +1,5 @@
 import { MAGIC_COMMANDS, type MagicCommandIcon, type MagicCommandId } from './commands'
-import type { MessageKey } from './i18n'
+import type { MessageKey, Translate } from './i18n'
 
 /**
  * EVERY FEATURE THE PRODUCT HAS, grouped into families — the canonical list, and the
@@ -1142,3 +1142,25 @@ export const PAGE_CHROME = {
   /** The label of the link to this page, wherever the site offers one. */
   allFeatures: 'site.nav.allFeatures',
 } as const satisfies Record<string, MessageKey>
+
+/**
+ * What a row or a card is HEADED with. Three kinds, in the order they are tested:
+ *
+ *   • a command → its prose name, "Plan" rather than `/magic:plan`. On this page the
+ *     eight are headlines in a grid, and `/magic:` is the same six characters on all
+ *     of them; the typed form belongs in the documentation, where the reader is about
+ *     to run it.
+ *   • one of the six product names → printed verbatim. "Jira" is "Jira".
+ *   • anything else → a catalogue key, translated.
+ *
+ * `isCommandTitle` and `isLiteralTitle` narrow their own branches, so none of the three
+ * needs a cast: the last else is `MessageKey`, which is exactly what `t()` takes.
+ *
+ * HERE AND NOT IN `FeaturesContent`, where it was written, because `/desktop` heads the
+ * same rows (`components/site/desktop/`) and has to head them the same way. Pure logic
+ * over this module's own types, which is also what lets the root suite reach it.
+ */
+export function titleOf(title: FeatureTitle, t: Translate): string {
+  if (isCommandTitle(title)) return commandLabel(title)
+  return isLiteralTitle(title) ? title : t(title)
+}

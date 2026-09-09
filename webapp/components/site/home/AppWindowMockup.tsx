@@ -29,8 +29,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
-import { GithubMark } from '../features/TasksModalMockup'
-import { JiraMark } from '../features/TicketCardMockup'
+import { gaugeColors, InfoSidebarPanel } from '../features/InfoSidebarMockup'
 
 /**
  * THE WHOLE DESKTOP WINDOW, redrawn — titlebar, agent list, terminal, info panel — for
@@ -239,16 +238,6 @@ const WINDOW = { width: 1280, height: 800 } as const
 /** `SIDEBAR_WIDTH` in `Sidebar.tsx`. Fixed, and deliberately not resizable. */
 const SIDEBAR_WIDTH = 230
 
-/** `DEFAULT_WIDTH` in `AgentInfoSidebar.tsx` — the width for an implementation agent. */
-const PANEL_WIDTH = 500
-
-/**
- * The repository's colour, `PROJECT_COLORS[0]` in `utils/projectColors.ts`. Inline rather
- * than a token because the app derives it per repository and tints both the tile's ground
- * and its glyph from the one value — the same call `features/RepoCardMockup.tsx` makes.
- */
-const REPO_COLOR = '#3B82F6'
-
 /**
  * The version the footer prints. A literal, bumped at release like the app's own — see
  * Sidebar.tsx:391, which holds the same string the same way.
@@ -303,43 +292,14 @@ const AGENTS: readonly { name: string; state: AgentState; active?: boolean }[] =
 ]
 
 /**
- * `gaugeColors` in `agent-info-sidebar/LimitGauge.tsx`, thresholds included: green below
- * 65%, yellow from 65, red from 85. The session gauge is on the far side of the first
+ * The two account rate limits the left sidebar's usage card shows. `gaugeColors` —
+ * `agent-info-sidebar/LimitGauge.tsx`'s thresholds, green below 65%, yellow from 65,
+ * red from 85 — now lives with the info panel in `features/InfoSidebarMockup.tsx`, along
+ * with the panel's own figures. The session gauge is on the far side of the first
  * threshold here, so the card is caught having changed colour.
  */
-function gaugeColors(pct: number) {
-  if (pct >= 85) return { bar: 'bg-red', text: 'text-red' }
-  if (pct >= 65) return { bar: 'bg-yellow', text: 'text-yellow' }
-  return { bar: 'bg-green', text: 'text-green' }
-}
-
-/** `contextColors` in `agent-info-sidebar/utils.ts`: red from 70, orange from 40. */
-function contextColors(pct: number) {
-  if (pct >= 70) return { bar: 'bg-red', text: 'text-red' }
-  if (pct >= 40) return { bar: 'bg-orange', text: 'text-orange' }
-  return { bar: 'bg-green', text: 'text-green' }
-}
-
-/** The two account rate limits, and the agent's own context — the figures the cards show. */
 const SESSION_PCT = 72
 const WEEKLY_PCT = 38
-const CONTEXT_PCT = 54
-
-/** The files the agent has touched since its last commit, as `git diff --numstat` has them. */
-const FILES: readonly { file: string; added: number; removed: number }[] = [
-  { file: 'vat.ts', added: 4, removed: 1 },
-  { file: 'vat.test.ts', added: 14, removed: 0 },
-]
-
-/** The commits already on the branch, newest first, as `git log` hands them over. */
-const COMMITS: readonly { subject: string; age: string; hash: string }[] = [
-  { subject: 'fix(billing): round the VAT once, on the total', age: '2m', hash: 'a3f1c92' },
-  { subject: 'test(billing): cover the two-line invoice', age: '9m', hash: '7b40e18' },
-  { subject: 'refactor(billing): lift applyVat out of the PDF', age: '14m', hash: 'c1d8a05' },
-]
-
-const BASE_BRANCH = 'main'
-const BRANCH = 'feature/PAY-318-invoice-vat'
 
 /**
  * THE SIXTEEN COLOURS, or the nine of them this session uses.
@@ -589,36 +549,8 @@ function UsageBar({ label, reset, percent }: { label: string; reset: string; per
  * Shared rather than repeated three times, because in the app it IS the same string in
  * three places: a fourth control added there would wear it too.
  */
-const DASHED_BUTTON =
-  'flex items-center gap-1 rounded border border-dashed border-appline/40 px-1.5 py-0.5 text-[10px] font-semibold text-appink-icon'
-
-/** A branch pill of the branch row: `px-2 py-1.5` on the raised surface, inside a subtle filet. */
-function BranchPill({ name, tone }: { name: string; tone: 'base' | 'current' }) {
-  const ink = tone === 'current' ? 'text-green' : 'text-appink'
-  return (
-    <div
-      className={`flex min-w-0 items-center gap-1.5 rounded-md border border-white/5 bg-white/[0.06] px-2 py-1.5 ${
-        tone === 'current' ? 'flex-1' : 'self-stretch'
-      }`}
-    >
-      <GitBranch className={`h-3.5 w-3.5 shrink-0 ${ink}`} />
-      <span className={`truncate text-xs font-medium ${ink}`}>{name}</span>
-      {tone === 'current' ? (
-        <span className="ml-auto shrink-0 rounded p-1">
-          <Copy className="h-3 w-3 text-appink-icon" />
-        </span>
-      ) : null}
-    </div>
-  )
-}
-
 export function AppWindowMockup() {
   const { t } = useT()
-
-  const added = FILES.reduce((n, f) => n + f.added, 0)
-  const removed = FILES.reduce((n, f) => n + f.removed, 0)
-  const ratio = added / (added + removed || 1)
-  const context = contextColors(CONTEXT_PCT)
   // One agent is waiting on an answer, so the banner reads 1. Counted rather than
   // written, so the number and the list can never disagree — `AttentionBanner` counts
   // `waiting` and `error`, and the rows it counts stay where they are.
@@ -633,7 +565,7 @@ export function AppWindowMockup() {
     // `rounded-xl` ON ALL FOUR CORNERS, which it was not: this window used to be cropped
     // by its band and only ever showed a top edge, so the two bottom corners were left
     // square on the argument that nobody would see them. The product owner asked to see
-    // the whole app, so they are seen — see the note at the top of `DesktopContent.tsx`.
+    // the whole app, so they are seen — see the note at the top of `DesktopHero.tsx`.
     // 12px is the radius macOS gives a window, and the app asks for no other: it is
     // `titleBarStyle: 'hidden'` over `transparent` with `vibrancy` (main/index.ts:200-203)
     // and leaves `roundedCorners` at its default, so the platform's own curve is the one
@@ -645,7 +577,7 @@ export function AppWindowMockup() {
     // inside stays the app's (the same call `components/Flag.tsx` makes), and being inset
     // it follows the radius all the way round. `shadow-lift` is the top rung of the
     // declared elevation scale; the aura behind the window on `/desktop` is
-    // `DesktopContent`'s, built out of blurred blobs for the reason that file gives. The
+    // `DesktopHero`'s, built out of blurred blobs for the reason that file gives. The
     // homepage's smaller copy has none — see the note in `AppSection.tsx`.
     //
     // `font-display` and NOT `font-sans` — see the TYPE section at the top of this file.
@@ -861,218 +793,14 @@ export function AppWindowMockup() {
         </div>
 
         {/* ── 4. THE RIGHT PANEL ─────────────────────────────────────────────────── */}
-        {/* NO HEADER. No title, no agent name, no close X — the close action is the
-            Archive pill in the titlebar, because it belongs to the agent and not to a
-            panel that may be collapsed. `font-display` again, kept on the column even
-            though the window root now carries it: this is the one region whose family the
-            app sets EXPLICITLY, as an inline `fontFamily` on the scrolling container
-            (AgentInfoSidebar.tsx:445), and dropping the class here would hide that. */}
-        <div
-          className="shrink-0 space-y-4 bg-black/30 p-4 font-display"
-          style={{ width: PANEL_WIDTH }}
-        >
-          {/* ── 4a. THE SESSION CARD (`UsageCard.tsx`) ────────────────────────────── */}
-          <div className="space-y-3 rounded-xl bg-white/[0.06] p-4">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <span className="text-xs uppercase tracking-wider text-appink/50">
-                  {t('site.infoSidebar.session')}
-                </span>
-                <span className="flex items-center gap-1 text-[11px] normal-case tracking-normal text-appink-icon">
-                  <RefreshCw className="h-3 w-3" />
-                  {t('site.infoSidebar.justNow')}
-                </span>
-              </span>
-              <div className="flex items-center gap-1.5">
-                <span className="flex items-center gap-1 rounded-md bg-purple/15 px-1.5 py-0.5 text-[11px] font-medium text-purple">
-                  <Cpu className="h-3 w-3" />
-                  Fable 5.1
-                </span>
-                <span className="flex shrink-0 items-center justify-center self-stretch rounded-md px-1 text-appink-icon">
-                  <Minus className="h-3 w-3" />
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 text-appink">
-                  <Gauge className="h-3.5 w-3.5" />
-                  {t('site.infoSidebar.context')}
-                </span>
-                <span className={`font-medium ${context.text}`}>{CONTEXT_PCT}%</span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/30">
-                <div className={`h-full rounded-full ${context.bar}`} style={{ width: `${CONTEXT_PCT}%` }} />
-              </div>
-              <div className="text-[11px] tabular-nums text-appink/70">540.0k / 1.00M tokens</div>
-            </div>
-
-            <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1.5 text-appink">
-                <DollarSign className="h-3.5 w-3.5" />
-                <span className="font-medium tabular-nums text-white">$3.13</span>
-              </span>
-              <span className="flex items-center gap-1.5 text-appink">
-                <Clock className="h-3.5 w-3.5" />
-                <span className="tabular-nums">24m 18s</span>
-              </span>
-            </div>
-          </div>
-
-          {/* ── 4b. THE TICKET CARD (`TicketHeader.tsx`) ──────────────────────────── */}
-          <div className="rounded-xl bg-white/[0.06] p-4">
-            <div className="mb-3 flex items-center justify-between">
-              {/* The mark hangs off the ticket ID rather than off the link: it says which
-                  tracker the ID belongs to, which is worth showing whether or not a URL
-                  could be built for it. */}
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-white">
-                <JiraMark className="h-3.5 w-3.5 shrink-0" />
-                PAY-318
-              </span>
-              {/* `in progress` — `bg-yellow/20 text-yellow`, `STATUS_OPTIONS`' own pair for
-                  it. An agent mid-implementation is exactly what this status means, and
-                  the terminal beside it is showing that implementation. */}
-              <span className="flex items-center gap-1.5 rounded-full bg-yellow/20 px-2.5 py-1 text-xs font-medium text-yellow">
-                {t('site.status.inProgress')}
-                <ChevronDown className="h-3 w-3" />
-              </span>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <h2 className="flex-1 break-words text-sm font-semibold leading-tight text-white">
-                {t('site.infoSidebar.ticketTitle')}
-              </h2>
-              <Edit2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-appink-muted" />
-            </div>
-            <div className="mt-3 flex items-start gap-2">
-              <div className="flex-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-white/60">
-                {t('site.infoSidebar.ticketDescription')}
-              </div>
-              <Edit2 className="mt-0.5 h-3 w-3 shrink-0 text-appink-muted" />
-            </div>
-          </div>
-
-          {/* ── 4c. THE REPOSITORY CARD (`RepositoryCard.tsx`) ────────────────────── */}
-          {/* A `space-y-3` LIST, because an agent can carry several repositories — this
-              one carries one, and the list is what makes the second one cost no layout. */}
-          <div className="space-y-3">
-            <div className="rounded-xl bg-white/[0.06] p-3">
-              <div className="mb-2 flex items-center gap-2">
-                <span
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
-                  style={{ backgroundColor: `${REPO_COLOR}1f`, color: REPO_COLOR }}
-                >
-                  <FolderGit2 className="h-3.5 w-3.5" />
-                </span>
-                <span className="truncate text-sm font-medium text-white/90">magic-pay</span>
-                <div className="ml-auto flex items-center gap-1.5">
-                  {/* SCRIPTS, and it reads FIRST — `ScriptsDropdown` is the first child of
-                      this row in the app (RepositoryCard.tsx:78), before VSCode, GitHub
-                      and the remove X. Drawn CLOSED, which is its resting state, and the
-                      chevron is part of that state rather than a hint that something is
-                      open: the trigger carries `Play`, the label and a `w-2.5` chevron at
-                      all times (ScriptsDropdown.tsx:163-165), and the panel it opens is
-                      portalled to `<body>` and absent until it is clicked. */}
-                  <span className={DASHED_BUTTON}>
-                    <Play className="h-3 w-3" />
-                    {t('site.infoSidebar.scripts')}
-                    <ChevronDown className="h-2.5 w-2.5" />
-                  </span>
-                  <span className={DASHED_BUTTON}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/img/vscode-logo.png" alt="" className="h-3 w-3 object-contain" />
-                    {t('site.infoSidebar.open')}
-                  </span>
-                  <span className={DASHED_BUTTON}>
-                    <GithubMark className="h-3 w-3" />
-                    {t('site.infoSidebar.open')}
-                  </span>
-                  <span className="flex items-center justify-center rounded p-1 text-appink-icon">
-                    <X className="h-3.5 w-3.5" />
-                  </span>
-                </div>
-              </div>
-
-              {/* The branch row: where the work came from, an arrow, where it is now. The
-                  current branch is green in both its glyph and its label. */}
-              <div className="mb-2 flex items-center gap-1.5">
-                <BranchPill name={BASE_BRANCH} tone="base" />
-                <ArrowRight className="h-3 w-3 shrink-0 text-appink-muted" />
-                <BranchPill name={BRANCH} tone="current" />
-              </div>
-
-              {/* Uncommitted changes, with the six-square gauge: each square is green when
-                  the additions' share of the diff clears `(i + 1) / 6`, so the row reads as
-                  a proportion rather than as a number. */}
-              <div className="mb-2 rounded-md border border-white/5 bg-white/[0.06] p-2">
-                <div className="mb-2 flex items-center gap-2 text-xs">
-                  <span className="font-medium text-appink/70">{t('site.infoSidebar.uncommitted')}</span>
-                  <div className="ml-auto flex items-center gap-2">
-                    <span className="text-appink/50">
-                      {t('site.infoSidebar.files', { count: FILES.length })}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="text-green">+{added}</span>
-                      <span className="text-red">-{removed}</span>
-                    </span>
-                    <div className="flex gap-0.5">
-                      {[0, 1, 2, 3, 4, 5].map((i) => (
-                        <div
-                          key={i}
-                          className={`h-1.5 w-1.5 rounded-sm ${
-                            ratio >= (i + 1) / 6 ? 'bg-green' : 'bg-red'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-0.5">
-                  {FILES.map((file) => (
-                    // The BASENAME only, which is what the app shows: the full path is the
-                    // row's title attribute there, and at this width a path is a truncation.
-                    <div key={file.file} className="flex items-center gap-1.5 py-0.5 text-xs">
-                      <span className="flex-1 truncate font-mono text-appink/60">{file.file}</span>
-                      <span className="shrink-0 text-[10px] text-appink/40">
-                        <span className="text-green">+{file.added}</span>
-                        {file.removed > 0 ? <span className="text-red"> -{file.removed}</span> : null}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* The commits already on the branch. "N ahead of main" is the app's own
-                  literal (RepositoryCard.tsx:227) — git's phrasing, in every language. */}
-              <div className="rounded-md border border-white/5 bg-white/[0.06] p-2">
-                <div className="mb-1.5 flex items-center text-xs">
-                  <span className="font-medium text-appink/70">{t('site.infoSidebar.commits')}</span>
-                  <span className="ml-auto text-appink/50">
-                    {COMMITS.length} ahead of {BASE_BRANCH}
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  {COMMITS.map((commit) => (
-                    <div key={commit.hash} className="flex items-center gap-2 py-0.5 text-xs">
-                      <span className="flex-1 truncate text-appink/60">{commit.subject}</span>
-                      <span className="shrink-0 text-xs text-appink/40">{commit.age}</span>
-                      <span className="flex shrink-0 items-center gap-1 rounded border border-appline/30 bg-white/[0.06] px-1.5 py-0.5 font-mono text-xs text-appink-icon">
-                        {commit.hash}
-                        <Copy className="h-3 w-3" />
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── 4d. THE ADD-REPOSITORY BOX ────────────────────────────────────────── */}
-          <div className="w-full rounded-lg border border-dashed border-appline/50 py-4 text-center">
-            <div className="text-xs text-appink/50">Add a repository</div>
-          </div>
-        </div>
+        {/* THE INFO SIDEBAR, drawn once for the site in `features/InfoSidebarMockup.tsx`
+            and stood here at the app's own 500px, with no props: the panel as the app
+            shows it for an agent mid-implementation — `in progress`, no pull request yet.
+            It used to be written out in this file, sections 4a to 4d; `/desktop` needed
+            the same panel alone and driven by the reader's scroll, so it moved and this
+            window kept a reference. Every value it draws is still read from the sources
+            the note at the top of this file lists. */}
+        <InfoSidebarPanel />
       </div>
     </div>
   )

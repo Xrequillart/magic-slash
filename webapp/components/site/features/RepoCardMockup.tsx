@@ -86,7 +86,7 @@ const COMMITS: readonly { subject: string; age: string; hash: string }[] = [
 ]
 
 /** `WaveLoader`, as the Agents drawing has it: three bars, the middle tallest, waving. */
-function WaveLoader() {
+export function WaveLoader() {
   return (
     <span className="flex h-4 w-4 shrink-0 items-center justify-center gap-[2px]">
       {[0, 0.15, 0.3].map((delay, index) => (
