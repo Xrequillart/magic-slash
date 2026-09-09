@@ -723,7 +723,67 @@ export const marketingEn = {
   'site.builtFor.spotlightDesc':
     'One global shortcut opens Quick Launch wherever you are. Type a ticket, press enter, and the agent is already running by the time you switch back.',
 
-  // ── Security and privacy, under the band about who the app is for ─────────
+  // ── The cloud band ────────────────────────────────────────────────────────
+  /**
+   * THE BAND THE PRODUCT OWNER PLACED "juste après « Fait pour les développeurs. Pas
+   * seulement pour eux. »" — `components/site/home/CloudSection.tsx`: the half of the
+   * product that opens in a browser, argued in a heading, a paragraph and three rows
+   * beside a drawing of the dashboard loading.
+   *
+   * THE HEADLINE NAMES THE CONFIGURATION AND NOT THE CLOUD, which is the decision worth
+   * defending because "Cloud" is what the band is called everywhere else — the nav row,
+   * the page title, the brief itself. A headline reading "The cloud" would be a category
+   * label, and every product in this market claims the category. "Your configuration is
+   * not on one machine" is a FACT about this one, and it is the fact the project's own
+   * CLAUDE.md is emphatic about: Supabase is the single source of truth and there is no
+   * local config file at all. It is also the objection the band above raises — five cards
+   * about living in one window, and nothing yet about the second Mac or the colleague's.
+   *
+   * THE PARAGRAPH IS THE THREE ROWS IN PROSE, then the payoff. It names what the
+   * organization holds (plans, repositories, invitations) and closes on signing in
+   * somewhere else, because that last clause is the only sentence in the band a reader
+   * can check against their own week. `site.cloudPage.lead` makes the same promise for
+   * the page; that one is a promise of SCOPE for a page still being written, this is an
+   * argument on a landing page, and they are allowed to overlap in subject without
+   * sharing a string.
+   *
+   * THE BUTTON'S LABEL NAMES THE PAGE and not the action — `site.appBand.cta`'s call,
+   * two bands up, and the same word the header's own Product row uses for that route, so
+   * somebody told "it's under Product → Cloud" finds the same thing.
+   */
+  'site.cloudBand.title': 'Your configuration is not on one machine.',
+  'site.cloudBand.subtitle':
+    'It lives in your organization, and the dashboard in your browser is where you look at it: the plans your team has written, the repositories and invitations the organization shares, and your own account. Sign in on another Mac and everything is already there.',
+  'site.cloudBand.cta': 'See the cloud',
+
+  /**
+   * THE THREE ROWS UNDER THE PARAGRAPH — the same `FeaturePoints` list with the same
+   * brand-blue outline glyphs the two splits above carry, asked for in those words ("un
+   * titre description + 3 points avec icon bleu").
+   *
+   * THEY ARE THE DASHBOARD'S OWN THREE PAGES, in the order its navigation bar puts them:
+   * `/plans`, `/organization`, `/account`. The brief named them as such — "Liste des plan
+   * / Organisation settings / Your Account management" — and the rows keep that order
+   * rather than reordering by importance, because a reader who follows the button meets
+   * the three in this order at the top of the product. `CloudSection.tsx` takes their
+   * icons from `TopNav.tsx` for the same reason.
+   *
+   * "THE PLANS YOUR TEAM HAS WRITTEN" AND NOT "THE LIST OF PLANS", which is the one row
+   * that was rewritten rather than translated. A list is a screen; a plan somebody wrote
+   * is a thing. And "plan" is this product's own noun — a `/magic:plan` session, its spec
+   * and the tickets it filed (`plans.subtitle`) — not a subscription tier, which is the
+   * reading the second half of the row rules out. If pricing tiers ever need a row here,
+   * they need a different word.
+   *
+   * SHORT, LIKE `site.appBand.point*` AND UNLIKE THE SKILLS BAND'S: there is a picture of
+   * the thing beside them, so the rows are the caption to it. A row that restated the
+   * paragraph would be read twice and believed once.
+   */
+  'site.cloudBand.pointPlans': 'The plans your team has written',
+  'site.cloudBand.pointOrg': 'Your organization, its team and its repositories',
+  'site.cloudBand.pointAccount': 'Your account, managed from the browser',
+
+  // ── Security and privacy, two bands under "who the app is for" ────────────
   //
   // THE ONE FAMILY ON THIS PAGE WHERE A WRONG SENTENCE IS A LIE ABOUT SECURITY, so every
   // string below was written against the source and `lib/security.ts` records, card by

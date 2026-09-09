@@ -251,7 +251,36 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.builtFor.spotlightDesc':
     'Un raccourci global ouvre Quick Launch d’où que vous soyez. Tapez un ticket, entrée, et l’agent tourne déjà quand vous revenez.',
 
-  // ── Sécurité et confidentialité, sous la bande « pour qui c’est fait » ─────
+  // ── La bande cloud, juste après « pour qui c’est fait » ────────────────────
+  // « cloud », « dashboard » et « dépôt » : les deux premiers restent tels quels — c’est
+  // ainsi que le produit les nomme dans ses propres écrans (`cloud.title` dit « Compte
+  // cloud », la page s’appelle `/dashboard`) — et « dépôt » est le mot que l’app emploie
+  // pour un repository (`nav`/`repos`), donc la bande suit l’app plutôt que le site.
+  //
+  // LE TITRE ÉNONCE LA CONFIGURATION ET PAS LE CLOUD, et c’est la note à lire avant de le
+  // réécrire : « le cloud » est une catégorie que tous les produits de ce marché
+  // revendiquent, alors qu’une configuration qui ne vit pas sur une machine est un fait
+  // vérifiable — celui que le CLAUDE.md du projet martèle (Supabase est la source de
+  // vérité, il n’y a pas de fichier de config local). Voir la note du catalogue anglais.
+  'site.cloudBand.title': 'Votre configuration ne vit pas sur une seule machine.',
+  'site.cloudBand.subtitle':
+    'Elle vit dans votre organisation, et le dashboard dans votre navigateur est l’endroit où vous la regardez : les plans écrits par votre équipe, les dépôts et les invitations que l’organisation partage, et votre compte. Connectez-vous sur un autre Mac, tout est déjà là.',
+  'site.cloudBand.cta': 'Voir le cloud',
+
+  // LES TROIS LIGNES SOUS LE PARAGRAPHE, ce sont les trois pages du dashboard —
+  // `/plans`, `/organization`, `/account` — dans l’ordre de sa barre de navigation, avec
+  // les icônes de l’app. Elles reprennent son vocabulaire français : « plans » (comme
+  // `plans.title`), « organisation » (`nav.organization`), « compte » (`nav.account`).
+  //
+  // « les plans écrits par votre équipe » et non « la liste des plans » : une liste est
+  // un écran, un plan écrit par quelqu’un est une chose. Le mot « plan » est celui du
+  // produit — une session `/magic:plan`, sa spec et ses tickets (`plans.subtitle`) — et
+  // pas un abonnement, ce que la deuxième moitié de la phrase lève.
+  'site.cloudBand.pointPlans': 'Les plans écrits par votre équipe',
+  'site.cloudBand.pointOrg': 'Votre organisation, son équipe et ses dépôts',
+  'site.cloudBand.pointAccount': 'Votre compte, géré depuis le navigateur',
+
+  // ── Sécurité et confidentialité, deux bandes sous « pour qui c’est fait » ──
   //
   // LA SEULE FAMILLE DE CETTE PAGE OÙ UNE PHRASE FAUSSE EST UN MENSONGE SUR LA SÉCURITÉ.
   // Deux choses ne sont volontairement PAS dites : « votre code ne quitte jamais votre

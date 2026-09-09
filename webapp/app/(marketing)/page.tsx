@@ -5,6 +5,7 @@ import { WorkflowSection } from '@/components/site/home/WorkflowSection'
 import { SkillsSection } from '@/components/site/home/SkillsSection'
 import { AppSection } from '@/components/site/home/AppSection'
 import { BuiltForSection } from '@/components/site/home/BuiltForSection'
+import { CloudSection } from '@/components/site/home/CloudSection'
 import { SecuritySection } from '@/components/site/home/SecuritySection'
 import { FaqSection } from '@/components/site/home/FaqSection'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
@@ -12,21 +13,22 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 /**
  * magic-slash.io — the landing page.
  *
- * NINE SECTIONS: the promise, what the product IS, what working with it is actually like,
- * what you type to do it, what its window looks like, who that window is for, what it
- * does with your code, what is still holding the reader back, then the ask. It was rebuilt as six and cut band by
+ * TEN SECTIONS: the promise, what the product IS, what working with it is actually like,
+ * what you type to do it, what its window looks like, who that window is for, where
+ * everything that window knows actually lives, what it does with your code, what is still
+ * holding the reader back, then the ask. It was rebuilt as six and cut band by
  * band by the product owner — "on the product you already have", then "the eight commands", then the feature
  * grid, and then "how it works" as well — which at its thinnest left the headline that
  * names the cycle and the one button at the end of it, with nothing between them. The
- * middle bands were then built back, six of them now, for six different jobs:
+ * middle bands were then built back, seven of them now, for seven different jobs:
  *
  *   • `PillarsSection` answers WHAT IT IS in two cards, one per half of the product — the
  *     eight skills, and the app that drives them — closing on the line that names the
  *     reader. A visitor who has only read the hero knows the outcome and not the thing.
  *   • `WorkflowSection` answers WHAT A DAY WITH IT LOOKS LIKE: the loop as five steps,
  *     one coloured card each, a drawing apiece, and one button out to `/workflow`.
- *   • `SkillsSection` answers WHAT YOU ACTUALLY TYPE, and it is the page's only band
- *     built on `SplitFeature` — a heading, a paragraph and three claims beside a Claude
+ *   • `SkillsSection` answers WHAT YOU ACTUALLY TYPE, and it is the FIRST of the page's
+ *     three bands built on `SplitFeature` — a heading, a paragraph and three claims beside a Claude
  *     Code session running seven of the eight commands one after the other. It follows
  *     the workflow band because a reader who has been shown the five moments of a day can
  *     read a transcript of them; the same panel above that band would be a list of
@@ -46,6 +48,13 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  *     smaller than the one it used to follow, and the reason it follows it is unchanged:
  *     five claims about living somewhere only land next to a picture of the place. Its headline is
  *     the owner's brief: "build pour le developer mais pas que".
+ *   • `CloudSection` answers WHERE ALL OF THAT LIVES, and it is the page's THIRD
+ *     `SplitFeature` — the skills band's shape by request ("reprendre le style block comme
+ *     les 8 skills"), artwork back on the left, beside a browser drawn as a loading
+ *     skeleton, run off the right edge of a green plate. It is here because the band above it closes the account of
+ *     the desktop side, and "your second Mac, and your colleague's" is the question five
+ *     cards about living in one window leave open. It carries the page body's one link to
+ *     `/cloud`. The owner placed it: "juste après « Fait pour les développeurs »".
  *   • `FaqSection` answers WHAT IS STILL HOLDING THE READER BACK: the five questions
  *     asked before anyone installs it, as disclosure rows beside a heading and a button
  *     out to `/faq`. It is the last band before the ask because that is the only place
@@ -160,10 +169,11 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * header's Product menu and the footer's Product column. Both bands are gone; the
  * footer's "Features" row now points at the `/features` PAGE, and "The commands" is not
  * back — the eight live there too, under `#workflow`. With `#how` cut as well, this page
- * publishes NO same-page anchor: every nav row that names it now names a route. NEITHER
- * OF THE TWO BANDS ADDED SINCE BREAKS THAT, and both deliberately take no `id`: the
- * workflow band's button is a route (`/workflow`) and the skills band's is a route with
- * someone ELSE's anchor on it (`/features#workflow`), so there is nothing on this page for
+ * publishes NO same-page anchor: every nav row that names it now names a route. NONE
+ * OF THE BANDS ADDED SINCE BREAKS THAT, and every one of them deliberately takes no `id`: the
+ * workflow band's button is a route (`/workflow`), the skills band's is a route with
+ * someone ELSE's anchor on it (`/features#workflow`), and the cloud band's is `/cloud` —
+ * a route the header's Product menu already offers. So there is nothing on this page for
  * a nav row to point into.
  *
  * Every retired band's copy stays in the catalogues (`site.yourProduct.*`,
@@ -202,6 +212,7 @@ export default function Home() {
       <SkillsSection />
       <AppSection />
       <BuiltForSection />
+      <CloudSection />
       <SecuritySection />
       <FaqSection />
       <FinalCtaSection />
