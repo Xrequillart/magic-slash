@@ -1,9 +1,12 @@
 'use client'
 
-import { ArrowRight } from 'lucide-react'
-import { ButtonNavLink, SplitFeature } from '@/components/ui'
+import { Fragment } from 'react'
+import { ArrowRight, BotMessageSquare, ListTodo, Route } from 'lucide-react'
+import { ButtonNavLink, FeaturePoints, SplitFeature } from '@/components/ui'
 import { useT } from '@/lib/i18n/useLanguage'
 import { DESKTOP_PATH } from '@/lib/siteNav'
+import { GithubMark } from '../features/TasksModalMockup'
+import { JiraMark } from '../features/TicketCardMockup'
 import { Reveal } from '../Reveal'
 import { AppWindowMockup } from './AppWindowMockup'
 import { HomeHeading, HomeSection } from './Shell'
@@ -138,6 +141,249 @@ const WINDOW_ZOOM = [
   'min-[1148px]:scale-[0.75]',
 ].join(' ')
 
+/**
+ * THE THREE ROWS UNDER THE PARAGRAPH, and they are a caption to the window beside them.
+ *
+ * ASKED FOR AS "une liste avec icon bleu comme le block 8 skills", which is exactly what
+ * this is: the same `FeaturePoints` recipe `SkillsSection` calls, at the same `mt-10`,
+ * with the same brand-blue outline glyphs. Nothing here dresses it — the recipe owns the
+ * stroke weight, the size and the colour (see `components/ui.tsx`), so the two bands stay
+ * one list and not two that resemble each other.
+ *
+ * WHY IT IS A MODULE CONST AND NOT AN INLINE `.map()`: the component below is already a
+ * composition of four things, and a three-row array in the middle of it would be the only
+ * data in a file that is otherwise arrangement. `SkillsSection` splits the same way; the
+ * difference is that its rows live in `lib/skillsBand.ts` because they are ALSO read by a
+ * test that runs outside `webapp/`. These three are not, so they stay here, beside the
+ * band that prints them — a module in `lib/` for one caller and no second reader would be
+ * a file to keep in step for nothing.
+ *
+ * THE ICONS ARE THE APP'S OWN WHERE THE APP HAS ONE. `ListTodo` is what the window in
+ * this very band draws beside its Tasks action (`AppWindowMockup.tsx`), what `/features`
+ * puts on the tasks modal, and what the app itself uses — so the first row's glyph is the
+ * one a reader will meet again ten seconds later. `BotMessageSquare` is the agent, chosen
+ * over a plain `Bot` because what these agents do in the window is TALK to you — the
+ * speech bubble is the half of the drawing that says a terminal is a conversation.
+ * `Route` is the follow-up: a path with waypoints, which is what a ticket's life through
+ * the eight commands looks like, and it is not `Activity` or `LineChart` on purpose —
+ * this band is not claiming a dashboard of metrics.
+ *
+ * TWO OF THE THREE ROWS NAME A PRODUCT, and they name it as a chip rather than as a
+ * word: the trackers on the first row, Claude Code on the second. Their labels are
+ * therefore assembled by `points()` below instead of being taken straight from the
+ * catalogue. See `ProductChip`.
+ */
+const POINTS = [
+  { icon: ListTodo, label: 'site.appBand.pointTasks' },
+  { icon: BotMessageSquare, label: 'site.appBand.pointAgents' },
+  { icon: Route, label: 'site.appBand.pointTracking' },
+] as const
+
+/**
+ * SOMEBODY ELSE'S BRAND, AT 14-16% — the pale ground each chip sits on, as an inline
+ * style rather than as a token.
+ *
+ * Jira's is Atlassian's own blue at 14%, the same number and the same spelling as
+ * `TrackerTile` in `features/TasksModalMockup.tsx`, which is where the app's drawn
+ * tracker tiles get it. Claude's is Anthropic's coral at 16%, and the two points are not
+ * a typo: `#D97757` is a far less saturated hue than `#2684FF`, so an equal alpha puts a
+ * visibly fainter plate under the chip beside it. The pair was tuned to look like one
+ * family, which is a thing the eye judges and a number cannot.
+ *
+ * NOT TOKENS, DELIBERATELY, and `tailwind.config.ts` states the rule this follows: the
+ * design system's blues are `brand` (the primary button) and `accent` (state and focus),
+ * and its coral does not exist — `#D97757` appears in that file only as the hue
+ * `plate-claude` is built from, with a note saying coral belongs to the PLATES because it
+ * is somebody else's. A chip wearing `brand` or `accent` would be the page claiming
+ * Atlassian's mark for its own palette, and would drift the day either is retuned.
+ *
+ * GITHUB'S IS A TAILWIND CLASS instead, because grey IS ours: `bg-ink/5`, the wash this
+ * site already uses for a plate under text — the open state of a `Collapse` row and the
+ * selected item in the `/features` sidebar both wear it — rather than a third arbitrary
+ * alpha invented for one chip. Under the `hairline`'s 8% on purpose: the chip is a
+ * surface and not an edge, so it has to sit UNDER the weight the page draws borders at.
+ * GitHub's mark is `currentColor` — see `GithubMark` — so it takes the row's `ink` and
+ * needs no colour of its own.
+ *
+ * ── THE MARKS ─────────────────────────────────────────────────────────────────────
+ *
+ * TWO VECTORS AND ONE BITMAP, which is not a preference but what the repo ships. Jira's
+ * and GitHub's are the app's own `JiraMark` and `GithubMark` — the same components the
+ * window drawn beside this band uses in its info panel and on its ticket rows, which is
+ * the point of reaching for them here rather than for a pair of lucide glyphs: the chips
+ * are a promise the picture next to them keeps.
+ *
+ * Claude Code has no such component: it exists as `claudecode-color.png`, the 640px mark
+ * `/features` prints at 40px and `LogoPlate` at 64px. Drawing an SVG of it here would
+ * mean inventing somebody else's artwork by hand, so the chip points at the file — 640px
+ * of source into a 16px box is a downscale a retina screen has room to spare on. It is
+ * `claudecode-color.png` and NOT `claude-logo.png` for `lib/features.ts`'s reason: the
+ * product in that sentence is Claude CODE, and the repo ships a mark for each.
+ *
+ * The three are matched OPTICALLY and not by box, which is what `MARK` and `MARK_BITMAP`
+ * are: two of them fill a 16px square and the bitmap needs 20px to draw a glyph the same
+ * height. See the note there.
+ */
+/**
+ * THE BOX THE TWO VECTORS TAKE. 16px, which is the mark's own scale beside 14/16px type.
+ *
+ * CLAUDE'S IS 20px AND THE DIFFERENCE IS THE ARTWORK, not a taste. `JiraMark` and
+ * `GithubMark` fill their 24-unit viewBox almost edge to edge, so a 16px box draws ~15px
+ * of mark. `claudecode-color.png` is a WIDE glyph inset in a square canvas — the robot
+ * occupies about 64% of the file's height and all of its width — so the same box would
+ * have drawn ~10px of it and put a visibly smaller logo in the third chip. At 20px it
+ * draws ~13px tall, which is the height the other two read at, and the extra width is the
+ * mark's own proportion rather than a mistake.
+ *
+ * `-my-0.5` PAYS FOR THOSE 4 PIXELS. The chip's box is set by its tallest child, so a
+ * 20px mark inside `py-0.5` would deepen this one plate and break the row of three. The
+ * negative margin gives back exactly what the larger box took, and it costs nothing:
+ * what it eats into is the empty band the artwork already carries.
+ */
+const MARK = 'h-4 w-4 shrink-0'
+const MARK_BITMAP = '-my-0.5 h-5 w-5 shrink-0'
+
+/**
+ * One chip's parts: what it is called, what it is drawn with, and the ONE of the two
+ * grounds it takes — a `tint` for a brand's own colour, a `ground` class for ours.
+ */
+type Chip = { name: string; mark: React.ReactNode; tint?: string; ground?: string }
+
+/**
+ * A `Record` OVER A NAMED UNION rather than an inferred object, and it is the difference
+ * between this compiling and not: `keyof` an inferred literal gives the three names, but
+ * `CHIPS[product].tint` on that type is an error the moment one entry lacks the key —
+ * which is exactly the shape here, since GitHub's chip has a `ground` and no `tint`.
+ * Annotated, every entry is one `Chip` with two optional grounds, and the union survives
+ * for `ChipProduct` to be read off.
+ */
+const CHIPS: Record<'jira' | 'github' | 'claude', Chip> = {
+  jira: {
+    name: 'Jira',
+    mark: <JiraMark className={MARK} />,
+    tint: 'rgba(38, 132, 255, 0.14)',
+  },
+  github: {
+    name: 'GitHub',
+    mark: <GithubMark className={MARK} />,
+    ground: 'bg-ink/5',
+  },
+  claude: {
+    name: 'Claude Code',
+    // eslint-disable-next-line @next/next/no-img-element
+    mark: <img src="/img/claudecode-color.png" alt="" className={MARK_BITMAP} />,
+    tint: 'rgba(217, 119, 87, 0.16)',
+  },
+}
+
+type ChipProduct = keyof typeof CHIPS
+
+/**
+ * A PRODUCT, NAMED INSIDE A SENTENCE: its mark on the left, its name on the right, both
+ * on a tinted plate. Asked for in those terms — "un card bleu clair avec à gauche le logo
+ * Jira et le wording Jira qui suit", then the grey one for GitHub and the same again for
+ * Claude Code.
+ *
+ * WHY THE ROW SAYS IT TWICE OVER. "Your tasks and issues" is true of the app and says
+ * nothing a reader can check; the marks are what make it a fact about THEIR backlog, and
+ * they are recognised before the words beside them are read. Same on the second row: an
+ * agent is an abstraction until the thing running it has a face.
+ *
+ * `text-sm md:text-base` AGAINST THE ROW'S `text-base md:text-lg` — one step down at both
+ * breakpoints. A chip set at the label's own size stops being an inset and becomes two
+ * more words of the sentence with a box around them, which is the failure mode of every
+ * badge in prose. A step down and it reads as a thing being pointed at.
+ *
+ * `align-middle` rather than the baseline an `inline-flex` would take by default: the
+ * plate has `py-0.5` of its own, so baseline-aligned it hangs a half-line low and drops
+ * the row's leading. Centred on the x-height it sits in the line rather than under it.
+ *
+ * `rounded-lg` INSIDE A ROW WITH NO OTHER RADIUS, one step under the `rounded-xl` the
+ * window beside it wears. A pill (`rounded-full`) was the other candidate and is what
+ * this site's status pills are; it was not taken because a pill reads as a STATUS — the
+ * app draws ticket statuses that way (`LabelPill`, `TicketBadge`) — and these are names,
+ * not states.
+ *
+ * NO `aria-hidden` AND NO `alt` TEXT: the marks are decorative (the two vectors say so
+ * themselves, the `img` carries `alt=""`) and the names beside them are real text, so the
+ * rows are announced as "Your tasks Jira and issues GitHub" and "Your agents Claude Code
+ * at work" — the sentences, in order, with the pictures left out.
+ */
+function ProductChip({ product }: { product: ChipProduct }) {
+  const { name, mark, tint, ground } = CHIPS[product]
+
+  return (
+    <span
+      // The greys are a class and the brands are a style, which is why one arrives
+      // through `className` and the other through `style`: see `CHIPS`.
+      className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-0.5 align-middle text-sm md:text-base${
+        ground ? ` ${ground}` : ''
+      }`}
+      style={tint ? { backgroundColor: tint } : undefined}
+    >
+      {mark}
+      {name}
+    </span>
+  )
+}
+
+/**
+ * The placeholders a row's sentence may carry, and what each becomes.
+ *
+ * THE PATTERN IS BUILT FROM `CHIPS` rather than typed out beside it, so a fourth product
+ * is one entry in that table and nothing else. A token spelled in two places is a token
+ * that eventually only exists in one of them, and the failure would be silent: an
+ * unmatched `{claude}` renders as those seven characters on the page.
+ *
+ * SPLIT ON A CAPTURING GROUP, which is what keeps the delimiters in the output — the
+ * pieces come back as ["Your tasks ", "{jira}", " and issues ", "{github}", ""] and the
+ * spaces the sentence was written with survive, which is the whole reason not to
+ * `replace()` and re-join. A piece that is not a placeholder is rendered as the text it
+ * is; a `Fragment` keys each one, since an array of children needs keys even when half of
+ * them are strings.
+ *
+ * EVERY ROW GOES THROUGH IT, not only the two that carry a chip today. A sentence with no
+ * token splits into one piece and renders as itself, so the cost is nil and the third row
+ * can name a product tomorrow without a second code path being invented for it.
+ *
+ * THE TOKENS ARE `t()`'s OWN SYNTAX (`lib/i18n/index.ts` substitutes `{name}` from a
+ * `vars` map) and these rows simply do not pass `vars`, so they arrive untouched. That is
+ * deliberate rather than a trick: if this component is ever deleted and the rows go back
+ * to being plain strings, an unsubstituted `{jira}` renders visibly on the page instead
+ * of silently vanishing — which is the behaviour that module documents and relies on.
+ */
+const CHIP_TOKENS = new RegExp(`(${Object.keys(CHIPS).map((name) => `\\{${name}\\}`).join('|')})`)
+
+/** `{jira}` → `jira`; any other piece of the sentence → `null`. */
+function chipIn(piece: string): ChipProduct | null {
+  const name = piece.slice(1, -1)
+  return piece.startsWith('{') && name in CHIPS ? (name as ChipProduct) : null
+}
+
+function withChips(sentence: string) {
+  return sentence.split(CHIP_TOKENS).map((piece, index) => {
+    const product = chipIn(piece)
+    return <Fragment key={index}>{product ? <ProductChip product={product} /> : piece}</Fragment>
+  })
+}
+
+/**
+ * The rows, translated, in the shape `FeaturePoints` takes — `SkillsSection`'s `points()`
+ * next door, and a function for its reason: the component below stays a composition, and
+ * the translator is passed in rather than a second `useT()` subscribing to the language
+ * again for three strings.
+ *
+ * `id` IS THE MESSAGE KEY, and it is on every row rather than only on the ones that need
+ * it. The list keys on `id` when a label is a node (see `FeaturePoint` in
+ * `components/ui.tsx`), and every label here is one now that all three go through
+ * `withChips` — but the key would be the right choice anyway: it is the one string in
+ * this file guaranteed distinct and stable, where a label is neither, since two rows may
+ * one day translate to the same words.
+ */
+function points(t: ReturnType<typeof useT>['t']) {
+  return POINTS.map(({ icon, label }) => ({ icon, id: label, label: withChips(t(label)) }))
+}
+
 export function AppSection() {
   const { t } = useT()
 
@@ -190,6 +436,12 @@ export function AppSection() {
               left-aligned — exactly what a split's copy column wants. `SkillsSection`
               hands it the same two strings for the same reason. */}
           <HomeHeading title={t('site.appBand.title')} subtitle={t('site.appBand.subtitle')} />
+
+          {/* `mt-10` under the paragraph, against the `mt-4` `HomeHeading` puts between
+              its own two lines: the rows are a separate move and not a third line of the
+              heading. Same gap and same reasoning as `SkillsSection`, which is what keeps
+              the two bands reading as one page rather than as two lists at two rhythms. */}
+          <FeaturePoints className="mt-10" points={points(t)} />
 
           {/* A `div` rather than a margin on the button: `mt-10` through `className`
               would be additive layout on a recipe that already owns its own box.

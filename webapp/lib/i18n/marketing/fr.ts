@@ -111,6 +111,31 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Chaque agent a son worktree et son terminal, et l’app garde le contexte de chaque session. Elle lit vos tickets depuis Jira ou GitHub, suit les pull requests qu’elle a ouvertes, et vous prévient quand quelque chose vous attend.',
   'site.appBand.cta': 'Voir l’application',
 
+  // LES TROIS LIGNES SOUS LE PARAGRAPHE, même liste à puces bleues que la bande des
+  // skills. Elles VOUVOIENT, sous un titre qui tutoie : le paragraphe juste au-dessus
+  // vouvoie déjà (« Elle lit vos tickets »), donc la liste suit la phrase à laquelle
+  // elle est accrochée plutôt que de rouvrir la question tranchée par le titre. Voir la
+  // note en tête de `site.appBand.title`, et celle du catalogue anglais pour l’ordre des
+  // trois.
+  //
+  //
+  // PREMIÈRE LIGNE : `{jira}` et `{github}` deviennent les deux pastilles — logo plus nom,
+  // sur un fond teinté. La phrase entière tient dans UNE clé pour que l’ordre des mots
+  // reste ici et pas dans le composant ; voir la note du catalogue anglais.
+  //
+  // « tâches » est le mot que l’app emploie pour cet écran (`tasks.title`) et que
+  // `site.builtFor.tasksTitle` imprime déjà. « issues » RESTE EN ANGLAIS, comme partout
+  // sur ce site : c’est le mot que GitHub affiche dans son interface française, et
+  // « tickets » désignerait les deux trackers à la fois — or la phrase en distingue
+  // justement deux.
+  'site.appBand.pointTasks': 'Vos tâches {jira} et issues {github}',
+  //
+  // DEUXIÈME LIGNE : `{claude}` devient la pastille Claude Code, sur le corail
+  // d’Anthropic. « qui travaillent » et non « au travail » : le participe dit qu’ils sont
+  // en train de le faire pendant que vous lisez, ce que la fenêtre à côté montre.
+  'site.appBand.pointAgents': 'Vos agents {claude} qui travaillent',
+  'site.appBand.pointTracking': 'Le suivi du travail fourni par vos agents',
+
   // ── La bande workflow, et la page qu’elle ouvre ─────────────────────────────
   // Les noms de commandes ne sont PAS ici : ils sont imprimés par les dessins, épelés
   // depuis `lib/commands.ts`. Voir la note du catalogue anglais.

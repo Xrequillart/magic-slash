@@ -368,6 +368,63 @@ export const marketingEn = {
     'Every agent gets its own worktree and its own terminal, and the app keeps the context of each session. It reads your tickets from Jira or GitHub, follows the pull requests it opened, and tells you when something needs you.',
   'site.appBand.cta': 'See the application',
 
+  /**
+   * THE THREE CLAIMS UNDER THE PARAGRAPH — the same `FeaturePoints` list the skills band
+   * two bands up carries, with the same brand-blue outline glyphs, asked for by the
+   * product owner in those words ("une liste avec icon bleu comme le block 8 skills").
+   *
+   * THEY NAME THE THREE THINGS THE WINDOW BESIDE THEM HOLDS, in the order a reader meets
+   * them both in the drawing and in the app itself: the tasks you pick from, the agents
+   * you started on them, and what those agents have produced since. The first two are the
+   * headline's own two nouns, which is deliberate — the list is the caption to the
+   * picture, not a second argument — and the third is the one thing neither the headline
+   * nor the drawing says on its own: the window is not only where work STARTS, it is
+   * where it is followed.
+   *
+   * SHORTER THAN THE SKILLS BAND'S ROWS, and they read as labels rather than as claims.
+   * That band has no picture of the thing it is selling, so its three rows have to carry
+   * the argument in words; here the argument is the window, and a row that restated the
+   * paragraph would be read twice and believed once.
+   *
+   * THE FRENCH SAYS "vos", not "tes", under a headline that says "tes". That is not a
+   * slip: the subtitle directly above these rows already vouvoies (see the note beside
+   * the title in `fr.ts` — the headline is the one line on this site that tutoies, by the
+   * owner's request), so the list follows the paragraph it hangs from rather than
+   * reopening a decision the band already made.
+   */
+  /**
+   * THE FIRST ROW CARRIES THE TWO TRACKERS AS CHIPS — `{jira}` and `{github}` are
+   * replaced by a mark and a name on a tinted plate, not by words. See `TrackerChip` in
+   * `AppSection.tsx` for what they are drawn as.
+   *
+   * ONE STRING WITH TWO PLACEHOLDERS, and not four fragments concatenated in the
+   * component, which is the version this replaced in review. `t()` substitutes `{name}`
+   * textually and returns a string, so the component has to split the sentence to put a
+   * node in the middle of it — but WHERE it splits is then the translator's decision
+   * rather than the developer's. A French row that wanted "Vos issues GitHub et tâches
+   * Jira" is one edit to this line; four fragments would have needed the component
+   * reordered, in a file no translator opens.
+   *
+   * THE BRAND NAMES ARE NOT IN HERE. "Jira" and "GitHub" are spelled inside the chip,
+   * once, because they are proper nouns identical in both catalogues — and a product
+   * name that lives in a translation file is a product name somebody eventually
+   * translates. The placeholder says WHERE the chip goes; the chip says what it is.
+   */
+  'site.appBand.pointTasks': 'Your tasks {jira} and issues {github}',
+  /**
+   * THE SECOND ROW NAMES WHAT IS ACTUALLY RUNNING — `{claude}` becomes the Claude Code
+   * mark and its name, on Anthropic's coral. Same construction as the row above and for
+   * the same reason: "your agents" is a category until the reader sees WHOSE, and this
+   * product's whole claim is that it drives the agent they already run.
+   *
+   * IT IS THE ONE PLACE ON THE HOMEPAGE'S BANDS WHERE CLAUDE CODE IS NAMED IN THE COPY
+   * rather than drawn. The workflow band's subtitle says "a layer on top of Claude Code"
+   * in prose; here it is a chip, which the eye takes without reading. Both stay: one is
+   * an argument, the other is an identification.
+   */
+  'site.appBand.pointAgents': 'Your agents {claude} at work',
+  'site.appBand.pointTracking': 'The work your agents deliver, followed',
+
   // ── The workflow band, and the page it opens ───────────────────────────────
   //
   // ONE FAMILY FOR TWO SURFACES. `lib/workflow.ts` is the list both of them read — the

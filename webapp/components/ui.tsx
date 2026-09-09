@@ -952,10 +952,26 @@ export function SplitFeature({
   )
 }
 
-export type FeaturePoint = {
-  icon: LucideIcon
-  label: string
-}
+/**
+ * ONE ROW OF `FeaturePoints`: a glyph and the claim beside it.
+ *
+ * `label` IS A NODE AND NOT A STRING, which it was until the homepage's app band needed
+ * a row reading "Your tasks (Jira) and issues (GitHub)" with the two trackers drawn as
+ * chips inside the sentence. `t()` returns a string and can return nothing else — it
+ * substitutes `{name}` placeholders textually (see `lib/i18n/index.ts`) — so a row that
+ * mixes translated words with marks has to be assembled by its caller, and this is the
+ * type that lets it. Almost every row is still a plain string and should stay one: a
+ * chip is for naming somebody else's product, not for emphasis.
+ *
+ * WHICH IS WHY `id` EXISTS. The list keyed itself on the label while labels were
+ * strings; a node has no such identity, and `String(<span/>)` is `[object Object]` for
+ * every row that tries. The union is what makes that a compile error rather than a pair
+ * of duplicate keys React silently accepts — a string label may skip `id`, a node label
+ * may not.
+ */
+export type FeaturePoint =
+  | { icon: LucideIcon; label: string; id?: string }
+  | { icon: LucideIcon; label: React.ReactNode; id: string }
 
 /**
  * THE CLAIMS UNDER A PARAGRAPH: an outline icon, a short bold line, three or four of them.
@@ -1004,8 +1020,8 @@ export function FeaturePoints({
 }) {
   return (
     <ul className={cx('flex flex-col gap-6', className)}>
-      {points.map(({ icon: Icon, label }) => (
-        <li key={label} className="flex items-start gap-4">
+      {points.map(({ icon: Icon, label, id }) => (
+        <li key={id ?? String(label)} className="flex items-start gap-4">
           {/* `strokeWidth={1.75}` rather than lucide's own 2: on a light ground the
               default reads as a filled shape at a glance, which is exactly the thing the
               note above says these must not do. It stays 1.75 at 20px — a smaller glyph
