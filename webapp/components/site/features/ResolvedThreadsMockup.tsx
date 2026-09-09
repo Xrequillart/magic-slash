@@ -33,9 +33,11 @@ import { Reveal } from '../Reveal'
  *
  * ONE SHA ON BOTH COLLAPSED ROWS, and it is not a copy-paste slip: `resolve.commitMode`
  * defaults to `"new"`, which is ONE commit for the whole run, so every thread it answers
- * cites the same seven characters. `MSG_REPLY_TEMPLATE` in the skill's `messages.md` is
+ * cites the same seven characters. `MSG_REPLY_MINIMAL` in the skill's `messages.md` is
  * the sentence those replies are built from — "Addressed in {COMMIT_SHA} — {summary}" —
- * and the chip here is that substitution, drawn rather than spelled out.
+ * and the chip here is that substitution, drawn rather than spelled out. That template is
+ * the `replyVerbosity` default; the expanded thread below draws the `normal` level, which
+ * is the one that adds a why when the fix departs from what was asked.
  *
  * THE COMMENTS COME FROM SOMEBODY ELSE, unlike the ones in `ReviewThreadsMockup` next
  * door. That card's author is "you" because `/magic:review` posts through your own `gh`

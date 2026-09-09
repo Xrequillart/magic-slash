@@ -370,7 +370,9 @@ Correction automatique en cours...
 ✅ Push réussi après correction
 ```
 
-## MSG_REPLY_TEMPLATE
+## MSG_REPLY_MINIMAL
+
+The default. One line: the commit, and what changed. Nothing about how, nothing about why.
 
 ### en
 
@@ -382,6 +384,107 @@ Addressed in {COMMIT_SHA} — {fix_summary}
 
 ```text
 Traité dans {COMMIT_SHA} — {fix_summary}
+```
+
+### Rendered
+
+What this level looks like when it is respected — real replies, 149 to 382 characters:
+
+```text
+Addressed in a406102 — folder name is now split on `/[\\/]/` so Windows paths keep their last segment.
+Addressed in f3f5a2c — added a `stopped` flag; `arm()` now no-ops after `stop()`.
+Addressed in 26bb1b4 — dropped the always-`undefined` `archivedAt` push.
+```
+
+And the failure mode this level exists to prevent — the same fix, written the way it comes out when nothing caps it:
+
+```text
+Fixed in ff0f40c. The timer now lives in a ref and is cleared on unmount.
+
+Worth recording why the earlier reasoning for skipping this — not a leak in React 18,
+and the five other hand-rolled copy buttons here have no cleanup either — does not
+hold at this call site. Unmount inside the two-second window is not an edge case
+here, it is ordinary use: the panel closes itself when the count reaches zero, Send
+closes the drawer, and deleting the last comment unmounts the bar entirely. [...]
+```
+
+Every sentence after the first is either the diff restated, an alternative that was
+rejected, or an argument with a decision nobody asked about. At this level the first
+sentence *is* the reply:
+
+```text
+Fixed in ff0f40c — the timer lives in a ref and is cleared on unmount.
+```
+
+## MSG_REPLY_NORMAL
+
+The `minimal` line, plus one sentence of `why` — **only** when the fix departs from what
+the comment asked for. A departure is the one thing the reviewer cannot get from the
+diff: they will read the change and wonder why it is not the change they suggested.
+When the fix does what was asked, drop the second line and render `minimal`.
+
+### en
+
+```text
+Addressed in {COMMIT_SHA} — {fix_summary}
+
+{why_departed}
+```
+
+### fr
+
+```text
+Traité dans {COMMIT_SHA} — {fix_summary}
+
+{why_departed}
+```
+
+### Rendered
+
+```text
+Addressed in 8be1a36 — the map is now keyed by repository + path.
+
+Not the reset you suggested: the reset was itself the bug, since it emptied the map
+on every sidebar click. Keying it makes the collision impossible instead.
+```
+
+## MSG_REPLY_DETAILED
+
+A reply that reads like a person talking: the fix, why it took that shape, and what the
+reviewer should know that the diff will not tell them. It may open with an
+acknowledgement. It is still capped — 3 short paragraphs, 1200 characters — and the
+exclusions in Step 7 still apply: no diff walkthrough, no codebase archaeology, no test
+counts.
+
+### en
+
+```text
+{acknowledgement (optional, one clause)} Addressed in {COMMIT_SHA} — {fix_summary}
+
+{why it took this shape, and anything the diff will not tell them}
+```
+
+### fr
+
+```text
+{remerciement (optionnel, une clause)} Traité dans {COMMIT_SHA} — {fix_summary}
+
+{pourquoi cette forme, et ce que le diff ne dira pas}
+```
+
+### Rendered
+
+```text
+Good catch — addressed in 8be1a36 by keying the map on repository + path.
+
+The reset you pointed at was the actual cause rather than the cure: it emptied the map
+on every sidebar click, so every file then read as unknown and the filter quietly
+stopped filtering. Keying the map removes the name collision that the reset was there
+to paper over, which removes the reason to reset at all.
+
+One thing worth knowing: the filter stays deliberately non-strict. A path with no known
+fingerprint keeps its comments, because a card reports only once its read lands —
+treating unknown as superseded would empty the list of everything not yet scrolled past.
 ```
 
 ## MSG_REPLY_FALLBACK
@@ -437,6 +540,11 @@ Les commentaires de review suivants ont été résolus :
 🔗 Commit    : {COMMIT_SHA}
 🔔 Re-review : {requested from @reviewer1, @reviewer2 / skipped (autoReRequestReview: false) / failed (manual re-request needed)}
 
+{IF_RESOLVED}
+Resolved details:
+  • [{file}:{line}] — {fix_summary}
+{/IF_RESOLVED}
+
 {IF_SKIPPED}
 Skipped details:
   • [{file}:{line}] — {reason: file not found / code context not found / ambiguous / stale / withdrawn}
@@ -470,6 +578,11 @@ Next steps:
 📌 Branche   : {branch-name}
 🔗 Commit    : {COMMIT_SHA}
 🔔 Re-review : {demandée à @reviewer1, @reviewer2 / ignorée (autoReRequestReview: false) / échouée (re-request manuelle nécessaire)}
+
+{IF_RESOLVED}
+Détails des résolus :
+  • [{file}:{line}] — {fix_summary}
+{/IF_RESOLVED}
 
 {IF_SKIPPED}
 Détails des ignorés :

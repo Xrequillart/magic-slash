@@ -67,6 +67,7 @@ Read the live config fetched in Step 0 (kept in memory — `$CONFIG_FILE` does n
 | Use commit config | `.repositories.<name>.resolve.useCommitConfig` | `true`    |
 | Reply to comments | `.repositories.<name>.resolve.replyToComments` | `true`    |
 | Reply language    | `.repositories.<name>.resolve.replyLanguage`   | `"en"`    |
+| Reply verbosity   | `.repositories.<name>.resolve.replyVerbosity`  | `"minimal"` |
 | Re-request review | `.repositories.<name>.resolve.autoReRequestReview` | `true`  |
 
 **Logic:**
@@ -79,6 +80,7 @@ Read the live config fetched in Step 0 (kept in memory — `$CONFIG_FILE` does n
 - `replyToComments: true` (default) → reply in-thread on each resolved comment (Step 7)
 - `replyToComments: false` → skip Step 7 entirely
 - `replyLanguage` (default `"en"`) → language of the in-thread reply bodies in Step 7 (independent of the discussion language)
+- `replyVerbosity` (default `"minimal"`) → how much each in-thread reply says in Step 7: `minimal` one line, `normal` one line plus why when the fix departs from the comment, `detailed` a conversational reply that keeps the reasoning. Any other value is read as `minimal`.
 - `autoReRequestReview: true` (default) → automatically re-request review from original reviewers (Step 7.5)
 - `autoReRequestReview: false` → skip Step 7.5, suggest manual re-request in summary
 
@@ -252,6 +254,7 @@ RESOLVE_COMMIT_MODE=$(rget commitMode new)             # new | amend | ask
 RESOLVE_USE_COMMIT_CONFIG=$(rget useCommitConfig true) # true | false
 RESOLVE_REPLY=$(rget replyToComments true)             # true | false
 RESOLVE_REPLY_LANG=$(rget replyLanguage en)            # en | fr | ...
+RESOLVE_REPLY_VERBOSITY=$(rget replyVerbosity minimal) # minimal | normal | detailed
 RESOLVE_AUTO_REREQUEST=$(rget autoReRequestReview true)
 
 # Format/style: inherit from commit config when useCommitConfig is true.
@@ -273,6 +276,7 @@ echo "RESOLVE_FORMAT=$RESOLVE_FORMAT"
 echo "RESOLVE_STYLE=$RESOLVE_STYLE"
 echo "RESOLVE_REPLY=$RESOLVE_REPLY"
 echo "RESOLVE_REPLY_LANG=$RESOLVE_REPLY_LANG"
+echo "RESOLVE_REPLY_VERBOSITY=$RESOLVE_REPLY_VERBOSITY"
 echo "RESOLVE_AUTO_REREQUEST=$RESOLVE_AUTO_REREQUEST"
 ```
 
@@ -286,6 +290,7 @@ echo "RESOLVE_AUTO_REREQUEST=$RESOLVE_AUTO_REREQUEST"
 | `$RESOLVE_STYLE` | `resolve.style` (or `commit.style` if `useCommitConfig`) | `"single-line"` |
 | `$RESOLVE_REPLY` | `.repositories.<name>.resolve.replyToComments` | `true` |
 | `$RESOLVE_REPLY_LANG` | `.repositories.<name>.resolve.replyLanguage` | `"en"` |
+| `$RESOLVE_REPLY_VERBOSITY` | `.repositories.<name>.resolve.replyVerbosity` | `"minimal"` |
 | `$RESOLVE_AUTO_REREQUEST` | `.repositories.<name>.resolve.autoReRequestReview` | `true` |
 
 > **Multi-repo**: Re-run this step for each worktree before its resolve cycle (Step 0.6), since each repo may have its own resolve config.
@@ -646,9 +651,13 @@ Display **`MSG_PUSH_AUTO_FIX`** during the correction process, substituting the 
 >
 > **Language**: Write the reply bodies in `$RESOLVE_REPLY_LANG` (from Step 0.7, `resolve.replyLanguage`, default `en`). This is independent of the discussion language — respect `$RESOLVE_REPLY_LANG` even if it differs.
 >
+> **Verbosity**: `$RESOLVE_REPLY_VERBOSITY` (from Step 0.7, `resolve.replyVerbosity`, default `minimal`) picks the template and the cap. It is a setting, not a judgement call: do not widen a level because a particular fix feels worth explaining.
+>
 > **Prerequisite**: If `$GH_AVAILABLE` is `false` (detected in Step 0.0), skip the `gh api` approach and go directly to the MCP fallback.
 
-Replying in-thread on each resolved comment creates a clear audit trail for reviewers — they can see exactly which commit addressed their feedback without having to dig through diffs. This significantly speeds up re-reviews.
+Replying in-thread on each resolved comment creates a clear audit trail for reviewers — it tells them which commit to look at, and closes the thread. The reply points at the fix; it does not stand in for it. The diff and the commit message are right there, and a reviewer who wants the detail opens them.
+
+That is what keeps these replies short by default. You arrive at this step holding the full reasoning behind every fix you just applied, and writing it out here is the path of least resistance — but it lands as an essay in a thread the reviewer wanted to close, and it says nothing the diff does not already say better.
 
 For each resolved comment, reply in-thread on GitHub to indicate the fix has been applied.
 
@@ -671,13 +680,35 @@ For each `gh api` call, if it fails with a transient error (HTTP 5xx, network ti
 
 #### Message template
 
-Use **`MSG_REPLY_TEMPLATE`** for the reply body, substituting `{COMMIT_SHA}` (short SHA, first 7 characters from `git rev-parse --short HEAD`) and `{fix_summary}` (concise one-line description of the fix applied). Render the template and `{fix_summary}` in `$RESOLVE_REPLY_LANG`.
+Pick the template from `$RESOLVE_REPLY_VERBOSITY`. Substitute `{COMMIT_SHA}` (short SHA, first 7 characters from `git rev-parse --short HEAD`) and `{fix_summary}`. Render the template and every substitution in `$RESOLVE_REPLY_LANG`.
+
+| `$RESOLVE_REPLY_VERBOSITY` | Template | Hard cap |
+| -------------------------- | -------- | -------- |
+| `minimal` (default) | **`MSG_REPLY_MINIMAL`** | One line, ≤ 200 characters. No blank line, no code block, no list. |
+| `normal` | **`MSG_REPLY_NORMAL`** | ≤ 400 characters total. The one-line form, plus a `why` sentence **only** when the fix departs from what the comment asked for. When it does not depart, this level renders exactly like `minimal`. |
+| `detailed` | **`MSG_REPLY_DETAILED`** | ≤ 1200 characters, at most 3 short paragraphs. |
+
+Any other value — including an empty one — is read as `minimal`.
+
+Count the characters before posting. If the body is over its cap, cut it rather than posting it: the cap is the contract, not a target to approach.
+
+##### What never goes in a reply, at any level
+
+- **What the diff shows.** Naming the change is the reply; walking through it is not.
+- **How the codebase got this way.** Which other files hold a copy of the pattern, what existed before, why it was spelled that way — none of it is the reviewer's question.
+- **Alternatives you rejected**, and deviations you decided were worth flagging on your own initiative. A genuine departure from the comment belongs in `normal` and `detailed`; a tour of the roads not taken belongs nowhere.
+- **Test counts.** "7 new tests cover it", "1716 tests green" — CI reports that, and it reports it accurately.
+- **The reviewer's comment, quoted back.** They wrote it; it is directly above your reply.
+
+At `minimal` and `normal`, also leave out **acknowledgements** — "good catch", "you were right that…", "thanks, this was a real defect". They are warm and they are noise at those levels. `detailed` is the level that exists for a reply that reads like a person talking, so it may open with one.
 
 ### Fallback: `mcp__github__add_issue_comment`
 
 If the `gh` CLI is not available or all `gh api` calls fail, fall back to creating a single consolidated top-level comment using `mcp__github__add_issue_comment`.
 
 Use **`MSG_REPLY_FALLBACK`** for the fallback comment body, substituting `{COMMIT_SHA}` and the list of resolved comments (each with `{file}`, `{line}`, `{fix_summary}`). Render it in `$RESOLVE_REPLY_LANG`.
+
+Every entry is one line, whatever `$RESOLVE_REPLY_VERBOSITY` says. This is a list of what was addressed, and the level only ever governed the reply to a *single* comment — a consolidated comment carrying eight `detailed` bodies is the one thing worse than eight verbose threads.
 
 > **Note**: If both `gh api` and the MCP fallback fail, log a warning but do not block the workflow.
 
@@ -735,7 +766,9 @@ Status is set to `Review addressed` (fixes pushed, awaiting re-review).
 
 Display **`MSG_SUMMARY`**, substituting `{TICKET-ID}`, `{count}` (resolved/skipped), `{branch-name}`, `{COMMIT_SHA}`, re-review status, and skipped details if any.
 
-Use the conditional blocks `{IF_SKIPPED}...{/IF_SKIPPED}`, `{IF_RE_REQUEST_OK}...{/IF_RE_REQUEST_OK}`, and `{IF_RE_REQUEST_FAIL}...{/IF_RE_REQUEST_FAIL}` as documented in the message template.
+Use the conditional blocks `{IF_RESOLVED}...{/IF_RESOLVED}`, `{IF_SKIPPED}...{/IF_SKIPPED}`, `{IF_RE_REQUEST_OK}...{/IF_RE_REQUEST_OK}`, and `{IF_RE_REQUEST_FAIL}...{/IF_RE_REQUEST_FAIL}` as documented in the message template.
+
+`{IF_RESOLVED}` carries one line per resolved comment, with the same `{fix_summary}` posted in its thread. This is the terminal's copy of the run and it is not capped by `$RESOLVE_REPLY_VERBOSITY` — a summary only you read costs a reviewer nothing. It is also what makes a `minimal` reply safe to prefer: the detail is not lost, it is just not published.
 
 ## Step 10: Multi-repo summary (if applicable)
 

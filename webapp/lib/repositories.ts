@@ -66,6 +66,8 @@ export interface RepoResolve {
   useCommitConfig?: boolean
   replyToComments?: boolean
   replyLanguage?: string
+  /** 'minimal' | 'normal' | 'detailed' — see skills/magic-resolve/SKILL.md step 7. */
+  replyVerbosity?: string
 }
 
 export interface RepoPullRequest {
@@ -450,6 +452,7 @@ export const DEFAULTS = {
   resolveStyle: 'single-line',
   resolveFormat: 'angular',
   replyToComments: true,
+  replyVerbosity: 'minimal',
   autoLinkTickets: true,
   watchCI: true,
   testAccounts: 'off',

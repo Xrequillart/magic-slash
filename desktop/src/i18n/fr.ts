@@ -571,7 +571,12 @@ export const fr: Record<keyof typeof en, string> = {
     'Le message du commit de correction reprend le format de l’onglet Commit.',
   'repo.resolve.step.formatCustom':
     'Le commit de correction a son propre format de message : {format}, {style}.',
-  'repo.resolve.step.replyOn': 'Répond dans chaque fil de review une fois le commentaire traité.',
+  'repo.resolve.step.replyMinimal':
+    'Répond dans chaque fil de review une fois le commentaire traité — une ligne, avec le commit.',
+  'repo.resolve.step.replyNormal':
+    'Répond dans chaque fil de review une fois le commentaire traité, en disant pourquoi dès que le correctif s’écarte de ce qui était demandé.',
+  'repo.resolve.step.replyDetailed':
+    'Répond dans chaque fil de review en détail, en conservant le raisonnement derrière le correctif.',
   'repo.resolve.step.replyOff': 'Ne poste aucune réponse dans les fils de review.',
   'repo.resolve.commitMode': 'Mode de commit',
   'repo.resolve.commitModeHelp': 'Comment committer les corrections de revue',
@@ -584,6 +589,12 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.resolve.customConfig': 'Personnalisé',
   'repo.resolve.reply': 'Répondre aux commentaires',
   'repo.resolve.replyHelp': 'Répondre dans le fil des commentaires GitHub résolus',
+  'repo.resolve.replyVerbosity': 'Détail des réponses',
+  'repo.resolve.replyVerbosityHelp':
+    'Ce que chaque réponse ajoute au diff que le reviewer peut déjà lire',
+  'repo.resolve.verbosityMinimal': 'Bref — une ligne',
+  'repo.resolve.verbosityNormal': 'Équilibré — plus le pourquoi si le correctif diverge',
+  'repo.resolve.verbosityDetailed': 'Conversationnel — conserve le raisonnement',
   'repo.resolve.replyLang': 'Langue des réponses de review',
   'repo.resolve.replyLangHelp': 'Langue des réponses que /magic:resolve publie dans les fils de review de la pull request',
   'repo.resolve.amendNotice': 'Le push utilisera',

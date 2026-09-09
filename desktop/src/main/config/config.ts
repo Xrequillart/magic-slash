@@ -610,6 +610,7 @@ export function updateRepositoryResolveSettings(name: string, settings: Settings
   applySetting(resolve, 'useCommitConfig', settings.useCommitConfig, isBool)
   applySetting(resolve, 'replyToComments', settings.replyToComments, isBool)
   applySetting(resolve, 'replyLanguage', settings.replyLanguage, isOneOf(['en', 'fr']))
+  applySetting(resolve, 'replyVerbosity', settings.replyVerbosity, isOneOf(['minimal', 'normal', 'detailed']))
 
   if (Object.keys(resolve).length === 0) {
     delete config.repositories[name].resolve

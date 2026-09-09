@@ -791,6 +791,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const resolveFormatVal = resolveSettings.format || 'angular'
   const resolveReplyVal = resolveSettings.replyToComments !== undefined ? resolveSettings.replyToComments : true
   const resolveReplyLangVal = resolveSettings.replyLanguage || repoLangs.discussion || 'en'
+  const resolveReplyVerbosityVal = resolveSettings.replyVerbosity || 'minimal'
   const autoLinkTicketsVal = prSettings.autoLinkTickets !== undefined ? prSettings.autoLinkTickets : true
   const watchCIVal = prSettings.watchCI !== undefined ? prSettings.watchCI : true
   const testAccountsVal = prSettings.testAccounts || 'off'
@@ -1874,6 +1875,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             formatLabel: t(COMMIT_FORMAT_LABELS[resolveFormatVal] ?? COMMIT_FORMAT_LABELS.angular),
             styleLabel: t(COMMIT_STYLE_LABELS[resolveStyleVal] ?? COMMIT_STYLE_LABELS['single-line']),
             replyToComments: resolveReplyVal,
+            replyVerbosity: resolveReplyVerbosityVal,
           })}
         />
         {/* Resolve — the commits that carry the fixes, then what is written back to the
@@ -2005,6 +2007,30 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 label={t('repo.resolve.reply')}
               />
             </div>
+
+            {/* Shown only when replies are on, like the language row on the Languages
+                tab: how much a reply says is not a question worth asking about replies
+                that are never written. */}
+            {resolveReplyVal && (
+              <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.replyVerbosity')}</label>
+                  <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyVerbosityHelp')}</p>
+                </div>
+                <div className="relative">
+                  <select
+                    value={resolveReplyVerbosityVal}
+                    onChange={(e) => handleResolveSettingChange('replyVerbosity', e.target.value)}
+                    className={`${SELECT} w-52`}
+                  >
+                    <option value="minimal">{t('repo.resolve.verbosityMinimal')}</option>
+                    <option value="normal">{t('repo.resolve.verbosityNormal')}</option>
+                    <option value="detailed">{t('repo.resolve.verbosityDetailed')}</option>
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
+                </div>
+              </div>
+            )}
           </fieldset>
         </div>
         </>

@@ -99,6 +99,12 @@ function buildOptions(t: Translate) {
     { value: 'ask', label: t('repo.resolve.modeAsk'), description: t('repo.resolve.modeAskHelp') },
   ]
 
+  const replyVerbosity: DropdownOption<string>[] = [
+    { value: 'minimal', label: t('repo.resolve.verbosityMinimal'), description: t('repo.resolve.verbosityMinimalHelp') },
+    { value: 'normal', label: t('repo.resolve.verbosityNormal'), description: t('repo.resolve.verbosityNormalHelp') },
+    { value: 'detailed', label: t('repo.resolve.verbosityDetailed'), description: t('repo.resolve.verbosityDetailedHelp') },
+  ]
+
   const formatSource: DropdownOption<string>[] = [
     { value: 'commit', label: t('repo.resolve.useCommitConfig') },
     { value: 'custom', label: t('repo.resolve.customConfig') },
@@ -147,7 +153,7 @@ function buildOptions(t: Translate) {
     { value: 'none', label: t('repo.plan.acceptanceCriteriaNone'), description: t('repo.plan.acceptanceCriteriaNoneHelp') },
   ]
 
-  return { style, format, commitMode, formatSource, testAccounts, trackerMode, splitting, acceptance }
+  return { style, format, commitMode, replyVerbosity, formatSource, testAccounts, trackerMode, splitting, acceptance }
 }
 
 /**
@@ -362,6 +368,7 @@ export function RepositoryForm({
   const resolveFormat = repo.resolve.format ?? DEFAULTS.resolveFormat
   const replyToComments = repo.resolve.replyToComments ?? DEFAULTS.replyToComments
   const replyLanguage = repo.resolve.replyLanguage ?? repo.languages.discussion ?? DEFAULTS.language
+  const replyVerbosity = repo.resolve.replyVerbosity ?? DEFAULTS.replyVerbosity
 
   const autoLinkTickets = repo.pullRequest.autoLinkTickets ?? DEFAULTS.autoLinkTickets
   const watchCI = repo.pullRequest.watchCI ?? DEFAULTS.watchCI
@@ -1214,6 +1221,7 @@ export function RepositoryForm({
             formatLabel: t(COMMIT_FORMAT_LABELS[resolveFormat] ?? COMMIT_FORMAT_LABELS.angular),
             styleLabel: t(COMMIT_STYLE_LABELS[resolveStyle] ?? COMMIT_STYLE_LABELS['single-line']),
             replyToComments,
+            replyVerbosity,
           })}
         />
         {/* ── Resolve ───────────────────────────────────────────────────────────
@@ -1308,6 +1316,22 @@ export function RepositoryForm({
               onChange={(replyToComments) => setResolve({ replyToComments })}
             />
           </SettingRow>
+
+          {/* Shown only when replies are on, like the language row: how much a reply
+              says is not a question worth asking about replies never written. */}
+          {replyToComments && (
+            <SettingRow
+              label={t('repo.resolve.replyVerbosity')}
+              description={t('repo.resolve.replyVerbosityHelp')}
+            >
+              <Dropdown
+                value={replyVerbosity}
+                options={options.replyVerbosity}
+                onChange={(replyVerbosity) => setResolve({ replyVerbosity })}
+                className="w-52"
+              />
+            </SettingRow>
+          )}
         </SettingsCard>
         </>
       )}

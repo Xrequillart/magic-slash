@@ -68,7 +68,8 @@ export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keyword
     style: 'single-line',
     useCommitConfig: true,
     replyToComments: true,
-    replyLanguage: 'en'
+    replyLanguage: 'en',
+    replyVerbosity: 'minimal'
   },
   pullRequest: {
     autoLinkTickets: true,

@@ -1065,6 +1065,20 @@ export interface RepositoryConfig {
     useCommitConfig?: boolean  // true = inherit from commit settings
     replyToComments?: boolean  // true = reply in-thread on GitHub
     replyLanguage?: string     // 'en' | 'fr'
+    /**
+     * How much the in-thread reply says. The reviewer can already read the diff,
+     * so the levels differ in what they add on top of it, not in how much of it
+     * they restate.
+     *
+     * - 'minimal'  one line: the commit and what changed. The default.
+     * - 'normal'   that line, plus why — but only when the fix departs from what
+     *              the comment asked for, which is the one thing the diff cannot
+     *              show.
+     * - 'detailed' a conversational reply that keeps the reasoning.
+     *
+     * See skills/magic-resolve/SKILL.md step 7.
+     */
+    replyVerbosity?: string    // 'minimal' | 'normal' | 'detailed'
   }
   pullRequest?: {
     autoLinkTickets?: boolean

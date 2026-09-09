@@ -689,7 +689,12 @@ export const en = {
     'Asks every time: a new commit, or an amend that pushes with --force-with-lease.',
   'repo.resolve.step.formatInherit': 'The fix commit takes its message format from the Commit tab.',
   'repo.resolve.step.formatCustom': 'The fix commit has its own message format: {format}, {style}.',
-  'repo.resolve.step.replyOn': 'Replies in each review thread once its comment is addressed.',
+  'repo.resolve.step.replyMinimal':
+    'Replies in each review thread once its comment is addressed — one line, naming the commit.',
+  'repo.resolve.step.replyNormal':
+    'Replies in each review thread once its comment is addressed, and says why whenever the fix departs from what was asked.',
+  'repo.resolve.step.replyDetailed':
+    'Replies in each review thread in full, keeping the reasoning behind the fix.',
   'repo.resolve.step.replyOff': 'Posts no reply in the review threads.',
   'repo.resolve.commitMode': 'Commit mode',
   'repo.resolve.commitModeHelp': 'How review fixes are committed',
@@ -705,6 +710,15 @@ export const en = {
   'repo.resolve.customConfig': 'Custom',
   'repo.resolve.reply': 'Reply to comments',
   'repo.resolve.replyHelp': 'Reply in-thread on resolved GitHub comments',
+  'repo.resolve.replyVerbosity': 'Reply Detail',
+  'repo.resolve.replyVerbosityHelp':
+    'How much each reply says on top of the diff the reviewer can already read',
+  'repo.resolve.verbosityMinimal': 'Brief — one line',
+  'repo.resolve.verbosityNormal': 'Balanced — plus why, when the fix differs',
+  'repo.resolve.verbosityDetailed': 'Conversational — keeps the reasoning',
+  'repo.resolve.verbosityMinimalHelp': 'The commit and what changed, nothing else',
+  'repo.resolve.verbosityNormalHelp': 'Adds why, only when the fix departs from the comment',
+  'repo.resolve.verbosityDetailedHelp': 'Answers the reviewer in full, reasoning included',
   'repo.resolve.replyLang': 'Review reply language',
   'repo.resolve.replyLangHelp': 'Language of the replies /magic:resolve posts in the review threads of the pull request',
   'repo.resolve.amendNotice': 'Push will use',

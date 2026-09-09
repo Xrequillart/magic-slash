@@ -219,6 +219,7 @@ describe('resolveSummary', () => {
     formatLabel: 'Angular',
     styleLabel: 'Single line',
     replyToComments: true,
+    replyVerbosity: 'minimal',
   }
 
   it('describes the commit mode and where the message format comes from', () => {
@@ -226,7 +227,7 @@ describe('resolveSummary', () => {
       'repo.resolve.step.read',
       'repo.resolve.step.commitNew',
       'repo.resolve.step.formatInherit',
-      'repo.resolve.step.replyOn',
+      'repo.resolve.step.replyMinimal',
     ])
   })
 
@@ -243,8 +244,31 @@ describe('resolveSummary', () => {
     expect(summary.steps.map((s) => s.key)).toEqual([
       'repo.resolve.step.read',
       'repo.resolve.step.commitAmend',
-      'repo.resolve.step.replyOn',
+      'repo.resolve.step.replyMinimal',
     ])
+  })
+
+  it('names the detail level of the replies it will post', () => {
+    for (const [replyVerbosity, key] of [
+      ['minimal', 'repo.resolve.step.replyMinimal'],
+      ['normal', 'repo.resolve.step.replyNormal'],
+      ['detailed', 'repo.resolve.step.replyDetailed'],
+    ]) {
+      expect(resolveSummary({ ...RESOLVE, replyVerbosity }).steps.at(-1)?.key).toBe(key)
+    }
+  })
+
+  // A level the config should never hold reads as the terse default rather than
+  // dropping the line: an unknown value must not be able to make the summary
+  // promise more than the skill will write.
+  it('falls back to the brief line for an unknown level', () => {
+    const summary = resolveSummary({ ...RESOLVE, replyVerbosity: 'chatty' })
+    expect(summary.steps.at(-1)?.key).toBe('repo.resolve.step.replyMinimal')
+  })
+
+  it('says nothing about detail when it will not reply at all', () => {
+    const summary = resolveSummary({ ...RESOLVE, replyVerbosity: 'detailed', replyToComments: false })
+    expect(summary.steps.at(-1)?.key).toBe('repo.resolve.step.replyOff')
   })
 
   it('says when it will not reply in the review threads', () => {
@@ -296,14 +320,17 @@ describe('every line a setting can produce', () => {
     ),
     ...['new', 'amend', 'ask'].flatMap((commitMode) =>
       [true, false].flatMap((useCommitConfig) =>
-        [true, false].map((replyToComments) =>
-          resolveSummary({
-            commitMode,
-            useCommitConfig,
-            formatLabel: 'Angular',
-            styleLabel: 'Single line',
-            replyToComments,
-          }),
+        [true, false].flatMap((replyToComments) =>
+          ['minimal', 'normal', 'detailed'].map((replyVerbosity) =>
+            resolveSummary({
+              commitMode,
+              useCommitConfig,
+              formatLabel: 'Angular',
+              styleLabel: 'Single line',
+              replyToComments,
+              replyVerbosity,
+            }),
+          ),
         ),
       ),
     ),

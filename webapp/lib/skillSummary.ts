@@ -269,6 +269,14 @@ export interface ResolveSummaryInput {
   formatLabel: string
   styleLabel: string
   replyToComments: boolean
+  /** 'minimal' | 'normal' | 'detailed' — unknown values read as 'minimal'. */
+  replyVerbosity: string
+}
+
+const RESOLVE_REPLY_STEPS: Record<string, MessageKey> = {
+  minimal: 'repo.resolve.step.replyMinimal',
+  normal: 'repo.resolve.step.replyNormal',
+  detailed: 'repo.resolve.step.replyDetailed',
 }
 
 export function resolveSummary(input: ResolveSummaryInput): SkillSummary {
@@ -290,8 +298,11 @@ export function resolveSummary(input: ResolveSummaryInput): SkillSummary {
     )
   }
 
+  // How much the reply says is only worth a line when there is a reply at all.
   steps.push({
-    key: input.replyToComments ? 'repo.resolve.step.replyOn' : 'repo.resolve.step.replyOff',
+    key: input.replyToComments
+      ? (RESOLVE_REPLY_STEPS[input.replyVerbosity] ?? RESOLVE_REPLY_STEPS.minimal)
+      : 'repo.resolve.step.replyOff',
   })
 
   return { steps, tail: [] }
