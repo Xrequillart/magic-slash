@@ -45,8 +45,56 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.cloudPage.lead':
     'Votre configuration, votre équipe et votre usage, sur chaque machine où vous vous connectez — sans rien à recopier à la main. Cette page est en cours d’écriture.',
   'site.downloadPage.title': 'Télécharger Magic Slash',
+  // `/download` est une vraie page désormais : plus de « en cours d’écriture ». Voir la
+  // note côté anglais ; le reste de la famille est plus bas.
   'site.downloadPage.lead':
-    'L’installeur, ce qu’il attend de votre machine, et ce que le premier lancement met en place pour vous. Cette page est en cours d’écriture.',
+    'Un seul installeur pour macOS. Glissez-le dans Applications, ouvrez-le une fois, et le premier lancement met en place tout ce dont les huit commandes ont besoin.',
+
+  // ── Page de téléchargement ─────────────────────────────────────────────────
+  'site.downloadPage.versionBadge': 'Version {version} · publiée le {date}',
+  'site.downloadPage.button': 'Télécharger pour Mac',
+  'site.downloadPage.fileHint': 'Un .dmg pour les Mac Apple Silicon, version {version}.',
+  'site.downloadPage.reassureChip': 'Apple Silicon',
+  'site.downloadPage.reassureSigned': 'Signée et notarisée par Apple',
+
+  'site.downloadPage.requirementsEyebrow': 'Avant d’installer',
+  'site.downloadPage.requirementsTitle': 'Trois choses dont votre Mac a besoin d’abord.',
+  'site.downloadPage.requirementsLead':
+    'Le premier lancement vérifie les trois et vous dit laquelle manque. Rien d’autre n’est demandé — pas de compte à créer, pas de script à lancer.',
+  'site.downloadPage.reqClaudeTitle': 'Claude Code',
+  'site.downloadPage.reqClaudeBody':
+    'Installé et connecté. Chaque commande <code>/magic:</code> tourne dedans : l’app n’est prête que si Claude Code l’est.',
+  'site.downloadPage.reqNodeTitle': 'Node.js 20 ou plus récent',
+  'site.downloadPage.reqNodeBody':
+    'Les serveurs MCP Jira et GitHub auxquels parlent les commandes tournent dessus.',
+  'site.downloadPage.reqGitTitle': 'Git 2.20 ou plus récent',
+  'site.downloadPage.reqGitBody':
+    'Pour les worktrees — une branche par agent, chacune dans son propre dossier, pour que deux agents ne se marchent jamais sur le même checkout.',
+  'site.downloadPage.requirementsReassure':
+    'Pas d’inquiétude. L’app vérifie tout cela au premier lancement — et s’il manque quelque chose, elle vous propose de l’installer.',
+
+  'site.downloadPage.launchEyebrow': 'Premier lancement',
+  'site.downloadPage.launchTitle': 'Ouvrez-la une fois. Elle fait le reste.',
+  'site.downloadPage.launchLead':
+    'Il n’y a pas de script d’installation. L’app prépare sa propre machine au premier lancement, et vous montre chaque étape au fil de l’eau.',
+  'site.downloadPage.stepChecksTitle': 'Vérifie les prérequis',
+  'site.downloadPage.stepChecksBody':
+    'Claude Code, Node.js et Git, avec leurs versions — et la ligne à lancer pour celui qui manque.',
+  'site.downloadPage.stepSkillsTitle': 'Installe les huit commandes',
+  'site.downloadPage.stepSkillsBody':
+    'Les skills <code>/magic:</code> se posent dans <code>~/.claude/skills/</code>, où Claude Code les retrouve dans chaque projet de la machine.',
+  'site.downloadPage.stepMcpTitle': 'Branche Jira et GitHub',
+  'site.downloadPage.stepMcpBody':
+    'Configure les serveurs MCP dont dépendent les commandes, puis vous guide pour vous connecter à chacun.',
+
+  'site.downloadPage.changelogEyebrow': 'Nouveautés',
+  'site.downloadPage.changelogTitle': 'Ce qui change dans la {version}.',
+  'site.downloadPage.changelogLead':
+    'Les notes de version du build que vous allez télécharger. Toutes les versions précédentes sont sur la page changelog.',
+  'site.downloadPage.fullChangelog': 'Voir tout le changelog',
+  'site.downloadPage.releaseNotes': 'Cette version sur GitHub',
+  'site.downloadPage.olderVersions': 'Vous cherchez une version antérieure ?',
+  'site.downloadPage.allReleases': 'Toutes les versions sur GitHub',
   'site.bestPracticesPage.title': 'Bonnes pratiques',
   'site.bestPracticesPage.lead':
     'Comment découper le travail pour que les agents puissent le porter — un ticket par branche, une spec avant un epic, et quand laisser un agent tourner sans surveillance. Cette page est en cours d’écriture.',

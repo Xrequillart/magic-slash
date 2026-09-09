@@ -129,18 +129,21 @@ export type SiteNavRow = {
 }
 
 /**
- * THE THREE PAGES THAT DO NOT EXIST YET, and what each one will be about.
+ * THE TWO PAGES THAT DO NOT EXIST YET, and what each one will be about.
  *
  * They are placeholders on purpose and the shape says so: a path, the label the menu
  * gives it, and the two lines the page itself prints — a title and one lead — with
- * `PLACEHOLDER_NOTE` below them. `components/site/PlaceholderContent.tsx` renders all
- * three, so the three `page.tsx` files under `app/(marketing)` are a `metadata` export
+ * `PLACEHOLDER_NOTE` below them. `components/site/PlaceholderContent.tsx` renders
+ * both, so the two `page.tsx` files under `app/(marketing)` are a `metadata` export
  * and one component call each.
  *
- * `/desktop` WAS THE FOURTH AND IS A REAL PAGE NOW: the homepage's own app band moved
- * onto it whole (`components/site/desktop/DesktopContent.tsx`), which is why its row
- * below is written out rather than mapped from here — and why `site.desktopPage.*` is
- * gone from the catalogues. A page with content has no use for a promise of scope.
+ * THERE WERE FOUR. `/desktop` left first: the homepage's own app band moved onto it
+ * whole (`components/site/desktop/DesktopContent.tsx`). `/download` followed, with the
+ * button, the prerequisites and the latest release's notes
+ * (`components/site/download/DownloadContent.tsx`). Both rows below are written out
+ * rather than mapped from here, and `site.desktopPage.*` is gone from the catalogues —
+ * `site.downloadPage.*` stayed, because that page still needs a title and a lead, just
+ * not a promise of scope. A page with content has no use for one.
  *
  * A ROUTE HAD TO EXIST THE DAY THE MENU SHIPPED, which is the same argument
  * `WORKFLOW_PATH` records: the alternative to a thin page is a menu row that 307s to a
@@ -170,12 +173,6 @@ export const PLACEHOLDER_PAGES = {
     title: 'site.cloudPage.title',
     lead: 'site.cloudPage.lead',
   },
-  download: {
-    path: '/download',
-    label: 'site.nav.download',
-    title: 'site.downloadPage.title',
-    lead: 'site.downloadPage.lead',
-  },
   // The Help menu's own new row. `/best-practices` and not `/best-practice`: the page is
   // a collection of them, and the plural is what everybody who has ever linked to such a
   // page has used.
@@ -190,7 +187,7 @@ export const PLACEHOLDER_PAGES = {
 /**
  * The line every unfinished page carries where its content will go.
  *
- * ONE KEY FOR ALL THREE, and it is deliberately a plain statement rather than a promise
+ * ONE KEY FOR BOTH, and it is deliberately a plain statement rather than a promise
  * with a date on it: "in preparation" ages, "shipping in March" is wrong in April.
  */
 export const PLACEHOLDER_NOTE: MessageKey = 'site.pageSoon.note'
@@ -200,7 +197,7 @@ export const PLACEHOLDER_NOTE: MessageKey = 'site.pageSoon.note'
  *
  * The glyph and the tone are arguments rather than fields on `PLACEHOLDER_PAGES`: what a
  * page is called and what it will hold belong to the page, and how the MENU dresses the
- * row that opens it belongs to the menu. The three pages would keep their copy if the
+ * row that opens it belongs to the menu. The two pages would keep their copy if the
  * menu were redrawn tomorrow.
  */
 const row = (
@@ -233,6 +230,23 @@ const row = (
  * two route branches resolving one path is a build question rather than a naming one.
  */
 export const DESKTOP_PATH = '/desktop'
+
+/**
+ * The page that hands out the app — the button, what the machine needs first, and what
+ * the latest release changed.
+ *
+ * A PAGE AND NOT THE `.dmg`. The footer's Download row and `FinalCtaSection` still start
+ * the download outright (`DESKTOP_DOWNLOAD_URL`); every other button on the site opens
+ * this page first, so a visitor is told which build they are getting and what the first
+ * launch will check before the file lands in their Downloads folder.
+ *
+ * NAMED HERE FOR THE SAME REASON `DESKTOP_PATH` IS, and unlike `/workflow` or `/faq` it
+ * has a data module of its own (`lib/downloadPage.ts`) that could have owned it. It does
+ * not, on purpose: that module is the page's COPY — keys, prerequisites, steps — and the
+ * homepage hero and `/desktop` link to this path without needing any of that. A path is
+ * a fact about the site, and the menu is where the site's paths are listed.
+ */
+export const DOWNLOAD_PATH = '/download'
 
 /** The Product menu's trigger. */
 export const PRODUCT_MENU_LABEL: MessageKey = 'site.nav.product'
@@ -274,7 +288,7 @@ export const PRODUCT_MENU_GROUPS: SiteNavRow[][] = [
     { href: '/features', label: 'site.nav.allFeatures', icon: 'Layers', tone: 'purple' },
     { href: '/changelog', label: 'site.nav.changelog', icon: 'ScrollText', tone: 'purple' },
   ],
-  [row(PLACEHOLDER_PAGES.download, 'Download', 'green')],
+  [{ href: DOWNLOAD_PATH, label: 'site.nav.download', icon: 'Download', tone: 'green' }],
 ]
 
 /**

@@ -11,15 +11,16 @@ import { HomeSection } from './home/Shell'
  * A PAGE THAT EXISTS AND IS NOT WRITTEN YET: its title, one line of scope, and a badge
  * saying so.
  *
- * FOUR ROUTES SHARE IT — `/desktop`, `/cloud` and `/download` from the Product menu, and
- * `/best-practices` from the Help menu (`PLACEHOLDER_PAGES` in `lib/siteNav.ts`). One
- * component rather than four near-identical bands, because the four will not be replaced
- * on the same day: each `page.tsx` swaps this call for its own content when its turn
- * comes, and the ones still waiting keep agreeing with each other in the meantime.
+ * TWO ROUTES SHARE IT — `/cloud` from the Product menu and `/best-practices` from the
+ * Help menu (`PLACEHOLDER_PAGES` in `lib/siteNav.ts`). One component rather than two
+ * near-identical bands, because they will not be replaced on the same day: each
+ * `page.tsx` swaps this call for its own content when its turn comes, and the one still
+ * waiting keeps agreeing with itself in the meantime.
  *
- * There were five for a moment. `/skills` was cut for duplicating `/workflow`, and the
- * count above is the kind of sentence that is worth keeping true — see the note in
- * `lib/siteNav.ts` for what the cut was about.
+ * THERE WERE FOUR, AND FIVE FOR A MOMENT. `/skills` was cut for duplicating `/workflow`;
+ * `/desktop` and `/download` were written for real (`DesktopContent`, `DownloadContent`)
+ * and dropped this call. The count above is the kind of sentence that is worth keeping
+ * true — see the notes in `lib/siteNav.ts`.
  *
  * WHY THE ROUTES SHIPPED EMPTY AT ALL, which is the thing to be honest about rather than
  * quiet about: a header row pointing at a path `PUBLIC_PATHS` does not list 307s the

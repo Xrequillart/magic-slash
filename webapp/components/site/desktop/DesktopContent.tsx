@@ -4,7 +4,7 @@ import { Columns, Download, Plug, ScrollText, Sparkles } from 'lucide-react'
 import { ButtonNavLink } from '@/components/ui'
 import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
-import { PLACEHOLDER_PAGES } from '@/lib/siteNav'
+import { DOWNLOAD_PATH } from '@/lib/siteNav'
 import { WORKFLOW_PATH } from '@/lib/workflow'
 import { Reveal } from '../Reveal'
 import { RichText } from '../RichText'
@@ -64,7 +64,7 @@ export function DesktopContent() {
 
         <Reveal order={4} className="flex flex-wrap items-center justify-center gap-3">
           {/* The download PAGE, not the .dmg — same call as the homepage hero's primary. */}
-          <ButtonNavLink href={PLACEHOLDER_PAGES.download.path} variant="primary" size="lg" icon={Download}>
+          <ButtonNavLink href={DOWNLOAD_PATH} variant="primary" size="lg" icon={Download}>
             {t('site.hero.downloadCta')}
           </ButtonNavLink>
           <ButtonNavLink href={WORKFLOW_PATH} variant="secondary" size="lg">

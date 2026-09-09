@@ -1,25 +1,33 @@
 import type { Metadata } from 'next'
-import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
-import { PlaceholderContent } from '@/components/site/PlaceholderContent'
-import { PLACEHOLDER_PAGES } from '@/lib/siteNav'
+import { DownloadContent } from '@/components/site/download/DownloadContent'
+import { loadChangelog } from '@/lib/changelog'
+import { LATEST_DESKTOP_VERSION } from '@/lib/desktopRelease'
 
 /**
- * magic-slash.io/download — the way to get the app. NOT WRITTEN YET.
+ * magic-slash.io/download — the way to get the app.
  *
- * The `metadata`-only server component, with the copy in a client component next door:
- * the same split every page in this group makes, and `PLACEHOLDER_PAGES` in
- * `lib/siteNav.ts` owns the path and the two keys.
+ * IT WAS A PLACEHOLDER, and what fills it is what its own note said it owed: the
+ * button, which Macs the build runs on, the three prerequisites the first launch checks,
+ * what the installer puts in `~/.claude/skills/`, and which release you are getting —
+ * with that release's notes at the bottom and a way onward to `/changelog`.
  *
- * A PAGE AND NOT A LINK STRAIGHT TO THE `.dmg`, which is what the footer's Download row
- * still is (`DESKTOP_DOWNLOAD_URL`) and what the header's row could have been. The
- * difference is what surrounds the button: Apple Silicon, the three prerequisites the
- * first launch checks (`site.faq.*` already answers that one), what the installer puts
- * in `~/.claude/skills/`, and which release you are getting. A menu row that starts a
- * download with none of that said is the ask arriving before the answer.
+ * A SERVER COMPONENT whose job is the `metadata` and one file read, with the page in a
+ * client component next door: the copy needs `useT()`, and `metadata` cannot be exported
+ * from a `'use client'` module. The same split `/changelog` makes, for the same second
+ * reason — `loadChangelog()` reads `CHANGELOG.md` off the disk with `node:fs` at build
+ * time (`lib/changelog.ts` says at length why that replaced a runtime fetch), and a
+ * client component cannot.
  *
- * `lib/desktopRelease.ts` owns the version and the file URL — derived from
- * `desktop/package.json` and pinned by `desktopRelease.test.ts` — so this page must
- * build its button from those rather than spelling either by hand.
+ * THE ENTRY HANDED DOWN IS THE ONE FOR `LATEST_DESKTOP_VERSION`, not `versions[0]`. The
+ * two agree on every release — `/magic:release` bumps the constant and writes the entry
+ * in the same step — but the button downloads the CONSTANT's build, so the notes under it
+ * have to be that build's. Falling back to the newest entry when the constant's is
+ * missing would print notes for a file the button does not hand out. `null` instead, and
+ * the band says so and links the GitHub release.
+ *
+ * `lib/desktopRelease.ts` owns the version and the file URL, pinned to
+ * `desktop/package.json` by `desktopRelease.test.ts`; `downloadPage.test.ts` reads the
+ * component as text to make sure the button is built from them and not spelled by hand.
  */
 
 export const metadata: Metadata = {
@@ -29,12 +37,7 @@ export const metadata: Metadata = {
 }
 
 export default function DownloadPage() {
-  const page = PLACEHOLDER_PAGES.download
+  const release = loadChangelog().find((version) => version.version === LATEST_DESKTOP_VERSION) ?? null
 
-  return (
-    <>
-      <PlaceholderContent title={page.title} lead={page.lead} />
-      <FinalCtaSection />
-    </>
-  )
+  return <DownloadContent release={release} />
 }

@@ -244,6 +244,10 @@ describe('message catalogues', () => {
         // language. (`site.desktop.title` sat here while it read "Magic Slash", a proper
         // noun; it is a sentence now, and translated.)
         'site.desktop.reassureMac',
+        // `/download` says the same two things: the chip family is a proper noun, and the
+        // first prerequisite is the product's name.
+        'site.downloadPage.reassureChip',
+        'site.downloadPage.reqClaudeTitle',
         // The hero mockup mirrors the app's own chrome, and these four labels are the
         // same word in French — "Skills" is the product's name for them, and AGENTS /
         // SESSION / Commits are borrowed whole, exactly as they are in the app.

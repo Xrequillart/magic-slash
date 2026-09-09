@@ -831,6 +831,12 @@ const config: Config = {
         ink: INK,
         muted: '#52525b',
         softblue: '#D9E8FF',
+        // `softblue`'s green counterpart, for the one page whose opening is green rather
+        // than blue: `/download`. It is `MINT_LIGHT` — the pale stop of the mint tone —
+        // named as a colour so a `from-softgreen` reads beside `from-softblue`, and so the
+        // hero's wash and the tone card that closes the loop are the same green. See the
+        // note on `MINT_LIGHT` for why this is not `green` (#22c55e): that one is a status.
+        softgreen: MINT_LIGHT,
         canvas: '#F4F7FE',
         // The hairline. One weight, `ink` at 8% — between the 5% that outlines a
         // surface and the 10% that outlined a field, both of which were written as

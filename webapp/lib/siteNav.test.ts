@@ -7,6 +7,7 @@ import {
   ALL_NAV_GROUPS,
   ALL_NAV_ROWS,
   DESKTOP_PATH,
+  DOWNLOAD_PATH,
   FAQ_NAV_ROW,
   HELP_MENU,
   HELP_MENU_LABEL,
@@ -115,6 +116,18 @@ describe('the site header nav', () => {
     expect(page).not.toContain('PlaceholderContent')
   })
 
+  it('leaves `/download` out of the placeholders too, now that it hands out the app', () => {
+    // Same argument as `/desktop` above: the page has a button, the prerequisites and
+    // the latest release on it (`DownloadContent`), so "Page in preparation" under it
+    // would be a lie. The row is written out in `PRODUCT_MENU_GROUPS`; this stops it
+    // drifting back into the table.
+    expect(Object.values(PLACEHOLDER_PAGES).map((page) => page.path)).not.toContain(DOWNLOAD_PATH)
+
+    const page = readFileSync(webapp(`../app/(marketing)${DOWNLOAD_PATH}/page.tsx`), 'utf8')
+    expect(page).toContain('<DownloadContent')
+    expect(page).not.toContain('PlaceholderContent')
+  })
+
   it('draws every row in both menus with a glyph and a family colour', () => {
     // The glyph and the tone are what the panels read (`dress` in `SiteHeader.tsx`), and
     // a row missing either does not fail anywhere: it renders as a bare label in a column
@@ -184,7 +197,7 @@ describe('the site header nav', () => {
     // Download is last (below) AND alone, which is the part a diff hides: a row appended
     // to the final group would sit under the same rule and read as part of the ask.
     expect(PRODUCT_MENU_GROUPS.at(-1)?.map((row) => row.href)).toEqual([
-      PLACEHOLDER_PAGES.download.path,
+      DOWNLOAD_PATH,
     ])
     // And the Help menu is a fourth group in the mobile panel rather than two more rows
     // of the ask.
@@ -233,7 +246,7 @@ describe('the site header nav', () => {
     // Download is the ask, and a menu that asks before it explains is a menu people
     // close. The order above it is an argument (see `PRODUCT_MENU`); this is the half of
     // it worth pinning, because a row appended to the array lands after it by default.
-    expect(PRODUCT_MENU.at(-1)?.href).toBe(PLACEHOLDER_PAGES.download.path)
+    expect(PRODUCT_MENU.at(-1)?.href).toBe(DOWNLOAD_PATH)
   })
 
   it('offers no destination twice', () => {
@@ -246,7 +259,7 @@ describe('the site header nav', () => {
     expect(new Set(labels).size, labels.join(', ')).toBe(labels.length)
   })
 
-  it('says out loud that the four new pages are placeholders', () => {
+  it('says out loud that the two unwritten pages are placeholders', () => {
     // The four routes shipped with the menu because a row pointing nowhere 307s to a
     // login form — the pages are thin ON PURPOSE, and `PlaceholderContent` is the thing
     // that admits it on screen. A page rewritten for real drops that component, and this

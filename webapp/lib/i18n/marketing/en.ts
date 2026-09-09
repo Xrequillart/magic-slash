@@ -110,8 +110,96 @@ export const marketingEn = {
   'site.cloudPage.lead':
     'Your configuration, your team and your usage, on every machine you sign in on — with nothing to copy across by hand. This page is being written.',
   'site.downloadPage.title': 'Download Magic Slash',
+  /**
+   * `/download` IS A REAL PAGE NOW (`components/site/download/DownloadContent.tsx`), so
+   * its lead lost the "this page is being written" the two placeholders above still
+   * carry. The rest of the family is below with the page's own copy; the title and lead
+   * stay here so the four pages' openings read side by side.
+   */
   'site.downloadPage.lead':
-    'The installer, what it needs on your machine, and what the first launch sets up for you. This page is being written.',
+    'One installer for macOS. Drop it in Applications, open it once, and the first launch sets up everything the eight commands need.',
+
+  // ── Download page ──────────────────────────────────────────────────────────
+  /**
+   * The pill above the title says WHICH build the button hands out, and when it shipped.
+   * Both values come from the code — `LATEST_DESKTOP_VERSION` and the changelog's date
+   * for it — so the sentence is never edited by hand at release time.
+   */
+  'site.downloadPage.versionBadge': 'Version {version} · released {date}',
+  /** The one primary button on the page. Same words as the hero's, which OPENS this page. */
+  'site.downloadPage.button': 'Download for Mac',
+  /**
+   * Under the button: what the file is, so nobody is surprised by a .dmg — and which
+   * Macs it runs on. Apple Silicon ONLY, because that is the only build the release
+   * workflow publishes (see `DESKTOP_DOWNLOAD_URL` in `lib/desktopRelease.ts`).
+   */
+  'site.downloadPage.fileHint': 'A .dmg for Apple Silicon Macs, version {version}.',
+  /** The line of reassurance under the button — `site.desktop.reassureFree` opens it. */
+  'site.downloadPage.reassureChip': 'Apple Silicon',
+  'site.downloadPage.reassureSigned': 'Signed and notarized by Apple',
+
+  /**
+   * THE PREREQUISITES BAND: the same three things `site.faq.prerequisites.a` lists, one
+   * card each, because the FAQ answer is a paragraph and a visitor about to press a
+   * download button reads a list. Three, and not more — they are the three the first
+   * launch actually checks (`desktop/src/main/setup/`).
+   */
+  'site.downloadPage.requirementsEyebrow': 'Before you install',
+  'site.downloadPage.requirementsTitle': 'Three things your Mac needs first.',
+  'site.downloadPage.requirementsLead':
+    'The first launch checks all three and tells you which one is missing. Nothing else is required — no account to create, no script to run.',
+  'site.downloadPage.reqClaudeTitle': 'Claude Code',
+  'site.downloadPage.reqClaudeBody':
+    'Installed and signed in. Every <code>/magic:</code> command runs inside it, so the app is only as ready as Claude Code is.',
+  'site.downloadPage.reqNodeTitle': 'Node.js 20 or newer',
+  'site.downloadPage.reqNodeBody':
+    'The Jira and GitHub MCP servers the commands talk to run on it.',
+  'site.downloadPage.reqGitTitle': 'Git 2.20 or newer',
+  'site.downloadPage.reqGitBody':
+    'For worktree support — one branch per agent, each in a folder of its own, so two agents never step on the same checkout.',
+  /**
+   * THE LINE UNDER THE THREE CARDS, set large and bold and centred: the cards read as a
+   * checklist to complete BEFORE pressing the button, and they are not one. The app
+   * probes all three at first launch and offers an install button for whichever is
+   * missing (`desktop/src/main/setup/prerequisites.ts`), so nobody has to prepare
+   * anything. The cards say what; this line says "and you don't have to".
+   */
+  'site.downloadPage.requirementsReassure':
+    'Don’t worry about it. The app checks all of this on first launch — and if something is missing, it offers to install it for you.',
+
+  /**
+   * THE FIRST-LAUNCH BAND, as three numbered steps in the app's own order. It is what
+   * replaced the install script the old site told people to pipe into a shell: there is
+   * nothing to run, and this band is where that promise is made concrete.
+   */
+  'site.downloadPage.launchEyebrow': 'First launch',
+  'site.downloadPage.launchTitle': 'Open it once. It does the rest.',
+  'site.downloadPage.launchLead':
+    'There is no install script. The app sets up its own machine on the first launch, and shows you each step as it goes.',
+  'site.downloadPage.stepChecksTitle': 'Checks the prerequisites',
+  'site.downloadPage.stepChecksBody':
+    'Claude Code, Node.js and Git, with their versions — and a one-line fix for whichever one is missing.',
+  'site.downloadPage.stepSkillsTitle': 'Installs the eight commands',
+  'site.downloadPage.stepSkillsBody':
+    'The <code>/magic:</code> skills land in <code>~/.claude/skills/</code>, where Claude Code picks them up in every project on the machine.',
+  'site.downloadPage.stepMcpTitle': 'Wires Jira and GitHub',
+  'site.downloadPage.stepMcpBody':
+    'Configures the MCP servers the commands rely on, then walks you through signing in to each one.',
+
+  /**
+   * THE CHANGELOG BAND. The page closes on the release notes of the build the button
+   * hands out — not the whole history, which is `/changelog`'s job and the button under
+   * the notes opens it. `{version}` is substituted, so the heading is never stale.
+   */
+  'site.downloadPage.changelogEyebrow': 'What’s new',
+  'site.downloadPage.changelogTitle': 'What changed in {version}.',
+  'site.downloadPage.changelogLead':
+    'The release notes for the build you are about to download. Every earlier release is on the changelog page.',
+  'site.downloadPage.fullChangelog': 'See the full changelog',
+  'site.downloadPage.releaseNotes': 'This release on GitHub',
+  /** The last line on the page, for whoever needs a build that is not this one. */
+  'site.downloadPage.olderVersions': 'Looking for an earlier release?',
+  'site.downloadPage.allReleases': 'All releases on GitHub',
   'site.bestPracticesPage.title': 'Best practices',
   'site.bestPracticesPage.lead':
     'How to shape the work so the agents can carry it — one ticket per branch, a spec before an epic, and when to let an agent run unattended. This page is being written.',
