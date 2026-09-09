@@ -589,6 +589,58 @@ export const marketingEn = {
    */
   'site.skillsBand.pointHands': 'You approve the plan, the rest runs itself',
 
+  // ── The band after the eight skills: what stops being yours alone ───────
+  //
+  // FOUR CARDS AND A HEADING, and no button — the owner asked for a band with a title and
+  // a description and nothing to click ("avec titre, description sans CTA"), which
+  // `OrgSection`'s header explains the placement reason for.
+  //
+  // THE FAMILY IS `site.orgBand.*`, matching `site.skillsBand.*` above it: a BAND's own
+  // copy, as against the `site.*Card.*` families further down, which hold the LABELS
+  // INSIDE a drawing. This band's four drawings read their labels from `site.repoCfg.*`
+  // and `site.tasksCard.*` rather than minting a family of their own — both are drawings
+  // of screens those families already describe — so `site.orgBand.*` is the heading and
+  // the four cards, and nothing else.
+  //
+  // THE HEADING IS TWO SENTENCES BECAUSE THE SECOND IS THE PAYOFF OF THE FIRST. A single
+  // clause ("shared configuration for teams") names a category; this one makes a promise
+  // and then says who collects on it. It is also the first line on the page whose subject
+  // is plural — everything above is addressed to one person — which is the seam this band
+  // was put at.
+  'site.orgBand.title': 'Set it up once. Your team inherits it.',
+  'site.orgBand.subtitle':
+    'Repository configuration, plans and the backlog belong to your organization rather than to one laptop. Someone joins, opens the app, and finds the project already set up — the same branch, the same commit format, the same tickets.',
+  // THE CARD TITLES ARE NOUNS and not the imperatives the workflow band uses: that band is
+  // about what YOU do, this one about what the product HOLDS on your behalf.
+  'site.orgBand.configTitle': 'The configuration your team shares',
+  // NAMED IN THE ORDER THE SETTINGS PAGE LISTS THEM, so a reader who opens the drawing
+  // beside this sentence finds the four things it promises in the tabs it shows.
+  'site.orgBand.configDesc':
+    'Share a repository with your organization and every setting on it goes too: the development branch, the commit format, the pull request template, the language of each surface. Set once, by whoever knows the project best.',
+  'site.orgBand.orgTitle': 'Your organization',
+  // "BINDS THEIR OWN LOCAL FOLDER" IS THE APP'S OWN SENTENCE, lifted from the help line
+  // under the Scope row (`site.repoCfg.teamHelp`, itself the desktop's `repo.scope.teamHelp`).
+  // It is the one detail that stops the claim being read as "we sync your checkout": what
+  // travels is the configuration, and where the code lives stays each member's own answer.
+  'site.orgBand.orgDesc':
+    'Invite the people you work with and the repositories follow them, configuration included. Each member binds their own local folder and starts working — nobody sets up the same project twice.',
+  'site.orgBand.planTitle': 'Plans that circulate',
+  // THE COMMAND IS NAMED, and it is the only card here that names one: a plan is the one
+  // thing in this band a reader has no prior picture of, and `/magic:plan` is what the
+  // skills band directly above has just introduced it as.
+  'site.orgBand.planDesc':
+    '/magic:plan turns an idea into a spec, an epic and its stories. Share it and anyone free can pick a story up, with the reasoning behind it already written down.',
+  'site.orgBand.tasksTitle': 'One backlog, everyone’s tickets',
+  // "WHAT IS LEFT TO TAKE" AND NOT "WHAT IS LEFT TO DO", which is the distinction the
+  // drawing makes with its marked row and the reason this card is not a second Tasks
+  // card: a shared list is only useful if it says which rows are already gone.
+  'site.orgBand.tasksDesc':
+    'Filter the shared list down to one repository and see what is left to take. A ticket an agent is already working is marked as such, so two people never start on the same one.',
+  // The pill on the organisation drawing's second rail. "Configuration" is the same word
+  // in French, so it is listed in `i18n.test.ts`'s allow-list; the repository slug on the
+  // rail above it is a literal in the component, as every repository name on this site is.
+  'site.orgTeam.config': 'Configuration',
+
   // ── The band under the app window: who it is built for ─────────────────────
   //
   // FIVE CARDS AND A HEADING, and the family is `site.builtFor.*` rather than
@@ -1799,6 +1851,15 @@ export const marketingEn = {
   'site.repoCfg.personal': 'Personal',
   'site.repoCfg.personalHelp':
     'Only you can see this repository. Share it with an organization to make it a team repo.',
+  // THE TEAM HALF OF THE SCOPE ROW, added when `SharedConfigArt` gave this family a
+  // consumer again. The row has two states and the catalogue only held one: `personal`
+  // above, and now the state a shared repository is actually in. All three mirror the
+  // desktop's own `repo.scope.*` word for word rather than paraphrasing them — the drawing
+  // is a reproduction of that row, so the site and the app say the same sentence.
+  'site.repoCfg.teamNamed': 'Team — {name}',
+  'site.repoCfg.teamHelp':
+    'Shared with the organization — every member sees it and binds their own local folder.',
+  'site.repoCfg.makePersonal': 'Make personal',
   'site.repoCfg.general': 'General',
   'site.repoCfg.name': 'Name',
   'site.repoCfg.nameHelp': 'Repository display name',

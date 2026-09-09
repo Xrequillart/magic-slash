@@ -6,6 +6,7 @@ import { SkillsSection } from '@/components/site/home/SkillsSection'
 import { AppSection } from '@/components/site/home/AppSection'
 import { BuiltForSection } from '@/components/site/home/BuiltForSection'
 import { CloudSection } from '@/components/site/home/CloudSection'
+import { OrgSection } from '@/components/site/home/OrgSection'
 import { SecuritySection } from '@/components/site/home/SecuritySection'
 import { FaqSection } from '@/components/site/home/FaqSection'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
@@ -20,7 +21,7 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * band by the product owner — "on the product you already have", then "the eight commands", then the feature
  * grid, and then "how it works" as well — which at its thinnest left the headline that
  * names the cycle and the one button at the end of it, with nothing between them. The
- * middle bands were then built back, seven of them now, for seven different jobs:
+ * middle bands were then built back, eight of them now, for eight different jobs:
  *
  *   • `PillarsSection` answers WHAT IT IS in two cards, one per half of the product — the
  *     eight skills, and the app that drives them — closing on the line that names the
@@ -55,6 +56,16 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  *     the desktop side, and "your second Mac, and your colleague's" is the question five
  *     cards about living in one window leave open. It carries the page body's one link to
  *     `/cloud`. The owner placed it: "juste après « Fait pour les développeurs »".
+ *   • `OrgSection` answers WHO ELSE IS IN THIS, in four coloured cards: the configuration
+ *     a repository shares, the organisation that holds it, plans that circulate, and the
+ *     backlog everyone draws from. It is the first band on the page whose subject is
+ *     plural, and it sits HERE — directly after the cloud band — by the owner's second
+ *     placement of it. It opened under `SkillsSection` and the move is the better read:
+ *     the cloud band's headline is "your configuration does not live on one machine", so
+ *     the question it leaves behind is WHOSE machines, and this band is four answers to
+ *     exactly that. Under the skills band it had to make the same argument cold. It has NO
+ *     BUTTON — the only middle band without one — because there is no page to send anyone
+ *     to, and by this point the page has already spent both of its links out.
  *   • `FaqSection` answers WHAT IS STILL HOLDING THE READER BACK: the five questions
  *     asked before anyone installs it, as disclosure rows beside a heading and a button
  *     out to `/faq`. It is the last band before the ask because that is the only place
@@ -213,6 +224,7 @@ export default function Home() {
       <AppSection />
       <BuiltForSection />
       <CloudSection />
+      <OrgSection />
       <SecuritySection />
       <FaqSection />
       <FinalCtaSection />

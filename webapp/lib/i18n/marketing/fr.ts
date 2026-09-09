@@ -194,6 +194,55 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.skillsBand.pointCycle': 'De la première idée à la pull request mergée',
   'site.skillsBand.pointHands': 'Vous validez le plan, le reste se déroule seul',
 
+  // ── La bande après les huit skills : ce qui cesse de n’être qu’à vous ─────
+  //
+  // QUATRE CARDS ET UN TITRE, sans bouton — demande du propriétaire (« avec titre,
+  // description sans CTA »). Voir l’en-tête d’`OrgSection` pour la raison de la position.
+  //
+  // « ORGANISATION » EST LE MOT DE L’APP EN FRANÇAIS (`repo.scope.*`, `org.*` dans
+  // `desktop/src/i18n/fr.ts`), donc il reste tel quel. « Backlog » aussi : c’est ce que
+  // disent les équipes et ce que dit l’app. « Story » et « epic » restent au singulier
+  // anglais pour la même raison — la page `/plans` les nomme ainsi dans les deux langues.
+  //
+  // LE TITRE FAIT DEUX PHRASES parce que la seconde est le gain de la première : une
+  // seule proposition (« la configuration partagée pour les équipes ») nomme une
+  // catégorie, celle-ci fait une promesse puis dit qui l’encaisse. C’est aussi la
+  // première ligne de la page dont le sujet est pluriel.
+  'site.orgBand.title': 'Réglé une fois. Toute l’équipe en hérite.',
+  'site.orgBand.subtitle':
+    'La configuration des dépôts, les plans et le backlog appartiennent à votre organisation, pas à un portable. Quelqu’un arrive, ouvre l’app, et trouve le projet déjà réglé : même branche, même format de commit, mêmes tickets.',
+  // LES TITRES DE CARDS SONT DES NOMS et non les impératifs de la bande workflow : celle-ci
+  // parle de ce que le produit GARDE pour vous, l’autre de ce que VOUS faites.
+  'site.orgBand.configTitle': 'La configuration que votre équipe partage',
+  // NOMMÉS DANS L’ORDRE OÙ LA PAGE DE RÉGLAGES LES LISTE, pour que le lecteur retrouve
+  // dans le dessin les quatre choses que la phrase lui promet.
+  'site.orgBand.configDesc':
+    'Partagez un dépôt avec votre organisation et tous ses réglages suivent : la branche de développement, le format des commits, le template de pull request, la langue de chaque surface. Réglé une fois, par celui qui connaît le projet.',
+  'site.orgBand.orgTitle': 'Votre organisation',
+  // « ASSOCIE SON PROPRE DOSSIER LOCAL » EST LA PHRASE DE L’APP, reprise de la ligne
+  // d’aide sous la portée (`site.repoCfg.teamHelp`, soit `repo.scope.teamHelp` côté
+  // desktop). C’est le détail qui empêche de lire « on synchronise votre checkout » : ce
+  // qui voyage, c’est la configuration ; où vit le code reste la réponse de chacun.
+  'site.orgBand.orgDesc':
+    'Invitez ceux avec qui vous travaillez : les dépôts les suivent, configuration comprise. Chaque membre associe son propre dossier local et se met au travail — personne ne configure deux fois le même projet.',
+  'site.orgBand.planTitle': 'Des plans qui circulent',
+  // LA COMMANDE EST NOMMÉE, et c’est la seule card de la bande à le faire : un plan est
+  // la seule chose ici dont le lecteur n’a pas d’image préalable, et la bande des skills
+  // juste au-dessus vient de la lui présenter sous ce nom.
+  'site.orgBand.planDesc':
+    '/magic:plan transforme une idée en spec, en epic et en stories. Partagez-la et n’importe qui de libre prend une story, avec le raisonnement derrière déjà écrit.',
+  'site.orgBand.tasksTitle': 'Un seul backlog, les tickets de tout le monde',
+  // « CE QUI RESTE À PRENDRE » ET NON « CE QUI RESTE À FAIRE », qui est la distinction que
+  // fait le dessin avec sa ligne marquée, et la raison pour laquelle cette card n’est pas
+  // une seconde card Tâches : une liste partagée ne sert que si elle dit ce qui est parti.
+  'site.orgBand.tasksDesc':
+    'Filtrez la liste partagée sur un dépôt et voyez ce qui reste à prendre. Un ticket qu’un agent travaille déjà est marqué comme tel : deux personnes ne démarrent jamais sur le même.',
+  // La pilule du second rail du dessin de l’organisation. « Configuration » s’écrit
+  // pareil dans les deux langues, d’où son entrée dans la liste d’`i18n.test.ts` ; le
+  // slug du dépôt sur le rail au-dessus est un littéral dans le composant, comme tous les
+  // noms de dépôts du site.
+  'site.orgTeam.config': 'Configuration',
+
   // ── La bande sous la fenêtre de l’app : pour qui elle est faite ────────────
   //
   // LES TITRES SONT DES NOMS, pas les impératifs de la bande workflow : celle-ci parle de
@@ -1042,6 +1091,16 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.repoCfg.personal': 'Personnel',
   'site.repoCfg.personalHelp':
     'Vous seul voyez ce dépôt. Partagez-le avec une organisation pour en faire un dépôt d’équipe.',
+  // LA MOITIÉ « ÉQUIPE » DE LA LIGNE DE PORTÉE, ajoutée quand `SharedConfigArt` a redonné
+  // un consommateur à cette famille. La ligne a deux états et le catalogue n’en tenait
+  // qu’un : `personal` au-dessus, et désormais l’état dans lequel se trouve un dépôt
+  // partagé. Les trois reprennent mot pour mot les `repo.scope.*` du desktop plutôt que
+  // de les paraphraser — le dessin reproduit cette ligne, donc le site et l’app disent
+  // la même phrase.
+  'site.repoCfg.teamNamed': 'Équipe — {name}',
+  'site.repoCfg.teamHelp':
+    'Partagé avec l’organisation — chaque membre le voit et y associe son propre dossier local.',
+  'site.repoCfg.makePersonal': 'Rendre personnel',
   'site.repoCfg.general': 'Général',
   'site.repoCfg.name': 'Nom',
   'site.repoCfg.nameHelp': 'Nom affiché du dépôt',

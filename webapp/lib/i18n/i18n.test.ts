@@ -270,6 +270,12 @@ describe('message catalogues', () => {
         // therefore the same string on both screens — the app's own catalogues hold it
         // identically too.
         'site.spotlightCard.placeholder',
+        // The organisation drawing's second rail carries the app's word for what an
+        // organisation holds beside a repository, and "Configuration" is spelled
+        // identically in French — the desktop's own French catalogue leaves it as it is
+        // too. The repository slug on the rail above is a literal in the component, so
+        // only this half of the pair reaches the catalogues at all.
+        'site.orgTeam.config',
         // The Agents sidebar's own two: "Skills" is the product's word for them in both
         // languages, and so is "Agents" — the label over the list, which the app's French
         // catalogue also leaves as it is.

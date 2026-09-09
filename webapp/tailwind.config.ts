@@ -1349,6 +1349,110 @@ const config: Config = {
           '35%': { transform: 'scaleY(0.55)' },
           '70%': { transform: 'scaleY(1.1)' },
         },
+        /**
+         * ── THE SHARE GRAPH'S THREE BEATS ──────────────────────────────────────
+         *
+         * `components/site/home/OrgArt.tsx`'s `PlanSharingArt` plays one story on a 9s
+         * loop, and the product owner wrote the running order: "1 personne à gauche => le
+         * plan qui s'écrit en live => le plan qui se partage à deux autres personnes avec
+         * l'animation des points". Three keyframes, one per beat, and they share a period
+         * so the beats stay in the stated order forever rather than only on the first
+         * pass.
+         *
+         * THE WHOLE LOOP, in one place, because no single keyframe below shows it:
+         *
+         *     84 → 98%   `plan-arrive`  the idea reaches the author's sheet
+         *      0 → 25%   `plan-write`   the plan writes itself, line after line
+         *     30 → 62%   `plan-share`   two dots carry it out to two people
+         *     60 → 81%   `plan-write`   the sheet clears
+         *     81 → 84%                  rest
+         *
+         * `plan-arrive` RUNS AT THE END OF THE CYCLE AND NOT THE START, which is the trick
+         * that makes this readable. The beat has to come BEFORE the writing, and the
+         * writing owns 0%; putting the arrival at 84–98% means it lands at the loop
+         * boundary, which IS just before 0% on every pass but the first. Nothing else
+         * would have worked without giving the writing a dead 15% to start after.
+         *
+         * `offsetDistance` AND NOT A `transform`, which is the only reason the two dot
+         * keyframes can exist at all. The wires are bezier curves; a translate would have
+         * to trace each one by hand in its own set of keyframes, and they would silently
+         * stop matching the moment a curve moved. CSS motion path takes the path itself —
+         * the caller passes the SAME `d` string the `<path>` is drawn from as an inline
+         * `offset-path`, so a dot is on its wire by construction rather than by
+         * arithmetic. (It was by arithmetic for one round: three hard-coded `cx`/`cy` pairs
+         * that were simply not on the curves, which is the bug this replaced.)
+         */
+
+        /**
+         * BEAT ONE: the idea arriving. One dot, up the author's wire, into the sheet.
+         *
+         * The wire is drawn FROM the sheet outwards like every other, so the author's end
+         * is `offset-distance: 100%` and the run is 100% → 0%. The long invisible stretch
+         * from 0 to 84% is the dot drifting back out to the author with `opacity: 0` — a
+         * jump would be free too, but interpolating costs nothing and keeps the keyframe
+         * to one readable shape.
+         */
+        'plan-arrive': {
+          '0%': { offsetDistance: '0%', opacity: '0' },
+          '84%': { offsetDistance: '100%', opacity: '0' },
+          '86%': { opacity: '1' },
+          '98%': { offsetDistance: '0%', opacity: '1' },
+          '100%': { offsetDistance: '0%', opacity: '0' },
+        },
+
+        /**
+         * BEAT TWO: the plan writing itself. One keyframe, worn by the sheet's four rules
+         * — the title and three stories — each with its own `animation-delay`.
+         *
+         * `strokeDashoffset` FROM 1 TO 0 IS THE PEN. The rules carry `pathLength="1"` and
+         * `stroke-dasharray="1"`, which normalises each one's length to a single unit
+         * whatever it actually measures — so one keyframe draws a 26px line and a 40px
+         * line at the same rate, and moving a rule cannot desynchronise it.
+         *
+         * DELAYS ARE SAFE HERE AND THEY WERE NOT SAFE IN THE FIRST DRAFT, which is worth
+         * writing down because it is the trap this file's `done-*` group avoids by using
+         * five keyframes instead of one. A delay shifts an element's ENTIRE cycle, so with
+         * the clear at 86–94% a 1.2s (13%) delay put the last rule's clear at 99–107% —
+         * past the boundary, landing modulo 9s on top of the next pass's writing, and the
+         * sheet cleared itself while it was still being written. Pulling the clear back to
+         * 60–68% leaves 32% of headroom, which is more than the 13% of stagger the four
+         * rules spend. The rule to keep: `max delay% + clear-end% <= 100%`.
+         *
+         * THE BULLETS WEAR THIS TOO, and only the opacity half of it reaches them: a
+         * `<circle>` with a fill and no stroke has no dash to offset. One keyframe for a
+         * row's marker and its rule is what keeps the two arriving together.
+         */
+        'plan-write': {
+          '0%': { strokeDashoffset: '1', opacity: '0' },
+          '2%': { opacity: '1' },
+          '12%': { strokeDashoffset: '0', opacity: '1' },
+          '60%': { strokeDashoffset: '0', opacity: '1' },
+          '68%': { strokeDashoffset: '0', opacity: '0' },
+          '100%': { strokeDashoffset: '1', opacity: '0' },
+        },
+
+        /**
+         * BEAT THREE: the plan going out. Two dots, down the two recipients' wires,
+         * starting once the last rule is written.
+         *
+         * 0% → 100%, THE OTHER WAY ROUND FROM `plan-arrive` and from what this drawing did
+         * for a round. It ran people → plan on the owner's own earlier suggestion; the
+         * brief that replaced it puts an author on the left and the recipients on the
+         * right, which makes the outward direction the only one that reads — a plan is
+         * written once and picked up by whoever is free.
+         *
+         * The two dots differ by an `animation-delay` at the call site rather than by a
+         * second keyframe here, and the same headroom rule as `plan-write` applies: the
+         * run ends at 62%, so a 0.5s (5.6%) stagger is nowhere near the boundary.
+         */
+        'plan-share': {
+          '0%': { offsetDistance: '0%', opacity: '0' },
+          '30%': { offsetDistance: '0%', opacity: '0' },
+          '33%': { opacity: '1' },
+          '58%': { offsetDistance: '100%', opacity: '1' },
+          '62%': { offsetDistance: '100%', opacity: '0' },
+          '100%': { offsetDistance: '100%', opacity: '0' },
+        },
         // `ask-arrive` is the `waiting` badge: the question bubble ARRIVES rather than
         // gestures — a small lift with a tilt into it, a settle back past level, then
         // rest — because that state is the agent asking you something, not the agent
@@ -1604,7 +1708,22 @@ const config: Config = {
         // The sidebar's two states. The wave's stagger is a delay at the call site, so
         // one animation serves all three bars.
         'wave-bar': 'wave-bar 1.2s ease-in-out infinite',
-        'ask-arrive': 'ask-arrive 3s ease-in-out infinite',
+        // THE SHARE GRAPH'S THREE BEATS, and the 9s has to be IDENTICAL across all three:
+        // they are one story told by three keyframes, and a period that differed by even a
+        // tenth would have the beats drift out of order over a minute of watching. See the
+        // keyframes above for the running order.
+        //
+        // 9s BECAUSE THE MIDDLE BEAT SETS IT. Four rules writing on at ~0.4s apart, each
+        // taking ~1s to draw, is 2.5s of writing before anything can be shared; the
+        // arrival and the two runs out want about a second each, and the sheet has to stand
+        // finished long enough to be read as finished. Faster and it is a flicker.
+        //
+        // `linear` ON THE TWO DOT BEATS, because the curve's own shape is the only easing
+        // they want — a dot easing in and out along a bezier reads as hesitant. `ease-out`
+        // on the writing, where a pen slowing as it finishes a line is exactly right.
+        'plan-arrive': 'plan-arrive 9s linear infinite',
+        'plan-write': 'plan-write 9s ease-out infinite',
+        'plan-share': 'plan-share 9s linear infinite',
         // The done checklist: 400ms between ticks means a 5s loop and 8% steps.
         'done-1': 'done-1 5s linear infinite',
         'done-2': 'done-2 5s linear infinite',
