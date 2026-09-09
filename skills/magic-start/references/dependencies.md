@@ -35,13 +35,15 @@ If `getIssueLinkTypes` fails, fall back to matching the link's own `type.inward`
 
 ### 2.2 Native GitHub issue dependencies
 
-`mcp__github__get_issue` already returns `issue_dependencies_summary`, but with **counts only, no IDs**:
+`mcp__github__issue_read` with `method: "get"` may return `issue_dependencies_summary`, but with **counts only, no IDs**:
 
 ```json
 { "blocked_by": 2, "total_blocked_by": 2, "blocking": 0, "total_blocking": 0 }
 ```
 
-`blocked_by == 0` short-circuits at zero cost. A non-zero count justifies one call for the actual IDs:
+`blocked_by == 0` short-circuits at zero cost — but **only when the field is actually there.** The summary
+is optional and comes back absent on an issue that has no dependencies (verified on `Xrequillart/magic-slash#283`),
+so absent means *unknown*, never zero. With no summary, or a non-zero count, one call gets the actual IDs:
 
 ```bash
 gh api "repos/{owner}/{repo}/issues/{number}/dependencies/blocked_by" \

@@ -174,7 +174,7 @@ Parse `owner/repo` from either `git@github.com:owner/repo.git` or `https://githu
 
 ### 2B.3: Search for the issue
 
-Use `mcp__github__get_issue` for each repo — launch all calls in parallel for speed. Collect all found issues. If an MCP call fails, retry once; if still failing, skip that repo and continue with the others.
+Use `mcp__github__issue_read` with `method: "get"` for each repo — launch all calls in parallel for speed. Collect all found issues. If an MCP call fails, retry once; if still failing, skip that repo and continue with the others.
 
 Keep the `issue_dependencies_summary` object this call already returns (`blocked_by`, `total_blocked_by`, `blocking`, `total_blocking`): it carries counts only, no IDs, but that is enough for Step 2.4 to short-circuit at zero cost when `blocked_by == 0`. Only a non-zero count justifies resolving the actual blocker IDs.
 
@@ -267,7 +267,7 @@ This step never blocks the process. On failure, display a warning and continue.
 ### 2.6B: GitHub issue
 
 1. Check if a progress label exists: "in-progress", "wip", "in progress", "working"
-2. If found: Add via `mcp__github__update_issue` (keep existing labels)
+2. If found: Add via `mcp__github__issue_write` with `method: "update"` — read the current labels first (`mcp__github__issue_read`, `method: "get_labels"`) and pass the **whole** set, because `labels` replaces the list rather than appending to it
 3. If not found: Continue without modification (do not create a label)
 4. On failure: Display `MSG_LABEL_FAILED`
 

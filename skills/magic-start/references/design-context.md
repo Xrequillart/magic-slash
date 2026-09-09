@@ -21,8 +21,8 @@ Reaching this file means a signal already fired — do not re-run the detection.
 | Jira attachments | `fields.attachment[]` from Step 2A — use `filename`, `mimeType`, `content` |
 | Jira remote links | `getJiraIssueRemoteIssueLinks`, called in Step 2A — extract `object.url` and `object.title` |
 | Jira comments | fetch now: `mcp__atlassian__getJiraIssue` with `fields: ["comment"]` → `fields.comment.comments` |
-| GitHub issue body | `mcp__github__get_issue` from Step 2B |
-| GitHub issue comments | fetch now: `gh issue view {number} --repo {owner}/{repo} --comments` (no MCP tool exists) |
+| GitHub issue body | `mcp__github__issue_read` with `method: "get"`, from Step 2B |
+| GitHub issue comments | fetch now: `mcp__github__issue_read` with `method: "get_comments"` — the Step 2B `get` returns only a `comments` count, never the bodies |
 
 Full comment threads are fetched here rather than in Step 2A/2B precisely because this file is reached only on a ticket
 with a UI signal: a backend ticket therefore consumes no comment thread at all.
