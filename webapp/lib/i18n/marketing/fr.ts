@@ -136,7 +136,9 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // histoire serait sinon adressé de deux façons sur le même site. Ici les deux se
   // suivent à un écran d'intervalle. La version vouvoyée serait « Vos tâches, vos agents
   // dans une seule app. »
-  'site.appBand.title': 'Tes tâches, tes agents en une seule app.',
+  // « Vos » : le site vouvoie partout ailleurs, et ce titre était le seul tutoiement du
+  // catalogue — voir l'en-tête de ce fichier.
+  'site.appBand.title': 'Vos tâches, vos agents en une seule app.',
   'site.appBand.subtitle':
     'Chaque agent a son worktree et son terminal, et l’app garde le contexte de chaque session. Elle lit vos tickets depuis Jira ou GitHub, suit les pull requests qu’elle a ouvertes, et vous prévient quand quelque chose vous attend.',
   'site.appBand.cta': 'Voir l’application',
@@ -238,12 +240,19 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // seule proposition (« la configuration partagée pour les équipes ») nomme une
   // catégorie, celle-ci fait une promesse puis dit qui l’encaisse. C’est aussi la
   // première ligne de la page dont le sujet est pluriel.
-  'site.orgBand.title': 'Réglé une fois. Toute l’équipe en hérite.',
+  // Le titre NOMME la bande au lieu d'énoncer sa promesse : il a dit « Réglé une fois.
+  // Toute l'équipe en hérite. » pendant une version, et le propriétaire du produit l'a
+  // ramené au sujet. Les trois cartes en dessous portent la promesse, elle n'avait pas à
+  // être dite deux fois. Voir la note anglaise.
+  'site.orgBand.title': 'Travail en équipe.',
   'site.orgBand.subtitle':
     'La configuration des dépôts, les plans et le backlog appartiennent à votre organisation, pas à un portable. Quelqu’un arrive, ouvre l’app, et trouve le projet déjà réglé : même branche, même format de commit, mêmes tickets.',
   // LES TITRES DE CARDS SONT DES NOMS et non les impératifs de la bande workflow : celle-ci
   // parle de ce que le produit GARDE pour vous, l’autre de ce que VOUS faites.
-  'site.orgBand.configTitle': 'La configuration que votre équipe partage',
+  // « conventions » ET PAS « configuration » : ce que la carte liste — langue, format de
+  // commit, gabarit de PR — est ce sur quoi l'équipe s'est mise d'accord, pas un écran de
+  // réglages. Le mot dit aussi pourquoi on les partage.
+  'site.orgBand.configTitle': 'Les conventions que votre équipe partage',
   // NOMMÉS DANS L’ORDRE OÙ LA PAGE DE RÉGLAGES LES LISTE, pour que le lecteur retrouve
   // dans le dessin les quatre choses que la phrase lui promet.
   'site.orgBand.configDesc':
@@ -282,7 +291,10 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // (`tasks.title` dans `desktop/src/i18n/fr.ts`), et le mockup de `/features` imprime déjà
   // le même mot. « Spotlight » ne bouge pas — c’est un nom propre, celui que la page
   // features emploie dans les deux langues.
-  'site.builtFor.title': 'Fait pour les développeurs. Pas seulement pour eux.',
+  // « développeurs » est barré et « product builders » le remplace : voir la note côté
+  // anglais. Le terme reste en anglais, avec le pluriel français après « les », comme
+  // dans la pilule de `/desktop`.
+  'site.builtFor.title': 'Fait pour les <em>développeurs</em>, product builders.',
   // « pas comme nous » est tombé, et le tiret cadratin avec : demande du propriétaire.
   // La phrase n’a pas besoin d’un adversaire — « réglée comme vous travaillez » dit déjà
   // tout — et la virgule fait la même jointure que le tiret en se lisant plus vite.
@@ -336,14 +348,20 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // cloud », la page s’appelle `/dashboard`) — et « dépôt » est le mot que l’app emploie
   // pour un repository (`nav`/`repos`), donc la bande suit l’app plutôt que le site.
   //
-  // LE TITRE ÉNONCE LA CONFIGURATION ET PAS LE CLOUD, et c’est la note à lire avant de le
-  // réécrire : « le cloud » est une catégorie que tous les produits de ce marché
-  // revendiquent, alors qu’une configuration qui ne vit pas sur une machine est un fait
-  // vérifiable — celui que le CLAUDE.md du projet martèle (Supabase est la source de
-  // vérité, il n’y a pas de fichier de config local). Voir la note du catalogue anglais.
-  'site.cloudBand.title': 'Votre configuration ne vit pas sur une seule machine.',
+  // LE TITRE NOMME L'ENDROIT, et c'est la note à lire avant de le réécrire. Il a énoncé
+  // la CONFIGURATION pendant une version — « votre configuration ne vit pas sur une seule
+  // machine », le fait que le CLAUDE.md du projet martèle — puis le propriétaire du
+  // produit l'a ramené sur ce que le lecteur peut ouvrir tout de suite : Magic Slash,
+  // dans un navigateur. La bande montre justement une fenêtre de navigateur.
+  //
+  // « Magic Slash » PREND SES DEUX MAJUSCULES ici comme partout : c'est le nom du
+  // produit, et le sous-titre l'écrit deux fois.
+  'site.cloudBand.title': 'Magic Slash depuis votre navigateur',
+  // « tablette », « téléphone », « ordinateur » : la promesse est le NOMBRE d'appareils,
+  // donc ils sont nommés plutôt que résumés en « partout ». La liste qui suit est celle
+  // des trois rangées dessinées sous la bande, dans le même ordre.
   'site.cloudBand.subtitle':
-    'Elle vit dans votre organisation, et le dashboard dans votre navigateur est l’endroit où vous la regardez : les plans écrits par votre équipe, les dépôts et les invitations que l’organisation partage, et votre compte. Connectez-vous sur un autre Mac, tout est déjà là.',
+    'Magic Slash Cloud vous suit partout, depuis votre tablette comme depuis votre téléphone. Relisez vos plans et ceux de votre équipe, vos dépôts, la gestion de votre équipe et de votre compte. Connectez-vous sur un autre ordinateur, tout est déjà là.',
   'site.cloudBand.cta': 'Voir le cloud',
 
   // LES TROIS LIGNES SOUS LE PARAGRAPHE, ce sont les trois pages du dashboard —
@@ -376,7 +394,12 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // paire de virgules, ou dans le sous-titre un deux-points puis un point — sans qu’un seul
   // mot bouge. L’anglais porte l’argument complet, et notamment pourquoi les virgules
   // étaient le mauvais choix dans le sous-titre.
-  'site.security.title': 'Magic Slash ne voit jamais votre code.',
+  // « vos secrets » ET PAS « votre code », et les deux sont vrais : la quatrième carte de
+  // la bande dit exactement ce que le titre promet — fichiers d'environnement,
+  // credentials, clés privées et certificats sont retirés du staging avant l'écriture du
+  // commit. Un secret qui fuite est ce que le lecteur craint vraiment ; du code qu'un
+  // outil lit, il en fait tourner tous les jours.
+  'site.security.title': 'Magic Slash ne voit jamais vos secrets.',
   'site.security.subtitle':
     'Les skills tournent dans votre terminal, sur votre clone. Ce que le cloud garde, c’est votre configuration : vos dépôts, vos langues, votre format de commit. Et le nom du skill que vous avez lancé. Pas un prompt, pas un argument, pas une ligne de code.',
   /** Le sigle au centre de l’emblème européen : la version française du nom du règlement. */

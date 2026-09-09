@@ -671,12 +671,23 @@ export const marketingEn = {
   // and then says who collects on it. It is also the first line on the page whose subject
   // is plural — everything above is addressed to one person — which is the seam this band
   // was put at.
-  'site.orgBand.title': 'Set it up once. Your team inherits it.',
+  /**
+   * THE HEADLINE NAMES THE BAND rather than stating its promise. It read "Set it up once.
+   * Your team inherits it." for one version; the product owner cut it back to the
+   * subject, because the three cards under it already make that promise and a headline
+   * that makes it first leaves them repeating their own heading.
+   */
+  'site.orgBand.title': 'Teamwork.',
   'site.orgBand.subtitle':
     'Repository configuration, plans and the backlog belong to your organization rather than to one laptop. Someone joins, opens the app, and finds the project already set up — the same branch, the same commit format, the same tickets.',
   // THE CARD TITLES ARE NOUNS and not the imperatives the workflow band uses: that band is
   // about what YOU do, this one about what the product HOLDS on your behalf.
-  'site.orgBand.configTitle': 'The configuration your team shares',
+  /**
+   * "CONVENTIONS" AND NOT "CONFIGURATION": what the card lists — the language, the commit
+   * format, the PR template — is what the team agreed on, not a settings screen. The word
+   * also says why any of it is shared.
+   */
+  'site.orgBand.configTitle': 'The conventions your team shares',
   // NAMED IN THE ORDER THE SETTINGS PAGE LISTS THEM, so a reader who opens the drawing
   // beside this sentence finds the four things it promises in the tabs it shows.
   'site.orgBand.configDesc':
@@ -723,13 +734,22 @@ export const marketingEn = {
   // — a keystroke is not prose, and a translator editing one would have the site teaching
   // a shortcut the product does not have.
   /**
-   * TWO SENTENCES AND THE SECOND IS THE POINT. "Built for developers" on its own is what
-   * every developer tool says; the second half is the product owner's own brief ("build
-   * pour le developer mais pas que") and it is the half that does work — a lead, a
+   * ONE SENTENCE THAT CORRECTS ITSELF. "Built for developers" on its own is what every
+   * developer tool says, and the product owner's brief was "build pour le developer mais
+   * pas que" — so the first half is STRUCK THROUGH and the second replaces it. A lead, a
    * designer or a PM reading the page has just been shown a terminal and needs telling
-   * that the window is for them too.
+   * that the window is for them too; a word crossed out says that faster than a second
+   * sentence explaining it did.
+   *
+   * THE `<em>` IS THE STRIKE, drawn by `STRUCK_WORD` in `home/Shell.tsx`. It is the same
+   * device `site.desktop.title` uses, and it is why this key goes through `RichText`
+   * rather than `t()` — see `HomeHeading`'s `titleKey`.
+   *
+   * "PRODUCT BUILDERS" is the term the site already uses for the audience
+   * (`site.pillars.kicker`, the closing band, `/desktop`'s own pill), left in English in
+   * both catalogues because that is the word the job goes by in French too.
    */
-  'site.builtFor.title': 'Built for developers. Not only for developers.',
+  'site.builtFor.title': 'Built for <em>developers</em>, product builders.',
   /**
    * ONE LINE THAT NAMES THE FIVE CARDS WITHOUT LISTING THEM: the backlog, the keyboard,
    * the Mac, the settings, the shortcut that summons it. A subtitle that enumerated them
@@ -855,10 +875,16 @@ export const marketingEn = {
    * local config file at all. It is also the objection the band above raises — five cards
    * about living in one window, and nothing yet about the second Mac or the colleague's.
    *
-   * THE PARAGRAPH IS THE THREE ROWS IN PROSE, then the payoff. It names what the
-   * organization holds (plans, repositories, invitations) and closes on signing in
-   * somewhere else, because that last clause is the only sentence in the band a reader
-   * can check against their own week. `site.cloudPage.lead` makes the same promise for
+   * THE TITLE NAMES THE PLACE. It stated the CONFIGURATION for one version — "your
+   * configuration is not on one machine", the fact the project's CLAUDE.md insists on —
+   * and the product owner brought it back to what the reader can open right now: Magic
+   * Slash, in a browser. The band draws a browser window, so the headline and the
+   * drawing now say the same thing.
+   *
+   * THE PARAGRAPH IS THE THREE ROWS IN PROSE, then the payoff. It names the devices
+   * first — a tablet, a phone — because the number of them IS the claim, then what you
+   * read on them, and closes on signing in somewhere else, because that last clause is
+   * the only sentence in the band a reader can check against their own week. `site.cloudPage.lead` makes the same promise for
    * the page; that one is a promise of SCOPE for a page still being written, this is an
    * argument on a landing page, and they are allowed to overlap in subject without
    * sharing a string.
@@ -867,9 +893,9 @@ export const marketingEn = {
    * two bands up, and the same word the header's own Product row uses for that route, so
    * somebody told "it's under Product → Cloud" finds the same thing.
    */
-  'site.cloudBand.title': 'Your configuration is not on one machine.',
+  'site.cloudBand.title': 'Magic Slash from your browser',
   'site.cloudBand.subtitle':
-    'It lives in your organization, and the dashboard in your browser is where you look at it: the plans your team has written, the repositories and invitations the organization shares, and your own account. Sign in on another Mac and everything is already there.',
+    'Magic Slash Cloud follows you everywhere, from your tablet as much as from your phone. Read back your own plans and your team’s, your repositories, your team and your account. Sign in on another computer and it is all already there.',
   'site.cloudBand.cta': 'See the cloud',
 
   /**
@@ -944,10 +970,14 @@ export const marketingEn = {
    * and a heading that only names a topic reads as a section divider in a document.
    *
    * IT IS ALSO THE STRONGEST TRUE THING THE BAND CAN SAY. "Your code never leaves your
-   * machine" is stronger and false; this one is exactly what
-   * `desktop/src/main/usage/skill-invocations.ts` states of itself.
+   * machine" is stronger and false. This one is what the band's fourth card states in
+   * detail — environment files, credentials, private keys and certificates are pulled out
+   * of the staging area before the commit is written — and it names what the reader
+   * actually fears: a leaked secret, rather than a tool reading code that a dozen tools
+   * read already. It said "never sees your code" for one version, which
+   * `desktop/src/main/usage/skill-invocations.ts` also backs; the subtitle still says it.
    */
-  'site.security.title': 'Magic Slash never sees your code.',
+  'site.security.title': 'Magic Slash never sees your secrets.',
   /**
    * WHAT THE CLOUD HOLDS, ITEMISED, because a privacy claim a reader cannot check is worth
    * nothing. Three items and then three denials, in that order: the list is short enough to

@@ -206,7 +206,10 @@ export function BuiltForSection() {
   return (
     <HomeSection>
       <Reveal order={1}>
-        <HomeHeading title={t('site.builtFor.title')} subtitle={t('site.builtFor.subtitle')} />
+        {/* `titleKey` AND NOT `title`: the headline strikes "developers" through, so it
+            carries an `<em>` and has to be RENDERED rather than translated into a string.
+            See `HomeHeading` and `STRUCK_WORD` in `Shell.tsx`. */}
+        <HomeHeading titleKey="site.builtFor.title" subtitle={t('site.builtFor.subtitle')} />
       </Reveal>
 
       {/* `grid-cols-1` AND `min-w-0` ARE BOTH LOAD-BEARING, and neither is decoration.
