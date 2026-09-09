@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowRight } from 'lucide-react'
-import { ButtonNavLink, ToneCard } from '@/components/ui'
+import { ButtonNavLink, ToneCard, type ToneCardVisual } from '@/components/ui'
 import { useT } from '@/lib/i18n/useLanguage'
 import {
   WORKFLOW_CHROME,
@@ -10,14 +10,9 @@ import {
   type WorkflowStepId,
 } from '@/lib/workflow'
 import { Reveal } from '../Reveal'
+import { ResolveRunTerminal } from './ResolveRunTerminal'
 import { HomeHeading, HomeSection } from './Shell'
-import {
-  CommitPrArt,
-  MergeCleanArt,
-  PlanSpecArt,
-  ReviewResolveArt,
-  StartAgentArt,
-} from './WorkflowArt'
+import { CommitPrArt, MergeCleanArt, PlanSpecArt, StartAgentArt } from './WorkflowArt'
 
 /**
  * The band between the two pillars and the app's own window: WHAT WORKING WITH IT IS
@@ -143,11 +138,34 @@ import {
  * HERE — at the map that forgot to draw it — rather than a card with an empty bottom
  * half. Same reasoning as `MagicCommandIcon`'s union in `lib/commands.ts`.
  */
+/**
+ * WHICH CARDS CENTRE THEIR DRAWING in the height the copy leaves, and it is one.
+ *
+ * `ToneCard`'s own note draws the line and the commit card fell on the other side of it
+ * the day its panel went: `end` is for "a cropped panel … so a pair of cards in a grid
+ * row line up along their bottoms", `center` for "a visual that is an OBJECT rather than
+ * a crop — one bar, one switch, one tile, complete in itself and narrower than the
+ * space", where being pinned to the bottom "leaves a pool of empty ground above it that
+ * reads as a mistake rather than as air".
+ *
+ * That is exactly what happened. The other four drawings are panels that bleed off an
+ * edge; `CommitPrArt` is now a git graph with margins on every side, and at the bottom of
+ * a card sized by its taller neighbours it sat under a pool of nothing. The owner asked
+ * for it in the middle, which is the slot rather than a nudge.
+ *
+ * A `Partial` MAP AND NOT A FIELD ON `WORKFLOW_STEPS`: where a drawing sits in its card
+ * is presentation, and that module is the five steps' own data — read by `/workflow` too,
+ * which has no cards. Same reasoning as `ART` and `SPAN` below.
+ */
+const VISUAL: Partial<Record<WorkflowStepId, ToneCardVisual>> = {
+  commit: 'center',
+}
+
 const ART: Record<WorkflowStepId, () => React.ReactElement> = {
   plan: PlanSpecArt,
   start: StartAgentArt,
   commit: CommitPrArt,
-  review: ReviewResolveArt,
+  review: ResolveRunTerminal,
   done: MergeCleanArt,
 }
 
@@ -216,6 +234,7 @@ export function WorkflowSection() {
               <ToneCard
                 tone={step.tone}
                 layout={step.wide ? 'beside' : 'stacked'}
+                visual={VISUAL[step.id]}
                 title={t(step.title)}
                 description={t(step.description)}
                 className="h-full"

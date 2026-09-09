@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Check, Loader2 } from 'lucide-react'
 import { MAGIC_COMMANDS, type MagicCommandId } from '@/lib/commands'
 import { JiraMark } from '../features/TicketCardMockup'
+import { beat, PHASE_MS, REST_MS, type TerminalStep, took, TYPE_MS, useCueRun } from './terminalRun'
 
 /**
  * The drawing beside the skills band: a Claude Code session carrying ONE STORY from an
@@ -47,7 +48,7 @@ import { JiraMark } from '../features/TicketCardMockup'
  *     that is 32 blocks in the config whose percentages have to be recomputed by hand
  *     whenever a step is added — and each step now has TWO states (running, then finished
  *     with its duration), which a single keyframe cannot express without a second one.
- *   • THE DURATIONS ARE DATA. `beat()` below derives each step's screen time from the
+ *   • THE DURATIONS ARE DATA. `beat()` derives each step's screen time from the
  *     seconds the tool actually takes, so a duration and its pacing move together. In a
  *     stylesheet the two would be a number in a keyframe and a string in the markup, with
  *     nothing tying them.
@@ -58,6 +59,12 @@ import { JiraMark } from '../features/TicketCardMockup'
  * on an `IntersectionObserver`: the timer only runs while the panel is actually on screen,
  * and entering the viewport restarts the run from the top, so a reader who scrolls to this
  * band sees the session BEGIN rather than joining it halfway.
+ *
+ * THAT LOOP IS NOT IN THIS FILE ANY MORE. It is `useCueRun` in `./terminalRun`, together
+ * with the pacing, the typing speed and the duration format — extracted when the workflow
+ * band's review card asked for the same animation at a fifth the size
+ * (`ResolveRunTerminal.tsx`). What stayed here is what only this panel does: phases with
+ * ticket cards, and a column that scrolls itself by measured row bottoms.
  *
  * THE RESTING STATE IS EVERYTHING VISIBLE, and that is not a detail. `cursor` starts at
  * `null` — which is what the server renders, what the first client render agrees on, and
@@ -162,44 +169,16 @@ const COMMAND = Object.fromEntries(MAGIC_COMMANDS.map((c) => [c.id, c.command]))
   string
 >
 
-type Step = {
-  /**
-   * What the line says WHILE IT IS RUNNING — present progressive, beside a spinner.
-   *
-   * A SECOND STRING PER STEP, and it is the fix for the thing that gave the panel away.
-   * Every line used to carry its finished wording from the moment it appeared, so the
-   * first frame of the run read "Idea explored, spec written" next to a spinner: a step
-   * announcing in the past tense that it had done the thing it was still doing. Nothing
-   * else in the drawing was as obviously written rather than recorded.
-   *
-   * NO ELLIPSIS ON ANY OF THEM. The spinner already says it is going; a trailing "…"
-   * beside a spinner is the same word twice.
-   */
-  doing: string
-  /** What it says once it has finished — past tense, beside a check. */
-  text: string
-  /**
-   * How long the tool takes, in seconds. Formatted by `took()` rather than written out, so
-   * the number that PACES the animation and the number on screen can never disagree — see
-   * `beat()`.
-   *
-   * ABSENT WHERE NOTHING WAS TIMED, and there are exactly three such lines. Two are
-   * artefacts rather than work (the commit subjects); the third is the approval, which is
-   * YOU clicking, and putting a duration on a human decision would be the drawing claiming
-   * to have measured the reader.
-   */
-  secs?: number
-  /**
-   * Milliseconds to hold this step as running, overriding `beat()`.
-   *
-   * ONE STEP USES IT: "Waiting for your approval". It has no `secs` — a human decision is
-   * not a measurement — so `beat()` would give it the floor, and the floor is the beat a
-   * sub-second step gets. That is the one moment in twenty-three seconds where the product
-   * stops and asks the reader for something, which is the band's own third claim standing
-   * right beside it, and it cannot go past faster than "Pushed to origin".
-   */
-  hold?: number
-}
+/**
+ * A step here is `TerminalStep` from `./terminalRun`, where the type and both of its
+ * subtleties are documented: the two wordings (`doing` beside a spinner, `text` beside a
+ * check) and the two ways a step can be timed.
+ *
+ * IT LIVED IN THIS FILE and moved out when the workflow band's review card asked for the
+ * same animation at a fifth the size — see that module's header for what is shared and
+ * what deliberately is not. The alias keeps every mention below reading as it did.
+ */
+type Step = TerminalStep
 
 type Ticket = {
   key: string
@@ -357,48 +336,20 @@ const RUN: readonly Phase[] = [
   },
 ]
 
-/** Milliseconds a character takes to type. ~17 a second — somebody typing a command they know. */
-const TYPE_MS = 60
-
-/** How long a ticket card takes to land. */
+/**
+ * How long a ticket card takes to land. Local, unlike the four beats beside it: cards are
+ * this panel's own element and no other terminal has them.
+ */
 const CARD_MS = 220
 
-/** The beat between one phase finishing and the next command starting to type. */
-const PHASE_MS = 400
-
-/** How long the finished transcript holds before the run starts over. */
-const REST_MS = 3000
-
 /**
- * How long a step stays on screen as RUNNING, from the seconds it actually takes.
- *
- * NOT A CONSTANT AND NOT PROPORTIONAL, and the middle ground is the whole design. Every
- * step taking the same beat says the work is free; playing the real durations to scale
- * would spend four of the loop's twenty-three seconds on one implementation and flash the
- * sub-second steps past unread. So a long step reads as longer than a short one, inside a
- * floor and a ceiling that keep all of it legible: 260ms of fixed cost, 45ms a second on
- * top, clamped to [360, 900].
- *
- * Which puts 0.9s at the floor, 8.4s at ~640ms, 12.2s at ~810ms, and everything from ~14s
- * up at the ceiling. A step with no duration at all — an artefact, or your own approval —
- * takes the floor.
+ * `TYPE_MS`, `PHASE_MS`, `REST_MS`, `beat()` and `took()` are imported from
+ * `./terminalRun`. Every one of them carries its argument over there — the typing speed,
+ * the beat between phases, the rest before the loop wraps, the floor-and-ceiling pacing
+ * and the duration format — and every one is now shared with `ResolveRunTerminal`, which
+ * is what keeps two terminals on one site typing at the same speed and printing a
+ * duration the same way.
  */
-const beat = (step: Step) =>
-  step.hold ??
-  (step.secs === undefined
-    ? 360
-    : Math.round(Math.min(900, Math.max(360, 260 + step.secs * 45))))
-
-/**
- * The seconds a step took, as the tool prints them: one decimal under a minute, minutes
- * and seconds over it.
- *
- * FORMATTED AND NOT WRITTEN OUT, so `beat()` above and the string on screen are the same
- * number. A hand-typed "4m 12s" beside a `secs: 252` is two places to edit and one of them
- * will be forgotten.
- */
-const took = (secs: number) =>
-  secs < 60 ? `${secs.toFixed(1)}s` : `${Math.floor(secs / 60)}m ${Math.round(secs % 60)}s`
 
 type Cued<T> = T & { cue: number }
 
@@ -479,14 +430,6 @@ const PAD = 20
 
 export function SkillsRunTerminal() {
   /**
-   * Which cue is CURRENT. `null` is the resting state — what the server renders, what the
-   * first client render agrees on, and where "the run has not started" and "somebody asked
-   * for less motion" are deliberately the same thing: everything shown, nothing translated.
-   * See the header.
-   */
-  const [cursor, setCursor] = useState<number | null>(null)
-
-  /**
    * The measured geometry: the bottom of every cue's row, relative to the column's own top,
    * and the viewport's height. `null` until the first measurement, which is also the state a
    * server render is in — so the transform is simply absent until there is a real number to
@@ -496,6 +439,17 @@ export function SkillsRunTerminal() {
 
   const viewport = useRef<HTMLDivElement>(null)
   const column = useRef<HTMLDivElement>(null)
+
+  /**
+   * Which cue is CURRENT, from `./terminalRun`'s shared loop — gated on the viewport
+   * being on screen, restarting from the top each time it is.
+   *
+   * `null` IS THE RESTING STATE and every branch below reads it as "show everything,
+   * finished, untranslated": what the server renders, what the first client render agrees
+   * on, and what a reader who asked for less motion keeps. The hook's own header carries
+   * the rest of that argument.
+   */
+  const cursor = useCueRun(cues, viewport)
 
   // MEASURE, rather than compute. Row heights come out of the type scale, the gaps and
   // whatever the cards' copy wraps to, and the only thing that knows all three is the
@@ -521,42 +475,6 @@ export function SkillsRunTerminal() {
     const observer = new ResizeObserver(measure)
     observer.observe(view)
     return () => observer.disconnect()
-  }, [])
-
-  // THE RUN. Gated on visibility rather than started on mount: the timer costs nothing
-  // while the panel is off screen, and entering the viewport restarts from the top so a
-  // reader arrives at the beginning of the session instead of the middle of it.
-  useEffect(() => {
-    const view = viewport.current
-    if (!view) return
-    // Reduced motion keeps the resting state, which is already the finished transcript —
-    // nothing to sit through, and nothing that has to arrive for the panel to be readable.
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
-
-    let timer: number | undefined
-    const stop = () => {
-      if (timer !== undefined) window.clearTimeout(timer)
-      timer = undefined
-    }
-    const play = (at: number) => {
-      setCursor(at)
-      timer = window.setTimeout(() => play(at + 1 >= cues.length ? 0 : at + 1), cues[at])
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        stop()
-        if (entry.isIntersecting) play(0)
-      },
-      // The same threshold the animation this replaces used, so the run still begins where
-      // the visitor can actually see it.
-      { threshold: 0.3 },
-    )
-    observer.observe(view)
-    return () => {
-      observer.disconnect()
-      stop()
-    }
   }, [])
 
   // THE SCROLL: put the newest revealed row `PAD` above the bottom edge, and never above
