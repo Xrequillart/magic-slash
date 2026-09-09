@@ -174,6 +174,102 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.desktop.highlightTrackers': 'Jira et GitHub connectés',
   'site.desktop.highlightCommands': 'Les huit commandes /magic:',
 
+  // ── Les bandes sous le hero de /desktop ────────────────────────────────────
+  // Ce que fait l'application, bande par bande. Les cartes dessinées viennent de /features
+  // avec leurs propres textes ; ici, seulement l'argument autour : accroche, titre,
+  // paragraphe, et trois affirmations sous les deux bandes en split. Pas de tiret cadratin.
+  // « Worktree » reste tel quel, comme partout dans l'application.
+  'site.desktopPage.tasksTitle': 'Votre backlog est la rampe de lancement.',
+  'site.desktopPage.tasksSubtitle':
+    'Toutes les issues ouvertes et tous les tickets du backlog, GitHub et Jira, groupés par dépôt dans une seule fenêtre. Vous en choisissez un : l’application ouvre un worktree et lance un agent dessus. Rien à copier, aucun onglet à retrouver.',
+  'site.desktopPage.tasksPointTrackers': 'Tickets Jira et issues GitHub, côte à côte',
+  'site.desktopPage.tasksPointClick': 'Un clic, et un agent est dessus',
+  'site.desktopPage.tasksPointRepos': 'Groupés par dépôt, comme vous travaillez',
+  'site.desktopPage.agentsTitle': 'Plusieurs agents à la fois, sans se marcher dessus.',
+  'site.desktopPage.agentsSubtitle':
+    'Chaque agent travaille dans son propre worktree et son propre terminal, jusqu’à douze côte à côte. La liste vous dit lequel travaille, lequel a terminé, et lequel vous attend.',
+  'site.desktopPage.agentsPointWorktree': 'Un worktree et un terminal par agent',
+  'site.desktopPage.agentsPointTwelve': 'Jusqu’à douze agents en parallèle',
+  'site.desktopPage.agentsPointWaiting': 'Celui qui vous attend, repéré d’un coup d’œil',
+  'site.desktopPage.sidebarTitle': 'Tout ce que l’agent sait, à côté de son terminal.',
+  'site.desktopPage.statusStepTitle': 'Statut : {status}',
+  'site.desktopPage.sidebarSubtitle':
+    'Ouvrez la sidebar et lisez où en est la tâche sans remonter la conversation : le ticket, la branche et les fichiers touchés, la pull request et ses checks, et le contexte déjà consommé par la session.',
+  // Les étapes de détail de la visite : des parties d'une carte sans ligne dans l'inventaire.
+  'site.desktopPage.stepTicketIdTitle': 'L’identifiant du ticket est un lien',
+  'site.desktopPage.stepTicketIdDesc':
+    'Une clé Jira ouvre le ticket, un numéro GitHub ouvre l’issue, dans votre navigateur. La marque à côté dit à quel tracker il appartient.',
+  'site.desktopPage.stepBranchesTitle': 'Deux branches, une flèche',
+  'site.desktopPage.stepBranchesDesc':
+    'À gauche, la branche d’où part le travail. À droite, la branche sur laquelle l’agent travaille, dans son propre worktree : un checkout à lui, pour que deux agents ne touchent jamais les mêmes fichiers. La flèche dit laquelle vient de laquelle.',
+  'site.desktopPage.ptBranches1': 'La branche de base d’où le worktree a été créé',
+  'site.desktopPage.ptBranches2': 'La branche de travail, nommée d’après le ticket',
+  'site.desktopPage.ptBranches3': 'Un clic copie le nom de la branche',
+  'site.desktopPage.stepFilesTitle': 'Les fichiers touchés par l’agent',
+  'site.desktopPage.stepFilesDesc':
+    'Chaque fichier modifié depuis le dernier commit, avec ses lignes ajoutées et retirées, lu dans git au fil de l’eau. Les six carrés montrent la part d’ajouts dans le diff.',
+  'site.desktopPage.stepCommitsTitle': 'Les commits déjà sur la branche',
+  'site.desktopPage.stepCommitsDesc':
+    'Chaque commit avec son âge et son hash, un clic pour le copier. Le compteur dit de combien la branche est en avance sur main.',
+  'site.desktopPage.stepPrChecksTitle': 'La CI, check par check',
+  'site.desktopPage.stepPrChecksDesc':
+    'Chaque check de la pull request avec son état pendant qu’il tourne, et si la branche se merge toujours proprement dans main.',
+  'site.desktopPage.stepPrVerdictTitle': 'Le verdict de la review',
+  'site.desktopPage.stepPrVerdictDesc':
+    'Ouverte, en attente de review, commentée, changements demandés, approuvée : le badge suit la review sur GitHub, et le ticket passe à mergé quand la pull request l’est.',
+  // Les points clés sous chaque étape de la visite, trois par étape.
+  'site.desktopPage.ptSession1': 'Tokens consommés et part de la fenêtre',
+  'site.desktopPage.ptSession2': 'Le coût de la session jusqu’ici',
+  'site.desktopPage.ptSession3': 'Modèle et durée, sur la même carte',
+  'site.desktopPage.ptTicket1': 'Titre et description, éditables sur place',
+  'site.desktopPage.ptTicket2': 'Tenus à jour par l’agent à chaque étape',
+  'site.desktopPage.ptTicket3': 'Une seule carte, ticket Jira ou issue GitHub',
+  'site.desktopPage.ptTicketId1': 'Ouvre le ticket ou l’issue dans votre navigateur',
+  'site.desktopPage.ptTicketId2': 'La marque du tracker à côté de la clé',
+  'site.desktopPage.ptTicketId3': 'Le même identifiant que la branche et les commits',
+  'site.desktopPage.ptStatusInProgress1': 'Posé par l’agent quand il commence à coder',
+  'site.desktopPage.ptStatusInProgress2': 'Modifiable à la main depuis la liste',
+  'site.desktopPage.ptStatusInProgress3': 'Tous les statuts de la vie d’un ticket, dans l’ordre',
+  'site.desktopPage.ptStatusCommitted1': 'Posé par /magic:commit une fois les commits faits',
+  'site.desktopPage.ptStatusCommitted2': 'Des commits sur la branche, rien de poussé',
+  'site.desktopPage.ptStatusCommitted3': 'La carte des commits se remplit en dessous',
+  'site.desktopPage.ptStatusPrCreated1': 'Posé par /magic:pr à l’ouverture de la pull request',
+  'site.desktopPage.ptStatusPrCreated2': 'La carte de la pull request apparaît sous les commits',
+  'site.desktopPage.ptStatusPrCreated3': 'Un commentaire posté sur le ticket, si vous l’avez demandé',
+  'site.desktopPage.ptStatusInReview1': 'Un relecteur a la pull request entre les mains',
+  'site.desktopPage.ptStatusInReview2': 'Checks et commentaires arrivent dans la carte en direct',
+  'site.desktopPage.ptStatusInReview3': 'Une demande de changements passe les fils à /magic:resolve',
+  'site.desktopPage.ptRepository1': 'Branche de base et branche de travail, côte à côte',
+  'site.desktopPage.ptRepository2': 'Ouvrir le projet dans VS Code ou sur GitHub',
+  'site.desktopPage.ptRepository3': 'Plusieurs dépôts par agent, une carte chacun',
+  'site.desktopPage.ptScripts1': 'Tous les scripts de votre package.json, listés',
+  'site.desktopPage.ptScripts2': 'Un serveur lancé affiche son adresse sous la carte',
+  'site.desktopPage.ptScripts3': 'L’adresse s’ouvre dans votre navigateur',
+  'site.desktopPage.ptFiles1': 'Lu dans git pendant que l’agent travaille',
+  'site.desktopPage.ptFiles2': 'Lignes ajoutées et retirées, par fichier',
+  'site.desktopPage.ptFiles3': 'Six carrés pour la part d’ajouts',
+  'site.desktopPage.ptCommits1': 'Du plus récent au plus ancien, avec âge et hash',
+  'site.desktopPage.ptCommits2': 'Un clic copie le hash',
+  'site.desktopPage.ptCommits3': 'L’avance de la branche sur main',
+  'site.desktopPage.ptPr1': 'Numéro, dépôt et verdict dans l’en-tête',
+  'site.desktopPage.ptPr2': 'Rafraîchie toute seule, rafraîchissable à la main',
+  'site.desktopPage.ptPr3': 'Rien à ouvrir sur GitHub',
+  'site.desktopPage.ptPrChecks1': 'Chaque check avec son état pendant qu’il tourne',
+  'site.desktopPage.ptPrChecks2': 'Le compte des réussis sur le total',
+  'site.desktopPage.ptPrChecks3': 'Les conflits avec main surveillés aussi',
+  'site.desktopPage.ptPrComments1': 'Combien de fils les relecteurs ont ouverts',
+  'site.desktopPage.ptPrComments2': 'Un clic ouvre chaque fil dans un panneau',
+  'site.desktopPage.ptPrComments3': 'N’importe quel fil peut être confié à l’agent',
+  'site.desktopPage.ptPrHeader1': 'Ouverte, en attente, commentée, changements demandés, approuvée',
+  'site.desktopPage.ptPrHeader2': 'Le badge suit la review sur GitHub',
+  'site.desktopPage.ptPrHeader3': 'Mergée, et /magic:done ferme le ticket',
+  'site.desktopPage.aroundTitle': 'Conçue pour ne pas se mettre en travers.',
+  'site.desktopPage.aroundSubtitle':
+    'Coupez la fenêtre en deux quand deux agents vous attendent, appelez-en un depuis n’importe quelle app, et laissez votre Mac vous prévenir du reste.',
+  'site.desktopPage.guardTitle': 'Elle s’installe seule, et demande avant d’aller trop loin.',
+  'site.desktopPage.guardSubtitle':
+    'Le premier lancement vérifie ce dont Claude Code a besoin et installe ce qui manque. Ensuite, vous décidez jusqu’où chaque agent peut aller, et vous voyez ce que ça coûte.',
+
   // ── La bande « application » de la home ────────────────────────────────────
   // Le titre ne reprend pas celui du hero : le hero annonce le parallélisme, cette bande
   // répond à l'objection qui suit — plusieurs agents, c'est plusieurs choses à suivre, et
@@ -538,7 +634,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.features.integrationsDesc':
     'Tickets, issues et pull requests, lus et écrits sur place.',
   'site.features.hooksTitle': 'Notifications',
-  'site.features.hooksDesc': 'Votre Mac vous prévient dès qu’un chantier vous attend.',
+  'site.features.hooksDesc': 'Votre Mac vous prévient dès qu’un chantier vous attend. Désactivable dans les réglages, si vous préférez qu’il se taise.',
   'site.features.securityTitle': 'Sécurité',
   'site.features.securityDesc':
     'Ce qui tourne où, ce qui quitte votre machine, et ce qui n’en sort jamais.',
@@ -657,13 +753,13 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Cherchez sur un ID de ticket ou un titre, restreignez à un dépôt ou à un epic Jira, et lisez le résultat par ordre d’arrivée ou par priorité.',
   'site.tasksCard.legendFieldsTitle': 'Les mots de votre board',
   'site.tasksCard.legendFieldsDesc':
-    'Une ligne Jira porte son statut, sa priorité et l’epic auquel elle est rattachée — affichés tels que votre site les envoie, jamais traduits ni reclassés.',
+    'Une ligne Jira porte son statut, sa priorité et l’epic auquel elle est rattachée, affichés tels que votre site les envoie, jamais traduits ni reclassés.',
   'site.tasksCard.legendAvailableTitle': 'Seulement ce qui est libre',
   'site.tasksCard.legendAvailableDesc':
-    'La colonne To Do du sprint, plus les tickets qu’un agent a déjà pris — marqués comme tels. Le travail en cours ailleurs n’est pas proposé : la page ne vous offrira pas de le dupliquer.',
+    'La colonne To Do du sprint, plus les tickets qu’un agent a déjà pris, marqués comme tels. Le travail en cours ailleurs n’est pas proposé : la page ne vous offrira pas de le dupliquer.',
   'site.tasksCard.legendTrackersTitle': 'Les deux trackers, par dépôt',
   'site.tasksCard.legendTrackersDesc':
-    'Les issues ouvertes d’un dépôt GitHub et le sprint actif d’un projet Jira, chacun sur sa carte — et une seule carte pour deux services qui partagent un projet.',
+    'Les issues ouvertes d’un dépôt GitHub et le sprint actif d’un projet Jira, chacun sur sa carte, et une seule carte pour deux services qui partagent un projet.',
   'site.tasksCard.gh1': 'Les relances de webhook perdent la clé d’idempotence',
   'site.tasksCard.gh2': 'Limiter le débit de la recherche publique',
   'site.tasksCard.gh3': 'Le paiement renvoie une 500 quand le panier est vide',
@@ -861,7 +957,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Tout tourne sur votre abonnement, sur votre machine. Rien n’est réhébergé au milieu.',
   'site.features.machineSetupTitle': 'Configuré au démarrage',
   'site.features.machineSetupDesc':
-    'Les huit skills, les serveurs MCP, les hooks et les permissions sont vérifiés — et installés — à chaque lancement de l’app.',
+    'Les huit skills, les serveurs MCP, les hooks et les permissions sont vérifiés, et installés s’ils manquent, à chaque lancement de l’app.',
   // Voir la note du catalogue anglais.
   'site.features.tasksDesc':
     'Toutes les issues ouvertes et tous les tickets de backlog, GitHub comme Jira, groupés par dépôt dans votre propre fenêtre — et un clic sur l’un d’eux lance un agent dessus avec /magic:start.',
@@ -878,7 +974,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Une langue pour les commits, une pour les pull requests, une pour les commentaires postés sur les tickets, une pour la spec et les tickets que /magic:plan rédige — et celle de la discussion avec Claude, qui n’est lue que par vous. Chacune se choisit à part, par dépôt.',
   'site.features.permissionModesTitle': 'Jusqu’où un agent peut aller',
   'site.features.permissionModesDesc':
-    'Plan, standard, accept edits, auto ou bypass — ce qu’un agent fait avant de vous demander.',
+    'Plan, standard, accept edits, auto ou bypass : ce qu’un agent fait avant de vous demander.',
   'site.features.profileTitle': 'Comment il vous parle',
   'site.features.profileDesc':
     'Juste après l’inscription, un court formulaire d’onboarding apprend à Claude Code qui vous êtes : votre prénom, votre rôle, votre niveau technique, le ton que vous voulez et vos langues. Chaque skill le lit avant de vous répondre, pour que la réponse arrive à la profondeur où vous lisez. Modifiable à tout moment depuis les réglages.',
@@ -889,13 +985,13 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // La famille insights.
   // Le dessin de la sidebar d’info — `InfoSidebarMockup`, avec les libellés de l’app.
   'site.features.ticketInfoTitle': 'Le ticket, et où il en est',
-  'site.features.ticketInfoDesc': 'Identifiant, titre, description et statut — ce que l’agent dit de son travail, tenu à jour à chaque étape. L’identifiant est cliquable et ouvre l’issue GitHub ou le ticket Jira dans votre navigateur. Plus besoin de retenir quel Claude Code travaille sur quelle tâche : tout est là, et c’est autant de charge mentale en moins.',
+  'site.features.ticketInfoDesc': 'Identifiant, titre, description et statut : ce que l’agent dit de son travail, tenu à jour à chaque étape. L’identifiant est cliquable et ouvre l’issue GitHub ou le ticket Jira dans votre navigateur. Plus besoin de retenir quel Claude Code travaille sur quelle tâche : tout est là, et c’est autant de charge mentale en moins.',
   'site.features.repositoryTitle': 'La branche, les fichiers, les commits',
-  'site.features.repositoryDesc': 'La branche, les fichiers touchés par l’agent avec leurs lignes ajoutées et retirées, et les commits déjà posés — lus dans Git en direct. Deux boutons ouvrent le projet dans VS Code et le dépôt sur GitHub.',
+  'site.features.repositoryDesc': 'La branche, les fichiers touchés par l’agent avec leurs lignes ajoutées et retirées, et les commits déjà posés, lus dans Git en direct. Deux boutons ouvrent le projet dans VS Code et le dépôt sur GitHub.',
   'site.features.devServerTitle': 'Lancez un serveur local de test',
   'site.features.devServerDesc': 'Les scripts de votre package.json sont à un clic. Un serveur qui démarre affiche son adresse sous la carte, et l’adresse s’ouvre dans votre navigateur.',
   'site.features.pullRequestTitle': 'La pull request, suivie en direct',
-  'site.features.pullRequestDesc': 'Les checks CI, les commentaires et le verdict de la review arrivent dans la carte au fil de l’eau — sans ouvrir GitHub.',
+  'site.features.pullRequestDesc': 'Les checks CI, les commentaires et le verdict de la review arrivent dans la carte au fil de l’eau, sans ouvrir GitHub.',
   'site.infoSidebar.uncommitted': 'Modifications non committées',
   'site.infoSidebar.fileOne': '{count} fichier',
   'site.infoSidebar.files': '{count} fichiers',
@@ -1021,7 +1117,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Ce qu’il reste de votre session de cinq heures et de votre semaine glissante, sur chaque écran de l’app.',
   'site.features.agentContextTitle': 'Le contexte dépensé par l’agent en cours',
   'site.features.agentContextDesc':
-    'La part de sa fenêtre que ce run a déjà remplie, en tokens et en pourcentage — l’agent affiché, pas le compte.',
+    'La part de sa fenêtre que ce run a déjà remplie, en tokens et en pourcentage. L’agent affiché, pas le compte.',
   'site.features.planSessionsTitle': 'Les plans, les vôtres et ceux de l’équipe',
   'site.features.planSessionsDesc':
     'Chaque session /magic:plan sur un dépôt que vous pouvez voir — la spec qu’elle a écrite et les tickets qu’elle a créés. Conservés sur votre compte : un plan survit à la fenêtre où il a été écrit.',

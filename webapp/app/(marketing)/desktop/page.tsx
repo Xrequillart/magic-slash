@@ -22,10 +22,12 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * build question rather than a naming one. `DESKTOP_PATH` in `lib/siteNav.ts` owns the
  * path and says the same thing at greater length.
  *
- * WHAT THE PAGE STILL OWES, now that it is a page rather than a promise of one: what the
- * split view is for, how the app keeps several agents apart, the info sidebar, and the
- * prerequisites the first launch checks. `components/site/features/*` draws most of that
- * chrome already, for the inventory — this page can borrow it rather than invent it.
+ * WHAT THE PAGE OWED, once it was a page rather than a promise of one — what the split
+ * view is for, how the app keeps several agents apart, the info sidebar, the checks the
+ * first launch makes — is paid by the five bands `DesktopContent` composes under the
+ * hero, every one of them borrowing `components/site/features/*`'s drawings rather than
+ * inventing its own. `DesktopContent.tsx` argues the order; `lib/desktopPage.ts` holds
+ * the data and `lib/desktopPage.test.ts` pins it.
  *
  * IT CLOSES ON THE HOMEPAGE'S LAST BAND, like `/features`, `/faq` and `/workflow` and
  * unlike `/changelog`: a reader who has just been shown the app is deciding, so

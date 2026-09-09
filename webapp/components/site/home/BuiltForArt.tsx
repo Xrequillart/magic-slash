@@ -484,7 +484,7 @@ export function ShortcutsArt() {
  * rather than spelled here: three cool stops, the first reference's own sweep. See the
  * note there for why it is neither a tone nor a plate.
  *
- * THE AURA IS FOUR BLURRED DISCS, `desktop/DesktopContent`'s own `Aura` in miniature and for its
+ * THE AURA IS FOUR BLURRED DISCS, `desktop/DesktopHero`'s own `Aura` in miniature and for its
  * reason: one colour at two strengths reads as a glow somebody applied, four hues laid
  * across each other read as light. They are `purple`, `red`, `accent` and `blue` — palette
  * tokens, not arbitrary hexes — and they sit BEHIND the tile in the stacking order, so the

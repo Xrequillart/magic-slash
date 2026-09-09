@@ -441,7 +441,7 @@ export const marketingEn = {
   /**
    * TWO LINES, and it is a length rather than a break — there is no `<br>` in it, because
    * a hard break at this width becomes four lines on a phone. See the note in
-   * `DesktopContent.tsx`.
+   * `DesktopHero.tsx`.
    *
    * THREE THINGS, IN THIS ORDER, because each one is what makes the next land: several
    * agents at once (the claim only this product can make), each in its own worktree (the
@@ -465,7 +465,7 @@ export const marketingEn = {
   'site.desktop.archiveAgent': 'Archive the agent',
   /**
    * THE FOUR HIGHLIGHTS under the window, and every one of them is a fact this site
-   * already states somewhere else — see the note on `HIGHLIGHTS` in `DesktopContent.tsx`
+   * already states somewhere else — see the note on `HIGHLIGHTS` in `DesktopHero.tsx`
    * for where each comes from. Four words or so each, because they are set on two lines
    * under a 48px tile and a fifth word makes a third.
    *
@@ -478,6 +478,121 @@ export const marketingEn = {
   'site.desktop.highlightContext': 'All your context, saved',
   'site.desktop.highlightTrackers': 'Jira and GitHub connected',
   'site.desktop.highlightCommands': 'The eight /magic: commands',
+
+  // ── The bands under the /desktop hero ──────────────────────────────────────
+  /**
+   * WHAT THE APP DOES, band by band — `components/site/desktop/*Band.tsx`, over the data in
+   * `lib/desktopPage.ts`. Its own family beside `site.desktop.*`: the hero above is about
+   * the pain the app relieves, and these five bands are about the thing itself, which is a
+   * different sentence in a different voice.
+   *
+   * MOST OF WHAT THE BANDS SHOW IS NOT HERE. The cards they draw are `/features` rows, read
+   * out of `lib/features.ts` with their own `site.features.*` titles and descriptions, so a
+   * capability is described in the same words on both pages. What this family carries is
+   * the argument around them: an eyebrow, a headline and a paragraph per band, and three
+   * claims under each of the two split bands. NO EM DASH anywhere in it, by the product
+   * owner's standing rule for new site copy.
+   */
+  // The backlog band: the Tasks window under the claim. "Launch pad" because the sentence
+  // has to say what the list is FOR, not that the list exists: a ticket in it is one click
+  // from an agent.
+  'site.desktopPage.tasksTitle': 'Your backlog is the launch pad.',
+  'site.desktopPage.tasksSubtitle':
+    'Every open issue and every backlog ticket, from GitHub and from Jira, grouped by repository in one window. Pick one: the app opens a worktree and starts an agent on it. Nothing to copy, no tab to go and find.',
+  'site.desktopPage.tasksPointTrackers': 'Jira tickets and GitHub issues, side by side',
+  'site.desktopPage.tasksPointClick': 'One click, and an agent is on it',
+  'site.desktopPage.tasksPointRepos': 'Grouped by repository, the way you work',
+  // The agents band: the agent list beside the claim. "Twelve" is `site.features.desktopDesc`'s
+  // own number, and the three states are the list's own (`site.agentsCard.*`).
+  'site.desktopPage.agentsTitle': 'Several agents at once, none in each other’s way.',
+  'site.desktopPage.agentsSubtitle':
+    'Each agent works in its own worktree and its own terminal, up to twelve side by side. The list tells you which one is working, which one is done, and which one is waiting for you.',
+  'site.desktopPage.agentsPointWorktree': 'One worktree and one terminal per agent',
+  'site.desktopPage.agentsPointTwelve': 'Up to twelve agents in parallel',
+  'site.desktopPage.agentsPointWaiting': 'The one waiting on you, marked at a glance',
+  // The sidebar tour: the panel stands still on the right while these scroll past on the
+  // left. The status steps are headed by `statusStepTitle` with the pill's own label.
+  'site.desktopPage.sidebarTitle': 'Everything the agent knows, beside its terminal.',
+  'site.desktopPage.statusStepTitle': 'Status: {status}',
+  'site.desktopPage.sidebarSubtitle':
+    'Open the sidebar and read where the task stands without scrolling the transcript: the ticket, the branch and the files it touched, the pull request and its checks, and how much context the run has spent.',
+  // The detail steps of the sidebar tour: parts inside a card the inventory has no row
+  // for. Each pair is what the reader sees the panel zoom to. No em dash.
+  'site.desktopPage.stepTicketIdTitle': 'The ticket id is a link',
+  'site.desktopPage.stepTicketIdDesc':
+    'A Jira key opens the ticket, a GitHub number opens the issue, in your browser. The mark beside it says which tracker it belongs to.',
+  'site.desktopPage.stepBranchesTitle': 'Two branches, one arrow',
+  'site.desktopPage.stepBranchesDesc':
+    'On the left, the branch the work started from. On the right, the branch the agent works on, in its own worktree: a checkout of its own, so two agents never touch the same files. The arrow says which came from which.',
+  'site.desktopPage.ptBranches1': 'The base branch the worktree was cut from',
+  'site.desktopPage.ptBranches2': 'The working branch, named after the ticket',
+  'site.desktopPage.ptBranches3': 'One click copies the branch name',
+  'site.desktopPage.stepFilesTitle': 'The files the agent touched',
+  'site.desktopPage.stepFilesDesc':
+    'Every file changed since the last commit, with its added and removed lines, read from git as it happens. The six squares show how much of the diff is additions.',
+  'site.desktopPage.stepCommitsTitle': 'The commits already on the branch',
+  'site.desktopPage.stepCommitsDesc':
+    'Each commit with its age and its hash, one click to copy. The count says how far ahead of main the branch is.',
+  'site.desktopPage.stepPrChecksTitle': 'The CI, check by check',
+  'site.desktopPage.stepPrChecksDesc':
+    'Each check of the pull request with its state as it runs, and whether the branch still merges cleanly into main.',
+  'site.desktopPage.stepPrVerdictTitle': 'The verdict of the review',
+  'site.desktopPage.stepPrVerdictDesc':
+    'Open, awaiting review, commented, changes requested, approved: the badge follows the review on GitHub, and the ticket moves to merged when the pull request does.',
+  // The key points under each step of the sidebar tour, three a step. No em dash.
+  'site.desktopPage.ptSession1': 'Tokens spent and share of the window',
+  'site.desktopPage.ptSession2': 'The cost of the run so far',
+  'site.desktopPage.ptSession3': 'Model and elapsed time, on the same card',
+  'site.desktopPage.ptTicket1': 'Title and description, editable in place',
+  'site.desktopPage.ptTicket2': 'Kept up to date by the agent at every step',
+  'site.desktopPage.ptTicket3': 'One card, whether the ticket is Jira or GitHub',
+  'site.desktopPage.ptTicketId1': 'Opens the ticket or the issue in your browser',
+  'site.desktopPage.ptTicketId2': 'The tracker’s mark beside the key',
+  'site.desktopPage.ptTicketId3': 'The same id the branch and the commits carry',
+  'site.desktopPage.ptStatusInProgress1': 'Set by the agent when it starts coding',
+  'site.desktopPage.ptStatusInProgress2': 'Changeable by hand from the dropdown',
+  'site.desktopPage.ptStatusInProgress3': 'Every status of a ticket’s life, in order',
+  'site.desktopPage.ptStatusCommitted1': 'Set by /magic:commit once the commits land',
+  'site.desktopPage.ptStatusCommitted2': 'Commits on the branch, nothing pushed yet',
+  'site.desktopPage.ptStatusCommitted3': 'The commits card fills in below',
+  'site.desktopPage.ptStatusPrCreated1': 'Set by /magic:pr when the pull request opens',
+  'site.desktopPage.ptStatusPrCreated2': 'The pull request card appears under the commits',
+  'site.desktopPage.ptStatusPrCreated3': 'A comment posted on the ticket, if you asked for it',
+  'site.desktopPage.ptStatusInReview1': 'A reviewer has the pull request in hand',
+  'site.desktopPage.ptStatusInReview2': 'Checks and comments land in the card live',
+  'site.desktopPage.ptStatusInReview3': 'Changes requested hands the threads to /magic:resolve',
+  'site.desktopPage.ptRepository1': 'Base branch and working branch, side by side',
+  'site.desktopPage.ptRepository2': 'Open the project in VS Code or on GitHub',
+  'site.desktopPage.ptRepository3': 'Several repositories per agent, one card each',
+  'site.desktopPage.ptScripts1': 'Every script of your package.json, listed',
+  'site.desktopPage.ptScripts2': 'A running server prints its address under the card',
+  'site.desktopPage.ptScripts3': 'The address opens in your browser',
+  'site.desktopPage.ptFiles1': 'Read from git as the agent works',
+  'site.desktopPage.ptFiles2': 'Added and removed lines, per file',
+  'site.desktopPage.ptFiles3': 'Six squares for the share of additions',
+  'site.desktopPage.ptCommits1': 'Newest first, with age and hash',
+  'site.desktopPage.ptCommits2': 'One click copies the hash',
+  'site.desktopPage.ptCommits3': 'How far ahead of main the branch is',
+  'site.desktopPage.ptPr1': 'Number, repository and verdict in the header',
+  'site.desktopPage.ptPr2': 'Refreshed on its own, refreshable by hand',
+  'site.desktopPage.ptPr3': 'Nothing to open on GitHub',
+  'site.desktopPage.ptPrChecks1': 'Each check with its state as it runs',
+  'site.desktopPage.ptPrChecks2': 'The passed count against the total',
+  'site.desktopPage.ptPrChecks3': 'Conflicts with main watched too',
+  'site.desktopPage.ptPrComments1': 'How many threads the reviewers opened',
+  'site.desktopPage.ptPrComments2': 'A click opens each thread in a panel',
+  'site.desktopPage.ptPrComments3': 'Any thread can be handed to the agent',
+  'site.desktopPage.ptPrHeader1': 'Open, awaiting review, commented, changes requested, approved',
+  'site.desktopPage.ptPrHeader2': 'The badge follows the review on GitHub',
+  'site.desktopPage.ptPrHeader3': 'Merged, and /magic:done closes the ticket',
+  // Around the window: the four showcase rows of the desktop family, on a dark band.
+  'site.desktopPage.aroundTitle': 'Built to stay out of your way.',
+  'site.desktopPage.aroundSubtitle':
+    'Split the window when two agents need you, call one up from any app, and let your Mac tell you the rest.',
+  // The guardrails: what it checks, what it asks, what it shows you spending.
+  'site.desktopPage.guardTitle': 'It sets itself up, and asks before it goes too far.',
+  'site.desktopPage.guardSubtitle':
+    'The first launch checks what Claude Code needs and installs what is missing. After that, you decide how far each agent may go, and you watch what it costs.',
 
   // ── The homepage's app band ────────────────────────────────────────────────
   /**
@@ -1226,7 +1341,7 @@ export const marketingEn = {
   // and the outcome in one breath — and the hooks are how it works, not what you get.
   // The same word in both languages, hence its line in `i18n.test.ts`.
   'site.features.hooksTitle': 'Notifications',
-  'site.features.hooksDesc': 'Your Mac tells you the moment a job needs you.',
+  'site.features.hooksDesc': 'Your Mac tells you the moment a job needs you. Switched off in the settings, if you would rather it did not.',
   'site.features.securityTitle': 'Security',
   'site.features.securityDesc':
     'What runs where, what leaves your machine, and what never does.',
@@ -1422,13 +1537,13 @@ export const marketingEn = {
     'Search on a ticket id or a title, narrow to one repository or one Jira epic, and read the result newest first or by priority.',
   'site.tasksCard.legendFieldsTitle': 'Your board’s own words',
   'site.tasksCard.legendFieldsDesc':
-    'A Jira row carries its status, its priority and the epic it hangs off — printed as your site sends them, never translated or re-tiered.',
+    'A Jira row carries its status, its priority and the epic it hangs off, printed as your site sends them, never translated or re-tiered.',
   'site.tasksCard.legendAvailableTitle': 'Only what is free to take',
   'site.tasksCard.legendAvailableDesc':
-    'The sprint’s To Do column, plus the tickets an agent is already on — those marked as taken. Work in flight elsewhere is not offered: the page will not propose to duplicate it.',
+    'The sprint’s To Do column, plus the tickets an agent is already on, marked as taken. Work in flight elsewhere is not offered: the page will not propose to duplicate it.',
   'site.tasksCard.legendTrackersTitle': 'Both trackers, by repository',
   'site.tasksCard.legendTrackersDesc':
-    'A GitHub repository’s open issues and a Jira project’s active sprint, each a card of its own — and one card for two services that share a project.',
+    'A GitHub repository’s open issues and a Jira project’s active sprint, each a card of its own, and one card for two services that share a project.',
   'site.tasksCard.gh1': 'Webhook retries drop the idempotency key',
   'site.tasksCard.gh2': 'Rate-limit the public search',
   'site.tasksCard.gh3': 'Checkout returns a 500 when the basket is empty',
@@ -1596,7 +1711,7 @@ export const marketingEn = {
   'site.features.worktreesDesc':
     'Every agent works in its own checkout of your project, so a feature and a hotfix never touch the same files.',
   'site.features.splitViewDesc':
-    'Two agents side by side on a wide screen — the one you are answering, and the one you are watching.',
+    'Two agents side by side on a wide screen: the one you are answering, and the one you are watching.',
   'site.features.spotlightDesc':
     'A global shortcut opens Quick Launch from any app: name the ticket, and the agent starts.',
   'site.features.menuBarTitle': 'Always there',
@@ -1653,7 +1768,7 @@ export const marketingEn = {
     'It runs on your own subscription, on your own machine. Nothing is re-hosted in between.',
   'site.features.machineSetupTitle': 'Set up on launch',
   'site.features.machineSetupDesc':
-    'The eight skills, the MCP servers, the hooks and the permissions are checked — and installed — every time the app starts.',
+    'The eight skills, the MCP servers, the hooks and the permissions are checked, and installed if missing, every time the app starts.',
   // The row is headed "Tasks", the app's own name for the screen, so the line under it
   // does the describing — and it says the whole claim rather than half of it: not only
   // that the backlog is in the window, but that a ticket in it is one click from an
@@ -1674,7 +1789,7 @@ export const marketingEn = {
     'One language for the commits, one for the pull requests, one for the comments posted on tickets, one for the spec and the tickets /magic:plan writes — and the one you talk to Claude in, which nobody else reads. Each is chosen on its own, per repository.',
   'site.features.permissionModesTitle': 'How far an agent may go',
   'site.features.permissionModesDesc':
-    'Plan, standard, accept edits, auto or bypass — how much an agent does before it asks you.',
+    'Plan, standard, accept edits, auto or bypass: how much an agent does before it asks you.',
   'site.features.profileTitle': 'How it talks to you',
   'site.features.profileDesc':
     'Right after you sign up, a short onboarding form teaches Claude Code who you are: your first name, your role, your technical level, the tone you want and your languages. Every skill reads it before answering, so an answer arrives at the depth you read at. Editable any time from the settings.',
@@ -1686,13 +1801,13 @@ export const marketingEn = {
   // paragraph, which already names the panel's contents one by one.
   // The info sidebar drawing — `InfoSidebarMockup`, the app's own labels.
   'site.features.ticketInfoTitle': 'The ticket, and where it stands',
-  'site.features.ticketInfoDesc': 'Id, title, description and status — the agent’s own words for what it is doing, kept up to date at every step. The id is a link: it opens the GitHub issue or the Jira ticket in your browser. No more remembering which Claude Code is on which task: it is all here, and that is one less thing to hold in your head.',
+  'site.features.ticketInfoDesc': 'Id, title, description and status: the agent’s own words for what it is doing, kept up to date at every step. The id is a link: it opens the GitHub issue or the Jira ticket in your browser. No more remembering which Claude Code is on which task: it is all here, and that is one less thing to hold in your head.',
   'site.features.repositoryTitle': 'The branch, the files, the commits',
-  'site.features.repositoryDesc': 'The branch, the files the agent touched with their added and removed lines, and the commits already made — read from Git as it happens. Two buttons open the project in VS Code and the repository on GitHub.',
+  'site.features.repositoryDesc': 'The branch, the files the agent touched with their added and removed lines, and the commits already made, read from Git as it happens. Two buttons open the project in VS Code and the repository on GitHub.',
   'site.features.devServerTitle': 'Start a local test server',
   'site.features.devServerDesc': 'The scripts of your package.json are one click away. A server that starts prints its address under the card, and the address opens in your browser.',
   'site.features.pullRequestTitle': 'The pull request, watched live',
-  'site.features.pullRequestDesc': 'CI checks, comments and the review’s verdict land in the card as they happen — without opening GitHub.',
+  'site.features.pullRequestDesc': 'CI checks, comments and the review’s verdict land in the card as they happen, without opening GitHub.',
   'site.infoSidebar.uncommitted': 'Uncommitted changes',
   'site.infoSidebar.fileOne': '{count} file',
   'site.infoSidebar.files': '{count} files',
@@ -1826,7 +1941,7 @@ export const marketingEn = {
     'What is left of your five-hour session and of your rolling week, on every screen of the app.',
   'site.features.agentContextTitle': 'The context the running agent has spent',
   'site.features.agentContextDesc':
-    'How much of its window this run has filled, in tokens and as a share — the agent you are looking at, not the account.',
+    'How much of its window this run has filled, in tokens and as a share. The agent you are looking at, not the account.',
   'site.features.planSessionsTitle': 'Plans, yours and your team’s',
   'site.features.planSessionsDesc':
     'Every /magic:plan session on a repository you can see — the spec it wrote and the tickets it filed. Kept on your account, so a plan outlives the window it was written in.',
