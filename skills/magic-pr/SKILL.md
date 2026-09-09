@@ -574,7 +574,7 @@ If a GitHub issue ID is found:
 1. **Add a comment** on the issue with the PR link via `mcp__github__add_issue_comment`
    (unless `commentOnPR` is `false`)
    - Use **`MSG_GITHUB_ISSUE_COMMENT`** for the comment body
-2. **Update labels** (optional): If the issue has a "todo" or "in progress" label, update it to "in review" if that label exists via `mcp__github__update_issue`
+2. **Update labels** (optional): If the issue has a "todo" or "in progress" label, update it to "in review" if that label exists via `mcp__github__issue_write` with `method: "update"` — read the current labels first (`mcp__github__issue_read`, `method: "get_labels"`) and pass the **whole** set, because `labels` replaces the list rather than appending to it
 
 > Note: The `closes #123` keyword in the PR description (from Step 6.1) will automatically close the issue when the PR is merged. No need to close it manually here.
 
