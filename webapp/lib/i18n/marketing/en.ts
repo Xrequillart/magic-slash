@@ -127,7 +127,24 @@ export const marketingEn = {
    * No `<br>` any more: the old line carried one because it ran to two lines at `md`
    * and broke in the wrong place. This one is five words and breaks nowhere.
    */
-  'site.hero.title': 'From idea to merged PR.',
+  'site.hero.title': 'Your Jira ticket becomes a merged PR.',
+  /**
+   * THE HEADLINE'S SECOND SENTENCE, minus its last word. The drawing closes it with the
+   * command itself and a full stop — `<code>/magic:start</code>.` — because a command is
+   * a token the product defines (`lib/commands.ts`) and never a string a translator can
+   * edit; `lib/skillsBand.test.ts` states that rule for the band below. So the catalogue
+   * stops where the token starts.
+   */
+  'site.hero.titleTail': 'All you said was',
+  /**
+   * The pill above the headline. It names the three things the reader already knows —
+   * Claude Code, Jira, GitHub — beside their marks, so the product is placed in a second
+   * before a word of the pitch is read. The count is the PRODUCT's — eight, the same
+   * figure the subtitle and the skills band use, and the number of skills you install.
+   * The ladder beside it draws seven of them, because `/magic:continue` is a way back
+   * INTO the cycle rather than a step of it; nothing in the copy counts the drawing.
+   */
+  'site.hero.eyebrow': '8 Claude Code skills + a desktop app',
   /**
    * WHAT THE HEADLINE CANNOT SAY: the headline is one run, start to finish, and the
    * product's actual claim is that there are SEVERAL of them going at once. So this
@@ -150,7 +167,7 @@ export const marketingEn = {
    * `app/(marketing)/page.tsx` — which is what freed this line for the argument above.
    */
   'site.hero.subtitle':
-    'Several agents in parallel, in a single app. It tracks who is working on what, so you don’t have to.',
+    '8 skills that chain the spec, the branch, the commits, the pull request, the review and the closed ticket. An app that shows you the tasks to pick up and the agents at work. You make the calls.',
   'site.hero.cta': 'Start free',
   /**
    * RETIRED WITH THE BAND IT POINTED AT. It scrolled to `#how`, and that section was
@@ -165,6 +182,29 @@ export const marketingEn = {
    * artifact the release workflow publishes.
    */
   'site.hero.downloadCta': 'Download for Mac',
+  /**
+   * The SECOND button now, beside the download. It opens `/workflow`, which is the page
+   * that sets the steps out in full; the ladder on the right of the hero is the short
+   * version of it, so the button says where the long one is.
+   */
+  'site.hero.workflowCta': 'See the workflow',
+  /**
+   * THE LADDER — the seven cards on the hero's right, and the two lines that frame them.
+   * The frame is the whole pitch in four words: what you come in with, what you leave
+   * with. Each card is one command (drawn from `lib/commands.ts`, never from here) and
+   * the one thing it produces, kept to about five words so seven of them fit beside the
+   * copy. The tracker's mark at the card's right end says WHERE that thing lands — Jira
+   * for the two ends of the cycle, GitHub for everything between.
+   */
+  'site.hero.ladderStart': 'An idea?',
+  'site.hero.ladderEnd': 'A merged PR',
+  'site.hero.skillPlan': 'The spec, the epic, the stories',
+  'site.hero.skillStart': 'The ticket, the branch, the plan',
+  'site.hero.skillCommit': 'Atomic commits, properly named',
+  'site.hero.skillPr': 'Push, PR, ticket updated',
+  'site.hero.skillReview': 'The review, yours or theirs',
+  'site.hero.skillResolve': 'Feedback addressed and pushed',
+  'site.hero.skillDone': 'The ticket closed behind you',
 
   // ── The two pillars ────────────────────────────────────────────────────────
   /**

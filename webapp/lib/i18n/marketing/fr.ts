@@ -52,12 +52,29 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Comment découper le travail pour que les agents puissent le porter — un ticket par branche, une spec avant un epic, et quand laisser un agent tourner sans surveillance. Cette page est en cours d’écriture.',
 
   // ── Hero ───────────────────────────────────────────────────────────────────
-  'site.hero.title': 'De l’idée à la PR mergée.',
+  'site.hero.title': 'Votre ticket Jira devient une PR mergée.',
+  // La commande n'est pas dans la phrase : le dessin la pose lui-même, avec le point.
+  // Voir la note côté anglais.
+  'site.hero.titleTail': 'Vous avez juste dit',
+  'site.hero.eyebrow': '8 skills Claude Code + une app desktop',
   'site.hero.subtitle':
-    'Plusieurs agents en parallèle, dans une seule application. Elle sait qui travaille sur quoi, vous gardez la tête libre.',
+    '8 skills qui enchaînent spec, branche, commits, pull request, review et clôture du ticket. Une app qui vous montre les tâches à prendre et les agents qui tournent. Vous, vous arbitrez.',
   'site.hero.cta': 'Commencer gratuitement',
   'site.hero.howCta': 'Voir comment ça marche',
   'site.hero.downloadCta': 'Télécharger pour Mac',
+  'site.hero.workflowCta': 'Voir le workflow',
+  // L'échelle à droite de la hero : ce qu'on apporte, ce qu'on repart avec, et les sept
+  // étapes entre les deux. « Spec », « epic », « stories », « commits », « PR », « review »
+  // restent en anglais : c'est le vocabulaire du métier, celui que l'app emploie.
+  'site.hero.ladderStart': 'Une idée ?',
+  'site.hero.ladderEnd': 'Une PR mergée',
+  'site.hero.skillPlan': 'La spec, l’epic, les stories',
+  'site.hero.skillStart': 'Le ticket, la branche, le plan',
+  'site.hero.skillCommit': 'Des commits atomiques, bien nommés',
+  'site.hero.skillPr': 'Push, PR, ticket mis à jour',
+  'site.hero.skillReview': 'La review, la vôtre ou la leur',
+  'site.hero.skillResolve': 'Les retours traités, repoussés',
+  'site.hero.skillDone': 'Le ticket refermé derrière vous',
 
   // ── Les deux piliers ───────────────────────────────────────────────────────
   // « product builder » reste en anglais : c'est le terme que le métier emploie en

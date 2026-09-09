@@ -1,175 +1,263 @@
 'use client'
 
-import { Download } from 'lucide-react'
-import { ButtonLink } from '@/components/ui'
+import { Check, Download } from 'lucide-react'
+import { ButtonNavLink } from '@/components/ui'
+import { MAGIC_COMMANDS, type MagicCommandId } from '@/lib/commands'
+import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
-import { DESKTOP_DOWNLOAD_URL } from '@/lib/desktopRelease'
-import { LOGIN_PATH } from '@/lib/routes'
+import { PLACEHOLDER_PAGES } from '@/lib/siteNav'
+import { WORKFLOW_PATH } from '@/lib/workflow'
+import { JiraMark } from '../features/TicketCardMockup'
+import { GithubMark } from '../features/TasksModalMockup'
 import { Reveal } from '../Reveal'
-import { RichText } from '../RichText'
 import { HomeSection } from './Shell'
 
 /**
- * The landing page's first screen: headline, one line, the two calls to action. Centred,
- * and TYPE ONLY — there is no visual, just a blue bloom behind the words (see `Bloom`).
+ * The landing page's first screen, in two columns: the pitch on the left, the cycle on
+ * the right.
  *
- * The `/magic:plan → /magic:done` eyebrow that used to sit above the headline is gone.
- * It was the one piece of copy on the page that asked the reader to already know what a
- * slash command was, and it was the first thing they met.
+ * THE PITCH IS THE CYCLE. The headline says what goes in (a Jira ticket) and what comes
+ * out (a merged PR), and that the reader said one command in between; the ladder beside
+ * it draws the seven commands that ran. That is the whole argument of the page — an
+ * ecosystem that closes the loop, not a chat window — and it replaced a centred, type-only
+ * hero whose one line ("From idea to merged PR.") named the loop without showing it. The
+ * three directions the product owner weighed are in the design mockup he chose from;
+ * this is the second of them, "the whole cycle".
  *
- * THE TWO BUTTONS ARE THE TWO RUNGS. `primary` is `bg-brand` blue and goes to the app —
- * the design brief settles this explicitly, because an earlier iteration of the scale
- * had the white button as primary and the spec was written against that. `secondary` is
- * the white one beside it and downloads the build itself (`DESKTOP_DOWNLOAD_URL`, the
- * .dmg rather than a releases page). Both are `size="lg"`: this is the page whose button
- * IS the page. They are the same HEIGHT, which is worth writing down because they do not
- * look it: `BUTTON_BASE` declares the 1px border for every variant and `secondary` spends
- * it on `border-hairline` where `primary` spends it on `border-transparent`, so both come
- * to 46px at `lg`. A white face inside a filet simply reads smaller than a saturated
- * block of the same size.
+ * THE COMMAND IS DRAWN, NOT TRANSLATED. `site.hero.title` is the first sentence and
+ * `site.hero.titleTail` the second minus its last word; the `<code>` that closes it comes
+ * from `lib/commands.ts`, where a typo is a compile error, and never from a catalogue.
+ * `lib/skillsBand.test.ts` states the rule for the band below; the hero follows it.
  *
- * THERE IS NO IMAGE ON THIS PAGE AT ALL, which started as a performance decision and
- * ended as a layout one. Every bitmap in `public/img/` bar the integration logos is
- * between 1.7MB and 4MB, so none of them could go above the fold; what stood here
- * instead was a drawn app window — a `Card` with the agent list in it, built out of the
- * same tokens as the rest of the page. That is gone too, and the hero is a centred
- * column of type.
+ * SEVEN CARDS AND NOT EIGHT. `/magic:continue` is a way back INTO the cycle — resuming a
+ * ticket already started — and not a step of it, so the ladder leaves it out. THE COPY
+ * STILL SAYS EIGHT, in the pill and in the subtitle, and the two do not contradict each
+ * other: the words count what you install, the drawing shows the path one ticket takes
+ * through it. The skills band lower down says eight for the same reason.
  *
- * STORY #270 PUT THE VISUAL BACK IN A BAND OF ITS OWN and not in this one, which is why
- * nothing here moved for it. The window is drawn three bands below, by `AppSection`, and
- * whole rather than cropped; a hero that is one centred column of type reads better
- * against it than it would with a second window inside it. (It was one band down and
- * larger when this note was written — the composition is `/desktop`'s now — and neither
- * move touched anything here.) It is a
- * static reproduction rather than the scroll-driven conversion of the old `AppMockup.tsx`
- * that story originally planned — that component and its two helpers are deleted, and
- * `app/(marketing)/page.tsx` records why.
+ * THE TWO BUTTONS: `primary` opens `/download` — the page, not the .dmg, so the reader
+ * meets the prerequisites and what the first launch sets up before the file lands in
+ * their folder — and `secondary` opens `/workflow`, where the ladder is set out at length. The
+ * earlier hero sent its primary to the login page; the product owner moved it to the
+ * download when he chose the mockup — asking for an account before the product has been
+ * seen was the one friction on the page nothing else earned. Both `size="lg"`, and the
+ * same 46px once `secondary` spends its border on `border-hairline` and `primary` on
+ * `border-transparent` — see `BUTTON_BASE`.
  *
- * The `order` props are the entrance sequence, which spans the header too — the bar is
- * 0, and these continue from 1 in the order they are read. There is no `order={4}` any
- * more; it belonged to the visual, and `order={1}` is now the headline's alone. See `Reveal` for why the stagger is an animation
- * delay rather than the chain of `setTimeout`s the original used.
+ * Both are `ButtonNavLink`: two routes on this host, both with client-side navigation.
  */
 export function HeroSection() {
   const { t } = useT()
 
   return (
-    // Two things this band owns, and they arrive by different routes on purpose.
-    //
-    // The TALLER TOP: the bar is `fixed`, full-bleed and 64px tall flush to the top, so
-    // the hero owes it ~7rem before its own first line — here rather than as a spacer in
-    // the layout, because the other page under that layout (`/story`) already reserves
-    // the room in its own stylesheet. (The pill this replaced came to the same 64px, at
-    // 52px tall plus 12px of offset, so the reservation did not have to move.) It comes
-    // through `padding="hero"` and NOT through
-    // `className`: a `pt-32` appended to `HomeSection`'s own `py-20` is a CONFLICTING
-    // utility, and which of the two lands is decided by Tailwind sorting the class
-    // names. See `SECTION_PADDING` in `Shell.tsx`.
-    //
-    // The WASH, which is additive and so does belong in `className`: the page is
-    // `canvas`, and the hero fades `softblue` into it, so the header's own
-    // `softblue/70` at rest has something to sit on rather than reading as a stray tint.
-    //
-    // AND THE 80vh, which travels the same way for the same reason. `HomeSection`'s
-    // `className` is documented as additive and NEVER a padding or a width — a height is
-    // neither, and there is no `display` or `min-height` in that recipe for these three
-    // utilities to race, so nothing here is decided by class-name order the way the old
-    // `pt-32` over `py-20` was. A slot would be the answer if a second band ever asked
-    // for a set height; one caller does not earn one.
-    //
-    // `min-h-` AND NOT `h-`: 80vh is a floor, not a measurement. The French copy is a
-    // line longer than the English, and a landscape phone is under 400px tall — an exact
-    // height would crop the CTAs in both cases, and it looks identical to `h-[80vh]`
-    // whenever the content does fit.
-    //
-    // `flex-col justify-center` rather than `items-center`, which is not interchangeable
-    // here: the column inside is `mx-auto max-w-site`, and in a flex ROW it would shrink
-    // to its content and hand `mx-auto` the wrong box to centre. In a COLUMN the cross
-    // axis is the horizontal one, the child stretches to full width as it does in normal
-    // flow, and `justify-center` is what centres it vertically. The `hero` padding stays
-    // underneath: it is asymmetric (`pt-40 pb-28`) precisely to clear the `fixed` bar, so
-    // the content settles a hair below the true centre, which is where it should be.
+    // `padding="hero"` for the taller top (the bar is `fixed` at `h-16`), the wash in
+    // `className` because it is additive — see `SECTION_PADDING` in `Shell.tsx`.
     <HomeSection
       padding="hero"
       backdrop={<Bloom />}
-      className="flex min-h-[80vh] flex-col justify-center bg-gradient-to-b from-softblue to-canvas"
+      className="bg-gradient-to-b from-softblue to-canvas"
     >
-      {/* ONE CENTRED COLUMN. This was a two-column grid with the copy on the left and a
-          drawn app window on the right; the window is gone and the copy is centred on
-          the page's own axis. `max-w-3xl` keeps the headline from running the full
-          1100px — a centred line that wide is read in two passes, not one — and
-          `text-center` is inherited by everything below rather than restated per
-          element. */}
-      <div className="mx-auto max-w-3xl text-center">
-        <div>
-          {/* `RichText` even though the headline no longer carries a `<br>` — it is five
-              words now and breaks nowhere. The key is still markup-bearing by contract
-              (`<br>`, `<strong>`, `<code>`, `<em>` are what `i18n.test.ts` allows in a
-              value), so the renderer stays and a future line break costs no code here.
-              `Reveal` WRAPS it rather than rendering it, which is the split that let
-              `Fade`'s markup-rendering half be deleted instead of ported. */}
+      <div className="grid items-center gap-12 md:grid-cols-[1.05fr_0.95fr] md:gap-14">
+        <div className="flex flex-col items-start gap-6">
           <Reveal order={1}>
-            <RichText
-              k="site.hero.title"
-              as="h1"
-              className="font-display text-4xl font-black leading-[1.1] text-ink md:text-6xl"
-            />
+            <HeroEyebrow />
           </Reveal>
 
           <Reveal order={2}>
-            {/* `mx-auto` because `max-w-xl` inside a centred column still hugs the left
-                edge on its own: a max-width narrower than its parent has to be told
-                where to sit. */}
-            <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted">
-              {t('site.hero.subtitle')}
-            </p>
+            {/* `text-wrap: balance` is deliberately NOT here: with a `<code>` token at the
+                end, balancing would push it alone onto a last line more often than not,
+                and a command on its own line reads as a caption rather than the sentence's
+                last word. */}
+            <h1 className="font-display text-4xl font-black leading-[1.05] tracking-tight text-ink md:text-[3.4rem]">
+              {t('site.hero.title')} {t('site.hero.titleTail')}{' '}
+              {/* `whitespace-nowrap` on the token and the full stop together, so the
+                  sentence can never break between them. */}
+              <span className="whitespace-nowrap">
+                <code className="rounded-lg border border-hairline bg-white px-[0.4em] py-[0.05em] align-[0.06em] font-mono text-[0.72em] font-bold tracking-normal text-brand">
+                  {START.command}
+                </code>
+                .
+              </span>
+            </h1>
           </Reveal>
 
-          <Reveal order={3} className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            {/* A plain anchor, which is what `ButtonLink` renders: this leaves for the
-                app host, and there is no client-side navigation across origins — see
-                `lib/routes.ts`. */}
-            <ButtonLink href={LOGIN_PATH} variant="primary" size="lg">
-              {t('site.hero.cta')}
-            </ButtonLink>
-            <ButtonLink
-              href={DESKTOP_DOWNLOAD_URL}
-              variant="secondary"
-              size="lg"
-              icon={Download}
-            >
+          <Reveal order={3}>
+            <p className="max-w-xl text-lg leading-relaxed text-muted">{t('site.hero.subtitle')}</p>
+          </Reveal>
+
+          <Reveal order={4} className="flex flex-wrap items-center gap-3">
+            <ButtonNavLink href={PLACEHOLDER_PAGES.download.path} variant="primary" size="lg" icon={Download}>
               {t('site.hero.downloadCta')}
-            </ButtonLink>
+            </ButtonNavLink>
+            <ButtonNavLink href={WORKFLOW_PATH} variant="secondary" size="lg">
+              {t('site.hero.workflowCta')}
+            </ButtonNavLink>
+          </Reveal>
+
+          <Reveal order={5}>
+            <Integrations />
           </Reveal>
         </div>
+
+        <Ladder />
       </div>
     </HomeSection>
   )
 }
 
+const START = MAGIC_COMMANDS.find((command) => command.id === 'start')!
+
+/** The three marks, each on a white tile; the same three the `Integrations` row names. */
+function HeroEyebrow() {
+  const { t } = useT()
+  return (
+    <span className="inline-flex items-center gap-2.5 rounded-full border border-hairline bg-white py-1.5 pl-2 pr-3.5 text-xs font-bold text-muted">
+      <span className="flex gap-1">
+        <MarkTile>
+          <ClaudeCodeMark />
+        </MarkTile>
+        <MarkTile>
+          <JiraMark className="h-3.5 w-3.5" />
+        </MarkTile>
+        <MarkTile>
+          <GithubMark className="h-3.5 w-3.5 text-ink" />
+        </MarkTile>
+      </span>
+      {t('site.hero.eyebrow')}
+    </span>
+  )
+}
+
+function MarkTile({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="grid h-[22px] w-[22px] place-items-center rounded-md border border-hairline bg-canvas">
+      {children}
+    </span>
+  )
+}
+
 /**
- * The blue bloom behind the headline: a deeper blue than the `softblue` wash the band
- * fades through, so the first screen has a centre of gravity instead of an even tint.
- *
- * SAME TECHNIQUE AS THE CLOSING BAND'S `Wash`, and for the same reason — blurred discs
- * of declared tokens rather than a `bg-[radial-gradient(...)]` with hex stops in it,
- * which is the hardcoded value the design brief rules out. It reaches the band through
- * `HomeSection`'s `backdrop` slot because a wash capped at the 1100px column reads as a
- * rectangle with two hard edges; `backdrop` renders it as a child of the `section`
- * itself.
- *
- * THE ALPHAS ARE LOWER THAN THE CLOSING BAND'S. That one blooms on `ink`, where a disc
- * has to fight black to show at all; this one is on `softblue`, where the same disc at
- * the same strength would turn the hero into a colour field and take the headline's
- * contrast with it. `brand` carries the depth, `accent` widens it, and both sit behind
- * the type rather than under it — the column above is `relative`, so the text is never
- * inside the blur.
- *
- * EXPORTED, because `/features` opens on the same wash. The one thing that differs
- * between the two pages is the ground the bloom has to land on — `canvas` here, white
- * there — so the fade at the bottom takes its `to-*` class as a prop rather than being
- * copied with one token changed. The caller's band gradient MUST end on the same colour,
- * or the fade lands on a ground the band then leaves.
+ * Claude Code has no drawn mark in the codebase; it exists as a bitmap, and this is the
+ * same file the app band's chip row uses (`AppSection.tsx`) for the same reason it gives.
+ */
+function ClaudeCodeMark({ className = 'h-3.5 w-3.5' }: { className?: string }) {
+  return <img src="/img/claudecode-color.png" alt="" className={`${className} object-contain`} />
+}
+
+/** Brand names, so no catalogue: they are spelled the same way in every language. */
+function Integrations() {
+  return (
+    <ul className="flex flex-wrap items-center gap-5 text-sm font-bold text-ink">
+      <li className="flex items-center gap-2">
+        <ClaudeCodeMark className="h-[18px] w-[18px]" />
+        Claude Code
+      </li>
+      <li className="flex items-center gap-2">
+        <JiraMark className="h-[18px] w-[18px]" />
+        Jira
+      </li>
+      <li className="flex items-center gap-2">
+        <GithubMark className="h-[18px] w-[18px]" />
+        GitHub
+      </li>
+    </ul>
+  )
+}
+
+/**
+ * One rung: which command, what it leaves behind, and which tracker that lands in. The
+ * command's text and icon come from `MAGIC_COMMANDS`; only the one-line "what" is copy.
+ */
+type Rung = { id: MagicCommandId; what: MessageKey; tracker: 'jira' | 'github' }
+
+const HERO_LADDER: readonly Rung[] = [
+  { id: 'plan', what: 'site.hero.skillPlan', tracker: 'jira' },
+  { id: 'start', what: 'site.hero.skillStart', tracker: 'github' },
+  { id: 'commit', what: 'site.hero.skillCommit', tracker: 'github' },
+  { id: 'pr', what: 'site.hero.skillPr', tracker: 'github' },
+  { id: 'review', what: 'site.hero.skillReview', tracker: 'github' },
+  { id: 'resolve', what: 'site.hero.skillResolve', tracker: 'github' },
+  { id: 'done', what: 'site.hero.skillDone', tracker: 'jira' },
+]
+
+/**
+ * The reveal the ladder rides in on. `Reveal` rises an element 12px by default; the
+ * rungs come up from 28px so the column visibly climbs, one card after the next, and the
+ * entrance is the same one the copy uses — same keyframes, same 150ms step, same replay
+ * on a language change — so nothing here needs its own animation.
+ */
+const RISE = '[--reveal-from:1.75rem]'
+
+/** The copy's entrance runs orders 1–5; the ladder continues the count rather than restarting it. */
+const LADDER_FIRST_ORDER = 5
+
+function Ladder() {
+  const { t } = useT()
+
+  return (
+    <div className="relative flex flex-col gap-2.5">
+      {/* The rail: one thin line down the column of numerals, from under the first
+          rung to above the last. It fades at both ends so it reads as a thread the
+          cards hang on rather than a border with two loose ends. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute bottom-10 left-[1.9rem] top-10 w-px bg-gradient-to-b from-brand/0 via-brand/40 to-brand/0"
+      />
+
+      <Reveal order={LADDER_FIRST_ORDER} className={RISE}>
+        <div className="flex items-center gap-3 px-1">
+          <span className="font-display text-xl font-black tracking-tight text-ink">
+            {t('site.hero.ladderStart')}
+          </span>
+          <span className="h-px flex-1 bg-hairline" />
+        </div>
+      </Reveal>
+
+      {HERO_LADDER.map((rung, index) => {
+        const command = MAGIC_COMMANDS.find((c) => c.id === rung.id)!
+        return (
+          <Reveal key={rung.id} order={LADDER_FIRST_ORDER + 1 + index} className={RISE}>
+            <div className="relative flex items-center gap-3.5 rounded-xl border border-hairline bg-white px-3.5 py-3 shadow-card">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-brand/15 bg-canvas font-mono text-xs font-black text-brand">
+                {String(index + 1).padStart(2, '0')}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-mono text-[0.8rem] font-bold text-ink">
+                  {command.command}
+                </span>
+                <span className="block text-xs text-muted">{t(rung.what)}</span>
+              </span>
+              {rung.tracker === 'jira' ? (
+                <JiraMark className="h-[18px] w-[18px] shrink-0" />
+              ) : (
+                <GithubMark className="h-[18px] w-[18px] shrink-0 text-ink" />
+              )}
+            </div>
+          </Reveal>
+        )
+      })}
+
+      <Reveal order={LADDER_FIRST_ORDER + 1 + HERO_LADDER.length} className={RISE}>
+        <div className="flex items-center gap-3 px-1">
+          <span className="h-px flex-1 bg-hairline" />
+          <span className="flex items-center gap-2 font-display text-xl font-black tracking-tight text-ink">
+            {/* The check is the only green on the page above the fold, which is what
+                makes it read as "done" rather than as decoration. */}
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-green text-white shadow-ring-green">
+              <Check className="h-3.5 w-3.5" strokeWidth={3} />
+            </span>
+            {t('site.hero.ladderEnd')}
+          </span>
+        </div>
+      </Reveal>
+    </div>
+  )
+}
+
+/**
+ * The hero's backdrop: three soft discs of the page's blues, blurred, with a fade over
+ * them so the band still lands on `canvas` at its bottom edge. `fadeTo` exists for a band
+ * that sits on white instead.
  */
 export function Bloom({ fadeTo = 'to-canvas' }: { fadeTo?: 'to-canvas' | 'to-white' }) {
   return (
@@ -177,8 +265,6 @@ export function Bloom({ fadeTo = 'to-canvas' }: { fadeTo?: 'to-canvas' | 'to-whi
       <div className="absolute left-1/2 top-0 h-2/3 w-2/3 -translate-x-1/2 rounded-full bg-brand/20 blur-3xl" />
       <div className="absolute -left-1/4 top-1/4 h-1/2 w-1/2 rounded-full bg-accent/15 blur-3xl" />
       <div className="absolute -right-1/4 top-1/4 h-1/2 w-1/2 rounded-full bg-accent/15 blur-3xl" />
-      {/* Fades the bloom out into the page below, so the band's own
-          `from-softblue to-canvas` still lands on `canvas` at its bottom edge. */}
       <div className={`absolute inset-0 bg-gradient-to-b from-transparent via-transparent ${fadeTo}`} />
     </div>
   )
