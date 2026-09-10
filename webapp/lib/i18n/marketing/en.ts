@@ -2281,6 +2281,321 @@ export const marketingEn = {
   'site.changelog.changed': 'Changed',
   'site.changelog.fixed': 'Fixed',
 
+  // ── Privacy page ───────────────────────────────────────────────────────────
+  //
+  // THE ONE RULE THIS FAMILY IS WRITTEN UNDER: every claim below must be sourced from
+  // code in this repository, and the source is named in the comment above the key. It is
+  // an obligation on whoever edits next, not a certificate the copy has already earned.
+  // A privacy policy is read as a promise, so a sentence nothing enforces is worse than
+  // no sentence — it commits a system that does not know about it. Where the code does
+  // not settle a question the copy says less, and four questions it does not settle are
+  // recorded here rather than answered:
+  //
+  //   • NO RETENTION PERIOD. There is no `pg_cron`, no TTL and no purge job anywhere in
+  //     `supabase/migrations`; the append-only tables grow indefinitely. So the page says
+  //     "nothing expires on a timer" — which is true — instead of naming a number.
+  //   • NO LEGAL ENTITY. `LICENSE` and `package.json` name `xrequillart`, a GitHub
+  //     handle. There is no company to name and the copy says so outright.
+  //   • NO CONTACT ADDRESS. There is no email anywhere in the repository —
+  //     `CODE_OF_CONDUCT.md` still reads `[INSERT EMAIL]`. The issue tracker is the
+  //     honest route, and `PrivacyContent.tsx` composes that link in JSX.
+  //   • NO HOSTING REGION. `vercel.json` names none and `supabase/config.toml` is the
+  //     local dev file. The page claims none.
+  //
+  // AND THE RULE WAS NOT MET ON THE FIRST PASS, which is recorded here rather than
+  // quietly fixed, because a comment claiming a verification nobody ran is the same
+  // failure as a policy claiming a guarantee nobody enforces. A read of the code found
+  // five claims false or materially incomplete: the session was called the only token on
+  // disk while `jira/token-store.ts` writes a second one beside it; the counting tables
+  // were called three when `settings_events` makes four; the `agents` row was enumerated
+  // as a closed list of columns when `metadata` is unbounded jsonb; two sentences about
+  // a "path" described different columns with no way for a reader to tell them apart;
+  // and account deletion was implied to remove everything when `delete_account()`
+  // orphans personal repositories and never touches personal agents. Every one of those
+  // is corrected below, and the source named above each key is what to re-read before
+  // touching a sentence.
+  //
+  // NO `<a>` IN ANY VALUE. `i18n.test.ts` fails on one, and the reason is this family
+  // more than any other: a URL inside a translated string is a URL that moves when
+  // somebody rewrites the prose around it.
+  'site.privacy.title': 'Privacy policy',
+  'site.privacy.lead':
+    'What Magic Slash stores, what never leaves your machine, and how to be rid of all of it. Every statement on this page describes something you can check: the app, the site and the database schema are in the same open repository.',
+  // The entity question, answered by `LICENSE` (“Copyright (c) 2026 xrequillart”) and
+  // `package.json`’s `author`. The contact route is the issue tracker because there is
+  // no address in the repository to offer instead.
+  'site.privacy.scope.title': 'What this covers',
+  'site.privacy.scope.body':
+    'Magic Slash is three things: a native macOS app, eight skills that run inside Claude Code, and an account that keeps your configuration and your team in sync. This page covers all three, and the site you are reading it on.<br><br>It is published on GitHub by one person, under the handle <code>xrequillart</code>, rather than by a company, so there is no registered entity to name here and no support address to write to. The way to reach us is to open an issue on the repository, which is the link at the bottom of this page.',
+  // THE CLAIM THE PAGE IS REALLY FOR. Sourced from: no Anthropic SDK in either
+  // `package.json` and Claude Code spawned as a local PTY; `desktop/src/main/github.ts`,
+  // which shells out to `gh auth token` and MEMOISES the answer in a module-level
+  // `cachedToken` for the lifetime of the process, dropped only by
+  // `clearGitHubTokenCache()` on a 401 — so the copy says "in memory while the app
+  // runs" and no longer says "at the moment of the call", which was wrong about the
+  // mechanism even though it was right about the privacy;
+  // `desktop/src/main/jira/constants.ts`, whose `SCOPES` are `read:jira-work`,
+  // `read:jira-user` and `offline_access` — "read-only scopes" glossed over the third,
+  // which is precisely what mints the refresh token, so the copy now says what is true
+  // and checkable instead: none of the three can write to a Jira site;
+  // `desktop/src/main/cloud/session-store.ts`, which encrypts the session with Electron
+  // `safeStorage`; and `hooks/status-server.ts`, which binds loopback.
+  //
+  // THE SECOND TOKEN ON DISK, which this paragraph used to deny by omission. "The only
+  // token kept on disk is your own Magic Slash session" sat one sentence after the Jira
+  // sentence, so the paragraph read as a promise that connecting Jira leaves nothing
+  // behind. It does not: `desktop/src/main/jira/token-store.ts` writes
+  // `~/.config/magic-slash/jira-credential.enc` through `safeStorage.encryptString` —
+  // the same directory and the same keychain as the session — holding a
+  // `StoredJiraCredential`, which is a refresh token, an access token, an expiry, the
+  // cloud id, the site URL and the account name. `clear()` unlinks it on disconnect.
+  // Both files are named in the copy now, and so is what the second one contains.
+  //
+  // AND THE EXCEPTION IS NAMED HERE RATHER THAN BURIED. `plan_sessions.spec` holds the
+  // whole markdown file `/magic:plan` writes — the migration that added it says in its
+  // own header that it is the first time file content leaves the machine. A section
+  // called "what never leaves your machine" that did not mention it would be the one
+  // dishonest paragraph on the page.
+  'site.privacy.local.title': 'What never leaves your machine',
+  'site.privacy.local.body':
+    'Your source code, your prompts and your diffs. Claude Code runs as a process on your own machine, on your own Anthropic subscription, and Magic Slash does not sit between the two: nothing it reads or writes is relayed to us.<br><br>Nor are your credentials: not one of them is uploaded anywhere. GitHub is reached through your own <code>gh</code> CLI. The app asks it for a token, keeps that answer in memory for as long as the app is running, and never writes it to disk. Jira, if you connect it, is an OAuth grant in your browser. It asks for three scopes and none of them can write to a Jira site: two read, and the third, <code>offline_access</code>, is what mints the refresh token that keeps the connection alive between sessions.<br><br>Two tokens are kept on disk, both in <code>~/.config/magic-slash/</code> and both encrypted by the macOS keychain. One is your Magic Slash session. The other appears the moment you connect Jira and is the Atlassian credential itself: the refresh token, the current access token and its expiry, the identifier and the address of your Jira site, and the display name of the account. Disconnecting Jira in the app deletes that file. Neither of the two is ever uploaded, and the bridge between Claude Code and the app listens on <code>127.0.0.1</code> alone.<br><br>There is one exception, and it has a switch: <strong>/magic:plan</strong> uploads the specification file it writes, so the plan can be read from the web app and from your other machines. It is the only file content that leaves your machine, and the section below says how to stop it.',
+  // Column by column, from the migrations: `profiles`, `repositories` +
+  // `repository_paths`, `agents` (+ `agents.metadata`), `organizations` / `memberships`
+  // / `invitations`, and `app_installations`.
+  //
+  // THE TWO VISIBILITY FACTS ARE IN THE TEXT because the RLS policies differ and the
+  // difference is the part a reader would get wrong: `profiles` and
+  // `repository_paths` are own-rows-only, while `agents` and the event tables are
+  // readable by every member of the org.
+  //
+  // AND THE TWO "PATH" SENTENCES ARE NOW LABELLED. Both were true and the pair was
+  // unreadable: `repository_paths.path` is private (`user_id = auth.uid()`), while
+  // `agents.repositories` holds local paths too and is org-readable via `agents_select`
+  // (`20260727160000_agents_org_derived.sql`). A reader met "stays private to you" and,
+  // three lines later, the same word among what colleagues can see. The copy names
+  // which column each sentence is about rather than leaving the reader to guess.
+  //
+  // `agents.metadata` IS NOT A LIST OF FIELDS AND THE COPY NO LONGER PRETENDS IT IS.
+  // The column is unbounded jsonb and `CloudStore.toAgentRow` writes
+  // `metadata: { ...rest, __app: {...} }` — everything with no column of its own, which
+  // its own comment enumerates as `title`, `fullStackTaskId`, `relatedWorktrees`,
+  // `repositoryMetadata`, `usage` and `specPath`. `RepositoryMetadata` (`types.ts`
+  // l.202) carries `prUrl`, `prReviewers` and `prCommentAuthors`; `specPath` is
+  // documented as ABSOLUTE, so it begins with the user's home directory; `TerminalUsage`
+  // carries `costUsd` and `contextTokens`. All of it is org-readable, and whatever is
+  // added to the type next goes to the same place — which is the fact worth telling a
+  // reader, rather than a snapshot of today's field names presented as a boundary.
+  //
+  // THE TOKEN SENTENCE IS RECONCILED HERE AND IN `site.privacy.usage.body`. "No token
+  // count is stored" is literally true of `usage_events.tokens` (always sent null, see
+  // `CloudStore` l.1648) and false of `metadata.usage.contextTokens`. Two flat
+  // statements in two sections read as a contradiction, so each now says which row it
+  // is about and points at the other.
+  //
+  // THE REPOSITORIES BULLET WAS A CLOSED LIST OF FIVE THINGS AND THE TABLE HAS THIRTEEN
+  // COLUMNS. `20260724110000_repositories.sql` declares `name`, `keywords`, `color`,
+  // `languages`, `commit`, `pull_request`, `resolve`, `issues`, `branches` and
+  // `worktree_files`; `remote_url`, `plan` and `jira` were added by
+  // `20260816090000`, `20260819090000` and `20260820090000`, and `CloudStore`
+  // `createRepository` (l.761) writes every one of them. "Commit, branch, pull request
+  // and language settings" therefore named four of eight option blocks and dropped the
+  // colour outright. The omission worth the most is `worktree_files`: it is a list of
+  // filenames the USER types (`types.ts` l.1168 gives `.env` and `.env.local` as the
+  // examples), so the one bullet a reader scans for "does it know about my secrets"
+  // said nothing about the column that holds their names. The copy takes
+  // `agents.metadata`'s framing from the paragraph below — an open list, named as one —
+  // and adds the sentence the filenames need: the names are stored, the contents are
+  // not. `config.ts` `updateRepositoryWorktreeFilesSettings` (l.794) keeps `string[]`
+  // and nothing reads those files into the row.
+  //
+  // AND THE MACHINE BULLET PUT THE PLATFORM AND THE ARCHITECTURE INSIDE THE HASH, where
+  // they are not the only thing they are. `device_id` IS derived from
+  // `hostname|platform|arch` (the schema comment says so), but `app_installations`
+  // (`20260725100000_user_settings.sql` l.102-122) also declares `platform` and `arch`
+  // as plain text columns, and `CloudStore.recordAppInstallation` (l.1958-1959) fills
+  // both on every launch. Reading "a hash of that hostname with the platform and the
+  // architecture" as the whole story would leave a reader believing two facts about
+  // their machine survive only as a digest. The same paragraph also missed
+  // `first_seen_at` and `app_version_updated_at`, which are the two timestamps that
+  // make the row a history rather than a snapshot.
+  'site.privacy.account.title': 'What the account stores',
+  'site.privacy.account.body':
+    'Signing in stores an email address and a password, held by Supabase Auth. Everything else is something you or the app put there:<br><br><strong>Your profile</strong>, if you fill one in: a name, a role, a technical level, a communication style, the languages you work in and any free text you add. You are the only person who can read it.<br><br><strong>Your repositories</strong>: the name you gave each one, its keywords, the colour you tagged it with, its GitHub remote address, and the blocks of settings it carries, which are not a fixed list. Today they cover commits, branches, languages, pull requests, review resolution, issues, planning and Jira, and whatever block the app adds next lands in the same row. One of them is a list of files you named yourself, the ones to be copied into each new worktree, which in practice means <code>.env</code> and its neighbours: their names are stored, never their contents. The path of your own clone on disk is the private path, kept apart from all of that: it is stored against you rather than against the repository, and nobody else can read it, even inside a team.<br><br><strong>Your agents and their history</strong>: the agent name, the ticket identifier, the ticket title and a short summary of it, the branch names, and a second copy of the local repository paths, this one held on the agent rather than against you. That copy is not the private path just described, and it is not private. Each agent also carries a free-form block of working state that the app fills in as the run goes, which is not a fixed list of fields: today it holds the pull request address and its review state, the logins of the people who commented on it, the names of related worktrees, the absolute path of any planning specification, which begins with your home directory, and the figures the status line reports, including what the session cost and how many tokens are sitting in the context window. Whatever the app records there next lands in the same place. Inside an organisation, the other members can read all of it, the repository paths on the agent included.<br><br><strong>Your team</strong>: the organisations you belong to, who else is in them, and the email address of anyone invited.<br><br><strong>Your machines</strong>: for each one, its hostname, the platform and the processor architecture it runs on, a fingerprint computed from those three, the version of the app installed on it, when it was first seen, when it last changed version, and when it was last seen.',
+  // FOUR append-only tables, not three, and the switch reaches three of them.
+  // `usageLogsEnabled` is read as `=== false` in `usage/usage-events.ts`,
+  // `usage/skill-invocations.ts` and `config/activity-history.ts`, so ABSENT MEANS ON
+  // and the copy says "on unless you turn it off" rather than calling it an opt-in.
+  //
+  // THE FOURTH IS `settings_events` (`20260801110000_settings_events.sql`) and BOTH
+  // HALVES OF THE OLD SENTENCE WERE WRONG ABOUT IT: the count, and "one switch turns
+  // off all three at once". It is written by the `log_settings_change` TRIGGER on
+  // `user_settings`, `repositories` and `repository_paths`, which is a database object
+  // the app's switch cannot reach — the migration argues for the trigger precisely
+  // because it must see writers the desktop does not control, the web app included.
+  // Each UPDATE row holds `setting` plus `old_value` and `new_value` as jsonb, so a
+  // change to a `repository_paths` row records the local clone path before and after.
+  // Its RLS is `user_id = auth.uid() or (org_id is not null and is_org_member(org_id))`
+  // and only `repositories` carries an org, so team repository settings are visible to
+  // the org and `user_settings` / `repository_paths` events are not. The copy says all
+  // of that, at the cost of being the longest paragraph in the family.
+  //
+  // "never the arguments" is `skill_invocations`' own schema note, and "never the names
+  // of skills that are not ours" is the `magic-` prefix filter applied twice: in the
+  // generated hook, before anything is written to disk, and again at the write.
+  // "No token count is stored" is literal for THIS TABLE — `usage_events.tokens` exists
+  // and is always sent null — and was read as a claim about the whole product, which
+  // `agents.metadata.usage.contextTokens` contradicts. Scoped to the row it is about,
+  // and it points at the section that holds the exception. See `site.privacy.account.body`.
+  //
+  // THE SCOPING WAS RIGHT AND THE SENTENCE AFTER IT WAS NOT. "The one place a token
+  // figure is kept is the agent record" is an exclusivity claim, and this very table
+  // breaks it: `usage_events.context_window_size` is written on every session end
+  // (`CloudStore` l.1645, fed from `terminal-handlers.ts` l.194), and
+  // `20260815100000_usage_events_model_columns.sql` documents the column as "Context
+  // window of the model in use at SESSION END, in tokens". That migration is explicit
+  // about WHY both are true at once — the window size is a capacity of the model, a
+  // constant for a given model, while `tokens` would have to be a cumulative counter
+  // the client never has — so the copy says the same thing rather than picking one
+  // half. `model_id` and `model_ids` are in the enumeration for the same pass: the row
+  // holds three model fields, not one, and `array_length(model_ids, 1) > 1` is how it
+  // records a `/model` mid-session.
+  //
+  // AND THE ACTIVITY BULLET WAS THREE COLUMNS OF FOUR. `activity_events`
+  // (`20260723090000_initial_schema.sql` l.174) declares `action`, `ticket_id`,
+  // `description` and `repositories`, and `appendHistory` (`CloudStore` l.1611) writes
+  // all four; the `description` it sends is `terminal.metadata.description`, the ticket
+  // summary the skills post to `/metadata` on the loopback server
+  // (`hooks/status-server.ts` l.538). So a sentence about the ticket that named the
+  // identifier and not the summary was leaving out the only free text on the row.
+  'site.privacy.usage.title': 'What it counts',
+  'site.privacy.usage.body':
+    'Four append-only tables. One switch in the app turns off three of them at once, and it is on unless you turn it off. The fourth is written by the database itself and no switch reaches it, so it is described last rather than left out.<br><br><strong>Skill runs</strong>: the name of the <code>magic-</code> skill, when it started, when it ended, and whether it succeeded. Never the arguments it was given, and never the names of skills that are not ours.<br><br><strong>Usage</strong>: one row at the end of each Claude Code session, holding the model name and its stable identifier, every model identifier seen during that session, the cost the session reported, how long it lasted, how many lines it added and removed, and one figure expressed in tokens: the size of the context window of the model in use when the session ended. That last one is a capacity of the model, the same for every session run on it, and not a measure of what the session consumed. No count of the tokens the session used is written here: the column for it exists and is always left empty. The other token figure, how many were sitting in the context window when the status line last reported, is on the agent record described in the section above.<br><br><strong>Activity</strong>: what happened, on which ticket, the short summary of that ticket the agent is carrying, and which repositories were involved.<br><br><strong>Settings changes</strong>: the fourth table, and the switch above does not reach it, because it is written by the database rather than sent by the app. Every time your settings, one of your repositories, or the local path you bound to one of them is created, changed or deleted, a row records which field changed together with its previous value and its new one. For a local path, that means the path of your clone before and the path after. Changes to a team repository can be read by the other members of the organisation, since that configuration is theirs too; changes to your own settings and to your own local paths can be read by you alone.<br><br>The specification upload described above is a second switch, separate from the first and also on unless you turn it off. Turning it off changes nothing on disk: <strong>/magic:plan</strong> keeps writing the file exactly as before.',
+  // The complete outbound list, and it is complete because there is nothing to leave
+  // out: no analytics package, no crash reporter, no advertising and no payment
+  // processor appears in either `package.json`, and `app/(marketing)/layout.tsx` loads
+  // no third-party script. That absence is the most reassuring true thing this page has
+  // to say, so it is said as a sentence rather than left as an omission.
+  //
+  // NO REGION SENTENCE, deliberately. See the family note above.
+  'site.privacy.processors.title': 'Who else is involved',
+  'site.privacy.processors.body':
+    '<strong>Supabase</strong> holds the account and everything in the section above, and handles signing in. <strong>Vercel</strong> serves this site and the web app. <strong>GitHub</strong> distributes the app and its updates, so it sees the request when your copy checks whether there is a new one, and the app calls the GitHub API on your behalf with your own token. <strong>Atlassian</strong> is involved only if you connect Jira, and only for reading.<br><br>Nobody else. There is no analytics, no crash reporter, no advertising and no payment processor anywhere in the app or on this site, and this page loads no third-party script at all.',
+  // `lib/authStorage.ts` for the cookie (chunked, `domain=.magic-slash.io`, one year,
+  // `SameSite=Lax`, `Secure`, and readable from JavaScript because the Supabase browser
+  // client renews it) and `lib/i18n/languages.ts` for the one localStorage key.
+  //
+  // THE BANNER SENTENCE IS THE POINT of the second paragraph: a reader who has met a
+  // consent dialogue on every other site is owed the reason they did not meet one here.
+  'site.privacy.browser.title': 'What your browser keeps',
+  'site.privacy.browser.body':
+    'Two things, and only when they are needed. Signing in sets a session cookie on <code>magic-slash.io</code> and its sub-domains, so one sign-in works across the site, the app and the invitation host. It lasts a year unless you sign out, and the page can read it because the client that renews it reads it.<br><br>Choosing a language stores <code>magic-slash.language</code> in this browser, so the site opens in the language you picked. Nothing else is stored, there is no measurement or advertising cookie, and that is why you have not been asked to consent to any.',
+  // `delete_account()` in `20260723120000_org_member_management.sql` (l.315-384), clause
+  // by clause: solo orgs deleted outright with everything under them, shared orgs HANDED
+  // OFF to another member, and `auth.users` deleted last — which cascades the profile,
+  // the settings, the installations, the plan sessions and the local paths
+  // (`repository_paths.user_id` is `on delete cascade`), and NULLS the user on the event
+  // rows the org keeps.
+  //
+  // AND IT TOUCHES FOUR TABLES, WHICH IS NARROWER THAN "IT REMOVES THE DATA". The
+  // function names `organizations`, `invitations`, `memberships` and `auth.users` and
+  // nothing else, so two kinds of row survive the account that created them:
+  //
+  //   • A PERSONAL REPOSITORY (`org_id` null). `repositories.owner_id` is `on delete
+  //     set null`, so the row is orphaned rather than deleted and keeps its name,
+  //     keywords, `remote_url` and `jira` block. The schema comment calls the result
+  //     "invisible", which is a statement about queries, not about storage.
+  //   • A PERSONAL AGENT (`org_id` null). No cascade reaches it — `agents.owner_id` is
+  //     an FK to `memberships`, and a personal agent has none — and nothing in
+  //     `supabase/migrations` deletes agents by owner. Ticket, description, branch and
+  //     the whole metadata blob stay.
+  //
+  // Put beside this page's own "no retention period" — no `pg_cron`, no TTL, no purge
+  // job — those rows have no route out at all, which the copy now says instead of
+  // closing on "deleting the account is what removes the data".
+  'site.privacy.control.title': 'Changing your mind',
+  'site.privacy.control.body':
+    'The two switches live in the app, under its settings, and either can be turned off at any time.<br><br>Deleting your account is one button, in the app and on the web. It removes your profile, your settings, your machines, your planning sessions, the local paths you bound, and any organisation you created and were alone in, with everything inside it. An organisation other people work in is handed over to one of them rather than deleted, because it is theirs too, and the counting rows they keep stay behind with your identity removed from them.<br><br>What deletion does not remove is worth naming, because nothing else removes it either. A repository you added outside any organisation loses its owner rather than being deleted: its name, its keywords, its remote address and its tracker settings stay in the database with nobody attached to them. An agent that never belonged to an organisation is not touched at all, so its ticket, its description, its branch and the block of working state described above stay exactly as they were.<br><br>Nothing expires on a timer either. There is no scheduled deletion and no retention period anywhere in the schema, so those rows have no automatic way out. Asking on the issue tracker, at the bottom of this page, is the only route there is today.',
+  'site.privacy.askLead': 'A question this page did not answer?',
+  'site.privacy.askLink': 'Open an issue on GitHub',
+
+  // ── Terms page ─────────────────────────────────────────────────────────────
+  //
+  // Same rule as the family above, with the same caveat: it binds whoever edits next
+  // rather than certifying what is already there. Two clauses here failed it on the
+  // first pass and are corrected with the reason recorded above the key —
+  // `site.terms.machine.body`, which credited `install/uninstall.sh` with an undo it
+  // does not perform, and `site.terms.thirdParty.body`, which said no connected
+  // credential is stored while the Jira one is written to disk.
+  //
+  // And the same two silences: no governing law and no jurisdiction, because naming
+  // either is a decision about a legal entity and there is none.
+  // `site.terms.changes.body` says that in the copy rather than leaving the reader to
+  // notice the absence.
+  //
+  // AND NO PRICING CLAUSE, which is a fact rather than an omission: there is no Stripe,
+  // no billing table, no tier and no price constant anywhere in the repository. The
+  // page can therefore say "free" flatly, which most cannot.
+  'site.terms.title': 'Terms of use',
+  'site.terms.lead':
+    'What Magic Slash is provided as, what you may do with it, and what it does not promise. It is short because the product is free, open source and small.',
+  'site.terms.what.title': 'What Magic Slash is',
+  'site.terms.what.body':
+    'A native macOS app, eight skills that run inside Claude Code, and a free account that keeps your configuration, your repositories and your team in step across machines. There is no paid plan, no subscription and no billing of any kind: nothing in the product charges you for anything. The costs you do pay are your own, to Anthropic for Claude Code and to whoever hosts your code and your tickets.',
+  // MIT, from `LICENSE` and both `package.json` files. The page NAMES the licence and
+  // refuses to restate it: a second copy of a licence is a second copy to keep in step
+  // with the one that governs, and the two eventually disagree in front of whoever is
+  // relying on them. `LICENSE_URL` in `components/site/links.ts` is the link.
+  'site.terms.license.title': 'The code, and its licence',
+  'site.terms.license.body':
+    'Every part of Magic Slash you install is <strong>MIT licensed</strong>: the desktop app, the eight skills, this site, and the database schema behind the account. The <code>LICENSE</code> file in the repository is the licence itself, and it is what governs your use of the code. This page does not rewrite its grant and adds no condition to it. The link at the bottom opens it.<br><br>What this page covers is what the licence does not: the hosted account, and the services the app talks to on your behalf.',
+  // Email and password, from `signInWithPassword` on both clients — there is no OAuth
+  // sign-in and no magic link. The second paragraph is the honest half: the account is
+  // free, so the page promises it will exist rather than promising it will last.
+  'site.terms.account.title': 'Your account',
+  'site.terms.account.body':
+    'An account needs an email address and a password, and keeping that password to yourself is your side of it. Anything done from your account is treated as done by you.<br><br>You can delete the account whenever you like, from the app or from the web, and the privacy page says exactly what that removes. In the other direction: this is a free service attached to a project published on GitHub, not something you subscribed to. It may change, and it may one day stop.',
+  // What the app actually installs and the one responsibility the product cannot
+  // absorb. Worth a clause of its own: this is a tool whose whole job is running
+  // commands in somebody's repository.
+  //
+  // "ITS UNINSTALLER TAKES ALL OF THAT BACK OUT" WAS TRUE OF ONE UNINSTALLER OF TWO.
+  // `hooks/claude-hooks-config.ts` writes three things into `~/.claude/settings.json`:
+  // the hooks, the `statusLine` wrapper, and a permissions allow-list the old sentence
+  // did not mention at all. Its own `removeClaudeHooks()` (l.843) calls
+  // `restoreStatusLine()` and strips the permissions, so in-app removal is clean.
+  // `install/uninstall.sh` is not: it has no `statusline`/`statusLine` handling
+  // whatsoever, filters the allow-list (4b) and the marker-bearing hooks (4c), and at
+  // l.104 does `rm -rf "$HOME/.config/magic-slash"` — which takes `statusline.sh` and
+  // `statusline-original.json` with it, leaving `settings.json` pointing at a script
+  // that is gone and the backup that would restore the user's own status line deleted
+  // too. FIXING THE SCRIPT IS OUT OF SCOPE HERE; the sentence is what changed, so that
+  // it is true of both paths and tells the reader what is left to do by hand.
+  'site.terms.machine.title': 'What runs on your machine',
+  'site.terms.machine.body':
+    'Magic Slash drives Claude Code, and Claude Code runs shell commands, git operations and file edits in your repositories. The app also writes three things into <code>~/.claude/settings.json</code>: hooks, so it can tell when a skill starts and finishes, a status line, so it can read what the session is doing, and a list of allowed commands, so Claude Code stops asking you to confirm the same ones. Removing the hooks from inside the app takes all three back out and puts your own status line back. The standalone <code>uninstall.sh</code> script does less: it removes the hooks and the allowed commands, but it leaves the status line entry behind, pointing at a script the same script has already deleted, so that one line has to be taken out of <code>settings.json</code> by hand.<br><br>What the agent does is done under your account, with your credentials, on your files. Reviewing it before you accept it is yours: the skills stop and ask at every point that matters, and the product is built that way on purpose, but responsibility for what gets committed, pushed and merged is the one thing it cannot take off your hands.',
+  // "STORES NONE OF THEM" WAS THE SAME OVERCLAIM `site.privacy.local.body` carried, so
+  // it is corrected in the same terms: `desktop/src/main/jira/token-store.ts` keeps the
+  // Atlassian credential in `~/.config/magic-slash/jira-credential.enc`. On the user's
+  // own disk, keychain-encrypted, never uploaded — which is the distinction the clause
+  // has to draw rather than a fact it can leave out.
+  'site.terms.thirdParty.title': 'The services you connect',
+  'site.terms.thirdParty.body':
+    'Claude Code, GitHub and Jira are your accounts, not ours. Magic Slash uses the credentials already on your machine: your Anthropic subscription, your <code>gh</code> CLI, your Atlassian grant. It resells none of them and uploads none of them. One is kept, and only on your own machine: connecting Jira writes the Atlassian credential to disk, encrypted by the macOS keychain, so the connection survives a restart. Disconnecting Jira deletes it, and the privacy page says exactly what that file holds.<br><br>Each of those services therefore keeps its own terms with you, and any usage they bill you for is between you and them. If one of them changes its API, or you lose access to it, the part of Magic Slash that depends on it stops working, and there is nothing this page can promise about that.',
+  // The org-visibility warning is the useful half of this clause, and it is the same
+  // fact `site.privacy.account.body` states from the other side: `agents` and the event
+  // tables are readable by every member of the organisation.
+  'site.terms.acceptable.title': 'What not to do with it',
+  'site.terms.acceptable.body':
+    'Do not use Magic Slash for anything unlawful, and do not use it to get around the terms of the services it connects to. Do not use it to reach a repository, a tracker or an account you are not allowed to reach.<br><br>If you share an organisation with colleagues, keep in mind what that shares: ticket titles, branch names, the local paths of the repositories attached to an agent, the pull request addresses and review state its record carries, and the planning specifications are all readable by the other members. Do not put anything into a shared organisation that you are not allowed to show them.',
+  'site.terms.warranty.title': 'No warranty',
+  'site.terms.warranty.body':
+    'Magic Slash is provided as is, without warranty of any kind. The MIT licence says so for the code, in the words that count, and the same holds for the account: nothing guarantees that it is available, that it is correct, or that it is fit for any particular purpose, and neither the author nor the contributors are liable for what happens when it is used. Software that runs commands in your repositories deserves that written down rather than buried, so: take backups, work on branches, and read the diff before you accept it.',
+  'site.terms.changes.title': 'When this page changes',
+  'site.terms.changes.body':
+    'The way everything else here changes: as a commit in the public repository. There is no separate announcement and no version banner, and the history of this file is the honest record of what it said and when. If a change matters to you, the repository is what to watch.<br><br>Two things this page deliberately does not settle, because nothing in the project settles them: it names no governing law and no jurisdiction. It will, the day there is an entity behind the project for either to attach to.',
+  'site.terms.licenseLink': 'Read the MIT licence',
+  'site.terms.askLink': 'Ask a question on GitHub',
+
   // ── Footer ─────────────────────────────────────────────────────────────────
   'site.footer.tagline': 'Your product, built.',
   'site.footer.product': 'Product',
@@ -2312,12 +2627,25 @@ export const marketingEn = {
    */
   'site.footer.help': 'Help',
   /**
-   * The third column. It is LEGAL rather than the `company` heading above it because
-   * every entry in it is a document, and every one of those documents lives on GitHub:
-   * there is no `/terms` and no `/privacy` route on this site (story #273 adds them),
-   * and `hostRouting.ts` would 307 a link to either straight to the app host. So the
-   * column points off-site on purpose — `site.footer.termsLink` and
-   * `site.footer.privacyLink` stay unused below until there is somewhere to send them.
+   * The third column. It was LEGAL rather than the `company` heading above it because
+   * every entry in it was a document, and every one of those documents lived on GitHub:
+   * `hostRouting.ts` 307s a link to any path `PUBLIC_PATHS` does not list straight to
+   * the app host, so a link to a page that did not exist yet would have handed the
+   * reader a login form. The column pointed off-site on purpose.
+   *
+   * THE COLUMN IS GONE — cut by request, see `SiteFooter.tsx` — and TWO OF ITS KEYS
+   * FINALLY HAVE PAGES. `site.footer.privacyLink` and `site.footer.termsLink` label the
+   * two links in the footer's copyright row: `/privacy` and `/terms` are real routes
+   * under `app/(marketing)` now, listed in `PUBLIC_PATHS` and pinned there by
+   * `hostRouting.test.ts`, and their copy is the `site.privacy.*` and `site.terms.*`
+   * families further up this file.
+   *
+   * THE OTHER FOUR STAY UNUSED, and stay for the reason every retired family here does:
+   * nothing tests for an unused key, and pruning them means editing `i18n.test.ts`'s
+   * exact `SAME_IN_BOTH` allow-list in lockstep. `site.footer.{legal,security,license}`
+   * in particular are not waiting on a page — there is no `/license` route and no
+   * `/security` route, and `components/site/links.ts` explains why those two documents
+   * are read from the repository rather than reprinted here.
    */
   'site.footer.legal': 'Legal',
   'site.footer.security': 'Security policy',

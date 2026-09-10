@@ -52,20 +52,29 @@ import { GITHUB_REPO_URL, NEW_ISSUE_URL } from './links'
  * word again.
  *
  * THERE WAS A LEGAL COLUMN — the licence, the security policy and the issue tracker,
- * three links that all left for GitHub. It is gone by request. "Report an issue" moved
- * into Resources, where it reads as one of the ways to get help rather than as
- * paperwork, and the other two links are NOT on this site any more: nothing links to
- * `LICENSE` or `SECURITY.md` from the public pages now. `links.ts` still exports both
- * URLs and says so; whoever gives those two pages a route (story #273) has somewhere to
- * point them from.
+ * three links that all left for GitHub. It is gone by request and it stays gone. "Report
+ * an issue" moved into Resources, where it reads as one of the ways to get help rather
+ * than as paperwork, and the other two links are NOT on this site any more: nothing links
+ * to `LICENSE` or `SECURITY.md` from the public pages. `links.ts` still exports both URLs
+ * and says why they leave for GitHub rather than for a page here.
+ *
+ * THE TWO LEGAL PAGES ARE IN THE COPYRIGHT ROW instead, and that is the answer to the
+ * column rather than a smaller version of it. `/privacy` and `/terms` exist now, and they
+ * are the two documents a reader looks for at the bottom of a page and expects to find
+ * beside the year — not under a heading, three rows deep, next to a licence file. So they
+ * sit on the last line, at `text-xs` with the copyright, and the footer keeps its two
+ * columns. `site.footer.{privacyLink,termsLink}` were parked in the catalogues for
+ * exactly this; they are used at last.
  *
  * Every destination here EXISTS, and an internal one has to be a path `PUBLIC_PATHS` in
  * `lib/hostRouting.ts` enumerates: a footer link to a path absent from that list would
  * not 404 on production — it would 307 the reader to a login form, which is worse. The
- * rows that come from `lib/siteNav.ts` are pinned against that list by
- * `siteNav.test.ts`, and this file now adds no internal destination of its own — the two
- * URLs it spells out, the issue tracker and the repository, leave the site and are not
- * that list's business.
+ * rows that come from `lib/siteNav.ts` are pinned against that list by `siteNav.test.ts`;
+ * the two off-site URLs spelled out here, the issue tracker and the repository, are not
+ * that list's business. `/privacy` and `/terms` ARE, and they are the two destinations
+ * this file names itself: they are written into the copyright row below rather than
+ * routed through `lib/siteNav.ts`, because that module is the HEADER's menus and these
+ * two are in no menu. `hostRouting.test.ts` is what holds them public.
  */
 
 /**
@@ -153,6 +162,22 @@ const COLUMNS: Column[] = [
  * name of its own — see the note on those tokens in `tailwind.config.ts`.
  */
 const ROW = 'text-sm text-onink-body transition hover:text-white'
+
+/**
+ * The same row, on the last line: `/privacy` and `/terms` beside the copyright.
+ *
+ * `text-xs` rather than `ROW`'s `text-sm`, because these sit WITH the copyright rather
+ * than with the columns: matching its size is what makes the line read as one thing.
+ *
+ * THE RUNG IS `body`, NOT `faint`, AND THAT IS THE HALF THAT DOES NOT FOLLOW THE `©`.
+ * It did follow it at first, and the review caught the cost: white at `faint`'s 0.4
+ * over `ink` (#0A0A0A) is 3.8:1, and WCAG AA asks 4.5:1 of text this size. The `©` is
+ * a static span and these are links, so the one that has to clear the bar is this one.
+ * `body`'s 0.6 gives 7.3:1 and is the rung every other link in this footer already
+ * uses, so the ladder stays the ladder. The hover is `ROW`'s, which is the whole
+ * ladder's: white, the one target above every rung of `onink`.
+ */
+const LEGAL_ROW = 'text-xs text-onink-body transition hover:text-white'
 
 export function SiteFooter({ serverYear }: { serverYear: number }) {
   const { t } = useT()
@@ -248,7 +273,31 @@ export function SiteFooter({ serverYear }: { serverYear: number }) {
         </div>
 
         <div className="mt-14 flex flex-wrap items-center justify-between gap-4 border-t border-onink-rule pt-6">
-          <span className="text-xs text-onink-faint">© {year} magic-slash</span>
+          {/* THE COPYRIGHT AND THE TWO LEGAL LINKS AS ONE GROUP, which is what the extra
+              `div` is for: the row is `justify-between` over three things, and left to
+              itself that would set the year hard left, the policies floating in the
+              middle of a 1100px line, and the language picker hard right. Nobody reads a
+              copyright line and then hunts the centre of the page for the privacy policy.
+              So the year and its two links travel together on the left and the picker
+              keeps the right, exactly as it did when it had one neighbour.
+
+              `text-xs text-onink-faint` — the copyright's own size and rung, not the
+              columns' `text-sm text-onink-body`. These are the last line of the page, not
+              a third column of navigation, and giving them the link weight would make the
+              quietest line on the site the one that shouts. `hover:text-white` is the
+              footer's one hover target for every rung of the ladder; see `ROW` above. */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <span className="text-xs text-onink-faint">© {year} magic-slash</span>
+            {/* `Link` and not `<a>`: both are pages on this site, under
+                `app/(marketing)`, and `PUBLIC_PATHS` in `lib/hostRouting.ts` lists both
+                so the apex actually serves them. */}
+            <Link href="/privacy" className={LEGAL_ROW}>
+              {t('site.footer.privacyLink')}
+            </Link>
+            <Link href="/terms" className={LEGAL_ROW}>
+              {t('site.footer.termsLink')}
+            </Link>
+          </div>
           <LanguageMenu variant="footer" />
         </div>
       </div>

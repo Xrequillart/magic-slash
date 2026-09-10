@@ -16,20 +16,31 @@ export const GITHUB_REPO_URL = 'https://github.com/xrequillart/magic-slash'
 export const RELEASE_TAG_URL = `${GITHUB_REPO_URL}/releases/tag/v${LATEST_DESKTOP_VERSION}`
 
 /**
- * The two LEGAL documents, which live in the repository rather than on this site.
+ * The two REPOSITORY documents the site has no page for: the licence and the security
+ * policy. They live in the repository, and they are read from there.
  *
- * There is no `/terms`, no `/privacy` and no `/license` route: the public site owns
- * exactly the paths `PUBLIC_PATHS` in `lib/hostRouting.ts` enumerates, and anything else
- * on a production host 307s to `app.magic-slash.io`. So these named the files themselves
- * until story #273 gives them pages — a link that leaves for GitHub is honest, where a
- * link that bounces a reader into a login form is not.
+ * THE SITE HAS `/privacy` AND `/terms` NOW — story #273 wrote them, as ordinary routes
+ * under `app/(marketing)`, listed in `PUBLIC_PATHS` and linked from the footer's
+ * copyright row. THESE TWO ARE NOT THOSE TWO, which is the whole reason this note still
+ * exists: that story added a privacy policy and terms of use, and it added no licence
+ * page and no security page. So the argument below is unchanged for the two constants it
+ * is actually about.
  *
- * NOTHING LINKS TO EITHER OF THEM RIGHT NOW. The footer's Legal column was removed by
- * request (see `SiteFooter.tsx`), and these two rows went with it — the third,
- * `NEW_ISSUE_URL`, moved into Resources and is still used. They are kept rather than
- * deleted because the URLs are still the right ones and #273 is still the story that
- * needs them: a constant with a note explaining why it is unused costs nothing, where
- * re-deriving `blob/main` paths from memory later costs a wrong link.
+ * There is no `/license` route and no `/security` route: the public site owns exactly the
+ * paths `PUBLIC_PATHS` in `lib/hostRouting.ts` enumerates, and anything else on a
+ * production host 307s to `app.magic-slash.io`. A link that leaves for GitHub is honest,
+ * where a link that bounces a reader into a login form is not — and for these two
+ * documents, leaving is also the right answer on its own terms: the licence IS the file
+ * in the repository, and a reader checking it wants the version the code ships with.
+ *
+ * ONE OF THEM IS LINKED AGAIN. The footer's Legal column was removed by request (see
+ * `SiteFooter.tsx`), and its three rows scattered: `NEW_ISSUE_URL` moved into Help and
+ * stayed used, `LICENSE_URL` sat idle until `/terms` gave it a footnote to sit in
+ * (`TermsContent.tsx`, "Read the MIT licence"), and `SECURITY_URL` is still unused —
+ * nothing on the site names a security policy. It is kept anyway, for the reason the
+ * other two were kept while idle: a constant with a note explaining why it is unused
+ * costs nothing, where re-deriving a `blob/main` path from memory later costs a wrong
+ * link.
  *
  * The list is NOT copied here. It was, and #269 adding `/features` to it meant editing
  * this sentence and one in `SiteFooter.tsx` to match a line neither file reads — three

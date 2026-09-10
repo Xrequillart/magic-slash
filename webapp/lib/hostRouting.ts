@@ -86,6 +86,23 @@ const PUBLIC_PATHS = new Set([
   // page is handed a login form instead of a redirect.
   '/cloud',
   '/download',
+  // THE TWO LEGAL PAGES, linked from the copyright row of the footer — so, like the
+  // header's rows above, they are on EVERY public page. Same failure mode and the same
+  // reason they are load-bearing here: absent from this list, a reader pressing
+  // "Privacy" at the bottom of the landing page is 307'd to a login form on
+  // `app.magic-slash.io` rather than shown the policy.
+  //
+  // `SiteFooter.tsx` SPELLS BOTH PATHS OUT ITSELF, in the copyright row, which is the
+  // one place on the site a public path is a string literal rather than a constant from
+  // a data module — the header's rows all come from `lib/siteNav.ts`. That used to mean
+  // this list was the whole guarantee. It is not any more: `hostRouting.test.ts` reads
+  // that component as text, pulls out every internal href it hard-codes, and asserts
+  // `canonicalHost` keeps each one on the apex, so a third literal added down there is
+  // covered the day it is written. `lib/privacyPage.ts` and `lib/termsPage.ts` own the
+  // two paths as constants and their own tests pin them against this list from the
+  // other side.
+  '/privacy',
+  '/terms',
   // NOT A PAGE ANY MORE. `/documentation` is in `RETIRED_PATHS` below and 308s to
   // `/faq`, and it has to stay listed HERE for that redirect to be the one that fires:
   // drop it and `canonicalHost` decides it belongs to the app, which 307s the reader to
