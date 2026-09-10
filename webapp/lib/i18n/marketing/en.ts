@@ -812,6 +812,79 @@ export const marketingEn = {
   'site.workflow.doneDesc':
     'Once the merge is confirmed: the ticket closed, the branch deleted on both ends, the worktree removed. Your machine back where it started.',
 
+  // ── The workflow page, around the five steps ───────────────────────────────
+  //
+  // `lib/workflowPage.ts` names every key below and `workflowPage.test.ts` looks each one
+  // up here and in the French. The five steps themselves are `site.workflow.*` above: the
+  // page prints the same title and sentence the homepage band does, and adds these.
+  //
+  // NO COMMAND NAME IN ANY OF IT, and no em dash: the commands are printed by the page from
+  // `lib/commands.ts`, and the dash is the product owner's standing rule for site copy.
+  //
+  // THE HERO'S TITLE IS THE HOMEPAGE HERO'S PROMISE, said again where the page delivers on
+  // it: "from idea to merged PR" is the one line a reader has already met, and this is the
+  // page that shows the five moves it takes.
+  // The pill carries the Claude Code mark beside it, as the homepage hero's does.
+  'site.workflowPage.eyebrow': '8 Claude Code skills',
+  'site.workflowPage.title': 'From idea to merged PR, in five steps.',
+  'site.workflowPage.subtitle':
+    'Magic Slash is a layer on top of Claude Code. Every step of the cycle is one command in your terminal: the agent reads the ticket, does the work, and stops exactly where you want to decide.',
+  'site.workflowPage.stepsCta': 'Walk through the five steps',
+  // The claims. Three per step, each something the skill does and nothing it promises.
+  'site.workflowPage.planClaimSpec': 'A full spec written from one sentence, acceptance criteria included',
+  'site.workflowPage.planClaimApprove': 'Nothing reaches the tracker until you have approved it',
+  // `{jira}` and `{github}` are the tracker chips the homepage's app band draws inside its
+  // first claim (`withChips` in `AppSection.tsx`); the tokens survive `t()` untouched.
+  'site.workflowPage.planClaimTickets': 'The epic and its stories opened on {jira} or {github}, linked',
+  'site.workflowPage.startClaimBranch': 'A worktree and a branch named from the ticket, in one move',
+  'site.workflowPage.startClaimPlan': 'The ticket read and a plan laid out before a file is touched',
+  'site.workflowPage.startClaimAgent': 'Its own agent, in its own window, beside the others',
+  'site.workflowPage.commitClaimAtomic': 'One logical change per commit, split for you',
+  'site.workflowPage.commitClaimFormat': 'Messages in your repository’s own convention',
+  'site.workflowPage.commitClaimPr': 'The pull request described from the diff, ticket linked and updated',
+  'site.workflowPage.reviewClaimLines': 'Findings on the lines they belong to, on your PR or a colleague’s',
+  'site.workflowPage.reviewClaimFix': 'A fix, a commit and a reply in every open thread',
+  'site.workflowPage.reviewClaimArgue': 'It pushes back when a suggestion deserves a compromise',
+  'site.workflowPage.doneClaimMerge': 'The merge confirmed first. Nothing happens if it is not',
+  'site.workflowPage.doneClaimTicket': 'The ticket closed, with a last comment on what shipped',
+  'site.workflowPage.doneClaimClean': 'Branch deleted on both ends, worktree removed, machine clean',
+  // The day band, on the dark sheet.
+  'site.workflowPage.dayTitle': 'Built for a whole day, not a single ticket.',
+  'site.workflowPage.daySubtitle':
+    'The loop above is one ticket’s life. Yours has several open at once, and the day rarely ends where a step does. The desktop app is what holds it together.',
+  'site.workflowPage.dayContinueTitle': 'Pick a ticket back up',
+  'site.workflowPage.dayContinueDesc':
+    'One command reopens a job exactly where you or a colleague left it: same branch, same worktree, the context reloaded from the ticket and the code.',
+  'site.workflowPage.dayParallelTitle': 'Several tickets at once',
+  'site.workflowPage.dayParallelDesc':
+    'Every ticket runs in its own worktree with its own agent, up to twelve side by side. The one waiting for a review never blocks the next.',
+  'site.workflowPage.dayContextTitle': 'The context stays in the app',
+  'site.workflowPage.dayContextDesc':
+    'Ticket, branch, commits, pull request and review status sit beside each terminal in the desktop app. Nothing to remember, nothing to look up.',
+  'site.workflowPage.dayNotifyTitle': 'It calls you when it needs you',
+  'site.workflowPage.dayNotifyDesc':
+    'An agent that stops for an answer sends a Mac notification. You can be in another window, or another ticket, until it does.',
+  // The control band, on white.
+  'site.workflowPage.controlTitle': 'Every decision that matters stays yours.',
+  'site.workflowPage.controlSubtitle':
+    'The agent does the typing. The loop is built to stop where a human should look, and to move on where nobody needs to.',
+  'site.workflowPage.controlSpecTitle': 'The spec waits for you',
+  'site.workflowPage.controlSpecDesc':
+    'Before a single ticket is opened, you read the spec and say yes. Or no, and it is rewritten.',
+  'site.workflowPage.controlPlanTitle': 'The plan before the code',
+  'site.workflowPage.controlPlanDesc':
+    'The agent lays out how it intends to build the ticket before it edits a file. That is where you redirect it, at the cheapest moment to do so.',
+  'site.workflowPage.controlCommitsTitle': 'Commits you can actually read',
+  'site.workflowPage.controlCommitsDesc':
+    'One logical change each, with a message that says why. A reviewer follows the history, and so can you, months later.',
+  'site.workflowPage.controlMergeTitle': 'The merge button stays yours',
+  /** The merged state of the drawn GitHub button. The button's own label stays GitHub's. */
+  'site.workflowPage.mergedLabel': 'Merged',
+  /** The green card the review terminal ends on. */
+  'site.workflowPage.approvedLabel': 'Pull request approved',
+  'site.workflowPage.controlMergeDesc':
+    'Nothing in the loop merges a pull request. The last command only confirms the merge you made, then cleans up after it.',
+
   // ── The skills band, between the workflow and the app window ───────────────
   //
   // A HEADING, A PARAGRAPH, THREE CLAIMS AND A BUTTON, beside a terminal running seven of

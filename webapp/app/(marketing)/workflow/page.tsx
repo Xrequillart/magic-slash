@@ -3,18 +3,19 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 import { WorkflowContent } from '@/components/site/workflow/WorkflowContent'
 
 /**
- * magic-slash.io/workflow — the five steps of the loop, and the commands each one runs.
+ * magic-slash.io/workflow — the five steps of the loop, one band each, and what a day
+ * with it is like.
  *
  * A SERVER COMPONENT whose only job is the `metadata`, with the page in a client
- * component next door: the rows need `useT()` for their copy, and `metadata` cannot be
+ * component next door: the bands need `useT()` for their copy, and `metadata` cannot be
  * exported from a `'use client'` module. The same split `/features`, `/faq` and
  * `/changelog` make.
  *
- * WHAT IS ON THE PAGE IS NOT DECIDED HERE. `lib/workflow.ts` is the source of truth — five
- * steps in the order you run them — and it is the same list the homepage's workflow band
- * draws as cards. A reworded step is a pair of catalogue entries and nothing to edit in
- * either renderer. `WorkflowContent`'s own header says what a fuller version of this page
- * would add and why it does not add it yet.
+ * WHAT IS ON THE PAGE IS NOT DECIDED HERE. `lib/workflow.ts` is the source of truth for the
+ * five steps — the same list the homepage's workflow band draws as cards — and
+ * `lib/workflowPage.ts` for everything the page says around them. A reworded step is a
+ * pair of catalogue entries and nothing to edit in either renderer. `WorkflowContent`'s
+ * own header holds the order of the bands and the argument for it.
  *
  * `/workflow` HAD TO BE ADDED TO `PUBLIC_PATHS` (`lib/hostRouting.ts`) IN THE SAME CHANGE
  * AS THE BAND, and this is the sentence that says why it could not wait for the page to
@@ -36,7 +37,7 @@ import { WorkflowContent } from '@/components/site/workflow/WorkflowContent'
 export const metadata: Metadata = {
   title: 'Workflow — magic-slash',
   description:
-    'Five commands, one loop: plan the work, start it with Claude Code, commit and open the PR, resolve the review, merge and clean up.',
+    'From idea to merged PR in five commands. Plan the work, start it with Claude Code, commit and open the PR, resolve the review, merge and clean up. Every decision that matters stays yours.',
 }
 
 export default function WorkflowPage() {

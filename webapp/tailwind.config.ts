@@ -1336,6 +1336,17 @@ const config: Config = {
           // typing a command they know.
           '17%, 100%': { maxWidth: '21ch' },
         },
+        /**
+         * A command typed once, per character: `max-width` from nothing to the line's own
+         * width, which the caller hands over as `--type-chars` (in `ch`) along with a
+         * `steps()` count and a duration to match, since every command is a different
+         * length. `/workflow`'s step terminals (`workflow/StepTerminal.tsx`) type four
+         * different commands through this one keyframe.
+         */
+        'type-in': {
+          from: { maxWidth: '0ch' },
+          to: { maxWidth: 'var(--type-chars, 100%)' },
+        },
         'caret-blink': {
           '0%, 45%': { opacity: '1' },
           '50%, 95%': { opacity: '0' },
@@ -1727,6 +1738,8 @@ const config: Config = {
         // through a delay, and there is no delay left to hold.
         'caret-type': 'caret-type 11s steps(21, end) infinite',
         'caret-blink': 'caret-blink 1.1s step-end infinite',
+        // Duration and step count are overridden inline per command: see the keyframe.
+        'type-in': 'type-in 1s steps(20, end) both',
         'status-1': 'status-1 11s linear infinite',
         'status-2': 'status-2 11s linear infinite',
         'status-3': 'status-3 11s linear infinite',

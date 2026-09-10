@@ -357,6 +357,61 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.workflow.doneDesc':
     'Une fois le merge confirmé : ticket clôturé, branche supprimée des deux côtés, worktree retiré. Votre machine revient à son point de départ.',
 
+  // ── La page workflow, autour des cinq étapes ───────────────────────────────
+  // Voir la note côté anglais. Pas de nom de commande, pas de tiret cadratin.
+  'site.workflowPage.eyebrow': '8 skills Claude Code',
+  'site.workflowPage.title': 'De l’idée à la PR mergée, en cinq étapes.',
+  'site.workflowPage.subtitle':
+    'Magic Slash est une surcouche à Claude Code. Chaque étape du cycle est une commande dans votre terminal : l’agent lit le ticket, fait le travail, et s’arrête exactement là où vous voulez décider.',
+  'site.workflowPage.stepsCta': 'Parcourir les cinq étapes',
+  'site.workflowPage.planClaimSpec': 'Une spec complète rédigée à partir d’une phrase, critères d’acceptation compris',
+  'site.workflowPage.planClaimApprove': 'Rien ne part sur le tracker avant votre validation',
+  'site.workflowPage.planClaimTickets': 'L’epic et ses stories créées sur {jira} ou {github}, et liées',
+  'site.workflowPage.startClaimBranch': 'Un worktree et une branche nommés d’après le ticket, en un geste',
+  'site.workflowPage.startClaimPlan': 'Le ticket lu et un plan posé avant de toucher un fichier',
+  'site.workflowPage.startClaimAgent': 'Son propre agent, dans sa propre fenêtre, à côté des autres',
+  'site.workflowPage.commitClaimAtomic': 'Un changement logique par commit, découpé pour vous',
+  'site.workflowPage.commitClaimFormat': 'Des messages dans la convention de votre dépôt',
+  'site.workflowPage.commitClaimPr': 'La pull request décrite depuis le diff, ticket lié et mis à jour',
+  'site.workflowPage.reviewClaimLines': 'Des remarques sur les lignes concernées, sur votre PR ou celle d’un collègue',
+  'site.workflowPage.reviewClaimFix': 'Un correctif, un commit et une réponse dans chaque fil ouvert',
+  'site.workflowPage.reviewClaimArgue': 'Il argumente quand une suggestion mérite un compromis',
+  'site.workflowPage.doneClaimMerge': 'Le merge confirmé d’abord. Rien ne se passe s’il ne l’est pas',
+  'site.workflowPage.doneClaimTicket': 'Le ticket clôturé, avec un dernier commentaire sur ce qui est livré',
+  'site.workflowPage.doneClaimClean': 'Branche supprimée des deux côtés, worktree retiré, machine propre',
+  'site.workflowPage.dayTitle': 'Pensé pour la journée entière, pas pour un seul ticket.',
+  'site.workflowPage.daySubtitle':
+    'La boucle ci-dessus, c’est la vie d’un ticket. Vous en avez plusieurs ouverts à la fois, et la journée s’arrête rarement à la fin d’une étape. L’app desktop est ce qui tient le tout.',
+  'site.workflowPage.dayContinueTitle': 'Reprenez un ticket',
+  'site.workflowPage.dayContinueDesc':
+    'Une commande rouvre un chantier là où vous ou un collègue l’aviez laissé : même branche, même worktree, le contexte rechargé depuis le ticket et le code.',
+  'site.workflowPage.dayParallelTitle': 'Plusieurs tickets à la fois',
+  'site.workflowPage.dayParallelDesc':
+    'Chaque ticket tourne dans son worktree avec son agent, jusqu’à douze côte à côte. Celui qui attend une review ne bloque jamais le suivant.',
+  'site.workflowPage.dayContextTitle': 'Le contexte reste dans l’app',
+  'site.workflowPage.dayContextDesc':
+    'Ticket, branche, commits, pull request et état de la review restent à côté de chaque terminal dans l’app desktop. Rien à retenir, rien à chercher.',
+  'site.workflowPage.dayNotifyTitle': 'Elle vous appelle quand elle a besoin de vous',
+  'site.workflowPage.dayNotifyDesc':
+    'Un agent qui s’arrête pour une réponse envoie une notification Mac. Vous pouvez être dans une autre fenêtre, ou sur un autre ticket, jusque-là.',
+  'site.workflowPage.controlTitle': 'Chaque décision qui compte reste la vôtre.',
+  'site.workflowPage.controlSubtitle':
+    'L’agent fait la saisie. La boucle est faite pour s’arrêter là où un humain doit regarder, et avancer là où personne n’a besoin de le faire.',
+  'site.workflowPage.controlSpecTitle': 'La spec vous attend',
+  'site.workflowPage.controlSpecDesc':
+    'Avant qu’un seul ticket soit créé, vous lisez la spec et vous dites oui. Ou non, et elle est réécrite.',
+  'site.workflowPage.controlPlanTitle': 'Le plan avant le code',
+  'site.workflowPage.controlPlanDesc':
+    'L’agent expose comment il compte construire le ticket avant de modifier un fichier. C’est là que vous le réorientez, au moment où ça coûte le moins.',
+  'site.workflowPage.controlCommitsTitle': 'Des commits qu’on peut relire',
+  'site.workflowPage.controlCommitsDesc':
+    'Un changement logique par commit, avec un message qui dit pourquoi. Le reviewer suit l’historique, et vous aussi, des mois plus tard.',
+  'site.workflowPage.controlMergeTitle': 'Le bouton merge reste à vous',
+  'site.workflowPage.mergedLabel': 'Mergé',
+  'site.workflowPage.approvedLabel': 'Pull request approuvée',
+  'site.workflowPage.controlMergeDesc':
+    'Rien dans la boucle ne merge une pull request. La dernière commande ne fait que constater le merge que vous avez fait, puis nettoie derrière.',
+
   // ── La bande des skills, entre le workflow et la fenêtre de l’app ──────────
   //
   // AUCUN NOM DE COMMANDE ICI : les commandes sont imprimées par le DESSIN, épelées depuis

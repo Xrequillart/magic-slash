@@ -360,7 +360,12 @@ function chipIn(piece: string): ChipProduct | null {
   return piece.startsWith('{') && name in CHIPS ? (name as ChipProduct) : null
 }
 
-function withChips(sentence: string) {
+/**
+ * EXPORTED for `/workflow`'s step claims, which name the two trackers the same way ("L'epic
+ * et ses stories créées sur {jira} ou {github}"): one chip recipe on the site, so a tracker
+ * is drawn the same on every page that names it.
+ */
+export function withChips(sentence: string) {
   return sentence.split(CHIP_TOKENS).map((piece, index) => {
     const product = chipIn(piece)
     return <Fragment key={index}>{product ? <ProductChip product={product} /> : piece}</Fragment>

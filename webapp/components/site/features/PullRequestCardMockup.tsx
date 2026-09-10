@@ -138,11 +138,14 @@ export function PullRequestCard({
   review,
   comments,
   focus = null,
+  number = 278,
 }: {
   passed: number
   review: Review
   comments: number
   focus?: PullRequestPart | null
+  /** The PR's number: 278 here and on `/desktop`, the ticket's own on `/workflow`. */
+  number?: number
 }) {
   const { t } = useT()
   const allPassed = passed === 3
@@ -158,7 +161,7 @@ export function PullRequestCard({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-medium text-white/90">
-                  {t('site.agentPanel.prNumber', { number: 278 })}
+                  {t('site.agentPanel.prNumber', { number })}
                 </span>
                 <span className="block truncate text-[10px] text-appink/50">Xrequillart/magic-pay</span>
               </span>
