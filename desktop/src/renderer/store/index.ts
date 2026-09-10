@@ -7,7 +7,7 @@ import {
   type CommentTarget, type LineRange,
 } from '../utils/commentAnchors'
 import { migrateSkillsContextWindow } from '../pages/Skills/contextWindow'
-import type { TaskSelection } from '../utils/taskSelection'
+import type { TasksTarget } from '../utils/taskSelection'
 
 interface CloseAgentModalData {
   terminalId: string
@@ -17,23 +17,6 @@ interface CloseAgentModalData {
 /** Agents is the only page; everything else opens as a centered overlay. */
 export type ModalId = 'settings' | 'skills' | 'team' | 'tasks'
 
-/**
- * What the Tasks page should be showing when it is opened FROM somewhere else —
- * today, from the ticket id in the right sidebar.
- *
- * Both halves travel together because both are needed for the same one click. The
- * `selection` is the ticket to open when it resolves to a row; the `query` is the
- * fallback for when it does not — a closed ticket, an untracked repository, an id
- * typed by hand — and pre-filtering the list to it is what lets the empty state say
- * "no open ticket matches #412" instead of blaming the configuration.
- *
- * A null `selection` with a query is therefore a normal state, not a degenerate one:
- * it is what a ticket the sidebar could not place looks like.
- */
-export interface TasksTarget {
-  selection: TaskSelection | null
-  query: string
-}
 
 /**
  * The two windows the Skills page offers as presets — the ones worth comparing,

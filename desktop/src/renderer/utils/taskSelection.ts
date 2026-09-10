@@ -126,3 +126,50 @@ export function resolveTaskSelection(
     ? { tracker: 'github', configKey, number: Number(id) }
     : { tracker: 'jira', configKey, key: id }
 }
+
+/**
+ * What the sidebar asks the Tasks page to open on: the ticket it could place, and the
+ * id to narrow the list by when it could not.
+ *
+ * Both fields travel together because the page cannot know which of the two it will
+ * need until the snapshot lands. A null `selection` with a query is therefore a normal
+ * state and not a degenerate one: it is what a ticket the sidebar could not place looks
+ * like, and the query is what turns the resulting backlog into "no open ticket matches
+ * #412" rather than a full list the reader has to search by hand.
+ *
+ * Lives here rather than in the store for the same reason `TaskSelection` does: the
+ * seeding decisions below are pure, and a type owned by the store would have made them
+ * import it back.
+ */
+export interface TasksTarget {
+  selection: TaskSelection | null
+  query: string
+}
+
+/**
+ * The page's two initial values, from the target it was opened with.
+ *
+ * One function for the pair rather than a reader per field, because the two are one
+ * decision: seeding the query without the selection would narrow the list under a
+ * ticket that is about to open on its own page, and seeding the selection without the
+ * query would drop an unplaceable ticket onto the whole backlog. `null` — the plain
+ * ⌘J open — is what "no ticket, no filter" looks like.
+ */
+export function seedFromTarget(target: TasksTarget | null | undefined): TasksTarget {
+  return { selection: target?.selection ?? null, query: target?.query ?? '' }
+}
+
+/**
+ * Whether the query THIS PAGE seeded should now be dropped, having opened the ticket
+ * it was there to find.
+ *
+ * The comparison against `seeded` is the whole point, and not defensiveness. A ticket
+ * that never resolves to a row leaves the seeded query in the box indefinitely — which
+ * is correct, it is the fallback — so by the time a selection finally resolves, the
+ * text in the box may be something the READER typed after clearing ours. Dropping that
+ * would send them back to a backlog they never asked for. Only the query this page
+ * wrote for them is this decision's business.
+ */
+export function shouldClearSeededQuery(seeded: string, current: string, resolved: boolean): boolean {
+  return resolved && seeded !== '' && current === seeded
+}

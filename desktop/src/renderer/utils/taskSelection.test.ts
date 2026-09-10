@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { RepositoryConfig } from '../../types'
-import { resolveTaskSelection } from './taskSelection'
+import { resolveTaskSelection, seedFromTarget, shouldClearSeededQuery } from './taskSelection'
 
 function repo(overrides: Partial<RepositoryConfig> = {}): RepositoryConfig {
   return { path: '', keywords: [], ...overrides }
@@ -135,5 +135,64 @@ describe('resolveTaskSelection', () => {
   it('answers null for an agent that is on no ticket', () => {
     expect(resolveTaskSelection(undefined, ['/Users/x/Documents/magic-slash'], REPOS)).toBeNull()
     expect(resolveTaskSelection('   ', ['/Users/x/Documents/magic-slash'], REPOS)).toBeNull()
+  })
+})
+
+describe('seedFromTarget', () => {
+  const SELECTION = { tracker: 'github' as const, configKey: 'magic-slash', number: 291 }
+
+  it('opens on the ticket, and narrows the list to it as well', () => {
+    // Both, deliberately: the page cannot know which of the two it needs until the
+    // snapshot lands, and the query is what `back()` from the ticket then drops.
+    expect(seedFromTarget({ selection: SELECTION, query: '#291' })).toEqual({
+      selection: SELECTION,
+      query: '#291',
+    })
+  })
+
+  it('narrows the list alone for a ticket the sidebar could not place', () => {
+    // A closed issue, an untracked repository, an id typed by hand: no row to open,
+    // so the list filtered by the id is the whole answer.
+    expect(seedFromTarget({ selection: null, query: '#412' })).toEqual({
+      selection: null,
+      query: '#412',
+    })
+  })
+
+  it('seeds nothing when the page was opened by hand', () => {
+    // ⌘J and the sidebar button both go through the bare `openModal('tasks')`, which
+    // leaves the target null — the backlog, unnarrowed. This is the case that makes
+    // reopening Tasks safe after a deep link: the store field was consumed, so the
+    // next open reads null here rather than replaying the last ticket clicked.
+    expect(seedFromTarget(null)).toEqual({ selection: null, query: '' })
+    expect(seedFromTarget(undefined)).toEqual({ selection: null, query: '' })
+  })
+})
+
+describe('shouldClearSeededQuery', () => {
+  it('drops the seeded query once the ticket is open', () => {
+    expect(shouldClearSeededQuery('#291', '#291', true)).toBe(true)
+  })
+
+  it('keeps it while no ticket has resolved', () => {
+    // The unresolved case is the FALLBACK, not a failure: the narrowed list and its
+    // "no open ticket matches" state are the whole point of having seeded a query.
+    expect(shouldClearSeededQuery('#291', '#291', false)).toBe(false)
+  })
+
+  it('never drops a query the reader typed themselves', () => {
+    // The regression this guards: a ticket that never resolves leaves the seeded query
+    // in the box, so by the time some other selection resolves the text may be the
+    // reader's own. Clearing it would send them back to a backlog they never asked for.
+    expect(shouldClearSeededQuery('#291', 'refund', true)).toBe(false)
+    expect(shouldClearSeededQuery('#291', '', true)).toBe(false)
+    expect(shouldClearSeededQuery('#291', '#2910', true)).toBe(false)
+  })
+
+  it('does nothing on a page that seeded no query', () => {
+    // Opened by hand and then a ticket clicked: there is no query of ours to drop, and
+    // an empty seed must never match an empty box and clear it "successfully".
+    expect(shouldClearSeededQuery('', '', true)).toBe(false)
+    expect(shouldClearSeededQuery('', 'refund', true)).toBe(false)
   })
 })

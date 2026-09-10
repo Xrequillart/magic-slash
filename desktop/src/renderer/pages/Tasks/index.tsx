@@ -17,6 +17,7 @@ import {
 } from '../../utils/taskRows'
 import { buildAgentedIssues, normalizeTicketId, taskAgentRefs, terminalAgentSignature } from '../../utils/taskAgents'
 import type { TaskSelection } from '../../utils/taskSelection'
+import { seedFromTarget, shouldClearSeededQuery } from '../../utils/taskSelection'
 import { readsFrom } from '../../../tracker'
 import { useT, type MessageKey } from '../../i18n'
 import { WaveLoader } from '../../components/WaveLoader'
@@ -132,9 +133,9 @@ export function TasksPage() {
    * on a list narrowed to it and an empty state that says so, rather than on a full
    * backlog the reader has to search by hand for the ticket they just clicked.
    */
-  const [filter, setFilter] = useState<TaskFilterValue>(
-    { ...NO_FILTER, query: tasksInitialTarget?.query ?? '' },
-  )
+  const seed = seedFromTarget(tasksInitialTarget)
+
+  const [filter, setFilter] = useState<TaskFilterValue>({ ...NO_FILTER, query: seed.query })
 
   /**
    * The selected ticket as a (repository, identity) PAIR, not as the ticket object.
@@ -157,9 +158,7 @@ export function TasksPage() {
    * rows — which is also what makes an unresolvable ticket fall back to the filter on
    * its own instead of needing to be detected.
    */
-  const [selected, setSelected] = useState<TaskSelection | null>(
-    tasksInitialTarget?.selection ?? null,
-  )
+  const [selected, setSelected] = useState<TaskSelection | null>(seed.selection)
 
   /**
    * The target is consumed exactly once, the way `Config` consumes `settingsInitialTab`.
@@ -183,7 +182,7 @@ export function TasksPage() {
    * list they narrowed themselves is the correct behaviour, and only the query this
    * page wrote for them is that effect's business.
    */
-  const seededQuery = useRef(tasksInitialTarget?.query ?? '')
+  const seededQuery = useRef(seed.query)
 
   /**
    * The one scrolling element of the page, and the offset the backlog was left at.
@@ -315,19 +314,22 @@ export function TasksPage() {
    * was just being read — a query the reader never typed and would have to find the
    * box to clear.
    *
-   * It clears the SEEDED string and only the seeded string: the box has to still hold
-   * it character for character, so a reader who cleared it and searched for something
-   * else of their own keeps their query, whether they did that before opening a ticket
-   * or after this page's own query failed to resolve to a row. Emptying the ref first
-   * is what keeps this to one pass rather than a loop — clearing widens the rows, which
-   * recomputes `selection`, which is this effect's own dependency.
+   * The rule itself is `shouldClearSeededQuery`, pure and tested there: the box has to
+   * still hold the seeded string character for character, so a reader who cleared it
+   * and searched for something else of their own keeps their query — whether they did
+   * that before opening a ticket or after this page's own query failed to resolve to a
+   * row. The ref is emptied only when the query actually goes, which is what keeps the
+   * unresolved case working: until a ticket resolves, the seeded query IS the fallback
+   * and has to stay.
+   *
+   * Watching the query as well as the selection cannot loop. Clearing re-runs this
+   * effect, but the ref is empty by then and the rule answers no on the second pass.
    */
   useEffect(() => {
-    if (!selection || !seededQuery.current) return
-    const seeded = seededQuery.current
+    if (!shouldClearSeededQuery(seededQuery.current, filter.query, !!selection)) return
     seededQuery.current = ''
-    setFilter((prev) => (prev.query === seeded ? { ...prev, query: '' } : prev))
-  }, [selection])
+    setFilter((prev) => ({ ...prev, query: '' }))
+  }, [selection, filter.query])
 
   /**
    * Which of the two views is on screen. A change is what plays the sweep.
