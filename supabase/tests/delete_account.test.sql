@@ -9,7 +9,7 @@
 -- seed data and to read results back bypassing RLS.
 
 begin;
-select plan(12);
+select plan(14);
 
 -- ---------------------------------------------------------------------------
 -- Seed as the table owner (RLS bypassed).
@@ -55,6 +55,15 @@ values
 -- must remain but its invited_by must be nulled (not block the delete).
 insert into public.invitations (org_id, email, role, token, status, invited_by)
 values ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'newbie@example.com', 'user', 'tok-inv', 'pending', '11111111-1111-1111-1111-111111111111');
+
+-- An avatar object for each user in the private `avatars` bucket (the bucket row
+-- comes from 20260910090100, so this test needs those migrations applied). u1's must
+-- be gone afterwards (criterion 6: no orphaned file); u2's must be untouched, since
+-- `storage.objects` is shared by every bucket and every user.
+insert into storage.objects (bucket_id, name, owner, owner_id, metadata)
+values
+  ('avatars', '11111111-1111-1111-1111-111111111111/avatar.webp', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', '{"size": 1234, "mimetype": "image/webp"}'::jsonb),
+  ('avatars', '22222222-2222-2222-2222-222222222222/avatar.webp', '22222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222', '{"size": 4321, "mimetype": "image/webp"}'::jsonb);
 
 -- ---------------------------------------------------------------------------
 -- Act: authenticate as u1 and delete the account.
@@ -151,6 +160,25 @@ select is(
   (select invited_by from public.invitations where token = 'tok-inv'),
   null,
   'delete_account nulls invited_by on surviving invitations'
+);
+
+-- 12. The caller's avatar object is gone: nothing in the bucket is keyed on their
+--     uid any more (criterion 6 — no orphaned file left behind).
+select is(
+  (select count(*) from storage.objects
+   where bucket_id = 'avatars'
+     and (storage.foldername(name))[1] = '11111111-1111-1111-1111-111111111111'),
+  0::bigint,
+  'delete_account removes the caller avatar object'
+);
+
+-- 13. And only theirs: u2's avatar is untouched.
+select is(
+  (select count(*) from storage.objects
+   where bucket_id = 'avatars'
+     and (storage.foldername(name))[1] = '22222222-2222-2222-2222-222222222222'),
+  1::bigint,
+  'delete_account leaves other users avatar objects intact'
 );
 
 select * from finish();

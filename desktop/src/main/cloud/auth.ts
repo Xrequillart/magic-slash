@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AuthStatus } from '../../types'
+import { AVATAR_BUCKET, avatarObjectPath } from '../../avatar'
 import { getSupabaseClient, isCloudEnabled } from './supabase-client'
 import {
   saveSession,
@@ -334,10 +335,37 @@ export async function confirmEmailChange(newEmail: string, code: string): Promis
  * delete_account() RPC removes the auth.users row (app tables cascade via FK)
  * and the caller's memberships. We then sign out locally and clear the stored
  * session so the cloud UI returns to a logged-out state.
+ *
+ * THE PROFILE PHOTO GOES FIRST, and from here rather than from SQL. The cascade
+ * reaches `storage.objects`, which is a table of METADATA — deleting the row
+ * leaves the blob itself sitting in the bucket, unreferenced and undeletable
+ * (the storage policies are scoped to `auth.uid()`, and that user no longer
+ * exists). This client call, made while the session is still valid, is the only
+ * thing that actually removes the bytes, which is what makes the deletion the
+ * complete erasure it is presented as.
+ *
+ * It must never BLOCK the deletion, though: a Storage outage, an offline moment,
+ * a user who never set a photo at all — none of those are a reason to refuse to
+ * delete an account. So the failure is logged and swallowed, exactly like the
+ * sign-out below, and the RPC runs regardless. The worst case is an orphaned
+ * object in a private bucket; the alternative worst case is a user who cannot
+ * leave.
  */
 export async function deleteAccount(): Promise<AuthStatus> {
   const client = await getAuthedClient()
   if (!client) throw new Error('You must be signed in to delete your account')
+
+  const uid = loadSession()?.user?.id
+  if (uid) {
+    try {
+      // Both failure shapes are swallowed: Storage reports most problems in the
+      // resolved `error` and throws only on a transport failure.
+      const { error } = await client.storage.from(AVATAR_BUCKET).remove([avatarObjectPath(uid)])
+      if (error) console.error('[cloud] avatar removal before account deletion (ignored):', error.message)
+    } catch (error) {
+      console.error('[cloud] avatar removal before account deletion (ignored):', error)
+    }
+  }
 
   const { error } = await client.rpc('delete_account')
   if (error) throw new Error(error.message)

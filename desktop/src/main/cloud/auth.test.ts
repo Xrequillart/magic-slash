@@ -13,16 +13,21 @@ const h = vi.hoisted(() => {
     signOut: vi.fn(),
   }
   const mockRpc = vi.fn()
+  // Storage is reached by exactly one function here — deleteAccount, which removes
+  // the user's avatar object before the RPC. `from()` returns the same recorder on
+  // every call so a test can assert the bucket AND the keys.
+  const mockStorageRemove = vi.fn()
+  const mockStorageFrom = vi.fn(() => ({ remove: mockStorageRemove }))
   const state = {
     cloudEnabled: true as boolean,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    client: { auth: mockAuth, rpc: mockRpc } as any,
+    client: { auth: mockAuth, rpc: mockRpc, storage: { from: mockStorageFrom } } as any,
     saveSession: vi.fn(),
     clearSession: vi.fn(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     stored: null as any,
   }
-  return { mockAuth, mockRpc, state }
+  return { mockAuth, mockRpc, mockStorageRemove, mockStorageFrom, state }
 })
 
 vi.mock('./supabase-client', () => ({
@@ -65,7 +70,9 @@ const SESSION = {
 beforeEach(() => {
   vi.clearAllMocks()
   h.state.cloudEnabled = true
-  h.state.client = { auth: h.mockAuth, rpc: h.mockRpc }
+  h.state.client = { auth: h.mockAuth, rpc: h.mockRpc, storage: { from: h.mockStorageFrom } }
+  h.mockStorageFrom.mockReturnValue({ remove: h.mockStorageRemove })
+  h.mockStorageRemove.mockResolvedValue({ data: [], error: null })
   h.state.stored = { access_token: 'access-1', refresh_token: 'refresh-1', expires_at: 9999999999, user: { id: 'u1', email: 'user@example.com' } }
   // Default to a cold client (nothing in memory) so getAuthedClient() takes the
   // setSession path; the fast-path tests below override getSession explicitly.
@@ -265,6 +272,10 @@ describe('deleteAccount', () => {
     h.mockRpc.mockResolvedValue({ data: null, error: null })
     const status = await deleteAccount()
     expect(h.mockRpc).toHaveBeenCalledWith('delete_account')
+    // The blob goes from here, while the session is still valid: the SQL cascade
+    // only deletes the storage.objects METADATA row.
+    expect(h.mockStorageFrom).toHaveBeenCalledWith('avatars')
+    expect(h.mockStorageRemove).toHaveBeenCalledWith(['u1/avatar.webp'])
     expect(h.mockAuth.signOut).toHaveBeenCalled()
     expect(h.state.clearSession).toHaveBeenCalled()
     expect(status).toEqual({ enabled: true, loggedIn: false })
@@ -280,5 +291,22 @@ describe('deleteAccount', () => {
     h.mockRpc.mockResolvedValue({ data: null, error: { message: 'deletion failed' } })
     await expect(deleteAccount()).rejects.toThrow('deletion failed')
     expect(h.state.clearSession).not.toHaveBeenCalled()
+  })
+
+  // A Storage outage, or a user who never set a photo, is not a reason to refuse
+  // to delete an account. Both failure shapes are swallowed: Storage reports most
+  // problems in the resolved `error` and throws only on a transport failure.
+  it('deletes the account even when the avatar removal reports an error', async () => {
+    h.mockStorageRemove.mockResolvedValue({ data: null, error: { message: 'bucket unavailable' } })
+    h.mockRpc.mockResolvedValue({ data: null, error: null })
+    await expect(deleteAccount()).resolves.toEqual({ enabled: true, loggedIn: false })
+    expect(h.mockRpc).toHaveBeenCalledWith('delete_account')
+  })
+
+  it('deletes the account even when the avatar removal throws', async () => {
+    h.mockStorageRemove.mockRejectedValue(new Error('offline'))
+    h.mockRpc.mockResolvedValue({ data: null, error: null })
+    await expect(deleteAccount()).resolves.toEqual({ enabled: true, loggedIn: false })
+    expect(h.mockRpc).toHaveBeenCalledWith('delete_account')
   })
 })
