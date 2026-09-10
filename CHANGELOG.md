@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.89.0] - 2026-09-10
+
+### Added
+
+- **Landing**: The site is rebuilt around the whole cycle: new homepage hero, header menus and footer, plus the workflow, features, application, download, changelog and FAQ pages
+- **Landing**: New homepage bands on security and privacy, on what a team shares, on the skills beside a Claude Code run, and on who the app is built for
+- **Landing**: Privacy and terms pages
+- **Landing**: The design system gains card tones, a split feature arrangement, a collapse row and a seeded diffuse wash
+- **Desktop**: Long diff hunks fold to their last 30 lines
+- **Desktop**: The discuss agent opens on its ticket with a short prompt
+- **Desktop**: The repository groups are labelled in the agents sidebar
+- **Desktop**: The planner spec card carries the repo mark
+- **Plan**: The agent flips to planned once the tickets exist
+- **Resolve**: Each repo chooses how much a review reply says
+
+### Changed
+
+- **Landing**: The cloud, story and best-practices pages are dropped from the site
+- **Landing**: The section entrances play on scroll, and every cursor is drawn with the workflow page's pointer
+- **Landing**: The features drawings, the info panel and the desktop page's facts are shared rather than duplicated
+- **Deps**: Vitest 5.0.0, globals 17.12.0 and the typescript-eslint linters group
+
+### Fixed
+
+- **Landing**: Mobile pages no longer scroll horizontally
+- **Landing**: The hero art stops animating and hides below lg
+- **Skills**: `/start`, `/continue`, `/pr`, `/review`, `/resolve` and `/done` call the GitHub MCP tools that actually exist
+- **Start**: The bare GitHub issue number is always recorded as the ticket id
+- **Desktop**: The configured casing of a repository group label is kept
+- **Desktop**: The changelog link points at its own page
+
 ## [0.88.0] - 2026-09-03
 
 ### Added
@@ -2634,6 +2665,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.89.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.89.0
 [0.88.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.88.0
 [0.87.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.87.0
 [0.86.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.6
