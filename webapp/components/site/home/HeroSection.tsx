@@ -1,8 +1,8 @@
 'use client'
 
-import { Check, Download } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { CheckCircle2, Download, FileText, GitBranch, MessageSquare } from 'lucide-react'
 import { ButtonNavLink } from '@/components/ui'
-import { MAGIC_COMMANDS, type MagicCommandId } from '@/lib/commands'
 import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
 import { DOWNLOAD_PATH } from '@/lib/siteNav'
@@ -10,41 +10,55 @@ import { WORKFLOW_PATH } from '@/lib/workflow'
 import { JiraMark } from '../features/TicketCardMockup'
 import { GithubMark } from '../features/TasksModalMockup'
 import { Reveal } from '../Reveal'
+import { RichText } from '../RichText'
 import { HomeSection } from './Shell'
 
 /**
- * The landing page's first screen, in two columns: the pitch on the left, the cycle on
+ * The landing page's first screen, in two columns: the pitch on the left, the orbit on
  * the right.
  *
- * THE PITCH IS THE CYCLE. The headline says what goes in (a Jira ticket) and what comes
- * out (a merged PR), and that the reader said one command in between; the ladder beside
- * it draws the seven commands that ran. That is the whole argument of the page — an
- * ecosystem that closes the loop, not a chat window — and it replaced a centred, type-only
- * hero whose one line ("From idea to merged PR.") named the loop without showing it. The
- * three directions the product owner weighed are in the design mockup he chose from;
- * this is the second of them, "the whole cycle".
+ * THE PITCH IS THE FRONTIER, not the cycle. The previous hero drew the seven commands as
+ * a ladder beside a headline about a ticket becoming a PR, and the product owner's
+ * reading of it was exact: "elle parle du workflow, mais ne parle pas des specs créées",
+ * too many layers, and the three integrations named twice. This one makes a different
+ * argument. The headline names the two ends — an idea, a merged PR — and what is left
+ * for the reader to do (decide). The drawing puts the CODE in the middle, as the Claude
+ * Code mark, and everything the product does AROUND it in orbit: the spec, the tickets,
+ * the worktree and commits, the PR, the review, the closed ticket. A visitor who already
+ * has Claude Code open in another tab — which is every visitor this page is for — reads
+ * the picture as an answer to "why one more tool": that is the code, this is the rest.
  *
- * THE COMMAND IS DRAWN, NOT TRANSLATED. `site.hero.title` is the first sentence and
- * `site.hero.titleTail` the second minus its last word; the `<code>` that closes it comes
- * from `lib/commands.ts`, where a typo is a compile error, and never from a catalogue.
- * `lib/skillsBand.test.ts` states the rule for the band below; the hero follows it.
+ * ARTEFACTS, NOT COMMANDS. The six cards are what a ticket leaves behind, not what you
+ * type to get it, and no command is spelled anywhere in the hero any more — the old
+ * `<code>/magic:start</code>` closing the headline went with the ladder. The commands
+ * are the workflow band's and the skills band's subject, further down, and `/workflow`'s
+ * at length; the hero is the one place on the page that can afford not to name them.
  *
- * SEVEN CARDS AND NOT EIGHT. `/magic:continue` is a way back INTO the cycle — resuming a
- * ticket already started — and not a step of it, so the ladder leaves it out. THE COPY
- * STILL SAYS EIGHT, in the pill and in the subtitle, and the two do not contradict each
- * other: the words count what you install, the drawing shows the path one ticket takes
- * through it. The skills band lower down says eight for the same reason.
+ * FIVE THINGS ABOVE THE FOLD where there were nine: headline, subtitle, two buttons,
+ * one row of the three marks, and the drawing. The pill above the headline is gone (it
+ * counted the skills; the subtitle still does, once) and so is one of the two rows that
+ * named Claude Code, Jira and GitHub — `Integrations` stays because it is now the ONLY
+ * place the three are named, and Jira and GitHub also appear where they mean something,
+ * on the cards they belong to.
+ *
+ * THE MARK IS ALIVE, a little. It hops now and then, one eye winks now and then, both
+ * eyes glance about now and then, on three idle loops that drift against each other
+ * (`hero-hop` 7s, `hero-wink` 5s, `hero-look` 11s in `tailwind.config.ts`). Clicked, it
+ * flinches and says "Aïe !!" in a pixel bubble; clicked again and again it escalates —
+ * `ClaudeFigure` has the ladder. All of it is the owner's brief. The mark is drawn as
+ * SVG rather than the `/img/claudecode-color.png` bitmap the rest of the site uses,
+ * because a wink needs one eye to be its own element; the geometry is read off that
+ * bitmap on a 16-unit grid so the two are the same figure, and it sits on NO TILE — the
+ * owner's second call ("sans card blanche") — so the orange is the only thing at the
+ * centre of the ring. Every loop is `motion-reduce:animate-none`, and the clicks still
+ * work without motion — the bubbles simply appear.
  *
  * THE TWO BUTTONS: `primary` opens `/download` — the page, not the .dmg, so the reader
  * meets the prerequisites and what the first launch sets up before the file lands in
- * their folder — and `secondary` opens `/workflow`, where the ladder is set out at length. The
- * earlier hero sent its primary to the login page; the product owner moved it to the
- * download when he chose the mockup — asking for an account before the product has been
- * seen was the one friction on the page nothing else earned. Both `size="lg"`, and the
- * same 46px once `secondary` spends its border on `border-hairline` and `primary` on
- * `border-transparent` — see `BUTTON_BASE`.
- *
- * Both are `ButtonNavLink`: two routes on this host, both with client-side navigation.
+ * their folder — and `secondary` opens `/workflow`, where the six artefacts are set out
+ * at length. Both `size="lg"`, and the same 46px once `secondary` spends its border on
+ * `border-hairline` and `primary` on `border-transparent` — see `BUTTON_BASE`. Both are
+ * `ButtonNavLink`: two routes on this host, both with client-side navigation.
  */
 export function HeroSection() {
   const { t } = useT()
@@ -57,35 +71,26 @@ export function HeroSection() {
       backdrop={<Bloom />}
       className="bg-gradient-to-b from-softblue to-canvas"
     >
-      <div className="grid items-center gap-12 md:grid-cols-[1.05fr_0.95fr] md:gap-14">
+      <div className="grid items-center gap-12 md:grid-cols-2 md:gap-14">
         <div className="flex flex-col items-start gap-6">
           <Reveal order={1}>
-            <HeroEyebrow />
-          </Reveal>
-
-          <Reveal order={2}>
-            {/* `text-wrap: balance` is deliberately NOT here: with a `<code>` token at the
-                end, balancing would push it alone onto a last line more often than not,
-                and a command on its own line reads as a caption rather than the sentence's
-                last word. */}
+            {/* Two sentences, three lines, one ink: the promise broken where the catalogue
+                breaks it (`<br>` in `site.hero.title`, through `RichText`), then the one
+                thing the reader still does. The second sentence was muted for a round and
+                the owner asked for it black ("tout le H1 en noir"): one colour, one voice.
+                `text-wrap: balance` stays off — the breaks are deliberate. */}
             <h1 className="font-display text-4xl font-black leading-[1.05] tracking-tight text-ink md:text-[3.4rem]">
-              {t('site.hero.title')} {t('site.hero.titleTail')}{' '}
-              {/* `whitespace-nowrap` on the token and the full stop together, so the
-                  sentence can never break between them. */}
-              <span className="whitespace-nowrap">
-                <code className="rounded-lg border border-hairline bg-white px-[0.4em] py-[0.05em] align-[0.06em] font-mono text-[0.72em] font-bold tracking-normal text-brand">
-                  {START.command}
-                </code>
-                .
-              </span>
+              <RichText k="site.hero.title" />
+              <br />
+              {t('site.hero.titleTail')}
             </h1>
           </Reveal>
 
-          <Reveal order={3}>
+          <Reveal order={2}>
             <p className="max-w-xl text-lg leading-relaxed text-muted">{t('site.hero.subtitle')}</p>
           </Reveal>
 
-          <Reveal order={4} className="flex flex-wrap items-center gap-3">
+          <Reveal order={3} className="flex flex-wrap items-center gap-3">
             <ButtonNavLink href={DOWNLOAD_PATH} variant="primary" size="lg" icon={Download}>
               {t('site.hero.downloadCta')}
             </ButtonNavLink>
@@ -94,62 +99,35 @@ export function HeroSection() {
             </ButtonNavLink>
           </Reveal>
 
-          <Reveal order={5}>
+          <Reveal order={4}>
             <Integrations />
           </Reveal>
         </div>
 
-        <Ladder />
+        <Orbit />
       </div>
     </HomeSection>
-  )
-}
-
-const START = MAGIC_COMMANDS.find((command) => command.id === 'start')!
-
-/** The three marks, each on a white tile; the same three the `Integrations` row names. */
-function HeroEyebrow() {
-  const { t } = useT()
-  return (
-    <span className="inline-flex items-center gap-2.5 rounded-full border border-hairline bg-white py-1.5 pl-2 pr-3.5 text-xs font-bold text-muted">
-      <span className="flex gap-1">
-        <MarkTile>
-          <ClaudeCodeMark />
-        </MarkTile>
-        <MarkTile>
-          <JiraMark className="h-3.5 w-3.5" />
-        </MarkTile>
-        <MarkTile>
-          <GithubMark className="h-3.5 w-3.5 text-ink" />
-        </MarkTile>
-      </span>
-      {t('site.hero.eyebrow')}
-    </span>
-  )
-}
-
-function MarkTile({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="grid h-[22px] w-[22px] place-items-center rounded-md border border-hairline bg-canvas">
-      {children}
-    </span>
   )
 }
 
 /**
  * Claude Code has no drawn mark in the codebase; it exists as a bitmap, and this is the
  * same file the app band's chip row uses (`AppSection.tsx`) for the same reason it gives.
+ * The orbit's centre does NOT use it — see `ClaudeFigure` for why.
  */
-function ClaudeCodeMark({ className = 'h-3.5 w-3.5' }: { className?: string }) {
+function ClaudeCodeMark({ className = 'h-[18px] w-[18px]' }: { className?: string }) {
   return <img src="/img/claudecode-color.png" alt="" className={`${className} object-contain`} />
 }
 
-/** Brand names, so no catalogue: they are spelled the same way in every language. */
+/**
+ * Brand names, so no catalogue: they are spelled the same way in every language. This is
+ * the hero's one row naming the three, now that the pill above the headline is gone.
+ */
 function Integrations() {
   return (
     <ul className="flex flex-wrap items-center gap-5 text-sm font-bold text-ink">
       <li className="flex items-center gap-2">
-        <ClaudeCodeMark className="h-[18px] w-[18px]" />
+        <ClaudeCodeMark />
         Claude Code
       </li>
       <li className="flex items-center gap-2">
@@ -157,7 +135,7 @@ function Integrations() {
         Jira
       </li>
       <li className="flex items-center gap-2">
-        <GithubMark className="h-[18px] w-[18px]" />
+        <GithubMark className="h-[18px] w-[18px] text-ink" />
         GitHub
       </li>
     </ul>
@@ -165,91 +143,233 @@ function Integrations() {
 }
 
 /**
- * One rung: which command, what it leaves behind, and which tracker that lands in. The
- * command's text and icon come from `MAGIC_COMMANDS`; only the one-line "what" is copy.
+ * One artefact on the ring: what it is, one line about it, which mark sits beside it,
+ * and where on the square it lands. `position` is a full Tailwind class string per node
+ * rather than two numbers — the scanner has to see every class it emits, and six
+ * literal strings are the honest way to give it them.
  */
-type Rung = { id: MagicCommandId; what: MessageKey; tracker: 'jira' | 'github' }
+type Node = {
+  title: MessageKey
+  desc: MessageKey
+  icon: React.ReactNode
+  position: string
+}
 
-const HERO_LADDER: readonly Rung[] = [
-  { id: 'plan', what: 'site.hero.skillPlan', tracker: 'jira' },
-  { id: 'start', what: 'site.hero.skillStart', tracker: 'github' },
-  { id: 'commit', what: 'site.hero.skillCommit', tracker: 'github' },
-  { id: 'pr', what: 'site.hero.skillPr', tracker: 'github' },
-  { id: 'review', what: 'site.hero.skillReview', tracker: 'github' },
-  { id: 'resolve', what: 'site.hero.skillResolve', tracker: 'github' },
-  { id: 'done', what: 'site.hero.skillDone', tracker: 'jira' },
+const ICON = 'h-4 w-4 shrink-0'
+
+const ORBIT: readonly Node[] = [
+  {
+    title: 'site.hero.orbitSpecTitle',
+    desc: 'site.hero.orbitSpecDesc',
+    icon: <FileText className={`${ICON} text-brand`} strokeWidth={2.2} />,
+    position: 'left-1/2 top-[8%]',
+  },
+  {
+    title: 'site.hero.orbitEpicTitle',
+    desc: 'site.hero.orbitEpicDesc',
+    icon: <JiraMark className={ICON} />,
+    position: 'left-[86%] top-[29%]',
+  },
+  {
+    title: 'site.hero.orbitWorktreeTitle',
+    desc: 'site.hero.orbitWorktreeDesc',
+    icon: <GitBranch className={`${ICON} text-ink`} strokeWidth={2.2} />,
+    position: 'left-[88%] top-[71%]',
+  },
+  {
+    title: 'site.hero.orbitPrTitle',
+    desc: 'site.hero.orbitPrDesc',
+    icon: <GithubMark className={`${ICON} text-ink`} />,
+    position: 'left-1/2 top-[92%]',
+  },
+  {
+    title: 'site.hero.orbitReviewTitle',
+    desc: 'site.hero.orbitReviewDesc',
+    icon: <MessageSquare className={`${ICON} text-brand`} strokeWidth={2.2} />,
+    position: 'left-[12%] top-[71%]',
+  },
+  {
+    title: 'site.hero.orbitDoneTitle',
+    desc: 'site.hero.orbitDoneDesc',
+    icon: <CheckCircle2 className={`${ICON} text-green`} strokeWidth={2.4} />,
+    position: 'left-[14%] top-[29%]',
+  },
 ]
 
+/** The copy's entrance runs orders 1–4; the orbit continues the count rather than restarting it. */
+const ORBIT_FIRST_ORDER = 5
+
 /**
- * The reveal the ladder rides in on. `Reveal` rises an element 12px by default; the
- * rungs come up from 28px so the column visibly climbs, one card after the next, and the
- * entrance is the same one the copy uses — same keyframes, same 150ms step, same replay
- * on a language change — so nothing here needs its own animation.
+ * The drawing: a dashed ring with one bright arc turning on it, the Claude Code figure
+ * at its centre, and the six artefact cards on the ring. The square is `aspect-square`
+ * so the ring is a circle at every width, and the cards are centred on their point with
+ * a `-translate-x/y-1/2`, so a card that grows with its translation grows evenly.
+ *
+ * The cards on the ring's left and right sit at 12–14% and 86–88% rather than on the
+ * circle itself, because a card is wider than it is tall: centred on the circle it
+ * would hang off the square's edge, and the band would clip it.
+ *
+ * BELOW `md` THE WHOLE DRAWING IS SCALED to 78%, cards included, rather than repositioned:
+ * the cards' text does not shrink with the viewport, so on a 390px phone the left and
+ * right ones ran 47px past the square and off the screen. Scaling from the centre buys
+ * back an 11% margin on each side, which is what they need; the negative vertical
+ * margins take back the blank the scale leaves above and below.
  */
-const RISE = '[--reveal-from:1.75rem]'
-
-/** The copy's entrance runs orders 1–5; the ladder continues the count rather than restarting it. */
-const LADDER_FIRST_ORDER = 5
-
-function Ladder() {
+function Orbit() {
   const { t } = useT()
 
   return (
-    <div className="relative flex flex-col gap-2.5">
-      {/* The rail: one thin line down the column of numerals, from under the first
-          rung to above the last. It fades at both ends so it reads as a thread the
-          cards hang on rather than a border with two loose ends. */}
+    <div className="relative mx-auto aspect-square w-full max-w-[470px] max-md:-my-10 max-md:scale-[0.78]">
       <div
         aria-hidden
-        className="pointer-events-none absolute bottom-10 left-[1.9rem] top-10 w-px bg-gradient-to-b from-brand/0 via-brand/40 to-brand/0"
-      />
+        className="absolute inset-[11%] rounded-full border-2 border-dashed border-brand/35"
+      >
+        {/* The arc: a transparent ring with two sides painted, turning. `spin` is
+            Tailwind's own keyframe; only the period is ours. */}
+        <div className="absolute -inset-0.5 rounded-full border-2 border-transparent border-r-brand border-t-brand animate-[spin_10s_linear_infinite] motion-reduce:animate-none" />
+      </div>
 
-      <Reveal order={LADDER_FIRST_ORDER} className={RISE}>
-        <div className="flex items-center gap-3 px-1">
-          <span className="font-display text-xl font-black tracking-tight text-ink">
-            {t('site.hero.ladderStart')}
-          </span>
-          <span className="h-px flex-1 bg-hairline" />
-        </div>
+      {/* `z-10`: the six cards come later in the DOM and would paint over the figure's
+          speech bubble, which reaches out to where the "Epic" card sits. The figure is
+          the one thing here that talks, so it is the one thing lifted. */}
+      <Reveal
+        order={ORBIT_FIRST_ORDER}
+        className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
+      >
+        <ClaudeFigure />
       </Reveal>
 
-      {HERO_LADDER.map((rung, index) => {
-        const command = MAGIC_COMMANDS.find((c) => c.id === rung.id)!
-        return (
-          <Reveal key={rung.id} order={LADDER_FIRST_ORDER + 1 + index} className={RISE}>
-            <div className="relative flex items-center gap-3.5 rounded-xl border border-hairline bg-white px-3.5 py-3 shadow-card">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-brand/15 bg-canvas font-mono text-xs font-black text-brand">
-                {String(index + 1).padStart(2, '0')}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-mono text-[0.8rem] font-bold text-ink">
-                  {command.command}
-                </span>
-                <span className="block text-xs text-muted">{t(rung.what)}</span>
-              </span>
-              {rung.tracker === 'jira' ? (
-                <JiraMark className="h-[18px] w-[18px] shrink-0" />
-              ) : (
-                <GithubMark className="h-[18px] w-[18px] shrink-0 text-ink" />
-              )}
-            </div>
-          </Reveal>
-        )
-      })}
-
-      <Reveal order={LADDER_FIRST_ORDER + 1 + HERO_LADDER.length} className={RISE}>
-        <div className="flex items-center gap-3 px-1">
-          <span className="h-px flex-1 bg-hairline" />
-          <span className="flex items-center gap-2 font-display text-xl font-black tracking-tight text-ink">
-            {/* The check is the only green on the page above the fold, which is what
-                makes it read as "done" rather than as decoration. */}
-            <span className="grid h-6 w-6 place-items-center rounded-full bg-green text-white shadow-ring-green">
-              <Check className="h-3.5 w-3.5" strokeWidth={3} />
+      {ORBIT.map((node, index) => (
+        <Reveal
+          key={node.title}
+          order={ORBIT_FIRST_ORDER + 1 + index}
+          className={`absolute -translate-x-1/2 -translate-y-1/2 ${node.position}`}
+        >
+          <div className="flex items-center gap-2.5 whitespace-nowrap rounded-xl border border-hairline bg-white px-3 py-2 shadow-card">
+            {node.icon}
+            <span className="leading-tight">
+              <span className="block text-[0.8rem] font-bold text-ink">{t(node.title)}</span>
+              <span className="block text-[0.7rem] font-semibold text-muted">{t(node.desc)}</span>
             </span>
-            {t('site.hero.ladderEnd')}
+          </div>
+        </Reveal>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * How long the figure stays in a mood after the LAST click. Long enough to read a line,
+ * short enough that the ladder can be climbed again a moment later.
+ */
+const CALM_MS = 1800
+
+/**
+ * THE LADDER. How many clicks in one burst earn which reaction — each rung is the
+ * lowest count that reaches it, and the figure stays on a rung until the next one or
+ * until the burst ends. The first two clicks get the original "Aïe"; the owner asked
+ * for what comes after ("lorsqu'on spam click sur lui").
+ */
+const MOODS = [
+  { from: 8, line: 'site.hero.dance', motion: 'animate-hero-dance' },
+  { from: 5, line: 'site.hero.enough', motion: 'animate-hero-sulk' },
+  { from: 3, line: 'site.hero.stop', motion: 'animate-hero-shake' },
+  { from: 1, line: 'site.hero.ouch', motion: 'animate-hero-flinch' },
+] as const satisfies readonly { from: number; line: MessageKey; motion: string }[]
+
+/**
+ * The Claude Code figure at the centre of the orbit, on nothing and under nothing: the
+ * label that named it over its head went at the owner's request ("retire le logo claude
+ * code au-dessus"), and the `Integrations` row already says whose figure this is. 200px
+ * wide, which is most of the 366px ring — the owner asked for it bigger twice, and it
+ * is the one thing in the drawing meant to be looked at rather than read. It hops (`animate-hero-hop`, on the outer wrapper, from the feet), one eye
+ * winks (`animate-hero-wink`, on that eye), both eyes glance about (`animate-hero-look`,
+ * on the group that holds them), and clicks move it up `MOODS`.
+ *
+ * THE CLICK IS A BUTTON, so it is reachable from the keyboard and announced as what it
+ * is; its label is the product's name, because that is what the figure is. `clicks`
+ * counts the burst rather than holding a boolean: it is the `key` on the mood wrapper,
+ * so every click remounts it and the one-shots (flinch, shake, sulk) replay from their
+ * first frame instead of being ignored; the dance is `infinite` and a remount only
+ * restarts the bar. The bubble is keyed on the MOOD, so it pops once per rung and holds
+ * while the clicks keep coming, rather than blinking on every one. `CALM_MS` after the
+ * last click, everything resets — the figure turns back round, the bubble goes.
+ *
+ * THE GEOMETRY IS THE BITMAP'S: `/img/claudecode-color.png` is 640px on a 16-unit
+ * grid — body 2→14 across and 3.25→11.25 down, arms the full width at 7.25→9.25, four
+ * legs one unit wide at 3, 5, 10 and 12, eyes one unit wide at 4 and 11 from 5.4 to
+ * 7.3. The eyes are holes in the bitmap; here they are white rects over the body,
+ * which on the hero's blue wash reads as the whites of two eyes — and gives the wink
+ * a lid to lower.
+ */
+function ClaudeFigure() {
+  const { t } = useT()
+  const [clicks, setClicks] = useState(0)
+
+  useEffect(() => {
+    if (clicks === 0) return
+    const timer = window.setTimeout(() => setClicks(0), CALM_MS)
+    return () => window.clearTimeout(timer)
+  }, [clicks])
+
+  const mood = MOODS.find((m) => clicks >= m.from)
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        aria-label="Claude Code"
+        onClick={() => setClicks((count) => count + 1)}
+        className="block h-[200px] w-[200px] rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+      >
+        <span className="block h-full w-full origin-bottom animate-hero-hop motion-reduce:animate-none">
+          <span
+            key={clicks}
+            className={`block h-full w-full ${mood ? `${mood.motion} motion-reduce:animate-none` : ''}`}
+          >
+            <svg viewBox="0 0 16 16" className="h-full w-full" aria-hidden shapeRendering="crispEdges">
+              <g fill="#D97757">
+                <rect x="2" y="3.25" width="12" height="8" />
+                <rect x="0" y="7.25" width="16" height="2" />
+                <rect x="3" y="11.25" width="1" height="2" />
+                <rect x="5" y="11.25" width="1" height="2" />
+                <rect x="10" y="11.25" width="1" height="2" />
+                <rect x="12" y="11.25" width="1" height="2" />
+              </g>
+              <g fill="#fff" className="animate-hero-look motion-reduce:animate-none">
+                <rect x="4" y="5.4" width="1" height="1.9" />
+                <rect
+                  x="11"
+                  y="5.4"
+                  width="1"
+                  height="1.9"
+                  className="animate-hero-wink motion-reduce:animate-none"
+                  style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+                />
+              </g>
+            </svg>
           </span>
-        </div>
-      </Reveal>
+        </span>
+      </button>
+
+      {mood && (
+        // The bubble: a pixel one, so square corners, a hard 2px ink border and a tail
+        // built from two squares stepping down to the figure's head. `role="status"`
+        // so a screen reader hears the joke too. `steps(1)` on `hero-ouch` pops it in
+        // frame by frame. ANCHORED BY ITS LEFT EDGE, where the tail is: the four lines
+        // are different lengths, and a bubble pinned by its right edge walked its tail
+        // across the figure's head as the line grew. Pinned here, the tail stays put and
+        // the bubble grows away from the figure.
+        <span
+          key={mood.line}
+          role="status"
+          className="absolute -top-5 left-[68%] origin-bottom-left animate-hero-ouch whitespace-nowrap border-2 border-ink bg-white px-2.5 py-1 font-mono text-sm font-black tracking-tight text-ink"
+        >
+          {t(mood.line)}
+          <span aria-hidden className="absolute -bottom-[6px] left-1 h-1 w-1 bg-ink" />
+          <span aria-hidden className="absolute -bottom-[10px] left-0 h-1 w-1 bg-ink" />
+        </span>
+      )}
     </div>
   )
 }

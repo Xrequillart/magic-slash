@@ -217,84 +217,100 @@ export const marketingEn = {
 
   // ── Hero ───────────────────────────────────────────────────────────────────
   /**
-   * THE WHOLE CYCLE NAMED BY ITS TWO ENDS, which is the change worth recording. The
-   * headline this replaces — "Your ideas become AI-powered features." — promised an
-   * outcome without saying what the product does to reach it, and "AI-powered" is a
-   * claim every tool in this market makes. An idea going in and a merged pull request
-   * coming out is the one sentence only this product can say.
+   * THE HEADLINE IS TWO SENTENCES, and the drawing beside it is the second half of the
+   * argument. `title` names the cycle by its two ends — an idea in, a merged pull request
+   * out — which is the one sentence only this product can say. `titleTail` says what is
+   * left for the reader to do, and it is deliberately the ONLY verb the hero gives them:
+   * the product's actual claim is that everything between the two ends runs without a
+   * hand on it, and the one thing it still asks for is a decision.
    *
-   * No `<br>` any more: the old line carried one because it ran to two lines at `md`
-   * and broke in the wrong place. This one is five words and breaks nowhere.
+   * It replaced "Your Jira ticket becomes a merged PR. All you said was `/magic:start`."
+   * in the rewrite the product owner asked for ("elle parle du workflow, mais ne parle
+   * pas des specs créées") — that line started at a ticket that already existed, and the
+   * idea-to-spec-to-tickets step, the product's most distinctive one, was nowhere in it.
+   * The command token that closed it went with it: the hero no longer spells a command
+   * anywhere, and the orbit beside it is drawn as ARTEFACTS, not as the commands that
+   * produce them.
+   *
+   * Two keys, and a `<br>` inside the first: the owner wants "à la PR mergée." on a line
+   * of its own, and where a sentence breaks is copy in a language and not layout — the
+   * French and the English do not break at the same word. The component renders it
+   * through `RichText`; the second sentence is plain text on the line after.
    */
-  'site.hero.title': 'Your Jira ticket becomes a merged PR.',
+  'site.hero.title': 'From idea<br>to merged PR.',
+  'site.hero.titleTail': 'All you do is make the calls.',
   /**
-   * THE HEADLINE'S SECOND SENTENCE, minus its last word. The drawing closes it with the
-   * command itself and a full stop — `<code>/magic:start</code>.` — because a command is
-   * a token the product defines (`lib/commands.ts`) and never a string a translator can
-   * edit; `lib/skillsBand.test.ts` states that rule for the band below. So the catalogue
-   * stops where the token starts.
-   */
-  'site.hero.titleTail': 'All you said was',
-  /**
-   * The pill above the headline. It names the three things the reader already knows —
-   * Claude Code, Jira, GitHub — beside their marks, so the product is placed in a second
-   * before a word of the pitch is read. The count is the PRODUCT's — eight, the same
-   * figure the subtitle and the skills band use, and the number of skills you install.
-   * The ladder beside it draws seven of them, because `/magic:continue` is a way back
-   * INTO the cycle rather than a step of it; nothing in the copy counts the drawing.
-   */
-  'site.hero.eyebrow': '8 Claude Code skills + a desktop app',
-  /**
-   * WHAT THE HEADLINE CANNOT SAY: the headline is one run, start to finish, and the
-   * product's actual claim is that there are SEVERAL of them going at once. So this
-   * line carries the three things the reader has to be told for that to land — the
-   * parallelism, the single place it happens in, and what they stop having to do.
+   * The line under the headline: the six things that surround the code, then who does
+   * them. "Eight" is the PRODUCT's count — the number of skills you install — and it is
+   * the one place the hero says it; the pill that used to carry it ("8 Claude Code
+   * skills + a desktop app") is retired, see `eyebrow` below. The French is the owner's
+   * own wording ("une app vous simplifie la vie"), and this follows it: the app's half of
+   * the sentence names a feeling rather than a feature, on purpose, because the six
+   * nouns before it have already done the explaining.
    *
-   * "AGENTS" AND NOT "TASKS" in the first clause, which is what makes the second one
-   * parse. "Who is working on what" over a line about tasks reads as teammates and a
-   * standup; over a line about agents it reads as the machine keeping the ledger. The
-   * word is already the site's (`site.features.desktopDesc` — "up to twelve agents at
-   * once"), and it is the desktop app's own, in the sidebar's AGENTS section.
-   *
-   * "SO YOU DON'T HAVE TO" is the mental-load half, and it is deliberately the LAST
-   * thing said rather than the claim the line opens on. A hero that opens on relief
-   * has to describe the burden first, and this page has one line to spend.
-   *
-   * It replaced two earlier jobs in two passes: "The app for product builders." named
-   * the AUDIENCE, then a describe/build/approve line named the MECHANISM. The mechanism
-   * went back to the headline's two ends when the "how it works" band was cut — see
-   * `app/(marketing)/page.tsx` — which is what freed this line for the argument above.
+   * "Worktree" and not "branch": it is what `/magic:start` actually makes, and the word
+   * the reader who knows git will recognise as the deliberate choice it is.
    */
   'site.hero.subtitle':
-    '8 skills that chain the spec, the branch, the commits, the pull request, the review and the closed ticket. An app that shows you the tasks to pick up and the agents at work. You make the calls.',
-  'site.hero.cta': 'Start free',
+    'The spec, the tickets, the worktree, the commits, the review, the closed ticket: eight skills handle everything around the code. And one app makes your life easier.',
   /**
-   * RETIRED WITH THE BAND IT POINTED AT. It scrolled to `#how`, and that section was
-   * cut by the product owner — there is no anchor left to reach. Unreferenced, and kept
-   * in the catalogues like every other family this rebuild retired.
-   */
-  'site.hero.howCta': 'See how it works',
-  /**
-   * The hero's SECOND button — `secondary`, the safe alternative beside the blue
-   * primary. It points at `DESKTOP_DOWNLOAD_URL`, which is the build itself rather
-   * than a releases page, so the label names the platform: an arm64 .dmg is the only
-   * artifact the release workflow publishes.
+   * The two buttons. `downloadCta` is `primary` and opens `/download` — the page, not
+   * the .dmg, so the reader meets the prerequisites before the file lands. It is also
+   * read by `/workflow` and `/desktop` (`lib/workflowPage.test.ts` pins it), so it
+   * stays under this key. `workflowCta` is `secondary` and opens `/workflow`, where the
+   * six artefacts the orbit draws are set out at length.
    */
   'site.hero.downloadCta': 'Download for Mac',
-  /**
-   * The SECOND button now, beside the download. It opens `/workflow`, which is the page
-   * that sets the steps out in full; the ladder on the right of the hero is the short
-   * version of it, so the button says where the long one is.
-   */
   'site.hero.workflowCta': 'See the workflow',
   /**
-   * THE LADDER — the seven cards on the hero's right, and the two lines that frame them.
-   * The frame is the whole pitch in four words: what you come in with, what you leave
-   * with. Each card is one command (drawn from `lib/commands.ts`, never from here) and
-   * the one thing it produces, kept to about five words so seven of them fit beside the
-   * copy. The tracker's mark at the card's right end says WHERE that thing lands — Jira
-   * for the two ends of the cycle, GitHub for everything between.
+   * THE ORBIT — six artefacts around the Claude Code mark, each a card with a title and
+   * one line under it. They are the six nouns of the subtitle, drawn, in the order a
+   * ticket meets them. The six titles are the product's vocabulary and spelled the same
+   * in both languages, so all six are listed in `i18n.test.ts`; the six description
+   * lines are translated. "PAY-142" and "#318" are the same invented ticket and PR the rest of
+   * the site's mockups use, so a reader who scrolls meets the same feature twice.
    */
+  'site.hero.orbitSpecTitle': 'Spec',
+  'site.hero.orbitSpecDesc': 'written and reviewed',
+  'site.hero.orbitEpicTitle': 'Epic + 3 stories',
+  'site.hero.orbitEpicDesc': 'PAY-142, created in Jira',
+  'site.hero.orbitWorktreeTitle': 'Worktree + commits',
+  'site.hero.orbitWorktreeDesc': 'feature/pay-142, atomic',
+  'site.hero.orbitPrTitle': 'PR #318',
+  'site.hero.orbitPrDesc': 'opened, ticket updated',
+  'site.hero.orbitReviewTitle': 'Review',
+  'site.hero.orbitReviewDesc': '3 threads resolved and pushed',
+  'site.hero.orbitDoneTitle': 'Done',
+  'site.hero.orbitDoneDesc': 'merged, ticket closed',
+  /**
+   * What the mark says when it is clicked — a pixel speech bubble, gone again a second
+   * later. It is the one joke on the page and the owner's ("une bulle style pixel qui
+   * dit Aïe !!"); the English keeps the double exclamation mark because that is the
+   * joke's punctuation, not the sentence's.
+   */
+  'site.hero.ouch': 'Ouch!!',
+  /**
+   * AND WHAT IT SAYS WHEN THE CLICKS KEEP COMING. Four moods by click count, and
+   * `ClaudeFigure` says which count earns which: the flinch above for the first two,
+   * then a head-shake and "Stop it", then it turns its back and says so, then it gives
+   * up and dances. The count resets after a couple of quiet seconds, so the joke can be
+   * told again. The French lines are the owner's ("Arrêtez !!!", "Ça suffit maintenant
+   * !"); the English keeps their punctuation.
+   */
+  'site.hero.stop': 'Stop it!!!',
+  'site.hero.enough': 'That’s enough now!',
+  'site.hero.dance': 'Fine, fine. I’ll dance.',
+  /**
+   * RETIRED, all of the below, and kept like every other family this page has shed —
+   * nothing tests for an unused key, and pruning one means editing `i18n.test.ts`'s
+   * exact allow-list in lockstep. `eyebrow` was the pill above the headline; `cta` the
+   * login button before the download replaced it; `howCta` scrolled to a `#how` band
+   * that was cut; the `ladder*` and `skill*` keys were the seven command cards the
+   * orbit replaced.
+   */
+  'site.hero.eyebrow': '8 Claude Code skills + a desktop app',
+  'site.hero.cta': 'Start free',
+  'site.hero.howCta': 'See how it works',
   'site.hero.ladderStart': 'An idea?',
   'site.hero.ladderEnd': 'A merged PR',
   'site.hero.skillPlan': 'The spec, the epic, the stories',

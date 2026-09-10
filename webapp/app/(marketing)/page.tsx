@@ -212,7 +212,7 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 export const metadata: Metadata = {
   title: 'magic-slash',
   description:
-    'From idea to merged PR. Claude Code takes the ticket, writes the code, opens the PR.',
+    'From idea to merged PR. Eight Claude Code skills write the spec, create the tickets, open and review the PR. All you do is make the calls.',
 }
 
 export default function Home() {

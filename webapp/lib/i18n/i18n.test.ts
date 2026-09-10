@@ -248,6 +248,17 @@ describe('message catalogues', () => {
         // first prerequisite is the product's name.
         'site.downloadPage.reassureChip',
         'site.downloadPage.reqClaudeTitle',
+        // The homepage hero's orbit titles its six artefacts in the product's own words,
+        // and every one of them is spelled the same in French: "Spec", "Review",
+        // "Worktree", "Epic", "stories" and "commits" are what the skills and the app
+        // call them, "Done" is the Jira column, and "PR #318" is a label. The six
+        // description lines under them are real French.
+        'site.hero.orbitSpecTitle',
+        'site.hero.orbitEpicTitle',
+        'site.hero.orbitWorktreeTitle',
+        'site.hero.orbitPrTitle',
+        'site.hero.orbitReviewTitle',
+        'site.hero.orbitDoneTitle',
         // The hero mockup mirrors the app's own chrome, and these four labels are the
         // same word in French — "Skills" is the product's name for them, and AGENTS /
         // SESSION / Commits are borrowed whole, exactly as they are in the app.

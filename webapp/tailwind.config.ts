@@ -1678,6 +1678,98 @@ const config: Config = {
           '0%, 34%': { opacity: '1' },
           '39%, 100%': { opacity: '0' },
         },
+        /**
+         * THE HERO'S MARK — the Claude Code pixel figure at the centre of the orbit
+         * (`components/site/home/HeroSection.tsx`). Three things it does, on three
+         * keyframe sets, because they run on three different elements and clocks:
+         *
+         *   • `hero-hop`: the whole figure. One hop in a 7s loop, and the loop is mostly
+         *     stillness — the figure squats (scaleY .9) for a beat, leaves the ground for
+         *     ~.3s, lands with a small squash and settles. Everything from 22% on is rest,
+         *     so the hop reads as a thing it DOES now and then rather than a bounce it is
+         *     stuck in. `transform-origin` is set to the bottom edge at the call site.
+         *   • `hero-wink`: ONE eye, scaled shut and open again. The eye is a white rect on
+         *     the orange body, so `scaleY(.1)` on it is a lid coming down. It closes twice
+         *     quickly around 60% of a 5s loop — a wink and not a blink, because one eye
+         *     — and the two loops (7s and 5s) drift against each other so the hop and the
+         *     wink almost never land together.
+         *   • `hero-flinch`: on click, once. The figure jerks back 6° and 4px, then
+         *     overshoots forward and settles — the "Aïe" the bubble says, drawn.
+         *   • `hero-ouch`: the bubble itself, once. A pixel bubble should not ease in: it
+         *     pops from .6 to 1.06 to 1 in three hard steps (`steps(1)` on the shorthand),
+         *     so it appears frame by frame the way the figure it belongs to was drawn.
+         */
+        'hero-hop': {
+          '0%, 6%': { transform: 'translateY(0) scaleY(1)' },
+          '9%': { transform: 'translateY(0) scaleY(0.9)' },
+          '13%': { transform: 'translateY(-16px) scaleY(1.06)' },
+          '17%': { transform: 'translateY(0) scaleY(0.94)' },
+          '20%': { transform: 'translateY(0) scaleY(1.02)' },
+          '22%, 100%': { transform: 'translateY(0) scaleY(1)' },
+        },
+        'hero-wink': {
+          '0%, 58%': { transform: 'scaleY(1)' },
+          '61%': { transform: 'scaleY(0.1)' },
+          '64%': { transform: 'scaleY(1)' },
+          '67%': { transform: 'scaleY(0.1)' },
+          '70%, 100%': { transform: 'scaleY(1)' },
+        },
+        'hero-flinch': {
+          '0%': { transform: 'rotate(0) translateY(0)' },
+          '25%': { transform: 'rotate(-6deg) translateY(4px)' },
+          '60%': { transform: 'rotate(3deg) translateY(-2px)' },
+          '100%': { transform: 'rotate(0) translateY(0)' },
+        },
+        'hero-ouch': {
+          '0%': { opacity: '0', transform: 'scale(0.6)' },
+          '34%': { opacity: '1', transform: 'scale(1.06)' },
+          '67%, 100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        /**
+         * THE REST OF THE FIGURE'S REPERTOIRE, added when the owner asked for more than a
+         * flinch ("lorsqu'on spam click sur lui il dit Arrêtez !!!"). One idle loop and
+         * three click moods — `ClaudeFigure` in `HeroSection.tsx` says which click count
+         * earns which:
+         *
+         *   • `hero-look`: both eyes together, an 11s idle loop. They glance right, hold,
+         *     glance left, hold, come back — the holds are most of the cycle, so it reads
+         *     as looking at something rather than as eyes rolling. Runs on the `<g>` that
+         *     holds the eyes; the wink runs on one eye inside it, so the two compose.
+         *   • `hero-shake`: the head-shake "no", five swings of 6px in .45s, once per
+         *     click. Third and fourth clicks.
+         *   • `hero-sulk`: the figure turns its back — `scaleX(-1)` — with a small hop on
+         *     the way round, and STAYS turned (`forwards`) until the mood is over. Fifth to
+         *     seventh clicks.
+         *   • `hero-dance`: it gives up and dances, `infinite` for as long as the mood
+         *     lasts: a bounce with a tilt each way and a half-turn in the middle, 1.2s a
+         *     bar. Eighth click and beyond.
+         */
+        'hero-look': {
+          '0%, 18%': { transform: 'translateX(0)' },
+          '22%, 40%': { transform: 'translateX(0.6px)' },
+          '44%, 62%': { transform: 'translateX(-0.6px)' },
+          '66%, 100%': { transform: 'translateX(0)' },
+        },
+        'hero-shake': {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '20%': { transform: 'translateX(-6px)' },
+          '40%': { transform: 'translateX(6px)' },
+          '60%': { transform: 'translateX(-5px)' },
+          '80%': { transform: 'translateX(4px)' },
+        },
+        'hero-sulk': {
+          '0%': { transform: 'scaleX(1) translateY(0)' },
+          '50%': { transform: 'scaleX(0) translateY(-10px)' },
+          '100%': { transform: 'scaleX(-1) translateY(0)' },
+        },
+        'hero-dance': {
+          '0%, 100%': { transform: 'translateY(0) rotate(0) scaleX(1)' },
+          '20%': { transform: 'translateY(-14px) rotate(-10deg) scaleX(1)' },
+          '40%': { transform: 'translateY(0) rotate(0) scaleX(1)' },
+          '50%': { transform: 'translateY(-8px) rotate(0) scaleX(-1)' },
+          '60%': { transform: 'translateY(0) rotate(0) scaleX(-1)' },
+          '80%': { transform: 'translateY(-14px) rotate(10deg) scaleX(-1)' },
+        },
       },
       // `backwards` and not `both`: the fill has to hold the FROM state through the
       // stagger's delay, but once the animation is over the element belongs to the
@@ -1827,6 +1919,23 @@ const config: Config = {
         'secret-reveal-3': 'secret-reveal-3 7s ease-in infinite',
         'secret-reveal-4': 'secret-reveal-4 7s ease-in infinite',
         'secret-reveal-5': 'secret-reveal-5 7s ease-in infinite',
+        // The hero's mark: see the four keyframe sets above. The hop and the wink are
+        // `infinite` on periods that share no divisor (7s, 5s), so they beat against
+        // each other for 35s before repeating an alignment. The two one-shots are
+        // `forwards` and mounted on click — the element appears with the animation on
+        // it, so there is nothing to restart.
+        'hero-hop': 'hero-hop 7s ease-in-out infinite',
+        'hero-wink': 'hero-wink 5s linear infinite',
+        'hero-flinch': 'hero-flinch 0.45s ease-out forwards',
+        'hero-ouch': 'hero-ouch 0.3s steps(1, end) forwards',
+        // The repertoire: see the keyframes. `hero-look` is a third idle period (11s)
+        // sharing no divisor with the hop's 7s or the wink's 5s. The three moods are
+        // mounted with their class when the click count reaches them, and keyed on the
+        // count so each click replays the one-shots from their first frame.
+        'hero-look': 'hero-look 11s ease-in-out infinite',
+        'hero-shake': 'hero-shake 0.45s ease-in-out forwards',
+        'hero-sulk': 'hero-sulk 0.5s ease-in-out forwards',
+        'hero-dance': 'hero-dance 1.2s ease-in-out infinite',
       },
     },
   },

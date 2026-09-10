@@ -99,20 +99,45 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.downloadPage.allReleases': 'Toutes les versions sur GitHub',
 
   // ── Hero ───────────────────────────────────────────────────────────────────
-  'site.hero.title': 'Votre ticket Jira devient une PR mergée.',
-  // La commande n'est pas dans la phrase : le dessin la pose lui-même, avec le point.
-  // Voir la note côté anglais.
-  'site.hero.titleTail': 'Vous avez juste dit',
-  'site.hero.eyebrow': '8 skills Claude Code + une app desktop',
+  // Deux phrases, deux clés : le composant les pose sur deux lignes et grise la seconde.
+  // « Trancher » est le seul verbe que la hero laisse au lecteur, et c'est voulu : tout
+  // le reste tourne sans lui. Voir la note côté anglais.
+  // Le <br> est de la copie : « à la PR mergée. » sur sa propre ligne, à la demande de Xavier.
+  'site.hero.title': 'De l’idée<br>à la PR mergée.',
+  'site.hero.titleTail': 'Vous n’avez plus qu’à trancher.',
+  // Formulation de Xavier, reprise telle quelle. « Worktree », « commits », « review »,
+  // « spec » restent en anglais : c'est le vocabulaire du métier, celui que l'app emploie.
   'site.hero.subtitle':
-    '8 skills qui enchaînent spec, tickets, worktree, commits, pull request, review et clôture du ticket. Une app qui vous montre les tâches à prendre et les agents qui tournent. Vous, vous arbitrez.',
-  'site.hero.cta': 'Commencer gratuitement',
-  'site.hero.howCta': 'Voir comment ça marche',
+    'La spec, les tickets, le worktree, les commits, la review, le ticket fermé : tout ce qui entoure le code, huit skills s’en occupent. Et une app vous simplifie la vie.',
   'site.hero.downloadCta': 'Télécharger pour Mac',
   'site.hero.workflowCta': 'Voir le workflow',
-  // L'échelle à droite de la hero : ce qu'on apporte, ce qu'on repart avec, et les sept
-  // étapes entre les deux. « Spec », « epic », « stories », « commits », « PR », « review »
-  // restent en anglais : c'est le vocabulaire du métier, celui que l'app emploie.
+  // L'orbite : six artefacts autour du logo Claude Code, dans l'ordre où un ticket les
+  // rencontre. Les six titres sont le vocabulaire du métier, identiques dans les deux
+  // langues et listés dans `i18n.test.ts` ; les six lignes de description sont traduites.
+  'site.hero.orbitSpecTitle': 'Spec',
+  'site.hero.orbitSpecDesc': 'écrite et relue',
+  'site.hero.orbitEpicTitle': 'Epic + 3 stories',
+  'site.hero.orbitEpicDesc': 'PAY-142, créées dans Jira',
+  'site.hero.orbitWorktreeTitle': 'Worktree + commits',
+  'site.hero.orbitWorktreeDesc': 'feature/pay-142, atomiques',
+  'site.hero.orbitPrTitle': 'PR #318',
+  'site.hero.orbitPrDesc': 'ouverte, ticket mis à jour',
+  'site.hero.orbitReviewTitle': 'Review',
+  'site.hero.orbitReviewDesc': '3 fils résolus et repoussés',
+  'site.hero.orbitDoneTitle': 'Done',
+  'site.hero.orbitDoneDesc': 'mergée, ticket fermé',
+  // Ce que dit le logo quand on clique dessus. La blague est de Xavier, ponctuation comprise.
+  'site.hero.ouch': 'Aïe !!',
+  // Quand on insiste : les deux premières répliques sont de Xavier, la troisième ferme la
+  // séquence avant que ça reparte de zéro.
+  'site.hero.stop': 'Arrêtez !!!',
+  'site.hero.enough': 'Ça suffit maintenant !',
+  'site.hero.dance': 'Bon, bon. Je danse.',
+  // Retirées, conservées comme toutes les familles que la page a abandonnées : voir la
+  // note côté anglais.
+  'site.hero.eyebrow': '8 skills Claude Code + une app desktop',
+  'site.hero.cta': 'Commencer gratuitement',
+  'site.hero.howCta': 'Voir comment ça marche',
   'site.hero.ladderStart': 'Une idée ?',
   'site.hero.ladderEnd': 'Une PR mergée',
   'site.hero.skillPlan': 'La spec, l’epic, les stories',
