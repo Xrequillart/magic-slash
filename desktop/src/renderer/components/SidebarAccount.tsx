@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { LogIn, Settings, AlertTriangle, CircleUserRound } from 'lucide-react'
+import { LogIn, Settings, AlertTriangle } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import { useAvatar } from '../hooks/useAvatar'
 import { useStore } from '../store'
+import { AccountAvatar } from './AccountAvatar'
 import { LoginScreen } from './LoginScreen'
 import { displayNameFromEmail } from '../utils/displayName'
 import { useT } from '../i18n'
@@ -20,6 +22,7 @@ import { useT } from '../i18n'
  */
 export function SidebarAccount({ shortcutKey }: { shortcutKey?: string }) {
   const { status } = useAuth()
+  const avatar = useAvatar()
   const t = useT()
   const config = useStore((s) => s.config)
   const openSettingsModal = useStore((s) => s.openSettingsModal)
@@ -77,7 +80,14 @@ export function SidebarAccount({ shortcutKey }: { shortcutKey?: string }) {
             : 'text-text-secondary hover:bg-text-secondary/10 hover:text-ink'
         }`}
       >
-        <CircleUserRound className="w-3.5 h-3.5 shrink-0" />
+        {/*
+          The account photo, or the same generic `CircleUserRound` this line has always
+          drawn when there is none. The `sidebar` variant is 14 px with no badge fill,
+          so the row is pixel-for-pixel what it was: same box, same `shrink-0`, same
+          `gap-2` from the button, and the icon keeps inheriting `currentColor` so it
+          still turns yellow with the rest of the row when no repository is configured.
+        */}
+        <AccountAvatar variant="sidebar" dataUrl={avatar} />
         <span className="truncate">{name}</span>
         {shortcutKey && <span className="ml-auto text-xs opacity-50 shrink-0">{shortcutKey}</span>}
         <WarningBadge />
