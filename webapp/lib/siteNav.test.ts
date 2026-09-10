@@ -10,8 +10,6 @@ import {
   DESKTOP_PATH,
   DOWNLOAD_PATH,
   FAQ_NAV_ROW,
-  PLACEHOLDER_NOTE,
-  PLACEHOLDER_PAGES,
   PRODUCT_MENU,
   PRODUCT_MENU_GROUPS,
   PRODUCT_MENU_LABEL,
@@ -53,13 +51,8 @@ describe('the site header nav', () => {
   it('names keys the catalogues actually carry', () => {
     // Both catalogues, not just English: `i18n.test.ts` asserts French has every English
     // key, so this could rest on that — but the failure it would produce over there is
-    // "fr is missing site.nav.cloud", which does not say who wanted it. Here it does.
-    const keys = [
-      PRODUCT_MENU_LABEL,
-      PLACEHOLDER_NOTE,
-      ...ALL_NAV_ROWS.map((row) => row.label),
-      ...Object.values(PLACEHOLDER_PAGES).flatMap((page) => [page.title, page.lead]),
-    ]
+    // "fr is missing site.nav.workflow", which does not say who wanted it. Here it does.
+    const keys = [PRODUCT_MENU_LABEL, ...ALL_NAV_ROWS.map((row) => row.label)]
 
     for (const key of keys) {
       expect(site(key), `en.${key}`).toBeTruthy()
@@ -101,29 +94,29 @@ describe('the site header nav', () => {
     expect(DESKTOP_PATH).toBe('/desktop')
   })
 
-  it('leaves `/desktop` out of the placeholders, because it is a real page now', () => {
-    // The homepage's app band moved onto it whole, so it heads itself with
-    // `site.desktop.title` and renders `DesktopContent` — no `PlaceholderContent`, and no
-    // promise of scope. The row is written out in `PRODUCT_MENU_GROUPS` for that reason;
-    // this is what stops it drifting back into a table it no longer belongs in, which
-    // would put "Page in preparation" under a finished page.
-    expect(Object.values(PLACEHOLDER_PAGES).map((page) => page.path)).not.toContain(DESKTOP_PATH)
+  it('writes every row a page of its own, with no placeholder left standing', () => {
+    // THERE WAS A TABLE OF PAGES THAT SHIPPED AHEAD OF THEIR CONTENT — `PLACEHOLDER_PAGES`
+    // — and a `PlaceholderContent` band that admitted on screen that a page was
+    // unwritten. Both are gone with `/cloud`, the last row that used them, so what used
+    // to be two assertions about which rows had ESCAPED that table is one assertion that
+    // no row is in it: every page this menu opens is written.
+    //
+    // READ AS TEXT rather than as an export, because the export no longer exists. A
+    // `PlaceholderContent` reintroduced under a finished page would put "Coming soon"
+    // beneath `/desktop`'s release notes, and nothing on the route would object.
+    for (const row of ALL_NAV_ROWS) {
+      const page = readFileSync(webapp(`../app/(marketing)${row.href}/page.tsx`), 'utf8')
+      expect(page, `${row.href} is written`).not.toContain('PlaceholderContent')
+    }
 
-    const page = readFileSync(webapp(`../app/(marketing)${DESKTOP_PATH}/page.tsx`), 'utf8')
-    expect(page).toContain('<DesktopContent />')
-    expect(page).not.toContain('PlaceholderContent')
-  })
-
-  it('leaves `/download` out of the placeholders too, now that it hands out the app', () => {
-    // Same argument as `/desktop` above: the page has a button, the prerequisites and
-    // the latest release on it (`DownloadContent`), so "Page in preparation" under it
-    // would be a lie. The row is written out in `PRODUCT_MENU_GROUPS`; this stops it
-    // drifting back into the table.
-    expect(Object.values(PLACEHOLDER_PAGES).map((page) => page.path)).not.toContain(DOWNLOAD_PATH)
-
-    const page = readFileSync(webapp(`../app/(marketing)${DOWNLOAD_PATH}/page.tsx`), 'utf8')
-    expect(page).toContain('<DownloadContent')
-    expect(page).not.toContain('PlaceholderContent')
+    // And the two pages the homepage handed its own bands to still render them, which is
+    // what makes the loop above a check on their CONTENT rather than on their absence.
+    expect(
+      readFileSync(webapp(`../app/(marketing)${DESKTOP_PATH}/page.tsx`), 'utf8'),
+    ).toContain('<DesktopContent />')
+    expect(
+      readFileSync(webapp(`../app/(marketing)${DOWNLOAD_PATH}/page.tsx`), 'utf8'),
+    ).toContain('<DownloadContent')
   })
 
   it('draws every row with a glyph and a family colour, the bar\'s own two included', () => {
@@ -171,7 +164,6 @@ describe('the site header nav', () => {
     expect(Object.keys(siteNav)).not.toContain('HELP_MENU')
     expect(Object.keys(siteNav)).not.toContain('HELP_MENU_LABEL')
     expect(Object.keys(siteNav)).not.toContain('STORY_NAV_ROW')
-    expect(Object.keys(PLACEHOLDER_PAGES)).not.toContain('bestPractices')
     expect(existsSync(webapp('../app/(marketing)/best-practices/page.tsx'))).toBe(false)
     expect(existsSync(webapp('../app/(marketing)/story/page.tsx'))).toBe(false)
 
@@ -305,18 +297,34 @@ describe('the site header nav', () => {
     expect(new Set(labels).size, labels.join(', ')).toBe(labels.length)
   })
 
-  it('says out loud that the unwritten page is a placeholder', () => {
-    // The routes shipped with the menu because a row pointing nowhere 307s to a login
-    // form — such a page is thin ON PURPOSE, and `PlaceholderContent` is the thing that
-    // admits it on screen. A page rewritten for real drops that component, and this
-    // assertion with it; a page left thin keeps both. One entry is left in the table
-    // (`/cloud`), and this still walks it by name so the next one is covered too.
-    for (const [name, page] of Object.entries(PLACEHOLDER_PAGES)) {
-      const file = readFileSync(webapp(`../app/(marketing)${page.path}/page.tsx`), 'utf8')
-      expect(file, `${name} renders PlaceholderContent`).toContain('<PlaceholderContent')
-      expect(file, `${name} reads its copy from PLACEHOLDER_PAGES`).toContain(
-        `PLACEHOLDER_PAGES.${name}`,
-      )
+  it('has retired the cloud page, its row and the apparatus behind it', () => {
+    // DELETED BY REQUEST, when the owner stopped selling the cloud side. Four halves,
+    // and each is silent on its own: a route nobody links to, an export nothing renders,
+    // a catalogue key with no call site, and a redirect nobody wrote.
+    //
+    // THE APPARATUS IS THE PART WORTH PINNING. `/cloud` was the last page that shipped
+    // ahead of its content, so `PLACEHOLDER_PAGES`, `PLACEHOLDER_NOTE` and `SOON_NOTE`
+    // went with it — along with the `soon` field on a row, the pill the header and the
+    // footer drew from it, and `components/site/PlaceholderContent.tsx`. Reintroducing
+    // any one of them would be reintroducing a dress with nothing to wear it.
+    expect(Object.keys(siteNav)).not.toContain('PLACEHOLDER_PAGES')
+    expect(Object.keys(siteNav)).not.toContain('PLACEHOLDER_NOTE')
+    expect(Object.keys(siteNav)).not.toContain('SOON_NOTE')
+    expect(ALL_NAV_ROWS.map((row) => row.href)).not.toContain('/cloud')
+    expect(existsSync(webapp('../app/(marketing)/cloud/page.tsx'))).toBe(false)
+    expect(existsSync(webapp('../components/site/PlaceholderContent.tsx'))).toBe(false)
+
+    for (const gone of ['site.nav.cloud', 'site.cloudPage.title', 'site.pageSoon.note']) {
+      expect(site(gone), `en.${gone}`).toBeUndefined()
+      expect(siteFr(gone), `fr.${gone}`).toBeUndefined()
     }
+
+    // AND IT IS RETIRED RATHER THAN SIMPLY GONE, which is the half `/best-practices`
+    // does not have: this page shipped, in the bar on every public page and behind a
+    // button on the homepage, so the path stays public and 308s to the homepage.
+    // `hostRouting.test.ts` owns the redirect itself; this pins that the two files agree.
+    const source = routing()
+    expect(source).toContain("'/cloud',")
+    expect(source).toContain("'/cloud': '/',")
   })
 })

@@ -4,7 +4,7 @@ import { SiteFooter } from '@/components/site/SiteFooter'
 
 /**
  * The public site's shell — the header and footer every public page shares: `/`,
- * `/features`, `/changelog`, `/faq`, `/workflow`, `/desktop`, `/download` and `/cloud`.
+ * `/features`, `/changelog`, `/faq`, `/workflow`, `/desktop` and `/download`.
  *
  * `marketing.css` IS NO LONGER IMPORTED HERE, and as of the Documentation page's
  * removal it is no longer imported ANYWHERE. It was the old static site's stylesheet,

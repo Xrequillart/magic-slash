@@ -31,7 +31,7 @@ import { useT } from '@/lib/i18n/useLanguage'
  * are: a borrowed colour inlined at a call site is one nobody can tell was chosen.
  *
  * `app-icon-desktop.png` is the icon that actually ships on the dock — the same file the
- * cloud family's plate and the homepage's closing CTA use. `rounded-[22%]`, which is the
+ * homepage's closing CTA uses. `rounded-[22%]`, which is the
  * corner macOS gives an app icon, rather than a radius from this site's scale: the icon's
  * artwork is a hard square, and the rounding is the operating system's.
  *

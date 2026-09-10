@@ -314,13 +314,14 @@ export type NavDropdownItem = {
   tone?: SiteNavTone
   /** Draws the glyph on a white plate instead of bare — see `POPOVER_TILE`. */
   tile?: boolean
-  /** A pill beside the label, already translated: the page is announced, not written. */
-  soon?: string
 }
 
-/** The "coming soon" pill: `Badge`'s accent tone at the size a menu row can carry. */
-export const SOON_PILL =
-  'ml-auto shrink-0 rounded-full bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent'
+/**
+ * THERE WAS A `soon` PILL HERE — a field on this type and a `SOON_PILL` class beside it,
+ * drawn at the end of a row whose page was announced and not written. `/cloud` was the
+ * only row that ever carried it, and it went with that page; `lib/siteNav.ts` records
+ * what else went with it. A pill with no row to sit on is a dress nobody can see.
+ */
 
 export function NavDropdown({
   label,
@@ -428,7 +429,6 @@ export function NavDropdown({
                     <Glyph className={`h-4 w-4 shrink-0 ${tone}`} aria-hidden />
                   )}
                   {item.label}
-                  {item.soon && <span className={SOON_PILL}>{item.soon}</span>}
                 </Link>
               )
             })}

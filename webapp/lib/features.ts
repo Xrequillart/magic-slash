@@ -75,11 +75,9 @@ export type FeatureIcon =
   | 'Activity'
   | 'AppWindow'
   | 'Bell'
-  | 'ClipboardList'
   | 'Columns'
   | 'Gauge'
   | 'GitBranch'
-  | 'FolderGit2'
   | 'GitCommitHorizontal'
   | 'Github'
   | 'Languages'
@@ -92,12 +90,10 @@ export type FeatureIcon =
   | 'RefreshCw'
   | 'ScrollText'
   | 'Search'
-  | 'Settings2'
   | 'ShieldCheck'
   | 'SquareTerminal'
   | 'Ticket'
   | 'UserRound'
-  | 'Users'
 
 /**
  * The titles that are NOT copy — a product's own name, or a command as it is typed.
@@ -622,19 +618,23 @@ const WORKFLOW_FEATURES: readonly Feature[] = MAGIC_COMMANDS.map((command) => ({
 }))
 
 /**
- * THE SIX FAMILIES, IN READING ORDER, and the order is the content: `workflow` first
- * because the commands are what the product IS, then the two SURFACES it runs on — the
- * desktop app and the cloud beside it — then what it reaches outside itself, then what
- * you can change about it, then what it tells you back. Sorting these alphabetically
- * would open the page on "cloud".
+ * THE FIVE FAMILIES, IN READING ORDER, and the order is the content: `workflow` first
+ * because the commands are what the product IS, then the SURFACE it runs on — the
+ * desktop app — then what it reaches outside itself, then what you can change about it,
+ * then what it tells you back. Sorting these alphabetically would open the page on
+ * "cloud", which is a family this page no longer has.
  *
- * `cloud` SITS NEXT TO `desktop` FOR THAT REASON and not because the two were written
- * together. They are the product's two windows on one account: the app is where agents
- * run, the web is where an organization, its people and its plans are read. Putting the
- * cloud family further down — after the integrations, say — would have implied it is
- * something the product connects TO rather than something it IS.
+ * THERE WAS A SIXTH, AND IT SAT NEXT TO `desktop`: `cloud`, four rows about the team,
+ * the repositories it shares, the plans it writes and the settings that follow a person
+ * between machines. The two were the product's two windows on one account, which is why
+ * they were neighbours rather than why they were written together. It is gone by request
+ * — the owner stopped selling the cloud side, and the `/cloud` page and the homepage's
+ * cloud band went in the same story. Its rows are not redistributed into the families
+ * that remain: every one of them was a claim about the web app, and a claim about the
+ * web app filed under "Your conventions" or "What it tells you back" would be an
+ * inventory quietly describing a surface the site no longer presents.
  *
- * The five hand-written families draw their taxonomy from `lib/settingsCatalog.ts` — the
+ * The four hand-written families draw their taxonomy from `lib/settingsCatalog.ts` — the
  * sixteen groups the back-office reads `user_settings` through, which are themselves the
  * desktop app's own section titles. That is deliberate: a reader who scrolls this page
  * and then opens the app's Application tab should meet the same words for the same
@@ -1027,80 +1027,6 @@ export const FEATURE_FAMILIES: readonly FeatureFamily[] = [
         title: 'site.features.permissionModesTitle',
         description: 'site.features.permissionModesDesc',
         visual: 'launchModes',
-      },
-    ],
-  },
-  {
-    id: 'cloud',
-    anchor: 'cloud',
-    // "Cloud", flat, and it is the one family heading that is a NOUN rather than a
-    // sentence. The other five say what you get — "Connected to your tools", "Where
-    // every job stands" — and this one says where you are, because that is the fact a
-    // reader arriving from the desktop family needs first: there is a second surface,
-    // and it is the same account. The intro carries the sentence the heading no longer
-    // does.
-    //
-    // Identical in both catalogues on purpose, which costs a line in `i18n.test.ts`'s
-    // `SAME_IN_BOTH` — the same call `site.features.groupSkillsTitle` already makes.
-    title: 'site.features.groupCloudTitle',
-    intro: 'site.features.cloudDesc',
-    layout: 'rows',
-    features: [
-      // FOUR ROWS, AND THEY WERE SIX. The first draft had one row per SCREEN — the web
-      // app, the organization page, invitations, the team board, plans, shared repos —
-      // which is how the product is built and not how it is understood. Grouped by what
-      // a reader actually wants from the cloud, it is four things: the people, the
-      // repositories they share, the plans they write, and the settings that follow them
-      // between machines.
-      //
-      // The row that opened the six — "the same account, in a browser" — is gone as a
-      // row and lives in the family's intro instead. It answers a question about the
-      // WHOLE family ("is this a second product?"), so a line above all four says it
-      // once rather than a row saying it beside three others.
-      {
-        // The organization page and the invitation modal, which are one job: who is in
-        // your team and what they may do. The two roles are the app's own, and their
-        // descriptions in the catalogue are `org.role.member.help` and
-        // `org.role.admin.help` — the sentences that modal prints under each choice.
-        id: 'team',
-        icon: 'Users',
-        title: 'site.features.teamTitle',
-        description: 'site.features.teamDesc',
-      },
-      {
-        // MOVED OUT OF `configuration` when this family was written, and it earns its
-        // place here twice over now: the family it sat in is called "Your conventions"
-        // and every other row in it is a setting you choose, while this one is a SHARING
-        // MODEL — who owns a repository's conventions and who may change them.
-        //
-        // It has absorbed the team board, which was its own row: `/dashboard` lists
-        // shared repositories and the agents on each, so it is the same subject seen
-        // from the other end.
-        id: 'teamRepos',
-        icon: 'FolderGit2',
-        title: 'site.features.teamReposTitle',
-        description: 'site.features.teamReposDesc',
-      },
-      {
-        // MOVED OUT OF `insights`, where it read as a fact about storage — "a plan
-        // survives the window it was written in". True, and the smaller half: the specs
-        // are on the account so that `/plans` can list every one written on a repository
-        // you can see, your team's included.
-        id: 'planSessions',
-        icon: 'ClipboardList',
-        title: 'site.features.planSessionsTitle',
-        description: 'site.features.planSessionsDesc',
-      },
-      {
-        // THE ONE ROW THAT IS ABOUT THE DESKTOP APP AND STILL BELONGS HERE. Its settings
-        // have no local file — `CLAUDE.md` is explicit that Supabase is the single
-        // source of truth and that the app holds its config in memory, hydrated from the
-        // cloud — so where they LIVE is a cloud fact, and the `/application/*` pages are
-        // where they are edited from a browser.
-        id: 'appSettings',
-        icon: 'Settings2',
-        title: 'site.features.appSettingsTitle',
-        description: 'site.features.appSettingsDesc',
       },
     ],
   },

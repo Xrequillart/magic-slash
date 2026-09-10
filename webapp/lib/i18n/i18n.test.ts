@@ -216,18 +216,18 @@ describe('message catalogues', () => {
         'site.nav.documentationCategory',
         'site.nav.faq',
         'site.nav.changelog',
-        // Three of the Product menu's six rows. "Workflow", "Application" and "Cloud"
-        // are the product's own vocabulary and the words the French UI uses — the same
-        // borrowing as `site.features.groupCloudTitle` further down, and as the app's
-        // own `nav.application`. The menu's other three are real French: "Produit",
-        // "Toutes les fonctionnalités", "Télécharger".
+        // Two of the Product menu's five rows. "Workflow" and "Application" are the
+        // product's own vocabulary and the words the French UI uses — the same borrowing
+        // as the app's own `nav.application`. The menu's other three are real French:
+        // "Produit", "Toutes les fonctionnalités", "Télécharger".
         //
-        // A `site.nav.skills` was the fourth until its page was cut for duplicating
-        // `/workflow`. This list is EXACT rather than an inclusion, so the key had to
-        // leave the catalogues and this line with it.
+        // TWO NAMES HAVE LEFT THIS LINE, and both because their pages did. A
+        // `site.nav.skills` was here until `/skills` was cut for duplicating
+        // `/workflow`, and `site.nav.cloud` until `/cloud` was deleted with the whole
+        // cloud side of the site. This list is EXACT rather than an inclusion, so a key
+        // that leaves the catalogues has to leave this line in the same commit.
         'site.nav.workflow',
         'site.nav.application',
-        'site.nav.cloud',
         // The `/changelog` page's own `h1`. "Changelog" is the word both languages
         // use — the two nav rows above are the same borrowing — and translating this
         // one alone would leave the site calling the same page two different things in
@@ -268,9 +268,6 @@ describe('message catalogues', () => {
         // them in both languages, so the two catalogues hold the same string on
         // purpose. See the note on `site.features.groupSkillsTitle` in the catalogues.
         'site.features.groupSkillsTitle',
-        // The same call for the cloud family's heading: "Cloud" is the word in both
-        // languages, and the alternatives ("Nuage") are not what anyone says.
-        'site.features.groupCloudTitle',
         // The desktop family's Notifications row: one word, and the same one in French.
         'site.features.hooksTitle',
         // The homepage's "built for" band names one of its five cards after the feature

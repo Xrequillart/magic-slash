@@ -8,26 +8,26 @@ import { OrgTeamArt, PlanSharingArt, SharedConfigArt, TeamTasksArt } from './Org
 import { HomeHeading, HomeSection } from './Shell'
 
 /**
- * The band after the cloud: WHAT STOPS BEING YOURS ALONE, in four coloured cards.
+ * The band after the built-for cards: WHAT STOPS BEING YOURS ALONE, in four coloured
+ * cards.
  *
- * WHY IT IS HERE, directly after `CloudSection`, and it moved to get here. The owner first
+ * WHY IT IS HERE, and the honest answer is that its neighbour was deleted. The owner first
  * placed it under `SkillsSection` ("partie organisation juste après le block Skills") and
- * then moved it down to follow the cloud band, which is the better seam for a reason worth
- * writing down.
+ * then moved it down to follow `CloudSection`, which was the better seam — and that band
+ * has since gone with the `/cloud` page, when the owner stopped selling the cloud side.
+ * So this one has slid back up against `BuiltForSection`.
  *
- * The page up to this point is addressed to ONE PERSON: the hero promises an outcome, the
- * pillars say what the product is, the workflow band walks a ticket to a merged PR, the
- * skills band names the eight commands, and the two app bands show the window they run in.
- * Every one of those sentences has "you" as its subject. `CloudSection` is where that
- * changes — its headline is "your configuration does not live on one machine" — and the
- * question it leaves open is WHOSE machines. This band is four answers to that question,
- * so it lands on a reader who has just been given the premise instead of having to supply
- * it. Under the skills band it made the same argument cold, three bands before anything
- * had said the configuration goes anywhere at all.
+ * WHAT THE MOVE COST IT, stated rather than glossed. The page up to this point is
+ * addressed to ONE PERSON: the hero promises an outcome, the pillars say what the product
+ * is, the workflow band walks a ticket to a merged PR, the skills band names the eight
+ * commands, and the two app bands show the window they run in. Every one of those
+ * sentences has "you" as its subject. The cloud band was where that changed — its
+ * headline was "your configuration does not live on one machine" — and this band was four
+ * answers to the WHOSE MACHINES that leaves open. It has to raise the premise itself now,
+ * which is what it did the first time it was placed.
  *
- * IT IS STILL THE FIRST BAND WHOSE SUBJECT IS PLURAL, which is what the move preserves:
- * the cloud band is about one person's several machines, and this one is about several
- * people.
+ * IT IS STILL THE FIRST BAND WHOSE SUBJECT IS PLURAL, and now it is the only one: nothing
+ * before it says the configuration goes anywhere at all.
  *
  * FOUR CARDS, AND THEY ARE THE OWNER'S FOUR, in the order they were given: the
  * configuration a project shares, the organisation itself, plans that circulate, and the
@@ -37,10 +37,9 @@ import { HomeHeading, HomeSection } from './Shell'
  * might grow into, and every card has a screen or a relationship behind it.
  *
  * NO BUTTON, BY REQUEST — "avec titre, description sans CTA". Which is right for where it
- * sits, and MORE right since the band moved: there is no `/organisation` page to send
- * anyone to, and by this point the page has already spent all three of its links out —
- * `/workflow`, `/features` and `/cloud`, the last of them on the band immediately above.
- * A fourth ask here, one band before the closing CTA, would be the page nagging.
+ * sits: there is no `/organisation` page to send anyone to, and by this point the page has
+ * already spent both of its links out — `/workflow` and `/features`. A third ask here, one
+ * band before the closing CTA, would be the page nagging.
  *
  * ── THE GRID ──────────────────────────────────────────────────────────────────────
  *

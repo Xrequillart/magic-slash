@@ -43,20 +43,19 @@ export const marketingEn = {
       own language (see `LANGUAGE_AUTONYM`), which is deliberately untranslated. */
   'site.nav.language': 'Language',
   /**
-   * THE HEADER'S MENU, ITS SIX ROWS, AND THE TWO LINKS BESIDE IT. `product` is the
-   * trigger; `workflow`, `application`, `cloud`, `allFeatures`, `changelog` and
-   * `download` are its rows, in that order; `faq` is the one row the bar shows in the
-   * open. `lib/siteNav.ts` owns the order and the destinations, and
+   * THE HEADER'S MENU, ITS FIVE ROWS, AND THE LINK BESIDE IT. `product` is the
+   * trigger; `workflow`, `application`, `allFeatures`, `changelog` and `download` are
+   * its rows, in that order; `faq` is the one row the bar shows in the open. `lib/siteNav.ts` owns the order and the destinations, and
    * `siteNav.test.ts` looks every one of these keys up in BOTH catalogues — a key that
    * does not exist renders as an empty row rather than as an error, `t()` having no
    * per-key fallback.
    *
-   * FOUR OF THEM ARE THE SAME WORD IN FRENCH, which is why they are one-word entries
-   * with an allow-list line each in `i18n.test.ts`: "Workflow", "Application" and
-   * "Cloud" are what the French UI calls them too — the product's own vocabulary, as
-   * `site.features.groupCloudTitle` already is — and "Changelog" was listed there long
-   * before this menu existed. `download` is NOT one of them ("Télécharger"), and
-   * neither is the trigger ("Produit").
+   * THREE OF THEM ARE THE SAME WORD IN FRENCH, which is why they are one-word entries
+   * with an allow-list line each in `i18n.test.ts`: "Workflow" and "Application" are
+   * what the French UI calls them too — the product's own vocabulary — and "Changelog"
+   * was listed there long before this menu existed. `download` is NOT one of them
+   * ("Télécharger"), and neither is the trigger ("Produit"). It was four until
+   * `site.nav.cloud` left with the row it named.
    *
    * `allFeatures` moved rather than changed: it was the bar's single link, and it is
    * now a row in the menu pointing at the same `/features`. `faq` has moved twice and is
@@ -64,14 +63,17 @@ export const marketingEn = {
    * a bare link again now that menu is gone. Neither key was rewritten, because neither
    * destination was.
    *
-   * THREE ROWS HAVE LEFT THIS FAMILY ALTOGETHER, and each took its keys with it.
+   * FOUR ROWS HAVE LEFT THIS FAMILY ALTOGETHER, and each took its keys with it.
    * `site.nav.skills` had a `/skills` page behind it, cut for duplicating `/workflow` —
    * one loop, described twice. `site.nav.bestPractices` had `/best-practices`, deleted
    * by request with the **Help** menu it was half of; `site.nav.help` named that menu's
    * trigger and is now `site.footer.help`, since the footer's own column is all that
    * word is left for. `site.nav.ourStory` had `/story`, deleted by request in the same
    * story — its whole `site.story.*` family went with the page, and the path 308s to the
-   * homepage (`RETIRED_PATHS` in `lib/hostRouting.ts`).
+   * homepage (`RETIRED_PATHS` in `lib/hostRouting.ts`). `site.nav.cloud` had `/cloud`,
+   * deleted by request when the owner stopped selling the cloud side — `site.cloudPage.*`
+   * and the homepage's `site.cloudBand.*` went with it, `/features` lost its whole Cloud
+   * family, and that path 308s to the homepage too.
    *
    * THE KEYS ARE GONE RATHER THAN PARKED: an unreferenced key normally costs nothing to
    * keep, but an en/fr pair that is identical also costs a line in `i18n.test.ts`'s EXACT
@@ -81,7 +83,6 @@ export const marketingEn = {
   'site.nav.product': 'Product',
   'site.nav.workflow': 'Workflow',
   'site.nav.application': 'Application',
-  'site.nav.cloud': 'Cloud',
   'site.nav.allFeatures': 'All features',
   'site.nav.download': 'Download',
   'site.nav.resources': 'Resources',
@@ -98,37 +99,37 @@ export const marketingEn = {
   'site.nav.updatesCategory': 'Updates',
   'site.nav.changelog': 'Changelog',
 
-  // ── The pages the header opened ahead of their content ──────────────────────
+  // ── The page the header opened ahead of its content ─────────────────────────
   /**
-   * `/cloud` and `/download`: two of the header's new rows, each a title and one lead.
-   * `components/site/PlaceholderContent.tsx` prints the first pair under the badge that
-   * admits the page is unwritten.
+   * `/download` is what is LEFT of a family of four, and the family is worth a note
+   * because the pattern it served is over.
    *
-   * THEY EXIST BECAUSE THE MENU DOES. A row pointing at a path `PUBLIC_PATHS` does not
-   * list 307s the reader to a login form on `app.magic-slash.io`, so the routes had to
-   * ship with the menu — see `PLACEHOLDER_PAGES` in `lib/siteNav.ts`. The copy is
-   * therefore a PROMISE OF SCOPE and nothing more: what each page will hold, so a
-   * reader who followed the row learns something rather than meeting an empty band.
+   * A ROW USED TO BE ABLE TO SHIP AHEAD OF ITS PAGE. A menu row pointing at a path
+   * `PUBLIC_PATHS` does not list 307s the reader to a login form on
+   * `app.magic-slash.io`, so a route had to exist the day its row did — and what it
+   * served was `PlaceholderContent`: a title, one line of scope, and a badge admitting
+   * the page was unwritten. The copy was a PROMISE OF SCOPE and nothing more.
    *
-   * TWO PAIRS HAVE LEFT. `site.desktopPage.*` went when `/desktop` became real — the
-   * homepage's app band moved onto it whole, so the promise of scope had nothing left to
-   * promise, and the page heads itself with `site.desktop.title` below.
-   * `site.bestPracticesPage.*` went the other way: the page was deleted rather than
-   * written, with the Help menu that opened it.
+   * ALL FOUR PAIRS ARE GONE NOW, by three different routes. `site.desktopPage.*` and
+   * this page's own lead went when `/desktop` and `/download` became real — the
+   * promise of scope had nothing left to promise. `site.bestPracticesPage.*` went the
+   * other way: the page was deleted rather than written, with the Help menu that opened
+   * it. And `site.cloudPage.*` left with `site.pageSoon.note` and `site.nav.soon` —
+   * the badge and the pill — when the owner stopped selling the cloud side and the
+   * `/cloud` page, its menu row and the homepage's cloud band were deleted together.
+   * Those two were the last keys the placeholder apparatus owned, so it is gone with
+   * them; `lib/siteNav.ts` records the rest of what went.
+   *
+   * WHICH LEAVES A TITLE AND A LEAD FOR A REAL PAGE, and they are here rather than with
+   * the rest of `site.downloadPage.*` below because this is where the page's own head
+   * has always been written.
    */
-  // "Coming soon" on the page AND on every row that opens it (`SOON_NOTE`): the reader is
-  // told before the press. It said "Page in preparation" while only the page said it.
-  'site.pageSoon.note': 'Coming soon',
-  'site.nav.soon': 'Coming soon',
-  'site.cloudPage.title': 'The cloud',
-  'site.cloudPage.lead':
-    'Your configuration, your team and your usage, on every machine you sign in on, with nothing to copy across by hand.',
   'site.downloadPage.title': 'Download Magic Slash',
   /**
    * `/download` IS A REAL PAGE NOW (`components/site/download/DownloadContent.tsx`), so
-   * its lead lost the "this page is being written" the two placeholders above still
-   * carry. The rest of the family is below with the page's own copy; the title and lead
-   * stay here so the four pages' openings read side by side.
+   * its lead lost the "this page is being written" a placeholder used to carry. The
+   * rest of the family is below with the page's own copy; the title and lead stay here,
+   * where the header's pages have always opened.
    */
   'site.downloadPage.lead':
     'One installer for macOS. Drop it in Applications, open it once, and the first launch sets up everything the eight commands need.',
@@ -1175,72 +1176,6 @@ export const marketingEn = {
   'site.builtFor.spotlightDesc':
     'One global shortcut opens Quick Launch wherever you are. Type a ticket, press enter, and the agent is already running by the time you switch back.',
 
-  // ── The cloud band ────────────────────────────────────────────────────────
-  /**
-   * THE BAND THE PRODUCT OWNER PLACED "juste après « Fait pour les développeurs. Pas
-   * seulement pour eux. »" — `components/site/home/CloudSection.tsx`: the half of the
-   * product that opens in a browser, argued in a heading, a paragraph and three rows
-   * beside a drawing of the dashboard loading.
-   *
-   * THE HEADLINE NAMES THE CONFIGURATION AND NOT THE CLOUD, which is the decision worth
-   * defending because "Cloud" is what the band is called everywhere else — the nav row,
-   * the page title, the brief itself. A headline reading "The cloud" would be a category
-   * label, and every product in this market claims the category. "Your configuration is
-   * not on one machine" is a FACT about this one, and it is the fact the project's own
-   * CLAUDE.md is emphatic about: Supabase is the single source of truth and there is no
-   * local config file at all. It is also the objection the band above raises — five cards
-   * about living in one window, and nothing yet about the second Mac or the colleague's.
-   *
-   * THE TITLE NAMES THE PLACE. It stated the CONFIGURATION for one version — "your
-   * configuration is not on one machine", the fact the project's CLAUDE.md insists on —
-   * and the product owner brought it back to what the reader can open right now: Magic
-   * Slash, in a browser. The band draws a browser window, so the headline and the
-   * drawing now say the same thing.
-   *
-   * THE PARAGRAPH IS THE THREE ROWS IN PROSE, then the payoff. It names the devices
-   * first — a tablet, a phone — because the number of them IS the claim, then what you
-   * read on them, and closes on signing in somewhere else, because that last clause is
-   * the only sentence in the band a reader can check against their own week. `site.cloudPage.lead` makes the same promise for
-   * the page; that one is a promise of SCOPE for a page still being written, this is an
-   * argument on a landing page, and they are allowed to overlap in subject without
-   * sharing a string.
-   *
-   * THE BUTTON'S LABEL NAMES THE PAGE and not the action — `site.appBand.cta`'s call,
-   * two bands up, and the same word the header's own Product row uses for that route, so
-   * somebody told "it's under Product → Cloud" finds the same thing.
-   */
-  'site.cloudBand.title': 'Magic Slash from your browser',
-  'site.cloudBand.subtitle':
-    'Magic Slash Cloud follows you everywhere, from your tablet as much as from your phone. Read back your own plans and your team’s, your repositories, your team and your account. Sign in on another computer and it is all already there.',
-  'site.cloudBand.cta': 'See the cloud',
-
-  /**
-   * THE THREE ROWS UNDER THE PARAGRAPH — the same `FeaturePoints` list with the same
-   * brand-blue outline glyphs the two splits above carry, asked for in those words ("un
-   * titre description + 3 points avec icon bleu").
-   *
-   * THEY ARE THE DASHBOARD'S OWN THREE PAGES, in the order its navigation bar puts them:
-   * `/plans`, `/organization`, `/account`. The brief named them as such — "Liste des plan
-   * / Organisation settings / Your Account management" — and the rows keep that order
-   * rather than reordering by importance, because a reader who follows the button meets
-   * the three in this order at the top of the product. `CloudSection.tsx` takes their
-   * icons from `TopNav.tsx` for the same reason.
-   *
-   * "THE PLANS YOUR TEAM HAS WRITTEN" AND NOT "THE LIST OF PLANS", which is the one row
-   * that was rewritten rather than translated. A list is a screen; a plan somebody wrote
-   * is a thing. And "plan" is this product's own noun — a `/magic:plan` session, its spec
-   * and the tickets it filed (`plans.subtitle`) — not a subscription tier, which is the
-   * reading the second half of the row rules out. If pricing tiers ever need a row here,
-   * they need a different word.
-   *
-   * SHORT, LIKE `site.appBand.point*` AND UNLIKE THE SKILLS BAND'S: there is a picture of
-   * the thing beside them, so the rows are the caption to it. A row that restated the
-   * paragraph would be read twice and believed once.
-   */
-  'site.cloudBand.pointPlans': 'The plans your team has written',
-  'site.cloudBand.pointOrg': 'Your organization, its team and its repositories',
-  'site.cloudBand.pointAccount': 'Your account, managed from the browser',
-
   // ── Security and privacy, two bands under "who the app is for" ────────────
   //
   // THE ONE FAMILY ON THIS PAGE WHERE A WRONG SENTENCE IS A LIE ABOUT SECURITY, so every
@@ -1808,12 +1743,6 @@ export const marketingEn = {
   'site.startCard.deps': 'Dependencies installed',
   'site.startCard.plan': 'Implementation plan written and reviewed',
   'site.startCard.implementing': 'Implementation under way',
-  /**
-   * The cloud family, and the one heading that is a NOUN. Identical in French — the word
-   * is the same in both, which is why it is listed in `i18n.test.ts`'s `SAME_IN_BOTH`,
-   * exactly as `site.features.groupSkillsTitle` is.
-   */
-  'site.features.groupCloudTitle': 'Cloud',
   'site.features.groupIntegrationsTitle': 'Connected to your tools',
   /** The last family: what the app tells you back. Its intro is the homepage band. */
   'site.features.groupInsightsTitle': 'The info sidebar',
@@ -1847,22 +1776,6 @@ export const marketingEn = {
     'A spec still being written or a file changed in the code: open it, walk through the diff, and comment on the line that bothers you. Everything is reviewed and commented from the app, and the agent gets your notes.',
 
   // The integrations family.
-  // ── The cloud family ───────────────────────────────────────────────────────
-  // Every line here was checked against what `webapp/app/` actually renders. The roles
-  // are the app's own two and their descriptions are `org.role.member.help` and
-  // `org.role.admin.help` verbatim; the board's statuses are the `team.status.*` ladder;
-  // the plans line is `plans.subtitle`. A page that is read as an inventory does not get
-  // to describe a surface it has not opened.
-  // The family INTRO carries what a row used to: the cloud is not a second product, it
-  // is the same account seen from a browser. A line above all four says it once.
-  'site.features.cloudDesc':
-    'The same account at app.magic-slash.io, from any machine — your team, your repositories, your plans and your settings. The agents still run on yours.',
-  'site.features.teamTitle': 'Your organization, and who is in it',
-  'site.features.teamDesc':
-    'Create one, or join with the invitation a colleague sent you. Invite by email or by link: a member sees the team and works on shared repositories, an admin invites, changes roles and archives.',
-  'site.features.appSettingsTitle': 'Settings that follow you, not the machine',
-  'site.features.appSettingsDesc':
-    'Appearance, language, notifications, Claude Code — set in the app or here, kept on your account. There is no local config file, so a second machine is configured by signing in.',
 
   // THE FOUR TITLES NAME AN ACTION, NOT A PRODUCT. The mark on the plate beside each of
   // these says "Jira" or "VS Code" faster than a word can, so the headline is free to
@@ -1906,9 +1819,6 @@ export const marketingEn = {
   'site.features.profileTitle': 'How it talks to you',
   'site.features.profileDesc':
     'Right after you sign up, a short onboarding form teaches Claude Code who you are: your first name, your role, your technical level, the tone you want and your languages. Every skill reads it before answering, so an answer arrives at the depth you read at. Editable any time from the settings.',
-  'site.features.teamReposTitle': 'Repositories the whole team shares',
-  'site.features.teamReposDesc':
-    'Share a repository with your organization and its conventions travel with it — read-only for members, so only admins change them. The board lists every one, with the agents on it and how far each has got. Your own clone stays on your machine.',
 
   // The insights family. The agent-panel row's description is the homepage band's own
   // paragraph, which already names the panel's contents one by one.
@@ -2055,9 +1965,6 @@ export const marketingEn = {
   'site.features.agentContextTitle': 'The context the running agent has spent',
   'site.features.agentContextDesc':
     'How much of its window this run has filled, in tokens and as a share. The agent you are looking at, not the account.',
-  'site.features.planSessionsTitle': 'Plans, yours and your team’s',
-  'site.features.planSessionsDesc':
-    'Every /magic:plan session on a repository you can see — the spec it wrote and the tickets it filed. Kept on your account, so a plan outlives the window it was written in.',
 
   // ── ③ On the product you already have ──────────────────────────────────────
   'site.yourProduct.title': 'On the product you already have.',

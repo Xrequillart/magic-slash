@@ -5,7 +5,6 @@ import { WorkflowSection } from '@/components/site/home/WorkflowSection'
 import { SkillsSection } from '@/components/site/home/SkillsSection'
 import { AppSection } from '@/components/site/home/AppSection'
 import { BuiltForSection } from '@/components/site/home/BuiltForSection'
-import { CloudSection } from '@/components/site/home/CloudSection'
 import { OrgSection } from '@/components/site/home/OrgSection'
 import { SecuritySection } from '@/components/site/home/SecuritySection'
 import { FaqSection } from '@/components/site/home/FaqSection'
@@ -29,7 +28,7 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  *   • `WorkflowSection` answers WHAT A DAY WITH IT LOOKS LIKE: the loop as five steps,
  *     one coloured card each, a drawing apiece, and one button out to `/workflow`.
  *   • `SkillsSection` answers WHAT YOU ACTUALLY TYPE, and it is the FIRST of the page's
- *     three bands built on `SplitFeature` — a heading, a paragraph and three claims beside a Claude
+ *     two bands built on `SplitFeature` — a heading, a paragraph and three claims beside a Claude
  *     Code session running seven of the eight commands one after the other. It follows
  *     the workflow band because a reader who has been shown the five moments of a day can
  *     read a transcript of them; the same panel above that band would be a list of
@@ -38,9 +37,9 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  *     the same anchor one hop later, via `/workflow`.
  *   • `AppSection` then says the app exists and shows it: a heading, a paragraph and a
  *     button beside the app's own window, drawn faithfully at two-fifths size. It is the
- *     page's SECOND `SplitFeature` and it faces the other way — artwork right, where the
- *     skills band puts it left — because two adjacent splits on one side read as a
- *     template. It carries the page body's one link to `/desktop`, which is where that
+ *     page's SECOND `SplitFeature` and its last, and it faces the other way — artwork
+ *     right, where the skills band puts it left — because two adjacent splits on one
+ *     side read as a template. It carries the page body's one link to `/desktop`, which is where that
  *     window used to be shown at length: see below.
  *   • `BuiltForSection` answers WHO THAT WINDOW IS FOR, in five coloured cards: the
  *     backlog inside it, the keyboard, the Mac, the switches and the global shortcut. It
@@ -49,23 +48,23 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  *     smaller than the one it used to follow, and the reason it follows it is unchanged:
  *     five claims about living somewhere only land next to a picture of the place. Its headline is
  *     the owner's brief: "build pour le developer mais pas que".
- *   • `CloudSection` answers WHERE ALL OF THAT LIVES, and it is the page's THIRD
- *     `SplitFeature` — the skills band's shape by request ("reprendre le style block comme
- *     les 8 skills"), artwork back on the left, beside a browser drawn as a loading
- *     skeleton, run off the right edge of a green plate. It is here because the band above it closes the account of
- *     the desktop side, and "your second Mac, and your colleague's" is the question five
- *     cards about living in one window leave open. It carries the page body's one link to
- *     `/cloud`. The owner placed it: "juste après « Fait pour les développeurs »".
  *   • `OrgSection` answers WHO ELSE IS IN THIS, in four coloured cards: the configuration
  *     a repository shares, the organisation that holds it, plans that circulate, and the
  *     backlog everyone draws from. It is the first band on the page whose subject is
- *     plural, and it sits HERE — directly after the cloud band — by the owner's second
- *     placement of it. It opened under `SkillsSection` and the move is the better read:
- *     the cloud band's headline is "your configuration does not live on one machine", so
- *     the question it leaves behind is WHOSE machines, and this band is four answers to
- *     exactly that. Under the skills band it had to make the same argument cold. It has NO
- *     BUTTON — the only middle band without one — because there is no page to send anyone
- *     to, and by this point the page has already spent both of its links out.
+ *     plural, and it now follows `BuiltForSection` directly. It has NO BUTTON — the only
+ *     middle band without one — because there is no page to send anyone to, and by this
+ *     point the page has already spent both of its links out.
+ *
+ *     A THIRD `SplitFeature` STOOD BETWEEN THE TWO AND IS GONE. `CloudSection` answered
+ *     WHERE ALL OF THAT LIVES — a browser drawn as a loading skeleton on a green plate,
+ *     a button out to `/cloud` — and it was deleted with that page when the owner stopped
+ *     selling the cloud side ("on va arrêter cette partie"). What it cost this band is
+ *     the premise it used to be handed: the cloud band's headline was "your configuration
+ *     does not live on one machine", and these four cards were four answers to the WHOSE
+ *     MACHINES that leaves behind. They make the argument cold now, which is where they
+ *     stood the first time the owner placed them — under `SkillsSection` — before the
+ *     cloud band gave them a better seam. Worth knowing if this band ever reads abrupt:
+ *     the fix is a line of its own, not a band restored.
  *   • `FaqSection` answers WHAT IS STILL HOLDING THE READER BACK: the five questions
  *     asked before anyone installs it, as disclosure rows beside a heading and a button
  *     out to `/faq`. It is the last band before the ask because that is the only place
@@ -183,9 +182,8 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * publishes NO same-page anchor: every nav row that names it now names a route. NONE
  * OF THE BANDS ADDED SINCE BREAKS THAT, and every one of them deliberately takes no `id`: the
  * workflow band's button is a route (`/workflow`), the skills band's is a route with
- * someone ELSE's anchor on it (`/features#workflow`), and the cloud band's is `/cloud` —
- * a route the header's Product menu already offers. So there is nothing on this page for
- * a nav row to point into.
+ * someone ELSE's anchor on it (`/features#workflow`). So there is nothing on this page
+ * for a nav row to point into.
  *
  * Every retired band's copy stays in the catalogues (`site.yourProduct.*`,
  * `site.features.*`, `site.how.commandsTitle`, `site.whereItStands.*`, `site.mockup.*`),
@@ -224,7 +222,6 @@ export default function Home() {
       <SkillsSection />
       <AppSection />
       <BuiltForSection />
-      <CloudSection />
       <OrgSection />
       <SecuritySection />
       <FaqSection />

@@ -90,12 +90,6 @@ const EXPECTED: { family: string; anchor: string; layout: string; features: stri
       'permissionModes',
     ],
   },
-  {
-    family: 'cloud',
-    anchor: 'cloud',
-    layout: 'rows',
-    features: ['team', 'teamRepos', 'planSessions', 'appSettings'],
-  },
 ]
 
 /**
@@ -148,12 +142,12 @@ const CATALOGUE_KEYS: { where: string; key: FeatureTitle }[] = [
 ]
 
 describe('FEATURE_FAMILIES', () => {
-  it('lists the six families in reading order', () => {
-    // The order IS the content: the page opens on the commands because they are what the
-    // product is, and an alphabetical list would open on "cloud". `cloud` sits beside
-    // `desktop` because the two are the product's SURFACES — the app where agents run
-    // and the web where an organization is read — rather than because they were written
-    // together.
+  it('lists the five families in reading order', () => {
+    // The order IS the content: the page opens on the commands because they are what
+    // the product is, and the app it runs in comes next, because that is the surface a
+    // reader has just been shown. It was six families until `cloud` was deleted with
+    // the rest of the site's cloud side; it sat beside `desktop` because the two were
+    // the product's two SURFACES.
     expect(FEATURE_FAMILIES.map((family) => family.id)).toEqual(EXPECTED.map((e) => e.family))
   })
 

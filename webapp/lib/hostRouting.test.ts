@@ -32,11 +32,15 @@ describe('canonicalHost', () => {
       // `/faq`, which replaced `/documentation` and is a bare link in the bar as well as
       // a row of the footer's Help column.
       expect(canonicalHost('magic-slash.io', '/faq')).toBeNull()
-      // THE HEADER'S THREE NEW PAGES, which are the worst of this failure mode rather
-      // than another instance of it: they are in the HEADER, so they are on every public
+      // THE HEADER'S OWN PAGES, which are the worst of this failure mode rather than
+      // another instance of it: they are in the HEADER, so they are on every public
       // page at once — a reader who opened the menu anywhere would be handed a login
       // form. `siteNav.test.ts` pins each of them to a page as well; this is the routing
       // half.
+      //
+      // `/cloud` IS STILL IN THE LIST though its page is deleted, and that is the point
+      // of listing it: it is retired rather than gone, so this rule has to keep agreeing
+      // it is public for `retiredPath` to get its 308 in. See the case below.
       for (const path of ['/desktop', '/cloud', '/download']) {
         expect(canonicalHost('magic-slash.io', path), path).toBeNull()
       }
@@ -206,8 +210,21 @@ describe('retiredPath', () => {
     expect(retiredPath('magic-slash.io', '/best-practices')).toBeNull()
   })
 
+  it('sends the deleted cloud page to the homepage too', () => {
+    // Deleted by request when the owner stopped selling the cloud side: the page, its
+    // row in the header's Product menu, the homepage band that linked to it and the
+    // Cloud family on `/features` all went in one story. THE HOMEPAGE and not a
+    // successor, like `/story` and for the same reason — nothing replaced what it said.
+    //
+    // It shipped, which is the whole difference between this entry and `/best-practices`
+    // below: it was a row in the bar on every public page and a button on the homepage,
+    // so an inbound link or a bookmark outlives the route.
+    expect(retiredPath('magic-slash.io', '/cloud')).toBe('/')
+    expect(retiredPath('localhost:3000', '/cloud')).toBe('/')
+  })
+
   it('leaves every live page alone', () => {
-    for (const path of ['/', '/faq', '/features', '/changelog', '/workflow', '/desktop', '/cloud', '/download', '/dashboard']) {
+    for (const path of ['/', '/faq', '/features', '/changelog', '/workflow', '/desktop', '/download', '/dashboard']) {
       expect(retiredPath('magic-slash.io', path), path).toBeNull()
     }
   })
@@ -244,9 +261,10 @@ describe('resolveRewrite', () => {
       expect(resolveRewrite('magic-slash.io', '/changelog')).toBeNull()
       expect(resolveRewrite('magic-slash.io', '/faq')).toBeNull()
       expect(resolveRewrite('magic-slash.io', '/workflow')).toBeNull()
-      // The header's three new pages. Nothing on the apex is rewritten but the root, and
-      // the reason to say so per path is that a rewrite rule added for one of them would
-      // be silent: the page still renders, just not the one the URL names.
+      // The header's own pages, and the retired `/cloud` beside them. Nothing on the
+      // apex is rewritten but the root, and the reason to say so per path is that a
+      // rewrite rule added for one of them would be silent: the page still renders, just
+      // not the one the URL names.
       for (const path of ['/desktop', '/cloud', '/download']) {
         expect(resolveRewrite('magic-slash.io', path), path).toBeNull()
       }

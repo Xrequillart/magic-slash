@@ -78,9 +78,9 @@ import { HomeHeading, HomeSection } from './Shell'
  * height is a panel with a gap under it — which is not a crop at all. `crop` in
  * `lib/security.ts` is the flag, and `SecretsArt` holds the argument for the technique.
  *
- * NO BUTTON. The band above it closes on a link to `/cloud` and the band below opens the
- * FAQ; there is no security page to send anybody to, and a third button in three
- * consecutive bands is a page that cannot stop asking. If the claims here ever need
+ * NO BUTTON. The band above it carries none either and the band below opens the FAQ;
+ * there is no security page to send anybody to, and a run of buttons down consecutive
+ * bands is a page that cannot stop asking. If the claims here ever need
  * evidence a card cannot hold, the honest destination is a document and not a landing-page
  * section.
  */

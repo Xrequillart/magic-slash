@@ -6,7 +6,6 @@ import {
   type LucideIcon,
   AppWindow,
   CircleHelp,
-  Cloud,
   Download,
   Layers,
   Menu,
@@ -25,7 +24,6 @@ import {
   FAQ_NAV_ROW,
   PRODUCT_MENU_GROUPS,
   PRODUCT_MENU_LABEL,
-  SOON_NOTE,
   type SiteNavIcon,
   type SiteNavRow,
 } from '@/lib/siteNav'
@@ -42,7 +40,6 @@ import {
   POPOVER_ROW_NAV,
   POPOVER_ROW_WITH_ICON,
   POPOVER_RULE,
-  SOON_PILL,
   useDismiss,
 } from './NavDropdown'
 import { useRevealClass } from './Reveal'
@@ -171,7 +168,6 @@ import { useRevealClass } from './Reveal'
 const ICONS: Record<SiteNavIcon, LucideIcon> = {
   AppWindow,
   CircleHelp,
-  Cloud,
   Download,
   Layers,
   ScrollText,
@@ -200,13 +196,12 @@ function dress(row: SiteNavRow, t: (key: MessageKey) => string): NavDropdownItem
     icon: glyph,
     tone: row.tone,
     tile: row.tile,
-    soon: row.soon ? t(SOON_NOTE) : undefined,
   }
 }
 
 /**
  * THE NAV IS NOT DECIDED HERE ANY MORE. `lib/siteNav.ts` holds it: `PRODUCT_MENU_GROUPS`
- * (six rows in three families), `PRODUCT_MENU_LABEL` for the trigger, `FAQ_NAV_ROW` for
+ * (five rows in three families), `PRODUCT_MENU_LABEL` for the trigger, `FAQ_NAV_ROW` for
  * the link beside it, and `ALL_NAV_GROUPS` — every row there is — for the mobile panel.
  *
  * IT USED TO BE A ONE-ROW `NAV_LINKS` ARRAY RIGHT HERE, and moving it out is not
@@ -362,7 +357,7 @@ function MobileMenu({
                   className={`${Glyph ? POPOVER_ROW_WITH_ICON : POPOVER_ROW} ${POPOVER_ROW_NAV}`}
                   onClick={() => setOpen(false)}
                 >
-                  {/* BARE, even for the four rows that ask for a tile: `item.tile` is
+                  {/* BARE, even for the rows that ask for a tile: `item.tile` is
                       deliberately not read here. A 40px plate plus 12px of gap leaves
                       204px of this 256px panel for a label, and the longest of them
                       ("Toutes les fonctionnalités") does not fit — and the panel cannot
@@ -376,7 +371,6 @@ function MobileMenu({
                     />
                   )}
                   {item.label}
-                  {item.soon && <span className={SOON_PILL}>{item.soon}</span>}
                 </Link>
               )
             })}

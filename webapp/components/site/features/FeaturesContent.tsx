@@ -6,13 +6,11 @@ import {
   Bell,
   CheckCircle,
   CircleGauge,
-  ClipboardList,
   Columns,
   Gauge,
   GitBranch,
   GitCommit,
   GitCommitHorizontal,
-  FolderGit2,
   GitPullRequest,
   Info,
   Languages,
@@ -28,12 +26,10 @@ import {
   ScanSearch,
   ScrollText,
   Search,
-  Settings2,
   ShieldCheck,
   SquareTerminal,
   Ticket,
   UserRound,
-  Users,
   Wrench,
 } from 'lucide-react'
 import {
@@ -142,14 +138,12 @@ const ICONS: Record<FeatureIcon, FeatureGlyph> = {
   ScanSearch,
   Wrench,
   CheckCircle,
-  // The five hand-written families.
+  // The four hand-written families.
   Activity,
   AppWindow,
   Bell,
   CircleGauge,
-  ClipboardList,
   Columns,
-  FolderGit2,
   Gauge,
   GitBranch,
   GitCommitHorizontal,
@@ -164,12 +158,10 @@ const ICONS: Record<FeatureIcon, FeatureGlyph> = {
   RefreshCw,
   ScrollText,
   Search,
-  Settings2,
   ShieldCheck,
   SquareTerminal,
   Ticket,
   UserRound,
-  Users,
 }
 
 /**

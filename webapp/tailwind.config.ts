@@ -1109,12 +1109,12 @@ const config: Config = {
         // that "declared last wins" was describing an alphabetical coincidence.
         lift: `0 16px 36px -18px ${SHADOW_TINT(0.4)}`,
         // `lift` on the mint tone: the same shape, tinted with a green two steps deeper
-        // than the plate's own — a grey shadow on a green ground reads as dirt, a green one
-        // as depth. TWO CONSUMERS, and both are a panel on a mint plate: the usage card's
-        // on `/features`, and the browser in the homepage's cloud band
-        // (`CloudBrowserMockup`). That is the rung's whole rule — anything sitting on
-        // `tone-mint` takes this instead of `lift` — and it is the reason it is a declared
-        // token rather than the arbitrary value it began as.
+        // than the plate's own — a grey shadow on a green ground reads as dirt, a green
+        // one as depth. ONE CONSUMER TODAY, the usage card's panel on `/features`; there
+        // were two until the homepage's cloud band and its `CloudBrowserMockup` were
+        // deleted with the `/cloud` page. That is the rung's whole rule — anything
+        // sitting on `tone-mint` takes this instead of `lift` — and it is the reason it
+        // is a declared token rather than the arbitrary value it began as.
         'lift-mint': '0 12px 32px -8px rgba(21, 94, 58, 0.45), 0 2px 6px -2px rgba(21, 94, 58, 0.3)',
         // THE ONLY RUNG THAT CASTS SIDEWAYS, and it exists because the other four
         // cannot: every one of them is a DOWNWARD shadow with a negative spread, which

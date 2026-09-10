@@ -3,7 +3,7 @@ import type { MessageKey } from './i18n'
 import { WORKFLOW_PATH } from './workflow'
 
 /**
- * THE PUBLIC SITE'S HEADER NAV, as data: one menu, the six rows behind it, and the one
+ * THE PUBLIC SITE'S HEADER NAV, as data: one menu, the five rows behind it, and the one
  * link the bar carries in the open (`FAQ_NAV_ROW`).
  *
  * The bar used to carry ONE link — `/features`, mapped from a one-row array that
@@ -12,8 +12,8 @@ import { WORKFLOW_PATH } from './workflow'
  * beside it in the open. Two controls is the whole bar, which is what keeps it on the
  * page's own column at `md` — the arithmetic is in `SiteHeader`'s header note.
  *
- * TWO PAGES HAVE BEEN DELETED FROM THIS NAV, by request, and between them they took a
- * menu and a bare link:
+ * THREE PAGES HAVE BEEN DELETED FROM THIS NAV, by request, and between them they took a
+ * menu, a bare link and a row of the Product menu:
  *
  *   • `/best-practices` was half of a **Help** menu, the other half being the FAQ. That
  *     menu only ever existed because the FAQ got a NEIGHBOUR — "Best practices" was the
@@ -24,16 +24,27 @@ import { WORKFLOW_PATH } from './workflow'
  *   • `/story` was the founding story, and it was a bare link for the reason a menu of
  *     one is furniture: it had no siblings. Nothing replaced it, in the bar or in the
  *     footer.
+ *   • `/cloud` was a row of the **Product** menu, and it left because the product side it
+ *     named is not being sold any more — the owner stopped that part rather than the page
+ *     ("on va arrêter cette partie"). It was the last page on this site that shipped as a
+ *     row ahead of its content, so its deletion took the whole placeholder apparatus with
+ *     it: `PLACEHOLDER_PAGES`, `PLACEHOLDER_NOTE`, `SOON_NOTE`, the `soon` pill the
+ *     header and the footer drew from it, and `components/site/PlaceholderContent.tsx`.
+ *     An empty table and a component with no caller are not a shape held ready for next
+ *     time; they are a shape the next reader has to work out the purpose of. Whoever
+ *     ships a row ahead of a page again writes four lines and a band, and git remembers
+ *     what they looked like.
  *
  * WHICH LEAVES THE BAR AT ONE MENU AND ONE LINK, and the FAQ is the link because of what
  * that page does: it answers the objection that stops a download, so it is one press
  * from anywhere.
  *
- * ONE OF THE TWO NEEDS A REDIRECT AND THE OTHER DOES NOT, which is worth stating rather
- * than assuming. `/story` shipped and was in the footer of every public page for
- * releases, so it is in `RETIRED_PATHS` (`lib/hostRouting.ts`) and 308s to the homepage.
- * `/best-practices` never reached production — no link to it exists to keep alive — and
- * neither did the `/skills` page cut before it.
+ * TWO OF THE THREE NEED A REDIRECT AND THE THIRD DOES NOT, which is worth stating rather
+ * than assuming. `/story` and `/cloud` both shipped — the first in the footer of every
+ * public page, the second in this menu and behind a button on the homepage — so both are
+ * in `RETIRED_PATHS` (`lib/hostRouting.ts`) and 308 to the homepage. `/best-practices`
+ * never reached production — no link to it exists to keep alive — and neither did the
+ * `/skills` page cut before it.
  *
  * IT WAS SEVEN ROWS AND A `/skills` PAGE FOR ONE ITERATION. That page was cut on the
  * reading that it duplicated `/workflow`: both were going to set out the eight commands,
@@ -43,13 +54,13 @@ import { WORKFLOW_PATH } from './workflow'
  * on the page that was going to link to it anyway. `/features#workflow` remains the
  * inventory's own section, which is where `lib/skillsBand.ts` has always pointed.
  *
- * WHY A MODULE AND NOT SEVEN LITERALS IN THE COMPONENT. Same reason `lib/workflow.ts`
+ * WHY A MODULE AND NOT SIX LITERALS IN THE COMPONENT. Same reason `lib/workflow.ts`
  * owns `WORKFLOW_PATH` and `lib/faq.ts` owns `FAQ_PATH`, and it is not tidiness: a nav
  * row pointing at a path `PUBLIC_PATHS` (`lib/hostRouting.ts`) does not list is NOT a
  * 404 on production — it is a 307 to a login form on `app.magic-slash.io`, so a header
  * link appears to sign the reader out. `siteNav.test.ts` reads that file and pins every
- * row's path against it, and checks the page behind each one exists. Seven rows typed
- * into JSX are six rows no test can enumerate.
+ * row's path against it, and checks the page behind each one exists. Six rows typed
+ * into JSX are five rows no test can enumerate.
  *
  * ZERO RUNTIME IMPORTS BAR `./faq` AND `./workflow`, both of which are themselves pure
  * data (`./i18n` as a TYPE only, erased by esbuild). The constraint is the one stated on
@@ -69,7 +80,7 @@ import { WORKFLOW_PATH } from './workflow'
  * to RESOLVE one. `components/site/SiteHeader.tsx` holds the map from these names to
  * lucide's components, beside the markup that renders them.
  *
- * ALL SEVEN ARE LUCIDE EXPORTS, checked against the `^1.26.0` in `webapp/package.json`
+ * ALL SIX ARE LUCIDE EXPORTS, checked against the `^1.26.0` in `webapp/package.json`
  * rather than guessed — v1 dropped the brand glyphs and renamed a family of others
  * (`HelpCircle` is `CircleHelp` here), and a name lucide does not ship is a `tsc` error
  * at the map and a refused Vercel build. The map keeps a fallback behind that anyway.
@@ -83,7 +94,6 @@ import { WORKFLOW_PATH } from './workflow'
 export type SiteNavIcon =
   | 'AppWindow'
   | 'CircleHelp'
-  | 'Cloud'
   | 'Download'
   | 'Layers'
   | 'ScrollText'
@@ -92,7 +102,7 @@ export type SiteNavIcon =
 /**
  * The three colours a nav glyph is drawn in — and they are a GROUPING, not decoration.
  *
- * `accent` is the four rows that are the product itself, `purple` the two that are
+ * `accent` is the two rows that are the product itself, `purple` the two that are
  * reference (the inventory, and what changed), `green` the one that is the ask. Which
  * means the rules between the groups and the colours inside them say the same thing
  * twice, on purpose: the rule is the structure for anyone reading the shapes, the colour
@@ -124,7 +134,7 @@ export type SiteNavRow = {
    *
    * EVERY ROW HAS ONE ANYWAY, the FAQ included, and the reason is the surface below
    * `md`: there the panel is a single column of every row there is, so a label with no
-   * glyph beside six that have one reads as a row that failed to load. The rule is all
+   * glyph beside four that have one reads as a row that failed to load. The rule is all
    * or none PER PANEL; the bar ignores the field entirely.
    */
   icon?: SiteNavIcon
@@ -134,12 +144,12 @@ export type SiteNavRow = {
    * THE GLYPH IN A WHITE TILE — a rounded plate with a hairline and the quietest shadow
    * — rather than bare on the row's own ground.
    *
-   * THREE ROWS CARRY IT, and they are the first group: the surfaces the product IS. The
-   * treatment is what the reference dress does with the same three families (measured
-   * off CleanShot's own Product menu, the site this design system has taken a dress from
+   * TWO ROWS CARRY IT, and they are the first group: the surfaces the product IS. The
+   * treatment is what the reference dress does with the same families (measured off
+   * CleanShot's own Product menu, the site this design system has taken a dress from
    * before — see `Collapse` in `components/ui.tsx`), and the argument is hierarchy: a
-   * tile is a THING, and Workflow, Application and Cloud are things. What to read
-   * about them and where to get it are not, so those three rows draw a bare tinted glyph.
+   * tile is a THING, and Workflow and Application are things. What to read about them
+   * and where to get it are not, so those rows draw a bare tinted glyph.
    *
    * IN THE DROPDOWN ONLY. `MobileMenu` ignores this and draws every row bare, and it is
    * width that decides: a 40px tile plus 12px of gap leaves 204px of a 256px panel for a
@@ -148,104 +158,20 @@ export type SiteNavRow = {
    * the dress that is dropped rather than the rows or their colours. See `SiteHeader`.
    */
   tile?: true
-  /**
-   * The row opens a page that is announced and not written: the label carries a small
-   * "coming soon" pill beside it, in the menu, in the mobile panel and in the footer, so
-   * a reader is told before the press rather than by the page. `/cloud` is the one row
-   * that says so today; `SOON_NOTE` is the word on the pill.
-   */
-  soon?: true
 }
 
-/** The pill beside a `soon` row, and the badge on the page it opens. */
-export const SOON_NOTE: MessageKey = 'site.nav.soon'
-
 /**
- * THE ONE PAGE THAT DOES NOT EXIST YET, and what it will be about.
- *
- * It is a placeholder on purpose and the shape says so: a path, the label the menu
- * gives it, and the two lines the page itself prints — a title and one lead — with
- * `PLACEHOLDER_NOTE` below them. `components/site/PlaceholderContent.tsx` renders it,
- * so `app/(marketing)/cloud/page.tsx` is a `metadata` export and one component call.
- *
- * IT IS A TABLE OF ONE, AND IT STAYS A TABLE. There were four entries here. `/desktop`
- * left first: the homepage's own app band moved onto it whole
- * (`components/site/desktop/DesktopContent.tsx`). `/download` followed, with the button,
- * the prerequisites and the latest release's notes
- * (`components/site/download/DownloadContent.tsx`) — both rows are written out below
- * rather than mapped from here, and `site.desktopPage.*` is gone from the catalogues
- * while `site.downloadPage.*` stayed, because that page still needs a title and a lead,
- * just not a promise of scope. `/best-practices` left LAST and differently: it was
- * deleted rather than written, with the Help menu that opened it. Collapsing what is
- * left into a bare constant would be a shape that has to be rebuilt the next time a row
- * ships ahead of its page, and `siteNav.test.ts` walks this by entry name.
- *
- * A ROUTE HAD TO EXIST THE DAY THE MENU SHIPPED, which is the same argument
- * `WORKFLOW_PATH` records: the alternative to a thin page is a menu row that 307s to a
- * login form. So the pages open, they say what they will hold, and they close on the
- * homepage's last band.
- *
- * `/desktop` AND NOT `/application`, though the menu row says "Application". The product
- * already owns `/application/*` on `app.magic-slash.io` — the app's own settings section
- * (`app/application/`) — and two route branches resolving one path is a build question
- * rather than a naming one. `/desktop` is also what the page is about: the native macOS
- * app, which the homepage's own band already calls the desktop.
+ * THERE IS NO `soon` FIELD ANY MORE, and it is worth a line rather than an absence: a row
+ * used to be able to say "this page is announced and not written", which drew a small
+ * pill beside its label in the menu, in the mobile panel and in the footer. `/cloud` was
+ * the only row that ever said it and the pill went with the page — along with
+ * `SOON_NOTE`, `PLACEHOLDER_PAGES` and the band `PlaceholderContent` drew. Every row in
+ * this file now opens a page that is written, which is the property a reader of the menu
+ * can assume and the reason nothing marks it.
  */
-export type PlaceholderPage = {
-  path: string
-  /** How the Product menu names it. */
-  label: MessageKey
-  /** The page's `h1`. */
-  title: MessageKey
-  /** The one line under it. */
-  lead: MessageKey
-}
-
-export const PLACEHOLDER_PAGES = {
-  cloud: {
-    path: '/cloud',
-    label: 'site.nav.cloud',
-    title: 'site.cloudPage.title',
-    lead: 'site.cloudPage.lead',
-  },
-} as const satisfies Record<string, PlaceholderPage>
 
 /**
- * The line every unfinished page carries where its content will go.
- *
- * IT WAS ONE KEY FOR TWO PAGES and it is not renamed for being down to one, because
- * what it says is not about `/cloud`: it is deliberately a plain statement rather than a
- * promise with a date on it — "in preparation" ages, "shipping in March" is wrong in
- * April — and the next unwritten page will want the same sentence.
- */
-export const PLACEHOLDER_NOTE: MessageKey = 'site.pageSoon.note'
-
-/**
- * A placeholder page, as the menu row that opens it.
- *
- * The glyph and the tone are arguments rather than fields on `PLACEHOLDER_PAGES`: what a
- * page is called and what it will hold belong to the page, and how the MENU dresses the
- * row that opens it belongs to the menu. `/cloud` would keep its copy if the menu were
- * redrawn tomorrow — which is more than a hypothetical now that a menu has been.
- */
-const row = (
-  page: PlaceholderPage,
-  icon: SiteNavIcon,
-  tone: SiteNavTone,
-  tile?: true,
-): SiteNavRow => ({
-  href: page.path,
-  label: page.label,
-  icon,
-  tone,
-  tile,
-  // Every placeholder page is, by definition, coming soon: the pill follows the row.
-  soon: true,
-})
-
-/**
- * The page about the app — the one Product row that is neither a placeholder nor owned by
- * a module of its own.
+ * The page about the app — a Product row whose path no module of its own owns.
  *
  * HERE RATHER THAN IN A `lib/desktopPage.ts`, and that is a judgement rather than an
  * omission: `lib/workflow.ts` and `lib/faq.ts` own their paths because they own their
@@ -286,8 +212,9 @@ export const PRODUCT_MENU_LABEL: MessageKey = 'site.nav.product'
  * the alphabet.
  *
  * WHAT IT IS, then WHAT TO READ ABOUT IT, then THE ASK. Workflow answers "what does this
- * thing do", and the two rows under it are the surfaces it runs on — the one you install
- * and the one you never see (Application, Cloud). The inventory and the changelog are
+ * thing do", and the row under it is the surface it runs on — the app you install
+ * (Application). It had a second neighbour, `/cloud`, until the cloud side stopped being
+ * sold; see the note at the top of this file. The inventory and the changelog are
  * the second group because they are reference — a reader goes to them to look something
  * up, not to be told what the product is. Download is a group of ONE and
  * it is last, because it is the ask, and a menu that asks before it explains is a menu
@@ -312,7 +239,6 @@ export const PRODUCT_MENU_GROUPS: SiteNavRow[][] = [
   [
     { href: WORKFLOW_PATH, label: 'site.nav.workflow', icon: 'Workflow', tone: 'accent', tile: true },
     { href: DESKTOP_PATH, label: 'site.nav.application', icon: 'AppWindow', tone: 'accent', tile: true },
-    row(PLACEHOLDER_PAGES.cloud, 'Cloud', 'accent', true),
   ],
   [
     { href: '/features', label: 'site.nav.allFeatures', icon: 'Layers', tone: 'purple' },
@@ -322,7 +248,7 @@ export const PRODUCT_MENU_GROUPS: SiteNavRow[][] = [
 ]
 
 /**
- * The same six rows, flat — for everything that cares what the menu CONTAINS rather
+ * The same five rows, flat — for everything that cares what the menu CONTAINS rather
  * than how it is divided: `ALL_NAV_ROWS` below, and every assertion in
  * `siteNav.test.ts` that walks the rows.
  *

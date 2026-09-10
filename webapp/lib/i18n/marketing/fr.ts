@@ -17,14 +17,13 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.nav.menu': 'Menu du site',
   'site.nav.language': 'Langue',
   'site.nav.product': 'Produit',
-  // Trois des six rangées du menu Produit sont le mot français : c'est le vocabulaire
+  // Deux des cinq rangées du menu Produit sont le mot français : c'est le vocabulaire
   // du produit, celui que l'app emploie déjà en français. Voir la note côté anglais.
-  // « Aide », « Bonnes pratiques » et « Notre histoire » ont disparu d'ici avec le menu
-  // et les pages qu'elles nommaient ; le mot « Aide » ne sert plus qu'à la colonne du
-  // footer, sous `site.footer.help`.
+  // « Aide », « Bonnes pratiques », « Notre histoire » et « Cloud » ont disparu d'ici
+  // avec le menu et les pages qu'elles nommaient ; le mot « Aide » ne sert plus qu'à la
+  // colonne du footer, sous `site.footer.help`.
   'site.nav.workflow': 'Workflow',
   'site.nav.application': 'Application',
-  'site.nav.cloud': 'Cloud',
   'site.nav.allFeatures': 'Toutes les fonctionnalités',
   'site.nav.download': 'Télécharger',
   'site.nav.resources': 'Ressources',
@@ -40,12 +39,10 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.nav.updatesCategory': 'Mises à jour',
   'site.nav.changelog': 'Changelog',
 
-  // ── Les pages ouvertes par le header avant leur contenu ─────────────────────
-  'site.pageSoon.note': 'Bientôt disponible',
-  'site.nav.soon': 'Bientôt',
-  'site.cloudPage.title': 'Le cloud',
-  'site.cloudPage.lead':
-    'Votre configuration, votre équipe et votre usage, sur chaque machine où vous vous connectez, sans rien à recopier à la main.',
+  // ── La page ouverte par le header avant son contenu ─────────────────────────
+  // Il ne reste que `/download`, et c'est une vraie page. Le dispositif « page annoncée,
+  // pas encore écrite » — le badge, la pastille et les paires de titres — est parti avec
+  // `/cloud` ; voir la note côté anglais.
   'site.downloadPage.title': 'Télécharger Magic Slash',
   // `/download` est une vraie page désormais : plus de « en cours d’écriture ». Voir la
   // note côté anglais ; le reste de la famille est plus bas.
@@ -570,41 +567,6 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.builtFor.spotlightDesc':
     'Un raccourci global ouvre Quick Launch d’où que vous soyez. Tapez un ticket, entrée, et l’agent tourne déjà quand vous revenez.',
 
-  // ── La bande cloud, juste après « pour qui c’est fait » ────────────────────
-  // « cloud », « dashboard » et « dépôt » : les deux premiers restent tels quels — c’est
-  // ainsi que le produit les nomme dans ses propres écrans (`cloud.title` dit « Compte
-  // cloud », la page s’appelle `/dashboard`) — et « dépôt » est le mot que l’app emploie
-  // pour un repository (`nav`/`repos`), donc la bande suit l’app plutôt que le site.
-  //
-  // LE TITRE NOMME L'ENDROIT, et c'est la note à lire avant de le réécrire. Il a énoncé
-  // la CONFIGURATION pendant une version — « votre configuration ne vit pas sur une seule
-  // machine », le fait que le CLAUDE.md du projet martèle — puis le propriétaire du
-  // produit l'a ramené sur ce que le lecteur peut ouvrir tout de suite : Magic Slash,
-  // dans un navigateur. La bande montre justement une fenêtre de navigateur.
-  //
-  // « Magic Slash » PREND SES DEUX MAJUSCULES ici comme partout : c'est le nom du
-  // produit, et le sous-titre l'écrit deux fois.
-  'site.cloudBand.title': 'Magic Slash depuis votre navigateur',
-  // « tablette », « téléphone », « ordinateur » : la promesse est le NOMBRE d'appareils,
-  // donc ils sont nommés plutôt que résumés en « partout ». La liste qui suit est celle
-  // des trois rangées dessinées sous la bande, dans le même ordre.
-  'site.cloudBand.subtitle':
-    'Magic Slash Cloud vous suit partout, depuis votre tablette comme depuis votre téléphone. Relisez vos plans et ceux de votre équipe, vos dépôts, la gestion de votre équipe et de votre compte. Connectez-vous sur un autre ordinateur, tout est déjà là.',
-  'site.cloudBand.cta': 'Voir le cloud',
-
-  // LES TROIS LIGNES SOUS LE PARAGRAPHE, ce sont les trois pages du dashboard —
-  // `/plans`, `/organization`, `/account` — dans l’ordre de sa barre de navigation, avec
-  // les icônes de l’app. Elles reprennent son vocabulaire français : « plans » (comme
-  // `plans.title`), « organisation » (`nav.organization`), « compte » (`nav.account`).
-  //
-  // « les plans écrits par votre équipe » et non « la liste des plans » : une liste est
-  // un écran, un plan écrit par quelqu’un est une chose. Le mot « plan » est celui du
-  // produit — une session `/magic:plan`, sa spec et ses tickets (`plans.subtitle`) — et
-  // pas un abonnement, ce que la deuxième moitié de la phrase lève.
-  'site.cloudBand.pointPlans': 'Les plans écrits par votre équipe',
-  'site.cloudBand.pointOrg': 'Votre organisation, son équipe et ses dépôts',
-  'site.cloudBand.pointAccount': 'Votre compte, géré depuis le navigateur',
-
   // ── Sécurité et confidentialité, deux bandes sous « pour qui c’est fait » ──
   //
   // LA SEULE FAMILLE DE CETTE PAGE OÙ UNE PHRASE FAUSSE EST UN MENSONGE SUR LA SÉCURITÉ.
@@ -982,8 +944,6 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.startCard.deps': 'Dépendances installées',
   'site.startCard.plan': 'Rédaction du plan d’implémentation, puis relecture',
   'site.startCard.implementing': 'Implémentation en cours',
-  // Voir la note du catalogue anglais.
-  'site.features.groupCloudTitle': 'Cloud',
   'site.features.groupIntegrationsTitle': 'Connexion avec vos outils',
   'site.features.groupInsightsTitle': 'Information sidebar',
 
@@ -1015,18 +975,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.features.filePreviewDesc':
     'Une spec en cours d’écriture ou un fichier modifié dans le code : ouvrez-le, parcourez le diff, et commentez la ligne qui vous gêne. Tout se relit et se commente depuis l’interface, et l’agent reçoit vos remarques.',
 
-  // La famille intégrations.
-  // Voir la note du catalogue anglais.
-  'site.features.cloudDesc':
-    'Le même compte sur app.magic-slash.io, depuis n’importe quelle machine — votre équipe, vos dépôts, vos plans et vos réglages. Les agents, eux, tournent toujours sur la vôtre.',
-  'site.features.teamTitle': 'Votre organisation, et qui en fait partie',
-  'site.features.teamDesc':
-    'Créez-la, ou rejoignez celle dont un collègue vous a envoyé l’invitation. Invitez par e-mail ou par lien : un membre voit l’équipe et travaille sur les dépôts partagés, un admin invite, change les rôles et archive.',
-  'site.features.appSettingsTitle': 'Des réglages qui vous suivent, pas la machine',
-  'site.features.appSettingsDesc':
-    'Apparence, langue, notifications, Claude Code — réglés dans l’app ou ici, conservés sur votre compte. Il n’y a pas de fichier de config local : une deuxième machine se configure en se connectant.',
-
-  // Voir la note du catalogue anglais.
+  // La famille intégrations. Voir la note du catalogue anglais.
   'site.features.jiraTitle': 'Piloter Jira depuis l’app',
   'site.features.jiraDesc':
     'Lire le ticket, le faire avancer sur le board, le commenter — sans ouvrir un onglet.',
@@ -1062,9 +1011,6 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.features.profileTitle': 'Comment il vous parle',
   'site.features.profileDesc':
     'Juste après l’inscription, un court formulaire d’onboarding apprend à Claude Code qui vous êtes : votre prénom, votre rôle, votre niveau technique, le ton que vous voulez et vos langues. Chaque skill le lit avant de vous répondre, pour que la réponse arrive à la profondeur où vous lisez. Modifiable à tout moment depuis les réglages.',
-  'site.features.teamReposTitle': 'Les dépôts que toute l’équipe partage',
-  'site.features.teamReposDesc':
-    'Partagez un dépôt avec votre organisation, ses conventions voyagent avec lui — en lecture seule pour les membres, seuls les admins les changent. Le tableau les liste tous, avec les agents dessus et où chacun en est. Votre clone local, lui, reste sur votre machine.',
 
   // La famille insights.
   // Le dessin de la sidebar d’info — `InfoSidebarMockup`, avec les libellés de l’app.
@@ -1202,9 +1148,6 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.features.agentContextTitle': 'Le contexte dépensé par l’agent en cours',
   'site.features.agentContextDesc':
     'La part de sa fenêtre que ce run a déjà remplie, en tokens et en pourcentage. L’agent affiché, pas le compte.',
-  'site.features.planSessionsTitle': 'Les plans, les vôtres et ceux de l’équipe',
-  'site.features.planSessionsDesc':
-    'Chaque session /magic:plan sur un dépôt que vous pouvez voir — la spec qu’elle a écrite et les tickets qu’elle a créés. Conservés sur votre compte : un plan survit à la fenêtre où il a été écrit.',
 
   // ── ③ Sur le produit que vous avez déjà ────────────────────────────────────
   'site.yourProduct.title': 'Sur le produit que vous avez déjà.',

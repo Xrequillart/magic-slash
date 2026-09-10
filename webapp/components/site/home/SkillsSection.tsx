@@ -26,10 +26,12 @@ import { HomeHeading, HomeSection } from './Shell'
  * to the most concrete without a step back — what it is, what a day with it looks like,
  * what you type, and then the window all of it happens in.
  *
- * IT IS ALSO THE FIRST OF THE PAGE'S THREE SPLITS, and this one puts its artwork on the
+ * IT IS ALSO THE FIRST OF THE PAGE'S TWO SPLITS, and this one puts its artwork on the
  * LEFT so the next one can put it on the right: see `SPLIT_MEDIA` in `components/ui.tsx`
- * for why two adjacent bands may not share a side. The third — `CloudSection`, below the
- * built-for cards — comes back to `left`, so the page alternates all the way down.
+ * for why two adjacent bands may not share a side. There was a third — `CloudSection`,
+ * below the built-for cards, back on `left` — and it went with the `/cloud` page when
+ * the cloud side stopped being sold. The alternation is down to one alternation, which
+ * still says what the rule is for.
  *
  * IT IS NOT "the eight commands" COMING BACK, and the difference is worth being exact
  * about because that band's cut is documented at length in `app/(marketing)/page.tsx`.

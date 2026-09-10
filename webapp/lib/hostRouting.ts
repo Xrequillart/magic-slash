@@ -80,6 +80,10 @@ const PUBLIC_PATHS = new Set([
   // ever reached production — no link to them exists to keep alive, which is the whole
   // difference between those two and `/documentation` below.
   '/desktop',
+  // NOT A PAGE ANY MORE, and listed for `/story`'s reason rather than for the header's:
+  // it is in `RETIRED_PATHS` below and 308s to the homepage, which only fires while this
+  // rule agrees the path is public. Drop it and a reader following a link to the cloud
+  // page is handed a login form instead of a redirect.
   '/cloud',
   '/download',
   // NOT A PAGE ANY MORE. `/documentation` is in `RETIRED_PATHS` below and 308s to
@@ -124,6 +128,17 @@ const RETIRED_PATHS: Record<string, string> = {
   // when we stop serving it. `/best-practices` was deleted in the same story and is NOT
   // in here, for the opposite reason — that path never reached production.
   '/story': '/',
+  // THE CLOUD PAGE, deleted by request with the homepage band that linked to it and its
+  // row in the Product menu: the owner stopped selling that side of the product, not the
+  // page describing it. The HOMEPAGE, like `/story` and for the same reason — nothing
+  // replaced what it said, so there is no successor to send a reader to.
+  //
+  // A REDIRECT AND NOT A DELETION, because this one shipped and was linked from the site
+  // itself: a row in the header's Product menu on every public page, a button on the
+  // homepage's own cloud band, and the footer's Product column mirroring the menu. Every
+  // one of those is gone, and none of them is what decides this entry — an inbound link
+  // or a bookmark does not stop existing when we stop serving the route.
+  '/cloud': '/',
 }
 
 /**
