@@ -1,16 +1,28 @@
 /**
  * Who wrote this, as a letter.
  *
- * NEVER an `<img>`, and that is a hard constraint rather than a stylistic one: the
- * renderer's CSP is `img-src 'self' data:` (see `index.html`), so a `githubusercontent`
- * avatar is blocked before it is fetched — silently, with a broken box where a face was
- * meant to be. The queries this panel reads from therefore ask for `login` and nothing
- * else, and a `github-graphql.test.ts` case asserts no `avatarUrl` ever creeps back in.
+ * NEVER an `<img>`, and that is a hard constraint rather than a stylistic one — though
+ * no longer the constraint this note used to claim. It said the CSP forbade it; that
+ * stopped being true on 2026-09-02, when `2de10759` widened `desktop/index.html` to
+ * `img-src 'self' data: https:` so PR comment bodies could render their inline HTML.
+ * This window would now load a `githubusercontent` avatar quite happily. (The two
+ * auxiliary windows still stop at `data:` — `popover.html`, `quick-launch.html` — but
+ * this panel does not run in either.)
  *
- * The same badge `SettingsAccountFooter` draws for the signed-in account — same
- * `bg-accent/20` fill, same `text-accent` letter, same `rounded-full` — one size up,
- * because there it identifies one account in a 2 px-of-air sidebar row and here it
- * carries a conversation across a panel 70% of the window wide.
+ * The real reason is upstream of the markup: THERE IS NO URL TO PUT IN AN `<img>`. The
+ * queries this panel reads from ask for `author{login}` and deliberately never select
+ * `avatarUrl`, and `github-graphql.test.ts:532` asserts it never creeps back in. So an
+ * `<img>` here would be a request for a second network round trip per author, for a
+ * 24 px face, in a panel that already knows who wrote what. The letter is what the data
+ * we fetch can draw.
+ *
+ * The same badge `AccountAvatar` falls back to for the signed-in account — same
+ * `bg-accent/20` fill, same `text-accent` mark, same `rounded-full` — one size up from
+ * the settings rail footer's, because there it identifies one account in a 2 px-of-air
+ * row and here it carries a conversation across a panel 70% of the window wide. What
+ * is INSIDE the badge is the one thing the two disagree on, and on purpose: that one
+ * falls back to a generic icon because there is only ever one account and it is named
+ * in full beside it, while this one has to say which of several people is talking.
  *
  * One letter, not two. A GitHub login is a single token: `xrequillart` has no second
  * word to take an initial from, and `greptile-apps[bot]` splits on punctuation into
