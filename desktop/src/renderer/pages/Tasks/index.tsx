@@ -16,13 +16,15 @@ import {
   taskFilterRepos,
 } from '../../utils/taskRows'
 import { buildAgentedIssues, normalizeTicketId, taskAgentRefs, terminalAgentSignature } from '../../utils/taskAgents'
+import type { TaskSelection } from '../../utils/taskSelection'
+import { seedFromTarget, shouldClearSeededQuery } from '../../utils/taskSelection'
 import { readsFrom } from '../../../tracker'
 import { useT, type MessageKey } from '../../i18n'
 import { WaveLoader } from '../../components/WaveLoader'
 import { SweepPane } from '../../components/SweepPane'
 import { GitHubNotConnected } from './GitHubNotConnected'
 import { TaskDetailPage } from './TaskDetailPage'
-import { openCountLabel, TasksRepoSection, type TaskSelection } from './TasksRepoSection'
+import { openCountLabel, TasksRepoSection } from './TasksRepoSection'
 import { TaskFilters, type TaskFilterValue } from './TaskFilters'
 
 /**
@@ -97,6 +99,16 @@ export function TasksPage() {
   // `Object.is` the store can compare, so the index below is rebuilt when the
   // ANSWER changes rather than several times a second.
   const terminalsKey = useStore((s) => terminalAgentSignature(s.terminals))
+  /**
+   * The ticket this page was opened ON, when it was opened from somewhere else — the
+   * ticket id in the right sidebar. Null whenever the modal was opened by hand.
+   *
+   * Read here and consumed ONCE below, the same one-shot deep link `Config` takes for
+   * `settingsInitialTab`: the field is cleared as soon as it has been applied, so ⌘J
+   * afterwards gives the plain backlog rather than replaying the last ticket clicked.
+   */
+  const tasksInitialTarget = useStore((s) => s.tasksInitialTarget)
+  const setTasksInitialTarget = useStore((s) => s.setTasksInitialTarget)
   const t = useT()
 
   /**
@@ -115,8 +127,15 @@ export function TasksPage() {
    * Page state and not config: a filter is what you are doing right now, not how you
    * like the page — and the modal unmounts this page when it closes, so a backlog
    * narrowed to one repository never greets you narrowed the next time you open it.
+   *
+   * Seeded from the target's query when the page was opened on a ticket, so a ticket
+   * that has no row here — closed, untracked repository, an id typed by hand — lands
+   * on a list narrowed to it and an empty state that says so, rather than on a full
+   * backlog the reader has to search by hand for the ticket they just clicked.
    */
-  const [filter, setFilter] = useState<TaskFilterValue>(NO_FILTER)
+  const seed = seedFromTarget(tasksInitialTarget)
+
+  const [filter, setFilter] = useState<TaskFilterValue>({ ...NO_FILTER, query: seed.query })
 
   /**
    * The selected ticket as a (repository, identity) PAIR, not as the ticket object.
@@ -130,8 +149,40 @@ export function TasksPage() {
    *
    * Null is the list; anything else is that ticket's page. One piece of state for
    * both, so the two views cannot both believe they are on screen.
+   *
+   * Seeded from the target the page was opened with, in the INITIALISER rather than in
+   * an effect, and that is the point: `useTasks` returns `snapshot: null, loading:
+   * true` on the first render and the page early-returns a loader, so an effect would
+   * not have run yet by the time the snapshot lands. Held as the pair it is, the
+   * identity simply waits here until `selection` below can resolve it against the
+   * rows — which is also what makes an unresolvable ticket fall back to the filter on
+   * its own instead of needing to be detected.
    */
-  const [selected, setSelected] = useState<TaskSelection | null>(null)
+  const [selected, setSelected] = useState<TaskSelection | null>(seed.selection)
+
+  /**
+   * The target is consumed exactly once, the way `Config` consumes `settingsInitialTab`.
+   * Both pieces of state above are already seeded from it, so all that is left is to
+   * put the store back — otherwise the next ⌘J would reopen this page on the ticket
+   * somebody clicked in the sidebar an hour ago rather than on their backlog.
+   */
+  useEffect(() => {
+    if (tasksInitialTarget) setTasksInitialTarget(null)
+  }, [tasksInitialTarget, setTasksInitialTarget])
+
+  /**
+   * The query this page put in the box ITSELF, kept so the effect under `selection` —
+   * its only other reader — can tell it apart from anything the reader typed. Empty
+   * string when the page was not opened on a ticket, or on one with no query.
+   *
+   * The seeded STRING rather than a "still to be cleared" flag, because the flag could
+   * not tell the two apart: a ticket that never resolves to a row leaves it un-flipped
+   * indefinitely, and the reader who then clears the box, searches for something else
+   * and opens a ticket by hand would have had their own query wiped. Coming back to a
+   * list they narrowed themselves is the correct behaviour, and only the query this
+   * page wrote for them is that effect's business.
+   */
+  const seededQuery = useRef(seed.query)
 
   /**
    * The one scrolling element of the page, and the offset the backlog was left at.
@@ -256,6 +307,31 @@ export function TasksPage() {
   }, [selected, rows])
 
   /**
+   * The query the page was SEEDED with has done its job once the ticket is actually
+   * open, so it goes.
+   *
+   * Without this, `back()` would land on a backlog narrowed to the single ticket that
+   * was just being read — a query the reader never typed and would have to find the
+   * box to clear.
+   *
+   * The rule itself is `shouldClearSeededQuery`, pure and tested there: the box has to
+   * still hold the seeded string character for character, so a reader who cleared it
+   * and searched for something else of their own keeps their query — whether they did
+   * that before opening a ticket or after this page's own query failed to resolve to a
+   * row. The ref is emptied only when the query actually goes, which is what keeps the
+   * unresolved case working: until a ticket resolves, the seeded query IS the fallback
+   * and has to stay.
+   *
+   * Watching the query as well as the selection cannot loop. Clearing re-runs this
+   * effect, but the ref is empty by then and the rule answers no on the second pass.
+   */
+  useEffect(() => {
+    if (!shouldClearSeededQuery(seededQuery.current, filter.query, !!selection)) return
+    seededQuery.current = ''
+    setFilter((prev) => ({ ...prev, query: '' }))
+  }, [selection, filter.query])
+
+  /**
    * Which of the two views is on screen. A change is what plays the sweep.
    *
    * The TRACKER is part of it, structurally rather than incidentally. A GitHub key
@@ -370,6 +446,19 @@ export function TasksPage() {
         : hasJiraRepos ? { title: 'tasks.jira.noProject', hint: 'tasks.jira.noProjectHint' }
           : { title: 'tasks.noRepos', hint: 'tasks.noReposHint' }
 
+  /**
+   * Is the emptiness below a NARROWING of something, rather than a list that was
+   * never read at all? It gates both the filter bar and the search's own empty
+   * state, and it is what keeps the latter apart from the four configuration hints.
+   *
+   * The query half is not redundant with the rows half. This page can be opened on a
+   * ticket that has no row here — a closed one, or one in a repository nobody tracks
+   * — and then there is a query over an EMPTY backlog: on the rows alone the page
+   * would hide the bar holding an invisible query, and blame the configuration for a
+   * ticket the reader had just clicked.
+   */
+  const narrowable = allRows.length > 0 || !!filter.query.trim()
+
   return (
     // One scrolling pane holding two pages: the backlog, and the issue that
     // replaces it. The detail was a 500px column beside this list until the
@@ -456,18 +545,20 @@ export function TasksPage() {
               </div>
             )}
 
-            {/* Only once there is a backlog to narrow. Two controls over an empty
+            {/* Only once there is something to narrow. Two controls over an empty
                 page are two things to read before finding out there is nothing
-                there — and the picker would have no repositories to offer. */}
-            {allRows.length > 0 && (
+                there — and the picker would have no repositories to offer. See
+                `narrowable` for why an empty backlog can still qualify. */}
+            {narrowable && (
               <TaskFilters value={filter} repos={filterRepos} epics={filterEpics} onChange={setFilter} />
             )}
 
             {/* The filters matched nothing. A DIFFERENT state from the four below,
                 and the distinction matters: those send the reader to a settings
                 field, and doing that because they mistyped a ticket id would be the
-                page blaming its configuration for their search. */}
-            {allRows.length > 0 && rows.length === 0 ? (
+                page blaming its configuration for their search. Same
+                `narrowable` as above, and for the same reason. */}
+            {narrowable && rows.length === 0 ? (
               <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
                 <SearchX className="w-8 h-8 text-icon-muted" />
                 <p>{t('tasks.filter.noMatch')}</p>

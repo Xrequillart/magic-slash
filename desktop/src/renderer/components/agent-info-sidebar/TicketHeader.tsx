@@ -1,13 +1,15 @@
-import { TicketMark } from './TicketMark'
+import { TicketIdLink } from './TicketIdLink'
 import { StatusPill } from './StatusPill'
 import { AgentTitleField, AgentDescriptionField, type AgentIdentity } from './AgentIdentityFields'
 import type { TerminalMetadata } from '../../../types'
+import type { TaskSelection } from '../../utils/taskSelection'
 import { useT } from '../../i18n'
 
 interface TicketHeaderProps {
   metadata: TerminalMetadata | undefined
   ticketLink: string | null
-  ticketProvider: 'github' | 'jira' | null
+  /** Where the Tasks modal opens when the id is clicked. See `TicketIdLink`. */
+  taskSelection: TaskSelection | null
   /** Title and description, plus their editing state — shared with SpecPanel. */
   identity: AgentIdentity
   onStatusChange?: (status: string) => void
@@ -16,7 +18,7 @@ interface TicketHeaderProps {
 export function TicketHeader({
   metadata,
   ticketLink,
-  ticketProvider,
+  taskSelection,
   identity,
   onStatusChange,
 }: TicketHeaderProps) {
@@ -27,24 +29,14 @@ export function TicketHeader({
       {/* Ticket ID + Status Badge */}
       <div className="flex items-center justify-between mb-3">
         {metadata?.ticketId ? (
-          // The mark hangs off the ticket ID, not off the link: it says which tracker
-          // the ID belongs to, which is worth showing even when no URL could be built
-          // for it. `group-hover:underline` sits on the label alone so the underline
-          // stops at the text instead of running under the mark.
-          ticketLink ? (
-            <button
-              onClick={() => window.electronAPI.shell.openExternal(ticketLink)}
-              className="group flex items-center gap-1.5 text-ink text-xs font-semibold cursor-pointer bg-transparent border-none p-0"
-            >
-              <TicketMark provider={ticketProvider} />
-              <span className="group-hover:underline">{metadata.ticketId}</span>
-            </button>
-          ) : (
-            <span className="flex items-center gap-1.5 text-ink text-xs font-semibold">
-              <TicketMark provider={ticketProvider} />
-              {metadata.ticketId}
-            </span>
-          )
+          // Two targets, one id: the glyph opens the tracker in the browser, the text
+          // opens the ticket in Tasks. See `TicketIdLink`.
+          <TicketIdLink
+            ticketId={metadata.ticketId}
+            ticketLink={ticketLink}
+            taskSelection={taskSelection}
+            className="gap-1.5"
+          />
         ) : (
           <span className="text-text-secondary/40 text-xs">{t('agentInfo.noTicket')}</span>
         )}

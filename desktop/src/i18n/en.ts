@@ -1379,6 +1379,8 @@ export const en = {
   'agentInfo.viewOnGitHub': 'View on GitHub',
   'agentInfo.viewPullRequest': 'View Pull Request',
   'agentInfo.noTicket': 'No ticket',
+  'agentInfo.ticketOpenInTasks': 'Open this ticket in Tasks',
+  'agentInfo.ticketOpenInBrowser': 'Open this ticket in the browser',
   'agentInfo.titlePlaceholder': 'Enter title…',
   'agentInfo.addTitle': 'Click to add title',
   'agentInfo.descriptionPlaceholder': 'Enter description…',

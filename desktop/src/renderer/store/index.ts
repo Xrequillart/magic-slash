@@ -7,6 +7,7 @@ import {
   type CommentTarget, type LineRange,
 } from '../utils/commentAnchors'
 import { migrateSkillsContextWindow } from '../pages/Skills/contextWindow'
+import type { TasksTarget } from '../utils/taskSelection'
 
 interface CloseAgentModalData {
   terminalId: string
@@ -15,6 +16,7 @@ interface CloseAgentModalData {
 
 /** Agents is the only page; everything else opens as a centered overlay. */
 export type ModalId = 'settings' | 'skills' | 'team' | 'tasks'
+
 
 /**
  * The two windows the Skills page offers as presets — the ones worth comparing,
@@ -244,6 +246,11 @@ interface AppState {
   // When set, the Config page selects this settings tab on mount, then resets it
   // to null. Lets other views (e.g. the sidebar account menu) deep-link a tab.
   settingsInitialTab: SettingsTab | null
+  // When set, the Tasks page opens on this ticket rather than on the backlog, then
+  // resets it to null. Same one-shot deep link as `settingsInitialTab`, and one-shot
+  // for the same reason: reopening Tasks by hand with ⌘J must not replay the last
+  // ticket somebody clicked in the sidebar. See `TasksTarget`.
+  tasksInitialTarget: TasksTarget | null
   // Which organization the Organization page is scoped to. Held here rather than
   // in the page because the settings rail lists the organizations too, and both
   // it and the page's tab strip have to agree on which one is open. `null` = the
@@ -397,10 +404,12 @@ interface AppState {
   moveTerminalToPane: (id: string, pane: 'left' | 'right') => void
 
   setSettingsInitialTab: (tab: SettingsTab | null) => void
+  setTasksInitialTarget: (target: TasksTarget | null) => void
   setSettingsOrgId: (orgId: string | null) => void
   openModal: (modal: ModalId) => void
   closeModal: () => void
   openSettingsModal: (tab?: SettingsTab) => void
+  openTasksModal: (target: TasksTarget) => void
   setRightSidebar: (sidebar: 'info' | null) => void
   toggleRightSidebar: (sidebar: 'info') => void
   toggleLeftSidebar: () => void
@@ -539,6 +548,7 @@ export const useStore = create<AppState>()(
         rightPaneTerminalIds: [],
 
         settingsInitialTab: null,
+        tasksInitialTarget: null,
         settingsOrgId: null,
         activeModal: null,
         rightSidebar: null,
@@ -728,6 +738,7 @@ export const useStore = create<AppState>()(
         },
 
         setSettingsInitialTab: (settingsInitialTab) => set({ settingsInitialTab }),
+        setTasksInitialTarget: (tasksInitialTarget) => set({ tasksInitialTarget }),
         setSettingsOrgId: (settingsOrgId) => set({ settingsOrgId }),
         // Modals are overlays, never destinations: the agents page stays mounted
         // and visible behind them. Two things are normalised on open — every shape
@@ -746,6 +757,13 @@ export const useStore = create<AppState>()(
         openSettingsModal: (tab) => {
           if (tab) set({ settingsInitialTab: tab })
           get().openModal('settings')
+        },
+        // Same wrapper for Tasks, scoped to one ticket. The target is REQUIRED, unlike
+        // `openSettingsModal`'s tab: opening Tasks plain is what `openModal('tasks')`
+        // already is, and every caller of this one is a deep link by definition.
+        openTasksModal: (target) => {
+          set({ tasksInitialTarget: target })
+          get().openModal('tasks')
         },
         setRightSidebar: (rightSidebar) => set({ rightSidebar }),
         toggleRightSidebar: (sidebar) => set((state) => ({
