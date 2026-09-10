@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Agent } from '../../types'
+import { AVATAR_MAX_BYTES } from '../../avatar'
 
 // Mock the cloud dependencies so CloudStore exercises only its own mapping /
 // query-building logic (no network, no keychain). vi.hoisted shares mutable state
@@ -2627,11 +2628,20 @@ describe('avatar', () => {
   /** The one path the app ever writes for this user (see desktop/src/avatar.ts). */
   const PATH = `${UID}/avatar.webp`
   /**
-   * Four bytes standing in for a WebP. What matters is that these EXACT bytes are
-   * what reaches the bucket — that the base64 payload was decoded, and that the
-   * `data:…;base64,` preamble was not decoded along with it — not what they depict.
+   * The twelve bytes a WebP always opens with: 'RIFF', a chunk length, 'WEBP'.
+   *
+   * A real header rather than four arbitrary bytes because setAvatar now refuses a
+   * payload that is not a WebP container (see parseAvatarDataUrl in
+   * desktop/src/avatar.ts) — a stand-in would be rejected before it ever reached
+   * the bucket. What these tests are about is that these EXACT bytes arrive: that
+   * the base64 payload was decoded, and that the `data:…;base64,` preamble was not
+   * decoded along with it.
    */
-  const BYTES = Buffer.from([0x52, 0x49, 0x46, 0x46])
+  const BYTES = Buffer.from([
+    0x52, 0x49, 0x46, 0x46, // 'RIFF'
+    0x1a, 0x00, 0x00, 0x00, // chunk length
+    0x57, 0x45, 0x42, 0x50, // 'WEBP'
+  ])
   const DATA_URL = `data:image/webp;base64,${BYTES.toString('base64')}`
 
   /** A Blob as far as getAvatarDataUrl is concerned: one arrayBuffer(). */
@@ -2700,23 +2710,39 @@ describe('avatar', () => {
     expect(upserts.profiles[0]).toEqual({ user_id: UID, avatar_url: PATH })
   })
 
-  it('refuses a string that is not a data URL instead of uploading its preamble', async () => {
+  // The payload arrives over the preload bridge, so it is untrusted input to this
+  // process. The verdicts themselves are exhaustively covered in avatar.test.ts;
+  // what matters HERE is that a refused payload never reaches the bucket, and that
+  // the store defers to that one parser instead of re-deciding for itself.
+  it.each([
+    ['a string that is not a data URL', 'https://example.com/face.png', 'unreadable'],
+    ['a data URL of another format', 'data:image/png;base64,iVBORw0KGgo=', 'unreadable'],
+    ['an empty payload', 'data:image/webp;base64,', 'unreadable'],
+    ['base64 outside the alphabet', 'data:image/webp;base64,AAA!', 'unreadable'],
+    ['bytes that are not a WebP container', 'data:image/webp;base64,iVBORw0KGgoAAAAA', 'not_webp'],
+  ])('refuses %s without touching Storage', async (_label, payload, reason) => {
     const { client, calls } = makeClient({ profiles: { data: null, error: null } })
     h.state.client = client
 
-    // No comma → indexOf is -1. Were the guard `slice(indexOf + 1)` with no check,
-    // the whole string would go to the base64 decoder, which does not throw: it
-    // returns bytes, and those bytes would be uploaded as an image.
-    await expect(new CloudStore().setAvatar('https://example.com/face.png')).rejects.toThrow('not a data URL')
+    await expect(new CloudStore().setAvatar(payload)).rejects.toThrow(
+      `setAvatar failed: the image was refused (${reason})`,
+    )
     expect(calls.some((c) => c.table === 'storage:avatars')).toBe(false)
+    expect(calls.some((c) => c.table === 'profiles')).toBe(false)
   })
 
-  it('refuses a data URL whose payload decodes to nothing', async () => {
+  it('refuses an oversized payload without allocating it', async () => {
     const { client, calls } = makeClient({ profiles: { data: null, error: null } })
     h.state.client = client
 
-    await expect(new CloudStore().setAvatar('data:image/webp;base64,')).rejects.toThrow('empty')
-    expect(calls.some((c) => c.table === 'storage:avatars')).toBe(false)
+    // Over the byte cap once decoded. The parser reaches that verdict from the
+    // base64 length alone, which is the point: nothing here allocates 5 MB to
+    // discover it.
+    const payload = 'A'.repeat(Math.ceil((AVATAR_MAX_BYTES + 3) / 3) * 4)
+    await expect(new CloudStore().setAvatar(`data:image/webp;base64,${payload}`)).rejects.toThrow(
+      'setAvatar failed: the image was refused (too_large)',
+    )
+    expect(calls).toEqual([])
   })
 
   it('does not write the pointer row when the upload fails', async () => {

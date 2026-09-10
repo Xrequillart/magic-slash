@@ -1,7 +1,13 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, PlanSession, PlanSpecInput, PlanTicketsInput, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
-import { AVATAR_BUCKET, AVATAR_MIME_TYPE, avatarObjectPath } from '../../avatar'
+import {
+  AVATAR_BUCKET,
+  AVATAR_DATA_URL_PREFIX,
+  AVATAR_MIME_TYPE,
+  avatarObjectPath,
+  parseAvatarDataUrl,
+} from '../../avatar'
 import { readAgents } from '../config/agents'
 import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
@@ -1998,18 +2004,25 @@ export class CloudStore implements Store {
    * cannot touch `name`/`role`/`technical_level`.
    */
   async setAvatar(dataUrl: string): Promise<void> {
+    // Parsed BEFORE the session is even looked up: this is the main-process end of
+    // the preload bridge, and `dataUrl` is renderer input whatever produced it. The
+    // parser is the whole guard — exact prefix, strict base64, the decoded size
+    // computed and capped before anything is allocated, and the RIFF/WEBP marker
+    // pair verified after, so the `contentType` declared below is a fact. It lives
+    // in desktop/src/avatar.ts because that module owns the cap it is derived from;
+    // see its note for why the checks are in that order.
+    //
+    // The parser deals in Uint8Array so it can stay runtime-agnostic (the renderer
+    // imports that module too); turning it into the Buffer the Supabase client
+    // wants is this caller's one line of Node, and it happens only for a payload
+    // already known to be under the cap.
+    const parsed = parseAvatarDataUrl(dataUrl)
+    if (!parsed.ok) throw new Error(`setAvatar failed: the image was refused (${parsed.reason})`)
+
     const ctx = await this.userContext()
     if (!ctx) return
 
-    // The comma, not `indexOf(...) + 1`: a string with no comma yields -1, and
-    // `slice(0)` would hand the whole `data:…` preamble to the base64 decoder,
-    // which does not throw — it returns bytes. The length guard below would then
-    // pass and we would upload garbage under a WebP content type.
-    const comma = dataUrl.indexOf(',')
-    if (comma < 0) throw new Error('setAvatar failed: not a data URL')
-    const buffer = Buffer.from(dataUrl.slice(comma + 1), 'base64')
-    if (buffer.length === 0) throw new Error('setAvatar failed: the encoded image is empty')
-
+    const buffer = Buffer.from(parsed.bytes)
     const path = avatarObjectPath(ctx.uid)
     const { error: uploadError } = await ctx.client.storage
       .from(AVATAR_BUCKET)
@@ -2074,7 +2087,7 @@ export class CloudStore implements Store {
     if (downloadError || !blob) return null
     const buffer = Buffer.from(await blob.arrayBuffer())
     if (buffer.length === 0) return null
-    return `data:${AVATAR_MIME_TYPE};base64,${buffer.toString('base64')}`
+    return `${AVATAR_DATA_URL_PREFIX}${buffer.toString('base64')}`
   }
 
   // -------------------------------------------------------------------------

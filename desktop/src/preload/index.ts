@@ -588,20 +588,36 @@ const profileApi = {
   // edit would erase it.
 
   /**
-   * Read the file the user picked (via `dialog.openFile()`) so the renderer can
-   * crop it on a canvas. Refusals come back as a reason CODE — the size cap and
-   * the accepted extensions are checked in main, where the ORIGINAL file's size
-   * is knowable, and the caller maps the code to a message key.
+   * Open the OS picker and hand back the chosen file as a data URL, so the
+   * renderer can crop it on a canvas.
+   *
+   * NO ARGUMENT, and that is the design: main opens the dialog and reads the
+   * result in one operation, so the renderer never supplies a path and never
+   * learns one. A `readAvatarSource(path)` used to sit here, and a channel that
+   * reads whatever path it is handed is an arbitrary-file-read channel however
+   * well-behaved its callers are.
+   *
+   * Refusals come back as a reason CODE — the size cap and the accepted
+   * extensions are checked in main, where the ORIGINAL file's size is knowable,
+   * and the caller maps the code to a message key. `'cancelled'` is in the same
+   * union and is NOT a refusal: dismissing the dialog must show nothing.
    */
-  readAvatarSource: (path: string): Promise<AvatarSourceResult> =>
-    ipcRenderer.invoke('profile:readAvatarSource', path),
+  pickAvatarSource: (): Promise<AvatarSourceResult> =>
+    ipcRenderer.invoke('profile:pickAvatarSource'),
   /** The stored photo as a data URL, or null when there is none. */
   getAvatar: (): Promise<string | null> => ipcRenderer.invoke('profile:getAvatar'),
-  /** Upload a 256 px WebP data URL as the photo. */
-  setAvatar: (dataUrl: string): Promise<{ ok: boolean; error?: string }> =>
+  /**
+   * Upload a 256 px WebP data URL as the photo.
+   *
+   * On failure the result may carry `avatar`: the photo as the SERVER now has it.
+   * A write is a blob then a pointer, so a failure of the second happens with the
+   * first already done and whatever is on screen is no longer true. An ABSENT
+   * `avatar` means main could not find out either — refetch rather than assume.
+   */
+  setAvatar: (dataUrl: string): Promise<{ ok: boolean; error?: string; avatar?: string | null }> =>
     ipcRenderer.invoke('profile:setAvatar', dataUrl),
-  /** Delete the photo, blob and pointer. */
-  removeAvatar: (): Promise<{ ok: boolean; error?: string }> =>
+  /** Delete the photo, blob and pointer. Same `avatar` resync contract on failure. */
+  removeAvatar: (): Promise<{ ok: boolean; error?: string; avatar?: string | null }> =>
     ipcRenderer.invoke('profile:removeAvatar'),
 }
 

@@ -182,7 +182,14 @@ export interface Store {
   // load/saveProfile deliberately — saveProfile rewrites every optional column
   // as `?? null`, and the photo must survive a profile edit (and a profile that
   // is too incomplete for loadProfile to return at all).
-  /** Store a WebP data URL as the caller's photo and point their row at it. */
+  /**
+   * Store a WebP data URL as the caller's photo and point their row at it.
+   *
+   * `dataUrl` is UNTRUSTED — it crosses the preload bridge — so an implementation
+   * validates it (prefix, base64, decoded size against AVATAR_MAX_BYTES, WebP
+   * container) before it allocates or uploads anything, and throws when it will
+   * not. `parseAvatarDataUrl` in desktop/src/avatar.ts is that check.
+   */
   setAvatar(dataUrl: string): Promise<void>
   /** Delete the caller's photo — the Storage object and the row's pointer. */
   removeAvatar(): Promise<void>

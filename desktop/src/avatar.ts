@@ -21,7 +21,10 @@
  * DELIBERATELY PURE. No `electron`, no `@supabase/supabase-js`, no `fs`, at any
  * depth — the renderer imports it directly, and the root vitest suite runs it
  * with no Electron around. Callers who need the filesystem measure the file
- * themselves and hand the numbers in.
+ * themselves and hand the numbers in. The only platform anything here touches is
+ * `atob`, which is a standard global in both a browser and Node; nothing here
+ * takes or returns a `Buffer`, so `parseAvatarDataUrl` deals in `Uint8Array` and
+ * the main process wraps it at the one call site that talks to Storage.
  *
  * NO i18n EITHER. A refusal comes back as a REASON CODE, never as a sentence:
  * the renderer owns the catalogue and maps the code to a message key. A module
@@ -76,25 +79,40 @@ export const AVATAR_MIME_TYPE = 'image/webp'
 export const AVATAR_MAX_BYTES = 5242880
 
 /**
- * Why a picked file was refused. A code, not a message — see the module note.
+ * Why a photo was refused. A code, not a message — see the module note.
  *
  * `unreadable` covers everything that is not a verdict on the file's type or
  * size: a path that no longer exists, a stat that threw, a directory picked
- * instead of a file. The main process maps its own I/O failures onto it so the
- * renderer has exactly one union to translate.
+ * instead of a file, and — on the upload side — a payload that is not the data
+ * URL this app produces. The main process maps its own I/O failures onto it so
+ * the renderer has exactly one union to translate.
+ *
+ * `not_webp` is the one verdict that can only be reached AFTER decoding: a
+ * payload whose base64 is perfectly well formed and whose bytes are not a WebP
+ * container. It is separate from `bad_extension` because it is a different fact
+ * about a different thing — the extension check judges the file the user picked,
+ * this one judges the bytes that are about to be stored as `image/webp`.
  */
-export type AvatarRejection = 'too_large' | 'bad_extension' | 'unreadable'
+export type AvatarRejection = 'too_large' | 'bad_extension' | 'unreadable' | 'not_webp'
 
 /**
- * What `profile:readAvatarSource` answers with: the picked file as a data URL, or
- * the reason we would not read it.
+ * What `profile:pickAvatarSource` answers with: the picked file as a data URL, or
+ * the reason there is nothing to hand back.
+ *
+ * `'cancelled'` sits alongside the rejections rather than in a third branch
+ * because the channel has exactly two outcomes for its caller — bytes, or no
+ * bytes — and dismissing the dialog is the one "no bytes" that must NOT be shown
+ * as an error. Keeping it inside the same union is what forces every caller to
+ * decide what to do about it instead of falling through to a toast.
  *
  * Named here rather than spelled inline on both sides of the channel — the handler
  * in main/ipc/profile-handlers.ts and the preload signature are two halves of ONE
  * contract, and two independent literals are two things to keep in step. Same
  * treatment as `FilePreviewResult` in types.ts, which this channel's shape follows.
  */
-export type AvatarSourceResult = { dataUrl: string } | { reason: AvatarRejection }
+export type AvatarSourceResult =
+  | { dataUrl: string }
+  | { reason: AvatarRejection | 'cancelled' }
 
 /**
  * What we let a user pick, and what each accepted extension is CALLED.
@@ -173,6 +191,132 @@ export function validateAvatarFile(
   if (!mime) return { ok: false, reason: 'bad_extension' }
   if (size > AVATAR_MAX_BYTES) return { ok: false, reason: 'too_large' }
   return { ok: true, mime }
+}
+
+/**
+ * The one prefix a stored photo's data URL may carry.
+ *
+ * Derived from AVATAR_MIME_TYPE rather than typed out, so the string the renderer
+ * encodes, the string the download hands back and the string the parser below
+ * demands are one decision. Matched EXACTLY — see `parseAvatarDataUrl`.
+ */
+export const AVATAR_DATA_URL_PREFIX = `data:${AVATAR_MIME_TYPE};base64,`
+
+/**
+ * The longest data URL string we will even look at.
+ *
+ * Base64 inflates by 4/3 (four characters per three bytes, rounded up to a whole
+ * quantum), so the largest legitimate payload is computable from AVATAR_MAX_BYTES
+ * instead of guessed. The slack absorbs nothing in particular — it exists so that
+ * this ceiling can never be the thing that refuses a payload the arithmetic below
+ * would have accepted; the byte cap stays the only real limit.
+ *
+ * Checking the STRING length first is the whole point: it is the only bound that
+ * can be applied before any of the value has been copied or decoded.
+ */
+export const AVATAR_MAX_DATA_URL_LENGTH =
+  AVATAR_DATA_URL_PREFIX.length + Math.ceil(AVATAR_MAX_BYTES / 3) * 4 + 64
+
+/** Standard base64, no URL-safe alphabet, no whitespace, no line breaks. */
+const BASE64_BODY = /^[A-Za-z0-9+/]*$/
+
+/**
+ * A RIFF container holding a WEBP chunk: 'RIFF', a 4-byte length, then 'WEBP'.
+ * Twelve bytes is the shortest thing that can carry both markers.
+ */
+const WEBP_HEADER_BYTES = 12
+const RIFF = [0x52, 0x49, 0x46, 0x46] // 'RIFF'
+const WEBP = [0x57, 0x45, 0x42, 0x50] // 'WEBP'
+
+/** Whether `bytes` opens with the RIFF/WEBP marker pair a .webp always does. */
+function isWebp(bytes: Uint8Array): boolean {
+  if (bytes.length < WEBP_HEADER_BYTES) return false
+  return (
+    RIFF.every((byte, i) => bytes[i] === byte) && WEBP.every((byte, i) => bytes[8 + i] === byte)
+  )
+}
+
+/**
+ * Decode strictly-validated base64 to bytes.
+ *
+ * `atob` rather than `Buffer`: this module is imported by the renderer too, and a
+ * Buffer in its signature would make it a Node module. The caller in the main
+ * process wraps the result (`Buffer.from(bytes)`) at the one point it needs to.
+ *
+ * Only ever called on a payload `parseAvatarDataUrl` has already checked against
+ * BASE64_BODY, so `atob`'s own leniency is not load-bearing here.
+ */
+function decodeBase64(payload: string): Uint8Array {
+  const binary = atob(payload)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
+
+/**
+ * Turn the renderer's `data:image/webp;base64,…` string into the bytes we are
+ * willing to store — or say why we are not.
+ *
+ * WHY THIS IS NOT A ONE-LINE GUARD
+ * ---------------------------------------------------------------------------
+ * The string arrives over the preload bridge, which makes it untrusted input to
+ * the main process however trustworthy the code that normally produces it is.
+ * "Has a comma, decodes to at least one byte" accepts three things it should not:
+ * a payload of any length (allocated in full before Storage ever sees it), base64
+ * with characters in it that `Buffer.from` silently drops, and bytes that are not
+ * an image at all yet get uploaded labelled `image/webp`.
+ *
+ * THE ORDER OF THE CHECKS IS THE FIX, not merely tidiness. Each step is cheaper
+ * than the one after it and each one bounds the next:
+ *
+ *   1. a string at all, and short enough to be a candidate — the only check that
+ *      costs nothing, and the only one that can precede touching the value;
+ *   2. the EXACT prefix, so the format is decided before anything is decoded;
+ *   3. a strict charset and padding check on the payload, which is what makes
+ *      step 4's arithmetic trustworthy;
+ *   4. the decoded length, computed from the base64 length and the padding and
+ *      compared to the cap BEFORE decoding. This is the point of the whole
+ *      function: an oversized payload is refused without being allocated;
+ *   5. only now, decode — and check that the bytes are a WebP container, so the
+ *      `contentType` the upload declares is a fact rather than a hope.
+ *
+ * A byte-for-byte empty payload is refused by step 3's length check: there is no
+ * such thing as base64 for zero bytes here worth accepting, and an empty object
+ * in the bucket renders as a broken image the user cannot tell from a bug.
+ */
+export function parseAvatarDataUrl(
+  input: unknown,
+): { ok: true; bytes: Uint8Array } | { ok: false; reason: AvatarRejection } {
+  if (typeof input !== 'string' || input.length === 0) return { ok: false, reason: 'unreadable' }
+  // Before the prefix check, because a 200 MB string is a size problem whatever
+  // it starts with — and because reporting it as an unreadable format would send
+  // the user looking for a converter instead of a smaller photo.
+  if (input.length > AVATAR_MAX_DATA_URL_LENGTH) return { ok: false, reason: 'too_large' }
+  if (!input.startsWith(AVATAR_DATA_URL_PREFIX)) return { ok: false, reason: 'unreadable' }
+
+  const payload = input.slice(AVATAR_DATA_URL_PREFIX.length)
+  // Length first: a quantum is four characters, so anything else is malformed,
+  // and 0 is the empty payload.
+  if (payload.length === 0 || payload.length % 4 !== 0) return { ok: false, reason: 'unreadable' }
+
+  // Padding is only ever the last one or two characters, and only '=' — which is
+  // why it can be counted before the charset test rather than allowed for in it.
+  let padding = 0
+  if (payload.endsWith('==')) padding = 2
+  else if (payload.endsWith('=')) padding = 1
+  if (!BASE64_BODY.test(padding === 0 ? payload : payload.slice(0, -padding))) {
+    return { ok: false, reason: 'unreadable' }
+  }
+
+  // Four characters carry three bytes; the padding says how many of the last
+  // three are not really there. No allocation has happened yet.
+  const decodedLength = (payload.length / 4) * 3 - padding
+  if (decodedLength === 0) return { ok: false, reason: 'unreadable' }
+  if (decodedLength > AVATAR_MAX_BYTES) return { ok: false, reason: 'too_large' }
+
+  const bytes = decodeBase64(payload)
+  if (!isWebp(bytes)) return { ok: false, reason: 'not_webp' }
+  return { ok: true, bytes }
 }
 
 /**

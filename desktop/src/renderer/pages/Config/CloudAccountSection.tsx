@@ -26,6 +26,10 @@ const REJECTION_MESSAGE: Record<AvatarRejection, MessageKey> = {
   too_large: 'toast.avatarTooLarge',
   bad_extension: 'toast.avatarBadFormat',
   unreadable: 'toast.avatarUnreadable',
+  // Only reachable from the UPLOAD side (main refuses bytes that are not a WebP
+  // container), never from the picker — but the record is total on purpose, so a
+  // new code cannot be added without someone deciding what the user is told.
+  not_webp: 'toast.avatarNotWebp',
 }
 
 /**
@@ -90,8 +94,9 @@ async function toAvatarDataUrl(sourceDataUrl: string): Promise<string> {
  * It owns its own auth modals — nothing else needs to know they exist.
  *
  * The avatar is held in local state, fetched once per session and then written
- * through from the value we just uploaded — no re-read, since the bytes on screen
- * are the bytes that were stored. That is the whole of what "updates without a
+ * through from the value we just uploaded — no re-read on success, since the bytes
+ * on screen are the bytes that were stored. A FAILED write is the case that does
+ * re-read: see `resyncAvatar`. That is the whole of what "updates without a
  * restart" needs. There is deliberately no `profile:changed` broadcast: this card
  * is the only surface showing the photo today, and a bus with one subscriber is a
  * bus that goes stale the first time someone forgets to publish on it.
@@ -137,23 +142,59 @@ export function CloudAccountSection() {
   }, [status.loggedIn])
 
   /**
-   * Pick a file, crop it, upload it — and on any refusal, change nothing.
+   * Put the photo back on server truth after a write that failed.
    *
-   * Every early return here leaves `avatar` exactly as it was. That is the point of
-   * C4: a 20 MB TIFF must not blank out the photo that is already working, so the
-   * state is written once, at the end, only after the upload has been acknowledged.
-   * Same revert-and-toast shape as `ProfileSection.handleChange`.
+   * A write is two operations — the blob, then the pointer — and the blob goes
+   * first deliberately (an orphan is harmless; a pointer at nothing 404s on every
+   * mount). So a failure of the SECOND leaves what is on screen stale in the one
+   * direction that matters: the new bytes have already replaced the old photo, or
+   * the object is already gone, while this component is still rendering what it
+   * was rendering before. Showing a toast and keeping that image is telling the
+   * user nothing happened when something did.
+   *
+   * `result.avatar` is what main re-read after the failure, and an ABSENT field
+   * means even that re-read failed — so we go and ask, rather than treat a missing
+   * value as "no photo" and blank a face that is still there. If the refetch fails
+   * too we are offline and the stale image is the least of it.
+   */
+  const resyncAvatar = useCallback(async (result: { avatar?: string | null }) => {
+    if (result.avatar !== undefined) {
+      setAvatar(result.avatar)
+      return
+    }
+    try {
+      setAvatar(await window.electronAPI.profile.getAvatar())
+    } catch {
+      /* Nothing to correct it with; the toast has already told the user. */
+    }
+  }, [])
+
+  /**
+   * Pick a file, crop it, upload it — and on any REFUSAL, change nothing.
+   *
+   * Every refusal return here leaves `avatar` exactly as it was, which is the
+   * point of C4: a 20 MB TIFF must not blank out the photo that is already
+   * working, and a file we would not even read never reached Storage, so there is
+   * nothing to resync. A failed WRITE is the other case — see `resyncAvatar`.
+   *
+   * The picker is `pickAvatarSource()`, not `dialog.openFile()` followed by a
+   * read: main opens the dialog and reads the file in one operation, so no path
+   * ever travels through this process. `'cancelled'` is therefore a normal
+   * outcome and shows nothing at all.
+   *
+   * `avatarBusy` is set BEFORE the picker rather than after, now that the dialog
+   * is part of the same call: it is what stops a second click from stacking a
+   * second modal.
    */
   const handleChoosePhoto = useCallback(async () => {
     if (avatarBusy) return
 
-    const path = await window.electronAPI.dialog.openFile()
-    if (!path) return
-
     setAvatarBusy(true)
     try {
-      const source = await window.electronAPI.profile.readAvatarSource(path)
+      const source = await window.electronAPI.profile.pickAvatarSource()
       if ('reason' in source) {
+        // Dismissing the dialog is not a failure and must not toast.
+        if (source.reason === 'cancelled') return
         showToast(t(REJECTION_MESSAGE[source.reason], { limit: AVATAR_LIMIT_LABEL }), 'error')
         return
       }
@@ -173,18 +214,21 @@ export function CloudAccountSection() {
         // `result.error` is a transport or Storage message in English; it goes to the
         // console for whoever is debugging, not into a toast the user has to decode.
         if (result.error) console.error('avatar upload failed:', result.error)
+        await resyncAvatar(result)
         showToast(t('toast.avatarSaveFailed'), 'error')
         return
       }
 
       setAvatar(encoded)
     } catch (e) {
+      // An IPC rejection: no result to read a resynced value out of, so ask.
       console.error('avatar upload failed:', e)
+      await resyncAvatar({})
       showToast(t('toast.avatarSaveFailed'), 'error')
     } finally {
       setAvatarBusy(false)
     }
-  }, [avatarBusy, t])
+  }, [avatarBusy, resyncAvatar, t])
 
   const handleRemovePhoto = useCallback(async () => {
     if (avatarBusy) return
@@ -193,17 +237,21 @@ export function CloudAccountSection() {
       const result = await window.electronAPI.profile.removeAvatar()
       if (!result.ok) {
         if (result.error) console.error('avatar removal failed:', result.error)
+        // The blob may already be gone with only the pointer left — the photo the
+        // user just asked to delete must not stay on screen as though it were fine.
+        await resyncAvatar(result)
         showToast(t('toast.avatarRemoveFailed'), 'error')
         return
       }
       setAvatar(null)
     } catch (e) {
       console.error('avatar removal failed:', e)
+      await resyncAvatar({})
       showToast(t('toast.avatarRemoveFailed'), 'error')
     } finally {
       setAvatarBusy(false)
     }
-  }, [avatarBusy, t])
+  }, [avatarBusy, resyncAvatar, t])
 
   const handleLogout = useCallback(async () => {
     await logout()

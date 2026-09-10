@@ -858,7 +858,8 @@ export const fr: Record<keyof typeof en, string> = {
   'toast.avatarBadFormat':
     'Ce fichier n’est pas une image prise en charge. Choisissez un PNG, un JPEG ou un WebP (le SVG n’est pas accepté).',
   'toast.avatarUnreadable': 'Cette image n’a pas pu être lue. Choisissez un PNG, un JPEG ou un WebP.',
-  'toast.avatarSaveFailed': 'Impossible d’enregistrer votre photo. Votre photo actuelle est inchangée.',
+  'toast.avatarNotWebp': 'Cette photo n’a pas pu être encodée correctement. Essayez une autre image.',
+  'toast.avatarSaveFailed': 'Impossible d’enregistrer votre photo. Réessayez.',
   'toast.avatarRemoveFailed': 'Impossible de retirer votre photo',
 
   // ── Réglages → Connexions → Compte Atlassian ─────────────────────────────

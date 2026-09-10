@@ -1,5 +1,7 @@
 -- pgTAP: avatars are strictly private — a user reads/writes only objects inside
--- their own `<uid>/` folder of the `avatars` bucket (acceptance criterion 7).
+-- their own `<uid>/` folder of the `avatars` bucket (acceptance criterion 7) — and
+-- writes are pinned tighter still, to the one key `<uid>/avatar.webp`, so the bucket
+-- cannot grow a second object per user.
 --
 -- Same impersonation trick as profiles.test.sql: pgTAP runs as the table owner, which
 -- BYPASSES RLS, so every assertion sets `role authenticated` plus a
@@ -13,7 +15,7 @@
 -- `supabase test db` the first time.
 
 begin;
-select plan(5);
+select plan(6);
 
 insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
 values
@@ -44,9 +46,9 @@ select is(
   'a user cannot see another user avatar object'
 );
 
--- 2. u2 cannot forge an object inside u1's folder (WITH CHECK on the first path
---    segment). This is the write half of criterion 7: without it, overwriting
---    someone else's face would be a one-line upload.
+-- 2. u2 cannot forge an object inside u1's folder (WITH CHECK on the path). This
+--    is the write half of criterion 7: without it, overwriting someone else's face
+--    would be a one-line upload.
 --    Asserted on the SQLSTATE alone: 42501 IS the contract (insufficient
 --    privilege), while the sentence Postgres wraps it in is version-sensitive
 --    wording we do not control. Same `null` errmsg form as skill_invocations /
@@ -59,12 +61,25 @@ select throws_ok(
   'a user cannot write into another user avatar folder'
 );
 
--- 3. u2 CAN write inside their own folder. Without this the suite would also pass
---    with policies that simply deny everyone.
+-- 3. u2 CAN write inside their own folder, at the blessed key. Without this the
+--    suite would also pass with policies that simply deny everyone.
 select lives_ok(
   $sql$ insert into storage.objects (bucket_id, name)
         values ('avatars', '22222222-2222-2222-2222-222222222222/avatar.webp') $sql$,
   'a user can write their own avatar object'
+);
+
+-- 4. ...and ONLY at that key. A second, differently named object in u2's OWN folder
+--    is refused: the insert policy pins the whole name, not just the first path
+--    segment. This is what bounds the bucket — a folder-only test would let a client
+--    talk to Storage directly and pile up `<uid>/1.webp`, `<uid>/2.webp`, ..., each
+--    one legal, with no per-user quota anywhere to stop it.
+select throws_ok(
+  $sql$ insert into storage.objects (bucket_id, name)
+        values ('avatars', '22222222-2222-2222-2222-222222222222/1.webp') $sql$,
+  '42501',
+  null,
+  'a user cannot write a second object name in their own avatar folder'
 );
 
 -- ---------------------------------------------------------------------------
@@ -73,14 +88,14 @@ select lives_ok(
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
 
--- 4. Exactly one row: u1's own. u2's object, inserted above, is not among them.
+-- 5. Exactly one row: u1's own. u2's object, inserted above, is not among them.
 select is(
   (select count(*) from storage.objects where bucket_id = 'avatars'),
   1::bigint,
   'a user sees their own avatar object and no other'
 );
 
--- 5. And it is the expected path, not an accident of the count.
+-- 6. And it is the expected path, not an accident of the count.
 select is(
   (select name from storage.objects where bucket_id = 'avatars'),
   '11111111-1111-1111-1111-111111111111/avatar.webp',

@@ -871,7 +871,13 @@ export const en = {
   'toast.avatarTooLarge': 'That image is too large (maximum {limit}). Pick a smaller PNG, JPEG or WebP.',
   'toast.avatarBadFormat': 'That file is not a supported image. Pick a PNG, JPEG or WebP (SVG is not supported).',
   'toast.avatarUnreadable': 'That image could not be read. Pick a PNG, JPEG or WebP.',
-  'toast.avatarSaveFailed': 'Failed to save your photo. Your current photo is unchanged.',
+  // Reached only when the encoded bytes are not a WebP container — the app encodes
+  // one itself, so this is a "something is wrong with this build" message, not a
+  // "pick a different file" one. It still has to be a sentence a user can act on.
+  'toast.avatarNotWebp': 'That photo could not be encoded correctly. Try another image.',
+  // No claim about what the photo is now: a failed save may have already replaced
+  // the stored bytes, and the card re-reads the server rather than guess.
+  'toast.avatarSaveFailed': 'Failed to save your photo. Please try again.',
   'toast.avatarRemoveFailed': 'Failed to remove your photo',
 
   // ── Settings → Connections → Atlassian account ───────────────────────────

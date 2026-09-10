@@ -409,22 +409,42 @@ export function setupSkillsHandlers() {
   })
 
   // Dialog: open file for image selection
-  ipcMain.handle('dialog:openFile', async () => {
-    const window = BrowserWindow.getFocusedWindow()
-    if (!window) return null
+  ipcMain.handle('dialog:openFile', () => openImageFileDialog())
+}
 
-    const result = await dialog.showOpenDialog(window, {
-      properties: ['openFile'],
-      title: t('dialog.selectImage'),
-      filters: [
-        { name: t('dialog.filter.images'), extensions: ['png', 'jpg', 'jpeg', 'svg', 'webp'] }
-      ]
-    })
+/**
+ * Show the native image picker and return the chosen path, or null.
+ *
+ * EXPORTED, and that is the point: two features need this exact dialog — a skill
+ * illustration (via the `dialog:openFile` channel, which the renderer drives) and
+ * the account photo (via `profile:pickAvatarSource`, which never lets a path reach
+ * the renderer at all). Duplicating it would mean two lists of extensions and two
+ * dialog titles to keep in step; calling it twice means the two features cannot
+ * offer the user different things by accident.
+ *
+ * null covers both "the user dismissed it" and "there is no focused window to
+ * parent a modal to". Neither is an error and neither yields a file, so callers
+ * that distinguish them would have nothing different to do.
+ *
+ * `svg` is offered here because a skill illustration is displayed as-is. The
+ * avatar path refuses it again after the fact — see MIME_BY_EXTENSION in
+ * desktop/src/avatar.ts for why a croppable, uploadable image is a narrower set.
+ */
+export async function openImageFileDialog(): Promise<string | null> {
+  const window = BrowserWindow.getFocusedWindow()
+  if (!window) return null
 
-    if (result.canceled || result.filePaths.length === 0) {
-      return null
-    }
-
-    return result.filePaths[0]
+  const result = await dialog.showOpenDialog(window, {
+    properties: ['openFile'],
+    title: t('dialog.selectImage'),
+    filters: [
+      { name: t('dialog.filter.images'), extensions: ['png', 'jpg', 'jpeg', 'svg', 'webp'] }
+    ]
   })
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null
+  }
+
+  return result.filePaths[0]
 }

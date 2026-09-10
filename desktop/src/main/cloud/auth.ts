@@ -331,6 +331,73 @@ export async function confirmEmailChange(newEmail: string, code: string): Promis
 // ---------------------------------------------------------------------------
 
 /**
+ * How long to wait before the single retry of the avatar removal below.
+ *
+ * Short on purpose: this runs inside a click the user is watching, and the only
+ * failure it is meant to absorb is the transient kind — a dropped socket, a
+ * Storage node cycling. A longer backoff would buy nothing a second attempt does
+ * not already buy, and would make a doomed deletion feel like a hung one.
+ */
+const AVATAR_REMOVAL_RETRY_DELAY_MS = 400
+
+/**
+ * The message the Account tab shows when the photo could not be removed.
+ *
+ * A plain sentence rather than a message key because that is how every other
+ * failure out of this module reaches the user: `handleDeleteAccount` renders
+ * `e.message` directly, and the localised `toast.accountDeleteFailed` is only its
+ * fallback for a non-Error throw. Introducing a key here would translate one
+ * sentence out of a dozen.
+ */
+const AVATAR_REMOVAL_FAILED =
+  'Your account was NOT deleted: your profile photo could not be removed from storage, ' +
+  'and deleting the account without it would leave the photo behind. Check your connection and try again.'
+
+/** Does this user have a photo to delete at all? */
+async function hasStoredAvatar(client: SupabaseClient, uid: string): Promise<boolean> {
+  const { data, error } = await client
+    .from('profiles')
+    .select('avatar_url')
+    .eq('user_id', uid)
+    .maybeSingle()
+
+  // A read we could not make is not an answer. Assume there IS a photo, so the
+  // removal below runs and has to succeed: guessing "no photo" here is how a
+  // transient PostgREST failure would orphan the bytes, which is the whole thing
+  // this path exists to prevent. It cannot strand the user either — Storage
+  // answers a remove of a key that isn't there with no error at all, so the only
+  // way past this point is blocked is a backend broad enough that the
+  // delete_account RPC would have failed next anyway.
+  if (error) return true
+  return Boolean((data as { avatar_url?: string | null } | null)?.avatar_url)
+}
+
+/**
+ * Remove the user's avatar object, with one retry. Throws when it cannot.
+ *
+ * Both failure shapes are handled because Storage uses both: it reports most
+ * problems in the resolved `error` and throws only on a transport failure.
+ *
+ * A key that is not in the bucket is NOT a failure here — Storage resolves that
+ * with no error — so a user whose object has already gone is not blocked by this.
+ */
+async function removeStoredAvatar(client: SupabaseClient, uid: string): Promise<void> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, AVATAR_REMOVAL_RETRY_DELAY_MS))
+    }
+    try {
+      const { error } = await client.storage.from(AVATAR_BUCKET).remove([avatarObjectPath(uid)])
+      if (!error) return
+      console.error('[cloud] avatar removal before account deletion failed:', error.message)
+    } catch (error) {
+      console.error('[cloud] avatar removal before account deletion threw:', error)
+    }
+  }
+  throw new Error(AVATAR_REMOVAL_FAILED)
+}
+
+/**
  * Permanently delete the signed-in user's account and personal data. The
  * delete_account() RPC removes the auth.users row (app tables cascade via FK)
  * and the caller's memberships. We then sign out locally and clear the stored
@@ -341,30 +408,31 @@ export async function confirmEmailChange(newEmail: string, code: string): Promis
  * leaves the blob itself sitting in the bucket, unreferenced and undeletable
  * (the storage policies are scoped to `auth.uid()`, and that user no longer
  * exists). This client call, made while the session is still valid, is the only
- * thing that actually removes the bytes, which is what makes the deletion the
- * complete erasure it is presented as.
+ * thing that actually removes the bytes.
  *
- * It must never BLOCK the deletion, though: a Storage outage, an offline moment,
- * a user who never set a photo at all — none of those are a reason to refuse to
- * delete an account. So the failure is logged and swallowed, exactly like the
- * sign-out below, and the RPC runs regardless. The worst case is an orphaned
- * object in a private bucket; the alternative worst case is a user who cannot
- * leave.
+ * AND IT BLOCKS THE DELETION WHEN IT FAILS. That is the deliberate choice here,
+ * and it is the opposite of how the sign-out below is treated. A swallowed
+ * failure would leave personal photo bytes in a bucket after an operation the UI
+ * presents as a complete erasure, with nothing left afterwards that could ever
+ * come back for them: the RPC deletes the user, so the next attempt has no
+ * session, no policy match and no pointer. There is no cleanup queue to fall back
+ * on, so the honest options are "keep the promise" or "keep a durable queue", and
+ * a one-object cleanup does not justify the second. Failing loudly leaves the
+ * account and its data completely intact and lets the user press the button again.
+ *
+ * WHAT IT DOES NOT BLOCK is a deletion with no photo behind it — by far the
+ * common case. The pointer is checked first, so a user who never set one never
+ * touches Storage; and a pointer whose object has already been removed is fine
+ * too, because Storage does not treat a missing key as an error. Only a user who
+ * HAS a photo we genuinely cannot delete is asked to try again.
  */
 export async function deleteAccount(): Promise<AuthStatus> {
   const client = await getAuthedClient()
   if (!client) throw new Error('You must be signed in to delete your account')
 
   const uid = loadSession()?.user?.id
-  if (uid) {
-    try {
-      // Both failure shapes are swallowed: Storage reports most problems in the
-      // resolved `error` and throws only on a transport failure.
-      const { error } = await client.storage.from(AVATAR_BUCKET).remove([avatarObjectPath(uid)])
-      if (error) console.error('[cloud] avatar removal before account deletion (ignored):', error.message)
-    } catch (error) {
-      console.error('[cloud] avatar removal before account deletion (ignored):', error)
-    }
+  if (uid && (await hasStoredAvatar(client, uid))) {
+    await removeStoredAvatar(client, uid)
   }
 
   const { error } = await client.rpc('delete_account')
