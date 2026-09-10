@@ -1579,21 +1579,32 @@ const config: Config = {
           '19%, 60%': { backgroundColor: BRAND },
           '65%, 100%': { backgroundColor: 'rgba(10, 10, 10, 0.12)' },
         },
-        // The pointer: a small dip towards the click and back. It does NOT travel with the
-        // knob — a cursor that follows the thing it just switched is a DRAG, which is not
-        // how a switch is operated. It presses and stays where it is.
+        // The pointer: it ARRIVES from the card's lower right, presses, backs off a little
+        // while the switch answers, comes back to press again, then leaves the way it came.
+        // It does NOT travel with the knob — a cursor that follows the thing it just
+        // switched is a DRAG, which is not how a switch is operated — so the two presses
+        // land on the same spot and the knob moves under a hand that stays put.
         //
-        // The dip is a percentage of the glyph and the scale is 0.9, both small on
-        // purpose: a cursor that visibly shrinks reads as a cartoon, and all this has to
-        // convey is the instant of contact.
+        // IT MOVED FOR ONE ROUND ONLY WITH THE PRESS, a dip in place, and the owner asked
+        // for it to move ("tu peux le faire bouger le cursor"). The travel is in glyph
+        // widths (`4.5em`-ish at the size the card draws it) so it scales with the arrow.
+        //
         // THE PRESS HAS TO BEGIN BEFORE THE KNOB MOVES, or the cursor is reacting to the
         // switch instead of causing it. It goes down at 14% and the knob leaves at 16%;
         // down at 59% and the knob leaves at 60%. Two percent is ~96ms, which is about the
-        // gap between a real click landing and a real switch answering it.
+        // gap between a real click landing and a real switch answering it. The two glides
+        // (4%→11%, 46%→56%) are what `ease-in-out` on the shorthand shapes.
         'switch-cursor': {
-          '0%, 11%, 23%, 56%, 69%, 100%': { transform: 'translate(0, 0) scale(1)' },
+          '0%, 4%': { transform: 'translate(140%, 120%) scale(1)', opacity: '0' },
+          '6%': { opacity: '1' },
+          '11%, 13%': { transform: 'translate(0, 0) scale(1)', opacity: '1' },
           '14%, 18%': { transform: 'translate(-4%, 5%) scale(0.9)' },
+          '23%, 30%': { transform: 'translate(0, 0) scale(1)' },
+          '36%, 46%': { transform: 'translate(45%, 40%) scale(1)' },
+          '56%, 58%': { transform: 'translate(0, 0) scale(1)' },
           '59%, 63%': { transform: 'translate(-4%, 5%) scale(0.9)' },
+          '69%, 74%': { transform: 'translate(0, 0) scale(1)', opacity: '1' },
+          '86%, 100%': { transform: 'translate(140%, 120%) scale(1)', opacity: '0' },
         },
         // ── The security band's secrets table ────────────────────────────────────
         //
