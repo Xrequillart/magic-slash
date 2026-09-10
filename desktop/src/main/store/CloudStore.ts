@@ -1,6 +1,13 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, PlanSession, PlanSpecInput, PlanTicketsInput, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
+import {
+  AVATAR_BUCKET,
+  AVATAR_DATA_URL_PREFIX,
+  AVATAR_MIME_TYPE,
+  avatarObjectPath,
+  parseAvatarDataUrl,
+} from '../../avatar'
 import { readAgents } from '../config/agents'
 import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
@@ -195,6 +202,30 @@ interface ProfileRow {
   technical_level: string | null
   communication_style: string | null
   languages: string[] | null
+  free_text: string | null
+  // The Storage object path of the profile photo. Written only by setAvatar /
+  // removeAvatar below, never by saveProfile.
+  avatar_url: string | null
+}
+
+/**
+ * The columns `saveProfile` writes — every profile field, and NOT `avatar_url`.
+ *
+ * A type rather than an inline literal so the one mistake that matters here
+ * cannot compile. An upsert writes exactly the columns it is handed, so adding
+ * `avatar_url` to the payload would send whatever the profile form happens to
+ * hold (nothing) and wipe the photo the Account tab uploaded. Declared, that edit
+ * is an excess-property error; undeclared, it is a silent deletion. `avatar_url`
+ * is deliberately absent — see saveProfile, and the twin in
+ * `webapp/lib/profileShape.ts`.
+ */
+interface ProfileUpsertPayload {
+  user_id: string
+  name: string
+  role: UserProfile['role']
+  technical_level: UserProfile['technical_level']
+  communication_style: NonNullable<UserProfile['communication_style']> | null
+  languages: string[]
   free_text: string | null
 }
 
@@ -1892,7 +1923,7 @@ export class CloudStore implements Store {
 
     const { data, error } = await ctx.client
       .from('profiles')
-      .select('name, role, technical_level, communication_style, languages, free_text')
+      .select('name, role, technical_level, communication_style, languages, free_text, avatar_url')
       .eq('user_id', ctx.uid)
       .maybeSingle()
 
@@ -1909,26 +1940,154 @@ export class CloudStore implements Store {
     if (row.communication_style) profile.communication_style = row.communication_style as UserProfile['communication_style']
     if (Array.isArray(row.languages) && row.languages.length > 0) profile.languages = row.languages
     if (row.free_text) profile.freeText = row.free_text
+    if (row.avatar_url) profile.avatar_url = row.avatar_url
     return profile
   }
 
+  /**
+   * Write the profile row.
+   *
+   * The payload is typed, and `ProfileUpsertPayload` has NO `avatar_url` — which
+   * is the point of declaring it rather than passing a bare literal. The trap is
+   * one level up: the renderer's `profileFromDraft()` rebuilds a fresh
+   * UserProfile on every interaction, and this method writes every optional field
+   * as `?? null`, so an `avatar_url` "harmonised" with its neighbours would send
+   * null on each pill click and delete the user's photo. With the type in place
+   * that edit is an excess-property error instead of a silent data loss found on
+   * the next launch. The photo is written by setAvatar/removeAvatar below, which
+   * name that column and nothing else. Same rule, same mechanism, in
+   * `webapp/lib/profileShape.ts:profileUpsertPayload`.
+   */
   async saveProfile(profile: UserProfile): Promise<void> {
     const ctx = await this.userContext()
     if (!ctx) return
 
-    const { error } = await ctx.client.from('profiles').upsert(
-      {
-        user_id: ctx.uid,
-        name: profile.name,
-        role: profile.role,
-        technical_level: profile.technical_level,
-        communication_style: profile.communication_style ?? null,
-        languages: profile.languages ?? [],
-        free_text: profile.freeText ?? null,
-      },
-      { onConflict: 'user_id' },
-    )
+    const payload: ProfileUpsertPayload = {
+      user_id: ctx.uid,
+      name: profile.name,
+      role: profile.role,
+      technical_level: profile.technical_level,
+      communication_style: profile.communication_style ?? null,
+      languages: profile.languages ?? [],
+      free_text: profile.freeText ?? null,
+    }
+
+    const { error } = await ctx.client.from('profiles').upsert(payload, { onConflict: 'user_id' })
     if (error) throw new Error(`saveProfile failed: ${error.message}`)
+  }
+
+  // -------------------------------------------------------------------------
+  // Profile photo (Supabase Storage, `avatars` bucket)
+  // -------------------------------------------------------------------------
+  //
+  // One private object per user at `<uid>/avatar.webp` (see desktop/src/avatar.ts),
+  // with `profiles.avatar_url` holding that path. The blob and the column are two
+  // writes and they are ordered deliberately: the object first, the pointer second,
+  // so a failure in between leaves an orphan in the bucket rather than a column
+  // pointing at nothing — the next upload overwrites the orphan anyway, while a
+  // dangling pointer would make every mount attempt a download that 404s.
+  //
+  // All three use userContext(): a profile photo belongs to a person, not to an
+  // organization, and requiring a membership would deny the feature to anyone
+  // working alone. All three treat "no session" as a neutral answer rather than an
+  // error, the way the rest of this store does — cloud is optional here.
+
+  /**
+   * Store `dataUrl` as the caller's photo and point the profile row at it.
+   *
+   * The row write is an UPSERT, and that is not interchangeable with an update:
+   * the Account tab is reachable without ever opening the Profile tab, so there
+   * may be no `profiles` row at all. An `update` would report success while
+   * matching zero rows — the object would sit in the bucket with nothing
+   * referencing it and the photo would vanish on the next launch. PostgREST
+   * writes only the columns present in the payload, so upserting these two
+   * cannot touch `name`/`role`/`technical_level`.
+   */
+  async setAvatar(dataUrl: string): Promise<void> {
+    // Parsed BEFORE the session is even looked up: this is the main-process end of
+    // the preload bridge, and `dataUrl` is renderer input whatever produced it. The
+    // parser is the whole guard — exact prefix, strict base64, the decoded size
+    // computed and capped before anything is allocated, and the RIFF/WEBP marker
+    // pair verified after, so the `contentType` declared below is a fact. It lives
+    // in desktop/src/avatar.ts because that module owns the cap it is derived from;
+    // see its note for why the checks are in that order.
+    //
+    // The parser deals in Uint8Array so it can stay runtime-agnostic (the renderer
+    // imports that module too); turning it into the Buffer the Supabase client
+    // wants is this caller's one line of Node, and it happens only for a payload
+    // already known to be under the cap.
+    const parsed = parseAvatarDataUrl(dataUrl)
+    if (!parsed.ok) throw new Error(`setAvatar failed: the image was refused (${parsed.reason})`)
+
+    const ctx = await this.userContext()
+    if (!ctx) return
+
+    const buffer = Buffer.from(parsed.bytes)
+    const path = avatarObjectPath(ctx.uid)
+    const { error: uploadError } = await ctx.client.storage
+      .from(AVATAR_BUCKET)
+      .upload(path, buffer, { upsert: true, contentType: AVATAR_MIME_TYPE })
+    if (uploadError) throw new Error(`setAvatar failed: ${uploadError.message}`)
+
+    const { error } = await ctx.client
+      .from('profiles')
+      .upsert({ user_id: ctx.uid, avatar_url: path }, { onConflict: 'user_id' })
+    if (error) throw new Error(`setAvatar failed: ${error.message}`)
+  }
+
+  /**
+   * Delete the caller's photo, blob and pointer.
+   *
+   * The column is cleared even when the object was already gone: `remove()` on a
+   * missing key is not an error to Storage, and a pointer left behind would keep
+   * the UI showing a broken avatar it could no longer delete.
+   */
+  async removeAvatar(): Promise<void> {
+    const ctx = await this.userContext()
+    if (!ctx) return
+
+    const path = avatarObjectPath(ctx.uid)
+    const { error: removeError } = await ctx.client.storage.from(AVATAR_BUCKET).remove([path])
+    if (removeError) throw new Error(`removeAvatar failed: ${removeError.message}`)
+
+    const { error } = await ctx.client
+      .from('profiles')
+      .upsert({ user_id: ctx.uid, avatar_url: null }, { onConflict: 'user_id' })
+    if (error) throw new Error(`removeAvatar failed: ${error.message}`)
+  }
+
+  /**
+   * The caller's photo as a `data:image/webp;base64,…` URL, or null.
+   *
+   * Reads `avatar_url` on its OWN rather than through loadProfile(), on purpose:
+   * that method's three-required-fields guard returns null for a user who has set
+   * a photo but not filled their profile in, which would hide the photo from the
+   * one place it is displayed.
+   *
+   * Gating the download on the column is the other half of that: a private bucket
+   * has no public URL to hand the renderer, so the bytes must travel through here,
+   * and without the gate every mount by a user with no photo would spend a failed
+   * request discovering it. Returns null on failure — a photo that cannot be
+   * fetched right now is displayed as the generic-icon fallback, not as an error.
+   */
+  async getAvatarDataUrl(): Promise<string | null> {
+    const ctx = await this.userContext()
+    if (!ctx) return null
+
+    const { data, error } = await ctx.client
+      .from('profiles')
+      .select('avatar_url')
+      .eq('user_id', ctx.uid)
+      .maybeSingle()
+    if (error || !data) return null
+    const path = (data as Pick<ProfileRow, 'avatar_url'>).avatar_url
+    if (!path) return null
+
+    const { data: blob, error: downloadError } = await ctx.client.storage.from(AVATAR_BUCKET).download(path)
+    if (downloadError || !blob) return null
+    const buffer = Buffer.from(await blob.arrayBuffer())
+    if (buffer.length === 0) return null
+    return `${AVATAR_DATA_URL_PREFIX}${buffer.toString('base64')}`
   }
 
   // -------------------------------------------------------------------------

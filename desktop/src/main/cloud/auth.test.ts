@@ -13,16 +13,34 @@ const h = vi.hoisted(() => {
     signOut: vi.fn(),
   }
   const mockRpc = vi.fn()
+  // Storage is reached by exactly one function here — deleteAccount, which removes
+  // the user's avatar object before the RPC. `from()` returns the same recorder on
+  // every call so a test can assert the bucket AND the keys.
+  const mockStorageRemove = vi.fn()
+  const mockStorageFrom = vi.fn(() => ({ remove: mockStorageRemove }))
+  // PostgREST is reached by exactly one function too: deleteAccount reads
+  // `profiles.avatar_url` to find out whether there is a photo to delete at all.
+  // A chainable recorder whose terminal call is maybeSingle().
+  const mockMaybeSingle = vi.fn()
+  const mockFrom = vi.fn(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const builder: any = {
+      select: () => builder,
+      eq: () => builder,
+      maybeSingle: () => mockMaybeSingle(),
+    }
+    return builder
+  })
   const state = {
     cloudEnabled: true as boolean,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    client: { auth: mockAuth, rpc: mockRpc } as any,
+    client: { auth: mockAuth, rpc: mockRpc, from: mockFrom, storage: { from: mockStorageFrom } } as any,
     saveSession: vi.fn(),
     clearSession: vi.fn(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     stored: null as any,
   }
-  return { mockAuth, mockRpc, state }
+  return { mockAuth, mockRpc, mockStorageRemove, mockStorageFrom, mockFrom, mockMaybeSingle, state }
 })
 
 vi.mock('./supabase-client', () => ({
@@ -65,7 +83,12 @@ const SESSION = {
 beforeEach(() => {
   vi.clearAllMocks()
   h.state.cloudEnabled = true
-  h.state.client = { auth: h.mockAuth, rpc: h.mockRpc }
+  h.state.client = { auth: h.mockAuth, rpc: h.mockRpc, from: h.mockFrom, storage: { from: h.mockStorageFrom } }
+  h.mockStorageFrom.mockReturnValue({ remove: h.mockStorageRemove })
+  h.mockStorageRemove.mockResolvedValue({ data: [], error: null })
+  // Default: the user HAS a photo, so the removal path is the one under test
+  // unless a test says otherwise.
+  h.mockMaybeSingle.mockResolvedValue({ data: { avatar_url: 'u1/avatar.webp' }, error: null })
   h.state.stored = { access_token: 'access-1', refresh_token: 'refresh-1', expires_at: 9999999999, user: { id: 'u1', email: 'user@example.com' } }
   // Default to a cold client (nothing in memory) so getAuthedClient() takes the
   // setSession path; the fast-path tests below override getSession explicitly.
@@ -265,6 +288,10 @@ describe('deleteAccount', () => {
     h.mockRpc.mockResolvedValue({ data: null, error: null })
     const status = await deleteAccount()
     expect(h.mockRpc).toHaveBeenCalledWith('delete_account')
+    // The blob goes from here, while the session is still valid: the SQL cascade
+    // only deletes the storage.objects METADATA row.
+    expect(h.mockStorageFrom).toHaveBeenCalledWith('avatars')
+    expect(h.mockStorageRemove).toHaveBeenCalledWith(['u1/avatar.webp'])
     expect(h.mockAuth.signOut).toHaveBeenCalled()
     expect(h.state.clearSession).toHaveBeenCalled()
     expect(status).toEqual({ enabled: true, loggedIn: false })
@@ -280,5 +307,102 @@ describe('deleteAccount', () => {
     h.mockRpc.mockResolvedValue({ data: null, error: { message: 'deletion failed' } })
     await expect(deleteAccount()).rejects.toThrow('deletion failed')
     expect(h.state.clearSession).not.toHaveBeenCalled()
+  })
+
+  // ── the photo has to actually go ──────────────────────────────────────────
+  //
+  // The SQL cascade only deletes the storage.objects METADATA row, and once the
+  // RPC has run there is no session, no policy match and no pointer left that
+  // could ever come back for the bytes. So the removal is retried once and, if it
+  // still fails, the deletion is ABANDONED rather than completed with personal
+  // photo bytes left in the bucket. Both failure shapes are exercised: Storage
+  // reports most problems in the resolved `error` and throws only on a transport
+  // failure.
+
+  it('retries the avatar removal once and proceeds when the second attempt succeeds', async () => {
+    h.mockStorageRemove
+      .mockResolvedValueOnce({ data: null, error: { message: 'bucket unavailable' } })
+      .mockResolvedValueOnce({ data: [], error: null })
+    h.mockRpc.mockResolvedValue({ data: null, error: null })
+
+    await expect(deleteAccount()).resolves.toEqual({ enabled: true, loggedIn: false })
+    expect(h.mockStorageRemove).toHaveBeenCalledTimes(2)
+    expect(h.mockRpc).toHaveBeenCalledWith('delete_account')
+  })
+
+  it('retries a THROWN removal failure too, and proceeds when the retry succeeds', async () => {
+    h.mockStorageRemove
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({ data: [], error: null })
+    h.mockRpc.mockResolvedValue({ data: null, error: null })
+
+    await expect(deleteAccount()).resolves.toEqual({ enabled: true, loggedIn: false })
+    expect(h.mockStorageRemove).toHaveBeenCalledTimes(2)
+    expect(h.mockRpc).toHaveBeenCalledWith('delete_account')
+  })
+
+  it('abandons the deletion when the removal fails twice, leaving the account intact', async () => {
+    h.mockStorageRemove.mockResolvedValue({ data: null, error: { message: 'bucket unavailable' } })
+    h.mockRpc.mockResolvedValue({ data: null, error: null })
+
+    await expect(deleteAccount()).rejects.toThrow(/was NOT deleted/i)
+    expect(h.mockStorageRemove).toHaveBeenCalledTimes(2)
+    // The whole point: half an erasure is worse than none, so nothing is deleted
+    // and nothing is signed out. The user can press the button again.
+    expect(h.mockRpc).not.toHaveBeenCalled()
+    expect(h.mockAuth.signOut).not.toHaveBeenCalled()
+    expect(h.state.clearSession).not.toHaveBeenCalled()
+  })
+
+  it('abandons the deletion when the removal throws twice', async () => {
+    h.mockStorageRemove.mockRejectedValue(new Error('offline'))
+    h.mockRpc.mockResolvedValue({ data: null, error: null })
+
+    await expect(deleteAccount()).rejects.toThrow(/was NOT deleted/i)
+    expect(h.mockStorageRemove).toHaveBeenCalledTimes(2)
+    expect(h.mockRpc).not.toHaveBeenCalled()
+  })
+
+  // The case that must not regress: an over-strict guard here would stop a user
+  // who never set a photo from erasing their own account.
+  it('deletes the account without touching Storage when there is no photo', async () => {
+    h.mockMaybeSingle.mockResolvedValue({ data: { avatar_url: null }, error: null })
+    h.mockRpc.mockResolvedValue({ data: null, error: null })
+
+    await expect(deleteAccount()).resolves.toEqual({ enabled: true, loggedIn: false })
+    expect(h.mockStorageRemove).not.toHaveBeenCalled()
+    expect(h.mockRpc).toHaveBeenCalledWith('delete_account')
+  })
+
+  it('deletes the account when there is no profile row at all', async () => {
+    h.mockMaybeSingle.mockResolvedValue({ data: null, error: null })
+    h.mockRpc.mockResolvedValue({ data: null, error: null })
+
+    await expect(deleteAccount()).resolves.toEqual({ enabled: true, loggedIn: false })
+    expect(h.mockStorageRemove).not.toHaveBeenCalled()
+    expect(h.mockRpc).toHaveBeenCalledWith('delete_account')
+  })
+
+  it('deletes the account when the object is already gone', async () => {
+    // Storage answers a remove of a missing key with an empty list and no error,
+    // so a pointer whose blob has already been deleted is not a blocker either.
+    h.mockStorageRemove.mockResolvedValue({ data: [], error: null })
+    h.mockRpc.mockResolvedValue({ data: null, error: null })
+
+    await expect(deleteAccount()).resolves.toEqual({ enabled: true, loggedIn: false })
+    expect(h.mockStorageRemove).toHaveBeenCalledTimes(1)
+    expect(h.mockRpc).toHaveBeenCalledWith('delete_account')
+  })
+
+  it('still removes the object when the pointer lookup itself fails', async () => {
+    // An unanswered read is not an answer. Assuming "no photo" is how a transient
+    // PostgREST failure would orphan the bytes — so the removal runs anyway, and a
+    // Storage that has nothing to delete resolves it without an error.
+    h.mockMaybeSingle.mockResolvedValue({ data: null, error: { message: 'timeout' } })
+    h.mockRpc.mockResolvedValue({ data: null, error: null })
+
+    await expect(deleteAccount()).resolves.toEqual({ enabled: true, loggedIn: false })
+    expect(h.mockStorageRemove).toHaveBeenCalledWith(['u1/avatar.webp'])
+    expect(h.mockRpc).toHaveBeenCalledWith('delete_account')
   })
 })

@@ -817,6 +817,9 @@ export const fr: Record<keyof typeof en, string> = {
   'cloud.section': 'Compte cloud',
   'cloud.signedInFallback': 'Connecté',
   'cloud.signedInHint': 'Connecté au cloud Magic Slash',
+  'cloud.avatar.alt': 'Photo du compte',
+  'cloud.avatar.choose': 'Choisir une photo',
+  'cloud.avatar.remove': 'Retirer la photo',
   'cloud.signOut': 'Se déconnecter',
   'cloud.changePassword': 'Changer de mot de passe',
   'cloud.changeEmail': 'Changer d’e-mail',
@@ -850,6 +853,14 @@ export const fr: Record<keyof typeof en, string> = {
   'toast.emailChangeFailed': 'Impossible de changer l’e-mail',
   'toast.accountDeleted': 'Votre compte a été supprimé',
   'toast.accountDeleteFailed': 'Impossible de supprimer le compte',
+  'toast.avatarTooLarge':
+    'Cette image est trop lourde ({limit} maximum). Choisissez un PNG, un JPEG ou un WebP plus léger.',
+  'toast.avatarBadFormat':
+    'Ce fichier n’est pas une image prise en charge. Choisissez un PNG, un JPEG ou un WebP (le SVG n’est pas accepté).',
+  'toast.avatarUnreadable': 'Cette image n’a pas pu être lue. Choisissez un PNG, un JPEG ou un WebP.',
+  'toast.avatarNotWebp': 'Cette photo n’a pas pu être encodée correctement. Essayez une autre image.',
+  'toast.avatarSaveFailed': 'Impossible d’enregistrer votre photo. Réessayez.',
+  'toast.avatarRemoveFailed': 'Impossible de retirer votre photo',
 
   // ── Réglages → Connexions → Compte Atlassian ─────────────────────────────
   'jira.section': 'Compte Atlassian',

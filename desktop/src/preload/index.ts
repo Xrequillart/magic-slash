@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import type { AvatarSourceResult } from '../avatar'
 import type { AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, TasksSnapshot, TaskIssueDetail, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
@@ -580,6 +581,44 @@ interface PRWatcherUpdate {
 const profileApi = {
   get: (): Promise<UserProfile | null> => ipcRenderer.invoke('profile:get'),
   save: (data: UserProfile) => ipcRenderer.invoke('profile:save', data),
+
+  // The profile photo. It is NOT part of the profile the two calls above move
+  // around: the bytes live in a private Supabase Storage bucket the main process
+  // alone can reach, and `profile:save` must never carry the avatar or a profile
+  // edit would erase it.
+
+  /**
+   * Open the OS picker and hand back the chosen file as a data URL, so the
+   * renderer can crop it on a canvas.
+   *
+   * NO ARGUMENT, and that is the design: main opens the dialog and reads the
+   * result in one operation, so the renderer never supplies a path and never
+   * learns one. A `readAvatarSource(path)` used to sit here, and a channel that
+   * reads whatever path it is handed is an arbitrary-file-read channel however
+   * well-behaved its callers are.
+   *
+   * Refusals come back as a reason CODE — the size cap and the accepted
+   * extensions are checked in main, where the ORIGINAL file's size is knowable,
+   * and the caller maps the code to a message key. `'cancelled'` is in the same
+   * union and is NOT a refusal: dismissing the dialog must show nothing.
+   */
+  pickAvatarSource: (): Promise<AvatarSourceResult> =>
+    ipcRenderer.invoke('profile:pickAvatarSource'),
+  /** The stored photo as a data URL, or null when there is none. */
+  getAvatar: (): Promise<string | null> => ipcRenderer.invoke('profile:getAvatar'),
+  /**
+   * Upload a 256 px WebP data URL as the photo.
+   *
+   * On failure the result may carry `avatar`: the photo as the SERVER now has it.
+   * A write is a blob then a pointer, so a failure of the second happens with the
+   * first already done and whatever is on screen is no longer true. An ABSENT
+   * `avatar` means main could not find out either — refetch rather than assume.
+   */
+  setAvatar: (dataUrl: string): Promise<{ ok: boolean; error?: string; avatar?: string | null }> =>
+    ipcRenderer.invoke('profile:setAvatar', dataUrl),
+  /** Delete the photo, blob and pointer. Same `avatar` resync contract on failure. */
+  removeAvatar: (): Promise<{ ok: boolean; error?: string; avatar?: string | null }> =>
+    ipcRenderer.invoke('profile:removeAvatar'),
 }
 
 // Setup API — machine prerequisites, MCP servers and integrations. Replaces what the

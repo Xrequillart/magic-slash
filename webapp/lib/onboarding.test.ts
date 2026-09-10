@@ -27,6 +27,7 @@ const PROFILE: UserProfile = {
   communicationStyle: 'technical',
   languages: ['en'],
   freeText: '',
+  avatarUrl: null,
 }
 const INSTALL: Installation = {
   deviceId: 'd1',

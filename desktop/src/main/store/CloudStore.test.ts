@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Agent } from '../../types'
+import { AVATAR_MAX_BYTES } from '../../avatar'
 
 // Mock the cloud dependencies so CloudStore exercises only its own mapping /
 // query-building logic (no network, no keychain). vi.hoisted shares mutable state
@@ -94,6 +95,23 @@ interface RecordedCall {
   args: unknown[]
 }
 
+/**
+ * What the Storage half of the fake answers, keyed by method.
+ *
+ * Storage is NOT a table and shares no builder chain with one, so it gets its own
+ * map for the same reason `resultsByRpc` does: `storage.from(bucket).upload(...)`
+ * resolves straight to `{ data, error }`, the shape auth.test.ts already stubs for
+ * `storage.from().remove()`.
+ *
+ * `download` resolves with a Blob, of which CloudStore uses exactly one method, so
+ * that is all a fake blob has to carry.
+ */
+interface StorageResults {
+  upload?: QueryResult
+  remove?: QueryResult
+  download?: QueryResult
+}
+
 function makeClient(
   resultsByTable: TableResults,
   // Keyed by function name. Separate from the table map because an RPC is not a
@@ -105,6 +123,8 @@ function makeClient(
   // a different set from what a plain select on the same table yields — and
   // CloudStore rebuilds its app id → uuid binding from it.
   resultsByUpsert: Record<string, PendingResult> = {},
+  // What `client.storage.from(bucket).<method>()` resolves to. See StorageResults.
+  resultsByStorage: StorageResults = {},
 ) {
   const calls: RecordedCall[] = []
   const inserts: Record<string, unknown[]> = {}
@@ -159,7 +179,22 @@ function makeClient(
     calls.push({ table: `rpc:${fn}`, method: 'rpc', args: [args] })
     return Promise.resolve(resultsByRpc[fn] ?? { data: [], error: null })
   })
-  return { client: { from, rpc }, calls, inserts, updates, upserts, from, rpc }
+
+  // Storage calls land in the SAME `calls` log as the table queries, under the
+  // bucket they addressed. That is deliberate: it is what lets a test assert the
+  // ORDER of two writes across the two halves of the client — setAvatar has to put
+  // the object in the bucket BEFORE it points a column at it — and not merely that
+  // both happened.
+  const storageFrom = vi.fn((bucket: string) => {
+    const method = (name: keyof StorageResults) => (...args: unknown[]) => {
+      calls.push({ table: `storage:${bucket}`, method: name, args })
+      return Promise.resolve(resultsByStorage[name] ?? { data: null, error: null })
+    }
+    return { upload: method('upload'), remove: method('remove'), download: method('download') }
+  })
+  const storage = { from: storageFrom }
+
+  return { client: { from, rpc, storage }, calls, inserts, updates, upserts, from, rpc, storageFrom }
 }
 
 const UID = 'user-1'
@@ -2542,6 +2577,279 @@ describe('profile', () => {
       languages: [],
       free_text: 'x',
     })
+  })
+
+  /**
+   * The upsert trap, and why it gets a type AND a test.
+   *
+   * saveProfile writes every optional column as `?? null`, and the renderer's
+   * profileFromDraft() rebuilds a whole UserProfile on every interaction — so an
+   * `avatar_url` added to this payload "for symmetry" would send null on each
+   * pill click and delete the photo the user uploaded in the Account tab, a loss
+   * that would only show up on the next launch.
+   *
+   * `ProfileUpsertPayload` is what stops that edit compiling. This test is what
+   * holds the runtime half the type cannot see: that no key of the payload
+   * actually sent reaches the avatar column, under any spelling, when the profile
+   * handed in carries a photo — which is exactly what a UserProfile read back by
+   * loadProfile does. The photo is written by setAvatar/removeAvatar, which name
+   * that column and nothing else. Mirrored in webapp/lib/profileShape.test.ts.
+   */
+  it('never sends avatar_url in the profile upsert, so a profile edit cannot wipe the photo', async () => {
+    const { client, upserts } = makeClient({ memberships: membershipsOk, profiles: { data: null, error: null } })
+    h.state.client = client
+
+    await new CloudStore().saveProfile({
+      name: 'Xavier',
+      role: 'dev',
+      technical_level: 'expert',
+      avatar_url: `${UID}/avatar.webp`,
+    })
+
+    const payload = upserts.profiles[0] as Record<string, unknown>
+    expect(Object.keys(payload)).not.toContain('avatar_url')
+    expect(Object.keys(payload).filter((k) => /avatar/i.test(k))).toEqual([])
+  })
+})
+
+// ── avatar (Storage blob + profiles.avatar_url pointer) ─────────────────────
+//
+// The three methods each span BOTH halves of the client — an object in the
+// `avatars` bucket and a column in `profiles` — and everything worth asserting
+// about them is about how those two halves relate: which is written first, which
+// is skipped when the other fails, and which is still cleaned up when the other
+// was already gone.
+//
+// None of these tests configures `memberships`: a profile photo belongs to a
+// person, not to an organization, so all three go through userContext(), which
+// wants an authed client and a session and asks about nothing else.
+
+describe('avatar', () => {
+  /** The one path the app ever writes for this user (see desktop/src/avatar.ts). */
+  const PATH = `${UID}/avatar.webp`
+  /**
+   * The twelve bytes a WebP always opens with: 'RIFF', a chunk length, 'WEBP'.
+   *
+   * A real header rather than four arbitrary bytes because setAvatar now refuses a
+   * payload that is not a WebP container (see parseAvatarDataUrl in
+   * desktop/src/avatar.ts) — a stand-in would be rejected before it ever reached
+   * the bucket. What these tests are about is that these EXACT bytes arrive: that
+   * the base64 payload was decoded, and that the `data:…;base64,` preamble was not
+   * decoded along with it.
+   */
+  const BYTES = Buffer.from([
+    0x52, 0x49, 0x46, 0x46, // 'RIFF'
+    0x1a, 0x00, 0x00, 0x00, // chunk length
+    0x57, 0x45, 0x42, 0x50, // 'WEBP'
+  ])
+  const DATA_URL = `data:image/webp;base64,${BYTES.toString('base64')}`
+
+  /** A Blob as far as getAvatarDataUrl is concerned: one arrayBuffer(). */
+  const blobOf = (bytes: Buffer) => ({ arrayBuffer: async () => new Uint8Array(bytes).buffer })
+
+  it('uploads the object BEFORE pointing the profile row at it', async () => {
+    const { client, calls } = makeClient(
+      { profiles: { data: null, error: null } },
+      {},
+      {},
+      { upload: { data: { path: PATH }, error: null } },
+    )
+    h.state.client = client
+
+    await new CloudStore().setAvatar(DATA_URL)
+
+    const upload = calls.findIndex((c) => c.table === 'storage:avatars' && c.method === 'upload')
+    const pointer = calls.findIndex((c) => c.table === 'profiles' && c.method === 'upsert')
+    expect(upload).toBeGreaterThanOrEqual(0)
+    expect(pointer).toBeGreaterThanOrEqual(0)
+    // The ORDER, not just the pair. Between the two writes the failure modes are
+    // not symmetric: an orphan blob is overwritten by the next upload, while a
+    // column pointing at a missing object turns every mount into a 404.
+    expect(upload).toBeLessThan(pointer)
+  })
+
+  it('uploads the decoded bytes as a replaceable webp', async () => {
+    const { client, calls } = makeClient(
+      { profiles: { data: null, error: null } },
+      {},
+      {},
+      { upload: { data: { path: PATH }, error: null } },
+    )
+    h.state.client = client
+
+    await new CloudStore().setAvatar(DATA_URL)
+
+    const upload = calls.find((c) => c.table === 'storage:avatars' && c.method === 'upload')
+    // `upsert: true` is what makes one object per user work at all — a change
+    // replaces the photo in place instead of being refused as a duplicate key —
+    // and the contentType is what a later download hands back as its data URL
+    // prefix, so it has to be the stored format rather than whatever was picked.
+    expect(upload?.args).toEqual([PATH, BYTES, { upsert: true, contentType: 'image/webp' }])
+  })
+
+  it('writes the pointer as an upsert of the two avatar columns only', async () => {
+    const { client, calls, upserts } = makeClient(
+      { profiles: { data: null, error: null } },
+      {},
+      {},
+      { upload: { data: { path: PATH }, error: null } },
+    )
+    h.state.client = client
+
+    await new CloudStore().setAvatar(DATA_URL)
+
+    // UPSERT, not update: the Account tab is reachable without ever opening the
+    // Profile tab, so there may be no `profiles` row at all — an `update` would
+    // report success having matched zero rows, leaving the object in the bucket
+    // with nothing referencing it and the photo gone on the next launch.
+    expect(calls.some((c) => c.table === 'profiles' && c.method === 'update')).toBe(false)
+    const pointer = calls.find((c) => c.table === 'profiles' && c.method === 'upsert')
+    expect(pointer?.args[1]).toEqual({ onConflict: 'user_id' })
+    // And only those two columns, because PostgREST writes exactly what it is
+    // handed: a payload carrying more would blank the profile fields on a photo change.
+    expect(upserts.profiles[0]).toEqual({ user_id: UID, avatar_url: PATH })
+  })
+
+  // The payload arrives over the preload bridge, so it is untrusted input to this
+  // process. The verdicts themselves are exhaustively covered in avatar.test.ts;
+  // what matters HERE is that a refused payload never reaches the bucket, and that
+  // the store defers to that one parser instead of re-deciding for itself.
+  it.each([
+    ['a string that is not a data URL', 'https://example.com/face.png', 'unreadable'],
+    ['a data URL of another format', 'data:image/png;base64,iVBORw0KGgo=', 'unreadable'],
+    ['an empty payload', 'data:image/webp;base64,', 'unreadable'],
+    ['base64 outside the alphabet', 'data:image/webp;base64,AAA!', 'unreadable'],
+    ['bytes that are not a WebP container', 'data:image/webp;base64,iVBORw0KGgoAAAAA', 'not_webp'],
+  ])('refuses %s without touching Storage', async (_label, payload, reason) => {
+    const { client, calls } = makeClient({ profiles: { data: null, error: null } })
+    h.state.client = client
+
+    await expect(new CloudStore().setAvatar(payload)).rejects.toThrow(
+      `setAvatar failed: the image was refused (${reason})`,
+    )
+    expect(calls.some((c) => c.table === 'storage:avatars')).toBe(false)
+    expect(calls.some((c) => c.table === 'profiles')).toBe(false)
+  })
+
+  it('refuses an oversized payload without allocating it', async () => {
+    const { client, calls } = makeClient({ profiles: { data: null, error: null } })
+    h.state.client = client
+
+    // Over the byte cap once decoded. The parser reaches that verdict from the
+    // base64 length alone, which is the point: nothing here allocates 5 MB to
+    // discover it.
+    const payload = 'A'.repeat(Math.ceil((AVATAR_MAX_BYTES + 3) / 3) * 4)
+    await expect(new CloudStore().setAvatar(`data:image/webp;base64,${payload}`)).rejects.toThrow(
+      'setAvatar failed: the image was refused (too_large)',
+    )
+    expect(calls).toEqual([])
+  })
+
+  it('does not write the pointer row when the upload fails', async () => {
+    const { client, upserts } = makeClient(
+      { profiles: { data: null, error: null } },
+      {},
+      {},
+      { upload: { data: null, error: { message: 'bucket unavailable' } } },
+    )
+    h.state.client = client
+
+    await expect(new CloudStore().setAvatar(DATA_URL)).rejects.toThrow('setAvatar failed: bucket unavailable')
+    // The whole reason the upload goes first: a failed one leaves the column
+    // exactly as it was, still describing whatever is actually in the bucket.
+    expect(upserts.profiles).toBeUndefined()
+  })
+
+  it('removeAvatar deletes the object and clears the column', async () => {
+    const { client, calls, upserts } = makeClient(
+      { profiles: { data: null, error: null } },
+      {},
+      {},
+      { remove: { data: [{ name: PATH }], error: null } },
+    )
+    h.state.client = client
+
+    await new CloudStore().removeAvatar()
+
+    const remove = calls.find((c) => c.table === 'storage:avatars' && c.method === 'remove')
+    expect(remove?.args).toEqual([[PATH]])
+    expect(upserts.profiles[0]).toEqual({ user_id: UID, avatar_url: null })
+  })
+
+  it('clears the column even when the object was already gone', async () => {
+    // Storage answers a remove of a missing key with an empty list and no error.
+    // The column must still be cleared: a pointer left behind would keep the UI
+    // showing a photo it can no longer fetch and can no longer delete either.
+    const { client, upserts } = makeClient(
+      { profiles: { data: null, error: null } },
+      {},
+      {},
+      { remove: { data: [], error: null } },
+    )
+    h.state.client = client
+
+    await new CloudStore().removeAvatar()
+
+    expect(upserts.profiles[0]).toEqual({ user_id: UID, avatar_url: null })
+  })
+
+  it('getAvatarDataUrl downloads the object and returns it as a webp data URL', async () => {
+    const { client, calls } = makeClient(
+      { profiles: { data: { avatar_url: PATH }, error: null } },
+      {},
+      {},
+      { download: { data: blobOf(BYTES), error: null } },
+    )
+    h.state.client = client
+
+    await expect(new CloudStore().getAvatarDataUrl()).resolves.toBe(DATA_URL)
+    const download = calls.find((c) => c.table === 'storage:avatars' && c.method === 'download')
+    expect(download?.args).toEqual([PATH])
+  })
+
+  it('getAvatarDataUrl returns null without a download when the column is empty', async () => {
+    const { client, calls } = makeClient({ profiles: { data: { avatar_url: null }, error: null } })
+    h.state.client = client
+
+    await expect(new CloudStore().getAvatarDataUrl()).resolves.toBeNull()
+    // The gate matters because there is no photo for most users: without it every
+    // mount would spend a failed round trip discovering that.
+    expect(calls.some((c) => c.table === 'storage:avatars')).toBe(false)
+  })
+
+  it('getAvatarDataUrl returns null rather than throwing when the download fails', async () => {
+    const { client } = makeClient(
+      { profiles: { data: { avatar_url: PATH }, error: null } },
+      {},
+      {},
+      { download: { data: null, error: { message: 'object not found' } } },
+    )
+    h.state.client = client
+
+    // A photo that cannot be fetched right now shows as the generic-icon
+    // fallback. Throwing here would take the Account tab down with it.
+    await expect(new CloudStore().getAvatarDataUrl()).resolves.toBeNull()
+  })
+
+  it('all three answer neutrally and touch nothing when there is no session', async () => {
+    const { client, calls } = makeClient({ profiles: { data: null, error: null } })
+    h.state.client = client
+    h.state.session = null // userContext() bails after the client resolves
+
+    const store = new CloudStore()
+    await expect(store.setAvatar(DATA_URL)).resolves.toBeUndefined()
+    await expect(store.removeAvatar()).resolves.toBeUndefined()
+    await expect(store.getAvatarDataUrl()).resolves.toBeNull()
+    expect(calls).toEqual([])
+  })
+
+  it('all three answer neutrally when there is no authed client at all', async () => {
+    h.state.client = null // getAuthedClient() → null → userContext() bails
+
+    const store = new CloudStore()
+    await expect(store.setAvatar(DATA_URL)).resolves.toBeUndefined()
+    await expect(store.removeAvatar()).resolves.toBeUndefined()
+    await expect(store.getAvatarDataUrl()).resolves.toBeNull()
   })
 })
 
