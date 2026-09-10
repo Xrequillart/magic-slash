@@ -206,9 +206,14 @@ const EPIC_WIDTH = 192
  * fetched on a keystroke, the filtering is one pass over an array already in memory,
  * and a delay would only make the page feel slower than it is.
  *
- * Rendered by the page ONLY when there is something to filter — see its call site.
- * Controls over an empty backlog are more things to read before finding out there is
- * nothing there. The EPIC picker follows the same rule one level down: it is rendered
+ * Rendered by the page when there is something to narrow OR a query already narrowing
+ * it — `narrowable` at its call site. Controls over a backlog that was never read are
+ * more things to read before finding out there is nothing there; but a page opened on a
+ * ticket with no row here (closed, or in a repository nobody tracks) has a live query
+ * over an empty list, and hiding the bar would hide the box holding it, leaving the
+ * reader nothing to clear.
+ *
+ * The EPIC picker follows a rule of its own one level down: it is rendered
  * only when some visible ticket actually hangs off an epic, so a page with no Jira
  * repository on it — or a sprint whose tickets are all top-level — shows three
  * controls rather than four with one that can only ever empty the page.

@@ -6,13 +6,14 @@ import { SpecPanel } from './agent-info-sidebar/SpecPanel'
 import { UsageCard } from './agent-info-sidebar/UsageCard'
 import { RepositoryCard } from './agent-info-sidebar/RepositoryCard'
 import { RepositorySelector } from './agent-info-sidebar/RepositorySelector'
-import { buildTicketLink, detectTicketProvider, getSpecPanelMode, splitSpecPath } from './agent-info-sidebar/utils'
+import { buildTicketLink, getSpecPanelMode, splitSpecPath } from './agent-info-sidebar/utils'
 import { usePlanSpec } from '../hooks/usePlanSpec'
 import { useT } from '../i18n'
 import type { RepoGitData } from './agent-info-sidebar/types'
 import type { TerminalMetadata } from '../../types'
 import { resolveGitHubIssuesUrl, resolveJiraSite } from '../../tracker'
 import { withoutShadowedCheckouts } from '../../repoMatch'
+import { resolveTaskSelection } from '../utils/taskSelection'
 
 const MIN_WIDTH = 288 // w-72
 
@@ -220,17 +221,26 @@ export function AgentInfoSidebar() {
     }
   }, [inspectedTerminalId, activeTerminal, updateTerminalRepositories])
 
-  // Both live in utils.ts, where they are unit-tested: the shapes they accept are
-  // the contract between this panel and what /magic:start writes, and that contract
+  // Lives in utils.ts, where it is unit-tested: the shapes it accepts are the
+  // contract between this panel and what /magic:start writes, and that contract
   // was silently wrong for GitHub issues until it had tests.
   const ticketLink = useMemo(
     () => buildTicketLink(metadata?.ticketId, { jiraUrl, githubIssuesUrl }),
     [metadata?.ticketId, jiraUrl, githubIssuesUrl],
   )
 
-  const ticketProvider = useMemo(
-    () => detectTicketProvider(metadata?.ticketId),
-    [metadata?.ticketId],
+  /**
+   * The row the Tasks modal opens on when the ticket id is clicked. Null when the
+   * ticket cannot be placed — an unrecognised id, or paths belonging to no configured
+   * repository — which is not a dead click: see `TicketIdLink`.
+   *
+   * Resolved HERE rather than in the card, because this is the level that has both
+   * halves of the question: the agent's working directories (worktrees included, which
+   * is why `pathBelongsToRepo` is what answers it) and the repository config.
+   */
+  const taskSelection = useMemo(
+    () => resolveTaskSelection(metadata?.ticketId, attachedRepos, config?.repositories ?? {}),
+    [metadata?.ticketId, attachedRepos, config?.repositories],
   )
 
   // Get PR URL for a specific repository
@@ -473,7 +483,7 @@ export function AgentInfoSidebar() {
               <TicketHeader
                 metadata={metadata}
                 ticketLink={ticketLink}
-                ticketProvider={ticketProvider}
+                taskSelection={taskSelection}
                 identity={identity}
                 onStatusChange={handleStatusChange}
               />
@@ -495,7 +505,7 @@ export function AgentInfoSidebar() {
                 refreshToken={specRefreshToken}
                 ticketId={metadata?.ticketId}
                 ticketLink={ticketLink}
-                ticketProvider={ticketProvider}
+                taskSelection={taskSelection}
                 onStatusChange={handleStatusChange}
               />
             )}

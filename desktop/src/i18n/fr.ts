@@ -1347,6 +1347,8 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.viewOnGitHub': 'Voir sur GitHub',
   'agentInfo.viewPullRequest': 'Voir la pull request',
   'agentInfo.noTicket': 'Aucun ticket',
+  'agentInfo.ticketOpenInTasks': 'Ouvrir ce ticket dans Tâches',
+  'agentInfo.ticketOpenInBrowser': 'Ouvrir ce ticket dans le navigateur',
   'agentInfo.titlePlaceholder': 'Saisissez un titre…',
   'agentInfo.addTitle': 'Cliquez pour ajouter un titre',
   'agentInfo.descriptionPlaceholder': 'Saisissez une description…',

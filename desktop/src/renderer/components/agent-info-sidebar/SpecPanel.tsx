@@ -9,9 +9,10 @@ import {
 } from '../../utils/reviewComments'
 import { RepoMark } from './RepoMark'
 import { StatusPill } from './StatusPill'
-import { TicketMark } from './TicketMark'
+import { TicketIdLink } from './TicketIdLink'
 import { AgentTitleField, type AgentIdentity } from './AgentIdentityFields'
 import { hasScrolledFromTop } from './utils'
+import type { TaskSelection } from '../../utils/taskSelection'
 import { useT } from '../../i18n'
 
 interface SpecPanelProps {
@@ -50,7 +51,8 @@ interface SpecPanelProps {
   /** Present once `/magic:plan` has created the ticket, i.e. at `planned`. */
   ticketId?: string
   ticketLink: string | null
-  ticketProvider: 'github' | 'jira' | null
+  /** Where the Tasks modal opens when the id is clicked. See `TicketIdLink`. */
+  taskSelection: TaskSelection | null
   /** Directory of the spec, as `splitSpecPath` returns it. */
   repoPath: string
   /** Bare file name of the spec, as `splitSpecPath` returns it. */
@@ -83,7 +85,7 @@ export function SpecPanel({
   status,
   ticketId,
   ticketLink,
-  ticketProvider,
+  taskSelection,
   repoPath,
   filePath,
   refreshToken,
@@ -227,20 +229,12 @@ export function SpecPanel({
                 a planning agent, so without this the ticket `/magic:plan` just created
                 would be unreachable from the sidebar. */}
             {ticketId && (
-              ticketLink ? (
-                <button
-                  onClick={() => window.electronAPI.shell.openExternal(ticketLink)}
-                  className="group flex items-center gap-1 text-ink text-xs font-semibold cursor-pointer bg-transparent border-none p-0"
-                >
-                  <TicketMark provider={ticketProvider} />
-                  <span className="group-hover:underline">{ticketId}</span>
-                </button>
-              ) : (
-                <span className="flex items-center gap-1 text-ink text-xs font-semibold">
-                  <TicketMark provider={ticketProvider} />
-                  {ticketId}
-                </span>
-              )
+              <TicketIdLink
+                ticketId={ticketId}
+                ticketLink={ticketLink}
+                taskSelection={taskSelection}
+                className="gap-1"
+              />
             )}
             {/* The comments on the spec, from the first one — and only from the first one. A
                 header row has no other job that would keep it there at zero, unlike the review's

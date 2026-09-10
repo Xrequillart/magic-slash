@@ -25,6 +25,7 @@ import type {
 import { rowKey, type TaskRow } from '../../utils/taskRows'
 import { useStore } from '../../store'
 import { normalizeTicketId } from '../../utils/taskAgents'
+import type { TaskSelection } from '../../utils/taskSelection'
 import { useT, type MessageKey, type Translate } from '../../i18n'
 import { StatusPill, TicketBadge } from '../Dashboard/parts'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
@@ -40,24 +41,6 @@ import { TrackerTile } from '../../components/icons/TrackerIcons'
  * repositories share it — one Jira project for two services — they share this card
  * and the header names both: see `TaskRow.repos`.
  */
-
-/**
- * The ticket the page has opened, as the pair that identifies it — DISCRIMINATED BY
- * TRACKER, because the two halves of this page do not agree on what a ticket's
- * identity is.
- *
- * A GitHub issue is a number, per repository. A Jira ticket is a key, `PROJ-123`,
- * and has no number at all. Folding them into one `{ configKey, id: string }` would
- * make every consumer re-derive which of the two reads to make from the shape of the
- * string — and the detail panel's two IPC channels, two error unions and two `hasAgent`
- * lookups all need the answer stated rather than sniffed.
- *
- * Lives here rather than in the page, because this is the component that produces
- * one; the page consumes it.
- */
-export type TaskSelection =
-  | { tracker: 'github'; configKey: string; number: number }
-  | { tracker: 'jira'; configKey: string; key: string }
 
 /**
  * Dedicated `tasks.error.*` copy, NOT the pull-request card's.
