@@ -41,10 +41,11 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.nav.changelog': 'Changelog',
 
   // ── Les pages ouvertes par le header avant leur contenu ─────────────────────
-  'site.pageSoon.note': 'Page en préparation',
+  'site.pageSoon.note': 'Bientôt disponible',
+  'site.nav.soon': 'Bientôt',
   'site.cloudPage.title': 'Le cloud',
   'site.cloudPage.lead':
-    'Votre configuration, votre équipe et votre usage, sur chaque machine où vous vous connectez — sans rien à recopier à la main. Cette page est en cours d’écriture.',
+    'Votre configuration, votre équipe et votre usage, sur chaque machine où vous vous connectez, sans rien à recopier à la main.',
   'site.downloadPage.title': 'Télécharger Magic Slash',
   // `/download` est une vraie page désormais : plus de « en cours d’écriture ». Voir la
   // note côté anglais ; le reste de la famille est plus bas.

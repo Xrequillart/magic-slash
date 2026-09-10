@@ -116,10 +116,13 @@ export const marketingEn = {
    * `site.bestPracticesPage.*` went the other way: the page was deleted rather than
    * written, with the Help menu that opened it.
    */
-  'site.pageSoon.note': 'Page in preparation',
+  // "Coming soon" on the page AND on every row that opens it (`SOON_NOTE`): the reader is
+  // told before the press. It said "Page in preparation" while only the page said it.
+  'site.pageSoon.note': 'Coming soon',
+  'site.nav.soon': 'Coming soon',
   'site.cloudPage.title': 'The cloud',
   'site.cloudPage.lead':
-    'Your configuration, your team and your usage, on every machine you sign in on — with nothing to copy across by hand. This page is being written.',
+    'Your configuration, your team and your usage, on every machine you sign in on, with nothing to copy across by hand.',
   'site.downloadPage.title': 'Download Magic Slash',
   /**
    * `/download` IS A REAL PAGE NOW (`components/site/download/DownloadContent.tsx`), so

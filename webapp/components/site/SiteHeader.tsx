@@ -25,6 +25,7 @@ import {
   FAQ_NAV_ROW,
   PRODUCT_MENU_GROUPS,
   PRODUCT_MENU_LABEL,
+  SOON_NOTE,
   type SiteNavIcon,
   type SiteNavRow,
 } from '@/lib/siteNav'
@@ -41,6 +42,7 @@ import {
   POPOVER_ROW_NAV,
   POPOVER_ROW_WITH_ICON,
   POPOVER_RULE,
+  SOON_PILL,
   useDismiss,
 } from './NavDropdown'
 import { useRevealClass } from './Reveal'
@@ -192,7 +194,14 @@ const ICONS: Record<SiteNavIcon, LucideIcon> = {
  */
 function dress(row: SiteNavRow, t: (key: MessageKey) => string): NavDropdownItem {
   const glyph: LucideIcon | undefined = row.icon ? ICONS[row.icon] : undefined
-  return { href: row.href, label: t(row.label), icon: glyph, tone: row.tone, tile: row.tile }
+  return {
+    href: row.href,
+    label: t(row.label),
+    icon: glyph,
+    tone: row.tone,
+    tile: row.tile,
+    soon: row.soon ? t(SOON_NOTE) : undefined,
+  }
 }
 
 /**
@@ -367,6 +376,7 @@ function MobileMenu({
                     />
                   )}
                   {item.label}
+                  {item.soon && <span className={SOON_PILL}>{item.soon}</span>}
                 </Link>
               )
             })}

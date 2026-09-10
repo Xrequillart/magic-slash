@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useT } from '@/lib/i18n/useLanguage'
 import type { MessageKey } from '@/lib/i18n'
-import { FAQ_NAV_ROW, PRODUCT_MENU, type SiteNavRow } from '@/lib/siteNav'
+import { FAQ_NAV_ROW, PRODUCT_MENU, SOON_NOTE, type SiteNavRow } from '@/lib/siteNav'
 import { LanguageMenu } from './LanguageMenu'
 import { GithubIcon } from './icons'
 import { GITHUB_REPO_URL, NEW_ISSUE_URL } from './links'
@@ -80,7 +80,7 @@ import { GITHUB_REPO_URL, NEW_ISSUE_URL } from './links'
  */
 type Column = {
   title: MessageKey
-  rows: { href: string; label: MessageKey; external?: boolean }[]
+  rows: { href: string; label: MessageKey; external?: boolean; soon?: true }[]
 }
 
 /**
@@ -96,7 +96,7 @@ type Column = {
  * beside it, is a page on this site.
  */
 const asRows = (rows: SiteNavRow[]): Column['rows'] =>
-  rows.map((row) => ({ href: row.href, label: row.label }))
+  rows.map((row) => ({ href: row.href, label: row.label, soon: row.soon }))
 
 /**
  * At module scope: every value in here is a `MessageKey` literal, a module constant or a
@@ -229,8 +229,16 @@ export function SiteFooter({ serverYear }: { serverYear: number }) {
                           {t(row.label)}
                         </a>
                       ) : (
-                        <Link href={row.href} className={ROW}>
+                        <Link href={row.href} className={`${ROW} inline-flex items-center gap-2`}>
                           {t(row.label)}
+                          {/* The same word the header's pill carries, in the footer's own
+                              white-alpha family rather than the accent: on `ink`, the blue
+                              tint would be the one coloured thing in three columns. */}
+                          {row.soon && (
+                            <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">
+                              {t(SOON_NOTE)}
+                            </span>
+                          )}
                         </Link>
                       )}
                     </li>

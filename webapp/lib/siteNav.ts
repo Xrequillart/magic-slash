@@ -148,7 +148,17 @@ export type SiteNavRow = {
    * the dress that is dropped rather than the rows or their colours. See `SiteHeader`.
    */
   tile?: true
+  /**
+   * The row opens a page that is announced and not written: the label carries a small
+   * "coming soon" pill beside it, in the menu, in the mobile panel and in the footer, so
+   * a reader is told before the press rather than by the page. `/cloud` is the one row
+   * that says so today; `SOON_NOTE` is the word on the pill.
+   */
+  soon?: true
 }
+
+/** The pill beside a `soon` row, and the badge on the page it opens. */
+export const SOON_NOTE: MessageKey = 'site.nav.soon'
 
 /**
  * THE ONE PAGE THAT DOES NOT EXIST YET, and what it will be about.
@@ -229,6 +239,8 @@ const row = (
   icon,
   tone,
   tile,
+  // Every placeholder page is, by definition, coming soon: the pill follows the row.
+  soon: true,
 })
 
 /**

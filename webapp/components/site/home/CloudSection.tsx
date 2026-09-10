@@ -1,9 +1,9 @@
 'use client'
 
 import { ArrowRight, Building2, NotebookPen, UserRound } from 'lucide-react'
-import { ButtonNavLink, FeaturePoints, SplitFeature } from '@/components/ui'
+import { Badge, ButtonNavLink, FeaturePoints, SplitFeature } from '@/components/ui'
 import { useT } from '@/lib/i18n/useLanguage'
-import { PLACEHOLDER_PAGES } from '@/lib/siteNav'
+import { PLACEHOLDER_PAGES, SOON_NOTE } from '@/lib/siteNav'
 import { Reveal } from '../Reveal'
 import { CloudBrowserMockup } from './CloudBrowserMockup'
 import { HomeHeading, HomeSection } from './Shell'
@@ -136,7 +136,11 @@ export function CloudSection() {
               already owns its own box. */}
           <FeaturePoints className="mt-10" points={points(t)} />
 
-          <div className="mt-10">
+          {/* THE PAGE IS COMING SOON, and the band says so beside its button rather than
+              letting the page say it after the press: the same pill the header and the
+              footer put on the row, at `Badge`'s accent tone. The button stays, and goes
+              where it went, because the page exists and says what the cloud will hold. */}
+          <div className="mt-10 flex flex-wrap items-center gap-3">
             <ButtonNavLink
               href={PLACEHOLDER_PAGES.cloud.path}
               variant="secondary"
@@ -145,6 +149,7 @@ export function CloudSection() {
             >
               {t('site.cloudBand.cta')}
             </ButtonNavLink>
+            <Badge tone="accent">{t(SOON_NOTE)}</Badge>
           </div>
         </Reveal>
       </SplitFeature>
