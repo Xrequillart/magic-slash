@@ -176,7 +176,12 @@ const ART: Record<WorkflowStepId, () => React.ReactElement> = {
  * `lg:col-span-${n}` built from a number compiles to nothing at all and the card silently
  * takes one column. The same rule that keeps `Reveal`'s delay an inline style.
  */
-const SPAN = { wide: 'md:col-span-2 lg:col-span-4', portrait: 'lg:col-span-2' } as const
+// `min-w-0` ON BOTH, because the cell is a grid item and a grid track's automatic minimum
+// is its content's min-content width. `PlanSpecArt` keeps a `min-w-96` panel on purpose (it
+// is what the `-mr-14` crop cuts), and on a 375px phone that minimum rode up through the
+// card's `overflow-hidden` — which crops what shows, not what the track asks for — and made
+// the page 5px wider than the screen. Same fix, same reason, as `PillarsSection`'s cells.
+const SPAN = { wide: 'min-w-0 md:col-span-2 lg:col-span-4', portrait: 'min-w-0 lg:col-span-2' } as const
 
 export function WorkflowSection() {
   const { t } = useT()

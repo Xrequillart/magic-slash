@@ -305,7 +305,11 @@ export function FeaturesContent() {
         <div className="grid gap-12 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-16">
           <FeaturesSidebar />
 
-          <div className="flex flex-col">
+          {/* `min-w-0` for the same reason the track above is `minmax(0,1fr)`: below `lg`
+              this column is the implicit single track, whose minimum is its content —
+              and the mockups in it are drawn wider than a phone on purpose. Without it
+              the page was 926px wide at 390px. */}
+          <div className="flex min-w-0 flex-col">
             {FEATURE_FAMILIES.map((family) => (
               // `scroll-mt-24` HERE and not only on `HomeSection`: the anchor the
               // sidebar links to is this inner section, and without an offset of its

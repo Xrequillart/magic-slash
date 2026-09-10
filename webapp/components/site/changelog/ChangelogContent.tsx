@@ -334,7 +334,12 @@ export function ChangelogContent({ versions }: { versions: ChangelogVersion[] })
                                     aria-hidden
                                     className="mt-[0.6em] h-1 w-1 shrink-0 rounded-full bg-ink/25"
                                   />
-                                  <span>
+                                  {/* `min-w-0` so the flex item can be narrower than its
+                                      longest word, and `overflow-wrap: anywhere` so that
+                                      word then breaks: entries quote identifiers and
+                                      flags with no spaces in them, and one of those at
+                                      390px pushed the whole page 32px wide. */}
+                                  <span className="min-w-0 [overflow-wrap:anywhere]">
                                     {/* THE SCOPE, IN FULL INK, and the entry at 70%.
                                         That is the reference's device — a bold name, then
                                         the sentence — and it is what makes a column of

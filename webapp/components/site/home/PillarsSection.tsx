@@ -78,8 +78,16 @@ export function PillarsSection() {
     // exactly that position ("the band DIRECTLY UNDER a hero", `Shell.tsx`), and it moved
     // here from the app band when this band was inserted above it.
     <HomeSection padding="follow">
+      {/* `min-w-0` ON EACH CELL, and it is what keeps the page from scrolling sideways
+          on a phone. A grid track's automatic minimum is its content's min-content width,
+          and both cards hold something drawn wider than any column on purpose — the
+          timeline is `w-max` (about 2000px), the terminal's status lines are
+          `whitespace-nowrap`. The cards' `overflow-hidden` crops what SHOWS, but it does
+          not shrink what the track asks for: at 390px the row was 2061px wide and the
+          whole document with it. Zeroing the cells' minimum lets the track be the
+          column, and the crop then does its job. */}
       <div className="grid gap-6 md:grid-cols-2">
-        <Reveal order={1}>
+        <Reveal order={1} className="min-w-0">
           <ToneCard
             tone="midnight"
             title={t('site.pillars.skillsTitle')}
@@ -105,7 +113,7 @@ export function PillarsSection() {
           </ToneCard>
         </Reveal>
 
-        <Reveal order={2}>
+        <Reveal order={2} className="min-w-0">
           <ToneCard
             tone="sky"
             title={t('site.pillars.desktopTitle')}
