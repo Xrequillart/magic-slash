@@ -52,18 +52,21 @@ const MARKETING_LAYOUT = path('app/(marketing)/layout.tsx')
  * them in.
  *
  * `components/site` is walked RECURSIVELY so a new band or a new shared control is
- * covered the day it is written, with ONE subtree cut out — and it is cut out because it
- * legitimately still uses these classes rather than to make the test pass:
- *   • `story/` — `/story` keeps its own `story.css`, which now carries the closing-CTA
- *     rules it used to borrow, `.btn-get-started` and `.cta-btn` among them. Those are
- *     in `StoryContent.tsx` on purpose.
+ * covered the day it is written, and NOTHING IS CUT OUT OF IT ANY MORE.
  *
- * `documentation/` was the second, exempted while `app/(docs)/layout.tsx` was still
- * importing `marketing.css` for that page's typography. Both are deleted, so the
- * exemption went with them — and `faq/`, the tree that replaced it, is scanned like
- * every other.
+ * There were two exemptions, both for trees that legitimately used these classes rather
+ * than to make the test pass. `documentation/` was exempt while `app/(docs)/layout.tsx`
+ * still imported `marketing.css` for that page's typography; `story/` was exempt because
+ * `/story` kept its own `story.css`, carrying the closing-CTA rules it used to borrow —
+ * `.btn-get-started` and `.cta-btn` among them. Both pages are deleted (`/faq` replaced
+ * the first; the second went by request, and `/story` 308s to the homepage now), so the
+ * exemptions went with them and every tree under `components/site` is scanned.
+ *
+ * THE LIST STAYS as an empty array rather than being inlined away: an exemption is what
+ * this rule will need the next time a page arrives with a stylesheet of its own, and the
+ * filter below is where a reader will look for it.
  */
-const EXCLUDED_SUBTREES = ['story']
+const EXCLUDED_SUBTREES: string[] = []
 
 const SCANNED_EXTENSIONS = ['.ts', '.tsx']
 
@@ -161,7 +164,10 @@ describe('the homepage is off marketing.css', () => {
     expect(importsMarketingCss("import '../(marketing)/marketing.css'")).toBe(true)
     expect(importsMarketingCss("import styles from './marketing.css'")).toBe(true)
     expect(importsMarketingCss("require('../(marketing)/marketing.css')")).toBe(true)
-    expect(importsMarketingCss("import './story.css'")).toBe(false)
+    // A stylesheet that is NOT this one, so the pattern is shown to discriminate rather
+    // than to match any `.css` import. It was `'./story.css'` until that page was
+    // deleted; `globals.css` is real and imported by the root layout.
+    expect(importsMarketingCss("import './globals.css'")).toBe(false)
   })
 
   it('uses none of the stylesheet’s button classes', () => {

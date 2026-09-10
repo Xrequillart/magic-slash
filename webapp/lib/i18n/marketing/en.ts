@@ -43,10 +43,10 @@ export const marketingEn = {
       own language (see `LANGUAGE_AUTONYM`), which is deliberately untranslated. */
   'site.nav.language': 'Language',
   /**
-   * THE HEADER'S TWO MENUS AND THE EIGHT ROWS UNDER THEM. `product` and `help` are the
-   * two triggers; `workflow`, `application`, `cloud`, `allFeatures`, `changelog` and
-   * `download` are the first one's rows, in that order, and `bestPractices` with `faq`
-   * are the second's. `lib/siteNav.ts` owns the order and the destinations, and
+   * THE HEADER'S MENU, ITS SIX ROWS, AND THE TWO LINKS BESIDE IT. `product` is the
+   * trigger; `workflow`, `application`, `cloud`, `allFeatures`, `changelog` and
+   * `download` are its rows, in that order; `faq` is the one row the bar shows in the
+   * open. `lib/siteNav.ts` owns the order and the destinations, and
    * `siteNav.test.ts` looks every one of these keys up in BOTH catalogues — a key that
    * does not exist renders as an empty row rather than as an error, `t()` having no
    * per-key fallback.
@@ -59,17 +59,24 @@ export const marketingEn = {
    * neither is the trigger ("Produit").
    *
    * `allFeatures` moved rather than changed: it was the bar's single link, and it is
-   * now a row in the menu pointing at the same `/features`. `faq` moved the same way and
-   * one release later — it was the bar's second CONTROL, and it is a row of the Help
-   * menu now, pointing at the same `/faq`. Neither key was rewritten, because neither
+   * now a row in the menu pointing at the same `/features`. `faq` has moved twice and is
+   * back where it started — the bar's second control, then a row of a **Help** menu, and
+   * a bare link again now that menu is gone. Neither key was rewritten, because neither
    * destination was.
    *
-   * THERE WAS A `site.nav.skills` ROW HERE, with a `/skills` page behind it, and both
-   * were cut for duplicating `/workflow` — one loop, described twice. Its keys are gone
-   * rather than parked: an unreferenced key normally costs nothing to keep, but an
-   * en/fr pair that is identical also costs a line in `i18n.test.ts`'s EXACT allow-list,
-   * and a name in that list with nothing behind it is a fact about the site that is no
-   * longer true.
+   * THREE ROWS HAVE LEFT THIS FAMILY ALTOGETHER, and each took its keys with it.
+   * `site.nav.skills` had a `/skills` page behind it, cut for duplicating `/workflow` —
+   * one loop, described twice. `site.nav.bestPractices` had `/best-practices`, deleted
+   * by request with the **Help** menu it was half of; `site.nav.help` named that menu's
+   * trigger and is now `site.footer.help`, since the footer's own column is all that
+   * word is left for. `site.nav.ourStory` had `/story`, deleted by request in the same
+   * story — its whole `site.story.*` family went with the page, and the path 308s to the
+   * homepage (`RETIRED_PATHS` in `lib/hostRouting.ts`).
+   *
+   * THE KEYS ARE GONE RATHER THAN PARKED: an unreferenced key normally costs nothing to
+   * keep, but an en/fr pair that is identical also costs a line in `i18n.test.ts`'s EXACT
+   * allow-list, and a name in that list with nothing behind it is a fact about the site
+   * that is no longer true. `site.story.tl9Date` was exactly that line.
    */
   'site.nav.product': 'Product',
   'site.nav.workflow': 'Workflow',
@@ -77,8 +84,6 @@ export const marketingEn = {
   'site.nav.cloud': 'Cloud',
   'site.nav.allFeatures': 'All features',
   'site.nav.download': 'Download',
-  'site.nav.help': 'Help',
-  'site.nav.bestPractices': 'Best practices',
   'site.nav.resources': 'Resources',
   /** The header's account control, signed out. Signed in it shows the email instead. */
   'site.nav.signIn': 'Sign in',
@@ -92,13 +97,12 @@ export const marketingEn = {
   'site.nav.faq': 'FAQ',
   'site.nav.updatesCategory': 'Updates',
   'site.nav.changelog': 'Changelog',
-  'site.nav.ourStory': 'Our Story',
 
-  // ── The four pages that are not written yet ─────────────────────────────────
+  // ── The pages the header opened ahead of their content ──────────────────────
   /**
-   * `/desktop`, `/cloud`, `/download` and `/best-practices`: the header's four new
-   * rows, each a title and one lead, printed by
-   * `components/site/PlaceholderContent.tsx`.
+   * `/cloud` and `/download`: two of the header's new rows, each a title and one lead.
+   * `components/site/PlaceholderContent.tsx` prints the first pair under the badge that
+   * admits the page is unwritten.
    *
    * THEY EXIST BECAUSE THE MENU DOES. A row pointing at a path `PUBLIC_PATHS` does not
    * list 307s the reader to a login form on `app.magic-slash.io`, so the routes had to
@@ -106,9 +110,11 @@ export const marketingEn = {
    * therefore a PROMISE OF SCOPE and nothing more: what each page will hold, so a
    * reader who followed the row learns something rather than meeting an empty band.
    *
-   * THERE WAS A `site.desktopPage.*` PAIR HERE, for `/desktop`. That page is real now —
-   * the homepage's app band moved onto it whole — so the promise of scope had nothing
-   * left to promise, and the page heads itself with `site.desktop.title` below.
+   * TWO PAIRS HAVE LEFT. `site.desktopPage.*` went when `/desktop` became real — the
+   * homepage's app band moved onto it whole, so the promise of scope had nothing left to
+   * promise, and the page heads itself with `site.desktop.title` below.
+   * `site.bestPracticesPage.*` went the other way: the page was deleted rather than
+   * written, with the Help menu that opened it.
    */
   'site.pageSoon.note': 'Page in preparation',
   'site.cloudPage.title': 'The cloud',
@@ -205,9 +211,6 @@ export const marketingEn = {
   /** The last line on the page, for whoever needs a build that is not this one. */
   'site.downloadPage.olderVersions': 'Looking for an earlier release?',
   'site.downloadPage.allReleases': 'All releases on GitHub',
-  'site.bestPracticesPage.title': 'Best practices',
-  'site.bestPracticesPage.lead':
-    'How to shape the work so the agents can carry it — one ticket per branch, a spec before an epic, and when to let an agent run unattended. This page is being written.',
 
   // ── Hero ───────────────────────────────────────────────────────────────────
   /**
@@ -2103,19 +2106,16 @@ export const marketingEn = {
   'site.faq.uninstall.a':
     'One script: <code>install/uninstall.sh</code>. It removes the eight skills, the Jira and GitHub MCP servers, every permission the setup added to <code>~/.claude/settings.json</code>, the app itself and <code>~/.config/magic-slash/</code>. Your repositories and your Claude Code install are left exactly as they were.',
 
-  // ── Closing CTA ────────────────────────────────────────────────────────────
   // ── Closing CTA (homepage) ─────────────────────────────────────────────────
   //
-  // SEPARATE FROM `site.cta.*`, which `/story` renders in its own closing block. The two
-  // pages ended on the same three keys, so retuning one rewrote the other; these belong
-  // to the homepage's dark closing sheet and nothing else reads them.
+  // THEY WERE SPLIT OFF FROM `site.cta.*`, which `/story` rendered in its own closing
+  // block: both pages ended on the same three keys, so retuning one rewrote the other.
+  // That page is deleted and `site.cta.*` with it, which leaves this family the only
+  // closing copy on the site — and it keeps its own name rather than moving back, since
+  // "the homepage's closing sheet" is what it actually is.
   'site.finalCta.title': 'Upgrade your product builder workflow today.',
   'site.finalCta.subtitle': 'Try Magic Slash.',
   'site.finalCta.button': 'Get Magic Slash for Mac',
-
-  'site.cta.title': 'Start building.',
-  'site.cta.subtitle': 'Free, and about a minute to set up.',
-  'site.cta.button': 'Start free',
 
   // ── Hero mockup ────────────────────────────────────────────────────────────
   // The window CHROME of the animated app mockup, and only that. The terminal's own
@@ -2262,75 +2262,6 @@ export const marketingEn = {
   'site.agentPanel.lastChecked': 'checked {time}',
   'site.agentPanel.refresh': 'Refresh',
 
-  // ── Story page ─────────────────────────────────────────────────────────────
-  'site.story.label': 'Our Story',
-  'site.story.heroTitle': 'We got tired of<br>the copy-paste.',
-  'site.story.heroIntro':
-    'We were using Claude Code every day, on real projects, with real Jira tickets. And every single time, we were doing the same thing: reading the ticket, rephrasing it into a prompt, creating worktrees by hand, committing manually, writing PR descriptions from scratch. It worked. But it was slow, repetitive, and boring.',
-  'site.story.painTitle': 'What it looked like before.',
-  'site.story.painSubtitle':
-    'Every task meant the same tedious routine. Here’s what we were doing 5 to 10 times a day.',
-  'site.story.pain1Title': 'Read and understand the ticket',
-  'site.story.pain1Desc':
-    'Open Jira, read the title, the description, the acceptance criteria. Understand what needs to be done, then switch to the terminal and rephrase it all as a prompt for Claude Code.',
-  'site.story.pain2Title': 'Create the worktree manually',
-  'site.story.pain2Desc':
-    'Figure out the branch name from the ticket ID, run git worktree add, cd into it, make sure you’re on the right base branch. Every. Single. Time.',
-  'site.story.pain3Title': 'Write the perfect prompt',
-  'site.story.pain3Desc':
-    'Translate the Jira spec into the best possible prompt. Copy-paste the acceptance criteria, add context about the codebase, hope you didn’t forget anything important.',
-  'site.story.pain4Title': 'Commit, PR, describe',
-  'site.story.pain4Desc':
-    'Stage changes, write a conventional commit message, push, open the PR, write the description, link the Jira ticket, update the status. All by hand.',
-  'site.story.pain5Title': 'Review comments on your own',
-  'site.story.pain5Desc':
-    'Read each review comment, understand the feedback, fix the code, force-push, resolve the threads. No help, no automation.',
-  'site.story.pain6Title': 'Clean up (if you remember)',
-  'site.story.pain6Desc':
-    'Once merged, delete the worktree, the local branch, the remote branch. One time out of five, you forget, and stale branches pile up.',
-  'site.story.timelineTitle': 'How we got here.',
-  'site.story.timelineSubtitle':
-    'From a brainstorm to a product used daily by the team.',
-  'site.story.tl1Date': 'Early January 2026',
-  'site.story.tl1Title': 'The first brainstorm',
-  'site.story.tl1Desc':
-    'Initial idea: a Chrome extension that adds a button to Jira tickets to copy the spec and paste it into a manually launched Claude Code. Simple, but not enough.',
-  'site.story.tl2Date': 'January 2026',
-  'site.story.tl2Title': 'Pivot to slash commands',
-  'site.story.tl2Desc':
-    'After the brainstorm, the decision is clear: forget the extension, let’s build Claude Code slash commands powered by the GitHub and Atlassian MCP servers — pulling in Jira tickets and GitHub Issues natively. Direct, fast, no context-switching.',
-  'site.story.tl3Date': 'Mid-January 2026',
-  'site.story.tl3Title': 'First version of magic-slash',
-  'site.story.tl3Desc':
-    'magic-slash ships with a landing page, a <code>/start</code> command to kick off tasks from Jira tickets, and a polished install CLI for a top-notch developer experience. Fetch the spec, create the branch, start coding — one command.',
-  'site.story.tl4Date': 'Late January 2026',
-  'site.story.tl4Title': '/commit and /done arrive',
-  'site.story.tl4Desc':
-    '<code>/commit</code> for fast conventional commits and <code>/done</code> to push, open the PR, and update Jira. The full cycle starts to take shape. Slash commands evolve into Claude Code skills for a smoother experience.',
-  'site.story.tl5Date': 'February 2026',
-  'site.story.tl5Title': 'Battle-tested by the team',
-  'site.story.tl5Desc':
-    'magic-slash goes into heavy daily use across the dev team. Real tickets, real PRs, real feedback. Every pain point surfaces and gets fixed.',
-  'site.story.tl6Date': 'Early March 2026',
-  'site.story.tl6Title': 'Magic-slash desktop is born',
-  'site.story.tl6Desc':
-    'New problem: with 7-8 Claude instances running in terminals, nobody knew which agent was working on what. Way too much time wasted on context recovery. So we built a desktop app to see everything at a glance — up to 12 agents in parallel, each on its own ticket.',
-  'site.story.tl7Date': 'March 2026',
-  'site.story.tl7Title': 'From 3 skills to 7 — the full dev flow',
-  'site.story.tl7Desc':
-    'The skill set grows from 3 to 7 with a complete development cycle. <code>/done</code> becomes <code>/pr</code> for creating pull requests, and a new <code>/done</code> handles ticket closure after merge. <code>/review</code> and <code>/resolve</code> land to automate code reviews and address feedback. Plus a full month of desktop app testing, bug fixes, and UI refinements.',
-  'site.story.tl8Date': 'April 2026',
-  'site.story.tl8Title': 'Rebranding & the Ninja Rabbit',
-  'site.story.tl8Desc':
-    'New identity drops with a mascot: the Ninja Rabbit. A sword for the Slash, a white rabbit as a symbol of magic. Fresh landing page, new visual direction.',
-  'site.story.tl9Date': 'Coming soon',
-  'site.story.tl9Title': 'What’s next?',
-  'site.story.tl9Desc':
-    'More integrations, smarter reviews, and a lot more. Stay tuned.',
-  'site.story.ctaTitle': 'Ready to try?',
-  'site.story.ctaDesc': 'Install magic-slash and see the difference.',
-  'site.story.ctaBtn': 'Start free',
-
   // ── Changelog page ─────────────────────────────────────────────────────────
   // The chrome of `/changelog`, and ONLY the chrome. The releases themselves are
   // parsed out of `CHANGELOG.md` at build time and rendered as written — they come
@@ -2362,10 +2293,25 @@ export const marketingEn = {
   'site.footer.updates': 'Updates',
   'site.footer.configuration': 'Configuration',
   'site.footer.changelog': 'Changelog',
+  /**
+   * PARKED, with the rest of this family: the Resources column is gone. It held `/story`
+   * and the repository, the story page is deleted by request, and the row that was left
+   * pointed where the mark under the tagline already points — so `SiteFooter.tsx` is two
+   * columns now. The word is kept because the next column this footer grows may well be
+   * this one; `site.footer.ourStory` is NOT, because the page it named does not exist.
+   */
   'site.footer.resources': 'Resources',
   'site.footer.documentation': 'Documentation',
   'site.footer.faq': 'FAQ',
-  'site.footer.ourStory': 'Our Story',
+  /**
+   * The middle column's heading, and the one key in this family that arrived rather than
+   * being retired. It was `site.nav.help`, the header's **Help** trigger, while the
+   * footer's column was that menu's rows verbatim; the menu is gone and the column is
+   * not, so the word belongs to the surface that still says it. See `SiteFooter.tsx`,
+   * which now composes those rows — the FAQ, then "Report an issue" — rather than
+   * mirroring a menu.
+   */
+  'site.footer.help': 'Help',
   /**
    * The third column. It is LEGAL rather than the `company` heading above it because
    * every entry in it is a document, and every one of those documents lives on GitHub:

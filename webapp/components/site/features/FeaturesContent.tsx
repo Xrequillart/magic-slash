@@ -226,8 +226,8 @@ export function FeaturesContent() {
 
   return (
     // `bg-white` on the page's own root rather than in the `(marketing)` layout: that
-    // layout also wraps `/story` (on `softblue`) and the homepage (on `canvas`), so each
-    // page paints its own ground. See the ink note above for why this one is white.
+    // layout also wraps the homepage (on `canvas`), so each page paints its own ground.
+    // See the ink note above for why this one is white.
     <div className="bg-white">
       {/* TWO `HomeSection`s, where there used to be one. The opening is its own band so
           it can carry the homepage hero's wash — `softblue` fading down, with the blue

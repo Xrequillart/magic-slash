@@ -19,13 +19,14 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.nav.product': 'Produit',
   // Trois des six rangées du menu Produit sont le mot français : c'est le vocabulaire
   // du produit, celui que l'app emploie déjà en français. Voir la note côté anglais.
+  // « Aide », « Bonnes pratiques » et « Notre histoire » ont disparu d'ici avec le menu
+  // et les pages qu'elles nommaient ; le mot « Aide » ne sert plus qu'à la colonne du
+  // footer, sous `site.footer.help`.
   'site.nav.workflow': 'Workflow',
   'site.nav.application': 'Application',
   'site.nav.cloud': 'Cloud',
   'site.nav.allFeatures': 'Toutes les fonctionnalités',
   'site.nav.download': 'Télécharger',
-  'site.nav.help': 'Aide',
-  'site.nav.bestPractices': 'Bonnes pratiques',
   'site.nav.resources': 'Ressources',
   'site.nav.signIn': 'Connexion',
   'site.nav.account': 'Votre compte',
@@ -38,9 +39,8 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.nav.faq': 'FAQ',
   'site.nav.updatesCategory': 'Mises à jour',
   'site.nav.changelog': 'Changelog',
-  'site.nav.ourStory': 'Notre histoire',
 
-  // ── Les quatre pages encore à écrire ────────────────────────────────────────
+  // ── Les pages ouvertes par le header avant leur contenu ─────────────────────
   'site.pageSoon.note': 'Page en préparation',
   'site.cloudPage.title': 'Le cloud',
   'site.cloudPage.lead':
@@ -96,9 +96,6 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.downloadPage.releaseNotes': 'Cette version sur GitHub',
   'site.downloadPage.olderVersions': 'Vous cherchez une version antérieure ?',
   'site.downloadPage.allReleases': 'Toutes les versions sur GitHub',
-  'site.bestPracticesPage.title': 'Bonnes pratiques',
-  'site.bestPracticesPage.lead':
-    'Comment découper le travail pour que les agents puissent le porter — un ticket par branche, une spec avant un epic, et quand laisser un agent tourner sans surveillance. Cette page est en cours d’écriture.',
 
   // ── Hero ───────────────────────────────────────────────────────────────────
   'site.hero.title': 'Votre ticket Jira devient une PR mergée.',
@@ -1167,7 +1164,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'En attente de revue ? Modifications demandées ? Un check rouge ? Vous le voyez sans ouvrir un seul onglet.',
   'site.whereItStands.cta': 'Voir le workflow complet',
 
-  // ── ⑦ Pourquoi on a construit ça (teaser vers /story) ──────────────────────
+  // ── ⑦ Pourquoi on a construit ça (bande retirée, et /story avec) ───────────
   'site.why.title': 'Pourquoi on a construit ça.',
   'site.why.p1':
     'On utilisait Claude Code tous les jours, sur de vrais projets. Et chaque fois, la même routine : lire le ticket, le reformuler en prompt, préparer la branche à la main, écrire le commit, décrire la PR. Ça marchait. C’était juste lent et ennuyeux.',
@@ -1238,16 +1235,13 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.faq.uninstall.a':
     'Un seul script : <code>install/uninstall.sh</code>. Il retire les huit skills, les serveurs MCP Jira et GitHub, toutes les permissions ajoutées à <code>~/.claude/settings.json</code>, l’app elle-même et <code>~/.config/magic-slash/</code>. Vos dépôts et votre installation de Claude Code restent exactement en l’état.',
 
-  // ── CTA de fin ─────────────────────────────────────────────────────────────
   // ── CTA de clôture (page d'accueil) ────────────────────────────────────────
+  //
+  // `site.cta.*` est partie avec `/story` : voir la note côté anglais.
   'site.finalCta.title':
     'Faites passer votre workflow de product builder à la vitesse supérieure.',
   'site.finalCta.subtitle': 'Essayez Magic Slash.',
   'site.finalCta.button': 'Obtenir Magic Slash pour Mac',
-
-  'site.cta.title': 'Commencez à construire.',
-  'site.cta.subtitle': 'Gratuit, et une minute suffit pour l’installer.',
-  'site.cta.button': 'Commencer gratuitement',
 
   // ── Maquette du hero ───────────────────────────────────────────────────────
   // Uniquement le chrome de la fenêtre. Les lignes du terminal ne sont PAS ici : c'est
@@ -1386,75 +1380,6 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.agentPanel.lastChecked': 'vérifié {time}',
   'site.agentPanel.refresh': 'Rafraîchir',
 
-  // ── Page histoire ──────────────────────────────────────────────────────────
-  'site.story.label': 'Notre histoire',
-  'site.story.heroTitle': 'On en avait marre<br>du copier-coller.',
-  'site.story.heroIntro':
-    'On utilisait Claude Code tous les jours, sur de vrais projets, avec de vrais tickets Jira. Et à chaque fois, c’était la même chose : lire le ticket, le reformuler en prompt, créer les worktrees à la main, committer manuellement, rédiger les descriptions de PR from scratch. Ça marchait. Mais c’était lent, répétitif et ennuyeux.',
-  'site.story.painTitle': 'À quoi ça ressemblait avant.',
-  'site.story.painSubtitle':
-    'Chaque tâche, c’était la même routine. Voici ce qu’on faisait 5 à 10 fois par jour.',
-  'site.story.pain1Title': 'Lire et comprendre le ticket',
-  'site.story.pain1Desc':
-    'Ouvrir Jira, lire le titre, la description, les critères d’acceptation. Comprendre ce qu’il faut faire, puis basculer sur le terminal et tout reformuler en prompt pour Claude Code.',
-  'site.story.pain2Title': 'Créer le worktree à la main',
-  'site.story.pain2Desc':
-    'Trouver le nom de branche depuis l’ID du ticket, lancer git worktree add, cd dedans, vérifier qu’on est sur la bonne branche de base. À. Chaque. Fois.',
-  'site.story.pain3Title': 'Écrire le prompt parfait',
-  'site.story.pain3Desc':
-    'Traduire la spec Jira dans le meilleur prompt possible. Copier-coller les critères d’acceptation, ajouter du contexte sur la codebase, espérer n’avoir rien oublié d’important.',
-  'site.story.pain4Title': 'Commit, PR, description',
-  'site.story.pain4Desc':
-    'Stager les changements, écrire un message de commit conventionnel, pousser, ouvrir la PR, rédiger la description, lier le ticket Jira, mettre à jour le statut. Tout à la main.',
-  'site.story.pain5Title': 'Répondre aux reviews seul',
-  'site.story.pain5Desc':
-    'Lire chaque commentaire de review, comprendre le feedback, corriger le code, force-push, résoudre les threads. Aucune aide, aucune automatisation.',
-  'site.story.pain6Title': 'Nettoyer (si on y pense)',
-  'site.story.pain6Desc':
-    'Une fois mergé, supprimer le worktree, la branche locale, la branche remote. Une fois sur cinq, on oublie, et les branches mortes s’accumulent.',
-  'site.story.timelineTitle': 'Comment on en est arrivé là.',
-  'site.story.timelineSubtitle':
-    'D’un brainstorm à un produit utilisé au quotidien par l’équipe.',
-  'site.story.tl1Date': 'Début janvier 2026',
-  'site.story.tl1Title': 'Le premier brainstorm',
-  'site.story.tl1Desc':
-    'Idée initiale : une extension Chrome qui ajoute un bouton sur les tickets Jira pour copier la spec et la coller dans un Claude Code lancé à la main. Simple, mais pas suffisant.',
-  'site.story.tl2Date': 'Janvier 2026',
-  'site.story.tl2Title': 'Pivot vers les slash commands',
-  'site.story.tl2Desc':
-    'Après le brainstorm, la décision est claire : oubliez l’extension, on construit des slash commands Claude Code alimentées par les serveurs MCP GitHub et Atlassian — pour intégrer nativement les tickets Jira et les GitHub Issues. Direct, rapide, zéro changement de contexte.',
-  'site.story.tl3Date': 'Mi-janvier 2026',
-  'site.story.tl3Title': 'Première version de magic-slash',
-  'site.story.tl3Desc':
-    'magic-slash sort avec une landing page, une commande <code>/start</code> pour lancer des tâches depuis les tickets Jira, et un CLI d’install soigné pour une expérience développeur au top. Récupérer la spec, créer la branche, commencer à coder — une commande.',
-  'site.story.tl4Date': 'Fin janvier 2026',
-  'site.story.tl4Title': '/commit et /done arrivent',
-  'site.story.tl4Desc':
-    '<code>/commit</code> pour des commits conventionnels rapides et <code>/done</code> pour pousser, ouvrir la PR et mettre à jour Jira. Le cycle complet prend forme. Les slash commands évoluent en skills Claude Code pour une meilleure expérience.',
-  'site.story.tl5Date': 'Février 2026',
-  'site.story.tl5Title': 'Testé au combat par l’équipe',
-  'site.story.tl5Desc':
-    'magic-slash entre en utilisation intensive quotidienne dans l’équipe dev. De vrais tickets, de vraies PRs, de vrais retours. Chaque point de friction remonte et est corrigé.',
-  'site.story.tl6Date': 'Début mars 2026',
-  'site.story.tl6Title': 'Magic-slash desktop est né',
-  'site.story.tl6Desc':
-    'Nouveau problème : avec 7-8 instances Claude lancées dans des terminaux, personne ne savait quel agent travaillait sur quoi. Trop de temps perdu en remise en contexte. Alors on a construit une app desktop pour tout voir d’un coup d’œil — jusqu’à 12 agents en parallèle, chacun sur son propre ticket.',
-  'site.story.tl7Date': 'Mars 2026',
-  'site.story.tl7Title': 'De 3 skills à 7 — le flow de dev complet',
-  'site.story.tl7Desc':
-    'Le nombre de skills passe de 3 à 7 avec un cycle de développement complet. <code>/done</code> devient <code>/pr</code> pour créer les pull requests, et un nouveau <code>/done</code> gère la clôture du ticket après le merge. <code>/review</code> et <code>/resolve</code> arrivent pour automatiser les revues de code et traiter les retours. Plus un mois complet de tests de l’app desktop, corrections de bugs et affinage de l’UI.',
-  'site.story.tl8Date': 'Avril 2026',
-  'site.story.tl8Title': 'Rebranding & le Lapin Ninja',
-  'site.story.tl8Desc':
-    'Nouvelle identité avec une mascotte : le Lapin Ninja. Un sabre pour le Slash, un lapin blanc comme symbole de la magie. Nouvelle landing page, nouvelle direction visuelle.',
-  'site.story.tl9Date': 'Coming soon',
-  'site.story.tl9Title': 'Et ensuite ?',
-  'site.story.tl9Desc':
-    'Plus d’intégrations, des reviews plus intelligentes, et bien plus encore. Stay tuned.',
-  'site.story.ctaTitle': 'Prêt à essayer ?',
-  'site.story.ctaDesc': 'Installez magic-slash et voyez la différence.',
-  'site.story.ctaBtn': 'Commencer gratuitement',
-
   // ── Page changelog ─────────────────────────────────────────────────────────
   // Le chrome de `/changelog`, et rien d'autre. Les versions elles-mêmes sont lues
   // dans `CHANGELOG.md` au moment du build et affichées telles quelles : elles sont
@@ -1488,7 +1413,9 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.footer.resources': 'Ressources',
   'site.footer.documentation': 'Documentation',
   'site.footer.faq': 'FAQ',
-  'site.footer.ourStory': 'Notre histoire',
+  // Le titre de la colonne du milieu, qui était `site.nav.help` du temps où cette
+  // colonne reprenait le menu Aide du header. Voir la note côté anglais.
+  'site.footer.help': 'Aide',
   'site.footer.legal': 'Légal',
   'site.footer.security': 'Politique de sécurité',
   'site.footer.company': 'Entreprise',

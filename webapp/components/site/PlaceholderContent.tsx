@@ -11,16 +11,17 @@ import { HomeSection } from './home/Shell'
  * A PAGE THAT EXISTS AND IS NOT WRITTEN YET: its title, one line of scope, and a badge
  * saying so.
  *
- * TWO ROUTES SHARE IT — `/cloud` from the Product menu and `/best-practices` from the
- * Help menu (`PLACEHOLDER_PAGES` in `lib/siteNav.ts`). One component rather than two
- * near-identical bands, because they will not be replaced on the same day: each
- * `page.tsx` swaps this call for its own content when its turn comes, and the one still
- * waiting keeps agreeing with itself in the meantime.
+ * ONE ROUTE USES IT TODAY — `/cloud`, from the Product menu (`PLACEHOLDER_PAGES` in
+ * `lib/siteNav.ts`). It stays a component rather than being folded into that page,
+ * because what it is FOR outlives its current caller: a row ships the day its menu does
+ * and its page is written later, so the next such page wants this band and the badge on
+ * it. Each `page.tsx` swaps the call for its own content when its turn comes.
  *
- * THERE WERE FOUR, AND FIVE FOR A MOMENT. `/skills` was cut for duplicating `/workflow`;
- * `/desktop` and `/download` were written for real (`DesktopContent`, `DownloadContent`)
- * and dropped this call. The count above is the kind of sentence that is worth keeping
- * true — see the notes in `lib/siteNav.ts`.
+ * IT HAS HAD FOUR CALLERS, AND FIVE FOR A MOMENT. `/skills` was cut for duplicating
+ * `/workflow` before it rendered anything; `/desktop` and `/download` were written for
+ * real (`DesktopContent`, `DownloadContent`) and dropped this call; `/best-practices`
+ * was deleted by request with the Help menu that opened it. The count above is the kind
+ * of sentence that is worth keeping true — see the notes in `lib/siteNav.ts`.
  *
  * WHY THE ROUTES SHIPPED EMPTY AT ALL, which is the thing to be honest about rather than
  * quiet about: a header row pointing at a path `PUBLIC_PATHS` does not list 307s the

@@ -45,9 +45,12 @@ export const PAGE_CHROME = {
  * homepage links here, and a component should not have to know the site's URL shape to
  * do it.
  *
- * NOT PLUMBED THROUGH THE FOOTER, which spells `/faq` itself. Its columns are a table of
- * route literals — `/features`, `/changelog`, `/story` — and importing a constant for one
- * row of five would read as that row being special when it is not.
+ * AND THE FOOTER REACHES IT THROUGH `FAQ_NAV_ROW`, not through a literal — which is the
+ * opposite of what this note used to say. Its columns were a table of route literals
+ * (`/features`, `/changelog`, `/story`) and a constant for one row of five would have
+ * read as that row being special; those rows come from `lib/siteNav.ts` now, so the
+ * footer's FAQ row is the HEADER's row, label included. One page, one name, two
+ * surfaces.
  */
 export const FAQ_PATH = '/faq'
 
@@ -57,7 +60,7 @@ export const FAQ_PATH = '/faq'
  *
  * ITS OWN KEYS AND NOT `PAGE_CHROME`'s, and that is a fix rather than a preference —
  * `FinalCtaSection` learned it the hard way, and its header records it: `site.cta.*` was
- * shared with `/story`, so retuning the homepage's closing band through those keys
+ * shared with the deleted `/story`, so retuning the homepage's closing band through them
  * silently rewrote a page nobody had opened. The two surfaces also want different
  * sentences. This page's `title` is "Frequently asked questions", which is what an `h1`
  * over eleven rows should say and is a poor thing to put on a band a reader arrives at

@@ -32,7 +32,7 @@ import type { SiteNavTone } from '@/lib/siteNav'
 
 /**
  * EVERY CONTROL IN THE BAR, and that is now literally every one: the two nav triggers,
- * the language picker, the two bare links (`/story` and the repository) and the way in.
+ * the language picker, the two bare links (the FAQ and the repository) and the way in.
  * One recipe, one baseline, one focus ring, one hover.
  *
  * Shared because the drift already happened once: a "How it works" link was written out

@@ -200,8 +200,9 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * `components/ui.tsx`. What that replaces: eight sections dressed by ~5,000 lines of
  * ported stylesheet, eleven rival button definitions among them.
  *
- * `bg-canvas` IS HERE AND NOT IN THE LAYOUT, on purpose. That layout wraps `/story` too,
- * and `/story` is on `softblue` — painting `#F4F7FE` one level up would cover it.
+ * `bg-canvas` IS HERE AND NOT IN THE LAYOUT, on purpose: that layout wraps every public
+ * page, and they do not agree on what colour the page is — `/features` and `/faq` are on
+ * white. Painting `#F4F7FE` one level up would cover both.
  *
  * The `page-wrapper` / `content-sections` wrappers are gone with the stylesheet that
  * gave them meaning: `page-wrapper` existed for an `overflow: clip` that kept the old

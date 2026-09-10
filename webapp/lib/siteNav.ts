@@ -3,22 +3,37 @@ import type { MessageKey } from './i18n'
 import { WORKFLOW_PATH } from './workflow'
 
 /**
- * THE PUBLIC SITE'S HEADER NAV, as data: two menus, the eight rows behind them, and the
- * one link the bar carries in the open (`STORY_NAV_ROW`).
+ * THE PUBLIC SITE'S HEADER NAV, as data: one menu, the six rows behind it, and the one
+ * link the bar carries in the open (`FAQ_NAV_ROW`).
  *
  * The bar used to carry ONE link — `/features`, mapped from a one-row array that
  * `SiteHeader.tsx` still explains at length. This is the shape that array was left an
- * array for: a **Product** dropdown listing everything the product is, then a **Help**
- * dropdown beside it. Two controls is the whole bar, which is what keeps it on the
- * page's own column at `md` (the arithmetic is in `SiteHeader`'s header note, and two
- * controls is the case it was already sized for).
+ * array for: a **Product** dropdown listing everything the product is, then the FAQ
+ * beside it in the open. Two controls is the whole bar, which is what keeps it on the
+ * page's own column at `md` — the arithmetic is in `SiteHeader`'s header note.
  *
- * THE SECOND CONTROL WAS A BARE FAQ LINK, and it became a menu when it got a neighbour:
- * "Best practices" is the other thing a reader comes to this site to be TAUGHT, and two
- * links of that kind side by side in a bar of two controls would have made the bar read
- * as three peers with no hierarchy at all. So the shape is one menu per QUESTION — what
- * is this thing, and how do I get good at it — and the rows behind each are that
- * question's answers.
+ * TWO PAGES HAVE BEEN DELETED FROM THIS NAV, by request, and between them they took a
+ * menu and a bare link:
+ *
+ *   • `/best-practices` was half of a **Help** menu, the other half being the FAQ. That
+ *     menu only ever existed because the FAQ got a NEIGHBOUR — "Best practices" was the
+ *     other thing a reader came here to be taught, and two links of that kind side by
+ *     side in a bar of two controls read as three peers with no hierarchy at all. With
+ *     one of the pair gone there was nothing left to hide behind a trigger, so the FAQ
+ *     is a bare link again, which is the shape it had before the menu.
+ *   • `/story` was the founding story, and it was a bare link for the reason a menu of
+ *     one is furniture: it had no siblings. Nothing replaced it, in the bar or in the
+ *     footer.
+ *
+ * WHICH LEAVES THE BAR AT ONE MENU AND ONE LINK, and the FAQ is the link because of what
+ * that page does: it answers the objection that stops a download, so it is one press
+ * from anywhere.
+ *
+ * ONE OF THE TWO NEEDS A REDIRECT AND THE OTHER DOES NOT, which is worth stating rather
+ * than assuming. `/story` shipped and was in the footer of every public page for
+ * releases, so it is in `RETIRED_PATHS` (`lib/hostRouting.ts`) and 308s to the homepage.
+ * `/best-practices` never reached production — no link to it exists to keep alive — and
+ * neither did the `/skills` page cut before it.
  *
  * IT WAS SEVEN ROWS AND A `/skills` PAGE FOR ONE ITERATION. That page was cut on the
  * reading that it duplicated `/workflow`: both were going to set out the eight commands,
@@ -54,7 +69,7 @@ import { WORKFLOW_PATH } from './workflow'
  * to RESOLVE one. `components/site/SiteHeader.tsx` holds the map from these names to
  * lucide's components, beside the markup that renders them.
  *
- * ALL NINE ARE LUCIDE EXPORTS, checked against the `^1.26.0` in `webapp/package.json`
+ * ALL SEVEN ARE LUCIDE EXPORTS, checked against the `^1.26.0` in `webapp/package.json`
  * rather than guessed — v1 dropped the brand glyphs and renamed a family of others
  * (`HelpCircle` is `CircleHelp` here), and a name lucide does not ship is a `tsc` error
  * at the map and a refused Vercel build. The map keeps a fallback behind that anyway.
@@ -67,12 +82,10 @@ import { WORKFLOW_PATH } from './workflow'
  */
 export type SiteNavIcon =
   | 'AppWindow'
-  | 'BookOpen'
   | 'CircleHelp'
   | 'Cloud'
   | 'Download'
   | 'Layers'
-  | 'Lightbulb'
   | 'ScrollText'
   | 'Workflow'
 
@@ -105,15 +118,14 @@ export type SiteNavRow = {
   href: string
   label: MessageKey
   /**
-   * The glyph beside the label, IN THE PANELS. Nothing in the NAV draws one — two
-   * triggers, their chevrons and one bare link, because a 64px bar of icons beside three
-   * words is a toolbar rather than a nav. (The bar's right-hand cluster does carry one
-   * icon-only control, the link to the repository, and it is not a nav row: it leaves
-   * the site.)
+   * The glyph beside the label, IN THE PANELS. Nothing in the NAV draws one — one
+   * trigger, its chevron and one bare link, because a 64px bar of icons beside two words
+   * is a toolbar rather than a nav.
    *
-   * Every row has one, which was not true while the FAQ stood in the bar as a link: the
-   * one bare label in a column reads as a row that failed to load, so the rule is all or
-   * none per panel.
+   * EVERY ROW HAS ONE ANYWAY, the FAQ included, and the reason is the surface below
+   * `md`: there the panel is a single column of every row there is, so a label with no
+   * glyph beside six that have one reads as a row that failed to load. The rule is all
+   * or none PER PANEL; the bar ignores the field entirely.
    */
   icon?: SiteNavIcon
   /** Which of the three groups the row belongs to, said as a colour. */
@@ -139,21 +151,24 @@ export type SiteNavRow = {
 }
 
 /**
- * THE TWO PAGES THAT DO NOT EXIST YET, and what each one will be about.
+ * THE ONE PAGE THAT DOES NOT EXIST YET, and what it will be about.
  *
- * They are placeholders on purpose and the shape says so: a path, the label the menu
+ * It is a placeholder on purpose and the shape says so: a path, the label the menu
  * gives it, and the two lines the page itself prints — a title and one lead — with
- * `PLACEHOLDER_NOTE` below them. `components/site/PlaceholderContent.tsx` renders
- * both, so the two `page.tsx` files under `app/(marketing)` are a `metadata` export
- * and one component call each.
+ * `PLACEHOLDER_NOTE` below them. `components/site/PlaceholderContent.tsx` renders it,
+ * so `app/(marketing)/cloud/page.tsx` is a `metadata` export and one component call.
  *
- * THERE WERE FOUR. `/desktop` left first: the homepage's own app band moved onto it
- * whole (`components/site/desktop/DesktopContent.tsx`). `/download` followed, with the
- * button, the prerequisites and the latest release's notes
- * (`components/site/download/DownloadContent.tsx`). Both rows below are written out
- * rather than mapped from here, and `site.desktopPage.*` is gone from the catalogues —
- * `site.downloadPage.*` stayed, because that page still needs a title and a lead, just
- * not a promise of scope. A page with content has no use for one.
+ * IT IS A TABLE OF ONE, AND IT STAYS A TABLE. There were four entries here. `/desktop`
+ * left first: the homepage's own app band moved onto it whole
+ * (`components/site/desktop/DesktopContent.tsx`). `/download` followed, with the button,
+ * the prerequisites and the latest release's notes
+ * (`components/site/download/DownloadContent.tsx`) — both rows are written out below
+ * rather than mapped from here, and `site.desktopPage.*` is gone from the catalogues
+ * while `site.downloadPage.*` stayed, because that page still needs a title and a lead,
+ * just not a promise of scope. `/best-practices` left LAST and differently: it was
+ * deleted rather than written, with the Help menu that opened it. Collapsing what is
+ * left into a bare constant would be a shape that has to be rebuilt the next time a row
+ * ships ahead of its page, and `siteNav.test.ts` walks this by entry name.
  *
  * A ROUTE HAD TO EXIST THE DAY THE MENU SHIPPED, which is the same argument
  * `WORKFLOW_PATH` records: the alternative to a thin page is a menu row that 307s to a
@@ -183,22 +198,15 @@ export const PLACEHOLDER_PAGES = {
     title: 'site.cloudPage.title',
     lead: 'site.cloudPage.lead',
   },
-  // The Help menu's own new row. `/best-practices` and not `/best-practice`: the page is
-  // a collection of them, and the plural is what everybody who has ever linked to such a
-  // page has used.
-  bestPractices: {
-    path: '/best-practices',
-    label: 'site.nav.bestPractices',
-    title: 'site.bestPracticesPage.title',
-    lead: 'site.bestPracticesPage.lead',
-  },
 } as const satisfies Record<string, PlaceholderPage>
 
 /**
  * The line every unfinished page carries where its content will go.
  *
- * ONE KEY FOR BOTH, and it is deliberately a plain statement rather than a promise
- * with a date on it: "in preparation" ages, "shipping in March" is wrong in April.
+ * IT WAS ONE KEY FOR TWO PAGES and it is not renamed for being down to one, because
+ * what it says is not about `/cloud`: it is deliberately a plain statement rather than a
+ * promise with a date on it — "in preparation" ages, "shipping in March" is wrong in
+ * April — and the next unwritten page will want the same sentence.
  */
 export const PLACEHOLDER_NOTE: MessageKey = 'site.pageSoon.note'
 
@@ -207,8 +215,8 @@ export const PLACEHOLDER_NOTE: MessageKey = 'site.pageSoon.note'
  *
  * The glyph and the tone are arguments rather than fields on `PLACEHOLDER_PAGES`: what a
  * page is called and what it will hold belong to the page, and how the MENU dresses the
- * row that opens it belongs to the menu. The two pages would keep their copy if the
- * menu were redrawn tomorrow.
+ * row that opens it belongs to the menu. `/cloud` would keep its copy if the menu were
+ * redrawn tomorrow — which is more than a hypothetical now that a menu has been.
  */
 const row = (
   page: PlaceholderPage,
@@ -311,94 +319,44 @@ export const PRODUCT_MENU_GROUPS: SiteNavRow[][] = [
 export const PRODUCT_MENU: SiteNavRow[] = PRODUCT_MENU_GROUPS.flat()
 
 /**
- * The FAQ row — which is now a row IN a menu rather than the bar's second control.
+ * The FAQ row — the bar's second control, in the open, which is where it started.
  *
- * A visitor with a doubt is the reader it is for, and it kept its place in the bar for
- * exactly as long as the bar had a place to keep: one press from anywhere. It is one
- * press further now, and what buys that back is the trigger it sits behind being named
- * **Help** — a reader with a question reads that word before they read "FAQ".
+ * A VISITOR WITH A DOUBT is the reader it is for: the page answering the objection that
+ * stops a download should be one press from anywhere, and for a release it was not —
+ * it spent that release as a row of the **Help** menu, one press further in, on the
+ * reading that the word on the trigger is what somebody with a question looks for
+ * before they look for "FAQ". That menu is gone with the second row it was built to
+ * hold (see the note at the top of this file), and a trigger reading "Help" over a
+ * single FAQ row would be a press bought with nothing.
  *
- * ITS OWN CONSTANT STILL, rather than a literal inside `HELP_MENU` below, because
- * `siteNav.test.ts` asserts where this row is: in the Help menu and not in the Product
- * one. A row that can move between menus is worth being able to name.
+ * ITS OWN CONSTANT STILL, and now for a plainer reason than moving between menus:
+ * `SiteHeader.tsx` renders it as a `Link`, so this is the row a test can point at to
+ * say the bar names a CONSTANT rather than a path typed into JSX — the whole argument
+ * for this module. `siteNav.test.ts` also pins it out of the Product menu.
  */
 export const FAQ_NAV_ROW: SiteNavRow = {
   href: FAQ_PATH,
   label: 'site.nav.faq',
   icon: 'CircleHelp',
-  // PURPLE, which it did not have while it stood in the bar — there was no family to be
-  // part of out there. Inside a menu it is reference, the same as `/features` and
-  // `/changelog`: see the note on `HELP_MENU`.
-  tone: 'purple',
-}
-
-/** The Help menu's trigger. */
-export const HELP_MENU_LABEL: MessageKey = 'site.nav.help'
-
-/**
- * THE HELP MENU: how to get good at this, and what to do when you are stuck.
- *
- * ONE GROUP AND NO RULE. Two rows that answer the same question do not divide, and a
- * rule with one row on either side of it is furniture — the Product menu's rules are
- * there because it holds three families, not because a menu should have lines in it.
- *
- * PURPLE, BOTH ROWS, and this is the decision worth stating: purple is not a fourth
- * family invented for a second menu, it is the SAME family the Product menu's middle
- * group carries — reference, the things you go to READ rather than the things the
- * product is. `/features` and `/changelog` are that; so are best practices and a FAQ.
- * The colour means the same thing in both menus, which is the only way a colour means
- * anything across two of them.
- *
- * NO TILES either, for the same reason those two purple rows have none: a tile says
- * "this is a thing you can open" (see `tile`), and a page you read is not one.
- *
- * ORDER: the teaching before the troubleshooting. Best practices is what a reader who
- * has the product working comes back for; the FAQ is where somebody goes when it is not
- * working, and they will find it wherever it is.
- */
-export const HELP_MENU: SiteNavRow[] = [
-  row(PLACEHOLDER_PAGES.bestPractices, 'Lightbulb', 'purple'),
-  FAQ_NAV_ROW,
-]
-
-/**
- * The page about where this came from — and the ONE row the bar shows itself.
- *
- * A BARE LINK BESIDE THE TWO TRIGGERS, which is the shape the FAQ had for a release
- * before it got a neighbour and became a menu. The bar can hold a third control as long
- * as it is a control and not a family: "Our story" has no siblings — there is one such
- * page and there will not be a second — so a menu of one is furniture, and hiding it
- * behind "Help" would file the founding story under troubleshooting.
- *
- * ITS PATH IS SPELLED HERE. `/story` has no module of its own (its copy is
- * `site.story.*` and its composition is `components/site/story/StoryContent.tsx`, which
- * also keeps the one remaining `story.css`), so the menu is where the site's paths are
- * listed — the same argument `DESKTOP_PATH` and `DOWNLOAD_PATH` above record.
- *
- * A GLYPH AND A TONE, THOUGH THE BAR DRAWS NEITHER. Nothing in the bar has an icon (see
- * `icon` on `SiteNavRow`), but this row is also in `ALL_NAV_GROUPS`, and below `md` it
- * lands in a column where every other row has one — so the rule there is all or none.
- * `purple` because it is reference, the family `/features`, `/changelog` and the whole
- * Help menu are in: a page you go to READ. `BookOpen` for the same reason.
- */
-export const STORY_NAV_ROW: SiteNavRow = {
-  href: '/story',
-  label: 'site.nav.ourStory',
-  icon: 'BookOpen',
+  // PURPLE AND A GLYPH, neither of which the BAR draws — it had neither the first time it
+  // stood out here, and the difference is that it is in `ALL_NAV_GROUPS` now: below `md`
+  // it lands in a column where every other row has both. `purple` is the reference
+  // family, the one `/features` and `/changelog` are in — a page you go to READ. See
+  // `icon` on `SiteNavRow`.
   tone: 'purple',
 }
 
 /**
- * THE WHOLE NAV AS GROUPS — the Product menu's three families, the Help menu, then the
- * one row the bar carries itself.
+ * THE WHOLE NAV AS GROUPS — the Product menu's three families, then the one row the bar
+ * carries itself.
  *
  * This is what the MOBILE panel renders. Below `md` there are no dropdowns at all: the
  * panel is one column of links, so it draws every row in the bar's own order with a rule
  * wherever the bar would have had one — three rules, the last of which is the boundary
- * between the two MENUS rather than between two families of one.
+ * between the MENU and the row the bar names in the open.
  *
- * WHICH IS THE ONE PLACE THE TWO TRIGGERS STOP BEING VISIBLE, and the rules are what is
- * left of them. A panel that reproduced the triggers would be two disclosures inside a
+ * WHICH IS THE ONE PLACE THE TRIGGER STOPS BEING VISIBLE, and that last rule is what is
+ * left of it. A panel that reproduced the trigger would be a disclosure inside a
  * disclosure — three presses to reach a link on the surface where presses cost most.
  *
  * Fed from the same constants the bar reads rather than a second copy of them, for the
@@ -407,17 +365,18 @@ export const STORY_NAV_ROW: SiteNavRow = {
  */
 export const ALL_NAV_GROUPS: SiteNavRow[][] = [
   ...PRODUCT_MENU_GROUPS,
-  HELP_MENU,
-  // A GROUP OF ONE, and last, because that is where the bar puts it: right of the Help
-  // trigger. It is a group rather than a row appended to the Help menu for the reason
-  // that made it a bare link up there — it is nobody's sibling, and under that rule it
-  // would read as a third answer to "how do I get good at this".
-  [STORY_NAV_ROW],
+  // THE ROW THE BAR SHOWS ITSELF, as the panel's last group. It was a group of two until
+  // `/story` was deleted, and it stays a GROUP rather than being appended to the menu's
+  // last family for the reason the rule above it draws: what this row has in common with
+  // nothing else in the panel is that the bar does not hide it behind the trigger.
+  // Appended to the ask it would read as part of the ask.
+  [FAQ_NAV_ROW],
 ]
 
 /**
- * Every row the bar can reach, flat — both menus' rows — for the question "what does the
- * nav CONTAIN", as against "how is it divided". `siteNav.test.ts` walks it row by row.
+ * Every row the bar can reach, flat — the menu's rows and the one beside them — for the
+ * question "what does the nav CONTAIN", as against "how is it divided".
+ * `siteNav.test.ts` walks it row by row.
  *
  * Derived from the groups, like `PRODUCT_MENU` is. Nothing here is a second list.
  */

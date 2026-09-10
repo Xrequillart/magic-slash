@@ -8,7 +8,7 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * A SERVER COMPONENT whose only job is the `metadata`, with the page in a client
  * component next door: the rows need `useT()` for their copy and `useState` for their
  * open state, and `metadata` cannot be exported from a `'use client'` module. The same
- * split `/features`, `/story` and `/changelog` make.
+ * split `/features` and `/changelog` make.
  *
  * WHAT IS ON THE PAGE IS NOT DECIDED HERE. `lib/faq.ts` is the source of truth — eleven
  * rows in reading order — and `FaqContent` renders it with a `.map()`. A new question is

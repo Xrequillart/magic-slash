@@ -7,7 +7,7 @@ import { WorkflowContent } from '@/components/site/workflow/WorkflowContent'
  *
  * A SERVER COMPONENT whose only job is the `metadata`, with the page in a client
  * component next door: the rows need `useT()` for their copy, and `metadata` cannot be
- * exported from a `'use client'` module. The same split `/features`, `/faq`, `/story` and
+ * exported from a `'use client'` module. The same split `/features`, `/faq` and
  * `/changelog` make.
  *
  * WHAT IS ON THE PAGE IS NOT DECIDED HERE. `lib/workflow.ts` is the source of truth — five

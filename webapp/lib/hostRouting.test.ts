@@ -20,21 +20,24 @@ describe('canonicalHost', () => {
       // straight to. It moved out of `/documentation#changelog` and onto a route of its
       // own, and a route of its own is a route this list has to know about.
       expect(canonicalHost('magic-slash.io', '/changelog')).toBeNull()
+      // `/story` has NO ROUTE ANY MORE and stays in the list for the same reason
+      // `/documentation` does, further down: `retiredPath` 308s it to the homepage, and
+      // that redirect only fires while this rule agrees the path is public.
       expect(canonicalHost('magic-slash.io', '/story')).toBeNull()
       // `/workflow`, which the homepage's workflow band points its one button at. Same
       // failure mode as `/features` above and one click closer to it: the button is on
       // the landing page itself, so its absence here would read as the site signing the
       // reader out mid-scroll.
       expect(canonicalHost('magic-slash.io', '/workflow')).toBeNull()
-      // `/faq`, which replaced `/documentation` and is what the footer's Resources
-      // column now points at.
+      // `/faq`, which replaced `/documentation` and is a bare link in the bar as well as
+      // a row of the footer's Help column.
       expect(canonicalHost('magic-slash.io', '/faq')).toBeNull()
-      // THE HEADER'S FOUR NEW PAGES, which are the worst of this failure mode rather
+      // THE HEADER'S THREE NEW PAGES, which are the worst of this failure mode rather
       // than another instance of it: they are in the HEADER, so they are on every public
-      // page at once — a reader who opened either menu anywhere would be handed a login
+      // page at once — a reader who opened the menu anywhere would be handed a login
       // form. `siteNav.test.ts` pins each of them to a page as well; this is the routing
       // half.
-      for (const path of ['/desktop', '/cloud', '/download', '/best-practices']) {
+      for (const path of ['/desktop', '/cloud', '/download']) {
         expect(canonicalHost('magic-slash.io', path), path).toBeNull()
       }
       // AND `/application` IS NOT ONE OF THEM, though the menu row that opens `/desktop`
@@ -148,11 +151,15 @@ describe('canonicalHost', () => {
 /**
  * The pages we deleted, and where their readers land.
  *
- * The rule matters more than its one entry: a public page that stops existing has three
+ * The rule matters more than its two entries: a public page that stops existing has three
  * possible fates and only one of them is acceptable. It can 404, which throws away every
  * inbound link. It can fall out of `PUBLIC_PATHS` and 307 to the app host, which answers
  * a missing page with a login form — worse than a 404, because it reads as having been
  * signed out. Or it can redirect to whatever replaced it, which is this.
+ *
+ * AND WHERE THERE IS NO SUCCESSOR, the homepage: `/story` was deleted by request and
+ * nothing took over what it said, which is the difference between its entry and
+ * `/documentation`'s. A redirect to the front door still keeps the link working.
  */
 describe('retiredPath', () => {
   it('sends the documentation page to the FAQ that replaced it', () => {
@@ -181,8 +188,26 @@ describe('retiredPath', () => {
     expect(retiredPath('magic-slash-git-branch.vercel.app', '/documentation')).toBe('/faq')
   })
 
+  it('sends the founding story to the homepage, having nothing to replace it with', () => {
+    // `/story` was in the FOOTER of every public page for releases, and in the header
+    // bar for the last of them, so its URL is out there in a way a page reached from one
+    // menu row is not. Nothing replaced what it said — there is no second page about
+    // where this came from — so the front door is the honest destination.
+    expect(retiredPath('magic-slash.io', '/story')).toBe('/')
+    expect(retiredPath('magic-slash.io', '/story/')).toBe('/')
+    expect(retiredPath('localhost:3000', '/story')).toBe('/')
+  })
+
+  it('writes no entry for a path that never shipped', () => {
+    // `/best-practices` was deleted in the same story as `/story` and gets no redirect,
+    // which is not an oversight: the path only ever existed on a feature branch, so
+    // there is no inbound link to keep alive. `siteNav.test.ts` pins the other half —
+    // that it is out of `PUBLIC_PATHS` too.
+    expect(retiredPath('magic-slash.io', '/best-practices')).toBeNull()
+  })
+
   it('leaves every live page alone', () => {
-    for (const path of ['/', '/faq', '/features', '/changelog', '/story', '/workflow', '/desktop', '/cloud', '/download', '/best-practices', '/dashboard']) {
+    for (const path of ['/', '/faq', '/features', '/changelog', '/workflow', '/desktop', '/cloud', '/download', '/dashboard']) {
       expect(retiredPath('magic-slash.io', path), path).toBeNull()
     }
   })
@@ -209,6 +234,8 @@ describe('resolveRewrite', () => {
     })
 
     it('leaves every other public page alone', () => {
+      // `/story` is a retired path now, redirected before this rule is asked — it must
+      // not grow a rewrite of its own either way, exactly like `/documentation` below.
       expect(resolveRewrite('magic-slash.io', '/story')).toBeNull()
       // The features page, linked from the homepage, the header and the footer. Only
       // the ROOT of a host is ever rewritten, so a new public page needs no rule of its
@@ -217,10 +244,10 @@ describe('resolveRewrite', () => {
       expect(resolveRewrite('magic-slash.io', '/changelog')).toBeNull()
       expect(resolveRewrite('magic-slash.io', '/faq')).toBeNull()
       expect(resolveRewrite('magic-slash.io', '/workflow')).toBeNull()
-      // The header's four new pages. Nothing on the apex is rewritten but the root, and the
-      // reason to say so per path is that a rewrite rule added for one of them would be
-      // silent: the page still renders, just not the one the URL names.
-      for (const path of ['/desktop', '/cloud', '/download', '/best-practices']) {
+      // The header's three new pages. Nothing on the apex is rewritten but the root, and
+      // the reason to say so per path is that a rewrite rule added for one of them would
+      // be silent: the page still renders, just not the one the URL names.
+      for (const path of ['/desktop', '/cloud', '/download']) {
         expect(resolveRewrite('magic-slash.io', path), path).toBeNull()
       }
       // A retired path never reaches this rule — the middleware redirects it before

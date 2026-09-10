@@ -22,7 +22,7 @@ import { loadChangelog } from '@/lib/changelog'
  * that replaced a runtime fetch of `raw.githubusercontent.com`), and the parsed versions
  * are handed to the client tree next door — which needs `useT()` for its copy and
  * `useState` for its pagination, and therefore cannot export `metadata`. Same split as
- * `/features` and `/story`.
+ * `/features` and `/faq`.
  *
  * The trade-off `lib/changelog.ts` names still holds and is worth restating where the
  * route is: an entry appears on this page only once the webapp is redeployed. A release

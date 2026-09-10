@@ -3,20 +3,18 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { marketingEn } from './i18n/marketing/en'
 import { marketingFr } from './i18n/marketing/fr'
+import * as siteNav from './siteNav'
 import {
   ALL_NAV_GROUPS,
   ALL_NAV_ROWS,
   DESKTOP_PATH,
   DOWNLOAD_PATH,
   FAQ_NAV_ROW,
-  HELP_MENU,
-  HELP_MENU_LABEL,
   PLACEHOLDER_NOTE,
   PLACEHOLDER_PAGES,
   PRODUCT_MENU,
   PRODUCT_MENU_GROUPS,
   PRODUCT_MENU_LABEL,
-  STORY_NAV_ROW,
 } from './siteNav'
 
 /**
@@ -58,7 +56,6 @@ describe('the site header nav', () => {
     // "fr is missing site.nav.cloud", which does not say who wanted it. Here it does.
     const keys = [
       PRODUCT_MENU_LABEL,
-      HELP_MENU_LABEL,
       PLACEHOLDER_NOTE,
       ...ALL_NAV_ROWS.map((row) => row.label),
       ...Object.values(PLACEHOLDER_PAGES).flatMap((page) => [page.title, page.lead]),
@@ -129,41 +126,76 @@ describe('the site header nav', () => {
     expect(page).not.toContain('PlaceholderContent')
   })
 
-  it('draws every row in both menus with a glyph and a family colour', () => {
+  it('draws every row with a glyph and a family colour, the bar\'s own two included', () => {
     // The glyph and the tone are what the panels read (`dress` in `SiteHeader.tsx`), and
     // a row missing either does not fail anywhere: it renders as a bare label in a column
     // of seven that are not, which looks like a row that failed to load.
     //
-    // EVERY ROW, and that is what changed when the FAQ moved into the Help menu: it used
-    // to be the bar's second control, drawn as bare type with no tone at all, and the
-    // absence was pinned here as a decision. Inside a menu the decision goes the other
-    // way — a column is all glyphs or none.
+    // EVERY ROW, and the two the bar shows in the open are the ones worth saying so
+    // about: up there they are bare type, because nothing in the bar draws a glyph. Below
+    // `md` they are two rows of the same column as the menu's six, and a column is all
+    // glyphs or none. The FAQ had neither field while it stood in the bar the FIRST time,
+    // and the absence was pinned here as a decision; being in `ALL_NAV_GROUPS` is what
+    // reversed it.
     for (const row of ALL_NAV_ROWS) {
       expect(row.icon, `${row.href} icon`).toBeTruthy()
       expect(row.tone, `${row.href} tone`).toBeTruthy()
     }
   })
 
-  it('reads the Help menu as reference, in the reference colour', () => {
-    // PURPLE IS NOT A FOURTH FAMILY invented for a second menu — it is the same one the
-    // Product menu's middle group carries: things you go to READ. A colour that meant
-    // "reference" in one menu and "the Help menu" in the other would mean nothing in
-    // either, which is why this is asserted across the two rather than inside one.
-    expect(HELP_MENU.map((row) => row.tone)).toEqual(['purple', 'purple'])
+  it('reads the link in the bar as reference, in the reference colour', () => {
+    // PURPLE IS NOT A FAMILY INVENTED FOR THE ROW THAT IS NOT IN THE MENU — it is the
+    // same one the Product menu's middle group carries: things you go to READ. A colour
+    // that meant "reference" inside the menu and "outside the menu" beside it would mean
+    // nothing in either place, which is why this is asserted across the two rather than
+    // inside one.
+    expect(FAQ_NAV_ROW.tone).toBe('purple')
     expect(PRODUCT_MENU_GROUPS[1]?.map((row) => row.tone)).toEqual(['purple', 'purple'])
 
-    // And no tiles: a tile says "this is a thing you can open" (see `tile` in
+    // And no tile: a tile says "this is a thing you can open" (see `tile` in
     // `siteNav.ts`), and a page you read is not one.
-    expect(HELP_MENU.some((row) => row.tile)).toBe(false)
+    expect(FAQ_NAV_ROW.tile).toBeUndefined()
   })
 
-  it('teaches before it troubleshoots', () => {
-    // Best practices is what a reader who has the product working comes back for; the FAQ
-    // is where somebody goes when it is not working, and they will find it wherever it is.
-    expect(HELP_MENU.map((row) => row.href)).toEqual([
-      PLACEHOLDER_PAGES.bestPractices.path,
-      FAQ_NAV_ROW.href,
-    ])
+  it('has no Help menu left, and neither deleted page still standing', () => {
+    // THE MENU IS GONE WITH THE PAGE THAT MADE IT ONE. It held "Best practices" and the
+    // FAQ; `/best-practices` is deleted by request, and a trigger over a single row is a
+    // press bought with nothing — so the FAQ is a bare link in the bar again.
+    //
+    // THREE HALVES OF ONE DELETION, and each of them is silent on its own: an export
+    // nothing renders, a route nobody links to, and a catalogue key with no call site.
+    // The last is the one that would come back as a real bug — `site.nav.help` titling
+    // the footer's column while nothing in the NAV says "Help" is how a key comes to
+    // outlive what it names, so the word moved to `site.footer.help` and this pins the
+    // move rather than the string.
+    expect(Object.keys(siteNav)).not.toContain('HELP_MENU')
+    expect(Object.keys(siteNav)).not.toContain('HELP_MENU_LABEL')
+    expect(Object.keys(siteNav)).not.toContain('STORY_NAV_ROW')
+    expect(Object.keys(PLACEHOLDER_PAGES)).not.toContain('bestPractices')
+    expect(existsSync(webapp('../app/(marketing)/best-practices/page.tsx'))).toBe(false)
+    expect(existsSync(webapp('../app/(marketing)/story/page.tsx'))).toBe(false)
+
+    for (const gone of ['site.nav.help', 'site.nav.bestPractices', 'site.nav.ourStory']) {
+      expect(site(gone), `en.${gone}`).toBeUndefined()
+      expect(siteFr(gone), `fr.${gone}`).toBeUndefined()
+    }
+    expect(site('site.footer.help')).toBeTruthy()
+    expect(siteFr('site.footer.help')).toBeTruthy()
+  })
+
+  it('sends the deleted story to the homepage, and the never-shipped page nowhere', () => {
+    // THE DIFFERENCE BETWEEN THE TWO DELETIONS, and it is the one thing about them that
+    // is not visible on the site. `/story` was in the footer of every public page for
+    // releases, so its URL outlives the route: it stays in `PUBLIC_PATHS` — without
+    // which the apex would decide it belongs to the app and 307 the reader to a login
+    // form — and `RETIRED_PATHS` 308s it to the homepage, since nothing replaced what
+    // that page said. `/best-practices` never reached production, so there is no link to
+    // keep alive and no entry to write.
+    const source = routing()
+
+    expect(source).toContain("'/story',")
+    expect(source).toContain("'/story': '/',")
+    expect(source).not.toContain("'/best-practices'")
   })
 
   it('gives each family one colour, and no two families the same', () => {
@@ -187,11 +219,8 @@ describe('the site header nav', () => {
     // "Changelog" would claim the same weight for a reference page; a first group without
     // one would leave the reference dress with nothing to distinguish the families by but
     // colour — and the rules and the colours are already saying that twice.
-    const tiled = PRODUCT_MENU.filter((row) => row.tile).map((row) => row.href)
+    const tiled = ALL_NAV_ROWS.filter((row) => row.tile).map((row) => row.href)
     expect(tiled).toEqual(PRODUCT_MENU_GROUPS[0]?.map((row) => row.href))
-
-    // Nothing in the Help menu is tiled either — see the assertion on its tones above.
-    expect(HELP_MENU.some((row) => row.tile)).toBe(false)
   })
 
   it('leaves the ask a group of its own', () => {
@@ -200,10 +229,11 @@ describe('the site header nav', () => {
     expect(PRODUCT_MENU_GROUPS.at(-1)?.map((row) => row.href)).toEqual([
       DOWNLOAD_PATH,
     ])
-    // And the Help menu is a fourth group in the mobile panel rather than two more rows
-    // of the ask. It is no longer the LAST group — the bar's own bare link is a fifth,
-    // below it — so this pins the boundary rather than the end of the array.
-    expect(ALL_NAV_GROUPS.at(-2)).toEqual(HELP_MENU)
+    // And in the mobile panel the ask is the second group from the bottom, because the
+    // row the bar shows in the open is a fourth group under it. Appended to the ask
+    // instead it would sit beneath the same rule and read as part of it, which is the
+    // failure a diff hides.
+    expect(ALL_NAV_GROUPS.at(-2)).toEqual(PRODUCT_MENU_GROUPS.at(-1))
   })
 
   it('names glyphs the header can actually draw', () => {
@@ -234,33 +264,28 @@ describe('the site header nav', () => {
     }
   })
 
-  it('keeps the FAQ out of the Product menu', () => {
-    // It answers the objection that stops a download, so it belongs under a trigger that
-    // says "Help" rather than one that says "Product". A refactor that tidied it into the
-    // product's own menu would be invisible on screen — the bar would simply have one
-    // control fewer — which is exactly why it is asserted.
+  it('keeps the FAQ in the bar and out of the Product menu', () => {
+    // It answers the objection that stops a download, so it is one press from anywhere
+    // and not a row of the menu about what the product is. A refactor that tidied it in
+    // there would be invisible on screen — the bar would simply have one control fewer —
+    // which is exactly why it is asserted.
     expect(PRODUCT_MENU.map((row) => row.href)).not.toContain(FAQ_NAV_ROW.href)
-    expect(HELP_MENU).toContain(FAQ_NAV_ROW)
-    expect(ALL_NAV_ROWS).toEqual([...PRODUCT_MENU, ...HELP_MENU, STORY_NAV_ROW])
+    expect(ALL_NAV_ROWS).toEqual([...PRODUCT_MENU, FAQ_NAV_ROW])
   })
 
-  it('keeps the story in the bar, in neither menu', () => {
-    // IT IS A BARE LINK BESIDE THE TWO TRIGGERS, which is the shape the FAQ had for a
-    // release, and the reason is that `/story` has no siblings: a menu of one is
-    // furniture. Both halves are asserted because both are invisible in a diff — a row
-    // tidied INTO the Help menu costs the bar a control and reads as a third answer to
-    // "how do I get good at this", and a row dropped from `ALL_NAV_GROUPS` leaves the
-    // mobile panel without the only page the bar shows in the open.
-    expect(PRODUCT_MENU).not.toContain(STORY_NAV_ROW)
-    expect(HELP_MENU).not.toContain(STORY_NAV_ROW)
-    expect(ALL_NAV_GROUPS.at(-1)).toEqual([STORY_NAV_ROW])
+  it('shows the FAQ in the open, from its constant', () => {
+    // THE BAR'S LAST GROUP IS THE ONE ROW IT NAMES ITSELF. It was two until `/story` was
+    // deleted, and both halves of this are invisible in a diff — a row tidied into the
+    // menu costs the bar its only link, and a row dropped from `ALL_NAV_GROUPS` leaves
+    // the mobile panel without a page the bar shows at every other width.
+    expect(ALL_NAV_GROUPS.at(-1)).toEqual([FAQ_NAV_ROW])
 
     // And the bar draws it from this constant rather than from a path typed into JSX —
     // the whole reason the nav is a module (see the note at the top of `siteNav.ts`).
     // Read as text, like the glyph and tone assertions below.
     const header = readFileSync(webapp('../components/site/SiteHeader.tsx'), 'utf8')
-    expect(header).toContain('STORY_NAV_ROW.href')
-    expect(header).not.toContain(`href="${STORY_NAV_ROW.href}"`)
+    expect(header).toContain('FAQ_NAV_ROW.href')
+    expect(header).not.toContain(`href="${FAQ_NAV_ROW.href}"`)
   })
 
   it('asks last', () => {
@@ -280,11 +305,12 @@ describe('the site header nav', () => {
     expect(new Set(labels).size, labels.join(', ')).toBe(labels.length)
   })
 
-  it('says out loud that the two unwritten pages are placeholders', () => {
-    // The four routes shipped with the menu because a row pointing nowhere 307s to a
-    // login form — the pages are thin ON PURPOSE, and `PlaceholderContent` is the thing
-    // that admits it on screen. A page rewritten for real drops that component, and this
-    // assertion with it; a page left thin keeps both.
+  it('says out loud that the unwritten page is a placeholder', () => {
+    // The routes shipped with the menu because a row pointing nowhere 307s to a login
+    // form — such a page is thin ON PURPOSE, and `PlaceholderContent` is the thing that
+    // admits it on screen. A page rewritten for real drops that component, and this
+    // assertion with it; a page left thin keeps both. One entry is left in the table
+    // (`/cloud`), and this still walks it by name so the next one is covered too.
     for (const [name, page] of Object.entries(PLACEHOLDER_PAGES)) {
       const file = readFileSync(webapp(`../app/(marketing)${page.path}/page.tsx`), 'utf8')
       expect(file, `${name} renders PlaceholderContent`).toContain('<PlaceholderContent')

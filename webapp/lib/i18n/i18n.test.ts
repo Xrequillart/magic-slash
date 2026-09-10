@@ -335,7 +335,6 @@ describe('message catalogues', () => {
         // and "tokens" is the same word.
         'site.agentPanel.prNumber',
         'site.agentPanel.tokens',
-        'site.story.tl9Date',
         'site.footer.configuration',
         'site.footer.changelog',
         'site.footer.documentation',

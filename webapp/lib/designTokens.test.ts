@@ -41,15 +41,17 @@ const TREES = ['../components', '../app'].map((dir) => fileURLToPath(new URL(dir
 const SCANNED_EXTENSIONS = ['.ts', '.tsx', '.css']
 
 /**
- * Out of scope for the rebuild, and each one carries hand-tuned shadows that belong
- * to a page with its own stylesheet rather than to the app's token scale.
+ * Out of scope for the rebuild, and it carries hand-tuned shadows that belong to a page
+ * with its own stylesheet rather than to the app's token scale.
  *
- * `doc.css` was the third and is deleted with `/documentation` — see `lib/faq.test.ts`
- * for what replaced that page. Its name is dropped rather than left as a harmless
- * no-op: an exclusion for a file that does not exist reads as a page still carrying
- * untokenised shadows, which is a claim about the codebase that is no longer true.
+ * IT IS DOWN TO ONE FILE, and the two that left were dropped from this list rather than
+ * kept as harmless no-ops: an exclusion for a file that does not exist reads as a page
+ * still carrying untokenised shadows, which is a claim about the codebase that is no
+ * longer true. `doc.css` went with `/documentation` (see `lib/faq.test.ts` for what
+ * replaced that page); `story.css` went with `/story`, deleted by request — the path
+ * 308s to the homepage now, see `RETIRED_PATHS` in `lib/hostRouting.ts`.
  */
-const EXCLUDED_FILES = ['marketing.css', 'story.css']
+const EXCLUDED_FILES = ['marketing.css']
 
 /** Tailwind's own `boxShadow` scale, which needs no declaration of ours. */
 const BUILT_IN_SHADOWS = ['sm', 'md', 'lg', 'xl', '2xl', 'inner', 'none']

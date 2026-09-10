@@ -5,12 +5,10 @@ import Link from 'next/link'
 import {
   type LucideIcon,
   AppWindow,
-  BookOpen,
   CircleHelp,
   Cloud,
   Download,
   Layers,
-  Lightbulb,
   Menu,
   ScrollText,
   Workflow,
@@ -24,13 +22,11 @@ import { HOME_PATH, LOGIN_PATH } from '@/lib/routes'
 import { useSession } from '@/lib/session'
 import {
   ALL_NAV_GROUPS,
-  HELP_MENU,
-  HELP_MENU_LABEL,
+  FAQ_NAV_ROW,
   PRODUCT_MENU_GROUPS,
   PRODUCT_MENU_LABEL,
   type SiteNavIcon,
   type SiteNavRow,
-  STORY_NAV_ROW,
 } from '@/lib/siteNav'
 import { LanguageMenu } from './LanguageMenu'
 import { GITHUB_REPO_URL } from './links'
@@ -50,10 +46,10 @@ import {
 import { useRevealClass } from './Reveal'
 
 /**
- * The public site's top bar: wordmark, the Product menu, the Help menu, the story link,
- * then the repository, the language picker and the way in.
+ * The public site's top bar: wordmark, the Product menu, the FAQ, then the repository,
+ * the language picker and the way in.
  *
- * SIX CONTROLS AND ONE RECIPE. Everything from "Produit" to the way in is `NAV_ITEM`
+ * FIVE CONTROLS AND ONE RECIPE. Everything from "Produit" to the way in is `NAV_ITEM`
  * (`./NavDropdown.tsx`) — semibold ink at `text-sm` on a pill that fills with the same
  * grey chip under the cursor, whether it opens a panel or leaves for GitHub. That is the
  * owner's format for this bar, and the two exceptions to the resting state are stated
@@ -114,22 +110,26 @@ import { useRevealClass } from './Reveal'
  * nav row and the way in, because a homepage whose only route to sign-in is the footer
  * is worse than a bar that overflows.
  *
- * THE BAR IS WORDMARK, PRODUCT ▾, HELP ▾, OUR STORY, THEN GITHUB, THE PICKER AND THE
- * WAY IN — three nav controls, two of them menus. The Product dropdown had been cut by
- * request when the bar was rebuilt, on a homepage that was then the only page there was;
- * it comes back because the site now has six destinations to offer and a bar cannot
- * hold six. Its rows and their order are NOT here — `lib/siteNav.ts` owns them, and
- * the note there says why a nav row is a tested constant rather than a literal in JSX.
+ * THE BAR IS WORDMARK, PRODUCT ▾, FAQ, THEN GITHUB, THE PICKER AND THE WAY IN — two nav
+ * controls, one of them a menu. The Product dropdown had been cut by request when the
+ * bar was rebuilt, on a homepage that was then the only page there was; it comes back
+ * because the site now has six destinations to offer and a bar cannot hold six. Its rows
+ * and their order are NOT here — `lib/siteNav.ts` owns them, and the note there says why
+ * a nav row is a tested constant rather than a literal in JSX.
  *
- * FAQ STAYED OUT OF THE PRODUCT MENU AND IS NOW IN A MENU OF ITS OWN. It spent a
- * release as the bar's second control, on the reading that the page answering the
- * objection which stops a download should be one press from anywhere. What changed is
- * that it got a neighbour: "Best practices" is the other thing a reader comes here to be
- * taught, and two bare links of that kind beside one trigger would have made a bar of
- * two controls read as three peers. So the second control is a **Help** menu, and the
- * word on the trigger is what a reader with a question looks for before they look for
- * "FAQ". "All features" is inside the Product menu, where it sits with the pages it
+ * THE FAQ IS A BARE LINK AGAIN, which is what it was before it was a menu. It stayed out
+ * of the Product menu on the reading that the page answering the objection which stops a
+ * download should be one press from anywhere; then it got a neighbour — "Best practices"
+ * — and two bare links of the teaching kind beside one trigger would have made a bar of
+ * two controls read as three peers, so the pair went behind a **Help** trigger. That
+ * page is deleted by request, and a trigger over a single FAQ row is a press bought with
+ * nothing. "All features" is inside the Product menu, where it sits with the pages it
  * summarises.
+ *
+ * "OUR STORY" WAS THE THIRD NAV CONTROL and its page is deleted by request too, so the
+ * bar is down to a trigger and a link. `/story` 308s to the homepage rather than 404ing
+ * — see `RETIRED_PATHS` in `lib/hostRouting.ts` — because it was in the footer of every
+ * public page for releases and those links are still out there.
  *
  * THE LANGUAGE PICKER IS BACK, on the right of the bar beside the way in — and the
  * component's two-dress API is exactly what made that a call site rather than a rebuild:
@@ -145,14 +145,13 @@ import { useRevealClass } from './Reveal'
  * inside `MobileMenu`, which is a popover inside a disclosure — two presses to reach a
  * setting, on the surface where presses cost the most.
  *
- * The collapse below `md` stays regardless, and a menu makes the case narrower, not
- * wider: a trigger is ~96px whatever it opens, so the bar's content is the 165px
- * wordmark, ~96px of "Produit", ~78px of "Aide", a ~74px picker and an ~86px way in —
- * ~523px against the 327px a 375px viewport offers. The rows behind a trigger cost the
- * bar nothing; they cost the PANEL, which is a column and has the room. A second trigger
- * costs ~23px more than the link it replaced, and the picker's return puts the bar back
- * where the original arithmetic left it — both change the number and neither changes the
- * verdict.
+ * The collapse below `md` stays regardless, and none of this moves the number far: the
+ * bar's content is the 165px wordmark, ~96px of "Produit", ~55px of "FAQ", a ~74px
+ * picker, an ~86px way in and the ~62px "GitHub" beside them — ~540px against the 327px
+ * a 375px viewport offers. The rows behind a trigger cost the bar nothing; they cost the
+ * PANEL, which is a column and has the room. Two controls have left the bar since that
+ * arithmetic was written — the "Aide" trigger and the story link, ~130px between them —
+ * and it is still short by 200px.
  */
 
 /**
@@ -169,12 +168,10 @@ import { useRevealClass } from './Reveal'
  */
 const ICONS: Record<SiteNavIcon, LucideIcon> = {
   AppWindow,
-  BookOpen,
   CircleHelp,
   Cloud,
   Download,
   Layers,
-  Lightbulb,
   ScrollText,
   Workflow,
 }
@@ -199,9 +196,9 @@ function dress(row: SiteNavRow, t: (key: MessageKey) => string): NavDropdownItem
 }
 
 /**
- * THE NAV IS NOT DECIDED HERE ANY MORE. `lib/siteNav.ts` holds it: `PRODUCT_MENU` (seven
- * rows, in menu order), `PRODUCT_MENU_LABEL` for the trigger, `FAQ_NAV_ROW` for the link
- * beside it, and `ALL_NAV_ROWS` — the two flattened — for the mobile panel.
+ * THE NAV IS NOT DECIDED HERE ANY MORE. `lib/siteNav.ts` holds it: `PRODUCT_MENU_GROUPS`
+ * (six rows in three families), `PRODUCT_MENU_LABEL` for the trigger, `FAQ_NAV_ROW` for
+ * the link beside it, and `ALL_NAV_GROUPS` — every row there is — for the mobile panel.
  *
  * IT USED TO BE A ONE-ROW `NAV_LINKS` ARRAY RIGHT HERE, and moving it out is not
  * housekeeping. A row's `href` and `PUBLIC_PATHS` in `lib/hostRouting.ts` disagreeing
@@ -219,17 +216,17 @@ function dress(row: SiteNavRow, t: (key: MessageKey) => string): NavDropdownItem
  * there, where this was two rungs of `ButtonLink` (a blue `primary` signed out, a white
  * bordered `secondary` signed in).
  *
- * WHY IT STOPPED BEING A BUTTON. The bar holds three menu triggers now, all of them
- * semibold ink on a pill that fills grey under the cursor, and a filled blue button at
- * the end of that row was the only element in the bar built on a different ladder: it
- * read as an advertisement stapled to a navigation bar. The page has not lost a CTA —
- * `primary` still carries "Télécharger pour Mac" in the hero, two inches below, which is
- * the download this site is actually asking for. A header sign-in is a DESTINATION, and
- * the bar already has a recipe for one.
+ * WHY IT STOPPED BEING A BUTTON. The bar holds two menu triggers and two links now (the
+ * FAQ, and the repository at the other end), all of them semibold ink on a pill that fills grey under the cursor, and a filled blue
+ * button at the end of that row was the only element in the bar built on a different
+ * ladder: it read as an advertisement stapled to a navigation bar. The page has not
+ * lost a CTA — `primary` still carries "Télécharger pour Mac" in the hero, two inches
+ * below, which is the download this site is actually asking for. A header sign-in is a
+ * DESTINATION, and the bar already has a recipe for one.
  *
  * THE GROUND IS PERMANENT, and that is the one thing it does differently from a trigger:
  * `NAV_ITEM_GROUND` is a hover-and-open state on "Produit", and it rests on this. So the
- * control still reads as the last thing in the bar rather than as a fourth menu, with no
+ * control still reads as the last thing in the bar rather than as another menu, with no
  * second colour and no second shape to do it — the chip that answers the cursor
  * elsewhere is simply where this one starts. Hover is left to `NAV_ITEM`'s own
  * `hover:text-ink`, which closes the 20% the label rests at.
@@ -305,10 +302,10 @@ function MobileMenu({
 }: {
   /**
    * The rows in reading order, divided into families — `ALL_NAV_GROUPS`, which is the
-   * Product menu's three plus the Help menu as a fourth. A rule goes between one group
-   * and the next, never above the first: the same arrangement `NavDropdown` draws,
-   * because below `md` this panel IS both menus and a reader who resizes should not find
-   * them regrouped.
+   * Product menu's three plus the row the bar shows in the open as a fourth. A rule goes
+   * between one group and the next, never above the first: the same arrangement
+   * `NavDropdown` draws, because below `md` this panel IS the whole nav, and a reader who
+   * resizes should not find it regrouped.
    */
   groups: NavDropdownItem[][]
   session: Session | null
@@ -476,31 +473,24 @@ export function SiteHeader() {
             groups={PRODUCT_MENU_GROUPS.map((group) => group.map((row) => dress(row, t)))}
           />
 
-          {/* AND THE SECOND MENU, which used to be a bare `/faq` link written out right
-              here. It became a dropdown when it got a neighbour — see `HELP_MENU` in
-              `lib/siteNav.ts` — and the change is one `NavDropdown` for one `Link`,
-              which is what putting the nav's shape in a module bought.
+          {/* AND ONE BARE LINK, right of the trigger — `NAV_ITEM` is exported for
+              exactly this. The FAQ was a dropdown for one release and is a link again
+              because the row that made a menu of it is deleted (see `FAQ_NAV_ROW` in
+              `lib/siteNav.ts`); the change is one `Link` for one `NavDropdown`, which is
+              what putting the nav's shape in a module bought both ways. There were two
+              links here until "Our story" was deleted with its page.
 
-              ONE GROUP, so no rule inside it: `HELP_MENU` is a flat array and it is
-              wrapped in one here rather than kept as a nested one over there, because a
-              menu with a single family has nothing to divide and the array-of-arrays
-              would be a shape claiming otherwise. */}
-          <NavDropdown
-            label={t(HELP_MENU_LABEL)}
-            groups={[HELP_MENU.map((row) => dress(row, t))]}
-          />
+              THE PATH IS NOT TYPED HERE, which is what the module is for: a row whose
+              `href` and `PUBLIC_PATHS` disagree does not 404 on production, it 307s the
+              reader to a login form. `siteNav.test.ts` reads this file to check the link
+              goes through its constant.
 
-          {/* AND ONE BARE LINK, right of the two triggers — the shape the FAQ had before
-              it got a neighbour, and `NAV_ITEM` is exported for exactly this. `/story`
-              has no siblings, so a menu of one would be furniture and filing it under
-              "Aide" would put the founding story under troubleshooting.
-
-              THE SAME DRESS AS THE TRIGGERS, chip and all: `NAV_ITEM` carries the hover
+              THE SAME DRESS AS THE TRIGGER, chip and all: `NAV_ITEM` carries the hover
               ground now, by decision of the owner — the bar's links and its dropdowns
               are one format, so nothing here distinguishes a control that opens a panel
               from one that goes to a page. See the note on the recipe. */}
-          <Link href={STORY_NAV_ROW.href} className={NAV_ITEM}>
-            {t(STORY_NAV_ROW.label)}
+          <Link href={FAQ_NAV_ROW.href} className={NAV_ITEM}>
+            {t(FAQ_NAV_ROW.label)}
           </Link>
         </nav>
 
