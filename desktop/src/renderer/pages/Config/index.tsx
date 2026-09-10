@@ -16,6 +16,7 @@ import { SweepPane } from '../../components/SweepPane'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
 import { useAuth } from '../../hooks/useAuth'
+import { displayNameFromEmail } from '../../utils/displayName'
 import type { SpotlightShortcut, LaunchMode, AgentType, ClaudeAccount, SpendSummary, SettingsTab, RepositoryConfig, Org } from '../../../types'
 import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
@@ -122,14 +123,6 @@ const SEAT_TIER_LABELS: Record<string, string> = {
   enterprise: 'Enterprise',
   max: 'Max',
   pro: 'Pro',
-}
-
-/** Local-part of an email → capitalized first name. "xavier@x" → "Xavier". */
-function displayNameFromEmail(email: string | undefined, fallback: string): string {
-  if (!email) return fallback
-  const first = email.split('@')[0].split(/[._+-]/)[0]
-  if (!first) return fallback
-  return first.charAt(0).toUpperCase() + first.slice(1)
 }
 
 /**
