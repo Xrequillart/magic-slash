@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { PAGE_CHROME, QUESTIONS } from './faq'
+import { HOME_CHROME, HOME_QUESTION_IDS, HOME_QUESTIONS, PAGE_CHROME, QUESTIONS } from './faq'
 import { marketingEn } from './i18n/marketing/en'
 import { marketingFr } from './i18n/marketing/fr'
 
@@ -42,6 +42,51 @@ describe('the FAQ page', () => {
       expect(site(answer), `en.${answer} (${id})`).toBeTruthy()
       expect(siteFr(answer), `fr.${answer} (${id})`).toBeTruthy()
     }
+  })
+
+  it('names keys the catalogues carry for the homepage band too', () => {
+    // `HOME_CHROME` is three keys of its own rather than a reuse of `PAGE_CHROME` — the
+    // band and the page are two surfaces, and `lib/faq.ts` says why. Being separate is
+    // exactly what makes them worth checking separately: nothing else renders these
+    // three, so a typo in one is a band with a missing headline, and `t()` returns an
+    // empty string rather than complaining.
+    for (const key of Object.values(HOME_CHROME)) {
+      expect(site(key), `en.${key}`).toBeTruthy()
+      expect(siteFr(key), `fr.${key}`).toBeTruthy()
+    }
+  })
+
+  it('shows the homepage band five of its own questions', () => {
+    // NOT `QUESTIONS.slice(0, 5)`, and this is the test that makes that mean something:
+    // the ids are named in `HOME_QUESTION_IDS` so the band survives a reorder of the
+    // page, and what can go wrong with a named list is a name that is not there. `tsc`
+    // catches that at the declaration — and `tsc` never runs on `webapp/` in CI (see
+    // `.github/workflows/ci.yml`), so an id resolving to `undefined` would reach the
+    // browser as `HOME_QUESTIONS` containing a hole and the band crashing on
+    // `entry.question`.
+    const ids = QUESTIONS.map((entry) => entry.id) as readonly string[]
+
+    for (const id of HOME_QUESTION_IDS) {
+      expect(ids, `\`${id}\` is on the homepage band but not on the page`).toContain(id)
+    }
+
+    // Resolved, in the band's own order, with nothing missing.
+    expect(HOME_QUESTIONS.map((entry) => entry.id)).toEqual([...HOME_QUESTION_IDS])
+
+    // FIVE, which is the product owner's number and the one the two-column band is
+    // balanced around — see `HOME_QUESTION_IDS`. Pinned exactly rather than as a range,
+    // unlike the page's own length below: the page's count is copy that grows, where the
+    // band's is a layout decision, and a sixth row there is a column that no longer
+    // matches the height of the heading beside it.
+    expect(HOME_QUESTIONS).toHaveLength(5)
+
+    // A duplicate would render two identical rows and hand React two identical keys.
+    expect(new Set(HOME_QUESTION_IDS).size).toBe(HOME_QUESTION_IDS.length)
+
+    // The band is a WINDOW onto the page, so it may not be the whole of it: five out of
+    // eleven is what its own copy promises ("the rest is on the FAQ"), and a band that
+    // showed every question would make the button under it a lie.
+    expect(HOME_QUESTIONS.length).toBeLessThan(QUESTIONS.length)
   })
 
   it('keys every question by its own subject', () => {

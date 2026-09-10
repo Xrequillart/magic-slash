@@ -15,8 +15,18 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // ── Nav ────────────────────────────────────────────────────────────────────
   'site.nav.howItWorks': 'Comment ça marche',
   'site.nav.menu': 'Menu du site',
+  'site.nav.language': 'Langue',
   'site.nav.product': 'Produit',
+  // Trois des six rangées du menu Produit sont le mot français : c'est le vocabulaire
+  // du produit, celui que l'app emploie déjà en français. Voir la note côté anglais.
+  // « Aide », « Bonnes pratiques » et « Notre histoire » ont disparu d'ici avec le menu
+  // et les pages qu'elles nommaient ; le mot « Aide » ne sert plus qu'à la colonne du
+  // footer, sous `site.footer.help`.
+  'site.nav.workflow': 'Workflow',
+  'site.nav.application': 'Application',
+  'site.nav.cloud': 'Cloud',
   'site.nav.allFeatures': 'Toutes les fonctionnalités',
+  'site.nav.download': 'Télécharger',
   'site.nav.resources': 'Ressources',
   'site.nav.signIn': 'Connexion',
   'site.nav.account': 'Votre compte',
@@ -29,14 +39,616 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.nav.faq': 'FAQ',
   'site.nav.updatesCategory': 'Mises à jour',
   'site.nav.changelog': 'Changelog',
-  'site.nav.ourStory': 'Notre histoire',
+
+  // ── Les pages ouvertes par le header avant leur contenu ─────────────────────
+  'site.pageSoon.note': 'Bientôt disponible',
+  'site.nav.soon': 'Bientôt',
+  'site.cloudPage.title': 'Le cloud',
+  'site.cloudPage.lead':
+    'Votre configuration, votre équipe et votre usage, sur chaque machine où vous vous connectez, sans rien à recopier à la main.',
+  'site.downloadPage.title': 'Télécharger Magic Slash',
+  // `/download` est une vraie page désormais : plus de « en cours d’écriture ». Voir la
+  // note côté anglais ; le reste de la famille est plus bas.
+  'site.downloadPage.lead':
+    'Un seul installeur pour macOS. Glissez-le dans Applications, ouvrez-le une fois, et le premier lancement met en place tout ce dont les huit commandes ont besoin.',
+
+  // ── Page de téléchargement ─────────────────────────────────────────────────
+  'site.downloadPage.versionBadge': 'Version {version} · publiée le {date}',
+  'site.downloadPage.button': 'Télécharger pour Mac',
+  'site.downloadPage.fileHint': 'Un .dmg pour les Mac Apple Silicon, version {version}.',
+  'site.downloadPage.reassureChip': 'Apple Silicon',
+  'site.downloadPage.reassureSigned': 'Signée et notarisée par Apple',
+
+  'site.downloadPage.requirementsEyebrow': 'Avant d’installer',
+  'site.downloadPage.requirementsTitle': 'Trois choses dont votre Mac a besoin d’abord.',
+  'site.downloadPage.requirementsLead':
+    'Le premier lancement vérifie les trois et vous dit laquelle manque. Rien d’autre n’est demandé — pas de compte à créer, pas de script à lancer.',
+  'site.downloadPage.reqClaudeTitle': 'Claude Code',
+  'site.downloadPage.reqClaudeBody':
+    'Installé et connecté. Chaque commande <code>/magic:</code> tourne dedans : l’app n’est prête que si Claude Code l’est.',
+  'site.downloadPage.reqNodeTitle': 'Node.js 20 ou plus récent',
+  'site.downloadPage.reqNodeBody':
+    'Les serveurs MCP Jira et GitHub auxquels parlent les commandes tournent dessus.',
+  'site.downloadPage.reqGitTitle': 'Git 2.20 ou plus récent',
+  'site.downloadPage.reqGitBody':
+    'Pour les worktrees — une branche par agent, chacune dans son propre dossier, pour que deux agents ne se marchent jamais sur le même checkout.',
+  'site.downloadPage.requirementsReassure':
+    'Pas d’inquiétude. L’app vérifie tout cela au premier lancement — et s’il manque quelque chose, elle vous propose de l’installer.',
+
+  'site.downloadPage.launchEyebrow': 'Premier lancement',
+  'site.downloadPage.launchTitle': 'Ouvrez-la une fois. Elle fait le reste.',
+  'site.downloadPage.launchLead':
+    'Il n’y a pas de script d’installation. L’app prépare sa propre machine au premier lancement, et vous montre chaque étape au fil de l’eau.',
+  'site.downloadPage.stepChecksTitle': 'Vérifie les prérequis',
+  'site.downloadPage.stepChecksBody':
+    'Claude Code, Node.js et Git, avec leurs versions — et la ligne à lancer pour celui qui manque.',
+  'site.downloadPage.stepSkillsTitle': 'Installe les huit commandes',
+  'site.downloadPage.stepSkillsBody':
+    'Les skills <code>/magic:</code> se posent dans <code>~/.claude/skills/</code>, où Claude Code les retrouve dans chaque projet de la machine.',
+  'site.downloadPage.stepMcpTitle': 'Branche Jira et GitHub',
+  'site.downloadPage.stepMcpBody':
+    'Configure les serveurs MCP dont dépendent les commandes, puis vous guide pour vous connecter à chacun.',
+
+  'site.downloadPage.changelogEyebrow': 'Nouveautés',
+  'site.downloadPage.changelogTitle': 'Ce qui change dans la {version}.',
+  'site.downloadPage.changelogLead':
+    'Les notes de version du build que vous allez télécharger. Toutes les versions précédentes sont sur la page changelog.',
+  'site.downloadPage.fullChangelog': 'Voir tout le changelog',
+  'site.downloadPage.releaseNotes': 'Cette version sur GitHub',
+  'site.downloadPage.olderVersions': 'Vous cherchez une version antérieure ?',
+  'site.downloadPage.allReleases': 'Toutes les versions sur GitHub',
 
   // ── Hero ───────────────────────────────────────────────────────────────────
-  'site.hero.title': 'Vos idées deviennent<br>des fonctionnalités boostées à l’IA.',
-  'site.hero.subtitle': 'L’application pour product builders.',
+  // Deux phrases, deux clés : le composant les pose sur deux lignes et grise la seconde.
+  // « Trancher » est le seul verbe que la hero laisse au lecteur, et c'est voulu : tout
+  // le reste tourne sans lui. Voir la note côté anglais.
+  // Le <br> est de la copie : « à la PR mergée. » sur sa propre ligne, à la demande de Xavier.
+  'site.hero.title': 'De l’idée<br>à la PR mergée.',
+  'site.hero.titleTail': 'Vous n’avez plus qu’à trancher.',
+  // Formulation de Xavier, reprise telle quelle. « Worktree », « commits », « review »,
+  // « spec » restent en anglais : c'est le vocabulaire du métier, celui que l'app emploie.
+  'site.hero.subtitle':
+    'La spec, les tickets, le worktree, les commits, la review, le ticket fermé : tout ce qui entoure le code, huit skills s’en occupent. Et une app vous simplifie la vie.',
+  'site.hero.downloadCta': 'Télécharger pour Mac',
+  'site.hero.workflowCta': 'Voir le workflow',
+  // L'orbite : six artefacts autour du logo Claude Code, dans l'ordre où un ticket les
+  // rencontre. Les six titres sont le vocabulaire du métier, identiques dans les deux
+  // langues et listés dans `i18n.test.ts` ; les six lignes de description sont traduites.
+  'site.hero.orbitSpecTitle': 'Spec',
+  'site.hero.orbitSpecDesc': 'écrite et relue',
+  'site.hero.orbitEpicTitle': 'Epic + 3 stories',
+  'site.hero.orbitEpicDesc': 'PAY-142, créées dans Jira',
+  'site.hero.orbitWorktreeTitle': 'Worktree + commits',
+  'site.hero.orbitWorktreeDesc': 'feature/pay-142, atomiques',
+  'site.hero.orbitPrTitle': 'PR #318',
+  'site.hero.orbitPrDesc': 'ouverte, ticket mis à jour',
+  'site.hero.orbitReviewTitle': 'Review',
+  'site.hero.orbitReviewDesc': '3 fils résolus et repoussés',
+  'site.hero.orbitDoneTitle': 'Done',
+  'site.hero.orbitDoneDesc': 'mergée, ticket fermé',
+  // Ce que dit le logo quand on clique dessus. La blague est de Xavier, ponctuation comprise.
+  'site.hero.ouch': 'Aïe !!',
+  // Quand on insiste : les deux premières répliques sont de Xavier, la troisième ferme la
+  // séquence avant que ça reparte de zéro.
+  'site.hero.stop': 'Arrêtez !!!',
+  'site.hero.enough': 'Ça suffit maintenant !',
+  'site.hero.dance': 'Bon, bon. Je danse.',
+  // Retirées, conservées comme toutes les familles que la page a abandonnées : voir la
+  // note côté anglais.
+  'site.hero.eyebrow': '8 skills Claude Code + une app desktop',
   'site.hero.cta': 'Commencer gratuitement',
   'site.hero.howCta': 'Voir comment ça marche',
-  'site.hero.downloadCta': 'Télécharger pour Mac',
+  'site.hero.ladderStart': 'Une idée ?',
+  'site.hero.ladderEnd': 'Une PR mergée',
+  'site.hero.skillPlan': 'La spec, l’epic, les stories',
+  'site.hero.skillStart': 'Le ticket, la branche, le plan',
+  'site.hero.skillCommit': 'Des commits atomiques, bien nommés',
+  'site.hero.skillPr': 'Push, PR, ticket mis à jour',
+  'site.hero.skillReview': 'La review, la vôtre ou la leur',
+  'site.hero.skillResolve': 'Les retours traités, repoussés',
+  'site.hero.skillDone': 'Le ticket refermé derrière vous',
+
+  // ── Les deux piliers ───────────────────────────────────────────────────────
+  // « product builder » reste en anglais : c'est le terme que le métier emploie en
+  // français, et le hero le portait déjà avant de céder sa place au parallélisme.
+  'site.pillars.skillsTitle': '8 skills Claude Code',
+  'site.pillars.skillsDesc':
+    'De /magic:plan à /magic:done, elles déroulent le cycle entier dans votre terminal : la spec, la branche, les commits, la pull request, la review, le ticket refermé derrière vous.',
+  // Nomme l'acte, comme les étapes voisines : c'est ce que `/magic:plan` produit, et ce
+  // que la marque Jira à côté désigne. « Tickets » reste le mot du métier, non traduit.
+  'site.pillars.timelineTickets': 'Écriture des tickets',
+  'site.pillars.timelineValidation': 'Validation du plan',
+  // « Création de la Pull request » nomme l'ACTE et non l'objet : à côté de « Pull request
+  // approuvée », deux étapes portant le nom de la même chose ne disaient pas laquelle
+  // l'ouvre. « Mergée » s'accorde avec « la PR », comme le H1 du hero.
+  'site.pillars.timelinePr': 'Création de la Pull request',
+  'site.pillars.timelineMerged': 'Mergée',
+  'site.pillars.timelineApproved': 'Pull request approuvée',
+  'site.pillars.desktopTitle': 'Une app desktop pour les piloter',
+  'site.pillars.desktopDesc':
+    'Une fenêtre native pour lancer un agent, voir où en est chacun, répondre à celui qui vous attend et ouvrir la pull request sans quitter l’écran.',
+  'site.pillars.kicker':
+    'À eux deux, ils accélèrent tout votre workflow de product builder, de l’idée à la production.',
+
+  // ── La bande desktop ───────────────────────────────────────────────────────
+  // Le titre est le nom du produit : identique dans les deux catalogues, d'où sa ligne
+  // dans la liste `SAME_IN_BOTH.site` de `i18n.test.ts`. « worktree » reste tel quel,
+  // comme partout dans l'app et la documentation : c'est le mot de git.
+  'site.desktop.title':
+    'Vous ne devriez pas avoir à <em>vous souvenir</em> de ce que font vos agents.',
+  // « product builders » : le terme reste anglais, comme partout ailleurs sur le site
+  // (voir la note sur `site.pillars.kicker`), mais il prend le pluriel français après
+  // « les » — c'est un nom commun emprunté, pas une marque.
+  'site.desktop.eyebrow': 'Pour les product builders qui font tourner plusieurs agents',
+  'site.desktop.howCta': 'Comment ça marche',
+  'site.desktop.reassureFree': 'Gratuit',
+  'site.desktop.reassureMac': 'macOS',
+  'site.desktop.reassureTrackers': 'Vos tickets Jira et vos PR GitHub, déjà branchés',
+  'site.desktop.beforeLabel': 'Avant · six onglets, zéro vue d’ensemble',
+  'site.desktop.afterLabel': 'Avec Magic Slash · une fenêtre, tout est là',
+  'site.desktop.bubbleWhich': 'C’était lequel qui attendait ?',
+  'site.desktop.bubbleBranch': 'J’ai commité sur la bonne branche ?',
+  'site.desktop.subtitle':
+    'Magic Slash s’en souvient pour vous. Les tâches à prendre s’affichent dans l’app, chaque agent vous dit s’il a besoin de vous, et vous passez de l’un à l’autre sans perdre le fil.',
+  'site.desktop.archiveAgent': 'Archiver l’agent',
+  /** Les quatre atouts sous la fenêtre. « Worktree » reste tel quel, comme dans le
+      sous-titre au-dessus et dans toute l’application. */
+  'site.desktop.highlightParallel': 'Douze agents en parallèle',
+  'site.desktop.highlightContext': 'Tout le contexte sauvegardé',
+  'site.desktop.highlightTrackers': 'Jira et GitHub connectés',
+  'site.desktop.highlightCommands': 'Les huit commandes /magic:',
+
+  // ── Les bandes sous le hero de /desktop ────────────────────────────────────
+  // Ce que fait l'application, bande par bande. Les cartes dessinées viennent de /features
+  // avec leurs propres textes ; ici, seulement l'argument autour : accroche, titre,
+  // paragraphe, et trois affirmations sous les deux bandes en split. Pas de tiret cadratin.
+  // « Worktree » reste tel quel, comme partout dans l'application.
+  'site.desktopPage.tasksTitle': 'Votre backlog est la rampe de lancement.',
+  'site.desktopPage.tasksSubtitle':
+    'Toutes les issues ouvertes et tous les tickets du backlog, GitHub et Jira, groupés par dépôt dans une seule fenêtre. Vous en choisissez un : l’application ouvre un worktree et lance un agent dessus. Rien à copier, aucun onglet à retrouver.',
+  'site.desktopPage.tasksPointTrackers': 'Tickets Jira et issues GitHub, côte à côte',
+  'site.desktopPage.tasksPointClick': 'Un clic, et un agent est dessus',
+  'site.desktopPage.tasksPointRepos': 'Groupés par dépôt, comme vous travaillez',
+  'site.desktopPage.agentsTitle': 'Plusieurs agents à la fois, sans se marcher dessus.',
+  'site.desktopPage.agentsSubtitle':
+    'Chaque agent travaille dans son propre worktree et son propre terminal, jusqu’à douze côte à côte. La liste vous dit lequel travaille, lequel a terminé, et lequel vous attend.',
+  'site.desktopPage.agentsPointWorktree': 'Un worktree et un terminal par agent',
+  'site.desktopPage.agentsPointTwelve': 'Jusqu’à douze agents en parallèle',
+  'site.desktopPage.agentsPointWaiting': 'Celui qui vous attend, repéré d’un coup d’œil',
+  'site.desktopPage.sidebarTitle': 'Tout ce que l’agent sait, à côté de son terminal.',
+  'site.desktopPage.statusStepTitle': 'Statut : {status}',
+  'site.desktopPage.sidebarSubtitle':
+    'Ouvrez la sidebar et lisez où en est la tâche sans remonter la conversation : le ticket, la branche et les fichiers touchés, la pull request et ses checks, et le contexte déjà consommé par la session.',
+  // Les étapes de détail de la visite : des parties d'une carte sans ligne dans l'inventaire.
+  'site.desktopPage.stepTicketIdTitle': 'L’identifiant du ticket est un lien',
+  'site.desktopPage.stepTicketIdDesc':
+    'Une clé Jira ouvre le ticket, un numéro GitHub ouvre l’issue, dans votre navigateur. La marque à côté dit à quel tracker il appartient.',
+  'site.desktopPage.stepBranchesTitle': 'Deux branches, une flèche',
+  'site.desktopPage.stepBranchesDesc':
+    'À gauche, la branche d’où part le travail. À droite, la branche sur laquelle l’agent travaille, dans son propre worktree : un checkout à lui, pour que deux agents ne touchent jamais les mêmes fichiers. La flèche dit laquelle vient de laquelle.',
+  'site.desktopPage.ptBranches1': 'La branche de base d’où le worktree a été créé',
+  'site.desktopPage.ptBranches2': 'La branche de travail, nommée d’après le ticket',
+  'site.desktopPage.ptBranches3': 'Un clic copie le nom de la branche',
+  'site.desktopPage.stepFilesTitle': 'Les fichiers touchés par l’agent',
+  'site.desktopPage.stepFilesDesc':
+    'Chaque fichier modifié depuis le dernier commit, avec ses lignes ajoutées et retirées, lu dans git au fil de l’eau. Les six carrés montrent la part d’ajouts dans le diff.',
+  'site.desktopPage.stepCommitsTitle': 'Les commits déjà sur la branche',
+  'site.desktopPage.stepCommitsDesc':
+    'Chaque commit avec son âge et son hash, un clic pour le copier. Le compteur dit de combien la branche est en avance sur main.',
+  'site.desktopPage.stepPrChecksTitle': 'La CI, check par check',
+  'site.desktopPage.stepPrChecksDesc':
+    'Chaque check de la pull request avec son état pendant qu’il tourne, et si la branche se merge toujours proprement dans main.',
+  'site.desktopPage.stepPrVerdictTitle': 'Le verdict de la review',
+  'site.desktopPage.stepPrVerdictDesc':
+    'Ouverte, en attente de review, commentée, changements demandés, approuvée : le badge suit la review sur GitHub, et le ticket passe à mergé quand la pull request l’est.',
+  // Les points clés sous chaque étape de la visite, trois par étape.
+  'site.desktopPage.ptSession1': 'Tokens consommés et part de la fenêtre',
+  'site.desktopPage.ptSession2': 'Le coût de la session jusqu’ici',
+  'site.desktopPage.ptSession3': 'Modèle et durée, sur la même carte',
+  'site.desktopPage.ptTicket1': 'Titre et description, éditables sur place',
+  'site.desktopPage.ptTicket2': 'Tenus à jour par l’agent à chaque étape',
+  'site.desktopPage.ptTicket3': 'Une seule carte, ticket Jira ou issue GitHub',
+  'site.desktopPage.ptTicketId1': 'Ouvre le ticket ou l’issue dans votre navigateur',
+  'site.desktopPage.ptTicketId2': 'La marque du tracker à côté de la clé',
+  'site.desktopPage.ptTicketId3': 'Le même identifiant que la branche et les commits',
+  'site.desktopPage.ptStatusInProgress1': 'Posé par l’agent quand il commence à coder',
+  'site.desktopPage.ptStatusInProgress2': 'Modifiable à la main depuis la liste',
+  'site.desktopPage.ptStatusInProgress3': 'Tous les statuts de la vie d’un ticket, dans l’ordre',
+  'site.desktopPage.ptStatusCommitted1': 'Posé par /magic:commit une fois les commits faits',
+  'site.desktopPage.ptStatusCommitted2': 'Des commits sur la branche, rien de poussé',
+  'site.desktopPage.ptStatusCommitted3': 'La carte des commits se remplit en dessous',
+  'site.desktopPage.ptStatusPrCreated1': 'Posé par /magic:pr à l’ouverture de la pull request',
+  'site.desktopPage.ptStatusPrCreated2': 'La carte de la pull request apparaît sous les commits',
+  'site.desktopPage.ptStatusPrCreated3': 'Un commentaire posté sur le ticket, si vous l’avez demandé',
+  'site.desktopPage.ptStatusInReview1': 'Un relecteur a la pull request entre les mains',
+  'site.desktopPage.ptStatusInReview2': 'Checks et commentaires arrivent dans la carte en direct',
+  'site.desktopPage.ptStatusInReview3': 'Une demande de changements passe les fils à /magic:resolve',
+  'site.desktopPage.ptRepository1': 'Branche de base et branche de travail, côte à côte',
+  'site.desktopPage.ptRepository2': 'Ouvrir le projet dans VS Code ou sur GitHub',
+  'site.desktopPage.ptRepository3': 'Plusieurs dépôts par agent, une carte chacun',
+  'site.desktopPage.ptScripts1': 'Tous les scripts de votre package.json, listés',
+  'site.desktopPage.ptScripts2': 'Un serveur lancé affiche son adresse sous la carte',
+  'site.desktopPage.ptScripts3': 'L’adresse s’ouvre dans votre navigateur',
+  'site.desktopPage.ptFiles1': 'Lu dans git pendant que l’agent travaille',
+  'site.desktopPage.ptFiles2': 'Lignes ajoutées et retirées, par fichier',
+  'site.desktopPage.ptFiles3': 'Six carrés pour la part d’ajouts',
+  'site.desktopPage.ptCommits1': 'Du plus récent au plus ancien, avec âge et hash',
+  'site.desktopPage.ptCommits2': 'Un clic copie le hash',
+  'site.desktopPage.ptCommits3': 'L’avance de la branche sur main',
+  'site.desktopPage.ptPr1': 'Numéro, dépôt et verdict dans l’en-tête',
+  'site.desktopPage.ptPr2': 'Rafraîchie toute seule, rafraîchissable à la main',
+  'site.desktopPage.ptPr3': 'Rien à ouvrir sur GitHub',
+  'site.desktopPage.ptPrChecks1': 'Chaque check avec son état pendant qu’il tourne',
+  'site.desktopPage.ptPrChecks2': 'Le compte des réussis sur le total',
+  'site.desktopPage.ptPrChecks3': 'Les conflits avec main surveillés aussi',
+  'site.desktopPage.ptPrComments1': 'Combien de fils les relecteurs ont ouverts',
+  'site.desktopPage.ptPrComments2': 'Un clic ouvre chaque fil dans un panneau',
+  'site.desktopPage.ptPrComments3': 'N’importe quel fil peut être confié à l’agent',
+  'site.desktopPage.ptPrHeader1': 'Ouverte, en attente, commentée, changements demandés, approuvée',
+  'site.desktopPage.ptPrHeader2': 'Le badge suit la review sur GitHub',
+  'site.desktopPage.ptPrHeader3': 'Mergée, et /magic:done ferme le ticket',
+  'site.desktopPage.aroundTitle': 'Conçue pour ne pas se mettre en travers.',
+  'site.desktopPage.aroundSubtitle':
+    'Coupez la fenêtre en deux quand deux agents vous attendent, appelez-en un depuis n’importe quelle app, et laissez votre Mac vous prévenir du reste.',
+  'site.desktopPage.guardTitle': 'Elle s’installe seule, et demande avant d’aller trop loin.',
+  'site.desktopPage.guardSubtitle':
+    'Le premier lancement vérifie ce dont Claude Code a besoin et installe ce qui manque. Ensuite, vous décidez jusqu’où chaque agent peut aller, et vous voyez ce que ça coûte.',
+  // Le quatrième garde-fou, arrivé à la place du clavier, parti dans la bande du dessus.
+  // Voir la note côté anglais.
+  'site.desktopPage.updatesTitle': 'Mises à jour automatiques',
+  'site.desktopPage.updatesDesc':
+    'À chaque démarrage, l’app vérifie s’il existe une version plus récente et la télécharge en arrière-plan. Elle vous propose ensuite de redémarrer, ou de le faire plus tard. Rien ne prend l’écran.',
+
+  // ── La bande « application » de la home ────────────────────────────────────
+  // Le titre ne reprend pas celui du hero : le hero annonce le parallélisme, cette bande
+  // répond à l'objection qui suit — plusieurs agents, c'est plusieurs choses à suivre, et
+  // c'est la fenêtre qui les suit. Voir la note côté anglais.
+  // TUTOIEMENT, ET C'EST LA SEULE LIGNE DU SITE QUI EN FAIT. Le titre est celui demandé
+  // par le product owner, mot pour mot. Le reste du catalogue vouvoie — voir la note en
+  // tête de ce fichier, qui dit pourquoi : un visiteur qui lit le hero puis la page
+  // histoire serait sinon adressé de deux façons sur le même site. Ici les deux se
+  // suivent à un écran d'intervalle. La version vouvoyée serait « Vos tâches, vos agents
+  // dans une seule app. »
+  // « Vos » : le site vouvoie partout ailleurs, et ce titre était le seul tutoiement du
+  // catalogue — voir l'en-tête de ce fichier.
+  'site.appBand.title': 'Vos tâches, vos agents en une seule app.',
+  'site.appBand.subtitle':
+    'Chaque agent a son worktree et son terminal, et l’app garde le contexte de chaque session. Elle lit vos tickets depuis Jira ou GitHub, suit les pull requests qu’elle a ouvertes, et vous prévient quand quelque chose vous attend.',
+  'site.appBand.cta': 'Voir l’application',
+
+  // LES TROIS LIGNES SOUS LE PARAGRAPHE, même liste à puces bleues que la bande des
+  // skills. Elles VOUVOIENT, sous un titre qui tutoie : le paragraphe juste au-dessus
+  // vouvoie déjà (« Elle lit vos tickets »), donc la liste suit la phrase à laquelle
+  // elle est accrochée plutôt que de rouvrir la question tranchée par le titre. Voir la
+  // note en tête de `site.appBand.title`, et celle du catalogue anglais pour l’ordre des
+  // trois.
+  //
+  //
+  // PREMIÈRE LIGNE : `{jira}` et `{github}` deviennent les deux pastilles — logo plus nom,
+  // sur un fond teinté. La phrase entière tient dans UNE clé pour que l’ordre des mots
+  // reste ici et pas dans le composant ; voir la note du catalogue anglais.
+  //
+  // « tâches » est le mot que l’app emploie pour cet écran (`tasks.title`) et que
+  // `site.builtFor.tasksTitle` imprime déjà. « issues » RESTE EN ANGLAIS, comme partout
+  // sur ce site : c’est le mot que GitHub affiche dans son interface française, et
+  // « tickets » désignerait les deux trackers à la fois — or la phrase en distingue
+  // justement deux.
+  'site.appBand.pointTasks': 'Vos tâches {jira} et issues {github}',
+  //
+  // DEUXIÈME LIGNE : `{claude}` devient la pastille Claude Code, sur le corail
+  // d’Anthropic. « qui travaillent » et non « au travail » : le participe dit qu’ils sont
+  // en train de le faire pendant que vous lisez, ce que la fenêtre à côté montre.
+  'site.appBand.pointAgents': 'Vos agents {claude} qui travaillent',
+  'site.appBand.pointTracking': 'Le suivi du travail fourni par vos agents',
+
+  // ── La bande workflow, et la page qu’elle ouvre ─────────────────────────────
+  // Les noms de commandes ne sont PAS ici : ils sont imprimés par les dessins, épelés
+  // depuis `lib/commands.ts`. Voir la note du catalogue anglais.
+  //
+  // « workflow », « pull request », « working tree », « worktree », « commit » et
+  // « merge » restent tels quels, comme partout dans l’app et la documentation : ce sont
+  // les mots que le métier emploie en français, et « arbre de travail » ne nomme rien que
+  // le lecteur reconnaisse. « epic » et « stories » de même — ce sont les mots de Jira,
+  // affichés tels quels dans son interface française.
+  //
+  // LES TITRES SONT À L’IMPÉRATIF, comme en anglais : la bande parle de ce que VOUS
+  // faites. « Committez » et « Mergez » sont les verbes que le métier conjugue, y compris
+  // dans les messages de commit de ce dépôt.
+  'site.workflow.title': 'Travailler avec Magic Slash.',
+  // « surcouche » en un mot, qui est le terme du métier ; « booste » conjugué, pas le
+  // franglais « boost ». « charge mentale » est l'expression que le propriétaire a
+  // employée et elle n'a pas d'équivalent anglais plus court — la version anglaise dit
+  // « that much less to hold in your head ».
+  'site.workflow.subtitle':
+    'Magic Slash est une surcouche à Claude Code : il booste l’agent que vous lancez déjà et garde le contexte de chaque ticket dans l’app desktop — autant de charge mentale en moins.',
+  'site.workflow.cta': 'Voir tout le workflow',
+  // « Issues » reste tel quel : c'est le mot que GitHub emploie dans son interface
+  // française. Seul le participe s'accorde.
+  'site.workflow.planIssuesCreated': 'Issues créées',
+  'site.workflow.more':
+    'Chaque commande, chaque panneau et chaque réglage livrés avec l’app sont sur la page features.',
+  'site.workflow.planTitle': 'Faites le plan',
+  'site.workflow.planDesc':
+    'Décrivez l’idée avec vos mots. La spec revient pour relecture, et dès que vous l’avez validée l’epic et ses stories sont créées sur Jira ou GitHub.',
+  'site.workflow.startTitle': 'Démarrez avec Claude Code',
+  'site.workflow.startDesc':
+    'Un identifiant de ticket suffit. Le worktree, la branche et l’agent sont prêts, ticket lu et plan rédigé avant que vous ayez tapé autre chose.',
+  'site.workflow.commitTitle': 'Committez et ouvrez la PR',
+  'site.workflow.commitDesc':
+    'Le working tree est découpé en commits atomiques aux messages conventionnels, poussés, et la pull request s’écrit toute seule avec le ticket lié.',
+  'site.workflow.reviewTitle': 'Traitez la review',
+  'site.workflow.reviewDesc':
+    'Le diff est relu comme le relirait un reviewer, puis chaque commentaire reçoit un correctif, un commit et une réponse dans son fil.',
+  'site.workflow.doneTitle': 'Mergez et nettoyez',
+  'site.workflow.doneDesc':
+    'Une fois le merge confirmé : ticket clôturé, branche supprimée des deux côtés, worktree retiré. Votre machine revient à son point de départ.',
+
+  // ── La page workflow, autour des cinq étapes ───────────────────────────────
+  // Voir la note côté anglais. Pas de nom de commande, pas de tiret cadratin.
+  'site.workflowPage.eyebrow': '8 skills Claude Code',
+  'site.workflowPage.title': 'De l’idée à la PR mergée, en cinq étapes.',
+  'site.workflowPage.subtitle':
+    'Magic Slash est une surcouche à Claude Code. Chaque étape du cycle est une commande dans votre terminal : l’agent lit le ticket, fait le travail, et s’arrête exactement là où vous voulez décider.',
+  'site.workflowPage.stepsCta': 'Parcourir les cinq étapes',
+  'site.workflowPage.planClaimSpec': 'Une spec complète rédigée à partir d’une phrase, critères d’acceptation compris',
+  'site.workflowPage.planClaimApprove': 'Rien ne part sur le tracker avant votre validation',
+  'site.workflowPage.planClaimTickets': 'L’epic et ses stories créées sur {jira} ou {github}, et liées',
+  'site.workflowPage.startClaimBranch': 'Un worktree et une branche nommés d’après le ticket, en un geste',
+  'site.workflowPage.startClaimPlan': 'Le ticket lu et un plan posé avant de toucher un fichier',
+  'site.workflowPage.startClaimAgent': 'Son propre agent, dans sa propre fenêtre, à côté des autres',
+  'site.workflowPage.commitClaimAtomic': 'Un changement logique par commit, découpé pour vous',
+  'site.workflowPage.commitClaimFormat': 'Des messages dans la convention de votre dépôt',
+  'site.workflowPage.commitClaimPr': 'La pull request décrite depuis le diff, ticket lié et mis à jour',
+  'site.workflowPage.reviewClaimLines': 'Des remarques sur les lignes concernées, sur votre PR ou celle d’un collègue',
+  'site.workflowPage.reviewClaimFix': 'Un correctif, un commit et une réponse dans chaque fil ouvert',
+  'site.workflowPage.reviewClaimArgue': 'Il argumente quand une suggestion mérite un compromis',
+  'site.workflowPage.doneClaimMerge': 'Le merge confirmé d’abord. Rien ne se passe s’il ne l’est pas',
+  'site.workflowPage.doneClaimTicket': 'Le ticket clôturé, avec un dernier commentaire sur ce qui est livré',
+  'site.workflowPage.doneClaimClean': 'Branche supprimée des deux côtés, worktree retiré, machine propre',
+  'site.workflowPage.dayTitle': 'Pensé pour la journée entière, pas pour un seul ticket.',
+  'site.workflowPage.daySubtitle':
+    'La boucle ci-dessus, c’est la vie d’un ticket. Vous en avez plusieurs ouverts à la fois, et la journée s’arrête rarement à la fin d’une étape. L’app desktop est ce qui tient le tout.',
+  'site.workflowPage.dayContinueTitle': 'Reprenez un ticket',
+  'site.workflowPage.dayContinueDesc':
+    'Une commande rouvre un chantier là où vous ou un collègue l’aviez laissé : même branche, même worktree, le contexte rechargé depuis le ticket et le code.',
+  'site.workflowPage.dayParallelTitle': 'Plusieurs tickets à la fois',
+  'site.workflowPage.dayParallelDesc':
+    'Chaque ticket tourne dans son worktree avec son agent, jusqu’à douze côte à côte. Celui qui attend une review ne bloque jamais le suivant.',
+  'site.workflowPage.dayContextTitle': 'Le contexte reste dans l’app',
+  'site.workflowPage.dayContextDesc':
+    'Ticket, branche, commits, pull request et état de la review restent à côté de chaque terminal dans l’app desktop. Rien à retenir, rien à chercher.',
+  'site.workflowPage.dayNotifyTitle': 'Elle vous appelle quand elle a besoin de vous',
+  'site.workflowPage.dayNotifyDesc':
+    'Un agent qui s’arrête pour une réponse envoie une notification Mac. Vous pouvez être dans une autre fenêtre, ou sur un autre ticket, jusque-là.',
+  'site.workflowPage.controlTitle': 'Chaque décision qui compte reste la vôtre.',
+  'site.workflowPage.controlSubtitle':
+    'L’agent fait la saisie. La boucle est faite pour s’arrêter là où un humain doit regarder, et avancer là où personne n’a besoin de le faire.',
+  'site.workflowPage.controlSpecTitle': 'La spec vous attend',
+  'site.workflowPage.controlSpecDesc':
+    'Avant qu’un seul ticket soit créé, vous lisez la spec et vous dites oui. Ou non, et elle est réécrite.',
+  'site.workflowPage.controlPlanTitle': 'Le plan avant le code',
+  'site.workflowPage.controlPlanDesc':
+    'L’agent expose comment il compte construire le ticket avant de modifier un fichier. C’est là que vous le réorientez, au moment où ça coûte le moins.',
+  'site.workflowPage.controlCommitsTitle': 'Des commits qu’on peut relire',
+  'site.workflowPage.controlCommitsDesc':
+    'Un changement logique par commit, avec un message qui dit pourquoi. Le reviewer suit l’historique, et vous aussi, des mois plus tard.',
+  'site.workflowPage.controlMergeTitle': 'Le bouton merge reste à vous',
+  'site.workflowPage.mergedLabel': 'Mergé',
+  'site.workflowPage.approvedLabel': 'Pull request approuvée',
+  'site.workflowPage.controlMergeDesc':
+    'Rien dans la boucle ne merge une pull request. La dernière commande ne fait que constater le merge que vous avez fait, puis nettoie derrière.',
+
+  // ── La bande des skills, entre le workflow et la fenêtre de l’app ──────────
+  //
+  // AUCUN NOM DE COMMANDE ICI : les commandes sont imprimées par le DESSIN, épelées depuis
+  // `lib/commands.ts`. Huit dans le texte, sept dans le terminal — `/magic:continue` n’est
+  // pas une étape de la vie d’un ticket mais la façon d’y revenir. Voir l’anglais.
+  //
+  // « skills » RESTE EN ANGLAIS, comme dans le reste du site et dans l’app : c’est le mot
+  // que Claude Code emploie pour ces fichiers, et « compétences » désignerait autre chose.
+  'site.skillsBand.title': '8 skills font tout le cycle.',
+  'site.skillsBand.subtitle':
+    'Une commande par moment de la vie d’un ticket. L’agent lit le tracker, écrit le code, ouvre la pull request et répond à sa review. Ce qu’il vous reste, c’est de lire et de dire oui.',
+  'site.skillsBand.cta': 'Voir le workflow',
+  'site.skillsBand.pointSkills': '8 skills, une par étape du cycle',
+  'site.skillsBand.pointCycle': 'De la première idée à la pull request mergée',
+  'site.skillsBand.pointHands': 'Vous validez le plan, le reste se déroule seul',
+
+  // ── La bande après les huit skills : ce qui cesse de n’être qu’à vous ─────
+  //
+  // QUATRE CARDS ET UN TITRE, sans bouton — demande du propriétaire (« avec titre,
+  // description sans CTA »). Voir l’en-tête d’`OrgSection` pour la raison de la position.
+  //
+  // « ORGANISATION » EST LE MOT DE L’APP EN FRANÇAIS (`repo.scope.*`, `org.*` dans
+  // `desktop/src/i18n/fr.ts`), donc il reste tel quel. « Backlog » aussi : c’est ce que
+  // disent les équipes et ce que dit l’app. « Story » et « epic » restent au singulier
+  // anglais pour la même raison — la page `/plans` les nomme ainsi dans les deux langues.
+  //
+  // LE TITRE FAIT DEUX PHRASES parce que la seconde est le gain de la première : une
+  // seule proposition (« la configuration partagée pour les équipes ») nomme une
+  // catégorie, celle-ci fait une promesse puis dit qui l’encaisse. C’est aussi la
+  // première ligne de la page dont le sujet est pluriel.
+  // Le titre NOMME la bande au lieu d'énoncer sa promesse : il a dit « Réglé une fois.
+  // Toute l'équipe en hérite. » pendant une version, et le propriétaire du produit l'a
+  // ramené au sujet. Les trois cartes en dessous portent la promesse, elle n'avait pas à
+  // être dite deux fois. Voir la note anglaise.
+  'site.orgBand.title': 'Travail en équipe.',
+  'site.orgBand.subtitle':
+    'La configuration des dépôts, les plans et le backlog appartiennent à votre organisation, pas à un portable. Quelqu’un arrive, ouvre l’app, et trouve le projet déjà réglé : même branche, même format de commit, mêmes tickets.',
+  // LES TITRES DE CARDS SONT DES NOMS et non les impératifs de la bande workflow : celle-ci
+  // parle de ce que le produit GARDE pour vous, l’autre de ce que VOUS faites.
+  // « conventions » ET PAS « configuration » : ce que la carte liste — langue, format de
+  // commit, gabarit de PR — est ce sur quoi l'équipe s'est mise d'accord, pas un écran de
+  // réglages. Le mot dit aussi pourquoi on les partage.
+  'site.orgBand.configTitle': 'Les conventions que votre équipe partage',
+  // NOMMÉS DANS L’ORDRE OÙ LA PAGE DE RÉGLAGES LES LISTE, pour que le lecteur retrouve
+  // dans le dessin les quatre choses que la phrase lui promet.
+  'site.orgBand.configDesc':
+    'Partagez un dépôt avec votre organisation et tous ses réglages suivent : la branche de développement, le format des commits, le template de pull request, la langue de chaque surface. Réglé une fois, par celui qui connaît le projet.',
+  'site.orgBand.orgTitle': 'Votre organisation',
+  // « ASSOCIE SON PROPRE DOSSIER LOCAL » EST LA PHRASE DE L’APP, reprise de la ligne
+  // d’aide sous la portée (`site.repoCfg.teamHelp`, soit `repo.scope.teamHelp` côté
+  // desktop). C’est le détail qui empêche de lire « on synchronise votre checkout » : ce
+  // qui voyage, c’est la configuration ; où vit le code reste la réponse de chacun.
+  'site.orgBand.orgDesc':
+    'Invitez ceux avec qui vous travaillez : les dépôts les suivent, configuration comprise. Chaque membre associe son propre dossier local et se met au travail — personne ne configure deux fois le même projet.',
+  'site.orgBand.planTitle': 'Des plans qui circulent',
+  // LA COMMANDE EST NOMMÉE, et c’est la seule card de la bande à le faire : un plan est
+  // la seule chose ici dont le lecteur n’a pas d’image préalable, et la bande des skills
+  // juste au-dessus vient de la lui présenter sous ce nom.
+  'site.orgBand.planDesc':
+    '/magic:plan transforme une idée en spec, en epic et en stories. Partagez-la et n’importe qui de libre prend une story, avec le raisonnement derrière déjà écrit.',
+  'site.orgBand.tasksTitle': 'Un seul backlog, les tickets de tout le monde',
+  // « CE QUI RESTE À PRENDRE » ET NON « CE QUI RESTE À FAIRE », qui est la distinction que
+  // fait le dessin avec sa ligne marquée, et la raison pour laquelle cette card n’est pas
+  // une seconde card Tâches : une liste partagée ne sert que si elle dit ce qui est parti.
+  'site.orgBand.tasksDesc':
+    'Filtrez la liste partagée sur un dépôt et voyez ce qui reste à prendre. Un ticket qu’un agent travaille déjà est marqué comme tel : deux personnes ne démarrent jamais sur le même.',
+  // La pilule du second rail du dessin de l’organisation. « Configuration » s’écrit
+  // pareil dans les deux langues, d’où son entrée dans la liste d’`i18n.test.ts` ; le
+  // slug du dépôt sur le rail au-dessus est un littéral dans le composant, comme tous les
+  // noms de dépôts du site.
+  'site.orgTeam.config': 'Configuration',
+
+  // ── La bande sous la fenêtre de l’app : pour qui elle est faite ────────────
+  //
+  // LES TITRES SONT DES NOMS, pas les impératifs de la bande workflow : celle-ci parle de
+  // ce que l’app EST, l’autre de ce que VOUS faites.
+  //
+  // « Tasks » devient « Tâches » : c’est ainsi que l’app nomme l’écran en français
+  // (`tasks.title` dans `desktop/src/i18n/fr.ts`), et le mockup de `/features` imprime déjà
+  // le même mot. « Spotlight » ne bouge pas — c’est un nom propre, celui que la page
+  // features emploie dans les deux langues.
+  // « développeurs » est barré et « product builders » le remplace : voir la note côté
+  // anglais. Le terme reste en anglais, avec le pluriel français après « les », comme
+  // dans la pilule de `/desktop`.
+  'site.builtFor.title': 'Fait pour les <em>développeurs</em>, les product builders.',
+  // « pas comme nous » est tombé, et le tiret cadratin avec : demande du propriétaire.
+  // La phrase n’a pas besoin d’un adversaire — « réglée comme vous travaillez » dit déjà
+  // tout — et la virgule fait la même jointure que le tiret en se lisant plus vite.
+  'site.builtFor.subtitle':
+    'La fenêtre où vivent vos tickets, vos agents et vos terminaux : sur votre Mac, sous vos doigts, à un raccourci de là où vous étiez déjà, et réglée comme vous travaillez.',
+  'site.builtFor.tasksTitle': 'Tâches',
+  'site.builtFor.tasksDesc':
+    'Chaque issue ouverte et chaque ticket du backlog, GitHub comme Jira, regroupés par dépôt dans une seule fenêtre. Un clic et un agent démarre dessus — aucun identifiant à copier, aucun onglet à retrouver.',
+  // « Navigation par clavier » et non « Raccourcis clavier », que le propriétaire a
+  // renommé : c'est le mot juste pour ce que l'antisèche montre — se déplacer — et il
+  // évite de calquer le nom de la section Réglages de l'app, qui, elle, s'appelle bien
+  // « Raccourcis clavier » et en liste huit.
+  'site.builtFor.shortcutsTitle': 'Navigation par clavier',
+  'site.builtFor.shortcutsDesc':
+    'Un nouvel agent, le suivant, la vue divisée : chaque geste de l’app a son raccourci. Vos mains ne quittent jamais le clavier.',
+  // Les sept lignes de l’antisèche, dans l’ordre où elles sont dessinées. Ce sont les
+  // libellés de l’app elle-même (`settings.shortcuts.*` dans `desktop/src/i18n/fr.ts`),
+  // « Vue divisée » étant le nom que la barre de titre donne au mode.
+  //
+  // DEUX EXCEPTIONS, les deux bascules : l’app dit « Afficher/masquer la liste des agents »
+  // et « Afficher/masquer les infos de l’agent », qui font trois lignes face à une paire de
+  // touches sur une card d’un tiers de large. Le nom seul désigne la même chose. Voir la
+  // note côté anglais.
+  'site.builtFor.shortcutNew': 'Nouvel agent',
+  'site.builtFor.shortcutNext': 'Agent suivant',
+  'site.builtFor.shortcutPrev': 'Agent précédent',
+  'site.builtFor.shortcutSplit': 'Vue divisée',
+  'site.builtFor.shortcutAgents': 'Liste des agents',
+  'site.builtFor.shortcutInfo': 'Infos de l’agent',
+  'site.builtFor.shortcutClose': 'Archiver l’agent',
+  // « natif » est le mot du métier et il n’a pas d’équivalent : on dit une app native.
+  'site.builtFor.macTitle': 'Vraiment natif sur Mac',
+  'site.builtFor.macDesc':
+    'Conçu spécifiquement pour le Mac, pensé pour la vitesse, la mémoire et l’autonomie. Pas une page web dans une fenêtre.',
+  // Le thème d'abord, et « pliez-la » pour finir : c'est la demande du propriétaire —
+  // le thème ajouté, « réglé une fois, par dépôt » supprimé, et l'idée que l'app se
+  // façonne vraiment à vos besoins mise à la place. Voir la note côté anglais.
+  'site.builtFor.yoursTitle': 'À votre main',
+  'site.builtFor.yoursDesc':
+    'Le thème de l’application, les raccourcis clavier, le format des commits, le template de pull request, la langue de chaque surface et la latitude laissée à l’agent. Pliez-la jusqu’à ce qu’elle travaille comme vous.',
+  // « Quick Launch » reste en anglais : c’est le nom de la fenêtre dans l’app, y compris
+  // en français (`settings.shortcuts.quickLaunch` dit « Lancement rapide » pour la LIGNE
+  // de réglage, mais la fenêtre elle-même n’est jamais renommée).
+  'site.builtFor.spotlightTitle': 'Spotlight',
+  'site.builtFor.spotlightDesc':
+    'Un raccourci global ouvre Quick Launch d’où que vous soyez. Tapez un ticket, entrée, et l’agent tourne déjà quand vous revenez.',
+
+  // ── La bande cloud, juste après « pour qui c’est fait » ────────────────────
+  // « cloud », « dashboard » et « dépôt » : les deux premiers restent tels quels — c’est
+  // ainsi que le produit les nomme dans ses propres écrans (`cloud.title` dit « Compte
+  // cloud », la page s’appelle `/dashboard`) — et « dépôt » est le mot que l’app emploie
+  // pour un repository (`nav`/`repos`), donc la bande suit l’app plutôt que le site.
+  //
+  // LE TITRE NOMME L'ENDROIT, et c'est la note à lire avant de le réécrire. Il a énoncé
+  // la CONFIGURATION pendant une version — « votre configuration ne vit pas sur une seule
+  // machine », le fait que le CLAUDE.md du projet martèle — puis le propriétaire du
+  // produit l'a ramené sur ce que le lecteur peut ouvrir tout de suite : Magic Slash,
+  // dans un navigateur. La bande montre justement une fenêtre de navigateur.
+  //
+  // « Magic Slash » PREND SES DEUX MAJUSCULES ici comme partout : c'est le nom du
+  // produit, et le sous-titre l'écrit deux fois.
+  'site.cloudBand.title': 'Magic Slash depuis votre navigateur',
+  // « tablette », « téléphone », « ordinateur » : la promesse est le NOMBRE d'appareils,
+  // donc ils sont nommés plutôt que résumés en « partout ». La liste qui suit est celle
+  // des trois rangées dessinées sous la bande, dans le même ordre.
+  'site.cloudBand.subtitle':
+    'Magic Slash Cloud vous suit partout, depuis votre tablette comme depuis votre téléphone. Relisez vos plans et ceux de votre équipe, vos dépôts, la gestion de votre équipe et de votre compte. Connectez-vous sur un autre ordinateur, tout est déjà là.',
+  'site.cloudBand.cta': 'Voir le cloud',
+
+  // LES TROIS LIGNES SOUS LE PARAGRAPHE, ce sont les trois pages du dashboard —
+  // `/plans`, `/organization`, `/account` — dans l’ordre de sa barre de navigation, avec
+  // les icônes de l’app. Elles reprennent son vocabulaire français : « plans » (comme
+  // `plans.title`), « organisation » (`nav.organization`), « compte » (`nav.account`).
+  //
+  // « les plans écrits par votre équipe » et non « la liste des plans » : une liste est
+  // un écran, un plan écrit par quelqu’un est une chose. Le mot « plan » est celui du
+  // produit — une session `/magic:plan`, sa spec et ses tickets (`plans.subtitle`) — et
+  // pas un abonnement, ce que la deuxième moitié de la phrase lève.
+  'site.cloudBand.pointPlans': 'Les plans écrits par votre équipe',
+  'site.cloudBand.pointOrg': 'Votre organisation, son équipe et ses dépôts',
+  'site.cloudBand.pointAccount': 'Votre compte, géré depuis le navigateur',
+
+  // ── Sécurité et confidentialité, deux bandes sous « pour qui c’est fait » ──
+  //
+  // LA SEULE FAMILLE DE CETTE PAGE OÙ UNE PHRASE FAUSSE EST UN MENSONGE SUR LA SÉCURITÉ.
+  // Deux choses ne sont volontairement PAS dites : « votre code ne quitte jamais votre
+  // machine », qui est faux puisque Claude Code l’envoie à Anthropic, et toute affirmation
+  // de conformité ou d’hébergement, qui relève de l’entreprise et pas d’une landing page.
+  // `lib/security.ts` tient les deux arguments et note, carte par carte, dans quel fichier
+  // chaque affirmation a été vérifiée.
+  //
+  // LES NOMS DE BRANCHES RESTENT EN ANGLAIS : ce sont les mots de git, identiques dans les
+  // deux langues, et c’est ce que le lecteur doit reconnaître pour que la carte porte.
+  //
+  // PAS DE TIRET CADRATIN DANS CE BLOC, sur demande du propriétaire : les quatre cartes
+  // d’abord, puis le sous-titre. Chaque tiret est devenu ce qu’il faisait — un point, une
+  // paire de virgules, ou dans le sous-titre un deux-points puis un point — sans qu’un seul
+  // mot bouge. L’anglais porte l’argument complet, et notamment pourquoi les virgules
+  // étaient le mauvais choix dans le sous-titre.
+  // « vos secrets » ET PAS « votre code », et les deux sont vrais : la quatrième carte de
+  // la bande dit exactement ce que le titre promet — fichiers d'environnement,
+  // credentials, clés privées et certificats sont retirés du staging avant l'écriture du
+  // commit. Un secret qui fuite est ce que le lecteur craint vraiment ; du code qu'un
+  // outil lit, il en fait tourner tous les jours.
+  'site.security.title': 'Magic Slash ne voit jamais vos secrets.',
+  'site.security.subtitle':
+    'Les skills tournent dans votre terminal, sur votre clone. Ce que le cloud garde, c’est votre configuration : vos dépôts, vos langues, votre format de commit. Et le nom du skill que vous avez lancé. Pas un prompt, pas un argument, pas une ligne de code.',
+  /** Le sigle au centre de l’emblème européen : la version française du nom du règlement. */
+  'site.security.gdprMark': 'RGPD',
+  'site.security.repoTitle': 'Votre dépôt reste le vôtre',
+  'site.security.repoDesc':
+    'Rien n’est cloné sur un serveur. L’agent travaille dans un worktree sur la machine devant vous, et la seule chose qui nous parvienne de votre code, ce sont les dépôts que vous avez déclarés dans l’app.',
+  'site.security.gdprTitle': 'Ce qu’on stocke, en une ligne',
+  'site.security.gdprDesc':
+    'Votre compte, les réglages de vos dépôts, et le nombre d’heures par skill. C’est toute la liste. Pas de source, pas de prompts, pas de diffs. Et un interrupteur arrête même le comptage des heures.',
+  'site.security.guardTitle': 'Un garde-fou sur chaque commit',
+  'site.security.guardDesc':
+    'Il n’écrit pas sur main, master, develop ou staging sans s’arrêter pour vous demander. Il propose de créer une branche à la place. Un réglage transforme cette question en non définitif.',
+  'site.security.secretsTitle': 'Les secrets n’atteignent jamais un commit',
+  'site.security.secretsDesc':
+    'Fichiers d’environnement, credentials, clés privées et certificats sont retirés du staging avant l’écriture du commit, même si votre gitignore les a laissés passer, et on vous dit lesquels.',
+  // RETIRÉ, ET CONSERVÉ : cette paire habillait une cinquième carte, coupée quand la bande
+  // est passée à deux lignes de deux. Voir l’anglais.
+  'site.security.injectionTitle': 'Un ticket ne donne pas d’ordres à l’agent',
+  'site.security.injectionDesc':
+    'Tickets, commentaires de review et descriptions de pull request sont lus comme des données sur un changement, jamais comme des instructions. Un ordre caché dedans vous est cité au lieu d’être exécuté — vous apprenez donc qu’il y était.',
 
   // ── ② Comment ça marche ────────────────────────────────────────────────────
   'site.how.title': 'Comment ça marche, vraiment.',
@@ -106,7 +718,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.features.integrationsDesc':
     'Tickets, issues et pull requests, lus et écrits sur place.',
   'site.features.hooksTitle': 'Notifications',
-  'site.features.hooksDesc': 'Votre Mac vous prévient dès qu’un chantier vous attend.',
+  'site.features.hooksDesc': 'Votre Mac vous prévient dès qu’un chantier vous attend. Désactivable dans les réglages, si vous préférez qu’il se taise.',
   'site.features.securityTitle': 'Sécurité',
   'site.features.securityDesc':
     'Ce qui tourne où, ce qui quitte votre machine, et ce qui n’en sort jamais.',
@@ -225,13 +837,13 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Cherchez sur un ID de ticket ou un titre, restreignez à un dépôt ou à un epic Jira, et lisez le résultat par ordre d’arrivée ou par priorité.',
   'site.tasksCard.legendFieldsTitle': 'Les mots de votre board',
   'site.tasksCard.legendFieldsDesc':
-    'Une ligne Jira porte son statut, sa priorité et l’epic auquel elle est rattachée — affichés tels que votre site les envoie, jamais traduits ni reclassés.',
+    'Une ligne Jira porte son statut, sa priorité et l’epic auquel elle est rattachée, affichés tels que votre site les envoie, jamais traduits ni reclassés.',
   'site.tasksCard.legendAvailableTitle': 'Seulement ce qui est libre',
   'site.tasksCard.legendAvailableDesc':
-    'La colonne To Do du sprint, plus les tickets qu’un agent a déjà pris — marqués comme tels. Le travail en cours ailleurs n’est pas proposé : la page ne vous offrira pas de le dupliquer.',
+    'La colonne To Do du sprint, plus les tickets qu’un agent a déjà pris, marqués comme tels. Le travail en cours ailleurs n’est pas proposé : la page ne vous offrira pas de le dupliquer.',
   'site.tasksCard.legendTrackersTitle': 'Les deux trackers, par dépôt',
   'site.tasksCard.legendTrackersDesc':
-    'Les issues ouvertes d’un dépôt GitHub et le sprint actif d’un projet Jira, chacun sur sa carte — et une seule carte pour deux services qui partagent un projet.',
+    'Les issues ouvertes d’un dépôt GitHub et le sprint actif d’un projet Jira, chacun sur sa carte, et une seule carte pour deux services qui partagent un projet.',
   'site.tasksCard.gh1': 'Les relances de webhook perdent la clé d’idempotence',
   'site.tasksCard.gh2': 'Limiter le débit de la recherche publique',
   'site.tasksCard.gh3': 'Le paiement renvoie une 500 quand le panier est vide',
@@ -429,7 +1041,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Tout tourne sur votre abonnement, sur votre machine. Rien n’est réhébergé au milieu.',
   'site.features.machineSetupTitle': 'Configuré au démarrage',
   'site.features.machineSetupDesc':
-    'Les huit skills, les serveurs MCP, les hooks et les permissions sont vérifiés — et installés — à chaque lancement de l’app.',
+    'Les huit skills, les serveurs MCP, les hooks et les permissions sont vérifiés, et installés s’ils manquent, à chaque lancement de l’app.',
   // Voir la note du catalogue anglais.
   'site.features.tasksDesc':
     'Toutes les issues ouvertes et tous les tickets de backlog, GitHub comme Jira, groupés par dépôt dans votre propre fenêtre — et un clic sur l’un d’eux lance un agent dessus avec /magic:start.',
@@ -446,7 +1058,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Une langue pour les commits, une pour les pull requests, une pour les commentaires postés sur les tickets, une pour la spec et les tickets que /magic:plan rédige — et celle de la discussion avec Claude, qui n’est lue que par vous. Chacune se choisit à part, par dépôt.',
   'site.features.permissionModesTitle': 'Jusqu’où un agent peut aller',
   'site.features.permissionModesDesc':
-    'Plan, standard, accept edits, auto ou bypass — ce qu’un agent fait avant de vous demander.',
+    'Plan, standard, accept edits, auto ou bypass : ce qu’un agent fait avant de vous demander.',
   'site.features.profileTitle': 'Comment il vous parle',
   'site.features.profileDesc':
     'Juste après l’inscription, un court formulaire d’onboarding apprend à Claude Code qui vous êtes : votre prénom, votre rôle, votre niveau technique, le ton que vous voulez et vos langues. Chaque skill le lit avant de vous répondre, pour que la réponse arrive à la profondeur où vous lisez. Modifiable à tout moment depuis les réglages.',
@@ -457,13 +1069,13 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // La famille insights.
   // Le dessin de la sidebar d’info — `InfoSidebarMockup`, avec les libellés de l’app.
   'site.features.ticketInfoTitle': 'Le ticket, et où il en est',
-  'site.features.ticketInfoDesc': 'Identifiant, titre, description et statut — ce que l’agent dit de son travail, tenu à jour à chaque étape. L’identifiant est cliquable et ouvre l’issue GitHub ou le ticket Jira dans votre navigateur. Plus besoin de retenir quel Claude Code travaille sur quelle tâche : tout est là, et c’est autant de charge mentale en moins.',
+  'site.features.ticketInfoDesc': 'Identifiant, titre, description et statut : ce que l’agent dit de son travail, tenu à jour à chaque étape. L’identifiant est cliquable et ouvre l’issue GitHub ou le ticket Jira dans votre navigateur. Plus besoin de retenir quel Claude Code travaille sur quelle tâche : tout est là, et c’est autant de charge mentale en moins.',
   'site.features.repositoryTitle': 'La branche, les fichiers, les commits',
-  'site.features.repositoryDesc': 'La branche, les fichiers touchés par l’agent avec leurs lignes ajoutées et retirées, et les commits déjà posés — lus dans Git en direct. Deux boutons ouvrent le projet dans VS Code et le dépôt sur GitHub.',
+  'site.features.repositoryDesc': 'La branche, les fichiers touchés par l’agent avec leurs lignes ajoutées et retirées, et les commits déjà posés, lus dans Git en direct. Deux boutons ouvrent le projet dans VS Code et le dépôt sur GitHub.',
   'site.features.devServerTitle': 'Lancez un serveur local de test',
   'site.features.devServerDesc': 'Les scripts de votre package.json sont à un clic. Un serveur qui démarre affiche son adresse sous la carte, et l’adresse s’ouvre dans votre navigateur.',
   'site.features.pullRequestTitle': 'La pull request, suivie en direct',
-  'site.features.pullRequestDesc': 'Les checks CI, les commentaires et le verdict de la review arrivent dans la carte au fil de l’eau — sans ouvrir GitHub.',
+  'site.features.pullRequestDesc': 'Les checks CI, les commentaires et le verdict de la review arrivent dans la carte au fil de l’eau, sans ouvrir GitHub.',
   'site.infoSidebar.uncommitted': 'Modifications non committées',
   'site.infoSidebar.fileOne': '{count} fichier',
   'site.infoSidebar.files': '{count} fichiers',
@@ -589,7 +1201,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Ce qu’il reste de votre session de cinq heures et de votre semaine glissante, sur chaque écran de l’app.',
   'site.features.agentContextTitle': 'Le contexte dépensé par l’agent en cours',
   'site.features.agentContextDesc':
-    'La part de sa fenêtre que ce run a déjà remplie, en tokens et en pourcentage — l’agent affiché, pas le compte.',
+    'La part de sa fenêtre que ce run a déjà remplie, en tokens et en pourcentage. L’agent affiché, pas le compte.',
   'site.features.planSessionsTitle': 'Les plans, les vôtres et ceux de l’équipe',
   'site.features.planSessionsDesc':
     'Chaque session /magic:plan sur un dépôt que vous pouvez voir — la spec qu’elle a écrite et les tickets qu’elle a créés. Conservés sur votre compte : un plan survit à la fenêtre où il a été écrit.',
@@ -633,7 +1245,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'En attente de revue ? Modifications demandées ? Un check rouge ? Vous le voyez sans ouvrir un seul onglet.',
   'site.whereItStands.cta': 'Voir le workflow complet',
 
-  // ── ⑦ Pourquoi on a construit ça (teaser vers /story) ──────────────────────
+  // ── ⑦ Pourquoi on a construit ça (bande retirée, et /story avec) ───────────
   'site.why.title': 'Pourquoi on a construit ça.',
   'site.why.p1':
     'On utilisait Claude Code tous les jours, sur de vrais projets. Et chaque fois, la même routine : lire le ticket, le reformuler en prompt, préparer la branche à la main, écrire le commit, décrire la PR. Ça marchait. C’était juste lent et ennuyeux.',
@@ -645,6 +1257,15 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   //
   // Voir la note dans `en.ts` : clés par sujet et non par position, une réponse d'un
   // paragraphe, et `site.faq.viewAll` supprimée avec la bande ⑧ de la page d'accueil.
+  // ── La bande FAQ de la page d'accueil ──────────────────────────────────────
+  //
+  // Voir la note dans `en.ts` : une fenêtre sur `/faq` et non la bande ⑧ d'origine, avec
+  // ses trois clés propres plutôt que celles de la page.
+  'site.homeFaq.title': 'Il vous reste un doute.',
+  'site.homeFaq.subtitle':
+    'Les cinq questions posées avant d’installer. Format des commits, identifiants, mises à jour, désinstallation : le reste est sur la FAQ.',
+  'site.homeFaq.cta': 'Lire la FAQ',
+
   'site.faq.title': 'Questions fréquentes',
   'site.faq.lead':
     'Tout sur l’installation de Magic Slash, sa configuration, et son usage au quotidien.',
@@ -695,21 +1316,19 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.faq.uninstall.a':
     'Un seul script : <code>install/uninstall.sh</code>. Il retire les huit skills, les serveurs MCP Jira et GitHub, toutes les permissions ajoutées à <code>~/.claude/settings.json</code>, l’app elle-même et <code>~/.config/magic-slash/</code>. Vos dépôts et votre installation de Claude Code restent exactement en l’état.',
 
-  // ── CTA de fin ─────────────────────────────────────────────────────────────
   // ── CTA de clôture (page d'accueil) ────────────────────────────────────────
+  //
+  // `site.cta.*` est partie avec `/story` : voir la note côté anglais.
   'site.finalCta.title':
     'Faites passer votre workflow de product builder à la vitesse supérieure.',
   'site.finalCta.subtitle': 'Essayez Magic Slash.',
   'site.finalCta.button': 'Obtenir Magic Slash pour Mac',
 
-  'site.cta.title': 'Commencez à construire.',
-  'site.cta.subtitle': 'Gratuit, et une minute suffit pour l’installer.',
-  'site.cta.button': 'Commencer gratuitement',
-
   // ── Maquette du hero ───────────────────────────────────────────────────────
   // Uniquement le chrome de la fenêtre. Les lignes du terminal ne sont PAS ici : c'est
   // le log que le vrai produit imprime, et il l'imprime en anglais — elles vivent en dur
-  // dans `AppMockup.tsx`. `{n}` est remplacé par l'animation.
+  // dans `AppMockup.tsx` (composant supprimé ; `home/AppWindowMockup.tsx` garde ses
+  // littéraux de la même façon). `{n}` est remplacé par l'animation.
   'site.mockup.menuNewAgent': 'Nouvel agent',
   'site.mockup.menuSkills': 'Skills',
   'site.mockup.menuTeam': 'Équipe',
@@ -750,6 +1369,16 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.repoCfg.personal': 'Personnel',
   'site.repoCfg.personalHelp':
     'Vous seul voyez ce dépôt. Partagez-le avec une organisation pour en faire un dépôt d’équipe.',
+  // LA MOITIÉ « ÉQUIPE » DE LA LIGNE DE PORTÉE, ajoutée quand `SharedConfigArt` a redonné
+  // un consommateur à cette famille. La ligne a deux états et le catalogue n’en tenait
+  // qu’un : `personal` au-dessus, et désormais l’état dans lequel se trouve un dépôt
+  // partagé. Les trois reprennent mot pour mot les `repo.scope.*` du desktop plutôt que
+  // de les paraphraser — le dessin reproduit cette ligne, donc le site et l’app disent
+  // la même phrase.
+  'site.repoCfg.teamNamed': 'Équipe — {name}',
+  'site.repoCfg.teamHelp':
+    'Partagé avec l’organisation — chaque membre le voit et y associe son propre dossier local.',
+  'site.repoCfg.makePersonal': 'Rendre personnel',
   'site.repoCfg.general': 'Général',
   'site.repoCfg.name': 'Nom',
   'site.repoCfg.nameHelp': 'Nom affiché du dépôt',
@@ -832,75 +1461,6 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.agentPanel.lastChecked': 'vérifié {time}',
   'site.agentPanel.refresh': 'Rafraîchir',
 
-  // ── Page histoire ──────────────────────────────────────────────────────────
-  'site.story.label': 'Notre histoire',
-  'site.story.heroTitle': 'On en avait marre<br>du copier-coller.',
-  'site.story.heroIntro':
-    'On utilisait Claude Code tous les jours, sur de vrais projets, avec de vrais tickets Jira. Et à chaque fois, c’était la même chose : lire le ticket, le reformuler en prompt, créer les worktrees à la main, committer manuellement, rédiger les descriptions de PR from scratch. Ça marchait. Mais c’était lent, répétitif et ennuyeux.',
-  'site.story.painTitle': 'À quoi ça ressemblait avant.',
-  'site.story.painSubtitle':
-    'Chaque tâche, c’était la même routine. Voici ce qu’on faisait 5 à 10 fois par jour.',
-  'site.story.pain1Title': 'Lire et comprendre le ticket',
-  'site.story.pain1Desc':
-    'Ouvrir Jira, lire le titre, la description, les critères d’acceptation. Comprendre ce qu’il faut faire, puis basculer sur le terminal et tout reformuler en prompt pour Claude Code.',
-  'site.story.pain2Title': 'Créer le worktree à la main',
-  'site.story.pain2Desc':
-    'Trouver le nom de branche depuis l’ID du ticket, lancer git worktree add, cd dedans, vérifier qu’on est sur la bonne branche de base. À. Chaque. Fois.',
-  'site.story.pain3Title': 'Écrire le prompt parfait',
-  'site.story.pain3Desc':
-    'Traduire la spec Jira dans le meilleur prompt possible. Copier-coller les critères d’acceptation, ajouter du contexte sur la codebase, espérer n’avoir rien oublié d’important.',
-  'site.story.pain4Title': 'Commit, PR, description',
-  'site.story.pain4Desc':
-    'Stager les changements, écrire un message de commit conventionnel, pousser, ouvrir la PR, rédiger la description, lier le ticket Jira, mettre à jour le statut. Tout à la main.',
-  'site.story.pain5Title': 'Répondre aux reviews seul',
-  'site.story.pain5Desc':
-    'Lire chaque commentaire de review, comprendre le feedback, corriger le code, force-push, résoudre les threads. Aucune aide, aucune automatisation.',
-  'site.story.pain6Title': 'Nettoyer (si on y pense)',
-  'site.story.pain6Desc':
-    'Une fois mergé, supprimer le worktree, la branche locale, la branche remote. Une fois sur cinq, on oublie, et les branches mortes s’accumulent.',
-  'site.story.timelineTitle': 'Comment on en est arrivé là.',
-  'site.story.timelineSubtitle':
-    'D’un brainstorm à un produit utilisé au quotidien par l’équipe.',
-  'site.story.tl1Date': 'Début janvier 2026',
-  'site.story.tl1Title': 'Le premier brainstorm',
-  'site.story.tl1Desc':
-    'Idée initiale : une extension Chrome qui ajoute un bouton sur les tickets Jira pour copier la spec et la coller dans un Claude Code lancé à la main. Simple, mais pas suffisant.',
-  'site.story.tl2Date': 'Janvier 2026',
-  'site.story.tl2Title': 'Pivot vers les slash commands',
-  'site.story.tl2Desc':
-    'Après le brainstorm, la décision est claire : oubliez l’extension, on construit des slash commands Claude Code alimentées par les serveurs MCP GitHub et Atlassian — pour intégrer nativement les tickets Jira et les GitHub Issues. Direct, rapide, zéro changement de contexte.',
-  'site.story.tl3Date': 'Mi-janvier 2026',
-  'site.story.tl3Title': 'Première version de magic-slash',
-  'site.story.tl3Desc':
-    'magic-slash sort avec une landing page, une commande <code>/start</code> pour lancer des tâches depuis les tickets Jira, et un CLI d’install soigné pour une expérience développeur au top. Récupérer la spec, créer la branche, commencer à coder — une commande.',
-  'site.story.tl4Date': 'Fin janvier 2026',
-  'site.story.tl4Title': '/commit et /done arrivent',
-  'site.story.tl4Desc':
-    '<code>/commit</code> pour des commits conventionnels rapides et <code>/done</code> pour pousser, ouvrir la PR et mettre à jour Jira. Le cycle complet prend forme. Les slash commands évoluent en skills Claude Code pour une meilleure expérience.',
-  'site.story.tl5Date': 'Février 2026',
-  'site.story.tl5Title': 'Testé au combat par l’équipe',
-  'site.story.tl5Desc':
-    'magic-slash entre en utilisation intensive quotidienne dans l’équipe dev. De vrais tickets, de vraies PRs, de vrais retours. Chaque point de friction remonte et est corrigé.',
-  'site.story.tl6Date': 'Début mars 2026',
-  'site.story.tl6Title': 'Magic-slash desktop est né',
-  'site.story.tl6Desc':
-    'Nouveau problème : avec 7-8 instances Claude lancées dans des terminaux, personne ne savait quel agent travaillait sur quoi. Trop de temps perdu en remise en contexte. Alors on a construit une app desktop pour tout voir d’un coup d’œil — jusqu’à 12 agents en parallèle, chacun sur son propre ticket.',
-  'site.story.tl7Date': 'Mars 2026',
-  'site.story.tl7Title': 'De 3 skills à 7 — le flow de dev complet',
-  'site.story.tl7Desc':
-    'Le nombre de skills passe de 3 à 7 avec un cycle de développement complet. <code>/done</code> devient <code>/pr</code> pour créer les pull requests, et un nouveau <code>/done</code> gère la clôture du ticket après le merge. <code>/review</code> et <code>/resolve</code> arrivent pour automatiser les revues de code et traiter les retours. Plus un mois complet de tests de l’app desktop, corrections de bugs et affinage de l’UI.',
-  'site.story.tl8Date': 'Avril 2026',
-  'site.story.tl8Title': 'Rebranding & le Lapin Ninja',
-  'site.story.tl8Desc':
-    'Nouvelle identité avec une mascotte : le Lapin Ninja. Un sabre pour le Slash, un lapin blanc comme symbole de la magie. Nouvelle landing page, nouvelle direction visuelle.',
-  'site.story.tl9Date': 'Coming soon',
-  'site.story.tl9Title': 'Et ensuite ?',
-  'site.story.tl9Desc':
-    'Plus d’intégrations, des reviews plus intelligentes, et bien plus encore. Stay tuned.',
-  'site.story.ctaTitle': 'Prêt à essayer ?',
-  'site.story.ctaDesc': 'Installez magic-slash et voyez la différence.',
-  'site.story.ctaBtn': 'Commencer gratuitement',
-
   // ── Page changelog ─────────────────────────────────────────────────────────
   // Le chrome de `/changelog`, et rien d'autre. Les versions elles-mêmes sont lues
   // dans `CHANGELOG.md` au moment du build et affichées telles quelles : elles sont
@@ -934,7 +1494,9 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.footer.resources': 'Ressources',
   'site.footer.documentation': 'Documentation',
   'site.footer.faq': 'FAQ',
-  'site.footer.ourStory': 'Notre histoire',
+  // Le titre de la colonne du milieu, qui était `site.nav.help` du temps où cette
+  // colonne reprenait le menu Aide du header. Voir la note côté anglais.
+  'site.footer.help': 'Aide',
   'site.footer.legal': 'Légal',
   'site.footer.security': 'Politique de sécurité',
   'site.footer.company': 'Entreprise',

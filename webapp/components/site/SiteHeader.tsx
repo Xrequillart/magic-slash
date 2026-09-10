@@ -1,27 +1,62 @@
 'use client'
 
-import { useEffect, useId, useRef, useState } from 'react'
+import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Menu, X } from 'lucide-react'
+import {
+  type LucideIcon,
+  AppWindow,
+  CircleHelp,
+  Cloud,
+  Download,
+  Layers,
+  Menu,
+  ScrollText,
+  Workflow,
+  X,
+} from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
-import { Button, ButtonLink } from '@/components/ui'
+import { Button } from '@/components/ui'
 import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
-import { PAGE_CHROME } from '@/lib/features'
 import { HOME_PATH, LOGIN_PATH } from '@/lib/routes'
 import { useSession } from '@/lib/session'
 import {
+  ALL_NAV_GROUPS,
+  FAQ_NAV_ROW,
+  PRODUCT_MENU_GROUPS,
+  PRODUCT_MENU_LABEL,
+  SOON_NOTE,
+  type SiteNavIcon,
+  type SiteNavRow,
+} from '@/lib/siteNav'
+import { LanguageMenu } from './LanguageMenu'
+import { GITHUB_REPO_URL } from './links'
+import {
   NAV_ITEM,
+  NAV_ITEM_GROUND,
+  NavDropdown,
+  type NavDropdownItem,
+  POPOVER_ICON_TONES,
   POPOVER_PANEL,
   POPOVER_ROW,
-  POPOVER_ROW_REST,
+  POPOVER_ROW_NAV,
+  POPOVER_ROW_WITH_ICON,
+  POPOVER_RULE,
+  SOON_PILL,
   useDismiss,
 } from './NavDropdown'
 import { useRevealClass } from './Reveal'
 
 /**
- * The public site's top bar: wordmark, the Product menu, the how-it-works link, the
- * language picker, and the way in.
+ * The public site's top bar: wordmark, the Product menu, the FAQ, then the repository,
+ * the language picker and the way in.
+ *
+ * FIVE CONTROLS AND ONE RECIPE. Everything from "Produit" to the way in is `NAV_ITEM`
+ * (`./NavDropdown.tsx`) — semibold ink at `text-sm` on a pill that fills with the same
+ * grey chip under the cursor, whether it opens a panel or leaves for GitHub. That is the
+ * owner's format for this bar, and the two exceptions to the resting state are stated
+ * where they are made: an OPEN menu keeps the chip without a cursor, and the way in
+ * rests on it.
  *
  * IN TAILWIND, where it used to be nine `marketing.css` classes. That stylesheet no
  * longer reaches these routes (see `app/(marketing)/layout.tsx`), so the geometry is
@@ -47,11 +82,12 @@ import { useRevealClass } from './Reveal'
  * first pixel of scroll fades in the white sheet, the hairline under it and the frosted
  * blur together, so content can pass beneath the bar without running into the type. `past-hero` is gone because its ONLY job was unfolding the account button, which
  * used to ship collapsed (`max-width: 0`) so it would not compete with the hero's CTA.
- * That button is a plain `ButtonLink` now and is visible from the first paint, which
+ * That control is a plain anchor now and is visible from the first paint, which
  * leaves the 600px threshold with nothing to switch. Both thresholds are still read on
- * MOUNT as well as on scroll: a visitor arriving on `/#how` starts mid-page, and a bar
- * that only reacted to the first scroll EVENT would paint transparent over content
- * until they moved.
+ * MOUNT as well as on scroll: a visitor arriving on `/features#workflow`, or coming
+ * BACK to a page the browser restores mid-scroll, starts below the fold, and a bar that
+ * only reacted to the first scroll EVENT would paint transparent over content until they
+ * moved.
  *
  * `useSession` stays, and so does what it renders BEFORE it resolves: the signed-out
  * label. That is the right answer for almost every visitor to a public page, and it is
@@ -63,7 +99,7 @@ import { useRevealClass } from './Reveal'
  * arithmetic is not close. Going full-bleed bought back the pill's 16px inset and its
  * border, so the content box is now `viewport − 48` of `px-6`: 327px at 375px and 272px
  * at 320px, against a 160px wordmark (the SVG is 693.37×130, so `h-[30px]` is 160.0px
- * wide), a ~96px Product trigger, a ~74px language picker, an ~86px `Sign in` button and
+ * wide), a ~96px Product trigger, a ~74px language picker, an ~86px `Sign in` control and
  * 24px of gaps — 456px asked for, 327px available. Ten pixels of relief does not change
  * the verdict, which is why the collapse below stays exactly as it was. (Those figures
  * predate two changes that both went the right way: the version badge is gone, and the
@@ -76,101 +112,177 @@ import { useRevealClass } from './Reveal'
  * nav row and the way in, because a homepage whose only route to sign-in is the footer
  * is worse than a bar that overflows.
  *
- * THE BAR IS WORDMARK, TWO NAV LINKS, THE WAY IN — and every cut behind that shape was
- * requested rather than forced by width. The Product dropdown went (see `NAV_LINKS`),
- * and so did the LANGUAGE PICKER: `LanguageMenu` now appears only in the footer, in the
- * dress written for exactly that, and its own note is that the footer is where people go
- * LOOKING for the control. Its `header` dress is consequently unused; it is left in
- * place rather than deleted, since the component's two-dress API is what lets a later
- * story put a picker back somewhere without reinventing one.
+ * THE BAR IS WORDMARK, PRODUCT ▾, FAQ, THEN GITHUB, THE PICKER AND THE WAY IN — two nav
+ * controls, one of them a menu. The Product dropdown had been cut by request when the
+ * bar was rebuilt, on a homepage that was then the only page there was; it comes back
+ * because the site now has six destinations to offer and a bar cannot hold six. Its rows
+ * and their order are NOT here — `lib/siteNav.ts` owns them, and the note there says why
+ * a nav row is a tested constant rather than a literal in JSX.
  *
- * The second nav link — "All features", pointing at the `/features` page — went back in
- * once that page existed for the dropdown's orphaned row to point at.
+ * THE FAQ IS A BARE LINK AGAIN, which is what it was before it was a menu. It stayed out
+ * of the Product menu on the reading that the page answering the objection which stops a
+ * download should be one press from anywhere; then it got a neighbour — "Best practices"
+ * — and two bare links of the teaching kind beside one trigger would have made a bar of
+ * two controls read as three peers, so the pair went behind a **Help** trigger. That
+ * page is deleted by request, and a trigger over a single FAQ row is a press bought with
+ * nothing. "All features" is inside the Product menu, where it sits with the pages it
+ * summarises.
  *
- * The collapse below `md` stays regardless, and the newest row only widens the case.
- * Three controls already did not fit: the wordmark alone is 165px at `h-12`, "Comment ça
- * marche" is ~145px with its padding and the way in ~86px, which was ~412px of content
- * against the 327px a 375px viewport offers. "Toutes les fonctionnalités" adds ~185px on
- * top. Adding and removing controls moves the number, not the verdict.
+ * "OUR STORY" WAS THE THIRD NAV CONTROL and its page is deleted by request too, so the
+ * bar is down to a trigger and a link. `/story` 308s to the homepage rather than 404ing
+ * — see `RETIRED_PATHS` in `lib/hostRouting.ts` — because it was in the footer of every
+ * public page for releases and those links are still out there.
+ *
+ * THE LANGUAGE PICKER IS BACK, on the right of the bar beside the way in — and the
+ * component's two-dress API is exactly what made that a call site rather than a rebuild:
+ * `LanguageMenu` kept a `header` dress through the release it spent in the footer alone,
+ * for this. It sits in the RIGHT-HAND cluster and not in the nav, because it changes a
+ * setting rather than going anywhere, and the two families should not be interleaved;
+ * within that cluster it comes BEFORE the way in, so the primary control stays at the
+ * end of the bar where a reader's eye lands last.
+ *
+ * IT STILL APPEARS IN THE FOOTER, in the dress written for exactly that, and that is not
+ * a duplicate to prune: the footer is where people go LOOKING for the control, and it is
+ * the ONLY picker below `md`, where this cluster is hidden. The alternative was a picker
+ * inside `MobileMenu`, which is a popover inside a disclosure — two presses to reach a
+ * setting, on the surface where presses cost the most.
+ *
+ * The collapse below `md` stays regardless, and none of this moves the number far: the
+ * bar's content is the 165px wordmark, ~96px of "Produit", ~55px of "FAQ", a ~74px
+ * picker, an ~86px way in and the ~62px "GitHub" beside them — ~540px against the 327px
+ * a 375px viewport offers. The rows behind a trigger cost the bar nothing; they cost the
+ * PANEL, which is a column and has the room. Two controls have left the bar since that
+ * arithmetic was written — the "Aide" trigger and the story link, ~130px between them —
+ * and it is still short by 200px.
  */
 
 /**
- * The nav: two rows — the features page, then the homepage's "how it works" band.
+ * AN ICON NAME → THE COMPONENT THAT DRAWS IT.
  *
- * IT WAS A PRODUCT MENU plus that anchor — six rows behind a dropdown trigger, pointing
- * into the documentation at anchors `DocSidebar` publishes. The dropdown is gone by
- * request, and with it the last reason this file needed `NavDropdown`'s own component.
- * The `site.nav.{product,gettingStarted,skillsReference,configuration,
- * documentationCategory,changelog}` keys stay in the catalogues unreferenced, like every
- * other family this rebuild has retired: nothing tests for an unused key, and pruning
- * them means editing `i18n.test.ts`'s exact `SAME_IN_BOTH` allow-list in lockstep. The
- * footer still carries the same destinations, so nothing became unreachable.
+ * `lib/siteNav.ts` names glyphs and does not import them, because the root vitest suite
+ * reads that module and would not resolve `lucide-react` — the rule is stated there and
+ * in `lib/features.ts` at length. So the map is HERE, beside the markup that renders it,
+ * exactly as `FeaturesContent.tsx` keeps its own.
  *
- * `site.nav.allFeatures` is the one that came BACK, and it was parked here waiting for
- * exactly this: the dropdown's "All features" row had nowhere to point when the
- * homepage's grid was cut, and `/features` is that somewhere. It is a route now rather
- * than a same-page anchor, which is the first row in this array that leaves the page.
- *
- * ORDER: features first. The bar reads left to right as "what is it" then "how does it
- * work", which is the order a first-time reader asks those two questions in.
- *
- * The MOBILE panel is fed from the same array rather than a second copy of it — the two
- * lists drifting apart is exactly what a shared constant is for, and the reason the bar
- * and the panel agree about what the nav contains at every width. So is the BAR itself,
- * as of this row: it used to restate its single link inline, which was harmless while
- * there was one and is how the two halves start to disagree once there are two.
- *
- * WIDTH. The row is `hidden md:flex`, so the mobile arithmetic in the note above is
- * untouched — below 768px both rows are `MobileMenu`'s panel. At 768px the content box
- * is 720px against a 165px wordmark, ~185px for "Toutes les fonctionnalités" (the wider
- * of the two labels, in the wider of the two languages), ~145px for "Comment ça marche",
- * an ~86px way in and 24px of gaps: ~605px asked for, 720px available.
- *
- * At module scope with `label` as a `MessageKey`, so `tsc` checks the key — the same
- * shape the homepage's own `STEPS` rows use. `t()` cannot be called here, so the label
- * is resolved in the render below.
+ * `Record<SiteNavIcon, …>` is what makes a name with no glyph a TYPE error rather than a
+ * hole in the menu — though only at `next build` on Vercel, since CI typechecks
+ * `desktop/` alone. `glyphFor` below is the guard behind that.
  */
-const NAV_LINKS: { href: string; label: MessageKey }[] = [
-  { href: '/features', label: PAGE_CHROME.allFeatures },
-  { href: '/#how', label: 'site.nav.howItWorks' },
-]
+const ICONS: Record<SiteNavIcon, LucideIcon> = {
+  AppWindow,
+  CircleHelp,
+  Cloud,
+  Download,
+  Layers,
+  ScrollText,
+  Workflow,
+}
+
+/**
+ * A row, dressed for a panel: its label resolved, its glyph looked up.
+ *
+ * ONE FUNCTION FOR BOTH SURFACES — the dropdown and the mobile panel show the same rows,
+ * and a second copy of this mapping is how they would come to disagree about which glyph
+ * belongs to which row. It takes `t` rather than calling `useT` because it is not a
+ * component; both call sites already have one.
+ *
+ * The `| undefined` on the lookup is the honest type of an index access into a `Record`
+ * keyed by a union with `noUncheckedIndexedAccess` off: the compiler believes the map is
+ * complete, and it is — but "checked by a deploy that has not happened yet" is not the
+ * same as checked, so the branch stays visible. A row whose glyph went missing loses its
+ * icon and keeps its label, which is the failure worth having.
+ */
+function dress(row: SiteNavRow, t: (key: MessageKey) => string): NavDropdownItem {
+  const glyph: LucideIcon | undefined = row.icon ? ICONS[row.icon] : undefined
+  return {
+    href: row.href,
+    label: t(row.label),
+    icon: glyph,
+    tone: row.tone,
+    tile: row.tile,
+    soon: row.soon ? t(SOON_NOTE) : undefined,
+  }
+}
+
+/**
+ * THE NAV IS NOT DECIDED HERE ANY MORE. `lib/siteNav.ts` holds it: `PRODUCT_MENU_GROUPS`
+ * (six rows in three families), `PRODUCT_MENU_LABEL` for the trigger, `FAQ_NAV_ROW` for
+ * the link beside it, and `ALL_NAV_GROUPS` — every row there is — for the mobile panel.
+ *
+ * IT USED TO BE A ONE-ROW `NAV_LINKS` ARRAY RIGHT HERE, and moving it out is not
+ * housekeeping. A row's `href` and `PUBLIC_PATHS` in `lib/hostRouting.ts` disagreeing
+ * does not produce a 404: it 307s the reader to a login form on `app.magic-slash.io`, so
+ * the bar on every public page appears to sign them out. `siteNav.test.ts` pins every row
+ * against that list and against the page behind it, and a literal in this file's JSX is a
+ * row no test can enumerate.
+ *
+ * WHAT IS STILL DECIDED HERE is the arrangement: which rows the bar shows itself, which
+ * go behind the trigger, and what the panel does with all of them below `md`.
+ */
+
+/**
+ * THE WAY IN'S DRESS, AND IT IS THE BAR'S OWN — `NAV_ITEM` on a chip that is always
+ * there, where this was two rungs of `ButtonLink` (a blue `primary` signed out, a white
+ * bordered `secondary` signed in).
+ *
+ * WHY IT STOPPED BEING A BUTTON. The bar holds two menu triggers and two links now (the
+ * FAQ, and the repository at the other end), all of them semibold ink on a pill that fills grey under the cursor, and a filled blue
+ * button at the end of that row was the only element in the bar built on a different
+ * ladder: it read as an advertisement stapled to a navigation bar. The page has not
+ * lost a CTA — `primary` still carries "Télécharger pour Mac" in the hero, two inches
+ * below, which is the download this site is actually asking for. A header sign-in is a
+ * DESTINATION, and the bar already has a recipe for one.
+ *
+ * THE GROUND IS PERMANENT, and that is the one thing it does differently from a trigger:
+ * `NAV_ITEM_GROUND` is a hover-and-open state on "Produit", and it rests on this. So the
+ * control still reads as the last thing in the bar rather than as another menu, with no
+ * second colour and no second shape to do it — the chip that answers the cursor
+ * elsewhere is simply where this one starts. Hover is left to `NAV_ITEM`'s own
+ * `hover:text-ink`, which closes the 20% the label rests at.
+ *
+ * `flex` and not the inline anchor `NAV_ITEM` alone would give: the mobile panel hands
+ * this `w-full`, which does nothing to an inline element, and the signed-in label needs
+ * a `min-w-0` flex child to truncate inside a capped box (the rule `components/ui.tsx`
+ * states for its own `truncate` prop, one level down).
+ */
+const WAY_IN = `flex items-center justify-center ${NAV_ITEM} ${NAV_ITEM_GROUND}`
 
 /**
  * The way in, wherever it is standing: the bar at `md` and up, the mobile panel below.
  *
  * One component rather than the same ternary written twice, because the two copies would
  * be the ones to drift — the signed-in branch has three attributes the signed-out branch
- * does not. `className` is additive only (`max-w-*`, `w-full`, `mt-*`), which is the rule
- * `components/ui.tsx` states for anything handed to `ButtonLink`.
+ * does not. `className` is additive only (`max-w-*`, `w-full`, `mt-*`), which is the same
+ * rule `components/ui.tsx` states for a recipe handed a class from its call site.
  *
  * The label falls back to `site.nav.account` when Supabase hands us a session with no
  * email on it — an OAuth identity that never exposed one, or a phone sign-up. The
- * `aria-label` already said "Your account" in that case, so the button was named but
- * VISUALLY EMPTY: a white plate with 46px of padding and nothing between it.
+ * `aria-label` already said "Your account" in that case, so the control was named but
+ * VISUALLY EMPTY: a plate with 28px of padding and nothing between it.
  */
 function WayIn({ session, className }: { session: Session | null; className?: string }) {
   const { t } = useT()
 
   // Signed out this is the way in; signed in it is the way back to your account, and
   // showing WHICH account matters to anyone keeping a work and a personal login. Plain
-  // anchors either way: both paths leave for the app host, and there is no client-side
-  // navigation across origins — see `lib/routes.ts`. `ButtonLink` renders an `<a>`,
-  // which is exactly what that needs.
+  // anchors either way, NOT `next/link`: both paths leave for the app host, and there is
+  // no client-side navigation across origins — see `lib/routes.ts`.
   return session ? (
-    <ButtonLink
+    <a
       href={HOME_PATH}
-      variant="secondary"
+      className={`${WAY_IN} ${className ?? ''}`}
       title={session.user.email ?? undefined}
       aria-label={t('site.nav.account')}
-      truncate
-      className={className}
     >
-      {session.user.email ?? t('site.nav.account')}
-    </ButtonLink>
+      {/* `min-w-0` so the flex child may shrink below its content — without it
+          `truncate`'s `overflow-hidden` has nothing to clip, and a long address pushes
+          the bar's cap open instead of ellipsising inside it. */}
+      <span className="min-w-0 truncate">{session.user.email ?? t('site.nav.account')}</span>
+    </a>
   ) : (
-    <ButtonLink href={LOGIN_PATH} variant="primary" className={className}>
+    <a href={LOGIN_PATH} className={`${WAY_IN} ${className ?? ''}`}>
       {t('site.nav.signIn')}
-    </ButtonLink>
+    </a>
   )
 }
 
@@ -186,7 +298,7 @@ function WayIn({ session, className }: { session: Session | null; className?: st
  *
  * NO `role="menu"` here, unlike `NavDropdown`. This is a disclosure — a group of links
  * with a button at the end of it — and a menu role would promise arrow-key semantics
- * that a `menuitem` list of anchors plus a `ButtonLink` does not have. `aria-expanded`
+ * that a `menuitem` list of anchors plus the way in does not have. `aria-expanded`
  * plus `aria-controls` is the whole contract, and the trigger carries an `aria-label`
  * because its glyph is `aria-hidden` and there is no text left to name it.
  *
@@ -194,10 +306,17 @@ function WayIn({ session, className }: { session: Session | null; className?: st
  * anchored to the pill's content box, so it cannot reach the viewport edge.
  */
 function MobileMenu({
-  items,
+  groups,
   session,
 }: {
-  items: { href: string; label: string }[]
+  /**
+   * The rows in reading order, divided into families — `ALL_NAV_GROUPS`, which is the
+   * Product menu's three plus the row the bar shows in the open as a fourth. A rule goes
+   * between one group and the next, never above the first: the same arrangement
+   * `NavDropdown` draws, because below `md` this panel IS the whole nav, and a reader who
+   * resizes should not find it regrouped.
+   */
+  groups: NavDropdownItem[][]
   session: Session | null
 }) {
   const { t } = useT()
@@ -220,15 +339,48 @@ function MobileMenu({
       />
 
       <div id={panelId} hidden={!open} className={`${POPOVER_PANEL} right-0 w-64`}>
-        {items.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`${POPOVER_ROW} ${POPOVER_ROW_REST}`}
-            onClick={() => setOpen(false)}
-          >
-            {item.label}
-          </Link>
+        {groups.map((group, index) => (
+          // Keyed by the first row's path rather than the index — paths are unique across
+          // the nav (`siteNav.test.ts` asserts it), so a group that moves keeps its
+          // identity instead of inheriting a sibling's.
+          <Fragment key={group[0]?.href ?? index}>
+            {/* NO `role="separator"` HERE, unlike the dropdown's own rule: this panel is
+                a disclosure and not a `role="menu"` (see the note above), so its children
+                carry no roles to be a valid one of. A decorative line in a group of links
+                is `aria-hidden`, and the rule the dropdown draws is a separator only
+                because a menu requires its children to be something. */}
+            {index > 0 && <div aria-hidden className={POPOVER_RULE} />}
+
+            {group.map((item) => {
+              // Capitalised local: JSX reads a lower-case tag as an HTML element.
+              const Glyph = item.icon
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`${Glyph ? POPOVER_ROW_WITH_ICON : POPOVER_ROW} ${POPOVER_ROW_NAV}`}
+                  onClick={() => setOpen(false)}
+                >
+                  {/* BARE, even for the four rows that ask for a tile: `item.tile` is
+                      deliberately not read here. A 40px plate plus 12px of gap leaves
+                      204px of this 256px panel for a label, and the longest of them
+                      ("Toutes les fonctionnalités") does not fit — and the panel cannot
+                      grow, because `w-64` is what fits the 262px a 320px viewport offers.
+                      The rows, their order and their colours are the same as the bar's;
+                      the frame is the one part of the dress this width cannot carry. */}
+                  {Glyph && (
+                    <Glyph
+                      className={`h-4 w-4 shrink-0 ${item.tone ? POPOVER_ICON_TONES[item.tone] : ''}`}
+                      aria-hidden
+                    />
+                  )}
+                  {item.label}
+                  {item.soon && <span className={SOON_PILL}>{item.soon}</span>}
+                </Link>
+              )
+            })}
+          </Fragment>
         ))}
         <WayIn session={session} className="mt-2 w-full" />
       </div>
@@ -319,38 +471,73 @@ export function SiteHeader() {
         {/* `hidden md:flex`: 768px is the threshold `marketing.css` used, and the same one
             `MobileMenu` takes over below. */}
         <nav className="hidden items-center gap-1 md:flex">
-          {/* MAPPED FROM `NAV_LINKS`, which is the change worth noting: this row used to
-              restate its one link inline, and the array fed only `MobileMenu`. One
-              hardcoded link and one array agreeing about a single row is luck; a second
-              row is where they start to disagree, and the bar showing a nav the mobile
-              panel does not is a failure nothing announces.
+          {/* THE PRODUCT MENU, back after a release without one — `NavDropdown` was left
+              in place for exactly this, and it needed nothing added: a trigger, a panel
+              of links, the outside-click and Escape handling, and `role="menu"` over
+              rows that are all anchors.
 
-              `/#how` is an anchor rather than a route — it works from the homepage
-              without a navigation, and there is no page to point it at. `Link` handles
-              both shapes, so a mixed list needs no branch.
+              Its rows come from `lib/siteNav.ts` and its trigger's label with them, so
+              this file names neither a path nor a catalogue key. */}
+          <NavDropdown
+            label={t(PRODUCT_MENU_LABEL)}
+            groups={PRODUCT_MENU_GROUPS.map((group) => group.map((row) => dress(row, t)))}
+          />
 
-              `NAV_ITEM` is the bar's own control recipe; it used to be shared with the
-              Product trigger that stood here, and it stays in `NavDropdown.tsx` because
-              `MobileMenu` and the footer's picker still draw on that file's popover
-              vocabulary. The inline link this replaces had restated the recipe once and
-              arrived without the focus ring, which is the drift the shared constant
-              exists to stop.
+          {/* AND ONE BARE LINK, right of the trigger — `NAV_ITEM` is exported for
+              exactly this. The FAQ was a dropdown for one release and is a link again
+              because the row that made a menu of it is deleted (see `FAQ_NAV_ROW` in
+              `lib/siteNav.ts`); the change is one `Link` for one `NavDropdown`, which is
+              what putting the nav's shape in a module bought both ways. There were two
+              links here until "Our story" was deleted with its page.
 
-              Below `md` these rows are `MobileMenu`'s panel — the same entries,
-              rendered in the other place. */}
-          {NAV_LINKS.map((link) => (
-            <Link key={link.href} href={link.href} className={NAV_ITEM}>
-              {t(link.label)}
-            </Link>
-          ))}
+              THE PATH IS NOT TYPED HERE, which is what the module is for: a row whose
+              `href` and `PUBLIC_PATHS` disagree does not 404 on production, it 307s the
+              reader to a login form. `siteNav.test.ts` reads this file to check the link
+              goes through its constant.
+
+              THE SAME DRESS AS THE TRIGGER, chip and all: `NAV_ITEM` carries the hover
+              ground now, by decision of the owner — the bar's links and its dropdowns
+              are one format, so nothing here distinguishes a control that opens a panel
+              from one that goes to a page. See the note on the recipe. */}
+          <Link href={FAQ_NAV_ROW.href} className={NAV_ITEM}>
+            {t(FAQ_NAV_ROW.label)}
+          </Link>
         </nav>
 
         <div className="ml-auto hidden items-center gap-2 md:flex">
+          {/* THE REPOSITORY, AS THE WORD AND NOT THE MARK. It shipped for one iteration
+              as an icon-only control — `GithubIcon` from `./icons.tsx`, the one glyph on
+              the site lucide will not ship — and the owner's call is a label: a bar of
+              words plus one logo reads as a badge somebody stuck on the end of a nav,
+              and a mark is a control you have to recognise where a word is one you can
+              read. It costs the bar ~26px over the 36px square and takes `NAV_ITEM`
+              unchanged, which the square could not.
+
+              NOT TRANSLATED — the proper noun, the way `SiteFooter`'s own row spells it
+              rather than sending it through `t()`.
+
+              `target="_blank"` with `rel="noreferrer"`: it leaves the site, and a reader
+              who came here to look at the code has not finished with the page. */}
+          <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" className={NAV_ITEM}>
+            GitHub
+          </a>
+
+          {/* THE THIRD TRIGGER IN THE BAR, and it wears the same recipe the other two do
+              — see the `header` dress in `LanguageMenu`. Its panel hangs from the right
+              edge (`right-0`), which is the one thing it must do differently from the
+              nav's: anchored left, a 144px panel on the last control but one would open
+              past the column's edge. */}
+          <LanguageMenu variant="header" />
           <WayIn session={session} className="max-w-[12rem]" />
         </div>
 
+        {/* FLATTENED, on purpose: below `md` there are no dropdowns, so both menus' rows
+            are one column, in `ALL_NAV_GROUPS`' order, with a rule where each boundary
+            was. A disclosure inside a disclosure is two presses to reach a link on the
+            surface where presses are most expensive — and reproducing both triggers in
+            here would make it three. */}
         <MobileMenu
-          items={NAV_LINKS.map((link) => ({ href: link.href, label: t(link.label) }))}
+          groups={ALL_NAV_GROUPS.map((group) => group.map((row) => dress(row, t)))}
           session={session}
         />
       </div>

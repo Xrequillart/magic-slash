@@ -13,6 +13,24 @@ import type { Config } from 'tailwindcss'
 // can be retuned independently.
 const BRAND = '#393BFF'
 
+// The page's own black.
+//
+// A CONSTANT BECAUSE TWO PLACES SPELL IT: the `ink` colour below and `midnight`'s top
+// stop, which is the field that whole tone sits on. It was a literal in each while it was
+// only a colour; a ground that has to STAY the page's black is what makes it worth
+// naming, since an ink that drifted and a card that did not would be two blacks nobody
+// would think to compare.
+//
+// IT WAS ALSO THE TONES' SHADOW until the wash was traced from its reference. `mesh()`
+// used to darken both bottom corners with this at a named alpha; the reference has no
+// such layer — its darkest point is the periwinkle itself, not black under the
+// periwinkle — and side by side the ink was what made the old cards look dusty. See the
+// note on `WASH`. Note this was deliberately NOT `SHADOW_TINT`: the elevation scale is
+// cast in a desaturated indigo because it falls on the blue canvas, where a neutral black
+// reads as soot, whereas a tone's shadow fell on the tone itself and a blue-tinted shadow
+// on `amber` or `lemon` reads as a bruise rather than as depth.
+const INK = '#0A0A0A'
+
 // Every shadow in the scale is cast in the same desaturated indigo rather than in
 // black. On the blue canvas (#F4F7FE) a neutral-black shadow reads as grey soot
 // under the card; tinted towards the page it reads as depth. The value comes from
@@ -121,34 +139,140 @@ const statusIn = (hidden: number, shown: number) => ({
 // that draws the card, so a tone and its ink can never be paired wrongly. See
 // `CARD_TONES` in `components/ui.tsx`.
 //
-// 135deg — top-left to bottom-right — on all four, so a row of cards reads as one
-// light source rather than four.
+// NONE OF THEM IS A LINEAR GRADIENT, and that is the one thing to know before reading a
+// card as "wrong": every tone is the same DIFFUSE WASH — a flat pale field where the copy
+// sits, and six soft blooms gathering the colour into the lower half in two pools of
+// slightly different hue. `mesh()` below builds it, `WASH` is the composition and
+// `BLOOM_RAMP` the falloff, and between them they hold the whole argument for it.
+//
+// IT IS TRACED RATHER THAN COMPOSED. The picture is a reference file the product owner
+// supplied; the six blooms are the result of FITTING that bitmap, and they land within
+// 2.5/255 of it. So the numbers in `WASH` are a measurement, and `tone-sky` — whose two
+// stops are the reference's own — is that picture rather than a reading of it.
+//
+// NO TWO OF THEM ARE THE SAME ARRANGEMENT, though, which is the other thing to know
+// before reading a card as "wrong". Seven of the eight pass their own NAME to `mesh()`,
+// and the dice it seeds decide which side the near pool gathers on and where each of the
+// six blooms lands inside the budget `WASH` gives it — so picking a different tone for a
+// card moves its blooms rather than only recolouring them. `tone-sky` is the exception
+// and passes no name: it is the traced picture, and the anchor does not move.
+//
+// EVERY ILLUSTRATION ON THE SITE IS ON ONE OF THESE, which is worth knowing before
+// retuning any of them. `bg-tone-*` is not only the marketing cards' ground: it is the
+// plate behind every mockup on `/features` and on the homepage — `SplitViewMockup`,
+// `AgentsSidebarMockup`, `TasksModalMockup`, `RepoCardMockup` and a dozen more all sit on
+// `mist`, `sky` or `indigo`. So these six blooms are what a drawing of the app is
+// photographed against, and a change here moves ~30 surfaces at once.
 //
 // The stops are spelled as literals because THIS is their declaration site, the same
-// way `SHADOW_TINT` spells its rgba here. `mist` and `sky` open on `softblue`
-// (#D9E8FF), the wash the hero already fades through; `indigo` runs the two blues
-// the design system already owns, `accent` into `brand`; `midnight` runs `ink` into
-// a deepened `brand` rather than into `brand` itself, which at full saturation would
-// end the card brighter than the page it sits on.
+// way `SHADOW_TINT` spells its rgba here. `mist` opens on a near-white and `sky` on the
+// reference's own field; `indigo` runs `accent` into a brand blue driven past `brand`'s
+// own lightness; `midnight` runs `ink` into a deepened `brand` rather than into `brand`
+// itself, which at full saturation would end the card brighter than the page it sits on.
+//
+// THE THREE BRAND-HUE DEPTHS ARE A LADDER, and it is worth reading as one: `brand` at
+// hsl(239, 100%, 61%), `INDIGO_DEEP` at 45%, `BRAND_DEEP` at 26%. Same hue on all three,
+// so they are one colour at three depths rather than three blues, and each rung is far
+// enough from its neighbour to be a decision somebody could defend.
 const BRAND_DEEP = '#1B1C6B'
+
+// `accent`, and `indigo`'s quiet stop.
+//
+// A CONSTANT BECAUSE TWO PLACES SPELL IT: the `accent` colour below and the field of
+// `tone-indigo`. That pairing is the reason it needs a name — the tone is "the accent,
+// lit" and the day somebody retunes the accent without it the card becomes a blue the
+// palette no longer contains.
+const ACCENT = '#6366F1'
+
+// `indigo`'s deep stop, and the one value in the blue family that is neither `brand` nor
+// a shade of the page.
+//
+// IT USED TO BE `brand` ITSELF, which was the tidier line — "the design system's own two
+// blues, accent into brand" — and it produced the flattest card of the eight. `accent`
+// and `brand` are five points of lightness apart, and five points is not a wash: with no
+// ink shadow left to fake the depth (see `INK`), `tone-indigo` read as a rectangle
+// somebody had filled. This is `brand`'s own hue driven down to 45% lightness, which
+// gives the tone eighteen points of travel — the same weight `midnight` carries — while
+// still being unmistakably the brand blue rather than a navy.
+//
+// SATURATION SITS AT 92% AND NOT `brand`'s 100%, which is the one number here that was
+// chosen by eye rather than solved for. At full saturation this deep is very nearly pure
+// blue, and `cooled()` swings the second lamp off it into something electric; eight
+// points back is the difference between a card that reads as lit and one that reads as a
+// screensaver.
+const INDIGO_DEEP = '#090DDC'
+
+// The palest tone's two stops.
+//
+// NEAR-WHITE INTO A REAL BLUE, which is a change of mind about what "palest" buys. This
+// was #F7FAFF into #E8F0FF — three points of lightness apart, which on the traced wash
+// is not a whisper but nothing at all: the blooms are there in the stylesheet and no eye
+// can find them. The deep stop is now a proper light blue, eleven points of travel, and
+// `mist` stays the quietest of the light grounds because its FIELD is still a near-white
+// nothing else in the family goes near.
+//
+// ITS DEEP STOP IS `sky`'s HUE (212) and not the 219 it used to carry, so the two blue
+// grounds pool in the same blue and read as one family at two volumes rather than as two
+// blues that nearly match — which is the worse of the two failures, and the one nobody
+// can name when they see it.
+//
+// PALE IS STILL THE JOB, though, and this is the tone that has to hold it: `mist` is what
+// the mockups are photographed against — `SplitViewMockup` and a dozen more — so its
+// ground has to stay quiet enough that a drawing of the app is the thing being looked at.
+// Eleven points is the most this can take before the ground starts competing.
+const MIST_LIGHT = '#F7FAFF'
+const MIST_DEEP = '#B3D2F7'
+
+// The blue tone's two stops, and the only pair in this file READ OFF A PICTURE rather
+// than chosen: they are the reference `mesh()` is traced from, so `tone-sky` is that
+// image and not an interpretation of it. See the note on `'tone-sky'` for what they
+// replaced and why a lamp this saturated still lands as a light ground.
+//
+// They are also the family's ANCHOR: every other tone's stops were tuned by rendering
+// the wash and measuring its travel against SKY's thirty points of L*. See the note on
+// `MINT_DEEP` for what that measurement is and why it is the honest way to compare two
+// grounds of different hue.
+const SKY_LIGHT = '#E2EEFC'
+const SKY_DEEP = '#4D77EE'
 
 // The green tone's two stops.
 //
-// PALE, AND THAT IS THE POINT. This started saturated — a #2F9E68 into a near-black
+// A PALE FIELD AND A REAL GREEN, which is the settlement between two mistakes this tone
+// has now made in both directions. It started SATURATED — #2F9E68 into a near-black
 // green, white type on it — and read as a warning rather than as a finish: a dark
-// saturated green at the bottom of a grid of blues is the loudest thing on the page,
-// and `/magic:done` is the quietest moment in the loop.
+// saturated green at the bottom of a grid of blues is the loudest thing on the page, and
+// `/magic:done` is the quietest moment in the loop. The correction was two pale stops
+// twelve points apart, and on the traced wash that went too far the other way: the blooms
+// were in the stylesheet and the card looked like a tint somebody had forgotten to
+// finish.
 //
-// So it is built like `mist` and `sky` instead: two pale stops, dark ink on top. That is
-// what lets it be a different HUE without being a different volume — the card reads as
-// green, and as the end of something, without shouting.
+// SO THE FIELD STAYED AND THE LAMP CAME BACK. #E4F6EB is the same near-white it has
+// been; the deep stop is a mid green that gives the tone FIFTEEN POINTS of L* travel,
+// which is deliberately `amber`'s number rather than a value of its own — those two are
+// the loop's bookends, amber opening it and mint closing it, so a grid that shows both
+// should show them at the same volume. Dark ink still reads on it, which is the
+// constraint that decides how far this can go.
+//
+// EVERY TRAVEL QUOTED IN THIS FILE IS MEASURED ON THE TRACED COMPOSITION, before the
+// dice. `mesh()` jitters each bloom's peak alpha by up to five points and moves the pools
+// around, so what a given tone actually renders lands a point or two either side of its
+// number — mint at 16, amber at 13. Tuning the stops against the traced composition is
+// what makes two tones comparable at all; quoting the post-dice figure would be quoting an
+// arrangement rather than a colour.
+//
+// L* AND NOT HSL LIGHTNESS, on that measurement, because HSL is the wrong instrument for
+// comparing two hues: #74CA9C and a blue at the same HSL lightness are nowhere near the
+// same brightness to an eye. The travel quoted for every tone in this file is the L*
+// range of the RENDERED wash — the whole card, not the two stops — which is the only
+// number that says what somebody actually sees.
 //
 // `green` in the palette above (#22c55e) is a STATUS token — it means "this finished" on
 // a check, a diff's additions, a passing gauge. These stops are not it, deliberately: a
 // ground is not a status, and spending the status colour on decoration is how a green
-// stops meaning "ok" anywhere.
+// stops meaning "ok" anywhere. This deep stop is close enough to it now to be worth
+// saying twice.
 const MINT_LIGHT = '#E4F6EB'
-const MINT_DEEP = '#BCE3CD'
+const MINT_DEEP = '#74CA9C'
 
 // The orange tone's two stops.
 //
@@ -199,25 +323,411 @@ const ROSE_DEEP = '#F5A8C4'
 const LEMON_LIGHT = '#FFF6D9'
 const LEMON_DEEP = '#F5CE5A'
 
+/**
+ * THE GRADIENT THE APPLE MARK IS FILLED WITH, on the homepage's "Truly Mac-native" card.
+ *
+ * NOT A TONE AND NOT A PLATE, which is why it is a table of its own with one entry. A tone
+ * is a card's GROUND and cycles; a plate is another PRODUCT's own hue, always named. This
+ * is neither — it is the fill of one glyph, and it is deliberately not anybody's brand
+ * colour: Apple's mark has no official colour to borrow, and the reference the product
+ * owner supplied fills it with a cool sweep rather than with silver.
+ *
+ * ITS THREE STOPS ARE THE REFERENCE'S: a sky blue, the design system's own `accent` one
+ * step lighter, and an orchid. They are literals here for `PLATES`' reason — a gradient
+ * belonging to one mark is a value that means one thing, and pointing it at `accent` would
+ * invite somebody to retune the CTA blue and silently repaint a logo.
+ *
+ * IT IS APPLIED AS A MASK, not as a fill: `public/img/apple-mark.png` is an alpha mask over
+ * a div wearing this. See `MacNativeArt` for why the mark is a bitmap rather than a path.
+ */
+const MARKS = {
+  'mark-apple': `linear-gradient(135deg, #7DD3FC 0%, #A5B4FC 50%, #F0ABFC 100%)`,
+}
+
+/**
+ * sRGB HEX INTO HSL AND BACK, the two halves of one conversion and the only reason
+ * either is here: `cooled()` below needs to swing a hue, and a hue is not a thing you
+ * can reach in hex.
+ *
+ * TEXTBOOK BOTH WAYS, and neither needs to be more than that — this runs when Tailwind
+ * loads its config, on eight colours, and what is required of it is that
+ * `toHex(...toHsl(c))` gives `c` back. It is NOT a colour-science conversion: the round
+ * trip is through sRGB HSL, so "13 degrees" is 13 degrees of the hue wheel the rest of
+ * this file already thinks in (`#393BFF` is 239, `#F9A96A` is 27), not of a perceptual
+ * space. A perceptual swing would be the better instrument and it would also mean a
+ * colour library in the build, for one derived value on eight grounds.
+ *
+ * SIX DIGITS ONLY, no 3-digit shorthand and no alpha. Every stop in this file is written
+ * long, `fade()` appends the alpha as a suffix, and a parser that quietly accepted `#fff`
+ * would return a colour nobody typed.
+ */
+const toHsl = (hex: string): [number, number, number] => {
+  const n = parseInt(hex.slice(1), 16)
+  const r = ((n >> 16) & 255) / 255
+  const g = ((n >> 8) & 255) / 255
+  const b = (n & 255) / 255
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const l = (max + min) / 2
+  const d = max - min
+  if (d === 0) return [0, 0, l]
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+  const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4
+  return [h * 60, s, l]
+}
+
+const toHex = (hue: number, sat: number, light: number) => {
+  const h = ((hue % 360) + 360) % 360
+  const s = Math.min(Math.max(sat, 0), 1)
+  const l = Math.min(Math.max(light, 0), 1)
+  const c = (1 - Math.abs(2 * l - 1)) * s
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
+  const m = l - c / 2
+  const [r, g, b] =
+    h < 60
+      ? [c, x, 0]
+      : h < 120
+        ? [x, c, 0]
+        : h < 180
+          ? [0, c, x]
+          : h < 240
+            ? [0, x, c]
+            : h < 300
+              ? [x, 0, c]
+              : [c, 0, x]
+  const digits = (v: number) =>
+    Math.round((v + m) * 255)
+      .toString(16)
+      .padStart(2, '0')
+      .toUpperCase()
+  return `#${digits(r)}${digits(g)}${digits(b)}`
+}
+
+/**
+ * THE SECOND LAMP. A tone's deep stop in, the same colour swung toward cyan out.
+ *
+ * WHY A TONE HAS A THIRD COLOUR AT ALL, when it has spent this file's whole history
+ * having two. The reference this wash is traced from is not two colours: measure its
+ * hue across the bottom edge and it runs 223 on the left and 210 on the right, a
+ * thirteen-degree swing that reads as TWO LIGHTS of slightly different colour rather
+ * than as one light at two strengths. That is the whole difference between the picture
+ * and every attempt at it that came before — a single hue pooling in two places is a
+ * gradient, two hues meeting in the middle is a lit surface — and it cannot be spelled
+ * with two stops.
+ *
+ * DERIVED AND NOT DECLARED, which is the choice worth defending. The alternative is a
+ * third literal per tone: eight more colours to keep in tune with the two they sit
+ * between, eight more chances for somebody to retune a deep stop and leave its partner
+ * behind, and a table where the relationship that MAKES the effect is invisible. Here
+ * the relationship is the value, so a tone stays two colours and nothing can drift.
+ *
+ * THE THREE NUMBERS ARE THE REFERENCE'S OWN, read off the fit: −13 degrees of hue,
+ * +5 points of lightness, +4 of saturation. Cooler, and lighter because it is the
+ * FURTHER lamp — the reference's right-hand pool sits eleven points of luminance above
+ * its left-hand one, and matching the hue while matching the depth would have put a
+ * second dark corner where the picture has a bright one.
+ *
+ * ONE SWING FOR EVERY TONE, including the warm ones, and that is deliberate rather than
+ * unexamined. −13 degrees off `AMBER_DEEP` is not "cooler" in any useful sense, it is a
+ * step toward coral; off `MINT_DEEP` it is a step toward yellow-green. What survives the
+ * translation is the thing that matters — the two pools are ADJACENT rather than
+ * identical, which is what stops the bottom of a card reading as one smear — and a
+ * per-family rule would be three rules nobody could keep straight for a difference
+ * nobody can see.
+ */
+const cooled = (deep: string) => {
+  const [h, s, l] = toHsl(deep)
+  return toHex(h - 13, s + 0.04, l + 0.05)
+}
+
+/**
+ * A COLOUR AND AN ALPHA INTO ONE 8-DIGIT HEX. `fade('#4D77EE', 0.62)` is `#4D77EE9E`.
+ *
+ * WHY THE ALPHA IS A SUFFIX and not `rgba()`: every bloom below needs the SAME colour at
+ * five different alphas, and `#RRGGBBAA` is the one spelling where the colour stays one
+ * substring. It is also why every stop in this file is six digits — see `toHsl`.
+ */
+const fade = (colour: string, alpha: number) =>
+  `${colour}${Math.round(Math.min(Math.max(alpha, 0), 1) * 255)
+    .toString(16)
+    .padStart(2, '0')
+    .toUpperCase()}`
+
+/**
+ * THE FALLOFF, as five stops: a raised cosine sampled at the quarters.
+ *
+ * THIS IS THE ONE NUMBER THAT DECIDES WHETHER THE WASH READS AS PAINT OR AS PLASTIC, and
+ * it took the longest to find. A `radial-gradient` with two stops fades LINEARLY, which
+ * means its alpha has a corner at both ends: a peak at the centre, so the bloom shows a
+ * bright dot, and a kink at the last stop, so the bloom shows its own ellipse as a faint
+ * ring. On a card 400px wide both are plainly visible and both are what makes a
+ * hand-rolled mesh gradient look hand-rolled. The reference has neither, because it was
+ * not built from gradients at all — it is blurred discs, and a Gaussian is flat at the
+ * top and flat at the tail.
+ *
+ * `0.5 * (1 + cos(pi * u))` is the cheapest curve with those two properties, and sampled
+ * at 0, ¼, ½, ¾ and 1 the straight lines between the samples are within one alpha step of
+ * it. So: five stops, evenly spaced, and the numbers are `cos` rather than anything
+ * anybody chose.
+ *
+ * THE LAST STOP IS THE SAME COLOUR AT ZERO ALPHA, never `transparent`. `transparent` is
+ * rgba(0,0,0,0), so interpolating to it drags the bloom through grey and leaves a dirty
+ * halo where it meets the field — the classic gradient artefact, and the reason `fade()`
+ * takes the colour rather than the layer taking two.
+ */
+const BLOOM_RAMP = [1, 0.8536, 0.5, 0.1464, 0]
+
+/**
+ * ONE BLOOM. A colour, a centre, an ellipse and a peak alpha, out comes one
+ * `radial-gradient` layer.
+ *
+ * THE ELLIPSE IS THE FALLOFF'S EXTENT, not the bloom's visible size: `BLOOM_RAMP` reaches
+ * zero exactly at the ellipse's edge, so `w` and `h` say where the bloom STOPS rather
+ * than where it is bright. That is why several of the sizes in `WASH` look too large for
+ * what you see on the card — a bloom is only near its peak over the middle third of its
+ * own ellipse.
+ *
+ * PERCENTAGES ALL THE WAY, so a tone is resolution-independent and the composition
+ * survives a card 320px wide and the same tone stretched behind a 1200px mockup. `w` is
+ * a percentage of the box's WIDTH and `h` of its height, which is CSS's own rule for a
+ * sized `radial-gradient` and the reason a bloom stretches with the card rather than
+ * staying circular.
+ */
+const bloom = (colour: string, x: number, y: number, w: number, h: number, peak: number) =>
+  `radial-gradient(${w}% ${h}% at ${x}% ${y}%, ${BLOOM_RAMP.map(
+    (step, i) => `${fade(colour, peak * step)} ${i * 25}%`,
+  ).join(', ')})`
+
+/**
+ * THE COMPOSITION. Six blooms, in CSS's own order — FIRST is nearest the viewer.
+ *
+ * THE FIRST SIX NUMBERS IN EACH ROW ARE TRACED, not composed. The reference is a bitmap;
+ * this table is the result of fitting six blooms plus a flat field to it, and the fit
+ * lands within 2.5/255 RMSE of the original with the largest single-pixel error inside
+ * the steepest part of the left-hand pool. So they are not a designer's reading of the
+ * picture, they ARE the picture — which is why the way to vary a tone is the four
+ * budgets after them and never these six.
+ *
+ * WHAT EACH ROW IS, read as the composition rather than as coordinates:
+ *
+ *   1. `top`, tall and narrow, up the middle-left — the PALE RIDGE. It is the only bloom
+ *      that paints the quiet stop, and it does nothing at all except where a later row
+ *      has already coloured the field, which is exactly its job: it carves the bright
+ *      channel that separates the left-hand pool from everything above it. Take this row
+ *      out and the bottom two-thirds of the card fills in as one mass.
+ *   2. `deep`, wide and very faint, high and right of centre — the HAZE. The only colour
+ *      above the midline, and what keeps the top of the card from reading as one straight
+ *      pale band with weather underneath it.
+ *   3. `cool`, at the bottom right — the FAR POOL, the second lamp. See `cooled()`.
+ *   4. `cool`, tall and narrow at the bottom centre — where the two lamps MEET. It is
+ *      tall because the reference's hue transition runs up the card, not along its
+ *      bottom edge.
+ *   5. `deep`, very wide, centred off the bottom-left corner — the NEAR POOL, the card's
+ *      most saturated ground and the deepest point of the wash.
+ *   6. `deep`, mid-left — the near pool's SHOULDER, which is what gives the left-hand
+ *      mass its diagonal top edge instead of a horizon.
+ *
+ * AND WHAT IS ABSENT: a shadow. Every previous version of this darkened the bottom
+ * corners with `ink` at a named alpha, on the reasoning that a ground turning away from
+ * the light is what makes a card read as lit. The reference does not do that — its
+ * darkest point is 71% luminance and it is the periwinkle itself, not black under the
+ * periwinkle — and side by side the ink layer is what made the old cards look dusty. The
+ * depth here is entirely the near pool being deeper than the field.
+ *
+ * `dx` `dy` `ds` `da` ARE THE JITTER BUDGETS, and they are the other half of this table:
+ * how far `mesh()`'s dice may move that particular bloom on a tone that asks for a
+ * composition of its own. One composition across eight grounds is one gradient STAMPED
+ * eight times — eight cards lit by the same six lamps — and the eye reads the repeated
+ * shape before it reads either colour, most obviously where two cards sit side by side.
+ * So the traced rows are the CENTRE of a range rather than the whole answer.
+ *
+ * A BUDGET PER ROW AND NOT ONE FOR THE TABLE, which is the part that took the longest and
+ * is worth not undoing. One global ±10% moves every bloom by the same licence, and two of
+ * these rows cannot take it: row 4 is 68% TALL, so a few points of extra height and a
+ * nudge upward turns it into a column running the full card and the colour stops reading
+ * as pooling at the bottom at all — which is what a uniform budget produced on `rose` and
+ * `amber`, and it is a different picture rather than the same one rearranged. Row 4's
+ * height budget is therefore half of everything else's, and rows 2 and 3 — wide, faint,
+ * far from the copy — carry the widest.
+ *
+ * WHAT THE BUDGETS PROTECT, checked by rendering all eight and measuring rather than by
+ * eye: the colour's centroid stays at y ≈ 75% on every tone (it is 76% on the reference),
+ * the deepest point stays below y = 83%, and the top-left — 62% of the width by 34% of the
+ * height, which is where `ToneCard` puts the title and the description — never drifts
+ * further from the field than the reference's own corner does. A composition that broke
+ * any of those would be a card the copy is unreadable on, which renders perfectly.
+ */
+const WASH: [
+  lamp: 'top' | 'deep' | 'cool',
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  peak: number,
+  dx: number,
+  dy: number,
+  ds: number,
+  da: number,
+][] = [
+  ['top', 34, 51, 22, 52, 0.7, 11, 5, 12, 5],
+  ['deep', 67, 48, 30, 40, 0.23, 13, 6, 15, 4],
+  ['cool', 73, 85, 30, 32, 0.65, 11, 5, 15, 5],
+  ['cool', 51, 88, 23, 68, 0.58, 9, 4, 8, 5],
+  ['deep', 10, 95, 66, 43, 0.62, 11, 4, 11, 5],
+  ['deep', 34, 78, 49, 43, 0.63, 11, 5, 13, 5],
+]
+
+/**
+ * THE COMPOSITION'S DICE. A tone's name in, a stream of numbers out, the same numbers
+ * every time.
+ *
+ * SEEDED, not `Math.random()`: this runs when Tailwind loads its config, so a live random
+ * would deal a different composition into the stylesheet on every build. That is a
+ * rebuild whose CSS diff is noise, a screenshot test that can never pass twice, and —
+ * worst — a card that looked right when it was reviewed and ships as something else. Same
+ * name, same numbers, for ever.
+ *
+ * ON THE NAME rather than on the stops, which is the less obvious half. Seeding on the
+ * colours would be the more literal reading of "a pattern per colour", and it means
+ * retuning `AMBER_DEEP` by two points RESHUFFLES amber's whole composition — a colour
+ * correction that silently moves every bloom on ~30 surfaces. The name is the tone's
+ * identity and the thing that is stable; the stops are what we expect to tune.
+ *
+ * FNV-1a INTO XORSHIFT32, both textbook, neither cryptographic and neither needs to be.
+ * What is actually required of this is: same input → same output, small changes in the
+ * name → an unrelated stream, and a flat enough spread that a range like −11..11 is not
+ * always answered with −11. `Math.imul` is in here because FNV's multiply overflows 32
+ * bits and `*` would silently go through a double.
+ *
+ * EVERY DRAW IS BOUNDED BY `WASH`, which is what makes a random composition safe to ship
+ * without eyes on every future tone: the budgets there are narrow, and each is a range
+ * within which any value is a card we would have drawn by hand. See `WASH` for what they
+ * are and what they protect.
+ */
+const seeded = (seed: string) => {
+  let h = 2166136261
+  for (let i = 0; i < seed.length; i += 1) {
+    h ^= seed.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  // One draw, rounded to a whole number — a gradient stop does not need decimals, and
+  // the composition reads as something a person could have typed.
+  return (min: number, max: number) => {
+    h ^= h << 13
+    h ^= h >>> 17
+    h ^= h << 5
+    return Math.round(min + (((h >>> 0) % 1000) / 1000) * (max - min))
+  }
+}
+
+/**
+ * THE SHAPE EVERY TONE IS BUILT IN. Two colours and, optionally, a name in; one diffuse
+ * wash out.
+ *
+ * A tone used to be `linear-gradient(135deg, light, deep)`: one straight sweep, corner to
+ * corner, the colour arriving at an even rate the whole way across. It read as a card
+ * that had been FILLED — the same amount of gradient everywhere, and the copy in the
+ * top-left sitting on a tint rather than on a light. This is the picture instead: the
+ * reference the product owner supplied, traced. See `WASH` for the composition and
+ * `BLOOM_RAMP` for the falloff, which is the half that decides whether it reads as paint.
+ *
+ * THE FIELD IS FLAT, and it is the LAST layer — `linear-gradient(top, top)`, a solid
+ * spelled as an image because `backgroundImage` is where a tone is declared. Every
+ * version before this anchored a big radial past a corner so the ground itself travelled;
+ * the reference's top third and its entire right edge are one unvarying colour, and a
+ * flat field is both what that is and what makes the wash's own edges impossible to find.
+ *
+ * IT ALSO SETTLES THE ONE THING THAT COULD BREAK A CARD RATHER THAN RESTYLE IT. The copy
+ * sits in the top-left; the title has to be readable there; `top` is the stop chosen so it
+ * is. With a flat field, the top-left corner IS `top` — not approximately and not until
+ * somebody retunes a bloom, because nothing in `WASH` reaches it at any draw the budgets
+ * allow.
+ *
+ * `seed` IS THE TONE'S OWN NAME, and passing it is what buys a composition of its own:
+ * the whole set of blooms mirrors or does not, and each one is nudged inside its budget.
+ * `lib/designTokens.test.ts` pins that each call site passes ITS OWN name, because two
+ * tones sharing a seed is one line pasted and half-edited, and what it produces is two
+ * grounds wearing the same arrangement — the exact thing the dice are here to prevent, in
+ * the one form nobody would notice by reading the diff.
+ *
+ * OMITTING IT IS ALSO A CHOICE, and exactly one tone makes it. `sky`'s two stops are the
+ * reference's own, so `bg-tone-sky` IS the picture rather than a variation on it, and
+ * jittering it would mean the design system no longer contains the thing it was traced
+ * from. The anchor does not move; everything else is measured against it.
+ *
+ * MIRRORING IS DRAWN FIRST AND APPLIES TO THE WHOLE SET, never per bloom. Which side the
+ * near pool gathers on is the composition's single loudest fact — it is what somebody
+ * describes when they describe one of these cards — and flipping it doubles the shapes
+ * available for free. Flipping blooms INDIVIDUALLY would not: the six would come apart
+ * into an arrangement that no longer has a near pool and a far one, which is not a
+ * variation on the reference but the loss of it.
+ *
+ * WHAT `top` AND `deep` MEAN, since the names matter more than "first" and "second":
+ * `top` is the quiet stop, the one the copy has to be readable on, and `deep` is the
+ * vivid one that pools at the bottom. For the six light tones that is pale → saturated;
+ * for `indigo` and `midnight` it is dark → less dark, and the flat field is a NEAR-BLACK
+ * one there. That is what keeps `text-white` safe on them: the wash cannot lighten the
+ * corner the title sits in, because nothing paints that corner.
+ */
+const mesh = (top: string, deep: string, seed?: string) => {
+  const lamp = { top, deep, cool: cooled(deep) }
+  const d = seed === undefined ? null : seeded(seed)
+  // Drawn before the rows so it belongs to the tone rather than to a bloom, and drawn
+  // first so adding a row later cannot change which side an existing tone pools on.
+  const flip = d !== null && d(0, 1) === 1
+  return [
+    ...WASH.map(([which, x, y, w, h, peak, dx, dy, ds, da]) => {
+      if (d === null) return bloom(lamp[which], x, y, w, h, peak)
+      const at = x + d(-dx, dx)
+      return bloom(
+        lamp[which],
+        flip ? 100 - at : at,
+        y + d(-dy, dy),
+        Math.round(w * (1 + d(-ds, ds) / 100)),
+        Math.round(h * (1 + d(-ds, ds) / 100)),
+        peak + d(-da, da) / 100,
+      )
+    }),
+    `linear-gradient(${top}, ${top})`,
+  ].join(', ')
+}
+
 const TONES = {
-  /** Palest of the four: barely a tint, for a card that carries a busy visual. */
-  'tone-mist': `linear-gradient(135deg, #E8F0FF 0%, #F7FAFF 100%)`,
   /**
-   * The soft blue deepening into a light indigo. Still dark-ink territory.
-   *
-   * THE SWEEP IS WIDER THAN IT WAS — #D9E8FF → #BDC5F7 originally, which is 8 points of
-   * luminance and read as a flat wash rather than as a gradient. Beside `midnight`,
-   * whose two stops are a black and a blue, the light cards looked like they had simply
-   * been filled. Opening the top stop and deepening the bottom one gives this tone the
-   * same VISIBLE travel the dark ones have, without changing what it is: both stops are
-   * still light enough for `text-ink`, which is the constraint that decides how far this
-   * can go and is checked by `lib/designTokens.test.ts`'s ink pairing.
+   * Palest of the four, and the ground for a card that carries a busy visual. Eleven
+   * points of travel — the quietest of the six light tones, and no longer the invisible
+   * one. See `MIST_DEEP` for what it was and why three points was not a whisper but
+   * nothing at all.
    */
-  'tone-sky': `linear-gradient(135deg, #E6F0FF 0%, #A3B2F0 100%)`,
-  /** Saturated: the design system's own two blues, `accent` into `brand`. */
-  'tone-indigo': `linear-gradient(135deg, #6366F1 0%, ${BRAND} 100%)`,
+  'tone-mist': mesh(MIST_LIGHT, MIST_DEEP, 'mist'),
+  /**
+   * THE REFERENCE ITSELF. `mesh()` is traced from one picture; this is the tone whose two
+   * stops are that picture's own, so `bg-tone-sky` is not an interpretation of it — the
+   * card and the file the product owner sent are the same image, within 2.5/255.
+   *
+   * WHICH IS WHY IT IS THE ONE TONE WHOSE STOPS MOVED when the wash landed. #E6F0FF →
+   * #A3B2F0 was a pale blue into a light indigo, tuned when a tone was a 135° sweep and
+   * the whole card had to carry the colour; the reference's field is a fraction warmer
+   * (#E2EEFC) and its lamp a good deal more saturated (#4D77EE), because in this
+   * composition the deep stop is a LIGHT rather than a fill — it never lands anywhere at
+   * full strength. The deepest point of the finished card measures #799AF2, which is very
+   * nearly where #A3B2F0 used to sit. A stop this saturated read on its own would look
+   * like a tone that had drifted out of the family; on the card it is the same weight it
+   * always was, and still comfortably dark-ink territory — the constraint that decides
+   * how far this can go, checked by `lib/designTokens.test.ts`'s ink pairing.
+   */
+  'tone-sky': mesh(SKY_LIGHT, SKY_DEEP),
+  /**
+   * Saturated: `accent` as the field, and a brand blue driven past `brand`'s own
+   * lightness as the lamp. Eighteen points of travel, the deepest of the two dark grounds
+   * and enough that a four-column row landing both does not read as one of them having
+   * been left flat. It ran `accent` into `brand` itself until
+   * the wash was traced; see `INDIGO_DEEP` for why five points of lightness could not
+   * survive losing the ink shadow.
+   */
+  'tone-indigo': mesh(ACCENT, INDIGO_DEEP, 'indigo'),
   /** The dark one. `ink` into a deepened brand, never into `brand` at full. */
-  'tone-midnight': `linear-gradient(135deg, #0A0A0A 0%, ${BRAND_DEEP} 100%)`,
+  'tone-midnight': mesh(INK, BRAND_DEEP, 'midnight'),
   /**
    * THE ONE TONE THAT IS NOT IN THE BLUE FAMILY, and it is earned rather than added:
    * it dresses the card for `/magic:done`, which is the end of the loop. Green is
@@ -225,13 +735,16 @@ const TONES = {
    * terminal, a diff's additions, a passing gauge — so the closing card being green is
    * the palette agreeing with itself, not a second accent.
    *
-   * LIGHT, like `mist` and `sky`, and it takes the dark ink they take. See the note on
-   * its stops above for why it is not the saturated green it started as.
+   * LIGHT, like `mist` and `sky`, and it takes the dark ink they take. Fifteen points of
+   * travel on the traced composition, which is `amber`'s — the loop's two bookends tuned
+   * to one volume, give or take what the dice do to each. See the
+   * note on its stops above for why it is neither the saturated green it started as nor
+   * the tint it briefly became.
    *
    * It is NOT in `CARD_TONE_CYCLE`. The cycle is positional and means nothing in
    * particular; this one means something, so it is asked for by name.
    */
-  'tone-mint': `linear-gradient(135deg, ${MINT_LIGHT} 0%, ${MINT_DEEP} 100%)`,
+  'tone-mint': mesh(MINT_LIGHT, MINT_DEEP, 'mint'),
   /**
    * THE SECOND TONE OUTSIDE THE BLUE FAMILY, and earned the same way `mint` is: it
    * dresses the card for `/magic:start`, which is where a piece of work ENTERS the loop.
@@ -246,7 +759,7 @@ const TONES = {
    * It is NOT in `CARD_TONE_CYCLE`, for `mint`'s reason: the cycle is positional and
    * means nothing in particular, and this one means something.
    */
-  'tone-amber': `linear-gradient(135deg, ${AMBER_LIGHT} 0%, ${AMBER_DEEP} 100%)`,
+  'tone-amber': mesh(AMBER_LIGHT, AMBER_DEEP, 'amber'),
   /**
    * Pink. A named ground with no page asking for it yet, which is a different standing
    * from `mint` and `amber` and worth being straight about: those two MEAN something on
@@ -258,7 +771,7 @@ const TONES = {
    * Light, so it takes the dark ink the other light tones take. Not `red` and not
    * `purple`; see the note on its stops above.
    */
-  'tone-rose': `linear-gradient(135deg, ${ROSE_LIGHT} 0%, ${ROSE_DEEP} 100%)`,
+  'tone-rose': mesh(ROSE_LIGHT, ROSE_DEEP, 'rose'),
   /**
    * Yellow, on the same standing as `rose` above: declared and available, named by
    * nothing yet.
@@ -268,7 +781,7 @@ const TONES = {
    * from `amber` that a grid carrying both reads as two colours rather than as one at
    * two strengths, which is the risk with any two warm tones in one table.
    */
-  'tone-lemon': `linear-gradient(135deg, ${LEMON_LIGHT} 0%, ${LEMON_DEEP} 100%)`,
+  'tone-lemon': mesh(LEMON_LIGHT, LEMON_DEEP, 'lemon'),
 }
 
 // THE PRODUCT PLATES. One gradient per integration, declared here and used as
@@ -315,9 +828,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: '#0a0a0a',
+        ink: INK,
         muted: '#52525b',
         softblue: '#D9E8FF',
+        // `softblue`'s green counterpart, for the one page whose opening is green rather
+        // than blue: `/download`. It is `MINT_LIGHT` — the pale stop of the mint tone —
+        // named as a colour so a `from-softgreen` reads beside `from-softblue`, and so the
+        // hero's wash and the tone card that closes the loop are the same green. See the
+        // note on `MINT_LIGHT` for why this is not `green` (#22c55e): that one is a status.
+        softgreen: MINT_LIGHT,
         canvas: '#F4F7FE',
         // The hairline. One weight, `ink` at 8% — between the 5% that outlines a
         // surface and the 10% that outlined a field, both of which were written as
@@ -437,7 +956,7 @@ const config: Config = {
         // exemption to justify but simply an inventory of where blue means state,
         // measurement or decoration instead of action.
         accent: {
-          DEFAULT: '#6366f1',
+          DEFAULT: ACCENT,
           hover: '#818cf8',
         },
         brand: BRAND,
@@ -481,6 +1000,22 @@ const config: Config = {
           'notification-ink': '#E1E1E1',
           /** The age in its corner. */
           'notification-dim': '#B1B1B1',
+          // THE THREE WINDOW BUTTONS, for the drawn app window on the homepage
+          // (`components/site/home/AppWindowMockup.tsx`).
+          //
+          // Here for the same reason the banner above is: macOS draws these, the desktop
+          // app's markup only leaves the 64px gutter they sit in, and a web page has no
+          // native chrome to fill it. So the mockup draws them — and a borrowed colour
+          // pasted at that call site is the one nobody dares retune later, because nobody
+          // can tell whether it was chosen or copied. Sampled from the real buttons in
+          // their ACTIVE state (the window is focused in the drawing); an unfocused window
+          // greys all three to one value, which nothing here needs.
+          /** The close button, leftmost. */
+          close: '#FF5F57',
+          /** Minimise, in the middle. */
+          minimize: '#FEBC2E',
+          /** Zoom, rightmost. */
+          zoom: '#28C840',
         },
         // THE DESKTOP APP'S OWN TWO INKS, for the reproductions on `/features`.
         //
@@ -536,7 +1071,7 @@ const config: Config = {
       // declarations and their comments, and a second copy here is the copy that would
       // go stale. Two objects and not one merged constant, because they are two
       // different KINDS of ground — see the note on `PLATES`.
-      backgroundImage: { ...TONES, ...PLATES },
+      backgroundImage: { ...TONES, ...PLATES, ...MARKS },
       // The elevation scale. Four rungs, deliberately few: a white-on-white
       // interface separates things by space and by a whisper of a shadow, and a
       // seven-step ramp only invites two neighbouring surfaces to differ by an
@@ -575,7 +1110,11 @@ const config: Config = {
         lift: `0 16px 36px -18px ${SHADOW_TINT(0.4)}`,
         // `lift` on the mint tone: the same shape, tinted with a green two steps deeper
         // than the plate's own — a grey shadow on a green ground reads as dirt, a green one
-        // as depth. For the usage card's panel and nothing else.
+        // as depth. TWO CONSUMERS, and both are a panel on a mint plate: the usage card's
+        // on `/features`, and the browser in the homepage's cloud band
+        // (`CloudBrowserMockup`). That is the rung's whole rule — anything sitting on
+        // `tone-mint` takes this instead of `lift` — and it is the reason it is a declared
+        // token rather than the arbitrary value it began as.
         'lift-mint': '0 12px 32px -8px rgba(21, 94, 58, 0.45), 0 2px 6px -2px rgba(21, 94, 58, 0.3)',
         // THE ONLY RUNG THAT CASTS SIDEWAYS, and it exists because the other four
         // cannot: every one of them is a DOWNWARD shadow with a negative spread, which
@@ -598,6 +1137,56 @@ const config: Config = {
         // first attempt here was `-6px 0 20px -6px` and rendered, correctly, as almost
         // nothing at all.
         edge: `-10px 0 24px -4px ${SHADOW_TINT(0.25)}, -1px 0 2px ${SHADOW_TINT(0.1)}`,
+        // THE FOUR RUNGS THE `/desktop` OPENING AND THE HOMEPAGE HERO ADDED, named for what
+        // casts them rather than for a height, because none of them is a surface rung a
+        // second caller should reach for by size.
+        //
+        // `window`: the app's drawn window rising out of a band's floor — long, soft and
+        // heavy, in the indigo tint, because it is the one object on either page meant to
+        // read as SITTING on the canvas rather than floating a hair above it.
+        window: `0 40px 80px -30px ${SHADOW_TINT(0.55)}`,
+        // `pane` and `bubble`: the "before" pile's grey windows and the two speech
+        // bubbles over them. Neutral black, NOT the indigo tint, on purpose: the pile is
+        // `grayscale` and the bubbles sit on it, so a tinted shadow would be the one
+        // coloured thing in a panel drawn to have no colour.
+        pane: '0 20px 40px -20px rgba(0, 0, 0, 0.6)',
+        bubble: '0 8px 20px -10px rgba(0, 0, 0, 0.4)',
+        // `ring-green`: not a shadow at all but a halo — a 4px spread of the success
+        // green at 18% around the check that closes the hero's ladder. A `ring` utility
+        // would do the same job and take the element's own `ring-offset` colour with it;
+        // this keeps the halo in the shadow scale where the test can see it.
+        'ring-green': '0 0 0 4px rgba(34, 197, 94, 0.18)',
+        // THE RUNG THAT CASTS NOWHERE IN PARTICULAR, for a panel cut by its plate on TWO
+        // sides at once.
+        //
+        // That is the homepage's app band (`home/AppSection.tsx`): the window is inset
+        // from the plate's top and left and runs off its bottom and right, so BOTH a
+        // horizontal and a vertical boundary are on show. `edge` above answers the
+        // one-vertical-edge case and casts only leftward, which leaves the top edge sitting
+        // on the blue with nothing under it; `lift` casts only downward and, as the note on
+        // `edge` records, resolves to nothing at all on an edge that is not the bottom one.
+        //
+        // So this one has NO OFFSET: it spills evenly, and both visible edges get the same
+        // boundary. That is also the honest reading of the composition — a screenshot
+        // floating on a coloured plate is not lit from anywhere in particular, where a card
+        // sitting on the page is lit from above like everything else on it.
+        //
+        // THE BLUR HAS TO BEAT THE SPREAD, which is `edge`'s rule in the form it takes
+        // when the offset is zero: the negative spread pulls the shadow's box in from every
+        // side, and with nothing pushing it out it is the blur alone that spills past the
+        // edge.
+        //
+        // AND IT IS HALF THE BLUR, not the blur — which is the arithmetic this rung got
+        // wrong on its first pass and is worth stating so nobody redoes it. A CSS blur of
+        // `n` fades over `n`, centred on the shadow's edge, so only `n/2` of it lands
+        // OUTSIDE. `0 0 40px -12px` therefore spilled 20 − 12 = 8px, not the ~28 it was
+        // written for, and rendered as a smudge you had to look for. 64 against −8 spills
+        // 24px, and that is a number the plate's 16-32px of visible ground can show.
+        //
+        // Two layers, for `button`'s reason: the wide soft one is the depth, the tight one
+        // gives the silhouette something to sit on so the window does not float free of
+        // the ground it is cut against.
+        panel: `0 0 64px -8px ${SHADOW_TINT(0.42)}, 0 0 4px ${SHADOW_TINT(0.16)}`,
       },
       borderRadius: {
         // The soft radius of the button. `rounded-xl` (0.75rem) rather than the
@@ -664,9 +1253,59 @@ const config: Config = {
       // a CSS animation is a change of `animation-name`. `Reveal` alternates between
       // the two. Do not "clean this up" into one.
       keyframes: {
+        /**
+         * The homepage timeline (`components/site/home/SkillsTimeline.tsx`): one ticket's
+         * life, played out and then rewound.
+         *
+         * FOUR BEATS, and the percentages are the whole choreography:
+         *
+         *   0 → 4%    still at the start, so the first stops can be read before anything
+         *             moves. A row already sliding when you arrive has no beginning.
+         *   4 → 70%   the run. Two thirds of the cycle spent covering the distance, which
+         *             is what makes it read as work being done rather than as a carousel.
+         *   70 → 88%  THE HALT. The run ends on the merge, and the row stops dead there
+         *             for a fifth of the cycle — the beat the whole drawing is built
+         *             around, because a merged pull request is where a ticket's story
+         *             actually lands.
+         *   88 → 92%  the rewind, and it is deliberately violent: the same distance the
+         *             run took 16 seconds to cover, taken in one. Back to the plan, ready
+         *             for the next idea.
+         *   92 → 100% still at the start again, so the snap has somewhere to land.
+         *
+         * `-65%` IS A PERCENTAGE OF THE TRACK, not a pixel count, so it survives a stop
+         * being added or the pitch changing. It is the distance that brings the LAST stop
+         * to the card's right edge at the two-column width; on a wider card the run simply
+         * ends with a little more rail showing past `Done`.
+         */
+        'timeline-run': {
+          '0%, 3%': {
+            transform: 'translateX(0)',
+            // Governs the RUN, 5% → 55%. The curve is the reason the row reads as
+            // something being scrolled rather than something being conveyed: it leaves
+            // the plan gently, covers the middle at speed, and settles onto the merge
+            // instead of hitting it. `linear` was correct while the loop was seamless and
+            // wrong the moment it grew a beginning and an end.
+            animationTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+          },
+          '68%, 82%': {
+            transform: 'translateX(calc(-100% + 480px))',
+            // Governs the REWIND, 76% → 84%. Steeper in the middle than the run's curve
+            // and symmetrical, so the way back reads as one flick rather than as the run
+            // played backwards.
+            animationTimingFunction: 'cubic-bezier(0.6, 0, 0.4, 1)',
+          },
+          '88%, 100%': { transform: 'translateX(0)' },
+        },
         'reveal-a': {
           from: { opacity: '0', translate: '0 var(--reveal-from, 0.75rem)' },
           to: { opacity: '1', translate: '0 0' },
+        },
+        // The `/desktop` headline's strike-through, drawn once across the word it
+        // crosses: a bar that GROWS from the left, for the reason `strikeAt` gives above
+        // — a bar that fades in has already crossed the word before you see it.
+        'strike-in': {
+          from: { transform: 'scaleX(0)' },
+          to: { transform: 'scaleX(1)' },
         },
         'reveal-b': {
           from: { opacity: '0', translate: '0 var(--reveal-from, 0.75rem)' },
@@ -696,6 +1335,17 @@ const config: Config = {
           // ~1.9s of the 11s loop for 21 characters: around 11 a second, a person
           // typing a command they know.
           '17%, 100%': { maxWidth: '21ch' },
+        },
+        /**
+         * A command typed once, per character: `max-width` from nothing to the line's own
+         * width, which the caller hands over as `--type-chars` (in `ch`) along with a
+         * `steps()` count and a duration to match, since every command is a different
+         * length. `/workflow`'s step terminals (`workflow/StepTerminal.tsx`) type four
+         * different commands through this one keyframe.
+         */
+        'type-in': {
+          from: { maxWidth: '0ch' },
+          to: { maxWidth: 'var(--type-chars, 100%)' },
         },
         'caret-blink': {
           '0%, 45%': { opacity: '1' },
@@ -742,6 +1392,110 @@ const config: Config = {
           '35%': { transform: 'scaleY(0.55)' },
           '70%': { transform: 'scaleY(1.1)' },
         },
+        /**
+         * ── THE SHARE GRAPH'S THREE BEATS ──────────────────────────────────────
+         *
+         * `components/site/home/OrgArt.tsx`'s `PlanSharingArt` plays one story on a 9s
+         * loop, and the product owner wrote the running order: "1 personne à gauche => le
+         * plan qui s'écrit en live => le plan qui se partage à deux autres personnes avec
+         * l'animation des points". Three keyframes, one per beat, and they share a period
+         * so the beats stay in the stated order forever rather than only on the first
+         * pass.
+         *
+         * THE WHOLE LOOP, in one place, because no single keyframe below shows it:
+         *
+         *     84 → 98%   `plan-arrive`  the idea reaches the author's sheet
+         *      0 → 25%   `plan-write`   the plan writes itself, line after line
+         *     30 → 62%   `plan-share`   two dots carry it out to two people
+         *     60 → 81%   `plan-write`   the sheet clears
+         *     81 → 84%                  rest
+         *
+         * `plan-arrive` RUNS AT THE END OF THE CYCLE AND NOT THE START, which is the trick
+         * that makes this readable. The beat has to come BEFORE the writing, and the
+         * writing owns 0%; putting the arrival at 84–98% means it lands at the loop
+         * boundary, which IS just before 0% on every pass but the first. Nothing else
+         * would have worked without giving the writing a dead 15% to start after.
+         *
+         * `offsetDistance` AND NOT A `transform`, which is the only reason the two dot
+         * keyframes can exist at all. The wires are bezier curves; a translate would have
+         * to trace each one by hand in its own set of keyframes, and they would silently
+         * stop matching the moment a curve moved. CSS motion path takes the path itself —
+         * the caller passes the SAME `d` string the `<path>` is drawn from as an inline
+         * `offset-path`, so a dot is on its wire by construction rather than by
+         * arithmetic. (It was by arithmetic for one round: three hard-coded `cx`/`cy` pairs
+         * that were simply not on the curves, which is the bug this replaced.)
+         */
+
+        /**
+         * BEAT ONE: the idea arriving. One dot, up the author's wire, into the sheet.
+         *
+         * The wire is drawn FROM the sheet outwards like every other, so the author's end
+         * is `offset-distance: 100%` and the run is 100% → 0%. The long invisible stretch
+         * from 0 to 84% is the dot drifting back out to the author with `opacity: 0` — a
+         * jump would be free too, but interpolating costs nothing and keeps the keyframe
+         * to one readable shape.
+         */
+        'plan-arrive': {
+          '0%': { offsetDistance: '0%', opacity: '0' },
+          '84%': { offsetDistance: '100%', opacity: '0' },
+          '86%': { opacity: '1' },
+          '98%': { offsetDistance: '0%', opacity: '1' },
+          '100%': { offsetDistance: '0%', opacity: '0' },
+        },
+
+        /**
+         * BEAT TWO: the plan writing itself. One keyframe, worn by the sheet's four rules
+         * — the title and three stories — each with its own `animation-delay`.
+         *
+         * `strokeDashoffset` FROM 1 TO 0 IS THE PEN. The rules carry `pathLength="1"` and
+         * `stroke-dasharray="1"`, which normalises each one's length to a single unit
+         * whatever it actually measures — so one keyframe draws a 26px line and a 40px
+         * line at the same rate, and moving a rule cannot desynchronise it.
+         *
+         * DELAYS ARE SAFE HERE AND THEY WERE NOT SAFE IN THE FIRST DRAFT, which is worth
+         * writing down because it is the trap this file's `done-*` group avoids by using
+         * five keyframes instead of one. A delay shifts an element's ENTIRE cycle, so with
+         * the clear at 86–94% a 1.2s (13%) delay put the last rule's clear at 99–107% —
+         * past the boundary, landing modulo 9s on top of the next pass's writing, and the
+         * sheet cleared itself while it was still being written. Pulling the clear back to
+         * 60–68% leaves 32% of headroom, which is more than the 13% of stagger the four
+         * rules spend. The rule to keep: `max delay% + clear-end% <= 100%`.
+         *
+         * THE BULLETS WEAR THIS TOO, and only the opacity half of it reaches them: a
+         * `<circle>` with a fill and no stroke has no dash to offset. One keyframe for a
+         * row's marker and its rule is what keeps the two arriving together.
+         */
+        'plan-write': {
+          '0%': { strokeDashoffset: '1', opacity: '0' },
+          '2%': { opacity: '1' },
+          '12%': { strokeDashoffset: '0', opacity: '1' },
+          '60%': { strokeDashoffset: '0', opacity: '1' },
+          '68%': { strokeDashoffset: '0', opacity: '0' },
+          '100%': { strokeDashoffset: '1', opacity: '0' },
+        },
+
+        /**
+         * BEAT THREE: the plan going out. Two dots, down the two recipients' wires,
+         * starting once the last rule is written.
+         *
+         * 0% → 100%, THE OTHER WAY ROUND FROM `plan-arrive` and from what this drawing did
+         * for a round. It ran people → plan on the owner's own earlier suggestion; the
+         * brief that replaced it puts an author on the left and the recipients on the
+         * right, which makes the outward direction the only one that reads — a plan is
+         * written once and picked up by whoever is free.
+         *
+         * The two dots differ by an `animation-delay` at the call site rather than by a
+         * second keyframe here, and the same headroom rule as `plan-write` applies: the
+         * run ends at 62%, so a 0.5s (5.6%) stagger is nowhere near the boundary.
+         */
+        'plan-share': {
+          '0%': { offsetDistance: '0%', opacity: '0' },
+          '30%': { offsetDistance: '0%', opacity: '0' },
+          '33%': { opacity: '1' },
+          '58%': { offsetDistance: '100%', opacity: '1' },
+          '62%': { offsetDistance: '100%', opacity: '0' },
+          '100%': { offsetDistance: '100%', opacity: '0' },
+        },
         // `ask-arrive` is the `waiting` badge: the question bubble ARRIVES rather than
         // gestures — a small lift with a tilt into it, a settle back past level, then
         // rest — because that state is the agent asking you something, not the agent
@@ -769,6 +1523,253 @@ const config: Config = {
         'strike-3': strikeAt(22),
         'strike-4': strikeAt(30),
         'strike-5': strikeAt(38),
+        // ── The homepage's "Make it yours" switch ────────────────────────────────
+        //
+        // ONE CLICK, ON AND OFF AGAIN, over a 4.8s loop. Three keyframes rather than one
+        // because three different properties move on three different elements — the
+        // knob's position, the track's colour and the pointer's press — and a single
+        // keyframe cannot address three boxes. They share the same percentages, which is
+        // what keeps them one gesture: change a beat here and change it in all three.
+        //
+        // THE BEATS: rest to 15%, the press at 15–20% (the knob's travel and the track's
+        // turn happen inside it), on and at rest to 60%, the second press at 60–65%, then
+        // off and at rest for the last third. The rest either side is deliberately the
+        // majority of the loop — a switch flicking continuously is a fidget, and what the
+        // card is illustrating is that the app HAS switches, not that they are being
+        // thrashed. The OFF rest is longer than the ON one so the loop's seam lands in the
+        // middle of a still, where nobody sees it.
+        //
+        // 5% IS ~240ms AT THIS DURATION, which is what makes the move read as a mechanism
+        // rather than as a fade. macOS's own switch settles in about that.
+        // A TIMING FUNCTION INSIDE A KEYFRAME GOVERNS THE SEGMENT THAT STARTS THERE, and
+        // getting that backwards is what made the first version wrong in a way the product
+        // owner spotted immediately: "j'aime bien l'animation de la désactivation, mais
+        // l'animation de l'activation est trop lente". The two moves were the same length,
+        // so it was not the duration — the bezier was declared on the `20%` keyframe, which
+        // governs 20→65 and therefore the move OFF. The move ON ran on the shorthand's
+        // `linear` and had no snap at all, which at this size reads as slow rather than as
+        // flat. The curve now sits on the keyframes the moves START from.
+        //
+        // AND THE ON IS NOW GENUINELY FASTER THAN THE OFF: 16→19 against 60→65, ~145ms
+        // against ~240ms. Deliberately asymmetric, and it is how a switch behaves — the one
+        // that answers you is the one you pressed FOR, so it wants to arrive; going back is
+        // an undo and can take its time. The owner liked the off exactly as it was, so only
+        // the on moved.
+        'switch-knob': {
+          // `cubic-bezier(.32,1.4,.55,1)` overshoots slightly on arrival, which is the
+          // difference between a knob that slides and one that is thrown. Declared INSIDE
+          // the keyframe, as `timeline-run` does: a function on the shorthand would apply
+          // to every segment, including the two long rests where there is nothing to ease.
+          '0%, 16%': { transform: 'translateX(0)', animationTimingFunction: 'cubic-bezier(.32,1.4,.55,1)' },
+          '19%, 60%': { transform: 'translateX(3rem)', animationTimingFunction: 'cubic-bezier(.32,1.4,.55,1)' },
+          '65%, 100%': { transform: 'translateX(0)' },
+        },
+        // 3rem IS NOT A GUESS: the track is `w-28` (112px) with `p-2` (8px a side), so its
+        // inside measures 96px and the knob is `h-12 w-12`. 96 − 48 = 48 = 3rem. The three
+        // numbers have to agree, which is why they are written out here as well as at the
+        // call site.
+        'switch-track': {
+          // OFF is ink at 12% — the switch's own off state on a light ground, not a grey
+          // token, because it has to sit on the card's gradient without picking a fight
+          // with it. ON is `brand`, the same blue the primary button is filled with.
+          //
+          // THE SAME BEATS AS THE KNOB, to the percent. A track still turning after the
+          // knob has arrived is a switch with a lag in it.
+          '0%, 16%': { backgroundColor: 'rgba(10, 10, 10, 0.12)' },
+          '19%, 60%': { backgroundColor: BRAND },
+          '65%, 100%': { backgroundColor: 'rgba(10, 10, 10, 0.12)' },
+        },
+        // The pointer: it ARRIVES from the card's lower right, presses, backs off a little
+        // while the switch answers, comes back to press again, then leaves the way it came.
+        // It does NOT travel with the knob — a cursor that follows the thing it just
+        // switched is a DRAG, which is not how a switch is operated — so the two presses
+        // land on the same spot and the knob moves under a hand that stays put.
+        //
+        // IT MOVED FOR ONE ROUND ONLY WITH THE PRESS, a dip in place, and the owner asked
+        // for it to move ("tu peux le faire bouger le cursor"). The travel is in glyph
+        // widths (`4.5em`-ish at the size the card draws it) so it scales with the arrow.
+        //
+        // THE PRESS HAS TO BEGIN BEFORE THE KNOB MOVES, or the cursor is reacting to the
+        // switch instead of causing it. It goes down at 14% and the knob leaves at 16%;
+        // down at 59% and the knob leaves at 60%. Two percent is ~96ms, which is about the
+        // gap between a real click landing and a real switch answering it. The two glides
+        // (4%→11%, 46%→56%) are what `ease-in-out` on the shorthand shapes.
+        'switch-cursor': {
+          '0%, 4%': { transform: 'translate(140%, 120%) scale(1)', opacity: '0' },
+          '6%': { opacity: '1' },
+          '11%, 13%': { transform: 'translate(0, 0) scale(1)', opacity: '1' },
+          '14%, 18%': { transform: 'translate(-4%, 5%) scale(0.9)' },
+          '23%, 30%': { transform: 'translate(0, 0) scale(1)' },
+          '36%, 46%': { transform: 'translate(45%, 40%) scale(1)' },
+          '56%, 58%': { transform: 'translate(0, 0) scale(1)' },
+          '59%, 63%': { transform: 'translate(-4%, 5%) scale(0.9)' },
+          '69%, 74%': { transform: 'translate(0, 0) scale(1)', opacity: '1' },
+          '86%, 100%': { transform: 'translate(140%, 120%) scale(1)', opacity: '0' },
+        },
+        // ── The security band's secrets table ────────────────────────────────────
+        //
+        // TWO SECRETS DISSOLVING INTO BIG PIXELS, one after the other, over a 7-second
+        // loop — the drawing in `SecuritySection`'s secrets card, `home/SecurityArt.tsx`.
+        //
+        // WHAT IS ANIMATED IS AN OPACITY, AND THAT IS THE WHOLE POINT. The mosaic is
+        // ALWAYS there, underneath, with a static SVG filter on it; what moves is a
+        // readable copy of the same string lying on top of it, fading away. So each row is
+        // legible for a beat, dissolves into its own blocks, and STAYS unreadable for the
+        // rest of the cycle — five of the seven seconds, which is what makes "we cannot
+        // read this" the panel's resting state rather than a moment in it.
+        //
+        // IT ANIMATED `filter` DIRECTLY FIRST, AND IT SNAPPED. The product owner spotted it
+        // — "j'ai l'impression qu'elle sacade un peu" — and the cause is worth writing down
+        // precisely, because the obvious explanation is the wrong one.
+        //
+        // IT WAS NOT A PERFORMANCE PROBLEM. The first diagnosis was that an active
+        // animation on `filter` forces the browser to re-evaluate an expensive SVG filter
+        // every frame; that was measured, in Chromium, against a page with three of these
+        // cells, and it is false. Both versions hold a steady frame interval with nothing
+        // over 24ms across four seconds. Nothing was being dropped.
+        //
+        // WHAT IT WAS: `filter: url(...)` IS NOT INTERPOLABLE. CSS falls back to DISCRETE
+        // interpolation between two filter references, so the old animation did not move at
+        // all — it JUMPED, none → 3px → 5px, three states and two hard cuts. That is what
+        // "saccade" describes, and no amount of frame budget would have smoothed it.
+        //
+        // SO THE FIX IS TO ANIMATE SOMETHING THAT CAN BE INTERPOLATED. `opacity` can, so
+        // the readable copy now travels continuously over ~0.35s where the filter used to
+        // cut. The filtered layer underneath is static, which is a real if incidental
+        // saving: it is rasterised once and never looked at again.
+        //
+        // IT WAS A `blur()` BEFORE EITHER OF THOSE, and the owner asked for pixels. The
+        // change is not cosmetic: a blur says the text is out of FOCUS, which is a property
+        // of whoever is looking, where a mosaic says the RESOLUTION is gone, which is a
+        // property of what was kept. The second is the claim the card actually makes.
+        //
+        // ONE ANIMATION PER ROW AND NOT TWO, which falls out of stacking them in that
+        // order: the mosaic needs no animation because it is never hidden, so the readable
+        // copy fading out is the entire effect. Cross-fading two layers would have been two
+        // keyframes per row saying the same thing twice.
+        //
+        // THE STAGGER IS IN THE PERCENTAGES, not in an `animation-delay`, for the reason
+        // `statusIn` at the top of this file sets out at length: a delay on an `infinite`
+        // animation applies to the FIRST iteration only, so the second row would keep its
+        // own phase for ever and by the third cycle the two would be dissolving in the
+        // wrong order.
+        //
+        // FIVE WAVES AND NOT TWO, since the table went from three rows to five. Two
+        // staggers alternated across five rows would have read as the table going dark in
+        // two clumps; four percent apart, top to bottom, it reads as one pass sweeping
+        // down it. The last row still has its ~4.5 seconds redacted.
+        'secret-reveal-1': {
+          '0%, 18%': { opacity: '1' },
+          '23%, 100%': { opacity: '0' },
+        },
+        'secret-reveal-2': {
+          '0%, 22%': { opacity: '1' },
+          '27%, 100%': { opacity: '0' },
+        },
+        'secret-reveal-3': {
+          '0%, 26%': { opacity: '1' },
+          '31%, 100%': { opacity: '0' },
+        },
+        'secret-reveal-4': {
+          '0%, 30%': { opacity: '1' },
+          '35%, 100%': { opacity: '0' },
+        },
+        'secret-reveal-5': {
+          '0%, 34%': { opacity: '1' },
+          '39%, 100%': { opacity: '0' },
+        },
+        /**
+         * THE HERO'S MARK — the Claude Code pixel figure at the centre of the orbit
+         * (`components/site/home/HeroSection.tsx`). Three things it does, on three
+         * keyframe sets, because they run on three different elements and clocks:
+         *
+         *   • `hero-hop`: the whole figure. One hop in a 7s loop, and the loop is mostly
+         *     stillness — the figure squats (scaleY .9) for a beat, leaves the ground for
+         *     ~.3s, lands with a small squash and settles. Everything from 22% on is rest,
+         *     so the hop reads as a thing it DOES now and then rather than a bounce it is
+         *     stuck in. `transform-origin` is set to the bottom edge at the call site.
+         *   • `hero-wink`: ONE eye, scaled shut and open again. The eye is a white rect on
+         *     the orange body, so `scaleY(.1)` on it is a lid coming down. It closes twice
+         *     quickly around 60% of a 5s loop — a wink and not a blink, because one eye
+         *     — and the two loops (7s and 5s) drift against each other so the hop and the
+         *     wink almost never land together.
+         *   • `hero-flinch`: on click, once. The figure jerks back 6° and 4px, then
+         *     overshoots forward and settles — the "Aïe" the bubble says, drawn.
+         *   • `hero-ouch`: the bubble itself, once. A pixel bubble should not ease in: it
+         *     pops from .6 to 1.06 to 1 in three hard steps (`steps(1)` on the shorthand),
+         *     so it appears frame by frame the way the figure it belongs to was drawn.
+         */
+        'hero-hop': {
+          '0%, 6%': { transform: 'translateY(0) scaleY(1)' },
+          '9%': { transform: 'translateY(0) scaleY(0.9)' },
+          '13%': { transform: 'translateY(-16px) scaleY(1.06)' },
+          '17%': { transform: 'translateY(0) scaleY(0.94)' },
+          '20%': { transform: 'translateY(0) scaleY(1.02)' },
+          '22%, 100%': { transform: 'translateY(0) scaleY(1)' },
+        },
+        'hero-wink': {
+          '0%, 58%': { transform: 'scaleY(1)' },
+          '61%': { transform: 'scaleY(0.1)' },
+          '64%': { transform: 'scaleY(1)' },
+          '67%': { transform: 'scaleY(0.1)' },
+          '70%, 100%': { transform: 'scaleY(1)' },
+        },
+        'hero-flinch': {
+          '0%': { transform: 'rotate(0) translateY(0)' },
+          '25%': { transform: 'rotate(-6deg) translateY(4px)' },
+          '60%': { transform: 'rotate(3deg) translateY(-2px)' },
+          '100%': { transform: 'rotate(0) translateY(0)' },
+        },
+        'hero-ouch': {
+          '0%': { opacity: '0', transform: 'scale(0.6)' },
+          '34%': { opacity: '1', transform: 'scale(1.06)' },
+          '67%, 100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        /**
+         * THE REST OF THE FIGURE'S REPERTOIRE, added when the owner asked for more than a
+         * flinch ("lorsqu'on spam click sur lui il dit Arrêtez !!!"). One idle loop and
+         * three click moods — `ClaudeFigure` in `HeroSection.tsx` says which click count
+         * earns which:
+         *
+         *   • `hero-look`: both eyes together, an 11s idle loop. They glance right, hold,
+         *     glance left, hold, come back — the holds are most of the cycle, so it reads
+         *     as looking at something rather than as eyes rolling. Runs on the `<g>` that
+         *     holds the eyes; the wink runs on one eye inside it, so the two compose.
+         *   • `hero-shake`: the head-shake "no", five swings of 6px in .45s, once per
+         *     click. Third and fourth clicks.
+         *   • `hero-sulk`: the figure turns its back — `scaleX(-1)` — with a small hop on
+         *     the way round, and STAYS turned (`forwards`) until the mood is over. Fifth to
+         *     seventh clicks.
+         *   • `hero-dance`: it gives up and dances, `infinite` for as long as the mood
+         *     lasts: a bounce with a tilt each way and a half-turn in the middle, 1.2s a
+         *     bar. Eighth click and beyond.
+         */
+        'hero-look': {
+          '0%, 18%': { transform: 'translateX(0)' },
+          '22%, 40%': { transform: 'translateX(0.6px)' },
+          '44%, 62%': { transform: 'translateX(-0.6px)' },
+          '66%, 100%': { transform: 'translateX(0)' },
+        },
+        'hero-shake': {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '20%': { transform: 'translateX(-6px)' },
+          '40%': { transform: 'translateX(6px)' },
+          '60%': { transform: 'translateX(-5px)' },
+          '80%': { transform: 'translateX(4px)' },
+        },
+        'hero-sulk': {
+          '0%': { transform: 'scaleX(1) translateY(0)' },
+          '50%': { transform: 'scaleX(0) translateY(-10px)' },
+          '100%': { transform: 'scaleX(-1) translateY(0)' },
+        },
+        'hero-dance': {
+          '0%, 100%': { transform: 'translateY(0) rotate(0) scaleX(1)' },
+          '20%': { transform: 'translateY(-14px) rotate(-10deg) scaleX(1)' },
+          '40%': { transform: 'translateY(0) rotate(0) scaleX(1)' },
+          '50%': { transform: 'translateY(-8px) rotate(0) scaleX(-1)' },
+          '60%': { transform: 'translateY(0) rotate(0) scaleX(-1)' },
+          '80%': { transform: 'translateY(-14px) rotate(10deg) scaleX(-1)' },
+        },
       },
       // `backwards` and not `both`: the fill has to hold the FROM state through the
       // stagger's delay, but once the animation is over the element belongs to the
@@ -776,8 +1777,57 @@ const config: Config = {
       // the bar for the life of the page and quietly outrank anything that wanted to
       // move it later.
       animation: {
-        'reveal-a': 'reveal-a 600ms ease-out backwards',
-        'reveal-b': 'reveal-b 600ms ease-out backwards',
+        /**
+         * The timeline. `linear`, and that is what makes the four beats read as four:
+         * every segment's SPEED is then just its distance over its slice of the cycle, so
+         * the slow run, the dead stop and the snap back all come out of one keyframe with
+         * no easing to soften the contrast between them.
+         *
+         * 24s, and the RHYTHM is what these numbers are tuned against rather than the
+         * pixel speed — a stop passing the card is the event a reader tracks, not a
+         * distance. The run takes 65% of the cycle: 15.6s for ~1250px, about 80px a
+         * second, and with columns averaging ~166px a stop passes every ~2.1s. Then 3.4s
+         * of halt on the merge, 1.4s for the way back, and 2.9s at rest.
+         *
+         * IT WAS 26s AND THE OWNER ASKED FOR "A TOUCH FASTER", so the cycle came down by
+         * two seconds — about 11% off the time a stop takes to cross. The history is worth
+         * keeping because the speed has been wrong in both directions: 16s was too fast at
+         * ~145px a second, 30s too slow once the columns tightened, and every change to
+         * the spacing moves the distance underneath all of it.
+         *
+         * `calc(-100% + 560px)` RATHER THAN A PERCENTAGE, and this is the fix for a
+         * fragility that has cost four rounds. The halt has to land with `Done` near the
+         * card's right edge, and a percentage of the track cannot express that: the track
+         * is as wide as its labels happen to set, so every reword moved the ending. It was
+         * 65%, then 66, 67, 70, 71 — each one re-measured against a screenshot after a
+         * label changed, and wrong again the next time one did.
+         *
+         * `-100%` puts the track's RIGHT EDGE at the viewport's left; adding 480px puts it
+         * 480px in instead. `Done` is the last column, so its bead sits a fixed ~77px from
+         * that edge whatever the labels ahead of it do — which means the run now ends in
+         * the same place by construction, and a reword changes only how far it travels to
+         * get there.
+         *
+         * WHY 480 AND NOT 560. The number IS the padding to the right of `Done`, which is
+         * what makes it worth reading as one: the bead lands at `value − 77 + 24` from the
+         * card's left edge (the 24 being the drawing's own `pl-6`), so against a ~550px
+         * card, 560 left it 43px from the right edge and looking jammed against it. 480
+         * gives ~123px — `Done` reads as having ARRIVED somewhere rather than as having
+         * been stopped by the frame. Lower it further to bring the ending further in.
+         *
+         * NO TIMING FUNCTION OUT HERE, which is the change that matters: each beat carries
+         * its own inside the keyframe. A function declared on the shorthand would apply to
+         * EVERY segment, including the two holds, and would fight the two curves that make
+         * the run and the rewind feel different from each other.
+         */
+        'timeline-run': 'timeline-run 24s infinite',
+        // 400ms, down from 600: the entrance plays when a band scrolls into view now, and
+        // a rise that took most of a second after the reader had arrived read as slow.
+        // See `STEP_MS` in `components/site/Reveal.tsx`, which came down with it.
+        'reveal-a': 'reveal-a 400ms ease-out backwards',
+        'reveal-b': 'reveal-b 400ms ease-out backwards',
+        // Starts once the headline has landed (the copy's reveal is 400ms), and holds.
+        'strike-in': 'strike-in 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) 700ms both',
         // The start card's run: one 11s loop, and EVERY animation in it shares that
         // duration with no delay on any of them. That is what keeps them in phase —
         // see `statusIn` at the top of this file. The order the lines arrive in is in
@@ -791,6 +1841,8 @@ const config: Config = {
         // through a delay, and there is no delay left to hold.
         'caret-type': 'caret-type 11s steps(21, end) infinite',
         'caret-blink': 'caret-blink 1.1s step-end infinite',
+        // Duration and step count are overridden inline per command: see the keyframe.
+        'type-in': 'type-in 1s steps(20, end) both',
         'status-1': 'status-1 11s linear infinite',
         'status-2': 'status-2 11s linear infinite',
         'status-3': 'status-3 11s linear infinite',
@@ -809,7 +1861,22 @@ const config: Config = {
         // The sidebar's two states. The wave's stagger is a delay at the call site, so
         // one animation serves all three bars.
         'wave-bar': 'wave-bar 1.2s ease-in-out infinite',
-        'ask-arrive': 'ask-arrive 3s ease-in-out infinite',
+        // THE SHARE GRAPH'S THREE BEATS, and the 9s has to be IDENTICAL across all three:
+        // they are one story told by three keyframes, and a period that differed by even a
+        // tenth would have the beats drift out of order over a minute of watching. See the
+        // keyframes above for the running order.
+        //
+        // 9s BECAUSE THE MIDDLE BEAT SETS IT. Four rules writing on at ~0.4s apart, each
+        // taking ~1s to draw, is 2.5s of writing before anything can be shared; the
+        // arrival and the two runs out want about a second each, and the sheet has to stand
+        // finished long enough to be read as finished. Faster and it is a flicker.
+        //
+        // `linear` ON THE TWO DOT BEATS, because the curve's own shape is the only easing
+        // they want — a dot easing in and out along a bezier reads as hesitant. `ease-out`
+        // on the writing, where a pen slowing as it finishes a line is exactly right.
+        'plan-arrive': 'plan-arrive 9s linear infinite',
+        'plan-write': 'plan-write 9s ease-out infinite',
+        'plan-share': 'plan-share 9s linear infinite',
         // The done checklist: 400ms between ticks means a 5s loop and 8% steps.
         'done-1': 'done-1 5s linear infinite',
         'done-2': 'done-2 5s linear infinite',
@@ -821,6 +1888,54 @@ const config: Config = {
         'strike-3': 'strike-3 5s linear infinite',
         'strike-4': 'strike-4 5s linear infinite',
         'strike-5': 'strike-5 5s linear infinite',
+        // The switch. `linear` on the shorthand and the easing inside the keyframes, for
+        // `timeline-run`'s reason: two of the three beats are RESTS, and a curve applied
+        // to the whole cycle would ease its way through them for no effect while flattening
+        // the one move that wants a curve. The three share a duration to the millisecond —
+        // they are one gesture drawn on three elements, and a knob arriving a frame before
+        // its track changes colour is a switch that looks broken.
+        //
+        // THE CARD USED TO MOVE WITH THEM and no longer does. Three more keyframes turned
+        // the card's own ground dark while the switch was on, ink and all; the product
+        // owner tried it and cut it — "retire le changement de background sur À votre
+        // main". Worth recording because it was not a bug: it worked, and a card that
+        // repaints itself twice every five seconds is simply louder than a grid of five
+        // wants. The switch is the thing that moves; the card holds still around it.
+        'switch-knob': 'switch-knob 4.8s linear infinite',
+        'switch-track': 'switch-track 4.8s linear infinite',
+        'switch-cursor': 'switch-cursor 4.8s ease-in-out infinite',
+        // The secrets table's two rows: one 7s loop, no delay on either, the order in
+        // the keyframes.
+        //
+        // `ease-in`, and it is the first curve in this table that changes anything the eye
+        // can see: the property being animated is now interpolable (see the keyframes), so
+        // the easing actually governs a travel rather than decorating a cut. The readable
+        // copy holds nearly still through the start of its fade and then goes, which reads
+        // as being taken away rather than as dimming steadily. ~0.35s — long enough to see
+        // the text become its own blocks, short enough that the superimposed frames in the
+        // middle never look like a rendering fault.
+        'secret-reveal-1': 'secret-reveal-1 7s ease-in infinite',
+        'secret-reveal-2': 'secret-reveal-2 7s ease-in infinite',
+        'secret-reveal-3': 'secret-reveal-3 7s ease-in infinite',
+        'secret-reveal-4': 'secret-reveal-4 7s ease-in infinite',
+        'secret-reveal-5': 'secret-reveal-5 7s ease-in infinite',
+        // The hero's mark: see the four keyframe sets above. The hop and the wink are
+        // `infinite` on periods that share no divisor (7s, 5s), so they beat against
+        // each other for 35s before repeating an alignment. The two one-shots are
+        // `forwards` and mounted on click — the element appears with the animation on
+        // it, so there is nothing to restart.
+        'hero-hop': 'hero-hop 7s ease-in-out infinite',
+        'hero-wink': 'hero-wink 5s linear infinite',
+        'hero-flinch': 'hero-flinch 0.45s ease-out forwards',
+        'hero-ouch': 'hero-ouch 0.3s steps(1, end) forwards',
+        // The repertoire: see the keyframes. `hero-look` is a third idle period (11s)
+        // sharing no divisor with the hop's 7s or the wink's 5s. The three moods are
+        // mounted with their class when the click count reaches them, and keyed on the
+        // count so each click replays the one-shots from their first frame.
+        'hero-look': 'hero-look 11s ease-in-out infinite',
+        'hero-shake': 'hero-shake 0.45s ease-in-out forwards',
+        'hero-sulk': 'hero-sulk 0.5s ease-in-out forwards',
+        'hero-dance': 'hero-dance 1.2s ease-in-out infinite',
       },
     },
   },

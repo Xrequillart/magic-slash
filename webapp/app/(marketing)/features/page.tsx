@@ -8,7 +8,7 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * A server component whose only job is the `metadata`, with the page itself in a client
  * component next door: the list needs `useT()` for its copy and a scroll listener for
  * its sidebar, and `metadata` cannot be exported from a `'use client'` module. Same
- * split as `/story`.
+ * split as `/faq`.
  *
  * WHAT IS ON THE PAGE IS NOT DECIDED HERE. `lib/features.ts` is the source of truth —
  * five families, ~30 features — and `FeaturesContent` renders it with a `.map()`. Adding

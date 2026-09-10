@@ -52,7 +52,36 @@ const PUBLIC_PATHS = new Set([
   '/changelog',
   '/faq',
   '/features',
+  // NOT A PAGE ANY MORE EITHER, and listed for the same reason `/documentation` is at the
+  // bottom of this list: it is in `RETIRED_PATHS` below and 308s to the homepage, which
+  // only fires while this rule agrees the path is public. Drop it and a reader following
+  // a link to the founding story is handed a login form instead of a redirect.
   '/story',
+  // The homepage's workflow band links straight here, which is what makes this entry
+  // load-bearing rather than housekeeping: absent from this list, `/workflow` is decided
+  // to belong to the app and a reader following the band's own button lands on a login
+  // form. `lib/workflow.ts` owns the path (`WORKFLOW_PATH`) and `workflow.test.ts` reads
+  // this file to pin the two together.
+  '/workflow',
+  // THE HEADER'S OWN NEW PAGES, which are load-bearing for the same reason
+  // `/workflow` above is and one click closer to it: they are in the HEADER, on every
+  // public page, so a row absent from this list does not 404 — it 307s the reader to a
+  // login form on `app.magic-slash.io`, and a bar whose own menu appears to sign you
+  // out is worse than a bar with fewer rows. `lib/siteNav.ts` owns the paths and
+  // `siteNav.test.ts` reads this file to pin each one against its page.
+  //
+  // `/desktop` is the marketing page for the macOS app, and it is NOT `/application`:
+  // that path belongs to the app's own settings section on `app.magic-slash.io`, where
+  // it is decided by this list's own default (absent → the app host).
+  //
+  // TWO PATHS HAVE BEEN CUT FROM HERE, and neither is in `RETIRED_PATHS`: `/skills`,
+  // dropped with its page for duplicating `/workflow`, and `/best-practices`, deleted by
+  // request with the Help menu that opened it. Neither needs a redirect because neither
+  // ever reached production — no link to them exists to keep alive, which is the whole
+  // difference between those two and `/documentation` below.
+  '/desktop',
+  '/cloud',
+  '/download',
   // NOT A PAGE ANY MORE. `/documentation` is in `RETIRED_PATHS` below and 308s to
   // `/faq`, and it has to stay listed HERE for that redirect to be the one that fires:
   // drop it and `canonicalHost` decides it belongs to the app, which 307s the reader to
@@ -84,6 +113,17 @@ const PUBLIC_PATHS = new Set([
  */
 const RETIRED_PATHS: Record<string, string> = {
   '/documentation': '/faq',
+  // THE FOUNDING STORY, deleted by request with its row in the bar and its row in the
+  // footer. It goes to the HOMEPAGE and not to a successor, because it has none: nothing
+  // replaced what that page said, which is the honest difference between this entry and
+  // the one above it — `/documentation`'s content moved, `/story`'s is gone.
+  //
+  // A REDIRECT REGARDLESS, and that is the whole reason this table exists rather than
+  // the route simply being deleted: `/story` shipped, it was in the footer of every
+  // public page for releases, and a bookmark or an inbound link does not stop existing
+  // when we stop serving it. `/best-practices` was deleted in the same story and is NOT
+  // in here, for the opposite reason — that path never reached production.
+  '/story': '/',
 }
 
 /**

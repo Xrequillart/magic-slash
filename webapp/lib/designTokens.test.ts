@@ -41,15 +41,17 @@ const TREES = ['../components', '../app'].map((dir) => fileURLToPath(new URL(dir
 const SCANNED_EXTENSIONS = ['.ts', '.tsx', '.css']
 
 /**
- * Out of scope for the rebuild, and each one carries hand-tuned shadows that belong
- * to a page with its own stylesheet rather than to the app's token scale.
+ * Out of scope for the rebuild, and it carries hand-tuned shadows that belong to a page
+ * with its own stylesheet rather than to the app's token scale.
  *
- * `doc.css` was the third and is deleted with `/documentation` — see `lib/faq.test.ts`
- * for what replaced that page. Its name is dropped rather than left as a harmless
- * no-op: an exclusion for a file that does not exist reads as a page still carrying
- * untokenised shadows, which is a claim about the codebase that is no longer true.
+ * IT IS DOWN TO ONE FILE, and the two that left were dropped from this list rather than
+ * kept as harmless no-ops: an exclusion for a file that does not exist reads as a page
+ * still carrying untokenised shadows, which is a claim about the codebase that is no
+ * longer true. `doc.css` went with `/documentation` (see `lib/faq.test.ts` for what
+ * replaced that page); `story.css` went with `/story`, deleted by request — the path
+ * 308s to the homepage now, see `RETIRED_PATHS` in `lib/hostRouting.ts`.
  */
-const EXCLUDED_FILES = ['marketing.css', 'story.css']
+const EXCLUDED_FILES = ['marketing.css']
 
 /** Tailwind's own `boxShadow` scale, which needs no declaration of ours. */
 const BUILT_IN_SHADOWS = ['sm', 'md', 'lg', 'xl', '2xl', 'inner', 'none']
@@ -166,6 +168,104 @@ describe('design tokens', () => {
       'tone-rose',
       'tone-sky',
     ])
+  })
+
+  /**
+   * EVERY TONE IS BUILT BY `mesh()`, WITH BOTH ITS STOPS AND ITS OWN NAME. Three silent
+   * failures, one check.
+   *
+   * THE FIRST is a tone that spells its own gradient. `mesh()` is the shape the whole
+   * family shares — six blooms traced off a reference, plus the flat field — and a
+   * `'tone-x': 'radial-gradient(…)'` pasted in beside the others renders perfectly,
+   * matches nothing, and cannot be retuned with the rest. It is the same failure an
+   * arbitrary `shadow-[…]` at a call site is, which is what this file exists to prevent,
+   * committed one level up: inside the declaration site itself.
+   *
+   * THE SECOND is a call with one argument. `mesh(top)` leaves `deep` undefined, so the
+   * five blooms that carry the colour interpolate `undefined00` — an invalid stop, which
+   * CSS drops by discarding THE WHOLE DECLARATION. The card comes out with no background
+   * at all: no error, no warning, and on the white pages it lands on, not obviously
+   * wrong. It is also the plausible edit, because the way a ninth tone gets added is by
+   * copying the line above it.
+   *
+   * THE THIRD is a tone seeded on somebody else's name. The seed IS the arrangement: it
+   * decides which side the near pool gathers on and where all six blooms land inside
+   * their budgets, so two tones passing the same string are two grounds wearing identical
+   * blooms in identical places — the mechanical stamped look the dice exist to prevent,
+   * arriving in the one form nobody spots by reading a diff. It is the same copied line
+   * as the second failure, one argument along.
+   *
+   * `sky` IS THE ONE TONE ALLOWED TO PASS NO SEED, and the exception is the point rather
+   * than an oversight: its two stops are the reference's own, so `bg-tone-sky` IS the
+   * traced picture and jittering it would mean the design system no longer contains the
+   * thing every other tone was measured against. So the rule is two arguments for `sky`
+   * and three for everybody else — which also catches the reverse mistake, a `sky` that
+   * somebody helpfully seeds to make the table look consistent.
+   *
+   * READ AS TEXT, like everything else here, and that is a constraint rather than a
+   * preference — this suite runs on the ROOT `node_modules`, so it may not import the
+   * webapp's config. What it buys anyway: the check lands on the CALL SITE, which is
+   * where all three mistakes live. Evaluating `mesh()` and comparing the eight strings
+   * would catch the third too, but it would pass just as happily on a seed of
+   * `'tone-mist'` or `'Mist'` — near-misses that work today and stop matching the day
+   * something else keys off a tone's name.
+   *
+   * It does NOT check the composition — the six blooms, their budgets, the falloff. Those
+   * are the design; they are traced from a picture today and a test that pinned them
+   * would fail the next time the picture changes on purpose. The invariants worth a test
+   * are the ones a reviewer cannot see: these three, and the ink pairing below.
+   */
+  it('builds every card tone through mesh(), with both stops and its own seed', () => {
+    const tones = objectLiteral(config, 'TONES')
+    const declared = literalKeys(tones)
+    expect(declared).toHaveLength(8)
+
+    for (const key of declared) {
+      const tone = key.replace(/^tone-/, '')
+      const row = tones.split('\n').find((line) => line.trim().startsWith(`'${key}':`))
+      expect(row, `\`${key}\` is declared but this test cannot find its line`).toBeTruthy()
+
+      const call = /:\s*mesh\(([^)]*)\)/.exec(row as string)
+      expect(call, `\`${key}\` does not build its ground with mesh() — a tone may not spell its own gradient`).toBeTruthy()
+
+      const args = (call as RegExpExecArray)[1].split(',').map((arg) => arg.trim())
+      for (const arg of args) expect(arg, `\`${key}\` passes an empty argument to mesh()`).not.toBe('')
+
+      if (tone === 'sky') {
+        expect(args, '`tone-sky` is the traced reference and must pass no seed — see mesh()').toHaveLength(2)
+        continue
+      }
+
+      expect(args, `\`${key}\` passes ${args.length} argument(s) to mesh(); it takes two stops and its own name`).toHaveLength(3)
+      expect(args[2], `\`${key}\` seeds its composition on ${args[2]} rather than on its own name`).toBe(`'${tone}'`)
+    }
+  })
+
+  /**
+   * THE FLAT FIELD IS THE LAST LAYER `mesh()` RETURNS, and this is the one ordering in
+   * the design system that is catastrophic rather than merely wrong.
+   *
+   * CSS paints the FIRST background layer nearest the viewer, so the field — a solid
+   * `top`, spelled as a `linear-gradient` because `backgroundImage` is where a tone is
+   * declared — has to come last, underneath the six blooms. Move it anywhere else and it
+   * paints OVER them: every one of the eight grounds comes out as a flat rectangle of its
+   * quiet stop, on ~30 surfaces at once, with the whole wash still in the stylesheet and
+   * nothing in the diff to say what happened.
+   *
+   * It is a plausible edit for a specific reason: read as prose, "the field" sounds like
+   * the thing you lay down FIRST, and the array in `mesh()` reads top to bottom. The
+   * comment there says which way round CSS is; this makes the suite say it too.
+   */
+  it('paints the tones on a flat field, declared last', () => {
+    const layers = /const mesh = [^]*?\.join\(', '\)/.exec(config)
+    expect(layers, '`mesh()` not found — this test is reading the wrong file').toBeTruthy()
+
+    const body = (layers as RegExpExecArray)[0]
+    expect(body).toContain('`linear-gradient(${top}, ${top})`')
+    expect(
+      body.indexOf('`linear-gradient(${top}, ${top})`'),
+      'the flat field must come after the blooms, or it paints over all six',
+    ).toBeGreaterThan(body.indexOf('WASH.map'))
   })
 
   /**

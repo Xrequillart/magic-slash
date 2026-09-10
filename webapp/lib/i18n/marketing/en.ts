@@ -37,13 +37,53 @@ export const marketingEn = {
       accessible name and not a tooltip beside one. Static while the glyph toggles,
       because `aria-expanded` on the button already announces open from closed. */
   'site.nav.menu': 'Site menu',
-  /** The header's Product dropdown: its trigger, then the entry that opens the
-      homepage's own features grid. Its five other entries reuse the documentation
-      keys below — `skillsReference`, `gettingStarted`, `configuration`,
-      `documentationCategory` and `changelog` were orphaned when the Resources menu
-      lost its columns, and are back rather than retyped under new names. */
+  /** Names the header's language picker. Its visible label is the code of the current
+      language (`EN`), which says what is chosen and not what the control DOES, so the
+      accessible name has to be the noun — and the panel's options are autonyms in their
+      own language (see `LANGUAGE_AUTONYM`), which is deliberately untranslated. */
+  'site.nav.language': 'Language',
+  /**
+   * THE HEADER'S MENU, ITS SIX ROWS, AND THE TWO LINKS BESIDE IT. `product` is the
+   * trigger; `workflow`, `application`, `cloud`, `allFeatures`, `changelog` and
+   * `download` are its rows, in that order; `faq` is the one row the bar shows in the
+   * open. `lib/siteNav.ts` owns the order and the destinations, and
+   * `siteNav.test.ts` looks every one of these keys up in BOTH catalogues — a key that
+   * does not exist renders as an empty row rather than as an error, `t()` having no
+   * per-key fallback.
+   *
+   * FOUR OF THEM ARE THE SAME WORD IN FRENCH, which is why they are one-word entries
+   * with an allow-list line each in `i18n.test.ts`: "Workflow", "Application" and
+   * "Cloud" are what the French UI calls them too — the product's own vocabulary, as
+   * `site.features.groupCloudTitle` already is — and "Changelog" was listed there long
+   * before this menu existed. `download` is NOT one of them ("Télécharger"), and
+   * neither is the trigger ("Produit").
+   *
+   * `allFeatures` moved rather than changed: it was the bar's single link, and it is
+   * now a row in the menu pointing at the same `/features`. `faq` has moved twice and is
+   * back where it started — the bar's second control, then a row of a **Help** menu, and
+   * a bare link again now that menu is gone. Neither key was rewritten, because neither
+   * destination was.
+   *
+   * THREE ROWS HAVE LEFT THIS FAMILY ALTOGETHER, and each took its keys with it.
+   * `site.nav.skills` had a `/skills` page behind it, cut for duplicating `/workflow` —
+   * one loop, described twice. `site.nav.bestPractices` had `/best-practices`, deleted
+   * by request with the **Help** menu it was half of; `site.nav.help` named that menu's
+   * trigger and is now `site.footer.help`, since the footer's own column is all that
+   * word is left for. `site.nav.ourStory` had `/story`, deleted by request in the same
+   * story — its whole `site.story.*` family went with the page, and the path 308s to the
+   * homepage (`RETIRED_PATHS` in `lib/hostRouting.ts`).
+   *
+   * THE KEYS ARE GONE RATHER THAN PARKED: an unreferenced key normally costs nothing to
+   * keep, but an en/fr pair that is identical also costs a line in `i18n.test.ts`'s EXACT
+   * allow-list, and a name in that list with nothing behind it is a fact about the site
+   * that is no longer true. `site.story.tl9Date` was exactly that line.
+   */
   'site.nav.product': 'Product',
+  'site.nav.workflow': 'Workflow',
+  'site.nav.application': 'Application',
+  'site.nav.cloud': 'Cloud',
   'site.nav.allFeatures': 'All features',
+  'site.nav.download': 'Download',
   'site.nav.resources': 'Resources',
   /** The header's account control, signed out. Signed in it shows the email instead. */
   'site.nav.signIn': 'Sign in',
@@ -57,27 +97,1279 @@ export const marketingEn = {
   'site.nav.faq': 'FAQ',
   'site.nav.updatesCategory': 'Updates',
   'site.nav.changelog': 'Changelog',
-  'site.nav.ourStory': 'Our Story',
+
+  // ── The pages the header opened ahead of their content ──────────────────────
+  /**
+   * `/cloud` and `/download`: two of the header's new rows, each a title and one lead.
+   * `components/site/PlaceholderContent.tsx` prints the first pair under the badge that
+   * admits the page is unwritten.
+   *
+   * THEY EXIST BECAUSE THE MENU DOES. A row pointing at a path `PUBLIC_PATHS` does not
+   * list 307s the reader to a login form on `app.magic-slash.io`, so the routes had to
+   * ship with the menu — see `PLACEHOLDER_PAGES` in `lib/siteNav.ts`. The copy is
+   * therefore a PROMISE OF SCOPE and nothing more: what each page will hold, so a
+   * reader who followed the row learns something rather than meeting an empty band.
+   *
+   * TWO PAIRS HAVE LEFT. `site.desktopPage.*` went when `/desktop` became real — the
+   * homepage's app band moved onto it whole, so the promise of scope had nothing left to
+   * promise, and the page heads itself with `site.desktop.title` below.
+   * `site.bestPracticesPage.*` went the other way: the page was deleted rather than
+   * written, with the Help menu that opened it.
+   */
+  // "Coming soon" on the page AND on every row that opens it (`SOON_NOTE`): the reader is
+  // told before the press. It said "Page in preparation" while only the page said it.
+  'site.pageSoon.note': 'Coming soon',
+  'site.nav.soon': 'Coming soon',
+  'site.cloudPage.title': 'The cloud',
+  'site.cloudPage.lead':
+    'Your configuration, your team and your usage, on every machine you sign in on, with nothing to copy across by hand.',
+  'site.downloadPage.title': 'Download Magic Slash',
+  /**
+   * `/download` IS A REAL PAGE NOW (`components/site/download/DownloadContent.tsx`), so
+   * its lead lost the "this page is being written" the two placeholders above still
+   * carry. The rest of the family is below with the page's own copy; the title and lead
+   * stay here so the four pages' openings read side by side.
+   */
+  'site.downloadPage.lead':
+    'One installer for macOS. Drop it in Applications, open it once, and the first launch sets up everything the eight commands need.',
+
+  // ── Download page ──────────────────────────────────────────────────────────
+  /**
+   * The pill above the title says WHICH build the button hands out, and when it shipped.
+   * Both values come from the code — `LATEST_DESKTOP_VERSION` and the changelog's date
+   * for it — so the sentence is never edited by hand at release time.
+   */
+  'site.downloadPage.versionBadge': 'Version {version} · released {date}',
+  /** The one primary button on the page. Same words as the hero's, which OPENS this page. */
+  'site.downloadPage.button': 'Download for Mac',
+  /**
+   * Under the button: what the file is, so nobody is surprised by a .dmg — and which
+   * Macs it runs on. Apple Silicon ONLY, because that is the only build the release
+   * workflow publishes (see `DESKTOP_DOWNLOAD_URL` in `lib/desktopRelease.ts`).
+   */
+  'site.downloadPage.fileHint': 'A .dmg for Apple Silicon Macs, version {version}.',
+  /** The line of reassurance under the button — `site.desktop.reassureFree` opens it. */
+  'site.downloadPage.reassureChip': 'Apple Silicon',
+  'site.downloadPage.reassureSigned': 'Signed and notarized by Apple',
+
+  /**
+   * THE PREREQUISITES BAND: the same three things `site.faq.prerequisites.a` lists, one
+   * card each, because the FAQ answer is a paragraph and a visitor about to press a
+   * download button reads a list. Three, and not more — they are the three the first
+   * launch actually checks (`desktop/src/main/setup/`).
+   */
+  'site.downloadPage.requirementsEyebrow': 'Before you install',
+  'site.downloadPage.requirementsTitle': 'Three things your Mac needs first.',
+  'site.downloadPage.requirementsLead':
+    'The first launch checks all three and tells you which one is missing. Nothing else is required — no account to create, no script to run.',
+  'site.downloadPage.reqClaudeTitle': 'Claude Code',
+  'site.downloadPage.reqClaudeBody':
+    'Installed and signed in. Every <code>/magic:</code> command runs inside it, so the app is only as ready as Claude Code is.',
+  'site.downloadPage.reqNodeTitle': 'Node.js 20 or newer',
+  'site.downloadPage.reqNodeBody':
+    'The Jira and GitHub MCP servers the commands talk to run on it.',
+  'site.downloadPage.reqGitTitle': 'Git 2.20 or newer',
+  'site.downloadPage.reqGitBody':
+    'For worktree support — one branch per agent, each in a folder of its own, so two agents never step on the same checkout.',
+  /**
+   * THE LINE UNDER THE THREE CARDS, set large and bold and centred: the cards read as a
+   * checklist to complete BEFORE pressing the button, and they are not one. The app
+   * probes all three at first launch and offers an install button for whichever is
+   * missing (`desktop/src/main/setup/prerequisites.ts`), so nobody has to prepare
+   * anything. The cards say what; this line says "and you don't have to".
+   */
+  'site.downloadPage.requirementsReassure':
+    'Don’t worry about it. The app checks all of this on first launch — and if something is missing, it offers to install it for you.',
+
+  /**
+   * THE FIRST-LAUNCH BAND, as three numbered steps in the app's own order. It is what
+   * replaced the install script the old site told people to pipe into a shell: there is
+   * nothing to run, and this band is where that promise is made concrete.
+   */
+  'site.downloadPage.launchEyebrow': 'First launch',
+  'site.downloadPage.launchTitle': 'Open it once. It does the rest.',
+  'site.downloadPage.launchLead':
+    'There is no install script. The app sets up its own machine on the first launch, and shows you each step as it goes.',
+  'site.downloadPage.stepChecksTitle': 'Checks the prerequisites',
+  'site.downloadPage.stepChecksBody':
+    'Claude Code, Node.js and Git, with their versions — and a one-line fix for whichever one is missing.',
+  'site.downloadPage.stepSkillsTitle': 'Installs the eight commands',
+  'site.downloadPage.stepSkillsBody':
+    'The <code>/magic:</code> skills land in <code>~/.claude/skills/</code>, where Claude Code picks them up in every project on the machine.',
+  'site.downloadPage.stepMcpTitle': 'Wires Jira and GitHub',
+  'site.downloadPage.stepMcpBody':
+    'Configures the MCP servers the commands rely on, then walks you through signing in to each one.',
+
+  /**
+   * THE CHANGELOG BAND. The page closes on the release notes of the build the button
+   * hands out — not the whole history, which is `/changelog`'s job and the button under
+   * the notes opens it. `{version}` is substituted, so the heading is never stale.
+   */
+  'site.downloadPage.changelogEyebrow': 'What’s new',
+  'site.downloadPage.changelogTitle': 'What changed in {version}.',
+  'site.downloadPage.changelogLead':
+    'The release notes for the build you are about to download. Every earlier release is on the changelog page.',
+  'site.downloadPage.fullChangelog': 'See the full changelog',
+  'site.downloadPage.releaseNotes': 'This release on GitHub',
+  /** The last line on the page, for whoever needs a build that is not this one. */
+  'site.downloadPage.olderVersions': 'Looking for an earlier release?',
+  'site.downloadPage.allReleases': 'All releases on GitHub',
 
   // ── Hero ───────────────────────────────────────────────────────────────────
-  'site.hero.title': 'Your ideas become<br>AI-powered features.',
   /**
-   * One line, and it names the AUDIENCE rather than the mechanism. The band that used
-   * to carry the "works on your existing product" claim is gone, and the feature grid
-   * says what the thing does — so the hero's job here is to tell a reader whether the
-   * page is addressed to them.
+   * THE HEADLINE IS TWO SENTENCES, and the drawing beside it is the second half of the
+   * argument. `title` names the cycle by its two ends — an idea in, a merged pull request
+   * out — which is the one sentence only this product can say. `titleTail` says what is
+   * left for the reader to do, and it is deliberately the ONLY verb the hero gives them:
+   * the product's actual claim is that everything between the two ends runs without a
+   * hand on it, and the one thing it still asks for is a decision.
+   *
+   * It replaced "Your Jira ticket becomes a merged PR. All you said was `/magic:start`."
+   * in the rewrite the product owner asked for ("elle parle du workflow, mais ne parle
+   * pas des specs créées") — that line started at a ticket that already existed, and the
+   * idea-to-spec-to-tickets step, the product's most distinctive one, was nowhere in it.
+   * The command token that closed it went with it: the hero no longer spells a command
+   * anywhere, and the orbit beside it is drawn as ARTEFACTS, not as the commands that
+   * produce them.
+   *
+   * Two keys, and a `<br>` inside the first: the owner wants "à la PR mergée." on a line
+   * of its own, and where a sentence breaks is copy in a language and not layout — the
+   * French and the English do not break at the same word. The component renders it
+   * through `RichText`; the second sentence is plain text on the line after.
    */
-  'site.hero.subtitle': 'The app for product builders.',
-  'site.hero.cta': 'Start free',
-  /** Scrolls to the "how it works" section rather than leaving for the docs. */
-  'site.hero.howCta': 'See how it works',
+  'site.hero.title': 'From idea<br>to merged PR.',
+  'site.hero.titleTail': 'All you do is make the calls.',
   /**
-   * The hero's SECOND button — `secondary`, the safe alternative beside the blue
-   * primary. It points at `DESKTOP_DOWNLOAD_URL`, which is the build itself rather
-   * than a releases page, so the label names the platform: an arm64 .dmg is the only
-   * artifact the release workflow publishes.
+   * The line under the headline: the six things that surround the code, then who does
+   * them. "Eight" is the PRODUCT's count — the number of skills you install — and it is
+   * the one place the hero says it; the pill that used to carry it ("8 Claude Code
+   * skills + a desktop app") is retired, see `eyebrow` below. The French is the owner's
+   * own wording ("une app vous simplifie la vie"), and this follows it: the app's half of
+   * the sentence names a feeling rather than a feature, on purpose, because the six
+   * nouns before it have already done the explaining.
+   *
+   * "Worktree" and not "branch": it is what `/magic:start` actually makes, and the word
+   * the reader who knows git will recognise as the deliberate choice it is.
+   */
+  'site.hero.subtitle':
+    'The spec, the tickets, the worktree, the commits, the review, the closed ticket: eight skills handle everything around the code. And one app makes your life easier.',
+  /**
+   * The two buttons. `downloadCta` is `primary` and opens `/download` — the page, not
+   * the .dmg, so the reader meets the prerequisites before the file lands. It is also
+   * read by `/workflow` and `/desktop` (`lib/workflowPage.test.ts` pins it), so it
+   * stays under this key. `workflowCta` is `secondary` and opens `/workflow`, where the
+   * six artefacts the orbit draws are set out at length.
    */
   'site.hero.downloadCta': 'Download for Mac',
+  'site.hero.workflowCta': 'See the workflow',
+  /**
+   * THE ORBIT — six artefacts around the Claude Code mark, each a card with a title and
+   * one line under it. They are the six nouns of the subtitle, drawn, in the order a
+   * ticket meets them. The six titles are the product's vocabulary and spelled the same
+   * in both languages, so all six are listed in `i18n.test.ts`; the six description
+   * lines are translated. "PAY-142" and "#318" are the same invented ticket and PR the rest of
+   * the site's mockups use, so a reader who scrolls meets the same feature twice.
+   */
+  'site.hero.orbitSpecTitle': 'Spec',
+  'site.hero.orbitSpecDesc': 'written and reviewed',
+  'site.hero.orbitEpicTitle': 'Epic + 3 stories',
+  'site.hero.orbitEpicDesc': 'PAY-142, created in Jira',
+  'site.hero.orbitWorktreeTitle': 'Worktree + commits',
+  'site.hero.orbitWorktreeDesc': 'feature/pay-142, atomic',
+  'site.hero.orbitPrTitle': 'PR #318',
+  'site.hero.orbitPrDesc': 'opened, ticket updated',
+  'site.hero.orbitReviewTitle': 'Review',
+  'site.hero.orbitReviewDesc': '3 threads resolved and pushed',
+  'site.hero.orbitDoneTitle': 'Done',
+  'site.hero.orbitDoneDesc': 'merged, ticket closed',
+  /**
+   * What the mark says when it is clicked — a pixel speech bubble, gone again a second
+   * later. It is the one joke on the page and the owner's ("une bulle style pixel qui
+   * dit Aïe !!"); the English keeps the double exclamation mark because that is the
+   * joke's punctuation, not the sentence's.
+   */
+  'site.hero.ouch': 'Ouch!!',
+  /**
+   * AND WHAT IT SAYS WHEN THE CLICKS KEEP COMING. Four moods by click count, and
+   * `ClaudeFigure` says which count earns which: the flinch above for the first two,
+   * then a head-shake and "Stop it", then it turns its back and says so, then it gives
+   * up and dances. The count resets after a couple of quiet seconds, so the joke can be
+   * told again. The French lines are the owner's ("Arrêtez !!!", "Ça suffit maintenant
+   * !"); the English keeps their punctuation.
+   */
+  'site.hero.stop': 'Stop it!!!',
+  'site.hero.enough': 'That’s enough now!',
+  'site.hero.dance': 'Fine, fine. I’ll dance.',
+  /**
+   * RETIRED, all of the below, and kept like every other family this page has shed —
+   * nothing tests for an unused key, and pruning one means editing `i18n.test.ts`'s
+   * exact allow-list in lockstep. `eyebrow` was the pill above the headline; `cta` the
+   * login button before the download replaced it; `howCta` scrolled to a `#how` band
+   * that was cut; the `ladder*` and `skill*` keys were the seven command cards the
+   * orbit replaced.
+   */
+  'site.hero.eyebrow': '8 Claude Code skills + a desktop app',
+  'site.hero.cta': 'Start free',
+  'site.hero.howCta': 'See how it works',
+  'site.hero.ladderStart': 'An idea?',
+  'site.hero.ladderEnd': 'A merged PR',
+  'site.hero.skillPlan': 'The spec, the epic, the stories',
+  'site.hero.skillStart': 'The ticket, the branch, the plan',
+  'site.hero.skillCommit': 'Atomic commits, properly named',
+  'site.hero.skillPr': 'Push, PR, ticket updated',
+  'site.hero.skillReview': 'The review, yours or theirs',
+  'site.hero.skillResolve': 'Feedback addressed and pushed',
+  'site.hero.skillDone': 'The ticket closed behind you',
+
+  // ── The two pillars ────────────────────────────────────────────────────────
+  /**
+   * THE BAND THAT OPENS THE PAGE'S BODY — `components/site/home/PillarsSection.tsx`. Two
+   * cards, because the product is two things, and a reader arriving from the hero knows
+   * the OUTCOME but not yet what they would be installing.
+   *
+   * "8" IS A NUMERAL AND NOT A WORD, which is a deliberate reversal: this read "Eight"
+   * first, on the ordinary typographic rule that a small number under ten is spelled out
+   * in running prose. A card title is not running prose — it is a label, read at a glance
+   * and out of the corner of an eye, and a digit is what survives that. It is also the
+   * count itself that is doing the selling here.
+   *
+   * The count is one the whole site is built on (`MAGIC_COMMANDS` in `lib/features.ts`
+   * holds it, and `features.test.ts` pins the inventory), so it is stated rather than
+   * hedged. The two commands named are the ENDS of the loop and not a sample: `plan` turns
+   * an idea into tickets, `done` closes the ticket and cleans up, and naming both is what
+   * tells the reader the cycle is closed rather than partial.
+   *
+   * `site.desktop.highlightCommands` further down still SPELLS IT OUT ("the eight /magic:
+   * commands"), and that is not an oversight left behind: it sits in running prose under
+   * the window, where the ordinary rule applies again.
+   */
+  'site.pillars.skillsTitle': '8 Claude Code skills',
+  'site.pillars.skillsDesc':
+    'From /magic:plan to /magic:done, they run the whole cycle in your terminal: the spec, the branch, the commits, the pull request, the review, the ticket closed behind you.',
+  /**
+   * WHAT THE APP IS, and deliberately not what it does at scale. The parallel-agents claim
+   * belongs to `site.desktop.subtitle` further down, whose whole sentence is built on it;
+   * repeating it here would give the page two openings. So this line lists the four things
+   * a person actually does in the window, in the order they do them.
+   */
+  /**
+   * The one stop on `SkillsTimeline` that is not a command: what `/magic:plan` produces
+   * and what `/magic:start` picks up. The four beside it come from `commandLabel`, which
+   * is why they are not here.
+   *
+   * IT NAMES THE ACT, like the stops around it. The wording has been through three: "The
+   * tickets" (an article, which made it the only stop reading as prose), then bare
+   * "Tickets" (an object, where every neighbour is something HAPPENING), and now the
+   * writing of them — which is what `/magic:plan` actually produces and what the Jira mark
+   * beside it is pointing at.
+   *
+   * That last change took it OUT of `i18n.test.ts`'s `SAME_IN_BOTH.site`: "Tickets" was
+   * the same word in French and "Tickets written" is not, and a key listed there and then
+   * translated fails that test.
+   */
+  'site.pillars.timelineTickets': 'Tickets written',
+  /**
+   * The HUMAN beat on `SkillsTimeline`, between planning and building, and the only stop
+   * on the rail that nothing automates: somebody reads the plan and says yes. It is on the
+   * rail because a row of five machine steps would say the product runs without you.
+   *
+   * Its label sits ABOVE the rail rather than under it — see that file's note, where the
+   * position turns out to be what makes six stops fit inside the card at all.
+   */
+  'site.pillars.timelineValidation': 'Plan approved',
+  /**
+   * Two more stops on `SkillsTimeline`, and both are here rather than coming from
+   * `commandLabel` for a reason of their own.
+   *
+   * `timelinePr` OVERRIDES the command's own label. `COMMAND_LABELS` gives `/magic:pr` the
+   * name "PR", which is right in a grid of eight commands where the row is already headed
+   * by a slash; on a timeline of a ticket's life the step is the artefact.
+   *
+   * IT NAMES THE CREATION, not the thing. It read "Pull request" for a round, and beside a
+   * later stop called "Pull request approved" that was ambiguous — two stops named after
+   * the same object, with nothing saying which one opens it. "Pull request created" is the
+   * ACT, which is what a step on a timeline is. It is no longer the same string in French
+   * ("Création de la Pull request"), so it came OUT of `i18n.test.ts`'s `SAME_IN_BOTH.site`
+   * when the wording changed — a key listed there and then translated fails that test.
+   *
+   * `timelineMerged` is NOT A COMMAND AT ALL. Nothing runs to make a pull request merged;
+   * somebody clicks the button, and `/magic:done` is what follows it. It sits between `pr`
+   * and `done` because that is where the wait is, and a row that jumped straight from
+   * opening a PR to closing the ticket would be a row claiming the review is ours to skip.
+   */
+  'site.pillars.timelinePr': 'Pull request created',
+  'site.pillars.timelineMerged': 'Merged',
+  /**
+   * The SECOND human beat on the rail, after `resolve`: a reviewer approves once the
+   * comments they left have been answered. It carries GitHub's mark for the same reason
+   * the pull-request stop does — that is where the approving happens.
+   *
+   * It is also the LONGEST label on the row at ~218px, which is what sets the 240px pitch
+   * every stop is spaced by. See the geometry note in `SkillsTimeline.tsx` before making
+   * it any longer.
+   */
+  'site.pillars.timelineApproved': 'Pull request approved',
+  'site.pillars.desktopTitle': 'A desktop app to drive them',
+  'site.pillars.desktopDesc':
+    'A native window to launch an agent, see where each one stands, answer the one that is waiting for you, and open the pull request without leaving the screen.',
+  /**
+   * THE LINE THAT ADDS THE TWO UP, at the foot of the band. It names the reader — product
+   * builder — which is where that positioning went when the hero's subtitle gave it up for
+   * the parallelism (see `site.hero.subtitle`): the audience is still worth stating once,
+   * and a conclusion is a better place for it than a headline.
+   */
+  'site.pillars.kicker':
+    'Between them, they speed up your whole product-builder workflow, from the idea to production.',
+
+  // ── The /desktop page, and the homepage band that points at it ─────────────
+  /**
+   * THE WHOLE OF `/desktop` — `components/site/desktop/DesktopContent.tsx`, which puts
+   * the app's own window on the screen at length.
+   *
+   * IT WAS A HOMEPAGE BAND under these same keys, directly under the hero and then
+   * fourth in the stack. The product owner moved the composition onto a page of its own;
+   * the family moved with it, unrenamed, because a key family names the copy and not the
+   * surface it happens to be printed on. `site.appBand.*` below is the new band that
+   * replaced it up there, and it is a different argument in different words.
+   *
+   * The title is the PRODUCT'S NAME and is therefore the same string in both catalogues,
+   * which is why it has a line in `i18n.test.ts`'s exact `SAME_IN_BOTH.site` allow-list.
+   * THE BARE NAME, and it lost a word to get there: it read "Magic Slash desktop" first,
+   * on the argument that the band had to say which of the product's surfaces this is. It
+   * does not. The window under the heading is unmistakably an application, the subtitle
+   * says agents run in it, and "desktop" was a category label doing work the picture had
+   * already done — the kind of word a title keeps only until someone reads it aloud.
+   */
+  'site.desktop.title':
+    'You shouldn’t have to <em>remember</em> what your agents are doing.',
+  /**
+   * The pill above the headline names the reader rather than the product: the page is
+   * for the product builder who already has three Claude Code sessions in three
+   * terminals. "PRODUCT BUILDER" AND NOT "DEVELOPER", which is the product owner's own
+   * word for who this is for and the one the site already uses twice — see
+   * `site.pillars.kicker` and the closing band. It is also the wider claim: the person
+   * running three agents is shipping a product, not only writing the code.
+   */
+  'site.desktop.eyebrow': 'For product builders running several agents',
+  'site.desktop.howCta': 'How it works',
+  /** The line of reassurance under the two buttons, three short facts and no verb. */
+  'site.desktop.reassureFree': 'Free',
+  'site.desktop.reassureMac': 'macOS',
+  'site.desktop.reassureTrackers': 'Your Jira tickets and GitHub PRs, already wired',
+  /**
+   * THE BEFORE / AFTER under the copy. "Before" is six windows drawn grey and crooked on
+   * purpose, with the two questions a developer asks themself at 4pm floating over them;
+   * "after" is the app's own window, in colour. The two captions name the two halves.
+   */
+  'site.desktop.beforeLabel': 'Before · six tabs, no overview',
+  'site.desktop.afterLabel': 'With Magic Slash · one window, all of it',
+  'site.desktop.bubbleWhich': 'Which one was waiting on me?',
+  'site.desktop.bubbleBranch': 'Did I commit on the right branch?',
+  /**
+   * TWO LINES, and it is a length rather than a break — there is no `<br>` in it, because
+   * a hard break at this width becomes four lines on a phone. See the note in
+   * `DesktopHero.tsx`.
+   *
+   * THREE THINGS, IN THIS ORDER, because each one is what makes the next land: several
+   * agents at once (the claim only this product can make), each in its own worktree (the
+   * mechanism that makes the first one true rather than a slogan — they are not sharing a
+   * checkout and stepping on each other), and then the single window you watch and steer
+   * them from. The hero's own subtitle states the parallelism; this is where the
+   * parallelism gets its explanation and its place.
+   *
+   * "WORKTREE" IS LEFT AS IT IS in the French, as it is throughout the app and the
+   * documentation: it is git's own word, and every French developer who has one calls it
+   * that.
+   */
+  'site.desktop.subtitle':
+    'Magic Slash remembers for you. The tasks to pick up show in the app, every agent tells you when it needs you, and you move from one to the next without losing the thread.',
+  /**
+   * The titlebar's own button in the drawn window, `agentInfo.closeAgent` in the app's
+   * catalogues. A key rather than a literal because the APP translates it — the literals
+   * in that drawing are the ones the product prints in English whatever the language
+   * (branch names, commit subjects, `v0.88.0`, ticket ids).
+   */
+  'site.desktop.archiveAgent': 'Archive the agent',
+  /**
+   * THE FOUR HIGHLIGHTS under the window, and every one of them is a fact this site
+   * already states somewhere else — see the note on `HIGHLIGHTS` in `DesktopHero.tsx`
+   * for where each comes from. Four words or so each, because they are set on two lines
+   * under a 48px tile and a fifth word makes a third.
+   *
+   * "Twelve" is `site.features.desktopDesc`'s own number, spelled out as that line spells
+   * it. "Worktree" stays as it is in the French, as it does in the subtitle above and
+   * throughout the app. And `/magic:` is typed the way it is typed — the colon belongs to
+   * the command, and the eight of them are what `lib/features.ts` holds.
+   */
+  'site.desktop.highlightParallel': 'Twelve agents in parallel',
+  'site.desktop.highlightContext': 'All your context, saved',
+  'site.desktop.highlightTrackers': 'Jira and GitHub connected',
+  'site.desktop.highlightCommands': 'The eight /magic: commands',
+
+  // ── The bands under the /desktop hero ──────────────────────────────────────
+  /**
+   * WHAT THE APP DOES, band by band — `components/site/desktop/*Band.tsx`, over the data in
+   * `lib/desktopPage.ts`. Its own family beside `site.desktop.*`: the hero above is about
+   * the pain the app relieves, and these five bands are about the thing itself, which is a
+   * different sentence in a different voice.
+   *
+   * MOST OF WHAT THE BANDS SHOW IS NOT HERE. The cards they draw are `/features` rows, read
+   * out of `lib/features.ts` with their own `site.features.*` titles and descriptions, so a
+   * capability is described in the same words on both pages. What this family carries is
+   * the argument around them: an eyebrow, a headline and a paragraph per band, and three
+   * claims under each of the two split bands. NO EM DASH anywhere in it, by the product
+   * owner's standing rule for new site copy.
+   */
+  // The backlog band: the Tasks window under the claim. "Launch pad" because the sentence
+  // has to say what the list is FOR, not that the list exists: a ticket in it is one click
+  // from an agent.
+  'site.desktopPage.tasksTitle': 'Your backlog is the launch pad.',
+  'site.desktopPage.tasksSubtitle':
+    'Every open issue and every backlog ticket, from GitHub and from Jira, grouped by repository in one window. Pick one: the app opens a worktree and starts an agent on it. Nothing to copy, no tab to go and find.',
+  'site.desktopPage.tasksPointTrackers': 'Jira tickets and GitHub issues, side by side',
+  'site.desktopPage.tasksPointClick': 'One click, and an agent is on it',
+  'site.desktopPage.tasksPointRepos': 'Grouped by repository, the way you work',
+  // The agents band: the agent list beside the claim. "Twelve" is `site.features.desktopDesc`'s
+  // own number, and the three states are the list's own (`site.agentsCard.*`).
+  'site.desktopPage.agentsTitle': 'Several agents at once, none in each other’s way.',
+  'site.desktopPage.agentsSubtitle':
+    'Each agent works in its own worktree and its own terminal, up to twelve side by side. The list tells you which one is working, which one is done, and which one is waiting for you.',
+  'site.desktopPage.agentsPointWorktree': 'One worktree and one terminal per agent',
+  'site.desktopPage.agentsPointTwelve': 'Up to twelve agents in parallel',
+  'site.desktopPage.agentsPointWaiting': 'The one waiting on you, marked at a glance',
+  // The sidebar tour: the panel stands still on the right while these scroll past on the
+  // left. The status steps are headed by `statusStepTitle` with the pill's own label.
+  'site.desktopPage.sidebarTitle': 'Everything the agent knows, beside its terminal.',
+  'site.desktopPage.statusStepTitle': 'Status: {status}',
+  'site.desktopPage.sidebarSubtitle':
+    'Open the sidebar and read where the task stands without scrolling the transcript: the ticket, the branch and the files it touched, the pull request and its checks, and how much context the run has spent.',
+  // The detail steps of the sidebar tour: parts inside a card the inventory has no row
+  // for. Each pair is what the reader sees the panel zoom to. No em dash.
+  'site.desktopPage.stepTicketIdTitle': 'The ticket id is a link',
+  'site.desktopPage.stepTicketIdDesc':
+    'A Jira key opens the ticket, a GitHub number opens the issue, in your browser. The mark beside it says which tracker it belongs to.',
+  'site.desktopPage.stepBranchesTitle': 'Two branches, one arrow',
+  'site.desktopPage.stepBranchesDesc':
+    'On the left, the branch the work started from. On the right, the branch the agent works on, in its own worktree: a checkout of its own, so two agents never touch the same files. The arrow says which came from which.',
+  'site.desktopPage.ptBranches1': 'The base branch the worktree was cut from',
+  'site.desktopPage.ptBranches2': 'The working branch, named after the ticket',
+  'site.desktopPage.ptBranches3': 'One click copies the branch name',
+  'site.desktopPage.stepFilesTitle': 'The files the agent touched',
+  'site.desktopPage.stepFilesDesc':
+    'Every file changed since the last commit, with its added and removed lines, read from git as it happens. The six squares show how much of the diff is additions.',
+  'site.desktopPage.stepCommitsTitle': 'The commits already on the branch',
+  'site.desktopPage.stepCommitsDesc':
+    'Each commit with its age and its hash, one click to copy. The count says how far ahead of main the branch is.',
+  'site.desktopPage.stepPrChecksTitle': 'The CI, check by check',
+  'site.desktopPage.stepPrChecksDesc':
+    'Each check of the pull request with its state as it runs, and whether the branch still merges cleanly into main.',
+  'site.desktopPage.stepPrVerdictTitle': 'The verdict of the review',
+  'site.desktopPage.stepPrVerdictDesc':
+    'Open, awaiting review, commented, changes requested, approved: the badge follows the review on GitHub, and the ticket moves to merged when the pull request does.',
+  // The key points under each step of the sidebar tour, three a step. No em dash.
+  'site.desktopPage.ptSession1': 'Tokens spent and share of the window',
+  'site.desktopPage.ptSession2': 'The cost of the run so far',
+  'site.desktopPage.ptSession3': 'Model and elapsed time, on the same card',
+  'site.desktopPage.ptTicket1': 'Title and description, editable in place',
+  'site.desktopPage.ptTicket2': 'Kept up to date by the agent at every step',
+  'site.desktopPage.ptTicket3': 'One card, whether the ticket is Jira or GitHub',
+  'site.desktopPage.ptTicketId1': 'Opens the ticket or the issue in your browser',
+  'site.desktopPage.ptTicketId2': 'The tracker’s mark beside the key',
+  'site.desktopPage.ptTicketId3': 'The same id the branch and the commits carry',
+  'site.desktopPage.ptStatusInProgress1': 'Set by the agent when it starts coding',
+  'site.desktopPage.ptStatusInProgress2': 'Changeable by hand from the dropdown',
+  'site.desktopPage.ptStatusInProgress3': 'Every status of a ticket’s life, in order',
+  'site.desktopPage.ptStatusCommitted1': 'Set by /magic:commit once the commits land',
+  'site.desktopPage.ptStatusCommitted2': 'Commits on the branch, nothing pushed yet',
+  'site.desktopPage.ptStatusCommitted3': 'The commits card fills in below',
+  'site.desktopPage.ptStatusPrCreated1': 'Set by /magic:pr when the pull request opens',
+  'site.desktopPage.ptStatusPrCreated2': 'The pull request card appears under the commits',
+  'site.desktopPage.ptStatusPrCreated3': 'A comment posted on the ticket, if you asked for it',
+  'site.desktopPage.ptStatusInReview1': 'A reviewer has the pull request in hand',
+  'site.desktopPage.ptStatusInReview2': 'Checks and comments land in the card live',
+  'site.desktopPage.ptStatusInReview3': 'Changes requested hands the threads to /magic:resolve',
+  'site.desktopPage.ptRepository1': 'Base branch and working branch, side by side',
+  'site.desktopPage.ptRepository2': 'Open the project in VS Code or on GitHub',
+  'site.desktopPage.ptRepository3': 'Several repositories per agent, one card each',
+  'site.desktopPage.ptScripts1': 'Every script of your package.json, listed',
+  'site.desktopPage.ptScripts2': 'A running server prints its address under the card',
+  'site.desktopPage.ptScripts3': 'The address opens in your browser',
+  'site.desktopPage.ptFiles1': 'Read from git as the agent works',
+  'site.desktopPage.ptFiles2': 'Added and removed lines, per file',
+  'site.desktopPage.ptFiles3': 'Six squares for the share of additions',
+  'site.desktopPage.ptCommits1': 'Newest first, with age and hash',
+  'site.desktopPage.ptCommits2': 'One click copies the hash',
+  'site.desktopPage.ptCommits3': 'How far ahead of main the branch is',
+  'site.desktopPage.ptPr1': 'Number, repository and verdict in the header',
+  'site.desktopPage.ptPr2': 'Refreshed on its own, refreshable by hand',
+  'site.desktopPage.ptPr3': 'Nothing to open on GitHub',
+  'site.desktopPage.ptPrChecks1': 'Each check with its state as it runs',
+  'site.desktopPage.ptPrChecks2': 'The passed count against the total',
+  'site.desktopPage.ptPrChecks3': 'Conflicts with main watched too',
+  'site.desktopPage.ptPrComments1': 'How many threads the reviewers opened',
+  'site.desktopPage.ptPrComments2': 'A click opens each thread in a panel',
+  'site.desktopPage.ptPrComments3': 'Any thread can be handed to the agent',
+  'site.desktopPage.ptPrHeader1': 'Open, awaiting review, commented, changes requested, approved',
+  'site.desktopPage.ptPrHeader2': 'The badge follows the review on GitHub',
+  'site.desktopPage.ptPrHeader3': 'Merged, and /magic:done closes the ticket',
+  // Around the window: the four showcase rows of the desktop family, on a dark band.
+  'site.desktopPage.aroundTitle': 'Built to stay out of your way.',
+  'site.desktopPage.aroundSubtitle':
+    'Split the window when two agents need you, call one up from any app, and let your Mac tell you the rest.',
+  // The guardrails: what it checks, what it asks, what it shows you spending.
+  'site.desktopPage.guardTitle': 'It sets itself up, and asks before it goes too far.',
+  'site.desktopPage.guardSubtitle':
+    'The first launch checks what Claude Code needs and installs what is missing. After that, you decide how far each agent may go, and you watch what it costs.',
+  /**
+   * THE FOURTH GUARDRAIL, and the only one of the four that is not an inventory row: the
+   * app keeps itself current. `/features` has never listed it and the FAQ answers it at
+   * length (`site.faq.updates.a`), so the pair here is the short version — what happens
+   * at launch, and what it does not do without asking.
+   *
+   * IT TOOK THE KEYBOARD'S PLACE. `site.builtFor.shortcuts*` was the fourth row of that
+   * band and is the fifth of the one above it now, by request — see `AROUND_FACTS` in
+   * `lib/desktopPage.ts`. Nothing was rewritten: the row moved, the copy did not.
+   */
+  'site.desktopPage.updatesTitle': 'Automatic updates',
+  'site.desktopPage.updatesDesc':
+    'At every launch the app checks whether a newer version has shipped, and downloads it in the background. It then offers to restart, or to leave it for later. Nothing takes over your screen.',
+
+  // ── The homepage's app band ────────────────────────────────────────────────
+  /**
+   * THE BAND THAT REPLACED THE ONE ABOVE ON THE HOMEPAGE —
+   * `components/site/home/AppSection.tsx`: a heading, a paragraph and a button beside the
+   * same window at two-fifths the size.
+   *
+   * ITS OWN FAMILY AND NOT `site.desktop.*`, which is the decision worth stating. The two
+   * surfaces are not the same argument at two lengths: that page HEADS ITSELF with the
+   * product's name and then describes the window, because a reader who opened it has
+   * already decided to look at the app. This band has to earn that click from a reader
+   * who is still scrolling, so it names what the window DOES for them — and a landing
+   * band whose headline is a product name is a band that says nothing.
+   *
+   * THE HEADLINE NAMES THE TWO THINGS THE WINDOW HOLDS — your tasks and your agents —
+   * and it is the product owner's own line, given in French and translated here.
+   *
+   * IT ECHOES THE HERO, which is worth recording rather than hiding: `site.hero.subtitle`
+   * already says "Several agents in parallel, in a single app", and this headline is two
+   * bands below it. The earlier draft avoided the overlap on purpose (it read "One window
+   * that knows who is working on what", answering the objection the hero's claim raises
+   * rather than restating the claim). The owner chose the restatement; a landing page
+   * that says its one differentiator twice is a defensible choice, and it is theirs.
+   *
+   * THE FRENCH USES "tu", alone on this site. See the note beside it in `fr.ts`.
+   *
+   * THE PARAGRAPH IS THREE FACTS, in the order that makes each one land: what you see
+   * (who is on what), what the app remembers for you (each session's context), and what
+   * it talks to on your behalf (Jira and GitHub). It stops short of the eight commands —
+   * the skills band directly above is where those live, and a paragraph that lists
+   * everything is a paragraph nobody finishes.
+   *
+   * THE BUTTON'S LABEL NAMES THE PAGE and not the action ("See the app" rather than
+   * "Learn more"): a reader deciding whether to spend a click wants to know where it
+   * goes. It is also the word the header's own row uses for that page, which is what lets
+   * somebody be told "it's under Product → Application" and find the same thing.
+   */
+  'site.appBand.title': 'Your tasks, your agents, in a single app.',
+  'site.appBand.subtitle':
+    'Every agent gets its own worktree and its own terminal, and the app keeps the context of each session. It reads your tickets from Jira or GitHub, follows the pull requests it opened, and tells you when something needs you.',
+  'site.appBand.cta': 'See the application',
+
+  /**
+   * THE THREE CLAIMS UNDER THE PARAGRAPH — the same `FeaturePoints` list the skills band
+   * two bands up carries, with the same brand-blue outline glyphs, asked for by the
+   * product owner in those words ("une liste avec icon bleu comme le block 8 skills").
+   *
+   * THEY NAME THE THREE THINGS THE WINDOW BESIDE THEM HOLDS, in the order a reader meets
+   * them both in the drawing and in the app itself: the tasks you pick from, the agents
+   * you started on them, and what those agents have produced since. The first two are the
+   * headline's own two nouns, which is deliberate — the list is the caption to the
+   * picture, not a second argument — and the third is the one thing neither the headline
+   * nor the drawing says on its own: the window is not only where work STARTS, it is
+   * where it is followed.
+   *
+   * SHORTER THAN THE SKILLS BAND'S ROWS, and they read as labels rather than as claims.
+   * That band has no picture of the thing it is selling, so its three rows have to carry
+   * the argument in words; here the argument is the window, and a row that restated the
+   * paragraph would be read twice and believed once.
+   *
+   * THE FRENCH SAYS "vos", not "tes", under a headline that says "tes". That is not a
+   * slip: the subtitle directly above these rows already vouvoies (see the note beside
+   * the title in `fr.ts` — the headline is the one line on this site that tutoies, by the
+   * owner's request), so the list follows the paragraph it hangs from rather than
+   * reopening a decision the band already made.
+   */
+  /**
+   * THE FIRST ROW CARRIES THE TWO TRACKERS AS CHIPS — `{jira}` and `{github}` are
+   * replaced by a mark and a name on a tinted plate, not by words. See `TrackerChip` in
+   * `AppSection.tsx` for what they are drawn as.
+   *
+   * ONE STRING WITH TWO PLACEHOLDERS, and not four fragments concatenated in the
+   * component, which is the version this replaced in review. `t()` substitutes `{name}`
+   * textually and returns a string, so the component has to split the sentence to put a
+   * node in the middle of it — but WHERE it splits is then the translator's decision
+   * rather than the developer's. A French row that wanted "Vos issues GitHub et tâches
+   * Jira" is one edit to this line; four fragments would have needed the component
+   * reordered, in a file no translator opens.
+   *
+   * THE BRAND NAMES ARE NOT IN HERE. "Jira" and "GitHub" are spelled inside the chip,
+   * once, because they are proper nouns identical in both catalogues — and a product
+   * name that lives in a translation file is a product name somebody eventually
+   * translates. The placeholder says WHERE the chip goes; the chip says what it is.
+   */
+  'site.appBand.pointTasks': 'Your tasks {jira} and issues {github}',
+  /**
+   * THE SECOND ROW NAMES WHAT IS ACTUALLY RUNNING — `{claude}` becomes the Claude Code
+   * mark and its name, on Anthropic's coral. Same construction as the row above and for
+   * the same reason: "your agents" is a category until the reader sees WHOSE, and this
+   * product's whole claim is that it drives the agent they already run.
+   *
+   * IT IS THE ONE PLACE ON THE HOMEPAGE'S BANDS WHERE CLAUDE CODE IS NAMED IN THE COPY
+   * rather than drawn. The workflow band's subtitle says "a layer on top of Claude Code"
+   * in prose; here it is a chip, which the eye takes without reading. Both stay: one is
+   * an argument, the other is an identification.
+   */
+  'site.appBand.pointAgents': 'Your agents {claude} at work',
+  'site.appBand.pointTracking': 'The work your agents deliver, followed',
+
+  // ── The workflow band, and the page it opens ───────────────────────────────
+  //
+  // ONE FAMILY FOR TWO SURFACES. `lib/workflow.ts` is the list both of them read — the
+  // homepage's five cards and `/workflow`'s five sections — so there is no second set of
+  // keys for the page. A step reworded here is reworded in both places, which is the
+  // whole reason that module exists.
+  //
+  // WHAT THE COPY DELIBERATELY DOES NOT CONTAIN IS A COMMAND NAME. `/magic:plan` and its
+  // seven siblings are printed by the DRAWINGS, spelled from `lib/commands.ts` — whose
+  // template-literal type makes `/magic:pln` a compile error. In a catalogue they would be
+  // eight strings a translator can edit and nothing can check, and the site would
+  // eventually name a command the product does not have.
+  //
+  // THE TITLES ARE IMPERATIVES — "Make the plan", not "Planning". The band is about what
+  // YOU do; the app is the thing doing the typing, and a page of gerunds reads as a
+  // feature list rather than as a day of work.
+  'site.workflow.title': 'Working with Magic Slash.',
+  /**
+   * TWO LINES, as a length rather than a break — no `<br>`, because a hard break at this
+   * width becomes four lines on a phone. Same call as the hero's and the desktop band's.
+   *
+   * IT SAYS WHAT MAGIC SLASH *IS* IN RELATION TO CLAUDE CODE, which is the product owner's
+   * own framing and replaces a line that never named the relationship: "Magic-slash est une
+   * sur couche à Claude code ! il boost votre claude code et vous fait gagner de la charge
+   * mentale avec le context sauvegardé dans l'application desktop."
+   *
+   * WHY THAT IS THE RIGHT LINE HERE and the old one was not. The band draws five steps and
+   * eight commands, so a reader who has not placed the product yet reads them as a rival to
+   * the tool they already use — and it is the opposite: a LAYER on top of it. The previous
+   * copy ("five commands carry one ticket from an idea to a merged pull request… you approve
+   * every step") described the mechanism the five cards below already describe, card by
+   * card, in more detail. Saying it twice bought nothing; saying what the thing IS buys the
+   * only sentence on this screen the cards cannot draw.
+   *
+   * THREE CLAUSES, IN THIS ORDER: it is a layer (so nothing you know is thrown away), it
+   * makes the agent you already run better, and the context lives in the app — which is
+   * where the mental-load claim comes from and is worth being precise about. What the app
+   * holds is one agent per ticket, each in its own worktree with its own session, so
+   * "keeping the context" is a fact about the product and not a slogan.
+   */
+  'site.workflow.subtitle':
+    'Magic Slash is a layer on top of Claude Code: it boosts the agent you already run and keeps every ticket’s context in the desktop app — that much less to hold in your head.',
+  'site.workflow.cta': 'See the whole workflow',
+  /**
+   * The last line of the plan card's drawing: the tracker's mark, this, and a green tick.
+   *
+   * A KEY AND NOT A LITERAL, unlike the commit subjects and the branch names in those same
+   * drawings. The rule `WorkflowArt.tsx` states is that a literal stays English when it is a
+   * string the TOOL or the platform prints — and this is neither. It is the drawing's own
+   * caption, written by us, saying what just happened. "Issues" stays as it is inside the
+   * French because it is what GitHub calls them there too.
+   */
+  'site.workflow.planIssuesCreated': 'Issues created',
+  /** The line that closes `/workflow`, pointing at the full inventory. */
+  'site.workflow.more': 'Every command, panel and switch the app ships with is on the features page.',
+  /**
+   * ① `/magic:plan`. "Reviewable" is the load-bearing word: the skill writes a spec and
+   * STOPS, and nothing is opened on the tracker until you say so — which is also what the
+   * drawing beside this shows (`approved`, then the epic and its three stories).
+   */
+  'site.workflow.planTitle': 'Make the plan',
+  'site.workflow.planDesc':
+    'Describe the idea in your own words. The spec comes back for review, and once you have approved it the epic and its stories are opened on Jira or GitHub.',
+  /**
+   * ② `/magic:start`. "A ticket id is the whole command" is literally true — the skill
+   * takes `PROJ-123` or `#142` and derives the rest — and it is the concrete detail that
+   * makes the card believable where "gets you started" would not.
+   */
+  'site.workflow.startTitle': 'Start with Claude Code',
+  'site.workflow.startDesc':
+    'A ticket id is the whole command. The worktree, the branch and the agent are ready, with the ticket read and a plan drafted before you type anything else.',
+  /**
+   * ③ `/magic:commit` and `/magic:pr`. "Atomic" and "conventional" are the two words the
+   * skill's own contract uses (one commit, one logical change; `type(scope): subject`,
+   * enforced by commitlint), and a developer reading them knows exactly what they are
+   * being promised.
+   */
+  'site.workflow.commitTitle': 'Commit and open the PR',
+  'site.workflow.commitDesc':
+    'The working tree is split into atomic commits with conventional messages, pushed, and the pull request writes itself with the ticket linked.',
+  /**
+   * ④ `/magic:review` and `/magic:resolve`. "In its own thread" is the half people do not
+   * expect: the fix is one thing, the REPLY on the conversation that asked for it is what
+   * makes a review actually close.
+   */
+  'site.workflow.reviewTitle': 'Resolve the review',
+  'site.workflow.reviewDesc':
+    'The diff gets read the way a reviewer reads it, then every comment gets a fix, a commit and an answer in its own thread.',
+  /**
+   * ⑤ `/magic:done`. "Once the merge is confirmed" is not a flourish — the skill verifies
+   * the merge first and does nothing at all if it cannot, and this card is the one on the
+   * page that could most easily promise a cleanup the tool does not perform. The three
+   * items are `site.doneCard.*`'s three, which were audited against
+   * `skills/magic-done/SKILL.md` line by line.
+   */
+  'site.workflow.doneTitle': 'Merge and clean up',
+  'site.workflow.doneDesc':
+    'Once the merge is confirmed: the ticket closed, the branch deleted on both ends, the worktree removed. Your machine back where it started.',
+
+  // ── The workflow page, around the five steps ───────────────────────────────
+  //
+  // `lib/workflowPage.ts` names every key below and `workflowPage.test.ts` looks each one
+  // up here and in the French. The five steps themselves are `site.workflow.*` above: the
+  // page prints the same title and sentence the homepage band does, and adds these.
+  //
+  // NO COMMAND NAME IN ANY OF IT, and no em dash: the commands are printed by the page from
+  // `lib/commands.ts`, and the dash is the product owner's standing rule for site copy.
+  //
+  // THE HERO'S TITLE IS THE HOMEPAGE HERO'S PROMISE, said again where the page delivers on
+  // it: "from idea to merged PR" is the one line a reader has already met, and this is the
+  // page that shows the five moves it takes.
+  // The pill carries the Claude Code mark beside it, as the homepage hero's does.
+  'site.workflowPage.eyebrow': '8 Claude Code skills',
+  'site.workflowPage.title': 'From idea to merged PR, in five steps.',
+  'site.workflowPage.subtitle':
+    'Magic Slash is a layer on top of Claude Code. Every step of the cycle is one command in your terminal: the agent reads the ticket, does the work, and stops exactly where you want to decide.',
+  'site.workflowPage.stepsCta': 'Walk through the five steps',
+  // The claims. Three per step, each something the skill does and nothing it promises.
+  'site.workflowPage.planClaimSpec': 'A full spec written from one sentence, acceptance criteria included',
+  'site.workflowPage.planClaimApprove': 'Nothing reaches the tracker until you have approved it',
+  // `{jira}` and `{github}` are the tracker chips the homepage's app band draws inside its
+  // first claim (`withChips` in `AppSection.tsx`); the tokens survive `t()` untouched.
+  'site.workflowPage.planClaimTickets': 'The epic and its stories opened on {jira} or {github}, linked',
+  'site.workflowPage.startClaimBranch': 'A worktree and a branch named from the ticket, in one move',
+  'site.workflowPage.startClaimPlan': 'The ticket read and a plan laid out before a file is touched',
+  'site.workflowPage.startClaimAgent': 'Its own agent, in its own window, beside the others',
+  'site.workflowPage.commitClaimAtomic': 'One logical change per commit, split for you',
+  'site.workflowPage.commitClaimFormat': 'Messages in your repository’s own convention',
+  'site.workflowPage.commitClaimPr': 'The pull request described from the diff, ticket linked and updated',
+  'site.workflowPage.reviewClaimLines': 'Findings on the lines they belong to, on your PR or a colleague’s',
+  'site.workflowPage.reviewClaimFix': 'A fix, a commit and a reply in every open thread',
+  'site.workflowPage.reviewClaimArgue': 'It pushes back when a suggestion deserves a compromise',
+  'site.workflowPage.doneClaimMerge': 'The merge confirmed first. Nothing happens if it is not',
+  'site.workflowPage.doneClaimTicket': 'The ticket closed, with a last comment on what shipped',
+  'site.workflowPage.doneClaimClean': 'Branch deleted on both ends, worktree removed, machine clean',
+  // The day band, on the dark sheet.
+  'site.workflowPage.dayTitle': 'Built for a whole day, not a single ticket.',
+  'site.workflowPage.daySubtitle':
+    'The loop above is one ticket’s life. Yours has several open at once, and the day rarely ends where a step does. The desktop app is what holds it together.',
+  'site.workflowPage.dayContinueTitle': 'Pick a ticket back up',
+  'site.workflowPage.dayContinueDesc':
+    'One command reopens a job exactly where you or a colleague left it: same branch, same worktree, the context reloaded from the ticket and the code.',
+  'site.workflowPage.dayParallelTitle': 'Several tickets at once',
+  'site.workflowPage.dayParallelDesc':
+    'Every ticket runs in its own worktree with its own agent, up to twelve side by side. The one waiting for a review never blocks the next.',
+  'site.workflowPage.dayContextTitle': 'The context stays in the app',
+  'site.workflowPage.dayContextDesc':
+    'Ticket, branch, commits, pull request and review status sit beside each terminal in the desktop app. Nothing to remember, nothing to look up.',
+  'site.workflowPage.dayNotifyTitle': 'It calls you when it needs you',
+  'site.workflowPage.dayNotifyDesc':
+    'An agent that stops for an answer sends a Mac notification. You can be in another window, or another ticket, until it does.',
+  // The control band, on white.
+  'site.workflowPage.controlTitle': 'Every decision that matters stays yours.',
+  'site.workflowPage.controlSubtitle':
+    'The agent does the typing. The loop is built to stop where a human should look, and to move on where nobody needs to.',
+  'site.workflowPage.controlSpecTitle': 'The spec waits for you',
+  'site.workflowPage.controlSpecDesc':
+    'Before a single ticket is opened, you read the spec and say yes. Or no, and it is rewritten.',
+  'site.workflowPage.controlPlanTitle': 'The plan before the code',
+  'site.workflowPage.controlPlanDesc':
+    'The agent lays out how it intends to build the ticket before it edits a file. That is where you redirect it, at the cheapest moment to do so.',
+  'site.workflowPage.controlCommitsTitle': 'Commits you can actually read',
+  'site.workflowPage.controlCommitsDesc':
+    'One logical change each, with a message that says why. A reviewer follows the history, and so can you, months later.',
+  'site.workflowPage.controlMergeTitle': 'The merge button stays yours',
+  /** The merged state of the drawn GitHub button. The button's own label stays GitHub's. */
+  'site.workflowPage.mergedLabel': 'Merged',
+  /** The green card the review terminal ends on. */
+  'site.workflowPage.approvedLabel': 'Pull request approved',
+  'site.workflowPage.controlMergeDesc':
+    'Nothing in the loop merges a pull request. The last command only confirms the merge you made, then cleans up after it.',
+
+  // ── The skills band, between the workflow and the app window ───────────────
+  //
+  // A HEADING, A PARAGRAPH, THREE CLAIMS AND A BUTTON, beside a terminal running seven of
+  // the eight commands. `lib/skillsBand.ts` is the module that names every key below and
+  // `skillsBand.test.ts` looks each one up here and in the French — which is the whole
+  // reason that module exists, since `t()` has no per-key fallback and a renamed entry
+  // would ship as a heading with a hole under it.
+  //
+  // NO COMMAND NAME APPEARS IN ANY OF IT, the same division the workflow band's own note
+  // above describes: the commands are printed by the DRAWING, spelled from
+  // `lib/commands.ts`, whose template-literal type makes `/magic:pln` a compile error. In
+  // a catalogue they would be eight strings a translator can edit and nothing can check.
+  //
+  // EIGHT IN THE COPY, SEVEN IN THE DRAWING, and neither is wrong. Eight is what ships;
+  // seven is the path one ticket takes through them, because `/magic:continue` is not a
+  // stage of a ticket's life but how you re-enter one you left. `lib/workflow.ts` sets that
+  // out at length and `workflow.test.ts` pins it.
+  /**
+   * The band's `h2`. It names a COUNT and a SPAN — how many there are, and that between
+   * them they cover the lot — because those are the two things a reader cannot get from
+   * the drawing beside it, which shows a sequence without ever saying how long it is or
+   * whether anything comes after.
+   *
+   * A NUMERAL AND NOT THE WORD, by the product owner's call ("peux-tu remplacer les
+   * 'Huit' par '8'"), here and on the first claim below. It reads as a spec rather than
+   * as prose, which is what a count of commands is, and it is the same shape as the
+   * `/magic:` tokens in the drawing beside it. `skillsBand.test.ts` pins the digit in
+   * both catalogues against `MAGIC_COMMANDS.length`, so it cannot drift from the eight
+   * the product actually ships.
+   */
+  'site.skillsBand.title': '8 skills do the whole cycle.',
+  /**
+   * ONE PARAGRAPH, and what it adds to the title is the DIVISION OF LABOUR: what the agent
+   * does, and what is left for you. The three verbs are the three artefacts the terminal
+   * beside it prints — the tracker read, the code written, the pull request opened and its
+   * review answered — so the copy and the drawing are making one argument rather than two.
+   *
+   * IT ENDS ON WHAT YOU KEEP rather than on what you are spared. "Almost no human
+   * interaction" was the brief and it would be the wrong sentence: the product stops for
+   * approval twice on purpose, and a band that claimed otherwise would promise something
+   * `skills/magic-plan/SKILL.md` explicitly does not do. See the note on the third claim.
+   *
+   * TWO SENTENCES AND NOT ONE WITH AN EM DASH IN IT, by the owner's call ("retire le
+   * grand — entre à sa review et ce qu'il vous reste"). The dash was doing a full stop's
+   * job in a paragraph that already has a comma-separated list of three verbs in front of
+   * it, and at this width it landed mid-line where it read as a hyphen between two
+   * clauses rather than as the turn it was meant to be. The hero and the desktop band
+   * still use one; this paragraph is longer than either.
+   */
+  'site.skillsBand.subtitle':
+    'One command per moment of a ticket’s life. The agent reads the tracker, writes the code, opens the pull request and answers its review. What is left for you is reading it and saying yes.',
+  /** The button, out to the inventory of all eight on `/features`. */
+  'site.skillsBand.cta': 'See the workflow',
+  /** ① The count, which is the one claim a reader can check against the page. */
+  'site.skillsBand.pointSkills': '8 skills, one per step of the cycle',
+  /** ② The span, named by its two ENDS — the same shape as the page's own headline. */
+  'site.skillsBand.pointCycle': 'From the first idea to the merged pull request',
+  /**
+   * ③ What is left for you. It names the ONE approval that gates everything downstream
+   * rather than counting them, because the number depends on how you run it and the claim
+   * should not: nothing is opened on the tracker and no code is written until you have
+   * said yes to a plan.
+   */
+  'site.skillsBand.pointHands': 'You approve the plan, the rest runs itself',
+
+  // ── The band after the eight skills: what stops being yours alone ───────
+  //
+  // FOUR CARDS AND A HEADING, and no button — the owner asked for a band with a title and
+  // a description and nothing to click ("avec titre, description sans CTA"), which
+  // `OrgSection`'s header explains the placement reason for.
+  //
+  // THE FAMILY IS `site.orgBand.*`, matching `site.skillsBand.*` above it: a BAND's own
+  // copy, as against the `site.*Card.*` families further down, which hold the LABELS
+  // INSIDE a drawing. This band's four drawings read their labels from `site.repoCfg.*`
+  // and `site.tasksCard.*` rather than minting a family of their own — both are drawings
+  // of screens those families already describe — so `site.orgBand.*` is the heading and
+  // the four cards, and nothing else.
+  //
+  // THE HEADING IS TWO SENTENCES BECAUSE THE SECOND IS THE PAYOFF OF THE FIRST. A single
+  // clause ("shared configuration for teams") names a category; this one makes a promise
+  // and then says who collects on it. It is also the first line on the page whose subject
+  // is plural — everything above is addressed to one person — which is the seam this band
+  // was put at.
+  /**
+   * THE HEADLINE NAMES THE BAND rather than stating its promise. It read "Set it up once.
+   * Your team inherits it." for one version; the product owner cut it back to the
+   * subject, because the three cards under it already make that promise and a headline
+   * that makes it first leaves them repeating their own heading.
+   */
+  'site.orgBand.title': 'Teamwork.',
+  'site.orgBand.subtitle':
+    'Repository configuration, plans and the backlog belong to your organization rather than to one laptop. Someone joins, opens the app, and finds the project already set up — the same branch, the same commit format, the same tickets.',
+  // THE CARD TITLES ARE NOUNS and not the imperatives the workflow band uses: that band is
+  // about what YOU do, this one about what the product HOLDS on your behalf.
+  /**
+   * "CONVENTIONS" AND NOT "CONFIGURATION": what the card lists — the language, the commit
+   * format, the PR template — is what the team agreed on, not a settings screen. The word
+   * also says why any of it is shared.
+   */
+  'site.orgBand.configTitle': 'The conventions your team shares',
+  // NAMED IN THE ORDER THE SETTINGS PAGE LISTS THEM, so a reader who opens the drawing
+  // beside this sentence finds the four things it promises in the tabs it shows.
+  'site.orgBand.configDesc':
+    'Share a repository with your organization and every setting on it goes too: the development branch, the commit format, the pull request template, the language of each surface. Set once, by whoever knows the project best.',
+  'site.orgBand.orgTitle': 'Your organization',
+  // "BINDS THEIR OWN LOCAL FOLDER" IS THE APP'S OWN SENTENCE, lifted from the help line
+  // under the Scope row (`site.repoCfg.teamHelp`, itself the desktop's `repo.scope.teamHelp`).
+  // It is the one detail that stops the claim being read as "we sync your checkout": what
+  // travels is the configuration, and where the code lives stays each member's own answer.
+  'site.orgBand.orgDesc':
+    'Invite the people you work with and the repositories follow them, configuration included. Each member binds their own local folder and starts working — nobody sets up the same project twice.',
+  'site.orgBand.planTitle': 'Plans that circulate',
+  // THE COMMAND IS NAMED, and it is the only card here that names one: a plan is the one
+  // thing in this band a reader has no prior picture of, and `/magic:plan` is what the
+  // skills band directly above has just introduced it as.
+  'site.orgBand.planDesc':
+    '/magic:plan turns an idea into a spec, an epic and its stories. Share it and anyone free can pick a story up, with the reasoning behind it already written down.',
+  'site.orgBand.tasksTitle': 'One backlog, everyone’s tickets',
+  // "WHAT IS LEFT TO TAKE" AND NOT "WHAT IS LEFT TO DO", which is the distinction the
+  // drawing makes with its marked row and the reason this card is not a second Tasks
+  // card: a shared list is only useful if it says which rows are already gone.
+  'site.orgBand.tasksDesc':
+    'Filter the shared list down to one repository and see what is left to take. A ticket an agent is already working is marked as such, so two people never start on the same one.',
+  // The pill on the organisation drawing's second rail. "Configuration" is the same word
+  // in French, so it is listed in `i18n.test.ts`'s allow-list; the repository slug on the
+  // rail above it is a literal in the component, as every repository name on this site is.
+  'site.orgTeam.config': 'Configuration',
+
+  // ── The band under the app window: who it is built for ─────────────────────
+  //
+  // FIVE CARDS AND A HEADING, and the family is `site.builtFor.*` rather than
+  // `site.desktop.*` on purpose: that family belongs to the band ABOVE this one, which
+  // shows the window itself. These are five claims about living in it, and keeping them
+  // apart is what lets either band be reworded without the other's copy moving.
+  //
+  // THE CARD TITLES ARE NOUNS, not the imperatives the workflow band uses. That band is
+  // about what YOU do — "Make the plan", "Commit and open the PR" — and this one is about
+  // what the APP IS, so a verb here would be the page telling the reader to go and use a
+  // feature rather than saying the feature exists.
+  //
+  // WHAT IS NOT IN THE CATALOGUE: the shortcuts themselves. ⌘N, ⌘↓, ⌘/ and ⌃Space are
+  // printed by the drawing in `BuiltForArt.tsx`, spelled from what the app actually
+  // registers, for the same reason the workflow band keeps the command names out of here
+  // — a keystroke is not prose, and a translator editing one would have the site teaching
+  // a shortcut the product does not have.
+  /**
+   * ONE SENTENCE THAT CORRECTS ITSELF. "Built for developers" on its own is what every
+   * developer tool says, and the product owner's brief was "build pour le developer mais
+   * pas que" — so the first half is STRUCK THROUGH and the second replaces it. A lead, a
+   * designer or a PM reading the page has just been shown a terminal and needs telling
+   * that the window is for them too; a word crossed out says that faster than a second
+   * sentence explaining it did.
+   *
+   * THE `<em>` IS THE STRIKE, drawn by `STRUCK_WORD` in `home/Shell.tsx`. It is the same
+   * device `site.desktop.title` uses, and it is why this key goes through `RichText`
+   * rather than `t()` — see `HomeHeading`'s `titleKey`.
+   *
+   * "PRODUCT BUILDERS" is the term the site already uses for the audience
+   * (`site.pillars.kicker`, the closing band, `/desktop`'s own pill), left in English in
+   * both catalogues because that is the word the job goes by in French too.
+   */
+  'site.builtFor.title': 'Built for <em>developers</em>, product builders.',
+  /**
+   * ONE LINE THAT NAMES THE FIVE CARDS WITHOUT LISTING THEM: the backlog, the keyboard,
+   * the Mac, the settings, the shortcut that summons it. A subtitle that enumerated them
+   * would be read instead of the grid rather than into it.
+   *
+   * IT ENDED "rather than the way we do" AND NO LONGER DOES, at the product owner's
+   * request. The clause set the reader against us to make its point, and the sentence does
+   * not need an adversary: "set up the way you work" already says the whole thing, and
+   * saying only that is the more confident line.
+   *
+   * NO EM DASH EITHER, and it went in the same pass — the owner asked for it out. The list
+   * of three places was hinged to the closing clause with one, which is a punctuation mark
+   * this catalogue reaches for rather a lot; a comma carries the same join here, and the
+   * sentence reads faster without the pause.
+   */
+  'site.builtFor.subtitle':
+    'The window your tickets, your agents and your terminals live in: on your Mac, on your keyboard, one shortcut away from wherever you already were, and set up the way you work.',
+  /**
+   * The Tasks card, and its title is the app's own name for the screen — the same call
+   * `/features` makes for its Tasks row. The line under it says the whole claim rather
+   * than half of it: not only that the backlog is in the window, but that a ticket in it
+   * is one click from an agent running on it.
+   */
+  'site.builtFor.tasksTitle': 'Tasks',
+  'site.builtFor.tasksDesc':
+    'Every open issue and every backlog ticket, from GitHub and from Jira, grouped by repository in one window. Click one and an agent starts on it — no id to copy, no tab to go and find.',
+  /**
+   * The keyboard card. "Your hands never leave it" is the promise; the drawing beside
+   * this prints three real chords, so the sentence is free to make the claim rather than
+   * spend itself listing keys.
+   *
+   * IT WAS "Keyboard shortcuts" AND THE OWNER RENAMED IT to "Keyboard navigation", which
+   * is the narrower and the better word. A shortcut is any key that saves a click; what
+   * the three rows below actually show is MOVING — a new agent, the next one, the split
+   * view — and "navigation" is the claim a reader can check against the drawing. It also
+   * stops the card from reading as a duplicate of the app's own Settings section, which
+   * is called Keyboard Shortcuts and lists eight of them.
+   */
+  'site.builtFor.shortcutsTitle': 'Keyboard navigation',
+  'site.builtFor.shortcutsDesc':
+    'A new agent, the next one, the split view: every move in the app has a chord. Your hands never leave the keyboard.',
+  // The seven rows of the shortcut sheet, in the order they are drawn. They MIRROR the
+  // app's own `settings.shortcuts.*` labels rather than paraphrasing them, so the site and
+  // the Settings pane call the same key the same thing. "Split View" is the app's own name
+  // for the mode and is capitalised as the app capitalises it.
+  //
+  // IT WAS THREE ROWS AND THE OWNER ASKED FOR MORE, to fill a card that grew taller when
+  // the Tasks window beside it went full width. These seven are every chord in the app
+  // that MOVES you; ⌘D, which duplicates an agent, is the one left out because duplicating
+  // is not navigating.
+  //
+  // TWO OF THEM ARE SHORTER THAN THE APP'S OWN, and it is the only place this family bends
+  // that rule. The app says "Toggle agents list" and "Toggle agent info"; in French those
+  // are "Afficher/masquer la liste des agents" and its twin, which against a pair of
+  // keycaps on a third-width card wrap to three lines and stop being a sheet. The nouns
+  // alone name the same thing and are what anyone says out loud.
+  'site.builtFor.shortcutNew': 'New agent',
+  'site.builtFor.shortcutNext': 'Next agent',
+  'site.builtFor.shortcutPrev': 'Previous agent',
+  'site.builtFor.shortcutSplit': 'Split View',
+  'site.builtFor.shortcutAgents': 'Agents list',
+  'site.builtFor.shortcutInfo': 'Agent info',
+  'site.builtFor.shortcutClose': 'Archive agent',
+  /**
+   * The Mac card. The product owner supplied this one nearly word for word with the
+   * reference — speed, memory, battery — and the three of them together are what "native"
+   * means to somebody who has been handed a browser in a frame before and noticed.
+   */
+  'site.builtFor.macTitle': 'Truly Mac-native',
+  // "Not a web page in a window" IS THE LINE THIS CARD NEEDS, and it went away for a round.
+  // While the drawing was a capture of the macOS menu bar, the sentence named the menu bar
+  // too — picture and copy agreeing. The drawing is Apple's own mark now, which says the
+  // platform in one glyph and leaves the sentence free to say the thing the glyph cannot:
+  // that this is not Electron chrome wearing a Mac's clothes. The menu bar has its own row
+  // on `/features` (`site.features.menuBar*`), which is where that fact belongs.
+  'site.builtFor.macDesc':
+    'Built specifically for Mac, with speed, low memory use and battery life in mind. Not a web page in a window.',
+  /**
+   * The settings card. The reference was a screenshot from another product; the wording is
+   * ours, and every item named is something the app really exposes.
+   *
+   * REWRITTEN AT THE OWNER'S REQUEST, and the two changes pull in the same direction. The
+   * THEME went in — "j'aimerais qu'on ajoute à la description le fait qu'on puisse changer
+   * le theme de l'application" — and it belongs at the FRONT, because it is the one item
+   * on the list a non-developer recognises as theirs to change; a sentence that opened on
+   * commit formats was a sentence that told half the readers of this band that this card
+   * was not for them.
+   *
+   * "Set once, per repository" CAME OUT, and it was doing real damage for one line of
+   * precision. It is true of the middle of the list and false of the theme and the
+   * shortcuts, which are per-machine; and its job was to reassure a developer that the
+   * configuration does not have to be repeated, which is a worry you only have once you
+   * have decided to configure something. The sentence it was crowding out is the card's
+   * actual claim, and the owner asked for it in as many words: the app bends to how you
+   * work. That is what closes the line now.
+   */
+  'site.builtFor.yoursTitle': 'Make it yours',
+  'site.builtFor.yoursDesc':
+    'The app’s theme, the keyboard shortcuts, the commit format, the pull request template, the language each surface speaks and how far an agent may go on its own. Bend it until it works the way you do.',
+  /**
+   * The Spotlight card. "Wherever you are" is literal and is the whole feature: the
+   * shortcut is global, so the bar comes up over the editor, the browser or nothing at
+   * all. "Quick Launch" is the window's own name inside the app, which is why it appears
+   * in the sentence — the reader will meet it there.
+   */
+  'site.builtFor.spotlightTitle': 'Spotlight',
+  'site.builtFor.spotlightDesc':
+    'One global shortcut opens Quick Launch wherever you are. Type a ticket, press enter, and the agent is already running by the time you switch back.',
+
+  // ── The cloud band ────────────────────────────────────────────────────────
+  /**
+   * THE BAND THE PRODUCT OWNER PLACED "juste après « Fait pour les développeurs. Pas
+   * seulement pour eux. »" — `components/site/home/CloudSection.tsx`: the half of the
+   * product that opens in a browser, argued in a heading, a paragraph and three rows
+   * beside a drawing of the dashboard loading.
+   *
+   * THE HEADLINE NAMES THE CONFIGURATION AND NOT THE CLOUD, which is the decision worth
+   * defending because "Cloud" is what the band is called everywhere else — the nav row,
+   * the page title, the brief itself. A headline reading "The cloud" would be a category
+   * label, and every product in this market claims the category. "Your configuration is
+   * not on one machine" is a FACT about this one, and it is the fact the project's own
+   * CLAUDE.md is emphatic about: Supabase is the single source of truth and there is no
+   * local config file at all. It is also the objection the band above raises — five cards
+   * about living in one window, and nothing yet about the second Mac or the colleague's.
+   *
+   * THE TITLE NAMES THE PLACE. It stated the CONFIGURATION for one version — "your
+   * configuration is not on one machine", the fact the project's CLAUDE.md insists on —
+   * and the product owner brought it back to what the reader can open right now: Magic
+   * Slash, in a browser. The band draws a browser window, so the headline and the
+   * drawing now say the same thing.
+   *
+   * THE PARAGRAPH IS THE THREE ROWS IN PROSE, then the payoff. It names the devices
+   * first — a tablet, a phone — because the number of them IS the claim, then what you
+   * read on them, and closes on signing in somewhere else, because that last clause is
+   * the only sentence in the band a reader can check against their own week. `site.cloudPage.lead` makes the same promise for
+   * the page; that one is a promise of SCOPE for a page still being written, this is an
+   * argument on a landing page, and they are allowed to overlap in subject without
+   * sharing a string.
+   *
+   * THE BUTTON'S LABEL NAMES THE PAGE and not the action — `site.appBand.cta`'s call,
+   * two bands up, and the same word the header's own Product row uses for that route, so
+   * somebody told "it's under Product → Cloud" finds the same thing.
+   */
+  'site.cloudBand.title': 'Magic Slash from your browser',
+  'site.cloudBand.subtitle':
+    'Magic Slash Cloud follows you everywhere, from your tablet as much as from your phone. Read back your own plans and your team’s, your repositories, your team and your account. Sign in on another computer and it is all already there.',
+  'site.cloudBand.cta': 'See the cloud',
+
+  /**
+   * THE THREE ROWS UNDER THE PARAGRAPH — the same `FeaturePoints` list with the same
+   * brand-blue outline glyphs the two splits above carry, asked for in those words ("un
+   * titre description + 3 points avec icon bleu").
+   *
+   * THEY ARE THE DASHBOARD'S OWN THREE PAGES, in the order its navigation bar puts them:
+   * `/plans`, `/organization`, `/account`. The brief named them as such — "Liste des plan
+   * / Organisation settings / Your Account management" — and the rows keep that order
+   * rather than reordering by importance, because a reader who follows the button meets
+   * the three in this order at the top of the product. `CloudSection.tsx` takes their
+   * icons from `TopNav.tsx` for the same reason.
+   *
+   * "THE PLANS YOUR TEAM HAS WRITTEN" AND NOT "THE LIST OF PLANS", which is the one row
+   * that was rewritten rather than translated. A list is a screen; a plan somebody wrote
+   * is a thing. And "plan" is this product's own noun — a `/magic:plan` session, its spec
+   * and the tickets it filed (`plans.subtitle`) — not a subscription tier, which is the
+   * reading the second half of the row rules out. If pricing tiers ever need a row here,
+   * they need a different word.
+   *
+   * SHORT, LIKE `site.appBand.point*` AND UNLIKE THE SKILLS BAND'S: there is a picture of
+   * the thing beside them, so the rows are the caption to it. A row that restated the
+   * paragraph would be read twice and believed once.
+   */
+  'site.cloudBand.pointPlans': 'The plans your team has written',
+  'site.cloudBand.pointOrg': 'Your organization, its team and its repositories',
+  'site.cloudBand.pointAccount': 'Your account, managed from the browser',
+
+  // ── Security and privacy, two bands under "who the app is for" ────────────
+  //
+  // THE ONE FAMILY ON THIS PAGE WHERE A WRONG SENTENCE IS A LIE ABOUT SECURITY, so every
+  // string below was written against the source and `lib/security.ts` records, card by
+  // card, which file each claim was checked in. Two things are deliberately NOT said —
+  // "your code never leaves your machine", which is false because Claude Code sends it to
+  // Anthropic, and any statement of compliance, hosting or certification, which is the
+  // company's to make and not a landing page's. That module's header holds both arguments.
+  //
+  // NO PATH, NO FLAG AND NO FILE NAME IS SPELLED HERE except the branch names, which are
+  // git's own words in both languages and are what the reader has to recognise for the
+  // claim to land. Everything else a translator could get wrong — the glob patterns the
+  // commit skill resets, the name of the switch — stays out of the catalogue and is
+  // described rather than quoted.
+  //
+  // NO EM DASH IN THIS BLOCK, on the owner's instruction — the four card descriptions
+  // first, then the subtitle in a second pass. The only one left is in the retired
+  // `injection` pair, which nothing renders; it takes the rule the day the card comes back.
+  //
+  // EVERY DASH BECAME WHATEVER THAT DASH WAS DOING, and no word moved — the constraint that
+  // matters in a family where the sentences were each checked against a source file:
+  //
+  //   • `gdprDesc` and `guardDesc` had a dash standing in for a sentence break, so they got
+  //     the full stop it was standing in for;
+  //   • `secretsDesc` had a MATCHED PAIR around a parenthetical, so it got commas;
+  //   • the SUBTITLE also had a matched pair, and commas were wrong there. The pair scoped
+  //     three items to the word "configuration" and left the skill name outside it, which
+  //     is the whole distinction the sentence exists to draw: the three ARE your config,
+  //     the skill name is telemetry. Flattened to commas, all four read as one list and the
+  //     sentence quietly starts calling telemetry configuration. So the colon takes the
+  //     scoping the opening dash was doing and a full stop takes the closing one, which
+  //     gives the skill name its own sentence — where it is more exposed than it was, not
+  //     less. See the note on the subtitle itself for why that is the right direction.
+  //
+  // IT IS A HOUSE-STYLE RULE AND NOT A TYPOGRAPHIC ONE, so nothing tests for it: the rest
+  // of this catalogue — and these very comments — use the em dash freely, and a guard here
+  // would either be wrong everywhere else or would have to carve out this one block, which
+  // is more machinery than a preference is worth. If it ever becomes the page's rule rather
+  // than this block's, that is the point to write the test.
+  /**
+   * The band's `h2`. A CLAIM rather than the category label the product owner named the
+   * block with ("Security & Privacy"): every other headline on this page is a sentence,
+   * and a heading that only names a topic reads as a section divider in a document.
+   *
+   * IT IS ALSO THE STRONGEST TRUE THING THE BAND CAN SAY. "Your code never leaves your
+   * machine" is stronger and false. This one is what the band's fourth card states in
+   * detail — environment files, credentials, private keys and certificates are pulled out
+   * of the staging area before the commit is written — and it names what the reader
+   * actually fears: a leaked secret, rather than a tool reading code that a dozen tools
+   * read already. It said "never sees your code" for one version, which
+   * `desktop/src/main/usage/skill-invocations.ts` also backs; the subtitle still says it.
+   */
+  'site.security.title': 'Magic Slash never sees your secrets.',
+  /**
+   * WHAT THE CLOUD HOLDS, ITEMISED, because a privacy claim a reader cannot check is worth
+   * nothing. Three items and then three denials, in that order: the list is short enough to
+   * print, which is the whole argument, and the denials are what a developer actually wants
+   * ruled out.
+   *
+   * "The name of the skill you ran" is precise and deliberately unflattering — it would
+   * have been easy to leave the telemetry out of a paragraph about privacy, and a reader
+   * who later found it would be right to conclude the page had been drafted around it.
+   *
+   * THE COLON IS LOAD-BEARING and replaced a pair of em dashes when the owner asked for the
+   * dashes out of this block. It scopes the three items to the word "configuration" and
+   * leaves the skill name outside that scope, which is the sentence's whole point: those
+   * three ARE your config, and the skill name is telemetry sitting beside it. A comma in
+   * the colon's place would have made one flat list of four and quietly filed telemetry
+   * under configuration — a small slip, in the one family on this page where a small slip
+   * is a false statement about privacy.
+   *
+   * WHICH IS WHY THE SKILL NAME NOW HAS ITS OWN SENTENCE rather than a subordinate clause.
+   * That is MORE prominence than the dash gave it, not less, and it is the right direction
+   * for the reason the paragraph above gives: the telemetry is the one item here a reader
+   * would be annoyed to discover later, so the punctuation should never be what makes it
+   * easy to skim past.
+   */
+  'site.security.subtitle':
+    'The skills run in your own terminal, on your own clone. What the cloud holds is your configuration: your repositories, your languages, your commit format. And the name of the skill you ran. Not a prompt, not an argument, not a line of code.',
+  /**
+   * The acronym inside the European emblem on the GDPR card. The regulation has a French
+   * name, and a French reader does not recognise the English one — which is why this is a
+   * catalogue key and not a literal in the drawing. See `SECURITY_CHROME.gdprMark`.
+   */
+  'site.security.gdprMark': 'GDPR',
+  /** ① The repository. "The machine you are sitting at" rather than "locally", because the
+   * abstraction is the thing a reader is trying to see through. */
+  'site.security.repoTitle': 'Your repository stays yours',
+  'site.security.repoDesc':
+    'Nothing is cloned to a server. The agent works in a worktree on the machine you are sitting at, and the only thing about your code that ever reaches us is which repositories you told the app about.',
+  /**
+   * ② GDPR. IT SAYS WHAT IS STORED AND STOPS THERE. Naming the three things is a fact about
+   * the code and can be checked; "we are GDPR compliant" is a legal position, and a card
+   * cannot hold one. The badge beside it carries the signal.
+   */
+  'site.security.gdprTitle': 'The data we hold, in one line',
+  'site.security.gdprDesc':
+    'Your account, your repository settings, and how many hours each skill ran. That is the list. No source, no prompts, no diffs. And one switch stops the hours being counted at all.',
+  /**
+   * ③ The commit guard rail. THE BRANCH NAMES ARE SPELLED OUT because they are what makes
+   * the claim concrete: a reader recognises their own default branch in that list, and
+   * "protected branches" is a phrase that could mean anything.
+   */
+  'site.security.guardTitle': 'A guard rail on every commit',
+  'site.security.guardDesc':
+    'It will not write on main, master, develop or staging without stopping to ask you. It offers to cut a branch instead. One setting turns that question into a permanent no.',
+  /**
+   * ④ Secrets. "Even when your gitignore let them through" IS THE CARD. Everyone believes
+   * their gitignore is right; the claim is only worth making because it holds when it is
+   * not, and that is precisely what the skill's own comment says the patterns are for.
+   */
+  'site.security.secretsTitle': 'Secrets never make it into a commit',
+  'site.security.secretsDesc':
+    'Environment files, credentials, private keys and certificates are pulled back out of the staging area before a commit is written, even when your gitignore let them through, and you are told which ones.',
+  /**
+   * RETIRED, AND KEPT. This pair dressed a fifth card — "a ticket cannot give the agent
+   * orders" — cut when the band went to two rows of two. It stays in the catalogue for the
+   * reason every other retired family on this page does (`app/(marketing)/page.tsx` keeps
+   * that list): nothing tests for an unused key, and bringing the card back should cost one
+   * row in `lib/security.ts` rather than a rewrite.
+   *
+   * IT IS WORTH BRINGING BACK. The last sentence is the part nobody else advertises: an
+   * agent that silently ignored an injected instruction would be safe and useless to you,
+   * because you would never learn somebody had put one in your pull request. Reporting it
+   * is what all eight skills actually require.
+   */
+  'site.security.injectionTitle': 'A ticket cannot give the agent orders',
+  'site.security.injectionDesc':
+    'Tickets, review comments and pull request descriptions are read as data about a change, never as instructions. An instruction hidden in one is quoted back to you rather than followed — so you find out it was there.',
 
   // ── ② How it works ─────────────────────────────────────────────────────────
   'site.how.title': 'How it actually works.',
@@ -162,7 +1454,7 @@ export const marketingEn = {
   // and the outcome in one breath — and the hooks are how it works, not what you get.
   // The same word in both languages, hence its line in `i18n.test.ts`.
   'site.features.hooksTitle': 'Notifications',
-  'site.features.hooksDesc': 'Your Mac tells you the moment a job needs you.',
+  'site.features.hooksDesc': 'Your Mac tells you the moment a job needs you. Switched off in the settings, if you would rather it did not.',
   'site.features.securityTitle': 'Security',
   'site.features.securityDesc':
     'What runs where, what leaves your machine, and what never does.',
@@ -358,13 +1650,13 @@ export const marketingEn = {
     'Search on a ticket id or a title, narrow to one repository or one Jira epic, and read the result newest first or by priority.',
   'site.tasksCard.legendFieldsTitle': 'Your board’s own words',
   'site.tasksCard.legendFieldsDesc':
-    'A Jira row carries its status, its priority and the epic it hangs off — printed as your site sends them, never translated or re-tiered.',
+    'A Jira row carries its status, its priority and the epic it hangs off, printed as your site sends them, never translated or re-tiered.',
   'site.tasksCard.legendAvailableTitle': 'Only what is free to take',
   'site.tasksCard.legendAvailableDesc':
-    'The sprint’s To Do column, plus the tickets an agent is already on — those marked as taken. Work in flight elsewhere is not offered: the page will not propose to duplicate it.',
+    'The sprint’s To Do column, plus the tickets an agent is already on, marked as taken. Work in flight elsewhere is not offered: the page will not propose to duplicate it.',
   'site.tasksCard.legendTrackersTitle': 'Both trackers, by repository',
   'site.tasksCard.legendTrackersDesc':
-    'A GitHub repository’s open issues and a Jira project’s active sprint, each a card of its own — and one card for two services that share a project.',
+    'A GitHub repository’s open issues and a Jira project’s active sprint, each a card of its own, and one card for two services that share a project.',
   'site.tasksCard.gh1': 'Webhook retries drop the idempotency key',
   'site.tasksCard.gh2': 'Rate-limit the public search',
   'site.tasksCard.gh3': 'Checkout returns a 500 when the basket is empty',
@@ -532,7 +1824,7 @@ export const marketingEn = {
   'site.features.worktreesDesc':
     'Every agent works in its own checkout of your project, so a feature and a hotfix never touch the same files.',
   'site.features.splitViewDesc':
-    'Two agents side by side on a wide screen — the one you are answering, and the one you are watching.',
+    'Two agents side by side on a wide screen: the one you are answering, and the one you are watching.',
   'site.features.spotlightDesc':
     'A global shortcut opens Quick Launch from any app: name the ticket, and the agent starts.',
   'site.features.menuBarTitle': 'Always there',
@@ -589,7 +1881,7 @@ export const marketingEn = {
     'It runs on your own subscription, on your own machine. Nothing is re-hosted in between.',
   'site.features.machineSetupTitle': 'Set up on launch',
   'site.features.machineSetupDesc':
-    'The eight skills, the MCP servers, the hooks and the permissions are checked — and installed — every time the app starts.',
+    'The eight skills, the MCP servers, the hooks and the permissions are checked, and installed if missing, every time the app starts.',
   // The row is headed "Tasks", the app's own name for the screen, so the line under it
   // does the describing — and it says the whole claim rather than half of it: not only
   // that the backlog is in the window, but that a ticket in it is one click from an
@@ -610,7 +1902,7 @@ export const marketingEn = {
     'One language for the commits, one for the pull requests, one for the comments posted on tickets, one for the spec and the tickets /magic:plan writes — and the one you talk to Claude in, which nobody else reads. Each is chosen on its own, per repository.',
   'site.features.permissionModesTitle': 'How far an agent may go',
   'site.features.permissionModesDesc':
-    'Plan, standard, accept edits, auto or bypass — how much an agent does before it asks you.',
+    'Plan, standard, accept edits, auto or bypass: how much an agent does before it asks you.',
   'site.features.profileTitle': 'How it talks to you',
   'site.features.profileDesc':
     'Right after you sign up, a short onboarding form teaches Claude Code who you are: your first name, your role, your technical level, the tone you want and your languages. Every skill reads it before answering, so an answer arrives at the depth you read at. Editable any time from the settings.',
@@ -622,13 +1914,13 @@ export const marketingEn = {
   // paragraph, which already names the panel's contents one by one.
   // The info sidebar drawing — `InfoSidebarMockup`, the app's own labels.
   'site.features.ticketInfoTitle': 'The ticket, and where it stands',
-  'site.features.ticketInfoDesc': 'Id, title, description and status — the agent’s own words for what it is doing, kept up to date at every step. The id is a link: it opens the GitHub issue or the Jira ticket in your browser. No more remembering which Claude Code is on which task: it is all here, and that is one less thing to hold in your head.',
+  'site.features.ticketInfoDesc': 'Id, title, description and status: the agent’s own words for what it is doing, kept up to date at every step. The id is a link: it opens the GitHub issue or the Jira ticket in your browser. No more remembering which Claude Code is on which task: it is all here, and that is one less thing to hold in your head.',
   'site.features.repositoryTitle': 'The branch, the files, the commits',
-  'site.features.repositoryDesc': 'The branch, the files the agent touched with their added and removed lines, and the commits already made — read from Git as it happens. Two buttons open the project in VS Code and the repository on GitHub.',
+  'site.features.repositoryDesc': 'The branch, the files the agent touched with their added and removed lines, and the commits already made, read from Git as it happens. Two buttons open the project in VS Code and the repository on GitHub.',
   'site.features.devServerTitle': 'Start a local test server',
   'site.features.devServerDesc': 'The scripts of your package.json are one click away. A server that starts prints its address under the card, and the address opens in your browser.',
   'site.features.pullRequestTitle': 'The pull request, watched live',
-  'site.features.pullRequestDesc': 'CI checks, comments and the review’s verdict land in the card as they happen — without opening GitHub.',
+  'site.features.pullRequestDesc': 'CI checks, comments and the review’s verdict land in the card as they happen, without opening GitHub.',
   'site.infoSidebar.uncommitted': 'Uncommitted changes',
   'site.infoSidebar.fileOne': '{count} file',
   'site.infoSidebar.files': '{count} files',
@@ -762,7 +2054,7 @@ export const marketingEn = {
     'What is left of your five-hour session and of your rolling week, on every screen of the app.',
   'site.features.agentContextTitle': 'The context the running agent has spent',
   'site.features.agentContextDesc':
-    'How much of its window this run has filled, in tokens and as a share — the agent you are looking at, not the account.',
+    'How much of its window this run has filled, in tokens and as a share. The agent you are looking at, not the account.',
   'site.features.planSessionsTitle': 'Plans, yours and your team’s',
   'site.features.planSessionsDesc':
     'Every /magic:plan session on a repository you can see — the spec it wrote and the tickets it filed. Kept on your account, so a plan outlives the window it was written in.',
@@ -836,6 +2128,24 @@ export const marketingEn = {
   // promise that opening it is cheap; an answer that turns out to be a page of prose
   // breaks it, and the reader who needed that much detail was never going to find it
   // inside an accordion.
+  // ── The FAQ band on the homepage ───────────────────────────────────────────
+  //
+  // BAND ⑧ IS BACK, and it is not the one that was cut. That band WAS the FAQ — five
+  // questions and nothing else, on a page with no FAQ to send anyone to. This one is a
+  // WINDOW onto `/faq`: the five questions that stop a reader pressing the download
+  // button, beside a title, a line and a button out to the other six. `HOME_QUESTION_IDS`
+  // in `lib/faq.ts` says which five and why.
+  //
+  // ITS OWN THREE KEYS, not `site.faq.title` and `site.faq.lead` — the band and the page
+  // are two surfaces, and sharing copy between two surfaces is the mistake
+  // `site.finalCta.*` exists to have fixed. "Frequently asked questions" is an `h1` over
+  // eleven rows; a band arriving after five screens of product can be warmer than that,
+  // and its line has to account for showing five of the eleven.
+  'site.homeFaq.title': 'Still wondering.',
+  'site.homeFaq.subtitle':
+    'The five we get asked before anyone installs it. Commit formats, credentials, updates, uninstalling — the rest is on the FAQ.',
+  'site.homeFaq.cta': 'Read the FAQ',
+
   'site.faq.title': 'Frequently asked questions',
   'site.faq.lead':
     'Everything about installing Magic Slash, configuring it, and living with it day to day.',
@@ -888,24 +2198,23 @@ export const marketingEn = {
   'site.faq.uninstall.a':
     'One script: <code>install/uninstall.sh</code>. It removes the eight skills, the Jira and GitHub MCP servers, every permission the setup added to <code>~/.claude/settings.json</code>, the app itself and <code>~/.config/magic-slash/</code>. Your repositories and your Claude Code install are left exactly as they were.',
 
-  // ── Closing CTA ────────────────────────────────────────────────────────────
   // ── Closing CTA (homepage) ─────────────────────────────────────────────────
   //
-  // SEPARATE FROM `site.cta.*`, which `/story` renders in its own closing block. The two
-  // pages ended on the same three keys, so retuning one rewrote the other; these belong
-  // to the homepage's dark closing sheet and nothing else reads them.
+  // THEY WERE SPLIT OFF FROM `site.cta.*`, which `/story` rendered in its own closing
+  // block: both pages ended on the same three keys, so retuning one rewrote the other.
+  // That page is deleted and `site.cta.*` with it, which leaves this family the only
+  // closing copy on the site — and it keeps its own name rather than moving back, since
+  // "the homepage's closing sheet" is what it actually is.
   'site.finalCta.title': 'Upgrade your product builder workflow today.',
   'site.finalCta.subtitle': 'Try Magic Slash.',
   'site.finalCta.button': 'Get Magic Slash for Mac',
 
-  'site.cta.title': 'Start building.',
-  'site.cta.subtitle': 'Free, and about a minute to set up.',
-  'site.cta.button': 'Start free',
-
   // ── Hero mockup ────────────────────────────────────────────────────────────
   // The window CHROME of the animated app mockup, and only that. The terminal's own
   // lines are not here: they are the log the real product prints, and it prints English,
-  // so they live as literals in `AppMockup.tsx` beside the run they belong to. `{n}` is
+  // so they lived as literals in `AppMockup.tsx` beside the run they belonged to — that
+  // component is deleted, and `home/AppWindowMockup.tsx` holds its own the same way.
+  // `{n}` is
   // substituted by the animation, which reads these off `data-` attributes so it never
   // has to know a user-facing string itself.
   'site.mockup.menuNewAgent': 'New agent',
@@ -949,6 +2258,15 @@ export const marketingEn = {
   'site.repoCfg.personal': 'Personal',
   'site.repoCfg.personalHelp':
     'Only you can see this repository. Share it with an organization to make it a team repo.',
+  // THE TEAM HALF OF THE SCOPE ROW, added when `SharedConfigArt` gave this family a
+  // consumer again. The row has two states and the catalogue only held one: `personal`
+  // above, and now the state a shared repository is actually in. All three mirror the
+  // desktop's own `repo.scope.*` word for word rather than paraphrasing them — the drawing
+  // is a reproduction of that row, so the site and the app say the same sentence.
+  'site.repoCfg.teamNamed': 'Team — {name}',
+  'site.repoCfg.teamHelp':
+    'Shared with the organization — every member sees it and binds their own local folder.',
+  'site.repoCfg.makePersonal': 'Make personal',
   'site.repoCfg.general': 'General',
   'site.repoCfg.name': 'Name',
   'site.repoCfg.nameHelp': 'Repository display name',
@@ -1036,75 +2354,6 @@ export const marketingEn = {
   'site.agentPanel.lastChecked': 'checked {time}',
   'site.agentPanel.refresh': 'Refresh',
 
-  // ── Story page ─────────────────────────────────────────────────────────────
-  'site.story.label': 'Our Story',
-  'site.story.heroTitle': 'We got tired of<br>the copy-paste.',
-  'site.story.heroIntro':
-    'We were using Claude Code every day, on real projects, with real Jira tickets. And every single time, we were doing the same thing: reading the ticket, rephrasing it into a prompt, creating worktrees by hand, committing manually, writing PR descriptions from scratch. It worked. But it was slow, repetitive, and boring.',
-  'site.story.painTitle': 'What it looked like before.',
-  'site.story.painSubtitle':
-    'Every task meant the same tedious routine. Here’s what we were doing 5 to 10 times a day.',
-  'site.story.pain1Title': 'Read and understand the ticket',
-  'site.story.pain1Desc':
-    'Open Jira, read the title, the description, the acceptance criteria. Understand what needs to be done, then switch to the terminal and rephrase it all as a prompt for Claude Code.',
-  'site.story.pain2Title': 'Create the worktree manually',
-  'site.story.pain2Desc':
-    'Figure out the branch name from the ticket ID, run git worktree add, cd into it, make sure you’re on the right base branch. Every. Single. Time.',
-  'site.story.pain3Title': 'Write the perfect prompt',
-  'site.story.pain3Desc':
-    'Translate the Jira spec into the best possible prompt. Copy-paste the acceptance criteria, add context about the codebase, hope you didn’t forget anything important.',
-  'site.story.pain4Title': 'Commit, PR, describe',
-  'site.story.pain4Desc':
-    'Stage changes, write a conventional commit message, push, open the PR, write the description, link the Jira ticket, update the status. All by hand.',
-  'site.story.pain5Title': 'Review comments on your own',
-  'site.story.pain5Desc':
-    'Read each review comment, understand the feedback, fix the code, force-push, resolve the threads. No help, no automation.',
-  'site.story.pain6Title': 'Clean up (if you remember)',
-  'site.story.pain6Desc':
-    'Once merged, delete the worktree, the local branch, the remote branch. One time out of five, you forget, and stale branches pile up.',
-  'site.story.timelineTitle': 'How we got here.',
-  'site.story.timelineSubtitle':
-    'From a brainstorm to a product used daily by the team.',
-  'site.story.tl1Date': 'Early January 2026',
-  'site.story.tl1Title': 'The first brainstorm',
-  'site.story.tl1Desc':
-    'Initial idea: a Chrome extension that adds a button to Jira tickets to copy the spec and paste it into a manually launched Claude Code. Simple, but not enough.',
-  'site.story.tl2Date': 'January 2026',
-  'site.story.tl2Title': 'Pivot to slash commands',
-  'site.story.tl2Desc':
-    'After the brainstorm, the decision is clear: forget the extension, let’s build Claude Code slash commands powered by the GitHub and Atlassian MCP servers — pulling in Jira tickets and GitHub Issues natively. Direct, fast, no context-switching.',
-  'site.story.tl3Date': 'Mid-January 2026',
-  'site.story.tl3Title': 'First version of magic-slash',
-  'site.story.tl3Desc':
-    'magic-slash ships with a landing page, a <code>/start</code> command to kick off tasks from Jira tickets, and a polished install CLI for a top-notch developer experience. Fetch the spec, create the branch, start coding — one command.',
-  'site.story.tl4Date': 'Late January 2026',
-  'site.story.tl4Title': '/commit and /done arrive',
-  'site.story.tl4Desc':
-    '<code>/commit</code> for fast conventional commits and <code>/done</code> to push, open the PR, and update Jira. The full cycle starts to take shape. Slash commands evolve into Claude Code skills for a smoother experience.',
-  'site.story.tl5Date': 'February 2026',
-  'site.story.tl5Title': 'Battle-tested by the team',
-  'site.story.tl5Desc':
-    'magic-slash goes into heavy daily use across the dev team. Real tickets, real PRs, real feedback. Every pain point surfaces and gets fixed.',
-  'site.story.tl6Date': 'Early March 2026',
-  'site.story.tl6Title': 'Magic-slash desktop is born',
-  'site.story.tl6Desc':
-    'New problem: with 7-8 Claude instances running in terminals, nobody knew which agent was working on what. Way too much time wasted on context recovery. So we built a desktop app to see everything at a glance — up to 12 agents in parallel, each on its own ticket.',
-  'site.story.tl7Date': 'March 2026',
-  'site.story.tl7Title': 'From 3 skills to 7 — the full dev flow',
-  'site.story.tl7Desc':
-    'The skill set grows from 3 to 7 with a complete development cycle. <code>/done</code> becomes <code>/pr</code> for creating pull requests, and a new <code>/done</code> handles ticket closure after merge. <code>/review</code> and <code>/resolve</code> land to automate code reviews and address feedback. Plus a full month of desktop app testing, bug fixes, and UI refinements.',
-  'site.story.tl8Date': 'April 2026',
-  'site.story.tl8Title': 'Rebranding & the Ninja Rabbit',
-  'site.story.tl8Desc':
-    'New identity drops with a mascot: the Ninja Rabbit. A sword for the Slash, a white rabbit as a symbol of magic. Fresh landing page, new visual direction.',
-  'site.story.tl9Date': 'Coming soon',
-  'site.story.tl9Title': 'What’s next?',
-  'site.story.tl9Desc':
-    'More integrations, smarter reviews, and a lot more. Stay tuned.',
-  'site.story.ctaTitle': 'Ready to try?',
-  'site.story.ctaDesc': 'Install magic-slash and see the difference.',
-  'site.story.ctaBtn': 'Start free',
-
   // ── Changelog page ─────────────────────────────────────────────────────────
   // The chrome of `/changelog`, and ONLY the chrome. The releases themselves are
   // parsed out of `CHANGELOG.md` at build time and rendered as written — they come
@@ -1136,10 +2385,25 @@ export const marketingEn = {
   'site.footer.updates': 'Updates',
   'site.footer.configuration': 'Configuration',
   'site.footer.changelog': 'Changelog',
+  /**
+   * PARKED, with the rest of this family: the Resources column is gone. It held `/story`
+   * and the repository, the story page is deleted by request, and the row that was left
+   * pointed where the mark under the tagline already points — so `SiteFooter.tsx` is two
+   * columns now. The word is kept because the next column this footer grows may well be
+   * this one; `site.footer.ourStory` is NOT, because the page it named does not exist.
+   */
   'site.footer.resources': 'Resources',
   'site.footer.documentation': 'Documentation',
   'site.footer.faq': 'FAQ',
-  'site.footer.ourStory': 'Our Story',
+  /**
+   * The middle column's heading, and the one key in this family that arrived rather than
+   * being retired. It was `site.nav.help`, the header's **Help** trigger, while the
+   * footer's column was that menu's rows verbatim; the menu is gone and the column is
+   * not, so the word belongs to the surface that still says it. See `SiteFooter.tsx`,
+   * which now composes those rows — the FAQ, then "Report an issue" — rather than
+   * mirroring a menu.
+   */
+  'site.footer.help': 'Help',
   /**
    * The third column. It is LEGAL rather than the `company` heading above it because
    * every entry in it is a document, and every one of those documents lives on GitHub:

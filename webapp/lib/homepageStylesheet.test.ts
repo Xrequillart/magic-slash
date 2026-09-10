@@ -26,12 +26,14 @@ import { describe, expect, it } from 'vitest'
  *
  * NOTHING IMPORTS `marketing.css` ANY MORE, which is new and changes what rule 1 is
  * guarding. `app/(docs)/layout.tsx` was the last importer, and `/documentation` has been
- * deleted (`/faq` replaced it; see `lib/faq.test.ts`). The FILE stays on disk on purpose
- * and that is not sentiment: it defines the ~81 `mk-*` classes that dress
- * `components/site/home/AppMockup.tsx`, which issue #270 brings back scroll-driven and
- * has to bring the styling with it. `marketingCss.test.ts` still reads it. So the rule
- * is no longer "the homepage is off a stylesheet the docs still use" — it is "nothing is
- * on it, and the homepage least of all".
+ * deleted (`/faq` replaced it; see `lib/faq.test.ts`). The FILE stays on disk, but no
+ * longer because anything is dressed by it: the ~86 `mk-*` classes that held it here used
+ * to dress `components/site/home/AppMockup.tsx`, and #270 DELETED that component instead
+ * of porting it — the homepage's window is `home/AppWindowMockup.tsx` now, drawn in
+ * tokens. Those rules are stranded. So the rule is no longer "the homepage is off a
+ * stylesheet the docs still use" — it is "nothing is on it, and the homepage least of
+ * all". `marketingCss.test.ts` still reads the file, which is what keeps it honest until
+ * the dead block is pruned.
  *
  * TEXT, and only text. The root suite runs on the ROOT `node_modules` and CI never
  * installs `webapp/`'s dependencies, so nothing here may import `react`, `next/*`,
@@ -46,22 +48,25 @@ const path = (relative: string) => fileURLToPath(new URL(relative, WEBAPP))
 const MARKETING_LAYOUT = path('app/(marketing)/layout.tsx')
 
 /**
- * The homepage's own tree: the route, the six bands, and the chrome the layout wraps
+ * The homepage's own tree: the route, the seven bands, and the chrome the layout wraps
  * them in.
  *
  * `components/site` is walked RECURSIVELY so a new band or a new shared control is
- * covered the day it is written, with ONE subtree cut out — and it is cut out because it
- * legitimately still uses these classes rather than to make the test pass:
- *   • `story/` — `/story` keeps its own `story.css`, which now carries the closing-CTA
- *     rules it used to borrow, `.btn-get-started` and `.cta-btn` among them. Those are
- *     in `StoryContent.tsx` on purpose.
+ * covered the day it is written, and NOTHING IS CUT OUT OF IT ANY MORE.
  *
- * `documentation/` was the second, exempted while `app/(docs)/layout.tsx` was still
- * importing `marketing.css` for that page's typography. Both are deleted, so the
- * exemption went with them — and `faq/`, the tree that replaced it, is scanned like
- * every other.
+ * There were two exemptions, both for trees that legitimately used these classes rather
+ * than to make the test pass. `documentation/` was exempt while `app/(docs)/layout.tsx`
+ * still imported `marketing.css` for that page's typography; `story/` was exempt because
+ * `/story` kept its own `story.css`, carrying the closing-CTA rules it used to borrow —
+ * `.btn-get-started` and `.cta-btn` among them. Both pages are deleted (`/faq` replaced
+ * the first; the second went by request, and `/story` 308s to the homepage now), so the
+ * exemptions went with them and every tree under `components/site` is scanned.
+ *
+ * THE LIST STAYS as an empty array rather than being inlined away: an exemption is what
+ * this rule will need the next time a page arrives with a stylesheet of its own, and the
+ * filter below is where a reader will look for it.
  */
-const EXCLUDED_SUBTREES = ['story']
+const EXCLUDED_SUBTREES: string[] = []
 
 const SCANNED_EXTENSIONS = ['.ts', '.tsx']
 
@@ -113,12 +118,11 @@ function importsMarketingCss(source: string): boolean {
  * The eleven-way button pile from `marketing.css`, by name.
  *
  * MATCHED ON A BOUNDARY THAT TREATS `-` AS PART OF THE WORD, not as a `btn-` substring.
- * `AppMockup.tsx` is in the scanned tree (it is kept for #270 — see the note at the top
- * of that file) and it carries `mk-panel-btn--right`, which is one of ~81 `mk-*` class
- * names belonging to the animated mockup and is not a button recipe at all. A
- * `/btn-/`-style scan fails on it, and a `\b` boundary would let a hypothetical
- * `mk-status-btn` match `status-btn` for the same reason. So: no `-` and no word
- * character on either side.
+ * The case that forced it is gone — `AppMockup.tsx` carried `mk-panel-btn--right`, one of
+ * ~86 `mk-*` class names belonging to the animated mockup and not a button recipe at all,
+ * and #270 deleted that component. The boundary STAYS: a `/btn-/`-style scan would have
+ * failed on that class, and a `\b` boundary would let a hypothetical `mk-status-btn` match
+ * `status-btn` for the same reason. So: no `-` and no word character on either side.
  */
 const MARKETING_BUTTON_CLASSES = [
   'btn-get-started',
@@ -160,7 +164,10 @@ describe('the homepage is off marketing.css', () => {
     expect(importsMarketingCss("import '../(marketing)/marketing.css'")).toBe(true)
     expect(importsMarketingCss("import styles from './marketing.css'")).toBe(true)
     expect(importsMarketingCss("require('../(marketing)/marketing.css')")).toBe(true)
-    expect(importsMarketingCss("import './story.css'")).toBe(false)
+    // A stylesheet that is NOT this one, so the pattern is shown to discriminate rather
+    // than to match any `.css` import. It was `'./story.css'` until that page was
+    // deleted; `globals.css` is real and imported by the root layout.
+    expect(importsMarketingCss("import './globals.css'")).toBe(false)
   })
 
   it('uses none of the stylesheet’s button classes', () => {

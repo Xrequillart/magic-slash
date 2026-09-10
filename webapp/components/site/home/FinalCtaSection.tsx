@@ -16,11 +16,12 @@ import { BAND_TITLE, HomeSection } from './Shell'
  * question rather than a convenience, and the icon above it has already said what is
  * being offered. `DESKTOP_DOWNLOAD_URL` is the .dmg itself, not a releases page.
  *
- * ITS OWN COPY, and that is a fix rather than a preference: `site.cta.*` is ALSO what
- * `/story` renders in its own closing block (`components/site/story/StoryContent.tsx`),
- * so retuning this band through those keys would have silently rewritten a page this
- * story is not supposed to touch. The homepage's closing copy is `site.finalCta.*` and
- * nothing else reads it; `site.cta.*` stays exactly as `/story` left it.
+ * ITS OWN COPY, and that was a fix rather than a preference: `site.cta.*` was ALSO what
+ * `/story` rendered in its own closing block, so retuning this band through those keys
+ * would have silently rewritten a page that story was not supposed to touch. The
+ * homepage's closing copy has been `site.finalCta.*` ever since, and it keeps that name
+ * now `/story` and `site.cta.*` are both deleted: this band is the homepage's closing
+ * sheet, which is what the family says.
  *
  * THE ICON IS THE ONLY BITMAP ON THE PAGE, at 256px and 46KB — everything else in
  * `public/img/` bar the integration logos is between 1.7MB and 4MB, which is why the

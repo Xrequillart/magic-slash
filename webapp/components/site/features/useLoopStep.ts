@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { isStill } from '@/lib/stillness'
 
 /**
  * The step a looping storyboard is on: the index of the last entry of `at` (milliseconds
@@ -18,7 +19,7 @@ export function useLoopStep(at: readonly number[], loopMs: number): number {
   const [step, setStep] = useState(at.length - 1)
 
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (isStill()) return
     const start = performance.now()
     let shown = -2
     const id = window.setInterval(() => {

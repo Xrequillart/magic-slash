@@ -15,6 +15,8 @@ import {
 } from 'lucide-react'
 import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
+import { STILL_QUERY } from '@/lib/stillness'
+import { Pointer } from '../Pointer'
 
 /**
  * The visual under the `Review the changes` row: the desktop app's review drawer,
@@ -237,27 +239,6 @@ function CountChip({ added, removed }: { added: number; removed: number }) {
   )
 }
 
-/** A macOS arrow pointer, black with a white edge so it reads on the dark drawer. */
-function Pointer({ pressed }: { pressed: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={`h-5 w-5 drop-shadow-md transition-transform duration-150 ${
-        pressed ? 'scale-[0.82]' : 'scale-100'
-      }`}
-      style={{ transformOrigin: '4px 3px' }}
-    >
-      <path
-        d="M5 3l12 10.5h-6.6l3.9 8-2.8 1.2-3.9-8L5 19.5z"
-        fill="#000"
-        stroke="#fff"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
 export function ReviewDrawerMockup() {
   const { t } = useT()
   const comment = t('site.reviewDrawer.comment')
@@ -277,7 +258,7 @@ export function ReviewDrawerMockup() {
   // THE CLOCK. One interval, and every tick derives the whole frame from how far into
   // the loop it is — see `frameAt`. Not started at all under reduced motion.
   useEffect(() => {
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const media = window.matchMedia(STILL_QUERY)
     if (media.matches) {
       setReduced(true)
       setFrame(restingFrame(comment.length))
@@ -550,7 +531,7 @@ export function ReviewDrawerMockup() {
               className="pointer-events-none absolute z-20 transition-[left,top] duration-700 ease-in-out"
               style={{ left: pointer.x, top: pointer.y }}
             >
-              <Pointer pressed={frame.pressed} />
+              <Pointer pressed={frame.pressed} className="h-5 w-5" />
             </div>
           ) : null}
         </div>

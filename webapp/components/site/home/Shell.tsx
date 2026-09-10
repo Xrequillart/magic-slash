@@ -1,6 +1,8 @@
 'use client'
 
 import { Eyebrow } from '@/components/ui'
+import type { MessageKey } from '@/lib/i18n'
+import { RichText } from '../RichText'
 
 /**
  * The two pieces of structure every band on the homepage needs: the band itself, and
@@ -33,6 +35,28 @@ import { Eyebrow } from '@/components/ui'
  * in the emitted sheet. The colour therefore leaves the base and each rung states it.
  */
 const BAND_TITLE_TYPE = 'font-display text-3xl font-black leading-tight md:text-4xl'
+
+/**
+ * A WORD STRUCK THROUGH inside a headline — the `<em>` in `site.desktop.title` and in
+ * `site.builtFor.title`, which are the two headlines on the site that name a thing in
+ * order to correct it ("not remembering", "not only developers"). Both are rendered by
+ * `RichText`, so the tag has to be styled from the outside; this is the recipe.
+ *
+ * `<em>` AND NOT `<s>`: `lib/i18n.test.ts` allows four inline tags in the site copy and
+ * `<em>` is the one with no other job in a headline. It is stripped of its italics here.
+ *
+ * THE BAR IS AN `::after`, NOT `line-through`, and that is a correctness point rather
+ * than a stylistic one: `text-decoration` has no interpolable value between "none" and
+ * "line-through", so the strike could not be animated at all. A bar that GROWS from the
+ * left reads as the pen moving; one that fades in has already crossed the word before
+ * you see it. `animate-strike-in` in `tailwind.config.ts` sits beside the reveals and
+ * waits out the headline's own entrance before it draws.
+ */
+export const STRUCK_WORD = [
+  '[&_em]:relative [&_em]:not-italic [&_em]:text-muted',
+  "[&_em]:after:absolute [&_em]:after:inset-x-0 [&_em]:after:top-[54%] [&_em]:after:h-[0.09em] [&_em]:after:origin-left [&_em]:after:rounded-sm [&_em]:after:bg-brand [&_em]:after:content-['']",
+  '[&_em]:after:animate-strike-in [&_em]:after:motion-reduce:animate-none',
+].join(' ')
 
 export const BAND_TITLE = {
   /** Every band on the `canvas` page. */
@@ -144,21 +168,50 @@ export function HomeSection({
  *
  * The headline is an `h2` in every band — the page has one `h1`, in the hero — so the
  * outline stays honest without the caller having to remember which level it is on.
+ *
+ * IT WENT ONE ROUND WITH NOTHING RENDERING IT, and that is why it is still here. Its one
+ * consumer was the "how it works" band, cut from the homepage by the product owner — and
+ * it was kept on the argument that this is the file's shared vocabulary rather than a
+ * retired band's component, so the next band on the page would reach for it instead of
+ * restating these four classes. `WorkflowSection` is that band, and it needed no change
+ * here: `max-w-2xl`, left-aligned, an `h2` at the page's own headline size is exactly
+ * what a heading with a button beside it wants.
+ *
+ * The two bands that do NOT use it both have a reason. The closing band draws on
+ * `BAND_TITLE` because it needs the dark ink and its own width (see above), and
+ * `desktop/DesktopHero` writes its headline out because its whole composition is a
+ * centred axis — passing `text-center` into this would be a caller dressing a component.
+ * (That was a band on this page until it moved to `/desktop`; the band that replaced it,
+ * `AppSection`, is a split and uses `HomeHeading` like the rest.) See
+ * `app/(marketing)/page.tsx` for the band that went.
  */
 export function HomeHeading({
   eyebrow,
   title,
+  titleKey,
   subtitle,
 }: {
-  /** A slash command, in the monospace `Eyebrow`. Omitted where there is none to name. */
   eyebrow?: string
-  title: string
   subtitle?: string
-}) {
+} & (
+  | { title: string; titleKey?: never }
+  /**
+   * THE MARKUP-BEARING HALF. A band whose headline carries an `<em>` cannot hand this
+   * component a translated string — the tag would print as text — so it passes the KEY
+   * and `RichText` renders it here, wearing `STRUCK_WORD` on top of the same type.
+   * Exactly one of the two is required, which the union is what enforces: a caller
+   * passing both, or neither, does not compile.
+   */
+  | { titleKey: MessageKey; title?: never }
+)) {
   return (
     <div className="max-w-2xl">
       {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-      <h2 className={BAND_TITLE.onLight}>{title}</h2>
+      {titleKey ? (
+        <RichText k={titleKey} as="h2" className={`${BAND_TITLE.onLight} ${STRUCK_WORD}`} />
+      ) : (
+        <h2 className={BAND_TITLE.onLight}>{title}</h2>
+      )}
       {subtitle && <p className="mt-4 text-base leading-relaxed text-muted">{subtitle}</p>}
     </div>
   )

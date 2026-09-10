@@ -16,20 +16,27 @@ export const GITHUB_REPO_URL = 'https://github.com/xrequillart/magic-slash'
 export const RELEASE_TAG_URL = `${GITHUB_REPO_URL}/releases/tag/v${LATEST_DESKTOP_VERSION}`
 
 /**
- * The three LEGAL documents, which live in the repository rather than on this site.
+ * The two LEGAL documents, which live in the repository rather than on this site.
  *
  * There is no `/terms`, no `/privacy` and no `/license` route: the public site owns
  * exactly the paths `PUBLIC_PATHS` in `lib/hostRouting.ts` enumerates, and anything else
- * on a production host 307s to `app.magic-slash.io`. So the footer's Legal column points
- * at the files themselves until story #273 gives them pages — a link that leaves for
- * GitHub is honest, where a link that bounces a reader into a login form is not.
+ * on a production host 307s to `app.magic-slash.io`. So these named the files themselves
+ * until story #273 gives them pages — a link that leaves for GitHub is honest, where a
+ * link that bounces a reader into a login form is not.
+ *
+ * NOTHING LINKS TO EITHER OF THEM RIGHT NOW. The footer's Legal column was removed by
+ * request (see `SiteFooter.tsx`), and these two rows went with it — the third,
+ * `NEW_ISSUE_URL`, moved into Resources and is still used. They are kept rather than
+ * deleted because the URLs are still the right ones and #273 is still the story that
+ * needs them: a constant with a note explaining why it is unused costs nothing, where
+ * re-deriving `blob/main` paths from memory later costs a wrong link.
  *
  * The list is NOT copied here. It was, and #269 adding `/features` to it meant editing
  * this sentence and one in `SiteFooter.tsx` to match a line neither file reads — three
  * copies of one fact, none of them tested, and a stale copy is worse than no copy
  * because the reasoning above is asserted on it.
  *
- * `blob/main` rather than a tag: these three are read as the CURRENT policy, not as
+ * `blob/main` rather than a tag: these are read as the CURRENT policy, not as
  * the policy that shipped with a release, which is the opposite of what
  * `RELEASE_TAG_URL` above wants.
  */

@@ -76,16 +76,25 @@ function Row({
   header,
   detail,
   chevron,
+  part,
+  ringed = false,
   children,
 }: {
   icon: ReactNode
   header: ReactNode
   detail?: ReactNode
   chevron?: 'open' | 'closed'
+  /** The `data-part` the `/desktop` tour pans to. See `InfoSidebarMockup.tsx`. */
+  part?: string
+  /** Whether that tour has this row in focus. */
+  ringed?: boolean
   children?: ReactNode
 }) {
   return (
-    <div className="w-full px-3 [&+&]:border-t [&+&]:border-white/5">
+    <div
+      data-part={part}
+      className={`w-full px-3 [&+&]:border-t [&+&]:border-white/5 ${ringed ? FOCUS_RING : ''}`}
+    >
       <div className="flex h-9 items-center gap-2">
         <span className="flex w-4 shrink-0 items-center justify-center">{icon}</span>
         <div className="min-w-0 flex-1">{header}</div>
@@ -104,32 +113,55 @@ function Row({
 const AT = [0, 1800, 3200, 4600, 6400, 8200, 10000, 12000] as const
 const LOOP = 14500
 
-export function PullRequestCardMockup() {
-  const { t } = useT()
-  const step = useLoopStep(AT, LOOP)
+/**
+ * THE CARD ITSELF, without the plate, so the info sidebar (`InfoSidebarMockup.tsx`) can
+ * nest it under a repository card exactly where the app nests `PRWatchCard`
+ * (RepositoryCard.tsx:290). The props are the three facts the drawing changes on: how
+ * many checks have passed, where the review stands, how many comments there are. The
+ * looping mockup below drives them from a clock; the sidebar drives them from the
+ * reader's scroll.
+ */
+export type PullRequestReview = Review
 
-  const passed = Math.min(3, Math.max(0, step))
+/**
+ * The three parts of the card the `/desktop` tour can point at: the header with the
+ * verdict badge, the comments row, the checks row. The ring is the same one
+ * `InfoSidebarMockup.tsx` draws on a card in focus, on the row rather than the card.
+ */
+export type PullRequestPart = 'prHeader' | 'prComments' | 'prChecks'
+// INSET, unlike the ring the panel draws on a whole card: these rows sit inside the card's
+// `overflow-hidden`, and a ring drawn outside a row is clipped to a line at its edges.
+const FOCUS_RING = 'rounded-md ring-2 ring-inset ring-accent'
+
+export function PullRequestCard({
+  passed,
+  review,
+  comments,
+  focus = null,
+  number = 278,
+}: {
+  passed: number
+  review: Review
+  comments: number
+  focus?: PullRequestPart | null
+  /** The PR's number: 278 here and on `/desktop`, the ticket's own on `/workflow`. */
+  number?: number
+}) {
+  const { t } = useT()
   const allPassed = passed === 3
-  const review: Review = step >= 7 ? 'approved' : step >= 6 ? 'changes' : step >= 5 ? 'commented' : step >= 4 ? 'pending' : 'none'
-  // Always at least one: the row is a fixture of the card, and a row that appears
-  // mid-story reads as a glitch rather than as news. The count is what moves.
-  const comments = step >= 6 ? 3 : 1
   const badge = BADGE[review]
 
   return (
-    // A fixed height, as the repository plates above have: rows come and go with the story.
-    <div aria-hidden className="flex h-[400px] items-center justify-center overflow-hidden rounded-2xl bg-tone-indigo px-6 sm:h-[440px]">
-      <div className="w-full max-w-[500px] rounded-2xl bg-ink p-4 shadow-lift">
         <div className="overflow-hidden rounded-lg border border-white/5 bg-white/[0.06]">
           {/* ── 1. THE HEADER ─────────────────────────────────────────────── */}
-          <div className="flex items-center p-2">
+          <div data-part="prHeader" className={`flex items-center p-2 ${focus === 'prHeader' ? FOCUS_RING : ''}`}>
             <div className="-m-1 flex min-w-0 flex-1 items-center gap-2 rounded-md p-2 text-left">
               <span className="flex w-4 shrink-0 items-center justify-center">
                 <GitPullRequest className="h-4 w-4 text-green" />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-medium text-white/90">
-                  {t('site.agentPanel.prNumber', { number: 278 })}
+                  {t('site.agentPanel.prNumber', { number })}
                 </span>
                 <span className="block truncate text-[10px] text-appink/50">Xrequillart/magic-pay</span>
               </span>
@@ -151,6 +183,8 @@ export function PullRequestCardMockup() {
                   </span>
                 }
                 chevron="closed"
+                part="prComments"
+                ringed={focus === 'prComments'}
               />
             )}
 
@@ -173,6 +207,8 @@ export function PullRequestCardMockup() {
                 </span>
               }
               chevron="open"
+              part="prChecks"
+              ringed={focus === 'prChecks'}
             >
               {(
                 <ul className="space-y-1">
@@ -209,6 +245,20 @@ export function PullRequestCardMockup() {
             </span>
           </div>
         </div>
+  )
+}
+
+export function PullRequestCardMockup() {
+  const step = useLoopStep(AT, LOOP)
+
+  const passed = Math.min(3, Math.max(0, step))
+  const review: Review = step >= 7 ? 'approved' : step >= 6 ? 'changes' : step >= 5 ? 'commented' : step >= 4 ? 'pending' : 'none'
+  const comments = step >= 6 ? 3 : 1
+
+  return (
+    <div aria-hidden className="flex h-[400px] items-center justify-center overflow-hidden rounded-2xl bg-tone-indigo px-6 sm:h-[440px]">
+      <div className="w-full max-w-[500px] rounded-2xl bg-ink p-4 shadow-lift">
+        <PullRequestCard passed={passed} review={review} comments={comments} />
       </div>
     </div>
   )

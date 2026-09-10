@@ -30,7 +30,8 @@ import { useT } from '@/lib/i18n/useLanguage'
  * its padding is symmetrical so it reads correctly wherever the card puts it.
  *
  * `bg-white` on `tone-mint`, which is the rule every panel here follows: clear your own
- * ground. `mint` runs #E4F6EB to #BCE3CD — pale, but a clear step off white.
+ * ground. `mint` runs #E4F6EB to #74CA9C — a near-white field into a real green, so the
+ * panel clears it comfortably wherever on the card it lands.
  *
  * THE TICK IS LAYERED, NOT CROSSFADED, unlike the CI checks on the PR card. `CheckCircle2`
  * is a circle plus a polyline and `Circle` is that same circle, so the green one covers

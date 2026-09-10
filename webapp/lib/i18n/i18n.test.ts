@@ -216,6 +216,18 @@ describe('message catalogues', () => {
         'site.nav.documentationCategory',
         'site.nav.faq',
         'site.nav.changelog',
+        // Three of the Product menu's six rows. "Workflow", "Application" and "Cloud"
+        // are the product's own vocabulary and the words the French UI uses — the same
+        // borrowing as `site.features.groupCloudTitle` further down, and as the app's
+        // own `nav.application`. The menu's other three are real French: "Produit",
+        // "Toutes les fonctionnalités", "Télécharger".
+        //
+        // A `site.nav.skills` was the fourth until its page was cut for duplicating
+        // `/workflow`. This list is EXACT rather than an inclusion, so the key had to
+        // leave the catalogues and this line with it.
+        'site.nav.workflow',
+        'site.nav.application',
+        'site.nav.cloud',
         // The `/changelog` page's own `h1`. "Changelog" is the word both languages
         // use — the two nav rows above are the same borrowing — and translating this
         // one alone would leave the site calling the same page two different things in
@@ -227,6 +239,26 @@ describe('message catalogues', () => {
         // still the same word in both (`site.nav.faq` and `site.footer.faq`, both still
         // listed) — an acronym French borrowed whole. A whole heading is not.
         'site.changelog.title',
+        // `/desktop`'s line of reassurance under its two buttons is three facts, and the
+        // middle one is a platform's name: "macOS" is spelled the same way in every
+        // language. (`site.desktop.title` sat here while it read "Magic Slash", a proper
+        // noun; it is a sentence now, and translated.)
+        'site.desktop.reassureMac',
+        // `/download` says the same two things: the chip family is a proper noun, and the
+        // first prerequisite is the product's name.
+        'site.downloadPage.reassureChip',
+        'site.downloadPage.reqClaudeTitle',
+        // The homepage hero's orbit titles its six artefacts in the product's own words,
+        // and every one of them is spelled the same in French: "Spec", "Review",
+        // "Worktree", "Epic", "stories" and "commits" are what the skills and the app
+        // call them, "Done" is the Jira column, and "PR #318" is a label. The six
+        // description lines under them are real French.
+        'site.hero.orbitSpecTitle',
+        'site.hero.orbitEpicTitle',
+        'site.hero.orbitWorktreeTitle',
+        'site.hero.orbitPrTitle',
+        'site.hero.orbitReviewTitle',
+        'site.hero.orbitDoneTitle',
         // The hero mockup mirrors the app's own chrome, and these four labels are the
         // same word in French — "Skills" is the product's name for them, and AGENTS /
         // SESSION / Commits are borrowed whole, exactly as they are in the app.
@@ -241,10 +273,21 @@ describe('message catalogues', () => {
         'site.features.groupCloudTitle',
         // The desktop family's Notifications row: one word, and the same one in French.
         'site.features.hooksTitle',
+        // The homepage's "built for" band names one of its five cards after the feature
+        // itself, and "Spotlight" is a proper noun in both languages — `/features` heads
+        // its own row with the same word for the same reason. Everything else in that
+        // family is real French: the Tasks card is "Tâches", as the app calls the screen.
+        'site.builtFor.spotlightTitle',
         // Quick Launch's placeholder, which is a ticket id followed by a command and
         // therefore the same string on both screens — the app's own catalogues hold it
         // identically too.
         'site.spotlightCard.placeholder',
+        // The organisation drawing's second rail carries the app's word for what an
+        // organisation holds beside a repository, and "Configuration" is spelled
+        // identically in French — the desktop's own French catalogue leaves it as it is
+        // too. The repository slug on the rail above is a literal in the component, so
+        // only this half of the pair reaches the catalogues at all.
+        'site.orgTeam.config',
         // The Agents sidebar's own two: "Skills" is the product's word for them in both
         // languages, and so is "Agents" — the label over the list, which the app's French
         // catalogue also leaves as it is.
@@ -303,7 +346,6 @@ describe('message catalogues', () => {
         // and "tokens" is the same word.
         'site.agentPanel.prNumber',
         'site.agentPanel.tokens',
-        'site.story.tl9Date',
         'site.footer.configuration',
         'site.footer.changelog',
         'site.footer.documentation',

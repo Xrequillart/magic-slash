@@ -13,6 +13,7 @@ import {
   Settings2,
   Sparkles,
   SquareTerminal,
+  GitMerge,
   Trash2,
   Users,
   X,
@@ -35,6 +36,9 @@ import {
   SectionHeader,
   Select,
   ShowcaseCard,
+  SplitFeature,
+  FeaturePoints,
+  type SplitMedia,
   Textarea,
   type BadgeTone,
   type ButtonVariant,
@@ -42,6 +46,8 @@ import {
   ToneCard,
   type CardTone,
 } from '@/components/ui'
+import { HomeHeading } from '@/components/site/home/Shell'
+import { SkillsRunTerminal } from '@/components/site/home/SkillsRunTerminal'
 
 /**
  * The workbench. See `page.tsx` for why it is development-only.
@@ -53,7 +59,7 @@ import {
  *  - the background switch, because a white-on-white system is entirely a
  *    question of shadow, and a shadow reads differently on white than on the
  *    `canvas` blue every product page actually uses;
- *  - the four rungs side by side, because the ladder is the design and any two of
+ *  - the five rungs side by side, because the ladder is the design and any two of
  *    them collapsing into each other is the failure mode;
  *  - a row of buttons that swap variant on click, because a variant without a
  *    border is a smaller box and the layout used to jump on every press;
@@ -69,7 +75,7 @@ import {
  * hiding the piece most likely to break when the tokens around it move.
  */
 
-const BUTTON_VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'ghost', 'danger']
+const BUTTON_VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'ghost', 'link', 'danger']
 const BADGE_TONES: BadgeTone[] = ['neutral', 'accent', 'green', 'yellow', 'red', 'purple']
 
 /** The rungs declared in `tailwind.config.ts`, plus the absence of one. */
@@ -201,8 +207,8 @@ export function Gallery() {
         </div>
 
         <Block
-          title="The ladder — four rungs of commitment"
-          why="primary commits, secondary is the safe alternative beside it, ghost dismisses, danger destroys. The ranking is the point, not any one recipe: these sit side by side in every modal footer and settings row, and if you cannot tell which one commits, the ladder has collapsed."
+          title="The ladder — five rungs of commitment"
+          why="primary commits, secondary is the safe alternative beside it, ghost dismisses, link merely goes somewhere, danger destroys. The ranking is the point, not any one recipe: these sit side by side in every modal footer and settings row, and if you cannot tell which one commits, the ladder has collapsed. `link` is the newest rung and the one to watch here — it is a ghost carrying the brand blue, so it must read as louder than ghost and still lose to a filled primary beside it."
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <Card className="p-6">
@@ -704,16 +710,143 @@ export function Gallery() {
             to learn.
           </p>
           <p className="mt-3 max-w-2xl text-sm text-muted">
-            The four warm and pink tones are all built like{' '}
-            <code className="font-mono text-ink">sky</code> rather than like{' '}
-            <code className="font-mono text-ink">mint</code>: light grounds under dark ink, ~35 points of
-            luminance between the stops so the gradient TRAVELS instead of reading as a card someone forgot to
-            fill. Mint is the exception at eight points, because{' '}
-            <code className="font-mono text-ink">/magic:done</code> is the quietest moment in the loop. None of
-            them is a status token — not <code className="font-mono text-ink">yellow</code>, not{' '}
-            <code className="font-mono text-ink">red</code> — since a status spent on decoration is a status
-            that stops meaning anything; and amber is kept clear of Claude&apos;s coral in the plates below,
-            which would make the card read as &ldquo;the Claude one&rdquo;.
+            EVERY TONE IS TUNED BY ITS TRAVEL, and the number is the L* range of the RENDERED wash rather
+            than the gap between its two stops — the honest way to compare grounds of different hue, since
+            HSL lightness says two colours match at brightnesses an eye reads as nothing alike.{' '}
+            <code className="font-mono text-ink">sky</code> anchors the scale at 30 points because it is the
+            traced reference; the rest were rendered and measured against it.{' '}
+            <code className="font-mono text-ink">indigo</code> and{' '}
+            <code className="font-mono text-ink">midnight</code> sit together at ~17, the two dark grounds
+            carrying the same weight so a row that lands both shows neither as flat.{' '}
+            <code className="font-mono text-ink">mint</code> and{' '}
+            <code className="font-mono text-ink">amber</code> sit together at ~15, which is the two bookends
+            of the loop at one volume rather than two values chosen apart.{' '}
+            <code className="font-mono text-ink">lemon</code> is 13,{' '}
+            <code className="font-mono text-ink">rose</code> and{' '}
+            <code className="font-mono text-ink">mist</code> are 11 — mist being the quietest on purpose,
+            because it is what the mockups are photographed against and a ground that competes with the
+            drawing has stopped being a ground. All of those are measured on the TRACED composition, before
+            the dice: the jitter below moves each bloom&apos;s peak alpha by up to five points, so what a
+            tone actually renders sits a point or two either side of its number. Tuning the stops against one
+            fixed composition is what makes two tones comparable at all.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            THREE OF THEM WERE RETUNED WHEN THE WASH LANDED, all in the same direction and for the same
+            reason: their stops were close enough together to work only while there was an ink shadow faking
+            the depth.{' '}
+            <code className="font-mono text-ink">mist</code> was three points and read as pure white,{' '}
+            <code className="font-mono text-ink">mint</code> six and read as an unfinished tint, and{' '}
+            <code className="font-mono text-ink">indigo</code> — running{' '}
+            <code className="font-mono text-ink">accent</code> into{' '}
+            <code className="font-mono text-ink">brand</code>, five points apart — was the flattest of the
+            eight. Mist keeps its near-white field and gains a real light blue, in{' '}
+            <code className="font-mono text-ink">sky</code>&apos;s hue so the two blue grounds pool in the
+            same blue; mint keeps its field and gets its green back; indigo keeps{' '}
+            <code className="font-mono text-ink">accent</code> as the field and takes a brand blue driven to
+            45% lightness, which makes the brand hue a LADDER — brand at 61%,{' '}
+            <code className="font-mono text-ink">INDIGO_DEEP</code> at 45%,{' '}
+            <code className="font-mono text-ink">BRAND_DEEP</code> at 26% — rather than three separate blues.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            None of the warm tones is a status token — not{' '}
+            <code className="font-mono text-ink">yellow</code>, not{' '}
+            <code className="font-mono text-ink">red</code>, and mint&apos;s deeper green is deliberately not{' '}
+            <code className="font-mono text-ink">green</code> either — since a status spent on decoration is a
+            status that stops meaning anything; and amber is kept clear of Claude&apos;s coral in the plates
+            below, which would make the card read as &ldquo;the Claude one&rdquo;.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            NONE OF THE EIGHT IS A STRAIGHT SWEEP, and the recipe is TRACED rather than composed:{' '}
+            <code className="font-mono text-ink">mesh()</code> in{' '}
+            <code className="font-mono text-ink">tailwind.config.ts</code> takes a tone&apos;s two stops and
+            builds one DIFFUSE WASH out of them — a flat pale field holding the top of the card, where the
+            title and the description sit, and six soft blooms gathering the colour into the lower half. The
+            six come from FITTING a reference image the product owner supplied, and they land within 2.5/255
+            of it, so <code className="font-mono text-ink">sky</code> — whose two stops are that picture&apos;s
+            own — is the reference rather than a reading of it. A 135° gradient arrives at an even rate the
+            whole way across, which is what made a coloured card read as FILLED rather than as lit.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            THE FIELD IS FLAT AND IT IS THE LAST LAYER, which is what makes the top-left corner readable by
+            construction: CSS paints the first background layer nearest the viewer, so the solid{' '}
+            <code className="font-mono text-ink">top</code> sits under everything, and nothing in the
+            composition reaches the corner the copy occupies. Not approximately, and not until somebody nudges
+            a bloom — that corner IS the quiet stop, which is also why{' '}
+            <code className="font-mono text-ink">midnight</code> and{' '}
+            <code className="font-mono text-ink">indigo</code> stay safe under{' '}
+            <code className="font-mono text-ink">text-white</code>. Put the field first instead and it paints
+            over all six blooms on ~30 surfaces at once, with the whole wash still in the stylesheet;{' '}
+            <code className="font-mono text-ink">designTokens.test.ts</code> holds the order for that reason.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            A TONE HAS A THIRD COLOUR NOW, and it is derived rather than declared. Measure the reference&apos;s
+            hue along its bottom edge and it runs 223 on the left and 210 on the right: not one light at two
+            strengths but TWO LIGHTS of slightly different colour, which is the whole difference between the
+            picture and every earlier attempt at it. So{' '}
+            <code className="font-mono text-ink">cooled()</code> swings the deep stop −13° of hue and lifts it
+            five points — the far lamp being the lighter one — and a tone stays two colours. Declaring a third
+            literal per tone would be eight more values to keep in tune with the two they sit between, and a
+            table where the relationship that MAKES the effect is invisible. The same swing runs on the warm
+            tones, where −13° is a step toward coral rather than toward cyan; what survives the translation is
+            the thing that matters, which is that the two pools are adjacent instead of identical.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            THE FALLOFF IS THE HALF NOBODY EXPECTS TO MATTER. A two-stop radial fades LINEARLY, so its alpha
+            has a corner at each end: a peak at the centre, which shows as a bright dot, and a kink at the
+            last stop, which shows the bloom&apos;s own ellipse as a faint ring. Both are plainly visible on a
+            card 400px wide and both are what makes a hand-rolled mesh gradient look hand-rolled. The
+            reference has neither, because it was never gradients — it is blurred discs, and a Gaussian is flat
+            at the top and flat at the tail. So every bloom carries five stops sampled off{' '}
+            <code className="font-mono text-ink">0.5(1 + cos πu)</code>, and the last one is the same colour at
+            zero alpha rather than <code className="font-mono text-ink">transparent</code>, which is
+            rgba(0,0,0,0) and drags the fade through grey.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            THERE IS NO SHADOW, which is the one thing the old wash had and this one does not. Every previous
+            version darkened the bottom corners with <code className="font-mono text-ink">ink</code> at a
+            named alpha, on the reasoning that a ground turning away from the light is what makes a card read
+            as lit; the reference does not — its darkest point is 71% luminance and it is the periwinkle
+            itself, not black under the periwinkle. Side by side, the ink layer is what made the old cards
+            look dusty. The depth here is entirely the near pool being deeper than the field.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            NO TWO TONES ARE THE SAME ARRANGEMENT, and that is the part to see rather than read. One
+            composition across eight grounds is one gradient STAMPED eight times — eight cards lit by the same
+            six lamps — and the eye reads the repeated shape before it reads either colour, most obviously
+            where two cards sit side by side. So seven of the eight pass their own NAME to{' '}
+            <code className="font-mono text-ink">mesh()</code>, and the dice it seeds decide whether the whole
+            set MIRRORS and where each bloom lands inside its budget: picking a different tone for a card
+            moves its blooms instead of only recolouring them. Seeded and not{' '}
+            <code className="font-mono text-ink">Math.random()</code> because this runs when Tailwind loads
+            its config — a live random deals a different composition into the stylesheet on every build, and a
+            card that looked right when it was reviewed ships as something else. Seeded on the NAME and not on
+            the stops, because the name is the tone&apos;s identity and the stops are what we expect to tune;
+            retuning <code className="font-mono text-ink">AMBER_DEEP</code> by two points should not reshuffle
+            every bloom on thirty surfaces.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            THE BUDGETS ARE PER BLOOM AND NOT PER TABLE, which is the part worth not undoing. One global ±10%
+            gives every bloom the same licence, and two of the six cannot take it: the row that carries the
+            hue transition is 68% TALL, so a few points of extra height and a nudge upward turns it into a
+            column running the full card and the colour stops pooling at the bottom at all — which is what a
+            uniform budget produced on <code className="font-mono text-ink">rose</code> and{' '}
+            <code className="font-mono text-ink">amber</code>, and it is a different picture rather than the
+            same one rearranged. What the budgets protect was checked by rendering all eight and measuring,
+            not by eye: the colour&apos;s centroid stays at y ≈ 75% on every tone, its deepest point stays
+            below y = 83%, and the top-left 62%×34% — where <code className="font-mono text-ink">ToneCard</code>{' '}
+            puts the title and the description — never drifts further from the field than the reference&apos;s
+            own corner does. And <code className="font-mono text-ink">sky</code> passes no name at all: it IS
+            the traced picture, so the anchor does not move.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            THESE ARE ALSO EVERY ILLUSTRATION&apos;S GROUND, which is the part that is easy to miss from this
+            page: <code className="font-mono text-ink">bg-tone-*</code> is the plate behind every mockup on{' '}
+            <code className="font-mono text-ink">/features</code> and on the homepage —{' '}
+            <code className="font-mono text-ink">mist</code> under the drawings that are mostly dark window,{' '}
+            <code className="font-mono text-ink">sky</code> and{' '}
+            <code className="font-mono text-ink">indigo</code> under the rest. So the wash is what a drawing of
+            the app is photographed against, and retuning{' '}
+            <code className="font-mono text-ink">mesh()</code> moves ~30 surfaces at once.
           </p>
           <div className="mt-8">
             <Spec name={'layout="beside"'} note="stacks below md">
@@ -798,6 +931,92 @@ export function Gallery() {
             coloured box inside a white box; filling the tile, the artwork simply becomes the tile and
             takes its corner. Jira&apos;s mark and ours are the two that bleed — which is why they are
             the two specimens above that have no white margin.
+          </p>
+        </Block>
+
+        <Block
+          title="The split feature — a band cut in two, either way round"
+          why="The fourth arrangement, and the only one that is not a surface: no ground, no border, no radius. Card and ToneCard are objects a few hundred pixels wide and ShowcaseCard is a surface with a panel in the corner of it; this is a whole band split into a drawing large enough to look at and a heading large enough to be the band's own. Two things are worth pressing on here rather than reading. FIRST, the flip: both specimens below are the same DOM order — copy, then art — and only the flex direction differs, so tab through them and the button comes in the same place both times, and narrow the window and the copy leads in both. A page that put every picture on the same side would read as a template, and an `order-1` at the call site would have taken the reading order with it. SECOND, the copy arrives as children and not as title/description props, which is the one decision that looks like an omission: the heading in this block IS a band's h2, at the size every band on the homepage sets its headline in, and that recipe has exactly one home — BAND_TITLE in components/site/home/Shell.tsx, rendered by the HomeHeading you see below. A title prop here would have had to respell it, which is the thing this file's header forbids."
+        >
+          <div className="space-y-16">
+            {(['left', 'right'] as SplitMedia[]).map((media) => (
+              <Spec key={media} name={`media="${media}"`} note="grow-6 art / grow-5 copy · stacks below md">
+                <SplitFeature
+                  media={media}
+                  art={
+                    media === 'left' ? (
+                      <SkillsRunTerminal />
+                    ) : (
+                      // `art` IS A SLOT, and this is what proves it: the homepage band
+                      // hands it a 24-second terminal, and anything that wants to be a
+                      // panel beside a heading goes in here instead. It brings its own
+                      // ground — a drawing this size sits on a `bg-tone-*` the way every
+                      // mockup on the site does, because the arrangement has no fill of
+                      // its own to put behind it.
+                      <div
+                        aria-hidden
+                        className="flex h-72 items-center justify-center rounded-2xl bg-tone-lemon"
+                      >
+                        <span className="font-mono text-xs text-ink/50">
+                          any panel — art is a slot
+                        </span>
+                      </div>
+                    )
+                  }
+                >
+                  <HomeHeading
+                    title="8 skills do the whole cycle."
+                    subtitle="One command per moment of a ticket’s life. The agent reads the tracker, writes the code, opens the pull request and answers its review. What is left for you is reading it and saying yes."
+                  />
+                  <FeaturePoints
+                    className="mt-10"
+                    points={[
+                      { icon: SquareTerminal, label: '8 skills, one per step of the cycle' },
+                      { icon: GitMerge, label: 'From the first idea to the merged pull request' },
+                      { icon: Sparkles, label: 'You approve the plan, the rest runs itself' },
+                    ]}
+                  />
+                  <div className="mt-10">
+                    <ButtonLink variant="secondary" size="lg" icon={ArrowRight}>
+                      See the workflow
+                    </ButtonLink>
+                  </div>
+                </SplitFeature>
+              </Spec>
+            ))}
+          </div>
+          <p className="mt-6 max-w-2xl text-sm text-muted">
+            The three claims are their own primitive,{' '}
+            <code className="font-mono text-ink">FeaturePoints</code>, and the thing to check on them
+            is the TYPE STEP: <code className="font-mono text-ink">font-display</code> semibold at
+            16/18px against the paragraph&apos;s 16px regular. Set in body type they read as more prose
+            and get skipped; set at the heading&apos;s own size and weight they stop being claims and
+            become a second headline. The reference sets them very nearly as large as its headline,
+            which at this scale&apos;s headline size does exactly that — and it shipped one step short
+            of it, at bold 18/20px, until the product owner called the weight. What separates them
+            from the paragraph now is the FACE and the weight together rather than the size alone.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            The icons are the one place on a marketing band where the primary button&apos;s own{' '}
+            <code className="font-mono text-ink">brand</code> blue lands on something that is not a
+            button — see &ldquo;Blue that is not the button&rdquo; at the end of this page, which is
+            where that judgement gets checked. What makes it safe is that they are 20px glyphs at{' '}
+            <code className="font-mono text-ink">strokeWidth 1.75</code> with no fill and no plate:
+            there is nothing about them a reader could try to press. At lucide&apos;s own stroke of 2
+            they start reading as filled shapes at a glance, which is the whole reason that number is
+            not the default. The stroke stayed at 1.75 when the size came down with the type — a
+            smaller glyph at a lighter stroke thins out rather than quietens down.
+          </p>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            The terminal in the first specimen is the homepage band&apos;s real drawing,{' '}
+            <code className="font-mono text-ink">SkillsRunTerminal</code>, on a 24-second loop: seven
+            commands typed one after the other, one line of output each, then an empty prompt. It is
+            here rather than mocked because it is the thing this arrangement was measured against —
+            and because it is worth watching a full cycle to judge whether the copy column holds its
+            own beside something that moves. Note that it has no window chrome: it shipped with a
+            titlebar and three macOS lights, and the product owner cut both. The band below it on the
+            homepage draws the app&apos;s own window WITH its titlebar, so the page carries exactly
+            one set of traffic lights and they are on the picture of the real product.
           </p>
         </Block>
 

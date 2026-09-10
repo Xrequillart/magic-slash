@@ -9,14 +9,15 @@ import { useT } from '@/lib/i18n/useLanguage'
  * working through it, and scrolling its own prompt away as it goes — CROPPED by the card
  * it sits in.
  *
- * WHY THIS IS NOT `home/AppMockup.tsx`, which already animates exactly this run and is
- * sitting on disk rendered nowhere. Its markup references ~81 `mk-*` class names defined
- * ONLY in `app/(marketing)/marketing.css`, and the `(marketing)` layout deliberately no
- * longer imports that stylesheet — `lib/homepageStylesheet.test.ts` fails the build if
- * this subtree reaches for it. So reusing it here would render it completely unstyled,
- * and styling it would mean undoing acceptance criterion 3 of #268. It is also reserved
- * for #270, which converts it from time-driven to scroll-driven. Hence a small purpose-
- * built panel in tokens instead of a 455-line component that cannot be dressed.
+ * WHY THIS IS NOT `home/AppMockup.tsx`, which animated exactly this run and was sitting
+ * on disk rendered nowhere. Its markup referenced ~86 `mk-*` class names defined ONLY in
+ * `app/(marketing)/marketing.css`, and the `(marketing)` layout deliberately no longer
+ * imports that stylesheet — `lib/homepageStylesheet.test.ts` fails the build if this
+ * subtree reaches for it. So reusing it here would have rendered it completely unstyled,
+ * and styling it would have meant undoing acceptance criterion 3 of #268. #270 reached
+ * the same conclusion for the homepage and DELETED it, drawing the window in tokens
+ * instead (`home/AppWindowMockup.tsx`). Hence a small purpose-built panel here rather
+ * than a 455-line component that could not be dressed.
  *
  * CROPPED ON PURPOSE, which is the whole idea borrowed from the reference: the panel is
  * wider than its column and hangs off the card's bottom edge, so it reads as a window

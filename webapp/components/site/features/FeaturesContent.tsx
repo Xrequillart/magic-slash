@@ -37,50 +37,19 @@ import {
   Wrench,
 } from 'lucide-react'
 import {
-  commandLabel,
   FEATURE_FAMILIES,
-  isCommandTitle,
-  isLiteralTitle,
   PAGE_CHROME,
+  titleOf,
   type FeatureIcon,
-  type FeatureTitle,
-  type FeatureVisual,
 } from '@/lib/features'
 import { Fragment } from 'react'
 import { Card, CARD_TONE_CYCLE, LogoPlate, ShowcaseCard, ToneCard } from '@/components/ui'
-import type { Translate } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
 import { Bloom } from '../home/HeroSection'
 import { HomeSection } from '../home/Shell'
 import { GithubIcon } from '../icons'
 import { FeaturesSidebar } from './FeaturesSidebar'
-import { AgentsSidebarMockup } from './AgentsSidebarMockup'
-import { CommitsCardMockup } from './CommitsCardMockup'
-import { ContextCardMockup } from './ContextCardMockup'
-import { MacNotificationMockup } from './MacNotificationMockup'
-import { MenuBarMockup } from './MenuBarMockup'
-import { ContinueTaskMockup } from './ContinueTaskMockup'
-import { DoneChecklistMockup } from './DoneChecklistMockup'
-import { PRWatchCardMockup } from './PRWatchCardMockup'
-import { PRCommentsMockup } from './PRCommentsMockup'
-import { PullRequestCardMockup } from './PullRequestCardMockup'
-import { DevServerMockup, RepoCardMockup } from './RepoCardMockup'
-import { ReposSettingsMockup } from './ReposSettingsMockup'
-import { CommitConfigMockup, PRConfigMockup } from './RepoConfigMockup'
-import { LanguagesArt } from './LanguagesArt'
-import { LaunchModesGrid } from './LaunchModesGrid'
-import { ProfileArt } from './ProfileArt'
-import { ResolvedThreadsMockup } from './ResolvedThreadsMockup'
-import { ReviewDrawerMockup } from './ReviewDrawerMockup'
-import { ReviewThreadsMockup } from './ReviewThreadsMockup'
-import { SkillsModalMockup } from './SkillsModalMockup'
-import { SpecPanelMockup } from './SpecPanelMockup'
-import { SplitViewMockup } from './SplitViewMockup'
-import { SpotlightBarMockup } from './SpotlightBarMockup'
-import { StartTerminal } from './StartTerminal'
-import { TasksModalMockup } from './TasksModalMockup'
-import { TicketCardMockup } from './TicketCardMockup'
-import { UsageCardMockup } from './UsageCardMockup'
+import { VISUALS } from './visuals'
 
 /**
  * The whole of `/features`: the headline, the sticky table of contents, and every
@@ -251,74 +220,14 @@ function glyphFor(icon: FeatureIcon): FeatureGlyph {
   return glyph ?? FallbackGlyph
 }
 
-/**
- * Visual NAME → the component that draws it, the same split `ICONS` uses and for the
- * same reason: `lib/features.ts` is read by the root vitest suite, which has no React to
- * resolve, so the data names a visual and the resolving happens here.
- *
- * Keyed by the `FeatureVisual` union, so a second visual named over there is a `tsc`
- * error at this map rather than a card that renders nothing. No fallback, unlike
- * `glyphFor`: a missing visual leaves a card that is copy only, which is what seven of
- * the eight are anyway — there is nothing to degrade to and nothing that breaks.
- */
-const VISUALS: Record<FeatureVisual, () => React.ReactElement> = {
-  agentsSidebar: AgentsSidebarMockup,
-  commitsCard: CommitsCardMockup,
-  contextCard: ContextCardMockup,
-  macNotification: MacNotificationMockup,
-  menuBar: MenuBarMockup,
-  continueTask: ContinueTaskMockup,
-  devServer: DevServerMockup,
-  doneChecklist: DoneChecklistMockup,
-  planSpec: SpecPanelMockup,
-  splitView: SplitViewMockup,
-  spotlightBar: SpotlightBarMockup,
-  prCard: PullRequestCardMockup,
-  prComments: PRCommentsMockup,
-  prWatchCard: PRWatchCardMockup,
-  repoCard: RepoCardMockup,
-  reposSettings: ReposSettingsMockup,
-  commitConfig: CommitConfigMockup,
-  prConfig: PRConfigMockup,
-  profileArt: ProfileArt,
-  languagesArt: LanguagesArt,
-  launchModes: LaunchModesGrid,
-  resolvedThreads: ResolvedThreadsMockup,
-  reviewDrawer: ReviewDrawerMockup,
-  reviewThreads: ReviewThreadsMockup,
-  skillsModal: SkillsModalMockup,
-  startTerminal: StartTerminal,
-  tasksModal: TasksModalMockup,
-  ticketCard: TicketCardMockup,
-  usageCard: UsageCardMockup,
-}
-
-/**
- * What a row or a card is HEADED with. Three kinds, in the order they are tested:
- *
- *   • a command → its prose name, "Plan" rather than `/magic:plan`. On this page the
- *     eight are headlines in a grid, and `/magic:` is the same six characters on all
- *     of them; the typed form belongs in the documentation, where the reader is about
- *     to run it. `commandLabel` lives in `lib/features.ts` because that module owns
- *     what a command title is — and because the root suite can pin all eight there.
- *   • one of the six product names → printed verbatim. "Jira" is "Jira".
- *   • anything else → a catalogue key, translated.
- *
- * `isCommandTitle` and `isLiteralTitle` narrow their own branches, so none of the three
- * needs a cast: the last else is `MessageKey`, which is exactly what `t()` takes.
- */
-function titleOf(title: FeatureTitle, t: Translate): string {
-  if (isCommandTitle(title)) return commandLabel(title)
-  return isLiteralTitle(title) ? title : t(title)
-}
 
 export function FeaturesContent() {
   const { t } = useT()
 
   return (
     // `bg-white` on the page's own root rather than in the `(marketing)` layout: that
-    // layout also wraps `/story` (on `softblue`) and the homepage (on `canvas`), so each
-    // page paints its own ground. See the ink note above for why this one is white.
+    // layout also wraps the homepage (on `canvas`), so each page paints its own ground.
+    // See the ink note above for why this one is white.
     <div className="bg-white">
       {/* TWO `HomeSection`s, where there used to be one. The opening is its own band so
           it can carry the homepage hero's wash — `softblue` fading down, with the blue
@@ -396,7 +305,11 @@ export function FeaturesContent() {
         <div className="grid gap-12 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-16">
           <FeaturesSidebar />
 
-          <div className="flex flex-col">
+          {/* `min-w-0` for the same reason the track above is `minmax(0,1fr)`: below `lg`
+              this column is the implicit single track, whose minimum is its content —
+              and the mockups in it are drawn wider than a phone on purpose. Without it
+              the page was 926px wide at 390px. */}
+          <div className="flex min-w-0 flex-col">
             {FEATURE_FAMILIES.map((family) => (
               // `scroll-mt-24` HERE and not only on `HomeSection`: the anchor the
               // sidebar links to is this inner section, and without an offset of its

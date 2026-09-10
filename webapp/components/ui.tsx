@@ -1,6 +1,7 @@
 'use client'
 
 import { useId, useState } from 'react'
+import Link from 'next/link'
 import { ChevronDown, type LucideIcon } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
 
@@ -110,8 +111,9 @@ const BUTTON_ICON_SIZES = {
 } as const
 
 /**
- * FOUR RUNGS OF COMMITMENT, loudest first: `primary` commits, `secondary` is the
- * safe alternative beside it, `ghost` dismisses, `danger` destroys.
+ * FIVE RUNGS OF COMMITMENT, loudest first: `primary` commits, `secondary` is the
+ * safe alternative beside it, `ghost` dismisses, `link` merely goes somewhere, and
+ * `danger` destroys.
  *
  * `primary` is `brand` blue with white text. It was white with a drop shadow for
  * one iteration of this scale, and the white recipe did not go away — it became
@@ -129,6 +131,10 @@ const BUTTON_ICON_SIZES = {
  *     rather than in it, and `text-ink` at full strength. Hover moves the shadow
  *     only.
  *   • `ghost` — no plate and no edge, so its text colour is the whole state.
+ *   • `link` — the same, one shade louder: the colour is the brand blue rather
+ *     than `muted`, which is what says "this goes somewhere" instead of "this
+ *     dismisses". See its own note below for why it is a rung and not a `ghost`
+ *     with a colour appended at the call site.
  *   • `danger` — enough fill that dimming the whole thing still reads as a button.
  *
  * The RANKING is the point, not any one recipe. `primary` and its neighbour sit
@@ -166,6 +172,29 @@ const BUTTON_VARIANTS = {
   // button beside an edged white button is one button wearing two names.
   ghost:
     'border-transparent text-muted hover:bg-black/[0.04] hover:text-ink disabled:text-black/40',
+  // A ghost that GOES somewhere. Same shape exactly — no plate, no edge, the same
+  // transparent 1px reserved for the same reason — and the colour is the only
+  // difference: `brand`, the blue the `primary` fill is made of.
+  //
+  // WHY IT IS A RUNG AND NOT A `className` ON `ghost`, which is how it arrived and
+  // why this note is here. There is no `tailwind-merge` in this file (see the
+  // header): a `className="text-brand"` handed to a recipe that already says
+  // `text-muted` is a CONFLICTING utility, and which of the two wins is decided by
+  // where `.text-brand` and `.text-muted` happen to land in the emitted sheet —
+  // alphabetical order, not intent. The same race `BAND_TITLE`'s two inks were
+  // split apart to avoid. So the colour is named here, once, and a caller that
+  // wants a blue text button asks for one by name.
+  //
+  // ITS PLACE ON THE LADDER is between `ghost` and `secondary`, and it is not a
+  // second `primary`: the blue arrives as INK on nothing rather than as a fill, so
+  // it still loses to any filled button beside it. That is what makes the pair
+  // legible where the homepage uses both — a filled `primary` that starts the
+  // product, and this one further down that only opens another page.
+  //
+  // `disabled` is `ghost`'s, for `ghost`'s reason: 0.5 × whatever this says is what
+  // a disabled `<fieldset>` actually renders (see the note above `secondary`), so
+  // fading the blue itself would leave a pale periwinkle nobody can read.
+  link: 'border-transparent text-brand hover:bg-brand/[0.06] disabled:text-black/40',
   danger: 'border-transparent bg-red text-white hover:bg-red/90 disabled:opacity-40',
 } as const
 
@@ -260,7 +289,14 @@ export function Button({
   )
 }
 
-/** Anchor styled as a Button — for external links (downloads) that must stay <a>. */
+/**
+ * Anchor styled as a Button — for external links (downloads) that must stay <a>.
+ *
+ * AND FOR CROSS-ORIGIN ROUTES, which is the case the parenthesis above does not name:
+ * `LOGIN_PATH` leaves the marketing site for the app host, and there is no client-side
+ * navigation across origins to lose. `ButtonNavLink` below is the one to reach for
+ * INSIDE one origin.
+ */
 export function ButtonLink({
   variant,
   size,
@@ -274,6 +310,41 @@ export function ButtonLink({
     <a className={buttonClass({ variant, size, icon, className, children })} {...props}>
       {buttonContent(icon, children, truncate)}
     </a>
+  )
+}
+
+/**
+ * `next/link` styled as a Button — for a CTA that points at a route on THIS origin.
+ *
+ * WHY IT EXISTS, given that `ButtonLink` above renders an anchor that would resolve
+ * `/workflow` perfectly well: a bare `<a>` costs a full document load, and this site
+ * already decided that question everywhere else. The header's nav rows, the footer's
+ * columns and the Product dropdown are all `next/link`, so a primary CTA that reloaded
+ * the page would be the ONE internal link on the site that does — the reader notices it
+ * as the button that feels slower than the menu above it.
+ *
+ * It is the third component to share `buttonClass`, which is the whole point of that
+ * function: the recipe, the size table and the icon rule are stated once and the three
+ * differ only in the element they render. `Link` takes `href` as a required prop and
+ * passes the rest through to its own anchor, so `ButtonShape` reaches it unchanged.
+ *
+ * NOT FOR THE APP HOST. `LOGIN_PATH` and the `.dmg` are other origins, and `Link`
+ * prefetching an origin it cannot render is a request that buys nothing — those stay on
+ * `ButtonLink`.
+ */
+export function ButtonNavLink({
+  variant,
+  size,
+  icon,
+  truncate = false,
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof Link> & ButtonShape) {
+  return (
+    <Link className={buttonClass({ variant, size, icon, className, children })} {...props}>
+      {buttonContent(icon, children, truncate)}
+    </Link>
   )
 }
 
@@ -485,9 +556,31 @@ const TONE_HEIGHT = 'min-h-80'
  */
 export type ToneCardLayout = 'stacked' | 'beside'
 
+/**
+ * WHERE A STACKED VISUAL SITS in the height the card has left, and it is a slot for the
+ * reason this component's `children` note already gives: "the card owns the box; the
+ * visual owns what is inside it". A drawing that positioned itself was a drawing that had
+ * to know it was inside a flex column, and that stopped being true the day `beside`
+ * arrived.
+ *
+ * `end` is the default and what a cropped panel wants: pushed to the bottom edge whatever
+ * the copy above it measures, so a pair of cards in a grid row line up along their
+ * bottoms and a panel that runs off the card is cut by the card's own radius.
+ *
+ * `center` is for a visual that is an OBJECT rather than a crop — one bar, one switch,
+ * one tile, complete in itself and narrower than the space. Pinned to the bottom, an
+ * object leaves a pool of empty ground above it that reads as a mistake rather than as
+ * air; centred, the card reads as a thing with something in the middle of it.
+ *
+ * IGNORED IN A `beside` ROW, where the visual is already centred on the row's cross axis
+ * and there is no leftover height to place it in.
+ */
+export type ToneCardVisual = 'end' | 'center'
+
 export function ToneCard({
   tone = 'mist',
   layout = 'stacked',
+  visual = 'end',
   title,
   description,
   children,
@@ -497,6 +590,8 @@ export function ToneCard({
   tone?: CardTone
   /** Copy over visual, or copy beside it. See `ToneCardLayout`. */
   layout?: ToneCardLayout
+  /** Where a STACKED visual sits in the leftover height. See `ToneCardVisual`. */
+  visual?: ToneCardVisual
   title: string
   description: string
   /**
@@ -553,13 +648,20 @@ export function ToneCard({
       </div>
 
       {children ? (
-        // Stacked: pushed to the bottom edge whatever the copy above it measures, so a
-        // pair of cards in a grid row still line up.
+        // Stacked: placed by the `visual` slot — `mt-auto` pins it to the bottom edge so
+        // a pair of cards in a grid row line up, `my-auto` centres an object in the
+        // leftover height. See `ToneCardVisual` for which is which.
         // Beside: takes the rest of the row and centres, because a panel aligned to the
         // bottom of a card taller than itself leaves a gap above it that reads as a
         // mistake. `min-w-0` because a flex item's automatic minimum is its content, and
         // these visuals are deliberately wider than their box.
-        <div className={beside ? 'min-w-0 flex-1 md:self-center' : 'mt-auto'}>{children}</div>
+        <div
+          className={
+            beside ? 'min-w-0 flex-1 md:self-center' : visual === 'center' ? 'my-auto' : 'mt-auto'
+          }
+        >
+          {children}
+        </div>
       ) : null}
     </div>
   )
@@ -747,6 +849,195 @@ export function ShowcaseCard({
   )
 }
 
+// ── The split feature ────────────────────────────────────────────────────────
+
+/**
+ * WHICH SIDE THE ARTWORK TAKES, as the two literal class lists the arrangement deals in.
+ *
+ * BOTH ARE `flex-row` VARIANTS OVER ONE DOM ORDER, which is the whole reason this is a
+ * slot rather than two components or a caller-supplied `order-*`. The copy is ALWAYS
+ * first in the markup: that is the reading order a screen reader gets, the order the
+ * column stacks in below `md`, and the order the keyboard reaches a button in. Flipping
+ * the side is then purely visual — `flex-row-reverse` — and cannot take the reading order
+ * with it.
+ *
+ * WHY IT HAS TO FLIP AT ALL. A page that puts every picture on the same side reads as a
+ * template; alternating them is what makes a stack of these read as a page. So the side is
+ * an option on the block instead of something the next band reinvents with an `order-1`.
+ *
+ * `left` IS THE DEFAULT because the reference this was drawn from puts the artwork there,
+ * and because the first band to use it does.
+ */
+const SPLIT_MEDIA = {
+  /** Artwork on the left, copy on the right. */
+  left: 'md:flex-row-reverse',
+  /** Copy on the left, artwork on the right. */
+  right: 'md:flex-row',
+} as const
+
+export type SplitMedia = keyof typeof SPLIT_MEDIA
+
+/**
+ * A BAND'S WORTH OF COPY BESIDE A BIG PIECE OF ARTWORK, either way round.
+ *
+ * The fourth arrangement in this file, and the gap it fills is the one none of the other
+ * three can: `Card` and `ToneCard` are SURFACES a few hundred pixels wide, `ShowcaseCard`
+ * is a surface with a panel in the corner of it. This is not a surface at all — no ground,
+ * no border, no radius — it is a full band split in two, where the artwork is large enough
+ * to be looked at and the copy beside it is a heading rather than a caption. Measured off
+ * a reference the product owner brought: media a little over half the row, copy centred
+ * against it, and a short list of claims under the paragraph.
+ *
+ * IT OWNS THE ARRANGEMENT AND NOTHING ELSE, which is the decision worth defending because
+ * the obvious shape — `title` / `description` / `points` props, like `ToneCard` has — was
+ * tried first and is wrong here. The copy in this block is a band's HEADING: on the
+ * homepage it is the `h2` that names the band, at the size every other band's headline is
+ * set in, and that recipe already has exactly one home (`BAND_TITLE` in
+ * `components/site/home/Shell.tsx`, which `HomeHeading` renders). A `title` prop here
+ * would have to respell it, and this file's own header is explicit that nothing may copy a
+ * recipe back out — so the block takes the heading as `children` and the marketing page
+ * hands it the component that already owns the type. `art` is a slot for the same reason
+ * `ShowcaseCard`'s is: the arrangement knows how a band is split, not what a terminal
+ * looks like.
+ *
+ * WHAT GOES IN `children`, in practice: a `HomeHeading`, a `FeaturePoints` under it, and
+ * usually one button. The block puts no space between them — that is the caller's stack to
+ * build, and a component that injected margins between slots it cannot see would be
+ * guessing.
+ *
+ * `grow-[6]` FOR THE ART AGAINST `grow-[5]` FOR THE COPY — 54.5/45.5, which is the
+ * reference's own share. A share and not a `max-w`, for `ShowcaseCard`'s reason: a fixed
+ * copy width leaves a band of empty page on a wide viewport, where a share scales with it.
+ *
+ * `md:items-center`, so the copy sits on the artwork's middle. A drawing tall enough to be
+ * worth this much of a band is taller than three paragraphs, and copy pinned to its top
+ * edge leaves a pool of nothing under it that reads as a layout that ran out.
+ *
+ * IT STACKS BELOW `md`, copy first. Same call `ShowcaseCard` makes and the same reasoning:
+ * a readable measure of type and a large drawing do not both fit on a phone, and of the
+ * two the copy is what has to lead.
+ */
+export function SplitFeature({
+  media = 'left',
+  art,
+  children,
+  className,
+}: {
+  /** Which side the artwork takes from `md` up. See `SPLIT_MEDIA`. */
+  media?: SplitMedia
+  /**
+   * The artwork. Rendered UNPADDED and with no ground of its own — a drawing this size
+   * brings its own plate, the way every mockup on this site sits on a `bg-tone-*`.
+   */
+  art: React.ReactNode
+  /** The copy column: a heading, a paragraph, whatever goes under them. */
+  children: React.ReactNode
+  /** Additive layout only: never the arrangement, the shares, or the gaps. */
+  className?: string
+}) {
+  return (
+    <div
+      className={cx(
+        'flex flex-col gap-10 md:items-center md:gap-12 lg:gap-16',
+        SPLIT_MEDIA[media],
+        className,
+      )}
+    >
+      <div className="md:basis-0 md:grow-[5]">{children}</div>
+      {/* `min-w-0` because a flex item's automatic minimum is its content, and a drawing
+          that crops itself — a terminal with lines wider than its window, say — would
+          otherwise widen this column until it fitted and take the copy's share with it. */}
+      <div className="min-w-0 md:basis-0 md:grow-[6]">{art}</div>
+    </div>
+  )
+}
+
+/**
+ * ONE ROW OF `FeaturePoints`: a glyph and the claim beside it.
+ *
+ * `label` IS A NODE AND NOT A STRING, which it was until the homepage's app band needed
+ * a row reading "Your tasks (Jira) and issues (GitHub)" with the two trackers drawn as
+ * chips inside the sentence. `t()` returns a string and can return nothing else — it
+ * substitutes `{name}` placeholders textually (see `lib/i18n/index.ts`) — so a row that
+ * mixes translated words with marks has to be assembled by its caller, and this is the
+ * type that lets it. Almost every row is still a plain string and should stay one: a
+ * chip is for naming somebody else's product, not for emphasis.
+ *
+ * WHICH IS WHY `id` EXISTS. The list keyed itself on the label while labels were
+ * strings; a node has no such identity, and `String(<span/>)` is `[object Object]` for
+ * every row that tries. The union is what makes that a compile error rather than a pair
+ * of duplicate keys React silently accepts — a string label may skip `id`, a node label
+ * may not.
+ */
+export type FeaturePoint =
+  | { icon: LucideIcon; label: string; id?: string }
+  | { icon: LucideIcon; label: React.ReactNode; id: string }
+
+/**
+ * THE CLAIMS UNDER A PARAGRAPH: an outline icon, a short bold line, three or four of them.
+ *
+ * A LIST AND NOT A GRID, and not a set of cards either. Each row is one claim about the
+ * thing in the artwork beside it, read top to bottom in one pass — which is what makes
+ * this the cheapest way to say three things after a paragraph has said one. A grid of
+ * three would ask the reader to compare them; they are not alternatives.
+ *
+ * THE TYPE IS A STEP UNDER THE HEADING AND A STEP OVER THE BODY, and finding that step
+ * took two passes. A claim set in body type reads as more prose and gets skipped; set at
+ * heading size and weight it stops being a claim and becomes a second headline. The
+ * reference sets these very nearly as large as its own headline, which at this scale's
+ * headline size gives the block two competing voices — so it was tried at `font-bold`
+ * 18/20px first and the product owner called it: "je la trouve très forte".
+ *
+ * WHAT IT IS NOW: `font-display` SEMIBOLD at 16/18px against the paragraph's 16px
+ * regular. The size gives up a step and the weight gives up a step, which is one move
+ * rather than two — at 20px semibold the rows still read as headings, and at 16px bold
+ * they still shout. What separates them from the paragraph is now the FACE and the weight
+ * doing the work together instead of the size doing it alone, and on `Cera Pro` that is
+ * enough: 600 in the display face is heavier than 400 in the body face at the same
+ * nominal size.
+ *
+ * `text-brand` ON THE ICON, and it is the one place on a marketing band where the primary
+ * button's own blue appears on something that is not a button. That is deliberate rather
+ * than an oversight: the icons are 20px glyphs at a hairline weight with no fill and no
+ * plate, so there is nothing about them that could be mistaken for a control — and the
+ * blue is what ties three otherwise plain rows to the page. See "Blue that is not the
+ * button" in the design system gallery, which is where that judgement gets checked.
+ *
+ * THEY CAME DOWN WITH THE TYPE, from 24px, and had to: a glyph the full height of two
+ * lines of its own label stops reading as a bullet and starts reading as an illustration
+ * of the row. 20px sits just over the 16px cap height, which is what a marker does.
+ *
+ * `aria-hidden` ON THE ICON: it repeats the label beside it, and a bullet is not content.
+ * The `ul` stays a real list, so the rows are announced as three of three.
+ */
+export function FeaturePoints({
+  points,
+  className,
+}: {
+  points: readonly FeaturePoint[]
+  /** Additive layout only — the space above the list, typically. */
+  className?: string
+}) {
+  return (
+    <ul className={cx('flex flex-col gap-6', className)}>
+      {points.map(({ icon: Icon, label, id }) => (
+        <li key={id ?? String(label)} className="flex items-start gap-4">
+          {/* `strokeWidth={1.75}` rather than lucide's own 2: on a light ground the
+              default reads as a filled shape at a glance, which is exactly the thing the
+              note above says these must not do. It stays 1.75 at 20px — a smaller glyph
+              at a lighter stroke would have thinned out rather than quietened down, and
+              the size is what came down. `mt-0.5` sits the glyph's optical middle on the
+              label's cap height instead of on its box. */}
+          <Icon aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-brand" strokeWidth={1.75} />
+          <span className="font-display text-base font-semibold leading-snug text-ink md:text-lg">
+            {label}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 export function Section({
   title,
   description,
@@ -901,8 +1192,14 @@ export function Badge({
  * ── CONTROLLED OR NOT ───────────────────────────────────────────────────────────────
  *
  * Pass `open` and `onToggle` for an accordion that closes its siblings; pass neither and
- * the row owns its own state, which is what a FAQ wants — see the note in
- * `FaqContent.tsx` on why comparing two answers beats one-at-a-time.
+ * the row owns its own state.
+ *
+ * BOTH ARE IN USE, and the two call sites disagree on purpose — which is why this is a
+ * slot and not a decision baked in here. `/faq` is uncontrolled: its rows get compared
+ * against each other, and `FaqContent.tsx` argues that out. The homepage's FAQ band is
+ * an accordion, because there its rows are one COLUMN of a two-column band sitting
+ * directly above the download button, so a row that stays open pushes the ask down the
+ * page and unbalances the band — `FaqSection.tsx` has the rest of it.
  */
 export function Collapse({
   title,
