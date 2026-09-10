@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Clock, Cpu, DollarSign, Gauge, Minus, RefreshCw } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
+import { isStill } from '@/lib/stillness'
 
 /**
  * The visual under the `agentContext` row: the info sidebar's Session card, redrawn, with
@@ -84,7 +85,7 @@ export function ContextCardMockup() {
   // second. The bar carries no CSS transition of its own: a transition on a value that is
   // already being driven every frame only lags behind it and snaps back at the loop's end.
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (isStill()) {
       if (barRef.current) barRef.current.style.width = `${TARGET}%`
       return
     }

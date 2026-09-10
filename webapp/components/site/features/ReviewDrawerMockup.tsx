@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
+import { STILL_QUERY } from '@/lib/stillness'
 import { Pointer } from '../Pointer'
 
 /**
@@ -257,7 +258,7 @@ export function ReviewDrawerMockup() {
   // THE CLOCK. One interval, and every tick derives the whole frame from how far into
   // the loop it is — see `frameAt`. Not started at all under reduced motion.
   useEffect(() => {
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const media = window.matchMedia(STILL_QUERY)
     if (media.matches) {
       setReduced(true)
       setFrame(restingFrame(comment.length))

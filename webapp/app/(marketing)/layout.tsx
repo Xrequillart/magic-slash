@@ -35,12 +35,15 @@ export const metadata: Metadata = {
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    // `data-site` is the hook `app/globals.css` uses to cut every CSS animation on the
+    // public site below `lg` — see `lib/stillness.ts` for the JavaScript half of that
+    // rule. A `div` and not a fragment for that one attribute; it carries no styles.
+    <div data-site>
       <SiteHeader />
       {children}
       {/* The year is read on the server so the first paint has one, then corrected in
           the browser — see the comment in SiteFooter. */}
       <SiteFooter serverYear={new Date().getFullYear()} />
-    </>
+    </div>
   )
 }

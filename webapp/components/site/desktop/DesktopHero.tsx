@@ -102,7 +102,13 @@ export function DesktopHero() {
           the next starts (`BEAT`). The captions come in with the copy above; the panes
           and the bubbles carry their own orders; `After` takes the rung after the last
           bubble has landed, and the highlights follow it. */}
-      <div className="mt-12 grid items-stretch gap-6 md:mt-16 md:grid-cols-[0.85fr_1.15fr]">
+      {/* `hidden lg:grid`: below `lg` the hero is its copy and the highlights, and the
+          before/after drawing is not shown — the owner's call for every hero on the site
+          ("retire les illustrations des hero section de chaque page"). Four grey windows
+          piled into a phone's width read as clutter rather than as the clutter the
+          drawing is ABOUT, and the entrance that makes the picture land is exactly what
+          `lib/stillness.ts` switches off there. */}
+      <div className="mt-12 hidden items-stretch gap-6 lg:mt-16 lg:grid lg:grid-cols-[0.85fr_1.15fr]">
         <div className="flex flex-col">
           <Reveal order={6}>
             <Caption>{t('site.desktop.beforeLabel')}</Caption>

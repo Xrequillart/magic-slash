@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Minus, User } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
+import { isStill } from '@/lib/stillness'
 
 /**
  * The visual inside the `Your Claude Code limits` card: the left sidebar's usage card,
@@ -98,7 +99,7 @@ export function UsageCardMockup() {
   const weeklyBar = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (isStill()) return
     const start = performance.now()
     let frame = 0
     let shownS = -1

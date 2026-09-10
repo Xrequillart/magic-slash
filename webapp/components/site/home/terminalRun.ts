@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { isStill } from '@/lib/stillness'
 
 /**
  * THE MACHINERY BEHIND A PLAYED-BACK TERMINAL SESSION: what a step is, how long it holds,
@@ -130,7 +131,7 @@ export function useCueRun(
     if (!element) return
     // Reduced motion keeps the resting state, which is already the finished transcript —
     // nothing to sit through, and nothing that has to arrive for the panel to be readable.
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    if (isStill()) return
 
     let timer: number | undefined
     const stop = () => {

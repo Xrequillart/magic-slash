@@ -71,7 +71,7 @@ export function HeroSection() {
       backdrop={<Bloom />}
       className="bg-gradient-to-b from-softblue to-canvas"
     >
-      <div className="grid items-center gap-12 md:grid-cols-2 md:gap-14">
+      <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-14">
         <div className="flex flex-col items-start gap-6">
           <Reveal order={1}>
             {/* Two sentences, three lines, one ink: the promise broken where the catalogue
@@ -209,17 +209,19 @@ const ORBIT_FIRST_ORDER = 5
  * circle itself, because a card is wider than it is tall: centred on the circle it
  * would hang off the square's edge, and the band would clip it.
  *
- * BELOW `md` THE WHOLE DRAWING IS SCALED to 78%, cards included, rather than repositioned:
- * the cards' text does not shrink with the viewport, so on a 390px phone the left and
- * right ones ran 47px past the square and off the screen. Scaling from the centre buys
- * back an 11% margin on each side, which is what they need; the negative vertical
- * margins take back the blank the scale leaves above and below.
+ * BELOW `lg` THE DRAWING IS NOT SHOWN AT ALL (`hidden lg:block`), and the hero is the
+ * copy alone. It was scaled to 78% on phones for a round, cards and all, and the owner
+ * cut it with every other hero illustration on the site ("retire les illustrations des
+ * hero section de chaque page"): under a headline that already says what comes out, six
+ * cards squeezed into a phone's width repeat it smaller, and the figure's loops are
+ * exactly the motion `lib/stillness.ts` stops there anyway. The grid above goes to two
+ * columns at `lg` and not `md` for the same reason — a tablet gets the one column.
  */
 function Orbit() {
   const { t } = useT()
 
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-[470px] max-md:-my-10 max-md:scale-[0.78]">
+    <div className="relative mx-auto hidden aspect-square w-full max-w-[470px] lg:block">
       <div
         aria-hidden
         className="absolute inset-[11%] rounded-full border-2 border-dashed border-brand/35"

@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useLanguage } from '@/lib/i18n/useLanguage'
+import { isStill } from '@/lib/stillness'
 
 /**
  * The staggered entrance the header and the hero share.
@@ -146,7 +147,7 @@ export function useRevealClass(): string {
     // Someone who asked for less motion keeps the resting state, which is already on
     // screen: no animation to sit through, and nothing that has to arrive for the page
     // to be readable.
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    if (isStill()) {
       setPlayed(null)
       return
     }
@@ -196,7 +197,7 @@ export function Reveal({
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    if (isStill()) {
       setState('rest')
       return
     }

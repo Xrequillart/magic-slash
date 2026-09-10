@@ -157,6 +157,22 @@ fieldset:disabled label:has(> input[type='checkbox']) {
   }
 }
 
+/* THE PUBLIC SITE HOLDS STILL ON PHONES AND TABLETS. Every `animate-*` class under the
+   marketing layout (`[data-site]`, set in `app/(marketing)/layout.tsx`) is cut below
+   Tailwind's `lg`. The width is the one `STILL_QUERY` names in `lib/stillness.ts`, which
+   is where the JavaScript-driven loops read it — a rule here cannot import a constant, so
+   the number lives in both places and each comment points at the other. Transitions are
+   left alone: a hover or a menu opening is feedback, not a story. `!important` because
+   the utilities this overrides are single-class selectors that would otherwise win by
+   source order. */
+@media (max-width: 1023.98px) {
+  [data-site] *,
+  [data-site] *::before,
+  [data-site] *::after {
+    animation: none !important;
+  }
+}
+
 html,
 body {
   background-color: #ffffff;

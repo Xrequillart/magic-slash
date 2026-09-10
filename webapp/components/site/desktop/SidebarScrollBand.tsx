@@ -5,6 +5,7 @@ import { FeaturePoints } from '@/components/ui'
 import { DESKTOP_BANDS, SIDEBAR_TOUR, STATUS_STEP_TITLE, type SidebarTourStep } from '@/lib/desktopPage'
 import { titleOf } from '@/lib/features'
 import { useT } from '@/lib/i18n/useLanguage'
+import { isStill } from '@/lib/stillness'
 import {
   InfoSidebarPanel,
   PANEL_WIDTH,
@@ -191,7 +192,7 @@ export function SidebarScrollBand() {
       setScripts('serving')
       return
     }
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (isStill()) {
       setScripts('serving')
       return
     }
