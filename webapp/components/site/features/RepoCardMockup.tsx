@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
+import { Pointer } from '../Pointer'
 import { GithubMark } from './TasksModalMockup'
 import { useLoopStep } from './useLoopStep'
 
@@ -97,19 +98,6 @@ export function WaveLoader() {
         />
       ))}
     </span>
-  )
-}
-
-/** A macOS arrow pointer, black with a white edge so it reads on the dark card. */
-function Pointer({ pressed }: { pressed: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={`h-5 w-5 drop-shadow-md transition-transform duration-150 ${pressed ? 'scale-[0.82]' : 'scale-100'}`}
-      style={{ transformOrigin: '4px 3px' }}
-    >
-      <path d="M5 3l12 10.5h-6.6l3.9 8-2.8 1.2-3.9-8L5 19.5z" fill="#000" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" />
-    </svg>
   )
 }
 
@@ -378,7 +366,7 @@ export function DevServerMockup() {
             className="pointer-events-none absolute z-30 transition-[left,top] duration-500 ease-in-out"
             style={{ left: pointer.x, top: pointer.y }}
           >
-            <Pointer pressed={pressed} />
+            <Pointer pressed={pressed} className="h-5 w-5" />
           </div>
         ) : null}
       </div>

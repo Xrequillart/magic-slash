@@ -5,6 +5,7 @@ import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
 import { GithubMark } from '../features/TasksModalMockup'
 import { JiraMark } from '../features/TicketCardMockup'
+import { Pointer } from '../Pointer'
 
 /**
  * The five drawings inside `BuiltForSection`'s five cards.
@@ -598,13 +599,10 @@ export function MacNativeArt() {
  * arrow with a white keyline, which is what keeps it legible on any ground — and no icon
  * set ships it.
  *
- * ITS SHADOW IS A SECOND COPY OF THE PATH, offset and faint, rather than a CSS filter, and
- * that is not a workaround: `lib/designTokens.test.ts` refuses any arbitrary shadow value
- * in this tree — a `drop-shadow` utility with brackets is caught by the same rule, being
- * the same arbitrary value wearing a different prefix — and the elevation scale it points
- * you at is a `boxShadow` scale, so no declared rung would apply to a path anyway. A
- * duplicated path is what an illustrator would draw, needs no token, and moves with the
- * shape.
+ * THE ARROW IS THE SITE'S SHARED `Pointer` now, with the preset `drop-shadow` utility (no
+ * bracketed value, so `lib/designTokens.test.ts` has nothing to refuse). It was a
+ * hand-traced path with a second copy of itself for a shadow; the owner asked for the
+ * workflow page's cursor on every drawing, and that is where the two paths went.
  */
 export function MakeItYoursArt() {
   return (
@@ -629,25 +627,13 @@ export function MakeItYoursArt() {
           is about to go on. It does NOT travel with the knob: a cursor following the thing
           it just switched is a DRAG, and a switch is not dragged. `left`/`top` in
           percentages of the wrapper so it holds its place at every card width. */}
-      <svg
-        viewBox="0 0 24 24"
-        className="pointer-events-none absolute left-[52%] top-[52%] h-11 w-11 animate-switch-cursor"
-        role="presentation"
-      >
-        {/* The shadow: the same path, half a unit down and to the right, at 20% ink. */}
-        <path
-          d="M5.5 2.5 18 14.2h-6.1l3.2 6.6-2.6 1.2-3.2-6.7-3.8 3.9z"
-          fill="rgba(10, 10, 10, 0.2)"
-          transform="translate(0.6 0.8)"
-        />
-        <path
-          d="M5.5 2.5 18 14.2h-6.1l3.2 6.6-2.6 1.2-3.2-6.7-3.8 3.9z"
-          fill="#0a0a0a"
-          stroke="#ffffff"
-          strokeWidth="1.4"
-          strokeLinejoin="round"
-        />
-      </svg>
+      <div className="pointer-events-none absolute left-[52%] top-[52%] animate-switch-cursor">
+        {/* THE SITE'S ONE CURSOR (`components/site/Pointer.tsx`), at the size the switch
+            wants; the keyframe on the wrapper is what presses it. It was a hand-traced path
+            with a second copy for a shadow until the owner asked for the workflow page's
+            pointer on every drawing. */}
+        <Pointer className="h-11 w-11" />
+      </div>
     </div>
   )
 }
