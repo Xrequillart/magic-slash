@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  commentedRange, isCommentedLine, parseDiffHunk,
+  commentedRange, foldHunk, isCommentedLine, parseDiffHunk,
   type CommentAnchor, type HunkLine,
 } from './diffHunk'
 
@@ -247,5 +247,59 @@ describe('isCommentedLine', () => {
 
   it('highlights nothing when there is no range', () => {
     expect(highlighted(parsed, asEmitted({ line: 11 }))).toEqual([])
+  })
+})
+
+describe('foldHunk', () => {
+  /** `n` rows, numbered from 1, so a slice can be read back by its content. */
+  function body(n: number): HunkLine[] {
+    return parseDiffHunk(hunk('@@ -1,0 +1,0 @@', ...Array.from({ length: n }, (_, i) => ` line ${i + 1}`)))
+  }
+
+  it('leaves a short hunk whole, with nothing folded', () => {
+    const { folded, shown } = foldHunk(body(5))
+    expect(folded).toEqual([])
+    expect(shown).toHaveLength(5)
+  })
+
+  it('leaves a hunk exactly at the limit whole', () => {
+    const { folded, shown } = foldHunk(body(30))
+    expect(folded).toEqual([])
+    expect(shown).toHaveLength(30)
+  })
+
+  it('does not offer a fold that would hide only a line or two', () => {
+    // The fold is a row of its own, so it has to buy back more than it costs.
+    expect(foldHunk(body(31)).folded).toEqual([])
+    expect(foldHunk(body(32)).folded).toEqual([])
+    expect(foldHunk(body(33)).folded).toHaveLength(3)
+  })
+
+  it('keeps the TAIL of a long hunk, which is where the commented lines are', () => {
+    const { folded, shown } = foldHunk(body(100))
+    expect(folded).toHaveLength(70)
+    expect(shown).toHaveLength(30)
+    // The run-up is folded, the commented end is on screen. The reverse split would
+    // hide the accent behind a click.
+    expect(folded[0].text).toBe('line 1')
+    expect(folded[69].text).toBe('line 70')
+    expect(shown[0].text).toBe('line 71')
+    expect(shown[29].text).toBe('line 100')
+  })
+
+  it('loses no row and reorders none', () => {
+    const lines = body(100)
+    const { folded, shown } = foldHunk(lines)
+    expect([...folded, ...shown]).toEqual(lines)
+  })
+
+  it('answers a hunk it was given nothing to fold', () => {
+    expect(foldHunk([])).toEqual({ folded: [], shown: [] })
+  })
+
+  it('draws everything rather than nothing when the limit is meaningless', () => {
+    // Not a real call, but a limit read off a future setting could arrive as 0 and
+    // must not fold the whole hunk away.
+    expect(foldHunk(body(100), 0)).toEqual({ folded: [], shown: body(100) })
   })
 })

@@ -1543,6 +1543,11 @@ export const en = {
   // On an outdated thread: the line it was written against, which is the only
   // location it still has — the current file no longer has one.
   'prComments.outdatedAnchor': 'originally line {line}',
+  // The fold over the run-up of a long hunk — a comment on a hundred-line range
+  // arrives as a hundred-line excerpt. Both counts are offered so the label can say
+  // what appears and how much there is in total; see `foldHunk`.
+  'prComments.hunkUnfold': 'Show all {total} lines',
+  'prComments.hunkFold': 'Hide the {count} lines above',
   // The fold on a thread heading. A resolved thread starts shut.
   'prComments.showThread': 'Show this thread',
   'prComments.hideThread': 'Hide this thread',

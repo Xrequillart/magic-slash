@@ -203,3 +203,55 @@ export function isCommentedLine(line: HunkLine, range: CommentedRange | null): b
   const number = range.side === 'old' ? line.oldLine : line.newLine
   return number !== null && number >= range.start && number <= range.end
 }
+
+/**
+ * How many rows of a hunk are drawn before the fold.
+ *
+ * A `diffHunk` is usually five lines and needs no fold at all. But a comment left on a
+ * range covers the whole range, and GitHub sends every line of it — a hundred-line
+ * multi-line comment arrives as a hundred-line hunk, which in the drawer is six hundred
+ * pixels of code above a two-line remark, and the threads under it are pushed off the
+ * screen. Thirty rows is roughly a screenful in that column: enough that the ordinary
+ * long hunk is read whole, short enough that one thread cannot own the panel.
+ */
+export const COLLAPSED_HUNK_LINES = 30
+
+/**
+ * The fold costs a row of its own, so hiding one or two lines behind it saves nothing and
+ * asks for a click to see them. Below this it is not worth offering.
+ */
+const MIN_FOLDED_LINES = 3
+
+/** A hunk cut in two: what the fold hides, and what is drawn under it. */
+export interface FoldedHunk {
+  /** The rows above the fold, in order. Empty when the hunk is drawn whole. */
+  folded: HunkLine[]
+  /** The rows always on screen — the TAIL of the hunk. See `foldHunk`. */
+  shown: HunkLine[]
+}
+
+/**
+ * Split a parsed hunk into the part a fold hides and the part always drawn.
+ *
+ * The TAIL is kept, and that is the whole decision here. GitHub truncates a `diffHunk`
+ * at the line the comment was left on, so the commented range ends on the hunk's last
+ * row — always, on both sides of the diff, and on a multi-line comment as much as a
+ * single-line one. Keeping the head instead would hide the accented lines by default,
+ * which is hiding the one thing the hunk is drawn for; keeping the tail means the code
+ * the comment argues about is on screen before anything is clicked, and the fold covers
+ * only the run-up to it.
+ *
+ * The pathological hunk that does NOT end on its commented range — nothing GitHub is
+ * known to send — draws a tail with no accent in it. That is the same picture as a thread
+ * whose range cannot be resolved at all (see `commentedRange`), which the panel already
+ * draws honestly, so there is no case here for a second fold below the window.
+ *
+ * `folded` empty is the "draw it whole" signal, the way `parseDiffHunk`'s empty array is
+ * the "draw nothing" one: the caller tests one array's length rather than re-deriving the
+ * threshold.
+ */
+export function foldHunk(lines: HunkLine[], max: number = COLLAPSED_HUNK_LINES): FoldedHunk {
+  const excess = lines.length - max
+  if (max <= 0 || excess < MIN_FOLDED_LINES) return { folded: [], shown: lines }
+  return { folded: lines.slice(0, excess), shown: lines.slice(excess) }
+}

@@ -1450,6 +1450,8 @@ export const fr: Record<keyof typeof en, string> = {
   'prComments.previousCodeComment': 'Commentaire de code précédent',
   'prComments.nextCodeComment': 'Commentaire de code suivant',
   'prComments.outdatedAnchor': 'ligne {line} à l’origine',
+  'prComments.hunkUnfold': 'Afficher les {total} lignes',
+  'prComments.hunkFold': 'Masquer les {count} lignes du dessus',
   'prComments.showThread': 'Afficher ce fil',
   'prComments.hideThread': 'Masquer ce fil',
   'prComments.empty': 'Rien à lire — cette pull request n’a aucun commentaire.',

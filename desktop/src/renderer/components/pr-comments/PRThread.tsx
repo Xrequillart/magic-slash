@@ -178,7 +178,7 @@ export default function PRThread({ thread, now, t }: Props) {
           {/* The code the argument is about, above the argument. Renders nothing at all
               when the thread has no usable hunk — every conversation comment and review
               summary, and any inline thread whose excerpt did not parse. */}
-          <DiffHunkView hunk={thread.diffHunk} anchor={thread} />
+          <DiffHunkView hunk={thread.diffHunk} anchor={thread} t={t} />
           <ThreadComment comment={thread.root} now={now} t={t} />
           {thread.replies.length > 0 && (
             /* Indented under the root and hung off a rule, the way a reply is drawn
