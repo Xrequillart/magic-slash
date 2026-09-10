@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { Cloud, LogOut, LogIn, UserPlus, Loader2, KeyRound, AtSign, Trash2, AlertTriangle, ImagePlus, ImageOff } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
-import { useAvatar, publishAvatar } from '../../hooks/useAvatar'
+import { useAvatar, publishAvatar, avatarSession } from '../../hooks/useAvatar'
 import { useOrg } from '../../hooks/useOrg'
 import { LoginScreen } from '../../components/LoginScreen'
 import { Modal } from '../../components/Modal'
@@ -112,9 +112,16 @@ async function toAvatarDataUrl(sourceDataUrl: string): Promise<string> {
  * The write behaviour is exactly what it was. The photo is written through from the
  * value we just uploaded — no re-read on success, since the bytes on screen are the
  * bytes that were stored — and a FAILED write is the one case that does re-read: see
- * `resyncAvatar`. What used to be `setAvatar(x)` is now `publishAvatar(x)`, one line
- * for one line. The initial fetch is gone from here because the store does it at
- * init, for every surface at once and before any of them mounts.
+ * `resyncAvatar`. What used to be `setAvatar(x)` is now `publishAvatar(x, forSession)`.
+ * The initial fetch is gone from here because the store does it at init, for every
+ * surface at once and before any of them mounts.
+ *
+ * `forSession` is the one thing the move to a shared store made necessary. Local
+ * state died with its component, so an upload that outlived a sign-out could only
+ * ever write into a card nobody was looking at; a module-level store outlives every
+ * account, so the same late result would now paint the previous user's face onto the
+ * new one's row. Each handler stamps its epoch before its first await, and the store
+ * drops what no longer matches.
  */
 export function CloudAccountSection() {
   const { status, loading: authLoading, logout, updatePassword, requestEmailChange, confirmEmailChange, deleteAccount } = useAuth()
@@ -160,13 +167,13 @@ export function CloudAccountSection() {
    * value as "no photo" and blank a face that is still there. If the refetch fails
    * too we are offline and the stale image is the least of it.
    */
-  const resyncAvatar = useCallback(async (result: { avatar?: string | null }) => {
+  const resyncAvatar = useCallback(async (result: { avatar?: string | null }, forSession: number) => {
     if (result.avatar !== undefined) {
-      publishAvatar(result.avatar)
+      publishAvatar(result.avatar, forSession)
       return
     }
     try {
-      publishAvatar(await window.electronAPI.profile.getAvatar())
+      publishAvatar(await window.electronAPI.profile.getAvatar(), forSession)
     } catch {
       /* Nothing to correct it with; the toast has already told the user. */
     }
@@ -193,6 +200,10 @@ export function CloudAccountSection() {
     if (avatarBusy) return
 
     setAvatarBusy(true)
+    // Taken before the first await: this is the account the photo is being chosen
+    // FOR, and everything below publishes under it or not at all. Signing out mid
+    // upload must not drop this face onto whoever signs in next.
+    const forSession = avatarSession()
     try {
       const source = await window.electronAPI.profile.pickAvatarSource()
       if ('reason' in source) {
@@ -217,16 +228,16 @@ export function CloudAccountSection() {
         // `result.error` is a transport or Storage message in English; it goes to the
         // console for whoever is debugging, not into a toast the user has to decode.
         if (result.error) console.error('avatar upload failed:', result.error)
-        await resyncAvatar(result)
+        await resyncAvatar(result, forSession)
         showToast(t('toast.avatarSaveFailed'), 'error')
         return
       }
 
-      publishAvatar(encoded)
+      publishAvatar(encoded, forSession)
     } catch (e) {
       // An IPC rejection: no result to read a resynced value out of, so ask.
       console.error('avatar upload failed:', e)
-      await resyncAvatar({})
+      await resyncAvatar({}, forSession)
       showToast(t('toast.avatarSaveFailed'), 'error')
     } finally {
       setAvatarBusy(false)
@@ -236,20 +247,23 @@ export function CloudAccountSection() {
   const handleRemovePhoto = useCallback(async () => {
     if (avatarBusy) return
     setAvatarBusy(true)
+    // Same reason as the upload: a removal that lands after a sign-out would blank
+    // the NEXT account's photo, which is the same bug wearing the other sign.
+    const forSession = avatarSession()
     try {
       const result = await window.electronAPI.profile.removeAvatar()
       if (!result.ok) {
         if (result.error) console.error('avatar removal failed:', result.error)
         // The blob may already be gone with only the pointer left — the photo the
         // user just asked to delete must not stay on screen as though it were fine.
-        await resyncAvatar(result)
+        await resyncAvatar(result, forSession)
         showToast(t('toast.avatarRemoveFailed'), 'error')
         return
       }
-      publishAvatar(null)
+      publishAvatar(null, forSession)
     } catch (e) {
       console.error('avatar removal failed:', e)
-      await resyncAvatar({})
+      await resyncAvatar({}, forSession)
       showToast(t('toast.avatarRemoveFailed'), 'error')
     } finally {
       setAvatarBusy(false)

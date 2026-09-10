@@ -65,6 +65,32 @@ const listeners = new Set<() => void>()
  */
 let generation = 0
 
+/**
+ * Which ACCOUNT a result belongs to, as an epoch bumped on every auth transition.
+ *
+ * `generation` orders reads against each other, but it cannot tell whose face is
+ * being ordered: an upload started by account A and a fetch started by account B are
+ * two reads like any other, so the later one wins and the later one may be A's. That
+ * is the whole failure — sign out mid-upload, sign in as someone else, and A's photo
+ * lands next to B's name, having also bumped `generation` and thereby discarded B's
+ * own in-flight fetch. It then survives until something else happens to refresh.
+ *
+ * So an async result carries the epoch it was STARTED under, and is dropped if the
+ * epoch has moved since. The two counters answer different questions and neither
+ * subsumes the other: `session` asks "is this still the same person", `generation`
+ * asks "is this still the latest answer for them".
+ */
+let session = 0
+
+/**
+ * The epoch to stamp an async avatar operation with. Read it BEFORE the first await,
+ * never after — read afterwards it would return the epoch of whoever is signed in by
+ * then, which is exactly the value that cannot detect the switch.
+ */
+export function avatarSession(): number {
+  return session
+}
+
 function commit(dataUrl: string | null): void {
   if (dataUrl === current) return
   current = dataUrl
@@ -75,8 +101,15 @@ function commit(dataUrl: string | null): void {
  * Put a value on the store. Exported because the write path lives in the card, not
  * here: `CloudAccountSection` already holds the encoded bytes it just uploaded, so
  * publishing them is a write-through and not a reason to go and re-read the server.
+ *
+ * `forSession` is the epoch from `avatarSession()`, taken before the operation that
+ * produced `dataUrl` began. A result from an account that has since been signed out
+ * of is dropped whole — not published, and not allowed to bump `generation` either,
+ * since bumping it would discard the current account's own in-flight fetch and leave
+ * the surfaces on a stale face.
  */
-export function publishAvatar(dataUrl: string | null): void {
+export function publishAvatar(dataUrl: string | null, forSession: number): void {
+  if (forSession !== session) return
   generation++
   commit(dataUrl)
 }
@@ -84,10 +117,13 @@ export function publishAvatar(dataUrl: string | null): void {
 /** Read the stored photo and publish it, unless something newer has happened since. */
 async function fetchAvatar(): Promise<void> {
   const mine = ++generation
+  const mySession = session
   try {
     const dataUrl = await window.electronAPI.profile.getAvatar()
     // A newer read or a write started while this one was in the air: it knows better.
     if (mine !== generation) return
+    // And whoever asked for it is no longer the one signed in.
+    if (mySession !== session) return
     commit(dataUrl)
   } catch {
     /* No photo is the fallback, and the fallback is already on screen. */
@@ -110,8 +146,11 @@ void fetchAvatar()
 // mean the same thing — drop the face before the next person sees it. Signing in as
 // someone else has to FETCH rather than keep what is on screen.
 window.electronAPI.auth.onStatusChanged((status) => {
+  // Every transition is a new epoch, so anything still in the air from the previous
+  // one is now stamped with an epoch that no longer matches and will be dropped.
+  session++
   if (!status.loggedIn) {
-    publishAvatar(null)
+    publishAvatar(null, session)
     return
   }
   void fetchAvatar()
