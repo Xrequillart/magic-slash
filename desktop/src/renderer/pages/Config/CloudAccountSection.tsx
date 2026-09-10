@@ -6,13 +6,15 @@ import { useOrg } from '../../hooks/useOrg'
 import { LoginScreen } from '../../components/LoginScreen'
 import { Modal } from '../../components/Modal'
 import { AccountAvatar } from '../../components/AccountAvatar'
+import { AvatarCropModal, type AvatarCropView } from '../../components/AvatarCropModal'
 import { SectionHeader } from './SectionHeader'
 import { InvitationOnboardingWizard } from '../../components/InvitationOnboardingWizard'
 import { showToast } from '../../components/Toast'
 import { useT, type MessageKey } from '../../i18n'
 import { BTN, BTN_DANGER, INPUT } from '../../theme/controls'
 import { formatSize } from '../../utils/formatSize'
-import { AVATAR_MAX_BYTES, AVATAR_MIME_TYPE, AVATAR_SIZE, centerCropBox, type AvatarRejection } from '../../../avatar'
+import { AVATAR_MAX_BYTES, AVATAR_MIME_TYPE, AVATAR_SIZE, type AvatarRejection } from '../../../avatar'
+import { sourceRectFor } from '../../../avatarCrop'
 
 /** WebP at 0.85 is visually lossless at 256 px and a fraction of the PNG bytes. */
 const AVATAR_QUALITY = 0.85
@@ -43,21 +45,40 @@ const REJECTION_MESSAGE: Record<AvatarRejection, MessageKey> = {
 const AVATAR_LIMIT_LABEL = formatSize(AVATAR_MAX_BYTES)
 
 /**
- * Source image → the exact 256×256 WebP data URL the account photo is stored as.
+ * Source image plus the framing a human dialled in → the exact 256×256 WebP data
+ * URL the account photo is stored as.
  *
- * The crop is automatic at this stage: the centre square, which is where a face is
- * in practically every photo anyone picks for an avatar. `centerCropBox` computes it
- * from the intrinsic size, and `drawImage`'s nine-argument form does the crop and the
- * downscale in one pass, so there is no intermediate canvas to lose a generation of
- * quality to. Story 3 replaces this call with the box a human dragged; everything
- * around it stays as it is.
+ * WHICH pixels is not decided here either. `view` is the zoom and the pan
+ * `AvatarCropModal` was drawing at the moment the user confirmed, and the
+ * rectangle below is `sourceRectFor` — the same function the dialog previewed
+ * through — applied to it, so the pixels encoded are the pixels that were inside
+ * the round mask, on any aspect ratio. What this function does own is the encode:
+ * `drawImage`'s nine-argument form does the crop and the downscale in one pass, so
+ * there is no intermediate canvas to lose a generation of quality to.
+ *
+ * A framing rather than a rectangle crosses the boundary on purpose. A rectangle
+ * would arrive already measured against dimensions read somewhere else, and this
+ * function would have to take on faith that it still fits the bitmap it is about
+ * to draw from — a rect that had escaped the containment invariant does not throw,
+ * it makes `drawImage` read outside the bitmap and paint a transparent strip
+ * inside the round mask. A zoom and a pan cannot escape anything: `sourceRectFor`
+ * clamps them here, against this decode's own `naturalWidth`/`naturalHeight`.
+ *
+ * The image is decoded a second time here rather than the element being passed
+ * across from the dialog, so this stays a function of the same STRING the picker
+ * produced rather than of a live object owned by a component that has closed. The
+ * cost is one decode of an at-most-5 MB file, once, on a path that then encodes a
+ * WebP and uploads it — both of which dominate it. It is `new Image()` on both
+ * sides deliberately: that is the decoder that honours a JPEG's EXIF orientation
+ * (see `AvatarCropModal`'s header), so the framing chosen there lands on exactly
+ * the same pixels here.
  *
  * It runs in the renderer rather than the main process because that is where a
  * `<canvas>` and an image decoder exist at all — Electron's main process has neither.
  * Throwing here means the bytes could not be decoded or encoded, which the caller
  * reports as an unreadable file.
  */
-async function toAvatarDataUrl(sourceDataUrl: string): Promise<string> {
+async function toAvatarDataUrl(sourceDataUrl: string, view: AvatarCropView): Promise<string> {
   const image = new Image()
   await new Promise<void>((resolve, reject) => {
     image.onload = () => resolve()
@@ -65,14 +86,23 @@ async function toAvatarDataUrl(sourceDataUrl: string): Promise<string> {
     image.src = sourceDataUrl
   })
 
-  const box = centerCropBox({ width: image.naturalWidth, height: image.naturalHeight })
+  const rect = sourceRectFor({
+    naturalWidth: image.naturalWidth,
+    naturalHeight: image.naturalHeight,
+    ...view,
+  })
+  // Zero only for a decode with no pixels at all, which `centerCropBox` answers
+  // with a zero box. `drawImage` reads that as "draw nothing" and would upload a
+  // fully transparent avatar, so it is reported the way any other file this
+  // function cannot make an image of is.
+  if (rect.sSize <= 0) throw new Error('avatar: the decoded image has no pixels to crop')
 
   const canvas = document.createElement('canvas')
   canvas.width = AVATAR_SIZE
   canvas.height = AVATAR_SIZE
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('avatar: no 2d context')
-  ctx.drawImage(image, box.x, box.y, box.size, box.size, 0, 0, AVATAR_SIZE, AVATAR_SIZE)
+  ctx.drawImage(image, rect.sx, rect.sy, rect.sSize, rect.sSize, 0, 0, AVATAR_SIZE, AVATAR_SIZE)
 
   const blob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob(resolve, AVATAR_MIME_TYPE, AVATAR_QUALITY)
@@ -150,6 +180,12 @@ export function CloudAccountSection() {
   // effect on — see `hooks/useAvatar`.
   const avatar = useAvatar()
   const [avatarBusy, setAvatarBusy] = useState(false)
+  /**
+   * The picked file, waiting to be framed. Non-null IS "the crop dialog is open",
+   * and it is the only thing the picker produces: nothing reaches Storage, and the
+   * photo on screen does not change, until the user confirms a square.
+   */
+  const [cropSource, setCropSource] = useState<string | null>(null)
 
   /**
    * Put the photo back on server truth after a write that failed.
@@ -180,30 +216,33 @@ export function CloudAccountSection() {
   }, [])
 
   /**
-   * Pick a file, crop it, upload it — and on any REFUSAL, change nothing.
+   * Pick a file — and stop there. On any REFUSAL, change nothing.
    *
    * Every refusal return here leaves `avatar` exactly as it was, which is the
    * point of C4: a 20 MB TIFF must not blank out the photo that is already
    * working, and a file we would not even read never reached Storage, so there is
-   * nothing to resync. A failed WRITE is the other case — see `resyncAvatar`.
+   * nothing to resync.
    *
    * The picker is `pickAvatarSource()`, not `dialog.openFile()` followed by a
    * read: main opens the dialog and reads the file in one operation, so no path
    * ever travels through this process. `'cancelled'` is therefore a normal
    * outcome and shows nothing at all.
    *
-   * `avatarBusy` is set BEFORE the picker rather than after, now that the dialog
-   * is part of the same call: it is what stops a second click from stacking a
-   * second modal.
+   * Where this used to crop and upload in one go, it now hands the bytes to
+   * `AvatarCropModal` and returns. NOTHING has been written when it does: the
+   * upload is `handleCropConfirm`, and dismissing the dialog leaves the account
+   * exactly as this function found it. There is no session epoch to take here
+   * either — the account that matters is the one signed in when the user confirms,
+   * which may be minutes later, so it is taken there.
+   *
+   * `avatarBusy` covers the picker itself and is dropped as soon as the dialog is
+   * on screen; `cropSource` is what keeps the button disabled from then on, so a
+   * second click cannot stack a second native picker behind the crop dialog.
    */
   const handleChoosePhoto = useCallback(async () => {
-    if (avatarBusy) return
+    if (avatarBusy || cropSource !== null) return
 
     setAvatarBusy(true)
-    // Taken before the first await: this is the account the photo is being chosen
-    // FOR, and everything below publishes under it or not at all. Signing out mid
-    // upload must not drop this face onto whoever signs in next.
-    const forSession = avatarSession()
     try {
       const source = await window.electronAPI.profile.pickAvatarSource()
       if ('reason' in source) {
@@ -212,10 +251,49 @@ export function CloudAccountSection() {
         showToast(t(REJECTION_MESSAGE[source.reason], { limit: AVATAR_LIMIT_LABEL }), 'error')
         return
       }
+      setCropSource(source.dataUrl)
+    } catch (e) {
+      // An IPC rejection. Nothing was written, so there is nothing to resync — the
+      // file simply never became readable bytes, which is what the user is told.
+      console.error('avatar picker failed:', e)
+      showToast(t('toast.avatarUnreadable'), 'error')
+    } finally {
+      setAvatarBusy(false)
+    }
+  }, [avatarBusy, cropSource, t])
 
+  /**
+   * The user confirmed a square: encode it and upload it.
+   *
+   * This is the half of the old `handleChoosePhoto` that WRITES, unchanged in
+   * every respect but where the crop comes from — the dialog hands over the zoom
+   * and the pan it was previewing at, and `toAvatarDataUrl` turns them into a
+   * rectangle with the same function that preview went through, so the pixels
+   * encoded below are the pixels that were inside the mask.
+   *
+   * `avatarBusy` is re-armed here because the picker's own busy span ended when the
+   * dialog opened, and the encode plus the upload is the part worth showing a
+   * spinner for.
+   */
+  const handleCropConfirm = useCallback(async (view: AvatarCropView) => {
+    const source = cropSource
+    // No `avatarBusy` term: every path that raises it clears it in a `finally`
+    // before this dialog can be on screen, and a second confirm is already
+    // impossible — `setCropSource(null)` runs below before the first await.
+    if (!source) return
+
+    // Closed before the first await: the dialog has done its job, and leaving it up
+    // during the upload would let a second confirm fire the whole thing twice.
+    setCropSource(null)
+    setAvatarBusy(true)
+    // Taken before the first await: this is the account the photo is being chosen
+    // FOR, and everything below publishes under it or not at all. Signing out mid
+    // upload must not drop this face onto whoever signs in next.
+    const forSession = avatarSession()
+    try {
       let encoded: string
       try {
-        encoded = await toAvatarDataUrl(source.dataUrl)
+        encoded = await toAvatarDataUrl(source, view)
       } catch {
         // The picker accepted it and the bytes arrived, but nothing here can decode
         // them — same thing to the user as a file that was never an image.
@@ -242,7 +320,22 @@ export function CloudAccountSection() {
     } finally {
       setAvatarBusy(false)
     }
-  }, [avatarBusy, resyncAvatar, t])
+  }, [cropSource, resyncAvatar, t])
+
+  /** Dismissed. The bytes are dropped and the photo already on the account stays. */
+  const handleCropCancel = useCallback(() => setCropSource(null), [])
+
+  /**
+   * The dialog could not decode what the picker handed it.
+   *
+   * Same outcome the encode failure has always produced — the file passed the
+   * extension and size checks in main but is not an image — reported here rather
+   * than at the encode, because now nothing gets as far as the encode.
+   */
+  const handleCropUnreadable = useCallback(() => {
+    setCropSource(null)
+    showToast(t('toast.avatarUnreadable'), 'error')
+  }, [t])
 
   const handleRemovePhoto = useCallback(async () => {
     if (avatarBusy) return
@@ -384,7 +477,7 @@ export function CloudAccountSection() {
               {/* The photo actions lead the row, next to the face they act on. */}
               <button
                 onClick={handleChoosePhoto}
-                disabled={avatarBusy}
+                disabled={avatarBusy || cropSource !== null}
                 className={`${BTN} disabled:opacity-40`}
               >
                 {avatarBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
@@ -449,6 +542,16 @@ export function CloudAccountSection() {
           </div>
         )}
       </div>
+
+      {/* Frame the picked photo. Open only between the picker and the upload, and
+          the only thing that can start the upload at all. */}
+      <AvatarCropModal
+        isOpen={cropSource !== null}
+        sourceDataUrl={cropSource}
+        onCancel={handleCropCancel}
+        onConfirm={handleCropConfirm}
+        onUnreadable={handleCropUnreadable}
+      />
 
       <LoginScreen isOpen={showLogin} onClose={() => setShowLogin(false)} onSignedIn={refresh} />
       <InvitationOnboardingWizard isOpen={showInvitationWizard} onClose={() => { setShowInvitationWizard(false); refresh() }} />

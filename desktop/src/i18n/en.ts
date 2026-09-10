@@ -834,6 +834,16 @@ export const en = {
   'cloud.avatar.alt': 'Account photo',
   'cloud.avatar.choose': 'Choose a photo',
   'cloud.avatar.remove': 'Remove photo',
+  'cloud.avatar.crop.title': 'Frame your photo',
+  // Names the surface being dragged, which `cloud.avatar.alt` does not: that one
+  // labels the photo already on the account. It NAMES only: the instructions are
+  // `.hint`, which the canvas points at with `aria-describedby`, so the sentence a
+  // screen reader reads and the sentence on screen cannot drift apart.
+  'cloud.avatar.crop.canvas': 'Photo to frame',
+  'cloud.avatar.crop.hint': 'Drag to move, scroll to zoom.',
+  'cloud.avatar.crop.zoomIn': 'Zoom in',
+  'cloud.avatar.crop.zoomOut': 'Zoom out',
+  'cloud.avatar.crop.confirm': 'Use this photo',
   'cloud.signOut': 'Sign out',
   'cloud.changePassword': 'Change password',
   'cloud.changeEmail': 'Change email',
