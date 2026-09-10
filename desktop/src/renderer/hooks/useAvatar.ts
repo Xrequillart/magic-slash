@@ -79,7 +79,20 @@ let generation = 0
  * epoch has moved since. The two counters answer different questions and neither
  * subsumes the other: `session` asks "is this still the same person", `generation`
  * asks "is this still the latest answer for them".
+ *
+ * WHICH EVENTS MOVE IT is the whole subtlety, and counting `auth:statusChanged` is
+ * the wrong answer even though it looks like the obvious one. That event is emitted
+ * by five handlers and only three of them are account changes: `confirmEmailChange`
+ * fires it for the SAME person, with a new address and the same `user.id`. Advancing
+ * the epoch there would discard an upload that was perfectly legitimate — the bytes
+ * reach Storage, the epoch check drops the publish, and the event's own refetch may
+ * already have read the old photo before the write landed, so every surface sits on
+ * a stale face until something unrelated refreshes it.
+ *
+ * Hence an identity, compared, rather than events, counted. `user.id` and not the
+ * email precisely because an email change must NOT read as a different person.
  */
+let accountKey: string | null = null
 let session = 0
 
 /**
@@ -146,9 +159,15 @@ void fetchAvatar()
 // mean the same thing — drop the face before the next person sees it. Signing in as
 // someone else has to FETCH rather than keep what is on screen.
 window.electronAPI.auth.onStatusChanged((status) => {
-  // Every transition is a new epoch, so anything still in the air from the previous
-  // one is now stamped with an epoch that no longer matches and will be dropped.
-  session++
+  // A new epoch only when the PERSON changed — see the note on `accountKey`. A
+  // same-account event (an email confirmation) leaves it alone, so an upload in
+  // flight still publishes; ordering it against this handler's own refetch is
+  // `generation`'s job, and it already does it.
+  const key = status.loggedIn ? (status.user?.id ?? null) : null
+  if (key !== accountKey) {
+    accountKey = key
+    session++
+  }
   if (!status.loggedIn) {
     publishAvatar(null, session)
     return
