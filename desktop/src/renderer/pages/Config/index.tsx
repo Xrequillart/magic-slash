@@ -13,9 +13,11 @@ import { TelemetryHealthCard } from './TelemetryHealthCard'
 import { SetupHealthCard } from './SetupHealthCard'
 import { RateLimitBar } from '../../components/agent-info-sidebar/LimitGauge'
 import { SweepPane } from '../../components/SweepPane'
+import { AccountAvatar } from '../../components/AccountAvatar'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
 import { useAuth } from '../../hooks/useAuth'
+import { useAvatar } from '../../hooks/useAvatar'
 import { displayNameFromEmail } from '../../utils/displayName'
 import type { SpotlightShortcut, LaunchMode, AgentType, ClaudeAccount, SpendSummary, SettingsTab, RepositoryConfig, Org } from '../../../types'
 import { showToast } from '../../components/Toast'
@@ -133,12 +135,12 @@ const SEAT_TIER_LABELS: Record<string, string> = {
  */
 function SettingsAccountFooter() {
   const { status, logout } = useAuth()
+  const avatar = useAvatar()
   const t = useT()
 
   if (!status.enabled || !status.loggedIn) return null
 
   const name = displayNameFromEmail(status.user?.email, t('sidebar.accountFallback'))
-  const initial = name.charAt(0).toUpperCase()
 
   const handleLogout = async () => {
     try {
@@ -152,9 +154,15 @@ function SettingsAccountFooter() {
     <div className="mt-auto border-t border-line-field p-2 space-y-1">
       {/* Account identity */}
       <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-text-secondary">
-        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-accent/20 text-accent text-[10px] font-semibold shrink-0">
-          {initial}
-        </span>
+        {/*
+          The photo, at the exact 20 px the initial badge used to occupy, so the row's
+          height and the name's baseline do not move. The initial is gone on purpose
+          and not by omission: there is only ever ONE account here, spelled out in full
+          right next to it, so a letter was decoration that read like information —
+          `AccountAvatar`'s header has the long version. Same `bg-accent/20` pill behind
+          the fallback glyph, so a user with no photo sees the badge they always saw.
+        */}
+        <AccountAvatar variant="footer" dataUrl={avatar} />
         <span className="truncate">{name}</span>
       </div>
 
