@@ -598,6 +598,19 @@ export const marketingEn = {
   'site.desktopPage.guardTitle': 'It sets itself up, and asks before it goes too far.',
   'site.desktopPage.guardSubtitle':
     'The first launch checks what Claude Code needs and installs what is missing. After that, you decide how far each agent may go, and you watch what it costs.',
+  /**
+   * THE FOURTH GUARDRAIL, and the only one of the four that is not an inventory row: the
+   * app keeps itself current. `/features` has never listed it and the FAQ answers it at
+   * length (`site.faq.updates.a`), so the pair here is the short version — what happens
+   * at launch, and what it does not do without asking.
+   *
+   * IT TOOK THE KEYBOARD'S PLACE. `site.builtFor.shortcuts*` was the fourth row of that
+   * band and is the fifth of the one above it now, by request — see `AROUND_FACTS` in
+   * `lib/desktopPage.ts`. Nothing was rewritten: the row moved, the copy did not.
+   */
+  'site.desktopPage.updatesTitle': 'Automatic updates',
+  'site.desktopPage.updatesDesc':
+    'At every launch the app checks whether a newer version has shipped, and downloads it in the background. It then offers to restart, or to leave it for later. Nothing takes over your screen.',
 
   // ── The homepage's app band ────────────────────────────────────────────────
   /**

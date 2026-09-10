@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   AGENTS_POINTS,
   ALL_FEATURES_PATH,
-  AROUND_CARDS,
+  AROUND_FACTS,
   DESKTOP_BANDS,
   GUARDRAILS,
   SIDEBAR_TOUR,
@@ -32,9 +32,9 @@ function everyKey(): string[] {
   const keys: string[] = [STATUS_STEP_TITLE]
   for (const band of Object.values(DESKTOP_BANDS)) keys.push(band.title, band.subtitle)
   for (const point of [...TASKS_POINTS, ...AGENTS_POINTS]) keys.push(point.label)
-  for (const feature of AROUND_CARDS) {
-    if (!isLiteralTitle(feature.title)) keys.push(feature.title)
-    keys.push(feature.description)
+  for (const fact of AROUND_FACTS) {
+    if (!isLiteralTitle(fact.title)) keys.push(fact.title)
+    keys.push(fact.description)
   }
   for (const step of SIDEBAR_TOUR) {
     if (step.kind === 'card') {
@@ -47,7 +47,10 @@ function everyKey(): string[] {
     }
     keys.push(...step.points.map((point) => point.label))
   }
-  for (const row of GUARDRAILS) keys.push(row.title, row.description)
+  for (const row of GUARDRAILS) {
+    if (!isLiteralTitle(row.title)) keys.push(row.title)
+    keys.push(row.description)
+  }
   return keys
 }
 
@@ -137,18 +140,81 @@ describe('the /desktop bands', () => {
     expect(siteFr(STATUS_STEP_TITLE)).toContain('{status}')
   })
 
-  it('shows the desktop family’s showcase rows around the window', () => {
-    for (const feature of AROUND_CARDS) {
-      expect(feature.shape, feature.id).toBe('showcase')
+  it('shows the desktop family’s showcase rows around the window, and the keyboard with them', () => {
+    // FOUR OF THE FIVE ARE INVENTORY ROWS and every one of them is a `showcase` row of
+    // the desktop family — this band is what `/features` draws with a picture, said in a
+    // line. The fifth is the keyboard, which has no row: the copy is the homepage's own
+    // card (`site.builtFor.shortcuts*`), and the assertion is that it is that pair and
+    // not a second wording of the same idea.
+    const inventory = new Map(
+      (FEATURE_FAMILIES.find((family) => family.id === 'desktop')?.features ?? []).map(
+        (feature) => [feature.id, feature],
+      ),
+    )
+
+    for (const fact of AROUND_FACTS) {
+      const row = inventory.get(fact.id)
+      if (!row) continue
+      expect(row.shape, fact.id).toBe('showcase')
     }
-    expect(AROUND_CARDS).toHaveLength(4)
+
+    // THE ORDER IS THE BAND'S ARGUMENT and it is pinned because a grid of two hides a
+    // swap: the two ways you reach the app, then where it stands when you are not in it,
+    // then getting around it without the mouse. The menu bar and the notifications were
+    // the other way round until the product owner asked for them swapped.
+    expect(AROUND_FACTS.map((fact) => fact.id)).toEqual([
+      'splitView',
+      'spotlight',
+      'menuBar',
+      'notifications',
+      'shortcuts',
+    ])
+    expect(AROUND_FACTS.at(-1)?.title).toBe('site.builtFor.shortcutsTitle')
+  })
+
+  it('keeps the keyboard out of the guardrails, and the update in', () => {
+    // THE TWO BANDS ARE SET IDENTICALLY NOW (`desktop/FactList.tsx`), which is what makes
+    // this worth pinning rather than reading off the page: one row in both lists would
+    // be the same fact twice in the same dress, two bands apart, and nothing about it
+    // would look like a mistake. The keyboard belongs to what sits AROUND the window;
+    // the automatic update belongs to what the app does to your machine without asking.
+    expect(GUARDRAILS.map((row) => row.id)).toEqual([
+      'machineSetup',
+      'permissionModes',
+      'usage',
+      'updates',
+    ])
+
+    const around = new Set(AROUND_FACTS.map((fact) => fact.id))
+    for (const row of GUARDRAILS) expect(around.has(row.id), row.id).toBe(false)
   })
 
   it('heads every guardrail with a catalogue key', () => {
+    // A guardrail is a SENTENCE — "The first launch installs what is missing" — so a
+    // literal title here would mean a product's own name had been filed as a fact about
+    // the app. The band above may carry literals ("Split View", "Spotlight"), which is
+    // why the two lists share a `FeatureTitle` and only this one is held to keys.
     for (const row of GUARDRAILS) {
-      expect(isLiteralTitle(row.title as never), row.id).toBe(false)
+      expect(isLiteralTitle(row.title), row.id).toBe(false)
     }
     expect(new Set(GUARDRAILS.map((row) => row.id)).size).toBe(GUARDRAILS.length)
+  })
+
+  it('names glyphs the page can actually draw', () => {
+    // `lib/desktopPage.ts` names icons as strings because the root suite cannot resolve
+    // `lucide-react`; `components/site/desktop/icons.ts` maps them, and a name missing
+    // there is a `tsc` error only on a Vercel build (CI typechecks `desktop/` alone). So
+    // it is read as TEXT here — the trick `siteNav.test.ts` uses on the header's own map.
+    //
+    // THE FOUR NEWEST NAMES ARE WHY THIS EXISTS: the dark band used to resolve its own
+    // glyphs from each row's `FeatureIcon`, through a second lucide map in
+    // `AroundBand.tsx`. That map is gone, so those four are in the page's vocabulary now
+    // and nothing but this checks they arrived in both places.
+    const icons = readFileSync(webapp('../components/site/desktop/icons.ts'), 'utf8')
+
+    for (const fact of [...AROUND_FACTS, ...GUARDRAILS]) {
+      expect(icons, `${fact.icon} imported`).toContain(`  ${fact.icon},\n`)
+    }
   })
 
   it('refuses a row the inventory does not declare', () => {

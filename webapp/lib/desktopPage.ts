@@ -1,4 +1,4 @@
-import { FEATURE_FAMILIES, type Feature } from './features'
+import { FEATURE_FAMILIES, type Feature, type FeatureTitle } from './features'
 import type { MessageKey } from './i18n'
 
 /**
@@ -72,6 +72,14 @@ export type DesktopIcon =
   | 'ShieldCheck'
   | 'Gauge'
   | 'Keyboard'
+  // The four glyphs of the "around the window" band. They used to be resolved by
+  // `AroundBand.tsx` from each row's own `FeatureIcon`, through a second lucide map that
+  // existed only for that band; the two fact bands share one list shape now (see
+  // `DesktopFact`), so they share this page's one icon vocabulary as well.
+  | 'Columns'
+  | 'Search'
+  | 'Bell'
+  | 'AppWindow'
   // The key points of the sidebar tour, one glyph each — see `POINT_ICONS`.
   | 'DollarSign'
   | 'Clock'
@@ -288,46 +296,99 @@ export const SIDEBAR_TOUR: readonly SidebarTourStep[] = [
 export const STATUS_STEP_TITLE: MessageKey = 'site.desktopPage.statusStepTitle'
 
 /**
- * WHAT SITS AROUND THE WINDOW: the four desktop rows `/features` sets as showcase cards.
- * Shown here WITHOUT their drawings, on a dark band — an icon, the title beside it, the
- * description under — by the product owner's call: the drawings are on `/features`, and
- * this band is four short facts.
+ * A FACT, which is what both of the page's last two bands are made of: a glyph, a
+ * headline and a paragraph, no drawing and nothing to click.
+ *
+ * ONE TYPE FOR THE TWO BANDS, where there were two — `Feature[]` for the dark band and a
+ * `GuardrailRow[]` of its own for the light one. They are drawn by ONE component now
+ * (`components/site/desktop/FactList.tsx`, at the product owner's ask that the guardrails
+ * be set at the same size as the rows above them), and a shared component over two
+ * shapes is how the two would have come to disagree about what a row is.
+ *
+ * `FeatureTitle` AND NOT `MessageKey`, because the dark band's rows are inventory rows
+ * and two of them are titled by a product's own name — "Split View", "Spotlight" — which
+ * `lib/features.ts` deliberately spells as literals rather than as identical en/fr pairs.
+ * `titleOf` tells the two apart at runtime. The guardrails are all keys, and the test
+ * next door keeps them that way: a guardrail is a sentence, not a product name.
+ *
+ * THE GLYPH IS THE BAND'S CHOICE AND NOT THE ROW'S. `machineSetup` is drawn with a plug
+ * on `/features` and with a wrench here, which is not drift: the inventory's glyph labels
+ * a capability in a list of thirty, and this one labels an argument in a band of four.
+ * So it is an argument to `fact()` rather than a field read off the row.
  */
-export const AROUND_CARDS: readonly Feature[] = [
-  pick('desktop', 'splitView'),
-  pick('desktop', 'spotlight'),
-  pick('desktop', 'notifications'),
-  pick('desktop', 'menuBar'),
-]
-
-/**
- * THE GUARDRAILS: what the app checks, what it asks, what it shows you spending. Three of
- * the four are inventory rows; the fourth is the homepage's own keyboard card, because the
- * inventory has no row for the shortcuts and the homepage already says it in one sentence.
- * Copy only, in a legend — these are facts to know rather than screens to look at.
- */
-export type GuardrailRow = {
+export type DesktopFact = {
   id: string
   icon: DesktopIcon
-  title: MessageKey
+  title: FeatureTitle
   description: MessageKey
 }
 
-const asRow = (icon: DesktopIcon, feature: Feature): GuardrailRow => {
-  // Every row picked here is headed by a catalogue key; a literal title would be a
-  // product name, and none of these four is one. The test pins it.
-  return { id: feature.id, icon, title: feature.title as MessageKey, description: feature.description }
-}
+/** An inventory row, as a fact: the title and the words are the row's, the glyph is not. */
+const fact = (icon: DesktopIcon, feature: Feature): DesktopFact => ({
+  id: feature.id,
+  icon,
+  title: feature.title,
+  description: feature.description,
+})
 
-export const GUARDRAILS: readonly GuardrailRow[] = [
-  asRow('Wrench', pick('integrations', 'machineSetup')),
-  asRow('ShieldCheck', pick('configuration', 'permissionModes')),
-  asRow('Gauge', pick('desktop', 'usage')),
+/**
+ * WHAT SITS AROUND THE WINDOW: the four desktop rows `/features` sets as showcase cards
+ * — the split view, the global shortcut, the menu bar, the Mac's own notifications — and
+ * the keyboard. Shown WITHOUT their drawings, on a dark band: an icon, the title beside
+ * it, the description under, by the product owner's call, because the drawings are on
+ * `/features` and this band is short facts.
+ *
+ * THE KEYBOARD IS THE FIFTH AND IT MOVED HERE from the guardrails band below, by request.
+ * It belongs to this question rather than to that one: this band is what the app does
+ * AROUND the window you work in — a second pane, a global shortcut, the menu bar, the
+ * Mac's own notifications — and getting between them without the mouse is one of those,
+ * where "what the first launch installs and how far an agent may go" is not. The
+ * copy is the homepage's own keyboard card, `site.builtFor.shortcuts*`: the inventory has
+ * no row for the shortcuts, and that pair already says it in one sentence.
+ *
+ * FIVE IN A TWO-COLUMN GRID leaves the last one alone on its row, which is why the
+ * component spans it — see `FactList`.
+ */
+export const AROUND_FACTS: readonly DesktopFact[] = [
+  fact('Columns', pick('desktop', 'splitView')),
+  fact('Search', pick('desktop', 'spotlight')),
+  // THE MENU BAR BEFORE THE NOTIFICATIONS, swapped by request. It also reads as the
+  // better pair: the second row is now where the app STANDS when you are not in it —
+  // always running, then telling you something — where the first is the two ways you
+  // reach it. The band is a grid of two, so this moves both rows of the middle line.
+  fact('AppWindow', pick('desktop', 'menuBar')),
+  fact('Bell', pick('desktop', 'notifications')),
   {
     id: 'shortcuts',
     icon: 'Keyboard',
     title: 'site.builtFor.shortcutsTitle',
     description: 'site.builtFor.shortcutsDesc',
+  },
+]
+
+/**
+ * THE GUARDRAILS: what the app checks, what it asks, what it shows you spending, and what
+ * it keeps up to date on its own. Facts to know rather than screens to look at.
+ *
+ * THREE OF THE FOUR ARE INVENTORY ROWS, and the fourth is the automatic update, written
+ * here as `site.desktopPage.updates*`. It has no inventory row — the FAQ answers it at
+ * length (`site.faq.updates.a`) and `/features` has never listed it — and it is a fact of
+ * exactly this kind: something the app does for you before you have asked, which you
+ * would want to know before installing it.
+ *
+ * THE KEYBOARD USED TO BE THE FOURTH, and it is in `AROUND_FACTS` now for the reason
+ * given up there. These four are one question — what happens to my machine, my code and
+ * my bill — and the shortcuts were never an answer to it.
+ */
+export const GUARDRAILS: readonly DesktopFact[] = [
+  fact('Wrench', pick('integrations', 'machineSetup')),
+  fact('ShieldCheck', pick('configuration', 'permissionModes')),
+  fact('Gauge', pick('desktop', 'usage')),
+  {
+    id: 'updates',
+    icon: 'RefreshCw',
+    title: 'site.desktopPage.updatesTitle',
+    description: 'site.desktopPage.updatesDesc',
   },
 ]
 

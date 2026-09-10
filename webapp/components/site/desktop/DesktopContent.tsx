@@ -23,11 +23,16 @@ import { GuardrailsBand } from './GuardrailsBand'
  *   • `SidebarScrollBand` — WHAT THE APP KNOWS ABOUT EACH: the info panel, whole and
  *     sticky on the right, panning and zooming to whichever card the paragraph on the
  *     left is about, the status pill walking from "in progress" to "merged" on the way.
- *   • `AroundBand` — WHAT SITS AROUND THE WINDOW: split view, Spotlight, notifications,
- *     the menu bar. A dark band, an icon and a title per row, no drawings.
+ *   • `AroundBand` — WHAT SITS AROUND THE WINDOW: split view, Spotlight, the menu bar,
+ *     notifications, the keyboard. A dark band, an icon and a title per row, no drawings.
  *   • `GuardrailsBand` — WHAT IT CHECKS AND WHAT IT ASKS: the first-launch setup, the
- *     permission modes, the usage limits, the keyboard. A legend, and the one link out
- *     to `/features`.
+ *     permission modes, the usage limits, the automatic update. The same list as the band
+ *     above it, on white, and the one link out to `/features`.
+ *
+ * THE LAST TWO BANDS ARE ONE LIST IN TWO TONES (`desktop/FactList.tsx`), which they were
+ * not: the guardrails were a `/features` legend at `text-sm` until the product owner
+ * asked for the type and the glyphs of the band above them. The keyboard moved up into
+ * that band in the same round, and the automatic update arrived to take its place.
  *
  * THE SECOND ROUND. The bands shipped once as three splits, a grid of showcase cards and
  * a legend, and the product owner reworked the page on seeing it: no blue eyebrow on any

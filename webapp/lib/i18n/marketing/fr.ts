@@ -270,6 +270,11 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.desktopPage.guardTitle': 'Elle s’installe seule, et demande avant d’aller trop loin.',
   'site.desktopPage.guardSubtitle':
     'Le premier lancement vérifie ce dont Claude Code a besoin et installe ce qui manque. Ensuite, vous décidez jusqu’où chaque agent peut aller, et vous voyez ce que ça coûte.',
+  // Le quatrième garde-fou, arrivé à la place du clavier, parti dans la bande du dessus.
+  // Voir la note côté anglais.
+  'site.desktopPage.updatesTitle': 'Mises à jour automatiques',
+  'site.desktopPage.updatesDesc':
+    'À chaque démarrage, l’app vérifie s’il existe une version plus récente et la télécharge en arrière-plan. Elle vous propose ensuite de redémarrer, ou de le faire plus tard. Rien ne prend l’écran.',
 
   // ── La bande « application » de la home ────────────────────────────────────
   // Le titre ne reprend pas celui du hero : le hero annonce le parallélisme, cette bande

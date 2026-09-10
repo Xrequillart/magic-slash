@@ -13,7 +13,7 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  *
  * A SERVER COMPONENT whose only job is the `metadata`, with the page in a client
  * component next door: the copy needs `useT()`, and `metadata` cannot be exported from a
- * `'use client'` module. The same split `/features`, `/faq`, `/story`, `/changelog` and
+ * `'use client'` module. The same split `/features`, `/faq`, `/changelog` and
  * `/workflow` make.
  *
  * `/desktop` AND NOT `/application`, though the header's row says "Application": the
