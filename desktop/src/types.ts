@@ -2553,6 +2553,19 @@ export interface UserProfile {
   communication_style?: 'simple' | 'technical' | 'detailed'
   languages?: string[]
   freeText?: string
+  /**
+   * The `avatars` Storage object path of the profile photo (`<uid>/avatar.webp`),
+   * or absent. Mapped from `profiles.avatar_url` by CloudStore.loadProfile.
+   *
+   * INERT, and worth knowing before building on it: `loadProfile` returns null
+   * unless name/role/technical_level are all set, so a user who set a photo
+   * without filling their profile in yields no UserProfile at all and this field
+   * is never seen. The avatar is therefore read through
+   * CloudStore.getAvatarDataUrl(), which selects the column on its own. This
+   * declaration exists so the type matches the row, and it is deliberately not
+   * written by saveProfile — see that method.
+   */
+  avatar_url?: string
 }
 
 // The display labels for these fields used to live here as English literals.

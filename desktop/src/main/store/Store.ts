@@ -177,6 +177,18 @@ export interface Store {
   loadProfile(): Promise<UserProfile | null>
   saveProfile(profile: UserProfile): Promise<void>
 
+  // The profile PHOTO, which is not a profile field: the bytes live in the
+  // `avatars` Storage bucket and only the path is on the row. Kept off
+  // load/saveProfile deliberately — saveProfile rewrites every optional column
+  // as `?? null`, and the photo must survive a profile edit (and a profile that
+  // is too incomplete for loadProfile to return at all).
+  /** Store a WebP data URL as the caller's photo and point their row at it. */
+  setAvatar(dataUrl: string): Promise<void>
+  /** Delete the caller's photo — the Storage object and the row's pointer. */
+  removeAvatar(): Promise<void>
+  /** The caller's photo as a data URL, or null when there is none (or it cannot be read). */
+  getAvatarDataUrl(): Promise<string | null>
+
   /**
    * Record which app version this machine runs, in `app_installations` (upsert on
    * (user_id, device_id)). Called once per launch after auth is established, so
@@ -228,6 +240,9 @@ export const NOOP_STORE: Store = {
   async setOrgSharedConfig() { /* no-op */ },
   async loadProfile() { return null },
   async saveProfile() { /* no-op */ },
+  async setAvatar() { /* no-op */ },
+  async removeAvatar() { /* no-op */ },
+  async getAvatarDataUrl() { return null },
   async recordAppInstallation() { /* no-op */ },
   async ping() { return 'unauthorized' },
   setActiveOrgId() { /* no-op */ },

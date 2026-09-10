@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import type { AvatarSourceResult } from '../avatar'
 import type { AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, TasksSnapshot, TaskIssueDetail, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
@@ -580,6 +581,28 @@ interface PRWatcherUpdate {
 const profileApi = {
   get: (): Promise<UserProfile | null> => ipcRenderer.invoke('profile:get'),
   save: (data: UserProfile) => ipcRenderer.invoke('profile:save', data),
+
+  // The profile photo. It is NOT part of the profile the two calls above move
+  // around: the bytes live in a private Supabase Storage bucket the main process
+  // alone can reach, and `profile:save` must never carry the avatar or a profile
+  // edit would erase it.
+
+  /**
+   * Read the file the user picked (via `dialog.openFile()`) so the renderer can
+   * crop it on a canvas. Refusals come back as a reason CODE — the size cap and
+   * the accepted extensions are checked in main, where the ORIGINAL file's size
+   * is knowable, and the caller maps the code to a message key.
+   */
+  readAvatarSource: (path: string): Promise<AvatarSourceResult> =>
+    ipcRenderer.invoke('profile:readAvatarSource', path),
+  /** The stored photo as a data URL, or null when there is none. */
+  getAvatar: (): Promise<string | null> => ipcRenderer.invoke('profile:getAvatar'),
+  /** Upload a 256 px WebP data URL as the photo. */
+  setAvatar: (dataUrl: string): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('profile:setAvatar', dataUrl),
+  /** Delete the photo, blob and pointer. */
+  removeAvatar: (): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('profile:removeAvatar'),
 }
 
 // Setup API — machine prerequisites, MCP servers and integrations. Replaces what the

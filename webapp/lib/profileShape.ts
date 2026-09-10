@@ -28,6 +28,16 @@ export interface UserProfile {
   communicationStyle: ProfileStyle | null
   languages: string[]
   freeText: string
+  /**
+   * The `avatars` Storage object path of the profile photo, or null.
+   *
+   * READ-ONLY on this side. The photo is set and removed from the desktop app's
+   * Account tab, which is the only place that can talk to Storage; the webapp
+   * carries the field so it round-trips through `fetchProfile` and so nothing
+   * here believes a profile is a shape without it. It is deliberately NOT part
+   * of `profileUpsertPayload` — see that function.
+   */
+  avatarUrl: string | null
 }
 
 /**
@@ -67,6 +77,7 @@ export const EMPTY_PROFILE: UserProfile = {
   communicationStyle: null,
   languages: [],
   freeText: '',
+  avatarUrl: null,
 }
 
 /**
@@ -75,4 +86,48 @@ export const EMPTY_PROFILE: UserProfile = {
  */
 export function isProfileComplete(p: UserProfile | null): boolean {
   return !!p && p.name.trim().length > 0
+}
+
+/**
+ * The `profiles` row a save writes — every column the webapp owns, and NOT
+ * `avatar_url`.
+ *
+ * WHY THIS IS A FUNCTION AND NOT AN INLINE LITERAL
+ * ---------------------------------------------------------------------------
+ * Because the literal was a trap, and an invisible one. `saveProfile` upserts,
+ * and an upsert writes exactly the columns it is given: leave `avatar_url` out
+ * and PostgREST does not touch it, put it in and whatever the form happens to
+ * hold overwrites the photo. The webapp's form has no avatar control at all, so
+ * a well-meant "harmonise the payload with the interface" — adding the field
+ * because `UserProfile` now has it — would send `avatar_url: null` and silently
+ * delete the photo the user set in the desktop app, on every profile save.
+ *
+ * Extracted so that failure mode has a test rather than a comment: the payload
+ * is now a value that can be inspected without a Supabase client anywhere near
+ * it (profileShape.test.ts). The same rule holds one process over, in
+ * `desktop/src/main/store/CloudStore.saveProfile`, for the same reason.
+ *
+ * `avatarUrl` is therefore read from the row and dropped on the way back: it is
+ * the desktop's to write, through its own single-column upsert.
+ */
+export interface ProfileUpsertPayload {
+  user_id: string
+  name: string
+  role: ProfileRole
+  technical_level: ProfileLevel
+  communication_style: ProfileStyle | null
+  languages: string[]
+  free_text: string | null
+}
+
+export function profileUpsertPayload(p: UserProfile, uid: string): ProfileUpsertPayload {
+  return {
+    user_id: uid,
+    name: p.name.trim(),
+    role: p.role,
+    technical_level: p.technicalLevel,
+    communication_style: p.communicationStyle,
+    languages: p.languages,
+    free_text: p.freeText.trim() || null,
+  }
 }

@@ -831,6 +831,9 @@ export const en = {
   'cloud.section': 'Cloud account',
   'cloud.signedInFallback': 'Signed in',
   'cloud.signedInHint': 'Signed in to Magic Slash cloud',
+  'cloud.avatar.alt': 'Account photo',
+  'cloud.avatar.choose': 'Choose a photo',
+  'cloud.avatar.remove': 'Remove photo',
   'cloud.signOut': 'Sign out',
   'cloud.changePassword': 'Change password',
   'cloud.changeEmail': 'Change email',
@@ -863,6 +866,13 @@ export const en = {
   'toast.emailChangeFailed': 'Failed to change email',
   'toast.accountDeleted': 'Your account has been deleted',
   'toast.accountDeleteFailed': 'Failed to delete account',
+  // The file picker offers SVG among the images, so a refusal has to say which
+  // formats actually work rather than only that this one does not.
+  'toast.avatarTooLarge': 'That image is too large (maximum {limit}). Pick a smaller PNG, JPEG or WebP.',
+  'toast.avatarBadFormat': 'That file is not a supported image. Pick a PNG, JPEG or WebP (SVG is not supported).',
+  'toast.avatarUnreadable': 'That image could not be read. Pick a PNG, JPEG or WebP.',
+  'toast.avatarSaveFailed': 'Failed to save your photo. Your current photo is unchanged.',
+  'toast.avatarRemoveFailed': 'Failed to remove your photo',
 
   // ── Settings → Connections → Atlassian account ───────────────────────────
   // This credential is what the APP reads Jira with — the Tasks page, a ticket's
