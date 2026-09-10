@@ -1,6 +1,10 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import { APP_HOST, canonicalHost, resolveRewrite, retiredPath } from './hostRouting'
 import { APP_URL } from './inviteLink'
+import { PRIVACY_PATH } from './privacyPage'
+import { TERMS_PATH } from './termsPage'
 
 /**
  * Which host a path belongs on. `resolveRewrite` below answers the second question —
@@ -44,6 +48,13 @@ describe('canonicalHost', () => {
       for (const path of ['/desktop', '/cloud', '/download']) {
         expect(canonicalHost('magic-slash.io', path), path).toBeNull()
       }
+      // THE TWO LEGAL PAGES, which are worse still: the header's rows are behind a menu,
+      // these two are in the copyright row at the bottom of every public page. A reader
+      // pressing "Privacy" to find out what we collect and being handed a login form
+      // instead is the single least reassuring answer that question can get.
+      for (const path of ['/privacy', '/terms']) {
+        expect(canonicalHost('magic-slash.io', path), path).toBeNull()
+      }
       // AND `/application` IS NOT ONE OF THEM, though the menu row that opens `/desktop`
       // is labelled "Application": that path is the app's own settings section, and it
       // goes where the rest of the product goes.
@@ -82,6 +93,8 @@ describe('canonicalHost', () => {
       expect(canonicalHost('magic-slash.io', '/faq/')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/workflow/')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/download/')).toBeNull()
+      expect(canonicalHost('magic-slash.io', '/privacy/')).toBeNull()
+      expect(canonicalHost('magic-slash.io', '/terms/')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/documentation/')).toBeNull()
     })
 
@@ -224,7 +237,7 @@ describe('retiredPath', () => {
   })
 
   it('leaves every live page alone', () => {
-    for (const path of ['/', '/faq', '/features', '/changelog', '/workflow', '/desktop', '/download', '/dashboard']) {
+    for (const path of ['/', '/faq', '/features', '/changelog', '/workflow', '/desktop', '/download', '/privacy', '/terms', '/dashboard']) {
       expect(retiredPath('magic-slash.io', path), path).toBeNull()
     }
   })
@@ -266,6 +279,11 @@ describe('resolveRewrite', () => {
       // rewrite rule added for one of them would be silent: the page still renders, just
       // not the one the URL names.
       for (const path of ['/desktop', '/cloud', '/download']) {
+        expect(resolveRewrite('magic-slash.io', path), path).toBeNull()
+      }
+      // The two legal pages, for the same reason: they are ordinary routes under
+      // `app/(marketing)`, and the only rewrite the apex has is its root.
+      for (const path of ['/privacy', '/terms']) {
         expect(resolveRewrite('magic-slash.io', path), path).toBeNull()
       }
       // A retired path never reaches this rule — the middleware redirects it before
@@ -328,5 +346,68 @@ describe('resolveRewrite', () => {
       // identifies it — not the full domain.
       expect(resolveRewrite('app.magic-slash-git-branch.vercel.app', '/')).toBe('/dashboard')
     })
+  })
+})
+
+/**
+ * THE ONE SET OF PUBLIC PATHS NO OTHER TEST REACHES.
+ *
+ * Every path in the HEADER comes from `lib/siteNav.ts`, and `siteNav.test.ts` walks that
+ * module row by row against `PUBLIC_PATHS`. The footer's two link columns are that same
+ * data (see `SiteFooter.tsx`), so they are covered by the same walk. Its COPYRIGHT ROW
+ * is not: `/privacy` and `/terms` are written into the markup as string literals, in a
+ * component no data module owns, and until this block existed the list in
+ * `hostRouting.ts` was the only thing standing between them and a 307.
+ *
+ * WHICH IS THE WORST PLACE ON THE SITE FOR THAT GAP. Those two links are on the last
+ * line of every public page, and a path absent from `PUBLIC_PATHS` does not 404 — it
+ * sends the reader to a login form on `app.magic-slash.io`. Somebody pressing "Privacy"
+ * to find out what is collected, and being asked to sign in, has been answered.
+ *
+ * READ AS TEXT, and the assertion is `canonicalHost` rather than a grep for the literal:
+ * the question is not whether a string appears in a file, it is whether the apex will
+ * answer that URL — which is the function's own job, and it covers the prefix rules and
+ * the trailing-slash normalisation a grep would miss. `siteNav.test.ts` reads
+ * `SiteHeader.tsx` the same way, for the half of the header a value cannot express.
+ */
+describe('the footer, whose legal links are the only public paths written as literals', () => {
+  const footer = () =>
+    readFileSync(
+      fileURLToPath(new URL('../components/site/SiteFooter.tsx', import.meta.url)),
+      'utf8',
+    )
+
+  /**
+   * Every internal href the component hard-codes.
+   *
+   * `href="/..."` ONLY, which is exactly the shape that needs pinning: an `href={...}`
+   * is a constant from `lib/siteNav.ts` or an off-site URL from `links.ts`, and neither
+   * is this list's business. A leading slash is what separates a route from
+   * `https://github.com/...`.
+   */
+  const internalHrefs = () =>
+    [...footer().matchAll(/href="(\/[^"]*)"/g)].map((match) => match[1])
+
+  it('links only to paths the apex actually answers', () => {
+    const hrefs = internalHrefs()
+
+    // A GUARD ON THE GUARD. The regex is the whole test, so a footer refactor that moved
+    // both links behind constants would silently leave this asserting over an empty
+    // array and reporting green. Two is what the copyright row carries today; the day it
+    // carries none, this fails and asks whoever changed it to say what covers them now.
+    expect(hrefs.length, 'no hard-coded internal href found in SiteFooter.tsx').toBeGreaterThan(0)
+
+    for (const href of hrefs) {
+      expect(canonicalHost('magic-slash.io', href), `${href} is not a public path`).toBeNull()
+    }
+  })
+
+  it('carries the two legal pages the modules declare', () => {
+    // THE OTHER DIRECTION, and it is what stops `PRIVACY_PATH` and `TERMS_PATH` becoming
+    // decoration. Those constants exist so the pages' own tests can find the route file
+    // and check the routing list; if the footer's literal and the module's constant ever
+    // named different paths, both halves would still pass on their own and the link in
+    // the copyright row would be the one nobody had checked.
+    expect(internalHrefs()).toEqual(expect.arrayContaining([PRIVACY_PATH, TERMS_PATH]))
   })
 })
