@@ -95,6 +95,33 @@ User-scoped tables (own-rows-only RLS, independent of any org):
 | `profiles`          | Who the human is (name, role, level, style) for the skills.        |
 | `user_settings`     | App preferences: Settings → Features, launch mode, Atlassian flag. |
 | `app_installations` | One row per (user, device): the app version that device runs.      |
+| `avatars` (bucket)  | Storage, not a table: the caller's own avatar at `<uid>/avatar.webp`. |
+
+`avatars` is the only Storage bucket in the project (created by
+`20260910090100_avatars_storage.sql`, the first migration in the repo to touch
+`storage.*`) and it is **private** — `public = false`, so there is no unauthenticated
+URL for an object in it and clients sign a download at read time. It holds one object
+per user, always `<uid>/avatar.webp`: a fixed basename means a new photo overwrites the
+old one instead of accumulating a tail of previous faces. Its four policies on
+`storage.objects` — `avatars_{select,insert,update,delete}` — mirror the `profiles_*`
+policies exactly, keyed on `(storage.foldername(name))[1] = auth.uid()::text`, so the
+first path segment IS the owner. RLS is the only gate here: Supabase grants all four
+verbs on `storage.objects` to `authenticated` when it creates the schema, so the
+policies are written as an allowlist rather than as exceptions.
+
+`profiles.avatar_url` stores that object **path**, never an `https://` URL and never a
+signed one (which would rot on its expiry); NULL means no photo and the app falls back
+to a generic person icon, not an initial. The bucket also bounds what can land in it —
+`file_size_limit` 5242880 bytes (5 MiB) and `allowed_mime_types` PNG/JPEG/WebP — which
+is a different check from the app's, not a second copy of it: `validateAvatarFile`
+(`desktop/src/avatar.ts`, called from the **main** process) measures the *original file
+the user picked*, the only place that size exists, while these columns only ever see
+the *encoded 256 px WebP* and so could never refuse a 20 MB TIFF. The app owns the
+readable refusal; the bucket owns "nothing but a small image is ever stored here".
+`delete_account()` deletes the caller's objects in the
+bucket before deleting their `auth.users` row (`storage.objects` has no FK to
+`auth.users`, so nothing cascades it) — that removes the row Postgres owns, while the
+blob itself is unlinked by the `storage.remove()` call the app makes first.
 
 Neither org-scoped nor own-rows — a category of one:
 
