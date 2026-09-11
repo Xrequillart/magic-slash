@@ -6,7 +6,7 @@ allowed-tools: Bash(*), Read, Glob, Grep, AskUserQuestion, mcp__github__*, mcp__
 disallowed-tools: Write, Edit, NotebookEdit
 ---
 
-# magic-slash v0.90.0 - /review
+# magic-slash v0.91.0 - /review
 
 > **IMPORTANT**: You MUST follow EACH step of this skill in order. Do not skip any step and do not take shortcuts. Each step is essential for the proper functioning of the workflow.
 >

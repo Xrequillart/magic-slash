@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.91.0] - 2026-09-11
+
+### Added
+
+- **Desktop**: The tasks modal is a board of four columns (blocked, backlog, in progress, done), every ticket on a card carrying its tracker's mark, a copy link and a start button
+- **Desktop**: A ticket someone else already has an agent on is shown rather than hidden, and marked as taken
+- **Desktop**: The done column has work to show: the current sprint's finished tickets, and the issues closed in the last fortnight
+- **Desktop**: The board shows one repository at a time, picked at the top, and the choice is remembered on the account
+
+### Changed
+
+- **Desktop**: The language picker spaces out its entries
+- **Landing**: Band subtitles are set at the size of their key points
+
 ## [0.90.0] - 2026-09-11
 
 ### Added
@@ -2687,6 +2701,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.91.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.0
 [0.90.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.90.0
 [0.89.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.89.0
 [0.88.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.88.0
