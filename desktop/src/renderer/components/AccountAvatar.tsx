@@ -3,7 +3,14 @@ import { useT } from '../i18n'
 import { ACCOUNT_AVATAR_VARIANTS, type AccountAvatarVariant } from './accountAvatarSize'
 
 /**
- * The signed-in account, as a round photo — or as a generic icon when there is none.
+ * A person, as a round photo — or as a generic icon when there is none.
+ *
+ * It started as the signed-in account alone, and the `roster` variant is what widened
+ * it: the org members list draws the same badge for every colleague. Nothing about the
+ * drawing had to change for that — the bytes reach it the same way, and the fallback is
+ * the same glyph — so the component stayed one rather than being copied with a new
+ * name. What did change is `alt`, which could be a constant only while there was
+ * exactly one person it could be describing.
  *
  * The source is ALWAYS a data URL produced by the main process, never a remote one,
  * and that is a hard constraint rather than a convenience. The Storage bucket holding
@@ -41,13 +48,25 @@ import { ACCOUNT_AVATAR_VARIANTS, type AccountAvatarVariant } from './accountAva
  */
 
 interface Props {
-  /** A `data:` URL from `profile.getAvatar()`, or null for the icon fallback. */
+  /** A `data:` URL from `profile.getAvatar()` or `org.memberAvatars()`, or null for the icon fallback. */
   dataUrl: string | null
   /** Which surface is drawing it. Defaults to the identity card, the first caller. */
   variant?: AccountAvatarVariant
+  /**
+   * Alternative text, defaulting to "Account photo" — the right answer for every
+   * surface that draws the signed-in user and no answer at all for one that draws
+   * a colleague.
+   *
+   * Pass the EMPTY STRING where the person is already named in text beside the photo,
+   * as the members list names them by email. That is not a shortcut around writing one:
+   * an `alt` that repeats the adjacent label makes a screen reader say the same person
+   * twice per row, and the image is decorative precisely because the name is already
+   * there. A surface that shows a face with no name needs a real string.
+   */
+  alt?: string
 }
 
-export function AccountAvatar({ dataUrl, variant = 'card' }: Props) {
+export function AccountAvatar({ dataUrl, variant = 'card', alt }: Props) {
   const t = useT()
   const { box, glyph, badge } = ACCOUNT_AVATAR_VARIANTS[variant]
 
@@ -55,7 +74,7 @@ export function AccountAvatar({ dataUrl, variant = 'card' }: Props) {
     return (
       <img
         src={dataUrl}
-        alt={t('cloud.avatar.alt')}
+        alt={alt ?? t('cloud.avatar.alt')}
         className={`${box} rounded-full object-cover shrink-0`}
       />
     )

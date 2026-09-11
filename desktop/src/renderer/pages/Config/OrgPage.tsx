@@ -2,7 +2,9 @@ import { useState, useCallback, useMemo } from 'react'
 import { Cloud, Users, Mail, LogOut, Copy, Check, Loader2, Building2, Trash2, AlertTriangle, Archive, X, Plus, UserPlus } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useOrg } from '../../hooks/useOrg'
+import { useMemberAvatars } from '../../hooks/useMemberAvatars'
 import { useStore } from '../../store'
+import { AccountAvatar } from '../../components/AccountAvatar'
 import { Modal } from '../../components/Modal'
 import { RoleSelect } from './RoleSelect'
 import { SectionHeader } from './SectionHeader'
@@ -72,6 +74,16 @@ function CardSection({ label, count, action }: { label: string; count?: number; 
 interface OrganizationCardProps {
   org: Org
   members: Member[]
+  /**
+   * Every member's photo, keyed by user id. Absent key = no photo, drawn as the
+   * generic icon — the same fallback the Account tab uses, so a colleague who has
+   * not uploaded one looks the way the signed-in user does.
+   *
+   * The whole app's worth of faces, not this org's: `useMemberAvatars` keys on the
+   * person, and a colleague in two orgs is one entry. Handing each card the flat map
+   * is cheaper than slicing it per org and reads the same at the call site.
+   */
+  avatars: Record<string, string>
   invitations: Invitation[]
   currentUserId?: string
   busyMember: string | null
@@ -95,6 +107,7 @@ interface OrganizationCardProps {
 function OrganizationCard({
   org,
   members,
+  avatars,
   invitations,
   currentUserId,
   busyMember,
@@ -158,10 +171,19 @@ function OrganizationCard({
                       {/* max-w-0 lets a long email truncate instead of widening
                           the column past the card. */}
                       <td className="max-w-0 px-1 py-2">
-                        <span className="block truncate text-sm">
-                          {m.email ?? m.userId}
-                          {isSelf && <span className="text-text-secondary/40">{t('org.you')}</span>}
-                        </span>
+                        {/* `min-w-0` on the flex row, or the truncate above it stops
+                            working: a flex child defaults to its content's minimum
+                            width, so a long email would push the column wide instead
+                            of eliding. */}
+                        <div className="flex items-center gap-2 min-w-0">
+                          {/* alt="" on purpose — the email right beside it already
+                              names the person; see AccountAvatar's `alt`. */}
+                          <AccountAvatar dataUrl={avatars[m.userId] ?? null} variant="roster" alt="" />
+                          <span className="block truncate text-sm">
+                            {m.email ?? m.userId}
+                            {isSelf && <span className="text-text-secondary/40">{t('org.you')}</span>}
+                          </span>
+                        </div>
                       </td>
                       <td className="w-px whitespace-nowrap px-1 py-2">
                         {rowBusy ? (
@@ -299,6 +321,10 @@ export function OrgPage() {
     leaveOrg,
     archiveOrg,
   } = useOrg()
+
+  // Every org's faces, fetched once for the page rather than once per card: a person
+  // in two orgs is one entry, and the main process caches the bytes behind this.
+  const memberAvatars = useMemberAvatars(useMemo(() => orgs.map((o) => o.id), [orgs]))
 
   const [copiedToken, setCopiedToken] = useState<string | null>(null)
   const [deletingInvite, setDeletingInvite] = useState<string | null>(null)
@@ -537,6 +563,7 @@ export function OrgPage() {
             key={o.id}
             org={o}
             members={membersByOrg[o.id] ?? []}
+            avatars={memberAvatars}
             invitations={invitationsByOrg[o.id] ?? []}
             currentUserId={currentUserId}
             busyMember={busyMember}

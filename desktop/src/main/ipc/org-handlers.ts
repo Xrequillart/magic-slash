@@ -5,6 +5,7 @@ import { getRealtimeStatus } from '../cloud/realtime'
 import {
   getCurrentOrg,
   listMembers,
+  listMemberAvatars,
   listInvitations,
   createInvitation,
   deleteInvitation,
@@ -43,6 +44,13 @@ export function setupOrgHandlers(): void {
   // it can render every org the user belongs to, not just the active one.
   ipcMain.handle('org:members', async (_event, args?: OptionalOrgIdArgs): Promise<Member[]> =>
     listMembers(args?.orgId),
+  )
+
+  // The faces for that list, keyed by user id — a channel of its own, and see
+  // listMemberAvatars for why they do not simply ride along on the rows above.
+  // Members with no photo are absent from the map rather than present and null.
+  ipcMain.handle('org:memberAvatars', async (_event, args?: OptionalOrgIdArgs): Promise<Record<string, string>> =>
+    listMemberAvatars(args?.orgId),
   )
 
   ipcMain.handle('org:list', async (): Promise<Org[]> => listOrgs())

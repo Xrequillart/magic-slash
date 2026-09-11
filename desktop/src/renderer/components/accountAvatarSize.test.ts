@@ -3,8 +3,8 @@ import { ACCOUNT_AVATAR_VARIANTS, type AccountAvatarVariant } from './accountAva
 
 // The component itself is not rendered anywhere in this suite, and cannot be: there is
 // no jsdom and no React in the ROOT node_modules the suite runs on. What is worth
-// asserting is the table — the class strings three surfaces are measured against.
-const VARIANTS: AccountAvatarVariant[] = ['card', 'footer', 'sidebar']
+// asserting is the table — the class strings each surface is measured against.
+const VARIANTS: AccountAvatarVariant[] = ['card', 'footer', 'sidebar', 'roster']
 
 describe('ACCOUNT_AVATAR_VARIANTS', () => {
   it('covers every surface that draws the account photo', () => {
@@ -22,6 +22,13 @@ describe('ACCOUNT_AVATAR_VARIANTS', () => {
     // CircleUserRound. Either one changing shifts a row that must not move.
     expect(ACCOUNT_AVATAR_VARIANTS.footer.box).toBe('w-5 h-5')
     expect(ACCOUNT_AVATAR_VARIANTS.sidebar.box).toBe('w-3.5 h-3.5')
+  })
+
+  it('keeps the roster face under the role pill it shares a row with', () => {
+    // The org members row is 28 px tall because of that pill. A face sized AT it — or
+    // above it — would make every roster taller the moment anyone uploads a photo,
+    // which is a layout change nobody asked for when they asked for faces.
+    expect(ACCOUNT_AVATAR_VARIANTS.roster.box).toBe('w-6 h-6')
   })
 
   it('drops the badge chrome on the sidebar and nowhere else', () => {

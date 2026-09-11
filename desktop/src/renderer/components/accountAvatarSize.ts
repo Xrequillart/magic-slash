@@ -1,5 +1,5 @@
 /**
- * The three geometries `AccountAvatar` is drawn at, and the chrome each one keeps.
+ * The geometries `AccountAvatar` is drawn at, and the chrome each one keeps.
  *
  * A SEPARATE MODULE, and a deliberately empty one at the top: not a single runtime
  * import, not even a type one. The root Vitest suite runs on the ROOT node_modules,
@@ -36,7 +36,7 @@
  */
 
 /** The surfaces that draw the account photo. One entry per caller, never a spare. */
-export type AccountAvatarVariant = 'card' | 'footer' | 'sidebar'
+export type AccountAvatarVariant = 'card' | 'footer' | 'sidebar' | 'roster'
 
 export interface AccountAvatarGeometry {
   /** Box classes for the photo and for the fallback alike, so the two never disagree. */
@@ -67,4 +67,9 @@ export const ACCOUNT_AVATAR_VARIANTS: Readonly<Record<AccountAvatarVariant, Read
     // 14 px: the size of the `CircleUserRound` this replaces in the sidebar. Same box,
     // same glyph, no pill — the row must not move by a pixel.
     sidebar: Object.freeze({ box: 'w-3.5 h-3.5', glyph: 'w-3.5 h-3.5', badge: false }),
+    // 24 px: one row of the org members table. Sized UNDER the 28 px role pill sharing
+    // the row rather than at it, so adding faces does not make every roster taller —
+    // and the first surface here that draws OTHER people, where a face is the fastest
+    // way to tell two colleagues apart before either email is read.
+    roster: Object.freeze({ box: 'w-6 h-6', glyph: 'w-3.5 h-3.5', badge: true }),
   })

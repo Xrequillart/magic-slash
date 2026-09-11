@@ -37,14 +37,29 @@ export async function getCurrentOrg(): Promise<Org | null> {
   return orgs[0] ?? null
 }
 
+/** What `list_org_members` returns, one row per member. */
+interface MemberRow {
+  user_id: string
+  email: string | null
+  role: MembershipRole
+  created_at: string
+  /**
+   * Storage object path of this member's photo, or null. NOT a URL: the `avatars`
+   * bucket is private (see 20260910090100), so a reader turns the path into bytes
+   * itself. It comes through this RPC rather than from `profiles` because
+   * `profiles_select` is own-rows only — the whole reason the function is SECURITY
+   * DEFINER in the first place.
+   */
+  avatar_url: string | null
+}
+
 /**
- * Members of the given org (defaults to the current org), including every
- * member's email. Raw RLS on auth.users would only expose the caller's own
- * email, so this goes through the list_org_members RPC (SECURITY DEFINER, gated
- * to members of the org) which joins auth.users and returns emails for all
- * members — safely, since a non-member gets rejected.
+ * The raw roster, shared by the two things that need it — the member list and the
+ * photos that go beside it. One place issues the RPC and one place knows the row
+ * shape; without it, `listMemberAvatars` would restate both and could drift from
+ * what the list it decorates actually asked for.
  */
-export async function listMembers(orgId?: string): Promise<Member[]> {
+async function fetchMemberRows(orgId?: string): Promise<MemberRow[]> {
   const client = await getAuthedClient()
   if (!client) return []
 
@@ -53,13 +68,52 @@ export async function listMembers(orgId?: string): Promise<Member[]> {
 
   const { data, error } = await client.rpc('list_org_members', { p_org_id: targetOrgId })
   if (error || !data) return []
+  return data as MemberRow[]
+}
 
-  return (data as Array<{ user_id: string; email: string | null; role: MembershipRole; created_at: string }>).map((row) => ({
+/**
+ * Members of the given org (defaults to the current org), including every
+ * member's email. Raw RLS on auth.users would only expose the caller's own
+ * email, so this goes through the list_org_members RPC (SECURITY DEFINER, gated
+ * to members of the org) which joins auth.users and returns emails for all
+ * members — safely, since a non-member gets rejected.
+ *
+ * No photo here: that is `listMemberAvatars`, and its note says why the two are
+ * separate calls rather than one enriched row.
+ */
+export async function listMembers(orgId?: string): Promise<Member[]> {
+  return (await fetchMemberRows(orgId)).map((row) => ({
     userId: row.user_id,
     role: row.role,
     createdAt: row.created_at ?? undefined,
     email: row.email ?? undefined,
   }))
+}
+
+/**
+ * The org's photos, keyed by user id — the faces beside the names in the members list.
+ *
+ * A CHANNEL OF ITS OWN rather than an `avatarDataUrl` field on `Member`, which is the
+ * shape that first suggests itself. `listMembers` is read by five different views (the
+ * settings page, the team dashboard's repo and usage sections, the repo page,
+ * the invitation wizard), each through its own `useOrg()` instance, and `refresh()`
+ * pulls the roster of EVERY org the user belongs to. Hanging tens of kilobytes of
+ * base64 per member off that structure would copy the whole team's photos across the
+ * bridge, several times over, for four views that draw no faces. Only the members list
+ * calls this.
+ *
+ * Members with no photo are simply absent from the result, and the renderer draws the
+ * generic icon for them — the same fallback as an account with no photo at all. The
+ * pointer is what gates the download: a member with a null `avatar_url` costs no
+ * request, which is the reason that column was added to the RPC.
+ */
+export async function listMemberAvatars(orgId?: string): Promise<Record<string, string>> {
+  const paths: Record<string, string> = {}
+  for (const row of await fetchMemberRows(orgId)) {
+    if (row.avatar_url) paths[row.user_id] = row.avatar_url
+  }
+  if (Object.keys(paths).length === 0) return {}
+  return getStore().loadAvatarDataUrls(paths)
 }
 
 /**

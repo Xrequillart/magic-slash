@@ -374,6 +374,20 @@ interface CloudContext {
   orgId: string
 }
 
+/**
+ * How long a fetched avatar is reused before it is fetched again.
+ *
+ * Five minutes is a compromise between two things that pull opposite ways, and neither
+ * of them is bandwidth. A photo essentially never changes, which argues for a very long
+ * window; but nothing pushes a teammate's change to this machine, so the window IS the
+ * staleness anyone else's new face is displayed with. Five minutes means a colleague who
+ * says "I've put a photo up" is right by the time the other person has finished looking.
+ */
+const AVATAR_CACHE_TTL_MS = 5 * 60 * 1000
+
+/** How many avatar downloads are in flight at once. See loadAvatarDataUrls. */
+const AVATAR_FETCH_BATCH = 6
+
 export class CloudStore implements Store {
   private activeOrgId: string | undefined
   /**
@@ -388,6 +402,11 @@ export class CloudStore implements Store {
    * Tail of the agent-write chain — see queueAgentWrite.
    */
   private agentWrites: Promise<unknown> = Promise.resolve()
+  /**
+   * Storage object path → the bytes last fetched for it, and when. Null means the
+   * download failed, which is cached too. See loadAvatarDataUrls.
+   */
+  private avatarCache = new Map<string, { dataUrl: string | null; at: number }>()
 
   setActiveOrgId(orgId: string | undefined): void {
     this.activeOrgId = orgId
@@ -2033,6 +2052,11 @@ export class CloudStore implements Store {
       .from('profiles')
       .upsert({ user_id: ctx.uid, avatar_url: path }, { onConflict: 'user_id' })
     if (error) throw new Error(`setAvatar failed: ${error.message}`)
+
+    // The key is stable across saves — one blessed object per user — so nothing about
+    // the PATH tells a reader the bytes changed. Dropping the entry here is what stops
+    // the roster showing this user their own previous face for the rest of the TTL.
+    this.avatarCache.delete(path)
   }
 
   /**
@@ -2054,6 +2078,8 @@ export class CloudStore implements Store {
       .from('profiles')
       .upsert({ user_id: ctx.uid, avatar_url: null }, { onConflict: 'user_id' })
     if (error) throw new Error(`removeAvatar failed: ${error.message}`)
+
+    this.avatarCache.delete(path)
   }
 
   /**
@@ -2088,6 +2114,81 @@ export class CloudStore implements Store {
     const buffer = Buffer.from(await blob.arrayBuffer())
     if (buffer.length === 0) return null
     return `${AVATAR_DATA_URL_PREFIX}${buffer.toString('base64')}`
+  }
+
+  /**
+   * Teammates' photos, keyed by user id. See the Store interface for the contract.
+   *
+   * Every download is a round-trip for a picture that changes once in a blue moon,
+   * and the members list is re-read on mount and after every membership write — so
+   * without a cache, opening Settings twice would re-fetch the whole team. The cache
+   * is keyed by OBJECT PATH rather than by user id: the path is what was actually
+   * fetched, and the two cannot drift apart.
+   *
+   * A MISS is cached too, as null. The path comes from `profiles.avatar_url`, so the
+   * object is supposed to be there; when it is not — an upload that died between the
+   * blob and the pointer, or bytes another member may not read — the request fails
+   * every single time, and caching only the successes would retry it on every call
+   * for as long as the row stays wrong.
+   *
+   * The TTL is the entire invalidation story for OTHER people's photos: there is no
+   * event that tells this machine a teammate changed theirs, and the pointer is a
+   * constant, so a new face appears within the window or at the next launch. The
+   * caller's OWN photo does not wait for it — setAvatar and removeAvatar drop their
+   * entry, so the Account tab is never stale about itself.
+   */
+  async loadAvatarDataUrls(pathsByUserId: Record<string, string>): Promise<Record<string, string>> {
+    const ctx = await this.userContext()
+    if (!ctx) return {}
+
+    const wanted = Object.entries(pathsByUserId).filter(([, path]) => typeof path === 'string' && path.length > 0)
+    const result: Record<string, string> = {}
+    const misses: Array<[string, string]> = []
+
+    const now = Date.now()
+    for (const [userId, path] of wanted) {
+      const hit = this.avatarCache.get(path)
+      if (hit && now - hit.at < AVATAR_CACHE_TTL_MS) {
+        if (hit.dataUrl) result[userId] = hit.dataUrl
+        continue
+      }
+      misses.push([userId, path])
+    }
+
+    // In batches rather than one Promise.all over the whole roster: a fifty-person org
+    // would otherwise open fifty simultaneous downloads the first time anyone opens
+    // Settings. Sequential would be worse — a roster is fetched to be displayed now.
+    for (let i = 0; i < misses.length; i += AVATAR_FETCH_BATCH) {
+      const batch = misses.slice(i, i + AVATAR_FETCH_BATCH)
+      await Promise.all(
+        batch.map(async ([userId, path]) => {
+          const dataUrl = await this.downloadAvatar(ctx.client, path)
+          this.avatarCache.set(path, { dataUrl, at: Date.now() })
+          if (dataUrl) result[userId] = dataUrl
+        }),
+      )
+    }
+
+    return result
+  }
+
+  /**
+   * One object out of the bucket as a data URL, or null for anything that went wrong.
+   *
+   * Never throws, and that is the point of it being separate: it runs inside a
+   * Promise.all over a whole roster, where one rejected promise would discard the
+   * faces that did arrive alongside it.
+   */
+  private async downloadAvatar(client: SupabaseClient, path: string): Promise<string | null> {
+    try {
+      const { data: blob, error } = await client.storage.from(AVATAR_BUCKET).download(path)
+      if (error || !blob) return null
+      const buffer = Buffer.from(await blob.arrayBuffer())
+      if (buffer.length === 0) return null
+      return `${AVATAR_DATA_URL_PREFIX}${buffer.toString('base64')}`
+    } catch {
+      return null
+    }
   }
 
   // -------------------------------------------------------------------------

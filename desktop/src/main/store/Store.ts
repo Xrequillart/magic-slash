@@ -195,6 +195,23 @@ export interface Store {
   removeAvatar(): Promise<void>
   /** The caller's photo as a data URL, or null when there is none (or it cannot be read). */
   getAvatarDataUrl(): Promise<string | null>
+  /**
+   * Teammates' photos, keyed by user id: `{ <userId>: <storage object path> }` in,
+   * `{ <userId>: 'data:image/webp;base64,…' }` out.
+   *
+   * Separate from getAvatarDataUrl rather than a loop around it, because the two ask
+   * different questions of the database. That one starts from `auth.uid()` and reads
+   * the pointer itself; these pointers are not readable here at all — `profiles` is
+   * own-rows only — so they arrive from `list_org_members`, whose SECURITY DEFINER
+   * window is the one place a member learns anything about a co-member. The caller
+   * supplies them; this only fetches bytes.
+   *
+   * A user whose download fails is OMITTED from the result rather than mapped to null:
+   * a photo that cannot be read right now is displayed as the generic-icon fallback,
+   * which is what an absent key already means. Never throws — a roster must render
+   * with no faces rather than not at all.
+   */
+  loadAvatarDataUrls(pathsByUserId: Record<string, string>): Promise<Record<string, string>>
 
   /**
    * Record which app version this machine runs, in `app_installations` (upsert on
@@ -250,6 +267,7 @@ export const NOOP_STORE: Store = {
   async setAvatar() { /* no-op */ },
   async removeAvatar() { /* no-op */ },
   async getAvatarDataUrl() { return null },
+  async loadAvatarDataUrls() { return {} },
   async recordAppInstallation() { /* no-op */ },
   async ping() { return 'unauthorized' },
   setActiveOrgId() { /* no-op */ },

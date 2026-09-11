@@ -725,6 +725,11 @@ const orgApi = {
   current: (): Promise<Org | null> => ipcRenderer.invoke('org:current'),
   // orgId omitted → the active org.
   members: (orgId?: string): Promise<Member[]> => ipcRenderer.invoke('org:members', { orgId }),
+  // The members' photos, keyed by user id, as `data:image/webp;base64,…` strings —
+  // the bucket is private, so bytes travel rather than URLs (see AccountAvatar).
+  // A member with no photo has no key; the renderer draws the generic icon.
+  memberAvatars: (orgId?: string): Promise<Record<string, string>> =>
+    ipcRenderer.invoke('org:memberAvatars', { orgId }),
   list: (): Promise<Org[]> => ipcRenderer.invoke('org:list'),
   // Team dashboard: org-wide agents roster + live realtime propagation.
   listAgents: (): Promise<OrgAgent[]> => ipcRenderer.invoke('org:listAgents'),

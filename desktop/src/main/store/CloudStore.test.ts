@@ -2853,6 +2853,151 @@ describe('avatar', () => {
   })
 })
 
+// ── loadAvatarDataUrls (teammates' photos, keyed by user) ──────────────────
+//
+// A different question from getAvatarDataUrl, and the tests reflect that: nothing
+// here reads `profiles`. The pointers arrive from list_org_members in the main
+// process (`profiles_select` is own-rows only, so this store could not read them),
+// and everything worth asserting is about the bytes — which downloads are skipped
+// because the cache already has them, which failures are survivable, and what makes
+// the caller's own face refresh before the TTL is up.
+//
+// Its own client factory rather than makeClient's: the shared one answers every
+// download with the same canned result, and a roster is several different objects.
+
+describe('loadAvatarDataUrls', () => {
+  const WEBP = (tail: number) => Buffer.from([
+    0x52, 0x49, 0x46, 0x46, // 'RIFF'
+    0x1a, 0x00, 0x00, 0x00, // chunk length
+    0x57, 0x45, 0x42, 0x50, // 'WEBP'
+    tail,                   // one byte per user, so the mapping is checkable
+  ])
+  const urlOf = (tail: number) => `data:image/webp;base64,${WEBP(tail).toString('base64')}`
+  const pathOf = (uid: string) => `${uid}/avatar.webp`
+
+  /**
+   * A client whose bucket holds exactly `bytesByPath`. Anything else 404s, which is
+   * what a pointer left behind by a half-finished upload looks like from here.
+   * `downloads` records every path asked for, in order — the cache assertions are
+   * about that list not growing.
+   */
+  function makeAvatarClient(bytesByPath: Record<string, Buffer>) {
+    const downloads: string[] = []
+    const storage = {
+      from: () => ({
+        download: (path: string) => {
+          downloads.push(path)
+          const bytes = bytesByPath[path]
+          return Promise.resolve(
+            bytes
+              ? { data: { arrayBuffer: async () => new Uint8Array(bytes).buffer }, error: null }
+              : { data: null, error: { message: 'object not found' } },
+          )
+        },
+        upload: () => Promise.resolve({ data: { path: '' }, error: null }),
+        remove: () => Promise.resolve({ data: null, error: null }),
+      }),
+    }
+    const from = () => ({ upsert: () => Promise.resolve({ error: null }) })
+    return { client: { from, rpc: async () => ({ data: null, error: null }), storage }, downloads }
+  }
+
+  it('keys the bytes by USER, not by the path they were fetched from', async () => {
+    const { client } = makeAvatarClient({ [pathOf('u1')]: WEBP(1), [pathOf('u2')]: WEBP(2) })
+    h.state.client = client
+
+    // The renderer draws rows keyed by user id and knows nothing about object paths,
+    // so a result keyed the other way would have to be re-joined at the call site.
+    await expect(
+      new CloudStore().loadAvatarDataUrls({ u1: pathOf('u1'), u2: pathOf('u2') }),
+    ).resolves.toEqual({ u1: urlOf(1), u2: urlOf(2) })
+  })
+
+  it('omits a member whose object is missing and still returns the others', async () => {
+    const { client } = makeAvatarClient({ [pathOf('u1')]: WEBP(1) })
+    h.state.client = client
+
+    // One dangling pointer must not cost the whole roster its faces — and the absent
+    // key is exactly what "no photo" already means to the renderer, so there is
+    // nothing for it to special-case.
+    await expect(
+      new CloudStore().loadAvatarDataUrls({ u1: pathOf('u1'), u2: pathOf('u2') }),
+    ).resolves.toEqual({ u1: urlOf(1) })
+  })
+
+  it('downloads each object once, however many times the roster is read', async () => {
+    const { client, downloads } = makeAvatarClient({ [pathOf('u1')]: WEBP(1) })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAvatarDataUrls({ u1: pathOf('u1') })
+    await expect(store.loadAvatarDataUrls({ u1: pathOf('u1') })).resolves.toEqual({ u1: urlOf(1) })
+
+    // The members list is re-read on mount and after every membership write. Without
+    // the cache, opening Settings twice re-fetches the whole team.
+    expect(downloads).toEqual([pathOf('u1')])
+  })
+
+  it('remembers a MISS too, so a dangling pointer is not retried on every read', async () => {
+    const { client, downloads } = makeAvatarClient({})
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAvatarDataUrls({ u1: pathOf('u1') })
+    await store.loadAvatarDataUrls({ u1: pathOf('u1') })
+
+    // Caching only the successes would leave the one path that always fails as the
+    // one path fetched every single time.
+    expect(downloads).toEqual([pathOf('u1')])
+  })
+
+  it('forgets the caller own photo the moment they change it', async () => {
+    const { client, downloads } = makeAvatarClient({ [pathOf(UID)]: WEBP(1) })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAvatarDataUrls({ [UID]: pathOf(UID) })
+    await store.setAvatar(urlOf(9))
+    await store.loadAvatarDataUrls({ [UID]: pathOf(UID) })
+
+    // The object key is a constant, so nothing about the PATH says the bytes moved on.
+    // Without this the user would keep seeing their previous face in the roster for
+    // the rest of the TTL, right after watching themselves upload a new one.
+    expect(downloads).toEqual([pathOf(UID), pathOf(UID)])
+  })
+
+  it('forgets it on removal too', async () => {
+    const { client, downloads } = makeAvatarClient({ [pathOf(UID)]: WEBP(1) })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAvatarDataUrls({ [UID]: pathOf(UID) })
+    await store.removeAvatar()
+    await store.loadAvatarDataUrls({ [UID]: pathOf(UID) })
+
+    expect(downloads).toEqual([pathOf(UID), pathOf(UID)])
+  })
+
+  it('asks for nothing when there is no session', async () => {
+    const { client, downloads } = makeAvatarClient({ [pathOf('u1')]: WEBP(1) })
+    h.state.client = client
+    h.state.session = null
+
+    await expect(new CloudStore().loadAvatarDataUrls({ u1: pathOf('u1') })).resolves.toEqual({})
+    expect(downloads).toEqual([])
+  })
+
+  it('skips an empty path instead of asking the bucket about it', async () => {
+    const { client, downloads } = makeAvatarClient({ [pathOf('u1')]: WEBP(1) })
+    h.state.client = client
+
+    await expect(
+      new CloudStore().loadAvatarDataUrls({ u1: pathOf('u1'), u2: '' }),
+    ).resolves.toEqual({ u1: urlOf(1) })
+    expect(downloads).toEqual([pathOf('u1')])
+  })
+})
+
 describe('saveConfig', () => {
   it('never stores repositories or settings in the blob but keeps the shared projection', async () => {
     const { client, upserts } = makeClient({
