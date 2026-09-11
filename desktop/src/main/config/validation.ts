@@ -208,6 +208,53 @@ export function parseNumstatPath(raw: string): string {
   return filePath.slice(filePath.indexOf(' => ') + 4)
 }
 
+/**
+ * How many bytes one pass over a repository may read to count the lines of untracked
+ * files. This runs on a 5s poll, so the reading has to stay bounded: a file bigger than
+ * what is left of the budget is skipped rather than allowed to consume it.
+ */
+const UNTRACKED_READ_BUDGET_BYTES = 8 * 1024 * 1024
+
+export interface ReadBudget {
+  remaining: number
+}
+
+export function newReadBudget(): ReadBudget {
+  return { remaining: UNTRACKED_READ_BUDGET_BYTES }
+}
+
+/**
+ * Lines in a file git has no diff for. An untracked file is entirely new, so each of its
+ * lines is an addition — but `git status` never says so, which is why a new file used to
+ * show no `+N` at all next to its name.
+ *
+ * Counted the way git counts: a last line with no trailing newline still counts. Returns
+ * 0 for anything not countable as text — a binary blob, an unreadable path, or a file
+ * that no longer fits the budget.
+ */
+export function countAddedLines(fullPath: string, budget: ReadBudget): number {
+  try {
+    const stat = fs.statSync(fullPath)
+    if (!stat.isFile() || stat.size === 0 || stat.size > budget.remaining) return 0
+
+    const content = fs.readFileSync(fullPath)
+    budget.remaining -= content.length
+
+    // A NUL byte is what git itself reads as "binary", and a binary file has no lines.
+    if (content.includes(0)) return 0
+
+    let lines = 0
+    for (const byte of content) {
+      if (byte === 0x0a) lines++
+    }
+    if (content[content.length - 1] !== 0x0a) lines++
+
+    return lines
+  } catch {
+    return 0
+  }
+}
+
 export interface GitFileStatus {
   path: string
   status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked'
@@ -375,6 +422,7 @@ export function getGitDiffStats(repoPath: string): GitDiffStats {
 
     // Get file statuses to determine added/deleted/renamed. `-uall` lists untracked
     // files individually instead of collapsing their directory into one `dir/` entry.
+    const readBudget = newReadBudget()
     try {
       const statusOutput = execGitSync('git -c core.quotepath=false status --porcelain -uall', expandedPath)
       const statusLines = statusOutput.split('\n').filter(line => line.trim())
@@ -402,9 +450,13 @@ export function getGitDiffStats(repoPath: string): GitDiffStats {
         if (existingFile) {
           existingFile.status = status
         } else if (status === 'untracked') {
+          // Every line of a file git does not track yet is new, so it counts as an
+          // addition — both on the file's own row and in the repository total.
+          const addedLines = countAddedLines(path.join(expandedPath, filePath), readBudget)
+          additions += addedLines
           files.push({
             path: filePath,
-            additions: 0,
+            additions: addedLines,
             deletions: 0,
             status: 'untracked'
           })

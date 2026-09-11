@@ -123,8 +123,8 @@ describe('sumChangedFiles', () => {
     ])).toEqual({ added: 15, removed: 9 })
   })
 
-  it('is zero for a repository of untracked files, which carry no figures', () => {
-    expect(sumChangedFiles([changed({ status: 'untracked' })])).toEqual({ added: 0, removed: 0 })
+  it('counts an untracked file, whose every line is an addition', () => {
+    expect(sumChangedFiles([changed({ status: 'untracked', additions: 12 })])).toEqual({ added: 12, removed: 0 })
   })
 
   it('is zero for an empty list rather than undefined', () => {
@@ -138,7 +138,7 @@ describe('reservedCardHeight', () => {
     expect(reservedCardHeight(changed({ additions: 12, deletions: 8 }), LINE)).toBe(26 * LINE)
   })
 
-  it('never reserves less than a card-sized sliver, even for an untracked 0/0 file', () => {
+  it('never reserves less than a card-sized sliver, even for a file with no figures', () => {
     expect(reservedCardHeight(changed({ status: 'untracked' }), LINE)).toBe(6 * LINE)
   })
 

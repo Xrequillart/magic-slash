@@ -2531,8 +2531,10 @@ export type ChangedFileStatus = 'modified' | 'added' | 'deleted' | 'renamed' | '
  * dependency being pointed the wrong way.
  *
  * `additions`/`deletions` are the repository's own count, not a measurement of the
- * rendered document: an untracked file arrives as 0/0 because git has nothing to diff
- * it against, which is why every reader of these two has to treat "both zero" as "no
+ * rendered document. An untracked file has no diff for git to count, so its additions
+ * are counted from the file itself — every line of it is new — and its deletions are 0.
+ * Both still arrive as 0 where there is nothing countable (a binary file, one too large
+ * to read on the poll), so every reader of these two has to treat "both zero" as "no
  * figure to show" rather than as "nothing changed".
  */
 export interface ChangedFile {

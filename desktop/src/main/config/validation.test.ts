@@ -1,6 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 
-import { parseNumstatPath, parsePorcelainPath, unquoteGitPath } from './validation'
+import * as fs from 'fs'
+import * as os from 'os'
+import * as path from 'path'
+
+import { countAddedLines, newReadBudget, parseNumstatPath, parsePorcelainPath, unquoteGitPath } from './validation'
 
 describe('unquoteGitPath', () => {
   it('leaves a plain path alone', () => {
@@ -56,3 +60,53 @@ describe('parseNumstatPath', () => {
   })
 })
 
+describe('countAddedLines', () => {
+  let dir: string
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ms-count-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true })
+  })
+
+  const write = (name: string, content: string | Buffer): string => {
+    const full = path.join(dir, name)
+    fs.writeFileSync(full, content)
+    return full
+  }
+
+  it('counts the lines of a new file', () => {
+    expect(countAddedLines(write('a.ts', 'one\ntwo\nthree\n'), newReadBudget())).toBe(3)
+  })
+
+  it('counts a last line that has no trailing newline, as git does', () => {
+    expect(countAddedLines(write('b.ts', 'one\ntwo'), newReadBudget())).toBe(2)
+  })
+
+  it('is zero for an empty file', () => {
+    expect(countAddedLines(write('c.ts', ''), newReadBudget())).toBe(0)
+  })
+
+  it('is zero for a binary file rather than a count of stray newlines', () => {
+    expect(countAddedLines(write('d.png', Buffer.from([0x89, 0x50, 0x00, 0x0a, 0x0a])), newReadBudget())).toBe(0)
+  })
+
+  it('is zero for a path that does not exist', () => {
+    expect(countAddedLines(path.join(dir, 'missing.ts'), newReadBudget())).toBe(0)
+  })
+
+  it('is zero for a directory', () => {
+    fs.mkdirSync(path.join(dir, 'sub'))
+    expect(countAddedLines(path.join(dir, 'sub'), newReadBudget())).toBe(0)
+  })
+
+  it('skips a file that no longer fits the budget, and leaves the budget for smaller ones', () => {
+    const budget = { remaining: 8 }
+    expect(countAddedLines(write('big.ts', 'way past the budget\n'), budget)).toBe(0)
+    expect(budget.remaining).toBe(8)
+    expect(countAddedLines(write('small.ts', 'a\nb\n'), budget)).toBe(2)
+    expect(budget.remaining).toBe(4)
+  })
+})
