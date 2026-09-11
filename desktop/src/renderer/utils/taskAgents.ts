@@ -167,6 +167,43 @@ export function buildAgentedIssues(
 }
 
 /**
+ * The local terminal an agent on this ticket is running in, if it is on this machine.
+ *
+ * The id and not a boolean, because this is what the ticket's page OPENS — `hasAgent`
+ * already answers whether one exists, and it answers it for a teammate's agent too.
+ * This is the narrower question: is the agent here, in a terminal this window can put
+ * on screen. A cloud row from the org roster has no terminal to show, so the ticket's
+ * banner states the fact and offers no button.
+ *
+ * The same two tests `buildAgentedIssues` makes, in the same order and through the same
+ * helpers — the ticket folded by `normalizeTicketId`, the repository by `agentIsOnRepo`
+ * — so the banner can never appear on a ticket whose marker did not, nor lead to an
+ * agent working in another repository's issue of the same number.
+ *
+ * EVERY repository the card stands for is accepted, not just the first: a shared tracker
+ * target is one ticket planned for two services (see `TaskRow.repos`), and the agent is
+ * in whichever of them `/magic:start` resolved to.
+ *
+ * The FIRST match. Two agents on one ticket is the mistake the Start button is hidden to
+ * prevent, and when it has happened anyway, the page opens one of them rather than
+ * refusing to open either.
+ */
+export function findAgentTerminalId(
+  terminals: TerminalInfo[],
+  ticketId: string,
+  repos: readonly { configKey: string; config?: RepositoryConfig }[],
+): string | undefined {
+  const wanted = normalizeTicketId(ticketId)
+  if (!wanted) return undefined
+  return terminals.find((terminal) => {
+    if (!isAgentTerminal(terminal.id)) return false
+    if (normalizeTicketId(terminal.metadata?.ticketId) !== wanted) return false
+    const ref: TaskAgentRef = { ticketId: wanted, repositories: terminal.repositories ?? [] }
+    return repos.some((repo) => agentIsOnRepo(ref, repo.configKey, repo.config))
+  })?.id
+}
+
+/**
  * A string that changes exactly when what `terminalAgentRefs` would return changes.
  *
  * The store rewrites its `terminals` array on every pty tick, so subscribing a

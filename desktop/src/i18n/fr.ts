@@ -1731,6 +1731,7 @@ export const fr: Record<keyof typeof en, string> = {
     'Indiquez son dossier dans Réglages → Dépôts, et un agent pourra être démarré sur ses tickets depuis ici.',
   'tasks.startFailed': 'Ce ticket n’a pas pu être confié à un agent.',
   'tasks.startNoPath': 'Aucun dossier local n’est associé à ce dépôt.',
+  'tasks.viewAgent': 'Voir l’agent',
   'tasks.hasAgentHint': 'Un agent travaille déjà sur ce ticket.',
 
   // ── Tâches · GitHub n’est pas connecté ───────────────────────────────────

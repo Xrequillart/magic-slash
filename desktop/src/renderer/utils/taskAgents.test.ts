@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import type { OrgAgent, RepositoryConfig, TerminalInfo } from '../../types'
 import {
   buildAgentedIssues,
+  findAgentTerminalId,
   normalizeTicketId,
   taskAgentRefs,
   terminalAgentRefs,
@@ -271,5 +272,64 @@ describe('terminalAgentSignature', () => {
     const b = [terminal({ repositories: [], metadata: { ticketId: '234/b' } })]
 
     expect(terminalAgentSignature(a)).not.toBe(terminalAgentSignature(b))
+  })
+})
+
+describe('findAgentTerminalId', () => {
+  function terminal(overrides: Record<string, unknown>): TerminalInfo {
+    return { id: 't1', name: 'Claude 1', state: 'idle', repositories: [], ...overrides } as unknown as TerminalInfo
+  }
+
+  const HERE = [{ configKey: 'magic-slash', config: REPOS['magic-slash'] }]
+
+  it('finds the terminal an agent on this ticket is running in', () => {
+    const terminals = [
+      terminal({ id: 'a', repositories: ['/Users/x/Documents/magic-slash'] }),
+      terminal({ id: 'b', repositories: ['/Users/x/Documents/magic-slash'], metadata: { ticketId: '234' } }),
+    ]
+
+    expect(findAgentTerminalId(terminals, '234', HERE)).toBe('b')
+  })
+
+  it('folds the ticket the way the marker does', () => {
+    // Same rule as buildAgentedIssues, or the banner could appear on a ticket
+    // whose marker did not — and then offer a button that opens nothing.
+    const jira = [terminal({ id: 'b', repositories: ['/Users/x/Documents/magic-slash'], metadata: { ticketId: 'per-12' } })]
+    const github = [terminal({ id: 'c', repositories: ['/Users/x/Documents/magic-slash'], metadata: { ticketId: '234' } })]
+
+    expect(findAgentTerminalId(jira, 'PER-12', HERE)).toBe('b')
+    expect(findAgentTerminalId(github, '#234', HERE)).toBe('c')
+  })
+
+  it('follows the worktree /magic:start moved the agent into', () => {
+    const terminals = [terminal({ id: 'b', repositories: ['/Users/x/Documents/magic-slash-234'], metadata: { ticketId: '234' } })]
+
+    expect(findAgentTerminalId(terminals, '234', HERE)).toBe('b')
+  })
+
+  it('refuses the same issue number in another repository', () => {
+    const terminals = [terminal({ id: 'b', repositories: ['/Users/x/Documents/poppins-pex'], metadata: { ticketId: '234' } })]
+
+    expect(findAgentTerminalId(terminals, '234', HERE)).toBeUndefined()
+    expect(findAgentTerminalId(terminals, '234', [
+      ...HERE,
+      { configKey: 'poppins-pex', config: REPOS['poppins-pex'] },
+    ])).toBe('b')
+  })
+
+  it('ignores the terminals that are not agents', () => {
+    const terminals = [terminal({
+      id: 'sidebar-1',
+      repositories: ['/Users/x/Documents/magic-slash'],
+      metadata: { ticketId: '234' },
+    })]
+
+    expect(findAgentTerminalId(terminals, '234', HERE)).toBeUndefined()
+  })
+
+  it('answers nothing for a ticket with no id, rather than the first agent it finds', () => {
+    const terminals = [terminal({ id: 'b', repositories: ['/Users/x/Documents/magic-slash'], metadata: { ticketId: '' } })]
+
+    expect(findAgentTerminalId(terminals, '', HERE)).toBeUndefined()
   })
 })

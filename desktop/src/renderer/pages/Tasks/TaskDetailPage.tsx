@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { ArrowLeft, CircleCheck, CircleDot, ExternalLink, MessageSquare, MessagesSquare, Play } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { ArrowLeft, BotMessageSquare, CircleCheck, CircleDot, ExternalLink, MessageSquare, MessagesSquare, Play } from 'lucide-react'
 import type {
   TicketComment,
   JiraTaskIssue,
@@ -18,6 +18,8 @@ import { StatusPill } from '../Dashboard/parts'
 import { JiraEpicBadge, JiraErrorLines, JiraPriorityBadge, JiraStatusPill, TaskErrorLines } from './parts'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { useTaskAgent, type TaskAgentRepo } from '../../hooks/useTaskAgent'
+import { findAgentTerminalId, terminalAgentSignature } from '../../utils/taskAgents'
+import { useStore } from '../../store'
 import { discussAgentTitle, discussPrompt } from '../../utils/discussPrompt'
 import { TrackerBadge } from '../../components/icons/TrackerIcons'
 
@@ -660,6 +662,38 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
     { title: discussAgentTitle(ticketId), ticketId },
   ), [openAgent, tracker, issueKey, url, ticketId, primary.config])
 
+  /**
+   * The terminal the agent on this ticket is running in, when it is running HERE.
+   *
+   * Subscribed to a SIGNATURE and read non-reactively, the idiom `pages/Tasks/index.tsx`
+   * states in full: the store rewrites `terminals` on every pty tick, and the two fields
+   * this lookup reads change only when an agent picks up or drops a ticket.
+   *
+   * `hasAgent` and this are deliberately two different questions. That one is true for a
+   * teammate's agent as well, because it comes from the org roster — and a teammate's
+   * agent has no terminal this window could show. So the banner below states the fact on
+   * `hasAgent` and offers its button only on this.
+   */
+  const terminalsKey = useStore((s) => terminalAgentSignature(s.terminals))
+  const agentTerminalId = useMemo(
+    () => findAgentTerminalId(useStore.getState().terminals, ticketId, repos),
+    [ticketId, repos, terminalsKey],
+  )
+
+  /**
+   * Go and look at the agent that is already on this ticket.
+   *
+   * The tray's own "focus agent" move (`App.tsx`), for the same reason: the Tasks page is
+   * a modal over the terminals, so selecting one behind it and leaving the modal up would
+   * look like nothing happened. Closing first is what makes the agent appear.
+   */
+  const viewAgent = useCallback(() => {
+    if (!agentTerminalId) return
+    const { setActiveTerminal, closeModal } = useStore.getState()
+    closeModal()
+    setActiveTerminal(agentTerminalId)
+  }, [agentTerminalId])
+
   const openedOn = formatIssueDate(createdAt, locale)
 
   /**
@@ -740,6 +774,23 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
   const statusChip = jiraStatus
     ? <JiraStatusPill name={jiraStatus.statusName} category={jiraStatus.statusCategory} />
     : detail && <StateChip state={detail.state} t={t} />
+
+  /**
+   * Whether the ticket is FINISHED, which is what withholds the Start button below.
+   *
+   * The board's `done` column, asked on this page's own reads: the Jira status category
+   * fixed by Jira, the GitHub issue's state. Both fall back to the row's value until the
+   * detail read lands, for `jiraStatus`' reason — a button that appeared for a moment and
+   * then withdrew itself would be worse than one held back a beat.
+   *
+   * The GitHub fallback is `closedAt` because that is the only thing the LIST read knows
+   * about a closed issue; the detail read answers properly with `state`.
+   */
+  const isDone = tracker === 'jira'
+    ? jiraStatus?.statusCategory === 'done'
+    : detail
+      ? detail.state === 'CLOSED'
+      : props.tracker === 'github' && !!props.issue.closedAt
 
   return (
     <div className="flex flex-col gap-5">
@@ -887,6 +938,39 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
         </div>
       </div>
 
+      {/* SOMEBODY IS ALREADY ON THIS ONE — full width, above both columns.
+
+          It was a line of small print at the top of the action card, which is where a
+          reason for a disabled button belongs and not where a fact about the ticket does:
+          by the time it was read, the faded pair below it had already been taken for a
+          broken card. Here it is the first thing under the title, in the green the board's
+          own cards now wear for it, and it carries the one thing there is to do about it.
+
+          The BUTTON needs the agent to be on this machine, which is a narrower question
+          than the banner's — see `agentTerminalId`. A teammate's agent is a fact worth
+          stating and nothing this window can open, so the banner stands on its own. */}
+      {hasAgent && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-green/10 border border-green/30">
+          <BotMessageSquare className="w-4 h-4 text-green flex-shrink-0" />
+          <span className="text-sm text-ink min-w-0">{t('tasks.hasAgentHint')}</span>
+          {agentTerminalId && (
+            // `bg-green text-bg`, the inversion `BTN_NEUTRAL_STACKED` is built on: green
+            // is a bright colour on the dark themes and a deep one on the light themes
+            // (see themes.ts), so a fixed label colour would fail half of them. `text-bg`
+            // follows the ground and reads on both. Not a tier in `controls.ts` — one
+            // green button in the app is a call site, not a size.
+            <button
+              onClick={viewAgent}
+              className="ml-auto flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5
+                text-xs font-medium rounded-lg transition-all bg-green text-bg hover:bg-green/90"
+            >
+              <BotMessageSquare className="w-3.5 h-3.5" />
+              <span>{t('tasks.viewAgent')}</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* The two columns of a GitHub issue. `items-start` so the metadata card
           keeps its own height instead of stretching to a long body. */}
       <div className="flex items-start gap-6 min-w-0">
@@ -943,76 +1027,74 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
         >
           {/* The page's one affirmative action, and it is first: the metadata
               under it is what you read about the ticket, this is what you do
-              about it. */}
-          <div className="rounded-xl bg-surface-subtle border border-line-field p-4 flex flex-col gap-2">
-            {/* ABOVE the buttons, not under them: it is the reason both are off, and a
-                reason printed below the thing it explains is read second — by which point
-                the faded pair has already been taken for a broken card. Bigger than the
-                hints inside the buttons and in `text-ink` for the same reason: at this
-                moment it is the card's message, and the actions are the footnote.
+              about it.
 
-                The dot is the list row's own marker for a ticket somebody is on, so the
-                two surfaces say the same thing in the same vocabulary. */}
-            {hasAgent && (
-              <div className="flex items-start gap-2">
-                <span className="w-2 h-2 mt-1.5 rounded-full flex-shrink-0 bg-accent" />
-                <span className="text-sm font-medium leading-snug text-ink">
-                  {t('tasks.hasAgentHint')}
+              GONE ENTIRELY once an agent is on the ticket, where it used to hold a
+              sentence and two faded buttons. Neither launch is available then — a second
+              `/magic:start` on the same ticket is a second worktree and a second branch
+              for one piece of work, and a third agent reading it over the shoulder of the
+              one working it is noise on the same ticket — and a card with nothing live in
+              it is a card that reads as broken. The green banner above says what the state
+              is and offers the move that belongs to it. */}
+          {!hasAgent && (
+            <div className="rounded-xl bg-surface-subtle border border-line-field p-4 flex flex-col gap-2">
+              {/* The label alone said what the button was, never what it did. The
+                  second line does, in the button rather than under it: the sentence
+                  is part of the offer, and a hint floating below a filled button
+                  reads as a warning.
+
+                  NOT OFFERED ON A FINISHED TICKET. A ticket whose board says Done, or whose
+                  issue is closed, is not work to pick up — starting an agent on one is the
+                  same mistake as starting a second on a ticket somebody has, and the board's
+                  own cards withhold the button for it too. Discuss stays: a finished ticket
+                  is very much a thing to ask about. */}
+              {!isDone && (
+                <button
+                  onClick={startAgent}
+                  disabled={!canStart}
+                  // `pointer-events-none` while disabled, not a `disabled:` colour per state:
+                  // hover lives in the shared `BTN_*_STACKED` tiers, and appending an override
+                  // for it here would depend on Tailwind's emit order (see theme/controls.ts).
+                  // Killing the pointer takes the hover, the cursor and the tooltip with it,
+                  // which is what a control that cannot be used should offer.
+                  className={`${BTN_PRIMARY_STACKED} w-full disabled:opacity-40 disabled:pointer-events-none`}
+                >
+                  <Play className="w-3.5 h-3.5 mt-px flex-shrink-0 fill-current" />
+                  <span className="flex flex-col gap-0.5 min-w-0">
+                    <span className="text-sm font-medium leading-snug">{t('tasks.startAgent')}</span>
+                    <span className="text-[11px] leading-snug text-on-brand/70">
+                      {t('tasks.startAgentHint')}
+                    </span>
+                  </span>
+                </button>
+              )}
+              {/* Under the primary rather than beside it: they are alternatives on the same
+                  ticket, and side by side at this column's width both labels would wrap. */}
+              <button
+                onClick={discussAgent}
+                disabled={!canStart}
+                className={`${BTN_NEUTRAL_STACKED} w-full disabled:opacity-40 disabled:pointer-events-none`}
+              >
+                <MessagesSquare className="w-3.5 h-3.5 mt-px flex-shrink-0" />
+                <span className="flex flex-col gap-0.5 min-w-0">
+                  <span className="text-sm font-medium leading-snug">{t('tasks.discussAgent')}</span>
+                  <span className="text-[11px] leading-snug text-bg/70">
+                    {t('tasks.discussAgentHint')}
+                  </span>
                 </span>
-              </div>
-            )}
-            {/* The label alone said what the button was, never what it did. The
-                second line does, in the button rather than under it: the sentence
-                is part of the offer, and a hint floating below a filled button
-                reads as a warning. */}
-            <button
-              onClick={startAgent}
-              // Both buttons go off once somebody is already on this ticket: a second
-              // `/magic:start` on the same ticket is a second worktree and a second branch
-              // for one piece of work, and a third agent reading the same ticket over the
-              // shoulder of the one working it is noise on the same ticket.
-              disabled={!canStart || hasAgent}
-              // `pointer-events-none` while disabled, not a `disabled:` colour per state:
-              // hover lives in the shared `BTN_*_STACKED` tiers, and appending an override
-              // for it here would depend on Tailwind's emit order (see theme/controls.ts).
-              // Killing the pointer takes the hover, the cursor and the tooltip with it,
-              // which is what a control that cannot be used should offer.
-              className={`${BTN_PRIMARY_STACKED} w-full disabled:opacity-40 disabled:pointer-events-none`}
-            >
-              <Play className="w-3.5 h-3.5 mt-px flex-shrink-0 fill-current" />
-              <span className="flex flex-col gap-0.5 min-w-0">
-                <span className="text-sm font-medium leading-snug">{t('tasks.startAgent')}</span>
-                <span className="text-[11px] leading-snug text-on-brand/70">
-                  {t('tasks.startAgentHint')}
-                </span>
-              </span>
-            </button>
-            {/* Under the primary rather than beside it: they are alternatives on the same
-                ticket, and side by side at this column's width both labels would wrap. */}
-            <button
-              onClick={discussAgent}
-              disabled={!canStart || hasAgent}
-              className={`${BTN_NEUTRAL_STACKED} w-full disabled:opacity-40 disabled:pointer-events-none`}
-            >
-              <MessagesSquare className="w-3.5 h-3.5 mt-px flex-shrink-0" />
-              <span className="flex flex-col gap-0.5 min-w-0">
-                <span className="text-sm font-medium leading-snug">{t('tasks.discussAgent')}</span>
-                <span className="text-[11px] leading-snug text-bg/70">
-                  {t('tasks.discussAgentHint')}
-                </span>
-              </span>
-            </button>
-            {/* Said in place instead of failing on the click, and BEFORE any call is
-                made: a repository nobody has bound to a folder on this machine has no
-                directory to open a terminal in, and the fix is a setting. */}
-            {!canStart && (
-              <div className="flex flex-col gap-0.5">
-                <span className="text-xs text-ink">{t('tasks.noLocalRepo')}</span>
-                <span className="text-xs text-text-secondary/70">{t('tasks.noLocalRepoHint')}</span>
-              </div>
-            )}
-            {startFailed && <span className="text-xs text-orange">{t('tasks.startFailed')}</span>}
-          </div>
+              </button>
+              {/* Said in place instead of failing on the click, and BEFORE any call is
+                  made: a repository nobody has bound to a folder on this machine has no
+                  directory to open a terminal in, and the fix is a setting. */}
+              {!canStart && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs text-ink">{t('tasks.noLocalRepo')}</span>
+                  <span className="text-xs text-text-secondary/70">{t('tasks.noLocalRepoHint')}</span>
+                </div>
+              )}
+              {startFailed && <span className="text-xs text-orange">{t('tasks.startFailed')}</span>}
+            </div>
+          )}
 
           <div className="rounded-xl bg-surface-subtle border border-line-field overflow-hidden">
             {tracker === 'jira' ? (
