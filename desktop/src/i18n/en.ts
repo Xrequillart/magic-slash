@@ -23,7 +23,7 @@ export const en = {
   'menu.newAgent': 'New Agent',
   'menu.tasks': 'Tasks',
   'menu.skills': 'Skills',
-  'menu.team': 'Team',
+  'menu.plans': 'Plans',
   'menu.account': 'Account',
   'menu.checkUpdates': 'Check for Updates…',
   'menu.closeWindow': 'Close Window',
@@ -140,7 +140,7 @@ export const en = {
   'sidebar.newAgentShortcut': 'New agent ({shortcut})',
   'sidebar.skills': 'Skills',
   'sidebar.tasks': 'Tasks',
-  'sidebar.team': 'Team',
+  'sidebar.plans': 'Plans',
   'sidebar.settings': 'Settings',
   'sidebar.login': 'Login / Sign up',
   'sidebar.accountFallback': 'Account',
@@ -1150,47 +1150,37 @@ export const en = {
   'prReview.changesRequested': 'Changes requested',
   'prReview.approved': 'Approved',
 
-  // ── Team dashboard ───────────────────────────────────────────────────────
-  'dashboard.unassigned': 'Unassigned',
-  'dashboard.openPR': 'Open the pull request',
-  'dashboard.viewPR': 'View PR',
-  'dashboard.repos.section': 'Repositories',
-  'dashboard.repos.personal': 'Personal',
-  'dashboard.repos.noReposInScope': 'No repository here yet.',
-  'dashboard.repos.agentCount.one': '{count} agent',
-  'dashboard.repos.agentCount.other': '{count} agents',
-  'dashboard.repos.noAgents': 'no agent',
-  'dashboard.repos.onPr': '{count} on a PR',
-  'dashboard.repos.noRepos': 'No repository shared with your team yet.',
-  'dashboard.repos.noReposHint':
-    'Share a repository with your organization in Settings → Repositories, and every teammate’s agents on it show up here.',
-  'dashboard.repos.unmatched.one': '1 agent on a personal or unlinked repository',
-  'dashboard.repos.unmatched.other': '{count} agents on personal or unlinked repositories',
-  'dashboard.skills.section': 'Skills run',
-  'dashboard.skills.sectionPersonal': 'Your skills run',
-  'dashboard.skills.runs.one': '{count} run',
-  'dashboard.skills.runs.other': '{count} runs',
-  'dashboard.skills.empty':
-    'No run recorded for this organization yet. Runs are attributed through the repositories of the agent that launches them, so work on a personal repository is not counted here.',
-  'dashboard.skills.emptyPersonal':
-    'No run recorded outside an organization yet. A run lands here when the agent that launched it works on personal repositories alone, and when it was started in a terminal the app did not open — one with no agent belongs to no organization.',
-  'dashboard.usage.section': 'Cost & usage',
-  'dashboard.usage.cost': 'Cost',
-  'dashboard.usage.sessions': 'Sessions',
-  'dashboard.usage.lines': 'Lines',
-  'dashboard.usage.duration': 'Time',
-  'dashboard.usage.byMember': 'By member',
-  'dashboard.usage.byModel': 'By model',
-  'dashboard.usage.unknownModel': 'Unknown model',
-  'dashboard.usage.empty': 'No usage to show here.',
-  // `{count}` is the row count actually returned, which IS the cap whenever this line
-  // shows — `loadOrgUsageStats` only sets `capped` when the read came back full. Derived
-  // rather than written out, so raising the limit cannot leave this sentence lying.
-  'dashboard.usage.capped':
-    'Only the {count} most recent sessions are read, so these totals are a floor rather than the whole picture.',
-  'dashboard.usage.failed': 'Usage could not be read.',
+  // ── Plans ───────────────────────────────────────────────────────────────────
+  'plans.title': 'Plans',
+  'plans.section': 'Planning sessions',
+  'plans.count.one': '1 plan',
+  'plans.count.other': '{count} plans',
+  'plans.filter.all': 'All repositories',
+  'plans.status.planning': 'Being written',
+  'plans.status.planned': 'Tickets filed',
+  'plans.tickets.none': 'no ticket',
+  'plans.tickets.one': '1 ticket',
+  'plans.tickets.other': '{count} tickets',
+  'plans.noRepo': 'Unknown repository',
+  'plans.empty.title': 'No plan here yet',
+  // Two situations in one sentence, because the page cannot tell them apart: nobody has
+  // planned anything, or somebody has and their upload is off. `user_settings` is
+  // own-rows-only by RLS, so a colleague's setting is unreadable from here.
+  'plans.empty.body':
+    'Run /magic:plan in Claude Code: it turns an idea into a reviewable spec, then into an epic and its stories. Every session lands here as it is written. If a teammate has planned something you cannot see, check that plan syncing is on in Settings.',
+  'plans.empty.filteredTitle': 'Nothing on this repository',
+  'plans.empty.filteredBody':
+    'No plan has been written on this repository yet. Pick another one, or go back to all repositories.',
+  'plans.empty.noOrgTitle': 'No organization yet',
+  'plans.empty.noOrgBody':
+    'Plans are read from your account. Sign in, then join or create an organization: every session written on a repository you share shows up here.',
+  // The one cause of an empty list the page can actually name: the reader's own
+  // `planSyncEnabled` is an explicit false, so nothing they write is ever uploaded.
+  'plans.empty.syncOffTitle': 'Your plan syncing is off',
+  'plans.empty.syncOffBody':
+    'Your plan sessions are not saved to the cloud, so nothing you write with /magic:plan can be listed here. Turn plan syncing back on in Settings, under Plan sessions, and your next sessions will show up.',
 
-  // ── Team dashboard · hours spent inside the skills ────────────────────────
+  // ── Hours spent inside the skills ───────────────────────────────────────────
   'skillHours.hours': '{count}h',
   'skillHours.minutes': '{count} min',
   'skillHours.label.total': 'Total time',

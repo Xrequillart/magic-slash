@@ -1,11 +1,26 @@
-import type { OrgAgent } from '../../../types'
-import { useT } from '../../i18n'
-import type { MessageKey } from '../../i18n'
+import { useT } from '../i18n'
+import type { MessageKey } from '../i18n'
 
 /**
- * Presentational vocabulary shared by the Team page. Extracted so the repository
- * rows and the agent rows inside them cannot drift into two dialects of the same
- * pill and badge.
+ * A short word about a ticket, as one pill.
+ *
+ * It used to live in `pages/Dashboard/parts.tsx` and belonged to the Team page, which is
+ * gone. It survives here because the Tasks board and the ticket page both draw it, and a
+ * component two pages share has no business living inside one of them.
+ *
+ * WHAT ITS CALLERS ACTUALLY PASS, which is not what `STATUS_CONFIG` below is keyed on:
+ * every remaining call site feeds it a GitHub or Jira LABEL (`TaskCard`, `TaskDetailPage`
+ * — `labels.map(label => <StatusPill status={label} />)`). A label is a repository's own
+ * word, so it misses the map and renders neutral, which is the intended reading of it.
+ * `pages/Tasks/parts.tsx` says the same thing from the other side, explaining why the
+ * Jira status pill is deliberately NOT this component.
+ *
+ * So the map below is reached only when a label happens to be spelled like one of the
+ * workflow's own statuses. The `/magic:*` workflow status has an owner of its own —
+ * `components/agent-info-sidebar/StatusPill.tsx`, whose `STATUS_OPTIONS` is the editable
+ * version with its own colours and its own `statusPill.*` strings. If nothing ever needs
+ * the read-only colouring here, this component is a label pill and should be named and
+ * typed as one, with `STATUS_CONFIG` and the `status.*` keys retiring with it.
  */
 
 // Workflow-status → label + badge color. Statuses mirror
@@ -36,19 +51,4 @@ export function StatusPill({ status }: { status?: string }) {
       {config ? t(config.labelKey) : status}
     </span>
   )
-}
-
-export function TicketBadge({ ticketId }: { ticketId?: string }) {
-  if (!ticketId) return null
-  return (
-    <span className="text-xs text-accent/80 bg-accent/10 px-2 py-0.5 rounded flex-shrink-0">
-      {ticketId}
-    </span>
-  )
-}
-
-export function OwnerLabel({ agent, emailByOwner }: { agent: OrgAgent; emailByOwner: Map<string, string> }) {
-  const t = useT()
-  const label = agent.ownerId ? emailByOwner.get(agent.ownerId) ?? agent.ownerId : t('dashboard.unassigned')
-  return <span className="text-xs text-text-secondary/60 truncate">{label}</span>
 }

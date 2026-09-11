@@ -38,6 +38,7 @@ import { setupUsageHandlers } from './ipc/usage-handlers'
 import { setupAuthHandlers } from './ipc/auth-handlers'
 import { setupJiraHandlers } from './ipc/jira-handlers'
 import { setupOrgHandlers } from './ipc/org-handlers'
+import { setupPlansHandlers } from './ipc/plans-handlers'
 import { setupTasksHandlers } from './ipc/tasks-handlers'
 import { stopOrgAgentsRealtime } from './cloud/realtime'
 import { PRReviewWatcher } from './pr-review-watcher/watcher'
@@ -130,9 +131,9 @@ function createMenu() {
       submenu: [
         { label: t('menu.newAgent'), click: () => sendMenuCommand('new-agent') },
         { type: 'separator' as const },
+        { label: t('menu.plans'), click: () => sendMenuCommand('plans') },
         { label: t('menu.tasks'), click: () => sendMenuCommand('tasks') },
         { label: t('menu.skills'), click: () => sendMenuCommand('skills') },
-        { label: t('menu.team'), click: () => sendMenuCommand('team') },
         { label: t('menu.account'), click: () => sendMenuCommand('account') },
         ...(isMac
           ? []
@@ -302,6 +303,10 @@ function setupHandlers() {
   // in the browser, so the credential arrives long after `jira:connect` returned.
   setupJiraHandlers(() => mainWindow)
   setupOrgHandlers()
+  // The Plans page's read of `/magic:plan` sessions. Read-only and pull-only, like
+  // Tasks below: `plan_sessions` is deliberately not published to realtime (see the
+  // end of 20260821090000), so there is no subscription to start here.
+  setupPlansHandlers()
   // The Tasks page's backlog read. No poller behind it: the page reads on open and
   // on an explicit reload, so there is nothing to start here beyond the channel.
   setupTasksHandlers()

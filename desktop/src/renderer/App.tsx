@@ -16,7 +16,7 @@ import { ScriptTerminalModal } from './components/ScriptTerminalModal'
 import { ConfigPage } from './pages/Config'
 import { TerminalsPage } from './pages/Terminals'
 import { SkillsPage } from './pages/Skills'
-import { DashboardPage } from './pages/Dashboard'
+import { PlansPage } from './pages/Plans'
 import { TasksPage } from './pages/Tasks'
 import { PageModal } from './components/PageModal'
 import { LiveIndicator } from './components/LiveIndicator'
@@ -224,8 +224,8 @@ export function App() {
         case 'skills':
           store.openModal('skills')
           break
-        case 'team':
-          store.openModal('team')
+        case 'plans':
+          store.openModal('plans')
           break
         case 'account':
           store.openSettingsModal('account')
@@ -472,7 +472,7 @@ export function App() {
       <FilePreviewPanel />
       <PRCommentsPanel />
 
-      {/* Page overlays — Settings, Skills, Team and Tasks */}
+      {/* Page overlays — Settings, Skills, Plans and Tasks */}
       {activeModal === 'settings' && (
         <PageModal title={t('sidebar.settings')} onClose={handleCloseModal}>
           <ConfigPage />
@@ -485,9 +485,15 @@ export function App() {
         </PageModal>
       )}
 
-      {activeModal === 'team' && (
-        <PageModal title={t('sidebar.team')} onClose={handleCloseModal} headerRight={<LiveIndicator />}>
-          <DashboardPage />
+      {/* The live indicator reports the CONNECTION, not this list. `plan_sessions` is
+          deliberately absent from the realtime publication (see the end of
+          20260821090000_plan_sessions.sql), so a plan written by a teammate while this
+          is open arrives on the next read rather than by itself — what the dot says is
+          whether the backend is reachable at all, which is still the answer to "why does
+          this look emptier than I expected". */}
+      {activeModal === 'plans' && (
+        <PageModal title={t('plans.title')} onClose={handleCloseModal} headerRight={<LiveIndicator />}>
+          <PlansPage />
         </PageModal>
       )}
 

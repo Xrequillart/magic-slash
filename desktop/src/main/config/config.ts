@@ -955,6 +955,29 @@ export function updateTasksRepo(configKey: string): Config {
 }
 
 /**
+ * Remember which repository the Plans list is narrowed to. Written on every change of
+ * the filter, which is the only way it ever changes.
+ *
+ * A `public.repositories` id rather than a config key, unlike `updateTasksRepo` above: a
+ * plan belongs to the cloud repository row its spec resolved to, and that uuid is what
+ * the list filters on. Stored AS GIVEN for the same two reasons — the renderer picks
+ * from repositories that actually have a plan on screen, so it cannot offer an id that
+ * was not there, and an id can stop resolving later (the repository is dropped, or
+ * unshared) which no validation at write time could prevent.
+ *
+ * An empty string is not refused here but MEANS something, which is the difference from
+ * the board: it clears the key, and an absent key is "all repositories" — the list's
+ * default and the state a reader who clears the filter expects to come back to.
+ */
+export function updatePlansRepo(repoId: string): Config {
+  const config = readConfig()
+  if (repoId) config.plansRepo = repoId
+  else delete config.plansRepo
+  writeConfig(config)
+  return config
+}
+
+/**
  * Toggle activity recording. ON by default: the app writes its three event tables
  * (usage, activity, skills) unless this is explicitly false. Reading the org
  * aggregate is unaffected by this flag.

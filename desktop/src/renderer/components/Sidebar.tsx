@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, memo, Fragment } from 'react'
-import { Plus, Sparkles, Users, ListTodo, AlertTriangle, FolderGit2 } from 'lucide-react'
+import { Plus, Sparkles, NotebookPen, ListTodo, AlertTriangle, FolderGit2 } from 'lucide-react'
 import { useStore, type ModalId } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos } from '../hooks/useOrderedTerminals'
@@ -23,13 +23,23 @@ const SIDEBAR_WIDTH = 230
 /**
  * The ⌘/Ctrl shortcuts that open a page overlay, keyed by `KeyboardEvent.key`.
  *
+ * KEYED BY LETTER, NOT BY POSITION, and the two deliberately disagree: the buttons below
+ * read Plans, Tasks, Skills, while ⌘T opens the first of them and ⌘J the second. The
+ * letters were bound before Plans took Team's place and are what people's hands know —
+ * rebinding them to follow a reordered column would break every reader's muscle memory
+ * to make a table look tidy. Moving a button changes the reading order and nothing else.
+ *
+ * ⌘J for Tasks rather than ⌘T: T was already spoken for when Tasks arrived, and every
+ * other initial the page could claim (b, /, ;, ,, p, n, i, d) is bound elsewhere in the
+ * app.
+ *
  * Settings is absent on purpose: ⌘, goes through `openSettingsModal`, the wrapper
  * that can preselect a tab, so it is not a plain `openModal` like the other three.
  */
 const PAGE_SHORTCUTS: Record<string, ModalId> = {
   ';': 'skills',
   j: 'tasks',
-  t: 'team',
+  t: 'plans',
 }
 
 /**
@@ -256,7 +266,7 @@ export function Sidebar() {
   const shortcutKey = isMac ? '⌘N' : 'Ctrl+N'
   const skillsShortcutKey = isMac ? '⌘;' : 'Ctrl+;'
   const tasksShortcutKey = isMac ? '⌘J' : 'Ctrl+J'
-  const teamShortcutKey = isMac ? '⌘T' : 'Ctrl+T'
+  const plansShortcutKey = isMac ? '⌘T' : 'Ctrl+T'
   const settingsShortcutKey = isMac ? '⌘,' : 'Ctrl+,'
 
   // One listener for every page shortcut, not one per page: ⌘; / ⌘J / ⌘T all do the
@@ -264,8 +274,8 @@ export function Sidebar() {
   // table asking to be written. ⌘, stays out of the map — Settings has its own
   // action, the one that can preselect a tab.
   //
-  // ⌘J for Tasks: T is the team dashboard, and every other initial the page could
-  // claim (b, /, ;, ,, p, n, i, d) is already bound elsewhere in the app.
+  // Which letter opens which page, and why they do not follow the column below, is on
+  // PAGE_SHORTCUTS.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!e.metaKey && !e.ctrlKey) return
@@ -303,6 +313,24 @@ export function Sidebar() {
     >
       {/* Top actions */}
       <div className="px-2 pt-3 flex flex-col gap-1">
+        {/* Plans — every /magic:plan session the reader can see. FIRST, and the order of
+            these three is the order the work happens in: you plan something, then you
+            pick it up, and Skills is the reference material for doing so. Putting the
+            reference list above either view of live work would be filing the manual in
+            front of the job.
+
+            The keyboard shortcuts are keyed by LETTER and deliberately do not follow
+            this order — ⌘T opens this page and ⌘J the one under it (see PAGE_SHORTCUTS)
+            — so moving a button here changes nothing but the reading order. */}
+        <button
+          onClick={() => openModal('plans')}
+          className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all text-text-secondary hover:bg-text-secondary/10 hover:text-ink"
+        >
+          <NotebookPen className="w-3.5 h-3.5" />
+          <span>{t('sidebar.plans')}</span>
+          <span className="ml-auto text-xs opacity-50">{plansShortcutKey}</span>
+        </button>
+
         {/* Tasks — the open GitHub issues of every GitHub-tracked repository.
             Takes the slot "new agent" used to hold: that action now sits on the
             AGENTS header below, next to the list it adds to. */}
@@ -313,22 +341,6 @@ export function Sidebar() {
           <ListTodo className="w-3.5 h-3.5" />
           <span>{t('sidebar.tasks')}</span>
           <span className="ml-auto text-xs opacity-50">{tasksShortcutKey}</span>
-        </button>
-
-        {/* Team dashboard button. Sits between Tasks and Skills on purpose: the two
-            around it are what the person and their team are WORKING ON, and Skills is
-            reference material — so the order reads as work, then the tooling for it,
-            rather than putting the reference list in the middle of the two views of
-            live activity. The keyboard shortcuts are keyed by letter (see
-            PAGE_SHORTCUTS) and do not follow this order, so moving a button here
-            changes nothing but the reading order. */}
-        <button
-          onClick={() => openModal('team')}
-          className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all text-text-secondary hover:bg-text-secondary/10 hover:text-ink"
-        >
-          <Users className="w-3.5 h-3.5" />
-          <span>{t('sidebar.team')}</span>
-          <span className="ml-auto text-xs opacity-50">{teamShortcutKey}</span>
         </button>
 
         {/* Skills button — opens an overlay, so no active state */}

@@ -24,11 +24,14 @@ import { useT, type MessageKey, type Translate } from '../../i18n'
  * The vocabulary the Tasks page says one ticket in — the badges a card and the detail
  * page both draw, and the sentences a failed read is worded with.
  *
- * A module of PARTS and not a component, in the shape `pages/Dashboard/parts` set: the
- * board draws these on a card, the detail page draws the same ones at the top of a
- * ticket, and a status pill that drifted between the two would read as two different
- * facts about one ticket. Nothing here owns any layout of its own — every caller
- * supplies the box.
+ * A module of PARTS and not a component: the board draws these on a card, the detail
+ * page draws the same ones at the top of a ticket, and a status pill that drifted
+ * between the two would read as two different facts about one ticket. Nothing here owns
+ * any layout of its own — every caller supplies the box.
+ *
+ * What is NOT here is the workflow-status pill both pages also draw: it is shared with
+ * more than this page, so it lives in `components/StatusPill.tsx`. These are the ones
+ * only Tasks says.
  */
 
 /**

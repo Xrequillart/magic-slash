@@ -53,6 +53,7 @@ const emptyRow = (): UserSettingsRow => ({
   default_agent_type: null,
   agent_sort: null,
   tasks_repo: null,
+  plans_repo: null,
 })
 
 const storeLoading = (loadConfig: Store['loadConfig']): Store => ({ ...NOOP_STORE, loadConfig })

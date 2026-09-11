@@ -4,7 +4,7 @@ import { useConnectivity } from '../hooks/useConnectivity'
 import { useT } from '../i18n'
 
 /**
- * Small live / reconnecting hint for the team dashboard. Combines the shared
+ * Small live / reconnecting hint for a page that reads org-wide data. Combines the shared
  * connectivity gate state (from #125) with the org-agents realtime channel
  * health: only "live" when the backend is reachable AND the channel is
  * SUBSCRIBED. Any loss on either side reads as "Reconnecting…". Deliberately not

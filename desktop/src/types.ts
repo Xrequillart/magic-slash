@@ -1557,6 +1557,21 @@ export interface Config {
    * can survive the process being killed.
    */
   tasksRepo?: string
+  /**
+   * The repository the Plans list is narrowed to — a `public.repositories` id, NOT a key
+   * of `repositories` above: a plan is bound to the cloud row its spec resolved to.
+   *
+   * Absent = all repositories, which is both the default view and what an id that no
+   * longer resolves falls back to. That is why it is not validated on the way in: the
+   * legal values are the uuids of the repositories this account can currently see, and
+   * they change whenever one is added, shared or dropped. See
+   * supabase/migrations/20260911110000_user_settings_plans_repo.sql.
+   *
+   * Follows the account like `tasksRepo`, and for the same stronger reason: the app
+   * keeps no local config file at all, so this is the only place a chosen filter can
+   * survive the process being killed.
+   */
+  plansRepo?: string
   usageCardEnabled?: boolean    // show the Claude usage card in the left sidebar
   usageCardMinimized?: boolean  // left sidebar usage card collapsed to gauges only
   agentContextEnabled?: boolean // show the agent's context/session card in the right sidebar
@@ -1664,7 +1679,7 @@ export type SettingsTab =
  * agent" are renderer state — so these four travel over IPC and are replayed
  * against the store, exactly as the tray already does with its own commands.
  */
-export type MenuCommand = 'new-agent' | 'tasks' | 'skills' | 'team' | 'account'
+export type MenuCommand = 'new-agent' | 'tasks' | 'skills' | 'plans' | 'account'
 
 /** Signed-in cloud user identity (subset of the Supabase session). */
 export interface CloudUser {
@@ -1691,6 +1706,15 @@ export interface Member {
   email?: string
   role: MembershipRole
   createdAt?: string
+  /**
+   * Storage object path of this member's photo, absent when they have none. A PATH and
+   * never the bytes: the `avatars` bucket is private, so this is only useful to the main
+   * process — which is exactly the point. It rides along on the roster (a short string,
+   * free) so a caller that does draw faces can decide WHICH photos to download without
+   * issuing the roster RPC a second time; the base64 itself stays on its own channel,
+   * for the reason `listMemberAvatars` gives.
+   */
+  avatarPath?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -1851,6 +1875,61 @@ export interface PlanTicketsInput {
   agentId: string
   specPath: string
   tickets: PlanTicket[]
+}
+
+/**
+ * A repository as the Plans list needs it: the name a card prints, and the id the
+ * filter matches sessions on. Nothing else — this is not `RepositoryConfig`, which is
+ * keyed locally and knows about paths, while a plan is bound to the CLOUD row's uuid.
+ */
+export interface PlanRepoRef {
+  id: string
+  name: string
+}
+
+/**
+ * Everything the Plans page renders, unaggregated — the read `plans:list` answers with.
+ *
+ * Unaggregated on purpose: assembling the cards is `renderer/utils/planRows.ts`'s job,
+ * so the sort, the filter and the empty states stay view concerns that can be tested
+ * without a Supabase client. Same division as the webapp's `lib/planSessions.ts` /
+ * `lib/planSessionRows.ts`.
+ *
+ * NO ORG FILTER is applied anywhere on the way here: RLS on `plan_sessions` already
+ * returns exactly what the reader may see — their own sessions, plus every session on a
+ * repository shared with one of their organizations.
+ */
+export interface PlanOverview {
+  sessions: PlanSession[]
+  /**
+   * The session each ticket belongs to, one id per ticket — the counts on the rows,
+   * tallied by `buildPlanCards`. A bare id and nothing around it: the list prints a
+   * NUMBER, so pulling a few hundred hydrated ticket rows across the bridge to render
+   * thirty of them would be paying for a column nothing shows.
+   */
+  ticketSessionIds: string[]
+  repos: PlanRepoRef[]
+  /** owner id → email, so a session shows a readable author. */
+  emailByOwner: Record<string, string>
+  /**
+   * owner id → `data:` URL of that person's photo, for the face beside their address.
+   *
+   * ONLY the owners that actually appear in `sessions`, never the full rosters: these
+   * are tens of kilobytes of base64 each, and shipping a whole organization's photos to
+   * render a list of thirty rows is the cost `listMemberAvatars` exists to avoid.
+   * Someone with no photo is simply absent, and the row draws the generic icon.
+   */
+  avatarByOwner: Record<string, string>
+  /**
+   * Whether the reader belongs to an organization at all — the difference between "nobody
+   * has planned anything yet" and "there is nowhere for a plan to come from", which is
+   * the only thing the page's empty state cannot work out from the sessions themselves.
+   *
+   * Answered here because `listPlanSessions` lists the organizations anyway, for the
+   * rosters. The page asking the org hook instead would re-run that list and add a roster
+   * and an invitations read per org, for one boolean.
+   */
+  hasOrg: boolean
 }
 
 // ---------------------------------------------------------------------------

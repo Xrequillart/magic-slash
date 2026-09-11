@@ -54,7 +54,7 @@ function alwaysSideways(): boolean {
 /**
  * The Tasks page — ONE repository's work, as a board of four columns.
  *
- * Structurally `pages/Dashboard/index.tsx`: the same full-screen shell inside a
+ * Structurally `pages/Plans/index.tsx`: the same full-screen shell inside a
  * PageModal, whose title and chrome the modal renders. What it draws is the tickets of
  * the repository named in the picker at the top — its open GitHub issues, its Jira
  * sprint, or both when the repository is tracked in both — dealt into Blocked, Backlog,

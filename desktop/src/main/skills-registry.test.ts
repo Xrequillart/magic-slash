@@ -22,10 +22,11 @@ import { join } from 'path'
 
 const REPO_ROOT = join(__dirname, '..', '..', '..')
 
-// The two dashboard rows, named once each: every test below wants one or both of them,
-// and these files have moved before (`docs/` → `webapp/`). A rename fixed at one of
-// three literals would leave the others asserting over a path that no longer exists.
-const DESKTOP_TILES = 'desktop/src/renderer/pages/Dashboard/SkillStats.tsx'
+// The two TRACKED_SKILLS rows, named once each: every test below wants one or both of
+// them, and these files have moved before (`docs/` → `webapp/`, and the desktop one out
+// of the deleted Team page). A rename fixed at one of three literals would leave the
+// others asserting over a path that no longer exists.
+const DESKTOP_TILES = 'desktop/src/renderer/utils/trackedSkills.ts'
 const WEBAPP_TILES = 'webapp/lib/skills.ts'
 
 // The two command rows: what a user can type in the launcher, and what the landing page
@@ -39,11 +40,16 @@ const WEBAPP_TILES = 'webapp/lib/skills.ts'
 const LAUNCHER_COMMANDS = 'desktop/src/renderer/pages/QuickLaunch/index.tsx'
 const LANDING_COMMANDS = 'webapp/lib/commands.ts'
 
-// The three tile rows that spell their own column count out as a Tailwind literal. The
-// number is the length of an array the row already maps over, so nothing connects the two:
-// add a skill, forget the class, and the row silently wraps one tile onto a second line.
+// The tile rows that spell their own column count out as a Tailwind literal. The number
+// is the length of an array the row already maps over, so nothing connects the two: add a
+// skill, forget the class, and the row silently wraps one tile onto a second line.
+//
+// The desktop used to be a third entry here. It no longer draws tiles at all — the Team
+// page that held them was replaced by Plans, and only its TRACKED_SKILLS list survives
+// (as `desktop/src/renderer/utils/trackedSkills.ts`, still checked by every list test
+// above). A data module has no grid to assert, so the entry is gone rather than pointed
+// at a file with no class in it, which would fail for the wrong reason.
 const TILE_GRIDS = [
-  DESKTOP_TILES,
   'webapp/components/SkillStats.tsx',
   'webapp/app/admin/organizations/[orgId]/page.tsx',
 ]
@@ -195,7 +201,7 @@ describe('the shipped skill list, in the eight places that duplicate it', () => 
     for (const { read } of LISTS) expect(read()).not.toContain('evals')
   })
 
-  it('keeps the two dashboard rows in the same order, so the tiles match across surfaces', () => {
+  it('keeps the two TRACKED_SKILLS rows in the same order, so the cycle reads alike across surfaces', () => {
     // Both arrays are documented as "the order the development cycle runs them", and
     // the point of that ordering is that a user finds the same tile in the same place
     // whichever surface they opened. Sorted equality above cannot see a reordering.

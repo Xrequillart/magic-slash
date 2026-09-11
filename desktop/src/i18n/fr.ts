@@ -21,7 +21,7 @@ export const fr: Record<keyof typeof en, string> = {
   'menu.newAgent': 'Nouvel agent',
   'menu.tasks': 'Tâches',
   'menu.skills': 'Skills',
-  'menu.team': 'Équipe',
+  'menu.plans': 'Plans',
   'menu.account': 'Compte',
   'menu.checkUpdates': 'Rechercher les mises à jour…',
   'menu.closeWindow': 'Fermer la fenêtre',
@@ -116,7 +116,7 @@ export const fr: Record<keyof typeof en, string> = {
   'sidebar.newAgentShortcut': 'Nouvel agent ({shortcut})',
   'sidebar.skills': 'Skills',
   'sidebar.tasks': 'Tâches',
-  'sidebar.team': 'Équipe',
+  'sidebar.plans': 'Plans',
   'sidebar.settings': 'Réglages',
   'sidebar.login': 'Connexion / Inscription',
   'sidebar.accountFallback': 'Compte',
@@ -1125,44 +1125,32 @@ export const fr: Record<keyof typeof en, string> = {
   'prReview.changesRequested': 'Modifications demandées',
   'prReview.approved': 'Approuvée',
 
-  // ── Tableau de bord d'équipe ─────────────────────────────────────────────
-  'dashboard.unassigned': 'Non attribué',
-  'dashboard.openPR': 'Ouvrir la pull request',
-  'dashboard.viewPR': 'Voir la PR',
-  'dashboard.repos.section': 'Dépôts',
-  'dashboard.repos.personal': 'Personnel',
-  'dashboard.repos.noReposInScope': 'Aucun dépôt ici pour l’instant.',
-  'dashboard.repos.agentCount.one': '{count} agent',
-  'dashboard.repos.agentCount.other': '{count} agents',
-  'dashboard.repos.noAgents': 'aucun agent',
-  'dashboard.repos.onPr': '{count} sur une PR',
-  'dashboard.repos.noRepos': 'Aucun dépôt partagé avec ton équipe pour l’instant.',
-  'dashboard.repos.noReposHint':
-    'Partage un dépôt avec ton organisation dans Réglages → Dépôts, et les agents de toute l’équipe dessus apparaîtront ici.',
-  'dashboard.repos.unmatched.one': '1 agent sur un dépôt personnel ou non rattaché',
-  'dashboard.repos.unmatched.other': '{count} agents sur des dépôts personnels ou non rattachés',
-  'dashboard.skills.section': 'Skills exécutés',
-  'dashboard.skills.sectionPersonal': 'Tes skills exécutés',
-  'dashboard.skills.runs.one': '{count} exécution',
-  'dashboard.skills.runs.other': '{count} exécutions',
-  'dashboard.skills.empty':
-    'Aucune exécution enregistrée pour cette organisation. Les exécutions sont rattachées via les dépôts de l’agent qui les lance : le travail sur un dépôt personnel n’est donc pas compté ici.',
-  'dashboard.skills.emptyPersonal':
-    'Aucune exécution enregistrée hors organisation. Une exécution arrive ici quand l’agent qui l’a lancée travaille uniquement sur des dépôts personnels, et quand elle a été démarrée dans un terminal que l’app n’a pas ouvert : sans agent, elle n’appartient à aucune organisation.',
-  'dashboard.usage.section': 'Coût et usage',
-  'dashboard.usage.cost': 'Coût',
-  'dashboard.usage.sessions': 'Sessions',
-  'dashboard.usage.lines': 'Lignes',
-  'dashboard.usage.duration': 'Temps',
-  'dashboard.usage.byMember': 'Par membre',
-  'dashboard.usage.byModel': 'Par modèle',
-  'dashboard.usage.unknownModel': 'Modèle inconnu',
-  'dashboard.usage.empty': 'Aucun usage à afficher ici.',
-  'dashboard.usage.capped':
-    'Seules les {count} sessions les plus récentes sont lues : ces totaux sont donc un plancher, pas le tableau complet.',
-  'dashboard.usage.failed': 'Impossible de lire l’usage.',
+  // ── Plans ───────────────────────────────────────────────────────────────────
+  'plans.title': 'Plans',
+  'plans.section': 'Sessions de planification',
+  'plans.count.one': '1 plan',
+  'plans.count.other': '{count} plans',
+  'plans.filter.all': 'Tous les dépôts',
+  'plans.status.planning': 'En cours d’écriture',
+  'plans.status.planned': 'Tickets créés',
+  'plans.tickets.none': 'aucun ticket',
+  'plans.tickets.one': '1 ticket',
+  'plans.tickets.other': '{count} tickets',
+  'plans.noRepo': 'Dépôt inconnu',
+  'plans.empty.title': 'Aucun plan pour l’instant',
+  'plans.empty.body':
+    'Lancez /magic:plan dans Claude Code : il transforme une idée en spec relisible, puis en epic et en stories. Chaque session arrive ici au fil de son écriture. Si un collègue a planifié quelque chose que vous ne voyez pas, vérifiez que la synchronisation des plans est activée dans les Réglages.',
+  'plans.empty.filteredTitle': 'Rien sur ce dépôt',
+  'plans.empty.filteredBody':
+    'Aucun plan n’a encore été écrit sur ce dépôt. Choisissez-en un autre, ou revenez à tous les dépôts.',
+  'plans.empty.noOrgTitle': 'Aucune organisation',
+  'plans.empty.noOrgBody':
+    'Les plans sont lus depuis votre compte. Connectez-vous, puis rejoignez ou créez une organisation : toutes les sessions écrites sur un dépôt que vous partagez apparaîtront ici.',
+  'plans.empty.syncOffTitle': 'Votre synchronisation des plans est désactivée',
+  'plans.empty.syncOffBody':
+    'Vos sessions de planification ne sont pas enregistrées dans le cloud : rien de ce que vous écrivez avec /magic:plan ne peut apparaître ici. Réactivez la synchronisation des plans dans les Réglages, section Sessions de planification, et vos prochaines sessions s’afficheront.',
 
-  // ── Tableau de bord d'équipe · heures passées sur les skills ──────────────
+  // ── Heures passées sur les skills ───────────────────────────────────────────
   'skillHours.hours': '{count}h',
   'skillHours.minutes': '{count} min',
   'skillHours.label.total': 'Temps total',

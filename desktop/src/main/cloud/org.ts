@@ -78,8 +78,10 @@ async function fetchMemberRows(orgId?: string): Promise<MemberRow[]> {
  * to members of the org) which joins auth.users and returns emails for all
  * members — safely, since a non-member gets rejected.
  *
- * No photo here: that is `listMemberAvatars`, and its note says why the two are
- * separate calls rather than one enriched row.
+ * No photo BYTES here: that is `listMemberAvatars`, and its note says why the two are
+ * separate calls rather than one enriched row. The storage PATH does ride along, since
+ * it is a short string and it is what lets a caller who already has the roster pick the
+ * few photos it needs without asking for the roster again (`cloud/plans.ts`).
  */
 export async function listMembers(orgId?: string): Promise<Member[]> {
   return (await fetchMemberRows(orgId)).map((row) => ({
@@ -87,6 +89,7 @@ export async function listMembers(orgId?: string): Promise<Member[]> {
     role: row.role,
     createdAt: row.created_at ?? undefined,
     email: row.email ?? undefined,
+    avatarPath: row.avatar_url ?? undefined,
   }))
 }
 
