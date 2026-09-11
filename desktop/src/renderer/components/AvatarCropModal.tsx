@@ -143,7 +143,16 @@ export function AvatarCropModal({ isOpen, sourceDataUrl, onCancel, onConfirm, on
    */
   const image = decoded && decoded.src === sourceDataUrl ? decoded.el : null
 
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  // STATE, not a ref, and that is the whole reason the picture shows at all.
+  // `Modal` renders nothing on the commit where `isOpen` first turns true — its
+  // `useModalExit` flips `mounted` from an effect, so the canvas only reaches the
+  // DOM on the NEXT commit. An effect keyed on `isOpen` therefore runs while the
+  // element does not exist yet, and with a ref there is nothing to re-run it: the
+  // measure below would keep `maskSize` at 0 for ever and the redraw would bail on
+  // it, leaving an empty mask over a photo that had decoded perfectly well. A
+  // callback ref re-renders when the element attaches, so every effect that needs
+  // the canvas simply lists it as a dependency and waits for it.
+  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null)
   // `zoom` is the zoom the anchor below was taken at, not a second copy of the
   // state: `handlePointerMove` compares it against the live one to know that the
   // anchor it is measuring from belongs to another scale.
@@ -190,7 +199,6 @@ export function AvatarCropModal({ isOpen, sourceDataUrl, onCancel, onConfirm, on
   // UpdateOverlay's canvas is — before React has committed, `offsetWidth` is 0 —
   // and re-measured on resize, because every pointer delta is divided by it.
   useEffect(() => {
-    const canvas = canvasRef.current
     if (!isOpen || !canvas) return
     const measure = () => setMaskSize(canvas.offsetWidth)
     measure()
@@ -198,7 +206,7 @@ export function AvatarCropModal({ isOpen, sourceDataUrl, onCancel, onConfirm, on
     const observer = new ResizeObserver(measure)
     observer.observe(canvas)
     return () => observer.disconnect()
-  }, [isOpen])
+  }, [isOpen, canvas])
 
   /**
    * The one way this component changes the crop.
@@ -242,7 +250,6 @@ export function AvatarCropModal({ isOpen, sourceDataUrl, onCancel, onConfirm, on
 
   // Redraw whenever anything the picture depends on moves.
   useEffect(() => {
-    const canvas = canvasRef.current
     if (!canvas || !image || maskSize <= 0) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
@@ -299,14 +306,13 @@ export function AvatarCropModal({ isOpen, sourceDataUrl, onCancel, onConfirm, on
     ctx.beginPath()
     ctx.arc(centre, centre, centre - 0.5, 0, Math.PI * 2)
     ctx.stroke()
-  }, [image, view, maskSize])
+  }, [canvas, image, view, maskSize])
 
   // The wheel listener is attached BY HAND, with `{ passive: false }`. React 18
   // registers `wheel` at the root as a passive listener, so a JSX `onWheel` runs
   // but its `preventDefault()` is ignored — the settings page scrolls under the
   // dialog, and a ctrl+wheel reaches Electron as a pinch-zoom of the whole window.
   useEffect(() => {
-    const canvas = canvasRef.current
     if (!isOpen || !canvas || !image) return
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
@@ -316,7 +322,7 @@ export function AvatarCropModal({ isOpen, sourceDataUrl, onCancel, onConfirm, on
     }
     canvas.addEventListener('wheel', onWheel, { passive: false })
     return () => canvas.removeEventListener('wheel', onWheel)
-  }, [isOpen, image, zoomBy])
+  }, [isOpen, canvas, image, zoomBy])
 
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!image || e.button !== 0) return
@@ -414,7 +420,7 @@ export function AvatarCropModal({ isOpen, sourceDataUrl, onCancel, onConfirm, on
     >
       <div className="space-y-3">
         <canvas
-          ref={canvasRef}
+          ref={setCanvas}
           role="img"
           aria-label={t('cloud.avatar.crop.canvas')}
           // The visible hint IS the accessible description, rather than the label
