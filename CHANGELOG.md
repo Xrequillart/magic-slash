@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.90.0] - 2026-09-11
+
+### Added
+
+- **Desktop**: Every organization member's avatar is shown in the members list, with the generic icon for anyone who has not set one
+- **Desktop**: A photo is framed with zoom and pan before it is saved, instead of being centre-cropped automatically
+- **Desktop**: The account photo appears in the sidebar and in the settings footer
+- **Desktop**: A profile photo can be set and removed from the account tab
+- **Desktop**: The private avatars bucket and the `profiles.avatar_url` pointer
+- **Desktop**: The avatar object is deleted along with the account
+- **Desktop**: The tasks modal opens from the sidebar ticket id
+
+### Changed
+
+- **Desktop**: An organization member's avatar is readable by their co-members, and by nobody else: the read policy widens to the one blessed object per user, while writes and deletes stay private
+- **Desktop**: The duplicate display name helper in the config layer is dropped
+
+### Fixed
+
+- **Desktop**: The avatar crop preview is drawn instead of staying blank: the canvas is measured once it is actually mounted
+- **Desktop**: Escape closes the crop dialog without taking the settings sheet behind it
+
 ## [0.89.0] - 2026-09-10
 
 ### Added
@@ -2665,6 +2687,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.90.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.90.0
 [0.89.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.89.0
 [0.88.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.88.0
 [0.87.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.87.0
