@@ -301,6 +301,20 @@ const EPIC_WIDTH = 192
 const AGENT_WIDTH = 160
 
 /**
+ * The bar's height in pixels, and the offset everything that pins UNDER it has to use —
+ * the board's own column headings, which are sticky too (see `TaskBoard`).
+ *
+ * Stated as a number and set on the element rather than left to the content, for the
+ * reason `TaskDetailPage.TOP_BAR_H` is: two sticky bands at `top: 0` are one band
+ * hiding the other, so the second has to know exactly how tall the first is, and a
+ * height that falls out of its padding is a height nobody else can read.
+ *
+ * 30px of controls — what every trigger and the search box stand — between 12px of
+ * padding either side, plus the hairline along the bottom.
+ */
+export const FILTER_BAR_H = 55
+
+/**
  * The filter row: a search box that takes the width, then the three pickers.
  *
  * Debouncing the box would be the usual reflex and is wrong here: nothing is
@@ -324,6 +338,7 @@ export function TaskFilters({
   repos,
   epics,
   hasAgents,
+  stuck,
   sprintName,
   searchesSprint,
   searching,
@@ -358,6 +373,13 @@ export function TaskFilters({
    * that can only ever say what the board already says is a control to read past.
    */
   hasAgents?: boolean
+  /**
+   * Whether the bar has pinned itself to the top of the pane, which is the only thing
+   * that changes about it: it draws its bottom edge. The page owns the question — the
+   * sentinel that answers it has to sit where this bar STARTS, which is a position a
+   * bar that has moved cannot report about itself. See `filtersStuck` in `index.tsx`.
+   */
+  stuck?: boolean
   /** A sprint search is in flight. See `useSprintSearch`. */
   searching?: boolean
   /** The last sprint search came back as a failure. The board still shows what it has. */
@@ -383,7 +405,28 @@ export function TaskFilters({
   ]
 
   return (
-    <div className="flex items-center gap-2 min-w-0">
+    // PINNED, because the board under it is four columns deep and the controls that
+    // narrow it were a scroll away from anything below the fold — the search box most of
+    // all, which is the one control people reach for while already looking at a card.
+    //
+    // Full-bleed via `-mx-6 px-6`, the ticket page's own top bar's trick: what scrolls
+    // past has to go under an opaque band edge to edge, and a band inset by the page's
+    // 24px would let the cards slide past either side of it. `bg-bg-secondary` is
+    // `PageModal`'s own panel colour for the same reason it is there — anything else
+    // reads as a floating toolbar.
+    //
+    // `py-3 -my-3` is padding the layout does not pay for: the negative margin gives the
+    // column's gap back, so the row sits exactly where it did, and the padding is what
+    // the band covers the page with above and below the controls once it is pinned.
+    //
+    // The bottom edge appears only once it is stuck. A hairline under a bar with the
+    // board flush beneath it is a rule across the page for no reason; without one, cards
+    // sliding underneath dissolve into it.
+    <div
+      className={`sticky top-0 z-20 -mx-6 px-6 py-3 -my-3 bg-bg-secondary border-b transition-colors
+        flex items-center gap-2 min-w-0 ${stuck ? 'border-line' : 'border-transparent'}`}
+      style={{ height: FILTER_BAR_H }}
+    >
       {/* FIRST, and before the search box, because it is the only control here that
           decides what the page is about rather than how much of it is on screen. No
           `clearLabel`: there is no "all repositories" state to go back to. */}

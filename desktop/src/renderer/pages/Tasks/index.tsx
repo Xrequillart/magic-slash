@@ -30,7 +30,7 @@ import { GitHubNotConnected } from './GitHubNotConnected'
 import { TaskDetailPage } from './TaskDetailPage'
 import { TaskBoard } from './TaskBoard'
 import { openCountLabel, sprintCountLabel } from './parts'
-import { TaskFilters, type TaskFilterValue } from './TaskFilters'
+import { FILTER_BAR_H, TaskFilters, type TaskFilterValue } from './TaskFilters'
 
 /**
  * The two views this page swaps between, ranked. `SweepPane` reads the sign of
@@ -213,6 +213,45 @@ export function TasksPage() {
    */
   const paneRef = useRef<HTMLDivElement>(null)
   const listOffsetRef = useRef(0)
+
+  /**
+   * Whether the filter bar has pinned itself to the top of the pane, which is the one
+   * thing it needs to know to draw its own bottom edge: a hairline under a bar with the
+   * board flush beneath it would be a rule across the page for no reason, and no
+   * hairline once the cards slide underneath would leave them dissolving into it.
+   *
+   * A sentinel and an observer rather than a scroll handler, for `TaskDetailPage`'s
+   * reason and `FileReviewCard`'s: this is one boolean that flips twice per visit, and a
+   * `scroll` listener would remeasure a rectangle on every frame of every scroll to
+   * answer it. The sentinel is rendered where the bar's top WOULD be (see its call site
+   * below) — a stuck bar has moved, and can no longer report that position itself.
+   *
+   * The node is held in STATE rather than in a ref, which is what makes the observer
+   * re-attach on its own: the bar is unmounted with the list every time a ticket is
+   * opened and a fresh sentinel is mounted on the way back, and a ref would leave the
+   * observer watching a detached node for the rest of the session. A ref could not be
+   * read on mount either — child refs are attached before their parent's, so `paneRef`
+   * is still null at the moment a ref callback here would fire.
+   */
+  const [filterSentinel, setFilterSentinel] = useState<HTMLDivElement | null>(null)
+  const [filtersStuck, setFiltersStuck] = useState(false)
+
+  useEffect(() => {
+    const pane = paneRef.current
+    // The sentinel is gone — the ticket page has replaced the list, or there is nothing
+    // to narrow. Cleared rather than left latched on, or the bar would come back wearing
+    // a border it has no business keeping.
+    if (!filterSentinel || !pane) {
+      setFiltersStuck(false)
+      return
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setFiltersStuck(!entry.isIntersecting),
+      { root: pane, threshold: 0 },
+    )
+    observer.observe(filterSentinel)
+    return () => observer.disconnect()
+  }, [filterSentinel])
 
   /**
    * Which tickets already have an agent, per repository, built once for the page.
@@ -747,20 +786,32 @@ export function TasksPage() {
                 nothing there — and the repository picker would have nothing to offer.
                 See `narrowable` for why an empty board can still qualify. */}
             {narrowable && (
-              <TaskFilters
-                value={filterValue}
-                repos={filterRepos}
-                epics={filterEpics}
-                hasAgents={hasAgents}
-                {...(sprintName ? { sprintName } : {})}
-                // What the box is doing beyond narrowing what is on screen. Only ever
-                // true on a board that reported itself short — see `useSprintSearch` —
-                // so an ordinary board's box looks exactly as it always has.
-                searching={sprintSearch.loading}
-                searchFailed={sprintSearch.failed}
-                searchesSprint={truncatedColumns.size > 0}
-                onChange={changeFilter}
-              />
+              <>
+                {/* Zero height, nothing to see: it marks where the top of the bar WOULD
+                    be, which is the one thing a bar that has pinned itself there can no
+                    longer say about itself. `-mt-3` cancels the column's own gap before
+                    it, so inserting it moves nothing — see `FileReviewCard`, which does
+                    the same thing for the same reason.
+
+                    There is no CSS for "is this stuck" on the Chromium this app ships:
+                    `:stuck` and scroll-state queries both landed after it. */}
+                <div ref={setFilterSentinel} className="h-0 -mt-3" aria-hidden />
+                <TaskFilters
+                  value={filterValue}
+                  repos={filterRepos}
+                  epics={filterEpics}
+                  hasAgents={hasAgents}
+                  stuck={filtersStuck}
+                  {...(sprintName ? { sprintName } : {})}
+                  // What the box is doing beyond narrowing what is on screen. Only ever
+                  // true on a board that reported itself short — see `useSprintSearch` —
+                  // so an ordinary board's box looks exactly as it always has.
+                  searching={sprintSearch.loading}
+                  searchFailed={sprintSearch.failed}
+                  searchesSprint={truncatedColumns.size > 0}
+                  onChange={changeFilter}
+                />
+              </>
             )}
 
             {/* Three outcomes, in the order of how much they blame. The search matching
@@ -802,6 +853,10 @@ export function TasksPage() {
                 rows={rows}
                 repoConfigs={repoConfigs}
                 truncatedColumns={truncatedColumns}
+                // Where the column headings pin: under the filter bar when there is one,
+                // at the top of the pane when there is not. Both are sticky and both are
+                // opaque, so the second has to be told how tall the first is.
+                headingTop={narrowable ? FILTER_BAR_H : 0}
                 onSelect={select}
               />
             )}

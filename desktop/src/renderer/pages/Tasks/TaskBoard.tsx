@@ -49,6 +49,7 @@ export function TaskBoard({
   rows,
   repoConfigs,
   truncatedColumns,
+  headingTop,
   onSelect,
 }: {
   board: Record<BoardColumn, BoardCard[]>
@@ -67,6 +68,16 @@ export function TaskBoard({
    * total. See `JiraTaskRepoGroup.truncatedColumns`.
    */
   truncatedColumns: ReadonlySet<BoardColumn>
+  /**
+   * Where a column heading pins, in pixels from the top of the pane.
+   *
+   * Not zero, because the filter bar pins there too and is opaque: at `top: 0` the
+   * headings would slide under it and the board would scroll with four unlabelled
+   * stacks of cards, which is the exact thing `sticky` is here to prevent. The page
+   * passes the bar's own height (`FILTER_BAR_H`), or 0 on a board that has no bar —
+   * see `narrowable` in `pages/Tasks/index.tsx`.
+   */
+  headingTop: number
   onSelect: (selection: TaskSelection) => void
 }) {
   const t = useT()
@@ -91,6 +102,7 @@ export function TaskBoard({
             cards={board[column]}
             repoConfigs={repoConfigs}
             truncated={truncatedColumns.has(column)}
+            headingTop={headingTop}
             onSelect={onSelect}
             t={t}
           />
@@ -120,6 +132,7 @@ function Column({
   cards,
   repoConfigs,
   truncated,
+  headingTop,
   onSelect,
   t,
 }: {
@@ -128,6 +141,8 @@ function Column({
   repoConfigs: Record<string, RepositoryConfig | undefined>
   /** Whether this column's read stopped at its budget. See the count below. */
   truncated: boolean
+  /** Where this heading pins. See `TaskBoard`. */
+  headingTop: number
   onSelect: (selection: TaskSelection) => void
   t: Translate
 }) {
@@ -139,7 +154,9 @@ function Column({
     // than to the pane — which, on a box that does not scroll, means it never moves at
     // all. The heading rounds its own top corners instead.
     <div className="flex flex-col min-w-0 rounded-xl bg-surface-subtle border border-line-subtle">
-      <div className="sticky top-0 z-10 rounded-t-xl bg-bg-secondary">
+      {/* `top` from the page and not `top-0`: the filter bar pins there, and it is
+          opaque. See `headingTop`. */}
+      <div className="sticky z-10 rounded-t-xl bg-bg-secondary" style={{ top: headingTop }}>
         <div className="flex items-center gap-2 px-2.5 py-2 rounded-t-xl bg-surface-subtle border-b border-line-subtle">
           <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${className}`} />
           <span className="text-xs font-medium text-ink truncate">{t(title)}</span>
