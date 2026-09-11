@@ -302,6 +302,27 @@ export function TasksPage() {
    */
   const filterEpics = useMemo(() => taskFilterEpics(repoRows), [repoRows])
 
+  /**
+   * The name of the sprint the board is showing, for the chip beside the repository
+   * picker. `undefined` for a GitHub-only repository, and for a Jira one whose read
+   * could not name its sprint — `TaskFilters` then draws no chip at all.
+   *
+   * Off `repoRows` and NOT off `rows`, which is the whole point of taking it here: the
+   * sprint is a property of the repository, not of what survived the search, and read
+   * from the narrowed rows it would blink out the moment a query matched no Jira ticket
+   * — leaving the reader to conclude the sprint had ended.
+   *
+   * The first Jira row that has one. A repository tracked in both places contributes a
+   * GitHub row as well, and two services planned in one Jira project share a single row
+   * (see `TaskRow.repos`), so there is at most one sprint here to name.
+   */
+  const sprintName = useMemo(() => {
+    for (const row of repoRows) {
+      if (row.tracker === 'jira' && row.sprintName) return row.sprintName
+    }
+    return undefined
+  }, [repoRows])
+
   const { rows, total, totalOpen, truncatedSprint } = useMemo(() => {
     // Sorted AFTER filtering, which is both the cheaper order and the only correct
     // one for the counts below: they are taken off what is on screen, and a sort that
@@ -658,7 +679,13 @@ export function TasksPage() {
                 nothing there — and the repository picker would have nothing to offer.
                 See `narrowable` for why an empty board can still qualify. */}
             {narrowable && (
-              <TaskFilters value={filterValue} repos={filterRepos} epics={filterEpics} onChange={changeFilter} />
+              <TaskFilters
+                value={filterValue}
+                repos={filterRepos}
+                epics={filterEpics}
+                {...(sprintName ? { sprintName } : {})}
+                onChange={changeFilter}
+              />
             )}
 
             {/* Three outcomes, in the order of how much they blame. The search matching

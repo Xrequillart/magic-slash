@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDownWideNarrow, Check, ChevronDown, FolderGit2, Search, X } from 'lucide-react'
+import { ArrowDownWideNarrow, CalendarRange, Check, ChevronDown, FolderGit2, Search, X } from 'lucide-react'
 import { useAnchoredPanel } from '../../components/useAnchoredPanel'
 import { useT } from '../../i18n'
 import { INPUT } from '../../theme/controls'
@@ -247,6 +247,38 @@ function FilterSelect({
 }
 
 /**
+ * WHICH sprint the board is showing — a label in a row of controls, and deliberately
+ * not one of them.
+ *
+ * It lives here because the sprint is no longer a property of a card but of the whole
+ * page: the board draws ONE repository, so every ticket in the four columns is in this
+ * sprint, and the repository picker beside it is the only other thing on the page that
+ * says what is being looked at. It used to trail the repository name on that card's
+ * header and went out with the card.
+ *
+ * NO BORDER AND NO HOVER, which is the whole of what separates it from its neighbours:
+ * every real control in this row is `bg-surface` inside `border-line-field`, so a
+ * bordered chip here would be a fourth picker that does nothing when clicked. The
+ * transparent border is what keeps it the same 30px tall as the controls it sits
+ * between — they owe two of those pixels to their own border.
+ *
+ * Rendered only when the read actually named the sprint. There is no fallback text: a
+ * chip reading "sprint inconnu" would take the search box's width to say nothing, and
+ * a project with no sprint running already says so through `JiraErrorLines`.
+ */
+function SprintChip({ name, hint }: { name: string; hint: string }) {
+  return (
+    <span
+      title={hint}
+      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-transparent bg-surface-subtle text-xs text-text-secondary min-w-0 max-w-[11rem] flex-shrink"
+    >
+      <CalendarRange className="w-3.5 h-3.5 shrink-0 text-text-secondary/60" />
+      <span className="truncate">{name}</span>
+    </span>
+  )
+}
+
+/**
  * The pickers' widths, and the reason they differ.
  *
  * The sort is the narrowest because its two entries are two words the reader already
@@ -285,11 +317,18 @@ export function TaskFilters({
   value,
   repos,
   epics,
+  sprintName,
   onChange,
 }: {
   value: TaskFilterValue
   repos: TaskFilterRepo[]
   epics: TaskFilterEpic[]
+  /**
+   * The active sprint of the picked repository, when its Jira read named one. Absent
+   * for a GitHub-only repository, and for a Jira one whose sprint could not be named —
+   * see `SprintChip`, which is then not drawn at all.
+   */
+  sprintName?: string
   onChange: (next: TaskFilterValue) => void
 }) {
   const t = useT()
@@ -320,6 +359,9 @@ export function TaskFilters({
         // everywhere else; an epic is a Jira relationship with no such mark of its own.
         marker="repo"
       />
+      {/* Directly after the picker, because the two answer one question between them:
+          the picker says which repository, and this says which of its sprints. */}
+      {sprintName && <SprintChip name={sprintName} hint={t('tasks.jira.sprintHint', { sprint: sprintName })} />}
       <div className="relative flex-1 min-w-0">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
         <input

@@ -2060,9 +2060,6 @@ export const en = {
   // The row's hover text for the same person. A NAME and not a handle, so the
   // sentence names them rather than prefixing an `@` the way the GitHub row does.
   'tasks.jira.reporterHint': 'Reported by {name}',
-  // The sprint the card's rows are in, next to the repository name. Untranslated
-  // VALUE — the name is whatever the team called the sprint in Jira — so only the
-  // hover text is a sentence.
   // The priority badge's hover text, on both the row and the ticket page. Names the
   // FIELD, because the badge shows only its value — a site whose priorities are
   // called "P1"…"P4" gives the reader nothing to recognise it by otherwise.
@@ -2071,6 +2068,11 @@ export const en = {
   // for `priorityHint`'s reason, and carries the KEY as well: the title is what the
   // badge truncates first, and the key is what identifies the epic in Jira itself.
   'tasks.jira.epicHint': 'Epic {key}: {title}',
+  // WHICH sprint the board is showing, on the chip beside the repository picker. It
+  // sat next to the repository name until the page became one board per repository —
+  // which made the sprint a property of the whole page rather than of a card, and left
+  // it with no card to hang off. Untranslated VALUE — the name is whatever the team
+  // called the sprint in Jira — so only the hover text is a sentence.
   'tasks.jira.sprintHint': 'Active sprint: {sprint}',
   // HTTP 404 on the ONE-TICKET read, where `tasks.jira.error.notFound` is about the
   // project: "check the project key" is the wrong advice for a ticket that was
