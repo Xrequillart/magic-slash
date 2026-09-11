@@ -9,7 +9,8 @@ import { useConfig } from '../../hooks/useConfig'
 import { useOrg } from '../../hooks/useOrg'
 import { Modal } from '../../components/Modal'
 import { showToast } from '../../components/Toast'
-import { PROJECT_COLORS, getProjectColorMap } from '../../utils/projectColors'
+import { getProjectColorMap } from '../../utils/projectColors'
+import { RepoColorPicker } from './RepoColorPicker'
 import { useT, type MessageKey } from '../../i18n'
 import { Switch } from '../../components/Switch'
 import { LanguageSelect } from '../../components/LanguageSelect'
@@ -1112,26 +1113,24 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
 
             {/* Color */}
-            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
+            <div className="flex items-center justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.general.color')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.general.colorHelp')}</p>
               </div>
-              <fieldset disabled={readOnly} className="flex gap-2 min-w-0">
-                {PROJECT_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => handleColorChange(color)}
-                    className={`w-6 h-6 rounded-full transition-all ${
-                      repo?.color === color
-                        ? 'ring-2 ring-offset-2 ring-offset-bg-secondary ring-ink'
-                        : 'hover:scale-110'
-                    }`}
-                    style={{ backgroundColor: color }}
-                    title={color}
-                  />
-                ))}
-              </fieldset>
+              {/* One tile, not the palette laid out flat. The row used to widen with
+                  every colour added to it, and the choice you had made was the one
+                  thing it did not show — you had to find the ringed dot among the
+                  rest. Now the row shows the repo as it actually appears, and the
+                  thirty-six alternatives live one click away where there is room for
+                  them. `repoColor`, not `repo.color`: a repo that never chose keeps
+                  the fallback the rest of the app draws it with, so the tile here is
+                  never a colour the repo is not wearing. */}
+              <RepoColorPicker
+                color={repoColor}
+                onChange={handleColorChange}
+                disabled={readOnly}
+              />
             </div>
           </div>
         </div>

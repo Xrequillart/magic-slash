@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { configKeyForRepoId, getProjectColor, getProjectColorMap, PROJECT_COLORS } from './projectColors'
+import { configKeyForRepoId, getProjectColor, getProjectColorMap, repoColorPreview, PROJECT_COLORS, REPO_COLOR_CHOICES } from './projectColors'
 
 describe('getProjectColor', () => {
   it('returns color at given index', () => {
@@ -64,5 +64,47 @@ describe('configKeyForRepoId', () => {
     expect(configKeyForRepoId('r1', undefined)).toBeUndefined()
     // An entry predating the cloud id must not match a missing one.
     expect(configKeyForRepoId('', repositories)).toBeUndefined()
+  })
+})
+
+describe('REPO_COLOR_CHOICES', () => {
+  it('offers every fallback colour', () => {
+    // The picker highlights the repo's CURRENT colour, and a repo that never chose
+    // one is drawn in a PROJECT_COLORS entry. Drop one of those from the choices and
+    // that repo opens a grid with nothing selected in it.
+    for (const color of PROJECT_COLORS) {
+      expect(REPO_COLOR_CHOICES).toContain(color)
+    }
+  })
+
+  it('fills the grid exactly, with no colour twice', () => {
+    expect(REPO_COLOR_CHOICES).toHaveLength(36)
+    expect(new Set(REPO_COLOR_CHOICES).size).toBe(REPO_COLOR_CHOICES.length)
+  })
+})
+
+describe('repoColorPreview', () => {
+  it('leads with the repo own colour', () => {
+    expect(repoColorPreview('#3B82F6')[0]).toBe('#3B82F6')
+    // Not in the palette at all — still the repo's colour, still first.
+    expect(repoColorPreview('#ABCDEF')[0]).toBe('#ABCDEF')
+  })
+
+  it('shows four colours, never the same one twice', () => {
+    for (const color of [...REPO_COLOR_CHOICES, '#ABCDEF']) {
+      const preview = repoColorPreview(color)
+      expect(preview).toHaveLength(4)
+      expect(new Set(preview).size).toBe(4)
+      expect(preview.every(Boolean)).toBe(true)
+    }
+  })
+
+  it('previews the tone the repo is already wearing', () => {
+    // Vivid red pulls vivid neighbours; deep red pulls deep ones. A row mixing the
+    // two would advertise a tone the selected tile is not showing.
+    const vivid = REPO_COLOR_CHOICES.slice(0, 18)
+    const deep = REPO_COLOR_CHOICES.slice(18)
+    expect(repoColorPreview('#EF4444').every((c) => vivid.includes(c))).toBe(true)
+    expect(repoColorPreview('#B91C1C').every((c) => deep.includes(c))).toBe(true)
   })
 })

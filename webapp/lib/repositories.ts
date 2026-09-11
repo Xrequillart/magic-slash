@@ -26,6 +26,17 @@ export const REPO_COLORS = [
   '#EC4899', // pink
   '#06B6D4', // cyan
   '#F97316', // orange
+  // Appended, never inserted: the eight above are also the fallback assigned BY
+  // INDEX to repos with no colour of their own, so reordering them would repaint
+  // every unconfigured repo in the app at once.
+  '#6366F1', // indigo
+  '#14B8A6', // teal
+  '#84CC16', // lime
+  '#EAB308', // yellow
+  '#F43F5E', // rose
+  '#D946EF', // fuchsia
+  '#0EA5E9', // sky
+  '#64748B', // slate
 ]
 
 export interface RepoLanguages {

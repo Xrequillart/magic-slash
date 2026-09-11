@@ -495,6 +495,10 @@ export const en = {
   'repo.general.discussionLangHelp': 'Language used by Claude when discussing with you',
   'repo.general.color': 'Color',
   'repo.general.colorHelp': 'Project color in sidebar',
+  'repo.general.colorChange': 'Change color',
+  'repo.general.colorModalTitle': 'Repository color',
+  'repo.general.colorModalHelp': 'Shown wherever this repository appears — sidebar, tasks and agent cards.',
+  'repo.general.setColor': 'Set color {color}',
 
   'repo.tracker.mode': 'Trackers',
   'repo.tracker.modeHelp': 'Where /magic:plan files new tickets, and where /magic:start looks one up',

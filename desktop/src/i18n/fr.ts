@@ -471,6 +471,10 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.general.discussionLangHelp': 'Langue utilisée par Claude quand il échange avec vous',
   'repo.general.color': 'Couleur',
   'repo.general.colorHelp': 'Couleur du projet dans la barre latérale',
+  'repo.general.colorChange': 'Changer la couleur',
+  'repo.general.colorModalTitle': 'Couleur du dépôt',
+  'repo.general.colorModalHelp': 'Utilisée partout où ce dépôt apparaît : barre latérale, tâches et cartes d’agent.',
+  'repo.general.setColor': 'Choisir la couleur {color}',
 
   'repo.tracker.mode': 'Outils de suivi',
   'repo.tracker.modeHelp': 'Là où /magic:plan crée les tickets, et où /magic:start va les chercher',
