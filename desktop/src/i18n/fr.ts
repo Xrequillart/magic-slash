@@ -1130,6 +1130,7 @@ export const fr: Record<keyof typeof en, string> = {
   'prReview.approved': 'Approuvée',
 
   // ── Plans ───────────────────────────────────────────────────────────────────
+  'workspace.tabs.aria': 'Pages',
   'plans.title': 'Plans',
   'plans.section': 'Sessions de planification',
   'plans.count.one': '1 plan',

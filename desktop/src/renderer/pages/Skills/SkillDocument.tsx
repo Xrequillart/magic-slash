@@ -70,7 +70,7 @@ export default function SkillDocument({ skill }: { skill: SkillDetail }) {
     : { label: t('skills.source.builtIn'), className: 'bg-accent/10 text-accent' }
 
   return (
-    <div className="flex flex-col gap-4 max-w-[62rem] w-full">
+    <div className="flex flex-col gap-4 w-full">
       {/* Header — the frontmatter, read as a card rather than as dead inputs */}
       <div className="px-5 py-4 rounded-2xl bg-surface-subtle border border-line-field">
         <div className="flex items-start gap-3.5">

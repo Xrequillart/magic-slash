@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 
 /**
@@ -27,6 +27,17 @@ export interface TabStripItem {
   key: string
   label: string
   icon?: LucideIcon
+  /**
+   * Anything to draw where `icon` would go, when a glyph is not what belongs there —
+   * today the signed-in account's photo on the Settings tab. Wins over `icon`; pass one
+   * or the other, never both.
+   *
+   * A NODE and not another icon slot, because what goes here is not always an icon: an
+   * avatar is an `<img>` with a fallback of its own, and the component that draws it
+   * already exists. Whatever is passed has to size and shrink like the glyph it stands
+   * in for — `w-3.5 h-3.5 shrink-0` — since the strip sets no box around it.
+   */
+  leading?: ReactNode
 }
 
 interface Pill {
@@ -130,7 +141,7 @@ export function TabStrip({
                 active ? 'text-ink' : 'text-text-secondary hover:text-ink'
               }`}
             >
-              {Icon && <Icon className="w-3.5 h-3.5 shrink-0" />}
+              {item.leading ?? (Icon && <Icon className="w-3.5 h-3.5 shrink-0" />)}
               {item.label}
             </button>
           )

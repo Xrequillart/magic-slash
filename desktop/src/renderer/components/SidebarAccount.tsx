@@ -10,6 +10,31 @@ import { displayNameFromEmail } from '../utils/displayName'
 import { useT } from '../i18n'
 
 /**
+ * Who is signed in, as the two things a control needs to NAME them: the word and the
+ * photo.
+ *
+ * Extracted the day a second surface had to draw the same person — the Settings tab of
+ * the page overlay, which shows the account rather than a gear. Two copies of this would
+ * be two answers to "what do we call the user", and they would disagree the first time
+ * `displayNameFromEmail`'s fallback was reached on one side and not the other.
+ *
+ * `signedIn` is the caller's branch and not a name this can resolve: signed out and
+ * cloud-disabled are different states with different controls (a login button, a plain
+ * Settings entry), and only the caller knows which of its own shapes to draw. What this
+ * guarantees is that when there IS an account, both surfaces call it the same thing.
+ */
+export function useAccountIdentity(): { signedIn: boolean; name: string; avatar: string | null } {
+  const { status } = useAuth()
+  const avatar = useAvatar()
+  const t = useT()
+  return {
+    signedIn: status.enabled && status.loggedIn,
+    name: displayNameFromEmail(status.user?.email, t('sidebar.accountFallback')),
+    avatar,
+  }
+}
+
+/**
  * Top-of-sidebar account control (replaces the old Settings button). Logged in →
  * the user's first name; clicking opens the Settings modal. Logged out → a
  * "Login / Sign up" button opening the auth modal. When cloud is disabled it
@@ -22,7 +47,7 @@ import { useT } from '../i18n'
  */
 export function SidebarAccount({ shortcutKey }: { shortcutKey?: string }) {
   const { status } = useAuth()
-  const avatar = useAvatar()
+  const { signedIn, name, avatar } = useAccountIdentity()
   const t = useT()
   const config = useStore((s) => s.config)
   const openSettingsModal = useStore((s) => s.openSettingsModal)
@@ -69,8 +94,7 @@ export function SidebarAccount({ shortcutKey }: { shortcutKey?: string }) {
   }
 
   // Signed in → account button opening Settings.
-  if (status.enabled && status.loggedIn) {
-    const name = displayNameFromEmail(status.user?.email, t('sidebar.accountFallback'))
+  if (signedIn) {
     return (
       <button
         onClick={openSettings}

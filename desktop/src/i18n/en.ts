@@ -1155,6 +1155,7 @@ export const en = {
   'prReview.approved': 'Approved',
 
   // ── Plans ───────────────────────────────────────────────────────────────────
+  'workspace.tabs.aria': 'Pages',
   'plans.title': 'Plans',
   'plans.section': 'Planning sessions',
   'plans.count.one': '1 plan',

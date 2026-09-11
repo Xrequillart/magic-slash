@@ -819,7 +819,7 @@ function SkillEditor({
     : t('skills.editor.editTitle', { name: skill?.name ?? '' })
 
   return (
-    <div className="flex flex-col gap-6 max-w-[62rem] w-full">
+    <div className="flex flex-col gap-6 w-full">
       {/* Header — no back arrow: the rail is always there to navigate from */}
       <div className="flex items-center gap-3">
         <h2 className="text-xl font-semibold capitalize flex-1">
@@ -1198,7 +1198,7 @@ export function SkillsPage() {
 
   // Overview — the "All skills" destination: warnings, budget, and the cards.
   const overview = (
-    <div className="flex flex-col gap-10 max-w-[62rem] mx-auto w-full">
+    <div className="flex flex-col gap-10 w-full">
       {/* Warnings */}
       {!loading && (
         <SkillsWarnings duplicates={duplicateSkills} longDescriptions={longDescriptions} onFixLongDescriptions={handleFixLongDescriptions} />

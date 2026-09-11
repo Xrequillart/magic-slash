@@ -199,6 +199,11 @@ function createWindow() {
     minHeight: 600,
     show: false,
     titleBarStyle: 'hidden',
+    // LEAVE THIS ALONE. It was moved once, to centre the lights in a bar whose height
+    // had been raised to meet them, and the result was wrong on sight: these are macOS's
+    // own widgets and the corner they sit in is the one every other Mac app puts them
+    // in. Vertical centring in whatever bar happens to be underneath is not a property
+    // anybody was missing.
     trafficLightPosition: { x: 16, y: 12 },
     transparent: true,
     vibrancy: 'fullscreen-ui',

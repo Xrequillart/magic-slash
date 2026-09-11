@@ -1,12 +1,17 @@
 import { useEffect, useCallback, useRef, useMemo, useState } from 'react'
-import { AlertTriangle, RotateCcw, FolderOpen } from 'lucide-react'
+import { AlertTriangle, ListTodo, NotebookPen, RotateCcw, Settings, Sparkles, FolderOpen } from 'lucide-react'
 import { REASON_META, buildRepoSetup, needsRepoSetup } from './utils/repoSetup'
 import type { InvalidRepo } from '../preload'
 import { useStore } from './store'
+import type { ModalId } from './store'
+import type { LucideIcon } from 'lucide-react'
 import { useConfig } from './hooks/useConfig'
 import { useTerminals } from './hooks/useTerminals'
 import { useOrderedTerminals } from './hooks/useOrderedTerminals'
 import { TitleBar } from './components/TitleBar'
+import { AccountAvatar } from './components/AccountAvatar'
+import { useAccountIdentity } from './components/SidebarAccount'
+import type { TabStripItem } from './components/TabStrip'
 import { Sidebar } from './components/Sidebar'
 import { AgentInfoSidebar } from './components/AgentInfoSidebar'
 import { ToastContainer, showToast } from './components/Toast'
@@ -29,6 +34,33 @@ import FilePreviewPanel from './components/FilePreviewPanel'
 import PRCommentsPanel from './components/pr-comments/PRCommentsPanel'
 import { useT, type MessageKey } from './i18n'
 import { BTN_PRIMARY } from './theme/controls'
+
+/**
+ * The app's four page overlays, in the order the sidebar's top group lists them — which
+ * is also the order the work runs in: you plan, the plan files tickets, the skills are
+ * what act on them, and the settings are how all three behave.
+ *
+ * MODULE SCOPE, not built inside the component. `TabStrip` takes `items` as a prop and
+ * measures its pill against them; an array rebuilt on every render would be a new
+ * identity every time, and this one is a constant apart from its translations. The
+ * LABELS are keys rather than strings for the same reason the rail's are — a module-level
+ * `t()` would be evaluated once at import and pin the strip to whatever language the app
+ * started in.
+ *
+ * Keyed by `ModalId`, because the tab IS the open modal: there is no second piece of
+ * state saying which page is showing, which is what lets every `openModal` deep link
+ * double as a tab switch.
+ */
+const PAGE_TABS: { key: ModalId; labelKey: MessageKey; icon: LucideIcon }[] = [
+  { key: 'plans', labelKey: 'plans.title', icon: NotebookPen },
+  { key: 'tasks', labelKey: 'tasks.title', icon: ListTodo },
+  { key: 'skills', labelKey: 'sidebar.skills', icon: Sparkles },
+  // Settings is LAST and is the odd one out: signed in, it is drawn as the account
+  // rather than as a gear — see `accountTab` in the component. The gear and the word
+  // here are what it falls back to, and what its `title` uses either way.
+  { key: 'settings', labelKey: 'sidebar.settings', icon: Settings },
+]
+
 
 function LoadingScreen() {
   const t = useT()
@@ -61,7 +93,7 @@ function ErrorScreen({ error }: { error: string }) {
 
 export function App() {
   const t = useT()
-  const { closeAgentModal, closeCloseAgentModal, terminals, setActiveTerminal, rightPaneTerminalIds, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, setConfig, repoSetupDismissed, setRepoSetupDismissed, activeModal, closeModal } = useStore()
+  const { closeAgentModal, closeCloseAgentModal, terminals, setActiveTerminal, rightPaneTerminalIds, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, setConfig, repoSetupDismissed, setRepoSetupDismissed, activeModal, closeModal, openModal } = useStore()
   const { configLoading, configError, loadConfig } = useConfig()
   const { killTerminal, launchClaudeTerminal } = useTerminals()
   const { flatVisualOrder } = useOrderedTerminals()
@@ -238,6 +270,44 @@ export function App() {
   // Reset the shared hash route on close so the next open lands on the modal's
   // home rather than a stale sub-page. Both Settings (#/repo/<name>) and Skills
   // (#/skill/<name>, #/new, #/repo-skill/<path>) route off window.location.hash.
+  /**
+   * The page the overlay is on, as its row of `PAGE_TABS` — what the header's title and
+   * mark are both drawn from.
+   *
+   * Falls back to the first row rather than going undefined: `activeModal` is a `ModalId`
+   * and every one of them is in the table, so a miss is impossible today and would be a
+   * table that lost a row tomorrow. A header with no name at all is a worse answer than
+   * the wrong one.
+   */
+  const activePage = PAGE_TABS.find((tab) => tab.key === activeModal) ?? PAGE_TABS[0]
+
+  /**
+   * The Settings tab, drawn as WHO IS SIGNED IN rather than as a gear: their photo and
+   * the name the sidebar's account row already calls them by.
+   *
+   * Settings is the one page of the four that is about the reader instead of about the
+   * work, and the account is what they actually go there for — the organization, the
+   * connections, the profile. Naming the tab after them says that; a gear labelled
+   * "Settings" says the same thing every gear in every app says.
+   *
+   * `null` when there is no account to draw — signed out, or cloud disabled — and the
+   * strip falls back to the gear from `PAGE_TABS`. Not a placeholder avatar and not the
+   * word "Account": those states are real, they are what `SidebarAccount` branches on
+   * too, and a tab showing a blank photo would be claiming somebody is signed in.
+   *
+   * `alt=""` on the photo because the name is right beside it: the two together are one
+   * label, and a screen reader reading "Account photo Xavier" would be reading the
+   * decoration out loud.
+   */
+  const { signedIn, name: accountName, avatar } = useAccountIdentity()
+  const accountTab: TabStripItem | null = signedIn
+    ? {
+      key: 'settings',
+      label: accountName,
+      leading: <AccountAvatar variant="sidebar" dataUrl={avatar} alt="" />,
+    }
+    : null
+
   const handleCloseModal = useCallback(() => {
     closeModal()
     if (window.location.hash && window.location.hash !== '#/') {
@@ -472,34 +542,67 @@ export function App() {
       <FilePreviewPanel />
       <PRCommentsPanel />
 
-      {/* Page overlays — Settings, Skills, Plans and Tasks */}
-      {activeModal === 'settings' && (
-        <PageModal title={t('sidebar.settings')} onClose={handleCloseModal}>
-          <ConfigPage />
-        </PageModal>
-      )}
+      {/* EVERY PAGE OVERLAY IS ONE MODAL WITH FOUR TABS, and the single `<PageModal>`
+          element below is what makes it one: switching tabs changes its children and
+          nothing else, so React keeps the same instance mounted — the backdrop does not
+          fade, the panel does not replay its entrance, and full screen stays where the
+          reader put it. Four sibling `{activeModal === '…' && …}` blocks, which is what
+          this was, could not do that: they are different positions in the tree, so every
+          switch unmounted one modal and mounted another, exit animation and all.
 
-      {activeModal === 'skills' && (
-        <PageModal title={t('sidebar.skills')} onClose={handleCloseModal}>
-          <SkillsPage />
-        </PageModal>
-      )}
+          THE STRIP IS THE SIDEBAR'S TOP GROUP, in its order. Those four buttons are the
+          whole of this app outside the agents list, and they were already read as a
+          group; turning them into tabs of one overlay only says out loud what the
+          sidebar already said. It also means the reader crossing between them — a plan's
+          ticket rows open the board, a ticket's page names the plan it came out of, a
+          skill's page and the repository settings that configure it — never watches an
+          overlay close and another open.
 
-      {/* The live indicator reports the CONNECTION, not this list. `plan_sessions` is
-          deliberately absent from the realtime publication (see the end of
-          20260821090000_plan_sessions.sql), so a plan written by a teammate while this
-          is open arrives on the next read rather than by itself — what the dot says is
-          whether the backend is reachable at all, which is still the answer to "why does
-          this look emptier than I expected". */}
-      {activeModal === 'plans' && (
-        <PageModal title={t('plans.title')} onClose={handleCloseModal} headerRight={<LiveIndicator />}>
-          <PlansPage />
-        </PageModal>
-      )}
+          `activeModal` IS the selected tab. No second piece of state, which is what keeps
+          every existing deep link working untouched: `openTasksModal`, `openPlansModal`
+          and `openSettingsModal` still call `openModal`, and with the overlay already up
+          that call now reads as "switch to this tab" without any of the three wrappers
+          knowing.
 
-      {activeModal === 'tasks' && (
-        <PageModal title={t('tasks.title')} onClose={handleCloseModal}>
-          <TasksPage />
+          The live indicator rides with the Plans tab alone and reports the CONNECTION,
+          not the list. `plan_sessions` is deliberately absent from the realtime
+          publication (see the end of 20260821090000_plan_sessions.sql), so a plan written
+          by a teammate while this is open arrives on the next read rather than by itself
+          — what the dot says is whether the backend is reachable at all, which is still
+          the answer to "why does this look emptier than I expected".
+
+          Only the ACTIVE tab's page is mounted. Each is a full page with its own reads —
+          the board alone asks every tracked repository for its issues — and keeping the
+          other three alive to preserve a filter would mean paying for four on every open
+          of any. It is also what keeps each one's own navigation honest: Settings and
+          Skills have rails of their own, and reopening a tab lands on its default rather
+          than wherever it was abandoned. */}
+      {activeModal && (
+        <PageModal
+          title={t(activePage.labelKey)}
+          // The ACTIVE TAB'S OWN ICON, so the mark and the word name the same page. The
+          // Settings tab wears the account photo in the strip and the gear here, and the
+          // pair is deliberate rather than an oversight: the strip says whose settings
+          // these are, the title says what page you are on, and each is marked by the
+          // thing it names.
+          titleIcon={<activePage.icon className="w-4 h-4 shrink-0 text-text-secondary" />}
+          onClose={handleCloseModal}
+          headerRight={activeModal === 'plans' ? <LiveIndicator /> : undefined}
+          tabs={{
+            ariaLabel: t('workspace.tabs.aria'),
+            activeKey: activeModal,
+            items: PAGE_TABS.map(({ key, labelKey, icon }) => (
+              key === 'settings' && accountTab ? accountTab : { key, label: t(labelKey), icon }
+            )),
+            // The cast holds because TabStrip only ever reports back a key it was
+            // handed, and every key here is a `ModalId` by construction.
+            onSelect: (key) => openModal(key as ModalId),
+          }}
+        >
+          {activeModal === 'plans' && <PlansPage />}
+          {activeModal === 'tasks' && <TasksPage />}
+          {activeModal === 'skills' && <SkillsPage />}
+          {activeModal === 'settings' && <ConfigPage />}
         </PageModal>
       )}
 

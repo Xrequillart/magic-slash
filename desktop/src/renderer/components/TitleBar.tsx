@@ -41,6 +41,16 @@ const RightSidebarCloseIcon = () => (
   </svg>
 )
 
+/**
+ * The bar's height, in pixels, and the reason it is a number anybody can import.
+ *
+ * `PageModal` needs it: a full-screen overlay stops BELOW this bar rather than covering
+ * it, so the window stays draggable, the traffic lights stay where macOS drew them, and
+ * the app never loses its own chrome. Two places holding the same 40 is how one of them
+ * ends up holding 48.
+ */
+export const TITLE_BAR_H = 40
+
 export function TitleBar() {
   const t = useT()
   const { terminals, activeTerminalId, rightSidebar, leftSidebarVisible, toggleRightSidebar, toggleLeftSidebar, openCloseAgentModal, isSplitMode, splitTerminalId, focusedPane, isWideScreen, splitEnabled, splitActive, toggleSplitActive } = useStore()
@@ -106,8 +116,10 @@ export function TitleBar() {
 
   return (
     <div
-      className="h-10 bg-surface-sunken select-none flex items-center justify-between px-3 relative"
-      style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      className="bg-surface-sunken select-none flex items-center justify-between px-3 relative"
+      // The height as the exported number rather than as `h-10`, so `PageModal` and this
+      // bar cannot drift apart: it lays itself out against exactly this value.
+      style={{ height: TITLE_BAR_H, WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
       {/* Left side - Traffic lights space + Left sidebar toggle */}
       <div className="flex items-center gap-2">

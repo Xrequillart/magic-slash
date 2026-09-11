@@ -870,7 +870,12 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
           order={railPosition}
           horizontal={isRepoDetailSwitch}
           scrollRef={contentScrollRef}
-          className="max-w-4xl flex flex-col gap-6"
+          // NO WIDTH CAP: the settings pane fills whatever the overlay gives it. It was
+          // `max-w-4xl`, a reading measure borrowed from prose — but these are forms and
+          // two-column rows, and inside a modal the reader can now take full screen the
+          // cap left a band of empty panel beside every one of them. The rail on the left
+          // already keeps the content off the window edge.
+          className="flex flex-col gap-6"
         >
 
       {/* Repository detail — sub-page of the Repositories tab */}
