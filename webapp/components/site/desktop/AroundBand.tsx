@@ -2,7 +2,7 @@
 
 import { AROUND_FACTS, DESKTOP_BANDS } from '@/lib/desktopPage'
 import { useT } from '@/lib/i18n/useLanguage'
-import { BAND_TITLE, HomeSection } from '../home/Shell'
+import { BAND_LEAD, BAND_TITLE, HomeSection } from '../home/Shell'
 import { Reveal } from '../Reveal'
 import { DesktopFactList } from './FactList'
 
@@ -39,7 +39,7 @@ export function AroundBand() {
       <Reveal order={1}>
         <div className="max-w-2xl">
           <h2 className={BAND_TITLE.onDark}>{t(DESKTOP_BANDS.around.title)}</h2>
-          <p className="mt-4 text-base leading-relaxed text-onink-body">{t(DESKTOP_BANDS.around.subtitle)}</p>
+          <p className={`mt-4 ${BAND_LEAD.onDark}`}>{t(DESKTOP_BANDS.around.subtitle)}</p>
         </div>
       </Reveal>
 

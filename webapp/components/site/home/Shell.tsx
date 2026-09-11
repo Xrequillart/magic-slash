@@ -66,6 +66,44 @@ export const BAND_TITLE = {
 } as const
 
 /**
+ * THE PARAGRAPH UNDER A BAND'S HEADLINE, WHERE THE BAND ALSO CARRIES KEY POINTS —
+ * `desktop/FactList`'s glyph-headline-paragraph rows, which is what `/desktop`'s two
+ * closing bands and `/workflow`'s day band are built from.
+ *
+ * ONE SIZE, BECAUSE THE PRODUCT OWNER ASKED FOR ONE ("j'aimerai que le subtitle ait une
+ * font-size aussi grande que les points clés"). The subtitle was `text-base` and the
+ * paragraph inside every fact was `text-lg`, so the line that introduces the list read
+ * as smaller than the list it introduces — a hierarchy the wrong way up. Both now come
+ * from this recipe, which is the point of it being a recipe and not two literals: the
+ * next change to the size lands on the pair or on neither.
+ *
+ * TWO INKS FOR THE SAME REASON `BAND_TITLE` HAS TWO. These bands come in a light tone and
+ * a dark one, `muted` on white mirroring `onink-body` on `ink`, and a caller appending a
+ * colour over a recipe that already states one is the conflicting-utility race the file
+ * avoids everywhere else.
+ */
+const BAND_LEAD_TYPE = 'text-lg leading-relaxed'
+
+export const BAND_LEAD = {
+  /** A band on the white body. */
+  onLight: `${BAND_LEAD_TYPE} text-muted`,
+  /** A full-bleed `bg-ink` band. */
+  onDark: `${BAND_LEAD_TYPE} text-onink-body`,
+} as const
+
+/**
+ * `HomeHeading`'s subtitle, as a SLOT — the same shape `SECTION_PADDING` below has, and
+ * for the same reason: `lead` REPLACES `text-base` rather than racing it in the emitted
+ * sheet. `base` is what every band that carries a mockup keeps; `lead` is what the bands
+ * with key points under them pass, so the introduction is set at the size of what it
+ * introduces.
+ */
+const SUBTITLE_TYPE = {
+  base: 'text-base leading-relaxed',
+  lead: BAND_LEAD_TYPE,
+} as const
+
+/**
  * The band's vertical padding, as a SLOT rather than something a caller appends —
  * exactly the shape `BUTTON_SIZES` has in `components/ui.tsx`, and for the same reason.
  *
@@ -190,9 +228,15 @@ export function HomeHeading({
   title,
   titleKey,
   subtitle,
+  subtitleSize = 'base',
 }: {
   eyebrow?: string
   subtitle?: string
+  /**
+   * `lead` when the band's content under this heading is a list of key points rather
+   * than a mockup — see `SUBTITLE_TYPE` above.
+   */
+  subtitleSize?: keyof typeof SUBTITLE_TYPE
 } & (
   | { title: string; titleKey?: never }
   /**
@@ -212,7 +256,7 @@ export function HomeHeading({
       ) : (
         <h2 className={BAND_TITLE.onLight}>{title}</h2>
       )}
-      {subtitle && <p className="mt-4 text-base leading-relaxed text-muted">{subtitle}</p>}
+      {subtitle && <p className={`mt-4 ${SUBTITLE_TYPE[subtitleSize]} text-muted`}>{subtitle}</p>}
     </div>
   )
 }

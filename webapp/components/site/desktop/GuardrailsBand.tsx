@@ -48,7 +48,11 @@ export function GuardrailsBand() {
   return (
     <HomeSection>
       <Reveal order={1}>
-        <HomeHeading title={t(DESKTOP_BANDS.guardrails.title)} subtitle={t(DESKTOP_BANDS.guardrails.subtitle)} />
+        <HomeHeading
+          title={t(DESKTOP_BANDS.guardrails.title)}
+          subtitle={t(DESKTOP_BANDS.guardrails.subtitle)}
+          subtitleSize="lead"
+        />
       </Reveal>
 
       {/* `mt-12` is what every other band on this page puts between its heading and its

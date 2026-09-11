@@ -3,7 +3,7 @@
 import { useT } from '@/lib/i18n/useLanguage'
 import { DAY_FACTS, WORKFLOW_BANDS } from '@/lib/workflowPage'
 import { DesktopFactList } from '../desktop/FactList'
-import { BAND_TITLE, HomeSection } from '../home/Shell'
+import { BAND_LEAD, BAND_TITLE, HomeSection } from '../home/Shell'
 import { Reveal } from '../Reveal'
 
 /**
@@ -30,7 +30,7 @@ export function DayBand() {
       <Reveal order={1}>
         <div className="max-w-2xl">
           <h2 className={BAND_TITLE.onDark}>{t(WORKFLOW_BANDS.day.title)}</h2>
-          <p className="mt-4 text-base leading-relaxed text-onink-body">{t(WORKFLOW_BANDS.day.subtitle)}</p>
+          <p className={`mt-4 ${BAND_LEAD.onDark}`}>{t(WORKFLOW_BANDS.day.subtitle)}</p>
         </div>
       </Reveal>
 

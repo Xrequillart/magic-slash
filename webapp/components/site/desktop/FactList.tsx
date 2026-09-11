@@ -3,6 +3,7 @@
 import type { DesktopFact } from '@/lib/desktopPage'
 import { titleOf } from '@/lib/features'
 import { useT } from '@/lib/i18n/useLanguage'
+import { BAND_LEAD } from '../home/Shell'
 import { Reveal } from '../Reveal'
 import { DESKTOP_ICONS } from './icons'
 
@@ -24,9 +25,11 @@ import { DESKTOP_ICONS } from './icons'
  *
  * TWO TONES, AND THE LIGHT ONE IS A MIRROR OF THE DARK. `onink-body` is white at 60% on
  * the `ink` sheet, so the paragraph on white is `muted`, the value every light band on
- * this site sets its body copy at (`HomeHeading`'s own subtitle). The glyph and the
- * headline are `ink` — full black, as asked, and the same weight the white version
- * carries against its own ground.
+ * this site sets its body copy at. Both come from `BAND_LEAD` in `home/Shell`, which is
+ * ALSO what the subtitle over this list is set from now: the line introducing the facts
+ * used to be a step smaller than the facts, and it is the same size as them here. The
+ * glyph and the headline are `ink` — full black, as asked, and the same weight the white
+ * version carries against its own ground.
  *
  * `md:col-span-2` ON A LAST ROW THAT WOULD BE ALONE. Five facts in two columns leave the
  * fifth by itself with an empty half beside it, which reads as a row that failed to
@@ -81,9 +84,7 @@ export function DesktopFactList({
                   {titleOf(fact.title, t)}
                 </h3>
               </div>
-              <p
-                className={`mt-4 max-w-lg text-lg leading-relaxed ${dark ? 'text-onink-body' : 'text-muted'}`}
-              >
+              <p className={`mt-4 max-w-lg ${dark ? BAND_LEAD.onDark : BAND_LEAD.onLight}`}>
                 {t(fact.description)}
               </p>
             </li>
