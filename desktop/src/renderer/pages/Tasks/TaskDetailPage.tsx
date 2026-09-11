@@ -493,12 +493,28 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
   const [plan, setPlan] = useState<PlanTicketOrigin | null>(null)
   const openPlansModal = useStore((s) => s.openPlansModal)
 
-  useEffect(() => {
-    setPlan(null)
-    const repoIds = repos
+  /**
+   * THE CLOUD IDS AS A STRING, and the effect below keys on this rather than on `repos`.
+   *
+   * `repos` is built with a `.map()` in the parent's render, so it is a NEW ARRAY on
+   * every render of the Tasks page — and that page re-renders on every pty tick, like
+   * `terminalsKey` below says. Depending on the array meant re-running the read several
+   * times a second, each run clearing the block to null first: the link visibly blinked
+   * on a ticket that has a plan. The ids are what the read actually varies with, so they
+   * are what the dependency has to be.
+   */
+  const repoIdsKey = useMemo(
+    () => repos
       .map((repo) => repo.config?.id)
       .filter((id): id is string => typeof id === 'string' && id !== '')
-    if (repoIds.length === 0) return
+      .join(','),
+    [repos],
+  )
+
+  useEffect(() => {
+    setPlan(null)
+    if (repoIdsKey === '') return
+    const repoIds = repoIdsKey.split(',')
     const keys = tracker === 'jira' ? [issueKey.toUpperCase()] : [`#${issueNumber}`, String(issueNumber)]
 
     let cancelled = false
@@ -511,7 +527,7 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
         // could add here that a reader would act on. See `plans:forTicket`.
       })
     return () => { cancelled = true }
-  }, [repos, tracker, issueKey, issueNumber])
+  }, [repoIdsKey, tracker, issueKey, issueNumber])
 
   /**
    * The three fields both shapes carry, so the chrome can read them without branching.
