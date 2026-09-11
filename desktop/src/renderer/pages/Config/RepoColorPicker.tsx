@@ -1,9 +1,16 @@
 import { useState } from 'react'
 import { FolderGit2, Palette } from 'lucide-react'
 import { Modal } from '../../components/Modal'
-import { REPO_COLOR_CHOICES, repoColorPreview } from '../../utils/projectColors'
+import { REPO_COLOR_CHOICES, REPO_QUICK_COLORS } from '../../utils/projectColors'
 import { useT } from '../../i18n'
 
+
+/* The selected mark, at both sizes. An `outline` rather than a `ring`, because the
+   2px gap has to be see-through: a ring offset paints the gap with a colour you have
+   to name, and behind these tiles is a row that changes colour on hover, so the gap
+   would be a stale patch of the resting background the moment the pointer arrived.
+   An outline offset paints nothing. */
+const SELECTED_RING = 'outline outline-2 outline-offset-2 outline-ink'
 
 /**
  * The repository tile, at the one place it is not a read-out but a control.
@@ -26,13 +33,7 @@ function RepoTile({
   const glyph = size === 'preview' ? 'w-3.5 h-3.5' : 'w-5 h-5'
   return (
     <span
-      /* The ring hugs the tile instead of standing off it. An offset ring has to
-         name the colour BEHIND the gap, and behind this one is a row that changes
-         colour on hover — so the gap would be a stale patch of the resting
-         background every time the pointer arrived. */
-      className={`flex items-center justify-center flex-shrink-0 ${box} ${
-        selected ? 'ring-2 ring-ink' : ''
-      }`}
+      className={`flex items-center justify-center flex-shrink-0 ${box} ${selected ? SELECTED_RING : ''}`}
       /* The tint is the colour itself at 12% (`1f`), the alpha every other repo
          mark in the app uses. Kept as a hex suffix rather than a colour-mix so the
          tile stays one style object and matches RepoMark byte for byte. */
@@ -54,33 +55,58 @@ export function RepoColorPicker({
 }) {
   const t = useT()
   const [isOpen, setIsOpen] = useState(false)
-  const preview = repoColorPreview(color)
+  // The palette chip wears the selected mark whenever the repo's colour is not one
+  // of the six in the row. Without it the row would show no selection at all for
+  // the thirty other colours, and read as if the repo had never chosen one.
+  const inRow = REPO_QUICK_COLORS.includes(color)
+
+  // Same hit area for the six swatches and the chip, so the row is one strip of
+  // buttons rather than six of one kind and one of another.
+  const cell = 'rounded-lg transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-ink disabled:cursor-not-allowed'
 
   return (
     <>
-      {/* One button, not five. The three extra tiles and the palette chip are a
-          picture of what is behind the click, so making any of them separately
-          clickable would promise four shortcuts this row does not have. `-mr-1.5`
-          pulls the hover padding back out of the layout, so the row still aligns
-          with the controls above it and only the hover fill is wider. */}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setIsOpen(true)}
-        aria-label={t('repo.general.colorChange')}
-        title={color}
-        className="flex items-center gap-1.5 p-1.5 -mr-1.5 rounded-xl transition-colors hover:bg-surface disabled:hover:bg-transparent disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-ink"
-      >
-        {preview.map((choice, i) => (
-          <RepoTile key={`${i}-${choice}`} color={choice} size="preview" selected={i === 0} />
+      {/* `gap-2.5`: the selected outline stands 4px off its tile, so a tighter row
+          would have it crowding the neighbour it is meant to be distinguished from. */}
+      <div className={`flex items-center gap-2.5 ${disabled ? 'opacity-60' : ''}`}>
+        {REPO_QUICK_COLORS.map((choice) => (
+          <button
+            key={choice}
+            type="button"
+            disabled={disabled}
+            /* Re-picking the colour it already has does nothing at all: every pick
+               is a save and a toast, and the one pick that cannot change anything
+               should not spend either. */
+            onClick={() => { if (choice !== color) onChange(choice) }}
+            title={choice}
+            aria-label={t('repo.general.setColor', { color: choice })}
+            aria-pressed={color === choice}
+            className={`${cell} ${color === choice || disabled ? '' : 'hover:scale-110'}`}
+          >
+            <RepoTile color={choice} size="preview" selected={color === choice} />
+          </button>
         ))}
-        {/* The neutral chip that says the row is a door. Grey from the surface
-            tokens rather than a fixed light grey: the same chip has to read as
-            "no colour" on a white window and on a black one. */}
-        <span className="flex items-center justify-center flex-shrink-0 w-7 h-7 rounded-lg bg-surface-strong text-icon">
-          <Palette className="w-3.5 h-3.5" />
-        </span>
-      </button>
+
+        {/* The door to the other thirty. Grey from the surface tokens rather than a
+            fixed light grey: the same chip has to read as "more colours" on a white
+            window and on a black one. */}
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => setIsOpen(true)}
+          aria-label={t('repo.general.colorChange')}
+          title={inRow ? undefined : color}
+          className={`${cell} ${disabled ? '' : 'hover:scale-110'}`}
+        >
+          <span
+            className={`flex items-center justify-center flex-shrink-0 w-7 h-7 rounded-lg bg-surface-strong text-icon ${
+              inRow ? '' : SELECTED_RING
+            }`}
+          >
+            <Palette className="w-3.5 h-3.5" />
+          </span>
+        </button>
+      </div>
 
       <Modal
         isOpen={isOpen}
@@ -100,10 +126,7 @@ export function RepoColorPicker({
               /* Stays open on purpose. Picking a colour is a thing you compare, and
                  a dialog that shuts on the first click makes you reopen it to see
                  the one you nearly chose. The tile behind the dialog repaints as
-                 you go, so the choice is already visible while the grid is still up.
-                 Re-picking the colour it already has does nothing at all, though:
-                 every pick is a save and a toast, and the one pick that cannot
-                 change anything should not spend either. */
+                 you go, so the choice is already visible while the grid is still up. */
               onClick={() => { if (choice !== color) onChange(choice) }}
               title={choice}
               aria-label={t('repo.general.setColor', { color: choice })}

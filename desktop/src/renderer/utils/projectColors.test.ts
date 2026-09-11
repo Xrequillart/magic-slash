@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { configKeyForRepoId, getProjectColor, getProjectColorMap, repoColorPreview, PROJECT_COLORS, REPO_COLOR_CHOICES } from './projectColors'
+import { configKeyForRepoId, getProjectColor, getProjectColorMap, PROJECT_COLORS, REPO_COLOR_CHOICES, REPO_QUICK_COLORS } from './projectColors'
 
 describe('getProjectColor', () => {
   it('returns color at given index', () => {
@@ -83,28 +83,14 @@ describe('REPO_COLOR_CHOICES', () => {
   })
 })
 
-describe('repoColorPreview', () => {
-  it('leads with the repo own colour', () => {
-    expect(repoColorPreview('#3B82F6')[0]).toBe('#3B82F6')
-    // Not in the palette at all — still the repo's colour, still first.
-    expect(repoColorPreview('#ABCDEF')[0]).toBe('#ABCDEF')
+describe('REPO_QUICK_COLORS', () => {
+  it('is the head of the grid, in the grid order', () => {
+    // The row is the modal's first line brought forward. Slice it apart and the
+    // quick pick stops landing in the column it points at.
+    expect(REPO_QUICK_COLORS).toEqual(REPO_COLOR_CHOICES.slice(0, 6))
   })
 
-  it('shows four colours, never the same one twice', () => {
-    for (const color of [...REPO_COLOR_CHOICES, '#ABCDEF']) {
-      const preview = repoColorPreview(color)
-      expect(preview).toHaveLength(4)
-      expect(new Set(preview).size).toBe(4)
-      expect(preview.every(Boolean)).toBe(true)
-    }
-  })
-
-  it('previews the tone the repo is already wearing', () => {
-    // Vivid red pulls vivid neighbours; deep red pulls deep ones. A row mixing the
-    // two would advertise a tone the selected tile is not showing.
-    const vivid = REPO_COLOR_CHOICES.slice(0, 18)
-    const deep = REPO_COLOR_CHOICES.slice(18)
-    expect(repoColorPreview('#EF4444').every((c) => vivid.includes(c))).toBe(true)
-    expect(repoColorPreview('#B91C1C').every((c) => deep.includes(c))).toBe(true)
+  it('holds one grid row', () => {
+    expect(REPO_QUICK_COLORS).toHaveLength(6)
   })
 })

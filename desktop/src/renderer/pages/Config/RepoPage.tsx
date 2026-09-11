@@ -1118,14 +1118,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 <label className="block text-sm font-medium mb-0.5">{t('repo.general.color')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.general.colorHelp')}</p>
               </div>
-              {/* One tile, not the palette laid out flat. The row used to widen with
-                  every colour added to it, and the choice you had made was the one
-                  thing it did not show — you had to find the ringed dot among the
-                  rest. Now the row shows the repo as it actually appears, and the
-                  thirty-six alternatives live one click away where there is room for
-                  them. `repoColor`, not `repo.color`: a repo that never chose keeps
-                  the fallback the rest of the app draws it with, so the tile here is
-                  never a colour the repo is not wearing. */}
+              {/* Six colours in reach and the rest one click away, rather than all
+                  thirty-six laid out flat: the row keeps a fixed width whatever the
+                  palette grows to, and the common picks cost no dialog. `repoColor`,
+                  not `repo.color`: a repo that never chose keeps the fallback the
+                  rest of the app draws it with, so the selection shown here is never
+                  a colour the repo is not wearing. */}
               <RepoColorPicker
                 color={repoColor}
                 onChange={handleColorChange}

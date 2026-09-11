@@ -128,26 +128,15 @@ export function configKeyForRepoId(
   return Object.keys(repositories).find((key) => repositories[key].id === repoId)
 }
 
-/** Vivid tones first, then the same eighteen hues deep. See REPO_COLOR_CHOICES. */
-const TONE_SIZE = REPO_COLOR_CHOICES.length / 2
-
 /**
- * The four tiles the closed row shows: the repo's own colour, then three more.
+ * The six colours the closed row offers without opening anything.
  *
- * Picked five hues apart inside the tone the repo is already wearing — so a deep
- * colour previews deep neighbours, never a vivid one it is not offering. Five is
- * what spreads four picks across eighteen hues without ever landing twice; the
- * adjacent entries would have been red, orange, amber, yellow, which is one colour
- * four times as far as the row is concerned, and the row's whole job is to say
- * "there are others".
+ * The head of the grid, in the grid's own order — not a set picked for the row.
+ * The row and the modal show the same palette starting at the same place, so the
+ * six tiles are the modal's first line brought forward rather than a second,
+ * shorter palette the user has to reconcile with the long one.
+ *
+ * Six because that is the grid's row width: open the modal from a quick pick and
+ * the tile you just chose is the one directly above, in the same column.
  */
-export function repoColorPreview(color: string): string[] {
-  const selected = REPO_COLOR_CHOICES.indexOf(color)
-  // A colour from outside the palette (an older config, a hand-edited row) still
-  // leads its own preview: the tile has to show what the repo IS.
-  if (selected === -1) return [color, ...[1, 2, 3].map((k) => REPO_COLOR_CHOICES[k * 5])]
-
-  const toneStart = selected < TONE_SIZE ? 0 : TONE_SIZE
-  const hue = selected - toneStart
-  return [0, 1, 2, 3].map((k) => REPO_COLOR_CHOICES[toneStart + ((hue + k * 5) % TONE_SIZE)])
-}
+export const REPO_QUICK_COLORS = REPO_COLOR_CHOICES.slice(0, 6)
