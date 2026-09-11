@@ -367,7 +367,7 @@ edit by hand:
 
 ```json
 {
-  "version": "0.91.1",
+  "version": "0.91.2",
   "repositories": {
     "api": {
       "path": "/Users/dev/projects/my-api",

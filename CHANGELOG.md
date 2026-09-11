@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.91.2] - 2026-09-11
+
+### Added
+
+- **Desktop**: The board names the active sprint on a chip beside the repository picker
+- **Desktop**: Each board column is read with a page budget of its own, so a long backlog can no longer empty the blocked and in-progress columns
+- **Desktop**: The blocked column has a budget of its own too, built from the statuses the project itself calls blocked
+- **Desktop**: A column whose read stopped at its budget shows `100+` rather than a count that reads as a total
+- **Desktop**: The search box reaches the whole sprint when a column is short, instead of only filtering the tickets already loaded
+
+### Changed
+
+- **Desktop**: A sprint column and a repository's open GitHub issues are read a hundred at a time rather than fifty
+
 ## [0.91.1] - 2026-09-11
 
 ### Added
@@ -2709,6 +2723,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.91.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.2
 [0.91.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.1
 [0.91.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.0
 [0.90.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.90.0
