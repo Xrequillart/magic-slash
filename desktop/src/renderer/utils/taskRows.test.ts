@@ -214,47 +214,53 @@ describe('buildTaskRows', () => {
     expect(keys(row)).toEqual(['PROJ-2', 'PROJ-1'])
   })
 
-  // Acceptance criterion 2, and the reason `buildTaskRows` takes the agent index at
-  // all: the In Progress column is everybody's work in flight, and a page whose one
-  // action is "start an agent" must not offer to duplicate it.
-  it('drops an In Progress ticket nobody has an agent on', () => {
+  // The page is a board now: In Progress is a column, so a ticket a teammate is on is
+  // information rather than an invitation to duplicate their work. It used to be
+  // dropped here unless an agent was on it, which made a sprint read as emptier than
+  // it is — see `buildTaskRows`.
+  it('keeps an In Progress ticket nobody has an agent on', () => {
     const [row] = build([jiraGroup({
       issues: [
         jiraIssue({ key: 'PROJ-1', statusCategory: 'new' }),
         jiraIssue({ key: 'PROJ-2', statusCategory: 'indeterminate' }),
       ],
     })])
-    expect(keys(row)).toEqual(['PROJ-1'])
+    expect(keys(row)).toEqual(['PROJ-1', 'PROJ-2'])
   })
 
-  it('keeps an In Progress ticket an agent is on', () => {
-    const [row] = build(
-      [jiraGroup({
-        issues: [
-          jiraIssue({ key: 'PROJ-1', statusCategory: 'new', createdAt: '2026-08-01T10:00:00Z' }),
-          jiraIssue({ key: 'PROJ-2', statusCategory: 'indeterminate', createdAt: '2026-08-02T10:00:00Z' }),
-        ],
-      })],
-      REPOS,
-      { 'jira-only': new Set(['PROJ-2']) },
-    )
+  it('keeps a finished ticket, which the Done column is drawn from', () => {
+    const [row] = build([jiraGroup({
+      issues: [
+        jiraIssue({ key: 'PROJ-1', statusCategory: 'new', createdAt: '2026-08-01T10:00:00Z' }),
+        jiraIssue({ key: 'PROJ-2', statusCategory: 'done', createdAt: '2026-08-02T10:00:00Z' }),
+      ],
+    })])
     expect(keys(row)).toEqual(['PROJ-2', 'PROJ-1'])
   })
 
-  // The index is keyed per repository, so an agent on PROJ-2 of another project
-  // must not rescue this one's.
+  // The agent index no longer decides which tickets are SHOWN — only which ones are
+  // marked. It is still keyed per repository, so an agent on another project's PROJ-2
+  // must not mark this one's.
   it('reads the agent index of the repository the row belongs to', () => {
     const [row] = build(
       [jiraGroup({ issues: [jiraIssue({ key: 'PROJ-2', statusCategory: 'indeterminate' })] })],
       REPOS,
       { 'magic-slash': new Set(['PROJ-2']) },
     )
-    expect(keys(row)).toEqual([])
+    expect(keys(row)).toEqual(['PROJ-2'])
+    expect(row.agentedIssues.has('PROJ-2')).toBe(false)
   })
 
-  it('never filters a GitHub group on the agent index', () => {
-    // GitHub issues on this page are all open and all listed; the rule is about a
-    // sprint's In Progress column and nothing else.
+  it('marks the tickets the index does name for this repository', () => {
+    const [row] = build(
+      [jiraGroup({ issues: [jiraIssue({ key: 'PROJ-2', statusCategory: 'indeterminate' })] })],
+      REPOS,
+      { 'jira-only': new Set(['PROJ-2']) },
+    )
+    expect(row.agentedIssues.has('PROJ-2')).toBe(true)
+  })
+
+  it('never filters a GitHub group on the agent index either', () => {
     const [row] = build([group({ issues: [issue({ number: 9 })] })], REPOS, {})
     expect(numbers(row)).toEqual([9])
   })

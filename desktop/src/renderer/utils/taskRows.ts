@@ -1,12 +1,12 @@
-import type { JiraPriorityLevel, JiraTaskIssue, JiraTaskRepoGroup, RepositoryConfig, TaskRepoGroup } from '../../types'
+import type { JiraPriorityLevel, JiraTaskIssue, RepositoryConfig, TaskRepoGroup } from '../../types'
 import { getProjectColorMap } from './projectColors'
-import { NO_AGENTS, normalizeTicketId } from './taskAgents'
+import { NO_AGENTS } from './taskAgents'
 
 /**
  * One repository's card on the Tasks page: the group the main process read, plus
  * the things only the renderer can decide — what colour its dot is, what order its
  * issues are in, whether it has to name its tracker to be told apart from a twin,
- * and (for a Jira sprint) which of its In Progress tickets somebody is actually on.
+ * and which of its tickets somebody already has an agent on.
  *
  * An intersection rather than an `extends`, because `TaskRepoGroup` is a union: the
  * `color` distributes over both members, so a row narrows on `tracker` exactly as
@@ -56,8 +56,7 @@ export type TaskRow = TaskRepoGroup & {
    *
    * Unioned here rather than looked up per card, because a merged card's tickets belong
    * to every repository under it: an agent started in one of them is on the ticket, and
-   * a lookup on the primary key alone would leave the row's dot off — and, on a Jira
-   * sprint, hide the In Progress ticket that agent is on (see `visibleIssues`).
+   * a lookup on the primary key alone would leave the card's marker off.
    */
   agentedIssues: ReadonlySet<string>
 }
@@ -92,27 +91,6 @@ export function sortIssues<T extends { createdAt: string }>(issues: T[]): T[] {
     const right = b.createdAt || ''
     return right < left ? -1 : right > left ? 1 : 0
   })
-}
-
-/**
- * The sprint tickets this repository's card actually shows.
- *
- * The main process sends the whole sprint minus what is finished, because only
- * THIS side can apply the rule the ticket asks for: an In Progress ticket appears
- * only when a Magic Slash agent — the reader's own, or a teammate's — is on it. The
- * agent roster is cloud and store state that never crosses the bridge, so the
- * filter cannot live where the read does.
- *
- * The rule is not "hide what nobody is doing". A sprint's In Progress column is
- * everyone's work in flight, and listing all of it on a page whose one affirmative
- * action is "start an agent" would offer to duplicate work already under way. What
- * is left is what the page can honestly propose: the To Do column, plus the tickets
- * an agent is on — those marked as taken.
- */
-function visibleIssues(group: JiraTaskRepoGroup, agented: ReadonlySet<string>): JiraTaskIssue[] {
-  return group.issues.filter(
-    (issue) => issue.statusCategory !== 'indeterminate' || agented.has(normalizeTicketId(issue.key)),
-  )
 }
 
 /**
@@ -163,9 +141,9 @@ export function buildTaskRows(
   repositories: Record<string, RepositoryConfig>,
   /**
    * Which ticket ids already have an agent, per repository config key — the index
-   * `buildAgentedIssues` produces. Required rather than optional: a caller that
-   * forgot it would silently list every In Progress ticket in the sprint, which is
-   * the one outcome `visibleIssues` exists to prevent.
+   * `buildAgentedIssues` produces. Required rather than optional: it is what puts the
+   * agent marker on a card, and a caller that forgot it would draw a board on which
+   * nobody is working on anything.
    */
   agentedIssues: Record<string, ReadonlySet<string>>,
 ): TaskRow[] {
@@ -220,12 +198,21 @@ export function buildTaskRows(
       repos,
       agentedIssues: agented,
     }
+    // EVERY ticket the read came back with, both trackers, and that is the change
+    // worth naming here. A Jira sprint's In Progress column used to be narrowed at this
+    // line to the tickets an agent was on, so the page could only ever propose work
+    // nobody had started. The page is a BOARD now: In Progress is a column, so a
+    // teammate's ticket in flight is information rather than an invitation to duplicate
+    // it — and hiding it made a column that claimed a sprint was emptier than it is.
+    // What tells the reader the difference is the card's own agent marker, which
+    // `agented` above still feeds.
+    //
     // One arm per tracker, and they cannot be folded into one: `read` is a union, and
     // TypeScript narrows it — and therefore `sortIssues`' element type — only inside a
     // branch. Folded, the sort would widen to `(TaskIssue | JiraTaskIssue)[]` and fit
     // neither member. Only the issues differ, so only the issues are written twice.
     rows.push(read.tracker === 'jira'
-      ? { ...read, ...shared, issues: sortIssues(visibleIssues(read, agented)) }
+      ? { ...read, ...shared, issues: sortIssues(read.issues) }
       : { ...read, ...shared, issues: sortIssues(read.issues) })
   }
 
@@ -302,8 +289,12 @@ export const NO_FILTER: TaskFilter = { configKey: '', query: '', epicKey: '', so
  * `toLowerCase` and not `toLocaleLowerCase`: the query and the title are folded by
  * the SAME function and only ever compared with each other, so a locale-specific
  * casing rule could only make the two disagree in a language nobody is searching in.
+ *
+ * Exported for `taskBoard.ts`, which asks the same question of a status name and a
+ * label — "is this word 'blocked', however it is spelled and whatever language the
+ * board is in". Two copies of this would be two answers to it.
  */
-function fold(value: string): string {
+export function fold(value: string): string {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 }
 
@@ -516,9 +507,27 @@ export function taskFilterEpics(rows: TaskRow[]): { key: string; title: string; 
   return epics.sort((a, b) => a.title.localeCompare(b.title))
 }
 
-/** How many tickets the page is showing, across every repository that answered. */
+/**
+ * Whether a ticket is still OPEN — the question both counters are really asking, now
+ * that the read brings back finished work for the board's Done column.
+ *
+ * One predicate per tracker in one function, because "done" is not the same fact on
+ * the two: a Jira ticket is finished when its status category says so, a GitHub issue
+ * when it is closed. Neither can be read off the other's field.
+ */
+export function isOpen(issue: TaskRow['issues'][number]): boolean {
+  return 'key' in issue ? issue.statusCategory !== 'done' : !issue.closedAt
+}
+
+/**
+ * How many tickets the page is showing, across every repository that answered.
+ *
+ * The FINISHED ones are not counted. The header's number is read as "how much is
+ * waiting", and a Done column that grows as the team clears the sprint would make that
+ * number climb while the work went down.
+ */
 export function countOpenIssues(rows: TaskRow[]): number {
-  return rows.reduce((total, row) => total + row.issues.length, 0)
+  return rows.reduce((total, row) => total + row.issues.filter(isOpen).length, 0)
 }
 
 /**
@@ -531,13 +540,17 @@ export function countOpenIssues(rows: TaskRow[]): number {
  * A group with no `totalOpen` — one that failed, or one read before the count was
  * asked for — contributes what it could show, never less. EVERY Jira group is in
  * that position and always will be: `/rest/api/3/search/jql` returns no `total` at
- * all (see `JiraTaskRepoGroup`), so a truncated sprint contributes the page it
+ * all (see the Jira half of `TaskRepoGroup`), so a truncated sprint contributes the page it
  * could read. The number is therefore a floor rather than a census, which is the
  * same claim it already made for a failed GitHub group.
  */
 export function countTotalOpen(rows: TaskRow[]): number {
-  return rows.reduce(
-    (total, row) => total + (row.tracker === 'github' ? row.totalOpen ?? row.issues.length : row.issues.length),
-    0,
-  )
+  return rows.reduce((total, row) => {
+    // Counted off the OPEN issues in both fallbacks, for `countOpenIssues`' reason:
+    // `totalOpen` is GitHub's own count of open issues and never included the closed
+    // tail, so falling back to the raw array length would make a repository with a busy
+    // Done column report more open issues than it has.
+    const shown = row.issues.filter(isOpen).length
+    return total + (row.tracker === 'github' ? Math.max(row.totalOpen ?? shown, shown) : shown)
+  }, 0)
 }

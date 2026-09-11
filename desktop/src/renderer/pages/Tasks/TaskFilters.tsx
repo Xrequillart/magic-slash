@@ -1,14 +1,21 @@
 import { useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDownWideNarrow, Check, ChevronDown, Search, X } from 'lucide-react'
+import { ArrowDownWideNarrow, Check, ChevronDown, FolderGit2, Search, X } from 'lucide-react'
 import { useAnchoredPanel } from '../../components/useAnchoredPanel'
 import { useT } from '../../i18n'
 import { INPUT } from '../../theme/controls'
 import type { TaskFilter, TaskSort } from '../../utils/taskRows'
 
 /**
- * The controls at the top of the backlog: a search box, and three pickers — which
- * repository, in what order, which Jira epic.
+ * The controls at the top of the board: which repository, a search box, and two pickers
+ * — in what order, and which Jira epic.
+ *
+ * THE REPOSITORY PICKER IS NOT A FILTER any more, and it leads the row because of it.
+ * The page used to draw every repository's backlog at once and offer to narrow to one;
+ * it now draws ONE repository's board, and the picker is what chooses it. That is why it
+ * has no "all repositories" entry — four columns holding six repositories' tickets are
+ * four columns nobody can read down — and why what it is set to is remembered on the
+ * account rather than reset with the page. See `Config.tasksRepo`.
  *
  * They shape what is ON SCREEN and nothing else — no read is made, no query leaves
  * the process. That is why they live here rather than in the reload path: the page
@@ -47,8 +54,46 @@ export interface TaskFilterEpic {
 interface SelectOption {
   value: string
   label: string
-  /** A dot before the label. Absent means no dot, never a default colour. */
+  /** The mark before the label takes this colour. Absent means no mark, never a default. */
   color?: string
+}
+
+/**
+ * How a picker draws an option's colour: as a plain dot, or as the repository tile the
+ * rest of the app draws a repository with.
+ *
+ * A MODE ON THE PICKER rather than a rendered node per option, because it is a property
+ * of the LIST and not of any entry in it: every option of the repository picker is a
+ * repository, and every option of the epic picker is an epic. Passing a node per option
+ * would let one list draw two different marks, which is the bug this is shaped to make
+ * impossible.
+ */
+type SelectMarker = 'dot' | 'repo'
+
+/**
+ * The option's colour, as the mark the list asks for.
+ *
+ * The repository tile is `components/agent-info-sidebar/RepoMark`'s — the same folder
+ * glyph on the same colour-at-12% backdrop, at picker scale. Not that component itself,
+ * which resolves its colour from the store by repository NAME: the filter already holds
+ * the colour on `TaskFilterRepo`, off the same `getProjectColorMap` call, and going back
+ * to the store for it would be a second answer to a question already answered.
+ *
+ * `1f` is the alpha suffix that component uses, appended to the hex — 12%, which is what
+ * makes the tile a tint of the repository's colour rather than a block of it.
+ */
+function OptionMark({ color, marker }: { color: string; marker: SelectMarker }) {
+  if (marker === 'dot') {
+    return <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+  }
+  return (
+    <span
+      className="flex items-center justify-center w-5 h-5 rounded-md flex-shrink-0"
+      style={{ backgroundColor: `${color}1f`, color }}
+    >
+      <FolderGit2 className="w-3 h-3" />
+    </span>
+  )
 }
 
 /**
@@ -79,6 +124,8 @@ function FilterSelect({
   clearLabel,
   width,
   icon: Icon,
+  alwaysNeutral,
+  marker = 'dot',
 }: {
   value: string
   options: SelectOption[]
@@ -95,6 +142,10 @@ function FilterSelect({
   width: number
   /** A glyph before the label, for a picker whose values do not name their own subject. */
   icon?: typeof ArrowDownWideNarrow
+  /** For a picker that is always set to something, and so is never "away from default". */
+  alwaysNeutral?: boolean
+  /** What an option's colour is drawn as. See `SelectMarker`. */
+  marker?: SelectMarker
 }) {
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
@@ -109,10 +160,14 @@ function FilterSelect({
 
   // Tinted while it is narrowing or reordering, like `AgentSortButton`: a page showing
   // a fraction of its rows, or showing them in an order it was not left in, has to say
-  // so from the control rather than only from the gap where the other rows were. A
-  // picker with no clear entry is at its default exactly when its first option is
-  // selected, which is the arrangement `TaskFilters` relies on below.
-  const active = clearLabel ? !!selected : selected?.value !== options[0]?.value
+  // so from the control rather than only from the gap where the other rows were.
+  //
+  // A picker with no clear entry is at its default exactly when its FIRST option is
+  // selected — the arrangement `TaskFilters` relies on for the sort, whose leading entry
+  // is the order the page comes in. The repository picker is the exception and passes
+  // `alwaysNeutral`: it has no default to be away from, so tinting it would leave the
+  // control permanently lit on every repository but whichever one happened to sort first.
+  const active = alwaysNeutral ? false : clearLabel ? !!selected : selected?.value !== options[0]?.value
 
   return (
     <>
@@ -121,14 +176,16 @@ function FilterSelect({
         type="button"
         onClick={() => setOpen((o) => !o)}
         style={{ width }}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border text-xs cursor-pointer transition-colors flex-shrink-0 ${
+        // `py-1` under a repository tile and `py-1.5` under a dot, so the trigger stands
+        // the same 30px either way: the tile is 20px where a line of `text-xs` is 16, and
+        // left on the taller padding this control would sit four pixels above the search
+        // box it shares a row with.
+        className={`flex items-center gap-2 px-3 ${marker === 'repo' ? 'py-1' : 'py-1.5'} rounded-lg bg-surface border text-xs cursor-pointer transition-colors flex-shrink-0 ${
           active ? 'border-accent/40 text-ink' : 'border-line-field text-ink hover:border-accent'
         }`}
       >
         {Icon && <Icon className="w-3.5 h-3.5 shrink-0 text-text-secondary" />}
-        {selected?.color && (
-          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: selected.color }} />
-        )}
+        {selected?.color && <OptionMark color={selected.color} marker={marker} />}
         <span className="truncate">{selected ? selected.label : placeholder}</span>
         <ChevronDown
           className={`w-3.5 h-3.5 shrink-0 ml-auto text-text-secondary transition-transform ${open ? 'rotate-180' : ''}`}
@@ -139,7 +196,11 @@ function FilterSelect({
         <div
           ref={panelRef}
           style={style()}
-          className="bg-bg-secondary border border-line rounded-xl shadow-2xl z-[60] p-1 max-h-80 overflow-y-auto"
+          // `gap-0.5` between entries, not flush. The rows carry a hover and a selected
+          // ground of their own, so touching they read as one banded block and the
+          // highlight has no edge of its own to land on; a two-pixel breath is enough to
+          // make each entry a thing being pointed at.
+          className="bg-bg-secondary border border-line rounded-xl shadow-2xl z-[60] p-1 max-h-80 overflow-y-auto flex flex-col gap-0.5"
         >
           {/* The way back out, and the entry the control opens on. First, because it
               is the one people reach for after having picked wrongly. */}
@@ -172,9 +233,7 @@ function FilterSelect({
                   isSelected ? 'bg-surface' : 'hover:bg-surface'
                 }`}
               >
-                {option.color && (
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: option.color }} />
-                )}
+                {option.color && <OptionMark color={option.color} marker={marker} />}
                 <span className={`text-xs truncate ${isSelected ? 'text-accent' : 'text-ink'}`}>{option.label}</span>
                 {isSelected && <Check className="w-3.5 h-3.5 text-accent shrink-0 ml-auto" />}
               </button>
@@ -194,8 +253,12 @@ function FilterSelect({
  * knows; the repository and the epic hold names of arbitrary length and truncate, so
  * they get the room. All three shrink from the search box rather than from each
  * other — `flex-shrink-0` on the triggers, `flex-1 min-w-0` on the box.
+ *
+ * The repository gets the most of the three. It is no longer one narrowing control among
+ * several but the answer to "which board am I looking at", and a repository name
+ * truncated to `magic-sl…` is the page failing to say what it is showing.
  */
-const REPO_WIDTH = 176
+const REPO_WIDTH = 208
 const SORT_WIDTH = 152
 const EPIC_WIDTH = 192
 
@@ -241,6 +304,22 @@ export function TaskFilters({
 
   return (
     <div className="flex items-center gap-2 min-w-0">
+      {/* FIRST, and before the search box, because it is the only control here that
+          decides what the page is about rather than how much of it is on screen. No
+          `clearLabel`: there is no "all repositories" state to go back to. */}
+      <FilterSelect
+        value={value.configKey}
+        options={repos.map((repo) => ({ value: repo.configKey, label: repo.name, color: repo.color }))}
+        onChange={(configKey) => onChange({ ...value, configKey })}
+        placeholder={t('tasks.filter.pickRepo')}
+        width={REPO_WIDTH}
+        alwaysNeutral
+        // The repository tile the sidebar and the webapp draw a repository with, rather
+        // than the bare dot the epic picker keeps. The picker names the page's subject
+        // now, so it is worth being recognised across surfaces the way a repository is
+        // everywhere else; an epic is a Jira relationship with no such mark of its own.
+        marker="repo"
+      />
       <div className="relative flex-1 min-w-0">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
         <input
@@ -273,14 +352,6 @@ export function TaskFilters({
           </button>
         )}
       </div>
-      <FilterSelect
-        value={value.configKey}
-        options={repos.map((repo) => ({ value: repo.configKey, label: repo.name, color: repo.color }))}
-        onChange={(configKey) => onChange({ ...value, configKey })}
-        placeholder={t('tasks.filter.allRepos')}
-        clearLabel={t('tasks.filter.allRepos')}
-        width={REPO_WIDTH}
-      />
       {/* An icon here and on neither of its neighbours, because it is the one picker
           whose values do not name their own subject: "Newest" beside a repository name
           and an epic title reads as a third thing to filter by until the arrow says it

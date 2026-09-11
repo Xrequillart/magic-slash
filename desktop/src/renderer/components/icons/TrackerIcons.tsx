@@ -113,3 +113,86 @@ export function TrackerTile({
     </span>
   )
 }
+
+/**
+ * The tracker's mark AND the ticket's id, as one label on the connector's own ground —
+ * the app's copy of the marketing site's product chip (`site/home/AppSection.tsx`'s
+ * `ProductChip`), which is where the two grounds below come from.
+ *
+ * ONE LABEL RATHER THAN A TILE AND A BADGE SIDE BY SIDE. A mark on its own plate next to
+ * an id on another reads as two facts about the ticket; they are one — "this is PER-1234,
+ * in Jira" — and the board's cards are narrow enough that saying it twice costs a
+ * measurable part of the line.
+ *
+ * ── THE TWO GROUNDS ───────────────────────────────────────────────────────────────
+ *
+ * JIRA'S IS ATLASSIAN'S OWN BLUE AT 14%, `rgba(38, 132, 255, 0.14)` — the same number and
+ * the same spelling as `TrackerTile` above and as the site's chip. An inline style rather
+ * than a token, deliberately, for the reason `AppSection.tsx` sets out at length: the
+ * design system's blues are `accent` and the brand, and a label wearing one of those
+ * would be the app claiming Atlassian's colour for its own palette, and would drift the
+ * day either is retuned.
+ *
+ * GITHUB'S IS A CLASS, because grey IS ours: `bg-ink/5`, the text colour at 5%, exactly
+ * as the site spells it. NOT `surface-strong`, which is what the tile above uses — that
+ * token is a surface weight and sits at 6–10% depending on the theme, so a label wearing
+ * it would be a visibly heavier plate than Jira's beside it. The pair was tuned to look
+ * like one family, which the eye judges and a number cannot.
+ *
+ * GitHub's mark is `currentColor`, so it takes the label's own `ink` and needs no colour
+ * of its own; Jira's keeps its two brand blues, for `TrackerIcons`' reason.
+ *
+ * ── THE ACCESSIBLE NAME ───────────────────────────────────────────────────────────
+ *
+ * The mark is decorative here where the tile's is content: the id beside it is real text,
+ * so the label already says something. What it does not say is WHICH tracker, which a
+ * sighted reader gets from the mark — hence the `sr-only` name in front of it, and the
+ * `title` for the pointer. Read as "Jira PER-1234", which is the label out loud.
+ */
+const BADGE_SIZES = {
+  /**
+   * A board card's top band, and the ticket page's condensed bar. Both are rows of
+   * 12px type, and the label is the tallest thing on them.
+   */
+  sm: { box: 'h-6 gap-1.5 px-2 rounded-lg text-xs', mark: 'w-3.5 h-3.5' },
+  /**
+   * Beside the ticket page's `text-2xl` heading, where the `sm` label read as a caption
+   * that had come adrift from a title twice its size. It replaces the `md` TILE that
+   * stood there, so it is built to hold roughly that much vertical weight.
+   */
+  md: { box: 'h-8 gap-2 px-2.5 rounded-xl text-sm', mark: 'w-4 h-4' },
+} as const
+
+export function TrackerBadge({
+  tracker,
+  ticketId,
+  size = 'sm',
+  className = '',
+}: {
+  tracker: 'github' | 'jira'
+  /** `PER-1234` or `#234`, printed exactly as given. */
+  ticketId: string
+  size?: keyof typeof BADGE_SIZES
+  className?: string
+}) {
+  const jira = tracker === 'jira'
+  const name = jira ? 'Jira' : 'GitHub'
+  // A fixed HEIGHT and not padding alone: the label sets the height of the row it sits
+  // in, so it is pinned rather than left to follow the line-height of whatever type the
+  // theme resolves.
+  const { box, mark } = BADGE_SIZES[size]
+
+  return (
+    <span
+      title={`${name} · ${ticketId}`}
+      className={`${box} inline-flex items-center text-ink flex-shrink-0 ${
+        jira ? '' : 'bg-ink/5'
+      } ${className}`}
+      style={jira ? { backgroundColor: 'rgba(38, 132, 255, 0.14)' } : undefined}
+    >
+      <span className="sr-only">{name} </span>
+      {jira ? <JiraMark className={`${mark} shrink-0`} /> : <GithubMark className={`${mark} shrink-0`} />}
+      {ticketId}
+    </span>
+  )
+}

@@ -1878,13 +1878,30 @@ export const en = {
   'tasks.noCoordinatesHint':
     'A GitHub repository needs an issues URL like `https://github.com/owner/repo`; a Jira one needs its project key. Both live in Settings → Repositories.',
 
-  // ── Tasks · the two filters at the top of the backlog ────────────────────
+  // ── Tasks · the board's four columns ─────────────────────────────────────
+  // Deliberately the plainest words available. These are headings on a board read at a
+  // glance, not a vocabulary — every Jira site already has its own names for its
+  // columns, and the ticket's own status pill is where those are shown.
+  'tasks.board.blocked': 'Blocked',
+  'tasks.board.backlog': 'Backlog',
+  // Everything in flight, whatever a site calls it: "In Review", "QA", "Waiting for
+  // deploy" all land here. Splitting them into columns nobody here can name is detail
+  // that belongs on the board the tickets came from.
+  'tasks.board.progress': 'In progress',
+  'tasks.board.done': 'Done',
+  // One word for all four empty columns. What is interesting about an empty Blocked
+  // column is that it is empty; four different sentences would make the reader read
+  // them all to find out nothing is there.
+  'tasks.board.empty': 'Nothing here',
+
+  // ── Tasks · the controls at the top of the board ─────────────────────────
   // They narrow what is ON SCREEN and read nothing: the page already holds every
   // open ticket of every repository, so this is a pass over an array in memory.
   'tasks.filter.searchPlaceholder': 'Search by ticket ID or title…',
-  // The repository picker's neutral entry, and the state it opens on. Named rather
-  // than left blank: a picker showing nothing reads as one that failed to load.
-  'tasks.filter.allRepos': 'All repositories',
+  // The repository picker with nothing to name — only reachable before the first read
+  // lands, or on an account with no readable repository at all. It is not a "no filter"
+  // state: the board always shows exactly one repository.
+  'tasks.filter.pickRepo': 'Pick a repository',
   // The two orders the sort picker offers, and its own default. "Newest" is what the
   // page has always done; "Priority" is the other question asked of a sprint. Only
   // the Jira half can be reordered — a GitHub issue has no priority — so a mixed page
@@ -1978,6 +1995,10 @@ export const en = {
   // The backstop, for the case the check above passed and the launch still failed.
   // Deliberately generic: the underlying error is an untranslated English sentence.
   'tasks.startFailed': 'This ticket could not be handed to an agent.',
+  // The same fact as `tasks.noLocalRepo`, in the length a card's hover text has. The
+  // card has no room for the sentence and its fix, so it says why the button is off and
+  // the ticket's own page says what to do about it.
+  'tasks.startNoPath': 'No local folder is bound to this repository.',
   // The row marker: an issue somebody is already working on. A word next to the
   // dot, because a bare coloured dot says nothing on its own.
   'tasks.hasAgent': 'agent',

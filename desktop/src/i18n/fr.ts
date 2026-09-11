@@ -1685,8 +1685,14 @@ export const fr: Record<keyof typeof en, string> = {
     'Un dépôt GitHub a besoin d’une URL de tickets du type `https://github.com/owner/repo` ; un dépôt Jira a besoin de sa clé de projet. Les deux se règlent dans Réglages → Dépôts.',
 
   // ── Tâches · le panneau de détail ────────────────────────────────────────
+  'tasks.board.blocked': 'Bloqué',
+  'tasks.board.backlog': 'À faire',
+  'tasks.board.progress': 'En cours',
+  'tasks.board.done': 'Terminé',
+  'tasks.board.empty': 'Rien ici',
+
   'tasks.filter.searchPlaceholder': 'Rechercher par ID de ticket ou titre…',
-  'tasks.filter.allRepos': 'Tous les dépôts',
+  'tasks.filter.pickRepo': 'Choisir un dépôt',
   'tasks.filter.sortRecent': 'Plus récents',
   'tasks.filter.sortPriority': 'Priorité',
   'tasks.filter.allEpics': 'Tous les epics',
@@ -1724,6 +1730,7 @@ export const fr: Record<keyof typeof en, string> = {
   'tasks.noLocalRepoHint':
     'Indiquez son dossier dans Réglages → Dépôts, et un agent pourra être démarré sur ses tickets depuis ici.',
   'tasks.startFailed': 'Ce ticket n’a pas pu être confié à un agent.',
+  'tasks.startNoPath': 'Aucun dossier local n’est associé à ce dépôt.',
   'tasks.hasAgent': 'agent',
   'tasks.hasAgentHint': 'Un agent travaille déjà sur ce ticket.',
 

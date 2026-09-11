@@ -1,14 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { ArrowLeft, CircleCheck, CircleDot, ExternalLink, MessageSquare, MessagesSquare, Play } from 'lucide-react'
 import type {
-  InitialPromptMode,
-  LaunchMetadata,
   TicketComment,
   JiraTaskIssue,
   JiraTaskIssueDetail,
   JiraTaskStatusError,
   PRStatusError,
-  RepositoryConfig,
   TaskIssue,
   TaskIssueDetail,
 } from '../../../types'
@@ -18,11 +15,11 @@ import { BTN, BTN_ICON, BTN_NEUTRAL_STACKED, BTN_PRIMARY_STACKED } from '../../t
 import { WaveLoader } from '../../components/WaveLoader'
 import MarkdownView from '../../components/file-preview/MarkdownView'
 import { StatusPill } from '../Dashboard/parts'
-import type { NewTerminalDetail } from '../Terminals'
-import { JiraEpicBadge, JiraErrorLines, JiraPriorityBadge, JiraStatusPill, TaskErrorLines } from './TasksRepoSection'
+import { JiraEpicBadge, JiraErrorLines, JiraPriorityBadge, JiraStatusPill, TaskErrorLines } from './parts'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
+import { useTaskAgent, type TaskAgentRepo } from '../../hooks/useTaskAgent'
 import { discussAgentTitle, discussPrompt } from '../../utils/discussPrompt'
-import { TrackerTile } from '../../components/icons/TrackerIcons'
+import { TrackerBadge } from '../../components/icons/TrackerIcons'
 
 /**
  * One ticket, given the whole page — the Tasks page's second view, not a panel
@@ -392,13 +389,13 @@ function TicketComments({
   )
 }
 
-/** One of the repositories the ticket's card stands for, with its configuration. */
-export interface TaskDetailRepo {
-  configKey: string
-  name: string
-  /** Its entry in the config, when it still has one. Absent means nothing can be launched there. */
-  config?: RepositoryConfig
-}
+/**
+ * One of the repositories the ticket's card stands for, with its configuration.
+ *
+ * The launcher's own shape — this page and the board's cards hand it the same list, so
+ * there is one definition of "a repository an agent might open in".
+ */
+export type TaskDetailRepo = TaskAgentRepo
 
 /** What the page needs whichever tracker the ticket came from. */
 interface TaskDetailPageBaseProps {
@@ -470,7 +467,9 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
   // The trail back to the list names the card, so it names what the card names: both
   // repositories when they share this ticket, in the order the header lists them.
   const repoName = repos.map((entry) => entry.name).join(' · ')
-  const startable = repos.filter((entry) => !!entry.config && !entry.config.needsLocalPath && !!entry.config.path)
+  // The launcher, shared with the board's cards — see `useTaskAgent`, which is where
+  // every rule about WHERE an agent opens now lives.
+  const { canStart, startFailed, clearStartFailed, openAgent, startAgent: launchAgent } = useTaskAgent(repos)
   const t = useT()
   const locale = useLocale()
 
@@ -546,7 +545,6 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
   const [jiraDetail, setJiraDetail] = useState<JiraTaskIssueDetail | null>(null)
   const [jiraError, setJiraError] = useState<JiraTaskStatusError | null>(null)
   const [loading, setLoading] = useState(false)
-  const [startFailed, setStartFailed] = useState(false)
 
   /**
    * The rest of the ticket, read on mount.
@@ -568,7 +566,7 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
     setDetailError(null)
     setJiraDetail(null)
     setJiraError(null)
-    setStartFailed(false)
+    clearStartFailed()
     setLoading(true)
 
     const read = tracker === 'jira'
@@ -623,93 +621,12 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
   }, [onBack])
 
   /**
-   * Whether an agent can be started here AT ALL, answered locally.
-   *
-   * Asked here rather than by letting `pickUpTask` throw, because that error is an
-   * untranslated English sentence and this one is a state the page can explain and
-   * act on — which is the whole of what makes a repository with no local path say so
-   * instead of failing silently.
-   *
-   * ONE of the card's repositories being launchable is enough: on a shared ticket the
-   * agent is not started in a repository at all (see `openAgent`), so a sibling with
-   * no local folder is no reason to withhold the button.
-   */
-  const canStart = startable.length > 0
-
-  /**
-   * Open an agent on this ticket with a first prompt already typed — in its
-   * repository when the ticket has one of its own, and see below when it does not.
-   *
-   * ONE launcher for both buttons and both trackers, because everything except that
-   * prompt is identical — resolving the local path, the failure the page has to
-   * explain, and the fact that the agents page rather than this one owns every guard
-   * on creating an agent.
-   *
-   * The prompt MUST be a single line, in either mode. Run, it travels to the PTY as
-   * `claude "<prompt>"` with `JSON.stringify` doing the quoting, so a newline is escaped
-   * into a literal backslash-n that the shell hands to Claude Code verbatim. Drafted, it
-   * is typed into the input box, where a Return IS the send — a two-line draft would post
-   * its first line and leave the second behind.
-   */
-  const openAgent = useCallback(async (
-    initialPrompt: string,
-    promptMode: InitialPromptMode = 'run',
-    // The identity the new agent starts with, for the caller that has one. "Start"
-    // has none to give: `/magic:start` attaches the ticket and names the agent
-    // itself, out of the ticket it has just read, and a title set here would be
-    // overwritten by a better one seconds later.
-    metadata?: LaunchMetadata,
-  ) => {
-    if (startable.length === 0) return
-    const only = startable.length === 1 ? startable[0].config?.path : undefined
-    setStartFailed(false)
-    try {
-      // WHERE the agent opens, and the one place this page is allowed to decide it.
-      //
-      // With ONE repository behind the ticket there is nothing to decide: the agent
-      // opens in it, as it always has. Only `cwd` is kept from `pickUpTask` — its own
-      // initialPrompt is `/magic:continue`, the wrong verb for either button. The
-      // matching is left exactly as it is: this passes the local path it already
-      // knows, so it resolves to that same repository, and `expandPath` on the way out
-      // is why the call is worth making.
-      //
-      // With SEVERAL — a Jira project two repositories are planned in — the ticket
-      // belongs to none of them in particular, and picking the first would start work
-      // in the wrong folder about half the time and say nothing. So no repository is
-      // chosen here at all: the agent opens at the default directory and `/magic:start`
-      // resolves the scope itself, which it does properly — it scores every configured
-      // repository against the ticket's labels, title and description and asks when the
-      // answer is not clear (skills/magic-start/SKILL.md §3). It reads that config over
-      // the app's local HTTP API rather than from its working directory, so starting it
-      // outside a repository costs it nothing. A multi-repo ticket is the case it is
-      // already built for.
-      const cwd = only
-        ? (await window.electronAPI.org.pickUpTask(ticketId, [only])).cwd
-        : undefined
-      // The agents page owns every guard on creating one (max agents, unreachable
-      // repositories, which pane it lands in), so this asks for an agent the same
-      // way the sidebar's "+" does rather than launching one itself.
-      const launch: NewTerminalDetail = { ...(cwd ? { cwd } : {}), initialPrompt, promptMode, ...(metadata ? { metadata } : {}) }
-      window.dispatchEvent(new CustomEvent<NewTerminalDetail>('new-terminal', { detail: launch }))
-    } catch {
-      // Never `err.message`: pickUpTask throws an English sentence with no
-      // catalogue entry, and this page is translated.
-      setStartFailed(true)
-    }
-  }, [ticketId, startable])
-
-  /**
-   * The page's one affirmative action, per tracker.
-   *
-   * A Jira ticket is started on its KEY — `/magic:start PER-1234` — and not on its
-   * browse URL. The key is what the skill resolves a ticket by, what it writes into
-   * `agents.ticket_id`, and what the branch and the commit trailers are named after;
-   * a URL would have to be parsed back into it first. A GitHub issue has no such
-   * portable identity across repositories, so it goes on being started on its URL.
+   * The page's one affirmative action. `useTaskAgent` owns the launch itself and the
+   * rule about which identity each tracker is started on; this only names the ticket.
    */
   const startAgent = useCallback(
-    () => openAgent(`/magic:start ${tracker === 'jira' ? issueKey : url}`),
-    [openAgent, tracker, issueKey, url],
+    () => launchAgent(ticketId, tracker === 'jira' ? issueKey : url),
+    [launchAgent, ticketId, tracker, issueKey, url],
   )
 
   /**
@@ -737,19 +654,13 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
    * agent has done nothing yet, and a discussion is not a workflow step.
    */
   const discussAgent = useCallback(() => openAgent(
+    ticketId,
     discussPrompt(tracker === 'jira' ? issueKey : url, primary.config?.languages),
     'draft',
     { title: discussAgentTitle(ticketId), ticketId },
   ), [openAgent, tracker, issueKey, url, ticketId, primary.config])
 
   const openedOn = formatIssueDate(createdAt, locale)
-
-  /**
-   * The mark's accessible name and hover text. Untranslated — "GitHub" and "Jira"
-   * are product names, and a catalogue entry per language would only be somewhere
-   * for them to be spelled wrong.
-   */
-  const trackerName = tracker === 'jira' ? 'Jira' : 'GitHub'
 
   /**
    * How many comments the byline announces, from whichever read knows.
@@ -864,21 +775,22 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
           // Left-aligned next to the link it follows, and in the row's own type
           // size: this is the title standing in for itself, not a second heading.
           <>
-            {/* Ahead of the status, not after it: the mark answers "which tracker is
-                this" and the pill answers "where is it up to", and the first question
-                is the one a reader who has scrolled away from the title is asking.
+            {/* Ahead of the status, not after it: the label answers "which ticket is
+                this, and in which tracker" and the pill answers "where is it up to",
+                and the first question is the one a reader who has scrolled away from
+                the title is asking.
 
-                On its tile, at the bar's own size: a bare mark here was the only
-                tracker icon in the app without a ground under it, which read as a
-                different, flatter kind of thing from the tile in the title it
-                stands in for. */}
-            <TrackerTile tracker={tracker} size="xs" title={trackerName} />
+                THE ID RIDES IN THE LABEL, where it used to trail the title in grey at
+                the far right of the bar. One label, as on the board's cards: the mark
+                and the key are one fact, and on a bar that truncates its title they were
+                the two pieces most likely to end up either side of an ellipsis. */}
+            <TrackerBadge
+              tracker={tracker}
+              ticketId={tracker === 'jira' ? issueKey : `#${issueNumber}`}
+            />
             {statusChip}
             <span className="text-xs text-ink truncate min-w-0" title={title}>
               {title}
-            </span>
-            <span className="text-xs text-text-secondary/40 flex-shrink-0">
-              {tracker === 'jira' ? issueKey : `#${issueNumber}`}
             </span>
           </>
         ) : (
@@ -917,24 +829,24 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
           key used to be a badge on the byline instead, which is the same fact in a
           different place on a page a reader moves between. */}
       <div ref={titleRef} className="flex flex-col gap-3 pb-5 border-b border-line">
-        {/* The mark sits beside the heading and OUTSIDE its text, as a flex sibling:
+        {/* The label sits beside the heading and OUTSIDE its text, as a flex sibling:
             inlined into the `h1` it would ride the text baseline and sink below it on
-            a title that wraps to two lines. The tile is the list row's own, at the
-            repository tile's size, and `items-center` centres the two on their
-            HEIGHTS — the tile used to hang from the first line's cap height, which
-            left it visibly high on the one-line titles that are most of them. */}
+            a title that wraps to two lines. `items-center` centres the two on their
+            HEIGHTS — the mark used to hang from the first line's cap height, which left
+            it visibly high on the one-line titles that are most of them.
+
+            ONE LABEL CARRYING BOTH, where this was a tracker tile beside the heading and
+            the id in grey INSIDE it. The two said one thing — "this is PER-1234, in
+            Jira" — from either side of the title, and the id at the end of a long
+            heading was the half that wrapped onto a line of its own. It is the board
+            card's label at the heading's own weight; see `TrackerBadge`. */}
         <div className="flex items-center gap-3 min-w-0">
-          <TrackerTile tracker={tracker} size="md" title={trackerName} />
-          <h1 className="text-2xl font-semibold text-ink leading-snug min-w-0">
-            {title}
-            {/* The ticket's id after the title and in grey, on BOTH halves. GitHub's
-                `#234` has always sat there; a Jira key was a badge on the byline
-                instead, which put the same fact in two different places on one page
-                — and made the two trackers' ticket pages read as two designs. */}
-            <span className="font-normal text-text-secondary/40">
-              {' '}{tracker === 'jira' ? issueKey : `#${issueNumber}`}
-            </span>
-          </h1>
+          <TrackerBadge
+            tracker={tracker}
+            ticketId={tracker === 'jira' ? issueKey : `#${issueNumber}`}
+            size="md"
+          />
+          <h1 className="text-2xl font-semibold text-ink leading-snug min-w-0">{title}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           {/* Nothing until the state is actually known: a chip reading "Open"
