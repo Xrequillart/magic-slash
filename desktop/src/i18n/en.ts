@@ -1736,6 +1736,8 @@ export const en = {
 
   // ── Modals & file preview ────────────────────────────────────────────────
   'modal.closeEsc': 'Close (Esc)',
+  'modal.fullScreen': 'Full screen (⌘⇧F)',
+  'modal.exitFullScreen': 'Exit full screen (⌘⇧F)',
   'live.live': 'Live',
   'live.reconnecting': 'Reconnecting…',
   'live.liveTitle': 'Real-time updates',

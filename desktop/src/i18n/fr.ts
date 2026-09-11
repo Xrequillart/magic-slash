@@ -1615,6 +1615,8 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Modales et aperçu de fichier ─────────────────────────────────────────
   'modal.closeEsc': 'Fermer (Échap)',
+  'modal.fullScreen': 'Plein écran (⌘⇧F)',
+  'modal.exitFullScreen': 'Quitter le plein écran (⌘⇧F)',
   'live.live': 'En direct',
   'live.reconnecting': 'Reconnexion…',
   'live.liveTitle': 'Mises à jour en temps réel',
