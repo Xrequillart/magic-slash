@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.91.3] - 2026-09-11
+
+### Added
+
+- **Desktop**: The board's filter bar stays pinned to the top of the page while the board scrolls, and the column headings pin underneath it
+- **Desktop**: A filter for whether a ticket has an agent on it, offered only on a board somebody is actually working
+- **Desktop**: A ticket page keeps its epic, its priority and the agent banner in the side column once the title has scrolled behind the pinned bar
+
 ## [0.91.2] - 2026-09-11
 
 ### Added
@@ -2723,6 +2731,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.91.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.3
 [0.91.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.2
 [0.91.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.1
 [0.91.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.0
