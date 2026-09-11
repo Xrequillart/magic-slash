@@ -26,6 +26,7 @@ import {
   updateDefaultAgentType,
   updateAgentSort,
   updateTasksRepo,
+  updatePlansRepo,
   updateTheme,
   updateLanguage,
   updatePlanSyncEnabled,
@@ -509,6 +510,19 @@ export function setupConfigHandlers() {
       throw new Error(`Invalid tasks repository: expected a config key, got ${typeof configKey}.`)
     }
     const config = updateTasksRepo(configKey)
+    return { config }
+  })
+
+  // Which repository the Plans list is narrowed to, as a `public.repositories` id. Not
+  // validated against anything, for the reason `updatePlansRepo` gives — the renderer
+  // picks from the repositories that actually have a plan on screen, and an id that
+  // stops resolving is the list's business (it falls back to all repositories) rather
+  // than this handler's. An empty string clears the filter.
+  ipcMain.handle('config:updatePlansRepo', async (_event, { repoId }: { repoId: string }) => {
+    if (typeof repoId !== 'string') {
+      throw new Error(`Invalid plans repository: expected a repository id, got ${typeof repoId}.`)
+    }
+    const config = updatePlansRepo(repoId)
     return { config }
   })
 

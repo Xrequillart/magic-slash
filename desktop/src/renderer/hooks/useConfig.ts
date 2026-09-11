@@ -153,6 +153,17 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  // Which repository the Plans list is narrowed to, as a `public.repositories` id.
+  // Recorded and nothing more, like the board's above: the list reads the choice straight
+  // back off the config, so it re-narrows as soon as this resolves — and on this
+  // account's other machines too, when the row reaches them over Realtime. An empty
+  // string clears the filter back to all repositories.
+  const updatePlansRepo = useCallback(async (repoId: string) => {
+    const result = await window.electronAPI.config.updatePlansRepo(repoId)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   // Repainting is the main process's job (it also owns the native chrome and
   // the other windows), so this only records the choice.
   const updateTheme = useCallback(async (theme: ThemeId) => {
@@ -272,6 +283,7 @@ export function useConfig() {
     updateDefaultAgentType,
     updateAgentSort,
     updateTasksRepo,
+    updatePlansRepo,
     updateTheme,
     updateSyncClaudeTheme,
     updateCodeTheme,

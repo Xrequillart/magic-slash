@@ -15,7 +15,7 @@ interface CloseAgentModalData {
 }
 
 /** Agents is the only page; everything else opens as a centered overlay. */
-export type ModalId = 'settings' | 'skills' | 'team' | 'tasks'
+export type ModalId = 'settings' | 'skills' | 'plans' | 'tasks'
 
 
 /**

@@ -5,7 +5,7 @@ import type { BoardCard } from '../../utils/taskBoard'
 import type { TaskSelection } from '../../utils/taskSelection'
 import { useT, type Translate } from '../../i18n'
 import { useTaskAgent } from '../../hooks/useTaskAgent'
-import { StatusPill } from '../Dashboard/parts'
+import { StatusPill } from '../../components/StatusPill'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { TrackerBadge } from '../../components/icons/TrackerIcons'
 import { JiraEpicBadge, JiraPriorityBadge, JiraStatusPill, subIssuesLabel } from './parts'
@@ -256,7 +256,7 @@ function CardMeta({ card, t }: { card: BoardCard; t: Translate }) {
       ) : (
         <>
           {card.issue.parent && (
-            // The `TicketBadge` shape in neutral tokens rather than the accent ones: two
+            // The ticket-badge shape in neutral tokens rather than the accent ones: two
             // accent badges on one card would read as two tickets. The number is all
             // that fits, so the parent's title goes in the hover text.
             <span

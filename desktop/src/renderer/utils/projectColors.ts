@@ -26,3 +26,29 @@ export function getProjectColorMap(
     return acc
   }, {} as Record<string, string>)
 }
+
+/**
+ * The key `getProjectColorMap` knows a cloud repository by: its entry in
+ * `Config.repositories`, found by the `id` that entry carries.
+ *
+ * WHY A LOOKUP AND NOT THE NAME. The map above is keyed by CONFIG KEY, and a repository's
+ * name is unique only within one scope: two organizations may each have an `api`, in
+ * which case the second one's key carries an org suffix (`api (Acme)`) while its cloud
+ * name stays `api` — see `RepositoryConfig.name`. Anything that reads a name off the
+ * cloud and hands it straight to the colour map therefore collides on exactly those
+ * pairs, and the two repositories borrow each other's colour. The cloud `id` is a uuid
+ * and does not collide, and the local entry records it, so the id is the identity to
+ * match on and the key is what comes back.
+ *
+ * UNDEFINED IS A REAL ANSWER, not a failure: the repository is simply not in this
+ * machine's config. That is routine on the Plans page, which lists an organization's
+ * sessions including ones on repositories the reader has never cloned. The caller draws
+ * the neutral mark for it, which is what an uncoloured repository should look like.
+ */
+export function configKeyForRepoId(
+  repoId: string | undefined,
+  repositories?: Record<string, { id?: string }>,
+): string | undefined {
+  if (!repoId || !repositories) return undefined
+  return Object.keys(repositories).find((key) => repositories[key].id === repoId)
+}

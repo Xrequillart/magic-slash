@@ -78,8 +78,10 @@ async function fetchMemberRows(orgId?: string): Promise<MemberRow[]> {
  * to members of the org) which joins auth.users and returns emails for all
  * members — safely, since a non-member gets rejected.
  *
- * No photo here: that is `listMemberAvatars`, and its note says why the two are
- * separate calls rather than one enriched row.
+ * No photo BYTES here: that is `listMemberAvatars`, and its note says why the two are
+ * separate calls rather than one enriched row. The storage PATH does ride along, since
+ * it is a short string and it is what lets a caller who already has the roster pick the
+ * few photos it needs without asking for the roster again (`cloud/plans.ts`).
  */
 export async function listMembers(orgId?: string): Promise<Member[]> {
   return (await fetchMemberRows(orgId)).map((row) => ({
@@ -87,6 +89,7 @@ export async function listMembers(orgId?: string): Promise<Member[]> {
     role: row.role,
     createdAt: row.created_at ?? undefined,
     email: row.email ?? undefined,
+    avatarPath: row.avatar_url ?? undefined,
   }))
 }
 
@@ -117,25 +120,35 @@ export async function listMemberAvatars(orgId?: string): Promise<Record<string, 
 }
 
 /**
- * Every non-archived org the current user belongs to (for the multi-org
- * switcher). Archived orgs are already filtered server-side by the
+ * Every non-archived org the current user belongs to, AND whether the read
+ * actually happened. Archived orgs are already filtered server-side by the
  * is_org_member-gated RLS, so a membership row for an archived org never comes
- * back. Degrades to [] when cloud is off or the user is logged out.
+ * back.
+ *
+ * `ok` distinguishes the two ways this answers with no orgs, which every caller
+ * used to receive as the same `[]`:
+ *
+ *  * CLOUD OFF, OR SIGNED OUT — `ok: true`. There is nowhere to read from, which
+ *    is a state the app has words for ("sign in", "join an organization"), not a
+ *    fault.
+ *  * THE QUERY ERRORED — `ok: false`. The memberships are missing, not absent,
+ *    and a view that drew "no organization" over that would be inventing an
+ *    answer. The Plans page reads this one; see `cloud/plans.ts`.
  */
-export async function listOrgs(): Promise<Org[]> {
+export async function listOrgsRead(): Promise<{ orgs: Org[]; ok: boolean }> {
   const client = await getAuthedClient()
-  if (!client) return []
+  if (!client) return { orgs: [], ok: true }
 
   const stored = loadSession()
   const uid = stored?.user?.id
-  if (!uid) return []
+  if (!uid) return { orgs: [], ok: true }
 
   const { data, error } = await client
     .from('memberships')
     .select('org_id, role, organizations(id, name, created_by, archived_at)')
     .eq('user_id', uid)
 
-  if (error || !data) return []
+  if (error || !data) return { orgs: [], ok: false }
 
   const rows = data as unknown as MembershipRow[]
   const orgs: Org[] = []
@@ -150,7 +163,16 @@ export async function listOrgs(): Promise<Org[]> {
       role: row.role,
     })
   }
-  return orgs
+  return { orgs, ok: true }
+}
+
+/**
+ * The same list for the callers that have nothing to say about a failed read
+ * (the org switcher's IPC channel): degrades to [] when cloud is off, when the
+ * user is logged out, and when the query errors.
+ */
+export async function listOrgs(): Promise<Org[]> {
+  return (await listOrgsRead()).orgs
 }
 
 /**

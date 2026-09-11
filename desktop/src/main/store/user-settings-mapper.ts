@@ -54,6 +54,7 @@ export interface UserSettingsRow {
   default_agent_type: string | null
   agent_sort: string | null
   tasks_repo: string | null
+  plans_repo: string | null
 }
 
 export const USER_SETTINGS_COLUMNS =
@@ -64,7 +65,8 @@ export const USER_SETTINGS_COLUMNS =
   'notification_pr_changes_requested, split_enabled, split_active, pr_reviews_enabled, ' +
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
   'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
-  'language, sync_claude_theme, code_theme, default_agent_type, agent_sort, tasks_repo'
+  'language, sync_claude_theme, code_theme, default_agent_type, agent_sort, tasks_repo, ' +
+  'plans_repo'
 
 /**
  * Config keys that live in `user_settings`. Stripped from the org-scoped
@@ -94,6 +96,7 @@ export const SETTINGS_KEYS = [
   'defaultAgentType',
   'agentSort',
   'tasksRepo',
+  'plansRepo',
   'integrations',
   'theme',
   'language',
@@ -143,6 +146,7 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     default_agent_type: orNull(config.defaultAgentType),
     agent_sort: orNull(config.agentSort),
     tasks_repo: orNull(config.tasksRepo),
+    plans_repo: orNull(config.plansRepo),
   }
 }
 
@@ -194,6 +198,11 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   // falls back to its first repository — which is the same outcome re-validation
   // buys the enums, reached from the only side that knows the answer.
   if (isSet(row.tasks_repo)) config.tasksRepo = row.tasks_repo
+  // Not re-validated either, and for the same reason one line up — except that the value
+  // is a `public.repositories` id rather than a config key, and which ids are legal is
+  // decided by RLS at read time. An id that no longer names a visible repository is
+  // handled where it is READ: the list falls back to showing every repository.
+  if (isSet(row.plans_repo)) config.plansRepo = row.plans_repo
 
   // Same shape as prReviews below: a partial object is fine, since every flag in
   // it defaults to ON when absent and the block itself is optional.

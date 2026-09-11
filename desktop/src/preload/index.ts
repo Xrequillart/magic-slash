@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AvatarSourceResult } from '../avatar'
-import type { AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
+import type { AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, PlanOverview, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -104,6 +104,11 @@ const configApi = {
 
   updateTasksRepo: (configKey: string): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:updateTasksRepo', { configKey }),
+
+  // The Plans list's repository filter, as a `public.repositories` id. An empty string
+  // clears it, which is the list's "all repositories" default.
+  updatePlansRepo: (repoId: string): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:updatePlansRepo', { repoId }),
 
   updateTheme: (theme: ThemeId) =>
     ipcRenderer.invoke('config:updateTheme', { theme }),
@@ -728,6 +733,19 @@ const tasksApi = {
     ipcRenderer.invoke('tasks:searchSprint', { configKey, query }),
 }
 
+// Plans API — every `/magic:plan` session the reader may see: their own, plus their
+// teammates' on the repositories their organizations share.
+//
+// One call and no subscription, and that is the table's own design rather than this
+// page's shortcut: `plan_sessions` is deliberately absent from the realtime publication
+// (see the end of supabase/migrations/20260821090000_plan_sessions.sql), so the list
+// reads when the page opens, and again when the reader asks it to after a read that
+// failed — the Retry button of the page's error state, which is the only other thing
+// that calls this.
+const plansApi = {
+  list: (): Promise<PlanOverview> => ipcRenderer.invoke('plans:list'),
+}
+
 // Org API (organization membership + invitations + multi-org management)
 const orgApi = {
   current: (): Promise<Org | null> => ipcRenderer.invoke('org:current'),
@@ -870,6 +888,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   auth: authApi,
   jira: jiraApi,
   org: orgApi,
+  plans: plansApi,
   tasks: tasksApi,
   connectivity: connectivityApi,
   theme: themeApi,
@@ -901,6 +920,7 @@ declare global {
       auth: typeof authApi
       jira: typeof jiraApi
       org: typeof orgApi
+      plans: typeof plansApi
       tasks: typeof tasksApi
       connectivity: typeof connectivityApi
       theme: typeof themeApi
