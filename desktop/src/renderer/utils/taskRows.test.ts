@@ -13,6 +13,7 @@ import {
   countOpenIssues,
   countTotalOpen,
   filterTaskRows,
+  hasAgentedIssues,
   mergeSearchIssues,
   NO_FILTER,
   rowKey,
@@ -750,6 +751,132 @@ describe('filterTaskRows, by epic', () => {
     ])
 
     expect(filterTaskRows(rows, { ...NO_FILTER, epicKey: 'PER-100' })).toHaveLength(1)
+  })
+})
+
+describe('filterTaskRows, by agent', () => {
+  /** One GitHub card and one Jira card, with an agent on one ticket of each. */
+  function backlog(): TaskRow[] {
+    return build(
+      [
+        group({
+          configKey: 'poppins-pex',
+          name: 'poppins-pex',
+          issues: [issue({ number: 234 }), issue({ number: 1023 })],
+        }),
+        jiraGroup({
+          configKey: 'jira-only',
+          name: 'jira-only',
+          issues: [jiraIssue({ key: 'PER-1234' }), jiraIssue({ key: 'PER-77' })],
+        }),
+      ],
+      REPOS,
+      // As `buildAgentedIssues` produces it: normalised ids, per repository config key.
+      { 'poppins-pex': new Set(['234']), 'jira-only': new Set(['PER-1234']) },
+    )
+  }
+
+  function shown(rows: TaskRow[]): string[] {
+    return rows.flatMap((row) => row.issues.map((i) => ('key' in i ? i.key : `#${i.number}`)))
+  }
+
+  it('keeps only the tickets somebody is on, across both trackers', () => {
+    // Sorted, because the card order is `buildTaskRows`' business and not this rule's.
+    expect(shown(filterTaskRows(backlog(), { ...NO_FILTER, agent: 'with' })).sort()).toEqual(['#234', 'PER-1234'])
+  })
+
+  it('keeps only the tickets nobody is on', () => {
+    expect(shown(filterTaskRows(backlog(), { ...NO_FILTER, agent: 'without' })).sort()).toEqual(['#1023', 'PER-77'])
+  })
+
+  it('leaves the board alone when it is not set', () => {
+    const rows = backlog()
+    // Identity, for `filterTaskRows`' own reason: the page memoises on this.
+    expect(filterTaskRows(rows, NO_FILTER)).toBe(rows)
+  })
+
+  it('folds a Jira key the agent was started under in another casing', () => {
+    // `/magic:start` writes whatever was typed, and Jira browses `per-1234` to
+    // `PER-1234`. The filter has to see one ticket, not two.
+    const rows = build(
+      [jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [jiraIssue({ key: 'PER-1234' })] })],
+      REPOS,
+      { 'jira-only': new Set(['PER-1234']) },
+    )
+
+    expect(shown(filterTaskRows(rows, { ...NO_FILTER, agent: 'with' }))).toEqual(['PER-1234'])
+  })
+
+  it('drops a card whose every ticket the filter took, and never a failed one', () => {
+    const rows = build(
+      [
+        group({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [issue({ number: 234 })] }),
+        jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [], error: { error: 'offline', message: 'x' } }),
+      ],
+      REPOS,
+      {},
+    )
+
+    const kept = filterTaskRows(rows, { ...NO_FILTER, agent: 'with' })
+
+    // The GitHub card had one ticket and nobody on it; the failed card has no issues
+    // to narrow and goes on saying it could not be read.
+    expect(kept.map((row) => row.tracker)).toEqual(['jira'])
+  })
+
+  it('narrows on the agent AND the search together', () => {
+    const rows = build(
+      [
+        group({
+          configKey: 'poppins-pex',
+          name: 'poppins-pex',
+          issues: [
+            issue({ number: 234, title: 'Fix the export' }),
+            issue({ number: 1023, title: 'Fix the import' }),
+          ],
+        }),
+      ],
+      REPOS,
+      { 'poppins-pex': new Set(['234', '1023']) },
+    )
+
+    expect(shown(filterTaskRows(rows, { ...NO_FILTER, agent: 'with', query: 'export' }))).toEqual(['#234'])
+  })
+})
+
+describe('hasAgentedIssues', () => {
+  it('answers on the VISIBLE tickets, not on the size of the index', () => {
+    // The index holds every ticket of the repository somebody is on, including ones
+    // this sprint does not contain — on its size alone the page would offer a picker
+    // whose "with an agent" entry empties the board.
+    const rows = build(
+      [jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [jiraIssue({ key: 'PER-77' })] })],
+      REPOS,
+      { 'jira-only': new Set(['PER-1234']) },
+    )
+
+    expect(rows[0].agentedIssues.size).toBe(1)
+    expect(hasAgentedIssues(rows)).toBe(false)
+  })
+
+  it('says yes on either tracker', () => {
+    const jira = build(
+      [jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [jiraIssue({ key: 'PER-77' })] })],
+      REPOS,
+      { 'jira-only': new Set(['PER-77']) },
+    )
+    const github = build(
+      [group({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [issue({ number: 234 })] })],
+      REPOS,
+      { 'poppins-pex': new Set(['234']) },
+    )
+
+    expect(hasAgentedIssues(jira)).toBe(true)
+    expect(hasAgentedIssues(github)).toBe(true)
+  })
+
+  it('says no on a board nobody is on', () => {
+    expect(hasAgentedIssues(build([group({ issues: [issue()] })]))).toBe(false)
   })
 })
 

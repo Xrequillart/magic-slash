@@ -1,14 +1,14 @@
 import { useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDownWideNarrow, CalendarRange, Check, ChevronDown, FolderGit2, LoaderCircle, Search, TriangleAlert, X } from 'lucide-react'
+import { ArrowDownWideNarrow, BotMessageSquare, CalendarRange, Check, ChevronDown, FolderGit2, LoaderCircle, Search, TriangleAlert, X } from 'lucide-react'
 import { useAnchoredPanel } from '../../components/useAnchoredPanel'
 import { useT } from '../../i18n'
 import { INPUT } from '../../theme/controls'
-import type { TaskFilter, TaskSort } from '../../utils/taskRows'
+import type { TaskAgentFilter, TaskFilter, TaskSort } from '../../utils/taskRows'
 
 /**
- * The controls at the top of the board: which repository, a search box, and two pickers
- * — in what order, and which Jira epic.
+ * The controls at the top of the board: which repository, a search box, and three
+ * pickers — in what order, which Jira epic, and whether somebody is already on it.
  *
  * THE REPOSITORY PICKER IS NOT A FILTER any more, and it leads the row because of it.
  * The page used to draw every repository's backlog at once and offer to narrow to one;
@@ -293,6 +293,12 @@ function SprintChip({ name, hint }: { name: string; hint: string }) {
 const REPO_WIDTH = 208
 const SORT_WIDTH = 152
 const EPIC_WIDTH = 192
+/**
+ * Narrower than the epic's, because both of its entries are two known words rather
+ * than a title of arbitrary length — and because it is the fifth control in a row that
+ * has the search box to feed.
+ */
+const AGENT_WIDTH = 160
 
 /**
  * The filter row: a search box that takes the width, then the three pickers.
@@ -317,6 +323,7 @@ export function TaskFilters({
   value,
   repos,
   epics,
+  hasAgents,
   sprintName,
   searchesSprint,
   searching,
@@ -342,6 +349,15 @@ export function TaskFilters({
    * did my ticket not come up".
    */
   searchesSprint?: boolean
+  /**
+   * Whether the agent picker is worth offering at all.
+   *
+   * False on a board nobody has an agent on, where both of its entries answer the same
+   * question: "with an agent" would empty the page and "without" would leave it exactly
+   * as it is. The epic picker is withheld on the same rule one line down — a control
+   * that can only ever say what the board already says is a control to read past.
+   */
+  hasAgents?: boolean
   /** A sprint search is in flight. See `useSprintSearch`. */
   searching?: boolean
   /** The last sprint search came back as a failure. The board still shows what it has. */
@@ -356,6 +372,14 @@ export function TaskFilters({
   const sortOptions: SelectOption[] = [
     { value: 'recent', label: t('tasks.filter.sortRecent') },
     { value: 'priority', label: t('tasks.filter.sortPriority') },
+  ]
+
+  // Both halves of the question, and the clear entry is what makes them a pair rather
+  // than a switch: "who is being worked on" and "what is left to pick up" are two things
+  // to ask of a sprint, and neither is the board's default state.
+  const agentOptions: SelectOption[] = [
+    { value: 'with', label: t('tasks.filter.withAgent') },
+    { value: 'without', label: t('tasks.filter.withoutAgent') },
   ]
 
   return (
@@ -467,6 +491,22 @@ export function TaskFilters({
           placeholder={t('tasks.filter.allEpics')}
           clearLabel={t('tasks.filter.allEpics')}
           width={EPIC_WIDTH}
+        />
+      )}
+      {/* AFTER the epic, so the two conditional pickers sit together at the end of the
+          row and the three permanent controls keep the places the reader knows them by.
+          Its glyph is the board card's own agent mark, for the sort's reason: "With an
+          agent" beside an epic title would read as a third thing to narrow by until the
+          bot says what it is about. */}
+      {(hasAgents || !!value.agent) && (
+        <FilterSelect
+          value={value.agent}
+          options={agentOptions}
+          onChange={(agent) => onChange({ ...value, agent: agent as TaskAgentFilter })}
+          placeholder={t('tasks.filter.anyAgent')}
+          clearLabel={t('tasks.filter.anyAgent')}
+          width={AGENT_WIDTH}
+          icon={BotMessageSquare}
         />
       )}
     </div>

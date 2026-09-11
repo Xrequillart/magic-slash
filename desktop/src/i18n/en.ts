@@ -1924,6 +1924,14 @@ export const en = {
   // The epic picker's cleared state. Shown only when some visible ticket actually
   // hangs off an epic, so a GitHub-only page never sees this control at all.
   'tasks.filter.allEpics': 'All epics',
+  // The agent picker: its cleared state, then its two halves. Shown only on a board
+  // somebody actually has an agent on — with none, "With an agent" would empty the page
+  // and "Without" would change nothing. Both entries are about the TICKET rather than
+  // about the person: a teammate's agent counts, which is what the board's own marker
+  // says too.
+  'tasks.filter.anyAgent': 'Any agent',
+  'tasks.filter.withAgent': 'With an agent',
+  'tasks.filter.withoutAgent': 'Without an agent',
   'tasks.filter.clearSearch': 'Clear the search',
   // The filters matched nothing. Deliberately NOT one of the four states above:
   // those send the reader to a settings field, which would be the page blaming its

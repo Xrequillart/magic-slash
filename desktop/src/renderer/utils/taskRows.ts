@@ -1,7 +1,7 @@
 import type { JiraPriorityLevel, JiraTaskIssue, RepositoryConfig, TaskRepoGroup } from '../../types'
 import { fold } from '../../text'
 import { getProjectColorMap } from './projectColors'
-import { NO_AGENTS } from './taskAgents'
+import { normalizeTicketId, NO_AGENTS } from './taskAgents'
 
 /**
  * One repository's card on the Tasks page: the group the main process read, plus
@@ -249,6 +249,17 @@ export function buildTaskRows(
 export type TaskSort = 'recent' | 'priority'
 
 /**
+ * Whether the board is narrowed to the tickets somebody is already on, to the ones
+ * nobody is, or to neither.
+ *
+ * A THIRD STATE rather than a checkbox, because "who is free to pick up" is as real a
+ * question as "what is being worked on" — a sprint's unclaimed tickets are what a
+ * stand-up is about, and a toggle can only ever ask one of the two. `''` is the board
+ * as it comes, and it is the only value that adds nothing to what the reader sees.
+ */
+export type TaskAgentFilter = '' | 'with' | 'without'
+
+/**
  * What the controls at the top of the page are set to.
  *
  * One object rather than an argument each, so a caller cannot pass them the wrong way
@@ -262,6 +273,15 @@ export interface TaskFilter {
   /** The Jira epic to keep, by epic key. `''` is every epic AND every ticket without one. */
   epicKey: string
   /**
+   * Whether to keep only the tickets that have an agent, only the ones that do not, or
+   * all of them. See `TaskAgentFilter`.
+   *
+   * It narrows ISSUES and not cards, like the search and the epic beside it: an agent is
+   * on a ticket, not on a repository, and a card whose every ticket is filtered out goes
+   * the same way a card that matches no search does.
+   */
+  agent: TaskAgentFilter
+  /**
    * The order the tickets inside each card are in.
    *
    * Carried in the same object as the three narrowing controls even though
@@ -274,7 +294,7 @@ export interface TaskFilter {
 }
 
 /** Neither control touched — the shape the page starts in, and a stable identity. */
-export const NO_FILTER: TaskFilter = { configKey: '', query: '', epicKey: '', sort: 'recent' }
+export const NO_FILTER: TaskFilter = { configKey: '', query: '', epicKey: '', agent: '', sort: 'recent' }
 
 /**
  * The search's normalisation, re-exported from `src/text.ts`.
@@ -314,7 +334,37 @@ function matches(issue: TaskRow['issues'][number], query: string): boolean {
 }
 
 /**
- * The rows the two controls leave on screen.
+ * Whether any ticket ON THESE ROWS has an agent — which is what decides whether the
+ * agent picker is drawn at all.
+ *
+ * Asked of the ISSUES and not of `row.agentedIssues.size`, and the difference is a real
+ * board: the index holds every ticket of the repository somebody is on, including ones
+ * this sprint does not contain, so a non-empty set is no promise that any VISIBLE ticket
+ * has an agent. On the set alone the page would offer a control whose "with an agent"
+ * entry empties the board.
+ *
+ * Through the same two id forms `filterTaskRows` and `buildBoard` use, per tracker: one
+ * fold, three readers.
+ */
+export function hasAgentedIssues(rows: TaskRow[]): boolean {
+  return rows.some((row) => (row.tracker === 'jira'
+    ? row.issues.some((issue) => row.agentedIssues.has(normalizeTicketId(issue.key)))
+    : row.issues.some((issue) => row.agentedIssues.has(String(issue.number)))))
+}
+
+/**
+ * Whether a ticket survives the agent filter.
+ *
+ * `''` keeps everything, which is what makes the unset control cost nothing: the board
+ * as it comes is the board this returns true for, ticket by ticket.
+ */
+function keepsAgent(agent: TaskFilter['agent'], hasAgent: boolean): boolean {
+  if (!agent) return true
+  return agent === 'with' ? hasAgent : !hasAgent
+}
+
+/**
+ * The rows the controls leave on screen.
  *
  * A function rather than two `.filter()`s in the page, for `buildTaskRows`' reason:
  * the suite runs in Node with no jsdom, so logic left in a `useMemo` is logic no
@@ -333,6 +383,12 @@ function matches(issue: TaskRow['issues'][number], query: string): boolean {
  * not be read, which is the only true thing available. Every other row with nothing
  * left in it goes.
  *
+ * THE AGENT FILTER IS THE ONE CONTROL THAT READS SOMETHING OTHER THAN THE TICKET. It
+ * asks `row.agentedIssues`, which is the same set the card's marker and the ticket
+ * page's banner read, so the three can never disagree about who is on what. It applies
+ * to both trackers — an agent is started on a ticket, and neither tracker knows about
+ * it — which is why it sits in both arms below rather than in the Jira one.
+ *
  * THE EPIC FILTER IS JIRA-ONLY AND SAYS SO BY EMPTYING THE GITHUB CARDS. An epic is
  * a Jira relationship with no GitHub counterpart — an issue's `parent` is another
  * issue, not a container — so a GitHub card has nothing that can match, and the same
@@ -342,12 +398,17 @@ function matches(issue: TaskRow['issues'][number], query: string): boolean {
  */
 export function filterTaskRows(rows: TaskRow[], filter: TaskFilter): TaskRow[] {
   const query = fold(filter.query.trim())
-  if (!filter.configKey && !query && !filter.epicKey) return rows
+  // Whether anything here narrows the ISSUES inside a card, as opposed to picking which
+  // cards are on the page. Named rather than repeated, because every one of the three
+  // tests below has to list the same set and one of them forgetting a control is a
+  // filter that silently does nothing.
+  const narrows = !!query || !!filter.epicKey || !!filter.agent
+  if (!filter.configKey && !narrows) return rows
 
   const kept: TaskRow[] = []
   for (const row of rows) {
     if (filter.configKey && !row.repos.some((repo) => repo.configKey === filter.configKey)) continue
-    if (!query && !filter.epicKey) {
+    if (!narrows) {
       kept.push(row)
       continue
     }
@@ -362,7 +423,13 @@ export function filterTaskRows(rows: TaskRow[], filter: TaskFilter): TaskRow[] {
     // `TaskIssue[] | JiraTaskIssue[]`, which fits neither member of the row union.
     if (row.tracker === 'jira') {
       const issues = row.issues.filter(
-        (issue) => (!query || matches(issue, query)) && (!filter.epicKey || issue.epic?.key === filter.epicKey),
+        (issue) => (!query || matches(issue, query))
+          && (!filter.epicKey || issue.epic?.key === filter.epicKey)
+          // Through `normalizeTicketId`, which is the form the index was built in — the
+          // same fold `buildBoard` puts a card's marker on. Comparing the raw key here
+          // would hide a ticket whose agent was started as `per-1234` from the very
+          // filter that exists to find it.
+          && keepsAgent(filter.agent, row.agentedIssues.has(normalizeTicketId(issue.key))),
       )
       if (issues.length > 0) kept.push({ ...row, issues })
     } else {
@@ -370,7 +437,10 @@ export function filterTaskRows(rows: TaskRow[], filter: TaskFilter): TaskRow[] {
       // outright — see the note above. Written as an early `continue` rather than a
       // predicate that is always false, which would read as an oversight.
       if (filter.epicKey) continue
-      const issues = row.issues.filter((issue) => matches(issue, query))
+      const issues = row.issues.filter(
+        (issue) => (!query || matches(issue, query))
+          && keepsAgent(filter.agent, row.agentedIssues.has(String(issue.number))),
+      )
       if (issues.length > 0) kept.push({ ...row, issues })
     }
   }

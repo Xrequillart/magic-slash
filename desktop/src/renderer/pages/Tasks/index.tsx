@@ -11,6 +11,7 @@ import {
   countOpenIssues,
   countTotalOpen,
   filterTaskRows,
+  hasAgentedIssues,
   mergeSearchIssues,
   NO_FILTER,
   sortTaskRows,
@@ -303,6 +304,17 @@ export function TasksPage() {
    * cannot show. An empty array hides the control entirely; see `TaskFilters`.
    */
   const filterEpics = useMemo(() => taskFilterEpics(repoRows), [repoRows])
+
+  /**
+   * Whether anybody is on a ticket of THIS repository — what decides whether the agent
+   * picker is offered at all. See `hasAgentedIssues`.
+   *
+   * Off `repoRows` for `filterEpics`' reason: an option list drawn from the narrowed rows
+   * would take itself away the moment it was used — picking "with an agent" leaves a
+   * board whose every ticket has one, and picking "without" leaves a board with none at
+   * all, which would withdraw the very control that has to clear the filter.
+   */
+  const hasAgents = useMemo(() => hasAgentedIssues(repoRows), [repoRows])
 
   /**
    * The name of the sprint the board is showing, for the chip beside the repository
@@ -739,6 +751,7 @@ export function TasksPage() {
                 value={filterValue}
                 repos={filterRepos}
                 epics={filterEpics}
+                hasAgents={hasAgents}
                 {...(sprintName ? { sprintName } : {})}
                 // What the box is doing beyond narrowing what is on screen. Only ever
                 // true on a board that reported itself short — see `useSprintSearch` —
