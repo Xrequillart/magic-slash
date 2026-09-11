@@ -67,7 +67,11 @@ export function LanguageSelect({
         <div
           ref={panelRef}
           style={style()}
-          className="bg-bg-secondary border border-line rounded-xl shadow-2xl overflow-hidden z-[60] p-1"
+          // `gap-0.5` between entries, the same breath the Tasks pickers take and for
+          // the same reason: the rows carry a hover and a selected ground of their own,
+          // so touching they read as one banded block with no edge for the highlight to
+          // land on.
+          className="bg-bg-secondary border border-line rounded-xl shadow-2xl overflow-hidden z-[60] p-1 flex flex-col gap-0.5"
         >
           {LANGUAGES.map((lang) => {
             const isSelected = lang.value === value
