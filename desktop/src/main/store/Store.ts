@@ -92,8 +92,12 @@ export interface Store {
   /**
    * When each of the caller's own plan sessions last received its spec — the
    * projection the launch reconcile compares file mtimes against. Read-only.
+   *
+   * `specOversize` rides along because a spec past the ceiling never stamps
+   * `specSyncedAt`, so the timestamp alone can never say "already known, and
+   * unchanged" about one. See `reconcilePlanSpecs`.
    */
-  loadPlanSyncState(): Promise<Pick<PlanSession, 'specKey' | 'specSyncedAt'>[]>
+  loadPlanSyncState(): Promise<Pick<PlanSession, 'specKey' | 'specSyncedAt' | 'specOversize'>[]>
 
   /**
    * Append ONE activity event (append-only, fire-and-forget). Write-only: the

@@ -6,7 +6,7 @@ import { readAgents } from '../config/agents'
 import { readConfig } from '../config/config'
 import { loadSession } from '../cloud/session-store'
 import { enqueue } from './outbox'
-import { isSpecPath, readSpecFile, specFields } from './spec-file'
+import { isSpecPath, MAX_SPEC_BYTES, readSpecFile, specFields } from './spec-file'
 import { getStore } from './Store'
 
 /**
@@ -281,6 +281,10 @@ export async function syncPlanTickets(agentId: string, specPath: string, tickets
  * Compared against `spec_synced_at`, NOT `updated_at`: the org-derivation trigger
  * bumps `updated_at` whenever the repository is shared or deleted, which would make
  * the row look newer than a spec that really did change.
+ *
+ * A spec past the ceiling has no `spec_synced_at` to compare against at all, since it
+ * was never uploaded — so it gets the size test instead, and the file's own size is
+ * what tells the two cases apart. See the comment at that test.
  */
 export async function reconcilePlanSpecs(): Promise<void> {
   if (!syncEnabled()) return
@@ -291,21 +295,35 @@ export async function reconcilePlanSpecs(): Promise<void> {
   if (planned.length === 0) return
 
   try {
-    const syncedAt = new Map(
-      (await getStore().loadPlanSyncState()).map((row) => [row.specKey, row.specSyncedAt]),
+    const state = new Map(
+      (await getStore().loadPlanSyncState()).map((row) => [row.specKey, row]),
     )
 
     for (const { id, specPath } of planned) {
-      let mtimeMs: number
+      let stat: fs.Stats
       try {
-        mtimeMs = fs.statSync(specPath).mtimeMs
+        stat = fs.statSync(specPath)
       } catch {
         // The spec is gone (a cleaned worktree, a moved repository). Nothing to
         // upload, and nothing to repair — the row keeps what it last received.
         continue
       }
-      const synced = syncedAt.get(specKeyFor(specPath))
-      if (synced && Date.parse(synced) >= mtimeMs) continue
+      const row = state.get(specKeyFor(specPath))
+
+      // A spec past the ceiling is never uploaded, so it never stamps
+      // `spec_synced_at` — and the timestamp check below would therefore queue it
+      // again on every single launch, forever, for an upload that can only send
+      // the same flag the row already carries.
+      //
+      // The file's own size is what settles it, and it is the one signal that
+      // cannot go stale: still too large AND already flagged means there is
+      // nothing to say. The moment it is trimmed back under the ceiling this test
+      // stops matching, the mtime check below sees an absent timestamp, and the
+      // spec uploads — which is the "becomes uploadable" half, kept intact.
+      if (stat.size > MAX_SPEC_BYTES && row?.specOversize) continue
+
+      const synced = row?.specSyncedAt
+      if (synced && Date.parse(synced) >= stat.mtimeMs) continue
       schedulePlanSpecUpload(id, specPath)
     }
   } catch (error) {

@@ -66,6 +66,7 @@ interface AgentRow {
 interface PlanSessionSyncRow {
   spec_key: string
   spec_synced_at: string | null
+  spec_oversize: boolean | null
 }
 
 /**
@@ -1630,13 +1631,15 @@ export class CloudStore implements Store {
    * which compares against files on THIS machine, and a colleague's session is
    * neither ours to compare nor ours to overwrite.
    */
-  async loadPlanSyncState(): Promise<Pick<PlanSession, 'specKey' | 'specSyncedAt'>[]> {
+  async loadPlanSyncState(): Promise<
+    Pick<PlanSession, 'specKey' | 'specSyncedAt' | 'specOversize'>[]
+  > {
     const ctx = await this.userContext()
     if (!ctx) return []
 
     const { data, error } = await ctx.client
       .from('plan_sessions')
-      .select('spec_key, spec_synced_at')
+      .select('spec_key, spec_synced_at, spec_oversize')
       .eq('owner_id', ctx.uid)
     if (error || !data) return []
 
@@ -1645,6 +1648,10 @@ export class CloudStore implements Store {
     return (data as unknown as PlanSessionSyncRow[]).map((row) => ({
       specKey: row.spec_key,
       specSyncedAt: row.spec_synced_at ?? undefined,
+      // `?? false` is safe where `?? undefined` is used above: the column is
+      // `not null default false`, so a null here only ever means a row written
+      // before the migration, which by definition had no oversize spec.
+      specOversize: row.spec_oversize ?? false,
     }))
   }
 

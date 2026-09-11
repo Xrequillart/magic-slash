@@ -34,6 +34,7 @@ import {
   slugFor,
   specKeyFor,
 } from './plan-sync'
+import { MAX_SPEC_BYTES } from './spec-file'
 
 const TMP = path.join(os.tmpdir(), `magic-slash-plan-sync-${process.pid}`)
 // Inside a `.magic` directory, and named `spec-*.md`, because that is the shape the
@@ -229,7 +230,7 @@ describe('the launch reconcile', () => {
       ...NOOP_STORE,
       savePlanSpec: async (input) => { saved.push(input) },
       loadPlanSyncState: async () => [
-        { specKey: specKeyFor(SPEC), specSyncedAt: new Date(Date.now() - 60_000).toISOString() },
+        { specKey: specKeyFor(SPEC), specSyncedAt: new Date(Date.now() - 60_000).toISOString(), specOversize: false },
       ],
     })
 
@@ -246,7 +247,7 @@ describe('the launch reconcile', () => {
       ...NOOP_STORE,
       savePlanSpec: async (input) => { saved.push(input) },
       loadPlanSyncState: async () => [
-        { specKey: specKeyFor(SPEC), specSyncedAt: new Date(Date.now() + 60_000).toISOString() },
+        { specKey: specKeyFor(SPEC), specSyncedAt: new Date(Date.now() + 60_000).toISOString(), specOversize: false },
       ],
     })
 
@@ -254,6 +255,59 @@ describe('the launch reconcile', () => {
     await vi.advanceTimersByTimeAsync(3000)
 
     expect(saved).toEqual([])
+  })
+
+  it('stops re-queueing an oversized spec the row already knows about', async () => {
+    fs.writeFileSync(SPEC, 'x'.repeat(MAX_SPEC_BYTES + 1))
+    agents.list = [agentWithSpec('claude-1', SPEC)]
+    setStore({
+      ...NOOP_STORE,
+      savePlanSpec: async (input) => { saved.push(input) },
+      // What an oversized spec leaves behind: the flag set, and no timestamp — the
+      // upload never happened, so there is nothing for it to have stamped.
+      loadPlanSyncState: async () => [{ specKey: specKeyFor(SPEC), specOversize: true }],
+    })
+
+    await reconcilePlanSpecs()
+    await vi.advanceTimersByTimeAsync(3000)
+
+    expect(saved).toEqual([])
+  })
+
+  it('queues an oversized spec the row does not know about yet', async () => {
+    fs.writeFileSync(SPEC, 'x'.repeat(MAX_SPEC_BYTES + 1))
+    agents.list = [agentWithSpec('claude-1', SPEC)]
+    setStore({
+      ...NOOP_STORE,
+      savePlanSpec: async (input) => { saved.push(input) },
+      loadPlanSyncState: async () => [{ specKey: specKeyFor(SPEC), specOversize: false }],
+    })
+
+    await reconcilePlanSpecs()
+    await vi.advanceTimersByTimeAsync(3000)
+
+    // The flag has to reach the row once before it can silence anything.
+    expect(saved).toHaveLength(1)
+    expect(saved[0]?.specOversize).toBe(true)
+    expect(saved[0]?.spec).toBeUndefined()
+  })
+
+  it('queues a spec trimmed back under the ceiling, flag or no flag', async () => {
+    fs.writeFileSync(SPEC, '## Idea\n\ntrimmed back down\n')
+    agents.list = [agentWithSpec('claude-1', SPEC)]
+    setStore({
+      ...NOOP_STORE,
+      savePlanSpec: async (input) => { saved.push(input) },
+      // Still flagged from when it was too large, and still no timestamp: the size
+      // test is what has to stop matching for this to upload at all.
+      loadPlanSyncState: async () => [{ specKey: specKeyFor(SPEC), specOversize: true }],
+    })
+
+    await reconcilePlanSpecs()
+    await vi.advanceTimersByTimeAsync(3000)
+
+    expect(saved).toHaveLength(1)
+    expect(saved[0]?.specOversize).toBe(false)
   })
 
   it('skips an agent whose spec file is gone, and never asks the backend when none has one', async () => {
