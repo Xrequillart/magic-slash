@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { AlertTriangle, CircleCheck, CircleDashed, Info, LoaderCircle, OctagonAlert } from 'lucide-react'
 import type { RepositoryConfig } from '../../../types'
 import { BOARD_COLUMNS, type BoardCard, type BoardColumn } from '../../utils/taskBoard'
@@ -50,6 +51,7 @@ export function TaskBoard({
   repoConfigs,
   truncatedColumns,
   headingTop,
+  paneRef,
   onSelect,
 }: {
   board: Record<BoardColumn, BoardCard[]>
@@ -78,10 +80,48 @@ export function TaskBoard({
    * see `narrowable` in `pages/Tasks/index.tsx`.
    */
   headingTop: number
+  /**
+   * The scrolling pane, for the one thing a heading cannot tell about itself: whether it
+   * has pinned. See `pinned` below.
+   */
+  paneRef: RefObject<HTMLElement>
   onSelect: (selection: TaskSelection) => void
 }) {
   const t = useT()
   const failed = rows.filter((row) => !!row.error)
+
+  /**
+   * Whether the headings have pinned, which decides ONE thing: their rounded top
+   * corners, and it has to be decided because a radius is a hole.
+   *
+   * A heading rounded at the top paints nothing in the 12px triangles either side of
+   * its first rows — and a pinned heading has cards sliding directly behind it, so
+   * those two corners read as a transparent 1px slot with the board moving through it.
+   * At rest the radius is right (it is the column's own top corner); pinned, it is a
+   * gap. So it is dropped for exactly as long as the band is pinned.
+   *
+   * ONE observer for all four, because all four pin at the same instant: the columns
+   * are grid items in one row, so they share a top edge, and the sentinel that marks it
+   * is that row's. The state is per board rather than per column for the same reason.
+   *
+   * A sentinel and not the grid itself: `rootMargin` shrinks the root by exactly the
+   * offset the headings pin at, and a zero-height mark at the row's top then leaves it
+   * at precisely the scroll position where they do. The grid is hundreds of pixels tall
+   * and would still be intersecting long after.
+   */
+  const rowRef = useRef<HTMLDivElement>(null)
+  const [pinned, setPinned] = useState(false)
+  useEffect(() => {
+    const rowEl = rowRef.current
+    const pane = paneRef.current
+    if (!rowEl || !pane) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setPinned(!entry.isIntersecting),
+      { root: pane, rootMargin: `-${headingTop}px 0px 0px 0px` },
+    )
+    observer.observe(rowEl)
+    return () => observer.disconnect()
+  }, [paneRef, headingTop])
 
   return (
     <div className="flex flex-col gap-3">
@@ -93,8 +133,16 @@ export function TaskBoard({
 
       {/* `items-start` is what gives each column its own height — without it the grid
           stretches all four to the tallest, and three of them end in a field of empty
-          card-coloured space. */}
-      <div className="grid grid-cols-4 gap-3 items-start">
+          card-coloured space.
+
+          `relative` for the sentinel alone, which is ABSOLUTE and zero-sized on purpose:
+          it marks where the row of headings starts and must cost the layout nothing. In
+          the flow it would be a grid item, and hoisted above the grid it would take the
+          column's gap with it — which is what `-mt-3` cancels elsewhere on this page,
+          and cannot here, since a board with no failed row above it has no gap to give
+          back. */}
+      <div className="relative grid grid-cols-4 gap-3 items-start">
+        <div ref={rowRef} className="absolute top-0 left-0 right-0 h-0" aria-hidden />
         {BOARD_COLUMNS.map((column) => (
           <Column
             key={column}
@@ -103,6 +151,7 @@ export function TaskBoard({
             repoConfigs={repoConfigs}
             truncated={truncatedColumns.has(column)}
             headingTop={headingTop}
+            pinned={pinned}
             onSelect={onSelect}
             t={t}
           />
@@ -126,6 +175,10 @@ export function TaskBoard({
  * `PageModal` paints) and the inner one puts the column's tint back on top of it. The
  * result is the same colour as the column body, and nothing shows through it. `z-10` is
  * the other half, against the cards' borders.
+ *
+ * THE TOP RADIUS IS THE THIRD, and it only holds while the heading is at rest: a rounded
+ * corner paints nothing outside its arc, so a pinned heading rounded at the top has two
+ * 12px holes in its first rows with the board sliding behind them. See `pinned`.
  */
 function Column({
   column,
@@ -133,6 +186,7 @@ function Column({
   repoConfigs,
   truncated,
   headingTop,
+  pinned,
   onSelect,
   t,
 }: {
@@ -143,10 +197,15 @@ function Column({
   truncated: boolean
   /** Where this heading pins. See `TaskBoard`. */
   headingTop: number
+  /** Whether it has pinned there, which is what its top corners turn on. See `TaskBoard`. */
+  pinned: boolean
   onSelect: (selection: TaskSelection) => void
   t: Translate
 }) {
   const { title, icon: Icon, className } = COLUMNS[column]
+  // Both boxes lose it together: the outer is the opaque ground, and rounding the inner
+  // alone would cut two dark notches out of the band instead of two see-through ones.
+  const headRadius = pinned ? '' : 'rounded-t-xl'
 
   return (
     // NO `overflow-hidden` here, however much the rounded corners want it: `overflow`
@@ -156,8 +215,8 @@ function Column({
     <div className="flex flex-col min-w-0 rounded-xl bg-surface-subtle border border-line-subtle">
       {/* `top` from the page and not `top-0`: the filter bar pins there, and it is
           opaque. See `headingTop`. */}
-      <div className="sticky z-10 rounded-t-xl bg-bg-secondary" style={{ top: headingTop }}>
-        <div className="flex items-center gap-2 px-2.5 py-2 rounded-t-xl bg-surface-subtle border-b border-line-subtle">
+      <div className={`sticky z-10 bg-bg-secondary ${headRadius}`} style={{ top: headingTop }}>
+        <div className={`flex items-center gap-2 px-2.5 py-2 bg-surface-subtle border-b border-line-subtle ${headRadius}`}>
           <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${className}`} />
           <span className="text-xs font-medium text-ink truncate">{t(title)}</span>
           {/* The count, always, zero included: a column that showed nothing and said

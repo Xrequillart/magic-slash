@@ -857,6 +857,10 @@ export function TasksPage() {
                 // at the top of the pane when there is not. Both are sticky and both are
                 // opaque, so the second has to be told how tall the first is.
                 headingTop={narrowable ? FILTER_BAR_H : 0}
+                // For the headings' own stuck test, which decides their top corners —
+                // the same question the filter bar asks one level up, and the same
+                // answer: nothing can report a position it has already moved from.
+                paneRef={paneRef}
                 onSelect={select}
               />
             )}
