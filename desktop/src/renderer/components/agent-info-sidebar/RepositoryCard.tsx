@@ -55,9 +55,14 @@ export function RepositoryCard({
   const resolvedBaseBranch = rawBaseBranch === gitData?.branch ? undefined : rawBaseBranch
 
   return (
-    <div className="bg-surface rounded-xl p-3">
+    /* `flex flex-col gap-2` and NOT a `mb-2` per block, which is what this was: the
+       bottom margin of whichever block happened to be last stacked on top of the card's
+       own `p-3`, so the card had 12px of padding above its header and 20px under its
+       last row. A gap sits BETWEEN children only — and it also skips the blocks that
+       render nothing (no branch, no changes, no scripts), which margins could not. */
+    <div className="bg-surface rounded-xl p-3 flex flex-col gap-2">
       {/* Repo header */}
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2">
         <RepoMark repoName={repoName} />
         <span className="text-ink/90 font-medium text-sm truncate" title={repoPath}>
           {repoName}
@@ -100,7 +105,7 @@ export function RepositoryCard({
 
       {/* Branch block */}
       {gitData?.branch && (
-        <div className="flex items-center gap-1.5 mb-2">
+        <div className="flex items-center gap-1.5">
           {/* Base branch (left) */}
           {resolvedBaseBranch && (
             <>
@@ -142,7 +147,7 @@ export function RepositoryCard({
 
       {/* Uncommitted changes block */}
       {hasChanges && gitData.stats && (
-        <div className="bg-surface rounded-md border border-line-subtle p-2 mb-2">
+        <div className="bg-surface rounded-md border border-line-subtle p-2">
           {/* Header with title, stats and gauge */}
           <div className="flex items-center gap-2 text-xs mb-2">
             <span className="text-text-secondary/70 font-medium">{t('agentInfo.uncommittedChanges')}</span>
@@ -210,7 +215,7 @@ export function RepositoryCard({
 
       {/* Commits block */}
       {hasCommits && gitData.commits && (
-        <div className="bg-surface rounded-md border border-line-subtle p-2 mb-2">
+        <div className="bg-surface rounded-md border border-line-subtle p-2">
           <div className="flex items-center text-xs mb-1.5">
             <span className="text-text-secondary/70 font-medium">{t('agentInfo.commits')}</span>
             <span className="text-text-secondary/50 ml-auto">
@@ -263,7 +268,7 @@ export function RepositoryCard({
 
       {/* No changes state */}
       {gitData && !gitData.error && !hasChanges && !hasCommits && gitData.branch && (
-        <div className="bg-surface rounded-md border border-line-subtle p-2 mb-2">
+        <div className="bg-surface rounded-md border border-line-subtle p-2">
           <span className="text-xs text-text-secondary/40 italic">{t('agentInfo.noUncommittedChanges')}</span>
         </div>
       )}

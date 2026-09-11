@@ -53,7 +53,7 @@ export function RunningScripts({ repoPath, agentId }: RunningScriptsProps) {
   if (scripts.length === 0) return null
 
   return (
-    <div className="flex flex-col gap-1 mb-2">
+    <div className="flex flex-col gap-1">
       {scripts.map(script => {
         const urls = script.serverUrls ?? []
 
