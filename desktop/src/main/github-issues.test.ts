@@ -8,7 +8,14 @@ vi.mock('child_process', () => ({
 
 import { execFileSync } from 'child_process'
 import { clearGitHubTokenCache } from './github'
-import { fetchIssueDetail, fetchOpenIssues, ISSUE_DETAIL_QUERY, OPEN_ISSUES_QUERY } from './github-issues'
+import {
+  CLOSED_WINDOW_DAYS,
+  fetchIssueDetail,
+  fetchOpenIssues,
+  ISSUE_DETAIL_QUERY,
+  OPEN_ISSUES_QUERY,
+  recentlyClosed,
+} from './github-issues'
 import { isPRStatusError } from '../types'
 import type { PRStatusError, TaskIssue } from '../types'
 
@@ -30,9 +37,11 @@ function graphQLResponse(
 
 type IssuesResult = { issues: TaskIssue[]; totalOpen: number } | PRStatusError
 
-function payload(nodes: unknown[], totalCount?: number) {
+function payload(nodes: unknown[], totalCount?: number, closed: unknown[] = []) {
   const issues = totalCount === undefined ? { nodes } : { totalCount, nodes }
-  return { data: { rateLimit: { remaining: 4987 }, repository: { issues } } }
+  return {
+    data: { rateLimit: { remaining: 4987 }, repository: { issues, closed: { nodes: closed } } },
+  }
 }
 
 /** Generic over the success type: both reads in this file answer `T | PRStatusError`. */
@@ -49,6 +58,43 @@ function errorOf<T extends object>(result: T | PRStatusError): PRStatusError {
   if (!isPRStatusError(result)) throw new Error(`expected an error, got ${JSON.stringify(result)}`)
   return result
 }
+
+describe('recentlyClosed', () => {
+  const NOW = Date.parse('2026-09-11T12:00:00Z')
+
+  /** `days` ago, as the ISO string GitHub would have sent. */
+  function closedDaysAgo(days: number): TaskIssue {
+    return {
+      number: 1,
+      title: 'A closed issue',
+      url: 'https://github.com/acme/api/issues/1',
+      createdAt: '2026-01-01T10:00:00Z',
+      closedAt: new Date(NOW - days * 24 * 60 * 60 * 1000).toISOString(),
+      labels: [],
+    }
+  }
+
+  it('keeps what closed inside the window', () => {
+    expect(recentlyClosed([closedDaysAgo(0), closedDaysAgo(CLOSED_WINDOW_DAYS - 1)], NOW)).toHaveLength(2)
+  })
+
+  it('drops what closed before it', () => {
+    // The whole reason the window exists: a repository with nine hundred closed issues
+    // would otherwise fill the Done column with 2021.
+    expect(recentlyClosed([closedDaysAgo(CLOSED_WINDOW_DAYS + 1), closedDaysAgo(400)], NOW)).toEqual([])
+  })
+
+  it('drops an issue GitHub gave no closing date for', () => {
+    // It really is closed — it arrived on the `closed` connection — but the board
+    // would have to place it on a date it does not have.
+    const { closedAt: _closedAt, ...undated } = closedDaysAgo(1)
+    expect(recentlyClosed([undated], NOW)).toEqual([])
+  })
+
+  it('drops a closing date it cannot read', () => {
+    expect(recentlyClosed([{ ...closedDaysAgo(1), closedAt: 'not a date' }], NOW)).toEqual([])
+  })
+})
 
 describe('fetchOpenIssues', () => {
   beforeEach(() => {
@@ -71,8 +117,48 @@ describe('fetchOpenIssues', () => {
     expect(OPEN_ISSUES_QUERY).toContain('states: OPEN')
     expect(OPEN_ISSUES_QUERY).toContain('orderBy: {field: CREATED_AT, direction: DESC}')
     expect(OPEN_ISSUES_QUERY).toContain('createdAt')
-    expect(OPEN_ISSUES_QUERY).not.toContain('UPDATED_AT')
     expect(OPEN_ISSUES_QUERY).toContain('rateLimit { remaining }')
+  })
+
+  it('asks for the recently closed ones in the same round trip', () => {
+    // The board's Done column. One query and not a second call: same repository, same
+    // token, same rate-limit budget. UPDATED_AT is the ordering here — GitHub cannot
+    // order by `closedAt`, and closing an issue updates it — which is exactly why the
+    // open half above pins CREATED_AT rather than the query as a whole banning
+    // UPDATED_AT.
+    expect(OPEN_ISSUES_QUERY).toContain('closed: issues(states: CLOSED')
+    expect(OPEN_ISSUES_QUERY).toContain('orderBy: {field: UPDATED_AT, direction: DESC}')
+    expect(OPEN_ISSUES_QUERY).toContain('closedAt')
+  })
+
+  it('returns the open issues and the recently closed ones as one list', async () => {
+    const justClosed = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    mockFetch.mockResolvedValue(graphQLResponse(payload(
+      [{ number: 1, url: 'https://github.com/acme/api/issues/1', createdAt: '2026-08-20T10:00:00Z' }],
+      1,
+      [{ number: 2, url: 'https://github.com/acme/api/issues/2', createdAt: '2026-08-01T10:00:00Z', closedAt: justClosed }],
+    )))
+
+    const result = okOf(await fetchOpenIssues('acme', 'api'))
+    // One array, with `closedAt` telling the two halves apart: the board places a card
+    // by asking what column it is in, and two arrays would mean every consumer
+    // downstream learning to look in both.
+    expect(result.issues.map((i) => i.number)).toEqual([1, 2])
+    expect(result.issues[0].closedAt).toBeUndefined()
+    expect(result.issues[1].closedAt).toBe(justClosed)
+  })
+
+  it('counts only the open half as the total, closed tail or not', async () => {
+    const justClosed = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    mockFetch.mockResolvedValue(graphQLResponse(payload(
+      [{ number: 1, url: 'https://github.com/acme/api/issues/1', createdAt: '2026-08-20T10:00:00Z' }],
+      214,
+      [{ number: 2, url: 'https://github.com/acme/api/issues/2', createdAt: '2026-08-01T10:00:00Z', closedAt: justClosed }],
+    )))
+
+    // `totalOpen` is what the header's "showing N of M" reads, and a Done column is
+    // not backlog.
+    expect(okOf(await fetchOpenIssues('acme', 'api')).totalOpen).toBe(214)
   })
 
   it('asks how many issues are open in total, not just for the page', () => {

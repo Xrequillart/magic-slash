@@ -35,9 +35,12 @@ import {
   // still land in the panel rather than reject at the bridge.
   classifyUnexpected,
   mapSprintIssues,
+  mapDoneSprintIssues,
+  buildSprintDoneJql,
   PROBE_PAGE_SIZE,
   SPRINT_FIELDS,
   SPRINT_PAGE_SIZE,
+  SPRINT_DONE_PAGE_SIZE,
 } from '../jira/sprint-issues'
 
 /**
@@ -414,21 +417,39 @@ function createSprintReader() {
         const fieldId = fieldIds.sprint
         const fields = fieldId ? [...SPRINT_FIELDS, fieldId] : SPRINT_FIELDS
 
-        const page = await fetchSprintIssues(atlassianDeps, {
-          accessToken: fresh.accessToken,
-          cloudId: fresh.cloudId,
-          jql: buildSprintJql(repo.projectKey),
-          fields,
-          maxResults: SPRINT_PAGE_SIZE,
-        })
+        // BOTH halves of the sprint at once: what is left to do, and what the board's
+        // Done column shows. Two queries with a cap each rather than one sharing a cap
+        // — see `buildSprintDoneJql` — and in parallel, because they are two
+        // independent reads of the same site and running them in turn would double the
+        // latency of every Jira card for no other gain.
+        const [page, donePage] = await Promise.all([
+          fetchSprintIssues(atlassianDeps, {
+            accessToken: fresh.accessToken,
+            cloudId: fresh.cloudId,
+            jql: buildSprintJql(repo.projectKey),
+            fields,
+            maxResults: SPRINT_PAGE_SIZE,
+          }),
+          fetchSprintIssues(atlassianDeps, {
+            accessToken: fresh.accessToken,
+            cloudId: fresh.cloudId,
+            jql: buildSprintDoneJql(repo.projectKey),
+            fields,
+            maxResults: SPRINT_DONE_PAGE_SIZE,
+          }),
+        ])
 
         // The card is empty. That is two different sentences — "this project has no
-        // sprint running" and "the sprint has nothing left to do" — and the filtered
-        // query cannot tell them apart, since it excludes the finished tickets that
-        // would prove a sprint exists. So ask, with one row, and only here: this
-        // costs a round trip exactly when the card would otherwise say nothing
-        // useful, and never on the common path (acceptance criterion 5).
-        if (page.issues.length === 0) {
+        // sprint running" and "the sprint has nothing left to do" — and the unfinished
+        // query cannot tell them apart on its own, since it excludes the finished
+        // tickets that would prove a sprint exists.
+        //
+        // The Done read answers it for free WHENEVER IT CAME BACK WITH SOMETHING: a
+        // finished ticket in an open sprint is proof of an open sprint. So the probe is
+        // now asked only when BOTH halves are empty, which is the one case left where
+        // nothing on hand can distinguish the two — and it is one round trip fewer than
+        // before on a sprint that is simply finished.
+        if (page.issues.length === 0 && donePage.issues.length === 0) {
           const probe = await fetchSprintIssues(atlassianDeps, {
             accessToken: fresh.accessToken,
             cloudId: fresh.cloudId,
@@ -439,22 +460,33 @@ function createSprintReader() {
           if (probe.issues.length === 0) {
             return { issues: [], error: { error: 'no-active-sprint', message: `No open sprint in ${repo.projectKey}.` } }
           }
-          // A sprint is running and everything in it is done. An empty group, not an
-          // error: the card says "nothing to do", which is the truth — and it can
-          // still say WHICH sprint has nothing left in it, off the probe's one row.
+          // A sprint is running and this read can see nothing in it — every ticket is
+          // done and older than the Done page could reach, or the workflow files them
+          // somewhere this query does not look. An empty group, not an error: the card
+          // says "nothing to do", which is the truth, and it can still say WHICH sprint
+          // off the probe's one row.
           const doneSprint = pickSprintName(probe.issues, fieldId)
           const done: SprintPayload = { issues: [], ...(doneSprint ? { sprintName: doneSprint } : {}) }
           sprintCache.set(key, { at: Date.now(), payload: done })
           return done
         }
 
-        // Off the RAW page, not the mapped issues: the sprint is a fact about the
+        // Off the RAW pages, not the mapped issues: the sprint is a fact about the
         // card and not about any one row, so `JiraTaskIssue` carries no field for it
-        // — one name per card rather than the same string on all fifty of them.
-        const sprintName = pickSprintName(page.issues, fieldId)
+        // — one name per card rather than the same string on all fifty of them. The
+        // Done page is the fallback, for the sprint whose every remaining ticket is
+        // finished: it is the half that has rows to name it from.
+        const sprintName = pickSprintName(page.issues, fieldId) || pickSprintName(donePage.issues, fieldId)
 
+        // Coloured in ONE call for the two halves. `colourEpics` reads the epic colours
+        // the tickets reference, so handing it the whole sprint at once is what stops a
+        // Done ticket's epic being looked up a second time because it also appears in
+        // the To Do column.
         const issues = await colourEpics(
-          mapSprintIssues(page.issues, repo.siteUrl || credentialSiteUrl),
+          [
+            ...mapSprintIssues(page.issues, repo.siteUrl || credentialSiteUrl),
+            ...mapDoneSprintIssues(donePage.issues, repo.siteUrl || credentialSiteUrl),
+          ],
           fresh,
           fieldIds.epicColors,
         )
@@ -462,6 +494,10 @@ function createSprintReader() {
         const payload: SprintPayload = {
           issues,
           ...(sprintName ? { sprintName } : {}),
+          // The UNFINISHED half's cursor alone. `truncated` is what the card's counter
+          // reads to say "showing the first N", and that sentence is about the backlog
+          // somebody has to work through — a Done column that stops at 25 is showing
+          // what it was asked for, not hiding work.
           ...(page.nextPageToken ? { truncated: true } : {}),
         }
         sprintCache.set(key, { at: Date.now(), payload })

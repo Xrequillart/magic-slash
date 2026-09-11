@@ -68,6 +68,17 @@ export const SPRINT_FIELDS = ['summary', 'status', 'priority', 'created', 'label
 export const SPRINT_PAGE_SIZE = 50
 
 /**
+ * How many FINISHED tickets of the same sprint the board's Done column can hold.
+ *
+ * Smaller than `SPRINT_PAGE_SIZE`, and its own budget rather than a share of it. That
+ * separation is the whole point of asking twice (see `buildSprintDoneJql`): the
+ * unfinished tickets are what the board is for, and a sprint that finished eighty
+ * things must not be able to push a single To Do row off the page to make room for
+ * them.
+ */
+export const SPRINT_DONE_PAGE_SIZE = 25
+
+/**
  * A JQL string literal.
  *
  * JQL escapes with a backslash, exactly as JSON does, and the project key reaches
@@ -130,6 +141,32 @@ export function buildSprintJql(projectKey: string): string {
  */
 export function buildOpenSprintProbeJql(projectKey: string): string {
   return `project = ${quoteJql(projectKey)} AND sprint in openSprints()`
+}
+
+/**
+ * The other half of the same sprint: the tickets that ARE finished, for the board's
+ * Done column.
+ *
+ * A SECOND QUERY rather than lifting `statusCategory != Done` off `buildSprintJql`,
+ * and the reason is the budget that comment spends its length on. One query for both
+ * halves shares one `maxResults` between them, so the answer to "how much of my
+ * backlog do I see" would depend on how much the team finished this sprint — exactly
+ * the silent truncation excluding Done was introduced to stop. Two queries give each
+ * column a cap of its own, and the second one is cheap: same site, same token, a page
+ * half the size.
+ *
+ * ORDERED BY `updated` DESCENDING, where the unfinished half orders by creation date.
+ * A Done column is read as "what just landed", and the date a ticket was filed says
+ * nothing about when it was finished. Jira has no `resolutiondate` on every workflow —
+ * a status can be moved to Done without resolving the issue — so `updated` is the field
+ * that is always there, and moving a ticket to Done is itself an update.
+ *
+ * Still scoped to `openSprints()`: this is the CURRENT sprint's Done column, not every
+ * ticket the project ever closed. A board's Done column empties when the sprint does,
+ * and that is the behaviour being reproduced.
+ */
+export function buildSprintDoneJql(projectKey: string): string {
+  return `project = ${quoteJql(projectKey)} AND sprint in openSprints() AND statusCategory = Done ORDER BY updated DESC`
 }
 
 /** One row is enough to answer the probe's yes/no question. */
@@ -770,6 +807,23 @@ export function mapSprintIssues(raw: unknown[], siteUrl: string): JiraTaskIssue[
   return raw.flatMap((entry) => {
     const issue = mapIssue(entry, siteUrl)
     return issue && issue.statusCategory !== 'done' ? [issue] : []
+  })
+}
+
+/**
+ * `mapSprintIssues`' counterpart for the answer to `buildSprintDoneJql`: the tickets
+ * that ARE finished, and only those.
+ *
+ * The mirrored filter rather than no filter at all. The query already asks for
+ * `statusCategory = Done`, so this can only ever drop something on a site that answered
+ * with a ticket it was not asked for — and a ticket that is not done has no business in
+ * a Done column however it got there. It is the same discipline the open half applies
+ * for the same reason, one comparison away.
+ */
+export function mapDoneSprintIssues(raw: unknown[], siteUrl: string): JiraTaskIssue[] {
+  return raw.flatMap((entry) => {
+    const issue = mapIssue(entry, siteUrl)
+    return issue && issue.statusCategory === 'done' ? [issue] : []
   })
 }
 

@@ -26,6 +26,14 @@ import { isPRStatusError } from '../types'
 import type { PRStatusError, TaskIssue, TaskIssueDetail, TicketComment } from '../types'
 
 /**
+ * A CAP on a connection with no total asked for, and that is deliberate: the Done
+ * column is a record of what just landed, not a census, so there is no "showing 30 of
+ * 900" to say about it. The open half keeps its `totalCount` because a BACKLOG bigger
+ * than its page is a fact somebody acts on.
+ */
+const CLOSED_PAGE_SIZE = 30
+
+/**
  * `rateLimit` leads, as in every query here: it is the cheapest possible answer to
  * "why did this go quiet", and it costs nothing to ask for.
  *
@@ -50,6 +58,12 @@ import type { PRStatusError, TaskIssue, TaskIssueDetail, TicketComment } from '.
  * total: a repository with two hundred open issues would otherwise be reported as
  * having fifty. There is no pagination here — the page says "showing 50 of 214"
  * instead of quietly rounding the backlog down.
+ *
+ * A SECOND CONNECTION, aliased `closed`, for the board's Done column. One query and
+ * not two calls: it is the same repository, the same token and the same rate-limit
+ * budget, and a second round trip per repository on every reload would be paid for an
+ * answer GitHub is willing to give in this one. It asks for `closedAt` — the field the
+ * open half has no use for — because that is what `CLOSED_WINDOW_DAYS` is applied to.
  */
 export const OPEN_ISSUES_QUERY = `query($owner:String!,$repo:String!){
   rateLimit { remaining }
@@ -64,8 +78,34 @@ export const OPEN_ISSUES_QUERY = `query($owner:String!,$repo:String!){
         subIssuesSummary { total completed }
       }
     }
+    closed: issues(states: CLOSED, first: ${CLOSED_PAGE_SIZE}, orderBy: {field: UPDATED_AT, direction: DESC}){
+      nodes {
+        number title url createdAt closedAt
+        author { login }
+        labels(first: 5){ nodes { name } }
+        parent { number title url }
+        subIssuesSummary { total completed }
+      }
+    }
   }
 }`
+
+/**
+ * How far back the board's Done column looks, and why it looks back at all.
+ *
+ * A GitHub repository has no Done column — an issue is open or it is closed, and the
+ * closed ones go back to the first commit. The board's Done column is the answer to
+ * "what did we finish", which has a horizon: a fortnight, matched to the length of the
+ * Jira sprint whose own Done column sits in the same four columns beside it. Without
+ * one, a repository with nine hundred closed issues would fill the column with 2021.
+ *
+ * Applied HERE and not in the query because GitHub cannot order by `closedAt` — its
+ * `IssueOrderField` is CREATED_AT, UPDATED_AT or COMMENTS. `UPDATED_AT DESC` is the
+ * proxy the query uses (closing an issue updates it), and the window is what turns a
+ * proxy into an answer.
+ */
+export const CLOSED_WINDOW_DAYS = 14
+
 
 /**
  * The rest of ONE issue, asked for only when someone opens it.
@@ -118,6 +158,8 @@ interface GQLIssueNode {
   title?: string | null
   url?: string | null
   createdAt?: string | null
+  /** Only ever asked for on the `closed` connection; absent on every open issue. */
+  closedAt?: string | null
   author?: { login?: string | null } | null
   labels?: { nodes?: ({ name?: string | null } | null)[] | null } | null
   parent?: { number?: number | null; title?: string | null; url?: string | null } | null
@@ -139,6 +181,8 @@ interface GQLIssuesResponse extends GQLEnvelope {
     rateLimit?: { remaining?: number | null } | null
     repository?: {
       issues?: { totalCount?: number | null; nodes?: (GQLIssueNode | null)[] | null } | null
+      /** The second connection of the same query — see `OPEN_ISSUES_QUERY`. No total. */
+      closed?: { nodes?: (GQLIssueNode | null)[] | null } | null
     } | null
   } | null
 }
@@ -306,6 +350,10 @@ function mapIssues(nodes: (GQLIssueNode | null)[]): TaskIssue[] {
         .map((label) => label?.name)
         .filter((name): name is string => !!name),
     }
+    // Only the `closed` connection asks for it, so this is also what tells the two
+    // halves apart downstream — see `TaskIssue.closedAt`. Assigned rather than spread
+    // in as `undefined`, for the reason the three fields below give.
+    if (typeof node.closedAt === 'string' && node.closedAt) issue.closedAt = node.closedAt
     // Assigned rather than spread in as `undefined`: the three fields are optional,
     // and a row without a parent must not carry a `parent: undefined` key that
     // every equality assertion downstream would then have to know about.
@@ -321,31 +369,64 @@ function mapIssues(nodes: (GQLIssueNode | null)[]): TaskIssue[] {
 }
 
 /**
- * Reads one repository's open issues. Never throws: every failure comes back as a
+ * The closed issues young enough for the board's Done column, given the moment the
+ * read happened.
+ *
+ * `now` is a parameter and not a `Date.now()` inside, for the usual reason: the rule
+ * is the only interesting thing here and a rule that reads the clock is a rule no
+ * test can pin down.
+ *
+ * An issue with NO `closedAt` is dropped rather than kept. It arrived on the `closed`
+ * connection so it really is closed, but the board would have to place it on a date it
+ * does not have — and the honest answer for "closed, at an unknown time" is not to
+ * claim it was closed this fortnight.
+ */
+export function recentlyClosed(issues: TaskIssue[], now: number): TaskIssue[] {
+  const horizon = now - CLOSED_WINDOW_DAYS * 24 * 60 * 60 * 1000
+  return issues.filter((issue) => {
+    if (!issue.closedAt) return false
+    const closedAt = Date.parse(issue.closedAt)
+    return Number.isFinite(closedAt) && closedAt >= horizon
+  })
+}
+
+/**
+ * Reads one repository's issues: every open one, plus the ones closed recently enough
+ * to belong in the board's Done column. Never throws — every failure comes back as a
  * named `PRStatusError` so the repository's card can say what is wrong instead of
  * disappearing from the page.
+ *
+ * ONE ARRAY for the two connections, with `closedAt` marking which is which. The board
+ * places a ticket by asking what column it is in, and two arrays would mean every
+ * consumer downstream — the search, the sort, the counters, the selection — learning
+ * to look in both. The name is kept as it was: it is still "the issues this repository
+ * has open", plus the tail the Done column needs.
  */
 export async function fetchOpenIssues(
   owner: string,
   repo: string,
 ): Promise<{ issues: TaskIssue[]; totalOpen: number } | PRStatusError> {
-  // The whole connection, not its nodes: `totalCount` is read below, and an
-  // `issues` object is what tells the ladder the repository was reachable at all.
-  const connection = await readGraphQL(
+  // The whole REPOSITORY, not one connection's nodes: two connections are read out of
+  // it below, and the object is what tells the ladder it was reachable at all. The
+  // not-found sentence is unchanged — `repository` being absent is exactly what it
+  // was reporting before, one level down.
+  const repository = await readGraphQL(
     OPEN_ISSUES_QUERY,
     { owner, repo },
-    (b: GQLIssuesResponse | null) => b?.data?.repository?.issues,
+    (b: GQLIssuesResponse | null) => b?.data?.repository,
     `Repository ${owner}/${repo} was not found.`,
   )
-  if (isPRStatusError(connection)) return connection
+  if (isPRStatusError(repository)) return repository
 
-  const issues = mapIssues(connection.nodes ?? [])
+  const open = mapIssues(repository.issues?.nodes ?? [])
+  const closed = recentlyClosed(mapIssues(repository.closed?.nodes ?? []), Date.now())
   // Falls back to what was actually mapped rather than to 0: a missing `totalCount`
-  // must not make a page of issues read as "showing 50 of 0".
-  const reported = connection.totalCount
-  const totalOpen = typeof reported === 'number' ? Math.max(reported, issues.length) : issues.length
+  // must not make a page of issues read as "showing 50 of 0". Counted off the OPEN
+  // half alone, which is what the word means — the closed tail is not backlog.
+  const reported = repository.issues?.totalCount
+  const totalOpen = typeof reported === 'number' ? Math.max(reported, open.length) : open.length
 
-  return { issues, totalOpen }
+  return { issues: [...open, ...closed], totalOpen }
 }
 
 /**

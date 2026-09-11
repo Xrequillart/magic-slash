@@ -412,6 +412,21 @@ describe('tasks:listOpenIssues', () => {
 })
 
 describe('tasks:listOpenIssues — the Jira half', () => {
+  /**
+   * A sprint is read with TWO queries — the unfinished tickets and the Done column,
+   * each with a cap of its own (see `buildSprintDoneJql`) — plus a probe and a colour
+   * lookup on the paths that need them. So "was this project read once" is a question
+   * about one of those queries, not about the call count, and these three helpers are
+   * what keep the assertions below saying what they mean.
+   */
+  const readsMatching = (needle: string) =>
+    mockFetchSprintIssues.mock.calls.filter((call) => call[1].jql.includes(needle))
+
+  /** The unfinished half — one per project per refresh. */
+  const openReads = () => readsMatching('statusCategory != Done')
+  /** The Done column — its twin, and asked in the same breath. */
+  const doneReads = () => readsMatching('statusCategory = Done')
+
   beforeEach(() => {
     // The two premises this suite adds to the file's: an Atlassian account is
     // connected, unless the test is about not being, and the sprint has a ticket in
@@ -432,36 +447,70 @@ describe('tasks:listOpenIssues — the Jira half', () => {
     const snapshot = await listOpenIssues()()
 
     expect(snapshot.groups.map((g) => g.configKey).sort()).toEqual(['billing', 'infra'])
-    // One query per project, resolving the board through `openSprints()` — no board
-    // id, and nothing on the `/rest/agile` surface the OAuth scope does not cover.
-    expect(mockFetchSprintIssues).toHaveBeenCalledTimes(2)
-    expect(mockFetchSprintIssues.mock.calls[0][1]).toMatchObject({
+    // One pair of queries per project, resolving the board through `openSprints()` —
+    // no board id, and nothing on the `/rest/agile` surface the OAuth scope does not
+    // cover.
+    expect(openReads()).toHaveLength(2)
+    expect(doneReads()).toHaveLength(2)
+    expect(openReads()[0][1]).toMatchObject({
       accessToken: 'atl-access',
       cloudId: 'cloud-1',
       jql: 'project = "PROJ" AND sprint in openSprints() AND statusCategory != Done ORDER BY statusCategory DESC, created DESC',
     })
   })
 
-  it('shows the To Do column and hides what is finished', async () => {
-    // In Progress crosses IPC and is narrowed in the renderer, which is the only
-    // side that knows who has an agent on what. `done` never leaves this process.
+  it('asks for the Done column as a query of its own, with a cap of its own', async () => {
+    // Two queries and not one with the filter lifted: a single `maxResults` shared
+    // between the two halves would let a sprint that finished eighty things push To Do
+    // rows off the page, which is the silent truncation excluding Done prevents.
+    withRepos({ billing: jiraRepo('billing') })
+
+    await listOpenIssues()()
+
+    expect(doneReads()[0][1]).toMatchObject({
+      jql: 'project = "PROJ" AND sprint in openSprints() AND statusCategory = Done ORDER BY updated DESC',
+      maxResults: 25,
+    })
+    // Ordered by `updated`, where the unfinished half orders by creation date: a Done
+    // column is read as "what just landed", and the date a ticket was filed says
+    // nothing about when it was finished.
+    expect(openReads()[0][1].maxResults).toBe(50)
+  })
+
+  it('sends every column of the sprint, each off the query that asked for it', async () => {
+    // The board has four columns, so all of the sprint crosses IPC now — where the
+    // unfinished half alone used to. Each query keeps only what it asked for, which is
+    // what stops a ticket arriving twice when a site answers loosely.
+    withRepos({ billing: jiraRepo('billing') })
+    mockFetchSprintIssues.mockImplementation(async (_deps: unknown, args: { jql: string }) => ({
+      issues: args.jql.includes('statusCategory = Done')
+        ? [sprintIssue('PROJ-3', 'done', 'Done')]
+        : [sprintIssue('PROJ-1', 'new', 'To Do'), sprintIssue('PROJ-2', 'indeterminate', 'In Progress')],
+      nextPageToken: null,
+    }))
+
+    const group = jiraGroupOf(await listOpenIssues()(), 'billing')
+
+    expect(group?.issues.map((issue) => issue.key)).toEqual(['PROJ-1', 'PROJ-2', 'PROJ-3'])
+    expect(group?.issues[1].statusCategory).toBe('indeterminate')
+    // The site's own word for the column, not ours: every Atlassian site renames
+    // its statuses, and the reader knows their board by its labels.
+    expect(group?.issues[1].statusName).toBe('In Progress')
+    expect(group?.issues[2].statusCategory).toBe('done')
+  })
+
+  it('keeps a finished ticket out of the unfinished half, however the site answers', async () => {
+    // Both mappers filter on the category, so a site that ignored the JQL could not
+    // put the same ticket in two columns.
     withRepos({ billing: jiraRepo('billing') })
     mockFetchSprintIssues.mockResolvedValue({
-      issues: [
-        sprintIssue('PROJ-1', 'new', 'To Do'),
-        sprintIssue('PROJ-2', 'indeterminate', 'In Progress'),
-        sprintIssue('PROJ-3', 'done', 'Done'),
-      ],
+      issues: [sprintIssue('PROJ-1', 'new', 'To Do'), sprintIssue('PROJ-3', 'done', 'Done')],
       nextPageToken: null,
     })
 
     const group = jiraGroupOf(await listOpenIssues()(), 'billing')
 
-    expect(group?.issues.map((issue) => issue.key)).toEqual(['PROJ-1', 'PROJ-2'])
-    expect(group?.issues[1].statusCategory).toBe('indeterminate')
-    // The site's own word for the column, not ours: every Atlassian site renames
-    // its statuses, and the reader knows their board by its labels.
-    expect(group?.issues[1].statusName).toBe('In Progress')
+    expect(group?.issues.map((issue) => issue.key)).toEqual(['PROJ-1', 'PROJ-3'])
   })
 
   // Acceptance criterion 5: a board with no sprint running is not an empty backlog.
@@ -476,25 +525,39 @@ describe('tasks:listOpenIssues — the Jira half', () => {
     expect(group?.issues).toEqual([])
   })
 
-  it('reports a sprint whose only tickets are finished as having nothing to do', async () => {
-    // The filtered query excludes Done, so a fully-finished sprint answers empty and
-    // is indistinguishable from no sprint at all — until the probe, which drops the
-    // filter and finds the finished ticket. No error, and an empty list, which the
-    // card words as "nothing to do".
+  it('shows a sprint whose only tickets are finished, and spends no probe on it', async () => {
+    // A finished ticket in an open sprint is proof of an open sprint, so the Done read
+    // answers the question the probe existed for — and the board draws those tickets
+    // rather than reporting an empty card, which is what the Done column is for.
     withRepos({ billing: jiraRepo('billing') })
-    mockFetchSprintIssues
-      .mockResolvedValueOnce({ issues: [], nextPageToken: null })
-      .mockResolvedValueOnce({ issues: [sprintIssue('PROJ-9', 'done', 'Done')], nextPageToken: null })
+    mockFetchSprintIssues.mockImplementation(async (_deps: unknown, args: { jql: string }) => ({
+      issues: args.jql.includes('statusCategory = Done') ? [sprintIssue('PROJ-9', 'done', 'Done')] : [],
+      nextPageToken: null,
+    }))
+
+    const group = jiraGroupOf(await listOpenIssues()(), 'billing')
+
+    expect(group?.error).toBeUndefined()
+    expect(group?.issues.map((issue) => issue.key)).toEqual(['PROJ-9'])
+    expect(readsMatching('openSprints()').filter((call) => call[1].maxResults === 1)).toHaveLength(0)
+  })
+
+  it('still probes when both halves come back empty', async () => {
+    // The one case left where nothing on hand distinguishes "no sprint running" from
+    // "a sprint this read can see nothing in".
+    withRepos({ billing: jiraRepo('billing') })
+    mockFetchSprintIssues.mockImplementation(async (_deps: unknown, args: { jql: string }) => ({
+      issues: args.jql === 'project = "PROJ" AND sprint in openSprints()'
+        ? [sprintIssue('PROJ-9', 'done', 'Done')]
+        : [],
+      nextPageToken: null,
+    }))
 
     const group = jiraGroupOf(await listOpenIssues()(), 'billing')
 
     expect(group?.error).toBeUndefined()
     expect(group?.issues).toEqual([])
-    expect(mockFetchSprintIssues).toHaveBeenCalledTimes(2)
-    expect(mockFetchSprintIssues.mock.calls[1][1]).toMatchObject({
-      jql: 'project = "PROJ" AND sprint in openSprints()',
-      maxResults: 1,
-    })
+    expect(readsMatching('openSprints()').filter((call) => call[1].maxResults === 1)).toHaveLength(1)
   })
 
   // ── The epic on a sprint row, and the one extra call that colours it ──────
@@ -556,7 +619,8 @@ describe('tasks:listOpenIssues — the Jira half', () => {
 
       await listOpenIssues()()
 
-      expect(mockFetchSprintIssues).toHaveBeenCalledTimes(1)
+      // The sprint's own two queries and nothing else: no `key in (…)` lookup.
+      expect(readsMatching('key in')).toHaveLength(0)
     })
 
     it('never asks for a colour on a site with no colour field', async () => {
@@ -568,7 +632,7 @@ describe('tasks:listOpenIssues — the Jira half', () => {
 
       const group = jiraGroupOf(await listOpenIssues()(), 'billing')
 
-      expect(mockFetchSprintIssues).toHaveBeenCalledTimes(1)
+      expect(readsMatching('key in')).toHaveLength(0)
       // The epic is still on the row — it came inline with the sprint read. Only the
       // dot is missing, which is what `JiraEpic.color` being optional is for.
       expect(group?.issues[0].epic?.title).toBe('Remboursement')
@@ -604,7 +668,7 @@ describe('tasks:listOpenIssues — the Jira half', () => {
 
     await listOpenIssues()()
 
-    expect(mockFetchSprintIssues).toHaveBeenCalledTimes(1)
+    expect(readsMatching('openSprints()').filter((call) => call[1].maxResults === 1)).toHaveLength(0)
   })
 
   // Acceptance criterion 4.
@@ -734,7 +798,8 @@ describe('tasks:listOpenIssues — the Jira half', () => {
     await handler()
     await handler()
 
-    expect(mockFetchSprintIssues).toHaveBeenCalledTimes(1)
+    expect(openReads()).toHaveLength(1)
+    expect(doneReads()).toHaveLength(1)
   })
 
   it('reads one project once for the two repositories planned in it', async () => {
@@ -745,7 +810,7 @@ describe('tasks:listOpenIssues — the Jira half', () => {
 
     const snapshot = await listOpenIssues()()
 
-    expect(mockFetchSprintIssues).toHaveBeenCalledTimes(1)
+    expect(openReads()).toHaveLength(1)
     // Still one group each: the merge is the renderer's to make, and it needs both
     // repositories to make it. They agree on where the tickets came from.
     expect(snapshot.groups.map((g) => g.sourceKey)).toEqual([
@@ -767,7 +832,7 @@ describe('tasks:listOpenIssues — the Jira half', () => {
     const snapshot = await listOpenIssues()()
 
     expect(new Set(snapshot.groups.map((g) => g.sourceKey)).size).toBe(1)
-    expect(mockFetchSprintIssues).toHaveBeenCalledTimes(1)
+    expect(openReads()).toHaveLength(1)
   })
 
   it('names the source even while the account is disconnected', async () => {
@@ -791,7 +856,7 @@ describe('tasks:listOpenIssues — the Jira half', () => {
     await handler()
     await handler()
 
-    expect(mockFetchSprintIssues).toHaveBeenCalledTimes(2)
+    expect(openReads()).toHaveLength(2)
   })
 })
 
