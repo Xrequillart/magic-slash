@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
-import { CloudOff, NotebookPen, Users } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { CloudOff, NotebookPen, RotateCcw, Users } from 'lucide-react'
 import type { PlanOverview } from '../../../types'
 import { useConfig } from '../../hooks/useConfig'
 import { useT, type MessageKey } from '../../i18n'
+import { BTN_PRIMARY } from '../../theme/controls'
+import { createLatestWriter } from '../../utils/latestWrite'
 import { buildPlanCards, filterPlanCards, planRepoOptions } from '../../utils/planRows'
 import { ALL_REPOS, PlanFilters } from './PlanFilters'
 import { PlanRow } from './PlanRow'
@@ -25,6 +27,12 @@ import { PlanRow } from './PlanRow'
  * built here; see `PlanRow` for why a row is deliberately inert.
  */
 
+/** An overview that says nothing, for the one case the bridge itself fails. */
+const NOTHING_READ: PlanOverview = {
+  sessions: [], ticketSessionIds: [], repos: [], emailByOwner: {}, avatarByOwner: {},
+  hasOrg: false, truncated: false, failed: true,
+}
+
 /**
  * What is said when the list is empty, and which of the four emptinesses it is.
  *
@@ -46,6 +54,11 @@ import { PlanRow } from './PlanRow'
  *    teammate opted out would be inventing it.
  *  * A FILTER THAT MATCHED NOTHING. There are plans; this repository has none.
  *
+ * EVERY ONE OF THEM IS A STATEMENT ABOUT THE ACCOUNT, which is why none of them may be
+ * drawn over a read that failed: "no plan", "no organization" and a count of zero are
+ * claims, and a dropped connection is not evidence for any of them. `overview.failed`
+ * short-circuits the whole table below — see the render.
+ *
  * One entry per case, ICON INCLUDED, so the branch below picks a whole case rather than a
  * pair of keys the component then has to work the icon back out of: a renamed message key
  * would otherwise change which glyph is drawn, silently and with nothing to type-check it.
@@ -57,14 +70,53 @@ const EMPTY_STATES = {
   none: { title: 'plans.empty.title', body: 'plans.empty.body', Icon: NotebookPen },
 } as const satisfies Record<string, { title: MessageKey; body: MessageKey; Icon: typeof Users }>
 
-function EmptyState({ title, body, Icon }: (typeof EMPTY_STATES)[keyof typeof EMPTY_STATES]) {
+/** The block every one of the states above is drawn in, and the error one with it. */
+function StateBlock({
+  title,
+  body,
+  Icon,
+  children,
+}: {
+  title: MessageKey
+  body: MessageKey
+  Icon: typeof Users
+  children?: ReactNode
+}) {
   const t = useT()
   return (
     <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
       <Icon className="w-8 h-8 text-icon-muted" />
       <p>{t(title)}</p>
       <p className="text-xs text-text-secondary/60 max-w-sm text-center">{t(body)}</p>
+      {children}
     </div>
+  )
+}
+
+function EmptyState({ title, body, Icon }: (typeof EMPTY_STATES)[keyof typeof EMPTY_STATES]) {
+  return <StateBlock title={title} body={body} Icon={Icon} />
+}
+
+/**
+ * The read did not go through.
+ *
+ * The SAME BLOCK as the empty states rather than a banner of its own: the reader is
+ * looking at the place the list would be, and a differently shaped box there would read
+ * as a fifth kind of nothing rather than as the list failing to arrive.
+ *
+ * With a button, which is the part the empty states have no use for. A failed read is the
+ * one state of this page that a second attempt can fix, and until this existed there was
+ * no way to make one short of leaving the page and coming back.
+ */
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  const t = useT()
+  return (
+    <StateBlock title="plans.error.title" body="plans.error.body" Icon={CloudOff}>
+      <button type="button" onClick={onRetry} className={`${BTN_PRIMARY} mt-1`}>
+        <RotateCcw className="w-3.5 h-3.5" />
+        {t('common.retry')}
+      </button>
+    </StateBlock>
   )
 }
 
@@ -75,6 +127,16 @@ export function PlansPage() {
   // `null` = the read has not come back yet, which is a third state from "came back with
   // nothing": the first draws a line of text, the second an explanation.
   const [overview, setOverview] = useState<PlanOverview | null>(null)
+  /**
+   * Bumped to ask for the read again — the Retry button, and nothing else.
+   *
+   * A counter rather than a callback that refetches, so the one effect below stays the
+   * only thing that touches `overview`: the cancellation flag, the loading state and the
+   * failure fallback are then written once, and a retry cannot race the mount read it was
+   * fired during.
+   */
+  const [attempt, setAttempt] = useState(0)
+  const retry = useCallback(() => setAttempt((n) => n + 1), [])
   /**
    * What the reader has picked SINCE THE PAGE OPENED, or undefined while they have not.
    *
@@ -91,23 +153,22 @@ export function PlansPage() {
 
   useEffect(() => {
     let cancelled = false
+    // Back to the loading line for the duration of a retry: the stale failure block would
+    // otherwise sit there with its button, looking like the click did nothing.
+    setOverview(null)
     window.electronAPI.plans.list()
       .then((next) => {
         if (!cancelled) setOverview(next)
       })
       .catch(() => {
-        // An empty overview and not an error banner: every failure path in
-        // `listPlanSessions` already degrades to this shape, so a rejection here is the
-        // bridge itself — and the page has nothing better to say about that than what
-        // its empty state already says.
-        if (!cancelled) {
-          setOverview({
-            sessions: [], ticketSessionIds: [], repos: [], emailByOwner: {}, avatarByOwner: {}, hasOrg: false,
-          })
-        }
+        // A rejection here is the BRIDGE, not the query: `listPlanSessions` answers with
+        // an overview whatever the database does. Either way nothing was read, so it is
+        // reported the same way a failed read is — with the error state and its retry,
+        // not with an empty list that would claim the account holds no plans.
+        if (!cancelled) setOverview(NOTHING_READ)
       })
     return () => { cancelled = true }
-  }, [])
+  }, [attempt])
 
   const cards = useMemo(
     () =>
@@ -144,8 +205,9 @@ export function PlansPage() {
    *    and the reader gets the whole list rather than an empty one.
    *
    * Only the STORED id is checked against what is on offer. A picked one cannot need it:
-   * it came out of this very list of options, and the overview behind that list is read
-   * once and never refetched, so there is no moment at which it could go stale.
+   * it came out of this very list of options, and the overview behind that list only ever
+   * changes when the reader retries a failed read, which offers the list again from
+   * scratch.
    */
   const repoId = useMemo(() => {
     if (picked !== undefined) return picked
@@ -158,11 +220,28 @@ export function PlansPage() {
     [cards, repoId],
   )
 
-  // Recorded on the account as well as held here: the write is fire-and-forget, and the
-  // list re-narrows off `picked` without waiting for it.
+  /**
+   * Recording the choice on the account, ONE WRITE AT A TIME.
+   *
+   * This used to be a bare fire-and-forget call per click, which was wrong in a way
+   * nothing on screen showed: two selections made in quick succession are two independent
+   * round trips with no arrival order, so the earlier one could land SECOND and leave
+   * `plans_repo` on the repository the reader had just moved off. The damage surfaced a
+   * launch later, when the page restored a filter they had replaced.
+   *
+   * `createLatestWriter` serializes them and drops the values in between, so the last
+   * value SENT is always the last one picked. THE VIEW DOES NOT WAIT FOR ANY OF IT:
+   * `setPicked` is synchronous and the list re-narrows on this render, exactly as before.
+   * Only the persistence is coalesced.
+   *
+   * Held in a memo, because a writer rebuilt on every render would have a fresh, empty
+   * queue and be straight back to firing in parallel.
+   */
+  const savePick = useMemo(() => createLatestWriter(updatePlansRepo), [updatePlansRepo])
+
   const pick = (next: string) => {
     setPicked(next)
-    updatePlansRepo(next === ALL_REPOS ? '' : next).catch(() => { /* the view is already right */ })
+    savePick(next === ALL_REPOS ? '' : next)
   }
 
   /**
@@ -210,9 +289,16 @@ export function PlansPage() {
           {/* ONE gate, because there is now one read. Whether the reader belongs to an
               organization rides in on the overview (`hasOrg`), so the page no longer has
               to hold the list back for a second, slower answer before it can tell an
-              account with no organization from one whose plans simply have not arrived. */}
+              account with no organization from one whose plans simply have not arrived.
+
+              The FAILURE branch comes before every empty one, and that order is the
+              point: an errored read has no rows, so each of the four empty states would
+              otherwise match and state something about the account that nothing here
+              knows. */}
           {overview === null ? (
             <p className="py-10 text-center text-sm text-text-secondary">{t('common.loading')}</p>
+          ) : overview.failed ? (
+            <ErrorState onRetry={retry} />
           ) : empty ? (
             <EmptyState {...empty} />
           ) : (
@@ -239,6 +325,16 @@ export function PlansPage() {
                that looked foreign. */
             <div className="rounded-xl bg-surface-subtle border border-line-subtle overflow-hidden">
               {visible.map((card) => <PlanRow key={card.id} card={card} now={now} />)}
+              {/* A list that came back at its cap says so, as its own last line INSIDE the
+                  frame — the sentence is about this list, and a note floating under the
+                  box would read as being about the page. The read is newest-first, so
+                  what is missing is always the old end of it: without this line a list
+                  silently short of its tail looks exactly like a complete one. */}
+              {overview.truncated && (
+                <p className="px-4 py-2 border-t border-line-subtle text-xs text-text-secondary/60">
+                  {t('plans.truncated')}
+                </p>
+              )}
             </div>
           )}
         </div>

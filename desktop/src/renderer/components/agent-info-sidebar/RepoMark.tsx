@@ -38,20 +38,34 @@ const REPO_MARK_SIZES = Object.freeze({
 
 export type RepoMarkSize = keyof typeof REPO_MARK_SIZES
 
-export function RepoMark({ repoName, size = 'card' }: { repoName: string; size?: RepoMarkSize }) {
+/**
+ * `repoName` is the KEY the repository has in `Config.repositories`, which is what the
+ * colour map is keyed by — not whatever a surface happens to display. The two are the
+ * same string for a repository whose name is unique across the user's scopes, and they
+ * differ for one that is not (`api` vs `api (Acme)`), so a caller holding a cloud name
+ * must resolve it first: `configKeyForRepoId` in `utils/projectColors.ts`.
+ *
+ * It is OPTIONAL because that resolution can legitimately come back empty — a repository
+ * listed from an organization that this machine has no local entry for. Undefined draws
+ * the neutral mark, the same one an entry with no colour gets, which is the honest look
+ * for a repository this app knows no colour for.
+ */
+export function RepoMark({ repoName, size = 'card' }: { repoName?: string; size?: RepoMarkSize }) {
   const { box, glyph } = REPO_MARK_SIZES[size]
   const repositories = useStore(s => s.config?.repositories)
   /* Built over the FULL repository list, never a subset of it: getProjectColorMap
      falls back to the palette BY INDEX, so a map built from just the repos on screen
      would hand an uncoloured repo a different colour here than the dots elsewhere
      give it. This is the same call RepositoryCard makes, for the same reason. */
-  const repoColor = getProjectColorMap(Object.keys(repositories ?? {}), repositories)[repoName]
+  const repoColor = repoName
+    ? getProjectColorMap(Object.keys(repositories ?? {}), repositories)[repoName]
+    : undefined
 
-  /* UNDEFINED IS A REAL CASE, not a defensive nicety: the map is keyed by the names in
-     the reader's LOCAL config, and the Plans list names organization repositories that a
-     given machine may never have cloned — nothing there to give one a colour, by index or
-     otherwise. Without this the template below produced `backgroundColor: "undefined1f"`,
-     which the browser drops, leaving a glyph on nothing.
+  /* UNDEFINED IS A REAL CASE, not a defensive nicety: the map is keyed by the reader's
+     LOCAL config, and the Plans list names organization repositories that a given machine
+     may never have cloned — no entry there, so no key to resolve and nothing to give one
+     a colour, by index or otherwise. Without this the template below produced
+     `backgroundColor: "undefined1f"`, which the browser drops, leaving a glyph on nothing.
 
      The fallback is the palette's own muted pair rather than a ninth project colour: a
      repo with no colour must not LOOK like a repo that was given one, or the mark stops

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getProjectColor, getProjectColorMap, PROJECT_COLORS } from './projectColors'
+import { configKeyForRepoId, getProjectColor, getProjectColorMap, PROJECT_COLORS } from './projectColors'
 
 describe('getProjectColor', () => {
   it('returns color at given index', () => {
@@ -33,5 +33,36 @@ describe('getProjectColorMap', () => {
   it('falls back to palette when config has no color', () => {
     const map = getProjectColorMap(['api'], { api: {} })
     expect(map.api).toBe('#3B82F6')
+  })
+})
+
+describe('configKeyForRepoId', () => {
+  const repositories = {
+    api: { id: 'r1' },
+    'api (Acme)': { id: 'r2' },
+    legacy: {},
+  }
+
+  it('answers the config key that carries the cloud id', () => {
+    expect(configKeyForRepoId('r1', repositories)).toBe('api')
+  })
+
+  it('tells two repositories of the same name apart', () => {
+    // The whole point: both are called `api` in their own organization, and only the
+    // uuid says which of the two a row is about.
+    expect(configKeyForRepoId('r2', repositories)).toBe('api (Acme)')
+  })
+
+  it('answers undefined for a repository this machine has no entry for', () => {
+    // Routine on the Plans page: an organization's sessions include repositories the
+    // reader has never cloned. The caller draws the neutral mark.
+    expect(configKeyForRepoId('r9', repositories)).toBeUndefined()
+  })
+
+  it('answers undefined with no id, and with no config at all', () => {
+    expect(configKeyForRepoId(undefined, repositories)).toBeUndefined()
+    expect(configKeyForRepoId('r1', undefined)).toBeUndefined()
+    // An entry predating the cloud id must not match a missing one.
+    expect(configKeyForRepoId('', repositories)).toBeUndefined()
   })
 })

@@ -1162,6 +1162,9 @@ export const en = {
   'plans.tickets.one': '1 ticket',
   'plans.tickets.other': '{count} tickets',
   'plans.noRepo': 'Unknown repository',
+  // The last line of a list that came back at its cap. The read is newest-first, so what
+  // is missing is always the old end of it.
+  'plans.truncated': 'Only the most recent plans are listed. Older sessions are not shown here.',
   'plans.empty.title': 'No plan here yet',
   // Two situations in one sentence, because the page cannot tell them apart: nobody has
   // planned anything, or somebody has and their upload is off. `user_settings` is
@@ -1179,6 +1182,11 @@ export const en = {
   'plans.empty.syncOffTitle': 'Your plan syncing is off',
   'plans.empty.syncOffBody':
     'Your plan sessions are not saved to the cloud, so nothing you write with /magic:plan can be listed here. Turn plan syncing back on in Settings, under Plan sessions, and your next sessions will show up.',
+  // Drawn INSTEAD of any of the four empty states above: a read that errored is not an
+  // empty account, and saying "no plan" over it would be inventing an answer.
+  'plans.error.title': 'Plans could not be loaded',
+  'plans.error.body':
+    'The read did not go through, so nothing here reflects what your account holds. Check your connection, then try again.',
 
   // ── Hours spent inside the skills ───────────────────────────────────────────
   'skillHours.hours': '{count}h',

@@ -739,7 +739,9 @@ const tasksApi = {
 // One call and no subscription, and that is the table's own design rather than this
 // page's shortcut: `plan_sessions` is deliberately absent from the realtime publication
 // (see the end of supabase/migrations/20260821090000_plan_sessions.sql), so the list
-// reads on open and on an explicit reload.
+// reads when the page opens, and again when the reader asks it to after a read that
+// failed — the Retry button of the page's error state, which is the only other thing
+// that calls this.
 const plansApi = {
   list: (): Promise<PlanOverview> => ipcRenderer.invoke('plans:list'),
 }

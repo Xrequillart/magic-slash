@@ -4,6 +4,8 @@ import { planLabel, planRecency } from '../../utils/planRows'
 import { AccountAvatar } from '../../components/AccountAvatar'
 import { RepoMark } from '../../components/agent-info-sidebar/RepoMark'
 import { formatTimestamp } from '../../components/agent-info-sidebar/utils'
+import { useStore } from '../../store'
+import { configKeyForRepoId } from '../../utils/projectColors'
 import { useT, type MessageKey, type Translate } from '../../i18n'
 
 /**
@@ -52,6 +54,22 @@ const STATUS_LOOK = {
 
 export function PlanRow({ card, now }: { card: PlanCard; now: number }) {
   const t = useT()
+  const repositories = useStore((s) => s.config?.repositories)
+  /**
+   * The repository's COLOUR IDENTITY, which is not its name.
+   *
+   * `card.repoName` is the name the cloud row carries, and names are unique only within
+   * one organization: two orgs that both have an `api` produce two rows spelled the same,
+   * and the colour map — keyed by the keys of the LOCAL config, where the second one is
+   * stored as `api (Acme)` — would hand one of them the other's colour. So the row
+   * resolves the plan's cloud `repoId` (a uuid, which cannot collide) to the local key
+   * that records it, and colours by that.
+   *
+   * Undefined when this machine has no entry for the repository, which is the ordinary
+   * case for a teammate's plan on something never cloned here. `RepoMark` draws its
+   * neutral mark for it.
+   */
+  const repoColorKey = configKeyForRepoId(card.repoId, repositories)
   const { Icon, tone, labelKey } = STATUS_LOOK[card.status]
   const statusLabel = t(labelKey)
   // Through `planRecency` rather than off `updatedAt` directly: it applies the same
@@ -92,10 +110,11 @@ export function PlanRow({ card, now }: { card: PlanCard; now: number }) {
               agent sidebar, and the shared `RepoMark` is what keeps the three the same
               tile. The name stays beside it — the colour tells two rows apart at a
               glance, it does not say which repo this is to someone reading their first
-              plan. An unknown repository has no mark at all, only the label: there is no
-              repo for a colour to belong to. */}
+              plan. A session with no repository at all has no mark, only the label:
+              there is no repo for a colour to belong to. What is DISPLAYED is the cloud
+              name; what is COLOURED is the local key behind it. See `repoColorKey`. */}
           <span className="inline-flex items-center gap-1.5 min-w-0">
-            {card.repoName && <RepoMark repoName={card.repoName} size="inline" />}
+            {card.repoName && <RepoMark repoName={repoColorKey} size="inline" />}
             <span className="truncate">{card.repoName ?? t('plans.noRepo')}</span>
           </span>
           <span className="inline-flex items-center gap-1.5 min-w-0">

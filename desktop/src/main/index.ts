@@ -305,7 +305,8 @@ function setupHandlers() {
   setupOrgHandlers()
   // The Plans page's read of `/magic:plan` sessions. Read-only and pull-only, like
   // Tasks below: `plan_sessions` is deliberately not published to realtime (see the
-  // end of 20260821090000), so there is no subscription to start here.
+  // end of 20260821090000), so there is no subscription to start here. The page reads
+  // on open, and again when the reader retries a read that failed.
   setupPlansHandlers()
   // The Tasks page's backlog read. No poller behind it: the page reads on open and
   // on an explicit reload, so there is nothing to start here beyond the channel.

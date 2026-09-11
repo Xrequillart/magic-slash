@@ -1137,6 +1137,7 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.tickets.one': '1 ticket',
   'plans.tickets.other': '{count} tickets',
   'plans.noRepo': 'Dépôt inconnu',
+  'plans.truncated': 'Seuls les plans les plus récents sont listés. Les sessions plus anciennes ne sont pas affichées ici.',
   'plans.empty.title': 'Aucun plan pour l’instant',
   'plans.empty.body':
     'Lancez /magic:plan dans Claude Code : il transforme une idée en spec relisible, puis en epic et en stories. Chaque session arrive ici au fil de son écriture. Si un collègue a planifié quelque chose que vous ne voyez pas, vérifiez que la synchronisation des plans est activée dans les Réglages.',
@@ -1149,6 +1150,9 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.empty.syncOffTitle': 'Votre synchronisation des plans est désactivée',
   'plans.empty.syncOffBody':
     'Vos sessions de planification ne sont pas enregistrées dans le cloud : rien de ce que vous écrivez avec /magic:plan ne peut apparaître ici. Réactivez la synchronisation des plans dans les Réglages, section Sessions de planification, et vos prochaines sessions s’afficheront.',
+  'plans.error.title': 'Impossible de charger les plans',
+  'plans.error.body':
+    'La lecture n’a pas abouti : rien de ce qui est affiché ne reflète le contenu de votre compte. Vérifiez votre connexion, puis réessayez.',
 
   // ── Heures passées sur les skills ───────────────────────────────────────────
   'skillHours.hours': '{count}h',

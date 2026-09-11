@@ -1930,6 +1930,29 @@ export interface PlanOverview {
    * and an invitations read per org, for one boolean.
    */
   hasOrg: boolean
+  /**
+   * Whether the session read came back AT its cap, and therefore may be missing older
+   * sessions.
+   *
+   * The read is ordered newest-first and limited (`cloud/plans.ts`), because PostgREST
+   * stops at its own row ceiling anyway and an unordered read that hits it returns an
+   * arbitrary subset. What this flag buys is that the page can SAY so — a list silently
+   * missing its tail reads exactly like a complete one.
+   */
+  truncated: boolean
+  /**
+   * Whether any of the reads behind this overview errored.
+   *
+   * NOT the same thing as an empty overview, which is why it is a field and not an
+   * inference from the rows. Cloud off or signed out returns nothing and `failed: false`:
+   * there is nowhere to read from, the page says "no organization", and that is the
+   * honest reading of it. A dropped connection or a refused query returns nothing and
+   * `failed: true`, and every empty state the page could otherwise draw over it — no
+   * plan, no organization, an unknown repository, a count of zero — would be a claim
+   * about the world it has no evidence for. The page shows an error and offers the read
+   * again instead.
+   */
+  failed: boolean
 }
 
 // ---------------------------------------------------------------------------
