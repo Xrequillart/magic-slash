@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.92.1] - 2026-09-12
+
+### Changed
+
+- **Desktop**: The names of the files being modified, and every part of an inline comment card, are drawn in the app's own face instead of the code's monospace
+- **Desktop**: The repository card in the right sidebar has as much padding above its header as under its last row
+
+### Fixed
+
+- **Desktop**: The board's pinned column headings no longer show the cards sliding past through their rounded corners
+- **Desktop**: The plan link on a ticket's page no longer blinks
+
 ## [0.92.0] - 2026-09-11
 
 ### Added
@@ -2761,6 +2773,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.92.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.92.1
 [0.92.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.92.0
 [0.91.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.3
 [0.91.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.2
