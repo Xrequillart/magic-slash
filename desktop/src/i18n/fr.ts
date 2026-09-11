@@ -820,6 +820,16 @@ export const fr: Record<keyof typeof en, string> = {
   'cloud.avatar.alt': 'Photo du compte',
   'cloud.avatar.choose': 'Choisir une photo',
   'cloud.avatar.remove': 'Retirer la photo',
+  'cloud.avatar.crop.title': 'Cadrez votre photo',
+  // Nomme la surface que l'on manipule, ce que ne fait pas `cloud.avatar.alt` :
+  // celle-ci décrit la photo déjà enregistrée sur le compte. Elle NOMME seulement :
+  // les instructions sont dans `.hint`, que le canvas désigne via
+  // `aria-describedby`, pour que la phrase lue et la phrase affichée restent une.
+  'cloud.avatar.crop.canvas': 'Photo à cadrer',
+  'cloud.avatar.crop.hint': 'Faites glisser pour déplacer, molette pour zoomer.',
+  'cloud.avatar.crop.zoomIn': 'Zoomer',
+  'cloud.avatar.crop.zoomOut': 'Dézoomer',
+  'cloud.avatar.crop.confirm': 'Utiliser cette photo',
   'cloud.signOut': 'Se déconnecter',
   'cloud.changePassword': 'Changer de mot de passe',
   'cloud.changeEmail': 'Changer d’e-mail',

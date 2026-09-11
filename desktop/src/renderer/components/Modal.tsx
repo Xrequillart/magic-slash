@@ -29,6 +29,13 @@ interface ModalProps {
 export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth = 'max-w-md', fillHeight = false }: ModalProps) {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
+      // Stop here, or Escape closes two dialogs at once. This listener sits on
+      // `document` and PageModal's sits on `window`, which is the next hop in
+      // the bubble chain — so without this, dismissing a dialog opened from
+      // inside Settings (every one in CloudAccountSection, the crop included)
+      // also tears down the Settings sheet behind it. Only the topmost modal
+      // answers Escape.
+      e.stopPropagation()
       onClose()
     }
   }, [onClose])

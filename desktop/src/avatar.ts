@@ -320,7 +320,8 @@ export function parseAvatarDataUrl(
 }
 
 /**
- * The largest centred square inside an image: the automatic crop.
+ * The largest centred square inside an image: the zoom-1 starting point of the
+ * crop the user then moves (see `avatarCrop.ts`).
  *
  * `size` is the smaller of the two dimensions, so a landscape photo loses its
  * sides and a portrait loses its top and bottom, evenly. NOT clamped to
