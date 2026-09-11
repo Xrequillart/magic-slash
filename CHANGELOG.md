@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.92.0] - 2026-09-11
+
+### Added
+
+- **Desktop**: Plans, Tasks, Skills and Settings are one overlay with four tabs, so moving between them no longer closes a modal and opens another
+- **Desktop**: The Settings tab is named after the signed-in account, with their photo, rather than after a gear
+- **Desktop**: A plan's tickets carry their tracker's badge and their state read live off GitHub or Jira, and open in the app instead of in the browser
+- **Desktop**: A ticket's page names the plan it was filed from, and opens it
+- **Desktop**: A plan's pinned bar carries the plan's title and status once the heading has scrolled behind it
+- **Desktop**: The page overlay can be taken full screen, with the button in its header or ⌘⇧F
+- **Desktop**: A plan opens on a page of its own, with its spec and the epic and stories it created
+- **Desktop**: A spec too large to sync says so, rather than leaving an empty panel
+- **Desktop**: A repository's colour can be picked straight from its closed row, without opening the modal
+- **Desktop**: A repository's colour is picked from a grid of thirty-six
+- **Desktop**: The Team page becomes a Plans page, listing every planning session you can see
+- **Desktop**: A new file's lines count as additions in a review's diff stat
+
+### Changed
+
+- Relicensed under PolyForm Shield 1.0.0, replacing MIT
+- **Desktop**: Settings and Skills fill the width they are given instead of stopping at a reading measure
+- **Desktop**: Going full screen animates, and stops under the app's own title bar so the window stays draggable
+
+### Fixed
+
+- **Desktop**: A full-screen overlay's header no longer falls inside the window's drag region, where its close and full-screen buttons stopped responding
+- **Desktop**: A malformed plan id is refused, and a spec past the sync ceiling is no longer re-uploaded on every change
+- **Desktop**: The plans list tells a failed read from an empty one, and a repository filter changed twice in a row cannot settle on the older answer
+- **Desktop**: Every changed file row in a review carries a path it can open
+
 ## [0.91.3] - 2026-09-11
 
 ### Added
@@ -2731,6 +2761,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.92.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.92.0
 [0.91.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.3
 [0.91.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.2
 [0.91.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.1
