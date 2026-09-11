@@ -1,4 +1,4 @@
-import type { Org, PlanDetail, PlanOverview, PlanRepoRef, PlanSession, PlanTicketRead } from '../../types'
+import type { Org, PlanDetail, PlanOverview, PlanRepoRef, PlanSession, PlanTicketOrigin, PlanTicketRead } from '../../types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getAuthedClient } from './auth'
 import { listMembers, listOrgsRead } from './org'
@@ -515,5 +515,86 @@ export async function listPlanDetail(id: string): Promise<PlanDetail> {
     session: session.rows[0] ?? null,
     tickets: tickets.rows,
     failed: !session.ok || !tickets.ok,
+  }
+}
+
+
+/**
+ * The columns a ticket's own page needs to NAME the plan it came from. See
+ * `PlanTicketOrigin`: the label is resolved on the renderer's side, by the same
+ * `planLabel` the list uses, so what travels is what that function reads.
+ */
+const ORIGIN_COLUMNS = 'id, title, slug, spec_key'
+
+/**
+ * The plan that filed a given ticket, or null when none did.
+ *
+ * THE REVERSE OF EVERY OTHER READ HERE, and the only one that starts from a tracker key
+ * rather than from a session. It answers one question on the Tasks page — "was this
+ * ticket planned, and where is the reasoning?" — for a ticket the reader is already
+ * looking at.
+ *
+ * TWO ROUND TRIPS RATHER THAN AN EMBEDDED JOIN, and the order is the point. `key` is
+ * enormously selective — a handful of rows in `plan_tickets` across the whole table —
+ * so asking it first turns the second query into a lookup by primary key. Starting from
+ * the repository would have meant listing every session it has ever had in order to
+ * filter tickets by them.
+ *
+ * SCOPED BY REPOSITORY, which is not optional: `#412` exists in every GitHub repository
+ * there is, and `plan_tickets` stores the tracker's key with no repository beside it.
+ * Without the second filter a ticket would link to a plan from a different codebase that
+ * merely happened to file the same number — a wrong answer that looks exactly like a
+ * right one. The filter lives on the SESSION, which is where `repo_id` is.
+ *
+ * SEVERAL REPOSITORIES, for the same reason the caller's card can stand for several: one
+ * Jira project planned for two services gives a ticket that belongs to neither in
+ * particular, and the plan was filed against whichever of them the planner was in. They
+ * go into one `in(...)` rather than a call each.
+ *
+ * SEVERAL SPELLINGS OF ONE KEY are accepted, because two of them are in the wild: the
+ * skill files `#412` (skills/magic-plan/SKILL.md §7.2) and the table's own comment gives
+ * `456`. Both are the same ticket and the caller does not know which its rows use, so it
+ * sends the candidates and this asks for all of them at once.
+ *
+ * NO `failed` STATE. RLS answers "no such plan" and "not yours" identically here as
+ * everywhere else, and a read that errors is a ticket with no plan link — which is what
+ * the overwhelming majority of tickets look like anyway. There is no sentence the page
+ * could add that a reader would act on.
+ */
+export async function findPlanForTicket(
+  repoIds: string[],
+  keys: string[],
+): Promise<PlanTicketOrigin | null> {
+  const client = await getAuthedClient()
+  if (!client || repoIds.length === 0 || keys.length === 0) return null
+
+  const { data: ticketRows, error: ticketError } = await client
+    .from('plan_tickets')
+    .select('session_id')
+    .in('key', keys)
+  if (ticketError || !ticketRows || ticketRows.length === 0) return null
+
+  const sessionIds = [...new Set((ticketRows as PlanTicketSessionRow[]).map((row) => row.session_id))]
+
+  // `maybeSingle` would THROW on the multi-row case, and that case is reachable: two
+  // plans of the same repository can file the same ticket key when one is a re-plan of
+  // the other. Ordered so the answer is at least stable — the newest plan is the one
+  // whose reasoning is current — rather than whichever row the database happened to
+  // return first.
+  const { data, error } = await client
+    .from('plan_sessions')
+    .select(ORIGIN_COLUMNS)
+    .in('id', sessionIds)
+    .in('repo_id', repoIds)
+    .order('created_at', { ascending: false })
+    .limit(1)
+  if (error || !data || data.length === 0) return null
+
+  const row = data[0] as unknown as PlanSessionRow
+  return {
+    id: row.id,
+    title: row.title ?? undefined,
+    slug: row.slug ?? '',
+    specKey: row.spec_key,
   }
 }

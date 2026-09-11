@@ -5,6 +5,7 @@ import { useConfig } from '../../hooks/useConfig'
 import { useT, type MessageKey } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
 import { createLatestWriter } from '../../utils/latestWrite'
+import { useStore } from '../../store'
 import type { PlanCard } from '../../utils/planRows'
 import { buildPlanCards, filterPlanCards, planRepoOptions } from '../../utils/planRows'
 import { SweepPane } from '../../components/SweepPane'
@@ -177,6 +178,18 @@ export function PlansPage() {
   const [selected, setSelected] = useState<PlanCard | null>(null)
 
   /**
+   * The plan this page was opened ON, when it was opened from somewhere else — today,
+   * the "planned in" block on a ticket's page. Null whenever the modal was opened by
+   * hand.
+   *
+   * Consumed ONCE, the one-shot deep link `Config` takes for `settingsInitialTab` and
+   * the Tasks board for `tasksInitialTarget`; see the effect below for why it cannot be
+   * a `useState` initialiser the way the board's is.
+   */
+  const initialPlanId = useStore((s) => s.plansInitialPlanId)
+  const setInitialPlanId = useStore((s) => s.setPlansInitialPlanId)
+
+  /**
    * The one scrolling element, and where the list was left.
    *
    * Opening a plan starts it at the top and coming back restores the offset — the same
@@ -225,6 +238,32 @@ export function PlansPage() {
         : [],
     [overview],
   )
+
+  /**
+   * The deep link, applied once the LIST has landed, and that timing is the whole reason
+   * this is an effect where the Tasks board seeds its selection in a `useState`
+   * initialiser.
+   *
+   * `selected` is a `PlanCard` — the detail page draws its header from it — and a card
+   * only exists once `plans:list` has come back and `buildPlanCards` has resolved the
+   * repository name, the author and their photo against the org roster. There is nothing
+   * to select at mount, so the id waits in the store until there is.
+   *
+   * CLEARED WHETHER OR NOT IT MATCHED, and the miss is a real case rather than
+   * defensiveness: the plan may have been deleted, or its repository unshared, since the
+   * ticket that linked to it was filed. The reader then gets the list, which is the
+   * page's own honest fallback — and the link is not left armed to fire on the next
+   * plain open.
+   *
+   * `cards.length` guards the empty case so a failed read does not consume the link
+   * before it could ever have resolved: a retry that succeeds still opens the plan.
+   */
+  useEffect(() => {
+    if (!initialPlanId || cards.length === 0) return
+    const card = cards.find((candidate) => candidate.id === initialPlanId)
+    if (card) setSelected(card)
+    setInitialPlanId(null)
+  }, [initialPlanId, cards, setInitialPlanId])
 
   /** Only the repositories that actually have a plan. See `planRepoOptions`. */
   const repoOptions = useMemo(

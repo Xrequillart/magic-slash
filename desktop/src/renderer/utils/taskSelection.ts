@@ -113,14 +113,35 @@ export function resolveTaskSelection(
   repoPaths: string[],
   repositories: Record<string, RepositoryConfig>,
 ): TaskSelection | null {
+  const configKey = resolveConfigKey(repoPaths, repositories)
+  if (!configKey) return null
+  return taskSelectionFor(ticketId, configKey)
+}
+
+/**
+ * The same selection, for a caller that ALREADY KNOWS the repository.
+ *
+ * The plan detail page is that caller: a plan row carries the cloud `repoId` its spec
+ * was uploaded against, and `configKeyForRepoId` turns that into the config key
+ * directly — there are no agent working directories to match against, and going through
+ * `resolveTaskSelection` would have meant inventing a path just to have it parsed back
+ * into the key we started from.
+ *
+ * The tracker is still read off the ID and never off the caller, which is what lets one
+ * plan's tickets mix a Jira epic with GitHub issues without either being mislabelled.
+ * Null for an id of neither shape, and for a repository this machine has not configured
+ * — a teammate's plan on a repo never cloned here. Both mean the same thing to the
+ * caller: the click still works, it just lands on the list rather than on the ticket.
+ */
+export function taskSelectionFor(
+  ticketId: string | undefined,
+  configKey: string | undefined,
+): TaskSelection | null {
   const id = normalizeTicketId(ticketId)
-  if (!id) return null
+  if (!id || !configKey) return null
 
   const tracker = detectTicketProvider(id)
   if (!tracker) return null
-
-  const configKey = resolveConfigKey(repoPaths, repositories)
-  if (!configKey) return null
 
   return tracker === 'github'
     ? { tracker: 'github', configKey, number: Number(id) }

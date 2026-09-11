@@ -1896,6 +1896,52 @@ export interface PlanTicketRead {
 }
 
 /**
+ * The plan a ticket CAME OUT OF, as the ticket's own page names it.
+ *
+ * The four naming fields and nothing else. `id` is what the deep link opens the Plans
+ * page on, and the other three are exactly what `planLabel` needs: a plan is called by
+ * its title, falling back to its slug and then to its spec key, and the ticket page must
+ * call it what the list calls it. Sending a resolved string instead would have put a
+ * second copy of that fallback chain in the main process, free to answer differently
+ * from the one the list uses.
+ *
+ * `null` from the read when no plan filed this ticket — much the commonest answer, since
+ * most tickets were filed by hand.
+ */
+export type PlanTicketOrigin = Pick<PlanSession, 'id' | 'title' | 'slug' | 'specKey'>
+
+/**
+ * One plan ticket's state AS ITS TRACKER REPORTS IT RIGHT NOW, never as `plan_tickets`
+ * remembers it.
+ *
+ * The column does not exist, and adding one would be the wrong fix: a plan is filed once
+ * and then the tickets live their own life — closed, moved through a sprint, reopened —
+ * so a status written at creation time would be a number that was true for an afternoon
+ * and misleading ever after. This is read live, batched, when the plan's page opens.
+ *
+ * DISCRIMINATED BY TRACKER for `TaskSelection`'s reason: GitHub has two states and Jira
+ * has as many as the site defines, coloured by a CATEGORY rather than by a name. Folding
+ * them into one string would make every renderer re-derive which it was looking at, and
+ * the two pills are already drawn by two different components.
+ */
+export type PlanTicketState =
+  | { tracker: 'github'; state: 'OPEN' | 'CLOSED' }
+  | { tracker: 'jira'; name: string; category: JiraStatusCategory }
+
+/**
+ * Every state one plan's tickets are in, by the key `plan_tickets` holds — `#412`,
+ * `PROJ-1234`, exactly as the row spells it, so the renderer looks a row up by the
+ * string it already has.
+ *
+ * A KEY THAT IS ABSENT IS NOT A FAILURE AND NOT A CLOSED TICKET: it is "no answer",
+ * which is the honest state for a repository this machine has not configured, a tracker
+ * it has no credential for, a ticket deleted since, and a read that failed. All four
+ * render identically — the row simply carries no pill — which is why they are one state
+ * here rather than an error union nothing would branch on.
+ */
+export type PlanTicketStates = Record<string, PlanTicketState>
+
+/**
  * A spec upload. The store resolves everything else — the slug, the spec key, the
  * repository, the title and the status — from `specPath` and from the agent, so a
  * caller (and the offline spool) only has to carry these.

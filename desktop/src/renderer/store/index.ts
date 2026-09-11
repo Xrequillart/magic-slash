@@ -251,6 +251,16 @@ interface AppState {
   // for the same reason: reopening Tasks by hand with ⌘J must not replay the last
   // ticket somebody clicked in the sidebar. See `TasksTarget`.
   tasksInitialTarget: TasksTarget | null
+  // When set, the Plans page opens straight on this plan rather than on the list,
+  // then resets it to null. `tasksInitialTarget`'s twin, one-shot for its reason —
+  // opening Plans by hand afterwards must give the list, not replay the plan somebody
+  // reached from a ticket an hour ago.
+  //
+  // An ID and not a card, unlike the page's own `selected`: the caller is a TICKET,
+  // which has no `PlanCard` and could not build one — the repository name, the author
+  // and their photo are resolved by the list read. The page looks it up once that read
+  // lands; see `PlansPage`.
+  plansInitialPlanId: string | null
   // Which organization the Organization page is scoped to. Held here rather than
   // in the page because the settings rail lists the organizations too, and both
   // it and the page's tab strip have to agree on which one is open. `null` = the
@@ -419,11 +429,13 @@ interface AppState {
 
   setSettingsInitialTab: (tab: SettingsTab | null) => void
   setTasksInitialTarget: (target: TasksTarget | null) => void
+  setPlansInitialPlanId: (id: string | null) => void
   setSettingsOrgId: (orgId: string | null) => void
   openModal: (modal: ModalId) => void
   closeModal: () => void
   openSettingsModal: (tab?: SettingsTab) => void
   openTasksModal: (target: TasksTarget) => void
+  openPlansModal: (planId: string) => void
   setRightSidebar: (sidebar: 'info' | null) => void
   toggleRightSidebar: (sidebar: 'info') => void
   toggleLeftSidebar: () => void
@@ -564,6 +576,7 @@ export const useStore = create<AppState>()(
 
         settingsInitialTab: null,
         tasksInitialTarget: null,
+        plansInitialPlanId: null,
         settingsOrgId: null,
         activeModal: null,
         rightSidebar: null,
@@ -757,6 +770,7 @@ export const useStore = create<AppState>()(
 
         setSettingsInitialTab: (settingsInitialTab) => set({ settingsInitialTab }),
         setTasksInitialTarget: (tasksInitialTarget) => set({ tasksInitialTarget }),
+        setPlansInitialPlanId: (plansInitialPlanId) => set({ plansInitialPlanId }),
         setSettingsOrgId: (settingsOrgId) => set({ settingsOrgId }),
         // Modals are overlays, never destinations: the agents page stays mounted
         // and visible behind them. Two things are normalised on open — every shape
@@ -782,6 +796,17 @@ export const useStore = create<AppState>()(
         openTasksModal: (target) => {
           set({ tasksInitialTarget: target })
           get().openModal('tasks')
+        },
+        // The same wrapper for Plans, scoped to one plan, and REQUIRED for
+        // `openTasksModal`'s reason: opening Plans plain is what `openModal('plans')`
+        // already is, and every caller of this one is a deep link by definition.
+        //
+        // It swaps one overlay for another — a ticket's page is itself inside the Tasks
+        // modal — which `openModal` already handles: only one can be on screen, so the
+        // Tasks modal closes as this opens rather than stacking behind it.
+        openPlansModal: (planId) => {
+          set({ plansInitialPlanId: planId })
+          get().openModal('plans')
         },
         setRightSidebar: (rightSidebar) => set({ rightSidebar }),
         toggleRightSidebar: (sidebar) => set((state) => ({

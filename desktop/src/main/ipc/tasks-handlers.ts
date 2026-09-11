@@ -5,6 +5,7 @@ import type {
   JiraTaskIssueDetail,
   JiraTaskRepoGroup,
   JiraTaskStatusError,
+  PlanTicketStates,
   PRStatusError,
   RepositoryConfig,
   TaskBoardColumn,
@@ -16,7 +17,7 @@ import { isPRStatusError } from '../../types'
 import { readsFrom, resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../../tracker'
 import { readConfig } from '../config/config'
 import { getGitHubToken } from '../github'
-import { fetchIssueDetail, fetchOpenIssues } from '../github-issues'
+import { fetchIssueDetail, fetchIssueStates, fetchOpenIssues } from '../github-issues'
 import {
   fetchJiraFields,
   fetchJiraIssue,
@@ -30,6 +31,7 @@ import { DETAIL_FIELDS, mapIssueDetail as mapJiraIssueDetail } from '../jira/iss
 import {
   applyEpicColors,
   buildEpicColorJql,
+  buildKeyInJql,
   buildOpenSprintProbeJql,
   buildSprintBacklogJql,
   buildSprintBlockedJql,
@@ -54,6 +56,9 @@ import {
   SPRINT_COLUMN_PAGE_SIZE,
   SPRINT_DONE_PAGE_SIZE,
   SPRINT_SEARCH_PAGE_SIZE,
+  STATUS_FIELDS,
+  JIRA_MAX_PAGE_SIZE,
+  mapTicketStatuses,
 } from '../jira/sprint-issues'
 import { blockedStatusNames } from '../../blocked'
 
@@ -1023,6 +1028,146 @@ export function setupTasksHandlers(): void {
         if (failure.error === 'unauthorized') void reportUnauthorized()
         return failure
       }
+    },
+  )
+
+  /**
+   * Whether an IPC payload really is a (config key, ticket keys) pair.
+   *
+   * The KEYS are not pattern-checked here, and that is on purpose: what each is allowed
+   * to be is decided one level down, by the shape that sorts it into a tracker —
+   * `#412`/`412` goes to GitHub as a parsed integer, `PROJ-1234` reaches JQL through
+   * `quoteJql`, and anything matching neither is dropped without being asked about. A
+   * regex here would be a third spelling of that rule, in the one place it cannot be
+   * kept in step with the two that matter.
+   *
+   * The ARRAY is checked, because `plan_tickets` rows are written by another process on
+   * another version, and a handler that iterates whatever arrived is the one that throws
+   * where this promises an answer.
+   */
+  const isTicketStatusArgs = (args: unknown): args is { configKey: string; keys: string[] } => {
+    if (typeof args !== 'object' || args === null) return false
+    const { configKey, keys } = args as { configKey?: unknown; keys?: unknown }
+    return typeof configKey === 'string' && configKey !== ''
+      && Array.isArray(keys) && keys.every((key) => typeof key === 'string')
+  }
+
+  /**
+   * A Jira key, normalised the way Jira itself resolves one: `per-5030` and `PER-5030`
+   * are one ticket. Empty for anything that is not a key.
+   *
+   * `#` is stripped first for the GitHub test below, which shares this function: the
+   * plan skill files `#412`, the migration's own example says `412`, and rows written by
+   * either spelling sit in the same table.
+   */
+  const bareKey = (key: string): string => key.trim().replace(/^#/, '').trim()
+
+  /**
+   * The state of a plan's tickets, live off their trackers, batched into ONE call per
+   * tracker.
+   *
+   * WHY THIS IS NOT A COLUMN ON `plan_tickets`. A plan is filed once; its tickets then
+   * live for weeks. A status written at creation time would be right for an afternoon
+   * and quietly wrong ever after, and nothing in the app would be in a position to
+   * correct it — the tracker is the record, and this reads the record.
+   *
+   * WHY IT IS ONE CHANNEL AND NOT ONE PER TICKET. A plan's tickets are a handful, but
+   * they are a handful on every open, and `tasks:getIssueDetail` drags a body and fifty
+   * comments along for each. Both halves below answer a list in a single round trip —
+   * GitHub through aliases, Jira through `key in (...)` — so the cost of the page is two
+   * requests whatever the plan's size.
+   *
+   * WHY IT ANSWERS AN EMPTY MAP RATHER THAN A NAMED FAILURE. Everything that can go
+   * wrong here — no credential, a repository this machine has never configured, a
+   * tracker that is down, a ticket deleted since — renders identically: the row carries
+   * no pill and the plan is still perfectly readable. That is not information lost, it
+   * is information nothing consumes; see `PlanTicketStates`. It is also what makes a
+   * TEAMMATE'S plan on an unconfigured repository open at full speed instead of paying
+   * for two calls that could only fail.
+   *
+   * KEYED BY THE STRING THE CALLER SENT, never by the normalised form: the renderer
+   * looks a row up by the key `plan_tickets` holds, and handing back `PER-5030` for a
+   * row that says `per-5030` would be a map it cannot read.
+   */
+  ipcMain.handle(
+    'tasks:ticketStatuses',
+    async (_event, args: unknown): Promise<PlanTicketStates> => {
+      if (!isTicketStatusArgs(args)) return {}
+
+      // Sorted by SHAPE, not by the repository's configured tracker: one plan can file a
+      // Jira epic and GitHub issues, and an `ask` repository reads from both. The keys
+      // are carried alongside their normalised form so the answer can be filed back
+      // under what the caller actually sent.
+      const github: { key: string; number: number }[] = []
+      const jira: { key: string; jiraKey: string }[] = []
+      for (const key of args.keys) {
+        const bare = bareKey(key)
+        if (/^\d+$/.test(bare)) github.push({ key, number: Number(bare) })
+        else if (JIRA_KEY_PATTERN.test(bare)) jira.push({ key, jiraKey: bare.toUpperCase() })
+      }
+
+      const states: PlanTicketStates = {}
+
+      // Both trackers at once, each guarded on its own credential and its own config:
+      // a repository tracked only in Jira must not wait on a GitHub call it will never
+      // make, and a Jira site that is slow must not hold the GitHub half back.
+      await Promise.all([
+        (async () => {
+          if (github.length === 0 || !getGitHubToken()) return
+          const repo = githubRepos(readConfig().repositories ?? {})
+            .find((candidate) => candidate.configKey === args.configKey)
+          if (!repo) return
+          const read = await fetchIssueStates(repo.owner, repo.repo, github.map((t) => t.number))
+          for (const ticket of github) {
+            const state = read[ticket.number]
+            if (state) states[ticket.key] = { tracker: 'github', state }
+          }
+        })(),
+        (async () => {
+          if (jira.length === 0) return
+          // `unverified` counts as not connected, exactly as on the two reads above:
+          // Atlassian refused this credential last time and Settings is already
+          // offering Reconnect.
+          const status = jiraStatus()
+          if (!status.connected || status.unverified) return
+          // Before the token, for `tasks:getJiraIssueDetail`'s reason: `readConfig` is
+          // an in-memory read where `withFreshAccessToken` can spend an OAuth round
+          // trip and rotate the stored refresh token.
+          const repo = jiraRepos(readConfig().repositories ?? {})
+            .find((candidate) => candidate.configKey === args.configKey)
+          if (!repo) return
+          const fresh = await withFreshAccessToken()
+          if (!fresh) return
+          try {
+            const page = await fetchSprintIssues(atlassianDeps, {
+              accessToken: fresh.accessToken,
+              cloudId: fresh.cloudId,
+              // NOT scoped to the open sprint, unlike every other JQL in this file: a
+              // plan's tickets are asked for BY KEY, and half of them are in the backlog
+              // or were closed two sprints ago. `sprintScope` would answer for the ones
+              // still in flight and stay silent about the rest, which is the shape of
+              // answer this page must not give.
+              jql: buildKeyInJql(jira.map((t) => t.jiraKey)),
+              fields: STATUS_FIELDS,
+              maxResults: JIRA_MAX_PAGE_SIZE,
+            })
+            const byKey = mapTicketStatuses(page.issues)
+            for (const ticket of jira) {
+              const status = byKey[ticket.jiraKey]
+              if (status) {
+                states[ticket.key] = { tracker: 'jira', name: status.name, category: status.category }
+              }
+            }
+          } catch (error) {
+            // Nothing is reported upward — the caller has no error state for this read —
+            // but a 401 whose one repairable cause is a cloud id that moved is still
+            // repaired, as it is on every other Jira read here.
+            if (classifyUnexpected(error).error === 'unauthorized') void reportUnauthorized()
+          }
+        })(),
+      ])
+
+      return states
     },
   )
 

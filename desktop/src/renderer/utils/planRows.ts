@@ -198,6 +198,13 @@ export interface PlanTicketGroup {
 /**
  * The ticket's URL when it is safe to put behind a link, otherwise undefined.
  *
+ * NO DESKTOP CALLER TODAY: the plan page's ticket rows open the ticket inside the app
+ * rather than in a browser, so there is no href for them to check. It is kept, and kept
+ * exported, because of the duty in this module's header — the webapp's `/plans/[id]`
+ * links the same rows and goes through the same function, and deleting this side's copy
+ * would leave that rule with one implementation and no counterpart to be kept in sync
+ * with. The i18n keys the glyph used are gone; this is not dead weight of the same kind.
+ *
  * Only `http:` and `https:`. The desktop rejects anything else before STORING it, but
  * what is rendered here was written by another process, on another version, into a table
  * every member of the organization can read — so the scheme is checked again on the way

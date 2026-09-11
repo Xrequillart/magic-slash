@@ -4,6 +4,7 @@ import {
   applyEpicColors,
   browseUrl,
   buildEpicColorJql,
+  buildKeyInJql,
   buildOpenSprintProbeJql,
   buildSprintBacklogJql,
   buildSprintBlockedJql,
@@ -20,6 +21,8 @@ import {
   findEpicColorFieldIds,
   findSprintFieldId,
   mapEpicColors,
+  mapTicketStatuses,
+  STATUS_FIELDS,
   mapIssue,
   mapSprintIssues,
   pickSprintName,
@@ -854,5 +857,46 @@ describe('mapIssue, the epic', () => {
     // Present-and-undefined is a shape every equality assertion downstream would then
     // have to know about — the rule the two fields beside it follow.
     expect(mapIssue(rawIssue({ key: 'PER-1' }), '')).not.toHaveProperty('epic')
+  })
+})
+
+
+describe('buildKeyInJql and mapTicketStatuses', () => {
+  it('quotes every key it is given', () => {
+    // The quoting is the part that must not be written twice, which is why
+    // `buildEpicColorJql` now delegates here rather than carrying its own copy.
+    expect(buildKeyInJql(['PER-1', 'ABC-22'])).toBe('key in ("PER-1", "ABC-22")')
+    expect(buildEpicColorJql(['PER-1'])).toBe(buildKeyInJql(['PER-1']))
+  })
+
+  it('is NOT scoped to the open sprint', () => {
+    // Every other JQL in this module is. A plan's tickets are asked for by key, and
+    // half of them are in the backlog or were closed two sprints ago — a sprint scope
+    // would answer for the ones still in flight and stay silent about the rest.
+    expect(buildKeyInJql(['PER-1'])).not.toContain('openSprints')
+    expect(buildKeyInJql(['PER-1'])).not.toContain('project =')
+  })
+
+  it('asks for the status field and nothing else', () => {
+    // This read decorates rows already on screen. `SPRINT_FIELDS` carries seven,
+    // and Jira bills and serialises per field.
+    expect(STATUS_FIELDS).toEqual(['status'])
+  })
+
+  it('reads each ticket back by its own key, through the shared status reader', () => {
+    const statuses = mapTicketStatuses([
+      { key: 'PER-1', fields: { status: { name: 'In Progress', statusCategory: { key: 'indeterminate' } } } },
+      { key: 'PER-2', fields: { status: { name: 'Terminé', statusCategory: { key: 'done' } } } },
+    ])
+    expect(statuses).toEqual({
+      'PER-1': { name: 'In Progress', category: 'indeterminate' },
+      'PER-2': { name: 'Terminé', category: 'done' },
+    })
+  })
+
+  it('skips a row with no readable key rather than filing it under an empty one', () => {
+    // The map is looked up BY key: an entry under `''` could never be found, and would
+    // only mask the count.
+    expect(mapTicketStatuses([{ fields: { status: { name: 'To Do' } } }, null, 'nonsense'])).toEqual({})
   })
 })

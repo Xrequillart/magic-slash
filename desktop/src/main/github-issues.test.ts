@@ -11,8 +11,11 @@ import { clearGitHubTokenCache } from './github'
 import {
   CLOSED_WINDOW_DAYS,
   fetchIssueDetail,
+  fetchIssueStates,
   fetchOpenIssues,
+  buildIssueStatesQuery,
   ISSUE_DETAIL_QUERY,
+  ISSUE_STATES_LIMIT,
   OPEN_ISSUES_QUERY,
   recentlyClosed,
 } from './github-issues'
@@ -607,5 +610,81 @@ describe('fetchIssueDetail', () => {
     mockFetch.mockRejectedValue(new Error('getaddrinfo ENOTFOUND'))
 
     expect(errorOf(await fetchIssueDetail('acme', 'api', 234)).error).toBe('network')
+  })
+})
+
+
+describe('buildIssueStatesQuery', () => {
+  it('asks one aliased issue per number, and nothing but the state', () => {
+    const query = buildIssueStatesQuery([412, 7])
+    expect(query).toContain('i412: issue(number: 412) { number state }')
+    expect(query).toContain('i7: issue(number: 7) { number state }')
+    // Not a detail read: a body or a label set here would be paid for on every ticket
+    // of every plan that is opened.
+    expect(query).not.toContain('body')
+    expect(query).not.toContain('comments')
+  })
+
+  it('asks one by one rather than filtering a connection', () => {
+    // The whole reason for the aliases. `states: OPEN` would answer by OMISSION, and a
+    // number missing from the result would mean closed, deleted, or past the page size
+    // — three different things the caller could not tell apart.
+    expect(buildIssueStatesQuery([1])).not.toContain('states:')
+  })
+
+  it('stops at the cap rather than growing the document without bound', () => {
+    const numbers = Array.from({ length: ISSUE_STATES_LIMIT + 10 }, (_, i) => i + 1)
+    const query = buildIssueStatesQuery(numbers)
+    expect(query).toContain(`i${ISSUE_STATES_LIMIT}:`)
+    expect(query).not.toContain(`i${ISSUE_STATES_LIMIT + 1}:`)
+  })
+})
+
+describe('fetchIssueStates', () => {
+  beforeEach(() => {
+    mockExec.mockReset()
+    mockExec.mockReturnValue('gho_testtoken\n')
+    clearGitHubTokenCache()
+    mockFetch.mockReset()
+    vi.stubGlobal('fetch', mockFetch)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    clearGitHubTokenCache()
+  })
+
+  it('reads the aliased answer back by issue number', async () => {
+    mockFetch.mockResolvedValue(graphQLResponse({
+      data: {
+        rateLimit: { remaining: 4987 },
+        repository: { i412: { number: 412, state: 'OPEN' }, i7: { number: 7, state: 'CLOSED' } },
+      },
+    }))
+    await expect(fetchIssueStates('poppins', 'pex', [412, 7])).resolves.toEqual({
+      412: 'OPEN',
+      7: 'CLOSED',
+    })
+  })
+
+  it('omits an issue GitHub answered null for rather than calling it open', async () => {
+    // Deleted, transferred, or never filed. The caller renders a missing entry as "no
+    // answer", and inventing OPEN for a ticket nobody can find is the one wrong pill.
+    mockFetch.mockResolvedValue(graphQLResponse({
+      data: { repository: { i412: { number: 412, state: 'OPEN' }, i9: null } },
+    }))
+    await expect(fetchIssueStates('poppins', 'pex', [412, 9])).resolves.toEqual({ 412: 'OPEN' })
+  })
+
+  it('answers an empty map on a failed read instead of an error', async () => {
+    // The contract that makes the plan page's pills optional: everything that can go
+    // wrong renders as a row without a chip, so there is no error union to branch on.
+    mockFetch.mockRejectedValue(new Error('offline'))
+    await expect(fetchIssueStates('poppins', 'pex', [412])).resolves.toEqual({})
+  })
+
+  it('makes no request at all for an empty list', async () => {
+    await expect(fetchIssueStates('poppins', 'pex', [])).resolves.toEqual({})
+    expect(mockFetch).not.toHaveBeenCalled()
   })
 })

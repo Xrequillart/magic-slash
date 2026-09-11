@@ -1205,6 +1205,9 @@ export const en = {
   'plans.detail.noTickets': 'No ticket has been created from this plan yet.',
   'plans.detail.noEpic': 'No epic',
   'plans.kind.epic': 'Epic',
+  // The row's one target, worded as the destination it is: the ticket opens HERE, in
+  // the app, and nothing on this page goes out to the tracker any more.
+  'plans.detail.openInTasks': 'Open this ticket in Tasks',
   'plans.detail.spec': 'Spec',
   'plans.detail.specPending':
     'The spec has not been uploaded yet. It appears here as the session writes it.',
@@ -2025,6 +2028,10 @@ export const en = {
   // on the vast majority of issues would be a row of nothing on every page.
   'tasks.detail.subIssues': 'Sub-issues',
   'tasks.detail.subIssuesDone': '{completed} of {count} done',
+  // The plan a ticket came out of. "Planned in" rather than "Plan", because the block
+  // names a session someone ran, not a document attached to the ticket.
+  'tasks.detail.plannedIn': 'Planned in',
+  'tasks.detail.openPlan': 'Open this plan',
   'tasks.detail.parent': 'Parent issue',
   // Said rather than left blank: an empty row next to a label reads as "not loaded
   // yet", which is a different thing from "there are none".

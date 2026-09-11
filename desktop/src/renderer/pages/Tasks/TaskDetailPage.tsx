@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { ArrowLeft, BotMessageSquare, CircleCheck, CircleDot, ExternalLink, MessageSquare, MessagesSquare, Play } from 'lucide-react'
+import { ArrowLeft, BotMessageSquare, ExternalLink, MessageSquare, MessagesSquare, NotebookPen, Play } from 'lucide-react'
 import type {
+  PlanTicketOrigin,
   TicketComment,
   JiraTaskIssue,
   JiraTaskIssueDetail,
@@ -15,12 +16,13 @@ import { BTN, BTN_ICON, BTN_NEUTRAL_STACKED, BTN_PRIMARY_STACKED } from '../../t
 import { WaveLoader } from '../../components/WaveLoader'
 import MarkdownView from '../../components/file-preview/MarkdownView'
 import { StatusPill } from '../../components/StatusPill'
-import { JiraEpicBadge, JiraErrorLines, JiraPriorityBadge, JiraStatusPill, TaskErrorLines } from './parts'
+import { JiraEpicBadge, JiraErrorLines, JiraPriorityBadge, JiraStatusPill, StateChip, TaskErrorLines } from './parts'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { useTaskAgent, type TaskAgentRepo } from '../../hooks/useTaskAgent'
 import { findAgentTerminalId, terminalAgentSignature } from '../../utils/taskAgents'
 import { useStore } from '../../store'
 import { discussAgentTitle, discussPrompt } from '../../utils/discussPrompt'
+import { planLabel } from '../../utils/planRows'
 import { TrackerBadge } from '../../components/icons/TrackerIcons'
 
 /**
@@ -97,29 +99,6 @@ function formatCommentDate(iso: string, locale: string): string {
   return new Date(at).toLocaleString(locale, {
     day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
-}
-
-/**
- * The state chip: GitHub's, in our pill vocabulary.
- *
- * The icon is half the message — a filled dot for something still open, a tick
- * for something closed — so the chip survives being read at a glance, and does
- * not rely on green-versus-purple alone.
- */
-function StateChip({ state, t }: { state: TaskIssueDetail['state']; t: Translate }) {
-  const open = state === 'OPEN'
-  const Icon = open ? CircleDot : CircleCheck
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
-        open ? 'bg-green/15 text-green' : 'bg-purple/15 text-purple'
-      }`}
-    >
-      <Icon className="w-3.5 h-3.5" />
-      {t(open ? 'tasks.detail.stateOpen' : 'tasks.detail.stateClosed')}
-    </span>
-  )
 }
 
 /**
@@ -491,6 +470,48 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
    * below a bug the moment a Jira row became clickable.
    */
   const ticketId = tracker === 'jira' ? issueKey : String(issueNumber)
+
+  /**
+   * The `/magic:plan` session that FILED this ticket, or null — which is what most
+   * tickets answer, since most were filed by hand. It draws one block in the column on
+   * the right and nothing else.
+   *
+   * A READ PER OPENED TICKET, and cheap enough to be one: two indexed lookups in the
+   * cloud, no tracker involved, and it goes out alongside the tracker detail read rather
+   * than after it. Nothing on the page waits for it — the block appears when it lands.
+   *
+   * THE KEY IS SENT IN BOTH SPELLINGS on the GitHub side. `plan_tickets` holds what the
+   * skill filed, which is `#412` (skills/magic-plan §7.2), while the table's own comment
+   * gives `456` — so rows written by either are in the wild and a single spelling would
+   * silently miss half of them. Jira has only ever had one spelling, upper-cased because
+   * Jira resolves `per-1` and `PER-1` to the same ticket.
+   *
+   * THE REPOSITORIES ARE THE CLOUD UUIDS, not the config keys, and a repository this
+   * machine has bound to no cloud row contributes none — which is what makes the block
+   * absent rather than wrong for a repo the reader has only locally.
+   */
+  const [plan, setPlan] = useState<PlanTicketOrigin | null>(null)
+  const openPlansModal = useStore((s) => s.openPlansModal)
+
+  useEffect(() => {
+    setPlan(null)
+    const repoIds = repos
+      .map((repo) => repo.config?.id)
+      .filter((id): id is string => typeof id === 'string' && id !== '')
+    if (repoIds.length === 0) return
+    const keys = tracker === 'jira' ? [issueKey.toUpperCase()] : [`#${issueNumber}`, String(issueNumber)]
+
+    let cancelled = false
+    window.electronAPI.plans.forTicket(repoIds, keys)
+      .then((found) => {
+        if (!cancelled) setPlan(found)
+      })
+      .catch(() => {
+        // Left null, which is also "no plan filed this": there is no sentence the page
+        // could add here that a reader would act on. See `plans:forTicket`.
+      })
+    return () => { cancelled = true }
+  }, [repos, tracker, issueKey, issueNumber])
 
   /**
    * The three fields both shapes carry, so the chrome can read them without branching.
@@ -1214,6 +1235,37 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
                   </SideBlock>
                 )}
               </>
+            )}
+            {/* OUTSIDE the tracker branch, and last in the card.
+                
+                Outside, because "which plan is this from" is the one fact here that does
+                not belong to a tracker at all — it comes out of our own cloud, and a
+                Jira ticket and a GitHub issue answer it the same way. Duplicating the
+                block into both arms would have been two places for one answer to drift.
+
+                Last, because it is the only block that leaves the page: everything above
+                describes the ticket, this goes somewhere else. And WITHHELD when there is
+                no plan rather than saying "none" the way the assignees and labels blocks
+                do — those are fields every ticket has and this one happens to be empty;
+                most tickets were filed by hand and have no plan to have a row about. */}
+            {plan && (
+              <SideBlock title={t('tasks.detail.plannedIn')}>
+                <button
+                  type="button"
+                  onClick={() => openPlansModal(plan.id)}
+                  title={t('tasks.detail.openPlan')}
+                  className="group w-full text-left flex items-start gap-2 min-w-0 bg-transparent border-none p-0 cursor-pointer"
+                >
+                  <NotebookPen className="w-3.5 h-3.5 mt-px flex-shrink-0 text-icon-muted" />
+                  {/* `planLabel` and not `plan.title`: a plan is named by its title, then
+                      its slug, then its spec key, and a session whose title has not been
+                      written yet must not read as a blank link here when the Plans list
+                      three clicks away is calling it something. */}
+                  <span className="min-w-0 text-xs text-text-secondary break-words group-hover:text-ink transition-colors group-hover:underline">
+                    {planLabel(plan)}
+                  </span>
+                </button>
+              </SideBlock>
             )}
           </div>
         </div>

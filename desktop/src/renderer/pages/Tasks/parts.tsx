@@ -3,6 +3,8 @@ import {
   ChevronUp,
   ChevronsDown,
   ChevronsUp,
+  CircleCheck,
+  CircleDot,
   Equal,
   Minus,
   Settings,
@@ -16,6 +18,7 @@ import type {
   JiraTaskStatusError,
   PRWatchError,
   TaskIssue,
+  TaskIssueDetail,
 } from '../../../types'
 import { useStore } from '../../store'
 import { useT, type MessageKey, type Translate } from '../../i18n'
@@ -232,6 +235,40 @@ export function subIssuesLabel(subIssues: NonNullable<TaskIssue['subIssues']>, t
     count: subIssues.total,
     completed: subIssues.completed,
   })
+}
+
+/**
+ * The state chip: GitHub's two states, in our pill vocabulary.
+ *
+ * The icon is half the message — a filled dot for something still open, a tick for
+ * something closed — so the chip survives being read at a glance, and does not rely on
+ * green-versus-purple alone.
+ *
+ * `JiraStatusPill`'s counterpart, and it lives beside it for that reason: the two are
+ * the app's one answer to "what state is this ticket in", and both are now drawn on two
+ * pages — the ticket's own, and a plan's ticket tree. It was private to `TaskDetailPage`
+ * while the ticket page was the only one asking; a second copy for the plan page would
+ * have been the two surfaces free to drift on the one thing a reader compares across
+ * them.
+ *
+ * Takes the STATE and not the issue, for the reason `JiraStatusPill` takes two values:
+ * both callers re-read it live rather than trusting what their list captured, and a chip
+ * typed on the row could only be handed the stale one back.
+ */
+export function StateChip({ state, t }: { state: TaskIssueDetail['state']; t: Translate }) {
+  const open = state === 'OPEN'
+  const Icon = open ? CircleDot : CircleCheck
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
+        open ? 'bg-green/15 text-green' : 'bg-purple/15 text-purple'
+      }`}
+    >
+      <Icon className="w-3.5 h-3.5" />
+      {t(open ? 'tasks.detail.stateOpen' : 'tasks.detail.stateClosed')}
+    </span>
+  )
 }
 
 /**

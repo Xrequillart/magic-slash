@@ -809,7 +809,53 @@ export function epicKeys(issues: JiraTaskIssue[]): string[] {
  * would be work spent on a shape nothing iterates in order.
  */
 export function buildEpicColorJql(keys: string[]): string {
+  return buildKeyInJql(keys)
+}
+
+/**
+ * `key in ("A-1", "B-2")` — the scope shared by every read that already knows exactly
+ * which tickets it wants.
+ *
+ * Extracted out of `buildEpicColorJql` when a second such read appeared (the plan page's
+ * statuses) rather than copied beside it: the quoting is the part that must not be
+ * written twice, and the day it changes it has to change for both. The old name stays a
+ * one-line caller, so its own tests go on testing what they were written for.
+ */
+export function buildKeyInJql(keys: string[]): string {
   return `key in (${keys.map(quoteJql).join(', ')})`
+}
+
+/**
+ * The fields one batched STATUS read asks for, and the whole of what it asks for.
+ *
+ * `SPRINT_FIELDS` next door carries seven; this read decorates rows that are already on
+ * screen and needs one. Jira bills and serialises per field, and this runs for every
+ * ticket of a plan on every open.
+ */
+export const STATUS_FIELDS = ['status']
+
+/**
+ * That read's answer as `issue key → status`, through the same `readStatus` the board
+ * and the detail panel go through — so one plan's ticket and the same ticket on the
+ * board cannot be coloured differently.
+ *
+ * A row with no readable key is skipped rather than defaulted: the map is looked up BY
+ * key, so an entry filed under `''` could never be found and would only mask the count.
+ */
+export function mapTicketStatuses(
+  raw: unknown[],
+): Record<string, { name: string; category: JiraStatusCategory }> {
+  const statuses: Record<string, { name: string; category: JiraStatusCategory }> = {}
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue
+    const { key, fields } = entry as Record<string, unknown>
+    if (typeof key !== 'string' || key === '') continue
+    const status = fields && typeof fields === 'object'
+      ? (fields as Record<string, unknown>).status
+      : undefined
+    statuses[key] = readStatus(status)
+  }
+  return statuses
 }
 
 /**

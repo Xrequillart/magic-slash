@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AvatarSourceResult } from '../avatar'
-import type { AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, PlanDetail, PlanOverview, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
+import type { AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, PlanDetail, PlanOverview, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -731,6 +731,16 @@ const tasksApi = {
   // an untruncated board holds every ticket it has, so its search box is already exact.
   searchSprint: (configKey: string, query: string): Promise<{ issues: JiraTaskIssue[] } | JiraTaskStatusError> =>
     ipcRenderer.invoke('tasks:searchSprint', { configKey, query }),
+  // Several tickets' CURRENT state, off their trackers, in one call per tracker — what
+  // a plan's page decorates its ticket tree with. Keyed and answered by the string the
+  // caller sent (`#412`, `PROJ-1234`), which is how `plan_tickets` spells a key.
+  //
+  // The one read here with NO error union, and that is the contract rather than an
+  // omission: every failure — no credential, an unconfigured repository, a ticket
+  // deleted since — renders as a row without a pill, so they are one absent entry. See
+  // `PlanTicketStates`.
+  ticketStatuses: (configKey: string, keys: string[]): Promise<PlanTicketStates> =>
+    ipcRenderer.invoke('tasks:ticketStatuses', { configKey, keys }),
 }
 
 // Plans API — every `/magic:plan` session the reader may see: their own, plus their
@@ -748,6 +758,14 @@ const plansApi = {
   // colleague's `.magic/spec-*.md` only exists on their machine, so the stored copy is
   // the only one this app can reach. `id` is the uuid the list handed over.
   detail: (id: string): Promise<PlanDetail> => ipcRenderer.invoke('plans:detail', id),
+  // The reverse lookup: the plan a ticket came out of, or null — which is what most
+  // tickets answer, since most were filed by hand. Takes the repositories as CLOUD
+  // uuids rather than config keys, because that is what `plan_sessions.repo_id` is (and
+  // several, since one ticket's card can stand for several), plus the ticket key in
+  // every spelling the caller's rows might use (`#412` and `412` are the same ticket;
+  // see skills/magic-plan §7.2 against the table's own comment).
+  forTicket: (repoIds: string[], keys: string[]): Promise<PlanTicketOrigin | null> =>
+    ipcRenderer.invoke('plans:forTicket', { repoIds, keys }),
 }
 
 // Org API (organization membership + invitations + multi-org management)

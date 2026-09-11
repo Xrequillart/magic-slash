@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
-import type { PlanDetail, PlanOverview } from '../../types'
-import { listPlanDetail, listPlanSessions } from '../cloud/plans'
+import type { PlanDetail, PlanOverview, PlanTicketOrigin } from '../../types'
+import { findPlanForTicket, listPlanDetail, listPlanSessions } from '../cloud/plans'
 
 /**
  * The renderer is expected to send back a uuid it got from `plans:list`, and RLS would
@@ -33,5 +33,31 @@ export function setupPlansHandlers(): void {
   ipcMain.handle('plans:detail', async (_e, id: unknown): Promise<PlanDetail> => {
     if (typeof id !== 'string' || !UUID_RE.test(id)) return { session: null, tickets: [], failed: false }
     return listPlanDetail(id)
+  })
+  /**
+   * The plan a ticket came out of, asked by the TICKET page — the one read here that
+   * goes the other way round.
+   *
+   * The repositories are uuids from the same cloud as the session ids above, so they get
+   * the same shape check and for the same reason: RLS would answer nothing for anything
+   * else, and a channel that trusts its input is the one that stops being true the day
+   * something else calls it. Several of them, because a ticket's card can stand for
+   * several — one Jira project planned for two services. The KEYS are not
+   * pattern-checked: they are tracker identifiers in two spellings and they reach
+   * PostgREST as bound values, never as SQL. Both arrays are, since a handler that
+   * iterates whatever arrived is the one that throws where this promises an answer.
+   *
+   * Every rejection is `null`, which is also what "no plan filed this" is. The two are
+   * one state on the page: the block is simply not drawn, and the overwhelming majority
+   * of tickets were filed by hand and have no plan behind them anyway.
+   */
+  ipcMain.handle('plans:forTicket', async (_e, args: unknown): Promise<PlanTicketOrigin | null> => {
+    if (typeof args !== 'object' || args === null) return null
+    const { repoIds, keys } = args as { repoIds?: unknown; keys?: unknown }
+    if (!Array.isArray(repoIds) || !repoIds.every((id) => typeof id === 'string' && UUID_RE.test(id))) {
+      return null
+    }
+    if (!Array.isArray(keys) || !keys.every((key) => typeof key === 'string')) return null
+    return findPlanForTicket(repoIds, keys)
   })
 }

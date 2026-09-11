@@ -1168,6 +1168,7 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.detail.noTickets': 'Aucun ticket n’a encore été créé depuis ce plan.',
   'plans.detail.noEpic': 'Sans epic',
   'plans.kind.epic': 'Epic',
+  'plans.detail.openInTasks': 'Ouvrir ce ticket dans Tâches',
   'plans.detail.spec': 'Spécification',
   'plans.detail.specPending':
     'La spec n’a pas encore été envoyée. Elle apparaît ici à mesure que la session l’écrit.',
@@ -1746,6 +1747,8 @@ export const fr: Record<keyof typeof en, string> = {
   'tasks.detail.assignees': 'Assigné à',
   'tasks.detail.subIssues': 'Sous-tickets',
   'tasks.detail.subIssuesDone': '{completed} sur {count} terminés',
+  'tasks.detail.plannedIn': 'Planifié dans',
+  'tasks.detail.openPlan': 'Ouvrir ce plan',
   'tasks.detail.parent': 'Ticket parent',
   'tasks.detail.none': 'aucun',
   'tasks.detail.emptyBody': 'Ce ticket n’a pas de description.',
