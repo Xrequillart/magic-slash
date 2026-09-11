@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Github, ListTodo, RefreshCw, SearchX } from 'lucide-react'
-import type { RepositoryConfig } from '../../../types'
+import type { RepositoryConfig, TaskBoardColumn } from '../../../types'
 import { useConfig } from '../../hooks/useConfig'
 import { useOrgAgents } from '../../hooks/useOrgAgents'
 import { useTasks } from '../../hooks/useTasks'
+import { useSprintSearch } from '../../hooks/useSprintSearch'
 import { useStore } from '../../store'
 import {
   buildTaskRows,
   countOpenIssues,
   countTotalOpen,
   filterTaskRows,
+  mergeSearchIssues,
   NO_FILTER,
   sortTaskRows,
   taskFilterEpics,
@@ -323,11 +325,62 @@ export function TasksPage() {
     return undefined
   }, [repoRows])
 
+  /**
+   * The columns Jira had to cut short on this repository, as a set the board can ask.
+   *
+   * Off `repoRows` for `sprintName`'s reason: a column is short or it is not, and that
+   * is a fact about the read rather than about what survived the search. Taken from the
+   * narrowed rows it would clear itself the moment a query matched nothing, which is
+   * precisely the moment the reader most needs to know the board is incomplete.
+   *
+   * A repository tracked in both places contributes only its Jira row here. The GitHub
+   * half caps too, but its own admission is a NUMBER — "50 of 214", off `totalCount` —
+   * and it is reported in the page header where it always was. Marking its columns with
+   * a `+` as well would say the same thing twice in two different shapes.
+   */
+  const truncatedColumns = useMemo(() => {
+    const columns = new Set<TaskBoardColumn>()
+    for (const row of repoRows) {
+      if (row.tracker !== 'jira') continue
+      for (const column of row.truncatedColumns ?? []) columns.add(column)
+    }
+    return columns
+  }, [repoRows])
+
+  /**
+   * The sprint search, and the one condition under which it runs at all.
+   *
+   * A board with every column whole holds every ticket its sprint has, so the in-memory
+   * filter over it is already exact and a round trip on a keystroke would buy nothing.
+   * On a board that is short it is the opposite: the filter is searching a fraction of
+   * the sprint and saying nothing about it. `enabled` is that distinction, and it is why
+   * the overwhelming majority of boards never make this call.
+   */
+  const sprintSearch = useSprintSearch({
+    configKey: repo,
+    query: filter.query,
+    enabled: truncatedColumns.size > 0,
+  })
+
+  /**
+   * Every row, with anything the search reached folded into the one it belongs to.
+   *
+   * Substituted for `allRows` from here down rather than merged later, so the search's
+   * findings go through the very same narrowing, sorting and dealing as the rows that
+   * arrived with the board. A ticket fetched by the search is then a ticket like any
+   * other — it lands in a column by its status, it carries an agent marker if somebody
+   * is on it, and it counts.
+   */
+  const searchedRows = useMemo(
+    () => mergeSearchIssues(allRows, repo, sprintSearch.issues),
+    [allRows, repo, sprintSearch.issues],
+  )
+
   const { rows, total, totalOpen, truncatedSprint } = useMemo(() => {
     // Sorted AFTER filtering, which is both the cheaper order and the only correct
     // one for the counts below: they are taken off what is on screen, and a sort that
     // ran first would reorder rows the filter is about to drop.
-    const shown = sortTaskRows(filterTaskRows(allRows, filterValue), filterValue.sort)
+    const shown = sortTaskRows(filterTaskRows(searchedRows, filterValue), filterValue.sort)
     const count = countOpenIssues(shown)
     return {
       rows: shown,
@@ -339,12 +392,15 @@ export function TasksPage() {
       // nobody asked about. The repository picker alone keeps it, since a repository's
       // own total is still its own total.
       totalOpen: filterValue.query.trim() ? count : countTotalOpen(shown),
-      // Whether a SPRINT was cut short by its page size. A different admission from
-      // GitHub's: `/rest/api/3/search/jql` is paginated by cursor and returns no total,
-      // so there is no second number to print — only "showing the first N".
-      truncatedSprint: shown.some((row) => row.tracker === 'jira' && row.truncated),
+      // Whether ANY column of a sprint was cut short by its budget. A different
+      // admission from GitHub's: `/rest/api/3/search/jql` is paginated by cursor and
+      // returns no total, so there is no second number to print — only "showing the
+      // first N". Which columns is said on the columns themselves; this is the
+      // page-level form, and it is what stops the header printing a total that is really
+      // a cap.
+      truncatedSprint: shown.some((row) => row.tracker === 'jira' && (row.truncatedColumns?.length ?? 0) > 0),
     }
-  }, [allRows, filterValue])
+  }, [searchedRows, filterValue])
 
   /** The rows on screen, dealt into the four columns. See `buildBoard`. */
   const board = useMemo(() => buildBoard(rows), [rows])
@@ -684,6 +740,12 @@ export function TasksPage() {
                 repos={filterRepos}
                 epics={filterEpics}
                 {...(sprintName ? { sprintName } : {})}
+                // What the box is doing beyond narrowing what is on screen. Only ever
+                // true on a board that reported itself short — see `useSprintSearch` —
+                // so an ordinary board's box looks exactly as it always has.
+                searching={sprintSearch.loading}
+                searchFailed={sprintSearch.failed}
+                searchesSprint={truncatedColumns.size > 0}
                 onChange={changeFilter}
               />
             )}
@@ -722,7 +784,13 @@ export function TasksPage() {
               // The board draws its four columns whatever is in them — an empty column
               // says so itself, and a repository with nothing open at all is four empty
               // columns rather than a message, because that IS the state of its board.
-              <TaskBoard board={board} rows={rows} repoConfigs={repoConfigs} onSelect={select} />
+              <TaskBoard
+                board={board}
+                rows={rows}
+                repoConfigs={repoConfigs}
+                truncatedColumns={truncatedColumns}
+                onSelect={select}
+              />
             )}
           </div>
         )}

@@ -1893,11 +1893,24 @@ export const en = {
   // column is that it is empty; four different sentences would make the reader read
   // them all to find out nothing is there.
   'tasks.board.empty': 'Nothing here',
+  // A column's count when its read stopped at the budget — `100+` rather than `100`.
+  // Jira's cursor pagination returns no total, so "100 of 412" is a sentence this side
+  // cannot write; the `+` is the whole of what can honestly be said.
+  'tasks.board.cappedCount': '{count}+',
+  'tasks.board.cappedHint': 'This column has more tickets than the sprint read could load. Search to reach them.',
 
   // ── Tasks · the controls at the top of the board ─────────────────────────
   // They narrow what is ON SCREEN and read nothing: the page already holds every
   // open ticket of every repository, so this is a pass over an array in memory.
   'tasks.filter.searchPlaceholder': 'Search by ticket ID or title…',
+  // The same box on a board some column of which was cut short. It says how far the box
+  // reaches BEFORE anything is typed, which is when "will this find the ticket I cannot
+  // see" is the question being asked.
+  'tasks.filter.searchSprintPlaceholder': 'Search the whole sprint by ticket ID or title…',
+  'tasks.filter.searchingSprint': 'Searching the whole sprint…',
+  // The reach past the board failed. Worded so it cannot be read as "the board is
+  // broken": everything on screen is real, and only the tickets beyond it are missing.
+  'tasks.filter.searchFailed': 'Could not search beyond the loaded tickets. What is shown is still accurate.',
   // The repository picker with nothing to name — only reachable before the first read
   // lands, or on an account with no readable repository at all. It is not a "no filter"
   // state: the board always shows exactly one repository.

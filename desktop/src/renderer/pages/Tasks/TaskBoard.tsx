@@ -48,6 +48,7 @@ export function TaskBoard({
   board,
   rows,
   repoConfigs,
+  truncatedColumns,
   onSelect,
 }: {
   board: Record<BoardColumn, BoardCard[]>
@@ -61,6 +62,11 @@ export function TaskBoard({
    */
   rows: TaskRow[]
   repoConfigs: Record<string, RepositoryConfig | undefined>
+  /**
+   * The columns whose read stopped at its budget, so their count is a floor and not a
+   * total. See `JiraTaskRepoGroup.truncatedColumns`.
+   */
+  truncatedColumns: ReadonlySet<BoardColumn>
   onSelect: (selection: TaskSelection) => void
 }) {
   const t = useT()
@@ -79,7 +85,15 @@ export function TaskBoard({
           card-coloured space. */}
       <div className="grid grid-cols-4 gap-3 items-start">
         {BOARD_COLUMNS.map((column) => (
-          <Column key={column} column={column} cards={board[column]} repoConfigs={repoConfigs} onSelect={onSelect} t={t} />
+          <Column
+            key={column}
+            column={column}
+            cards={board[column]}
+            repoConfigs={repoConfigs}
+            truncated={truncatedColumns.has(column)}
+            onSelect={onSelect}
+            t={t}
+          />
         ))}
       </div>
     </div>
@@ -105,12 +119,15 @@ function Column({
   column,
   cards,
   repoConfigs,
+  truncated,
   onSelect,
   t,
 }: {
   column: BoardColumn
   cards: BoardCard[]
   repoConfigs: Record<string, RepositoryConfig | undefined>
+  /** Whether this column's read stopped at its budget. See the count below. */
+  truncated: boolean
   onSelect: (selection: TaskSelection) => void
   t: Translate
 }) {
@@ -127,8 +144,21 @@ function Column({
           <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${className}`} />
           <span className="text-xs font-medium text-ink truncate">{t(title)}</span>
           {/* The count, always, zero included: a column that showed nothing and said
-              nothing would be indistinguishable from one that failed to render. */}
-          <span className="ml-auto text-xs text-text-secondary/60 flex-shrink-0">{cards.length}</span>
+              nothing would be indistinguishable from one that failed to render.
+
+              `100+` WHEN THE READ STOPPED AT THE BUDGET, and this is the half that was
+              missing. Each column is now read with a page budget of its own, and a bare
+              `100` over a column holding four hundred tickets is not a count — it is a
+              cap wearing a count's clothes, and it is the most authoritative-looking
+              thing on the board. The `+` is the whole correction: this column has more,
+              and Jira's cursor pagination cannot say how many more (there is no `total`
+              in the response), so a ratio is a sentence this side cannot write. */}
+          <span
+            className="ml-auto text-xs text-text-secondary/60 flex-shrink-0"
+            {...(truncated ? { title: t('tasks.board.cappedHint') } : {})}
+          >
+            {truncated ? t('tasks.board.cappedCount', { count: cards.length }) : cards.length}
+          </span>
         </div>
       </div>
 

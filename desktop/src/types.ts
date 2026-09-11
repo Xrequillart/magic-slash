@@ -778,9 +778,20 @@ export interface GitHubTaskRepoGroup extends TaskRepoGroupBase {
  *
  * No `totalOpen`, and that is Jira's doing rather than an omission: `/rest/api/3/
  * search/jql` is paginated by TOKEN and returns no `total` at all, so "50 of 214" is
- * a sentence this side cannot say. `truncated` is what it can say instead — there is
- * another page — and the card words it accordingly.
+ * a sentence this side cannot say. `truncatedColumns` is what it can say instead —
+ * these columns have another page — and the board words it accordingly.
  */
+/**
+ * The four columns the Tasks board deals a ticket into, as a name both sides of the
+ * bridge can use.
+ *
+ * Declared here rather than in `renderer/utils/taskBoard.ts`, which owns the ORDER
+ * they are drawn in and the rule that puts a ticket in one, because the main process
+ * now reads a sprint one column at a time — a budget each — and has to say which of
+ * them it had to cut short. See `JiraTaskRepoGroup.truncatedColumns`.
+ */
+export type TaskBoardColumn = 'blocked' | 'backlog' | 'progress' | 'done'
+
 export interface JiraTaskRepoGroup extends TaskRepoGroupBase {
   tracker: 'jira'
   issues: JiraTaskIssue[]
@@ -797,8 +808,17 @@ export interface JiraTaskRepoGroup extends TaskRepoGroupBase {
    * simply says less in that case.
    */
   sprintName?: string
-  /** Set when Jira offered a further page and the read stopped at the cap. */
-  truncated?: boolean
+  /**
+   * The columns Jira offered a further page for, so the read stopped at that column's
+   * cap. Absent when every column came back whole.
+   *
+   * A LIST AND NOT A FLAG, since the read became one query per column. The single
+   * boolean it replaces was the honest answer while all three unfinished columns shared
+   * one 50-ticket budget — nothing could say which of them the cap had eaten. Now each
+   * column has a budget of its own, so the board can mark the one column that is short
+   * instead of hanging a caveat over the whole page.
+   */
+  truncatedColumns?: TaskBoardColumn[]
   error?: JiraTaskStatusError
 }
 

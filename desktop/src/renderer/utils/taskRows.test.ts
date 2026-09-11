@@ -13,6 +13,7 @@ import {
   countOpenIssues,
   countTotalOpen,
   filterTaskRows,
+  mergeSearchIssues,
   NO_FILTER,
   rowKey,
   sortIssues,
@@ -324,7 +325,7 @@ describe('counters', () => {
   // could read — a floor, and the same claim a failed GitHub group already made.
   it('counts a truncated sprint as the tickets it could show', () => {
     const rows = build([
-      jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [jiraIssue(), jiraIssue({ key: 'PROJ-2' })], truncated: true }),
+      jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [jiraIssue(), jiraIssue({ key: 'PROJ-2' })], truncatedColumns: ['backlog'] }),
       group({ configKey: 'magic-slash', name: 'magic-slash', issues: [issue()], totalOpen: 214 }),
     ])
     expect(countOpenIssues(rows)).toEqual(3)
@@ -887,5 +888,64 @@ describe('sortTaskRows', () => {
 
     expect(sorted[0]).toBe(rows[0])
     expect(sorted[0].issues.map((i) => 'number' in i && i.number)).toEqual([2, 1])
+  })
+})
+
+describe('mergeSearchIssues', () => {
+  // The sprint search reaches PAST the board's per-column budgets. Its findings are
+  // merged into the row they belong to rather than drawn beside the columns, so every
+  // rule downstream — which column a ticket lands in, whether an agent is on it, the
+  // counts — goes on reading one list.
+
+  it('adds what the search found to the row of the picked repository', () => {
+    const rows = build([jiraGroup({ issues: [jiraIssue({ key: 'PROJ-1' })] })])
+
+    const merged = mergeSearchIssues(rows, 'jira-only', [jiraIssue({ key: 'PROJ-900' })])
+
+    expect(merged[0].issues.map((issue) => 'key' in issue && issue.key)).toEqual(['PROJ-1', 'PROJ-900'])
+  })
+
+  it('adds rather than replaces, because the two searches match differently', () => {
+    // The site matches whole words with a trailing wildcard where the box matches
+    // substrings, so `ploy` finds "deployment" among the loaded rows and nothing at all
+    // on the site. Replacing would take away a match the reader already had.
+    const rows = build([jiraGroup({ issues: [jiraIssue({ key: 'PROJ-1', title: 'redeployment' })] })])
+
+    expect(mergeSearchIssues(rows, 'jira-only', []) [0].issues).toHaveLength(1)
+  })
+
+  it('keeps the loaded copy of a ticket the search also returned', () => {
+    // Both are the same ticket read the same way, so the choice is nearly arbitrary —
+    // but taking the loaded one means the row's issues keep their object identity,
+    // which is what stops every memoised card re-rendering on a keystroke.
+    const rows = build([jiraGroup({ issues: [jiraIssue({ key: 'PROJ-1', title: 'loaded' })] })])
+
+    const merged = mergeSearchIssues(rows, 'jira-only', [jiraIssue({ key: 'PROJ-1', title: 'fetched' })])
+
+    expect(merged[0].issues).toHaveLength(1)
+    expect(merged[0].issues[0].title).toBe('loaded')
+    // Nothing changed, so nothing was rebuilt: the same array, by identity.
+    expect(merged).toBe(rows)
+  })
+
+  it('leaves a GitHub row alone', () => {
+    // The search names one Jira project. A GitHub row on the same board has its own
+    // cap and its own admission — a number, off `totalCount` — and nothing to merge.
+    const rows = build([
+      group({ configKey: 'magic-slash', name: 'magic-slash', issues: [issue()] }),
+      jiraGroup({ issues: [] }),
+    ])
+
+    const merged = mergeSearchIssues(rows, 'magic-slash', [jiraIssue({ key: 'PROJ-900' })])
+
+    expect(merged).toBe(rows)
+  })
+
+  it('does nothing at all when there is nothing to merge', () => {
+    // An idle page rebuilds no rows: same array, same identity.
+    const rows = build([jiraGroup({ issues: [jiraIssue()] })])
+
+    expect(mergeSearchIssues(rows, 'jira-only', [])).toBe(rows)
+    expect(mergeSearchIssues(rows, '', [jiraIssue({ key: 'PROJ-900' })])).toBe(rows)
   })
 })

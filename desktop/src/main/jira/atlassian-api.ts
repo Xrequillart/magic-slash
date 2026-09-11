@@ -487,6 +487,36 @@ export async function fetchJiraFields(
 }
 
 /**
+ * Every status ONE PROJECT defines, so the sprint read can name the blocked ones.
+ *
+ * `/rest/api/3/project/{key}/statuses` and not the site-wide `/rest/api/3/status`:
+ * the question is "what does THIS team call blocked", a site can carry hundreds of
+ * statuses across dozens of workflows, and the project-scoped answer is both smaller
+ * and the only one that cannot put another team's word into this project's query.
+ * `read:jira-work` covers it, like every other read here — see `SCOPES`.
+ *
+ * The body is an array of ISSUE TYPES, each with its own `statuses`, because a project
+ * can run a different workflow per type. Flattening and de-duplicating them is a
+ * decision about values and lives in `sprint-issues.ts` (`readProjectStatusNames`);
+ * this returns the array verbatim, as `fetchJiraFields` does.
+ */
+export async function fetchProjectStatuses(
+  deps: AtlassianDeps,
+  args: { accessToken: string; cloudId: string; projectKey: string },
+): Promise<unknown[]> {
+  const operation = 'Jira project statuses'
+  const url = jiraApiUrl(deps, args.cloudId, `/project/${encodeURIComponent(args.projectKey)}/statuses`)
+  const response = await send(deps, operation, url, {
+    headers: { Authorization: `Bearer ${args.accessToken}`, Accept: 'application/json' },
+  })
+  const parsed = await readBody(response, operation)
+  if (!Array.isArray(parsed)) {
+    throw new AtlassianApiError(`${operation} (unexpected body)`, response.status)
+  }
+  return parsed
+}
+
+/**
  * ONE ticket, by key — what the detail panel opens on.
  *
  * A GET on `/rest/api/3/issue/{key}` rather than `fetchSprintIssues` with a

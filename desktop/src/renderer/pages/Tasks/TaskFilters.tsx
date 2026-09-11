@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDownWideNarrow, CalendarRange, Check, ChevronDown, FolderGit2, Search, X } from 'lucide-react'
+import { ArrowDownWideNarrow, CalendarRange, Check, ChevronDown, FolderGit2, LoaderCircle, Search, TriangleAlert, X } from 'lucide-react'
 import { useAnchoredPanel } from '../../components/useAnchoredPanel'
 import { useT } from '../../i18n'
 import { INPUT } from '../../theme/controls'
@@ -318,6 +318,9 @@ export function TaskFilters({
   repos,
   epics,
   sprintName,
+  searchesSprint,
+  searching,
+  searchFailed,
   onChange,
 }: {
   value: TaskFilterValue
@@ -329,6 +332,20 @@ export function TaskFilters({
    * see `SprintChip`, which is then not drawn at all.
    */
   sprintName?: string
+  /**
+   * Whether the box reaches PAST the board when it is used.
+   *
+   * True only on a board some column of which stopped at its budget. It changes no
+   * behaviour here — the page owns the read — but it changes what the box may honestly
+   * claim: on a complete board the filter is exhaustive and saying "searching the whole
+   * sprint" would be noise, while on a short one that sentence is the answer to "why
+   * did my ticket not come up".
+   */
+  searchesSprint?: boolean
+  /** A sprint search is in flight. See `useSprintSearch`. */
+  searching?: boolean
+  /** The last sprint search came back as a failure. The board still shows what it has. */
+  searchFailed?: boolean
   onChange: (next: TaskFilterValue) => void
 }) {
   const t = useT()
@@ -379,19 +396,55 @@ export function TaskFilters({
             e.stopPropagation()
             onChange({ ...value, query: '' })
           }}
-          placeholder={t('tasks.filter.searchPlaceholder')}
-          className={`${INPUT} w-full pl-9 ${value.query ? 'pr-8' : ''}`}
+          // The placeholder is where the box says how far it reaches, because it is the
+          // only text a reader sees BEFORE typing — which is when "will this find the
+          // ticket I cannot see" is the question. A caption under the bar would say it
+          // after the fact, and to everyone including the boards it is not true of.
+          placeholder={searchesSprint ? t('tasks.filter.searchSprintPlaceholder') : t('tasks.filter.searchPlaceholder')}
+          className={`${INPUT} w-full pl-9 ${
+            value.query && (searching || searchFailed) ? 'pr-14' : value.query || searching ? 'pr-8' : ''
+          }`}
         />
-        {value.query && (
-          <button
-            type="button"
-            onClick={() => onChange({ ...value, query: '' })}
-            title={t('tasks.filter.clearSearch')}
-            aria-label={t('tasks.filter.clearSearch')}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-text-secondary/60 hover:text-ink hover:bg-surface-strong transition-colors"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
+        {/* THREE THINGS CAN SIT AT THE RIGHT EDGE and only ever one of them does, which
+            is why they share a row rather than each claiming `right-2`: a spinner while
+            the sprint is being searched, a warning when that search failed, and the
+            clear button whenever there is something to clear. Stacked absolutely they
+            would overlap; in a flex row the clear button simply moves left by the width
+            of whichever status glyph is showing. */}
+        {(value.query || searching) && (
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {searching && (
+              // The in-memory filter has ALREADY narrowed the board by the time this
+              // appears — it runs on the keystroke, undebounced — so this spinner is not
+              // "the page is loading". It says a wider answer is on its way, which is why
+              // it is a 12px glyph in the corner of the box rather than anything that
+              // covers the columns.
+              <LoaderCircle
+                className="w-3.5 h-3.5 text-text-secondary/50 animate-spin"
+                aria-label={t('tasks.filter.searchingSprint')}
+              />
+            )}
+            {!searching && searchFailed && (
+              // The reach past the board failed; the board itself is fine and still
+              // showing everything it loaded. A glyph and a sentence on hover, not a
+              // banner: nothing is broken that the reader can act on, and the tickets
+              // they can see are all real.
+              <span title={t('tasks.filter.searchFailed')} className="flex items-center">
+                <TriangleAlert className="w-3.5 h-3.5 text-orange" aria-label={t('tasks.filter.searchFailed')} />
+              </span>
+            )}
+            {value.query && (
+              <button
+                type="button"
+                onClick={() => onChange({ ...value, query: '' })}
+                title={t('tasks.filter.clearSearch')}
+                aria-label={t('tasks.filter.clearSearch')}
+                className="p-0.5 rounded text-text-secondary/60 hover:text-ink hover:bg-surface-strong transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </span>
         )}
       </div>
       {/* An icon here and on neither of its neighbours, because it is the one picker

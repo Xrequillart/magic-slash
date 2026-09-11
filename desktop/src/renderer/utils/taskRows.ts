@@ -1,4 +1,5 @@
 import type { JiraPriorityLevel, JiraTaskIssue, RepositoryConfig, TaskRepoGroup } from '../../types'
+import { fold } from '../../text'
 import { getProjectColorMap } from './projectColors'
 import { NO_AGENTS } from './taskAgents'
 
@@ -276,27 +277,16 @@ export interface TaskFilter {
 export const NO_FILTER: TaskFilter = { configKey: '', query: '', epicKey: '', sort: 'recent' }
 
 /**
- * A string in the one form the search compares on: case-folded and stripped of
- * accents.
+ * The search's normalisation, re-exported from `src/text.ts`.
  *
- * The accents are the half worth explaining. Ticket titles here are written in
- * French as often as in English, and a search box that will not find `création`
- * when you type `creation` is a search box people stop using — the more so on a
- * keyboard where the accented character is the harder one to reach. NFD splits an
- * accented letter into its base and a combining mark, and the range below is
- * exactly those marks, so `é` folds onto `e` and nothing else is touched.
- *
- * `toLowerCase` and not `toLocaleLowerCase`: the query and the title are folded by
- * the SAME function and only ever compared with each other, so a locale-specific
- * casing rule could only make the two disagree in a language nobody is searching in.
- *
- * Exported for `taskBoard.ts`, which asks the same question of a status name and a
- * label — "is this word 'blocked', however it is spelled and whatever language the
- * board is in". Two copies of this would be two answers to it.
+ * It moved out of this file when the MAIN process needed the same folding to decide
+ * which of a site's Jira statuses mean "blocked" (see `src/blocked.ts`). Re-exported
+ * rather than merely relocated because it is part of this module's surface — the
+ * board asks it the same question of a status name and a label, and callers should
+ * not have to know which file the rule happens to live in.
  */
-export function fold(value: string): string {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
+export { fold }
+
 
 /**
  * A ticket's identity as the search sees it — `#234` for a GitHub issue, `PROJ-123`
@@ -385,6 +375,50 @@ export function filterTaskRows(rows: TaskRow[], filter: TaskFilter): TaskRow[] {
     }
   }
   return kept
+}
+
+/**
+ * The rows, with a sprint search's findings folded into the Jira row they belong to.
+ *
+ * WHY A MERGE AND NOT A SECOND LIST. The board is built from rows, and every rule that
+ * matters — which column a ticket lands in, whether an agent is on it, how the counts
+ * add up — reads the row. Drawing search results beside the columns would be a second
+ * answer to "what is in this sprint", and the two would disagree the moment a ticket
+ * appeared in both. Merged, the search widens the SAME list and everything downstream
+ * is unchanged.
+ *
+ * THE SEARCH IS A SUPERSET, NOT A REPLACEMENT. What the site returned is added to what
+ * the board already loaded, never swapped for it: the server matches whole words with a
+ * trailing wildcard where the box matches substrings, so typing `ploy` finds
+ * "deployment" among the loaded rows and nothing at all on the site. Keeping both means
+ * the reader never loses a match they already had. `filterTaskRows` then applies the
+ * substring rule to the union, so what they see is one rule over a wider candidate set
+ * rather than two searches with two behaviours.
+ *
+ * Issues already on the row WIN over the fetched copy. Both are the same ticket read the
+ * same way, so the choice is nearly arbitrary; taking the loaded one means a row's object
+ * identity survives a search, which is what keeps the memoised cards from all re-rendering
+ * on a keystroke.
+ *
+ * Untouched — the same array, by identity — when there is nothing to merge, so an idle
+ * page rebuilds no rows at all.
+ */
+export function mergeSearchIssues(rows: TaskRow[], configKey: string, found: JiraTaskIssue[]): TaskRow[] {
+  if (found.length === 0 || !configKey) return rows
+  let merged = false
+  const next = rows.map((row) => {
+    // The Jira row OF THE PICKED REPOSITORY, and only it: the search names one project,
+    // and a repository sharing the board (see `TaskRow.repos`) is reached through its
+    // own `configKey` on its own search.
+    if (row.tracker !== 'jira') return row
+    if (!row.repos.some((repo) => repo.configKey === configKey)) return row
+    const known = new Set(row.issues.map((issue) => issue.key))
+    const extra = found.filter((issue) => !known.has(issue.key))
+    if (extra.length === 0) return row
+    merged = true
+    return { ...row, issues: [...row.issues, ...extra] }
+  })
+  return merged ? next : rows
 }
 
 /**
@@ -534,8 +568,8 @@ export function countOpenIssues(rows: TaskRow[]): number {
  * How many tickets those repositories actually HAVE.
  *
  * Different from `countOpenIssues` the moment any repository hit the query's
- * `first: 50` cap. The page shows both, so the header can say "showing 50 of 214"
- * rather than presenting a capped page as the whole backlog.
+ * `OPEN_PAGE_SIZE` cap. The page shows both, so the header can say "showing 100 of
+ * 412" rather than presenting a capped page as the whole backlog.
  *
  * A group with no `totalOpen` — one that failed, or one read before the count was
  * asked for — contributes what it could show, never less. EVERY Jira group is in

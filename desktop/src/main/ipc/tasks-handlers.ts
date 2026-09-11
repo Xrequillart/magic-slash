@@ -7,6 +7,7 @@ import type {
   JiraTaskStatusError,
   PRStatusError,
   RepositoryConfig,
+  TaskBoardColumn,
   TaskIssueDetail,
   TaskRepoGroup,
   TasksSnapshot,
@@ -16,7 +17,13 @@ import { readsFrom, resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite 
 import { readConfig } from '../config/config'
 import { getGitHubToken } from '../github'
 import { fetchIssueDetail, fetchOpenIssues } from '../github-issues'
-import { fetchJiraFields, fetchJiraIssue, fetchSprintIssues, type AtlassianDeps } from '../jira/atlassian-api'
+import {
+  fetchJiraFields,
+  fetchJiraIssue,
+  fetchProjectStatuses,
+  fetchSprintIssues,
+  type AtlassianDeps,
+} from '../jira/atlassian-api'
 import { ATLASSIAN_API_BASE_URL, TOKEN_URL } from '../jira/constants'
 import { getStatus as jiraStatus, reportUnauthorized, withFreshAccessToken } from '../jira/connect'
 import { DETAIL_FIELDS, mapIssueDetail as mapJiraIssueDetail } from '../jira/issue-detail'
@@ -24,7 +31,10 @@ import {
   applyEpicColors,
   buildEpicColorJql,
   buildOpenSprintProbeJql,
-  buildSprintJql,
+  buildSprintBacklogJql,
+  buildSprintBlockedJql,
+  buildSprintProgressJql,
+  buildSprintSearchJql,
   epicKeys,
   findEpicColorFieldIds,
   findSprintFieldId,
@@ -34,14 +44,18 @@ import {
   // `AtlassianApiError` and covers the throw that is a bug on our side, which must
   // still land in the panel rather than reject at the bridge.
   classifyUnexpected,
+  dedupeByKey,
   mapSprintIssues,
   mapDoneSprintIssues,
   buildSprintDoneJql,
   PROBE_PAGE_SIZE,
+  readProjectStatusNames,
   SPRINT_FIELDS,
-  SPRINT_PAGE_SIZE,
+  SPRINT_COLUMN_PAGE_SIZE,
   SPRINT_DONE_PAGE_SIZE,
+  SPRINT_SEARCH_PAGE_SIZE,
 } from '../jira/sprint-issues'
+import { blockedStatusNames } from '../../blocked'
 
 /**
  * The Tasks page's one read: what is waiting on every configured repository, from
@@ -250,6 +264,17 @@ const JIRA_MIN_REFRESH_MS = 30_000
 type SprintPayload = Omit<JiraTaskRepoGroup, 'tracker' | 'configKey' | 'name' | 'sourceKey'>
 
 /**
+ * The answer a column that was never asked for gives: no rows, and no further page.
+ *
+ * A resolved promise rather than a branch around the `Promise.all`, so the four columns
+ * stay four positional results and nothing downstream has to know that one of them may
+ * not have been a request. Shared, because it is immutable and a fresh object per read
+ * would be allocation for nothing.
+ */
+const EMPTY_PAGE: Promise<{ issues: unknown[]; nextPageToken: string | null }> =
+  Promise.resolve({ issues: [], nextPageToken: null })
+
+/**
  * The Jira half of the snapshot, and the memory it keeps between reads.
  *
  * A factory rather than module-level maps, so the cache belongs to a HANDLER
@@ -330,6 +355,40 @@ function createSprintReader() {
         return NO_FIELD_IDS
       })
     fieldIdsBySite.set(cloudId, attempt)
+    return attempt
+  }
+
+  /**
+   * Which statuses THIS PROJECT calls blocked, resolved once and kept for the process.
+   *
+   * `jiraFieldIds`' twin one level down, and it makes the same trade for the same
+   * reason: cached as a PROMISE so the repositories reading their sprints in parallel
+   * share one lookup, and dropped from the map when it fails so the next page open
+   * tries again.
+   *
+   * PER PROJECT, not per site, because the question is what THIS team calls blocked —
+   * two projects on one site run different workflows, and pooling their status names
+   * would put another team's word into this project's query.
+   *
+   * NEVER FATAL, and this is the important half. An empty list is a working board: the
+   * three unfinished queries drop their status clause (see `statusClause`), Blocked
+   * loses its own budget, and its tickets arrive inside the other two columns where the
+   * renderer files them under Blocked by name anyway. Failing the sprint over a lookup
+   * that only buys a budget would trade the board for the protection.
+   */
+  const blockedStatusesByProject = new Map<string, Promise<string[]>>()
+
+  function blockedStatuses(accessToken: string, cloudId: string, projectKey: string): Promise<string[]> {
+    const cacheKey = `${cloudId}:${projectKey}`
+    const cached = blockedStatusesByProject.get(cacheKey)
+    if (cached) return cached
+    const attempt = fetchProjectStatuses(atlassianDeps, { accessToken, cloudId, projectKey })
+      .then((raw) => blockedStatusNames(readProjectStatusNames(raw)))
+      .catch(() => {
+        blockedStatusesByProject.delete(cacheKey)
+        return []
+      })
+    blockedStatusesByProject.set(cacheKey, attempt)
     return attempt
   }
 
@@ -417,18 +476,56 @@ function createSprintReader() {
         const fieldId = fieldIds.sprint
         const fields = fieldId ? [...SPRINT_FIELDS, fieldId] : SPRINT_FIELDS
 
-        // BOTH halves of the sprint at once: what is left to do, and what the board's
-        // Done column shows. Two queries with a cap each rather than one sharing a cap
-        // — see `buildSprintDoneJql` — and in parallel, because they are two
-        // independent reads of the same site and running them in turn would double the
-        // latency of every Jira card for no other gain.
-        const [page, donePage] = await Promise.all([
+        // WHICH STATUSES THIS PROJECT CALLS BLOCKED, before the searches rather than
+        // beside them: the three unfinished queries all name them — one to claim them,
+        // two to exclude them — so there is nothing to run in parallel with. Cached for
+        // the process, so this costs a round trip on the first read of a project and
+        // nothing afterwards, and an empty answer is a working board (see
+        // `blockedStatuses`).
+        const blocked = await blockedStatuses(fresh.accessToken, fresh.cloudId, repo.projectKey)
+
+        // ONE QUERY PER COLUMN, all four at once.
+        //
+        // The three unfinished ones used to be a single search sharing one 50-ticket
+        // budget, and that shared budget was the bug: a four-hundred-ticket backlog
+        // spent the page on To Do rows and left Blocked and In progress empty, on a
+        // board that gave no sign anything was missing. Ordering the shared query by
+        // status category bought In progress a reprieve; Blocked, which is a word in a
+        // status name rather than a category, never had one.
+        //
+        // FOUR ROUND TRIPS AND NOT ONE, therefore — in parallel, so a board costs the
+        // same wall clock it did, and each column only ever sends the rows it has. What
+        // it buys is that no column can starve another, and that the page can say WHICH
+        // column it had to cut short instead of hanging one caveat over everything.
+        const [blockedPage, backlogPage, progressPage, donePage] = await Promise.all([
+          // ASKED ONLY WHEN THERE IS SOMETHING TO ASK FOR. With no blocked status on
+          // this project — none defined, or the status lookup failed — the clause is
+          // empty, and a blocked query without it is `statusCategory != Done`: every
+          // unfinished ticket, which is exactly what the other two queries already
+          // fetch between them. A round trip for a third copy, on the majority of
+          // projects, to fill a column the renderer fills from the other two anyway.
+          blocked.length > 0
+            ? fetchSprintIssues(atlassianDeps, {
+              accessToken: fresh.accessToken,
+              cloudId: fresh.cloudId,
+              jql: buildSprintBlockedJql(repo.projectKey, blocked),
+              fields,
+              maxResults: SPRINT_COLUMN_PAGE_SIZE,
+            })
+            : EMPTY_PAGE,
           fetchSprintIssues(atlassianDeps, {
             accessToken: fresh.accessToken,
             cloudId: fresh.cloudId,
-            jql: buildSprintJql(repo.projectKey),
+            jql: buildSprintBacklogJql(repo.projectKey, blocked),
             fields,
-            maxResults: SPRINT_PAGE_SIZE,
+            maxResults: SPRINT_COLUMN_PAGE_SIZE,
+          }),
+          fetchSprintIssues(atlassianDeps, {
+            accessToken: fresh.accessToken,
+            cloudId: fresh.cloudId,
+            jql: buildSprintProgressJql(repo.projectKey, blocked),
+            fields,
+            maxResults: SPRINT_COLUMN_PAGE_SIZE,
           }),
           fetchSprintIssues(atlassianDeps, {
             accessToken: fresh.accessToken,
@@ -439,17 +536,23 @@ function createSprintReader() {
           }),
         ])
 
+        // The three unfinished pages as one list, in the order the columns are drawn.
+        // They are three queries and one set of rows: `JiraTaskIssue` carries no column,
+        // because the renderer decides that from the status (see `taskBoard.ts`) and a
+        // column stamped here would be a second answer that could disagree with it.
+        const unfinished = [...blockedPage.issues, ...backlogPage.issues, ...progressPage.issues]
+
         // The card is empty. That is two different sentences — "this project has no
         // sprint running" and "the sprint has nothing left to do" — and the unfinished
-        // query cannot tell them apart on its own, since it excludes the finished
+        // queries cannot tell them apart on their own, since they exclude the finished
         // tickets that would prove a sprint exists.
         //
         // The Done read answers it for free WHENEVER IT CAME BACK WITH SOMETHING: a
         // finished ticket in an open sprint is proof of an open sprint. So the probe is
-        // now asked only when BOTH halves are empty, which is the one case left where
+        // now asked only when EVERY half is empty, which is the one case left where
         // nothing on hand can distinguish the two — and it is one round trip fewer than
         // before on a sprint that is simply finished.
-        if (page.issues.length === 0 && donePage.issues.length === 0) {
+        if (unfinished.length === 0 && donePage.issues.length === 0) {
           const probe = await fetchSprintIssues(atlassianDeps, {
             accessToken: fresh.accessToken,
             cloudId: fresh.cloudId,
@@ -462,7 +565,7 @@ function createSprintReader() {
           }
           // A sprint is running and this read can see nothing in it — every ticket is
           // done and older than the Done page could reach, or the workflow files them
-          // somewhere this query does not look. An empty group, not an error: the card
+          // somewhere these queries do not look. An empty group, not an error: the card
           // says "nothing to do", which is the truth, and it can still say WHICH sprint
           // off the probe's one row.
           const doneSprint = pickSprintName(probe.issues, fieldId)
@@ -476,29 +579,40 @@ function createSprintReader() {
         // — one name per card rather than the same string on all fifty of them. The
         // Done page is the fallback, for the sprint whose every remaining ticket is
         // finished: it is the half that has rows to name it from.
-        const sprintName = pickSprintName(page.issues, fieldId) || pickSprintName(donePage.issues, fieldId)
+        const sprintName = pickSprintName(unfinished, fieldId) || pickSprintName(donePage.issues, fieldId)
 
-        // Coloured in ONE call for the two halves. `colourEpics` reads the epic colours
+        // Coloured in ONE call for every column. `colourEpics` reads the epic colours
         // the tickets reference, so handing it the whole sprint at once is what stops a
         // Done ticket's epic being looked up a second time because it also appears in
         // the To Do column.
         const issues = await colourEpics(
-          [
-            ...mapSprintIssues(page.issues, repo.siteUrl || credentialSiteUrl),
+          dedupeByKey([
+            ...mapSprintIssues(unfinished, repo.siteUrl || credentialSiteUrl),
             ...mapDoneSprintIssues(donePage.issues, repo.siteUrl || credentialSiteUrl),
-          ],
+          ]),
           fresh,
           fieldIds.epicColors,
         )
 
+        // WHICH columns were cut short, one cursor each. That per-column answer is the
+        // whole point of having asked per column: the board marks the count on the
+        // short column rather than printing one caveat over four.
+        //
+        // The Done column is reported like the others now. It was left out while it was
+        // the only budget of its own — "a Done column that stops at 25 is showing what
+        // it was asked for, not hiding work" — and that is still true of WHY it is
+        // small, but not of whether the reader should be told: a `25` that is really
+        // "25 of who knows" is the same misleading count on this column as on any other.
+        const truncatedColumns: TaskBoardColumn[] = []
+        if (blockedPage.nextPageToken) truncatedColumns.push('blocked')
+        if (backlogPage.nextPageToken) truncatedColumns.push('backlog')
+        if (progressPage.nextPageToken) truncatedColumns.push('progress')
+        if (donePage.nextPageToken) truncatedColumns.push('done')
+
         const payload: SprintPayload = {
           issues,
           ...(sprintName ? { sprintName } : {}),
-          // The UNFINISHED half's cursor alone. `truncated` is what the card's counter
-          // reads to say "showing the first N", and that sentence is about the backlog
-          // somebody has to work through — a Done column that stops at 25 is showing
-          // what it was asked for, not hiding work.
-          ...(page.nextPageToken ? { truncated: true } : {}),
+          ...(truncatedColumns.length > 0 ? { truncatedColumns } : {}),
         }
         sprintCache.set(key, { at: Date.now(), payload })
         return payload
@@ -592,11 +706,89 @@ function createSprintReader() {
     return { connected, groups }
   }
 
-  return jiraGroups
+  /**
+   * Search one project's OPEN SPRINT, past the budgets the board was read with.
+   *
+   * Lives in this closure and not beside its `ipcMain.handle` because of the two
+   * things it borrows: `jiraFieldIds`, so a searched-up row carries the same sprint
+   * field the board's rows do, and `colourEpics`, so its epic badge is coloured like
+   * theirs. Both are memoised here; reaching them from outside would mean a second
+   * field lookup per search and a colourless badge on every row the search added.
+   *
+   * NOT CACHED, where `readSprint` is. The sprint cache exists to stop a page open
+   * re-reading four columns; a search is a different question every time it is asked,
+   * and the renderer's debounce is where the round trips are actually saved.
+   */
+  async function searchSprint(
+    configKey: string,
+    query: string,
+  ): Promise<{ issues: JiraTaskIssue[] } | JiraTaskStatusError> {
+    // `unverified` counts as not connected here for `jiraGroups`' reason: Atlassian
+    // refused this credential the last time it was used, and Settings is already
+    // offering Reconnect.
+    const status = jiraStatus()
+    if (!status.connected || status.unverified) {
+      return { error: 'not-connected', message: 'No verified Atlassian credential on this machine.' }
+    }
+
+    // BEFORE the token, as on every other read here: `readConfig()` is in memory,
+    // where `withFreshAccessToken` can spend an OAuth round trip and rotate the stored
+    // refresh token.
+    const repo = jiraRepos(readConfig().repositories ?? {})
+      .find((candidate) => candidate.configKey === configKey)
+    if (!repo) {
+      return { error: 'not-found', message: `No Jira-tracked repository is configured as ${configKey}.` }
+    }
+
+    // Before the credential refresh too: a query with no searchable term left in it is
+    // a question answerable here for nothing. See `buildSprintSearchJql`.
+    const jql = buildSprintSearchJql(repo.projectKey, query)
+    if (!jql) return { issues: [] }
+
+    const fresh = await withFreshAccessToken()
+    if (!fresh) {
+      return { error: 'offline', message: 'No usable Atlassian access token for this read.' }
+    }
+
+    try {
+      const fieldIds = await jiraFieldIds(fresh.accessToken, fresh.cloudId)
+      const fields = fieldIds.sprint ? [...SPRINT_FIELDS, fieldIds.sprint] : SPRINT_FIELDS
+      const page = await fetchSprintIssues(atlassianDeps, {
+        accessToken: fresh.accessToken,
+        cloudId: fresh.cloudId,
+        jql,
+        fields,
+        maxResults: SPRINT_SEARCH_PAGE_SIZE,
+      })
+
+      // BOTH mappers, because a search is not scoped to a category. It asks the whole
+      // open sprint, so a finished ticket whose summary matches is a legitimate hit and
+      // belongs in the Done column the board already draws — running only the unfinished
+      // mapper would silently drop it.
+      const site = repo.siteUrl || (status.siteUrl ?? '')
+      const issues = dedupeByKey([
+        ...mapSprintIssues(page.issues, site),
+        ...mapDoneSprintIssues(page.issues, site),
+      ])
+
+      // Coloured like the board's own rows. Without it a searched-up ticket would draw a
+      // colourless epic badge beside rows whose badges are coloured, which reads as the
+      // ticket having a different kind of epic rather than a differently fetched one.
+      return { issues: await colourEpics(issues, fresh, fieldIds.epicColors) }
+    } catch (error) {
+      const failure = classifyUnexpected(error)
+      // The one repairable cause of a 401 (a cloud id that moved) is repaired here as it
+      // is on the list read. Not awaited: the NEXT read is the one that benefits.
+      if (failure.error === 'unauthorized') void reportUnauthorized()
+      return failure
+    }
+  }
+
+  return { readGroups: jiraGroups, searchSprint }
 }
 
 export function setupTasksHandlers(): void {
-  const readJiraGroups = createSprintReader()
+  const { readGroups: readJiraGroups, searchSprint } = createSprintReader()
 
   // Every failure is captured into its own group: a repository whose read fails is
   // reported as failed and the others still render. The try/catch is not redundant
@@ -831,6 +1023,57 @@ export function setupTasksHandlers(): void {
         if (failure.error === 'unauthorized') void reportUnauthorized()
         return failure
       }
+    },
+  )
+
+  /**
+   * Whether an IPC payload really is a (config key, query) pair.
+   *
+   * The QUERY is not validated beyond being a string. It is a search box's contents —
+   * anything a keyboard can produce is a legitimate thing to type — and what makes it
+   * safe is not a pattern here but `searchTerms`, which reduces it to letters, digits
+   * and spaces before it is ever allowed near JQL. A check here would refuse searches
+   * that the query builder handles perfectly well.
+   */
+  const isSprintSearchArgs = (args: unknown): args is { configKey: string; query: string } => {
+    if (typeof args !== 'object' || args === null) return false
+    const { configKey, query } = args as { configKey?: unknown; query?: unknown }
+    return typeof configKey === 'string' && configKey !== '' && typeof query === 'string'
+  }
+
+  /**
+   * Search one project's open sprint, for the tickets the board's own budgets could
+   * not reach.
+   *
+   * WHY A READ AT ALL, when the search box already filters instantly. Because that
+   * filter runs over what is in memory, and on a column the cap cut short that is a
+   * subset: a ticket past the budget is not on the board, so typing its title finds
+   * nothing and the box gives no hint that it is looking at a fraction of the sprint.
+   * This is the query that reaches past the budget. The renderer asks for it only when
+   * a column actually reported itself short, so an ordinary board — every column whole
+   * — still costs nothing on a keystroke.
+   *
+   * NOT CACHED, for `tasks:getJiraIssueDetail`'s reason turned around: the sprint cache
+   * exists to stop a page open re-reading four columns, and a search is a different
+   * question each time it is asked. The renderer debounces, which is where the round
+   * trips are actually saved.
+   *
+   * An empty `issues` array is a legitimate answer, and so is one for a query that
+   * reduced to nothing — `buildSprintSearchJql` returns `''` for a term made entirely
+   * of punctuation, and spending a round trip to be told a site has no ticket called
+   * `***` would be this handler's own fault.
+   */
+  ipcMain.handle(
+    'tasks:searchSprint',
+    async (_event, args: unknown): Promise<{ issues: JiraTaskIssue[] } | JiraTaskStatusError> => {
+      if (!isSprintSearchArgs(args)) {
+        return {
+          error: 'not-found',
+          message: 'Malformed tasks:searchSprint payload: expected a config key and a query.',
+        }
+      }
+
+      return searchSprint(args.configKey, args.query)
     },
   )
 }

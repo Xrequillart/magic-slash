@@ -183,8 +183,9 @@ export function JiraErrorLines({
  * needs a form English does not have.
  *
  * `totalOpen` is what the repository HAS; `count` is what this page could read,
- * capped at the query's `first: 50`. When they differ the label says so — "showing
- * 50 of 214" — because rendering the cap as the total is simply a wrong number.
+ * capped at the query's `OPEN_PAGE_SIZE`. When they differ the label says so —
+ * "showing 100 of 412" — because rendering the cap as the total is simply a wrong
+ * number.
  */
 export function openCountLabel(count: number, t: Translate, totalOpen?: number): string {
   if (typeof totalOpen === 'number' && totalOpen > count) {
@@ -198,9 +199,15 @@ export function openCountLabel(count: number, t: Translate, totalOpen?: number):
  * many".
  *
  * `/rest/api/3/search/jql` is paginated by cursor and returns no `total`, so the
- * "showing 50 of 214" form `openCountLabel` uses has no second number to put in it.
- * The honest reading of a next-page token is that the card is showing the first N,
+ * "showing 100 of 412" form `openCountLabel` uses has no second number to put in it.
+ * The honest reading of a next-page token is that the board is showing the first N,
  * and that is what this says.
+ *
+ * It is now the PAGE-LEVEL form of an admission the columns also make one by one: each
+ * column marks its own count with a `+` when its own budget was the limit (see
+ * `TaskBoard`). Kept, rather than left to the columns, because the header is where the
+ * reader looks for "how much of this repository am I seeing" — and a header printing a
+ * bare total over a board with a capped column would contradict the column.
  *
  * Only the truncated form is this function's own: an untruncated sprint is counted
  * by `openCountLabel`, so the plural pick lives in one place and a locale needing a

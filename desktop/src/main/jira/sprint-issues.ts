@@ -58,23 +58,52 @@ import { AtlassianApiError } from './atlassian-api'
 export const SPRINT_FIELDS = ['summary', 'status', 'priority', 'created', 'labels', 'reporter', 'creator', 'parent']
 
 /**
- * How many tickets one repository's card can hold.
+ * Jira's own ceiling on one page of `/rest/api/3/search/jql`, and the reason no budget
+ * below is larger.
  *
- * Matched to `github-issues.ts`'s `first: 50` so the two halves of the page cap
- * alike. A single page, never a follow-up: an active sprint with more than fifty
- * open tickets is a planning problem, not a pagination one, and walking the cursor
- * would spend a round trip per page on rows nobody scrolls to.
+ * THE 5000 IN THE DOCS IS NOT AVAILABLE TO US. That figure applies to a read that asks
+ * for issue IDS AND NOTHING ELSE; the moment a request names `fields` — and this one
+ * names nine, because a row without a title or a status is not a row — the endpoint
+ * reverts to ordinary pagination and caps a page at 100. Asking for more is not an
+ * error, it is silently served 100, which is the worst of both: a budget that reads as
+ * 250 in the source and behaves as 100 in production.
+ *
+ * So 100 is the real ceiling, and the way past it is a column of its own (see the
+ * budgets below) or the cursor — not a bigger number here.
  */
-export const SPRINT_PAGE_SIZE = 50
+export const JIRA_MAX_PAGE_SIZE = 100
+
+/**
+ * How many tickets ONE UNFINISHED COLUMN can hold — Blocked, Backlog or In progress.
+ *
+ * A BUDGET PER COLUMN, where there used to be one 50-ticket budget for all three. The
+ * shared budget was the bug: a sprint with four hundred To Do tickets spent the whole
+ * page on them, and Blocked and In progress — the two columns somebody actually acts
+ * on — came back empty on a board that gave no sign anything was missing. Ordering the
+ * shared query by status category bought In progress a reprieve and left Blocked with
+ * none, because "blocked" is a word in a status name rather than a category.
+ *
+ * Three queries instead of one therefore, at `JIRA_MAX_PAGE_SIZE` each. They run in
+ * parallel, so the cost is rows on the wire rather than latency, and a column only ever
+ * sends the rows it actually has: a sprint with six tickets in progress returns six,
+ * whatever the budget says.
+ *
+ * Still a SINGLE PAGE per column, never a follow-up. A column with more than a hundred
+ * tickets in it cannot be read down by a human, so walking its cursor would buy rows
+ * nobody scrolls to; what the board does instead is SAY the column is short — see
+ * `JiraTaskRepoGroup.truncatedColumns`.
+ */
+export const SPRINT_COLUMN_PAGE_SIZE = JIRA_MAX_PAGE_SIZE
 
 /**
  * How many FINISHED tickets of the same sprint the board's Done column can hold.
  *
- * Smaller than `SPRINT_PAGE_SIZE`, and its own budget rather than a share of it. That
- * separation is the whole point of asking twice (see `buildSprintDoneJql`): the
- * unfinished tickets are what the board is for, and a sprint that finished eighty
- * things must not be able to push a single To Do row off the page to make room for
- * them.
+ * Much smaller than `SPRINT_COLUMN_PAGE_SIZE`, and deliberately so. Done is a record
+ * of what just landed rather than a census — nobody scrolls a sprint's hundredth
+ * finished ticket — so the rows are spent where they are read. It was the FIRST column
+ * to get a budget of its own, back when the other three still shared one, for the
+ * reason that now applies to all four: a sprint that finished eighty things must not be
+ * able to push a single To Do row off the page to make room for them.
  */
 export const SPRINT_DONE_PAGE_SIZE = 25
 
@@ -92,34 +121,101 @@ function quoteJql(value: string): string {
 }
 
 /**
- * The query that fills a card: the unfinished work of the project's open sprints.
+ * The scope every query below shares: this project, its open sprints.
  *
- * FILTERED SERVER-SIDE, and that is the whole point. `SPRINT_PAGE_SIZE` caps the
- * SERVER's result, so every row the cap spends on something this feature then
- * discards is a row the user does not get. Two earlier shapes of this query both
- * failed that way: unfiltered and ordered by date, finished tickets ate the budget;
- * unfiltered and ordered by category ascending, To Do ate it and pushed the In
- * Progress rows — the ones an agent is actually on — off the only page fetched. In
- * both cases the rows vanished silently, because the visible count sat under the cap
- * and no truncation hint appeared. Excluding `Done` here means the budget is spent
- * only on rows that can reach the card.
- *
- * ORDERED BY CATEGORY DESCENDING. Jira sequences the categories To Do → In Progress
- * → Done, so with `Done` already excluded, descending puts In Progress first. That
- * is the order this page wants: an In Progress ticket appears only when an agent is
- * on it, which makes it the row the user most needs to see, while a truncated To Do
- * column is what the `truncated` flag is for. If a site ever sequenced its
- * categories differently the worst case is the previous behaviour, not a failure.
- *
- * Creation date breaks the tie inside a category, so the rows still arrive in the
- * order the renderer sorts them into anyway.
- *
- * The cost of filtering is that an empty answer no longer distinguishes "no active
- * sprint" from "this sprint has nothing left to do" — see `buildOpenSprintProbeJql`,
- * which buys that distinction back without spending a call on the common case.
+ * `sprint in openSprints()` resolves the board itself, which is why nothing here needs
+ * a board id (we hold none) nor the `/rest/agile` scope (we ask for none).
  */
-export function buildSprintJql(projectKey: string): string {
-  return `project = ${quoteJql(projectKey)} AND sprint in openSprints() AND statusCategory != Done ORDER BY statusCategory DESC, created DESC`
+function sprintScope(projectKey: string): string {
+  return `project = ${quoteJql(projectKey)} AND sprint in openSprints()`
+}
+
+/**
+ * ` AND status in ("Blocked", "Bloqué")`, or nothing at all when the site's blocked
+ * statuses could not be resolved.
+ *
+ * The EMPTY CASE IS THE ONE THAT MATTERS, and it is why this returns a string rather
+ * than throwing or defaulting: `status in ()` is a syntax error, and a project whose
+ * status list failed to read must still get its board. With no clause the three
+ * unfinished queries degrade to a plain category split — Blocked loses its own budget
+ * and its tickets arrive inside Backlog and In progress, where the renderer still files
+ * them under Blocked by name. Less protection, never a wrong column.
+ */
+function statusClause(operator: 'in' | 'not in', names: string[]): string {
+  if (names.length === 0) return ''
+  return ` AND status ${operator} (${names.map(quoteJql).join(', ')})`
+}
+
+/**
+ * Ordered NEWEST FIRST, on every column.
+ *
+ * It matches the page's default sort, so an untruncated column arrives in the order it
+ * is drawn in. On a column the cap DOES cut short it is also the choice being made
+ * about which tickets survive, and it is worth naming: a four-hundred-ticket backlog
+ * comes back as its hundred newest, so switching the page to Priority reorders those
+ * hundred rather than reaching for the highest-priority hundred of the four hundred.
+ * Truthful, because the column says it is short — see `truncatedColumns`.
+ */
+const NEWEST_FIRST = ' ORDER BY created DESC'
+
+/**
+ * The BLOCKED column's own query.
+ *
+ * The whole reason this exists as a query and not as a filter over the others: blocked
+ * is the column that asks something of the reader, and under a shared budget it was the
+ * one with no protection at all. It has no status CATEGORY of its own — "blocked" is a
+ * word teams put in a status name, and that name sits in whichever category they filed
+ * it under — so the only way to give it a budget is to name the statuses.
+ *
+ * `statusCategory != Done` still applies: a team that files a blocked status under Done
+ * has finished with the ticket, and the Done column already reports it.
+ *
+ * The names come from the site (see `readProjectStatusNames`) filtered by the SHARED
+ * blocked vocabulary in `src/blocked.ts` — the same rule the renderer classifies the
+ * rows with, so a ticket fetched under this budget cannot be drawn in another column.
+ *
+ * NOT CALLED WITH AN EMPTY LIST, and the caller is what guarantees it. With no clause
+ * this query is `statusCategory != Done` — every unfinished ticket, which is precisely
+ * what the backlog and progress queries already fetch between them. The read skips it
+ * rather than paying for a third copy; `statusClause` still handles the empty case,
+ * because a builder that produces invalid JQL on an unexpected input is a worse failure
+ * than a redundant one.
+ */
+export function buildSprintBlockedJql(projectKey: string, blockedStatuses: string[]): string {
+  return `${sprintScope(projectKey)} AND statusCategory != Done${statusClause('in', blockedStatuses)}${NEWEST_FIRST}`
+}
+
+/**
+ * The IN PROGRESS column's own query: the work in flight, blocked tickets removed.
+ *
+ * The exclusion is what keeps the two budgets from overlapping. Without it a site whose
+ * "Blocked" status is filed under In Progress would fetch those tickets twice — once
+ * here and once under the blocked budget — spending this column's rows on tickets it
+ * will not draw, which is the shared-budget bug reappearing one level down. The read
+ * de-duplicates by key anyway, because a clause that could not be built must not become
+ * a doubled row.
+ */
+export function buildSprintProgressJql(projectKey: string, blockedStatuses: string[]): string {
+  return `${sprintScope(projectKey)} AND statusCategory = "In Progress"${statusClause('not in', blockedStatuses)}${NEWEST_FIRST}`
+}
+
+/**
+ * The BACKLOG column's own query: everything unfinished that is not in flight.
+ *
+ * WRITTEN AS TWO EXCLUSIONS rather than as `statusCategory = "To Do"`, and that is not
+ * a stylistic choice. Jira has a FOURTH category key — `undefined`, for a status an
+ * admin never filed under one — and a workflow can be configured entirely out of the
+ * standard three. Such a ticket is in the sprint and is not finished, so it belongs on
+ * the board; `= "To Do"` would match neither it nor `= "In Progress"`, and it would
+ * vanish from the page without a trace. `readStatus` makes the same choice on the way
+ * in, defaulting an unfiled category to `new`, and the two must agree.
+ *
+ * This is the one column a real sprint can overflow, which is what the cap and
+ * `truncatedColumns` are for.
+ */
+export function buildSprintBacklogJql(projectKey: string, blockedStatuses: string[]): string {
+  return `${sprintScope(projectKey)} AND statusCategory != Done AND statusCategory != "In Progress"`
+    + `${statusClause('not in', blockedStatuses)}${NEWEST_FIRST}`
 }
 
 /**
@@ -171,6 +267,124 @@ export function buildSprintDoneJql(projectKey: string): string {
 
 /** One row is enough to answer the probe's yes/no question. */
 export const PROBE_PAGE_SIZE = 1
+
+/**
+ * Every status name this project defines, flattened out of the per-issue-type answer
+ * `/rest/api/3/project/{key}/statuses` gives.
+ *
+ * The body is an array of ISSUE TYPES — Story, Bug, Task — each carrying its own
+ * `statuses`, because a project can run a different workflow per type. What the sprint
+ * read wants is the union: a status that only the Bug workflow has is still a status a
+ * ticket in this sprint can be in.
+ *
+ * Anything unreadable is SKIPPED rather than failing the lot. This list is used to give
+ * the Blocked column a budget, and a malformed entry buried in a workflow must not cost
+ * the board its Blocked query — a short list degrades exactly as an empty one does (see
+ * `statusClause`).
+ *
+ * De-duplication is left to `blockedStatusNames`, which is where the names are folded
+ * anyway and where a second pass would be a second answer to "are these the same
+ * status".
+ */
+export function readProjectStatusNames(raw: unknown[]): string[] {
+  const names: string[] = []
+  for (const type of raw) {
+    if (!type || typeof type !== 'object') continue
+    const statuses = (type as Record<string, unknown>).statuses
+    if (!Array.isArray(statuses)) continue
+    for (const status of statuses) {
+      if (!status || typeof status !== 'object') continue
+      const name = (status as Record<string, unknown>).name
+      if (typeof name === 'string' && name !== '') names.push(name)
+    }
+  }
+  return names
+}
+
+/** One page is all a search offers; there is no "more results" affordance to page. */
+export const SPRINT_SEARCH_PAGE_SIZE = JIRA_MAX_PAGE_SIZE
+
+/**
+ * The terms a search is reduced to before it is allowed near JQL.
+ *
+ * EVERYTHING THAT IS NOT A LETTER, A DIGIT OR A SPACE IS DROPPED, which is stricter
+ * than escaping and deliberately so. The `~` operator takes a Lucene-flavoured query,
+ * so `+ - & | ! ( ) { } [ ] ^ ~ * ? : \ /` all mean something in it, and a quote or a
+ * backslash escapes out of the string literal wrapping it. Escaping two nested grammars
+ * correctly is a thing to get wrong once, in production, as a 400 on somebody's board;
+ * dropping the characters costs a search term nobody types on purpose.
+ *
+ * Accents are KEPT. Jira folds them in its own analyser, and the renderer folds them in
+ * `fold`, so `création` typed or stored either way still matches.
+ *
+ * Capped at six words. Past that the clause is longer than the sprint, and a reader
+ * pasting a whole sentence is not narrowing anything.
+ */
+export function searchTerms(query: string): string[] {
+  return query
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word !== '')
+    .slice(0, 6)
+}
+
+/**
+ * A Jira key as the user might have typed it into the search box — `PER-5030`, or
+ * `per-5030`, which Jira resolves just the same.
+ *
+ * MUST TRACK `JIRA_KEY_PATTERN` in `ipc/tasks-handlers.ts` and `JIRA_KEY` in
+ * `renderer/utils/taskAgents.ts`. Three copies of one shape is two too many, and they
+ * cannot be shared today; what they must not do is disagree about what a key looks
+ * like, or the search box would refuse to find a ticket whose row the board just drew.
+ */
+const SEARCH_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_]*-\d+$/
+
+/**
+ * Search the OPEN SPRINT of one project, for the tickets the board could not load.
+ *
+ * WHY THIS EXISTS. The search box filters what is already in memory, which is exact and
+ * instant and, on a column the cap cut short, quietly wrong: a ticket past the budget is
+ * not on the board, so typing its title finds nothing and the box says nothing about why.
+ * This is the query that reaches past the budget, and the page only makes it when a
+ * column actually is short.
+ *
+ * SCOPED TO THE SPRINT, not to the project. The board is one sprint; a ticket outside it
+ * is not a row this page could draw, and offering it would make the search answer a
+ * different question from the board it sits above.
+ *
+ * WORD PREFIXES, not substrings, and this is the one place the two searches genuinely
+ * differ. `~` matches whole words with an optional trailing wildcard — Jira indexes no
+ * leading one — so `deplo` finds "deployment" and `ploy` finds nothing. The in-memory
+ * substring rule still runs over everything already loaded, so the reader loses nothing
+ * they had; what the server adds is the rows they did not. Words are ANDed: every term
+ * has to appear somewhere in the summary, and the renderer then applies its own
+ * substring rule to what comes back, so the result is that rule over a wider candidate
+ * set rather than a second, looser answer.
+ *
+ * The KEY is matched too, and matched exactly. It is the one search where the reader
+ * knows precisely what they want, and `PER-5030` is a word the summary almost never
+ * contains.
+ *
+ * `''` when the query reduced to nothing — all punctuation, or empty. The caller spends
+ * no round trip on it; see the handler.
+ */
+export function buildSprintSearchJql(projectKey: string, query: string): string {
+  const trimmed = query.trim()
+  const words = searchTerms(trimmed).map((term) => `summary ~ ${quoteJql(`${term}*`)}`)
+  // Parenthesised as a unit whenever there is more than one, so the OR below cannot be
+  // read as binding to the last word alone. JQL's precedence happens to give the right
+  // answer without it; relying on an operator precedence nobody checks is how a query
+  // ends up quietly matching a superset.
+  const byWords = words.length > 1 ? `(${words.join(' AND ')})` : words[0]
+  // An OR and not one more AND: somebody pasting a key wants that ticket, and requiring
+  // its summary to contain the key as well would answer nothing every time.
+  const byKey = SEARCH_KEY_PATTERN.test(trimmed) ? `key = ${quoteJql(trimmed.toUpperCase())}` : ''
+
+  const match = [byWords, byKey].filter((clause) => clause).join(' OR ')
+  if (!match) return ''
+  return `${sprintScope(projectKey)} AND (${match})${NEWEST_FIRST}`
+}
 
 /**
  * `https://acme.atlassian.net/browse/PROJ-123`, or `''` when there is no site to
@@ -824,6 +1038,34 @@ export function mapDoneSprintIssues(raw: unknown[], siteUrl: string): JiraTaskIs
   return raw.flatMap((entry) => {
     const issue = mapIssue(entry, siteUrl)
     return issue && issue.statusCategory === 'done' ? [issue] : []
+  })
+}
+
+/**
+ * One ticket per key, first occurrence winning.
+ *
+ * A BELT-AND-BRACES PASS over the four column reads. They are built to be disjoint —
+ * `buildSprintProgressJql` and `buildSprintBacklogJql` exclude the statuses
+ * `buildSprintBlockedJql` claims, and Done is its own category — so on a healthy site
+ * this drops nothing at all.
+ *
+ * What it defends against is the site where they are NOT disjoint: a status renamed
+ * between the status lookup being cached and the search running, a workflow where a
+ * blocked status is also somehow reported under another category. A duplicate there is
+ * not a harmless extra row — the board keys its cards by ticket key, so React would be
+ * handed the same key twice — and the failure would surface as a rendering warning
+ * three layers away from the query that caused it.
+ *
+ * FIRST WINS, and the caller orders the columns so that means blocked, then backlog,
+ * then progress, then done. Any order would be defensible when the rows are identical;
+ * a fixed one means a board does not reshuffle between reads.
+ */
+export function dedupeByKey(issues: JiraTaskIssue[]): JiraTaskIssue[] {
+  const seen = new Set<string>()
+  return issues.filter((issue) => {
+    if (seen.has(issue.key)) return false
+    seen.add(issue.key)
+    return true
   })
 }
 

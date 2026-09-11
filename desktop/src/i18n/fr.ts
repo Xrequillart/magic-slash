@@ -1690,8 +1690,15 @@ export const fr: Record<keyof typeof en, string> = {
   'tasks.board.progress': 'En cours',
   'tasks.board.done': 'Terminé',
   'tasks.board.empty': 'Rien ici',
+  'tasks.board.cappedCount': '{count}+',
+  'tasks.board.cappedHint':
+    'Cette colonne contient plus de tickets que la lecture du sprint n’a pu en charger. Utilisez la recherche pour les atteindre.',
 
   'tasks.filter.searchPlaceholder': 'Rechercher par ID de ticket ou titre…',
+  'tasks.filter.searchSprintPlaceholder': 'Rechercher dans tout le sprint par ID ou titre…',
+  'tasks.filter.searchingSprint': 'Recherche dans tout le sprint…',
+  'tasks.filter.searchFailed':
+    'Impossible de chercher au-delà des tickets chargés. Ce qui est affiché reste exact.',
   'tasks.filter.pickRepo': 'Choisir un dépôt',
   'tasks.filter.sortRecent': 'Plus récents',
   'tasks.filter.sortPriority': 'Priorité',

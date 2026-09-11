@@ -5,7 +5,15 @@ import {
   browseUrl,
   buildEpicColorJql,
   buildOpenSprintProbeJql,
-  buildSprintJql,
+  buildSprintBacklogJql,
+  buildSprintBlockedJql,
+  buildSprintProgressJql,
+  buildSprintSearchJql,
+  dedupeByKey,
+  readProjectStatusNames,
+  searchTerms,
+  SPRINT_COLUMN_PAGE_SIZE,
+  JIRA_MAX_PAGE_SIZE,
   classify,
   classifyUnexpected,
   epicKeys,
@@ -42,39 +50,91 @@ function rawIssue(overrides: Record<string, unknown> = {}, fields: Record<string
   }
 }
 
-describe('buildSprintJql', () => {
-  it('asks one project for the unfinished work of its open sprints', () => {
+describe('the per-column sprint queries', () => {
+  // ONE QUERY PER COLUMN, each with a budget of its own. They replaced a single
+  // unfinished search whose 50-ticket page the three columns shared, which meant a
+  // four-hundred-ticket backlog spent the whole page on To Do rows and left In progress
+  // and Blocked empty — on a board that gave no sign anything was missing.
+
+  it('asks the backlog for everything unfinished that is not in flight', () => {
     // No board id, and no `/rest/agile` call: `openSprints()` resolves the board
     // itself, which is what keeps the read inside the `read:jira-work` scope.
-    expect(buildSprintJql('PROJ')).toBe(
-      'project = "PROJ" AND sprint in openSprints() AND statusCategory != Done ORDER BY statusCategory DESC, created DESC',
+    expect(buildSprintBacklogJql('PROJ', [])).toBe(
+      'project = "PROJ" AND sprint in openSprints() AND statusCategory != Done'
+        + ' AND statusCategory != "In Progress" ORDER BY created DESC',
     )
   })
 
-  it('excludes Done server-side so the page cap is never spent on it', () => {
-    // The cap applies to the SERVER's result. Every row it spends on something this
-    // feature then discards is a row the user does not get — and it disappears
-    // silently, because the visible count sits under the cap and no truncation hint
-    // is shown. Filtering here is what keeps the budget on rows that can be seen.
-    expect(buildSprintJql('PROJ')).toContain('statusCategory != Done')
+  it('writes the backlog as two exclusions rather than as `= "To Do"`', () => {
+    // Jira has a FOURTH category key — `undefined`, for a status an admin never filed
+    // under one — and a workflow can be configured out of the standard three entirely.
+    // Such a ticket is in the sprint and unfinished, so it belongs on the board;
+    // `= "To Do"` would match neither it nor `= "In Progress"` and it would vanish
+    // without a trace. `readStatus` defaults the same case to `new`, and the two have
+    // to agree.
+    const jql = buildSprintBacklogJql('PROJ', [])
+    expect(jql).not.toContain('statusCategory = "To Do"')
+    expect(jql).toContain('statusCategory != "In Progress"')
   })
 
-  it('orders In Progress ahead of To Do', () => {
-    // Jira sequences the categories To Do → In Progress → Done, so with Done
-    // excluded, DESCENDING puts In Progress first. That is the priority this page
-    // wants: an In Progress ticket only ever shows when an agent is on it, so it is
-    // the row the user most needs, and a truncated To Do column is what the
-    // `truncated` flag exists to report. Ordering ascending instead was the bug —
-    // a long To Do column pushed every agented ticket off the only page fetched.
-    const jql = buildSprintJql('PROJ')
-    expect(jql).toContain('ORDER BY statusCategory DESC')
-    expect(jql.indexOf('statusCategory DESC')).toBeLessThan(jql.indexOf('created DESC'))
+  it('asks In Progress for its own page', () => {
+    expect(buildSprintProgressJql('PROJ', [])).toBe(
+      'project = "PROJ" AND sprint in openSprints() AND statusCategory = "In Progress" ORDER BY created DESC',
+    )
+  })
+
+  it('excludes Done server-side so no column budget is spent on it', () => {
+    // The cap applies to the SERVER's result. Every row it spends on something this
+    // feature then discards is a row the user does not get — and it disappears
+    // silently. Filtering here keeps each budget on rows that can be seen.
+    expect(buildSprintBacklogJql('PROJ', [])).toContain('statusCategory != Done')
+    expect(buildSprintBlockedJql('PROJ', ['Blocked'])).toContain('statusCategory != Done')
+  })
+
+  it('names the blocked statuses, because blocked is a word and not a category', () => {
+    // The only way to give Blocked a budget. It has no status category of its own —
+    // teams put the word in a status name and file it under whichever category they
+    // like — so under a shared budget it was the one column with no protection at all.
+    expect(buildSprintBlockedJql('PROJ', ['Blocked', 'Bloqué'])).toBe(
+      'project = "PROJ" AND sprint in openSprints() AND statusCategory != Done'
+        + ' AND status in ("Blocked", "Bloqué") ORDER BY created DESC',
+    )
+  })
+
+  it('keeps the blocked statuses out of the other two columns', () => {
+    // Otherwise the budgets overlap: a site whose "Blocked" status is filed under In
+    // Progress would fetch those tickets twice and spend this column's rows on tickets
+    // it will not draw — the shared-budget bug, one level down.
+    expect(buildSprintProgressJql('PROJ', ['Blocked'])).toContain('AND status not in ("Blocked")')
+    expect(buildSprintBacklogJql('PROJ', ['Blocked'])).toContain('AND status not in ("Blocked")')
+  })
+
+  it('writes no status clause at all when there is no blocked status to name', () => {
+    // `status in ()` is a syntax error, so the empty case cannot be a clause. The board
+    // degrades to a plain category split and the renderer still files a blocked ticket
+    // under Blocked by name — less protection, never a wrong column.
+    expect(buildSprintBacklogJql('PROJ', [])).not.toContain('status not in')
+    expect(buildSprintProgressJql('PROJ', [])).not.toContain('status not in')
+  })
+
+  it('orders every column newest first', () => {
+    // It matches the page's default sort, so an untruncated column arrives in the order
+    // it is drawn in. The category ordering the old shared query needed is gone with
+    // the sharing: it existed only to stop To Do eating In Progress's rows.
+    for (const jql of [
+      buildSprintBacklogJql('PROJ', []),
+      buildSprintProgressJql('PROJ', []),
+      buildSprintBlockedJql('PROJ', ['Blocked']),
+    ]) {
+      expect(jql.endsWith(' ORDER BY created DESC')).toBe(true)
+      expect(jql).not.toContain('statusCategory DESC')
+    }
   })
 
   it('probes for an open sprint without the status filter', () => {
-    // Asked only when the filtered query came back empty. Without the filter, a
-    // sprint whose every ticket is finished still answers with something — which is
-    // what separates "nothing left to do" from "no sprint running".
+    // Asked only when every column came back empty. Without the filter, a sprint whose
+    // every ticket is finished still answers with something — which is what separates
+    // "nothing left to do" from "no sprint running".
     expect(buildOpenSprintProbeJql('PROJ')).toBe(
       'project = "PROJ" AND sprint in openSprints()',
     )
@@ -89,11 +149,140 @@ describe('buildSprintJql', () => {
   })
 
   it('escapes a project key that would otherwise break the query', () => {
-    // The key comes from a free-text settings field. Unescaped, a quote in it
-    // produces a query that no longer parses — reported as a mysterious 400
-    // instead of as an empty project.
-    expect(buildSprintJql('A"B')).toContain('project = "A\\"B"')
-    expect(buildSprintJql('A\\B')).toContain('project = "A\\\\B"')
+    // The key comes from a free-text settings field. Unescaped, a quote in it produces
+    // a query that no longer parses — reported as a mysterious 400 instead of as an
+    // empty project.
+    expect(buildSprintBacklogJql('A"B', [])).toContain('project = "A\\"B"')
+    expect(buildSprintBacklogJql('A\\B', [])).toContain('project = "A\\\\B"')
+  })
+
+  it('escapes a status name the same way', () => {
+    // Status names are the site's own text and land in the same kind of literal. A name
+    // carrying a quote is dropped upstream by `blockedStatusNames`, so this is the
+    // second line of defence rather than the first.
+    expect(buildSprintBlockedJql('PROJ', ["Bloqué (client)"])).toContain('status in ("Bloqué (client)")')
+  })
+})
+
+describe('the column budgets', () => {
+  it('never asks for more than one page of `/search/jql` can hold', () => {
+    // A request that names `fields` — this one names nine — is served at most a hundred
+    // rows per page. The 5000 the docs mention applies to an id-only read. Asking for
+    // more is not an error, it is silently served 100: a budget that reads as 250 in the
+    // source and behaves as 100 in production.
+    expect(JIRA_MAX_PAGE_SIZE).toBe(100)
+    expect(SPRINT_COLUMN_PAGE_SIZE).toBeLessThanOrEqual(JIRA_MAX_PAGE_SIZE)
+  })
+})
+
+describe('readProjectStatusNames', () => {
+  it('unions the statuses of every issue type', () => {
+    // A project can run a different workflow per type, and a status only the Bug
+    // workflow has is still a status a ticket in this sprint can be in.
+    expect(readProjectStatusNames([
+      { statuses: [{ name: 'To Do' }, { name: 'Blocked' }] },
+      { statuses: [{ name: 'Triage' }] },
+    ])).toEqual(['To Do', 'Blocked', 'Triage'])
+  })
+
+  it('skips what it cannot read rather than failing the lot', () => {
+    // This list only buys the Blocked column a budget. A malformed entry buried in one
+    // workflow must not cost the board its Blocked query.
+    expect(readProjectStatusNames([
+      null,
+      { statuses: 'nope' },
+      { statuses: [{ name: '' }, { name: 42 }, null, { name: 'Blocked' }] },
+    ])).toEqual(['Blocked'])
+  })
+})
+
+describe('searchTerms', () => {
+  it('reduces a query to plain words', () => {
+    expect(searchTerms('  deploy   the   thing ')).toEqual(['deploy', 'the', 'thing'])
+  })
+
+  it('drops everything that means something to Lucene or to the string literal', () => {
+    // `~` takes a Lucene-flavoured query, so `+ - & | ! ( ) { } [ ] ^ ~ * ? : \ /` are
+    // all operators, and a quote or a backslash escapes out of the literal wrapping it.
+    // Escaping two nested grammars correctly is a thing to get wrong once, in
+    // production, as a 400 on somebody's board.
+    expect(searchTerms('foo" OR key="BAR-1')).toEqual(['foo', 'OR', 'key', 'BAR', '1'])
+    expect(searchTerms('a*b?c\\d')).toEqual(['a', 'b', 'c', 'd'])
+  })
+
+  it('keeps accents, which both sides fold anyway', () => {
+    expect(searchTerms('création')).toEqual(['création'])
+  })
+
+  it('gives back nothing for a query made entirely of punctuation', () => {
+    // The caller spends no round trip on it.
+    expect(searchTerms('***')).toEqual([])
+  })
+
+  it('stops at six words', () => {
+    // Past that the clause is longer than the sprint, and somebody pasting a sentence
+    // is not narrowing anything.
+    expect(searchTerms('a b c d e f g h')).toHaveLength(6)
+  })
+})
+
+describe('buildSprintSearchJql', () => {
+  it('searches the open sprint by word prefix', () => {
+    // Scoped to the SPRINT and not the project: the board is one sprint, and a ticket
+    // outside it is not a row this page could draw.
+    expect(buildSprintSearchJql('PROJ', 'deploy')).toBe(
+      'project = "PROJ" AND sprint in openSprints() AND (summary ~ "deploy*") ORDER BY created DESC',
+    )
+  })
+
+  it('requires every word, and lets the renderer apply its own substring rule', () => {
+    // The server is a candidate generator, not a second search: `filterTaskRows` then
+    // applies the substring rule to the union of these and the rows already loaded, so
+    // what the reader sees is one rule over a wider set.
+    expect(buildSprintSearchJql('PROJ', 'deploy staging')).toContain(
+      '(summary ~ "deploy*" AND summary ~ "staging*")',
+    )
+  })
+
+  it('matches a ticket key exactly, as an alternative to the words', () => {
+    // Somebody pasting a key wants that ticket; requiring its summary to contain the
+    // key as well would answer nothing every time. The word half is parenthesised as a
+    // unit so the OR cannot be read as binding to `5030*` alone.
+    expect(buildSprintSearchJql('PROJ', 'per-5030')).toContain(
+      'AND ((summary ~ "per*" AND summary ~ "5030*") OR key = "PER-5030")',
+    )
+  })
+
+  it('uppercases the key, since that is how Jira spells one', () => {
+    expect(buildSprintSearchJql('PROJ', 'per-5030')).toContain('key = "PER-5030"')
+  })
+
+  it('gives back nothing when the query reduces to nothing', () => {
+    // Spending a round trip to be told a site has no ticket called `***` would be this
+    // function's own fault.
+    expect(buildSprintSearchJql('PROJ', '***')).toBe('')
+    expect(buildSprintSearchJql('PROJ', '   ')).toBe('')
+  })
+
+  it('escapes the project key here too', () => {
+    expect(buildSprintSearchJql('A"B', 'deploy')).toContain('project = "A\\"B"')
+  })
+})
+
+describe('dedupeByKey', () => {
+  it('keeps the first of two rows naming one ticket', () => {
+    // The four column reads are built to be disjoint, so on a healthy site this drops
+    // nothing. What it defends against is the site where they are not — a status
+    // renamed between the lookup being cached and the search running — because the
+    // board keys its cards by ticket key and React would be handed the same key twice.
+    const rows = [
+      { key: 'PROJ-1', title: 'first' },
+      { key: 'PROJ-2', title: 'other' },
+      { key: 'PROJ-1', title: 'second' },
+    ] as Parameters<typeof dedupeByKey>[0]
+
+    expect(dedupeByKey(rows).map((issue) => `${issue.key}:${issue.title}`))
+      .toEqual(['PROJ-1:first', 'PROJ-2:other'])
   })
 })
 

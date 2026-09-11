@@ -34,11 +34,29 @@ import type { PRStatusError, TaskIssue, TaskIssueDetail, TicketComment } from '.
 const CLOSED_PAGE_SIZE = 30
 
 /**
+ * How many OPEN issues one repository's board can hold — GitHub's own ceiling on a
+ * connection, and the counterpart to `SPRINT_COLUMN_PAGE_SIZE` on the Jira half.
+ *
+ * 50 until the Tasks page became a board. The two halves were matched then and they
+ * still are, but the number moved for a reason of its own: a `first:` above 100 is not
+ * served, it is rejected, so 100 is the most a single page can ask for and there is no
+ * argument for leaving rows on the table below it.
+ *
+ * WHAT THIS DOES NOT FIX is which issues a capped repository shows. They arrive ordered
+ * by creation date, so a backlog of four hundred comes back as its hundred newest —
+ * with `totalCount` beside them, which is the saving grace: the page prints "showing 100
+ * of 412" rather than passing a cap off as a total. The Jira half cannot even say that
+ * much (no total in a cursor-paginated response), which is why IT got a budget per
+ * column and this did not: a number is a better admission than a `+`.
+ */
+const OPEN_PAGE_SIZE = 100
+
+/**
  * `rateLimit` leads, as in every query here: it is the cheapest possible answer to
  * "why did this go quiet", and it costs nothing to ask for.
  *
- * `first: 50` and `CREATED_AT DESC`, not `last:` — an issue backlog is read from the
- * top, and the fifty most recently OPENED issues are the ones a page can act on.
+ * `OPEN_PAGE_SIZE` and `CREATED_AT DESC`, not `last:` — an issue backlog is read from
+ * the top, and the most recently OPENED issues are the ones a page can act on.
  * That is the opposite of the PR queries next door, where the tail is what matters
  * because bots post late; here the sort field decides, so `first:` takes the newest.
  *
@@ -54,9 +72,9 @@ const CLOSED_PAGE_SIZE = 30
  * `issueType`: Issue Types are an organisation-only feature and come back `null`
  * on a personal repository, so asking for them would buy an always-empty field.
  *
- * `totalCount` is asked for alongside the nodes because `first: 50` is a CAP, not a
- * total: a repository with two hundred open issues would otherwise be reported as
- * having fifty. There is no pagination here — the page says "showing 50 of 214"
+ * `totalCount` is asked for alongside the nodes because `first:` is a CAP, not a
+ * total: a repository with four hundred open issues would otherwise be reported as
+ * having a hundred. There is no pagination here — the page says "showing 100 of 412"
  * instead of quietly rounding the backlog down.
  *
  * A SECOND CONNECTION, aliased `closed`, for the board's Done column. One query and
@@ -68,7 +86,7 @@ const CLOSED_PAGE_SIZE = 30
 export const OPEN_ISSUES_QUERY = `query($owner:String!,$repo:String!){
   rateLimit { remaining }
   repository(owner:$owner,name:$repo){
-    issues(states: OPEN, first: 50, orderBy: {field: CREATED_AT, direction: DESC}){
+    issues(states: OPEN, first: ${OPEN_PAGE_SIZE}, orderBy: {field: CREATED_AT, direction: DESC}){
       totalCount
       nodes {
         number title url createdAt

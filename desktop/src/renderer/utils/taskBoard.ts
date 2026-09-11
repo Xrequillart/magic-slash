@@ -1,6 +1,7 @@
 import type { JiraTaskIssue, TaskIssue } from '../../types'
 import { normalizeTicketId } from './taskAgents'
-import { fold, type TaskRow } from './taskRows'
+import type { TaskRow } from './taskRows'
+import { isBlockedLabel, isBlockedStatus } from '../../blocked'
 
 /**
  * The Tasks page as a board: four columns, and the rule that puts a ticket in one.
@@ -31,51 +32,16 @@ export const BOARD_COLUMNS = ['blocked', 'backlog', 'progress', 'done'] as const
 export type BoardColumn = typeof BOARD_COLUMNS[number]
 
 /**
- * The words that mean "blocked", in the two languages this app is written in, folded
- * the way `fold` folds everything else.
+ * Whether a status name or a label says a ticket is blocked.
  *
- * PREFIXES, tested against a status NAME with `includes`. A Jira status is a sentence
- * a team wrote — "Blocked", "Bloqué par le client", "Blocked / on hold" — so anything
- * stricter than a substring would match our own board and nobody else's.
+ * RE-EXPORTED, not defined here. The vocabulary moved to `src/blocked.ts` when the
+ * sprint read started giving the Blocked column a page budget of its own: the main
+ * process names the site's blocked statuses in JQL, this file classifies the rows
+ * that come back, and the two disagreeing would fetch a ticket under the blocked
+ * budget and then draw it in Backlog.
  */
-const BLOCKED_WORDS = ['block', 'bloqu']
+export { isBlockedLabel, isBlockedStatus }
 
-/**
- * The same question asked of a GitHub LABEL, and asked more strictly.
- *
- * A whole-label match on a small set, where a Jira status gets a substring. Labels are
- * a flat namespace people put anything in, and `blocker` — which contains `block` — is
- * a severity on most repositories that use it, not a state: a substring rule would move
- * every urgent bug into a column that says nobody can work on it. So the label has to
- * BE one of these, once folded and stripped of the separators people spell labels with
- * (`blocked-by`, `on hold`, `on_hold`).
- */
-const BLOCKED_LABELS = new Set(['blocked', 'blockedby', 'blocking', 'bloque', 'bloquee', 'onhold'])
-
-/** A label as `BLOCKED_LABELS` spells its entries: folded, and separator-free. */
-function labelToken(label: string): string {
-  return fold(label).replace(/[^a-z0-9]/g, '')
-}
-
-/**
- * Whether a Jira status name says the ticket is blocked.
- *
- * The STATUS and not Jira's `Flagged` field, which is the other place a site can record
- * an impediment. Flagged is a custom field whose id differs per site and would have to
- * be resolved and asked for on every sprint read; the status is already on the ticket
- * and is what a board's own Blocked column is made of. A team that flags instead of
- * moving the ticket keeps the ticket in `progress`, which is where their board shows
- * it too.
- */
-export function isBlockedStatus(statusName: string): boolean {
-  const folded = fold(statusName)
-  return BLOCKED_WORDS.some((word) => folded.includes(word))
-}
-
-/** Whether any of a GitHub issue's labels says it is blocked. See `BLOCKED_LABELS`. */
-export function isBlockedLabel(labels: readonly string[]): boolean {
-  return labels.some((label) => BLOCKED_LABELS.has(labelToken(label)))
-}
 
 /**
  * Where one GitHub issue goes.
