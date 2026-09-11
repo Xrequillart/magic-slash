@@ -50,8 +50,15 @@ import { useT, type MessageKey } from '../../i18n'
  * No shadow, and that was already true: the floating card carried `shadow-2xl` to lift it
  * off the document, and a shadow on something that IS the document reads as a second
  * surface.
+ *
+ * `font-sans` is not a default restated, it is a default RECOVERED. This card is portalled
+ * into a node spliced between two rows of shiki's output, so it lives inside the code
+ * slab's `<pre>` — and `font-family` inherits. Everything in here was therefore drawn in
+ * the terminal's monospace: the label, the note, the textarea, the buttons. Declared once
+ * on the box, since the card has no single text element to put it on, and the one thing
+ * that SHOULD be monospaced keeps saying so for itself (see `Quote`).
  */
-const CARD = 'bg-bg-tertiary border border-line p-3 flex gap-2.5'
+const CARD = 'bg-bg-tertiary border border-line p-3 flex gap-2.5 font-sans'
 
 interface InlinePanelProps {
   panelRef: React.RefObject<HTMLDivElement>

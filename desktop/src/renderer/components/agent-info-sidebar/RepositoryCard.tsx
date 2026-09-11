@@ -196,7 +196,7 @@ export function RepositoryCard({
                     file.path,
                   )}
                 >
-                  <span className="flex-1 text-text-secondary/60 font-mono truncate" title={file.path}>
+                  <span className="flex-1 text-text-secondary/60 truncate" title={file.path}>
                     {file.path.split('/').pop()}
                   </span>
                   {(file.additions > 0 || file.deletions > 0) && (

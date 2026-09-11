@@ -423,7 +423,10 @@ function ReviewCommentsButton({
                         onClick={() => handleJump(group, comment)}
                         className="flex-1 min-w-0 flex flex-col gap-0.5 px-2 py-1.5 text-left cursor-pointer bg-transparent border-none"
                       >
-                        <span className="text-[11px] font-mono text-text-secondary">
+                        {/* Words, not code — "Lines 12–14", "Quoted passage" — so the
+                            app's own face, the same one the card states it in. The quote
+                            below keeps the monospace, being the file's text. */}
+                        <span className="text-[11px] text-text-secondary">
                           {t(label.key, label.vars)}
                         </span>
                         {/* The quote, on one line. It is context for the reader scanning
