@@ -259,6 +259,20 @@ interface AppState {
   // The overlay currently on screen, if any. Only one can be open at a time.
   activeModal: ModalId | null
   rightSidebar: 'info' | null
+  /**
+   * Whether the page modal fills the window rather than sitting in its 85vh panel.
+   *
+   * ONE FLAG FOR ALL FOUR MODALS, not one per page, and that is what "the choice is
+   * restored" means: a reader who has decided that overlays should take the whole
+   * window has decided it about the window, not about Plans in particular. Settings
+   * opening small after Tasks opened large would read as the setting having been
+   * forgotten.
+   *
+   * Persisted in localStorage (see the outer `partialize`), which is what carries it
+   * across a relaunch — sessionStorage holds the terminal layout and dies with the
+   * window.
+   */
+  pageModalFullScreen: boolean
   leftSidebarVisible: boolean
   // Which context window the Skills page's budget gauges are scaled to. See
   // SkillsContextWindowSetting above.
@@ -413,6 +427,7 @@ interface AppState {
   setRightSidebar: (sidebar: 'info' | null) => void
   toggleRightSidebar: (sidebar: 'info') => void
   toggleLeftSidebar: () => void
+  togglePageModalFullScreen: () => void
   setSkillsContextWindow: (contextWindow: SkillsContextWindowSetting) => void
 
   // Close agent modal actions
@@ -552,6 +567,9 @@ export const useStore = create<AppState>()(
         settingsOrgId: null,
         activeModal: null,
         rightSidebar: null,
+        // Small by default: the panel is what every existing user knows, and a
+        // preference nobody has expressed yet must not change what the app looks like.
+        pageModalFullScreen: false,
         leftSidebarVisible: true,
         skillsContextWindow: 'auto',
 
@@ -770,6 +788,7 @@ export const useStore = create<AppState>()(
           rightSidebar: state.rightSidebar === sidebar ? null : sidebar
         })),
         toggleLeftSidebar: () => set((state) => ({ leftSidebarVisible: !state.leftSidebarVisible })),
+        togglePageModalFullScreen: () => set((state) => ({ pageModalFullScreen: !state.pageModalFullScreen })),
         setSkillsContextWindow: (skillsContextWindow) => set({ skillsContextWindow }),
 
         // Close agent modal actions
@@ -987,6 +1006,9 @@ export const useStore = create<AppState>()(
       },
       partialize: (state) => ({
         leftSidebarVisible: state.leftSidebarVisible,
+        // No `version` bump for this: it is a new key with a default, so nothing already
+        // stored changes meaning and there is no old value to migrate.
+        pageModalFullScreen: state.pageModalFullScreen,
         skillsContextWindow: state.skillsContextWindow,
       }),
     }

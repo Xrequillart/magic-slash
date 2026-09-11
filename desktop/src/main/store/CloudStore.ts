@@ -66,6 +66,7 @@ interface AgentRow {
 interface PlanSessionSyncRow {
   spec_key: string
   spec_synced_at: string | null
+  spec_oversize: boolean | null
 }
 
 /**
@@ -1537,6 +1538,18 @@ export class CloudStore implements Store {
       row.spec_synced_at = new Date().toISOString()
     }
 
+    // CONDITIONAL, like everything else here, and this one is worth spelling out because
+    // an unconditional `input.specOversize === true` would look identical and be wrong.
+    // `savePlanTickets` upserts a session from an input that consulted no file at all, so
+    // it has no opinion about the spec's size — and sending `false` from there would
+    // clear a legitimately true flag on every ticket write, turning "too large to sync"
+    // back into "not written yet" the moment a plan files its epic.
+    //
+    // The READ paths always send a boolean (see plan-sync's `send`), so the flag is
+    // self-correcting in both directions: a spec cut back under the ceiling is uploaded
+    // with `false` and the row stops claiming otherwise.
+    if (input.specOversize !== undefined) row.spec_oversize = input.specOversize
+
     return row
   }
 
@@ -1618,13 +1631,15 @@ export class CloudStore implements Store {
    * which compares against files on THIS machine, and a colleague's session is
    * neither ours to compare nor ours to overwrite.
    */
-  async loadPlanSyncState(): Promise<Pick<PlanSession, 'specKey' | 'specSyncedAt'>[]> {
+  async loadPlanSyncState(): Promise<
+    Pick<PlanSession, 'specKey' | 'specSyncedAt' | 'specOversize'>[]
+  > {
     const ctx = await this.userContext()
     if (!ctx) return []
 
     const { data, error } = await ctx.client
       .from('plan_sessions')
-      .select('spec_key, spec_synced_at')
+      .select('spec_key, spec_synced_at, spec_oversize')
       .eq('owner_id', ctx.uid)
     if (error || !data) return []
 
@@ -1633,6 +1648,10 @@ export class CloudStore implements Store {
     return (data as unknown as PlanSessionSyncRow[]).map((row) => ({
       specKey: row.spec_key,
       specSyncedAt: row.spec_synced_at ?? undefined,
+      // `?? false` is safe where `?? undefined` is used above: the column is
+      // `not null default false`, so a null here only ever means a row written
+      // before the migration, which by definition had no oversize spec.
+      specOversize: row.spec_oversize ?? false,
     }))
   }
 

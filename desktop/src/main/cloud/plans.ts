@@ -1,12 +1,18 @@
-import type { Org, PlanOverview, PlanRepoRef, PlanSession } from '../../types'
+import type { Org, PlanDetail, PlanOverview, PlanRepoRef, PlanSession, PlanTicketRead } from '../../types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getAuthedClient } from './auth'
 import { listMembers, listOrgsRead } from './org'
 import { getStore } from '../store/Store'
 
 /**
- * Reading `/magic:plan` sessions back out of the cloud — the first READ path onto
- * `plan_sessions`, which until now the app only ever wrote to (`store/plan-sync.ts`).
+ * Reading `/magic:plan` sessions back out of the cloud — the READ path onto
+ * `plan_sessions`, which the app otherwise only writes to (`store/plan-sync.ts`).
+ *
+ * TWO READS, and the split between them is about volume rather than about permission:
+ * `listPlanSessions` answers the list, deliberately without the spec markdown, and
+ * `listPlanDetail` answers ONE plan with its spec and its tickets. Which is also the
+ * whole of how a colleague's plan opens at all — the spec comes out of the row, and
+ * their `.magic/spec-*.md` exists only on their machine.
  *
  * NO ORG FILTER anywhere below, and that is a decision rather than an omission: RLS on
  * `plan_sessions` (20260821090000) already returns exactly what the reader may see —
@@ -29,9 +35,26 @@ import { getStore } from '../store/Store'
  * markdown document, tens of kilobytes each, and the list shows none of it. Selecting it
  * would make opening the page download every spec in the organization to render a column
  * of one-line rows.
+ *
+ * `spec_oversize` IS among them, even though the list draws nothing with it, and the
+ * asymmetry with `spec` is the point: it is one boolean per row, where the spec is a
+ * document. `toPlanSession` is the single mapper for both reads, so leaving it out here
+ * would mean fabricating a `false` for every listed session — an invented answer, in the
+ * one field that exists to stop the app inventing answers about a missing spec.
  */
 const LIST_COLUMNS =
-  'id, owner_id, repo_id, org_id, agent_id, slug, spec_key, title, idea, status, spec_synced_at, created_at, updated_at'
+  'id, owner_id, repo_id, org_id, agent_id, slug, spec_key, title, idea, status, spec_oversize, spec_synced_at, created_at, updated_at'
+
+/**
+ * What ONE plan is read with. The list's columns plus the document itself.
+ *
+ * Built from `LIST_COLUMNS` rather than written out beside it: the two reads answer with
+ * the same `PlanSession` through the same mapper, so a column added to one and forgotten
+ * on the other is a field that is populated on a row and empty on the page opened from
+ * it. The detail view is the ONE place the spec is worth downloading — it is the thing
+ * the reader came for.
+ */
+const DETAIL_COLUMNS = `${LIST_COLUMNS}, spec`
 
 /**
  * How many sessions one opening of the page brings back.
@@ -87,9 +110,23 @@ interface PlanSessionRow {
   title: string | null
   idea: string | null
   status: string | null
+  /** `not null default false` in the table, but only the DETAIL read selects `spec`. */
+  spec_oversize: boolean | null
   spec_synced_at: string | null
   created_at: string | null
   updated_at: string | null
+  /** DETAIL_COLUMNS only — absent, not null, on a row that came back from the list. */
+  spec?: string | null
+}
+
+interface PlanTicketRow {
+  session_id: string
+  key: string
+  url: string | null
+  title: string | null
+  kind: string | null
+  parent_key: string | null
+  created_at: string | null
 }
 
 interface PlanRepoRow {
@@ -115,9 +152,46 @@ function toPlanSession(row: PlanSessionRow): PlanSession {
     // Free text off the wire, narrowed to the two the list can draw by `toStatus` in
     // renderer/utils/planRows.ts — not here, where nothing renders it.
     status: row.status ?? 'planning',
+    // `?? false` covers the column being null on a row written before the migration, not
+    // the list leaving it out — it is selected by both reads, precisely so this never
+    // has to invent an answer. See LIST_COLUMNS.
+    specOversize: row.spec_oversize ?? false,
+    // Absent on every listed row: `spec` is only in DETAIL_COLUMNS. The type says
+    // `undefined` for "no spec" either way, so a session that was never written and one
+    // that was merely not asked for read the same here — which is right, because the
+    // difference between them is `specOversize`, not the absence itself.
+    spec: row.spec ?? undefined,
     specSyncedAt: row.spec_synced_at ?? undefined,
     createdAt: row.created_at ?? undefined,
     updatedAt: row.updated_at ?? undefined,
+  }
+}
+
+/**
+ * One ticket row, with its `kind` narrowed to the two the tree can draw.
+ *
+ * The narrowing lives HERE, where a database row becomes a typed object, and not in the
+ * renderer module that groups these — the same division `status` follows above, and the
+ * divergence `renderer/utils/planRows.ts` documents against its webapp original.
+ *
+ * An unrecognised kind reads as a story, which is the LEAF. Calling it an epic would
+ * invent a parent for the other rows and change the shape of the tree; calling it a
+ * story at worst files it under "no epic", where it is still visible.
+ *
+ * The URL is passed through untouched. It is checked for its SCHEME at the moment it is
+ * turned into a link (`safeTicketUrl`, renderer side), which is the last place before a
+ * click, rather than here where a rejection would look like a tracker that returned no
+ * browse link.
+ */
+function toPlanTicket(row: PlanTicketRow): PlanTicketRead {
+  return {
+    sessionId: row.session_id,
+    key: row.key,
+    url: row.url ?? undefined,
+    title: row.title ?? undefined,
+    kind: row.kind === 'epic' ? 'epic' : 'story',
+    parentKey: row.parent_key ?? undefined,
+    createdAt: row.created_at ?? undefined,
   }
 }
 
@@ -342,5 +416,104 @@ export async function listPlanSessions(): Promise<PlanOverview> {
     hasOrg: orgs.orgs.length > 0,
     truncated: sessions.truncated,
     failed: !sessions.ok || !repos.ok || !orgs.ok || !tickets.ok,
+  }
+}
+
+/**
+ * ONE session, spec included, or nothing.
+ *
+ * `maybeSingle` rather than `single`: "no such plan" is a normal answer here and not an
+ * error. RLS makes it the answer to "not yours" as well — a session on a repository none
+ * of the reader's organizations share simply is not there — and the page says exactly
+ * that much, because that is all this can tell it.
+ *
+ * NOT SCOPED BY OWNER, like every read in this file: the policy already returns the
+ * reader's own sessions plus every session on a shared repository, and a filter here
+ * could only hide a row the database chose to show. It is what makes a COLLEAGUE'S plan
+ * open — the spec comes out of the row, never off this machine's disk, and their
+ * `.magic/spec-*.md` does not exist here to be read.
+ *
+ * The client is INJECTED, like `fetchTicketBatch`'s: `listPlanDetail` runs this and the
+ * ticket read together, and `getAuthedClient` is a synchronous decrypt of the session
+ * file on the main process before it is anything else. Resolving it here would do that
+ * work twice per open — and race two rotated-token writes over the same file.
+ */
+async function fetchPlanSession(client: SupabaseClient, id: string): Promise<Read<PlanSession>> {
+  const { data, error } = await client
+    .from('plan_sessions')
+    .select(DETAIL_COLUMNS)
+    .eq('id', id)
+    .maybeSingle()
+  if (error) return { rows: [], ok: false }
+  if (!data) return { rows: [], ok: true }
+  return { rows: [toPlanSession(data as unknown as PlanSessionRow)], ok: true }
+}
+
+/**
+ * The tickets of ONE session, whole this time.
+ *
+ * The list's ticket read pulls a bare `session_id` per row because all it renders is a
+ * count; this one renders the tickets themselves, so it takes the columns a row prints
+ * and the two it is ordered and nested by.
+ *
+ * UNPAGED, unlike `fetchTicketBatch`. That read covers hundreds of sessions at once and
+ * the row ceiling genuinely bites; one planning session files an epic and a handful of
+ * stories, so a page of a thousand is not a ceiling this can reach. Ordered anyway, on
+ * the table's own primary key, so the answer is deterministic — `groupPlanTickets` sorts
+ * by creation time with a key tiebreak regardless, but a read that returns rows in a
+ * different order on every open is worth not having.
+ */
+async function fetchPlanTickets(
+  client: SupabaseClient,
+  sessionId: string,
+): Promise<Read<PlanTicketRead>> {
+  const { data, error } = await client
+    .from('plan_tickets')
+    .select('session_id, key, url, title, kind, parent_key, created_at')
+    .eq('session_id', sessionId)
+    .order('key', { ascending: true })
+  if (error || !data) return { rows: [], ok: false }
+  return { rows: (data as PlanTicketRow[]).map(toPlanTicket), ok: true }
+}
+
+/**
+ * Everything the plan detail sub-page renders, in one round trip's worth of waiting.
+ *
+ * THE TWO READS GO OUT TOGETHER. The tickets are keyed by the session's own id, which
+ * the caller already has — it is what was clicked — so nothing here depends on the
+ * session row arriving first. Sequencing them would be a second latency for no
+ * information. The CLIENT is resolved once and handed to both, the way
+ * `fetchTicketSessionIds` hands one to every batch: `getAuthedClient` decrypts the stored
+ * session off the disk synchronously, on the process that also drives the window, and a
+ * rotated token makes both callers write it back over each other.
+ *
+ * NO REPOSITORY AND NO AUTHOR, deliberately: the renderer opens this page from a
+ * `PlanCard` it already holds, with the repository name, the address and the photo
+ * resolved by the list read. See `PlanDetail`.
+ *
+ * The same three-state discipline as `listPlanSessions`, and for the same reason: a
+ * missing session (`session: null`) is an ANSWER, while `failed` is the absence of one.
+ * A page that drew "this plan is not available" over a dropped connection would be
+ * telling the reader their colleague's plan does not exist.
+ *
+ * A ticket read that failed is a failure of the whole detail, not an empty ticket list:
+ * "no ticket has been created from this plan yet" is a claim about the tracker, and a
+ * refused query is no evidence for it.
+ */
+export async function listPlanDetail(id: string): Promise<PlanDetail> {
+  // Nowhere to read from is an unfailed nothing, exactly as on the list: an app that is
+  // signed out has no plan to show and no error to report about it.
+  const client = await getAuthedClient()
+  if (!client) return { session: null, tickets: [], failed: false }
+
+  const [session, tickets] = await Promise.all([
+    fetchPlanSession(client, id),
+    fetchPlanTickets(client, id),
+  ])
+
+  return {
+    session: session.rows[0] ?? null,
+    tickets: tickets.rows,
+    failed: !session.ok || !tickets.ok,
   }
 }

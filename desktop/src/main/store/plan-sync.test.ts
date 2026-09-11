@@ -34,6 +34,7 @@ import {
   slugFor,
   specKeyFor,
 } from './plan-sync'
+import { MAX_SPEC_BYTES } from './spec-file'
 
 const TMP = path.join(os.tmpdir(), `magic-slash-plan-sync-${process.pid}`)
 // Inside a `.magic` directory, and named `spec-*.md`, because that is the shape the
@@ -149,12 +150,16 @@ describe('the debounced upload', () => {
 
     expect(saved).toHaveLength(1)
     // Read when the timer fired, not when the ping arrived: last write wins.
-    expect(saved[0]).toEqual({ agentId: 'claude-1', specPath: SPEC, spec: '## Idea\n\nlast\n' })
+    expect(saved[0]).toEqual({
+      agentId: 'claude-1', specPath: SPEC, spec: '## Idea\n\nlast\n', specOversize: false,
+    })
   })
 
   it('does nothing at all when the spec file is not there', async () => {
     // The skill announces its spec path before creating the file, so a ping can
-    // legitimately arrive first. It is a no-op, never an error.
+    // legitimately arrive first. It is a no-op, never an error — and deliberately NOT
+    // the oversize case above: "not written yet" is a state that resolves itself, so
+    // there is nothing to upsert and nothing for a reader to be told.
     schedulePlanSpecUpload('claude-1', SPEC)
     await vi.advanceTimersByTimeAsync(3000)
     expect(saved).toEqual([])
@@ -225,7 +230,7 @@ describe('the launch reconcile', () => {
       ...NOOP_STORE,
       savePlanSpec: async (input) => { saved.push(input) },
       loadPlanSyncState: async () => [
-        { specKey: specKeyFor(SPEC), specSyncedAt: new Date(Date.now() - 60_000).toISOString() },
+        { specKey: specKeyFor(SPEC), specSyncedAt: new Date(Date.now() - 60_000).toISOString(), specOversize: false },
       ],
     })
 
@@ -242,7 +247,7 @@ describe('the launch reconcile', () => {
       ...NOOP_STORE,
       savePlanSpec: async (input) => { saved.push(input) },
       loadPlanSyncState: async () => [
-        { specKey: specKeyFor(SPEC), specSyncedAt: new Date(Date.now() + 60_000).toISOString() },
+        { specKey: specKeyFor(SPEC), specSyncedAt: new Date(Date.now() + 60_000).toISOString(), specOversize: false },
       ],
     })
 
@@ -250,6 +255,59 @@ describe('the launch reconcile', () => {
     await vi.advanceTimersByTimeAsync(3000)
 
     expect(saved).toEqual([])
+  })
+
+  it('stops re-queueing an oversized spec the row already knows about', async () => {
+    fs.writeFileSync(SPEC, 'x'.repeat(MAX_SPEC_BYTES + 1))
+    agents.list = [agentWithSpec('claude-1', SPEC)]
+    setStore({
+      ...NOOP_STORE,
+      savePlanSpec: async (input) => { saved.push(input) },
+      // What an oversized spec leaves behind: the flag set, and no timestamp — the
+      // upload never happened, so there is nothing for it to have stamped.
+      loadPlanSyncState: async () => [{ specKey: specKeyFor(SPEC), specOversize: true }],
+    })
+
+    await reconcilePlanSpecs()
+    await vi.advanceTimersByTimeAsync(3000)
+
+    expect(saved).toEqual([])
+  })
+
+  it('queues an oversized spec the row does not know about yet', async () => {
+    fs.writeFileSync(SPEC, 'x'.repeat(MAX_SPEC_BYTES + 1))
+    agents.list = [agentWithSpec('claude-1', SPEC)]
+    setStore({
+      ...NOOP_STORE,
+      savePlanSpec: async (input) => { saved.push(input) },
+      loadPlanSyncState: async () => [{ specKey: specKeyFor(SPEC), specOversize: false }],
+    })
+
+    await reconcilePlanSpecs()
+    await vi.advanceTimersByTimeAsync(3000)
+
+    // The flag has to reach the row once before it can silence anything.
+    expect(saved).toHaveLength(1)
+    expect(saved[0]?.specOversize).toBe(true)
+    expect(saved[0]?.spec).toBeUndefined()
+  })
+
+  it('queues a spec trimmed back under the ceiling, flag or no flag', async () => {
+    fs.writeFileSync(SPEC, '## Idea\n\ntrimmed back down\n')
+    agents.list = [agentWithSpec('claude-1', SPEC)]
+    setStore({
+      ...NOOP_STORE,
+      savePlanSpec: async (input) => { saved.push(input) },
+      // Still flagged from when it was too large, and still no timestamp: the size
+      // test is what has to stop matching for this to upload at all.
+      loadPlanSyncState: async () => [{ specKey: specKeyFor(SPEC), specOversize: true }],
+    })
+
+    await reconcilePlanSpecs()
+    await vi.advanceTimersByTimeAsync(3000)
+
+    expect(saved).toHaveLength(1)
+    expect(saved[0]?.specOversize).toBe(false)
   })
 
   it('skips an agent whose spec file is gone, and never asks the backend when none has one', async () => {
@@ -302,14 +360,29 @@ describe('what may be uploaded at all', () => {
     fs.rmSync(candidate, { force: true })
   })
 
-  it('refuses a spec larger than the ceiling, rather than uploading a truncated half', async () => {
-    // A truncated spec reads as complete to whoever opens the page, which is worse
-    // than an absent one.
+  it('withholds the CONTENT of a spec past the ceiling, and records the session saying so', async () => {
+    // A truncated spec reads as complete to whoever opens the page, which is worse than
+    // an absent one — so the markdown is not sent. The SESSION still is: it used to be
+    // dropped whole, and a plan that never appeared (or appeared with an empty spec the
+    // page words as "not uploaded yet") is the app hiding a document that exists.
     fs.writeFileSync(SPEC, 'x'.repeat(1024 * 1024 + 1))
     schedulePlanSpecUpload('claude-1', SPEC)
     await vi.advanceTimersByTimeAsync(3000)
 
-    expect(saved).toHaveLength(0)
+    expect(saved).toEqual([{ agentId: 'claude-1', specPath: SPEC, specOversize: true }])
+    expect(saved[0]?.spec).toBeUndefined()
+  })
+
+  it('clears the oversize flag once the spec is back under the ceiling', async () => {
+    // The flag is written on every successful read, not only when it turns true, which
+    // is what stops a trimmed spec staying marked too large for the life of the session.
+    fs.writeFileSync(SPEC, '## Idea\n\ntrimmed\n')
+    schedulePlanSpecUpload('claude-1', SPEC)
+    await vi.advanceTimersByTimeAsync(3000)
+
+    expect(saved).toEqual([
+      { agentId: 'claude-1', specPath: SPEC, spec: '## Idea\n\ntrimmed\n', specOversize: false },
+    ])
   })
 
   it('refuses a spec-shaped path that is a symlink to something private', async () => {
@@ -338,5 +411,6 @@ describe('what may be uploaded at all', () => {
 
     expect(saved).toHaveLength(1)
     expect(saved[0]?.spec).toContain('ship it')
+    expect(saved[0]?.specOversize).toBe(false)
   })
 })

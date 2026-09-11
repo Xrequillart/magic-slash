@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { CloudOff, NotebookPen, RotateCcw, Users } from 'lucide-react'
 import type { PlanOverview } from '../../../types'
 import { useConfig } from '../../hooks/useConfig'
 import { useT, type MessageKey } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
 import { createLatestWriter } from '../../utils/latestWrite'
+import type { PlanCard } from '../../utils/planRows'
 import { buildPlanCards, filterPlanCards, planRepoOptions } from '../../utils/planRows'
+import { SweepPane } from '../../components/SweepPane'
 import { ALL_REPOS, PlanFilters } from './PlanFilters'
+import { PlanDetailPage } from './PlanDetailPage'
 import { PlanRow } from './PlanRow'
 
 /**
@@ -23,9 +26,28 @@ import { PlanRow } from './PlanRow'
  * desktop app that reads them back. The one write it does make is to the reader's own
  * account — which repository they left the filter on.
  *
- * The list is the whole of it. The detail view, a session's tickets and its spec are not
- * built here; see `PlanRow` for why a row is deliberately inert.
+ * TWO VIEWS IN ONE SCROLLING PANE, the `SweepPane` idiom `pages/Tasks/index.tsx` uses:
+ * the list, and the plan a row opens. A sub-page rather than a panel beside the list,
+ * because a spec is a long markdown document with headings, tables and code in it, and
+ * none of those survive being folded into a column beside something else.
  */
+
+/**
+ * The two views, ranked. `SweepPane` reads the sign of the gap to pick which way the
+ * pages travel: opening a plan sweeps in from the right, going back sweeps out to it.
+ */
+function pagePosition(pageKey: string): number {
+  return pageKey === 'list' ? 0 : 1
+}
+
+/**
+ * Every switch here is a sub-page being opened or closed, never a move along a rail — so
+ * all of them travel sideways. Declared at MODULE SCOPE because `SweepPane` reads it
+ * during render, and a fresh closure per render would be a new prop identity every time.
+ */
+function alwaysSideways(): boolean {
+  return true
+}
 
 /** An overview that says nothing, for the one case the bridge itself fails. */
 const NOTHING_READ: PlanOverview = {
@@ -146,9 +168,29 @@ export function PlansPage() {
    * screen. Resolved together in `repoId` below, choice first.
    */
   const [picked, setPicked] = useState<string | undefined>(undefined)
+  /**
+   * The plan on screen, or null for the list. The CARD itself and not its id: the header
+   * of the detail page is drawn from it, so holding the id would mean looking the card
+   * back up on every render — and finding nothing at all after a retry replaced the
+   * overview it came from.
+   */
+  const [selected, setSelected] = useState<PlanCard | null>(null)
+
+  /**
+   * The one scrolling element, and where the list was left.
+   *
+   * Opening a plan starts it at the top and coming back restores the offset — the same
+   * courtesy the Tasks board extends to its backlog, and it matters more here: the list
+   * is one long chronology, and losing your place in it after opening one row is the
+   * whole cost of having looked.
+   */
+  const paneRef = useRef<HTMLDivElement>(null)
+  const listOffsetRef = useRef(0)
 
   // Frozen at mount, so every row's "3d ago" is measured against one instant and the
-  // list cannot renumber itself mid-render.
+  // list cannot renumber itself mid-render. Handed to the detail page too: one clock for
+  // the feature, so a row and the page opened from it cannot date the same plan
+  // differently.
   const [now] = useState(() => Date.now())
 
   useEffect(() => {
@@ -245,6 +287,24 @@ export function PlansPage() {
   }
 
   /**
+   * Open one plan. The offset is read HERE rather than in the effect below: by the time
+   * that runs, the pane has already been scrolled to the top of the plan.
+   */
+  const select = useCallback((card: PlanCard) => {
+    listOffsetRef.current = paneRef.current?.scrollTop ?? 0
+    setSelected(card)
+  }, [])
+
+  const back = useCallback(() => setSelected(null), [])
+
+  /** Which of the two views is on screen. A change is what plays the sweep. */
+  const pageKey = selected?.id ?? 'list'
+
+  useEffect(() => {
+    paneRef.current?.scrollTo({ top: pageKey === 'list' ? listOffsetRef.current : 0 })
+  }, [pageKey])
+
+  /**
    * Which emptiness this is. See `EMPTY_STATES`.
    *
    * `planSyncEnabled === false` sits BELOW the organization check and ABOVE the generic
@@ -259,86 +319,113 @@ export function PlansPage() {
             : EMPTY_STATES.none
 
   return (
-    <div className="h-full overflow-y-auto">
-      {/* The title and the live indicator are rendered by the hosting modal. The top
-          inset is the filter bar's own padding rather than the pane's: the bar pins to
-          the top of this scroller, and an opaque band stopping short of the pane's edge
-          would leave a strip of list sliding past above it. */}
-      <div className="px-6 pb-6">
-        {/* Offered only when there is a choice to make: one repository means the filter
-            can only ever narrow the list to itself. The count rides along with it, so
-            withholding the bar withholds a count the list is already short enough to
-            make by eye. */}
-        {repoOptions.length > 1 && (
-          <PlanFilters repoId={repoId} repos={repoOptions} count={visible.length} onChange={pick} />
-        )}
+    // One scrolling pane holding two pages: the list, and the plan that replaces it.
+    <div ref={paneRef} className="h-full overflow-y-auto">
+      {/* The title and the live indicator are rendered by the hosting modal.
 
-        {/* `gap-3` between the heading and what it heads, as on the board. */}
-        <div className={`flex flex-col gap-3 ${repoOptions.length > 1 ? 'pt-4' : 'pt-6'}`}>
-          {/* The same heading the Tasks board puts over its list, down to the classes:
-              two pages reached from the same rail should name what is under them the
-              same way, and the glyph is the one the sidebar's Plans button already
-              carries so the nav entry and the heading read as one place. Above the list
-              and below the filter bar, which is pinned and would otherwise scroll a
-              heading out from under itself. */}
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <NotebookPen className="w-4 h-4" />
-            <span>{t('plans.section')}</span>
-          </div>
+          The page's padding is on the SWEEP LAYERS, not on the pane: a `sticky` child
+          measures its offset from the scrolling element's padding box, so padding here
+          would make the filter bar and the plan page's pinned bar pin a full 24px higher
+          than they look like they should. Both layers carry it, so the page on its way
+          out keeps the same inset as the one arriving.
 
-          {/* ONE gate, because there is now one read. Whether the reader belongs to an
-              organization rides in on the overview (`hasOrg`), so the page no longer has
-              to hold the list back for a second, slower answer before it can tell an
-              account with no organization from one whose plans simply have not arrived.
+          The TOP inset is left to each page instead, because on both of them it belongs
+          to something opaque and pinned — the filter bar here, the back bar there — and
+          a band stopping short of the pane's edge would leave a strip of content sliding
+          past above it. */}
+      <SweepPane
+        pageKey={pageKey}
+        order={pagePosition}
+        horizontal={alwaysSideways}
+        scrollRef={paneRef}
+        className="px-6 pb-6"
+      >
+        {selected ? (
+          <PlanDetailPage card={selected} now={now} paneRef={paneRef} onBack={back} />
+        ) : (
+          <>
+            {/* Offered only when there is a choice to make: one repository means the
+                filter can only ever narrow the list to itself. The count rides along with
+                it, so withholding the bar withholds a count the list is already short
+                enough to make by eye.
 
-              The FAILURE branch comes before every empty one, and that order is the
-              point: an errored read has no rows, so each of the four empty states would
-              otherwise match and state something about the account that nothing here
-              knows. */}
-          {overview === null ? (
-            <p className="py-10 text-center text-sm text-text-secondary">{t('common.loading')}</p>
-          ) : overview.failed ? (
-            <ErrorState onRetry={retry} />
-          ) : empty ? (
-            <EmptyState {...empty} />
-          ) : (
-            /* The list sits in a FRAME, and the frame is the same `line-subtle` as the
-               rules between the rows: one hairline drawn all the way round rather than a
-               heavier edge, so the box reads as the list's own outline and not as a card
-               the rows were put inside.
+                Unmounted on the detail view along with the rest of the list, exactly as
+                `TaskFilters` is: a bar that narrows a list nobody is looking at would pin
+                itself over the plan and offer to filter it. */}
+            {repoOptions.length > 1 && (
+              <PlanFilters repoId={repoId} repos={repoOptions} count={visible.length} onChange={pick} />
+            )}
 
-               No padding, on purpose. The rows carry their own `px-4 py-3` and must reach
-               the frame on both sides: an inset would leave the rules stopping short of the
-               border and turn a continuous list into a stack of slabs.
+            {/* `gap-3` between the heading and what it heads, as on the board. */}
+            <div className={`flex flex-col gap-3 ${repoOptions.length > 1 ? 'pt-4' : 'pt-6'}`}>
+              {/* The same heading the Tasks board puts over its list, down to the classes:
+                  two pages reached from the same rail should name what is under them the
+                  same way, and the glyph is the one the sidebar's Plans button already
+                  carries so the nav entry and the heading read as one place. Above the list
+                  and below the filter bar, which is pinned and would otherwise scroll a
+                  heading out from under itself. */}
+              <div className="flex items-center gap-2 text-sm text-text-secondary">
+                <NotebookPen className="w-4 h-4" />
+                <span>{t('plans.section')}</span>
+              </div>
 
-               `overflow-hidden` is what makes the radius real. Each row's hover ground is a
-               full-bleed rectangle, so without it the first and last rows would paint square
-               corners over the rounded ones on the way past. It also spares the first and
-               last rows a radius of their own, which would have to be kept in step with this
-               one. The first row drops its top rule (`first:border-t-0` on the row) so the
-               frame is not doubled by it.
+              {/* ONE gate, because there is now one read. Whether the reader belongs to an
+                  organization rides in on the overview (`hasOrg`), so the page no longer has
+                  to hold the list back for a second, slower answer before it can tell an
+                  account with no organization from one whose plans simply have not arrived.
 
-               `rounded-xl bg-surface-subtle border border-line-subtle` is the board column's
-               own string, from `Tasks/TaskBoard.tsx`, and it is copied rather than chosen so
-               the two pages read as one app: a framed region of the app sits on
-               `surface-subtle` everywhere here, and a bare frame with no ground was the thing
-               that looked foreign. */
-            <div className="rounded-xl bg-surface-subtle border border-line-subtle overflow-hidden">
-              {visible.map((card) => <PlanRow key={card.id} card={card} now={now} />)}
-              {/* A list that came back at its cap says so, as its own last line INSIDE the
-                  frame — the sentence is about this list, and a note floating under the
-                  box would read as being about the page. The read is newest-first, so
-                  what is missing is always the old end of it: without this line a list
-                  silently short of its tail looks exactly like a complete one. */}
-              {overview.truncated && (
-                <p className="px-4 py-2 border-t border-line-subtle text-xs text-text-secondary/60">
-                  {t('plans.truncated')}
-                </p>
+                  The FAILURE branch comes before every empty one, and that order is the
+                  point: an errored read has no rows, so each of the four empty states would
+                  otherwise match and state something about the account that nothing here
+                  knows. */}
+              {overview === null ? (
+                <p className="py-10 text-center text-sm text-text-secondary">{t('common.loading')}</p>
+              ) : overview.failed ? (
+                <ErrorState onRetry={retry} />
+              ) : empty ? (
+                <EmptyState {...empty} />
+              ) : (
+                /* The list sits in a FRAME, and the frame is the same `line-subtle` as the
+                   rules between the rows: one hairline drawn all the way round rather than a
+                   heavier edge, so the box reads as the list's own outline and not as a card
+                   the rows were put inside.
+
+                   No padding, on purpose. The rows carry their own `px-4 py-3` and must reach
+                   the frame on both sides: an inset would leave the rules stopping short of the
+                   border and turn a continuous list into a stack of slabs.
+
+                   `overflow-hidden` is what makes the radius real. Each row's hover ground is a
+                   full-bleed rectangle, so without it the first and last rows would paint square
+                   corners over the rounded ones on the way past. It also spares the first and
+                   last rows a radius of their own, which would have to be kept in step with this
+                   one. The first row drops its top rule (`first:border-t-0` on the row) so the
+                   frame is not doubled by it.
+
+                   `rounded-xl bg-surface-subtle border border-line-subtle` is the board column's
+                   own string, from `Tasks/TaskBoard.tsx`, and it is copied rather than chosen so
+                   the two pages read as one app: a framed region of the app sits on
+                   `surface-subtle` everywhere here, and a bare frame with no ground was the thing
+                   that looked foreign. */
+                <div className="rounded-xl bg-surface-subtle border border-line-subtle overflow-hidden">
+                  {visible.map((card) => (
+                    <PlanRow key={card.id} card={card} now={now} onSelect={select} />
+                  ))}
+                  {/* A list that came back at its cap says so, as its own last line INSIDE the
+                      frame — the sentence is about this list, and a note floating under the
+                      box would read as being about the page. The read is newest-first, so
+                      what is missing is always the old end of it: without this line a list
+                      silently short of its tail looks exactly like a complete one. */}
+                  {overview.truncated && (
+                    <p className="px-4 py-2 border-t border-line-subtle text-xs text-text-secondary/60">
+                      {t('plans.truncated')}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
-      </div>
+          </>
+        )}
+      </SweepPane>
     </div>
   )
 }
