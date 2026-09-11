@@ -1825,6 +1825,16 @@ export interface PlanSession {
   idea?: string
   /** The spec markdown. Absent on a session whose spec was never written. */
   spec?: string
+  /**
+   * Whether the spec file was PAST THE UPLOADER'S CEILING, and its content therefore
+   * never sent (`MAX_SPEC_BYTES`, main/store/spec-file.ts).
+   *
+   * The other half of an absent `spec`, and the reason it is a column rather than
+   * something the detail view could work out: the two silences look identical from
+   * here — no markdown — and only the machine that read the file knows which it is.
+   * Non-optional because the column is `not null default false`, so every row answers.
+   */
+  specOversize: boolean
   status: string
   /**
    * When the spec CONTENT was last uploaded — not when the row last changed.
@@ -1850,6 +1860,39 @@ export interface PlanTicket {
   kind: 'epic' | 'story'
   /** The epic this story hangs under, by `key`. Absent on an epic or a lone story. */
   parentKey?: string
+}
+
+/**
+ * One ticket as it comes BACK out of `public.plan_tickets` — the detail view's shape,
+ * and deliberately not `PlanTicket` above.
+ *
+ * The two look alike and are not the same object. `PlanTicket` is what the SKILL sends:
+ * a ticket it has just filed, so its `url` and its `kind` are known, and there is no
+ * session id because the row does not exist yet (the store resolves it from
+ * `(owner_id, spec_key)` at write time). This one is what an org member READS: the
+ * session id is the whole point of it, every text column is nullable because a row may
+ * have been written by another version of the app, and `kind` has already been narrowed
+ * from the free text the column holds.
+ *
+ * THAT NARROWING HAPPENS IN `main/cloud/plans.ts`, not in the renderer module that
+ * groups these. Same division as `PlanSession.status` and for the same reason: the cloud
+ * read is where a row becomes a typed object in this app, and the ported renderer module
+ * (`renderer/utils/planRows.ts`) diverges from its webapp original precisely by not
+ * doing row mapping. A story whose `kind` is a word this build has never heard of reads
+ * as a story — the leaf — because calling it an epic would invent a parent for others.
+ */
+export interface PlanTicketRead {
+  sessionId: string
+  /** Tracker id — "PROJ-12" on Jira, "#194" on GitHub. The row's identity with the session. */
+  key: string
+  /** Absent when the tracker returned a key but no browse link. Checked again before it is linked. */
+  url?: string
+  title?: string
+  kind: 'epic' | 'story'
+  /** The epic this story hangs under, by `key`. Absent on an epic or a lone story. */
+  parentKey?: string
+  /** What the tree is ordered by, so the stories read in the order they were filed. */
+  createdAt?: string
 }
 
 /**
@@ -1964,6 +2007,32 @@ export interface PlanOverview {
    * about the world it has no evidence for. The page shows an error and offers the read
    * again instead.
    */
+  failed: boolean
+}
+
+/**
+ * ONE plan, as the detail sub-page reads it — the answer to `plans:detail`.
+ *
+ * THE SESSION AND ITS TICKETS, AND NOTHING ELSE. No repository, no author, no photo, and
+ * that is a decision about where the header comes from: the renderer already holds the
+ * `PlanCard` of the row that was clicked, with the repository name, the address and the
+ * face already resolved. Re-reading them here would cost a `listMembers` per
+ * organization plus an avatar download on every open, to produce a header that can only
+ * ever agree with the one the list already drew — or, if a roster answered differently
+ * this time, DISAGREE with the row the reader just pointed at.
+ *
+ * What the list does NOT have is exactly what is here: the spec markdown, which the list
+ * read deliberately leaves out of its columns, and the tickets themselves rather than a
+ * count of them.
+ *
+ * `session: null` is "no such plan", which is also what "not yours" looks like — RLS
+ * answers both with an empty result and the page says that much and no more. It is a
+ * different thing from `failed`, exactly as on the overview: one is an answer, the other
+ * is the absence of one.
+ */
+export interface PlanDetail {
+  session: PlanSession | null
+  tickets: PlanTicketRead[]
   failed: boolean
 }
 

@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AvatarSourceResult } from '../avatar'
-import type { AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, PlanOverview, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
+import type { AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, PlanDetail, PlanOverview, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -736,14 +736,18 @@ const tasksApi = {
 // Plans API — every `/magic:plan` session the reader may see: their own, plus their
 // teammates' on the repositories their organizations share.
 //
-// One call and no subscription, and that is the table's own design rather than this
-// page's shortcut: `plan_sessions` is deliberately absent from the realtime publication
-// (see the end of supabase/migrations/20260821090000_plan_sessions.sql), so the list
-// reads when the page opens, and again when the reader asks it to after a read that
-// failed — the Retry button of the page's error state, which is the only other thing
-// that calls this.
+// No subscription, and that is the table's own design rather than this page's shortcut:
+// `plan_sessions` is deliberately absent from the realtime publication (see the end of
+// supabase/migrations/20260821090000_plan_sessions.sql), so the list reads when the page
+// opens, and again when the reader asks it to after a read that failed — the Retry
+// button of the page's error state, which is the only other thing that calls it.
 const plansApi = {
   list: (): Promise<PlanOverview> => ipcRenderer.invoke('plans:list'),
+  // ONE plan, with the spec markdown the list leaves out and the tickets it created.
+  // Read on opening a row, and from the cloud row rather than from any file: a
+  // colleague's `.magic/spec-*.md` only exists on their machine, so the stored copy is
+  // the only one this app can reach. `id` is the uuid the list handed over.
+  detail: (id: string): Promise<PlanDetail> => ipcRenderer.invoke('plans:detail', id),
 }
 
 // Org API (organization membership + invitations + multi-org management)

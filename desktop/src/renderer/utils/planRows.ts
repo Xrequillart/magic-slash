@@ -1,4 +1,4 @@
-import type { PlanRepoRef, PlanSession } from '../../types'
+import type { PlanRepoRef, PlanSession, PlanTicketRead } from '../../types'
 
 /**
  * The Plans page's data, shaped: the `plan_sessions` rows the main process read turned
@@ -10,6 +10,12 @@ import type { PlanRepoRef, PlanSession } from '../../types'
  * than a shared module for the reason `utils/skillHours.ts` gives — the desktop and the
  * webapp are separate builds with no code path and no module resolution between them.
  * What holds them together is the tables they both read.
+ *
+ * That obligation now covers the DETAIL view as well as the list. `groupPlanTickets` and
+ * `safeTicketUrl` are ported from the same original and carry the same duty: the epic →
+ * story tree a plan draws, and which of its tickets are links, must be the same tree and
+ * the same links on both surfaces — a story that hangs under an epic in the app and
+ * floats loose on the web is the app disagreeing with itself about what got filed.
  *
  * Four deliberate divergences from the webapp original:
  *
@@ -25,7 +31,8 @@ import type { PlanRepoRef, PlanSession } from '../../types'
  *    the same whoever is looking at it. That also means no `viewerId` reaches this
  *    module — see `planAuthor`.
  *
- * Pure: no IPC, no React, no Supabase. The read is `window.electronAPI.plans.list()`.
+ * Pure: no IPC, no React, no Supabase. The reads are `window.electronAPI.plans.list()`
+ * and `.detail(id)`.
  */
 
 /** `planning` while the spec is being written, `planned` once tickets exist. */
@@ -173,4 +180,80 @@ export function buildPlanCards(
     avatarUrl: avatarByOwner[session.ownerId],
     ticketCount: counts.get(session.id) ?? 0,
   }))
+}
+
+/**
+ * One epic and the stories filed under it. `epic` is undefined for the trailing group of
+ * stories that belong to no epic — see `groupPlanTickets`.
+ *
+ * `undefined` where the webapp says `null`, which is this module's standing divergence:
+ * that is how the desktop's types spell an absent field, all the way from
+ * `PlanTicketRead` back to the row mapper in `main/cloud/plans.ts`.
+ */
+export interface PlanTicketGroup {
+  epic?: PlanTicketRead
+  stories: PlanTicketRead[]
+}
+
+/**
+ * The ticket's URL when it is safe to put behind a link, otherwise undefined.
+ *
+ * Only `http:` and `https:`. The desktop rejects anything else before STORING it, but
+ * what is rendered here was written by another process, on another version, into a table
+ * every member of the organization can read — so the scheme is checked again on the way
+ * out. A `javascript:` href here would be a script a colleague's click runs, and in this
+ * app it would run inside the renderer rather than in a browser tab.
+ *
+ * Undefined is already a rendered state — a tracker that returned a key but no browse
+ * link — so a rejected URL degrades into it: the ticket still shows, it is just not a
+ * link. Nothing is hidden by refusing it.
+ */
+export function safeTicketUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined
+  try {
+    const scheme = new URL(url).protocol
+    return scheme === 'http:' || scheme === 'https:' ? url : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Group tickets into the hierarchy the tracker actually created: each epic followed by
+ * its stories, then — last — the stories that point at no epic.
+ *
+ * THAT LAST GROUP IS THE POINT. `parentKey` is whatever the skill sent, and it can miss
+ * for real reasons: a single-story plan has no epic at all, and a partial creation (the
+ * epic call failed, the stories succeeded) leaves children whose parent was never filed.
+ * Dropping those rows would show a plan as having fewer tickets than it has, which is
+ * exactly the failure a reader opens this page to investigate. So an unmatched story
+ * renders, just without a parent above it.
+ *
+ * Sorted by creation time with the KEY as the tiebreak, because a tracker stamps a whole
+ * batch of stories to the same second and a sort that cannot separate them would deal
+ * them differently on every render.
+ */
+export function groupPlanTickets(tickets: PlanTicketRead[]): PlanTicketGroup[] {
+  const byCreation = [...tickets].sort(
+    (a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? '') || a.key.localeCompare(b.key),
+  )
+
+  const epics = byCreation.filter((ticket) => ticket.kind === 'epic')
+  const epicKeys = new Set(epics.map((epic) => epic.key))
+
+  const groups: PlanTicketGroup[] = epics.map((epic) => ({
+    epic,
+    // A story whose parent is its own epic, and nothing else: `parentKey` is compared to
+    // the epic's key, so a story pointing at a DIFFERENT epic in the same session lands
+    // under that one instead of being duplicated here.
+    stories: byCreation.filter((ticket) => ticket.kind !== 'epic' && ticket.parentKey === epic.key),
+  }))
+
+  const orphans = byCreation.filter(
+    (ticket) =>
+      ticket.kind !== 'epic' && (ticket.parentKey === undefined || !epicKeys.has(ticket.parentKey)),
+  )
+  if (orphans.length > 0) groups.push({ epic: undefined, stories: orphans })
+
+  return groups
 }

@@ -1192,6 +1192,36 @@ export const en = {
   'plans.error.body':
     'The read did not go through, so nothing here reflects what your account holds. Check your connection, then try again.',
 
+  // ── Plans · one plan ────────────────────────────────────────────────────────
+  // Word for word the webapp's `/plans/[id]` wording (webapp/lib/i18n/en.ts): the two
+  // surfaces show the same session to the same people, so a reader moving between them
+  // must not have to re-learn what "no epic" or "spec pending" means here.
+  'plans.detail.back': 'All plans',
+  'plans.detail.notFound': 'This plan is not available',
+  'plans.detail.notFoundHint':
+    'It does not exist, or it belongs to a repository none of your organizations share.',
+  'plans.detail.idea': 'Idea',
+  'plans.detail.tickets': 'Created tickets',
+  'plans.detail.noTickets': 'No ticket has been created from this plan yet.',
+  'plans.detail.noEpic': 'No epic',
+  'plans.kind.epic': 'Epic',
+  'plans.detail.spec': 'Spec',
+  'plans.detail.specPending':
+    'The spec has not been uploaded yet. It appears here as the session writes it.',
+  // NEVER "truncated": the uploader stats the file before reading it, so nothing is ever
+  // cut in half. The document is whole, on the author's machine, and simply never left
+  // it. Said plainly because the reader's next move is to ask them for it.
+  'plans.detail.specOversize':
+    'The spec is too large to sync, so its content was never uploaded. Only the machine it was written on holds it.',
+  // The OTHER oversize state, and the one the flag alone cannot tell you about: the spec
+  // synced while it was still small enough, then grew past the ceiling. The row keeps the
+  // last good markdown — the write path omits the column rather than nulling it — so the
+  // reader gets a real document that is simply no longer the current one. Said above the
+  // markdown, because a note under it would be read after the stale content it warns about.
+  'plans.detail.specOversizeStale':
+    'This copy is out of date. The spec has since grown too large to sync, so newer changes stay on the machine it was written on.',
+  'plans.detail.syncedAt': 'Spec updated {when}',
+
   // ── Hours spent inside the skills ───────────────────────────────────────────
   'skillHours.hours': '{count}h',
   'skillHours.minutes': '{count} min',

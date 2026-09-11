@@ -1,3 +1,4 @@
+import { useCallback, type KeyboardEvent } from 'react'
 import { CircleCheck, CircleDashed, Ticket } from 'lucide-react'
 import type { PlanCard } from '../../utils/planRows'
 import { planLabel, planRecency } from '../../utils/planRows'
@@ -24,9 +25,14 @@ import { useT, type MessageKey, type Translate } from '../../i18n'
  * full here even when it is the reader, where the web list says "you" — see
  * `planAuthor`.
  *
- * NOT CLICKABLE, and that is this story's scope rather than an oversight: the detail
- * view, its tickets and the spec are a separate piece of work. A row that highlighted on
- * hover and did nothing on click would promise one.
+ * A DIV WITH A ROLE, not a `<button>`, the shape `Tasks/TaskCard` already uses for the
+ * same job: the row's content is stacked block-level boxes, and a `<button>` may only
+ * contain phrasing content. Wrapping divs in one is invalid markup, and the browser's
+ * fix-ups for it are not something a layout should rest on. The cost of the role is that
+ * the keyboard half becomes ours to write, since a real button answers Enter and Space
+ * for free and a `role="button"` that only answers the mouse cannot be reached without
+ * one. Everything else is unchanged: the whole row is the target, and it keeps the same
+ * hover ground and the same focus ring.
  */
 
 /** "no ticket" / "1 ticket" / "7 tickets". */
@@ -38,6 +44,10 @@ function ticketCountLabel(count: number, t: Translate): string {
 /**
  * How the two statuses read: a glyph, a colour and a word.
  *
+ * Exported because the DETAIL page draws the same status at the top of the plan it was
+ * opened from, and a row and its page disagreeing about the colour of one word is the
+ * exact drift one table exists to prevent.
+ *
  * ONE TABLE, resolved once per row and used by both the icon and the label beside it.
  * The colour is the same mapping the webapp uses — `green` once the tickets exist,
  * `yellow` while the spec is still being written — so a session reads the same on both
@@ -47,12 +57,12 @@ function ticketCountLabel(count: number, t: Translate): string {
  *
  * The classes are written out in full, never assembled: Tailwind scans for literals.
  */
-const STATUS_LOOK = {
+export const STATUS_LOOK = {
   planned: { Icon: CircleCheck, tone: 'text-green', labelKey: 'plans.status.planned' },
   planning: { Icon: CircleDashed, tone: 'text-yellow', labelKey: 'plans.status.planning' },
 } as const satisfies Record<PlanCard['status'], { Icon: typeof CircleCheck; tone: string; labelKey: MessageKey }>
 
-export function PlanRow({ card, now }: { card: PlanCard; now: number }) {
+export function PlanRow({ card, now, onSelect }: { card: PlanCard; now: number; onSelect: (card: PlanCard) => void }) {
   const t = useT()
   const repositories = useStore((s) => s.config?.repositories)
   /**
@@ -78,6 +88,20 @@ export function PlanRow({ card, now }: { card: PlanCard; now: number }) {
   // which is the one input that would otherwise render as "NaNy ago".
   const when = planRecency(card)
 
+  const select = useCallback(() => onSelect(card), [onSelect, card])
+
+  /**
+   * The two keys a `<button>` would have answered on its own.
+   *
+   * `preventDefault` because Space scrolls the pane otherwise, and this list lives inside
+   * the one scrolling element of the Plans page.
+   */
+  const onKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    select()
+  }, [select])
+
   return (
     /* `first:border-t-0` because the list is framed: the container draws a hairline all
        the way round, so the first row's own top rule would land directly on it and read as
@@ -87,7 +111,17 @@ export function PlanRow({ card, now }: { card: PlanCard; now: number }) {
        sat on and read as no hover at all. `strong` is the next step up the same scale and
        the app's most common hover ground, so pointing at a row lifts it here the way it
        does everywhere else. */
-    <div className="flex items-start gap-3 px-4 py-3 min-w-0 border-t border-line-subtle first:border-t-0 hover:bg-surface-strong transition-colors">
+    /* `focus-visible` and not `focus`: the ring is for someone navigating by keyboard,
+       and a pointer click that left a ring behind on the row would look like a selection
+       the list does not have. Inset, because the rows are flush with the frame and an
+       outer ring would be clipped by its `overflow-hidden`. */
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={select}
+      onKeyDown={onKeyDown}
+      className="w-full text-left flex items-start gap-3 px-4 py-3 min-w-0 border-t border-line-subtle first:border-t-0 hover:bg-surface-strong transition-colors focus:outline-none focus-visible:bg-surface-strong focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent"
+    >
       <Icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${tone}`} aria-label={statusLabel} />
 
       <div className="flex flex-col min-w-0 flex-1 gap-0.5">

@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import type { PlanRepoRef, PlanSession } from '../../types'
+import type { PlanRepoRef, PlanSession, PlanTicketRead } from '../../types'
 import {
   buildPlanCards,
   filterPlanCards,
+  groupPlanTickets,
   planAuthor,
   planLabel,
   planRecency,
   planRepoOptions,
+  safeTicketUrl,
   sortPlanSessions,
   toStatus,
 } from './planRows'
@@ -17,9 +19,9 @@ import {
  * the assertions have to be the same assertions.
  *
  * What is absent here is what the desktop does not do — there is no row → camelCase
- * mapping on this side (`main/cloud/plans.ts` owns that), and no ticket hierarchy (the
- * detail view is not part of this page). The fixture therefore starts from a
- * `PlanSession` rather than from a database row.
+ * mapping on this side, and no `kind` narrowing either: `main/cloud/plans.ts` owns both,
+ * which is why the ticket fixtures below start from a `PlanTicketRead` rather than from
+ * a database row, exactly as the session fixture starts from a `PlanSession`.
  */
 function session(overrides: Partial<PlanSession> = {}): PlanSession {
   return {
@@ -33,6 +35,9 @@ function session(overrides: Partial<PlanSession> = {}): PlanSession {
     title: 'Plans page',
     idea: 'A page listing every plan.',
     status: 'planned',
+    // The column is `not null default false`, and the mapper never invents it: every
+    // session answers this, including the ones whose spec simply has not arrived.
+    specOversize: false,
     specSyncedAt: '2026-08-20T10:00:00Z',
     createdAt: '2026-08-20T09:00:00Z',
     updatedAt: '2026-08-20T10:00:00Z',
@@ -223,5 +228,111 @@ describe('buildPlanCards', () => {
       {},
     )
     expect(cards.map((c) => c.id)).toEqual(['new', 'old'])
+  })
+})
+
+/**
+ * The ticket fixtures: a tracker stamps a whole batch to the same second, so `createdAt`
+ * is deliberately equal on the stories that test the tiebreak.
+ */
+function ticket(overrides: Partial<PlanTicketRead> & { key: string }): PlanTicketRead {
+  return {
+    sessionId: 's1',
+    kind: 'story',
+    url: 'https://github.com/acme/api/issues/2',
+    createdAt: '2026-08-20T09:00:00Z',
+    ...overrides,
+  }
+}
+
+describe('safeTicketUrl', () => {
+  it('lets http and https through unchanged', () => {
+    expect(safeTicketUrl('https://acme.atlassian.net/browse/PROJ-12'))
+      .toBe('https://acme.atlassian.net/browse/PROJ-12')
+    expect(safeTicketUrl('http://localhost:3000/issues/4')).toBe('http://localhost:3000/issues/4')
+  })
+
+  it('refuses every other scheme', () => {
+    // The rows are written by another process, on another version, into a table every
+    // member of the organization can read — and a click here runs inside the renderer,
+    // not in a sandboxed browser tab.
+    expect(safeTicketUrl('javascript:alert(1)')).toBeUndefined()
+    expect(safeTicketUrl('file:///etc/passwd')).toBeUndefined()
+    expect(safeTicketUrl('data:text/html,<script>')).toBeUndefined()
+  })
+
+  it('refuses what is not a URL at all, and passes an absent one through', () => {
+    expect(safeTicketUrl('PROJ-12')).toBeUndefined()
+    expect(safeTicketUrl('')).toBeUndefined()
+    expect(safeTicketUrl(undefined)).toBeUndefined()
+  })
+})
+
+describe('groupPlanTickets', () => {
+  it('files each story under the epic its parentKey names', () => {
+    const groups = groupPlanTickets([
+      ticket({ key: '#2', parentKey: '#1' }),
+      ticket({ key: '#1', kind: 'epic' }),
+      ticket({ key: '#3', parentKey: '#1' }),
+    ])
+    expect(groups).toHaveLength(1)
+    expect(groups[0]?.epic?.key).toBe('#1')
+    expect(groups[0]?.stories.map((t) => t.key)).toEqual(['#2', '#3'])
+  })
+
+  it('orders by creation time, and breaks ties on the key', () => {
+    // A tracker files a batch of stories in the same second, so the timestamp alone
+    // cannot separate them and an unstable sort would deal them differently on every
+    // render of the same plan.
+    const groups = groupPlanTickets([
+      ticket({ key: '#9', parentKey: '#1' }),
+      ticket({ key: '#1', kind: 'epic', createdAt: '2026-08-20T08:00:00Z' }),
+      ticket({ key: '#4', parentKey: '#1' }),
+      ticket({ key: '#7', parentKey: '#1', createdAt: '2026-08-20T08:30:00Z' }),
+    ])
+    expect(groups[0]?.stories.map((t) => t.key)).toEqual(['#7', '#4', '#9'])
+  })
+
+  it('keeps the stories whose epic is not among the tickets, in a trailing group', () => {
+    // A partial creation — the epic call failed, the stories succeeded — is exactly the
+    // failure someone opens this page to investigate. Dropping those rows would show
+    // the plan as having fewer tickets than it has.
+    const groups = groupPlanTickets([
+      ticket({ key: '#1', kind: 'epic' }),
+      ticket({ key: '#2', parentKey: '#1' }),
+      ticket({ key: '#5', parentKey: '#99' }),
+      ticket({ key: '#6' }),
+    ])
+    expect(groups).toHaveLength(2)
+    expect(groups[1]?.epic).toBeUndefined()
+    expect(groups[1]?.stories.map((t) => t.key)).toEqual(['#5', '#6'])
+  })
+
+  it('adds no empty trailing group when every story has its epic', () => {
+    const groups = groupPlanTickets([
+      ticket({ key: '#1', kind: 'epic' }),
+      ticket({ key: '#2', parentKey: '#1' }),
+    ])
+    expect(groups).toHaveLength(1)
+  })
+
+  it('files a story under ITS epic when a session has two', () => {
+    // `parentKey` is compared to each epic's own key, so a story never lands under both.
+    const groups = groupPlanTickets([
+      ticket({ key: '#1', kind: 'epic', createdAt: '2026-08-20T08:00:00Z' }),
+      ticket({ key: '#2', kind: 'epic', createdAt: '2026-08-20T08:10:00Z' }),
+      ticket({ key: '#3', parentKey: '#2' }),
+    ])
+    expect(groups.map((g) => g.stories.map((t) => t.key))).toEqual([[], ['#3']])
+  })
+
+  it('has nothing to group when a plan filed no ticket', () => {
+    expect(groupPlanTickets([])).toEqual([])
+  })
+
+  it('leaves its input alone', () => {
+    const tickets = [ticket({ key: '#2', parentKey: '#1' }), ticket({ key: '#1', kind: 'epic' })]
+    groupPlanTickets(tickets)
+    expect(tickets.map((t) => t.key)).toEqual(['#2', '#1'])
   })
 })

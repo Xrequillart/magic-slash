@@ -1158,6 +1158,25 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.error.body':
     'La lecture n’a pas abouti : rien de ce qui est affiché ne reflète le contenu de votre compte. Vérifiez votre connexion, puis réessayez.',
 
+  // ── Plans · un plan ─────────────────────────────────────────────────────────
+  'plans.detail.back': 'Tous les plans',
+  'plans.detail.notFound': 'Ce plan n’est pas accessible',
+  'plans.detail.notFoundHint':
+    'Il n’existe pas, ou il appartient à un dépôt qu’aucune de vos organisations ne partage.',
+  'plans.detail.idea': 'Idée',
+  'plans.detail.tickets': 'Tickets créés',
+  'plans.detail.noTickets': 'Aucun ticket n’a encore été créé depuis ce plan.',
+  'plans.detail.noEpic': 'Sans epic',
+  'plans.kind.epic': 'Epic',
+  'plans.detail.spec': 'Spécification',
+  'plans.detail.specPending':
+    'La spec n’a pas encore été envoyée. Elle apparaît ici à mesure que la session l’écrit.',
+  'plans.detail.specOversize':
+    'La spec est trop volumineuse pour être synchronisée : son contenu n’a jamais été envoyé. Seule la machine sur laquelle elle a été écrite la contient.',
+  'plans.detail.specOversizeStale':
+    'Cette copie n’est plus à jour. La spec est depuis devenue trop volumineuse pour être synchronisée : les modifications plus récentes restent sur la machine où elle a été écrite.',
+  'plans.detail.syncedAt': 'Spec mise à jour {when}',
+
   // ── Heures passées sur les skills ───────────────────────────────────────────
   'skillHours.hours': '{count}h',
   'skillHours.minutes': '{count} min',
