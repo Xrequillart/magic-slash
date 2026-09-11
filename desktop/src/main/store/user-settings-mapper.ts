@@ -53,6 +53,7 @@ export interface UserSettingsRow {
   code_theme: string | null
   default_agent_type: string | null
   agent_sort: string | null
+  tasks_repo: string | null
 }
 
 export const USER_SETTINGS_COLUMNS =
@@ -63,7 +64,7 @@ export const USER_SETTINGS_COLUMNS =
   'notification_pr_changes_requested, split_enabled, split_active, pr_reviews_enabled, ' +
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
   'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
-  'language, sync_claude_theme, code_theme, default_agent_type, agent_sort'
+  'language, sync_claude_theme, code_theme, default_agent_type, agent_sort, tasks_repo'
 
 /**
  * Config keys that live in `user_settings`. Stripped from the org-scoped
@@ -92,6 +93,7 @@ export const SETTINGS_KEYS = [
   'launchMode',
   'defaultAgentType',
   'agentSort',
+  'tasksRepo',
   'integrations',
   'theme',
   'language',
@@ -140,6 +142,7 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     code_theme: orNull(config.codeTheme),
     default_agent_type: orNull(config.defaultAgentType),
     agent_sort: orNull(config.agentSort),
+    tasks_repo: orNull(config.tasksRepo),
   }
 }
 
@@ -184,6 +187,13 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   // "unset" — the list then falls back to newest-first, the order it always had, rather
   // than to no order at all.
   if (isValidAgentSort(row.agent_sort)) config.agentSort = row.agent_sort
+  // NOT re-validated against anything, unlike the five above, because there is no
+  // enum to validate against: the value is a key of `Config.repositories`, and which
+  // keys are legal is this account's own business and changes as repositories come
+  // and go. A key that no longer resolves is handled where it is READ — the board
+  // falls back to its first repository — which is the same outcome re-validation
+  // buys the enums, reached from the only side that knows the answer.
+  if (isSet(row.tasks_repo)) config.tasksRepo = row.tasks_repo
 
   // Same shape as prReviews below: a partial object is fine, since every flag in
   // it defaults to ON when absent and the block itself is optional.

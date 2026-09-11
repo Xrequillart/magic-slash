@@ -25,6 +25,7 @@ import {
   updateLaunchMode,
   updateDefaultAgentType,
   updateAgentSort,
+  updateTasksRepo,
   updateTheme,
   updateLanguage,
   updatePlanSyncEnabled,
@@ -496,6 +497,18 @@ export function setupConfigHandlers() {
       throw new Error(`Invalid agent sort: '${sort}'. Must be one of: ${AGENT_SORT_MODES.join(', ')}.`)
     }
     const config = updateAgentSort(sort)
+    return { config }
+  })
+
+  // Which repository the Tasks board opens on. NOT validated against the config, for
+  // the reason `updateTasksRepo` gives — the renderer picks from the rows on screen,
+  // and a key that stops resolving is the board's business rather than this handler's.
+  // Only the TYPE is checked, which the erased annotation cannot do on its own.
+  ipcMain.handle('config:updateTasksRepo', async (_event, { configKey }: { configKey: string }) => {
+    if (typeof configKey !== 'string') {
+      throw new Error(`Invalid tasks repository: expected a config key, got ${typeof configKey}.`)
+    }
+    const config = updateTasksRepo(configKey)
     return { config }
   })
 

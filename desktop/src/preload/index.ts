@@ -102,6 +102,9 @@ const configApi = {
   updateAgentSort: (sort: AgentSortMode): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:updateAgentSort', { sort }),
 
+  updateTasksRepo: (configKey: string): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:updateTasksRepo', { configKey }),
+
   updateTheme: (theme: ThemeId) =>
     ipcRenderer.invoke('config:updateTheme', { theme }),
 

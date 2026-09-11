@@ -142,6 +142,17 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  // Which repository the Tasks board is reading. Recorded and nothing more: the board
+  // reads the choice straight back off the config, so the columns refill as soon as
+  // this resolves — and on this account's other machines too, when the row reaches
+  // them over Realtime. It is also the only place the choice can survive the app being
+  // killed, since nothing here is mirrored to disk.
+  const updateTasksRepo = useCallback(async (configKey: string) => {
+    const result = await window.electronAPI.config.updateTasksRepo(configKey)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   // Repainting is the main process's job (it also owns the native chrome and
   // the other windows), so this only records the choice.
   const updateTheme = useCallback(async (theme: ThemeId) => {
@@ -260,6 +271,7 @@ export function useConfig() {
     updateLaunchMode,
     updateDefaultAgentType,
     updateAgentSort,
+    updateTasksRepo,
     updateTheme,
     updateSyncClaudeTheme,
     updateCodeTheme,

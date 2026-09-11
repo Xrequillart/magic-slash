@@ -294,6 +294,20 @@ export interface TaskIssue {
   url: string
   /** When the issue was OPENED, ISO-8601 as GitHub returns it; the rows are sorted on it, newest first. */
   createdAt: string
+  /**
+   * When the issue was CLOSED, ISO-8601, and by its presence the fact that it was.
+   *
+   * Absent on every open issue, which is the overwhelming majority of this list and the
+   * only thing it held before the board grew a Done column. The read asks for it on a
+   * second connection and keeps only what closed inside `CLOSED_WINDOW_DAYS` (see
+   * `main/github-issues.ts`), so a closed issue here is a recent one — a GitHub
+   * repository has no Done column of its own, and every issue it ever closed is not an
+   * answer to "what did we just finish".
+   *
+   * The board reads its PRESENCE and nothing else: a GitHub issue is done because it is
+   * closed, where a Jira ticket is done because its status category says so.
+   */
+  closedAt?: string
   /** The login that opened the issue. Absent when GitHub reports no author (deleted account). */
   author?: string
   /** Label names only, in GitHub's own order. Capped by the query at 5. */
@@ -1509,6 +1523,20 @@ export interface Config {
    * the person, not of the machine.
    */
   agentSort?: AgentSortMode
+  /**
+   * The repository the Tasks board opens on — a key of `repositories` above.
+   *
+   * Absent = never chosen, and the board falls back to the first repository it has
+   * something to show for. A key that no longer resolves does the same, which is
+   * why this is not validated on the way in: the legal values are this account's own
+   * repository keys, and they change whenever one is added, renamed or dropped. See
+   * supabase/migrations/20260911100000_user_settings_tasks_repo.sql.
+   *
+   * Follows the account like the theme, and for a stronger reason than most: the app
+   * keeps no local config file at all, so this is the only place a picked repository
+   * can survive the process being killed.
+   */
+  tasksRepo?: string
   usageCardEnabled?: boolean    // show the Claude usage card in the left sidebar
   usageCardMinimized?: boolean  // left sidebar usage card collapsed to gauges only
   agentContextEnabled?: boolean // show the agent's context/session card in the right sidebar

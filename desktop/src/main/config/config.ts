@@ -932,6 +932,29 @@ export function updateAgentSort(sort: AgentSortMode): Config {
 }
 
 /**
+ * Remember which repository the Tasks board is reading. Written on every change of
+ * the picker, which is the only way it ever changes.
+ *
+ * The key is stored AS GIVEN, with no check that it names a repository. Two reasons,
+ * and both are about who knows: the renderer picks from a list it built out of the
+ * rows actually on screen, so it cannot offer a key that was not there — and a key
+ * can stop resolving later anyway (the repository is dropped, or renamed on another
+ * machine), which no validation at write time could prevent. The board is what
+ * handles that, by falling back to the first repository it has.
+ *
+ * An empty string is the one value that IS refused, as "no repository" is not a
+ * choice the board can be left on: it clears the key instead, which reads as never
+ * chosen and puts the board back on its own fallback.
+ */
+export function updateTasksRepo(configKey: string): Config {
+  const config = readConfig()
+  if (configKey) config.tasksRepo = configKey
+  else delete config.tasksRepo
+  writeConfig(config)
+  return config
+}
+
+/**
  * Toggle activity recording. ON by default: the app writes its three event tables
  * (usage, activity, skills) unless this is explicitly false. Reading the org
  * aggregate is unaffected by this flag.

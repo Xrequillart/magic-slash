@@ -2286,6 +2286,7 @@ describe('user settings', () => {
       launch_mode: null,
       default_agent_type: null,
       agent_sort: null,
+      tasks_repo: null,
       atlassian_integration_enabled: null,
       theme: null,
       language: null,
