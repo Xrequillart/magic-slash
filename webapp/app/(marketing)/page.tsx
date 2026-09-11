@@ -224,13 +224,13 @@ export const metadata: Metadata = {
     url: 'https://magic-slash.io',
     title: 'magic-slash',
     description: DESCRIPTION,
-    images: [{ url: '/img/app-icon.png', width: 256, height: 256, alt: 'Magic Slash' }],
+    images: [{ url: '/img/app-icon-desktop.png', width: 256, height: 256, alt: 'Magic Slash' }],
   },
   twitter: {
     card: 'summary',
     title: 'magic-slash',
     description: DESCRIPTION,
-    images: ['/img/app-icon.png'],
+    images: ['/img/app-icon-desktop.png'],
   },
 }
 
