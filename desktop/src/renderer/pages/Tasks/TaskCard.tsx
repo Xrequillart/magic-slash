@@ -1,5 +1,5 @@
 import { memo, useCallback, type KeyboardEvent } from 'react'
-import { Play } from 'lucide-react'
+import { BotMessageSquare, Play } from 'lucide-react'
 import type { RepositoryConfig } from '../../../types'
 import type { BoardCard } from '../../utils/taskBoard'
 import type { TaskSelection } from '../../utils/taskSelection'
@@ -8,7 +8,7 @@ import { useTaskAgent } from '../../hooks/useTaskAgent'
 import { StatusPill } from '../Dashboard/parts'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { TrackerBadge } from '../../components/icons/TrackerIcons'
-import { AgentMarker, JiraEpicBadge, JiraPriorityBadge, JiraStatusPill, subIssuesLabel } from './parts'
+import { JiraEpicBadge, JiraPriorityBadge, JiraStatusPill, subIssuesLabel } from './parts'
 
 /**
  * One ticket on the board.
@@ -76,34 +76,38 @@ export const TaskCard = memo(function TaskCard({
   }, [select])
 
   /**
-   * Why the Start button is off, in the order the reasons matter.
+   * Whether Start is drawn at all, and then whether it is off.
    *
-   * `hasAgent` leads: `/magic:start` on a ticket somebody is already on is a second
-   * worktree and a second branch for one piece of work, which is the expensive mistake.
-   * `canStart` is the other, and it is about this machine rather than about the ticket —
-   * no repository behind it has a local folder to open a terminal in.
+   * TWO REASONS IT IS NOT THERE, both of them "there is nothing to start". A ticket
+   * somebody is already on gets the agent badge in the same slot instead —
+   * `/magic:start` on it would be a second worktree and a second branch for one piece
+   * of work, the expensive mistake, and a disabled button says that far less clearly
+   * than the badge does. A ticket in the Done column is finished: on the Jira side its
+   * board says so, on the GitHub side the issue is closed, and neither is work to pick
+   * up.
+   *
+   * What is left disables on `canStart`, which is about this machine rather than about
+   * the ticket — no repository behind it has a local folder to open a terminal in.
    *
    * `startFailed` says nothing here, deliberately: it never disables the button, it only
    * colours it, so a launch that failed can simply be tried again.
    */
+  const canShowStart = !card.hasAgent && card.column !== 'done'
+
   /**
    * Whether the third band has anything to draw — see its guard below.
    *
    * Asked per tracker, because the two carry different things: a Jira ticket has a
-   * status, an epic, a priority and a reporter, a GitHub issue has a parent, an author
-   * and a count of children. Only the labels and the agent marker are common.
+   * status, an epic and a reporter, a GitHub issue has a parent, an author and a count
+   * of children. Only the labels are common. The agent and the priority are NOT counted:
+   * both moved up to the header band, and a card whose only metadata was one of them
+   * would otherwise draw an empty row and the gap above it.
    */
-  const hasMeta = card.hasAgent || card.issue.labels.length > 0 || (
+  const hasMeta = card.issue.labels.length > 0 || (
     card.tracker === 'jira'
-      ? !!card.issue.statusName || !!card.issue.epic || !!card.issue.priority || !!card.issue.reporter
+      ? !!card.issue.statusName || !!card.issue.epic || !!card.issue.reporter
       : !!card.issue.parent || !!card.issue.author || !!card.issue.subIssues
   )
-
-  const startTitle = card.hasAgent
-    ? t('tasks.hasAgentHint')
-    : canStart
-      ? t('tasks.startAgent')
-      : t('tasks.startNoPath')
 
   return (
     <div
@@ -111,8 +115,16 @@ export const TaskCard = memo(function TaskCard({
       tabIndex={0}
       onClick={select}
       onKeyDown={onKeyDown}
-      className="group flex flex-col gap-2 p-3 rounded-lg bg-bg-secondary border border-line-field
-        cursor-pointer transition-colors hover:border-accent/40 hover:bg-surface"
+      className={`group flex flex-col gap-2 p-3 rounded-lg bg-bg-secondary border
+        cursor-pointer transition-colors hover:bg-surface ${
+        // Taken in by the same glance that reads the column — which is the whole point
+        // of moving "somebody is on this" out of the metadata line, where it was a word
+        // among five others. The tint is faint on purpose: it marks the card, it does
+        // not make the board a traffic light.
+        card.hasAgent
+          ? 'border-green/40 bg-green/5 hover:border-green/60'
+          : 'border-line-field hover:border-accent/40'
+      }`}
     >
       {/* WHAT this is, and the two things you can do with it without opening it. The
           band is one line and never wraps: the label truncates before the buttons give up
@@ -127,6 +139,15 @@ export const TaskCard = memo(function TaskCard({
           tracker={card.tracker}
           ticketId={card.tracker === 'jira' ? card.issue.key : `#${card.issue.number}`}
         />
+        {/* BESIDE THE ID, not down in the metadata line where it used to sit. Priority
+            is the field that decides which of two tickets you pick up, and down there it
+            was one badge among a status, an epic, a reporter and every label — read only
+            by someone already reading the card. Here it is on the line the eye lands on.
+            Jira only: a GitHub issue has no priority field, and a label that says
+            "urgent" is already drawn as a label. */}
+        {card.tracker === 'jira' && card.issue.priority && (
+          <JiraPriorityBadge priority={card.issue.priority} t={t} compact />
+        )}
         <span className="ml-auto flex items-center gap-1 flex-shrink-0">
           {/* Both buttons hang off a browse URL, which a Jira ticket only has once a
               site has been resolved. A repository that declares only a project key, read
@@ -143,21 +164,38 @@ export const TaskCard = memo(function TaskCard({
               iconClassName="w-3.5 h-3.5"
             />
           )}
-          <button
-            type="button"
-            onClick={start}
-            disabled={!canStart || card.hasAgent}
-            title={startTitle}
-            aria-label={t('tasks.startAgent')}
-            className={`flex items-center p-1.5 rounded-md transition-colors flex-shrink-0
-              disabled:opacity-40 disabled:cursor-not-allowed ${
-              startFailed
-                ? 'text-orange hover:bg-orange/10'
-                : 'text-accent hover:bg-accent/10 disabled:hover:bg-transparent'
-            }`}
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-          </button>
+          {/* The same slot, three outcomes — which is what keeps the cards of a column
+              aligned whatever state they are in. An agent already on the ticket puts a
+              badge where the button was; a finished ticket leaves it empty. */}
+          {card.hasAgent ? (
+            // NOT A DISABLED BUTTON, which is what this was: there is nothing here to
+            // press, and a greyed-out Play invites the press it then refuses. A span
+            // states the fact instead — an agent has this one — and states it in the
+            // colour the card's border is now wearing.
+            <span
+              title={t('tasks.hasAgentHint')}
+              aria-label={t('tasks.hasAgentHint')}
+              className="flex items-center p-1.5 rounded-md bg-green/15 text-green flex-shrink-0"
+            >
+              <BotMessageSquare className="w-3.5 h-3.5" />
+            </span>
+          ) : canShowStart && (
+            <button
+              type="button"
+              onClick={start}
+              disabled={!canStart}
+              title={canStart ? t('tasks.startAgent') : t('tasks.startNoPath')}
+              aria-label={t('tasks.startAgent')}
+              className={`flex items-center p-1.5 rounded-md transition-colors flex-shrink-0
+                disabled:opacity-40 disabled:cursor-not-allowed ${
+                startFailed
+                  ? 'text-orange hover:bg-orange/10'
+                  : 'text-accent hover:bg-accent/10 disabled:hover:bg-transparent'
+              }`}
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+            </button>
+          )}
         </span>
       </div>
 
@@ -183,9 +221,10 @@ export const TaskCard = memo(function TaskCard({
  * list's way of telling cards from different repositories apart, and the list is gone.
  *
  * Its own component so the card above reads as the three bands it is, and because this
- * is the half where the two trackers genuinely differ: a Jira ticket has a status, a
- * priority and an epic, a GitHub issue has a parent and a count of children, and only
- * the reporter and the labels line up.
+ * is the half where the two trackers genuinely differ: a Jira ticket has a status and an
+ * epic, a GitHub issue has a parent and a count of children, and only the reporter and
+ * the labels line up. The priority is NOT here any more — it sits beside the id in the
+ * header, where the pick-up decision is actually made.
  *
  * `flex-wrap`, because in a column this WILL wrap and a row that clipped its labels
  * would be hiding the one piece of metadata people label issues for.
@@ -193,10 +232,6 @@ export const TaskCard = memo(function TaskCard({
 function CardMeta({ card, t }: { card: BoardCard; t: Translate }) {
   return (
     <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-      {/* Somebody is already on this one — the one piece of metadata that changes what
-          you would DO with the card, which is why it leads the rest. */}
-      {card.hasAgent && <AgentMarker t={t} />}
-
       {card.tracker === 'jira' ? (
         <>
           {/* The site's own word for the column, not ours. It is redundant with the
@@ -205,7 +240,6 @@ function CardMeta({ card, t }: { card: BoardCard; t: Translate }) {
               pill is what tells them apart. */}
           <JiraStatusPill name={card.issue.statusName} category={card.issue.statusCategory} />
           {card.issue.epic && <JiraEpicBadge epic={card.issue.epic} t={t} />}
-          {card.issue.priority && <JiraPriorityBadge priority={card.issue.priority} t={t} />}
           {card.issue.reporter && (
             // The display name bare, where the GitHub half prefixes a login with `@`:
             // "Ada Lovelace" is a name and not a handle, and `@Ada Lovelace` reads as a

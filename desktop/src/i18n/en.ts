@@ -2001,7 +2001,6 @@ export const en = {
   'tasks.startNoPath': 'No local folder is bound to this repository.',
   // The row marker: an issue somebody is already working on. A word next to the
   // dot, because a bare coloured dot says nothing on its own.
-  'tasks.hasAgent': 'agent',
   'tasks.hasAgentHint': 'An agent is already working on this ticket.',
 
   // ── Tasks · GitHub is not connected ──────────────────────────────────────

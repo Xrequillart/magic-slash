@@ -225,27 +225,6 @@ export function subIssuesLabel(subIssues: NonNullable<TaskIssue['subIssues']>, t
 }
 
 /**
- * "Somebody is already on this one", in the repository dot's own idiom.
- *
- * ONE definition for both rows. It means slightly different things on each — on a
- * GitHub row it is the piece of metadata that changes what you would do with the
- * ticket, on a Jira row it is the reason an In Progress ticket is on the page at all
- * — but it says it with the same dot and the same word, and a marker that drifted
- * between the two halves of one page would read as two different facts.
- */
-export function AgentMarker({ t }: { t: Translate }) {
-  return (
-    <span
-      title={t('tasks.hasAgentHint')}
-      className="flex items-center gap-1.5 text-xs text-text-secondary whitespace-nowrap flex-shrink-0"
-    >
-      <span className="w-2 h-2 rounded-full flex-shrink-0 bg-accent" />
-      {t('tasks.hasAgent')}
-    </span>
-  )
-}
-
-/**
  * A Jira status category as a pill.
  *
  * Deliberately NOT `StatusPill`: that component reads `STATUS_CONFIG`, whose keys
@@ -313,19 +292,38 @@ const PRIORITY_STYLE: Record<JiraPriorityLevel, { icon: typeof ChevronUp; classN
   unknown: { icon: Minus, className: 'bg-surface text-text-secondary' },
 }
 
-export function JiraPriorityBadge({ priority, t }: { priority: JiraPriority; t: Translate }) {
+export function JiraPriorityBadge({
+  priority,
+  t,
+  compact = false,
+}: {
+  priority: JiraPriority
+  t: Translate
+  /**
+   * The arrow alone, without the site's word for the tier.
+   *
+   * What a board card's header uses. That band is one line shared with the ticket id
+   * and the card's actions, in a column a quarter of the modal wide — a badge reading
+   * "Highest" there takes its width off the id beside it, which is the half that
+   * cannot be recovered from anywhere else on the card. The arrow is the part that
+   * survives being skimmed anyway (see above), and the name is one hover away.
+   */
+  compact?: boolean
+}) {
   const { icon: Icon, className } = PRIORITY_STYLE[priority.level]
   return (
     // The hover text names the FIELD, because the badge itself only shows its value:
     // "Urgent" beside a status pill and two labels is a word with no column header,
     // and a site whose priorities are called "P1"…"P4" gives the reader nothing to
-    // recognise it by at all.
+    // recognise it by at all. Compact, it is the only place the value is written.
     <span
       title={t('tasks.jira.priorityHint', { name: priority.name })}
-      className={`text-xs pl-1 pr-2 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-0.5 ${className}`}
+      className={`text-xs py-0.5 rounded-full flex-shrink-0 inline-flex items-center ${
+        compact ? 'px-0.5' : 'pl-1 pr-2 gap-0.5'
+      } ${className}`}
     >
       <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-      {priority.name}
+      {!compact && priority.name}
     </span>
   )
 }
