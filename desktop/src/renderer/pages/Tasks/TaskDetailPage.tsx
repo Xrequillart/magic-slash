@@ -1025,6 +1025,36 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
           className="w-64 flex-shrink-0 sticky z-10 flex flex-col gap-3"
           style={{ top: TOP_BAR_H + 16 }}
         >
+          {/* THE BANNER AGAIN, once its full-width copy has scrolled off the top.
+
+              Not a second statement of the same fact but the same one kept on screen:
+              "somebody is already on this ticket" is what withholds the Start button in
+              this very column, and a reader who has scrolled into a long thread has lost
+              the only thing explaining why there is nothing to press. `condensed` is the
+              handoff — it is true exactly when the title, and with it the banner under
+              it, has gone behind the pinned bar.
+
+              Narrower than its full-width copy and stacked because of it: this column is
+              256px, where the sentence and the button sit side by side above. */}
+          {hasAgent && condensed && (
+            <div className="flex flex-col gap-2 px-3 py-3 rounded-xl bg-green/10 border border-green/30">
+              <span className="flex items-start gap-2 min-w-0">
+                <BotMessageSquare className="w-3.5 h-3.5 text-green flex-shrink-0 mt-0.5" />
+                <span className="text-xs text-ink min-w-0">{t('tasks.hasAgentHint')}</span>
+              </span>
+              {agentTerminalId && (
+                <button
+                  onClick={viewAgent}
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5
+                    text-xs font-medium rounded-lg transition-all bg-green text-bg hover:bg-green/90"
+                >
+                  <BotMessageSquare className="w-3.5 h-3.5" />
+                  <span>{t('tasks.viewAgent')}</span>
+                </button>
+              )}
+            </div>
+          )}
+
           {/* The page's one affirmative action, and it is first: the metadata
               under it is what you read about the ticket, this is what you do
               about it.
@@ -1112,6 +1142,30 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
                     ? jiraDetail.labels.map((label) => <StatusPill key={label} status={label} />)
                     : <NoneYet t={t} />}
                 </SideBlock>
+                {/* THE BYLINE'S OWN TWO FIELDS, kept on screen once the byline itself has
+                    gone behind the pinned bar — `condensed`, the same handoff the banner
+                    above uses. They are the ticket's two planning facts, and "which epic
+                    is this, and how urgent" is a question asked while reading the thread
+                    rather than at the top of it.
+
+                    LAST in the card, after the people and the labels: they are a repeat
+                    of something the page already said, and putting them above the fields
+                    that are only stated here would reorder the card as you scroll.
+
+                    Each is withheld when the ticket has none, rather than saying "none"
+                    the way the blocks above do. Those three are always-present fields
+                    that happen to be empty; a ticket with no epic has no such row to
+                    leave blank, and the byline draws nothing for it either. */}
+                {condensed && props.issue.epic && (
+                  <SideBlock title={t('tasks.jira.detail.epic')}>
+                    <JiraEpicBadge epic={props.issue.epic} t={t} />
+                  </SideBlock>
+                )}
+                {condensed && jiraPriority && (
+                  <SideBlock title={t('tasks.jira.detail.priority')}>
+                    <JiraPriorityBadge priority={jiraPriority} t={t} />
+                  </SideBlock>
+                )}
               </>
             ) : (
               <>

@@ -1781,6 +1781,8 @@ export const fr: Record<keyof typeof en, string> = {
   'tasks.jira.reporterHint': 'Rapporté par {name}',
   'tasks.jira.priorityHint': 'Priorité : {name}',
   'tasks.jira.epicHint': 'Epic {key} : {title}',
+  'tasks.jira.detail.epic': 'Epic',
+  'tasks.jira.detail.priority': 'Priorité',
   'tasks.jira.sprintHint': 'Sprint actif : {sprint}',
   'tasks.jira.detail.notFound': 'Ticket introuvable',
   'tasks.jira.detail.notFoundFix':

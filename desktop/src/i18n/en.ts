@@ -2089,6 +2089,12 @@ export const en = {
   // for `priorityHint`'s reason, and carries the KEY as well: the title is what the
   // badge truncates first, and the key is what identifies the epic in Jira itself.
   'tasks.jira.epicHint': 'Epic {key}: {title}',
+  // The two blocks the side card grows once the byline has scrolled behind the pinned
+  // bar. They are the byline's own fields, said again where they are still readable —
+  // which is why they are LABELS here and bare badges up there: in a card of named rows
+  // a pill with no row title is the one thing that has to be guessed at.
+  'tasks.jira.detail.epic': 'Epic',
+  'tasks.jira.detail.priority': 'Priority',
   // WHICH sprint the board is showing, on the chip beside the repository picker. It
   // sat next to the repository name until the page became one board per repository —
   // which made the sprint a property of the whole page rather than of a card, and left
