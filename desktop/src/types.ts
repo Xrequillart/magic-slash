@@ -1868,6 +1868,18 @@ export interface PlanSpecInput {
    * spec was written. An absent spec leaves the stored one untouched.
    */
   spec?: string
+  /**
+   * Whether the file was read and found too large — the one refusal worth recording
+   * rather than swallowing. Sent `true` with no `spec` beside it, and `false` on every
+   * successful read, so a spec cut back under the ceiling clears the flag.
+   *
+   * OPTIONAL, and it has to be: three callers build an input without consulting a file
+   * at all (`savePlanTickets`, the outbox's session creation, `recordPlanSession`), and
+   * a required boolean would make them assert something they did not measure. Absent
+   * means "this write has no opinion", which the store turns into an omitted column —
+   * see `planSessionRow`.
+   */
+  specOversize?: boolean
 }
 
 /** The tickets of ONE planning session, identified the same way as a spec upload. */

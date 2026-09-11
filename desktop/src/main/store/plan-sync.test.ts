@@ -149,12 +149,16 @@ describe('the debounced upload', () => {
 
     expect(saved).toHaveLength(1)
     // Read when the timer fired, not when the ping arrived: last write wins.
-    expect(saved[0]).toEqual({ agentId: 'claude-1', specPath: SPEC, spec: '## Idea\n\nlast\n' })
+    expect(saved[0]).toEqual({
+      agentId: 'claude-1', specPath: SPEC, spec: '## Idea\n\nlast\n', specOversize: false,
+    })
   })
 
   it('does nothing at all when the spec file is not there', async () => {
     // The skill announces its spec path before creating the file, so a ping can
-    // legitimately arrive first. It is a no-op, never an error.
+    // legitimately arrive first. It is a no-op, never an error — and deliberately NOT
+    // the oversize case above: "not written yet" is a state that resolves itself, so
+    // there is nothing to upsert and nothing for a reader to be told.
     schedulePlanSpecUpload('claude-1', SPEC)
     await vi.advanceTimersByTimeAsync(3000)
     expect(saved).toEqual([])
@@ -302,14 +306,29 @@ describe('what may be uploaded at all', () => {
     fs.rmSync(candidate, { force: true })
   })
 
-  it('refuses a spec larger than the ceiling, rather than uploading a truncated half', async () => {
-    // A truncated spec reads as complete to whoever opens the page, which is worse
-    // than an absent one.
+  it('withholds the CONTENT of a spec past the ceiling, and records the session saying so', async () => {
+    // A truncated spec reads as complete to whoever opens the page, which is worse than
+    // an absent one — so the markdown is not sent. The SESSION still is: it used to be
+    // dropped whole, and a plan that never appeared (or appeared with an empty spec the
+    // page words as "not uploaded yet") is the app hiding a document that exists.
     fs.writeFileSync(SPEC, 'x'.repeat(1024 * 1024 + 1))
     schedulePlanSpecUpload('claude-1', SPEC)
     await vi.advanceTimersByTimeAsync(3000)
 
-    expect(saved).toHaveLength(0)
+    expect(saved).toEqual([{ agentId: 'claude-1', specPath: SPEC, specOversize: true }])
+    expect(saved[0]?.spec).toBeUndefined()
+  })
+
+  it('clears the oversize flag once the spec is back under the ceiling', async () => {
+    // The flag is written on every successful read, not only when it turns true, which
+    // is what stops a trimmed spec staying marked too large for the life of the session.
+    fs.writeFileSync(SPEC, '## Idea\n\ntrimmed\n')
+    schedulePlanSpecUpload('claude-1', SPEC)
+    await vi.advanceTimersByTimeAsync(3000)
+
+    expect(saved).toEqual([
+      { agentId: 'claude-1', specPath: SPEC, spec: '## Idea\n\ntrimmed\n', specOversize: false },
+    ])
   })
 
   it('refuses a spec-shaped path that is a symlink to something private', async () => {
@@ -338,5 +357,6 @@ describe('what may be uploaded at all', () => {
 
     expect(saved).toHaveLength(1)
     expect(saved[0]?.spec).toContain('ship it')
+    expect(saved[0]?.specOversize).toBe(false)
   })
 })

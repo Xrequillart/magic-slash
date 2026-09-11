@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto'
 import { CONFIG_DIR } from '../config/paths'
 import type { HistoryEntry, SkillInvocationInput, SkillRunEndInput, UsageEventInput } from '../../types'
 import { loadSession } from '../cloud/session-store'
-import { readSpecFile } from './spec-file'
+import { readSpecFile, specFields } from './spec-file'
 import { getStore } from './Store'
 
 /**
@@ -221,21 +221,36 @@ async function replay(entry: OutboxEntry): Promise<void> {
       return
     case 'planSpec': {
       // Through the shared guard, not `fs` directly: this is the SECOND path that
-      // opens a spec file, and it is as exposed as the first. `readSpecFile` re-applies
-      // the `.magic/spec-*.md` shape test to the REAL path, so a queued entry whose
-      // file has since become a symlink to something private cannot deliver it here.
-      const spec = readSpecFile(entry.payload.specPath)
-      if (spec === undefined) {
-        // Nothing to send: the spec is gone (a deleted worktree, a renamed repository),
-        // too large, or no longer a spec at all. RETURNING is the point in every one of
-        // those cases — it counts as delivered, so the entry LEAVES the queue. Throwing
+      // opens a spec file, and it is as exposed as the first. `readSpecFile`
+      // re-applies the `.magic/spec-*.md` shape test to the REAL path, so a queued entry
+      // whose file has since become a symlink to something private cannot deliver it
+      // here.
+      const read = readSpecFile(entry.payload.specPath)
+      if (read.kind === 'missing') {
+        // Nothing to send and nothing to say about it: the spec is gone (a deleted
+        // worktree, a renamed repository) or was never one. RETURNING is the point in
+        // both cases — it counts as delivered, so the entry LEAVES the queue. Throwing
         // instead would head-of-line the whole backlog forever, since flushOutbox stops
         // at the first failure and this one can never stop failing.
         return
       }
+      // TOO LARGE IS NOT THE SAME AS GONE, and it used to be dropped here as if it were.
+      // The session still deserves its row — the tickets, the title and the status of a
+      // plan do not depend on the spec's bytes — so what gets withheld is the content
+      // alone, with `specOversize` saying so. A reader then learns the document exists
+      // and is too big to sync, instead of opening a plan that looks like it was never
+      // written. The entry still leaves the queue either way: this too can never stop
+      // failing, and re-reading the file is what would notice it had been trimmed. What
+      // each state puts on the wire is `specFields`', shared with `plan-sync` so the two
+      // writers cannot disagree about it.
+      //
       // agent_id may resolve to nothing by now — replay happens after the agent was
       // archived, which releases its app id. The session keeps its owner regardless.
-      return store.savePlanSpec({ agentId: entry.payload.agentId, specPath: entry.payload.specPath, spec })
+      return store.savePlanSpec({
+        agentId: entry.payload.agentId,
+        specPath: entry.payload.specPath,
+        ...specFields(read),
+      })
     }
   }
 }

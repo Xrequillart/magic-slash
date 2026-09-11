@@ -6,7 +6,7 @@ import { readAgents } from '../config/agents'
 import { readConfig } from '../config/config'
 import { loadSession } from '../cloud/session-store'
 import { enqueue } from './outbox'
-import { isSpecPath, readSpecFile } from './spec-file'
+import { isSpecPath, readSpecFile, specFields } from './spec-file'
 import { getStore } from './Store'
 
 /**
@@ -168,14 +168,33 @@ async function run(key: string): Promise<void> {
 /**
  * Read the file and upsert the row. Queues the upload to the outbox when the write
  * fails, so an offline session is uploaded on the next connectivity tick.
+ *
+ * THE TWO REFUSALS ARE NOT THE SAME REFUSAL, and collapsing them is what this used to
+ * get wrong. `readSpecFile` answered `undefined` for both, `requireSpecFile` is true for
+ * every spec ping, and so a spec past the 1 MiB ceiling returned here and NOTHING was
+ * ever upserted — the session did not appear at all, or sat at an empty spec that the
+ * page words as "not uploaded yet". A document too large to send is not a document on
+ * its way.
+ *
+ * Only `missing` is decided here, and only because `requireSpecFile` is a question about
+ * this caller rather than about the file: the skill announces its spec path before
+ * creating it, so a ping legitimately arrives first and there is nothing to record yet.
+ * The session row is still created for a file that never arrives, by `recordPlanSession`,
+ * which is exactly what `requireSpecFile: false` is. What the other two states put on the
+ * wire is `specFields`' business, shared with the outbox so the two writers cannot
+ * disagree about it.
  */
 async function send(upload: PendingUpload): Promise<void> {
   if (!syncEnabled()) return
 
-  const spec = readSpecFile(upload.specPath)
-  if (spec === undefined && upload.requireSpecFile) return
+  const read = readSpecFile(upload.specPath)
+  if (read.kind === 'missing' && upload.requireSpecFile) return
 
-  const input: PlanSpecInput = { agentId: upload.agentId, specPath: upload.specPath, ...(spec !== undefined ? { spec } : {}) }
+  const input: PlanSpecInput = {
+    agentId: upload.agentId,
+    specPath: upload.specPath,
+    ...specFields(read),
+  }
   try {
     await getStore().savePlanSpec(input)
   } catch (error) {

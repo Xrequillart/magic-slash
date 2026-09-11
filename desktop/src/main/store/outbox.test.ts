@@ -200,12 +200,31 @@ describe('a queued plan spec', () => {
 
     expect(await flushOutbox()).toBe(1)
     expect(delivered.planSpec).toEqual([
-      { agentId: 'claude-1', specPath: SPEC, spec: '## Idea\n\nrewritten since\n' },
+      { agentId: 'claude-1', specPath: SPEC, spec: '## Idea\n\nrewritten since\n', specOversize: false },
     ])
     expect(outboxStats().pending).toBe(0)
   })
 
+  it('delivers the SESSION of a spec too large to send, with the content withheld', async () => {
+    // This used to be dropped exactly like a deleted file, which meant a plan whose spec
+    // was past the ceiling left no trace at all. The session is as real as any other;
+    // only the markdown is withheld, and `specOversize` is what lets the page say why
+    // instead of drawing an empty spec worded as "not uploaded yet".
+    fs.writeFileSync(SPEC, 'x'.repeat(1024 * 1024 + 1))
+    enqueue(planSpec('uid-1'))
+
+    expect(await flushOutbox()).toBe(1)
+    expect(delivered.planSpec).toEqual([
+      { agentId: 'claude-1', specPath: SPEC, specOversize: true },
+    ])
+    // It still LEAVES the queue: this can never stop failing either, and flushOutbox
+    // stops at the first failure — a retry would head-of-line the telemetry behind it.
+    expect(outboxStats().pending).toBe(0)
+  })
+
   it('DROPS an entry whose spec file is gone, and keeps draining', async () => {
+    // GONE, not merely unsendable: there is no document to tell anyone about, so unlike
+    // the oversize case above this delivers nothing at all.
     // flushOutbox stops at the first failure, so an entry that can never succeed
     // would head-of-line the telemetry behind it for the life of the install.
     enqueue(planSpec('uid-1', path.join(TMP_HOME, '.magic', 'spec-deleted.md')))

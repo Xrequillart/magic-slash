@@ -1537,6 +1537,18 @@ export class CloudStore implements Store {
       row.spec_synced_at = new Date().toISOString()
     }
 
+    // CONDITIONAL, like everything else here, and this one is worth spelling out because
+    // an unconditional `input.specOversize === true` would look identical and be wrong.
+    // `savePlanTickets` upserts a session from an input that consulted no file at all, so
+    // it has no opinion about the spec's size — and sending `false` from there would
+    // clear a legitimately true flag on every ticket write, turning "too large to sync"
+    // back into "not written yet" the moment a plan files its epic.
+    //
+    // The READ paths always send a boolean (see plan-sync's `send`), so the flag is
+    // self-correcting in both directions: a spec cut back under the ceiling is uploaded
+    // with `false` and the row stops claiming otherwise.
+    if (input.specOversize !== undefined) row.spec_oversize = input.specOversize
+
     return row
   }
 
