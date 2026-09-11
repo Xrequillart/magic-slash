@@ -2067,7 +2067,7 @@ export const marketingEn = {
 
   'site.faq.price.q': 'Is Magic Slash free?',
   'site.faq.price.a':
-    'Yes. Magic Slash is open source and free to use. The one thing it assumes you already have is <strong>Claude Code</strong>, since every command runs inside it.',
+    'Yes. Magic Slash is free to use and its code is public. The one thing it assumes you already have is <strong>Claude Code</strong>, since every command runs inside it.',
 
   'site.faq.prerequisites.q': 'What do I need before installing it?',
   'site.faq.prerequisites.a':
@@ -2537,17 +2537,24 @@ export const marketingEn = {
   // page can therefore say "free" flatly, which most cannot.
   'site.terms.title': 'Terms of use',
   'site.terms.lead':
-    'What Magic Slash is provided as, what you may do with it, and what it does not promise. It is short because the product is free, open source and small.',
+    'What Magic Slash is provided as, what you may do with it, and what it does not promise. It is short because the product is free, its code public and its scope small.',
   'site.terms.what.title': 'What Magic Slash is',
   'site.terms.what.body':
     'A native macOS app, eight skills that run inside Claude Code, and a free account that keeps your configuration, your repositories and your team in step across machines. There is no paid plan, no subscription and no billing of any kind: nothing in the product charges you for anything. The costs you do pay are your own, to Anthropic for Claude Code and to whoever hosts your code and your tickets.',
-  // MIT, from `LICENSE` and both `package.json` files. The page NAMES the licence and
-  // refuses to restate it: a second copy of a licence is a second copy to keep in step
-  // with the one that governs, and the two eventually disagree in front of whoever is
-  // relying on them. `LICENSE_URL` in `components/site/links.ts` is the link.
+  // PolyForm Shield 1.0.0, from `LICENSE` and both `package.json` files, which carry
+  // `SEE LICENSE IN LICENSE` because Shield has no SPDX identifier to put there. The page
+  // NAMES the licence and refuses to restate it: a second copy of a licence is a second
+  // copy to keep in step with the one that governs, and the two eventually disagree in
+  // front of whoever is relying on them. `LICENSE_URL` in `components/site/links.ts` is
+  // the link.
+  //
+  // THE ONE THING THE CLAUSE DOES SPELL OUT is the noncompete, because it is the whole
+  // reason the licence changed and the reader cannot guess it from the name. Saying
+  // "source available" and stopping would leave a developer at a company wondering
+  // whether using it at work is allowed. It is; competing with it is not.
   'site.terms.license.title': 'The code, and its licence',
   'site.terms.license.body':
-    'Every part of Magic Slash you install is <strong>MIT licensed</strong>: the desktop app, the eight skills, this site, and the database schema behind the account. The <code>LICENSE</code> file in the repository is the licence itself, and it is what governs your use of the code. This page does not rewrite its grant and adds no condition to it. The link at the bottom opens it.<br><br>What this page covers is what the licence does not: the hosted account, and the services the app talks to on your behalf.',
+    'Every part of Magic Slash you install is covered by the <strong>PolyForm Shield License 1.0.0</strong>: the desktop app, the eight skills, this site, and the database schema behind the account. The code stays public, and you may read it, change it and use it for any purpose, at home or at work, including work you are paid for. One purpose is excluded: using it to provide a product that competes with Magic Slash. The <code>LICENSE</code> file in the repository is the licence itself, and it is what governs your use of the code. This page does not rewrite its grant and adds no condition to it. The link at the bottom opens it.<br><br>Releases up to v0.91.3 were published under the MIT licence and stay available under it. What this page covers is what the licence does not: the hosted account, and the services the app talks to on your behalf.',
   // Email and password, from `signInWithPassword` on both clients — there is no OAuth
   // sign-in and no magic link. The second paragraph is the honest half: the account is
   // free, so the page promises it will exist rather than promising it will last.
@@ -2589,11 +2596,11 @@ export const marketingEn = {
     'Do not use Magic Slash for anything unlawful, and do not use it to get around the terms of the services it connects to. Do not use it to reach a repository, a tracker or an account you are not allowed to reach.<br><br>If you share an organisation with colleagues, keep in mind what that shares: ticket titles, branch names, the local paths of the repositories attached to an agent, the pull request addresses and review state its record carries, and the planning specifications are all readable by the other members. Do not put anything into a shared organisation that you are not allowed to show them.',
   'site.terms.warranty.title': 'No warranty',
   'site.terms.warranty.body':
-    'Magic Slash is provided as is, without warranty of any kind. The MIT licence says so for the code, in the words that count, and the same holds for the account: nothing guarantees that it is available, that it is correct, or that it is fit for any particular purpose, and neither the author nor the contributors are liable for what happens when it is used. Software that runs commands in your repositories deserves that written down rather than buried, so: take backups, work on branches, and read the diff before you accept it.',
+    'Magic Slash is provided as is, without warranty of any kind. The licence says so for the code, in the words that count, and the same holds for the account: nothing guarantees that it is available, that it is correct, or that it is fit for any particular purpose, and neither the author nor the contributors are liable for what happens when it is used. Software that runs commands in your repositories deserves that written down rather than buried, so: take backups, work on branches, and read the diff before you accept it.',
   'site.terms.changes.title': 'When this page changes',
   'site.terms.changes.body':
     'The way everything else here changes: as a commit in the public repository. There is no separate announcement and no version banner, and the history of this file is the honest record of what it said and when. If a change matters to you, the repository is what to watch.<br><br>Two things this page deliberately does not settle, because nothing in the project settles them: it names no governing law and no jurisdiction. It will, the day there is an entity behind the project for either to attach to.',
-  'site.terms.licenseLink': 'Read the MIT licence',
+  'site.terms.licenseLink': 'Read the PolyForm Shield licence',
   'site.terms.askLink': 'Ask a question on GitHub',
 
   // ── Footer ─────────────────────────────────────────────────────────────────

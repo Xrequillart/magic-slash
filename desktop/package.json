@@ -4,7 +4,7 @@
   "description": "Magic Slash Desktop - Configuration and Claude Code terminals",
   "main": "dist/main/index.js",
   "author": "xrequillart",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "postinstall": "electron-rebuild",
     "dev": "vite",

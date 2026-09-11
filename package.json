@@ -20,7 +20,7 @@
     "type": "git",
     "url": "git+https://github.com/xrequillart/magic-slash.git"
   },
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "author": "xrequillart",
   "scripts": {
     "lint": "npm run lint:yaml && npm run lint:js",

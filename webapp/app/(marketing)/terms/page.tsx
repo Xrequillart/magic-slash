@@ -20,7 +20,8 @@ import { TermsContent } from '@/components/site/terms/TermsContent'
  * and the third-party clause said no connected credential is stored while the Atlassian
  * one is written to `~/.config/magic-slash/`.
  *
- * IT IS NOT A EULA AND IT IS NOT THE LICENCE. The code is MIT and the licence is the
+ * IT IS NOT A EULA AND IT IS NOT THE LICENCE. The code is under PolyForm Shield 1.0.0 and
+ * the licence is the
  * `LICENSE` file in the repository, which `LICENSE_URL` in `components/site/links.ts`
  * points at and which this page names rather than restates: a second, prettier copy of a
  * licence is a second copy to keep in sync with the one that actually governs. This page

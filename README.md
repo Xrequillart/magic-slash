@@ -20,7 +20,7 @@
     <img src="https://img.shields.io/github/v/release/xrequillart/magic-slash" alt="Release">
   </a>
   <a href="LICENSE">
-    <img src="https://img.shields.io/github/license/xrequillart/magic-slash" alt="License">
+    <img src="https://img.shields.io/badge/license-PolyForm%20Shield%201.0.0-blue" alt="License: PolyForm Shield 1.0.0">
   </a>
   <a href="https://github.com/xrequillart/magic-slash/stargazers">
     <img src="https://img.shields.io/github/stars/xrequillart/magic-slash" alt="Stars">
@@ -599,7 +599,7 @@ magic-slash/
 ├── CHANGELOG.md          # Version history
 ├── CODE_OF_CONDUCT.md    # Community guidelines
 ├── CONTRIBUTING.md       # Contribution guide
-├── LICENSE               # MIT License
+├── LICENSE               # PolyForm Shield License 1.0.0
 ├── README.md             # This file
 ├── SECURITY.md           # Security policy
 ├── commitlint.config.js  # Commit message linting
@@ -657,7 +657,13 @@ Magic Slash is built with and for:
 
 ## License
 
-MIT - See [LICENSE](LICENSE) for details.
+[PolyForm Shield License 1.0.0](LICENSE) - the source is public and you may read it, change
+it, and use it for any purpose, including commercially and inside a company. The single
+restriction is the noncompete: you may not use it to provide a product that competes with
+Magic Slash. See [LICENSE](LICENSE) for the terms that govern.
+
+Versions up to and including v0.91.3 were published under the MIT license and stay available
+under it.
 
 ---
 

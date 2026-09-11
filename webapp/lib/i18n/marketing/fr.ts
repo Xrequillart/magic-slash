@@ -1221,7 +1221,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
 
   'site.faq.price.q': 'Magic Slash est-il gratuit ?',
   'site.faq.price.a':
-    'Oui. Magic Slash est open source et gratuit. La seule chose qu’il suppose déjà en place, c’est <strong>Claude Code</strong>, puisque toutes les commandes s’exécutent dedans.',
+    'Oui. Magic Slash est gratuit et son code est public. La seule chose qu’il suppose déjà en place, c’est <strong>Claude Code</strong>, puisque toutes les commandes s’exécutent dedans.',
 
   'site.faq.prerequisites.q': 'Que faut-il avant de l’installer ?',
   'site.faq.prerequisites.a':
@@ -1487,13 +1487,13 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // la copie plutôt que de laisser le lecteur constater l’absence.
   'site.terms.title': 'Conditions d’utilisation',
   'site.terms.lead':
-    'Ce que Magic Slash fournit, ce que vous pouvez en faire, et ce qu’il ne promet pas. La page est courte parce que le produit est gratuit, open source et de taille modeste.',
+    'Ce que Magic Slash fournit, ce que vous pouvez en faire, et ce qu’il ne promet pas. La page est courte parce que le produit est gratuit, son code public et son périmètre modeste.',
   'site.terms.what.title': 'Ce qu’est Magic Slash',
   'site.terms.what.body':
     'Une app macOS native, huit skills qui s’exécutent dans Claude Code, et un compte gratuit qui synchronise votre configuration, vos dépôts et votre équipe d’une machine à l’autre. Il n’y a ni offre payante, ni abonnement, ni facturation d’aucune sorte : rien dans le produit ne vous fait payer quoi que ce soit. Les coûts que vous payez sont les vôtres : Anthropic pour Claude Code, et l’hébergeur de votre code et de vos tickets.',
   'site.terms.license.title': 'Le code, et sa licence',
   'site.terms.license.body':
-    'Tout ce que vous installez de Magic Slash est sous <strong>licence MIT</strong> : l’app de bureau, les huit skills, ce site, et le schéma de base de données derrière le compte. Le fichier <code>LICENSE</code> du dépôt est la licence elle-même, et c’est lui qui régit votre usage du code. Cette page n’en réécrit pas la portée et n’y ajoute aucune condition. Le lien en bas l’ouvre.<br><br>Ce que cette page couvre, c’est ce que la licence ne couvre pas : le compte hébergé, et les services que l’app contacte pour vous.',
+    'Tout ce que vous installez de Magic Slash est couvert par la <strong>licence PolyForm Shield 1.0.0</strong> : l’app de bureau, les huit skills, ce site, et le schéma de base de données derrière le compte. Le code reste public, et vous pouvez le lire, le modifier et l’utiliser pour n’importe quel usage, chez vous comme au travail, y compris un travail rémunéré. Un seul usage est exclu : s’en servir pour fournir un produit qui concurrence Magic Slash. Le fichier <code>LICENSE</code> du dépôt est la licence elle-même, et c’est lui qui régit votre usage du code. Cette page n’en réécrit pas la portée et n’y ajoute aucune condition. Le lien en bas l’ouvre.<br><br>Les versions jusqu’à la v0.91.3 ont été publiées sous licence MIT et le restent. Ce que cette page couvre, c’est ce que la licence ne couvre pas : le compte hébergé, et les services que l’app contacte pour vous.',
   'site.terms.account.title': 'Votre compte',
   'site.terms.account.body':
     'Un compte demande une adresse e-mail et un mot de passe, et garder ce mot de passe pour vous est votre part du marché. Tout ce qui est fait depuis votre compte est considéré comme fait par vous.<br><br>Vous pouvez supprimer le compte quand vous le souhaitez, depuis l’app ou depuis le web, et la page de confidentialité dit précisément ce que cela efface. Dans l’autre sens : c’est un service gratuit adossé à un projet publié sur GitHub, pas un abonnement que vous auriez souscrit. Il peut évoluer, et il peut un jour s’arrêter.',
@@ -1508,11 +1508,11 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'N’utilisez pas Magic Slash pour quoi que ce soit d’illégal, ni pour contourner les conditions des services qu’il connecte. Ne l’utilisez pas pour atteindre un dépôt, un outil de suivi ou un compte auquel vous n’avez pas droit.<br><br>Si vous partagez une organisation avec des collègues, gardez en tête ce que cela partage : les titres de tickets, les noms de branches, les chemins locaux des dépôts rattachés à un agent, les adresses de pull requests et l’état de leur revue que sa fiche transporte, et les spécifications de planification sont tous lisibles par les autres membres. Ne mettez rien dans une organisation partagée que vous n’ayez pas le droit de leur montrer.',
   'site.terms.warranty.title': 'Aucune garantie',
   'site.terms.warranty.body':
-    'Magic Slash est fourni en l’état, sans garantie d’aucune sorte. La licence MIT le dit pour le code, dans les termes qui font foi, et c’est vrai aussi du compte : rien ne garantit qu’il soit disponible, exact, ou adapté à un usage particulier, et ni l’auteur ni les contributeurs ne sont responsables de ce qui arrive à l’usage. Un logiciel qui lance des commandes dans vos dépôts mérite que ce soit écrit plutôt qu’enfoui, alors : faites des sauvegardes, travaillez sur des branches, et lisez le diff avant de l’accepter.',
+    'Magic Slash est fourni en l’état, sans garantie d’aucune sorte. La licence le dit pour le code, dans les termes qui font foi, et c’est vrai aussi du compte : rien ne garantit qu’il soit disponible, exact, ou adapté à un usage particulier, et ni l’auteur ni les contributeurs ne sont responsables de ce qui arrive à l’usage. Un logiciel qui lance des commandes dans vos dépôts mérite que ce soit écrit plutôt qu’enfoui, alors : faites des sauvegardes, travaillez sur des branches, et lisez le diff avant de l’accepter.',
   'site.terms.changes.title': 'Quand cette page change',
   'site.terms.changes.body':
     'Comme tout le reste ici : par un commit dans le dépôt public. Il n’y a ni annonce séparée ni bandeau de version, et l’historique de ce fichier est le relevé honnête de ce qu’il a dit et quand. Si un changement compte pour vous, c’est le dépôt qu’il faut surveiller.<br><br>Deux points que cette page ne tranche volontairement pas, parce que rien dans le projet ne les tranche : elle ne désigne ni droit applicable ni juridiction. Elle le fera le jour où une entité existera derrière le projet pour s’y rattacher.',
-  'site.terms.licenseLink': 'Lire la licence MIT',
+  'site.terms.licenseLink': 'Lire la licence PolyForm Shield',
   'site.terms.askLink': 'Poser une question sur GitHub',
 
   // ── Footer ─────────────────────────────────────────────────────────────────
