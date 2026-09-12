@@ -1393,8 +1393,6 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.descriptionHint': 'Entrée pour enregistrer, Maj+Entrée pour un retour à la ligne, Échap pour annuler',
   'agentInfo.addDescription': 'Cliquez pour ajouter une description',
   'agentInfo.noScripts': 'Aucun script trouvé',
-  'agentInfo.sessionContext': 'Contexte de la session',
-  'agentInfo.session': 'Session',
   'agentInfo.context': 'Contexte',
   'agentInfo.tokensOf': '{used} / {total} tokens',
   'agentInfo.noActiveAgent': 'Aucun agent actif',

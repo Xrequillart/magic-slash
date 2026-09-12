@@ -1449,8 +1449,6 @@ export const en = {
   'agentInfo.descriptionHint': 'Enter to save, Shift+Enter for a new line, Esc to cancel',
   'agentInfo.addDescription': 'Click to add description',
   'agentInfo.noScripts': 'No scripts found',
-  'agentInfo.sessionContext': 'Session context',
-  'agentInfo.session': 'Session',
   'agentInfo.context': 'Context',
   'agentInfo.tokensOf': '{used} / {total} tokens',
   'agentInfo.noActiveAgent': 'No active agent',

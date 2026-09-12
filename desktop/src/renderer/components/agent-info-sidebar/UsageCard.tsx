@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
-import { Gauge, DollarSign, Cpu, Clock, RefreshCw, Minus, Plus } from 'lucide-react'
+import { Gauge, DollarSign, Cpu, Clock, Minus, Plus } from 'lucide-react'
 import type { TerminalUsage } from '../../../types'
-import { formatTimestamp, contextColors } from './utils'
+import { contextColors } from './utils'
+import { ClaudeCodeIcon } from './icons'
+import { REPO_ACTION_CHIP, REPO_ACTION_SQUARE } from './repoActionChip'
 import { useT, useLocale, type Translate } from '../../i18n'
 import { formatUsd } from '../../utils/usageStats'
 
@@ -37,6 +38,81 @@ function formatDuration(ms: number, t: Translate): string {
   return t('relative.seconds', { count: s })
 }
 
+/**
+ * WHAT IS BEING MEASURED, named and marked: Claude Code, top left of the card.
+ *
+ * The label was the word "SESSION", which named the container and not the thing —
+ * every card in this column is about the same session, and the one fact this one had
+ * to give up its corner for is WHOSE context window is filling. The mark says it
+ * faster than the word, and the reader recognises it from the terminal underneath.
+ *
+ * NO CATALOGUE ENTRY: "Claude Code" is a product name, spelled the same in every
+ * language, which is the same call the site makes for its own row of three.
+ *
+ * `#D97757` inline rather than as a token, for `TrackerBadge`'s reason word for word:
+ * it is somebody else's brand colour, and a coral in the design system's palette
+ * would be the app claiming it — and would drift the day the palette is retuned. The
+ * ground is that coral at 14%, the same recipe Jira's badge uses.
+ *
+ * The refresh stamp that sat beside the old label is gone. It answered a question
+ * nobody was asking — the usage feed pushes, so the figures below are current by
+ * construction, and a timestamp next to them only invited doubt about whether they
+ * were.
+ */
+const CLAUDE_CORAL = '#D97757'
+
+/**
+ * The shape all four labels on this card share — the repository header's chip, which
+ * is the ticket badge's, which is this app's one small filled label.
+ *
+ * Four of them now, and they are four FACTS about one run: which tool, which model,
+ * what it has cost, how long it has been going. They used to be a coral chip, a purple
+ * pill at a different height and radius, and two bare icon-and-number pairs floating
+ * on the card — three treatments for one kind of thing, which is what made the card
+ * read as a form rather than as a readout.
+ */
+const USAGE_CHIP = 'h-6 gap-1.5 px-2 rounded-lg text-xs font-medium inline-flex items-center flex-shrink-0'
+
+/**
+ * The neutral one: grey ground, primary ink. `bg-ink/10` rather than the `/5` the
+ * repository card's blocks wear — those are containers and this is a label sitting ON
+ * one, so it needs the extra step to stay a distinct object rather than dissolving
+ * into whatever it is placed on.
+ */
+const USAGE_CHIP_NEUTRAL = `${USAGE_CHIP} bg-ink/10 text-ink`
+
+function ClaudeCodeBadge() {
+  return (
+    <span
+      className={USAGE_CHIP}
+      style={{ backgroundColor: 'rgba(217, 119, 87, 0.14)', color: CLAUDE_CORAL }}
+    >
+      <ClaudeCodeIcon className="w-3.5 h-3.5 flex-shrink-0" />
+      Claude Code
+    </span>
+  )
+}
+
+/**
+ * The context gauge, in both forms of the card.
+ *
+ * The track keeps its well at all times: it is what makes the REMAINDER legible, and
+ * a fill floating on nothing says how much is used without saying of what. What comes
+ * and goes under the pointer is the PLATE around it — see the gauge block below.
+ */
+function ContextBar({ pct, bar, className = '' }: { pct: number; bar: string; className?: string }) {
+  return (
+    <div
+      className={`h-1.5 rounded-full bg-surface-sunken overflow-hidden ${className}`}
+    >
+      <div
+        className={`h-full rounded-full ${bar} transition-all duration-500`}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  )
+}
+
 export function UsageCard({ usage, minimized, onMinimizedChange }: UsageCardProps) {
   const t = useT()
   const locale = useLocale()
@@ -47,89 +123,79 @@ export function UsageCard({ usage, minimized, onMinimizedChange }: UsageCardProp
     contextWindowSize,
     model,
     durationMs,
-    updatedAt,
   } = usage
 
-  // The gauge is always rendered, so it needs a reading for "no figure yet" that
-  // is not 0%: an empty green bar labelled 0% would claim the context is untouched,
-  // which is a measurement, not the absence of one. The bar sits empty and the
-  // label falls back to an em dash until the usage feed reports a percentage.
-  const hasContext = typeof contextPercent === 'number'
+  // NO FIGURE READS AS 0%. This used to fall back to an em dash, on the argument that
+  // an empty bar labelled 0% claims a measurement where there is none — true, and it
+  // cost more than it bought: the dash appears for the first seconds of every agent,
+  // in the slot a number lives in the rest of the time, and a reader meeting it once
+  // has to work out whether something is broken. 0% is what an agent that has not
+  // spoken yet has actually used, and the bar beside it says the same thing.
   const pct = Math.min(100, Math.max(0, contextPercent ?? 0))
   const colors = contextColors(pct)
-  const pctLabel = hasContext ? `${Math.round(pct)}%` : '—'
-  const pctColor = hasContext ? colors.text : 'text-text-secondary/50'
+  const pctLabel = `${Math.round(pct)}%`
+  const pctColor = colors.text
 
-  // Re-render every 30s so the "updated X ago" label stays fresh.
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000)
-    return () => clearInterval(id)
-  }, [])
-  const relative = typeof updatedAt === 'number' ? formatTimestamp(updatedAt, now, t) : null
-
-  // Minimized: single-line — "Session" label, small progress bar, percent, expand button.
+  // Minimized: single-line — the same brand chip, a small progress bar, the percent
+  // and the expand button.
   if (minimized) {
     return (
       /* `px-4` to line its content up with every other card in the column (see
          `RepositoryCard`); the vertical padding stays small, because minimised is a
          one-line bar and matching `p-4` there would undo the point of minimising. */
       <div className="bg-surface rounded-xl px-4 py-2 flex items-center gap-2">
-        <span className="text-xs text-text-secondary/50 uppercase tracking-wider shrink-0">{t('agentInfo.sessionContext')}</span>
+        <ClaudeCodeBadge />
         {/* Capped at a third of the row so the bar doesn't span the whole card;
             ml-auto pushes it right, grouping it with the percent + expand button. */}
-        <div className="h-1.5 flex-1 min-w-0 max-w-[33%] ml-auto rounded-full bg-surface-sunken overflow-hidden">
-          <div
-            className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+        <ContextBar pct={pct} bar={colors.bar} className="flex-1 min-w-0 max-w-[33%] ml-auto" />
         <span className={`font-medium text-xs shrink-0 ${pctColor}`}>{pctLabel}</span>
         <button
           onClick={() => onMinimizedChange(false)}
           title={t('usage.expand')}
-          className="p-0.5 rounded text-icon hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
+          className={`${REPO_ACTION_CHIP} ${REPO_ACTION_SQUARE} hover:bg-ink/10 hover:text-ink`}
         >
-          <Plus className="w-3 h-3" />
+          <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
     )
   }
 
   return (
-    <div className="bg-surface rounded-xl p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="flex items-center gap-2">
-          <span className="text-xs text-text-secondary/50 uppercase tracking-wider">{t('agentInfo.session')}</span>
-          {relative && (
-            <span className="flex items-center gap-1 text-[11px] text-icon normal-case tracking-normal">
-              <RefreshCw className="w-3 h-3" />
-              {relative === t('relative.now') ? t('relative.justNow') : t('relative.ago', { time: relative })}
-            </span>
-          )}
-        </span>
-        <div className="flex items-center gap-1.5">
-          {model && (
-            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-purple/15 text-purple text-[11px] font-medium">
-              <Cpu className="w-3 h-3" />
-              {model}
-            </span>
-          )}
-          {/* self-stretch makes the button exactly as tall as the model pill next
-              to it, whatever that pill's line-height works out to. With no model
-              it keeps its natural height. */}
-          <button
-            onClick={() => onMinimizedChange(true)}
-            title={t('usage.minimize')}
-            className="self-stretch px-1 flex items-center justify-center rounded-md text-icon hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
-          >
-            <Minus className="w-3 h-3" />
-          </button>
-        </div>
+    /* `gap-2`, the column's own spacing — `RepositoryCard` sets it out at length: a gap
+       sits between children only, so it also skips the blocks that render nothing. This
+       was `space-y-3`, one step wider than every other card in the sidebar, which read
+       as three loose fields rather than one card. */
+    <div className="bg-surface rounded-xl p-4 flex flex-col gap-2">
+      {/* WHAT IS RUNNING, in one phrase: Claude Code, on this model. The model used to
+          be pinned to the far right, a purple pill at the other end of the row from the
+          thing it qualifies — with the fold button as its only neighbour, which made it
+          look like a second control. Read left to right now, and `min-w-0` + `truncate`
+          on the model so a long name gives way rather than pushing the button off. */}
+      <div className="flex items-center gap-1.5">
+        <ClaudeCodeBadge />
+        {model && (
+          <span className={`${USAGE_CHIP_NEUTRAL} min-w-0`} title={model}>
+            <Cpu className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="truncate">{model}</span>
+          </span>
+        )}
+        {/* The repository header's chip, so the one control on this card is the same
+            object as the four on the card below it. */}
+        <button
+          onClick={() => onMinimizedChange(true)}
+          title={t('usage.minimize')}
+          className={`ml-auto ${REPO_ACTION_CHIP} ${REPO_ACTION_SQUARE} hover:bg-ink/10 hover:text-ink`}
+        >
+          <Minus className="w-3.5 h-3.5" />
+        </button>
       </div>
 
-      {/* Context usage — always present, empty until the feed reports a figure. */}
-      <div className="space-y-1.5">
+      {/* Context usage — always present, empty until the feed reports a figure.
+          NO PLATE. The block is `bg-ink/5` everywhere the repository card stacks one —
+          but this one holds the card's only MEASUREMENT, and a grey box around it made
+          the gauge read as one more framed field rather than as the headline. The
+          coloured bar is the only thing here with a ground, which is the point of it. */}
+      <div className="p-2 space-y-1.5">
         <div className="flex items-center justify-between text-xs">
           <span className="flex items-center gap-1.5 text-text-secondary">
             <Gauge className="w-3.5 h-3.5" />
@@ -137,12 +203,7 @@ export function UsageCard({ usage, minimized, onMinimizedChange }: UsageCardProp
           </span>
           <span className={`font-medium ${pctColor}`}>{pctLabel}</span>
         </div>
-        <div className="h-1.5 w-full rounded-full bg-surface-sunken overflow-hidden">
-          <div
-            className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+        <ContextBar pct={pct} bar={colors.bar} className="w-full" />
         {typeof contextTokens === 'number' && typeof contextWindowSize === 'number' && (
           <div className="text-[11px] text-text-secondary/70 tabular-nums">
             {t('agentInfo.tokensOf', { used: formatTokens(contextTokens, locale, t), total: formatTokens(contextWindowSize, locale, t) })}
@@ -150,22 +211,32 @@ export function UsageCard({ usage, minimized, onMinimizedChange }: UsageCardProp
         )}
       </div>
 
-      {/* Cost + duration. Gated as a pair: with the card now rendering before any
-          usage arrives, an unguarded row would contribute its space-y-3 gap below
-          the gauge with nothing in it. */}
+      {/* Cost and duration, as the model's own chip — the last two facts on the card
+          that were still bare icon-and-number pairs pushed to opposite ends of a row.
+          Chips, and side by side: they are of a kind with what is above them, and two
+          short labels justified apart read as two unrelated readings.
+
+          Gated as a pair: with the card rendering before any usage arrives, an
+          unguarded row would contribute the column's gap below the gauge with
+          nothing in it. */}
       {(typeof costUsd === 'number' || typeof durationMs === 'number') && (
-        <div className="flex items-center justify-between text-xs">
+        <div className="flex items-center gap-1.5">
           {typeof costUsd === 'number' && (
-            <span className="flex items-center gap-1.5 text-text-secondary">
-              <DollarSign className="w-3.5 h-3.5" />
+            <span className={USAGE_CHIP_NEUTRAL}>
+              <DollarSign className="w-3.5 h-3.5 flex-shrink-0" />
               {/* tabular-nums keeps the digits from shifting as the cost ticks up,
                   which is what the mono face used to buy us. */}
-              <span className="tabular-nums font-medium text-ink">{formatUsd(costUsd, locale)}</span>
+              <span className="tabular-nums">{formatUsd(costUsd, locale)}</span>
             </span>
           )}
+          {/* `ml-auto`: the two are read as a pair — what this run cost, and how long it
+              has taken — but they are also the card's bottom line, and pinning the clock
+              to the right edge gives that line the same two-column reading as the header
+              above it. It also keeps the duration in one place as the cost's width
+              changes under it. */}
           {typeof durationMs === 'number' && (
-            <span className="flex items-center gap-1.5 text-text-secondary">
-              <Clock className="w-3.5 h-3.5" />
+            <span className={`${USAGE_CHIP_NEUTRAL} ml-auto`}>
+              <Clock className="w-3.5 h-3.5 flex-shrink-0" />
               <span className="tabular-nums">{formatDuration(durationMs, t)}</span>
             </span>
           )}
