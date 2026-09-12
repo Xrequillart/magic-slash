@@ -1,8 +1,8 @@
 import { Gauge, DollarSign, Cpu, Clock, Minus, Plus } from 'lucide-react'
 import type { TerminalUsage } from '../../../types'
 import { contextColors } from './utils'
-import { ClaudeCodeIcon } from './icons'
-import { REPO_ACTION_CHIP, REPO_ACTION_SQUARE } from './repoActionChip'
+import { CLAUDE_CHIP_GROUND, CLAUDE_CORAL, ClaudeCodeIcon } from '../icons/ClaudeCode'
+import { ACTION_CHIP, ACTION_CHIP_SQUARE, LABEL_CHIP } from '../actionChip'
 import { useT, useLocale, type Translate } from '../../i18n'
 import { formatUsd } from '../../utils/usageStats'
 
@@ -49,29 +49,29 @@ function formatDuration(ms: number, t: Translate): string {
  * NO CATALOGUE ENTRY: "Claude Code" is a product name, spelled the same in every
  * language, which is the same call the site makes for its own row of three.
  *
- * `#D97757` inline rather than as a token, for `TrackerBadge`'s reason word for word:
- * it is somebody else's brand colour, and a coral in the design system's palette
- * would be the app claiming it — and would drift the day the palette is retuned. The
- * ground is that coral at 14%, the same recipe Jira's badge uses.
+ * The coral and its 14% ground come from `icons/ClaudeCode`, which carries why they
+ * are a hex and an rgba rather than tokens — and which the left sidebar's usage card
+ * now reads too, so the two Claude chips cannot drift apart.
  *
  * The refresh stamp that sat beside the old label is gone. It answered a question
  * nobody was asking — the usage feed pushes, so the figures below are current by
  * construction, and a timestamp next to them only invited doubt about whether they
  * were.
  */
-const CLAUDE_CORAL = '#D97757'
-
 /**
  * The shape all four labels on this card share — the repository header's chip, which
  * is the ticket badge's, which is this app's one small filled label.
  *
- * Four of them now, and they are four FACTS about one run: which tool, which model,
+ * `LABEL_CHIP` is that shape, shared with the left sidebar's usage card — see
+ * `actionChip`, which now holds both halves of the vocabulary.
+ *
+ * Four of them here, and they are four FACTS about one run: which tool, which model,
  * what it has cost, how long it has been going. They used to be a coral chip, a purple
  * pill at a different height and radius, and two bare icon-and-number pairs floating
  * on the card — three treatments for one kind of thing, which is what made the card
  * read as a form rather than as a readout.
  */
-const USAGE_CHIP = 'h-6 gap-1.5 px-2 rounded-lg text-xs font-medium inline-flex items-center flex-shrink-0'
+const USAGE_CHIP = LABEL_CHIP
 
 /**
  * The neutral one: grey ground, primary ink. `bg-ink/10` rather than the `/5` the
@@ -84,10 +84,14 @@ const USAGE_CHIP_NEUTRAL = `${USAGE_CHIP} bg-ink/10 text-ink`
 function ClaudeCodeBadge() {
   return (
     <span
-      className={USAGE_CHIP}
-      style={{ backgroundColor: 'rgba(217, 119, 87, 0.14)', color: CLAUDE_CORAL }}
+      className={`${USAGE_CHIP} text-ink`}
+      style={{ backgroundColor: CLAUDE_CHIP_GROUND }}
     >
-      <ClaudeCodeIcon className="w-3.5 h-3.5 flex-shrink-0" />
+      {/* THE MARK KEEPS THE CORAL, THE WORDS DO NOT — `TrackerBadge`'s split, and
+          `RepoNameBadge`'s: one coloured thing per chip. A brand hue at full saturation
+          on its own 14% tint is not a legible pair on every theme, and the ground
+          already says whose chip this is. */}
+      <ClaudeCodeIcon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: CLAUDE_CORAL }} />
       Claude Code
     </span>
   )
@@ -152,7 +156,7 @@ export function UsageCard({ usage, minimized, onMinimizedChange }: UsageCardProp
         <button
           onClick={() => onMinimizedChange(false)}
           title={t('usage.expand')}
-          className={`${REPO_ACTION_CHIP} ${REPO_ACTION_SQUARE} hover:bg-ink/10 hover:text-ink`}
+          className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-ink/10 hover:text-ink`}
         >
           <Plus className="w-3.5 h-3.5" />
         </button>
@@ -184,7 +188,7 @@ export function UsageCard({ usage, minimized, onMinimizedChange }: UsageCardProp
         <button
           onClick={() => onMinimizedChange(true)}
           title={t('usage.minimize')}
-          className={`ml-auto ${REPO_ACTION_CHIP} ${REPO_ACTION_SQUARE} hover:bg-ink/10 hover:text-ink`}
+          className={`ml-auto ${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-ink/10 hover:text-ink`}
         >
           <Minus className="w-3.5 h-3.5" />
         </button>

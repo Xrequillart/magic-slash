@@ -19,7 +19,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { formatTimestamp } from './utils'
-import { REPO_ACTION_CHIP } from './repoActionChip'
+import { ACTION_CHIP } from '../actionChip'
 import { useStore } from '../../store'
 import { bracketedPaste, resolveAgentTarget } from '../../utils/agentTerminals'
 import { formatThreadsContext, selectUnresolvedThreads } from '../../utils/prThreadContext'
@@ -1223,7 +1223,7 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
                ground, no rule. It was the last outlined control on the card — a
                `rounded-md` box in `line-subtle` sitting under a column that had given
                every one of those up. */
-            className={`ml-auto ${REPO_ACTION_CHIP} px-2 gap-1.5 text-[11px] font-medium hover:bg-ink/10 hover:text-ink disabled:opacity-50`}
+            className={`ml-auto ${ACTION_CHIP} px-2 gap-1.5 text-[11px] font-medium hover:bg-ink/10 hover:text-ink disabled:opacity-50`}
           >
             <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
             {t('agentInfo.pr.refreshAction')}

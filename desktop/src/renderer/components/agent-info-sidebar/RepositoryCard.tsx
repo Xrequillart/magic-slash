@@ -1,7 +1,7 @@
 import { GitBranch, Copy, Check, ArrowRight, X } from 'lucide-react'
 import { GitHubIcon, VSCodeIcon } from './icons'
 import { RepoNameBadge } from './RepoMark'
-import { REPO_ACTION_CHIP, REPO_ACTION_SQUARE } from './repoActionChip'
+import { ACTION_CHIP, ACTION_CHIP_SQUARE } from '../actionChip'
 import { ScriptsDropdown } from './ScriptsDropdown'
 import { PRWatchCard } from './PRWatchCard'
 import { RunningScripts } from './RunningScripts'
@@ -126,7 +126,7 @@ export function RepositoryCard({
           {/* Open in VS Code */}
           <button
             onClick={() => window.electronAPI.shell.openInVSCode(repoPath)}
-            className={`${REPO_ACTION_CHIP} ${REPO_ACTION_SQUARE} hover:bg-[#007ACC]/15 hover:text-[#007ACC]`}
+            className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-[#007ACC]/15 hover:text-[#007ACC]`}
             title={t('agentInfo.openRepoInEditor')}
             aria-label={t('agentInfo.openRepoInEditor')}
           >
@@ -136,7 +136,7 @@ export function RepositoryCard({
           {repoUrl && (
             <button
               onClick={() => window.electronAPI.shell.openExternal(repoUrl)}
-              className={`${REPO_ACTION_CHIP} ${REPO_ACTION_SQUARE} hover:bg-ink/10 hover:text-ink`}
+              className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-ink/10 hover:text-ink`}
               title={t('agentInfo.openRepoOnGitHub')}
               aria-label={t('agentInfo.openRepoOnGitHub')}
             >
@@ -148,7 +148,7 @@ export function RepositoryCard({
               theirs are their own brand's colour. */}
           <button
             onClick={onRemove}
-            className={`${REPO_ACTION_CHIP} ${REPO_ACTION_SQUARE} hover:bg-red/15 hover:text-red`}
+            className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-red/15 hover:text-red`}
             title={t('agentInfo.removeRepository')}
             aria-label={t('agentInfo.removeRepository')}
           >
@@ -190,7 +190,11 @@ export function RepositoryCard({
             </span>
             <button
               onClick={() => onCopyBranchName(gitData.branch!)}
-              className="p-1 ml-auto rounded hover:bg-ink/10 transition-colors group flex-shrink-0"
+              /* `rounded-lg`, the card's one radius — it was the last 4px corner left in
+                 here. Kept at 20px rather than grown to the 24px action square: it is
+                 nested INSIDE the branch chip, and a full-size control there would all
+                 but fill the row it sits in. */
+              className="p-1 ml-auto rounded-lg hover:bg-ink/10 transition-colors group flex-shrink-0"
               title={t('agentInfo.copyBranch')}
             >
               {copiedBranch === gitData.branch ? (
@@ -204,7 +208,7 @@ export function RepositoryCard({
       )}
 
       {/* EVERY BLOCK IN THIS CARD IS THE HEADER CHIP, GROWN. `bg-ink/5` and `rounded-lg`
-         are `REPO_ACTION_CHIP`'s own two values, so the branch chips, the two blocks
+         are `ACTION_CHIP`'s own two values, so the branch chips, the two blocks
          below, the empty state and the PR card are all one material at one radius —
          the row of buttons at the top states the vocabulary, and the card repeats it
          at every size.
@@ -325,7 +329,7 @@ export function RepositoryCard({
                     commit row look like a different card from the one above it. */}
                 <button
                   onClick={() => onCopyCommitHash(commit.hash)}
-                  className={`${REPO_ACTION_CHIP} px-2 gap-1 font-mono text-xs hover:bg-ink/10 hover:text-ink`}
+                  className={`${ACTION_CHIP} px-2 gap-1 font-mono text-xs hover:bg-ink/10 hover:text-ink`}
                   title={`Copy full hash: ${commit.hash}`}
                 >
                   {commit.shortHash}
@@ -338,7 +342,7 @@ export function RepositoryCard({
                 {commit.isPushed && gitData.gitHubUrl && (
                   <button
                     onClick={() => window.electronAPI.shell.openExternal(`${gitData.gitHubUrl}/commit/${commit.hash}`)}
-                    className={`${REPO_ACTION_CHIP} ${REPO_ACTION_SQUARE} hover:bg-ink/10 hover:text-ink`}
+                    className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-ink/10 hover:text-ink`}
                     title={t('agentInfo.viewOnGitHub')}
                   >
                     <GitHubIcon className="w-3.5 h-3.5" />

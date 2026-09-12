@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Play, ChevronDown } from 'lucide-react'
 import { useScriptRunner } from '../../hooks/useScriptRunner'
 import { useT, type MessageKey } from '../../i18n'
-import { REPO_ACTION_CHIP, REPO_ACTION_PILL } from './repoActionChip'
+import { ACTION_CHIP, ACTION_CHIP_PILL } from '../actionChip'
 import type { ProjectScripts, ScriptCategory, PackageScript, ScriptPackage } from '../../../types'
 
 const CATEGORY_ORDER: ScriptCategory[] = ['dev', 'build', 'test', 'lint', 'other']
@@ -156,7 +156,7 @@ export function ScriptsDropdown({ repoPath, repoName, agentId, agentName }: Scri
 
   return (
     <>
-      {/* The header row's chip, icon-only like its neighbours — see `repoActionChip`.
+      {/* The header row's chip, icon-only like its neighbours — see `actionChip`.
           The chevron stays: it is the only thing separating a menu from the two links
           beside it now that the word "Scripts" is in the tooltip — and it turns over
           while the panel is open, so the chip states what it is doing rather than
@@ -171,7 +171,7 @@ export function ScriptsDropdown({ repoPath, repoName, agentId, agentName }: Scri
         aria-label={t('agentInfo.runScripts')}
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        className={`${REPO_ACTION_CHIP} ${REPO_ACTION_PILL} ${
+        className={`${ACTION_CHIP} ${ACTION_CHIP_PILL} ${
           isOpen ? 'bg-purple/20 text-purple' : 'hover:bg-purple/10 hover:text-purple'
         }`}
       >

@@ -1,5 +1,5 @@
 /**
- * The one shape the repository header's actions are drawn in.
+ * The one shape an icon action is drawn in, anywhere in the app.
  *
  * IT IS THE TICKET BADGE'S SHAPE. `TrackerBadge` (components/icons/TrackerIcons.tsx)
  * is what the card above this one wears — `h-6 … rounded-lg` on a filled `bg-ink/5`
@@ -14,18 +14,35 @@
  * enough: a play triangle, VS Code's ribbon, GitHub's cat.
  *
  * The hover tint is each action's own colour and the rest is shared, so a new action
- * added here cannot drift from the row: `${REPO_ACTION_CHIP} ${REPO_ACTION_SQUARE} …`.
+ * added anywhere cannot drift from the row: `${ACTION_CHIP} ${ACTION_CHIP_SQUARE} …`.
+ *
+ * IT LIVES HERE AND NOT IN `agent-info-sidebar/`, where it was written. The left
+ * sidebar's AGENTS header wears it too now, and a left-hand control importing
+ * `repoActionChip` from the right-hand panel's folder would have been the file name
+ * lying about who owns the vocabulary. It is the app's, not one card's.
  */
-export const REPO_ACTION_CHIP =
+export const ACTION_CHIP =
   'h-6 inline-flex items-center justify-center rounded-lg bg-ink/5 text-icon ' +
   'border-none cursor-pointer transition-colors flex-shrink-0'
 
 /** A single mark, centred: VS Code and GitHub. */
-export const REPO_ACTION_SQUARE = 'w-6'
+export const ACTION_CHIP_SQUARE = 'w-6'
 
 /**
  * Scripts, which is a MENU and not a link. It keeps the chevron the other two have no
  * business carrying, so it is a shade wider than square — the one place the row is
  * allowed to be uneven, because the difference is what says "this one opens something".
  */
-export const REPO_ACTION_PILL = 'px-1.5 gap-0.5'
+export const ACTION_CHIP_PILL = 'px-1.5 gap-0.5'
+
+/**
+ * The same chip carrying WORDS instead of a mark — a label, not a control.
+ *
+ * Identical geometry to the square above, which is the point: a row mixing the two
+ * (the agent card's brand label beside its model, the usage card's account beside its
+ * fold button) lands on one height and one radius. No ground and no ink here — a label
+ * is named by its colour, and each caller owns that: the brand ones wear their own hue
+ * at 14%, the neutral ones `bg-ink/10 text-ink`.
+ */
+export const LABEL_CHIP =
+  'h-6 gap-1.5 px-2 rounded-lg text-xs font-medium inline-flex items-center flex-shrink-0'
