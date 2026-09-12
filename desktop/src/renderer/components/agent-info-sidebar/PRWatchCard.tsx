@@ -858,7 +858,7 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
   }
 
   return (
-    <div className="mt-2 bg-surface rounded-lg border border-line-subtle overflow-hidden">
+    <div className="bg-surface rounded-lg border border-line-subtle overflow-hidden">
       {/* Header — the card's identity IS the link to GitHub, which is why the
           separate "View pull request" button below the card could go away. The
           badge sits inside that target: it labels the PR, so clicking it should open
