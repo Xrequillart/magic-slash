@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.93.0] - 2026-09-12
+
+### Added
+
+- **Desktop**: An agent with no ticket now offers to pick one — the empty badge opens Tasks in picking mode, where clicking a card attaches that ticket instead of opening it
+- **Desktop**: A ticket's page can take an agent off the ticket, leaving the agent itself running
+- **Desktop**: The agent's description saves with Enter, Shift+Enter starts a new line, and its Save button is gone
+
+### Changed
+
+- **Desktop**: The ticket id in the right sidebar wears the same badge as a Tasks card, on its tracker's own ground
+- **Desktop**: Every card in the right sidebar carries the same padding
+- **Desktop**: The agent's title and description show their ground on hover only, and carry no border in either state
+
+### Fixed
+
+- **Desktop**: The gap above the pull request card matches the gaps between the blocks above it
+
 ## [0.92.1] - 2026-09-12
 
 ### Changed
@@ -2773,6 +2791,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.93.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.93.0
 [0.92.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.92.1
 [0.92.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.92.0
 [0.91.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.91.3

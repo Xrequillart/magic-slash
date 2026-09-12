@@ -22,7 +22,7 @@
  * would be right in git and stale in the browser. Nothing in the app can see that —
  * only a deploy can fix it.
  */
-export const LATEST_DESKTOP_VERSION = '0.92.1'
+export const LATEST_DESKTOP_VERSION = '0.93.0'
 
 /**
  * The build itself — a URL that DOWNLOADS the app, not one that lands on GitHub.
