@@ -67,12 +67,22 @@ export function toStatus(value: string | undefined): PlanStatus {
 }
 
 /**
- * The timestamp a session is sorted and dated by: when it last changed, falling back to
- * when it was created. Both are optional in principle, and a row with neither sorts last
- * rather than throwing the comparator off.
+ * The timestamp a session is sorted by: WHEN IT WAS STARTED, falling back to when it
+ * last changed. Both are optional in principle, and a row with neither sorts last rather
+ * than throwing the comparator off.
+ *
+ * CREATION FIRST, which is the reverse of what this did. It was update-then-creation,
+ * and the row printed the same value, so the dates read straight down the column. The
+ * row now prints creation — a plan touched this morning is not a plan from this morning
+ * — and a list ordered by one date while showing another puts its dates visibly out of
+ * order, which reads as a bug. One value, sorted and shown.
+ *
+ * The fallback direction is unchanged in spirit: whichever of the two exists is better
+ * than nothing, and `created_at` is `not null default now()` in the table, so the second
+ * arm only catches a value no Date can parse.
  */
 export function planRecency(session: Pick<PlanSession, 'updatedAt' | 'createdAt'>): number {
-  for (const iso of [session.updatedAt, session.createdAt]) {
+  for (const iso of [session.createdAt, session.updatedAt]) {
     if (!iso) continue
     const at = new Date(iso).getTime()
     if (!Number.isNaN(at)) return at

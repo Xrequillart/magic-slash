@@ -210,8 +210,11 @@ function toPlanTicket(row: PlanTicketRow): PlanTicketRead {
  * may be none — and sorting that subset perfectly still shows the wrong plans. The
  * tie-break stays in the renderer; the recency lives here.
  *
- * `updated_at` is `not null default now()` (20260821090000), so there are no nulls for
- * the descending order to have to place.
+ * `created_at`, matching `planRecency` in the renderer — the two must name the same
+ * clock or the cap keeps the 500 most recently TOUCHED plans while the page shows and
+ * orders the most recently STARTED ones, and a plan created yesterday could be missing
+ * from the top of a list it belongs at the top of. It is `not null default now()`
+ * (20260821090000), so there are no nulls for the descending order to have to place.
  *
  * `truncated` is set when the read came back AT the cap. It is deliberately not "there
  * are definitely more": a list of exactly `PLAN_LIST_LIMIT` sessions reports itself
@@ -226,7 +229,7 @@ async function fetchPlanSessions(): Promise<Read<PlanSession> & { truncated: boo
   const { data, error } = await client
     .from('plan_sessions')
     .select(LIST_COLUMNS)
-    .order('updated_at', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(PLAN_LIST_LIMIT)
   if (error || !data) return { rows: [], ok: false, truncated: false }
 

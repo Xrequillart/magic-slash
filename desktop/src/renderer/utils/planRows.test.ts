@@ -74,42 +74,54 @@ describe('planLabel', () => {
 })
 
 describe('planRecency and sortPlanSessions', () => {
-  it('dates a session by its update, falling back to its creation', () => {
-    expect(planRecency(session({ updatedAt: undefined }))).toBe(
-      new Date('2026-08-20T09:00:00Z').getTime(),
+  it('dates a session by its creation, falling back to its update', () => {
+    // Creation wins while it is there, even though the fixture was updated an hour later.
+    expect(planRecency(session())).toBe(new Date('2026-08-20T09:00:00Z').getTime())
+    expect(planRecency(session({ createdAt: undefined }))).toBe(
+      new Date('2026-08-20T10:00:00Z').getTime(),
     )
     expect(planRecency(session({ updatedAt: undefined, createdAt: undefined }))).toBe(0)
     // A stored value no Date can parse must not poison the comparator.
-    expect(planRecency(session({ updatedAt: 'not-a-date' }))).toBe(
-      new Date('2026-08-20T09:00:00Z').getTime(),
+    expect(planRecency(session({ createdAt: 'not-a-date' }))).toBe(
+      new Date('2026-08-20T10:00:00Z').getTime(),
     )
   })
 
-  it('puts the most recent session first', () => {
+  it('puts the most recently created session first', () => {
     const ordered = sortPlanSessions([
-      session({ id: 'old', updatedAt: '2026-08-01T00:00:00Z' }),
-      session({ id: 'new', updatedAt: '2026-08-20T00:00:00Z' }),
-      session({ id: 'mid', updatedAt: '2026-08-10T00:00:00Z' }),
+      session({ id: 'old', createdAt: '2026-08-01T00:00:00Z' }),
+      session({ id: 'new', createdAt: '2026-08-20T00:00:00Z' }),
+      session({ id: 'mid', createdAt: '2026-08-10T00:00:00Z' }),
     ])
     expect(ordered.map((s) => s.id)).toEqual(['new', 'mid', 'old'])
+  })
+
+  it('ignores when a session was last touched', () => {
+    // The whole point of the creation-first order: a plan edited this morning does not
+    // jump the queue over one started after it.
+    const ordered = sortPlanSessions([
+      session({ id: 'started-first', createdAt: '2026-08-01T00:00:00Z', updatedAt: '2026-08-30T00:00:00Z' }),
+      session({ id: 'started-second', createdAt: '2026-08-10T00:00:00Z', updatedAt: '2026-08-10T00:00:00Z' }),
+    ])
+    expect(ordered.map((s) => s.id)).toEqual(['started-second', 'started-first'])
   })
 
   it('breaks ties on id so the order is stable across refetches', () => {
     const same = '2026-08-20T00:00:00Z'
     const first = sortPlanSessions([
-      session({ id: 'b', updatedAt: same }),
-      session({ id: 'a', updatedAt: same }),
+      session({ id: 'b', createdAt: same }),
+      session({ id: 'a', createdAt: same }),
     ])
     const second = sortPlanSessions([
-      session({ id: 'a', updatedAt: same }),
-      session({ id: 'b', updatedAt: same }),
+      session({ id: 'a', createdAt: same }),
+      session({ id: 'b', createdAt: same }),
     ])
     expect(first.map((s) => s.id)).toEqual(['a', 'b'])
     expect(second.map((s) => s.id)).toEqual(['a', 'b'])
   })
 
   it('does not mutate the array it was given', () => {
-    const input = [session({ id: 'a', updatedAt: '2026-08-01T00:00:00Z' }), session({ id: 'b' })]
+    const input = [session({ id: 'a', createdAt: '2026-08-01T00:00:00Z' }), session({ id: 'b' })]
     sortPlanSessions(input)
     expect(input.map((s) => s.id)).toEqual(['a', 'b'])
   })
