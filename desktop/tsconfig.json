@@ -21,10 +21,13 @@
     "paths": {
       "@/*": ["src/*"],
       "@main/*": ["src/main/*"],
-      "@renderer/*": ["src/renderer/*"]
+      "@renderer/*": ["src/renderer/*"],
+      "@ds/*": ["../design-system/*"],
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "../design-system/desktop/**/*.ts", "../design-system/desktop/**/*.tsx"],
   "references": [
     { "path": "./tsconfig.node.json" }
   ]

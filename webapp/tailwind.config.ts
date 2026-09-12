@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss'
+import defaultColors from 'tailwindcss/colors'
 
 // Light theme matching the /docs landing page: soft-blue canvas, black text,
 // Cera Pro (display) + Avenir (body), indigo/brand-blue accents.
@@ -824,11 +825,38 @@ const PLATES = {
 }
 
 const config: Config = {
-  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
+  content: [
+    './app/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+    // The shared components, rendered live by `/design-system`. Their class names are
+    // literals for exactly this scanner to find — see `design-system/README.md` — and
+    // the tokens they name are declared below.
+    //
+    // THE SOURCE FOLDERS BY NAME, never `design-system/**`: that folder holds an
+    // `npm install` of its own now, and the wider glob had Tailwind walking four
+    // thousand lucide files on every build. It says so itself, in a warning, which is
+    // the only reason this was caught rather than merely paid for.
+    '../design-system/desktop/**/*.{ts,tsx}',
+    '../design-system/webapp/**/*.{ts,tsx}',
+  ],
   theme: {
     extend: {
       colors: {
-        ink: INK,
+        /**
+         * The page's black — and, on `/design-system` only, the DESKTOP app's
+         * primary text instead.
+         *
+         * A variable with a FALLBACK rather than a flat `INK`, and the fallback is
+         * `INK`'s own channels: nothing on the public site sets `--c-ink`, so every
+         * `text-ink` on every marketing page resolves to #0A0A0A exactly as before.
+         * The design-system page writes the desktop's theme variables onto its
+         * preview ground, and inside that one subtree the shared components' own
+         * `text-ink` becomes the near-white those dark grounds need.
+         *
+         * Bare channels and not a hex, because `text-ink/70` is used on the site and
+         * `var(--x, #0A0A0A)` cannot take an alpha modifier.
+         */
+        ink: `rgb(var(--c-ink, 10 10 10) / <alpha-value>)`,
         muted: '#52525b',
         softblue: '#D9E8FF',
         // `softblue`'s green counterpart, for the one page whose opening is green rather
@@ -955,9 +983,17 @@ const config: Config = {
         // allowed; now that `brand` is the CTA fill, the list above is no longer an
         // exemption to justify but simply an inventory of where blue means state,
         // measurement or decoration instead of action.
+        // A VARIABLE WITH A FALLBACK, for the reason `ink` is one: the shared
+        // components write `bg-accent/20 text-accent` — `Avatar`'s no-photo badge —
+        // and on `/design-system` that has to be the DESKTOP's accent, not this
+        // site's. The fallbacks are the two values that were here, and they are not
+        // an approximation: `#6366F1` and `#818cf8` are `themes.ts`'s own `dark`
+        // accent and accent-hover, which is where they were copied from. Nothing
+        // outside a theme ground sets `--c-accent`, so every marketing page resolves
+        // to the exact hex it did before.
         accent: {
-          DEFAULT: ACCENT,
-          hover: '#818cf8',
+          DEFAULT: `rgb(var(--c-accent, 99 102 241) / <alpha-value>)`,
+          hover: `rgb(var(--c-accent-hover, 129 140 248) / <alpha-value>)`,
         },
         brand: BRAND,
         regie: {
@@ -1038,20 +1074,85 @@ const config: Config = {
           /** `text-icon-muted`: decoration — the pencil beside an editable field. */
           muted: '#65656A',
         },
-        purple: '#a855f7',
-        green: '#22c55e',
-        red: '#ef4444',
-        yellow: '#eab308',
-        // TWO MORE OF THE APP'S TONES, for the two info-sidebar cards on `/features`.
-        // `orange` is the context gauge between 40% and 70%, and that turn is the
-        // picture; `blue` is the "in review" status pill. Both are `themes.ts`'s values.
-        // Nothing outside a mockup may reach for them.
-        orange: '#f97316',
-        blue: '#3b82f6',
-        // Two more for the status table under the ticket card: `planned`/`committed` wear
-        // cyan, `review addressed` teal. `themes.ts`'s values, like the two above.
-        cyan: '#22d3ee',
-        teal: '#2dd4bf',
+        // THE APP'S TONES. Hardcoded here for the `/features` mockups, and now also
+        // what the shared components in `design-system/desktop/` resolve against when
+        // `/design-system` renders them — those spell `bg-green/10` and `text-orange`
+        // literally, so this config has to answer to the names or they render untinted.
+        //
+        // A VARIABLE WITH A FALLBACK, and the fallback is each one's own former value
+        // in channels — which is `themes.ts`'s `dark` theme, where they were copied from
+        // in the first place. Nothing on the public site sets `--c-*`, so every mockup
+        // resolves to the exact hex it did before; the design-system page writes a
+        // theme's variables onto its preview ground and inside that subtree alone these
+        // follow it. The mockups could be pointed at the same switch one day, which is
+        // the second reason for the form.
+        //
+        // EACH SPREADS TAILWIND'S OWN SCALE. A bare `red: '#ef4444'` does not add a
+        // default to the red family, it REPLACES the family — `red-50` through `red-950`
+        // stop existing, silently. That is why `text-red-400` in `DesktopHero` has never
+        // painted anything: the class was not in the stylesheet at all. Spreading the
+        // scale keeps `red-400` and gives `text-red` a value, so both spellings work.
+        purple: { ...defaultColors.purple, DEFAULT: 'rgb(var(--c-purple, 168 85 247) / <alpha-value>)' },
+        green: { ...defaultColors.green, DEFAULT: 'rgb(var(--c-green, 34 197 94) / <alpha-value>)' },
+        red: { ...defaultColors.red, DEFAULT: 'rgb(var(--c-red, 239 68 68) / <alpha-value>)' },
+        yellow: { ...defaultColors.yellow, DEFAULT: 'rgb(var(--c-yellow, 234 179 8) / <alpha-value>)' },
+        // `orange` is the context gauge between 40% and 70% on `/features`, and that turn
+        // is the picture; `blue` is the "in review" status pill.
+        orange: { ...defaultColors.orange, DEFAULT: 'rgb(var(--c-orange, 249 115 22) / <alpha-value>)' },
+        blue: { ...defaultColors.blue, DEFAULT: 'rgb(var(--c-blue, 59 130 246) / <alpha-value>)' },
+        // The status table under the ticket card: `planned`/`committed` wear cyan,
+        // `review addressed` teal.
+        cyan: { ...defaultColors.cyan, DEFAULT: 'rgb(var(--c-cyan, 34 211 238) / <alpha-value>)' },
+        teal: { ...defaultColors.teal, DEFAULT: 'rgb(var(--c-teal, 45 212 191) / <alpha-value>)' },
+
+        // THE REST OF THE DESKTOP'S ROLES, for the shared components in
+        // `design-system/desktop/`. The tones above were already here for the
+        // `/features` mockups; these were not, and their absence was invisible in the
+        // worst way — Tailwind cannot emit a class for a colour it has never heard of,
+        // so `text-icon` and `text-text-secondary` were simply MISSING from the
+        // stylesheet and every `Icon` and every secondary `Text` on `/design-system`
+        // fell through to whatever colour it inherited. They looked like components
+        // that ignored the theme; they were components whose colour did not exist.
+        //
+        // NO FALLBACKS, unlike the tones above. Those had a value to preserve because
+        // the public site paints with them; nothing outside a theme ground uses these,
+        // so inventing a default would be inventing a colour. Unset, the declaration
+        // is invalid and dropped — which is the right answer for a class used only
+        // where `--c-*` is defined.
+        //
+        // Two shapes, mirroring `desktop/tailwind.config.cjs`: bare `R G B` channels
+        // wrapped for `<alpha-value>` where opacity modifiers are used, and complete
+        // colours for surfaces and lines, whose translucency is part of the design and
+        // differs per theme.
+        'text-secondary': 'rgb(var(--c-text-secondary) / <alpha-value>)',
+        'on-brand': 'rgb(var(--c-on-brand) / <alpha-value>)',
+        icon: {
+          DEFAULT: 'rgb(var(--c-icon) / <alpha-value>)',
+          muted: 'rgb(var(--c-icon-muted) / <alpha-value>)',
+        },
+        // `bg` and not `appbg`, even though `bg-bg` reads oddly: a shared component
+        // writes the desktop's own class names, so a webapp token under a different
+        // name would simply not answer to them. `text-bg` is what a solid green
+        // button's label wears, so it follows the window and reads on the dark themes
+        // and the light ones alike.
+        bg: {
+          DEFAULT: 'rgb(var(--c-bg) / <alpha-value>)',
+          secondary: 'rgb(var(--c-bg-secondary) / <alpha-value>)',
+          tertiary: 'rgb(var(--c-bg-tertiary) / <alpha-value>)',
+        },
+        surface: {
+          subtle: 'var(--c-surface-subtle)',
+          DEFAULT: 'var(--c-surface)',
+          strong: 'var(--c-surface-strong)',
+          sunken: 'var(--c-surface-sunken)',
+          'sunken-soft': 'var(--c-surface-sunken-soft)',
+        },
+        line: {
+          subtle: 'var(--c-line-subtle)',
+          field: 'var(--c-line-field)',
+          DEFAULT: 'var(--c-line)',
+          strong: 'var(--c-line-strong)',
+        },
         // THE APP'S THREE BACKGROUNDS AND ITS BORDER, `themes.ts`'s dark values, for the
         // menus and pills the repository and PR cards on `/features` reproduce. Solid,
         // for the reason `appink` is: a menu floats over a card over a panel, and an

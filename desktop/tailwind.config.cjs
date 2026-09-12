@@ -3,6 +3,10 @@ module.exports = {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
+    // The shared components spell their classes as literals precisely so this
+    // glob can find them — see `design-system/README.md`. Left out, a `Banner`
+    // renders with no ground at all.
+    "../design-system/desktop/**/*.{ts,tsx}",
   ],
   // Deliberately off: `backdrop-filter` has to re-read and re-blur whatever sits
   // behind an element on every frame, which killed scroll performance (~53ms per

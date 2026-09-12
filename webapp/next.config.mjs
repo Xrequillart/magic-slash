@@ -1,6 +1,30 @@
+import path from 'node:path'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+
+  /**
+   * `design-system/` sits a directory ABOVE this app, and Next refuses to compile a
+   * file outside the project root unless told to. Without it, importing `@ds/desktop`
+   * fails to resolve rather than merely rendering oddly.
+   *
+   * The alias itself is set in `webpack()` below, and mirrored in `tsconfig.json` so
+   * the editor and `next build`'s type-check agree with the bundler.
+   */
+  experimental: { externalDir: true },
+
+  webpack(config) {
+    // The alias, and ONLY the alias. Pinning `react` here as well — the obvious
+    // guard against an out-of-root file finding a second copy — breaks the build
+    // instead: Next points `react` at its own vendored builds per environment, and
+    // the server one is where `React.cache` lives. Overriding it takes `cache` away
+    // from every server component, and the build dies collecting `/admin/…` page
+    // data with `n.cache is not a function`. Next's own resolution already gives
+    // the shared files this app's React; leave it alone.
+    config.resolve.alias = { ...config.resolve.alias, '@ds': path.resolve(process.cwd(), '../design-system') }
+    return config
+  },
 
   /**
    * `/application` is the way into the Application section, not a tab of its own —

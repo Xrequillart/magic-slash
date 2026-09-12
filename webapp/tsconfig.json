@@ -14,8 +14,13 @@
     "jsx": "preserve",
     "incremental": true,
     "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./*"] }
+    "paths": {
+      "@/*": ["./*"],
+      "@ds/*": ["../design-system/*"],
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"]
+    }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "../design-system/desktop/**/*.ts", "../design-system/desktop/**/*.tsx", "../design-system/webapp/**/*.ts", "../design-system/webapp/**/*.tsx"],
   "exclude": ["node_modules"]
 }

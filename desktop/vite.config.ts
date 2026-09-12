@@ -81,8 +81,24 @@ export default defineConfig(({ mode }) => {
     alias: {
       '@': resolve(__dirname, 'src'),
       '@main': resolve(__dirname, 'src/main'),
-      '@renderer': resolve(__dirname, 'src/renderer')
-    }
+      '@renderer': resolve(__dirname, 'src/renderer'),
+      // The shared components, compiled from source — there is no package and no
+      // build step in `design-system/`, and deliberately so: two apps with two
+      // `node_modules` and no workspaces cannot agree on a published artefact,
+      // but they can both read a .tsx file.
+      '@ds': resolve(__dirname, '../design-system')
+    },
+    // The DS files resolve their `react` import from the ROOT `node_modules`,
+    // which has none — so without this Vite happily bundles a second copy the
+    // moment one ever lands there, and two Reacts in one renderer is a blank
+    // window with "invalid hook call" in the console.
+    dedupe: ['react', 'react-dom']
+  },
+  server: {
+    // `design-system/` sits ABOVE the Vite root, and the dev server refuses to
+    // serve a file outside it unless the path is allowed. Without this the app
+    // builds for production and 403s in dev, which is the worse way round.
+    fs: { allow: [resolve(__dirname), resolve(__dirname, '../design-system')] }
   },
   build: {
     outDir: 'dist/renderer',
