@@ -1032,8 +1032,12 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
           than the banner's — see `agentTerminalId`. A teammate's agent is a fact worth
           stating and nothing this window can open, so the banner stands on its own. */}
       {hasAgent && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-green/10 border border-green/30">
-          <BotMessageSquare className="w-4 h-4 text-green flex-shrink-0" />
+        /* `mb-5`, the title's own `pb-5`: the column above spaces nothing for its
+           blocks, so a block that states a fact about the ticket and then lets the
+           body start has to carry the separation itself — without it the banner and
+           the first card share an edge and read as one panel. */
+        <div className="flex items-center gap-3 mb-5 px-4 py-3 rounded-xl bg-green/10">
+          <BotMessageSquare className="w-5 h-5 text-green flex-shrink-0" />
           <span className="text-sm text-ink min-w-0">{t('tasks.hasAgentHint')}</span>
           {agentTerminalId && (
             <span className="ml-auto flex-shrink-0 flex items-center gap-2">
