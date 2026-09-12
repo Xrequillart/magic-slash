@@ -1,11 +1,11 @@
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { AlertTriangle, ArrowLeft, CloudOff, FileWarning, FolderGit2, RotateCcw } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CloudOff, FileWarning, RotateCcw } from 'lucide-react'
 import type { PlanDetail, PlanTicketRead, PlanTicketStates } from '../../../types'
 import { useT } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
 import MarkdownView from '../../components/file-preview/MarkdownView'
 import { AccountAvatar } from '../../components/AccountAvatar'
-import { RepoMark } from '../../components/agent-info-sidebar/RepoMark'
+import { RepoColorChip } from '../../components/agent-info-sidebar/RepoMark'
 import { formatTimestamp } from '../../components/agent-info-sidebar/utils'
 import { useStore } from '../../store'
 import { configKeyForRepoId } from '../../utils/projectColors'
@@ -15,7 +15,8 @@ import { taskSelectionFor } from '../../utils/taskSelection'
 import { detectTicketProvider } from '../../components/agent-info-sidebar/utils'
 import { TrackerBadge } from '../../components/icons/TrackerIcons'
 import { JiraStatusPill, StateChip } from '../Tasks/parts'
-import { STATUS_LOOK } from './PlanRow'
+import { STATUS_LOOK, STATUS_PILL } from './PlanRow'
+import { PlanIdBadge } from './PlanIdBadge'
 
 /**
  * One plan, given the whole page — the Plans page's second view, not a panel beside its
@@ -57,7 +58,15 @@ import { STATUS_LOOK } from './PlanRow'
  * on the sweep layers and not on itself: an opaque band stopping short of the pane's edge
  * would leave a strip of the spec sliding past above it.
  */
-const TOP_BAR_H = 56
+/**
+ * The pinned bar's height, and therefore the page's top inset. Kept at the number
+ * `TaskDetailPage` settled on: the two pages are the same shape opened from two lists,
+ * and a reader moving between them would see the heading start at a different place.
+ *
+ * 48 rather than 56 for that page's reason — the bar holds one 30px control, so eight of
+ * those pixels were slack sitting directly between the back link and the title.
+ */
+const TOP_BAR_H = 48
 
 /** One heading over one block, in the type the webapp's detail page uses for the same. */
 function SectionHeading({ children }: { children: string }) {
@@ -200,7 +209,7 @@ function TicketTree({
 }) {
   const t = useT()
   return (
-    <div className="rounded-xl bg-surface-subtle border border-line-subtle p-2 divide-y divide-line-subtle">
+    <div className="rounded-xl bg-surface-subtle p-2 divide-y divide-line-subtle">
       {groups.map((group, index) => (
         <div key={group.epic?.key ?? `orphans-${index}`} className="py-1.5">
           {group.epic ? (
@@ -239,7 +248,7 @@ function Notice({
   children?: ReactNode
 }) {
   return (
-    <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
+    <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle rounded-xl">
       <Icon className="w-8 h-8 text-icon-muted" />
       <p>{title}</p>
       <p className="text-xs text-text-secondary/60 max-w-sm text-center">{body}</p>
@@ -387,7 +396,7 @@ export function PlanDetailPage({
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [onBack])
 
-  const { Icon: StatusIcon, tone, labelKey } = STATUS_LOOK[card.status]
+  const { pill, labelKey } = STATUS_LOOK[card.status]
   /**
    * The status, drawn ONCE and rendered in two places — the pinned bar while the reader
    * has scrolled past the heading, the heading itself before that. One expression rather
@@ -395,8 +404,7 @@ export function PlanDetailPage({
    * scroll would read as a second, different status.
    */
   const statusChip = (
-    <span className={`inline-flex items-center gap-1.5 text-xs flex-shrink-0 ${tone}`}>
-      <StatusIcon className="w-4 h-4" />
+    <span className={`${STATUS_PILL} ${pill}`}>
       {t(labelKey)}
     </span>
   )
@@ -445,9 +453,15 @@ export function PlanDetailPage({
         </button>
         {condensed ? (
           <>
-            {/* The row's own type size, not the heading's: this is the title standing in
+            {/* THE BADGE COMES WITH THE TITLE, the way a task's key does in its own
+                pinned bar: the bar stands in for the heading it replaced, and the heading
+                is `#7` and a name. Without it the reader who has scrolled has nothing on
+                screen naming which plan this is other than a truncated title.
+
+                The row's own type size, not the heading's: this is the title standing in
                 for itself in a 56px band, not a second `h1`. `title` on the element so
                 a name the bar has to truncate is still readable on hover. */}
+            <PlanIdBadge number={card.number} />
             <span className="min-w-0 flex-1 text-xs text-ink truncate" title={planLabel(card)}>
               {planLabel(card)}
             </span>
@@ -466,17 +480,23 @@ export function PlanDetailPage({
           the reader clicked this row and must see its title straight away, not a spinner
           where the name of the thing they opened should be. */}
       <div ref={titleRef} className="flex items-start justify-between gap-4 min-w-0">
-        <h1 className="min-w-0 text-xl font-semibold text-ink break-words">{planLabel(card)}</h1>
+        {/* Badge, then name — the row's order, so the list and the page it opens read the
+            same way down the left edge. At `md`, the size a ticket's key wears on ITS
+            page: this is a heading, and the list's 24px badge beside a `text-xl` title
+            read as a caption that had come adrift from it.
+
+            `items-center` centres the two on their HEIGHTS, which is what `TaskDetailPage`
+            settled on for the same pair: hung from the first line's cap height the badge
+            sits visibly high on the one-line titles that are most of them. */}
+        <div className="flex items-center gap-3 min-w-0">
+          <PlanIdBadge number={card.number} size="md" />
+          <h1 className="min-w-0 text-xl font-semibold text-ink break-words">{planLabel(card)}</h1>
+        </div>
         {statusChip}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-text-secondary">
-        <span className="inline-flex items-center gap-1.5 min-w-0">
-          {card.repoName
-            ? <RepoMark repoName={repoConfigKey} size="inline" />
-            : <FolderGit2 className="w-3.5 h-3.5 shrink-0" />}
-          <span className="truncate">{card.repoName ?? t('plans.noRepo')}</span>
-        </span>
+        <RepoColorChip colorKey={repoConfigKey} label={card.repoName ?? t('plans.noRepo')} />
         <span className="inline-flex items-center gap-1.5 min-w-0">
           <span className="flex shrink-0 text-icon-muted">
             <AccountAvatar dataUrl={card.avatarUrl ?? null} variant="sidebar" alt="" />
@@ -518,7 +538,7 @@ export function PlanDetailPage({
       ) : (
         <>
           {session.idea && (
-            <div className="mt-6 p-4 rounded-xl bg-surface-subtle border border-line-subtle">
+            <div className="mt-6 p-4 rounded-xl bg-surface-subtle">
               <p className="mb-1.5 text-[10px] uppercase tracking-wider text-text-secondary/60">
                 {t('plans.detail.idea')}
               </p>
@@ -528,7 +548,7 @@ export function PlanDetailPage({
 
           <SectionHeading>{t('plans.detail.tickets')}</SectionHeading>
           {detail.tickets.length === 0 ? (
-            <p className="py-6 text-center text-sm text-text-secondary bg-surface-subtle border border-line-subtle rounded-xl">
+            <p className="py-6 text-center text-sm text-text-secondary bg-surface-subtle rounded-xl">
               {t('plans.detail.noTickets')}
             </p>
           ) : (
@@ -558,7 +578,7 @@ export function PlanDetailPage({
               <date>". So the markdown wins when there is any, and the flag downgrades it
               to a stale copy instead of suppressing it; only a row with no markdown at all
               gets the "never uploaded" wording, which is the one place it is true. */}
-          <div className="px-6 py-5 rounded-xl bg-surface border border-line-field">
+          <div className="px-6 py-5 rounded-xl bg-surface">
             {spec ? (
               <>
                 {session.specOversize && (

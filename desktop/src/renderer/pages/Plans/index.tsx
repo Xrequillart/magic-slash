@@ -424,10 +424,11 @@ export function PlansPage() {
               ) : empty ? (
                 <EmptyState {...empty} />
               ) : (
-                /* The list sits in a FRAME, and the frame is the same `line-subtle` as the
-                   rules between the rows: one hairline drawn all the way round rather than a
-                   heavier edge, so the box reads as the list's own outline and not as a card
-                   the rows were put inside.
+                /* NO OUTER RULE. The list used to be framed in the same `line-subtle` as
+                   the rules between its rows — but a line all the way round a list that
+                   already sits on its own ground draws a box around something that was not
+                   in doubt, and the rules INSIDE are doing the separating. The ground is
+                   what marks the region now; the hairlines only part the rows.
 
                    No padding, on purpose. The rows carry their own `px-4 py-3` and must reach
                    the frame on both sides: an inset would leave the rules stopping short of the
@@ -440,12 +441,10 @@ export function PlansPage() {
                    one. The first row drops its top rule (`first:border-t-0` on the row) so the
                    frame is not doubled by it.
 
-                   `rounded-xl bg-surface-subtle border border-line-subtle` is the board column's
-                   own string, from `Tasks/TaskBoard.tsx`, and it is copied rather than chosen so
-                   the two pages read as one app: a framed region of the app sits on
-                   `surface-subtle` everywhere here, and a bare frame with no ground was the thing
-                   that looked foreign. */
-                <div className="rounded-xl bg-surface-subtle border border-line-subtle overflow-hidden">
+                   `rounded-xl bg-surface-subtle` is the board column's own pair, from
+                   `Tasks/TaskBoard.tsx` minus its border, so the two pages read as one app: a
+                   region of it sits on `surface-subtle` everywhere here. */
+                <div className="rounded-xl bg-surface-subtle overflow-hidden">
                   {visible.map((card) => (
                     <PlanRow key={card.id} card={card} now={now} onSelect={select} />
                   ))}

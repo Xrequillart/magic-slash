@@ -1,9 +1,11 @@
 import { useCallback, type KeyboardEvent } from 'react'
-import { CircleCheck, CircleDashed, Ticket } from 'lucide-react'
+import { Ticket } from 'lucide-react'
+import { PlanIdBadge } from './PlanIdBadge'
 import type { PlanCard } from '../../utils/planRows'
 import { planLabel, planRecency } from '../../utils/planRows'
 import { AccountAvatar } from '../../components/AccountAvatar'
-import { RepoMark } from '../../components/agent-info-sidebar/RepoMark'
+import { LABEL_CHIP } from '../../components/actionChip'
+import { RepoColorChip } from '../../components/agent-info-sidebar/RepoMark'
 import { formatTimestamp } from '../../components/agent-info-sidebar/utils'
 import { useStore } from '../../store'
 import { configKeyForRepoId } from '../../utils/projectColors'
@@ -42,25 +44,38 @@ function ticketCountLabel(count: number, t: Translate): string {
 }
 
 /**
- * How the two statuses read: a glyph, a colour and a word.
+ * How the two statuses read: a plate and a word.
  *
  * Exported because the DETAIL page draws the same status at the top of the plan it was
- * opened from, and a row and its page disagreeing about the colour of one word is the
- * exact drift one table exists to prevent.
+ * opened from, and a row and its page disagreeing about one state is the exact drift one
+ * table exists to prevent.
  *
- * ONE TABLE, resolved once per row and used by both the icon and the label beside it.
- * The colour is the same mapping the webapp uses — `green` once the tickets exist,
- * `yellow` while the spec is still being written — so a session reads the same on both
- * surfaces, and holding it in one place is what stops the glyph and the word drifting
- * into two colours for one state. A dashed circle for the unfinished half and a closed
- * one for the finished half is the shape a reader of GitHub issue lists already knows.
+ * The two glyphs are gone with the tinted word they stood beside — a dashed circle and a
+ * closed one, which said the same thing the colour of the plate now says, twice, from
+ * two places on the row. The colour is unchanged and is the webapp's: `green` once the
+ * tickets exist, `yellow` while the spec is still being written, so a session reads the
+ * same on both surfaces.
  *
  * The classes are written out in full, never assembled: Tailwind scans for literals.
  */
 export const STATUS_LOOK = {
-  planned: { Icon: CircleCheck, tone: 'text-green', labelKey: 'plans.status.planned' },
-  planning: { Icon: CircleDashed, tone: 'text-yellow', labelKey: 'plans.status.planning' },
-} as const satisfies Record<PlanCard['status'], { Icon: typeof CircleCheck; tone: string; labelKey: MessageKey }>
+  planned: { pill: 'bg-green/20 text-green', labelKey: 'plans.status.planned' },
+  planning: { pill: 'bg-yellow/20 text-yellow', labelKey: 'plans.status.planning' },
+} as const satisfies Record<PlanCard['status'], { pill: string; labelKey: MessageKey }>
+
+/**
+ * The shape an agent's status wears, borrowed for a plan's.
+ *
+ * `px-2.5 py-1 rounded-full`, straight off `StatusPill` in the agent sidebar. A plan is
+ * one more thing in this app that has a state, and there is no reason for its state to
+ * be drawn as a tinted word when every agent's is a round plate. The colours stay the
+ * plan's own — green once the tickets exist, yellow while the spec is being written —
+ * which is also what the webapp uses, so a session reads the same on both surfaces.
+ *
+ * No chevron and no picker: an agent's status is set from its pill, a plan's is derived
+ * from whether its tickets exist. Same object, one of them inert.
+ */
+export const STATUS_PILL = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0'
 
 export function PlanRow({ card, now, onSelect }: { card: PlanCard; now: number; onSelect: (card: PlanCard) => void }) {
   const t = useT()
@@ -80,12 +95,12 @@ export function PlanRow({ card, now, onSelect }: { card: PlanCard; now: number; 
    * neutral mark for it.
    */
   const repoColorKey = configKeyForRepoId(card.repoId, repositories)
-  const { Icon, tone, labelKey } = STATUS_LOOK[card.status]
+  const { pill, labelKey } = STATUS_LOOK[card.status]
   const statusLabel = t(labelKey)
-  // Through `planRecency` rather than off `updatedAt` directly: it applies the same
-  // update-then-creation fallback the SORT uses, so the date printed on a row is the
-  // date the row was placed by — and it answers 0 for a timestamp no Date can parse,
-  // which is the one input that would otherwise render as "NaNy ago".
+  // WHEN THE PLAN WAS STARTED, and also the key the list is ordered by: `planRecency`
+  // reads creation first now, so the dates run in order down the column instead of
+  // contradicting the sort. It answers 0 for a timestamp no Date can parse, which is the
+  // one input that would otherwise render as "NaNy ago".
   const when = planRecency(card)
 
   const select = useCallback(() => onSelect(card), [onSelect, card])
@@ -122,15 +137,31 @@ export function PlanRow({ card, now, onSelect }: { card: PlanCard; now: number; 
       onKeyDown={onKeyDown}
       className="w-full text-left flex items-start gap-3 px-4 py-3 min-w-0 border-t border-line-subtle first:border-t-0 hover:bg-surface-strong transition-colors focus:outline-none focus-visible:bg-surface-strong focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent"
     >
-      <Icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${tone}`} aria-label={statusLabel} />
-
       <div className="flex flex-col min-w-0 flex-1 gap-0.5">
-        <div className="flex items-baseline gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          {/* The plan's own id, left of its name, exactly where a ticket wears its key —
+              same chip, same grey, our mark instead of GitHub's. See `PlanIdBadge`. */}
+          <PlanIdBadge number={card.number} />
           <span className="text-sm font-medium text-ink truncate">{planLabel(card)}</span>
-          {/* The word beside the glyph, not instead of it: the colour says which of the
-              two states this is at a glance down the column, and the label is what makes
-              the two colours mean something the first time they are seen. */}
-          <span className={`text-xs flex-shrink-0 ${tone}`}>{statusLabel}</span>
+          {/* THE RIGHT-HAND PAIR: what state this plan is in, and when it was started.
+              Both are fixed-width facts every row has, so they hold a column each on the
+              right edge and read straight down the list — where the title's length, and
+              the badge's, vary. The status was on the left, immediately after the title,
+              which put it at a different x on every row.
+
+              The state is drawn on the plate every agent's state is drawn on, not as a
+              tinted word; the leading glyph that used to stand outside the row went with
+              it — one marker per fact, and this one carries its own colour. The date has
+              no icon: it is the one piece of metadata whose shape already says what it
+              is. */}
+          <span className="ml-auto flex items-center gap-2 flex-shrink-0">
+            <span className={`${STATUS_PILL} ${pill}`}>{statusLabel}</span>
+            {when > 0 && (
+              <span className="text-xs text-text-secondary/50">
+                {t('relative.ago', { time: formatTimestamp(when, now, t) })}
+              </span>
+            )}
+          </span>
         </div>
 
         {/* One line of the idea and no more. It is there to tell two plans on the same
@@ -138,7 +169,14 @@ export function PlanRow({ card, now, onSelect }: { card: PlanCard; now: number; 
             turn the list back into a stack of cards. */}
         {card.idea && <span className="text-xs text-text-secondary line-clamp-1">{card.idea}</span>}
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
+        {/* THREE CHIPS, not three phrases separated by spaces. Each of these is a fact
+            with a mark and a value — the repository and its colour, the author and their
+            face, the count and its glyph — which is what `LABEL_CHIP` is for, and what
+            the agent sidebar draws them as two panels away. Loose text ran them
+            together into one grey sentence whose parts had to be picked apart by reading.
+            `gap-1.5` rather than the old `gap-x-3`: the chips carry their own padding, so
+            the wider gutter that separated bare words now separates plates. */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-xs text-text-secondary">
           {/* The repository as its COLOURED MARK and its name, not a name alone: that
               colour is how the same repo is recognised on the Tasks board and in the
               agent sidebar, and the shared `RepoMark` is what keeps the three the same
@@ -147,11 +185,8 @@ export function PlanRow({ card, now, onSelect }: { card: PlanCard; now: number; 
               plan. A session with no repository at all has no mark, only the label:
               there is no repo for a colour to belong to. What is DISPLAYED is the cloud
               name; what is COLOURED is the local key behind it. See `repoColorKey`. */}
-          <span className="inline-flex items-center gap-1.5 min-w-0">
-            {card.repoName && <RepoMark repoName={repoColorKey} size="inline" />}
-            <span className="truncate">{card.repoName ?? t('plans.noRepo')}</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5 min-w-0">
+          <RepoColorChip colorKey={repoColorKey} label={card.repoName ?? t('plans.noRepo')} />
+          <span className={`${LABEL_CHIP} min-w-0 bg-ink/5 text-ink`}>
             {/* `sidebar` is the one variant that fits a metadata line: 14px sits on
                 `text-xs` without lifting the row, and its bare-glyph fallback inherits
                 `text-icon-muted` from this wrapper, so an author with no photo draws the
@@ -163,13 +198,10 @@ export function PlanRow({ card, now, onSelect }: { card: PlanCard; now: number; 
             </span>
             <span className="truncate">{card.author}</span>
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Ticket className="w-3 h-3 shrink-0 text-icon-muted" />
+          <span className={`${LABEL_CHIP} bg-ink/5 text-ink`}>
+            <Ticket className="w-3.5 h-3.5 shrink-0 text-icon-muted" />
             {ticketCountLabel(card.ticketCount, t)}
           </span>
-          {/* No icon, like the webapp's date: it is the one piece of metadata whose
-              shape already says what it is. */}
-          {when > 0 && <span>{t('relative.ago', { time: formatTimestamp(when, now, t) })}</span>}
         </div>
       </div>
     </div>

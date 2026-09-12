@@ -61,7 +61,7 @@ export type RepoMarkSize = keyof typeof REPO_MARK_SIZES
  * Shared by the mark and the name badge below so the two cannot resolve the same repo
  * to two different colours — they are drawn side by side, and now inside one another.
  */
-function useRepoColor(repoName?: string): string | undefined {
+export function useRepoColor(repoName?: string): string | undefined {
   const repositories = useStore(s => s.config?.repositories)
   return repoName
     ? getProjectColorMap(Object.keys(repositories ?? {}), repositories)[repoName]
@@ -156,5 +156,54 @@ export function RepoNameBadge({
       />
       <span className="truncate">{repoName}</span>
     </button>
+  )
+}
+
+/**
+ * The same chip as `RepoNameBadge`, INERT and with the two names split apart.
+ *
+ * Two differences, and each is forced by where it is used — the Plans list and a plan's
+ * detail header:
+ *
+ * THE CLICK IS GONE. A plan row is itself a `role="button"`, and a control inside it
+ * would either swallow the row's own click or navigate the reader out of the modal they
+ * are reading. A chip that looks pressable and is not would be worse than a plain label,
+ * so this one is a `<span>` and nothing about it invites a press.
+ *
+ * THE COLOUR KEY AND THE LABEL ARE SEPARATE. A plan carries the repository's CLOUD name,
+ * and names are unique only inside one organization; the colour map is keyed by the
+ * LOCAL config, where a second `api` is stored as `api (Acme)`. So what is displayed and
+ * what is coloured are two different strings, and the caller resolves the second through
+ * `configKeyForRepoId`. `RepoNameBadge` needs no such split — the sidebar names the local
+ * repository it is attached to, so its one string is both.
+ */
+export function RepoColorChip({
+  colorKey,
+  label,
+  className = '',
+}: {
+  /** The key the colour map is keyed by, or undefined for a repo this machine has none for. */
+  colorKey?: string
+  /** What to print — the cloud name, or the "no repository" wording. */
+  label: string
+  className?: string
+}) {
+  const repoColor = useRepoColor(colorKey)
+  const uncoloured = !repoColor
+
+  return (
+    <span
+      title={label}
+      className={`h-6 gap-1.5 px-2 rounded-lg text-xs inline-flex items-center min-w-0 text-ink font-medium ${
+        uncoloured ? 'bg-surface-subtle' : ''
+      } ${className}`}
+      style={uncoloured ? undefined : { backgroundColor: `${repoColor}1f` }}
+    >
+      <FolderGit2
+        className={`w-3.5 h-3.5 flex-shrink-0 ${uncoloured ? 'text-icon-muted' : ''}`}
+        style={uncoloured ? undefined : { color: repoColor }}
+      />
+      <span className="truncate">{label}</span>
+    </span>
   )
 }
