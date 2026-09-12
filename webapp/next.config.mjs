@@ -15,16 +15,35 @@ const nextConfig = {
   experimental: { externalDir: true },
 
   webpack(config) {
-    // The alias, and ONLY the alias. Pinning `react` here as well — the obvious
-    // guard against an out-of-root file finding a second copy — breaks the build
-    // instead: Next points `react` at its own vendored builds per environment, and
-    // the server one is where `React.cache` lives. Overriding it takes `cache` away
-    // from every server component, and the build dies collecting `/admin/…` page
-    // data with `n.cache is not a function`. Next's own resolution already gives
-    // the shared files this app's React; leave it alone.
-    config.resolve.alias = { ...config.resolve.alias, '@ds': path.resolve(process.cwd(), '../design-system') }
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@ds': path.resolve(process.cwd(), '../design-system'),
+      // `lucide-react` FROM THIS APP'S OWN INSTALL, for the shared files too.
+      //
+      // The design system declares the dependency and owns its version — that is the
+      // whole point of it living there — but it resolves through `design-system/
+      // node_modules`, and on Vercel that directory does not exist: the deployment's
+      // root is `webapp/`, so `npm install` runs here and nowhere else. The build died
+      // with `Module not found: Can't resolve 'lucide-react'`, reproduced locally by
+      // moving that folder aside.
+      //
+      // Pointing it here is what a PEER dependency does, and it is safe precisely
+      // because the two declare the same range: `^1.26.0` in both. If they ever
+      // diverge this alias is the lie that hides it, so `lib/sharedDeps.test.ts` fails
+      // the moment they do.
+      //
+      // NOT `react`, ever — see the note below.
+      'lucide-react': path.resolve(process.cwd(), 'node_modules/lucide-react'),
+    }
     return config
   },
+
+  // WHY `react` IS NOT IN THAT LIST. Pinning it is the obvious guard against an
+  // out-of-root file finding a second copy, and it breaks the build instead: Next
+  // points `react` at its own vendored builds per environment, and the server one is
+  // where `React.cache` lives. Overriding it takes `cache` away from every server
+  // component, and the build dies collecting `/admin/…` page data with
+  // `n.cache is not a function`.
 
   /**
    * `/application` is the way into the Application section, not a tab of its own —
