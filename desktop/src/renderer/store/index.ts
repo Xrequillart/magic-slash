@@ -444,6 +444,8 @@ interface AppState {
   openModal: (modal: ModalId) => void
   closeModal: () => void
   openSettingsModal: (tab?: SettingsTab) => void
+  /** Open one repository's settings page. See the implementation for the hash route. */
+  openRepoSettings: (repoName: string) => void
   openTasksModal: (target: TasksTarget) => void
   /** Attach a ticket to an agent and leave picking mode. See `tasksPickAgentId`. */
   pickTicketForAgent: (agentId: string, ticketId: string) => void
@@ -804,6 +806,26 @@ export const useStore = create<AppState>()(
         openSettingsModal: (tab) => {
           if (tab) set({ settingsInitialTab: tab })
           get().openModal('settings')
+        },
+        /**
+         * Settings, opened straight on ONE repository's page.
+         *
+         * The repository detail is a hash sub-page of the Repositories tab
+         * (`#/repo/<name>`, parsed in pages/Config/index.tsx), so the route is set
+         * BEFORE the modal opens: `ConfigPage` reads the hash once on mount, and a
+         * modal opened first would paint the repository list for a frame and then
+         * jump. When Settings is already up, the `hashchange` carries it instead.
+         *
+         * The tab is still set, and is not redundant with the route: closing the
+         * detail returns to `#/`, and `activeTab` is what the reader lands on then —
+         * the repository list they came from rather than the profile.
+         *
+         * `repoName` is the KEY the repository has in `Config.repositories`, which is
+         * what the route matches on — not a display name. See `RepoMark`.
+         */
+        openRepoSettings: (repoName) => {
+          window.location.hash = `#/repo/${encodeURIComponent(repoName)}`
+          get().openSettingsModal('repositories')
         },
         // Same wrapper for Tasks, scoped to one ticket. The target is REQUIRED, unlike
         // `openSettingsModal`'s tab: opening Tasks plain is what `openModal('tasks')`

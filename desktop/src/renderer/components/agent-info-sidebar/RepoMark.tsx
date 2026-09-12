@@ -50,16 +50,27 @@ export type RepoMarkSize = keyof typeof REPO_MARK_SIZES
  * the neutral mark, the same one an entry with no colour gets, which is the honest look
  * for a repository this app knows no colour for.
  */
-export function RepoMark({ repoName, size = 'card' }: { repoName?: string; size?: RepoMarkSize }) {
-  const { box, glyph } = REPO_MARK_SIZES[size]
+/**
+ * The colour this repository wears everywhere, or undefined when it has none.
+ *
+ * Built over the FULL repository list, never a subset of it: `getProjectColorMap`
+ * falls back to the palette BY INDEX, so a map built from just the repos on screen
+ * would hand an uncoloured repo a different colour here than the dots elsewhere give
+ * it. This is the same call `RepositoryCard` makes, for the same reason.
+ *
+ * Shared by the mark and the name badge below so the two cannot resolve the same repo
+ * to two different colours — they are drawn side by side, and now inside one another.
+ */
+function useRepoColor(repoName?: string): string | undefined {
   const repositories = useStore(s => s.config?.repositories)
-  /* Built over the FULL repository list, never a subset of it: getProjectColorMap
-     falls back to the palette BY INDEX, so a map built from just the repos on screen
-     would hand an uncoloured repo a different colour here than the dots elsewhere
-     give it. This is the same call RepositoryCard makes, for the same reason. */
-  const repoColor = repoName
+  return repoName
     ? getProjectColorMap(Object.keys(repositories ?? {}), repositories)[repoName]
     : undefined
+}
+
+export function RepoMark({ repoName, size = 'card' }: { repoName?: string; size?: RepoMarkSize }) {
+  const { box, glyph } = REPO_MARK_SIZES[size]
+  const repoColor = useRepoColor(repoName)
 
   /* UNDEFINED IS A REAL CASE, not a defensive nicety: the map is keyed by the reader's
      LOCAL config, and the Plans list names organization repositories that a given machine
@@ -82,5 +93,68 @@ export function RepoMark({ repoName, size = 'card' }: { repoName?: string; size?
     >
       <FolderGit2 className={glyph} />
     </span>
+  )
+}
+
+/**
+ * The repository's NAME and its mark, as one chip — the ticket badge's shape, in the
+ * repository's own colour.
+ *
+ * `TrackerBadge` (components/icons/TrackerIcons.tsx) is what the card above wears, and
+ * the argument it makes there applies here word for word: a mark on its own plate next
+ * to a name on another reads as two facts, and they are one — "this is magic-slash, and
+ * it is the green one". So the same geometry, `h-6 gap-1.5 px-2 rounded-lg text-xs`,
+ * and the same 12% ground — except the ground is the colour the user picked for this
+ * repository in Settings rather than a tracker's brand blue, because that colour IS how
+ * a repo is recognised across Plans, Tasks and this sidebar.
+ *
+ * THE NAME STAYS `text-ink`, not the repo colour. Sixteen palette entries at full
+ * saturation against their own 12% tint is not sixteen legible pairs — yellow and lime
+ * fail outright on the light themes — and a name that changes weight depending on which
+ * colour the repo was given is a worse signal than the ground already gives. The GLYPH
+ * takes the colour, exactly as `RepoMark` paints it: one coloured thing per chip.
+ *
+ * IT OPENS THE REPOSITORY'S SETTINGS, the way the ticket badge above it opens the
+ * ticket in Tasks: the same shape doing the same kind of thing, which is what makes a
+ * badge worth clicking at all. Its own page is where the colour, the keywords and the
+ * languages are set, so the chip is also the shortest route to changing the very colour
+ * it is wearing. `hover:opacity-80` and no hover ground — `TicketIdLink` presses the
+ * same way, and a second ground over a tinted one would muddy the colour.
+ *
+ * Unlike `TrackerBadge` this one SHRINKS. A ticket id is `PER-1234`; a repository name
+ * is whatever the folder is called, in a column that can be 288px wide with three
+ * action chips beside it — so `min-w-0` on the chip and `truncate` on the name, and the
+ * full path stays in the tooltip.
+ */
+export function RepoNameBadge({
+  repoName,
+  title,
+  className = '',
+}: {
+  repoName: string
+  /** The tooltip — the repository's path, where the caller has it. */
+  title?: string
+  className?: string
+}) {
+  const openRepoSettings = useStore(s => s.openRepoSettings)
+  const repoColor = useRepoColor(repoName)
+  const uncoloured = !repoColor
+
+  return (
+    <button
+      onClick={() => openRepoSettings(repoName)}
+      title={title ?? repoName}
+      className={`h-6 gap-1.5 px-2 rounded-lg text-xs inline-flex items-center min-w-0 text-ink font-medium
+        border-none cursor-pointer transition-opacity hover:opacity-80 ${
+        uncoloured ? 'bg-surface-subtle' : ''
+      } ${className}`}
+      style={uncoloured ? undefined : { backgroundColor: `${repoColor}1f` }}
+    >
+      <FolderGit2
+        className={`w-3.5 h-3.5 flex-shrink-0 ${uncoloured ? 'text-icon-muted' : ''}`}
+        style={uncoloured ? undefined : { color: repoColor }}
+      />
+      <span className="truncate">{repoName}</span>
+    </button>
   )
 }
