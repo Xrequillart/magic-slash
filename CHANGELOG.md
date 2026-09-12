@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.94.0] - 2026-09-12
+
+### Added
+
+- **Desktop**: Every plan now carries a short sequential number, `#7`, unique within the organization it is visible in — the badge sits left of the title in the plans list, on a plan's page and in its pinned bar, exactly where a ticket wears its key
+- **Desktop**: A repository card's name is now a badge in that repository's own colour, and clicking it opens the repository's settings
+- **Desktop**: The pull request card draws its checks as a ring — the share of passed, failed, running and skipped, beside the count
+- **Desktop**: The agent context card is headed by a Claude Code label, with the model, the cost and the session's duration beside it
+
+### Changed
+
+- **Desktop**: The repository card is rebuilt on one chip: the script, editor, GitHub and remove controls are 24px squares on the ground the ticket badge uses, and the branch, changes, commits and pull request blocks have given up their outlines
+- **Desktop**: A branch's commits are drawn on a vertical timeline, one tick per commit
+- **Desktop**: The left sidebar speaks the same vocabulary — the sort and new-agent controls, the Claude usage card and its account chip
+- **Desktop**: The plans list wears chips for the repository, the author and the ticket count, its status is a round plate beside the creation date, and the list has lost its frame
+- **Desktop**: A ticket's detail page starts higher, with no rule between its head and its body
+- **Desktop**: An agent's description holds its size and hides its pencil at rest
+
+### Fixed
+
+- **Desktop**: The plans list is ordered by when each plan was started, which is also the date it shows — it was ordered by the last edit while showing the creation date, so the dates ran out of order down the column
+
 ## [0.93.0] - 2026-09-12
 
 ### Added
@@ -2791,6 +2813,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.94.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.0
 [0.93.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.93.0
 [0.92.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.92.1
 [0.92.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.92.0

@@ -495,7 +495,7 @@ export function Sidebar() {
       {/* `pt-1`: the usage card above already carries its own `mb-1`, and the pair used
           to add up to a blank row between the card and the number. */}
       <div className="px-4 pt-1 pb-2 text-xs text-text-secondary flex items-center justify-start gap-2">
-        <span className="opacity-60">v0.93.0</span>
+        <span className="opacity-60">v0.94.0</span>
       </div>
     </div>
   )
