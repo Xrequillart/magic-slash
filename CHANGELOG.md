@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.94.2] - 2026-09-13
+
+### Added
+
+- **Desktop**: Nine primitives now live in a shared `design-system/` folder that both the app and the site compile — `Icon`, `Text`, `Avatar`, `Label`, `Banner`, `Card`, `ButtonIcon`, `ProgressBar` and the agent context card — so a component drawn once is the same drawing everywhere
+- **Landing**: A design system page at `/design-system`, with every extracted component, its variants, its props, and the eight desktop themes to try them on. The web one moved to `/design-system-web`
+
+### Changed
+
+- **Desktop**: Every badge in the app is one `Label` — the ticket id, a plan's number, a repository, the Claude Code chip, the account, the cost and the duration — where each used to respell the same shape by hand
+- **Desktop**: Every progress bar is one `ProgressBar`, and a gauge's warning step is orange rather than yellow: yellow is what this app gives a pending state
+- **Desktop**: `lucide-react` belongs to the design system, so neither app carries a version of its own. GitHub's mark, which the library dropped, is drawn by the app
+- **Landing**: The agent context card on `/features` and on `/desktop` is the real component instead of a hand-drawn reproduction, so it cannot fall behind the app again
+
+### Fixed
+
+- **Landing**: The Vercel build no longer fails to resolve the shared components' dependencies
+
 ## [0.94.1] - 2026-09-12
 
 ### Changed
@@ -2819,6 +2837,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.94.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.2
 [0.94.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.1
 [0.94.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.0
 [0.93.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.93.0
