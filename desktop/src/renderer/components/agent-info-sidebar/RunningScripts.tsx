@@ -100,8 +100,9 @@ export function RunningScripts({ repoPath, agentId }: RunningScriptsProps) {
             </button>
 
             {/* Attached to the card above rather than spaced from it: these are that
-                script's addresses, not further items in the list. Each row carries its
-                own bottom border, so consecutive rows are separated by a single line. */}
+                script's addresses, not further items in the list. No rule between two
+                of them — each row is a globe, a URL and an arrow, which is its own
+                shape; a hairline there was drawing a table out of two links. */}
             {urls.map((url, index) => (
               <ServerUrlRow key={url} url={url} last={index === urls.length - 1} />
             ))}
@@ -118,9 +119,16 @@ export function RunningScripts({ repoPath, agentId }: RunningScriptsProps) {
  * Its own component so the URL is narrowed once, by the list that renders it, instead of
  * asserted non-null inside a click handler that fires long after the check.
  *
- * Deliberately taller and larger-typed than the script card above it: that one is a
- * status line to glance at, this one is a link to hit — and at 500px of sidebar it is
- * also the row a person reads a port off.
+ * `text-xs` and no rule of its own, like everything else in the repository card. It was
+ * `text-sm` inside a `line-subtle` box, on the argument that a link to hit should be
+ * bigger than the status line above it — but it is the only 14px text anywhere in this
+ * column, and one row set apart in its own size and its own frame reads as a fragment
+ * of another design rather than as the emphasis it was meant to be. The ground carries
+ * the emphasis instead: `bg-ink/5`, the card's material, going a step up under the
+ * pointer.
+ *
+ * `last` still shapes the bottom corners — the rows are attached UNDER the coloured
+ * script button and finish the block, so the radius is the block's, not the row's.
  */
 function ServerUrlRow({ url, last }: { url: string; last: boolean }) {
   const t = useT()
@@ -128,14 +136,14 @@ function ServerUrlRow({ url, last }: { url: string; last: boolean }) {
   return (
     <button
       onClick={() => window.electronAPI.shell.openExternal(url)}
-      className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm border border-t-0 border-line-subtle bg-surface text-text-secondary hover:text-ink hover:bg-surface-strong transition-colors group/url ${
+      className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs bg-ink/5 text-text-secondary hover:text-ink hover:bg-ink/10 transition-colors group/url ${
         last ? 'rounded-b-lg' : ''
       }`}
       title={t('agentInfo.openServerInBrowser', { url })}
     >
-      <Globe className="w-4 h-4 flex-shrink-0 text-purple" />
+      <Globe className="w-3.5 h-3.5 flex-shrink-0 text-purple" />
       <span className="flex-1 text-left truncate font-medium">{serverUrlLabel(url)}</span>
-      <ExternalLink className="w-3.5 h-3.5 flex-shrink-0 opacity-60 group-hover/url:opacity-100 transition-opacity" />
+      <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-60 group-hover/url:opacity-100 transition-opacity" />
     </button>
   )
 }

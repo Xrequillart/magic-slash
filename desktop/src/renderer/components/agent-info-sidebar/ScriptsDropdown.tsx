@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Play, ChevronDown } from 'lucide-react'
 import { useScriptRunner } from '../../hooks/useScriptRunner'
 import { useT, type MessageKey } from '../../i18n'
+import { REPO_ACTION_CHIP, REPO_ACTION_PILL } from './repoActionChip'
 import type { ProjectScripts, ScriptCategory, PackageScript, ScriptPackage } from '../../../types'
 
 const CATEGORY_ORDER: ScriptCategory[] = ['dev', 'build', 'test', 'lint', 'other']
@@ -155,14 +156,29 @@ export function ScriptsDropdown({ repoPath, repoName, agentId, agentName }: Scri
 
   return (
     <>
+      {/* The header row's chip, icon-only like its neighbours — see `repoActionChip`.
+          The chevron stays: it is the only thing separating a menu from the two links
+          beside it now that the word "Scripts" is in the tooltip — and it turns over
+          while the panel is open, so the chip states what it is doing rather than
+          leaving the portalled panel to say it from somewhere else on screen. The
+          purple ground is held for the same reason: the panel is anchored to this
+          button but is not inside it — and it is a step DARKER than the hover, or
+          pressing an already-open chip would look like nothing happened. */}
       <button
         ref={triggerRef}
         onClick={handleToggle}
-        className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-icon border border-dashed border-border/40 rounded hover:border-accent/50 hover:text-accent hover:bg-accent/5 transition-colors"
+        title={t('agentInfo.runScripts')}
+        aria-label={t('agentInfo.runScripts')}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        className={`${REPO_ACTION_CHIP} ${REPO_ACTION_PILL} ${
+          isOpen ? 'bg-purple/20 text-purple' : 'hover:bg-purple/10 hover:text-purple'
+        }`}
       >
         <Play className="w-3 h-3" />
-        {t('agentInfo.scripts')}
-        <ChevronDown className="w-2.5 h-2.5" />
+        <ChevronDown
+          className={`w-2.5 h-2.5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+        />
       </button>
 
       {/* Portalled to <body> and positioned `fixed`: rendered in place it was

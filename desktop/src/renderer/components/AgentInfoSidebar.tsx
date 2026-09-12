@@ -525,7 +525,12 @@ export function AgentInfoSidebar() {
             {spec?.mode !== 'replace' && (
             <button
               onClick={() => setIsRepoModalOpen(true)}
-              className="w-full py-4 text-center border border-dashed border-border/50 rounded-lg hover:border-text-secondary/50 hover:bg-surface transition-colors"
+              /* `rounded-xl`, the CARD radius. This button stands exactly where another
+                 repository card would, and is the full width of one — at `rounded-lg` it
+                 was a slightly sharper box at the foot of a column of softer ones, which
+                 is the sort of thing that reads as unfinished without being nameable.
+                 The dashed rule stays: it is what says "empty slot", not chrome. */
+              className="w-full py-4 text-center border border-dashed border-border/50 rounded-xl hover:border-text-secondary/50 hover:bg-surface transition-colors"
             >
               <div className="text-xs text-text-secondary/50">
                 {t('agentInfo.addRepository')}

@@ -1,6 +1,7 @@
 import { GitBranch, Copy, Check, ArrowRight, X } from 'lucide-react'
 import { GitHubIcon, VSCodeIcon } from './icons'
-import { RepoMark } from './RepoMark'
+import { RepoNameBadge } from './RepoMark'
+import { REPO_ACTION_CHIP, REPO_ACTION_SQUARE } from './repoActionChip'
 import { ScriptsDropdown } from './ScriptsDropdown'
 import { PRWatchCard } from './PRWatchCard'
 import { RunningScripts } from './RunningScripts'
@@ -26,6 +27,53 @@ interface RepositoryCardProps {
   onCopyCommitHash: (hash: string) => void
   onCopyBranchName: (branch: string) => void
   onRemove: () => void
+}
+
+/**
+ * One commit's place on the branch: the yellow rail, and the tick on it.
+ *
+ * A LIST OF COMMITS IS A SEQUENCE, and nothing in the row said so — five subjects
+ * stacked in a box read as five unrelated lines, when what they are is one branch in
+ * order. The rail says it in the gutter, at no cost to the width the subjects have.
+ *
+ * Yellow because this is the branch's own work, unpushed or unmerged: the card already
+ * spends green on the current branch and red on deletions, and the third colour has to
+ * be one neither of those claims. The tick is hollow — a white centre inside a yellow
+ * ring — so it reads as a marker ON the line rather than a blob interrupting it.
+ *
+ * The rail is drawn per ROW, in two halves that meet at the tick, so a row knows only
+ * whether it is the first or the last. `tail` is the "+N more" line: rail, no tick.
+ */
+function CommitTick({ first, last, tail = false }: { first: boolean; last: boolean; tail?: boolean }) {
+  return (
+    /* `-my-1` CANCELS THE ROW'S OWN `py-1`. `self-stretch` fills the row's CONTENT box,
+       which stops short of its padding — so each rail segment ended 4px above the next
+       one began, and the trail came out as five dashes with holes between them. The
+       negative margin pushes this one column back out over the padding, so consecutive
+       rows' segments meet exactly. */
+    <div className="relative self-stretch -my-1 w-3 flex-shrink-0 flex items-center justify-center">
+      {/* Two segments rather than one box with conditional insets: the top half stops
+          at the tick on the first row, the bottom half stops at it on the last, and
+          each is simply absent when it would be a stub hanging off the end. */}
+      {/* `left-1/2 -translate-x-1/2` and not a bare `absolute`: the static position of an
+          abspos child of a FLEX container is resolved from that container's alignment,
+          which is not a thing to hang a 3px rail on. Centred explicitly, it lands on the
+          tick whatever the gutter does. */}
+      {/* SQUARE ENDS. `rounded-full` on a 3px bar rounds all four corners, so where two
+          segments met they each tapered to a point and left a pinch in the line — the
+          caps were only ever wanted at the two ends of the whole rail, and a per-row
+          segment has no way to know it is one of those. Butt ends join cleanly, and
+          the tick covers both meeting points anyway. */}
+      {!first && <span className="absolute left-1/2 -translate-x-1/2 top-0 bottom-1/2 w-[3px] bg-yellow" />}
+      {!last && <span className="absolute left-1/2 -translate-x-1/2 top-1/2 bottom-0 w-[3px] bg-yellow" />}
+      {/* The centre is `bg-bg`, the window's own ground, rather than a literal white:
+          hardcoded white is the pre-theme habit themes.test.ts scans for, and on a
+          light theme a white dot on a near-white card would leave only the ring. The
+          window colour reads white on the dark themes — the look asked for — and stays
+          a hole punched in the rail on the light ones, which is the point of it. */}
+      {!tail && <span className="relative w-3 h-3 rounded-full border-2 border-yellow bg-bg" />}
+    </div>
+  )
 }
 
 export function RepositoryCard({
@@ -69,36 +117,40 @@ export function RepositoryCard({
     <div className="bg-surface rounded-xl p-4 flex flex-col gap-2">
       {/* Repo header */}
       <div className="flex items-center gap-2">
-        <RepoMark repoName={repoName} />
-        <span className="text-ink/90 font-medium text-sm truncate" title={repoPath}>
-          {repoName}
-        </span>
-        <div className="flex items-center gap-1.5 ml-auto">
+        {/* Mark and name as ONE chip, in the ticket badge's shape — see `RepoNameBadge`. */}
+        <RepoNameBadge repoName={repoName} title={repoPath} />
+        {/* `flex-shrink-0`: on a narrow sidebar it is the NAME that gives way, never the
+            four controls — half a chip is not a button. */}
+        <div className="flex items-center gap-1.5 ml-auto flex-shrink-0">
           <ScriptsDropdown repoPath={repoPath} repoName={repoName} agentId={agentId} agentName={agentName} />
-          {/* Open in VSCode button */}
+          {/* Open in VS Code */}
           <button
             onClick={() => window.electronAPI.shell.openInVSCode(repoPath)}
-            className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-icon border border-dashed border-border/40 rounded hover:border-[#007ACC]/50 hover:text-[#007ACC] hover:bg-[#007ACC]/5 transition-colors"
+            className={`${REPO_ACTION_CHIP} ${REPO_ACTION_SQUARE} hover:bg-[#007ACC]/15 hover:text-[#007ACC]`}
+            title={t('agentInfo.openRepoInEditor')}
+            aria-label={t('agentInfo.openRepoInEditor')}
           >
-            <VSCodeIcon className="w-3 h-3" />
-            {t('agentInfo.openInEditor')}
+            <VSCodeIcon className="w-3.5 h-3.5" />
           </button>
-          {/* Open on GitHub button — hidden when the repo has no known remote */}
+          {/* Open on GitHub — hidden when the repo has no known remote */}
           {repoUrl && (
             <button
               onClick={() => window.electronAPI.shell.openExternal(repoUrl)}
-              className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-icon border border-dashed border-border/40 rounded hover:border-ink/50 hover:text-ink hover:bg-ink/5 transition-colors"
+              className={`${REPO_ACTION_CHIP} ${REPO_ACTION_SQUARE} hover:bg-ink/10 hover:text-ink`}
               title={t('agentInfo.openRepoOnGitHub')}
+              aria-label={t('agentInfo.openRepoOnGitHub')}
             >
-              <GitHubIcon className="w-3 h-3" />
-              {t('agentInfo.openOnGitHub')}
+              <GitHubIcon className="w-3.5 h-3.5" />
             </button>
           )}
-          {/* Remove repository button */}
+          {/* Removing wears the same chip as the three beside it — the row is one set of
+              controls — and says what it does through its hover alone, which is red where
+              theirs are their own brand's colour. */}
           <button
             onClick={onRemove}
-            className="flex items-center justify-center p-1 text-icon rounded hover:text-red hover:bg-red/10 transition-colors"
+            className={`${REPO_ACTION_CHIP} ${REPO_ACTION_SQUARE} hover:bg-red/15 hover:text-red`}
             title={t('agentInfo.removeRepository')}
+            aria-label={t('agentInfo.removeRepository')}
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -115,7 +167,7 @@ export function RepositoryCard({
           {/* Base branch (left) */}
           {resolvedBaseBranch && (
             <>
-              <div className="self-stretch flex items-center gap-1.5 px-2 py-1.5 bg-surface rounded-md border border-line-subtle min-w-0">
+              <div className="self-stretch flex items-center gap-1.5 px-2 py-1.5 bg-ink/5 rounded-lg min-w-0">
                 <GitBranch className="w-3.5 h-3.5 text-text-secondary flex-shrink-0" />
                 <span
                   className="text-text-secondary text-xs font-medium truncate"
@@ -128,7 +180,7 @@ export function RepositoryCard({
             </>
           )}
           {/* Current branch (right) */}
-          <div className="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1.5 bg-surface rounded-md border border-line-subtle">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1.5 bg-ink/5 rounded-lg">
             <GitBranch className="w-3.5 h-3.5 text-green flex-shrink-0" />
             <span
               className="text-green text-xs font-medium truncate"
@@ -138,7 +190,7 @@ export function RepositoryCard({
             </span>
             <button
               onClick={() => onCopyBranchName(gitData.branch!)}
-              className="p-1 ml-auto rounded hover:bg-surface-strong transition-colors group flex-shrink-0"
+              className="p-1 ml-auto rounded hover:bg-ink/10 transition-colors group flex-shrink-0"
               title={t('agentInfo.copyBranch')}
             >
               {copiedBranch === gitData.branch ? (
@@ -151,9 +203,18 @@ export function RepositoryCard({
         </div>
       )}
 
-      {/* Uncommitted changes block */}
+      {/* EVERY BLOCK IN THIS CARD IS THE HEADER CHIP, GROWN. `bg-ink/5` and `rounded-lg`
+         are `REPO_ACTION_CHIP`'s own two values, so the branch chips, the two blocks
+         below, the empty state and the PR card are all one material at one radius —
+         the row of buttons at the top states the vocabulary, and the card repeats it
+         at every size.
+
+         `bg-ink/5` rather than the `bg-surface` these were: both land near 5% on every
+         theme, but ink is an OVERLAY — it composes with the `bg-surface` card beneath
+         to a visible step up, where surface-on-surface painted the same value twice
+         and needed a rule around it to be seen at all. That rule is what is gone. */}
       {hasChanges && gitData.stats && (
-        <div className="bg-surface rounded-md border border-line-subtle p-2">
+        <div className="bg-ink/5 rounded-lg p-3">
           {/* Header with title, stats and gauge */}
           <div className="flex items-center gap-2 text-xs mb-2">
             <span className="text-text-secondary/70 font-medium">{t('agentInfo.uncommittedChanges')}</span>
@@ -192,7 +253,12 @@ export function RepositoryCard({
               {gitData.stats.files.map((file, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-1.5 text-xs py-0.5 cursor-pointer hover:bg-surface-strong rounded transition-colors px-1 -mx-1"
+                  /* `rounded-lg` and a real hit area. These rows OPEN something, and they
+                     were 4px-radius strips one pixel taller than their own text — the
+                     hover ground came up as a hairline sliver, at a radius nothing else
+                     in the card uses. `-mx-2` against the block's `p-3` lets that ground
+                     run wider than the text without touching the plate's edge. */
+                  className="flex items-center gap-1.5 text-xs px-2 py-1 -mx-2 cursor-pointer hover:bg-ink/10 rounded-lg transition-colors"
                   /* A click opens the REPOSITORY, anchored on this file — not this file
                      on its own. The whole list is handed over so the drawer can freeze
                      it; `gitData.stats.files` is replaced wholesale by the poll a few
@@ -221,28 +287,45 @@ export function RepositoryCard({
 
       {/* Commits block */}
       {hasCommits && gitData.commits && (
-        <div className="bg-surface rounded-md border border-line-subtle p-2">
+        <div className="bg-ink/5 rounded-lg p-3">
           <div className="flex items-center text-xs mb-1.5">
             <span className="text-text-secondary/70 font-medium">{t('agentInfo.commits')}</span>
             <span className="text-text-secondary/50 ml-auto">
               {gitData.commits.commits.length} ahead of {gitData.commits.baseBranch}
             </span>
           </div>
-          <div className="space-y-1">
-            {gitData.commits.commits.slice(0, 5).map((commit) => (
+          {/* A TIMELINE, and therefore NO `space-y`: the rail is drawn per row, top edge
+              to bottom edge, so the segments only join into one line while the rows
+              actually touch. Any gap between them would show as a broken trail — the
+              rows carry their own `py-1` instead.
+
+              The first row's segment starts at its own dot and the last one's stops
+              there, so the line spans the commits rather than overshooting into the
+              padding. Unless commits are hidden: then the last row keeps its full
+              segment and the "+N more" line continues it, which is the trail saying
+              there is more of this branch than the card is showing. */}
+          <div>
+            {gitData.commits.commits.slice(0, 5).map((commit, index, shown) => (
               <div
                 key={commit.hash}
-                className="flex items-center gap-2 text-xs py-0.5"
+                className="flex items-center gap-2 text-xs py-1"
               >
+                <CommitTick
+                  first={index === 0}
+                  last={index === shown.length - 1 && gitData.commits!.commits.length <= 5}
+                />
                 <span className="text-text-secondary/60 truncate flex-1" title={commit.subject}>
                   {commit.subject}
                 </span>
                 <span className="text-text-secondary/40 text-xs flex-shrink-0" title={commit.relativeDate}>
                   {formatRelativeDate(commit.relativeDate, t)}
                 </span>
+                {/* The header's chips, at the header's size: `h-6`, `rounded-lg`, one
+                    ground. They were 20px boxes at a 4px radius, which is what made a
+                    commit row look like a different card from the one above it. */}
                 <button
                   onClick={() => onCopyCommitHash(commit.hash)}
-                  className="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 bg-surface border border-border/30 rounded text-icon font-mono text-xs hover:bg-surface-strong hover:text-ink transition-colors"
+                  className={`${REPO_ACTION_CHIP} px-2 gap-1 font-mono text-xs hover:bg-ink/10 hover:text-ink`}
                   title={`Copy full hash: ${commit.hash}`}
                 >
                   {commit.shortHash}
@@ -255,17 +338,22 @@ export function RepositoryCard({
                 {commit.isPushed && gitData.gitHubUrl && (
                   <button
                     onClick={() => window.electronAPI.shell.openExternal(`${gitData.gitHubUrl}/commit/${commit.hash}`)}
-                    className="flex-shrink-0 p-1 bg-surface border border-border/30 rounded text-icon hover:bg-surface-strong hover:text-ink transition-colors"
+                    className={`${REPO_ACTION_CHIP} ${REPO_ACTION_SQUARE} hover:bg-ink/10 hover:text-ink`}
                     title={t('agentInfo.viewOnGitHub')}
                   >
-                    <GitHubIcon className="w-3 h-3" />
+                    <GitHubIcon className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
             ))}
             {gitData.commits.commits.length > 5 && (
-              <div className="text-xs text-text-secondary/40 py-0.5">
-                +{gitData.commits.commits.length - 5} more commits
+              <div className="flex items-center gap-2 text-xs py-1">
+                {/* Rail, no dot: these commits are real but not drawn, and a tick for
+                    each of five of them would be a lie about how many there are. */}
+                <CommitTick first={false} last tail />
+                <span className="text-text-secondary/40">
+                  +{gitData.commits.commits.length - 5} more commits
+                </span>
               </div>
             )}
           </div>
@@ -274,7 +362,7 @@ export function RepositoryCard({
 
       {/* No changes state */}
       {gitData && !gitData.error && !hasChanges && !hasCommits && gitData.branch && (
-        <div className="bg-surface rounded-md border border-line-subtle p-2">
+        <div className="bg-ink/5 rounded-lg p-2">
           <span className="text-xs text-text-secondary/40 italic">{t('agentInfo.noUncommittedChanges')}</span>
         </div>
       )}
