@@ -1,3 +1,4 @@
+import { useLayoutEffect } from 'react'
 import { Edit2 } from 'lucide-react'
 import { useT } from '../../i18n'
 
@@ -54,8 +55,21 @@ export interface AgentIdentity {
  * The background is deliberately NOT set in this constant. Two background utilities in
  * one class string are settled by Tailwind's own ordering rather than by which was
  * written last, so each state states its own and there is nothing to override.
+ *
+ * The right padding is not set here either: reading and editing each need their own, so
+ * that the text occupies the SAME column in both. Reading spends that column on the
+ * pencil (icon width + `gap-2`); editing has no pencil, so the input pays for it in
+ * padding instead. Without that, the text rewraps the moment the caret arrives.
  */
-const FIELD = 'w-full text-left border-none rounded-lg px-2 py-1.5 transition-colors'
+const FIELD = 'w-full text-left border-none rounded-lg pl-2 py-1.5 transition-colors'
+
+/**
+ * The pencil. Always in the flow — it is what reserves the column the text wraps
+ * against — but only PAINTED under the pointer, so a card at rest is the agent's own
+ * title and description and nothing else. Hiding it with `hidden` instead would hand
+ * the text 20px back on every hover and rewrap it under the cursor.
+ */
+const PENCIL = 'text-icon-muted flex-shrink-0 mt-0.5 opacity-0 transition-opacity group-hover/field:opacity-100'
 
 /** Click-to-edit agent title. Enter saves, Escape cancels, blur saves. */
 export function AgentTitleField({ identity }: { identity: AgentIdentity }) {
@@ -74,14 +88,15 @@ export function AgentTitleField({ identity }: { identity: AgentIdentity }) {
         }}
         onBlur={identity.saveTitle}
         placeholder={t('agentInfo.titlePlaceholder')}
-        className={`${FIELD} bg-surface text-ink font-semibold text-sm leading-tight focus:outline-none`}
+        // `pr-[30px]`: 8px of padding, plus the 14px pencil and its 8px gap.
+        className={`${FIELD} pr-[30px] bg-surface text-ink font-semibold text-sm leading-tight focus:outline-none`}
       />
     )
   }
 
   return (
     <div
-      className={`${FIELD} hover:bg-surface cursor-pointer flex items-start gap-2`}
+      className={`${FIELD} group/field pr-2 hover:bg-surface cursor-pointer flex items-start gap-2`}
       onClick={identity.startEditingTitle}
     >
       {identity.title ? (
@@ -89,7 +104,7 @@ export function AgentTitleField({ identity }: { identity: AgentIdentity }) {
       ) : (
         <h2 className="flex-1 text-text-secondary/40 italic text-sm">{t('agentInfo.addTitle')}</h2>
       )}
-      <Edit2 className="w-3.5 h-3.5 text-icon-muted flex-shrink-0 mt-0.5" />
+      <Edit2 className={`w-3.5 h-3.5 ${PENCIL}`} />
     </div>
   )
 }
@@ -107,16 +122,34 @@ export function AgentTitleField({ identity }: { identity: AgentIdentity }) {
  *
  * Blur saves too, which is what makes losing the button safe: clicking away from a
  * field with no button used to discard the edit.
+ *
+ * THE FIELD DOES NOT RESIZE WHEN IT OPENS. A textarea at a fixed `rows` is a second,
+ * shorter box dropped over the text: a ten-line description became three rows and a
+ * scrollbar, and everything below it jumped up the card. So the box is grown to its
+ * content instead, and every other property that decides where the text lands — type
+ * size, leading, padding, the column the pencil reserves — is the same in both states.
+ * Clicking a description should put a caret in it, not reflow it.
  */
 export function AgentDescriptionField({ identity }: { identity: AgentIdentity }) {
   const t = useT()
+  const { descriptionInputRef, isEditingDescription, editDescription } = identity
 
-  if (identity.isEditingDescription) {
+  // Measured after the DOM is written and before the frame is painted, so the field is
+  // never seen at the wrong height: reset to `auto` first, or `scrollHeight` only ever
+  // reports the height the box already has.
+  useLayoutEffect(() => {
+    const el = descriptionInputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [descriptionInputRef, isEditingDescription, editDescription])
+
+  if (isEditingDescription) {
     return (
       <div className="space-y-1.5">
         <textarea
-          ref={identity.descriptionInputRef}
-          value={identity.editDescription}
+          ref={descriptionInputRef}
+          value={editDescription}
           onChange={(e) => identity.setEditDescription(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Escape') identity.setIsEditingDescription(false)
@@ -128,8 +161,12 @@ export function AgentDescriptionField({ identity }: { identity: AgentIdentity })
           }}
           onBlur={identity.saveDescription}
           placeholder={t('agentInfo.descriptionPlaceholder')}
-          rows={3}
-          className={`${FIELD} bg-surface text-xs text-ink/70 focus:outline-none resize-none leading-relaxed`}
+          // One row is only the starting point; the effect above sets the real height.
+          // `overflow-hidden` because a box that is always exactly as tall as its text
+          // has nothing to scroll, and the scrollbar gutter would shift the text.
+          rows={1}
+          // `pr-7` (28px): 8px of padding, plus the 12px pencil and its 8px gap.
+          className={`${FIELD} pr-7 bg-surface text-xs text-ink/70 focus:outline-none resize-none overflow-hidden leading-relaxed`}
         />
         <span className="block text-[10px] text-text-secondary/40">{t('agentInfo.descriptionHint')}</span>
       </div>
@@ -138,7 +175,7 @@ export function AgentDescriptionField({ identity }: { identity: AgentIdentity })
 
   return (
     <div
-      className={`${FIELD} hover:bg-surface cursor-pointer flex items-start gap-2`}
+      className={`${FIELD} group/field pr-2 hover:bg-surface cursor-pointer flex items-start gap-2`}
       onClick={identity.startEditingDescription}
     >
       {identity.description ? (
@@ -148,7 +185,7 @@ export function AgentDescriptionField({ identity }: { identity: AgentIdentity })
       ) : (
         <span className="flex-1 text-xs text-text-secondary/40 italic">{t('agentInfo.addDescription')}</span>
       )}
-      <Edit2 className="w-3 h-3 text-icon-muted flex-shrink-0 mt-0.5" />
+      <Edit2 className={`w-3 h-3 ${PENCIL}`} />
     </div>
   )
 }
