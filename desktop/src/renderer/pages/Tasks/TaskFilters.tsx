@@ -339,6 +339,7 @@ export function TaskFilters({
   epics,
   hasAgents,
   stuck,
+  topOffset = 0,
   sprintName,
   searchesSprint,
   searching,
@@ -380,6 +381,12 @@ export function TaskFilters({
    * bar that has moved cannot report about itself. See `filtersStuck` in `index.tsx`.
    */
   stuck?: boolean
+  /**
+   * Where the bar pins, in pixels from the top of the pane. 0 unless something else is
+   * already pinned there — today only the picking banner, which is `PICK_BAR_H` tall.
+   * The page owns this for `stuck`'s reason: a band cannot see what is stacked above it.
+   */
+  topOffset?: number
   /** A sprint search is in flight. See `useSprintSearch`. */
   searching?: boolean
   /** The last sprint search came back as a failure. The board still shows what it has. */
@@ -423,9 +430,9 @@ export function TaskFilters({
     // board flush beneath it is a rule across the page for no reason; without one, cards
     // sliding underneath dissolve into it.
     <div
-      className={`sticky top-0 z-20 -mx-6 px-6 py-3 -my-3 bg-bg-secondary border-b transition-colors
+      className={`sticky z-20 -mx-6 px-6 py-3 -my-3 bg-bg-secondary border-b transition-colors
         flex items-center gap-2 min-w-0 ${stuck ? 'border-line' : 'border-transparent'}`}
-      style={{ height: FILTER_BAR_H }}
+      style={{ height: FILTER_BAR_H, top: topOffset }}
     >
       {/* FIRST, and before the search box, because it is the only control here that
           decides what the page is about rather than how much of it is on screen. No

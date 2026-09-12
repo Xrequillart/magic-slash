@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { ArrowLeft, BotMessageSquare, ExternalLink, MessageSquare, MessagesSquare, NotebookPen, Play } from 'lucide-react'
+import { ArrowLeft, BotMessageSquare, ExternalLink, MessageSquare, MessagesSquare, NotebookPen, Play, Unlink } from 'lucide-react'
 import type {
   PlanTicketOrigin,
   TicketComment,
@@ -731,6 +731,25 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
     setActiveTerminal(agentTerminalId)
   }, [agentTerminalId])
 
+  /**
+   * Take the agent off this ticket — the undo for attaching one, wherever the
+   * attachment came from: `/magic:start`, or the badge in the agent's own sidebar.
+   *
+   * IT DOES NOT TOUCH THE AGENT. The terminal keeps running, keeps its title, its
+   * worktree and its history; only the ticket id goes. That is the whole distinction
+   * from closing an agent, and it is why the button is worded as a link being cut
+   * rather than as a deletion, and why it needs no confirmation: the ticket is one
+   * click away from being attached again, from this very page.
+   *
+   * Gated on `agentTerminalId` like the button beside it, and for the same reason: a
+   * teammate's agent is a row in the org roster with no terminal here, and nothing this
+   * window can write to.
+   */
+  const detachAgent = useCallback(() => {
+    if (!agentTerminalId) return
+    useStore.getState().detachTicketFromAgent(agentTerminalId)
+  }, [agentTerminalId])
+
   const openedOn = formatIssueDate(createdAt, locale)
 
   /**
@@ -991,19 +1010,34 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
           <BotMessageSquare className="w-4 h-4 text-green flex-shrink-0" />
           <span className="text-sm text-ink min-w-0">{t('tasks.hasAgentHint')}</span>
           {agentTerminalId && (
-            // `bg-green text-bg`, the inversion `BTN_NEUTRAL_STACKED` is built on: green
-            // is a bright colour on the dark themes and a deep one on the light themes
-            // (see themes.ts), so a fixed label colour would fail half of them. `text-bg`
-            // follows the ground and reads on both. Not a tier in `controls.ts` — one
-            // green button in the app is a call site, not a size.
-            <button
-              onClick={viewAgent}
-              className="ml-auto flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5
-                text-xs font-medium rounded-lg transition-all bg-green text-bg hover:bg-green/90"
-            >
-              <BotMessageSquare className="w-3.5 h-3.5" />
-              <span>{t('tasks.viewAgent')}</span>
-            </button>
+            <span className="ml-auto flex-shrink-0 flex items-center gap-2">
+              {/* SECOND and outlined, because the two are not a pair of equals: going to
+                  look at the agent is what somebody reading this banner nearly always
+                  wants, and cutting the link is the occasional correction. Same green,
+                  so both read as belonging to the banner rather than to the page. */}
+              <button
+                onClick={detachAgent}
+                title={t('tasks.detachAgentHint')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
+                  rounded-lg transition-colors border border-green/40 text-green hover:bg-green/10"
+              >
+                <Unlink className="w-3.5 h-3.5" />
+                <span>{t('tasks.detachAgent')}</span>
+              </button>
+              {/* `bg-green text-bg`, the inversion `BTN_NEUTRAL_STACKED` is built on: green
+                  is a bright colour on the dark themes and a deep one on the light themes
+                  (see themes.ts), so a fixed label colour would fail half of them. `text-bg`
+                  follows the ground and reads on both. Not a tier in `controls.ts` — one
+                  green button in the app is a call site, not a size. */}
+              <button
+                onClick={viewAgent}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5
+                  text-xs font-medium rounded-lg transition-all bg-green text-bg hover:bg-green/90"
+              >
+                <BotMessageSquare className="w-3.5 h-3.5" />
+                <span>{t('tasks.viewAgent')}</span>
+              </button>
+            </span>
           )}
         </div>
       )}
@@ -1080,14 +1114,29 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
                 <span className="text-xs text-ink min-w-0">{t('tasks.hasAgentHint')}</span>
               </span>
               {agentTerminalId && (
-                <button
-                  onClick={viewAgent}
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5
-                    text-xs font-medium rounded-lg transition-all bg-green text-bg hover:bg-green/90"
-                >
-                  <BotMessageSquare className="w-3.5 h-3.5" />
-                  <span>{t('tasks.viewAgent')}</span>
-                </button>
+                <>
+                  <button
+                    onClick={viewAgent}
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5
+                      text-xs font-medium rounded-lg transition-all bg-green text-bg hover:bg-green/90"
+                  >
+                    <BotMessageSquare className="w-3.5 h-3.5" />
+                    <span>{t('tasks.viewAgent')}</span>
+                  </button>
+                  {/* UNDER the primary one here, where the full-width copy puts it before:
+                      this column stacks, and the order that reads as a ranking when
+                      stacked is top-down. */}
+                  <button
+                    onClick={detachAgent}
+                    title={t('tasks.detachAgentHint')}
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5
+                      text-xs font-medium rounded-lg transition-colors border border-green/40
+                      text-green hover:bg-green/10"
+                  >
+                    <Unlink className="w-3.5 h-3.5" />
+                    <span>{t('tasks.detachAgent')}</span>
+                  </button>
+                </>
               )}
             </div>
           )}

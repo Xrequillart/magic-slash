@@ -31,6 +31,7 @@ import { TaskDetailPage } from './TaskDetailPage'
 import { TaskBoard } from './TaskBoard'
 import { openCountLabel, sprintCountLabel } from './parts'
 import { FILTER_BAR_H, TaskFilters, type TaskFilterValue } from './TaskFilters'
+import { PICK_BAR_H, PickTicketBanner } from './PickTicketBanner'
 
 /**
  * The two views this page swaps between, ranked. `SweepPane` reads the sign of
@@ -118,6 +119,19 @@ export function TasksPage() {
    */
   const tasksInitialTarget = useStore((s) => s.tasksInitialTarget)
   const setTasksInitialTarget = useStore((s) => s.setTasksInitialTarget)
+  /**
+   * Set when the board is open to CHOOSE a ticket for an agent. It changes exactly two
+   * things — what a card's click does, and the banner pinned above the filter bar — and
+   * it is read from the store rather than seeded into state because it is a mode that
+   * lasts as long as the modal. See `tasksPickAgentId`.
+   */
+  const pickAgentId = useStore((s) => s.tasksPickAgentId)
+  const pickAgentName = useStore((s) => {
+    const terminal = s.terminals.find((candidate) => candidate.id === s.tasksPickAgentId)
+    return terminal ? terminal.metadata?.title || terminal.name : null
+  })
+  const pickTicketForAgent = useStore((s) => s.pickTicketForAgent)
+  const closeModal = useStore((s) => s.closeModal)
   const t = useT()
 
   /**
@@ -245,13 +259,17 @@ export function TasksPage() {
       setFiltersStuck(false)
       return
     }
+    // `rootMargin` shrinks the root by whatever is pinned above the bar, so the
+    // sentinel counts as gone the moment it slides under the banner rather than when it
+    // leaves the pane — without it the hairline appears `PICK_BAR_H` px late, with the
+    // first row of cards already cut in half by an edgeless band.
     const observer = new IntersectionObserver(
       ([entry]) => setFiltersStuck(!entry.isIntersecting),
-      { root: pane, threshold: 0 },
+      { root: pane, threshold: 0, rootMargin: `-${pickAgentId ? PICK_BAR_H : 0}px 0px 0px 0px` },
     )
     observer.observe(filterSentinel)
     return () => observer.disconnect()
-  }, [filterSentinel])
+  }, [filterSentinel, pickAgentId])
 
   /**
    * Which tickets already have an agent, per repository, built once for the page.
@@ -607,11 +625,21 @@ export function TasksPage() {
   // free: the offset is saved here, so a Jira row gets it by going through the same
   // door a GitHub row does.
   const select = useCallback((next: TaskSelection) => {
+    // PICKING MODE SHORT-CIRCUITS THE PAGE. The reader came here to answer one
+    // question, and opening the ticket they just answered it with would put a page in
+    // front of them to dismiss. The id is written in the form the board prints —
+    // `PER-1234`, `#234` — which is also the form `/magic:start` writes and the one
+    // `normalizeTicketId` folds for every lookup, so a ticket attached by hand and one
+    // attached by the skill are the same ticket.
+    if (pickAgentId) {
+      pickTicketForAgent(pickAgentId, next.tracker === 'jira' ? next.key : `#${next.number}`)
+      return
+    }
     // Read here rather than in the effect above: by the time that runs, the pane
     // has already been scrolled to the top of the ticket.
     listOffsetRef.current = paneRef.current?.scrollTop ?? 0
     setSelected(next)
-  }, [])
+  }, [pickAgentId, pickTicketForAgent])
 
   const back = useCallback(() => setSelected(null), [])
 
@@ -694,6 +722,19 @@ export function TasksPage() {
     // code and tables in it, and none of those survive being folded into a
     // column two words wide.
     <div ref={paneRef} className="h-full overflow-y-auto">
+      {/* ABOVE the sweep layers and outside their padding, because it is not part of
+          either page: it describes what the whole modal is currently for. It is still
+          inside the scrolling pane — the pane IS the page here, there is no fixed shell
+          to hang it from — so it is sticky rather than static. */}
+      {pickAgentId && (
+        <PickTicketBanner
+          // The agent may be gone by now — closed from the rail while this was open.
+          // The mode is still valid (the attachment simply lands on nothing), so the
+          // banner degrades to the generic name rather than taking itself down.
+          agentName={pickAgentName || t('tasks.pick.fallbackAgent')}
+          onCancel={closeModal}
+        />
+      )}
       {/* The title and its chrome are rendered by the hosting modal.
 
           The page's padding is on the SWEEP LAYERS, not on the pane: a `sticky`
@@ -802,6 +843,7 @@ export function TasksPage() {
                   epics={filterEpics}
                   hasAgents={hasAgents}
                   stuck={filtersStuck}
+                  topOffset={pickAgentId ? PICK_BAR_H : 0}
                   {...(sprintName ? { sprintName } : {})}
                   // What the box is doing beyond narrowing what is on screen. Only ever
                   // true on a board that reported itself short — see `useSprintSearch` —
@@ -856,7 +898,7 @@ export function TasksPage() {
                 // Where the column headings pin: under the filter bar when there is one,
                 // at the top of the pane when there is not. Both are sticky and both are
                 // opaque, so the second has to be told how tall the first is.
-                headingTop={narrowable ? FILTER_BAR_H : 0}
+                headingTop={(pickAgentId ? PICK_BAR_H : 0) + (narrowable ? FILTER_BAR_H : 0)}
                 // For the headings' own stuck test, which decides their top corners —
                 // the same question the filter bar asks one level up, and the same
                 // answer: nothing can report a position it has already moved from.

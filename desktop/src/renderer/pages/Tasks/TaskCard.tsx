@@ -5,6 +5,7 @@ import type { BoardCard } from '../../utils/taskBoard'
 import type { TaskSelection } from '../../utils/taskSelection'
 import { useT, type Translate } from '../../i18n'
 import { useTaskAgent } from '../../hooks/useTaskAgent'
+import { useStore } from '../../store'
 import { StatusPill } from '../../components/StatusPill'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { TrackerBadge } from '../../components/icons/TrackerIcons'
@@ -47,6 +48,7 @@ export const TaskCard = memo(function TaskCard({
   onSelect: (selection: TaskSelection) => void
 }) {
   const t = useT()
+  const picking = useStore((s) => s.tasksPickAgentId !== null)
   const { canStart, startFailed, startAgent } = useTaskAgent(
     // EVERY repository the card stands for, paired with its configuration — usually
     // one, and two when a tracker target is shared (see `TaskRow.repos`). The launcher
@@ -92,7 +94,12 @@ export const TaskCard = memo(function TaskCard({
    * `startFailed` says nothing here, deliberately: it never disables the button, it only
    * colours it, so a launch that failed can simply be tried again.
    */
-  const canShowStart = !card.hasAgent && card.column !== 'done'
+  // A THIRD thing can take the button away: the board is being used to pick a ticket
+  // for an agent that already exists, and Start would launch a different, new one from
+  // the very card the reader is about to attach. Read from the store rather than handed
+  // down through the board — unlike `repoConfigs` above, this is one scalar that flips
+  // twice per visit, so subscribing every card to it costs a re-render nobody notices.
+  const canShowStart = !card.hasAgent && card.column !== 'done' && !picking
 
   /**
    * Whether the third band has anything to draw — see its guard below.

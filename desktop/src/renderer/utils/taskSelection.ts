@@ -165,6 +165,17 @@ export function taskSelectionFor(
 export interface TasksTarget {
   selection: TaskSelection | null
   query: string
+  /**
+   * Set when the modal is opened to CHOOSE a ticket for an agent rather than to read
+   * one: the agent the chosen ticket is attached to. Every other opener leaves it
+   * unset, which is the ordinary "open Tasks on this ticket" deep link.
+   *
+   * It travels with the target because it is part of the same one-shot intent, but the
+   * page does not seed state from it the way it does the two fields above — picking is
+   * a MODE that lasts as long as the modal, so it is held in the store and cleared when
+   * the modal closes. See `tasksPickAgentId`.
+   */
+  pickForAgentId?: string
 }
 
 /**

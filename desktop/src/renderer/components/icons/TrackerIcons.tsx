@@ -10,8 +10,8 @@ import { useId } from 'react'
  * (#2684FF / #0052CC, sampled straight from the brand asset) because a brand mark
  * recoloured by the theme stops being the brand mark.
  *
- * Shown next to a ticket ID in the agent sidebar (`agent-info-sidebar/TicketMark`)
- * and, through `TrackerTile` below, on every Tasks row and ticket page.
+ * Shown through `TrackerTile` and `TrackerBadge` below on every Tasks row, ticket
+ * page and agent sidebar.
  */
 
 interface TrackerIconProps {
@@ -168,12 +168,19 @@ export function TrackerBadge({
   ticketId,
   size = 'sm',
   className = '',
+  title,
 }: {
   tracker: 'github' | 'jira'
   /** `PER-1234` or `#234`, printed exactly as given. */
   ticketId: string
   size?: keyof typeof BADGE_SIZES
   className?: string
+  /**
+   * Replaces the default "Jira · PER-1234" tooltip, for a badge that fills a BUTTON:
+   * the pointer then has to be told what pressing it does, and the id it would have
+   * repeated is already the label under the cursor. See `TicketIdLink`.
+   */
+  title?: string
 }) {
   const jira = tracker === 'jira'
   const name = jira ? 'Jira' : 'GitHub'
@@ -184,7 +191,7 @@ export function TrackerBadge({
 
   return (
     <span
-      title={`${name} · ${ticketId}`}
+      title={title ?? `${name} · ${ticketId}`}
       className={`${box} inline-flex items-center text-ink flex-shrink-0 ${
         jira ? '' : 'bg-ink/5'
       } ${className}`}

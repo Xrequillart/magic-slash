@@ -251,6 +251,16 @@ interface AppState {
   // for the same reason: reopening Tasks by hand with ⌘J must not replay the last
   // ticket somebody clicked in the sidebar. See `TasksTarget`.
   tasksInitialTarget: TasksTarget | null
+  /**
+   * The agent a ticket is being PICKED for, or null for an ordinary visit.
+   *
+   * Not one-shot like `tasksInitialTarget`: it is a mode the whole modal is in, so it
+   * outlives mount and is cleared by `closeModal` instead — including the close that
+   * follows an attachment, and the one that follows Escape, which is what makes
+   * cancelling free. The board reads it to turn a card's click from "open this ticket"
+   * into "attach this ticket", and to pin the banner that says so.
+   */
+  tasksPickAgentId: string | null
   // When set, the Plans page opens straight on this plan rather than on the list,
   // then resets it to null. `tasksInitialTarget`'s twin, one-shot for its reason —
   // opening Plans by hand afterwards must give the list, not replay the plan somebody
@@ -435,6 +445,10 @@ interface AppState {
   closeModal: () => void
   openSettingsModal: (tab?: SettingsTab) => void
   openTasksModal: (target: TasksTarget) => void
+  /** Attach a ticket to an agent and leave picking mode. See `tasksPickAgentId`. */
+  pickTicketForAgent: (agentId: string, ticketId: string) => void
+  /** Take an agent off the ticket it is on, leaving the agent itself alone. */
+  detachTicketFromAgent: (agentId: string) => void
   openPlansModal: (planId: string) => void
   setRightSidebar: (sidebar: 'info' | null) => void
   toggleRightSidebar: (sidebar: 'info') => void
@@ -576,6 +590,7 @@ export const useStore = create<AppState>()(
 
         settingsInitialTab: null,
         tasksInitialTarget: null,
+        tasksPickAgentId: null,
         plansInitialPlanId: null,
         settingsOrgId: null,
         activeModal: null,
@@ -784,7 +799,7 @@ export const useStore = create<AppState>()(
           }
           return updates
         }),
-        closeModal: () => set({ activeModal: null }),
+        closeModal: () => set({ activeModal: null, tasksPickAgentId: null }),
         // Convenience wrapper: opens Settings straight on a given tab.
         openSettingsModal: (tab) => {
           if (tab) set({ settingsInitialTab: tab })
@@ -794,8 +809,40 @@ export const useStore = create<AppState>()(
         // `openSettingsModal`'s tab: opening Tasks plain is what `openModal('tasks')`
         // already is, and every caller of this one is a deep link by definition.
         openTasksModal: (target) => {
-          set({ tasksInitialTarget: target })
+          set({ tasksInitialTarget: target, tasksPickAgentId: target.pickForAgentId ?? null })
           get().openModal('tasks')
+        },
+        // One call rather than a metadata write at the call site followed by a close:
+        // the two are one action, and an attachment that left the modal open would put
+        // the reader back on a board they are no longer choosing from.
+        //
+        // BOTH HALVES, which `updateTerminalMetadata` above is not: that action only
+        // moves the store, and the main process is what owns an agent's metadata across
+        // restarts. Every other writer reaches the backend through `useTerminals`, which
+        // the Tasks page cannot call — the hook installs the app's global terminal
+        // listeners and loads the roster on mount, so a second caller would duplicate
+        // both. So the pair is spelled out here, the way `toggleSplitActive` below
+        // already does for the split panes. Failing to persist must not leave the modal
+        // open on a ticket the sidebar is already showing: the store is the source the
+        // UI reads, and a retry is one more click on the same badge.
+        pickTicketForAgent: (agentId, ticketId) => {
+          get().updateTerminalMetadata(agentId, { ticketId })
+          window.electronAPI?.terminal.updateMetadata(agentId, { ticketId }).catch(() => {})
+          get().closeModal()
+        },
+        // The EMPTY STRING and not `undefined`: that is what `createDefaultMetadata`
+        // spells an absent ticket as, it is what `normalizeTicketId` filters out of the
+        // agent index, and it crosses the IPC boundary as itself — where a property
+        // whose value is `undefined` is exactly the kind of thing a serializer is free
+        // to drop, turning "clear this" into "change nothing".
+        //
+        // The modal stays open, unlike picking: the reader is on the ticket's page and
+        // detaching is something they did TO it, not a way of leaving it. The green
+        // banner goes on its own — `hasAgent` is derived from the agent index, which
+        // this write rebuilds.
+        detachTicketFromAgent: (agentId) => {
+          get().updateTerminalMetadata(agentId, { ticketId: '' })
+          window.electronAPI?.terminal.updateMetadata(agentId, { ticketId: '' }).catch(() => {})
         },
         // The same wrapper for Plans, scoped to one plan, and REQUIRED for
         // `openTasksModal`'s reason: opening Plans plain is what `openModal('plans')`

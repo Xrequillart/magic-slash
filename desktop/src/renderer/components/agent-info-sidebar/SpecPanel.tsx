@@ -50,7 +50,6 @@ interface SpecPanelProps {
   status: string
   /** Present once `/magic:plan` has created the ticket, i.e. at `planned`. */
   ticketId?: string
-  ticketLink: string | null
   /** Where the Tasks modal opens when the id is clicked. See `TicketIdLink`. */
   taskSelection: TaskSelection | null
   /** Directory of the spec, as `splitSpecPath` returns it. */
@@ -84,7 +83,6 @@ export function SpecPanel({
   repoNames,
   status,
   ticketId,
-  ticketLink,
   taskSelection,
   repoPath,
   filePath,
@@ -231,7 +229,6 @@ export function SpecPanel({
             {ticketId && (
               <TicketIdLink
                 ticketId={ticketId}
-                ticketLink={ticketLink}
                 taskSelection={taskSelection}
                 className="gap-1"
               />

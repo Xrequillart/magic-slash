@@ -6,12 +6,11 @@ import { SpecPanel } from './agent-info-sidebar/SpecPanel'
 import { UsageCard } from './agent-info-sidebar/UsageCard'
 import { RepositoryCard } from './agent-info-sidebar/RepositoryCard'
 import { RepositorySelector } from './agent-info-sidebar/RepositorySelector'
-import { buildTicketLink, getSpecPanelMode, splitSpecPath } from './agent-info-sidebar/utils'
+import { getSpecPanelMode, splitSpecPath } from './agent-info-sidebar/utils'
 import { usePlanSpec } from '../hooks/usePlanSpec'
 import { useT } from '../i18n'
 import type { RepoGitData } from './agent-info-sidebar/types'
 import type { TerminalMetadata } from '../../types'
-import { resolveGitHubIssuesUrl, resolveJiraSite } from '../../tracker'
 import { withoutShadowedCheckouts } from '../../repoMatch'
 import { resolveTaskSelection } from '../utils/taskSelection'
 
@@ -198,17 +197,6 @@ export function AgentInfoSidebar() {
     setConfig(result.config)
   }, [setConfig])
 
-  // Get jira/github URL config from first repo (for ticket link)
-  //
-  // Both answers are fallback chains — the Jira site moved to its own block and is
-  // still read from the legacy key, and the GitHub issues URL is an override that
-  // derives from `remoteUrl` when unset — so they are resolved in tracker.ts rather
-  // than here. That derivation used to live inline in this file, which is exactly
-  // why a GitHub issue rendered as dead text everywhere else.
-  const firstRepoConfig = attachedRepos.length > 0 ? getRepoConfig(attachedRepos[0]) : null
-  const jiraUrl = resolveJiraSite(firstRepoConfig)
-  const githubIssuesUrl = resolveGitHubIssuesUrl(firstRepoConfig)
-
   // Handle toggling a repository (add or remove)
   const handleToggleRepository = useCallback((repoPath: string) => {
     if (!inspectedTerminalId || !activeTerminal) return
@@ -220,14 +208,6 @@ export function AgentInfoSidebar() {
       updateTerminalRepositories(inspectedTerminalId, [...currentRepos, repoPath])
     }
   }, [inspectedTerminalId, activeTerminal, updateTerminalRepositories])
-
-  // Lives in utils.ts, where it is unit-tested: the shapes it accepts are the
-  // contract between this panel and what /magic:start writes, and that contract
-  // was silently wrong for GitHub issues until it had tests.
-  const ticketLink = useMemo(
-    () => buildTicketLink(metadata?.ticketId, { jiraUrl, githubIssuesUrl }),
-    [metadata?.ticketId, jiraUrl, githubIssuesUrl],
-  )
 
   /**
    * The row the Tasks modal opens on when the ticket id is clicked. Null when the
@@ -482,7 +462,9 @@ export function AgentInfoSidebar() {
             {spec?.mode !== 'replace' && (
               <TicketHeader
                 metadata={metadata}
-                ticketLink={ticketLink}
+                // Non-null inside this branch: `activeTerminal` is what it was read
+                // from, the same assertion `SpecPanel` makes just below.
+                agentId={inspectedTerminalId!}
                 taskSelection={taskSelection}
                 identity={identity}
                 onStatusChange={handleStatusChange}
@@ -504,7 +486,6 @@ export function AgentInfoSidebar() {
                 filePath={spec.filePath}
                 refreshToken={specRefreshToken}
                 ticketId={metadata?.ticketId}
-                ticketLink={ticketLink}
                 taskSelection={taskSelection}
                 onStatusChange={handleStatusChange}
               />

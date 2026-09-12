@@ -1440,9 +1440,9 @@ export const en = {
   'agentInfo.commits': 'Commits',
   'agentInfo.viewOnGitHub': 'View on GitHub',
   'agentInfo.viewPullRequest': 'View Pull Request',
-  'agentInfo.noTicket': 'No ticket',
+  'agentInfo.addTicket': 'Add a ticket',
+  'agentInfo.addTicketHint': 'Pick a ticket to attach to this agent',
   'agentInfo.ticketOpenInTasks': 'Open this ticket in Tasks',
-  'agentInfo.ticketOpenInBrowser': 'Open this ticket in the browser',
   'agentInfo.titlePlaceholder': 'Enter title…',
   'agentInfo.addTitle': 'Click to add title',
   'agentInfo.descriptionPlaceholder': 'Enter description…',
@@ -2043,6 +2043,12 @@ export const en = {
   // is that sentence said plainly — the label alone says what the button IS, and
   // people hesitate over a button whose consequence they have to guess.
   'tasks.startAgent': 'Start an agent',
+  'tasks.detachAgent': 'Detach',
+  'tasks.detachAgentHint': 'Take this agent off the ticket. The agent keeps running.',
+  'tasks.pick.title': 'Pick a ticket for {name}',
+  'tasks.pick.hint': 'Click a card to attach it. Nothing is started.',
+  'tasks.pick.cancel': 'Cancel',
+  'tasks.pick.fallbackAgent': 'this agent',
   'tasks.startAgentHint': 'Opens a terminal in this repository and runs /magic:start on this ticket.',
   // The alternative to starting the work: an agent that reads the issue and talks about it.
   // "Discuss with", not "Start a discussion with" — it sits directly under "Start an agent",
