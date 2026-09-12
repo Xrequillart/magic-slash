@@ -2,9 +2,39 @@ import type { Metadata } from 'next'
 import { LANGUAGE_IDS, LANGUAGE_STORAGE_KEY, DEFAULT_LANGUAGE } from '@/lib/i18n/languages'
 import './globals.css'
 
+const DESCRIPTION = 'Magic Slash — the desktop agent for your Jira + GitHub development cycle.'
+
+/**
+ * `metadataBase` is what lets the relative image path below resolve to an absolute
+ * URL. Crawlers for X, Slack and iMessage do not resolve relative URLs, so without
+ * it the image is simply dropped and the card renders bare.
+ *
+ * Deliberately no `openGraph.url` here. Metadata is inherited by every route that
+ * does not set its own, so a fixed URL at the root would make `/features`, `/faq`,
+ * `/download` and the rest each advertise the homepage as the page being shared.
+ * Pages that care set their own; the rest are better off with no `og:url` than a
+ * wrong one.
+ *
+ * The card is `summary` rather than `summary_large_image` because the icon is
+ * square (256x256); a large card expects ~1.91:1 and would letterbox it.
+ */
 export const metadata: Metadata = {
+  metadataBase: new URL('https://magic-slash.io'),
   title: 'Magic Slash',
-  description: 'Magic Slash — the desktop agent for your Jira + GitHub development cycle.',
+  description: DESCRIPTION,
+  openGraph: {
+    type: 'website',
+    siteName: 'Magic Slash',
+    title: 'Magic Slash',
+    description: DESCRIPTION,
+    images: [{ url: '/img/app-icon-desktop.png', width: 256, height: 256, alt: 'Magic Slash' }],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Magic Slash',
+    description: DESCRIPTION,
+    images: ['/img/app-icon-desktop.png'],
+  },
 }
 
 /**

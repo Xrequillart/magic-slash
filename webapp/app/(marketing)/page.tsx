@@ -207,10 +207,31 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * hero's decorative overflow from widening the document, and nothing here overflows.
  */
 
+const DESCRIPTION =
+  'From idea to merged PR. Eight Claude Code skills write the spec, create the tickets, open and review the PR. All you do is make the calls.'
+
+/**
+ * `openGraph` is not deep-merged with the root layout's — a page that sets it
+ * replaces the parent's wholesale — so the homepage restates it rather than
+ * inheriting a card that would carry the generic site-wide copy.
+ */
 export const metadata: Metadata = {
   title: 'magic-slash',
-  description:
-    'From idea to merged PR. Eight Claude Code skills write the spec, create the tickets, open and review the PR. All you do is make the calls.',
+  description: DESCRIPTION,
+  openGraph: {
+    type: 'website',
+    siteName: 'Magic Slash',
+    url: 'https://magic-slash.io',
+    title: 'magic-slash',
+    description: DESCRIPTION,
+    images: [{ url: '/img/app-icon-desktop.png', width: 256, height: 256, alt: 'Magic Slash' }],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'magic-slash',
+    description: DESCRIPTION,
+    images: ['/img/app-icon-desktop.png'],
+  },
 }
 
 export default function Home() {
