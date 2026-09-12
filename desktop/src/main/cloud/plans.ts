@@ -43,7 +43,7 @@ import { getStore } from '../store/Store'
  * one field that exists to stop the app inventing answers about a missing spec.
  */
 const LIST_COLUMNS =
-  'id, owner_id, repo_id, org_id, agent_id, slug, spec_key, title, idea, status, spec_oversize, spec_synced_at, created_at, updated_at'
+  'id, number, owner_id, repo_id, org_id, agent_id, slug, spec_key, title, idea, status, spec_oversize, spec_synced_at, created_at, updated_at'
 
 /**
  * What ONE plan is read with. The list's columns plus the document itself.
@@ -101,6 +101,8 @@ interface Read<T> {
 
 interface PlanSessionRow {
   id: string
+  /** Null only on a row written before the numbering migration (20260912100000). */
+  number: number | null
   owner_id: string
   repo_id: string | null
   org_id: string | null
@@ -141,6 +143,7 @@ interface PlanTicketSessionRow {
 function toPlanSession(row: PlanSessionRow): PlanSession {
   return {
     id: row.id,
+    number: row.number ?? undefined,
     ownerId: row.owner_id,
     repoId: row.repo_id ?? undefined,
     orgId: row.org_id ?? undefined,
@@ -524,6 +527,8 @@ export async function listPlanDetail(id: string): Promise<PlanDetail> {
  * `PlanTicketOrigin`: the label is resolved on the renderer's side, by the same
  * `planLabel` the list uses, so what travels is what that function reads.
  */
+/* No `number`: what this answers is a LABEL for a plan, resolved by `planLabel`, and
+   the ticket page it feeds names the plan in a sentence rather than badging it. */
 const ORIGIN_COLUMNS = 'id, title, slug, spec_key'
 
 /**

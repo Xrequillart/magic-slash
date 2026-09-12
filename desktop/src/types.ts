@@ -1816,6 +1816,16 @@ export interface PlanSession {
   orgId?: string
   /** `agents.id` uuid of the agent that planned. Null once that agent is archived. */
   agentId?: string
+  /**
+   * The plan's short human id — `#7` — sequential within its organization, or within
+   * its owner when it has none. Assigned by the database, never by the app: see the
+   * 20260912100000 migration, which also explains the one case where it moves.
+   *
+   * Optional ONLY for a row written before that migration, or read through a projection
+   * that does not select it (`PlanTicketOrigin`). Everything that draws a badge from it
+   * renders nothing when it is absent, rather than inventing a number.
+   */
+  number?: number
   /** Spec filename minus its `spec-` prefix and `.md` suffix. */
   slug: string
   /** sha256 of the spec's absolute path. See specKeyFor in main/store/plan-sync.ts. */
