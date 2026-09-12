@@ -1446,6 +1446,7 @@ export const en = {
   'agentInfo.titlePlaceholder': 'Enter title…',
   'agentInfo.addTitle': 'Click to add title',
   'agentInfo.descriptionPlaceholder': 'Enter description…',
+  'agentInfo.descriptionHint': 'Enter to save, Shift+Enter for a new line, Esc to cancel',
   'agentInfo.addDescription': 'Click to add description',
   'agentInfo.noScripts': 'No scripts found',
   'agentInfo.sessionContext': 'Session context',

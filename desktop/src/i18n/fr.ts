@@ -1390,6 +1390,7 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.titlePlaceholder': 'Saisissez un titre…',
   'agentInfo.addTitle': 'Cliquez pour ajouter un titre',
   'agentInfo.descriptionPlaceholder': 'Saisissez une description…',
+  'agentInfo.descriptionHint': 'Entrée pour enregistrer, Maj+Entrée pour un retour à la ligne, Échap pour annuler',
   'agentInfo.addDescription': 'Cliquez pour ajouter une description',
   'agentInfo.noScripts': 'Aucun script trouvé',
   'agentInfo.sessionContext': 'Contexte de la session',

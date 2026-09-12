@@ -45,7 +45,11 @@ export function TicketHeader({
       {/* Title and description come from AgentIdentityFields: SpecPanel renders the
           same two fields for a planning agent, which has no ticket card at all. */}
       <AgentTitleField identity={identity} />
-      <div className="mt-3">
+      {/* `mt-1` and not the `mt-3` this was: both fields now carry `py-1.5` of their own,
+          so 12px of margin sat on top of 12px of padding and pushed a description away
+          from the title it belongs to. 4px keeps the two hover grounds from touching
+          while reading as one block. */}
+      <div className="mt-1">
         <AgentDescriptionField identity={identity} />
       </div>
     </div>
