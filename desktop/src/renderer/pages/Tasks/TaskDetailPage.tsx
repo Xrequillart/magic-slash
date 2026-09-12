@@ -69,7 +69,18 @@ import { TrackerBadge } from '../../components/icons/TrackerIcons'
  * margin that decides when the title counts as hidden BEHIND the bar rather than
  * merely level with the top of the pane.
  */
-const TOP_BAR_H = 56
+/**
+ * The pinned bar's height, and therefore the page's top inset.
+ *
+ * 48 rather than 56: the bar holds one 30px button, so it carried 13px of dead space
+ * above and below it, and that slack sat directly between the back link and the heading
+ * — where it read as the page starting late rather than as a band with room in it. 9px
+ * a side still clears the button.
+ *
+ * Everything derived from it follows: the scroll observer's `rootMargin`, which decides
+ * when the bar takes the title over, and the popover that hangs below it.
+ */
+const TOP_BAR_H = 48
 
 /**
  * "24 Aug 2026" — a written month, not `08/24/2026`.
@@ -849,7 +860,15 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
       : props.tracker === 'github' && !!props.issue.closedAt
 
   return (
-    <div className="flex flex-col gap-5">
+    /* NO GAP. The column used to space its four blocks by `gap-5`, on top of whatever
+       each of them already carried — the bar's own slack, the title's `pb-5` and its
+       rule, the cards' padding and grounds. Two spacing systems for one stack, and the
+       one that showed was always the sum.
+
+       Each block now owns the space around it, which is the only way the page can be
+       tuned block by block: the title keeps its `pb-5` and the rule under it, and every
+       card below has a ground or a border of its own to be separated by. */
+    <div className="flex flex-col">
       {/* The trail out, and the bar that takes over from the title.
 
           ONE bar doing both jobs rather than a second one that appears on scroll:
@@ -935,7 +954,14 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
           and who opened it. BOTH trackers wear the id in the heading now — a Jira
           key used to be a badge on the byline instead, which is the same fact in a
           different place on a page a reader moves between. */}
-      <div ref={titleRef} className="flex flex-col gap-3 pb-5 border-b border-line">
+      {/* NO RULE UNDER THE HEAD. It carried `border-b border-line` — a line straight
+          across the page between the title block and the body — which was the last thing
+          on this page drawing a boundary that the layout already states: the heading is
+          `text-2xl` beside a badge, the body is two columns of cards, and nothing about
+          the two was in danger of being read as one block. `pb-5` stays and is now the
+          whole separation, which is also the only one the column's own spacing leaves it
+          — see the wrapper above. */}
+      <div ref={titleRef} className="flex flex-col gap-3 pb-5">
         {/* The label sits beside the heading and OUTSIDE its text, as a flex sibling:
             inlined into the `h1` it would ride the text baseline and sink below it on
             a title that wraps to two lines. `items-center` centres the two on their
