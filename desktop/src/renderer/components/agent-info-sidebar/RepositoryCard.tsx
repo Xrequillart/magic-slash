@@ -57,10 +57,16 @@ export function RepositoryCard({
   return (
     /* `flex flex-col gap-2` and NOT a `mb-2` per block, which is what this was: the
        bottom margin of whichever block happened to be last stacked on top of the card's
-       own `p-3`, so the card had 12px of padding above its header and 20px under its
+       own padding, so the card had 12px of padding above its header and 20px under its
        last row. A gap sits BETWEEN children only — and it also skips the blocks that
-       render nothing (no branch, no changes, no scripts), which margins could not. */
-    <div className="bg-surface rounded-xl p-3 flex flex-col gap-2">
+       render nothing (no branch, no changes, no scripts), which margins could not.
+
+       `p-4` is the sidebar column's card padding, not this card's own choice: the usage
+       card, the ticket card and the spec panel all state it, and at `p-3` this one sat
+       4px narrower than the cards above it — a stepped left edge running down the
+       column, the kind of thing that reads as sloppiness without the reader being able
+       to name it. */
+    <div className="bg-surface rounded-xl p-4 flex flex-col gap-2">
       {/* Repo header */}
       <div className="flex items-center gap-2">
         <RepoMark repoName={repoName} />

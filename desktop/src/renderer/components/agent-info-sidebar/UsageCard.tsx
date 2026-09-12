@@ -71,7 +71,10 @@ export function UsageCard({ usage, minimized, onMinimizedChange }: UsageCardProp
   // Minimized: single-line — "Session" label, small progress bar, percent, expand button.
   if (minimized) {
     return (
-      <div className="bg-surface rounded-xl px-3 py-2 flex items-center gap-2">
+      /* `px-4` to line its content up with every other card in the column (see
+         `RepositoryCard`); the vertical padding stays small, because minimised is a
+         one-line bar and matching `p-4` there would undo the point of minimising. */
+      <div className="bg-surface rounded-xl px-4 py-2 flex items-center gap-2">
         <span className="text-xs text-text-secondary/50 uppercase tracking-wider shrink-0">{t('agentInfo.sessionContext')}</span>
         {/* Capped at a third of the row so the bar doesn't span the whole card;
             ml-auto pushes it right, grouping it with the percent + expand button. */}
