@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Activity, ArrowDownUp, Check, Clock, FolderGit2 } from 'lucide-react'
+import { ACTION_CHIP, ACTION_CHIP_SQUARE } from './actionChip'
 import { useAnchoredPanel } from './useAnchoredPanel'
 import { useConfig } from '../hooks/useConfig'
 import { useT } from '../i18n'
@@ -26,6 +27,11 @@ const PANEL_WIDTH = 248
 /**
  * How the agent list is ordered, picked from the AGENTS header — immediately left of
  * the button that adds to that list, because both act on the list beside them.
+ *
+ * The app's action square, like its neighbour — `ACTION_CHIP` at 24px and `rounded-lg`,
+ * see `actionChip`. The accent state overrides only the ground and the ink, so a
+ * non-default order still reads as the same object in a second colour, the way the
+ * scripts chip does when its menu is open.
  *
  * Icon only, like its neighbour: at 230px a label costs more width than it explains,
  * so the affordance is the icon and the wording lives in the title/aria-label and in
@@ -56,13 +62,13 @@ export function AgentSortButton() {
         // Tinted once the order is no longer the default one, so a list that is not in
         // the order it was learned in says so from the header rather than only from its
         // contents.
-        className={`p-1.5 rounded transition-all flex-shrink-0 ${
+        className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} ${
           open || current !== DEFAULT_AGENT_SORT
-            ? 'text-accent bg-accent/10 hover:bg-accent/20'
-            : 'text-icon hover:bg-text-secondary/10 hover:text-ink'
+            ? 'bg-accent/15 text-accent hover:bg-accent/20'
+            : 'hover:bg-ink/10 hover:text-ink'
         }`}
       >
-        <ArrowDownUp className="w-4 h-4" />
+        <ArrowDownUp className="w-3.5 h-3.5" />
       </button>
 
       {open && createPortal(

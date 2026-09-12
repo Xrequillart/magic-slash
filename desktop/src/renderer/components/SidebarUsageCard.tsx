@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Minus, Plus, User } from 'lucide-react'
+import { Minus, Plus } from 'lucide-react'
 import { useStore } from '../store'
+import { ACTION_CHIP, ACTION_CHIP_SQUARE, LABEL_CHIP } from './actionChip'
+import { CLAUDE_CHIP_GROUND, CLAUDE_CORAL, ClaudeCodeIcon } from './icons/ClaudeCode'
 import { gaugeColors, formatReset } from './agent-info-sidebar/LimitGauge'
 import { useT } from '../i18n'
 import type { ClaudeAccount } from '../../types'
 
-// "session ▬▬ 89%" gauge for the collapsed card. Both gauges share one row, so
+// "session ▬▬ 89%" gauge for the collapsed card, at 11px — one step under the
+// expanded card's `text-xs`, because three of these share a row where the expanded
+// bars get one each. Both gauges share one row, so
 // each takes half of it: label and percent are shrink-0 and the bar absorbs
 // whatever is left — it goes very small on a narrow sidebar, by design.
 function UsageMiniBar({ label, percent }: { label: string; percent: number }) {
@@ -13,14 +17,14 @@ function UsageMiniBar({ label, percent }: { label: string; percent: number }) {
   const colors = gaugeColors(pct)
   return (
     <div className="flex items-center gap-1 flex-1 min-w-0">
-      <span className="shrink-0 text-[10px] text-text-secondary/60">{label}</span>
+      <span className="shrink-0 text-[11px] text-text-secondary/60">{label}</span>
       <div className="h-1 flex-1 min-w-[8px] rounded-full bg-surface overflow-hidden">
         <div
           className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className={`shrink-0 text-[10px] font-semibold ${colors.text}`}>{Math.round(pct)}%</span>
+      <span className={`shrink-0 text-[11px] font-semibold ${colors.text}`}>{Math.round(pct)}%</span>
     </div>
   )
 }
@@ -37,11 +41,16 @@ function UsageBar({ label, percent, resetsAt, now }: {
   const colors = gaugeColors(pct)
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between text-[10px]">
+      {/* `text-xs`, up from 10px. This card is the one thing in the left sidebar a
+          person READS a number off rather than glances at, and 10px was set when the
+          row was an afterthought pinned under the agent list. The reset stamp keeps a
+          step below the two figures it qualifies, at 11px — it is context for the
+          percentage, not a third reading. */}
+      <div className="flex items-center justify-between text-xs">
         <span className="text-text-secondary/60">{label}</span>
         <span className="flex items-center gap-1.5">
           {typeof resetsAt === 'number' && (
-            <span className="text-text-secondary/35">{formatReset(resetsAt, now, t)}</span>
+            <span className="text-[11px] text-text-secondary/35">{formatReset(resetsAt, now, t)}</span>
           )}
           <span className={`font-semibold ${colors.text}`}>{Math.round(pct)}%</span>
         </span>
@@ -97,12 +106,21 @@ export function SidebarUsageCard() {
     setConfig(result.config)
   }
 
+  const accountLabel = account?.displayName ?? account?.emailAddress ?? t('usage.claudeAccount')
+
   const hasFive = typeof accountUsage?.fiveHourPercent === 'number'
   const hasSeven = typeof accountUsage?.sevenDayPercent === 'number'
   const hasGauges = hasFive || hasSeven
 
   return (
-    <div className="mx-2 mb-2 bg-surface-subtle border border-line-subtle rounded-lg px-2 py-1.5">
+    /* A CARD, so the card's own two values: `bg-surface` and `rounded-xl`, the pair every
+       panel in the right-hand sidebar wears. It was `surface-subtle` inside a
+       `line-subtle` rule at `rounded-lg` — a lighter plate that needed the rule to be
+       seen at all, in the one radius between the chips and the cards.
+
+       `mb-1`: the version line below is 8px of its own padding away, and 8+8 put this
+       card most of a blank row above the number it sits on. */
+    <div className="mx-2 mb-1 bg-surface rounded-xl px-2 py-1.5">
       {minimized ? (
         <div className="flex items-center justify-between gap-1.5">
           {hasGauges ? (
@@ -116,26 +134,37 @@ export function SidebarUsageCard() {
           <button
             onClick={toggleMinimized}
             title={t('usage.expand')}
-            className="p-0.5 rounded text-icon hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
+            className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-ink/10 hover:text-ink`}
           >
-            <Plus className="w-3 h-3" />
+            <Plus className="w-3.5 h-3.5" />
           </button>
         </div>
       ) : (
         <>
           <div className="flex items-center justify-between mb-2 gap-2">
-            <span className="flex items-center gap-1.5 text-[11px] text-icon min-w-0">
-              <User className="w-3 h-3 shrink-0" />
-              <span className="truncate">
-                {account?.displayName ?? account?.emailAddress ?? t('usage.claudeAccount')}
-              </span>
+            {/* WHOSE usage this is — and it is Claude's, so it wears Claude's chip: the
+                same mark, the same coral ground and the same ink label as the agent
+                card's on the other side of the window. The two cards are a pair, one
+                per sidebar, and this is what says so. A generic user glyph on a grey
+                plate named the person without naming what they are signed in to.
+
+                `min-w-0` on the chip and `truncate` on the name, unlike the fixed labels
+                it borrows from: an account is whatever the person is called, in a 230px
+                column. The full value stays in the tooltip. */}
+            <span
+              className={`${LABEL_CHIP} min-w-0 text-ink`}
+              style={{ backgroundColor: CLAUDE_CHIP_GROUND }}
+              title={accountLabel}
+            >
+              <ClaudeCodeIcon className="w-3.5 h-3.5 shrink-0" style={{ color: CLAUDE_CORAL }} />
+              <span className="truncate">{accountLabel}</span>
             </span>
             <button
               onClick={toggleMinimized}
               title={t('usage.minimize')}
-              className="p-0.5 rounded text-icon hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
+              className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-ink/10 hover:text-ink`}
             >
-              <Minus className="w-3 h-3" />
+              <Minus className="w-3.5 h-3.5" />
             </button>
           </div>
           {hasGauges ? (

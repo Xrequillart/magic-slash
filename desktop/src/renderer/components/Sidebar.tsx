@@ -5,6 +5,7 @@ import { useTerminals } from '../hooks/useTerminals'
 import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos } from '../hooks/useOrderedTerminals'
 import { groupKeyOf, isGroupStart, repoLabel } from '../hooks/terminalOrder'
 import { AgentSortButton } from './AgentSortButton'
+import { ACTION_CHIP, ACTION_CHIP_SQUARE } from './actionChip'
 import { SidebarUsageCard } from './SidebarUsageCard'
 import { SidebarUpdateButton } from './SidebarUpdateButton'
 import { AgentStateBadge } from './AgentStateBadge'
@@ -391,9 +392,13 @@ export function Sidebar() {
             }}
             title={t('sidebar.newAgentShortcut', { shortcut: shortcutKey })}
             aria-label={t('sidebar.newAgentShortcut', { shortcut: shortcutKey })}
-            className="p-1.5 text-icon rounded hover:bg-text-secondary/10 hover:text-ink transition-all flex-shrink-0"
+            /* The app's action square — 24px at `rounded-lg`, on the ground every other
+               icon action wears. It was a 28px box at a 4px radius, the last survivor of
+               the shape the right-hand panel has given up: two controls in a header, in a
+               vocabulary nothing else in the app still speaks. See `actionChip`. */
+            className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-ink/10 hover:text-ink`}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
           </button>
         </div>
 
@@ -487,7 +492,9 @@ export function Sidebar() {
       <SidebarUpdateButton />
 
       {/* Footer */}
-      <div className="px-4 py-2 text-xs text-text-secondary flex items-center justify-start gap-2">
+      {/* `pt-1`: the usage card above already carries its own `mb-1`, and the pair used
+          to add up to a blank row between the card and the number. */}
+      <div className="px-4 pt-1 pb-2 text-xs text-text-secondary flex items-center justify-start gap-2">
         <span className="opacity-60">v0.93.0</span>
       </div>
     </div>
