@@ -1137,6 +1137,11 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Une skill est un fichier markdown. Cette fenêtre en crée un, importe le dossier qu’on vous a envoyé, modifie les instructions sur place et réexporte le tout.',
   'site.infoSidebar.justNow': 'à l’instant',
   'site.infoSidebar.session': 'Session',
+  // The context card's two buttons. The illustration is `aria-hidden` and neither
+  // button does anything, but `title` shows on hover — and "Session" on a minus
+  // sign is worse than no drawing at all.
+  'site.infoSidebar.fold': 'Réduire',
+  'site.infoSidebar.unfold': 'Déplier',
   'site.infoSidebar.context': 'Contexte',
   'site.infoSidebar.status': 'en revue',
   'site.infoSidebar.ticketTitle': 'TVA arrondie deux fois sur la facture PDF',

@@ -4,23 +4,19 @@ import {
   ArrowRight,
   ChevronDown,
   CircleStop,
-  Clock,
   Copy,
-  Cpu,
-  DollarSign,
   Edit2,
   ExternalLink,
   FolderGit2,
-  Gauge,
   GitBranch,
   Globe,
-  Minus,
   Play,
-  RefreshCw,
   X,
 } from 'lucide-react'
 import type { MessageKey } from '@/lib/i18n'
+import { ContextAgentCard } from '@ds/desktop'
 import { useT } from '@/lib/i18n/useLanguage'
+import { AppGround } from '../AppGround'
 import { PullRequestCard, type PullRequestPart, type PullRequestReview } from './PullRequestCardMockup'
 import { WaveLoader } from './RepoCardMockup'
 import { GithubMark } from './TasksModalMockup'
@@ -164,13 +160,6 @@ export function gaugeColors(pct: number) {
   return { bar: 'bg-green', text: 'text-green' }
 }
 
-/** `UsageCard.tsx`'s thresholds for the context window: green, orange at 40, red at 70. */
-function contextColors(pct: number) {
-  if (pct >= 70) return { bar: 'bg-red', text: 'text-red' }
-  if (pct >= 40) return { bar: 'bg-orange', text: 'text-orange' }
-  return { bar: 'bg-green', text: 'text-green' }
-}
-
 /**
  * The three dashed controls of the repository card (RepositoryCard.tsx:82 and :91,
  * ScriptsDropdown.tsx:161), character for character.
@@ -233,7 +222,6 @@ export function InfoSidebarPanel({
   const added = FILES.reduce((n, f) => n + f.added, 0)
   const removed = FILES.reduce((n, f) => n + f.removed, 0)
   const ratio = added / (added + removed || 1)
-  const context = contextColors(CONTEXT_PCT)
   const pill = SIDEBAR_STATUSES[status]
 
   // The pull request card draws its own rings, so it is told which of ITS parts is in
@@ -252,55 +240,41 @@ export function InfoSidebarPanel({
       style={{ width: PANEL_WIDTH }}
     >
       {/* ── 1. THE SESSION CARD (`UsageCard.tsx`) ──────────────────────────────── */}
+      {/* THE REAL CARD, not a reproduction of it. `ContextAgentCard` comes from
+          `design-system/desktop/` — the file the Electron renderer compiles — on a patch
+          of the app's theme variables. What stood here was forty lines of copied classes
+          that the app had already left behind: a SESSION header it no longer has, a
+          purple model pill that is now a `Label`.
+
+          `paint={false}`: this panel IS the app's column and already carries its ground.
+          A second window colour inside it would be a panel drawn on a panel.
+
+          The wrapper keeps `data-part` and the focus class, because the scroll band
+          measures that element to zoom on it — and a wrapper with no padding of its own
+          has exactly the card's rect. */}
       <div
         data-part="session"
-        className={`space-y-3 rounded-xl bg-white/[0.06] p-4 transition-opacity duration-500 ${focusClass(focus, 'session')}`}
+        // `rounded-xl`, the radius `Card` draws — and the wrapper needs it even though it
+        // paints nothing: a Tailwind `ring` follows the radius of the element CARRYING it,
+        // and every other part here wears the ring on the card itself. Without it the tour
+        // drew a square outline around a rounded card.
+        className={`rounded-xl transition-opacity duration-500 ${focusClass(focus, 'session')}`}
       >
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <span className="text-xs uppercase tracking-wider text-appink/50">
-              {t('site.infoSidebar.session')}
-            </span>
-            <span className="flex items-center gap-1 text-[11px] normal-case tracking-normal text-appink-icon">
-              <RefreshCw className="h-3 w-3" />
-              {t('site.infoSidebar.justNow')}
-            </span>
-          </span>
-          <div className="flex items-center gap-1.5">
-            <span className="flex items-center gap-1 rounded-md bg-purple/15 px-1.5 py-0.5 text-[11px] font-medium text-purple">
-              <Cpu className="h-3 w-3" />
-              Fable 5.1
-            </span>
-            <span className="flex shrink-0 items-center justify-center self-stretch rounded-md px-1 text-appink-icon">
-              <Minus className="h-3 w-3" />
-            </span>
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-xs">
-            <span className="flex items-center gap-1.5 text-appink">
-              <Gauge className="h-3.5 w-3.5" />
-              {t('site.infoSidebar.context')}
-            </span>
-            <span className={`font-medium ${context.text}`}>{CONTEXT_PCT}%</span>
-          </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/30">
-            <div className={`h-full rounded-full ${context.bar}`} style={{ width: `${CONTEXT_PCT}%` }} />
-          </div>
-          <div className="text-[11px] tabular-nums text-appink/70">540.0k / 1.00M tokens</div>
-        </div>
-
-        <div className="flex items-center justify-between text-xs">
-          <span className="flex items-center gap-1.5 text-appink">
-            <DollarSign className="h-3.5 w-3.5" />
-            <span className="font-medium tabular-nums text-white">$3.13</span>
-          </span>
-          <span className="flex items-center gap-1.5 text-appink">
-            <Clock className="h-3.5 w-3.5" />
-            <span className="tabular-nums">24m 18s</span>
-          </span>
-        </div>
+        <AppGround paint={false}>
+          <ContextAgentCard
+            contextPercent={CONTEXT_PCT}
+            contextDetail="540.0k / 1.00M tokens"
+            model="Fable 5.1"
+            cost="$3.13"
+            duration="24m 18s"
+            onMinimizedChange={() => undefined}
+            labels={{
+              context: t('site.infoSidebar.context'),
+              minimize: t('site.infoSidebar.fold'),
+              expand: t('site.infoSidebar.unfold'),
+            }}
+          />
+        </AppGround>
       </div>
 
       {/* ── 2. THE TICKET CARD (`TicketHeader.tsx`) ────────────────────────────── */}

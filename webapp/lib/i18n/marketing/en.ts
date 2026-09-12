@@ -1954,6 +1954,8 @@ export const marketingEn = {
     'A skill is a markdown file. This window creates one, imports a folder somebody sent you, edits the instructions in place and exports the whole thing back out.',
   'site.infoSidebar.justNow': 'just now',
   'site.infoSidebar.session': 'Session',
+  'site.infoSidebar.fold': 'Fold',
+  'site.infoSidebar.unfold': 'Unfold',
   'site.infoSidebar.context': 'Context',
   'site.infoSidebar.status': 'in review',
   'site.infoSidebar.ticketTitle': 'VAT rounded twice on the PDF invoice',
