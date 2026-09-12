@@ -8,7 +8,7 @@ import {
   Equal,
   Minus,
   Settings,
-} from 'lucide-react'
+} from '@ds/desktop/icons'
 import type {
   JiraEpic,
   JiraPriority,

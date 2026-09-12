@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode } from 'react'
-import { Github, Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit2, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, Plug, SquareTerminal, Palette, Languages, AppWindow, Lightbulb, Bot, type LucideIcon } from 'lucide-react'
+import { Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit2, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, Plug, SquareTerminal, Palette, Languages, AppWindow, Lightbulb, Bot, type LucideIcon } from '@ds/desktop/icons'
+// lucide v1 dropped the brand glyphs, so the GitHub mark is the app's own —
+// the same one the tracker badges wear.
+import { Github } from '@ds/desktop/icons'
 import { AccountPage } from './AccountPage'
 import { ConnectionsPage } from './ConnectionsPage'
 import { RepoPage } from './RepoPage'

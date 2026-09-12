@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, AlertTriangle, MinusCircle } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, MinusCircle } from '@ds/desktop/icons'
 import type { TelemetryHealth } from '../../../types'
 import { useT } from '../../i18n'
 

@@ -1,8 +1,12 @@
-import { CircleUserRound } from 'lucide-react'
+import { Avatar } from '@ds/desktop'
 import { useT } from '../i18n'
 import { ACCOUNT_AVATAR_VARIANTS, type AccountAvatarVariant } from './accountAvatarSize'
 
 /**
+ * THE APP'S account photo: `Avatar` from the design system, plus the two things the
+ * design system has no business knowing — which SURFACE is drawing it, and what to
+ * call it in the reader's language.
+ *
  * A person, as a round photo — or as a generic icon when there is none.
  *
  * It started as the signed-in account alone, and the `roster` variant is what widened
@@ -62,38 +66,16 @@ interface Props {
    * an `alt` that repeats the adjacent label makes a screen reader say the same person
    * twice per row, and the image is decorative precisely because the name is already
    * there. A surface that shows a face with no name needs a real string.
+   *
+   * `Avatar` itself takes no default — it cannot read a translation — so the default
+   * lives here, which is the only place in the two that can.
    */
   alt?: string
 }
 
 export function AccountAvatar({ dataUrl, variant = 'card', alt }: Props) {
   const t = useT()
-  const { box, glyph, badge } = ACCOUNT_AVATAR_VARIANTS[variant]
+  const { size, fallback } = ACCOUNT_AVATAR_VARIANTS[variant]
 
-  if (dataUrl) {
-    return (
-      <img
-        src={dataUrl}
-        alt={alt ?? t('cloud.avatar.alt')}
-        className={`${box} rounded-full object-cover shrink-0`}
-      />
-    )
-  }
-
-  // No pill, no wrapper, and deliberately NO colour class: the glyph inherits
-  // `currentColor` from the button around it, which is what turns it yellow with the
-  // rest of the row when no repository is configured. A `text-accent` here — or a
-  // `<span>` that carried one — would freeze it at the accent colour and quietly
-  // break that signal.
-  if (!badge) {
-    return <CircleUserRound className={`${glyph} shrink-0`} />
-  }
-
-  return (
-    <span
-      className={`${box} flex items-center justify-center rounded-full bg-accent/20 text-accent shrink-0`}
-    >
-      <CircleUserRound className={glyph} />
-    </span>
-  )
+  return <Avatar src={dataUrl} alt={alt ?? t('cloud.avatar.alt')} size={size} fallback={fallback} />
 }

@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import { X, Folder, Check } from 'lucide-react'
+import { X, Folder, Check } from '@ds/desktop/icons'
 import { RepoMark } from './RepoMark'
 import { useModalExit } from '../../hooks/useModalExit'
 import { useT } from '../../i18n'

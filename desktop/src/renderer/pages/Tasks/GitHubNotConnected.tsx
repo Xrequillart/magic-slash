@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Download, Github, RefreshCw, Terminal } from 'lucide-react'
+import { Download, RefreshCw, Terminal } from '@ds/desktop/icons'
+// lucide v1 dropped the brand glyphs, so the GitHub mark is the app's own.
+import { Github } from '@ds/desktop/icons'
 import type { PrerequisiteStatus, SetupStatus } from '../../../types'
 import { useT } from '../../i18n'
 

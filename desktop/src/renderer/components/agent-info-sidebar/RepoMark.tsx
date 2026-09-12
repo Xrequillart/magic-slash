@@ -1,4 +1,5 @@
-import { FolderGit2 } from 'lucide-react'
+import { Label } from '@ds/desktop'
+import { FolderGit2 } from '@ds/desktop/icons'
 import { useStore } from '../../store'
 import { getProjectColorMap } from '../../utils/projectColors'
 
@@ -138,24 +139,27 @@ export function RepoNameBadge({
 }) {
   const openRepoSettings = useStore(s => s.openRepoSettings)
   const repoColor = useRepoColor(repoName)
-  const uncoloured = !repoColor
 
+  // THE ONE CLICKABLE LABEL IN THE APP, which is why `Label` has an `onClick` at all:
+  // it renders a `<button>` and takes its hover only when there is something to press,
+  // so every other badge stopped lighting up under a cursor that could do nothing.
+  //
+  // `color` and not a tone: a repository's hue is one of sixteen the app assigns at
+  // runtime, so it cannot be a class and has no business being a token. Without one —
+  // a repository the user has not coloured — the label falls back to the neutral plate
+  // and the muted mark, which is what `tone="neutral"` already is.
   return (
-    <button
+    <Label
+      tone="neutral"
+      icon={FolderGit2}
+      color={repoColor ?? undefined}
       onClick={() => openRepoSettings(repoName)}
       title={title ?? repoName}
-      className={`h-6 gap-1.5 px-2 rounded-lg text-xs inline-flex items-center min-w-0 text-ink font-medium
-        border-none cursor-pointer transition-opacity hover:opacity-80 ${
-        uncoloured ? 'bg-surface-subtle' : ''
-      } ${className}`}
-      style={uncoloured ? undefined : { backgroundColor: `${repoColor}1f` }}
+      truncate
+      className={className}
     >
-      <FolderGit2
-        className={`w-3.5 h-3.5 flex-shrink-0 ${uncoloured ? 'text-icon-muted' : ''}`}
-        style={uncoloured ? undefined : { color: repoColor }}
-      />
-      <span className="truncate">{repoName}</span>
-    </button>
+      {repoName}
+    </Label>
   )
 }
 

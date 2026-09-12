@@ -1,54 +1,19 @@
-import { useId } from 'react'
+import { Github, Jira } from '@ds/desktop/icons'
+import { Label, type LabelSize } from '@ds/desktop'
 
 /**
- * The two tracker marks, and the one component that picks between them.
+ * The one component that picks between the two tracker marks.
  *
- * Both are vectors rather than the source PNGs on purpose. The GitHub mark is a
- * knocked-out disc traced from the brand asset and painted with `currentColor`, so
- * it stays readable on every one of the themes in desktop/src/themes.ts — a flat
- * black bitmap disappeared on the dark ones. The Jira mark keeps its own two blues
- * (#2684FF / #0052CC, sampled straight from the brand asset) because a brand mark
- * recoloured by the theme stops being the brand mark.
+ * THE MARKS THEMSELVES MOVED to `design-system/desktop/brand.tsx`, along with the
+ * three others the app borrows. They were drawn here because this is where they
+ * were first needed, which is how the agent sidebar came to draw a SECOND GitHub
+ * mark on a different grid without anyone noticing. What stays is what is actually
+ * this app's: the tile, the badge, and the rule that a Jira mark keeps its own
+ * blues while a GitHub mark takes the theme's ink.
  *
  * Shown through `TrackerTile` and `TrackerBadge` below on every Tasks row, ticket
  * page and agent sidebar.
  */
-
-interface TrackerIconProps {
-  className?: string
-}
-
-export function GithubMark({ className }: TrackerIconProps) {
-  return (
-    <svg viewBox="0 0 512 512" className={className} fill="currentColor" aria-hidden="true">
-      <g transform="translate(0,512) scale(0.1,-0.1)">
-        <path d="M2360 5049 c-154 -11 -357 -47 -516 -93 -902 -259 -1603 -1017 -1790 -1934 -136 -669 -8 -1355 354 -1908 255 -390 580 -686 968 -886 141 -73 341 -154 403 -164 58 -9 109 19 133 73 18 40 18 60 12 286 l-7 243 -86 -14 c-97 -15 -256 -9 -386 13 -105 19 -211 71 -278 139 -53 53 -67 76 -136 229 -63 139 -135 231 -232 297 -66 46 -121 106 -117 128 6 30 48 43 121 38 141 -10 288 -113 393 -274 72 -110 143 -179 230 -222 62 -31 79 -35 169 -38 103 -4 207 12 291 44 41 16 43 18 58 85 19 86 56 164 106 228 39 49 39 49 -43 60 -264 38 -452 102 -627 215 -229 148 -365 379 -431 731 -20 109 -23 389 -5 492 29 167 98 319 200 445 45 55 45 55 25 117 -52 168 -42 372 28 574 18 50 22 52 103 48 118 -6 371 -108 543 -218 80 -51 59 -51 254 -8 271 58 655 58 926 0 193 -42 170 -44 277 21 226 137 484 230 575 206 26 -7 33 -17 53 -75 43 -125 55 -210 50 -351 -4 -95 -11 -148 -26 -195 -21 -64 -21 -64 23 -118 89 -109 155 -244 192 -389 22 -89 25 -417 4 -544 -32 -198 -114 -406 -210 -532 -165 -217 -464 -366 -843 -418 -87 -12 -87 -12 -48 -61 47 -60 85 -137 106 -221 14 -52 17 -137 20 -503 5 -490 5 -489 72 -521 46 -21 83 -15 229 42 738 284 1320 932 1533 1703 141 513 111 1108 -80 1601 -172 440 -475 842 -848 1122 -405 303 -865 474 -1367 507 -175 12 -192 12 -375 0z" />
-      </g>
-    </svg>
-  )
-}
-
-export function JiraMark({ className }: TrackerIconProps) {
-  // The gradient is referenced by `url(#id)`, which resolves against the WHOLE
-  // document — so a fixed id stops working the moment the mark is drawn more than
-  // once and the first copy unmounts, which the Tasks list does on every reload.
-  // `useId` gives each instance its own, and the reference below is built from it.
-  const gradientId = useId()
-
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <defs>
-        <linearGradient id={gradientId} x1="16.53" y1="7.95" x2="12.78" y2="11.7" gradientUnits="userSpaceOnUse">
-          <stop offset=".18" stopColor="#0052CC" />
-          <stop offset="1" stopColor="#2684FF" />
-        </linearGradient>
-      </defs>
-      <path fill="#2684FF" d="M11.53 2c0 2.4 1.97 4.35 4.35 4.35h1.78v1.7c0 2.4 1.94 4.34 4.34 4.35V2.84a.84.84 0 0 0-.84-.84z" />
-      <path fill={`url(#${gradientId})`} d="M6.77 6.8a4.362 4.362 0 0 0 4.34 4.34h1.8v1.72a4.362 4.362 0 0 0 4.34 4.34V7.63a.84.84 0 0 0-.83-.83z" />
-      <path fill="#0052CC" d="M2 11.6c0 2.4 1.94 4.34 4.34 4.34h1.8v1.7c.003 2.4 1.95 4.342 4.35 4.35V12.43a.84.84 0 0 0-.84-.83z" />
-    </svg>
-  )
-}
 
 /**
  * The tracker's mark on a tile of its own — the repository tile's shape, applied to
@@ -109,59 +74,10 @@ export function TrackerTile({
       role="img"
       aria-label={title}
     >
-      {jira ? <JiraMark className={mark} /> : <GithubMark className={mark} />}
+      {jira ? <Jira className={mark} /> : <Github className={mark} />}
     </span>
   )
 }
-
-/**
- * The tracker's mark AND the ticket's id, as one label on the connector's own ground —
- * the app's copy of the marketing site's product chip (`site/home/AppSection.tsx`'s
- * `ProductChip`), which is where the two grounds below come from.
- *
- * ONE LABEL RATHER THAN A TILE AND A BADGE SIDE BY SIDE. A mark on its own plate next to
- * an id on another reads as two facts about the ticket; they are one — "this is PER-1234,
- * in Jira" — and the board's cards are narrow enough that saying it twice costs a
- * measurable part of the line.
- *
- * ── THE TWO GROUNDS ───────────────────────────────────────────────────────────────
- *
- * JIRA'S IS ATLASSIAN'S OWN BLUE AT 14%, `rgba(38, 132, 255, 0.14)` — the same number and
- * the same spelling as `TrackerTile` above and as the site's chip. An inline style rather
- * than a token, deliberately, for the reason `AppSection.tsx` sets out at length: the
- * design system's blues are `accent` and the brand, and a label wearing one of those
- * would be the app claiming Atlassian's colour for its own palette, and would drift the
- * day either is retuned.
- *
- * GITHUB'S IS A CLASS, because grey IS ours: `bg-ink/5`, the text colour at 5%, exactly
- * as the site spells it. NOT `surface-strong`, which is what the tile above uses — that
- * token is a surface weight and sits at 6–10% depending on the theme, so a label wearing
- * it would be a visibly heavier plate than Jira's beside it. The pair was tuned to look
- * like one family, which the eye judges and a number cannot.
- *
- * GitHub's mark is `currentColor`, so it takes the label's own `ink` and needs no colour
- * of its own; Jira's keeps its two brand blues, for `TrackerIcons`' reason.
- *
- * ── THE ACCESSIBLE NAME ───────────────────────────────────────────────────────────
- *
- * The mark is decorative here where the tile's is content: the id beside it is real text,
- * so the label already says something. What it does not say is WHICH tracker, which a
- * sighted reader gets from the mark — hence the `sr-only` name in front of it, and the
- * `title` for the pointer. Read as "Jira PER-1234", which is the label out loud.
- */
-const BADGE_SIZES = {
-  /**
-   * A board card's top band, and the ticket page's condensed bar. Both are rows of
-   * 12px type, and the label is the tallest thing on them.
-   */
-  sm: { box: 'h-6 gap-1.5 px-2 rounded-lg text-xs', mark: 'w-3.5 h-3.5' },
-  /**
-   * Beside the ticket page's `text-2xl` heading, where the `sm` label read as a caption
-   * that had come adrift from a title twice its size. It replaces the `md` TILE that
-   * stood there, so it is built to hold roughly that much vertical weight.
-   */
-  md: { box: 'h-8 gap-2 px-2.5 rounded-xl text-sm', mark: 'w-4 h-4' },
-} as const
 
 export function TrackerBadge({
   tracker,
@@ -173,7 +89,7 @@ export function TrackerBadge({
   tracker: 'github' | 'jira'
   /** `PER-1234` or `#234`, printed exactly as given. */
   ticketId: string
-  size?: keyof typeof BADGE_SIZES
+  size?: LabelSize
   className?: string
   /**
    * Replaces the default "Jira · PER-1234" tooltip, for a badge that fills a BUTTON:
@@ -182,24 +98,25 @@ export function TrackerBadge({
    */
   title?: string
 }) {
-  const jira = tracker === 'jira'
-  const name = jira ? 'Jira' : 'GitHub'
-  // A fixed HEIGHT and not padding alone: the label sets the height of the row it sits
-  // in, so it is pinned rather than left to follow the line-height of whatever type the
-  // theme resolves.
-  const { box, mark } = BADGE_SIZES[size]
+  const name = tracker === 'jira' ? 'Jira' : 'GitHub'
 
+  // A `Label` with the tracker's tone. The ground, the mark and the geometry moved
+  // there; what stays here is the one thing that is this app's — which tracker a row
+  // came from, and saying it out loud.
+  //
+  // THE `sr-only` NAME IS GONE WITH THE SPAN IT NEEDED. `Label` takes a string, so
+  // there is nowhere to hide a second one inside it. The `title` carries the tracker
+  // for the pointer as before; a screen reader gets the id alone, which is the label
+  // as written. Restoring the spoken name means an `aria-label` prop on `Label`, and
+  // that is worth doing when a second call site needs it rather than for this one.
   return (
-    <span
+    <Label
+      tone={tracker === 'jira' ? 'jira' : 'github'}
+      size={size}
       title={title ?? `${name} · ${ticketId}`}
-      className={`${box} inline-flex items-center text-ink flex-shrink-0 ${
-        jira ? '' : 'bg-ink/5'
-      } ${className}`}
-      style={jira ? { backgroundColor: 'rgba(38, 132, 255, 0.14)' } : undefined}
+      className={className}
     >
-      <span className="sr-only">{name} </span>
-      {jira ? <JiraMark className={`${mark} shrink-0`} /> : <GithubMark className={`${mark} shrink-0`} />}
       {ticketId}
-    </span>
+    </Label>
   )
 }

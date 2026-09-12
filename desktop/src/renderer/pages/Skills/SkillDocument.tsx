@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Copy, FileText, Image as ImageIcon, Lock } from 'lucide-react'
+import { Check, Copy, FileText, Image as ImageIcon, Lock } from '@ds/desktop/icons'
 import MarkdownView from '../../components/file-preview/MarkdownView'
 import type { SkillDetail } from '../../hooks/useSkills'
 import { useT } from '../../i18n'

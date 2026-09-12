@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, ExternalLink, MessageCircleQuestion } from 'lucide-react'
+import { Check, ExternalLink, MessageCircleQuestion } from '@ds/desktop/icons'
 import type { Translate } from '../../i18n'
 import type { TrayAnswerChoice, TrayQuestion, TrayQuestionOption } from '../../../types'
 

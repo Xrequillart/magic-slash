@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Plus, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal, type LucideIcon } from 'lucide-react'
+import { Plus, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal, type LucideIcon } from '@ds/desktop/icons'
+import { ProgressBar, type ProgressTone } from '@ds/desktop'
 import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
 import SkillDocument from './SkillDocument'
-import { VSCodeIcon } from '../../components/agent-info-sidebar/icons'
+import { VSCode } from '@ds/desktop/icons'
 import { SweepPane } from '../../components/SweepPane'
 import { useTerminals } from '../../hooks/useTerminals'
 import { useStore, type SkillsContextWindow, type SkillsContextWindowSetting } from '../../store'
@@ -56,11 +57,13 @@ function charBudgetFor(contextWindow: number): number {
   return Math.max(1, Math.floor(contextWindow * CHARS_PER_TOKEN * BUDGET_FRACTION))
 }
 
-function BudgetBar({ label, value, max, unit, barColor }: { label: string; value: number; max: number; unit: string; barColor: string }) {
+function BudgetBar({ label, value, max, unit, tone }: { label: string; value: number; max: number; unit: string; tone: ProgressTone }) {
   const percentage = Math.min(Math.round((value / max) * 100), 100)
   // Over budget is not a shade of "nearly full": past the line Claude Code stops
   // listing descriptions, so the bar changes colour rather than just filling up.
-  const fill = value > max ? 'bg-red' : barColor
+  // A TONE and not a threshold — `percentage` is clamped at 100, so "over" is not a
+  // percentage the bar could ever read.
+  const shown: ProgressTone = value > max ? 'danger' : tone
   // A bare toLocaleString() follows the OS locale, which is not the language the
   // app is showing — a French UI on an English machine would group with commas.
   const locale = useLocale()
@@ -73,20 +76,13 @@ function BudgetBar({ label, value, max, unit, barColor }: { label: string; value
           {value.toLocaleString(locale)} / {max.toLocaleString(locale)} {unit}
         </span>
       </div>
-      <div className="w-full h-2 rounded-full bg-surface overflow-hidden">
-        <div
-          className={`relative h-full rounded-full transition-all duration-300 overflow-hidden ${fill}`}
-          style={{ width: `${percentage}%` }}
-        >
-          <div
-            className="absolute inset-y-0 w-[30%] rounded-full"
-            style={{
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-              animation: 'shimmer-sweep 5s ease-in-out infinite',
-            }}
-          />
-        </div>
-      </div>
+      {/* THE SHIMMER IS GONE with the hand-built fill it lived inside — a sweep
+          animated by `shimmer-sweep`, a keyframe declared in this app's stylesheet and
+          nowhere else. A shared component cannot reach for it: the webapp compiles the
+          same file and has no such keyframe, so the design-system page would document a
+          bar that shimmers in the app and sits still on the page. Restoring it means
+          declaring the keyframe in both stylesheets and giving `ProgressBar` a flag. */}
+      <ProgressBar value={percentage} tone={shown} size="md" label={label} />
       <div className="mt-1.5 text-xs text-text-secondary/40 text-right">{percentage}%</div>
     </div>
   )
@@ -293,8 +289,8 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <BudgetBar label={t('skills.budget.chars')} value={totalChars} max={charBudget} unit={t('skills.budget.unitChars')} barColor="bg-accent" />
-        <BudgetBar label={t('skills.budget.tokens')} value={totalTokens} max={tokenBudget} unit={t('skills.budget.unitTokens')} barColor="bg-orange" />
+        <BudgetBar label={t('skills.budget.chars')} value={totalChars} max={charBudget} unit={t('skills.budget.unitChars')} tone="accent" />
+        <BudgetBar label={t('skills.budget.tokens')} value={totalTokens} max={tokenBudget} unit={t('skills.budget.unitTokens')} tone="warning" />
       </div>
 
       {overBudget && (
@@ -479,7 +475,7 @@ function LongDescriptionsAlert({ longDescriptions, onFix }: { longDescriptions: 
           onClick={() => longDescriptions.forEach((e) => window.electronAPI.shell.openInVSCode(e.filePath))}
           className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-orange border border-orange/20 rounded-lg hover:bg-orange/10 transition-colors"
         >
-          <VSCodeIcon className="w-3.5 h-3.5" />
+          <VSCode className="w-3.5 h-3.5" />
           {t('skills.openInVSCode')}
         </button>
         <button

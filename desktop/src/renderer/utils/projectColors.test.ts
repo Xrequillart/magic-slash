@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { configKeyForRepoId, getProjectColor, getProjectColorMap, PROJECT_COLORS, REPO_COLOR_CHOICES, REPO_QUICK_COLORS } from './projectColors'
+import { PROJECT_COLORS, REPO_COLOR_CHOICES, REPO_QUICK_COLORS } from '../../../../design-system/desktop/palette'
+import { configKeyForRepoId, getProjectColor, getProjectColorMap } from './projectColors'
 
 describe('getProjectColor', () => {
   it('returns color at given index', () => {

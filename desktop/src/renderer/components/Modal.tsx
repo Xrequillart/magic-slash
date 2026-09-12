@@ -1,6 +1,6 @@
 import { useEffect, useCallback, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from 'lucide-react'
+import { X } from '@ds/desktop/icons'
 import { useModalExit } from '../hooks/useModalExit'
 
 interface ModalProps {

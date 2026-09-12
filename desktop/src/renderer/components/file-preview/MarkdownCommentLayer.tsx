@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare } from '@ds/desktop/icons'
 import MarkdownView from './MarkdownView'
 import CommentCard, { CommentAnchorNotice } from './CommentCard'
 import { scrollCardIntoView, useInlineCommentHosts } from '../../hooks/useInlineCommentHosts'

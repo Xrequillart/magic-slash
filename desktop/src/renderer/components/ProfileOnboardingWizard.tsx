@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { User, ChevronLeft, ChevronRight, X, Check } from 'lucide-react'
+import { User, ChevronLeft, ChevronRight, X, Check } from '@ds/desktop/icons'
 import { useT, ROLE_LABEL_KEYS, LEVEL_LABEL_KEYS, STYLE_LABEL_KEYS, type MessageKey } from '../i18n'
 import type { UserProfile } from '../../types'
 import { INPUT } from '../theme/controls'

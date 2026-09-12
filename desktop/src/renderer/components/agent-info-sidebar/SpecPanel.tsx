@@ -1,5 +1,6 @@
+import { Card } from '@ds/desktop'
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { Maximize2 } from 'lucide-react'
+import { Maximize2 } from '@ds/desktop/icons'
 import { NO_COMMENTS, useStore } from '../../store'
 import FileContentRenderer from '../file-preview/FileContentRenderer'
 import ReviewCommentsButton from '../file-preview/ReviewCommentsButton'
@@ -198,7 +199,7 @@ export function SpecPanel({
     // No `overflow-hidden` on the card: StatusPill's picker is an absolutely
     // positioned dropdown and would be clipped by it. The body rounds its own
     // bottom corners instead.
-    <div className="bg-surface rounded-xl flex flex-col flex-1 min-h-0">
+    <Card padding="none" className="flex flex-col flex-1 min-h-0">
       {/* Same padding and rhythm as TicketHeader — p-4, mb-3 under the top row, mt-3
           between the fields — so the spec card and the ticket card read as one family
           rather than two. */}
@@ -314,6 +315,6 @@ export function SpecPanel({
             </button>
         )}
       </div>
-    </div>
+    </Card>
   )
 }

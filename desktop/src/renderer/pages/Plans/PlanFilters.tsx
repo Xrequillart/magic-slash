@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, ChevronDown, FolderGit2 } from 'lucide-react'
+import { Check, ChevronDown, FolderGit2 } from '@ds/desktop/icons'
 import type { PlanRepoRef } from '../../../types'
 import { useAnchoredPanel } from '../../components/useAnchoredPanel'
 import { useT } from '../../i18n'

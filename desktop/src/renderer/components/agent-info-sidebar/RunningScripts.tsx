@@ -1,4 +1,4 @@
-import { CircleStop, ExternalLink, Globe, XCircle } from 'lucide-react'
+import { CircleStop, ExternalLink, Globe, XCircle } from '@ds/desktop/icons'
 import { WaveLoader } from '../WaveLoader'
 import { useScriptRunner } from '../../hooks/useScriptRunner'
 import { useStore } from '../../store'

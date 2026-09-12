@@ -34,15 +34,3 @@ export const ACTION_CHIP_SQUARE = 'w-6'
  * allowed to be uneven, because the difference is what says "this one opens something".
  */
 export const ACTION_CHIP_PILL = 'px-1.5 gap-0.5'
-
-/**
- * The same chip carrying WORDS instead of a mark — a label, not a control.
- *
- * Identical geometry to the square above, which is the point: a row mixing the two
- * (the agent card's brand label beside its model, the usage card's account beside its
- * fold button) lands on one height and one radius. No ground and no ink here — a label
- * is named by its colour, and each caller owns that: the brand ones wear their own hue
- * at 14%, the neutral ones `bg-ink/10 text-ink`.
- */
-export const LABEL_CHIP =
-  'h-6 gap-1.5 px-2 rounded-lg text-xs font-medium inline-flex items-center flex-shrink-0'

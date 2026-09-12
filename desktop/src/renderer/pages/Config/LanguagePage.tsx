@@ -1,4 +1,4 @@
-import { Languages } from 'lucide-react'
+import { Languages } from '@ds/desktop/icons'
 import { useConfig } from '../../hooks/useConfig'
 import { LanguageSelect } from '../../components/LanguageSelect'
 import { showToast } from '../../components/Toast'

@@ -1,3 +1,4 @@
+import { Card } from '@ds/desktop'
 import { TicketIdLink, TicketIdPlaceholder } from './TicketIdLink'
 import { StatusPill } from './StatusPill'
 import { AgentTitleField, AgentDescriptionField, type AgentIdentity } from './AgentIdentityFields'
@@ -23,7 +24,7 @@ export function TicketHeader({
   onStatusChange,
 }: TicketHeaderProps) {
   return (
-    <div className="bg-surface rounded-xl p-4">
+    <Card>
       {/* Ticket ID + Status Badge */}
       <div className="flex items-center justify-between mb-3">
         {metadata?.ticketId ? (
@@ -52,6 +53,6 @@ export function TicketHeader({
       <div className="mt-1">
         <AgentDescriptionField identity={identity} />
       </div>
-    </div>
+    </Card>
   )
 }

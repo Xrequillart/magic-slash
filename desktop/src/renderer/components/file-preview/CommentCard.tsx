@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { MessageSquare, MessageSquarePlus, Pencil, Trash2 } from 'lucide-react'
+import { MessageSquare, MessageSquarePlus, Pencil, Trash2 } from '@ds/desktop/icons'
 import { commentAnchorKind, commentLabel, type LineRange } from '../../utils/commentAnchors'
 import { BTN_DANGER, BTN_GHOST, BTN_PRIMARY, INPUT } from '../../theme/controls'
 import type { FileComment } from '../../store'

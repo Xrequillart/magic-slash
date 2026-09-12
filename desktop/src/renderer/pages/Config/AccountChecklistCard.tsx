@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, Circle, ListChecks } from 'lucide-react'
+import { CheckCircle2, Circle, ListChecks } from '@ds/desktop/icons'
 import type { InvalidRepo } from '../../../preload'
 import type { SetupStatus } from '../../../types'
 import { useAuth } from '../../hooks/useAuth'

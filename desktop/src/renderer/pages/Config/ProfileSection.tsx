@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { User } from 'lucide-react'
+import { User } from '@ds/desktop/icons'
 import { ProfileForm } from './ProfileForm'
 import { ProfileFields, draftFromProfile, profileFromDraft, type ProfileDraft } from './ProfileFields'
 import { SectionHeader } from './SectionHeader'

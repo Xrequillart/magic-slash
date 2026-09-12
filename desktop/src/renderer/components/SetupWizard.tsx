@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Wand2, ChevronRight, X, Check, AlertTriangle, Download, ExternalLink, Copy, Loader2 } from 'lucide-react'
+import { Wand2, ChevronRight, X, Check, AlertTriangle, Download, ExternalLink, Copy, Loader2 } from '@ds/desktop/icons'
 import type { PrerequisiteId, PrerequisiteStatus, SetupStatus } from '../../types'
 import { useT } from '../i18n'
 

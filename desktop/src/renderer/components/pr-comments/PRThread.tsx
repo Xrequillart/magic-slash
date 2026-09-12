@@ -1,5 +1,5 @@
 import { memo, useState } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight } from '@ds/desktop/icons'
 import MarkdownView from '../file-preview/MarkdownView'
 import InitialsAvatar from './InitialsAvatar'
 import DiffHunkView from './DiffHunkView'

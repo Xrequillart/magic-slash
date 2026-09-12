@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Check, Loader2 } from 'lucide-react'
+import { Check, Loader2 } from '@ds/desktop/icons'
 import { showToast } from '../../components/Toast'
 import { ProfileFields, draftFromProfile, profileFromDraft, type ProfileDraft } from './ProfileFields'
 import { useT } from '../../i18n'

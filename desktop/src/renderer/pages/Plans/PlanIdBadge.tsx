@@ -1,4 +1,4 @@
-import { MagicSlashIcon } from '../../components/icons/MagicSlash'
+import { Label, type LabelSize } from '@ds/desktop'
 
 /**
  * A plan's id, as the badge a ticket wears — our mark instead of a tracker's.
@@ -19,29 +19,17 @@ import { MagicSlashIcon } from '../../components/icons/MagicSlash'
  * by a build that has it. A badge reading `#` or `#0` would be worse than the row simply
  * not having one yet: it would look like a plan that exists at position zero.
  */
-/**
- * The two scales, and they are `TrackerBadge`'s own — same box, same radius, same mark
- * size — because a plan's badge and a ticket's stand in the same places and must be the
- * same object at each of them.
- *
- * `sm` is a list row and the pinned bar: rows of 12px type where the badge is the tallest
- * thing on the line. `md` is a page heading, beside `text-2xl`, where the small one read
- * as a caption that had come adrift from a title twice its size.
- */
-const BADGE_SIZES = {
-  sm: { box: 'h-6 gap-1.5 px-2 rounded-lg text-xs', mark: 'w-3.5 h-3.5' },
-  md: { box: 'h-8 gap-2 px-2.5 rounded-xl text-sm', mark: 'w-4 h-4' },
-} as const
-
-export function PlanIdBadge({ number, size = 'sm' }: { number?: number; size?: keyof typeof BADGE_SIZES }) {
+export function PlanIdBadge({ number, size = 'sm' }: { number?: number; size?: LabelSize }) {
   if (typeof number !== 'number') return null
 
-  const { box, mark } = BADGE_SIZES[size]
-
+  // `magic-slash` tone: our own mark on the grey plate a tracker with no brand colour
+  // gets. The scale, the ground and the mark all live in `Label` now — this file is
+  // down to the one decision that is its own, which is what a plan's id actually is.
+  //
+  // `tabular-nums` so a column of `#7` and `#128` keeps its digits on one grid.
   return (
-    <span className={`${box} font-medium inline-flex items-center flex-shrink-0 bg-ink/5 text-ink tabular-nums`}>
-      <MagicSlashIcon className={`${mark} shrink-0`} />
-      #{number}
-    </span>
+    <Label tone="magic-slash" size={size} className="tabular-nums">
+      {`#${number}`}
+    </Label>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Copy } from 'lucide-react'
+import { Check, Copy } from '@ds/desktop/icons'
 
 /**
  * How long the confirmation shows before the button goes back to offering the copy.

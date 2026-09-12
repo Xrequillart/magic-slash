@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { Mail, ChevronLeft, ChevronRight, X, Check, Download, Folder, FolderOpen, Loader2 } from 'lucide-react'
+import { Mail, ChevronLeft, ChevronRight, X, Check, Download, Folder, FolderOpen, Loader2 } from '@ds/desktop/icons'
 import { useAuth } from '../hooks/useAuth'
 import { useOrg } from '../hooks/useOrg'
 import { useConfig } from '../hooks/useConfig'

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search } from 'lucide-react'
+import { Search } from '@ds/desktop/icons'
 import { useT, type MessageKey } from '../../i18n'
 
 // Message keys, not descriptions: this list is module scope, so a literal here

@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Github, ListTodo, RefreshCw, SearchX } from 'lucide-react'
+import { ListTodo, RefreshCw, SearchX } from '@ds/desktop/icons'
+// The app's own GitHub mark, not a lucide icon: lucide v1 dropped every brand
+// glyph, and this one was already drawn here for the tracker badges.
+import { Github } from '@ds/desktop/icons'
 import type { RepositoryConfig, TaskBoardColumn } from '../../../types'
 import { useConfig } from '../../hooks/useConfig'
 import { useOrgAgents } from '../../hooks/useOrgAgents'

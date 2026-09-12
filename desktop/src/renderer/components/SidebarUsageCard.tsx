@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Minus, Plus } from 'lucide-react'
+import { Minus, Plus } from '@ds/desktop/icons'
 import { useStore } from '../store'
-import { ACTION_CHIP, ACTION_CHIP_SQUARE, LABEL_CHIP } from './actionChip'
-import { CLAUDE_CHIP_GROUND, CLAUDE_CORAL, ClaudeCodeIcon } from './icons/ClaudeCode'
-import { gaugeColors, formatReset } from './agent-info-sidebar/LimitGauge'
+import { Label, PROGRESS_TEXT, ProgressBar, progressTone } from '@ds/desktop'
+import { ACTION_CHIP, ACTION_CHIP_SQUARE } from './actionChip'
+import { LIMIT_THRESHOLDS, formatReset } from './agent-info-sidebar/LimitGauge'
 import { useT } from '../i18n'
 import type { ClaudeAccount } from '../../types'
 
@@ -14,17 +14,12 @@ import type { ClaudeAccount } from '../../types'
 // whatever is left — it goes very small on a narrow sidebar, by design.
 function UsageMiniBar({ label, percent }: { label: string; percent: number }) {
   const pct = Math.min(100, Math.max(0, percent))
-  const colors = gaugeColors(pct)
+  const tone = progressTone(pct, LIMIT_THRESHOLDS)
   return (
     <div className="flex items-center gap-1 flex-1 min-w-0">
       <span className="shrink-0 text-[11px] text-text-secondary/60">{label}</span>
-      <div className="h-1 flex-1 min-w-[8px] rounded-full bg-surface overflow-hidden">
-        <div
-          className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className={`shrink-0 text-[11px] font-semibold ${colors.text}`}>{Math.round(pct)}%</span>
+      <ProgressBar value={pct} thresholds={LIMIT_THRESHOLDS} size="xs" label={label} className="flex-1 min-w-[8px]" />
+      <span className={`shrink-0 text-[11px] font-semibold ${PROGRESS_TEXT[tone]}`}>{Math.round(pct)}%</span>
     </div>
   )
 }
@@ -38,7 +33,7 @@ function UsageBar({ label, percent, resetsAt, now }: {
 }) {
   const t = useT()
   const pct = Math.min(100, Math.max(0, percent))
-  const colors = gaugeColors(pct)
+  const tone = progressTone(pct, LIMIT_THRESHOLDS)
   return (
     <div className="space-y-1">
       {/* `text-xs`, up from 10px. This card is the one thing in the left sidebar a
@@ -52,15 +47,10 @@ function UsageBar({ label, percent, resetsAt, now }: {
           {typeof resetsAt === 'number' && (
             <span className="text-[11px] text-text-secondary/35">{formatReset(resetsAt, now, t)}</span>
           )}
-          <span className={`font-semibold ${colors.text}`}>{Math.round(pct)}%</span>
+          <span className={`font-semibold ${PROGRESS_TEXT[tone]}`}>{Math.round(pct)}%</span>
         </span>
       </div>
-      <div className="h-1.5 w-full rounded-full bg-surface overflow-hidden">
-        <div
-          className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
+      <ProgressBar value={pct} thresholds={LIMIT_THRESHOLDS} label={label} />
     </div>
   )
 }
@@ -151,14 +141,9 @@ export function SidebarUsageCard() {
                 `min-w-0` on the chip and `truncate` on the name, unlike the fixed labels
                 it borrows from: an account is whatever the person is called, in a 230px
                 column. The full value stays in the tooltip. */}
-            <span
-              className={`${LABEL_CHIP} min-w-0 text-ink`}
-              style={{ backgroundColor: CLAUDE_CHIP_GROUND }}
-              title={accountLabel}
-            >
-              <ClaudeCodeIcon className="w-3.5 h-3.5 shrink-0" style={{ color: CLAUDE_CORAL }} />
-              <span className="truncate">{accountLabel}</span>
-            </span>
+            <Label tone="claude-code" title={accountLabel} truncate>
+              {accountLabel}
+            </Label>
             <button
               onClick={toggleMinimized}
               title={t('usage.minimize')}

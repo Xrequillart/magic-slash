@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { Check, MessageCircleQuestionMark, XCircle } from 'lucide-react'
+import { Check, MessageCircleQuestionMark, XCircle } from '@ds/desktop/icons'
 import { WaveLoader } from './WaveLoader'
 import { stateColors } from '../utils/stateColors'
 import type { TerminalState } from '../../types'

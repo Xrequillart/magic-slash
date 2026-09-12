@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { Check, ChevronDown } from 'lucide-react'
+import { Check, ChevronDown } from '@ds/desktop/icons'
 import { useClickOutside } from '../../hooks/useClickOutside'
 import { STATUSES_BY_TYPE, resolveAgentType } from './utils'
 import { useT, type MessageKey } from '../../i18n'

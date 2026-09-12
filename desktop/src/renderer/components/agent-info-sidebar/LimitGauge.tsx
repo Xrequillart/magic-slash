@@ -2,15 +2,22 @@
 // shared by every surface that renders them: the agent info sidebar, the sidebar
 // usage card and the Claude Code settings tab.
 
+import { PROGRESS_TEXT, ProgressBar, progressTone } from '@ds/desktop'
 import { useT } from '../../i18n'
 import type { Translate } from '../../i18n'
 
-// Traffic-light color for a fill gauge: green → yellow → red as it fills up.
-export function gaugeColors(pct: number): { bar: string; text: string } {
-  if (pct >= 85) return { bar: 'bg-red', text: 'text-red' }
-  if (pct >= 65) return { bar: 'bg-yellow', text: 'text-yellow' }
-  return { bar: 'bg-green', text: 'text-green' }
-}
+/**
+ * Where a plan's rate limit turns.
+ *
+ * LATE, and that is the point: 65% of a weekly quota is a normal Wednesday. The
+ * context gauge in `UsageCard` turns at 40 and 70 instead, because filling a context
+ * window is what triggers a compaction. Two gauges, two honest answers.
+ *
+ * The warning step is ORANGE now and was YELLOW. Nothing explained the yellow, and
+ * this app gives yellow to a PENDING state — a check running, a PR waiting. A gauge
+ * filling up is not a gauge waiting. See `ProgressBar`.
+ */
+export const LIMIT_THRESHOLDS = { warning: 65, danger: 85 }
 
 // Compact "time until reset" from a unix-epoch-seconds timestamp: 45m, 2h14, 3d,
 // soon. Takes a translator rather than reading one itself so it stays callable
@@ -37,7 +44,7 @@ export function RateLimitBar({ label, percent, resetsAt, now }: {
 }) {
   const t = useT()
   const pct = Math.min(100, Math.max(0, percent))
-  const colors = gaugeColors(pct)
+  const tone = progressTone(pct, LIMIT_THRESHOLDS)
 
   return (
     <div className="space-y-1.5">
@@ -49,15 +56,10 @@ export function RateLimitBar({ label, percent, resetsAt, now }: {
               {t('usage.resetsIn', { time: formatReset(resetsAt, now, t) })}
             </span>
           )}
-          <span className={`text-sm font-semibold tabular-nums ${colors.text}`}>{Math.round(pct)}%</span>
+          <span className={`text-sm font-semibold tabular-nums ${PROGRESS_TEXT[tone]}`}>{Math.round(pct)}%</span>
         </span>
       </div>
-      <div className="h-2 w-full rounded-full bg-surface overflow-hidden">
-        <div
-          className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
+      <ProgressBar value={pct} thresholds={LIMIT_THRESHOLDS} size="md" label={label} />
     </div>
   )
 }

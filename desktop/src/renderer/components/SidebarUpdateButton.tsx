@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, CheckCircle, Download, RotateCw } from 'lucide-react'
+import { AlertTriangle, CheckCircle, Download, RotateCw } from '@ds/desktop/icons'
+import { ProgressBar } from '@ds/desktop'
 import { useT } from '../i18n'
 
 /** Fixture version for the dev-only simulation below. */
@@ -151,12 +152,10 @@ export function SidebarUpdateButton() {
             <span className="text-text-secondary/60">{t('sidebar.update.downloading')}</span>
             <span className="font-semibold text-accent">{Math.round(pct)}%</span>
           </div>
-          <div className="h-1.5 w-full rounded-full bg-surface overflow-hidden">
-            <div
-              className="h-full rounded-full bg-accent transition-all duration-300 ease-out"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
+          {/* `accent` and no thresholds: this is the app reporting its own download,
+              where green would read as a verdict on something that has not finished
+              happening, and an orange at 40% as a problem with a perfectly healthy one. */}
+          <ProgressBar value={pct} tone="accent" label={t('sidebar.update.downloading')} />
         </div>
       </Row>
     )

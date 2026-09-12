@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { LogIn, Settings, AlertTriangle } from 'lucide-react'
+import { LogIn, Settings, AlertTriangle } from '@ds/desktop/icons'
 import { useAuth } from '../hooks/useAuth'
 import { useAvatar } from '../hooks/useAvatar'
 import { useStore } from '../store'

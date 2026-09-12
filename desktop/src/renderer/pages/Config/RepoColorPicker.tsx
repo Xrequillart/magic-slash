@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { FolderGit2, Palette } from 'lucide-react'
+import { FolderGit2, Palette } from '@ds/desktop/icons'
 import { Modal } from '../../components/Modal'
-import { REPO_COLOR_CHOICES, REPO_QUICK_COLORS } from '../../utils/projectColors'
+import { REPO_COLOR_CHOICES, REPO_QUICK_COLORS } from '@ds/desktop/palette'
 import { useT } from '../../i18n'
 
 

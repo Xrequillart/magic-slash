@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { ArrowLeft, BotMessageSquare, ExternalLink, MessageSquare, MessagesSquare, NotebookPen, Play, Unlink } from 'lucide-react'
+import { ArrowLeft, BotMessageSquare, ExternalLink, MessageSquare, MessagesSquare, NotebookPen, Play, Unlink } from '@ds/desktop/icons'
 import type {
   PlanTicketOrigin,
   TicketComment,
@@ -13,6 +13,7 @@ import type {
 import { isJiraStatusError, isPRStatusError } from '../../../types'
 import { useLocale, useT, type Translate } from '../../i18n'
 import { BTN, BTN_ICON, BTN_NEUTRAL_STACKED, BTN_PRIMARY_STACKED } from '../../theme/controls'
+import { Banner, ProgressBar } from '@ds/desktop'
 import { WaveLoader } from '../../components/WaveLoader'
 import MarkdownView from '../../components/file-preview/MarkdownView'
 import { StatusPill } from '../../components/StatusPill'
@@ -1031,45 +1032,51 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
           The BUTTON needs the agent to be on this machine, which is a narrower question
           than the banner's — see `agentTerminalId`. A teammate's agent is a fact worth
           stating and nothing this window can open, so the banner stands on its own. */}
+      {/* `mb-5`, the title's own `pb-5`: the column above spaces nothing for its
+          blocks, so a block that states a fact about the ticket and then lets the
+          body start has to carry the separation itself — without it the banner and
+          the first card share an edge and read as one panel. Margins are the one
+          thing `Banner` leaves to its caller; see its `className`. */}
       {hasAgent && (
-        /* `mb-5`, the title's own `pb-5`: the column above spaces nothing for its
-           blocks, so a block that states a fact about the ticket and then lets the
-           body start has to carry the separation itself — without it the banner and
-           the first card share an edge and read as one panel. */
-        <div className="flex items-center gap-3 mb-5 px-4 py-3 rounded-xl bg-green/10">
-          <BotMessageSquare className="w-5 h-5 text-green flex-shrink-0" />
-          <span className="text-sm text-ink min-w-0">{t('tasks.hasAgentHint')}</span>
-          {agentTerminalId && (
-            <span className="ml-auto flex-shrink-0 flex items-center gap-2">
-              {/* SECOND and outlined, because the two are not a pair of equals: going to
-                  look at the agent is what somebody reading this banner nearly always
-                  wants, and cutting the link is the occasional correction. Same green,
-                  so both read as belonging to the banner rather than to the page. */}
-              <button
-                onClick={detachAgent}
-                title={t('tasks.detachAgentHint')}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
-                  rounded-lg transition-colors border border-green/40 text-green hover:bg-green/10"
-              >
-                <Unlink className="w-3.5 h-3.5" />
-                <span>{t('tasks.detachAgent')}</span>
-              </button>
-              {/* `bg-green text-bg`, the inversion `BTN_NEUTRAL_STACKED` is built on: green
-                  is a bright colour on the dark themes and a deep one on the light themes
-                  (see themes.ts), so a fixed label colour would fail half of them. `text-bg`
-                  follows the ground and reads on both. Not a tier in `controls.ts` — one
-                  green button in the app is a call site, not a size. */}
-              <button
-                onClick={viewAgent}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5
-                  text-xs font-medium rounded-lg transition-all bg-green text-bg hover:bg-green/90"
-              >
-                <BotMessageSquare className="w-3.5 h-3.5" />
-                <span>{t('tasks.viewAgent')}</span>
-              </button>
-            </span>
-          )}
-        </div>
+        <Banner
+          variant="success"
+          icon={BotMessageSquare}
+          className="mb-5"
+          actions={
+            agentTerminalId && (
+              <>
+                {/* SECOND and outlined, because the two are not a pair of equals: going to
+                    look at the agent is what somebody reading this banner nearly always
+                    wants, and cutting the link is the occasional correction. Same green,
+                    so both read as belonging to the banner rather than to the page. */}
+                <button
+                  onClick={detachAgent}
+                  title={t('tasks.detachAgentHint')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
+                    rounded-lg transition-colors border border-green/40 text-green hover:bg-green/10"
+                >
+                  <Unlink className="w-3.5 h-3.5" />
+                  <span>{t('tasks.detachAgent')}</span>
+                </button>
+                {/* `bg-green text-bg`, the inversion `BTN_NEUTRAL_STACKED` is built on: green
+                    is a bright colour on the dark themes and a deep one on the light themes
+                    (see themes.ts), so a fixed label colour would fail half of them. `text-bg`
+                    follows the ground and reads on both. Not a tier in `controls.ts` — one
+                    green button in the app is a call site, not a size. */}
+                <button
+                  onClick={viewAgent}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5
+                    text-xs font-medium rounded-lg transition-all bg-green text-bg hover:bg-green/90"
+                >
+                  <BotMessageSquare className="w-3.5 h-3.5" />
+                  <span>{t('tasks.viewAgent')}</span>
+                </button>
+              </>
+            )
+          }
+        >
+          {t('tasks.hasAgentHint')}
+        </Banner>
       )}
 
       {/* The two columns of a GitHub issue. `items-start` so the metadata card
@@ -1138,37 +1145,40 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
               Narrower than its full-width copy and stacked because of it: this column is
               256px, where the sentence and the button sit side by side above. */}
           {hasAgent && condensed && (
-            <div className="flex flex-col gap-2 px-3 py-3 rounded-xl bg-green/10 border border-green/30">
-              <span className="flex items-start gap-2 min-w-0">
-                <BotMessageSquare className="w-3.5 h-3.5 text-green flex-shrink-0 mt-0.5" />
-                <span className="text-xs text-ink min-w-0">{t('tasks.hasAgentHint')}</span>
-              </span>
-              {agentTerminalId && (
-                <>
-                  <button
-                    onClick={viewAgent}
-                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5
-                      text-xs font-medium rounded-lg transition-all bg-green text-bg hover:bg-green/90"
-                  >
-                    <BotMessageSquare className="w-3.5 h-3.5" />
-                    <span>{t('tasks.viewAgent')}</span>
-                  </button>
-                  {/* UNDER the primary one here, where the full-width copy puts it before:
-                      this column stacks, and the order that reads as a ranking when
-                      stacked is top-down. */}
-                  <button
-                    onClick={detachAgent}
-                    title={t('tasks.detachAgentHint')}
-                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5
-                      text-xs font-medium rounded-lg transition-colors border border-green/40
-                      text-green hover:bg-green/10"
-                  >
-                    <Unlink className="w-3.5 h-3.5" />
-                    <span>{t('tasks.detachAgent')}</span>
-                  </button>
-                </>
-              )}
-            </div>
+            <Banner
+              variant="success"
+              icon={BotMessageSquare}
+              layout="stacked"
+              actions={
+                agentTerminalId && (
+                  <>
+                    <button
+                      onClick={viewAgent}
+                      className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5
+                        text-xs font-medium rounded-lg transition-all bg-green text-bg hover:bg-green/90"
+                    >
+                      <BotMessageSquare className="w-3.5 h-3.5" />
+                      <span>{t('tasks.viewAgent')}</span>
+                    </button>
+                    {/* UNDER the primary one here, where the full-width copy puts it before:
+                        this column stacks, and the order that reads as a ranking when
+                        stacked is top-down. */}
+                    <button
+                      onClick={detachAgent}
+                      title={t('tasks.detachAgentHint')}
+                      className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5
+                        text-xs font-medium rounded-lg transition-colors border border-green/40
+                        text-green hover:bg-green/10"
+                    >
+                      <Unlink className="w-3.5 h-3.5" />
+                      <span>{t('tasks.detachAgent')}</span>
+                    </button>
+                  </>
+                )
+              }
+            >
+              {t('tasks.hasAgentHint')}
+            </Banner>
           )}
 
           {/* The page's one affirmative action, and it is first: the metadata
@@ -1315,12 +1325,10 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
                       {/* The progress GitHub draws there. Rounded to the pixel by the
                           browser, so the bar can read as full one issue early — the
                           count above it is the number of record. */}
-                      <div className="h-1.5 w-full rounded-full bg-surface-strong overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-green transition-[width]"
-                          style={{ width: `${(props.issue.subIssues.completed / props.issue.subIssues.total) * 100}%` }}
-                        />
-                      </div>
+                      <ProgressBar
+                        value={(props.issue.subIssues.completed / props.issue.subIssues.total) * 100}
+                        track="strong"
+                      />
                     </div>
                   </SideBlock>
                 )}

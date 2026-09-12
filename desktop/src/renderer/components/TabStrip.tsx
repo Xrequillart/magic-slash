@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import type { LucideIcon } from 'lucide-react'
+import type { LucideIcon } from '@ds/desktop/icons'
 
 /**
  * A pill rail whose background SLIDES to the tab you pick.

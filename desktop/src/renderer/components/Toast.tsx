@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { X, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
+import { X, CheckCircle, XCircle, AlertTriangle } from '@ds/desktop/icons'
 
 type ToastType = 'success' | 'error' | 'warning'
 

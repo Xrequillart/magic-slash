@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Activity, ArrowDownUp, Check, Clock, FolderGit2 } from 'lucide-react'
+import { Activity, ArrowDownUp, Check, Clock, FolderGit2 } from '@ds/desktop/icons'
 import { ACTION_CHIP, ACTION_CHIP_SQUARE } from './actionChip'
 import { useAnchoredPanel } from './useAnchoredPanel'
 import { useConfig } from '../hooks/useConfig'

@@ -1,4 +1,4 @@
-import { Bell, Bot, GitPullRequest, Users } from 'lucide-react'
+import { Bell, Bot, GitPullRequest, Users } from '@ds/desktop/icons'
 import { useConfig } from '../../hooks/useConfig'
 import { SectionHeader } from './SectionHeader'
 import { ToggleRow } from './ToggleRow'

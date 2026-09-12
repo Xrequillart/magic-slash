@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Archive } from 'lucide-react'
+import { Archive } from '@ds/desktop/icons'
 import { useStore } from '../store'
 import { canChangeAgentType, canCloseAgent, resolveAgentType } from './agent-info-sidebar/utils'
 import { useTerminals } from '../hooks/useTerminals'

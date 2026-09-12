@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
-import { Cloud, Users, Mail, LogOut, Copy, Check, Loader2, Building2, Trash2, AlertTriangle, Archive, X, Plus, UserPlus } from 'lucide-react'
+import { Cloud, Users, Mail, LogOut, Copy, Check, Loader2, Building2, Trash2, AlertTriangle, Archive, X, Plus, UserPlus } from '@ds/desktop/icons'
 import { useAuth } from '../../hooks/useAuth'
 import { useOrg } from '../../hooks/useOrg'
 import { useMemberAvatars } from '../../hooks/useMemberAvatars'

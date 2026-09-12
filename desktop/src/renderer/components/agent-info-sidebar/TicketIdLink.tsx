@@ -1,4 +1,4 @@
-import { TicketPlus } from 'lucide-react'
+import { TicketPlus } from '@ds/desktop/icons'
 import { useStore } from '../../store'
 import { detectTicketProvider } from './utils'
 import { TrackerBadge } from '../icons/TrackerIcons'

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { CircleUserRound, Power, RefreshCw, RotateCw } from 'lucide-react'
+import { CircleUserRound, Power, RefreshCw, RotateCw } from '@ds/desktop/icons'
 import { AgentStateBadge } from '../../components/AgentStateBadge'
 import { stateHoverBgColors } from '../../utils/stateColors'
 import { displayNameFromEmail } from '../../utils/displayName'

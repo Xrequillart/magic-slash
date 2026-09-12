@@ -17,7 +17,7 @@ import {
   SendHorizontal,
   Users,
   XCircle,
-} from 'lucide-react'
+} from '@ds/desktop/icons'
 import { formatTimestamp } from './utils'
 import { ACTION_CHIP } from '../actionChip'
 import { useStore } from '../../store'

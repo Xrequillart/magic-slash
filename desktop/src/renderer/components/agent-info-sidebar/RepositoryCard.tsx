@@ -1,5 +1,6 @@
-import { GitBranch, Copy, Check, ArrowRight, X } from 'lucide-react'
-import { GitHubIcon, VSCodeIcon } from './icons'
+import { Card } from '@ds/desktop'
+import { GitBranch, Copy, Check, ArrowRight, X } from '@ds/desktop/icons'
+import { Github, VSCode } from '@ds/desktop/icons'
 import { RepoNameBadge } from './RepoMark'
 import { ACTION_CHIP, ACTION_CHIP_SQUARE } from '../actionChip'
 import { ScriptsDropdown } from './ScriptsDropdown'
@@ -114,7 +115,7 @@ export function RepositoryCard({
        4px narrower than the cards above it — a stepped left edge running down the
        column, the kind of thing that reads as sloppiness without the reader being able
        to name it. */
-    <div className="bg-surface rounded-xl p-4 flex flex-col gap-2">
+    <Card className="flex flex-col gap-2">
       {/* Repo header */}
       <div className="flex items-center gap-2">
         {/* Mark and name as ONE chip, in the ticket badge's shape — see `RepoNameBadge`. */}
@@ -130,7 +131,7 @@ export function RepositoryCard({
             title={t('agentInfo.openRepoInEditor')}
             aria-label={t('agentInfo.openRepoInEditor')}
           >
-            <VSCodeIcon className="w-3.5 h-3.5" />
+            <VSCode className="w-3.5 h-3.5" />
           </button>
           {/* Open on GitHub — hidden when the repo has no known remote */}
           {repoUrl && (
@@ -140,7 +141,7 @@ export function RepositoryCard({
               title={t('agentInfo.openRepoOnGitHub')}
               aria-label={t('agentInfo.openRepoOnGitHub')}
             >
-              <GitHubIcon className="w-3.5 h-3.5" />
+              <Github className="w-3.5 h-3.5" />
             </button>
           )}
           {/* Removing wears the same chip as the three beside it — the row is one set of
@@ -345,7 +346,7 @@ export function RepositoryCard({
                     className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-ink/10 hover:text-ink`}
                     title={t('agentInfo.viewOnGitHub')}
                   >
-                    <GitHubIcon className="w-3.5 h-3.5" />
+                    <Github className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
@@ -379,6 +380,6 @@ export function RepositoryCard({
           accent "View pull request" button that used to sit right above it is
           gone: one PR, one card. */}
       {prUrl && <PRWatchCard prUrl={prUrl} agentId={agentId} metadata={repoMetadata} />}
-    </div>
+    </Card>
   )
 }

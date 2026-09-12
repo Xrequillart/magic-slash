@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AlertTriangle, Bot, Bug, Download, FileText, PartyPopper, ScrollText, Sparkles } from 'lucide-react'
+import { AlertTriangle, Bot, Bug, Download, FileText, PartyPopper, ScrollText, Sparkles } from '@ds/desktop/icons'
 import { useStore } from '../store'
 import { useT } from '../i18n'
 

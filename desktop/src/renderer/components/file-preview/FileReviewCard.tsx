@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { RefObject } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown } from '@ds/desktop/icons'
 import FileContentRenderer, { isMarkdownPath } from './FileContentRenderer'
 import ChangeCountChip from './ChangeCountChip'
 import { MarkdownModeToggle, StatusBadge, WholeFileToggle } from './FileHeader'

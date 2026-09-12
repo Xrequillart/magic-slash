@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, MessageSquareCode } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MessageSquareCode } from '@ds/desktop/icons'
 import { BUTTON_NEXT, BUTTON_PREVIOUS } from '../file-preview/ChangeNavigator'
 import { useT } from '../../i18n'
 

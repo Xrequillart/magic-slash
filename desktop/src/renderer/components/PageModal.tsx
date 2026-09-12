@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Maximize2, Minimize2, X } from 'lucide-react'
+import { Maximize2, Minimize2, X } from '@ds/desktop/icons'
 import { useModalExit } from '../hooks/useModalExit'
 import { useStore } from '../store'
 import { TITLE_BAR_H } from './TitleBar'

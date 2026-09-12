@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Cloud, X, LogIn, Loader2, KeyRound } from 'lucide-react'
+import { Cloud, X, LogIn, Loader2, KeyRound } from '@ds/desktop/icons'
 import { useAuth } from '../hooks/useAuth'
 import { useT } from '../i18n'
 import { BTN_PRIMARY, INPUT } from '../theme/controls'

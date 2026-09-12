@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Play, ChevronDown } from 'lucide-react'
+import { Play, ChevronDown } from '@ds/desktop/icons'
 import { useScriptRunner } from '../../hooks/useScriptRunner'
 import { useT, type MessageKey } from '../../i18n'
 import { ACTION_CHIP, ACTION_CHIP_PILL } from '../actionChip'

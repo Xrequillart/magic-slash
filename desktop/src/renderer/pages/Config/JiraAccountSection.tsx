@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Ticket, Link2, Unlink, RefreshCw, Loader2, ShieldAlert } from 'lucide-react'
+import { Ticket, Link2, Unlink, RefreshCw, Loader2, ShieldAlert } from '@ds/desktop/icons'
 import type { JiraConnectFailure, JiraDisconnectReason } from '../../../types'
 import { useJiraAuth } from '../../hooks/useJiraAuth'
 import { BTN, BTN_PRIMARY } from '../../theme/controls'

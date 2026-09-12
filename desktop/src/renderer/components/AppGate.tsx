@@ -1,4 +1,4 @@
-import { CloudOff, WifiOff, Loader2, RotateCcw } from 'lucide-react'
+import { CloudOff, WifiOff, Loader2, RotateCcw } from '@ds/desktop/icons'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useConnectivity } from '../hooks/useConnectivity'

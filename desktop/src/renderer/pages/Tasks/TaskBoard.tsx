@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import { AlertTriangle, CircleCheck, CircleDashed, Info, LoaderCircle, OctagonAlert } from 'lucide-react'
+import { AlertTriangle, CircleCheck, CircleDashed, Info, LoaderCircle, OctagonAlert } from '@ds/desktop/icons'
 import type { RepositoryConfig } from '../../../types'
 import { BOARD_COLUMNS, type BoardCard, type BoardColumn } from '../../utils/taskBoard'
 import type { TaskRow } from '../../utils/taskRows'

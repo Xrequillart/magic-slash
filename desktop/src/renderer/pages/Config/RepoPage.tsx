@@ -3,7 +3,7 @@ import {
   Trash2, Check, AlertTriangle, Plus, Loader2, ChevronDown, ArrowLeft, Building2, Lock, FolderOpen,
   Ticket, Settings2, Languages, GitBranch, GitCommitHorizontal, MessageSquare, GitPullRequest,
   ClipboardList, FolderGit2, type LucideIcon
-} from 'lucide-react'
+} from '@ds/desktop/icons'
 import { useAuth } from '../../hooks/useAuth'
 import { useConfig } from '../../hooks/useConfig'
 import { useOrg } from '../../hooks/useOrg'

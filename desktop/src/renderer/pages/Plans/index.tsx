@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { CloudOff, NotebookPen, RotateCcw, Users } from 'lucide-react'
+import { CloudOff, NotebookPen, RotateCcw, Users } from '@ds/desktop/icons'
 import type { PlanOverview } from '../../../types'
 import { useConfig } from '../../hooks/useConfig'
 import { useT, type MessageKey } from '../../i18n'

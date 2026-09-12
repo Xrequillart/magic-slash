@@ -1,5 +1,5 @@
 import { useLayoutEffect } from 'react'
-import { Edit2 } from 'lucide-react'
+import { Edit2 } from '@ds/desktop/icons'
 import { useT } from '../../i18n'
 
 /**

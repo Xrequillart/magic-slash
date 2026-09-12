@@ -1,10 +1,9 @@
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { AlertTriangle, ArrowLeft, CloudOff, FileWarning, RotateCcw } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CloudOff, FileWarning, RotateCcw } from '@ds/desktop/icons'
 import type { PlanDetail, PlanTicketRead, PlanTicketStates } from '../../../types'
 import { useT } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
 import MarkdownView from '../../components/file-preview/MarkdownView'
-import { AccountAvatar } from '../../components/AccountAvatar'
 import { RepoColorChip } from '../../components/agent-info-sidebar/RepoMark'
 import { formatTimestamp } from '../../components/agent-info-sidebar/utils'
 import { useStore } from '../../store'
@@ -13,6 +12,7 @@ import type { PlanCard, PlanTicketGroup } from '../../utils/planRows'
 import { groupPlanTickets, planLabel } from '../../utils/planRows'
 import { taskSelectionFor } from '../../utils/taskSelection'
 import { detectTicketProvider } from '../../components/agent-info-sidebar/utils'
+import { Label } from '@ds/desktop'
 import { TrackerBadge } from '../../components/icons/TrackerIcons'
 import { JiraStatusPill, StateChip } from '../Tasks/parts'
 import { STATUS_LOOK, STATUS_PILL } from './PlanRow'
@@ -497,12 +497,17 @@ export function PlanDetailPage({
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-text-secondary">
         <RepoColorChip colorKey={repoConfigKey} label={card.repoName ?? t('plans.noRepo')} />
-        <span className="inline-flex items-center gap-1.5 min-w-0">
-          <span className="flex shrink-0 text-icon-muted">
-            <AccountAvatar dataUrl={card.avatarUrl ?? null} variant="sidebar" alt="" />
-          </span>
-          <span className="truncate">{card.author}</span>
-        </span>
+        {/* The author as the LIST'S OWN LABEL, not as a phrase. The plans list settled
+            on chips — "three chips, not three phrases separated by spaces" — and this
+            page was still drawing the same person as loose text beside a bare avatar,
+            so the one thing a reader moves between showed up in two shapes.
+
+            `alt=""` because the author is named in the very next breath; an alt
+            repeating the adjacent label makes a screen reader say the same person
+            twice. `truncate` because an address has no maximum length. */}
+        <Label avatar={{ src: card.avatarUrl ?? null, alt: '' }} truncate>
+          {card.author}
+        </Label>
         {/* Only once the read is in: `specSyncedAt` is on the session, not on the card,
             and it is the one line here that says something about the SPEC rather than
             about the plan. Guarded against a timestamp no Date can parse. */}

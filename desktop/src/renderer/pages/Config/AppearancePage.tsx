@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Minus, Palette, PanelsTopLeft, Plus, RotateCcw, Scaling } from 'lucide-react'
+import { Check, ChevronDown, Minus, Palette, PanelsTopLeft, Plus, RotateCcw, Scaling } from '@ds/desktop/icons'
 import { useEffect, useState } from 'react'
 import { useConfig } from '../../hooks/useConfig'
 import { useZoom } from '../../hooks/useZoom'

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, memo, Fragment } from 'react'
-import { Plus, Sparkles, NotebookPen, ListTodo, AlertTriangle, FolderGit2 } from 'lucide-react'
+import { Plus, Sparkles, NotebookPen, ListTodo, AlertTriangle, FolderGit2 } from '@ds/desktop/icons'
 import { useStore, type ModalId } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos } from '../hooks/useOrderedTerminals'

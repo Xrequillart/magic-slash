@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, Check, Copy, MessageSquare, SendHorizontal, Trash2 } from 'lucide-react'
+import { AlertTriangle, Check, Copy, MessageSquare, SendHorizontal, Trash2 } from '@ds/desktop/icons'
 import { useAnchoredPanel } from '../useAnchoredPanel'
 import { BUTTON_ACTION, BUTTON_COMMENTS } from './ChangeNavigator'
 import { bracketedPaste, resolveAgentTarget } from '../../utils/agentTerminals'

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Cloud, LogOut, LogIn, UserPlus, Loader2, KeyRound, AtSign, Trash2, AlertTriangle, ImagePlus, ImageOff } from 'lucide-react'
+import { Cloud, LogOut, LogIn, UserPlus, Loader2, KeyRound, AtSign, Trash2, AlertTriangle, ImagePlus, ImageOff } from '@ds/desktop/icons'
 import { useAuth } from '../../hooks/useAuth'
 import { useAvatar, publishAvatar, avatarSession } from '../../hooks/useAvatar'
 import { useOrg } from '../../hooks/useOrg'

@@ -1,4 +1,4 @@
-import type { LucideIcon } from 'lucide-react'
+import type { LucideIcon } from '@ds/desktop/icons'
 
 /**
  * Header of a settings section: icon + title, optionally with an action on the

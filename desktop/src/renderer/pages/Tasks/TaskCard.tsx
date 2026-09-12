@@ -1,5 +1,5 @@
 import { memo, useCallback, type KeyboardEvent } from 'react'
-import { BotMessageSquare, Play } from 'lucide-react'
+import { BotMessageSquare, Play } from '@ds/desktop/icons'
 import type { RepositoryConfig } from '../../../types'
 import type { BoardCard } from '../../utils/taskBoard'
 import type { TaskSelection } from '../../utils/taskSelection'

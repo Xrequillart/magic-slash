@@ -1,5 +1,5 @@
 import { Component, type ReactNode } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle } from '@ds/desktop/icons'
 import { useT } from '../i18n'
 import { BTN_PRIMARY } from '../theme/controls'
 

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, ChevronDown, Shield, User } from 'lucide-react'
+import { Check, ChevronDown, Shield, User } from '@ds/desktop/icons'
 import { useAnchoredPanel } from '../../components/useAnchoredPanel'
 import { useT } from '../../i18n'
 import type { MessageKey } from '../../i18n'

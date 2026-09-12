@@ -1,10 +1,9 @@
 import { useCallback, type KeyboardEvent } from 'react'
-import { Ticket } from 'lucide-react'
+import { Ticket } from '@ds/desktop/icons'
 import { PlanIdBadge } from './PlanIdBadge'
 import type { PlanCard } from '../../utils/planRows'
 import { planLabel, planRecency } from '../../utils/planRows'
-import { AccountAvatar } from '../../components/AccountAvatar'
-import { LABEL_CHIP } from '../../components/actionChip'
+import { Label } from '@ds/desktop'
 import { RepoColorChip } from '../../components/agent-info-sidebar/RepoMark'
 import { formatTimestamp } from '../../components/agent-info-sidebar/utils'
 import { useStore } from '../../store'
@@ -171,7 +170,7 @@ export function PlanRow({ card, now, onSelect }: { card: PlanCard; now: number; 
 
         {/* THREE CHIPS, not three phrases separated by spaces. Each of these is a fact
             with a mark and a value — the repository and its colour, the author and their
-            face, the count and its glyph — which is what `LABEL_CHIP` is for, and what
+            face, the count and its glyph — which is what `Label` is for, and what
             the agent sidebar draws them as two panels away. Loose text ran them
             together into one grey sentence whose parts had to be picked apart by reading.
             `gap-1.5` rather than the old `gap-x-3`: the chips carry their own padding, so
@@ -186,22 +185,15 @@ export function PlanRow({ card, now, onSelect }: { card: PlanCard; now: number; 
               there is no repo for a colour to belong to. What is DISPLAYED is the cloud
               name; what is COLOURED is the local key behind it. See `repoColorKey`. */}
           <RepoColorChip colorKey={repoColorKey} label={card.repoName ?? t('plans.noRepo')} />
-          <span className={`${LABEL_CHIP} min-w-0 bg-ink/5 text-ink`}>
-            {/* `sidebar` is the one variant that fits a metadata line: 14px sits on
-                `text-xs` without lifting the row, and its bare-glyph fallback inherits
-                `text-icon-muted` from this wrapper, so an author with no photo draws the
-                same muted mark as the glyphs either side of them rather than an accent
-                pill appearing mid-sentence. `alt=""` because the address is right
-                there — see AccountAvatar. */}
-            <span className="flex shrink-0 text-icon-muted">
-              <AccountAvatar dataUrl={card.avatarUrl ?? null} variant="sidebar" alt="" />
-            </span>
-            <span className="truncate">{card.author}</span>
-          </span>
-          <span className={`${LABEL_CHIP} bg-ink/5 text-ink`}>
-            <Ticket className="w-3.5 h-3.5 shrink-0 text-icon-muted" />
-            {ticketCountLabel(card.ticketCount, t)}
-          </span>
+          {/* `alt=""` because the author is named in the very next breath — an alt
+              repeating the adjacent label makes a screen reader say the same person
+              twice per row. At `sm` the face is 14px and the glyph fallback takes the
+              label's own muted mark colour, so an author with no photo draws like the
+              glyphs either side of them rather than an accent pill mid-sentence. */}
+          <Label avatar={{ src: card.avatarUrl ?? null, alt: '' }} truncate>
+            {card.author}
+          </Label>
+          <Label icon={Ticket}>{ticketCountLabel(card.ticketCount, t)}</Label>
         </div>
       </div>
     </div>

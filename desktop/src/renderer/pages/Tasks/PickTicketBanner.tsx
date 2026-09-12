@@ -1,4 +1,4 @@
-import { TicketPlus, X } from 'lucide-react'
+import { TicketPlus, X } from '@ds/desktop/icons'
 import { useT } from '../../i18n'
 
 /**
