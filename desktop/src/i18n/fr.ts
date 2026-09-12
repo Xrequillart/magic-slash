@@ -1457,7 +1457,6 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.pr.threadOutdated': 'obsolète',
   'agentInfo.pr.threadOpen': 'ouvert',
   'agentInfo.pr.threadReview': 'review',
-  'agentInfo.pr.prepareThread': 'Préparer ce fil pour l’agent',
   'agentInfo.pr.prepareAllThreads': 'Préparer les fils non résolus',
   'agentInfo.pr.prepareThreadNoAgent': 'L’agent de cette pull request n’est plus en cours d’exécution',
   'agentInfo.pr.prepareThreadFailed': 'Impossible de joindre l’agent — rien n’a été collé',

@@ -19,14 +19,13 @@ import {
   XCircle,
 } from 'lucide-react'
 import { formatTimestamp } from './utils'
+import { REPO_ACTION_CHIP } from './repoActionChip'
 import { useStore } from '../../store'
 import { bracketedPaste, resolveAgentTarget } from '../../utils/agentTerminals'
-import {
-  formatThreadContext, formatThreadsContext, selectUnresolvedThreads,
-} from '../../utils/prThreadContext'
+import { formatThreadsContext, selectUnresolvedThreads } from '../../utils/prThreadContext'
 import { useT, type MessageKey, type Translate } from '../../i18n'
 import { showToast } from '../Toast'
-import type { PRCheck, PRReviewThread, PRState, PRWatchError, RepositoryMetadata } from '../../../types'
+import type { PRCheck, PRChecksSummary, PRReviewThread, PRState, PRWatchError, RepositoryMetadata } from '../../../types'
 import { isPRStatusError } from '../../../types'
 
 interface PRWatchCardProps {
@@ -233,7 +232,12 @@ function ItemCard({
     <>
       <span className="w-4 flex-shrink-0 flex items-center justify-center">{icon}</span>
       <div className="min-w-0 flex-1">{header}</div>
-      {detail !== undefined && <span className="flex-shrink-0">{detail}</span>}
+      {/* `flex items-center` and not a bare span: a detail is 10px text inside a line
+          whose strut is the card's own 14px, so an inline child sat on THAT baseline —
+          a couple of pixels below the middle of the 36px row, beside a 14px label that
+          was centred. Making the slot a flex box centres the box instead of the
+          baseline, which is what the eye is comparing. */}
+      {detail !== undefined && <span className="flex-shrink-0 flex items-center">{detail}</span>}
       {toggle && (
         <ChevronDown
           className={`w-3 h-3 flex-shrink-0 text-icon group-hover:text-ink transition-all ${toggle.open ? '' : '-rotate-90'}`}
@@ -251,8 +255,105 @@ function ItemCard({
       ) : (
         <div className="h-9 flex items-center gap-2">{line}</div>
       )}
-      {children && (!toggle || toggle.open) && <div className="pb-2.5 pl-6">{children}</div>}
+      {/* `pl-0`, not the icon gutter's `pl-6`: what unfolds under a header is that
+          header's own detail — the named checks under "Checks", the threads under
+          "Comments" — and indenting it to clear an icon that is not beside it made the
+          list read as a level deeper than it is. It lines up with the label. */}
+      {children && (!toggle || toggle.open) && <div className="pb-2.5">{children}</div>}
     </Chip>
+  )
+}
+
+/**
+ * The four check states as arcs of one ring, in the order a reader cares about them.
+ *
+ * WHY A RING AND NOT A BAR. "9/12" says how far along; what it cannot say is what the
+ * other three are — three failures and three skips are the same fraction and not
+ * remotely the same pull request. The proportion is the whole point, and a proportion
+ * of a fixed whole is the one thing a donut is actually good at. At 14px it is read as
+ * a colour and a rough share, which is all that is wanted beside a count: the names and
+ * the exact numbers are one click away, behind the fold this sits on.
+ *
+ * The palette is `CHECK_STATES`', arc for arc — the same green, red and blue the list
+ * inside draws its icons in, so the ring is a legend for the thing it opens. Skipped
+ * takes `icon-muted` rather than that map's `text-secondary/60`: a 3px arc at 60%
+ * disappears on the light themes, where a glyph of the same colour does not.
+ *
+ * ORDER IS FIXED, worst last. Passed, then skipped, then running, then failed, so the
+ * eye lands on red at the end of the sweep wherever it falls. Any check the summary
+ * counts but does not classify — `total` is the authority, the four states are what
+ * GitHub answered — stays as bare track, which is honest: something is there and we do
+ * not know what.
+ */
+const CHECK_RING_ARCS = [
+  { key: 'passed', stroke: 'stroke-green', label: 'agentInfo.pr.checkPassed' },
+  { key: 'skipped', stroke: 'stroke-icon-muted', label: 'agentInfo.pr.checkSkipped' },
+  { key: 'running', stroke: 'stroke-blue', label: 'agentInfo.pr.checkRunning' },
+  { key: 'failed', stroke: 'stroke-red', label: 'agentInfo.pr.checkFailed' },
+] as const satisfies readonly { key: keyof Omit<PRChecksSummary, 'total'>; stroke: string; label: MessageKey }[]
+
+/** Geometry of the ring: a 16px box, a 6px radius and a 3px stroke. */
+const RING_RADIUS = 6
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
+
+function ChecksRing({ checks, t }: { checks: PRChecksSummary; t: Translate }) {
+  // `total` and not the sum of the four: the summary is what the count beside the ring
+  // is drawn from, and a ring that closed while the count read 9/12 would be the two
+  // halves of one detail disagreeing in front of the reader.
+  const total = Math.max(checks.total, 1)
+
+  const segments: { key: string; stroke: string; length: number; offset: number }[] = []
+  let consumed = 0
+  for (const arc of CHECK_RING_ARCS) {
+    const count = checks[arc.key]
+    if (count <= 0) continue
+    segments.push({
+      key: arc.key,
+      stroke: arc.stroke,
+      length: (count / total) * RING_CIRCUMFERENCE,
+      offset: -(consumed / total) * RING_CIRCUMFERENCE,
+    })
+    consumed += count
+  }
+
+  // Read out as "9 passed · 2 failed", from the same keys the list inside uses — the
+  // ring is a picture of a sentence the card can already say.
+  const label = CHECK_RING_ARCS
+    .filter((arc) => checks[arc.key] > 0)
+    .map((arc) => `${checks[arc.key]} ${t(arc.label).toLowerCase()}`)
+    .join(' · ')
+
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className="w-3.5 h-3.5 flex-shrink-0 -rotate-90"
+      role="img"
+      aria-label={label}
+    >
+      <title>{label}</title>
+      {/* The track, so a partly-classified ring still reads as a whole. */}
+      <circle
+        cx="8"
+        cy="8"
+        r={RING_RADIUS}
+        fill="none"
+        strokeWidth="3"
+        className="stroke-line-subtle"
+      />
+      {segments.map((segment) => (
+        <circle
+          key={segment.key}
+          cx="8"
+          cy="8"
+          r={RING_RADIUS}
+          fill="none"
+          strokeWidth="3"
+          strokeDasharray={`${segment.length} ${RING_CIRCUMFERENCE - segment.length}`}
+          strokeDashoffset={segment.offset}
+          className={segment.stroke}
+        />
+      ))}
+    </svg>
   )
 }
 
@@ -334,7 +435,7 @@ export const THREAD_STATE: Record<
     Icon: CheckCircle2,
     tone: 'text-green',
     label: 'agentInfo.pr.commentResolved',
-    pill: 'bg-green/10 text-green font-semibold px-1.5 py-0.5 rounded',
+    pill: 'bg-green/10 text-green font-semibold px-1.5 py-0.5 rounded-md',
   },
   // The diff moved out from under it, so the line it hangs on no longer exists —
   // quiet rather than tinted: nothing is wrong, it is just stale.
@@ -375,18 +476,19 @@ export function prUrlParts(url: string): { repoSlug?: string; prNumber?: string 
  * reads as a box in a box. `ReviewCommentsButton`'s `HEADER_TRIGGER` and the `BUTTON_ACTION`
  * next door to it are bespoke for the same reason, at the same scale.
  *
- * A BASE plus two suffixes, on `ChangeNavigator`'s `BUTTON_BASE` model: the base holds
- * everything the two share — the shape, the resting tone, the disabled chrome — and each
- * suffix adds only layout and padding, which the base deliberately does not set, so nothing
- * here is one Tailwind group overriding itself. The row's is an icon in a square; the fold's
- * carries a word beside it.
+ * A BASE plus a suffix, on `ChangeNavigator`'s `BUTTON_BASE` model: the base holds the
+ * shape, the resting tone and the disabled chrome, and the suffix adds only layout and
+ * padding, which the base deliberately does not set, so nothing here is one Tailwind
+ * group overriding itself.
+ *
+ * There was a second suffix, for the icon-only send on every thread row. That control is
+ * gone — see `ThreadEntry` — and the split is kept because the bulk one still wants its
+ * padding stated where a reader can see it against the base.
  */
 const SEND_BASE =
-  'flex items-center rounded-md bg-transparent border-none cursor-pointer transition-colors ' +
+  'flex items-center rounded-lg bg-transparent border-none cursor-pointer transition-colors ' +
   'text-text-secondary/70 hover:text-ink hover:bg-surface-strong ' +
   'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-secondary/70'
-
-const THREAD_SEND = `${SEND_BASE} flex-shrink-0 justify-center p-1`
 
 const THREADS_SEND = `${SEND_BASE} gap-1 py-1 px-1.5 text-[10px] font-medium`
 
@@ -424,22 +526,10 @@ const THREADS_SEND = `${SEND_BASE} gap-1 py-1 px-1.5 text-[10px] font-medium`
  * so passing them down would be fifty rows each carrying a copy of the list they are in
  * and each opening a store subscription, to answer a click that only ever names a thread.
  */
-function ThreadEntry({ thread, onOpen, onSend, canSend, now, t }: {
+function ThreadEntry({ thread, onOpen, now, t }: {
   thread: PRReviewThread
   /** Hand the panel this thread's id; the card knows what to open it on. */
   onOpen: (threadId: string) => void
-  /**
-   * Hand the agent this thread — the whole object, not an id, because what is composed
-   * from it is text and the card would otherwise look the thread back up in a list it
-   * already gave this row.
-   */
-  onSend: (thread: PRReviewThread) => void
-  /**
-   * Whether there is an agent terminal to paste into. Resolved ONCE by the card and passed
-   * down, for the reason `onOpen` is: fifty rows each opening a store subscription to answer
-   * a question with one answer for the whole list.
-   */
-  canSend: boolean
   now: number
   t: Translate
 }) {
@@ -461,19 +551,13 @@ function ThreadEntry({ thread, onOpen, onSend, canSend, now, t }: {
   // would spend the row's width saying nothing.
   const state = thread.kind === 'inline' ? THREAD_STATE[thread.state] : undefined
 
-  // One string for both the accessible name and the tooltip: an icon-only control needs
-  // both, and they must not be able to drift into saying two different things.
-  const prepareLabel = canSend
-    ? t('agentInfo.pr.prepareThread')
-    : t('agentInfo.pr.prepareThreadNoAgent')
-
   return (
-    /* The row is a BUTTON and stays one — the send is a sibling after it rather than a child,
-       because a `<button>` cannot nest a `<button>`. Turning the row into a `div onClick` to
-       make room would have been the smaller diff and the wrong one: it would silently drop
-       the keyboard access and the focus ring the row has today. The `ml-auto` metadata group
-       still travels to the right edge INSIDE the row button, so the columns stay aligned. */
-    <li className="flex items-center gap-1">
+    /* One control per row, and it is the row: opening the thread. The per-row "send to the
+       agent" button that used to sit beside it is gone — it duplicated, fifty times over,
+       what the fold's single bulk control does for every open thread at once, and it is not
+       something anybody reaches for one comment at a time. What it cost was the whole width
+       of a button on every row of a 500px column. */
+    <li className="flex items-center">
       <button
         type="button"
         onClick={() => onOpen(thread.id)}
@@ -482,7 +566,7 @@ function ThreadEntry({ thread, onOpen, onSend, canSend, now, t }: {
            as the card's checklist, where a ticked line goes quiet so the eye lands on what
            is still open. The badge inside it stays at full strength: it is the one thing
            on the row that has to be readable without stopping. */
-        className={`flex-1 flex items-center gap-1.5 min-w-0 rounded-md border bg-surface hover:bg-surface-strong px-2 py-1.5 text-xs text-left transition-colors ${
+        className={`flex-1 flex items-center gap-1.5 min-w-0 rounded-lg border bg-surface hover:bg-surface-strong px-2 py-1.5 text-xs text-left transition-colors ${
           thread.state === 'resolved' ? 'border-green/30' : 'border-border/30'
         }`}
       >
@@ -490,7 +574,7 @@ function ThreadEntry({ thread, onOpen, onSend, canSend, now, t }: {
             is the part that places the row, and a truncated login is still readable. */}
         <span className={`font-medium truncate ${thread.state === 'resolved' ? 'text-ink/50' : 'text-ink/80'}`}>{root.author}</span>
         {badge && (
-          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 ${REVIEW_BADGE[badge].tone}`}>
+          <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold flex-shrink-0 ${REVIEW_BADGE[badge].tone}`}>
             {t(REVIEW_BADGE[badge].label)}
           </span>
         )}
@@ -499,7 +583,7 @@ function ThreadEntry({ thread, onOpen, onSend, canSend, now, t }: {
             connections it came from, which is the only thing separating it from a
             conversation comment once the badge is gone. */}
         {thread.kind === 'review' && !badge && (
-          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 bg-surface-strong text-text-secondary/70">
+          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold flex-shrink-0 bg-surface-strong text-text-secondary/70">
             {t('agentInfo.pr.threadReview')}
           </span>
         )}
@@ -527,20 +611,6 @@ function ThreadEntry({ thread, onOpen, onSend, canSend, now, t }: {
             <span className="text-text-secondary/40">{formatTimestamp(createdAt, now, t)}</span>
           )}
         </span>
-      </button>
-      {/* DISABLED rather than hidden when there is no agent to paste into, and the tooltip is
-          what makes that state worth having: a control that vanished would leave the reader
-          looking for it, where this one names the reason. There is nothing to fall back on
-          here — unlike the review's popover, a thread row carries no Copy. */}
-      <button
-        type="button"
-        onClick={() => onSend(thread)}
-        disabled={!canSend}
-        aria-label={prepareLabel}
-        title={prepareLabel}
-        className={THREAD_SEND}
-      >
-        <SendHorizontal className="w-3 h-3" />
       </button>
     </li>
   )
@@ -646,10 +716,6 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
     // and the button still works.
     if (!delivered) showToast(t('agentInfo.pr.prepareThreadFailed'), 'error')
   }, [agentId, t])
-
-  const sendThread = useCallback((thread: PRReviewThread) => {
-    void sendToAgent(formatThreadContext(thread))
-  }, [sendToAgent])
 
   // What the fold's bulk control is about, and what it says on the tin: the inline threads
   // still open. `selectUnresolvedThreads` carries why the two halves of that filter are both
@@ -858,7 +924,13 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
   }
 
   return (
-    <div className="bg-surface rounded-lg border border-line-subtle overflow-hidden">
+    /* No outer rule, and the header chip's own ground and radius — `bg-ink/5`,
+       `rounded-lg` — because this is one more block in the repository card and they are
+       all one material now. See the note over the blocks in `RepositoryCard`.
+
+       The bands INSIDE keep their `border-t`: separating two things that are both here
+       is a different job from drawing a line around the whole. */
+    <div className="bg-ink/5 rounded-lg overflow-hidden">
       {/* Header — the card's identity IS the link to GitHub, which is why the
           separate "View pull request" button below the card could go away. The
           badge sits inside that target: it labels the PR, so clicking it should open
@@ -871,7 +943,7 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
         <button
           onClick={() => window.electronAPI.shell.openExternal(prUrl)}
           title={t('agentInfo.viewPullRequest')}
-          className="group flex items-center gap-2 min-w-0 flex-1 text-left rounded-md -m-1 p-2 hover:bg-surface-strong transition-colors"
+          className="group flex items-center gap-2 min-w-0 flex-1 text-left rounded-lg -m-1 p-2 hover:bg-ink/10 transition-colors"
         >
           <span className="w-4 flex-shrink-0 flex items-center justify-center">
             {state ? <StateIcon state={state} /> : <GitPullRequest className="w-4 h-4 text-text-secondary" />}
@@ -892,7 +964,12 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
           {badge && (
             // Not upper-cased any more: "CHANGES REQUESTED" is twice the width of
             // "Open" and would eat the title it sits next to.
-            <span className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${badge.tone}`}>
+            /* `h-5 rounded-lg`, the family's radius on a badge one step shorter than
+               the 24px chips: it sits beside a two-line title, not on a row of
+               buttons, and a full-height chip there would outweigh the number it
+               qualifies. A fixed height rather than padding, so "Changes requested"
+               and "Open" are the same object. */
+            <span className={`flex-shrink-0 h-5 inline-flex items-center px-2 rounded-lg text-[10px] font-semibold ${badge.tone}`}>
               {badge.label}
             </span>
           )}
@@ -906,7 +983,7 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
           error names one. */}
       {watcherOff ? (
         <div className="border-t border-line-subtle p-2">
-          <div className="flex items-start gap-2 rounded-md bg-surface-sunken px-2 py-1.5">
+          <div className="flex items-start gap-2 rounded-lg bg-surface-sunken px-2 py-1.5">
             <EyeOff className="w-3.5 h-3.5 text-icon flex-shrink-0 mt-px" />
             <div className="min-w-0 flex-1">
               <div className="text-[11px] text-ink/80 font-medium">{t('agentInfo.pr.watcherOff')}</div>
@@ -920,7 +997,7 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
             <button
               onClick={handleEnableWatcher}
               disabled={enabling}
-              className="flex-shrink-0 px-2 py-1 rounded-md bg-accent/10 hover:bg-accent/20 text-accent text-[11px] font-medium transition-colors disabled:opacity-50"
+              className="flex-shrink-0 px-2 py-1 rounded-lg bg-accent/10 hover:bg-accent/20 text-accent text-[11px] font-medium transition-colors disabled:opacity-50"
             >
               {t('agentInfo.pr.enableWatcher')}
             </button>
@@ -1009,8 +1086,6 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
                         key={thread.id}
                         thread={thread}
                         onOpen={openComments}
-                        onSend={sendThread}
-                        canSend={canSendToAgent}
                         now={now}
                         t={t}
                       />
@@ -1063,8 +1138,11 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
             <ChecklistRow
               item={checksItem}
               detail={checks && checks.total > 0 ? (
-                <span className="text-[10px] text-text-secondary/60 tabular-nums">
-                  {t('agentInfo.pr.checksPassed', { passed: checks.passed, total: checks.total })}
+                <span className="flex items-center gap-1.5">
+                  <ChecksRing checks={checks} t={t} />
+                  <span className="text-[10px] text-text-secondary/60 tabular-nums">
+                    {t('agentInfo.pr.checksPassed', { passed: checks.passed, total: checks.total })}
+                  </span>
                 </span>
               ) : undefined}
               toggle={checkList.length > 0
@@ -1121,7 +1199,7 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
                   onClick={() => runSlashCommand(agentId, '/magic:done', t)}
                   // Fixed 20 px so this chip is exactly as tall as the ones carrying
                   // a single word — the button is what used to make it the odd one.
-                  className="flex h-5 items-center gap-1.5 px-2 bg-green/10 hover:bg-green/20 rounded-md text-green text-[11px] font-medium transition-colors"
+                  className="flex h-5 items-center gap-1.5 px-2 bg-green/10 hover:bg-green/20 rounded-lg text-green text-[11px] font-medium transition-colors"
                 >
                   <CheckCircle className="w-3 h-3" />
                   {t('agentInfo.launchDone')}
@@ -1141,7 +1219,11 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
             onClick={handleRefresh}
             disabled={refreshing}
             title={t('agentInfo.pr.refresh')}
-            className="ml-auto flex-shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-md border border-line-subtle text-[11px] font-medium text-text-secondary hover:text-ink hover:bg-surface-strong hover:border-border transition-colors disabled:opacity-50"
+            /* The repository header's chip, carrying a word: `h-6`, `rounded-lg`, one
+               ground, no rule. It was the last outlined control on the card — a
+               `rounded-md` box in `line-subtle` sitting under a column that had given
+               every one of those up. */
+            className={`ml-auto ${REPO_ACTION_CHIP} px-2 gap-1.5 text-[11px] font-medium hover:bg-ink/10 hover:text-ink disabled:opacity-50`}
           >
             <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
             {t('agentInfo.pr.refreshAction')}

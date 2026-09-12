@@ -1545,7 +1545,6 @@ export const en = {
   // `prepare*`, never `send*`, and the keys are held to it: `filePreview.sendToAgent` below
   // is a control that really does hand text over, and a key here that borrowed its verb
   // would put the catalogue at odds with the one thing this whole feature promises.
-  'agentInfo.pr.prepareThread': 'Prepare this thread for the agent',
   // The same action over the whole fold. Only the inline threads still open go — a resolved
   // or outdated one is settled, and the conversation and review rows have no state of their
   // own to be open or not.
