@@ -1,6 +1,6 @@
 'use client'
 
-import { Label, LABEL_TONES, type LabelTone } from '@ds/desktop'
+import { Label, LABEL_TONES, type LabelSize, type LabelTone } from '@ds/desktop'
 import { Clock, DollarSign, FolderGit2, Ticket } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
@@ -59,10 +59,10 @@ const PROPS: PropRow[] = [
   },
   {
     name: 'size',
-    type: "'sm' | 'md'",
+    type: "'sm' | 'md' | 'lg'",
     fallback: "'sm'",
     description:
-      'sm is a list row and a pinned bar. md stands beside a text-2xl page heading, where the small one read as a caption adrift from a title twice its size.',
+      '24 / 28 / 32. sm is a list row and a pinned bar; lg stands beside a text-2xl page heading, where the small one read as a caption adrift from a title twice its size; md is the row of 14px type between them.',
   },
   {
     name: 'onClick',
@@ -159,15 +159,15 @@ export function LabelEntry({
           <Label avatar={{ src: null, alt: '' }} truncate>
             a.developer@example.com
           </Label>
-          <Label avatar={{ src: null, alt: '' }} size="md">
+          <Label avatar={{ src: null, alt: '' }} size="lg">
             A larger row
           </Label>
         </Stage>
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
           Both show the fallback, because a page of stock faces documents nothing but the stock.
-          At <code>sm</code> the face and a glyph agree at 14px; at <code>md</code> the face is a
-          rung louder — 20px against the icon’s 16 — because a line drawing reads at any size and a
-          photograph has to be big enough to be a face.
+          At <code>sm</code> and <code>md</code> the face and a glyph agree at 14px; at{' '}
+          <code>lg</code> the face is a rung louder — 20px against the icon’s 16 — because a line
+          drawing reads at any size and a photograph has to be big enough to be a face.
         </p>
       </EntrySection>
 
@@ -207,15 +207,32 @@ export function LabelEntry({
 
       <EntrySection
         title="Sizes"
-        note="Two, and they are the ticket badge’s own. A fixed height rather than padding alone: the label sets the height of the row it sits in, so it is pinned instead of following whatever line-height the theme resolves."
+        note="Three, and they are the ticket badge’s own. A fixed height rather than padding alone: the label sets the height of the row it sits in, so it is pinned instead of following whatever line-height the theme resolves. md is the rung that was missing between the other two — a row of 14px type, where sm reads as a footnote and lg as a heading of its own. Adding it renamed the old md to lg, which is the whole cost of a scale whose names still run in order; sm is untouched and is the default, so nothing moved that was not asked to."
       >
-        <Stage theme={theme} className="flex flex-wrap items-center gap-4">
-          <Label tone="jira" size="sm">
-            PER-1234
-          </Label>
-          <Label tone="jira" size="md">
-            PER-1234
-          </Label>
+        <Stage theme={theme} className="flex flex-col gap-4">
+          {(
+            [
+              ['sm', '24px · a list row, 12px type'],
+              ['md', '28px · a row of 14px type'],
+              ['lg', '32px · beside a text-2xl heading'],
+            ] as [LabelSize, string][]
+          ).map(([size, note]) => (
+            <div key={size} className="flex items-center gap-4">
+              <span className="w-8 flex-shrink-0 font-mono text-[10px] text-text-secondary">
+                {size}
+              </span>
+              <Label tone="jira" size={size}>
+                PER-1234
+              </Label>
+              <Label icon={FolderGit2} size={size}>
+                magic-slash
+              </Label>
+              <Label avatar={{ src: null, alt: '' }} size={size}>
+                A. Developer
+              </Label>
+              <span className="font-mono text-[10px] text-text-secondary">{note}</span>
+            </div>
+          ))}
         </Stage>
       </EntrySection>
 

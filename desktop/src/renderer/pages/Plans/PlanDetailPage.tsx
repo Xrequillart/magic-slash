@@ -485,7 +485,7 @@ export function PlanDetailPage({
             settled on for the same pair: hung from the first line's cap height the badge
             sits visibly high on the one-line titles that are most of them. */}
         <div className="flex items-center gap-3 min-w-0">
-          <PlanIdBadge number={card.number} size="md" />
+          <PlanIdBadge number={card.number} size="lg" />
           <h1 className="min-w-0 text-xl font-semibold text-ink break-words">{planLabel(card)}</h1>
         </div>
         {statusChip}

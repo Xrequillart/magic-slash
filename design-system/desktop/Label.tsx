@@ -82,25 +82,38 @@ const TONES: Record<LabelTone, ToneSpec> = {
 }
 
 /**
- * Two, and they are the ticket badge's own.
+ * Three, and they are the ticket badge's own.
  *
  * `sm` is a list row and a pinned bar — rows of 12px type where the label is the
- * tallest thing on the line. `md` stands beside a `text-2xl` page heading, where the
- * small one read as a caption that had come adrift from a title twice its size.
+ * tallest thing on the line. `lg` stands beside a `text-2xl` page heading, where the
+ * small one read as a caption that had come adrift from a title twice its size. `md`
+ * is the rung that was missing between them: a row of 14px type, where `sm` reads as
+ * a footnote and `lg` as a heading of its own.
+ *
+ * `lg` USED TO BE CALLED `md`, and the rename is the whole cost of adding a middle.
+ * The alternative was a scale whose names no longer ran in order, which is worse than
+ * a mechanical rename of one prop value in one place. `sm` is untouched and is the
+ * default, so nothing on screen moved that was not asked to.
+ *
+ * EVERYTHING AT 14px ON THE MIDDLE RUNG — the word, the glyph and the face. `lg` has
+ * the room to make a photograph a rung louder than the glyph beside it; a 28px plate
+ * does not, and a face SMALLER than the glyph it stands next to is the one arrangement
+ * that reads as a mistake rather than as a scale.
  *
  * A fixed HEIGHT and not padding alone: the label sets the height of the row it sits
  * in, so it is pinned rather than left to follow the line-height of whatever type the
  * theme resolves.
  */
-export type LabelSize = 'sm' | 'md'
+export type LabelSize = 'sm' | 'md' | 'lg'
 
 const SIZES: Record<LabelSize, { box: string; text: TextSize; icon: IconSize; avatar: AvatarSize }> = {
   sm: { box: 'h-6 gap-1.5 px-2 rounded-lg', text: 'xs', icon: 'sm', avatar: 'xs' },
+  md: { box: 'h-7 gap-1.5 px-2.5 rounded-lg', text: 'sm', icon: 'sm', avatar: 'xs' },
   // The face is a rung LOUDER than the glyph beside it — 20px against the icon's 16 —
   // and that is not an oversight. A line-drawn glyph reads at any size; a photograph
-  // has to be big enough to be a face, and an `md` label is 32px tall with the room
+  // has to be big enough to be a face, and an `lg` label is 32px tall with the room
   // for it. At `sm` the two agree at 14px, which is what the plans list already drew.
-  md: { box: 'h-8 gap-2 px-2.5 rounded-xl', text: 'sm', icon: 'md', avatar: 'sm' },
+  lg: { box: 'h-8 gap-2 px-2.5 rounded-xl', text: 'sm', icon: 'md', avatar: 'sm' },
 }
 
 export interface LabelProps {
