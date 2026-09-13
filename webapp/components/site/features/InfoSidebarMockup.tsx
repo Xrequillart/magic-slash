@@ -5,7 +5,7 @@ import {
   ChevronDown,
   CircleStop,
   Copy,
-  Edit2,
+  PenLine,
   ExternalLink,
   FolderGit2,
   GitBranch,
@@ -309,13 +309,13 @@ export function InfoSidebarPanel({
           <h2 className="flex-1 break-words text-sm font-semibold leading-tight text-white">
             {t('site.infoSidebar.ticketTitle')}
           </h2>
-          <Edit2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-appink-muted" />
+          <PenLine className="mt-0.5 h-3.5 w-3.5 shrink-0 text-appink-muted" />
         </div>
         <div className="mt-3 flex items-start gap-2">
           <div className="flex-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-white/60">
             {t('site.infoSidebar.ticketDescription')}
           </div>
-          <Edit2 className="mt-0.5 h-3 w-3 shrink-0 text-appink-muted" />
+          <PenLine className="mt-0.5 h-3 w-3 shrink-0 text-appink-muted" />
         </div>
       </div>
 

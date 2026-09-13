@@ -12,7 +12,6 @@ import {
   Copy,
   Cpu,
   DollarSign,
-  Edit2,
   FolderGit2,
   Gauge,
   GitBranch,

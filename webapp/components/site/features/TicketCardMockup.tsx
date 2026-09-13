@@ -1,7 +1,7 @@
 'use client'
 
 import { useId } from 'react'
-import { ChevronDown, Edit2 } from 'lucide-react'
+import { ChevronDown, PenLine } from 'lucide-react'
 import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
 
@@ -127,7 +127,7 @@ export function TicketCardMockup() {
             <h2 className="flex-1 break-words text-sm font-semibold leading-tight text-white">
               {t('site.infoSidebar.ticketTitle')}
             </h2>
-            <Edit2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-appink-muted" />
+            <PenLine className="mt-0.5 h-3.5 w-3.5 shrink-0 text-appink-muted" />
           </div>
 
           <div className="-mx-2 mt-3 rounded px-2 py-1">
@@ -135,7 +135,7 @@ export function TicketCardMockup() {
               <div className="flex-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-white/60">
                 {t('site.infoSidebar.ticketDescription')}
               </div>
-              <Edit2 className="mt-0.5 h-3 w-3 shrink-0 text-appink-muted" />
+              <PenLine className="mt-0.5 h-3 w-3 shrink-0 text-appink-muted" />
             </div>
           </div>
         </div>
