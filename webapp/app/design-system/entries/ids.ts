@@ -21,6 +21,7 @@ export type EntryId =
   | 'branchcard'
   | 'banner'
   | 'contextagentcard'
+  | 'headerrepocard'
 
 export const ENTRY_LABELS: Record<EntryId, string> = {
   colors: 'Colours',
@@ -31,6 +32,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   buttonicon: 'ButtonIcon',
   selecticon: 'SelectIcon',
   contextagentcard: 'ContextAgentCard',
+  headerrepocard: 'HeaderRepoCard',
   text: 'Text',
   avatar: 'Avatar',
   label: 'Label',
@@ -95,7 +97,7 @@ export const FAMILIES: Family[] = [
   {
     label: 'Tertiary',
     note: 'A whole region of a page.',
-    entries: ['contextagentcard'],
+    entries: ['contextagentcard', 'headerrepocard'],
   },
 ]
 
@@ -108,6 +110,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   buttonicon: 'A control that is only a mark',
   selecticon: 'That control, opening a menu',
   contextagentcard: 'What an agent is spending',
+  headerrepocard: 'A repository, and what you can do to it',
   icon: 'Every glyph, five sizes, three tones',
   text: 'Cera Pro, six sizes, four weights',
   avatar: 'A face, or the icon when there is none',

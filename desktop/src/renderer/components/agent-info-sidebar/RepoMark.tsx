@@ -1,4 +1,3 @@
-import { Label } from '@ds/desktop'
 import { FolderGit2 } from '@ds/desktop/icons'
 import { useStore } from '../../store'
 import { getProjectColorMap } from '../../utils/projectColors'
@@ -94,72 +93,6 @@ export function RepoMark({ repoName, size = 'card' }: { repoName?: string; size?
     >
       <FolderGit2 className={glyph} />
     </span>
-  )
-}
-
-/**
- * The repository's NAME and its mark, as one chip — the ticket badge's shape, in the
- * repository's own colour.
- *
- * `TrackerBadge` (components/icons/TrackerIcons.tsx) is what the card above wears, and
- * the argument it makes there applies here word for word: a mark on its own plate next
- * to a name on another reads as two facts, and they are one — "this is magic-slash, and
- * it is the green one". So the same geometry, `h-6 gap-1.5 px-2 rounded-lg text-xs`,
- * and the same 12% ground — except the ground is the colour the user picked for this
- * repository in Settings rather than a tracker's brand blue, because that colour IS how
- * a repo is recognised across Plans, Tasks and this sidebar.
- *
- * THE NAME STAYS `text-ink`, not the repo colour. Sixteen palette entries at full
- * saturation against their own 12% tint is not sixteen legible pairs — yellow and lime
- * fail outright on the light themes — and a name that changes weight depending on which
- * colour the repo was given is a worse signal than the ground already gives. The GLYPH
- * takes the colour, exactly as `RepoMark` paints it: one coloured thing per chip.
- *
- * IT OPENS THE REPOSITORY'S SETTINGS, the way the ticket badge above it opens the
- * ticket in Tasks: the same shape doing the same kind of thing, which is what makes a
- * badge worth clicking at all. Its own page is where the colour, the keywords and the
- * languages are set, so the chip is also the shortest route to changing the very colour
- * it is wearing. `hover:opacity-80` and no hover ground — `TicketIdLink` presses the
- * same way, and a second ground over a tinted one would muddy the colour.
- *
- * Unlike `TrackerBadge` this one SHRINKS. A ticket id is `PER-1234`; a repository name
- * is whatever the folder is called, in a column that can be 288px wide with three
- * action chips beside it — so `min-w-0` on the chip and `truncate` on the name, and the
- * full path stays in the tooltip.
- */
-export function RepoNameBadge({
-  repoName,
-  title,
-  className = '',
-}: {
-  repoName: string
-  /** The tooltip — the repository's path, where the caller has it. */
-  title?: string
-  className?: string
-}) {
-  const openRepoSettings = useStore(s => s.openRepoSettings)
-  const repoColor = useRepoColor(repoName)
-
-  // THE ONE CLICKABLE LABEL IN THE APP, which is why `Label` has an `onClick` at all:
-  // it renders a `<button>` and takes its hover only when there is something to press,
-  // so every other badge stopped lighting up under a cursor that could do nothing.
-  //
-  // `color` and not a tone: a repository's hue is one of sixteen the app assigns at
-  // runtime, so it cannot be a class and has no business being a token. Without one —
-  // a repository the user has not coloured — the label falls back to the neutral plate
-  // and the muted mark, which is what `tone="neutral"` already is.
-  return (
-    <Label
-      tone="neutral"
-      icon={FolderGit2}
-      color={repoColor ?? undefined}
-      onClick={() => openRepoSettings(repoName)}
-      title={title ?? repoName}
-      truncate
-      className={className}
-    >
-      {repoName}
-    </Label>
   )
 }
 

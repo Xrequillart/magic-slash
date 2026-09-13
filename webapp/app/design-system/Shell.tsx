@@ -10,6 +10,7 @@ import { CardEntry } from './entries/CardEntry'
 import { ColorsEntry } from './entries/ColorsEntry'
 import { ContextAgentCardEntry } from './entries/ContextAgentCardEntry'
 import { BannerEntry } from './entries/BannerEntry'
+import { HeaderRepoCardEntry } from './entries/HeaderRepoCardEntry'
 import { IconEntry } from './entries/IconEntry'
 import { LabelEntry } from './entries/LabelEntry'
 import { LoaderEntry } from './entries/LoaderEntry'
@@ -59,6 +60,7 @@ const ENTRIES: Record<
   buttonicon: ButtonIconEntry,
   selecticon: SelectIconEntry,
   contextagentcard: ContextAgentCardEntry,
+  headerrepocard: HeaderRepoCardEntry,
   avatar: AvatarEntry,
   label: LabelEntry,
   status: StatusEntry,

@@ -1,9 +1,9 @@
-import { BranchCard, ButtonIcon, Card } from '@ds/desktop'
-import { Copy, Check, X } from '@ds/desktop/icons'
+import { BranchCard, ButtonIcon, Card, HeaderRepoCard } from '@ds/desktop'
+import { Copy, Check } from '@ds/desktop/icons'
 import { Github, VSCode } from '@ds/desktop/icons'
-import { RepoNameBadge } from './RepoMark'
+import { useRepoColor } from './RepoMark'
 import { ACTION_CHIP } from '../actionChip'
-import { ScriptsDropdown } from './ScriptsDropdown'
+import { useScriptsMenu } from './useScriptsMenu'
 import { PRWatchCard } from './PRWatchCard'
 import { RunningScripts } from './RunningScripts'
 import { formatRelativeDate } from './utils'
@@ -94,6 +94,11 @@ export function RepositoryCard({
   onRemove,
 }: RepositoryCardProps) {
   const t = useT()
+  // The two things the header needs that only the app can answer: which of the
+  // sixteen hues this repository was given, and where its settings live.
+  const repoColor = useRepoColor(repoName)
+  const openRepoSettings = useStore(s => s.openRepoSettings)
+  const scripts = useScriptsMenu({ repoPath, repoName, agentId, agentName })
   const openRepoReview = useStore(s => s.openRepoReview)
   const hasChanges = gitData?.stats?.isGitRepo && gitData.stats.filesChanged > 0
   const hasCommits = gitData?.commits && gitData.commits.commits.length > 0
@@ -116,40 +121,32 @@ export function RepositoryCard({
        column, the kind of thing that reads as sloppiness without the reader being able
        to name it. */
     <Card className="flex flex-col gap-2">
-      {/* Repo header */}
-      <div className="flex items-center gap-2">
-        {/* Mark and name as ONE chip, in the ticket badge's shape — see `RepoNameBadge`. */}
-        <RepoNameBadge repoName={repoName} title={repoPath} />
-        {/* `flex-shrink-0`: on a narrow sidebar it is the NAME that gives way, never the
-            four controls — half a chip is not a button. */}
-        <div className="flex items-center gap-1.5 ml-auto flex-shrink-0">
-          <ScriptsDropdown repoPath={repoPath} repoName={repoName} agentId={agentId} agentName={agentName} />
-          {/* Open in VS Code */}
-          <ButtonIcon
-            icon={VSCode}
-            title={t('agentInfo.openRepoInEditor')}
-            onClick={() => window.electronAPI.shell.openInVSCode(repoPath)}
-            tone="vscode"
-          />
-          {/* Open on GitHub — hidden when the repo has no known remote */}
-          {repoUrl && (
-            <ButtonIcon
-              icon={Github}
-              title={t('agentInfo.openRepoOnGitHub')}
-              onClick={() => window.electronAPI.shell.openExternal(repoUrl)}
-            />
-          )}
-          {/* Removing wears the same chip as the three beside it — the row is one set of
-              controls — and says what it does through its hover alone, which is red where
-              theirs are their own brand's colour. */}
-          <ButtonIcon
-            icon={X}
-            title={t('agentInfo.removeRepository')}
-            onClick={onRemove}
-            tone="danger"
-          />
-        </div>
-      </div>
+      {/* The header row. The order, the gaps and every tone are `HeaderRepoCard`'s;
+          what stays here is which repository it is and what each control does to it.
+          `remote` is simply absent when the repo has no known one — a dead chip would
+          be worse than no chip. */}
+      <HeaderRepoCard
+        name={repoName}
+        title={repoPath}
+        color={repoColor}
+        onNameClick={() => openRepoSettings(repoName)}
+        scripts={scripts}
+        editor={{
+          icon: VSCode,
+          title: t('agentInfo.openRepoInEditor'),
+          onClick: () => window.electronAPI.shell.openInVSCode(repoPath),
+        }}
+        remote={
+          repoUrl
+            ? {
+                icon: Github,
+                title: t('agentInfo.openRepoOnGitHub'),
+                onClick: () => window.electronAPI.shell.openExternal(repoUrl),
+              }
+            : undefined
+        }
+        remove={{ title: t('agentInfo.removeRepository'), onClick: onRemove }}
+      />
 
       {/* Straight under the row that launched them, and renders nothing when this
           repo/agent pair has no script running. */}

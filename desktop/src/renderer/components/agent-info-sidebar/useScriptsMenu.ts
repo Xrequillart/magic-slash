@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
-import { SelectIcon, type SelectIconGroup, type SelectIconItem } from '@ds/desktop'
+import type { SelectIconGroup, SelectIconItem, SelectIconProps } from '@ds/desktop'
 import { Play } from '@ds/desktop/icons'
 import { useScriptRunner } from '../../hooks/useScriptRunner'
 import { useT, type MessageKey, type Translate } from '../../i18n'
@@ -14,7 +14,7 @@ const CATEGORY_LABELS: Record<ScriptCategory, MessageKey> = {
   other: 'scripts.other',
 }
 
-interface ScriptsDropdownProps {
+interface ScriptsMenuOptions {
   repoPath: string
   /**
    * What to head the ROOT package's group with — the repository name the card itself
@@ -42,18 +42,28 @@ interface ScriptsDropdownProps {
 const rowId = (pkgIndex: number, scriptIndex: number) => `${pkgIndex}:${scriptIndex}`
 
 /**
- * The scripts of a repository, as a menu.
+ * The scripts of a repository, as everything `SelectIcon` needs to draw a menu of them.
+ *
+ * A HOOK AND NOT A COMPONENT, because the row this belongs to draws its own controls:
+ * `HeaderRepoCard` renders the select, so what it wants handed to it is props, not a
+ * rendered chip. A component here would be a second chip inside a row that already
+ * knows how many it has and in what order.
  *
  * WHAT IS LEFT IN THIS FILE is what a script IS: where it comes from, what running it
  * means, and the two ways a list of them wants to be grouped. The pill, the chevron,
- * the panel, the portal and the flip all moved to `SelectIcon` — see its notes for
- * why a menu in this sidebar cannot be positioned the way `Status`'s is.
+ * the panel, the portal and the flip are all `SelectIcon`'s — see its notes for why a
+ * menu in this sidebar cannot be positioned the way `Status`'s is.
  *
- * THE PANEL IS LAZY, through `onOpen`. Every repository card in the sidebar renders
+ * THE PANEL IS LAZY, through `onOpen`. Every repository card in the sidebar asks for
  * one of these, and reading `package.json` for each of them on mount would be a
  * filesystem call per card for a menu most people never open.
  */
-export function ScriptsDropdown({ repoPath, repoName, agentId, agentName }: ScriptsDropdownProps) {
+export function useScriptsMenu({
+  repoPath,
+  repoName,
+  agentId,
+  agentName,
+}: ScriptsMenuOptions): Omit<SelectIconProps, 'size' | 'tone' | 'className'> {
   const t = useT()
   const [projectScripts, setProjectScripts] = useState<ProjectScripts | null>(null)
   const [loading, setLoading] = useState(false)
@@ -116,19 +126,16 @@ export function ScriptsDropdown({ repoPath, repoName, agentId, agentName }: Scri
     [packages, repoPath, agentId, agentName, runScript],
   )
 
-  return (
-    <SelectIcon
-      icon={Play}
-      title={t('agentInfo.runScripts')}
-      tone="purple"
-      groups={groups}
-      loading={loading}
-      loadingLabel={t('common.loading')}
-      emptyLabel={t('agentInfo.noScripts')}
-      onOpen={fetchScripts}
-      onSelect={handleSelect}
-    />
-  )
+  return {
+    icon: Play,
+    title: t('agentInfo.runScripts'),
+    groups,
+    loading,
+    loadingLabel: t('common.loading'),
+    emptyLabel: t('agentInfo.noScripts'),
+    onOpen: fetchScripts,
+    onSelect: handleSelect,
+  }
 }
 
 /**
