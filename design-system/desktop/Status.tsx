@@ -234,7 +234,19 @@ export function Status({
   useDismiss(containerRef, isOpen, close)
 
   const shape = SIZES[size]
-  const plate = `inline-flex items-center ${shape.box} rounded-full font-medium flex-shrink-0 ${TONES[tone][strength]}`
+  /**
+   * `transition-colors` ON THE PLATE, and it is `ProgressBar`'s rule rather than a new
+   * one: that component fades its fill between tones at 300ms whatever else it is
+   * doing, because a coloured INDICATOR that snaps from yellow to green reads as a
+   * redraw instead of as a change. A status is the same kind of object and was the only
+   * one of the two not following it.
+   *
+   * It costs the app nothing — a status changes when a skill reports or a person picks
+   * one, both of them moments where a fade is what you want — and it is what lets the
+   * marketing site's scroll tour walk a reader through the eleven states without the
+   * pill flashing at each step.
+   */
+  const plate = `inline-flex items-center ${shape.box} rounded-full font-medium flex-shrink-0 transition-colors duration-300 ${TONES[tone][strength]}`
 
   if (!options) {
     return (
@@ -247,7 +259,24 @@ export function Status({
   }
 
   return (
-    <div ref={containerRef} className={`relative ${className}`.trim()}>
+    /**
+     * THE WRAPPER IS THE SIZE AND THE SHAPE OF THE PILL, which it was not.
+     *
+     * It exists only to position the menu — a `<button>` may not contain the listbox,
+     * so something above it has to be `relative`. As a plain `<div>` it was BLOCK and
+     * therefore full-width and square, and `className` lands here: anything a caller
+     * hung on this component that had a shape — the site's scroll tour rings this pill
+     * — was drawn around a full-width rectangle instead of around the pill.
+     *
+     * `inline-flex` shrinks it to its trigger and `rounded-full` gives it the trigger's
+     * own radius, so the box a caller decorates and the box a reader sees are the same
+     * box. `flex-shrink-0` because the plate inside already refuses to shrink, and a
+     * wrapper that did would clip it.
+     */
+    <div
+      ref={containerRef}
+      className={`relative inline-flex rounded-full flex-shrink-0 ${className}`.trim()}
+    >
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
