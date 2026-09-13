@@ -15,6 +15,8 @@ import { HeaderRepoCardEntry } from './entries/HeaderRepoCardEntry'
 import { IconEntry } from './entries/IconEntry'
 import { LabelEntry } from './entries/LabelEntry'
 import { LoaderEntry } from './entries/LoaderEntry'
+import { MenuSidebarEntry } from './entries/MenuSidebarEntry'
+import { MenuSidebarItemEntry } from './entries/MenuSidebarItemEntry'
 import { ProgressBarEntry } from './entries/ProgressBarEntry'
 import { SelectIconEntry } from './entries/SelectIconEntry'
 import { StatusEntry } from './entries/StatusEntry'
@@ -62,6 +64,8 @@ const ENTRIES: Record<
   selecticon: SelectIconEntry,
   contextagentcard: ContextAgentCardEntry,
   headerrepocard: HeaderRepoCardEntry,
+  menusidebar: MenuSidebarEntry,
+  menusidebaritem: MenuSidebarItemEntry,
   avatar: AvatarEntry,
   label: LabelEntry,
   status: StatusEntry,

@@ -23,6 +23,8 @@ export type EntryId =
   | 'agent'
   | 'contextagentcard'
   | 'headerrepocard'
+  | 'menusidebar'
+  | 'menusidebaritem'
 
 export const ENTRY_LABELS: Record<EntryId, string> = {
   colors: 'Colours',
@@ -34,6 +36,8 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   selecticon: 'SelectIcon',
   contextagentcard: 'ContextAgentCard',
   headerrepocard: 'HeaderRepoCard',
+  menusidebar: 'MenuSidebar',
+  menusidebaritem: 'MenuSidebarItem',
   text: 'Text',
   avatar: 'Avatar',
   label: 'Label',
@@ -94,12 +98,12 @@ export const FAMILIES: Family[] = [
   {
     label: 'Secondary',
     note: 'Several pieces saying one thing.',
-    entries: ['label', 'status', 'branchcard', 'agent', 'banner'],
+    entries: ['label', 'status', 'branchcard', 'agent', 'menusidebaritem', 'banner'],
   },
   {
     label: 'Tertiary',
     note: 'A whole region of a page.',
-    entries: ['contextagentcard', 'headerrepocard'],
+    entries: ['contextagentcard', 'headerrepocard', 'menusidebar'],
   },
 ]
 
@@ -113,6 +117,8 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   selecticon: 'That control, opening a menu',
   contextagentcard: 'What an agent is spending',
   headerrepocard: 'A repository, and what you can do to it',
+  menusidebar: 'A menu, as a landmark',
+  menusidebaritem: 'One row that takes you somewhere',
   icon: 'Every glyph, five sizes, three tones',
   text: 'Cera Pro, six sizes, four weights',
   avatar: 'A face, or the icon when there is none',

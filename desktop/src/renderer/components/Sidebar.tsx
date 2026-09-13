@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, memo, Fragment } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, Sparkles, NotebookPen, ListTodo, AlertTriangle, FolderGit2 } from '@ds/desktop/icons'
-import { Agent, ButtonIcon } from '@ds/desktop'
+import { Agent, ButtonIcon, MenuSidebar } from '@ds/desktop'
 import { useStore, type ModalId } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos } from '../hooks/useOrderedTerminals'
@@ -8,7 +9,8 @@ import { groupKeyOf, isGroupStart, repoLabel } from '../hooks/terminalOrder'
 import { AgentSortButton } from './AgentSortButton'
 import { SidebarUsageCard } from './SidebarUsageCard'
 import { SidebarUpdateButton } from './SidebarUpdateButton'
-import { SidebarAccount } from './SidebarAccount'
+import { useAccountMenuEntry } from './SidebarAccount'
+import { LoginScreen } from './LoginScreen'
 import { useT } from '../i18n'
 
 /**
@@ -261,6 +263,9 @@ export function Sidebar() {
   const plansShortcutKey = isMac ? '⌘T' : 'Ctrl+T'
   const settingsShortcutKey = isMac ? '⌘,' : 'Ctrl+,'
 
+  // After the table above, because it is handed the accelerator it displays.
+  const { entry: accountEntry, login } = useAccountMenuEntry({ shortcutKey: settingsShortcutKey })
+
   // One listener for every page shortcut, not one per page: ⌘; / ⌘J / ⌘T all do the
   // same thing to a different modal, and a fourth copy of the same nine lines is a
   // table asking to be written. ⌘, stays out of the map — Settings has its own
@@ -303,51 +308,32 @@ export function Sidebar() {
       className="bg-surface-sunken flex flex-col h-full relative z-10 transition-all duration-300 ease-in-out"
       style={{ width: `${SIDEBAR_WIDTH}px`, marginLeft: leftSidebarVisible ? 0 : -SIDEBAR_WIDTH }}
     >
-      {/* Top actions */}
-      <div className="px-2 pt-3 flex flex-col gap-1">
-        {/* Plans — every /magic:plan session the reader can see. FIRST, and the order of
-            these three is the order the work happens in: you plan something, then you
-            pick it up, and Skills is the reference material for doing so. Putting the
-            reference list above either view of live work would be filing the manual in
-            front of the job.
+      {/* THE MENU. The order is the order the work happens in: you plan something,
+          then you pick it up, and Skills is the reference material for doing so —
+          putting the reference list above either view of live work would be filing the
+          manual in front of the job. The account is last and is the one row that
+          changes shape, which is why it arrives as an entry rather than as markup.
 
-            The keyboard shortcuts are keyed by LETTER and deliberately do not follow
-            this order — ⌘T opens this page and ⌘J the one under it (see PAGE_SHORTCUTS)
-            — so moving a button here changes nothing but the reading order. */}
-        <button
-          onClick={() => openModal('plans')}
-          className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all text-text-secondary hover:bg-text-secondary/10 hover:text-ink"
-        >
-          <NotebookPen className="w-3.5 h-3.5" />
-          <span>{t('sidebar.plans')}</span>
-          <span className="ml-auto text-xs opacity-50">{plansShortcutKey}</span>
-        </button>
+          The keyboard shortcuts are keyed by LETTER and deliberately do NOT follow this
+          order — ⌘T opens the first and ⌘J the second (see PAGE_SHORTCUTS) — so moving
+          a row here changes nothing but the reading order. */}
+      <MenuSidebar
+        ariaLabel={t('sidebar.menu.aria')}
+        className="px-2 pt-3"
+        items={[
+          { id: 'plans', icon: NotebookPen, label: t('sidebar.plans'), shortcut: plansShortcutKey, onClick: () => openModal('plans') },
+          { id: 'tasks', icon: ListTodo, label: t('sidebar.tasks'), shortcut: tasksShortcutKey, onClick: () => openModal('tasks') },
+          { id: 'skills', icon: Sparkles, label: t('sidebar.skills'), shortcut: skillsShortcutKey, onClick: () => openModal('skills') },
+          accountEntry,
+        ]}
+      />
 
-        {/* Tasks — the open GitHub issues of every GitHub-tracked repository.
-            Takes the slot "new agent" used to hold: that action now sits on the
-            AGENTS header below, next to the list it adds to. */}
-        <button
-          onClick={() => openModal('tasks')}
-          className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all text-text-secondary hover:bg-text-secondary/10 hover:text-ink"
-        >
-          <ListTodo className="w-3.5 h-3.5" />
-          <span>{t('sidebar.tasks')}</span>
-          <span className="ml-auto text-xs opacity-50">{tasksShortcutKey}</span>
-        </button>
-
-        {/* Skills button — opens an overlay, so no active state */}
-        <button
-          onClick={() => openModal('skills')}
-          className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all text-text-secondary hover:bg-text-secondary/10 hover:text-ink"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>{t('sidebar.skills')}</span>
-          <span className="ml-auto text-xs opacity-50">{skillsShortcutKey}</span>
-        </button>
-
-        {/* Account / Settings — opens the settings modal (or login when signed out) */}
-        <SidebarAccount shortcutKey={settingsShortcutKey} />
-      </div>
+      {/* Portalled to <body> so the fixed overlay covers the whole app. It belongs to
+          the account row but cannot be rendered from inside a list of entries. */}
+      {createPortal(
+        <LoginScreen isOpen={login.open} onClose={login.onClose} />,
+        document.body,
+      )}
 
       {/* Mode toggle + Agents list */}
       <nav className="flex-1 overflow-y-auto px-2 pb-2 flex flex-col">

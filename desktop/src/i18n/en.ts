@@ -140,6 +140,8 @@ export const en = {
   'sidebar.newAgentShortcut': 'New agent ({shortcut})',
   'sidebar.skills': 'Skills',
   'sidebar.tasks': 'Tasks',
+  /** Names the menu landmark — the sidebar has two, this one and the agent list. */
+  'sidebar.menu.aria': 'Pages',
   'sidebar.plans': 'Plans',
   'sidebar.settings': 'Settings',
   'sidebar.login': 'Login / Sign up',

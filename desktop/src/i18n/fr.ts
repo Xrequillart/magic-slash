@@ -116,6 +116,8 @@ export const fr: Record<keyof typeof en, string> = {
   'sidebar.newAgentShortcut': 'Nouvel agent ({shortcut})',
   'sidebar.skills': 'Skills',
   'sidebar.tasks': 'Tâches',
+  /** Names the menu landmark — the sidebar has two, this one and the agent list. */
+  'sidebar.menu.aria': 'Pages',
   'sidebar.plans': 'Plans',
   'sidebar.settings': 'Réglages',
   'sidebar.login': 'Connexion / Inscription',
