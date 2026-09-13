@@ -14,7 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import type { MessageKey } from '@/lib/i18n'
-import { ContextAgentCard } from '@ds/desktop'
+import { ContextAgentCard, TitleAgentCard, type StatusTone } from '@ds/desktop'
 import { useT } from '@/lib/i18n/useLanguage'
 import { AppGround } from '../AppGround'
 import { PullRequestCard, type PullRequestPart, type PullRequestReview } from './PullRequestCardMockup'
@@ -108,15 +108,15 @@ function holds(part: SidebarPart, focus: SidebarPart): boolean {
  * (StatusPill.tsx `STATUS_OPTIONS`, value for value) and the site's own label key.
  */
 export const SIDEBAR_STATUSES = {
-  inProgress: { tone: 'bg-yellow/20 text-yellow', label: 'site.status.inProgress' },
-  committed: { tone: 'bg-cyan/20 text-cyan', label: 'site.status.committed' },
-  readyForPR: { tone: 'bg-orange/20 text-orange', label: 'site.status.readyForPR' },
-  prCreated: { tone: 'bg-green/20 text-green', label: 'site.status.prCreated' },
-  ciGreen: { tone: 'bg-accent/20 text-accent', label: 'site.status.ciGreen' },
-  inReview: { tone: 'bg-blue/20 text-blue', label: 'site.status.inReview' },
-  changesRequested: { tone: 'bg-red/20 text-red', label: 'site.status.changesRequested' },
-  prMerged: { tone: 'bg-purple/20 text-purple', label: 'site.status.prMerged' },
-} as const satisfies Record<string, { tone: string; label: MessageKey }>
+  inProgress: { tone: 'yellow', label: 'site.status.inProgress' },
+  committed: { tone: 'cyan', label: 'site.status.committed' },
+  readyForPR: { tone: 'orange', label: 'site.status.readyForPR' },
+  prCreated: { tone: 'green', label: 'site.status.prCreated' },
+  ciGreen: { tone: 'accent', label: 'site.status.ciGreen' },
+  inReview: { tone: 'blue', label: 'site.status.inReview' },
+  changesRequested: { tone: 'red', label: 'site.status.changesRequested' },
+  prMerged: { tone: 'purple', label: 'site.status.prMerged' },
+} as const satisfies Record<string, { tone: StatusTone; label: MessageKey }>
 
 export type SidebarStatus = keyof typeof SIDEBAR_STATUSES
 
@@ -194,6 +194,36 @@ function BranchPill({ name, tone }: { name: string; tone: 'base' | 'current' }) 
  * is exactly the app's.
  */
 const RING = 'ring-2 ring-accent ring-offset-2 ring-offset-appbg'
+
+/**
+ * A field at rest and going nowhere. `EditableText` is controlled, so a drawing hands it
+ * the closed state and handlers that do nothing — the price of using the real component,
+ * and a fair one: the pencil and the column it reserves are the app's.
+ */
+const FIELD = (value: string) => ({
+  value,
+  placeholder: value,
+  editing: false,
+  draft: value,
+  onDraftChange: () => undefined,
+  onStartEditing: () => undefined,
+  onSave: () => undefined,
+  onCancel: () => undefined,
+})
+
+/**
+ * WHERE THE TOUR GRABS A PART THAT LIVES INSIDE A COMPONENT.
+ *
+ * `SidebarScrollBand` finds what it zooms to with a query, and a `data-part` attribute
+ * is what the hand-drawn parts carry. A design-system component draws its own markup
+ * and takes no arbitrary attributes — deliberately — so the two parts inside the ticket
+ * card are marked with a CLASS instead, through the `className` every one of them
+ * already accepts. The band's selector takes either form.
+ *
+ * A class as a selector hook rather than an escape hatch in the design system: a
+ * marketing page's scroll animation has no business widening a component's API.
+ */
+const part = (name: SidebarPart) => `part-${name}`
 
 function focusClass(focus: SidebarPart | null | undefined, part: SidebarPart): string {
   if (!focus) return ''
@@ -277,46 +307,49 @@ export function InfoSidebarPanel({
         </AppGround>
       </div>
 
-      {/* ── 2. THE TICKET CARD (`TicketHeader.tsx`) ────────────────────────────── */}
+      {/* ── 2. THE TICKET CARD — `TitleAgentCard`, the component itself ─────────
+          THE TOUR REACHES INSIDE IT, which is the one thing a drawing gave for free and
+          a component does not: `SidebarScrollBand` rings the ticket id and the status
+          separately and zooms to whichever it names. Both hooks ride on WRAPPERS rather
+          than on the parts — a `data-part` for the query, the ring through the
+          component's own `className` — so the card needs no escape hatch and the tour
+          loses nothing.
+
+          The pill FADES between the four status steps because `Status` carries
+          `transition-colors`, which it does for `ProgressBar`'s reason rather than for
+          this page's: a coloured indicator that snaps reads as a redraw. This band is
+          simply where it was noticed. */}
       <div
         data-part="ticket"
-        className={`rounded-xl bg-white/[0.06] p-4 transition-opacity duration-500 ${focusClass(focus, 'ticket')}`}
+        className={`transition-opacity duration-500 ${focusClass(focus, 'ticket')}`}
       >
-        <div className="mb-3 flex items-center justify-between">
-          {/* The mark hangs off the ticket ID rather than off the link: it says which
-              tracker the ID belongs to, which is worth showing whether or not a URL
-              could be built for it. */}
-          <span
-            data-part="ticketId"
-            className={`flex items-center gap-1.5 rounded text-xs font-semibold text-white ${focus === 'ticketId' ? RING : ''}`}
-          >
-            <JiraMark className="h-3.5 w-3.5 shrink-0" />
-            PAY-318
-          </span>
-          {/* `StatusPill`: `px-2.5 py-1 rounded-full text-xs font-medium`, tint and ink
-              from `STATUS_OPTIONS`, the chevron that opens the list. The colours change
-              with the status; the shape never does. */}
-          <span
-            data-part="status"
-            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors duration-500 ${pill.tone} ${focusClass(focus, 'status')}`}
-          >
-            {t(pill.label)}
-            <ChevronDown className="h-3 w-3" />
-          </span>
-        </div>
-
-        <div className="flex items-start gap-2">
-          <h2 className="flex-1 break-words text-sm font-semibold leading-tight text-white">
-            {t('site.infoSidebar.ticketTitle')}
-          </h2>
-          <PenLine className="mt-0.5 h-3.5 w-3.5 shrink-0 text-appink-muted" />
-        </div>
-        <div className="mt-3 flex items-start gap-2">
-          <div className="flex-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-white/60">
-            {t('site.infoSidebar.ticketDescription')}
-          </div>
-          <PenLine className="mt-0.5 h-3 w-3 shrink-0 text-appink-muted" />
-        </div>
+        {/* `paint={false}`: the panel around this IS the app's column and has its own
+            ground already. What the card needs from here is the VARIABLES — without
+            them `bg-surface` resolves to nothing and the card comes out transparent,
+            which is what the hand-drawn `bg-white/[0.06]` literal hid. */}
+        <AppGround paint={false}>
+          <TitleAgentCard
+            ticket={{
+              children: 'PAY-318',
+              // The tone brings Atlassian's own mark and its blue at 14%, which is what a
+              // Tasks card wears — so the badge says which tracker the id belongs to
+              // whether or not a URL could be built for it.
+              tone: 'jira',
+              title: 'PAY-318',
+              onClick: () => undefined,
+              className: `${part('ticketId')} ${focus === 'ticketId' ? RING : ''}`,
+            }}
+            status={{
+              label: t(pill.label),
+              tone: pill.tone,
+              options: [],
+              onSelect: () => undefined,
+              className: `${part('status')} ${focusClass(focus, 'status')}`,
+            }}
+            title={FIELD(t('site.infoSidebar.ticketTitle'))}
+            description={FIELD(t('site.infoSidebar.ticketDescription'))}
+          />
+        </AppGround>
       </div>
 
       {/* ── 3. THE REPOSITORY CARD (`RepositoryCard.tsx`) ──────────────────────── */}

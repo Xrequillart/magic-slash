@@ -1,42 +1,60 @@
 'use client'
 
 import { useId } from 'react'
-import { ChevronDown, PenLine } from 'lucide-react'
+import { Status, TitleAgentCard, type StatusStrength, type StatusTone } from '@ds/desktop'
 import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
+import { AppGround } from '../AppGround'
 
 /**
- * The visual under the `ticketInfo` row: the info sidebar's ticket card, redrawn.
+ * A field at rest and going nowhere.
  *
- * DRAWN FROM `desktop/src/renderer/components/agent-info-sidebar/TicketHeader.tsx` and
- * the two fields it renders from `AgentIdentityFields.tsx`, class for class:
+ * `EditableText` is controlled, so a drawing has to hand it the closed state and a set
+ * of handlers that do nothing. That is the price of using the real component here and
+ * a fair one: the pencil, the hover ground and the column it reserves are the app's,
+ * not a reproduction of them.
+ */
+const FIELD = (value: string) => ({
+  value,
+  placeholder: value,
+  editing: false,
+  draft: value,
+  onDraftChange: () => undefined,
+  onStartEditing: () => undefined,
+  onSave: () => undefined,
+  onCancel: () => undefined,
+})
+
+/**
+ * The visual under the `ticketInfo` row: the info sidebar's ticket card.
  *
- *   1. THE TOP ROW, `flex items-center justify-between mb-3`: the tracker's mark at
- *      `w-3.5` and the ticket id at `text-xs font-semibold` in full ink; on the right the
- *      `StatusPill` — `px-2.5 py-1 rounded-full text-xs font-medium` in the status's own
- *      pair from `STATUS_OPTIONS`, here "in review" on `bg-blue/20 text-blue`, with the
- *      `w-3` chevron that opens the menu.
- *   2. THE TITLE (`AgentTitleField`, at rest): an `h2` at `text-sm font-semibold
- *      leading-tight` in full ink, the pencil at `w-3.5` in muted icon ink beside it, in
- *      a `-mx-2 px-2 py-1` hit area.
- *   3. THE DESCRIPTION (`AgentDescriptionField`, at rest), `mt-3`: `text-xs leading-relaxed`
- *      at 60% ink, a smaller `w-3` pencil beside it, the same hit area.
+ * IT IS THE COMPONENT, not a drawing of one. `TitleAgentCard` comes from
+ * `design-system/desktop/`, the same file the Electron renderer compiles, on a patch of
+ * the app's own theme (`AppGround`). Change the card and this illustration changes with
+ * it.
  *
- * `blue` IS DECLARED FOR THIS PILL, as `orange` is for the gauge beside it: the app's
- * statuses each have a colour, "in review" is blue, and a reproduction that swapped it
- * for the nearest indigo would show a status the app never shows.
+ * WHAT THAT REPLACED. This file held a reproduction copied "class for class" from
+ * `TicketHeader.tsx` and `AgentIdentityFields.tsx`, under a note listing every class it
+ * had matched — the top row's `mb-3`, the pill's `px-2.5 py-1 rounded-full`, the two
+ * pencils at `w-3.5` and `w-3`, the fields' `-mx-2 px-2 py-1` hit areas. All of it was
+ * true when it was written, and some of it had already drifted: the fields' hit area is
+ * `pl-2 py-1.5` with the right padding reserved for the pencil, and the description sits
+ * `mt-1` under the title rather than `mt-3` — 12px of margin on 12px of padding had
+ * pushed it away from the title it belongs to. A picture of a component is a claim that
+ * needs maintaining; a component is not. `ContextCardMockup` and `UsageCardMockup` next
+ * door have the same history.
+ *
+ * THE STATUSES BELOW ARE THE SAME COMPONENT TOO, one `Status` per row, so the legend and
+ * the card cannot disagree about a colour. Their table used to carry raw tints
+ * (`bg-blue/20 text-blue`); it names tones now, which is the vocabulary the pill itself
+ * speaks.
  *
  * THE SAME INVENTED TICKET AS THE OTHER DRAWINGS: PAY-318, the invoice VAT ticket that
  * the Tasks list shows and the Agents sidebar runs.
  *
- * IN DARK, as every app reproduction here: `bg-ink` for the window, `bg-white/[0.06]`
- * for the app's `surface`, `appink` for its inks. The card is drawn at the width it has
- * in the sidebar, on a dark panel, for the reason the Session card beside it is.
- *
- * `aria-hidden`: it is a drawing, and a pill that cannot be opened should be announced to
- * nobody.
+ * `aria-hidden`: it is a drawing, and a pill that cannot be opened should be announced
+ * to nobody.
  */
-
 /**
  * The Jira mark — `TrackerIcons.tsx`'s three stacked chevrons in Atlassian's two blues,
  * the same paths the Tasks drawing above uses. Kept as a vector rather than pointed at
@@ -77,30 +95,27 @@ export function JiraMark({ className }: { className?: string }) {
  * else it can say, and eleven pills in a paragraph is eleven things nobody maps back.
  * `none` is left out: it is the pill's empty state, not a status.
  */
-const STATUSES: readonly { id: string; tint: string; name: MessageKey; description: MessageKey }[] = [
-  { id: 'planning', tint: 'bg-orange/10 text-orange', name: 'site.status.planning', description: 'site.status.planningDesc' },
-  { id: 'planned', tint: 'bg-cyan/10 text-cyan', name: 'site.status.planned', description: 'site.status.plannedDesc' },
-  { id: 'inProgress', tint: 'bg-yellow/20 text-yellow', name: 'site.status.inProgress', description: 'site.status.inProgressDesc' },
-  { id: 'committed', tint: 'bg-cyan/20 text-cyan', name: 'site.status.committed', description: 'site.status.committedDesc' },
-  { id: 'readyForPR', tint: 'bg-orange/20 text-orange', name: 'site.status.readyForPR', description: 'site.status.readyForPRDesc' },
-  { id: 'prCreated', tint: 'bg-green/20 text-green', name: 'site.status.prCreated', description: 'site.status.prCreatedDesc' },
-  { id: 'ciGreen', tint: 'bg-accent/20 text-accent', name: 'site.status.ciGreen', description: 'site.status.ciGreenDesc' },
-  { id: 'inReview', tint: 'bg-blue/20 text-blue', name: 'site.status.inReview', description: 'site.status.inReviewDesc' },
-  { id: 'changesRequested', tint: 'bg-red/20 text-red', name: 'site.status.changesRequested', description: 'site.status.changesRequestedDesc' },
-  { id: 'reviewAddressed', tint: 'bg-teal/20 text-teal', name: 'site.status.reviewAddressed', description: 'site.status.reviewAddressedDesc' },
-  { id: 'prMerged', tint: 'bg-purple/20 text-purple', name: 'site.status.prMerged', description: 'site.status.prMergedDesc' },
+const STATUSES: readonly {
+  id: string
+  tone: StatusTone
+  strength?: StatusStrength
+  name: MessageKey
+  description: MessageKey
+}[] = [
+  { id: 'planning', tone: 'orange', strength: 'soft', name: 'site.status.planning', description: 'site.status.planningDesc' },
+  { id: 'planned', tone: 'cyan', strength: 'soft', name: 'site.status.planned', description: 'site.status.plannedDesc' },
+  { id: 'inProgress', tone: 'yellow', name: 'site.status.inProgress', description: 'site.status.inProgressDesc' },
+  { id: 'committed', tone: 'cyan', name: 'site.status.committed', description: 'site.status.committedDesc' },
+  { id: 'readyForPR', tone: 'orange', name: 'site.status.readyForPR', description: 'site.status.readyForPRDesc' },
+  { id: 'prCreated', tone: 'green', name: 'site.status.prCreated', description: 'site.status.prCreatedDesc' },
+  { id: 'ciGreen', tone: 'accent', name: 'site.status.ciGreen', description: 'site.status.ciGreenDesc' },
+  { id: 'inReview', tone: 'blue', name: 'site.status.inReview', description: 'site.status.inReviewDesc' },
+  { id: 'changesRequested', tone: 'red', name: 'site.status.changesRequested', description: 'site.status.changesRequestedDesc' },
+  { id: 'reviewAddressed', tone: 'teal', name: 'site.status.reviewAddressed', description: 'site.status.reviewAddressedDesc' },
+  { id: 'prMerged', tone: 'purple', name: 'site.status.prMerged', description: 'site.status.prMergedDesc' },
 ]
 
 /** The pill, as the card above draws it — `px-2.5 py-1 rounded-full text-xs font-medium`. */
-function StatusPill({ tint, label }: { tint: string; label: string }) {
-  return (
-    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${tint}`}>
-      {label}
-      <ChevronDown className="h-3 w-3" />
-    </span>
-  )
-}
-
 export function TicketCardMockup() {
   const { t } = useT()
 
@@ -110,36 +125,27 @@ export function TicketCardMockup() {
       aria-hidden
       className="flex justify-center overflow-hidden rounded-2xl bg-tone-sky px-6 py-14 sm:py-20"
     >
-      <div className="w-full max-w-[500px] rounded-2xl bg-ink p-4 shadow-lift">
-        <div className="rounded-xl bg-white/[0.06] p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-white">
-              <JiraMark className="h-3.5 w-3.5 shrink-0" />
-              PAY-318
-            </span>
-            <span className="flex items-center gap-1.5 rounded-full bg-blue/20 px-2.5 py-1 text-xs font-medium text-blue">
-              {t('site.infoSidebar.status')}
-              <ChevronDown className="h-3 w-3" />
-            </span>
-          </div>
-
-          <div className="-mx-2 flex items-start gap-2 rounded px-2 py-1">
-            <h2 className="flex-1 break-words text-sm font-semibold leading-tight text-white">
-              {t('site.infoSidebar.ticketTitle')}
-            </h2>
-            <PenLine className="mt-0.5 h-3.5 w-3.5 shrink-0 text-appink-muted" />
-          </div>
-
-          <div className="-mx-2 mt-3 rounded px-2 py-1">
-            <div className="flex items-start gap-2">
-              <div className="flex-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-white/60">
-                {t('site.infoSidebar.ticketDescription')}
-              </div>
-              <PenLine className="mt-0.5 h-3 w-3 shrink-0 text-appink-muted" />
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* The sidebar's own ground, `p-4` around the card as the app's column has. */}
+      <AppGround className="w-full max-w-[500px] rounded-2xl p-4 shadow-lift">
+        <TitleAgentCard
+          ticket={{
+            children: 'PAY-318',
+            // The tone brings Atlassian's own mark and its blue at 14% — the same one a
+            // Tasks card wears. Naming a glyph here would be a second copy of that.
+            tone: 'jira',
+            title: 'PAY-318',
+            onClick: () => undefined,
+          }}
+          status={{
+            label: t('site.infoSidebar.status'),
+            tone: 'blue',
+            options: [],
+            onSelect: () => undefined,
+          }}
+          title={FIELD(t('site.infoSidebar.ticketTitle'))}
+          description={FIELD(t('site.infoSidebar.ticketDescription'))}
+        />
+      </AppGround>
     </div>
 
       {/* ── THE STATUSES, UNDER THE DRAWING ──────────────────────────────────
@@ -155,7 +161,12 @@ export function TicketCardMockup() {
               index % 2 === 0 ? 'sm:border-r' : ''
             } ${index === 1 ? 'sm:border-t-0' : ''}`}
           >
-            <StatusPill tint={status.tint} label={t(status.name)} />
+            {/* The card above and this legend draw THE SAME COMPONENT, so a reader can
+                match a pill to the card without looking twice — and neither can drift.
+                Each row is inert: it names a status, it does not set one. */}
+            <AppGround paint={false} className="inline-block">
+              <Status label={t(status.name)} tone={status.tone} strength={status.strength} />
+            </AppGround>
             <p className="mt-2.5 text-sm leading-relaxed text-ink/70">{t(status.description)}</p>
           </div>
         ))}

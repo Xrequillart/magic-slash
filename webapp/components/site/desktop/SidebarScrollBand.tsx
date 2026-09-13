@@ -4,6 +4,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { FeaturePoints } from '@/components/ui'
 import { DESKTOP_BANDS, SIDEBAR_TOUR, STATUS_STEP_TITLE, type SidebarTourStep } from '@/lib/desktopPage'
 import { titleOf } from '@/lib/features'
+import { Status } from '@ds/desktop'
+import { AppGround } from '../AppGround'
 import { useT } from '@/lib/i18n/useLanguage'
 import { isStill } from '@/lib/stillness'
 import {
@@ -213,7 +215,13 @@ export function SidebarScrollBand() {
     // The base: the panel's width inside the frame, `FRAME_PAD` of plate either side.
     const base = (fw - FRAME_PAD * 2) / pw
 
-    const target = zoomPart ? panel.querySelector<HTMLElement>(`[data-part="${zoomPart}"]`) : null
+    // EITHER FORM. A hand-drawn part carries `data-part`; a part that lives inside a
+    // design-system component carries `part-<name>` in its `className`, because those
+    // components take no arbitrary attributes and a scroll animation has no business
+    // widening their API to get one. See `part()` in `InfoSidebarMockup`.
+    const target = zoomPart
+      ? panel.querySelector<HTMLElement>(`[data-part="${zoomPart}"], .part-${zoomPart}`)
+      : null
     if (!target) {
       setTransform(`translate(${FRAME_PAD}px, ${FRAME_PAD}px) scale(${base})`)
       return
@@ -314,13 +322,23 @@ function StepCopy({ step }: { step: SidebarTourStep }) {
     step.kind === 'status' ? (
       <h3 className="flex flex-wrap items-center gap-3 font-display text-2xl font-bold leading-tight text-ink md:text-3xl">
         <span>{t(STATUS_STEP_TITLE, { status: '' }).trim()}</span>
-        <span
-          className={`inline-flex items-center rounded-full px-3 py-1 font-display text-sm font-medium ring-1 ring-inset ring-ink/10 ${
-            SIDEBAR_STATUSES[step.status].tone
-          }`}
-        >
-          {t(step.statusLabel)}
-        </span>
+        {/* THE PILL IS THE COMPONENT, and that is the point of this heading: the reader
+            sees on the left exactly the object that changes on the right. It was a
+            hand-drawn copy carrying a raw tint, which broke the moment the panel's table
+            started naming TONES instead — a class string interpolated from `'blue'`
+            produces nothing at all.
+
+            `lg`, the tallest rung, because this is a heading and stands beside 24px
+            type. The hairline ring is this page's and not the app's: the pill sits on a
+            light canvas here, where a 20% tint needs an edge to read as a plate. */}
+        <AppGround paint={false} className="inline-flex">
+          <Status
+            label={t(step.statusLabel)}
+            tone={SIDEBAR_STATUSES[step.status].tone}
+            size="lg"
+            className="ring-1 ring-inset ring-ink/10"
+          />
+        </AppGround>
       </h3>
     ) : (
       <h3 className="font-display text-2xl font-bold leading-tight text-ink md:text-3xl">
