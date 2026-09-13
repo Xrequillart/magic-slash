@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.94.4] - 2026-09-13
+
+### Added
+
+- **Desktop**: The window's title bar moved into the shared `design-system/` folder. Its panel toggles are `ButtonIcon`s carrying lucide's `PanelLeft`/`PanelRight` pair, so the mark says what the click does, and the archive control is a `Label`
+
+### Changed
+
+- **Desktop**: The coder/planner switch is gone from the title bar. An agent's kind is still set in the settings
+- **Landing**: The drawn window's title bar is the real component instead of two SVGs copied out of the app
+
+### Fixed
+
+- **Landing**: The focus ring on the ticket card follows the card's corners instead of coming out square
+
 ## [0.94.3] - 2026-09-13
 
 ### Added
@@ -2853,6 +2868,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.94.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.4
 [0.94.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.3
 [0.94.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.2
 [0.94.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.1
