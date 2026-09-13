@@ -7,6 +7,27 @@ import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type P
 
 const LABELS = { context: 'Context', minimize: 'Fold', expand: 'Unfold' }
 
+/** One agent's figures, so both states are showing the same run. */
+const AGENT = {
+  contextPercent: 34,
+  contextDetail: '68k of 200k tokens',
+  model: 'claude-opus-5',
+  cost: '$1.42',
+  duration: '12 min',
+}
+
+/**
+ * The card held in whichever state it is given — so the two readings can sit beside
+ * each other rather than one behind a press.
+ */
+function Still({ minimized = false }: { minimized?: boolean }) {
+  return (
+    <div className="w-[320px]">
+      <ContextAgentCard {...AGENT} minimized={minimized} onMinimizedChange={() => undefined} labels={LABELS} />
+    </div>
+  )
+}
+
 const PROPS: PropRow[] = [
   { name: 'contextPercent', type: 'number', required: true, description: 'How full the context window is. An agent that has not spoken yet has used 0%, and says so — a dash there appears for the first seconds of every agent and makes a reader wonder what is broken.' },
   { name: 'contextDetail', type: 'string', description: '“42k of 200k tokens”, already built and already translated. Omitted, the line is absent.' },
@@ -40,20 +61,27 @@ export function ContextAgentCardEntry({ theme, onOpen }: { theme: DesktopTheme; 
 
       <EntrySection
         title="Both states"
-        note="Fold and unfold it. The same card, at the two sizes the sidebar gives it."
+        note="The same agent, both ways, side by side — folded, the card keeps the one figure a reader is actually watching and gives up the three that are context for it. The third card below is the real control: fold and unfold it."
       >
-        <Stage theme={theme}>
-          <div className="max-w-[320px]">
-            <ContextAgentCard
-              contextPercent={34}
-              contextDetail="68k of 200k tokens"
-              model="claude-opus-5"
-              cost="$1.42"
-              duration="12 min"
-              minimized={minimized}
-              onMinimizedChange={setMinimized}
-              labels={LABELS}
-            />
+        <Stage theme={theme} className="flex flex-wrap items-start gap-8">
+          <div className="flex flex-col gap-2">
+            <Still />
+            <span className="font-mono text-[10px] text-text-secondary">open</span>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Still minimized />
+            <span className="font-mono text-[10px] text-text-secondary">folded</span>
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="w-[320px]">
+              <ContextAgentCard
+                {...AGENT}
+                minimized={minimized}
+                onMinimizedChange={setMinimized}
+                labels={LABELS}
+              />
+            </div>
+            <span className="font-mono text-[10px] text-text-secondary">press it</span>
           </div>
         </Stage>
       </EntrySection>
