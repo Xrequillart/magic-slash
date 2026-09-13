@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.94.6] - 2026-09-13
+
+### Added
+
+- **Desktop**: The settings switch moved into the shared `design-system/` folder. Its knob is a pill rather than a circle, and it comes in the three sizes `Label`, `Status` and `ButtonIcon` already use — `sm` (40×24), `md` (48×28) and `lg` (56×32). The knob stretches while pressed and settles at the far end
+
+### Changed
+
+- **Landing**: The switch in the "It works your way" card is the real component instead of a track and knob built by hand, so the drawing cannot fall behind the control it draws
+
 ## [0.94.5] - 2026-09-13
 
 ### Fixed
@@ -2874,6 +2884,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.94.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.6
 [0.94.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.5
 [0.94.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.4
 [0.94.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.3
