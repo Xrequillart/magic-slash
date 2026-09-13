@@ -105,7 +105,7 @@ export function Shell() {
                       id === entry ? 'bg-canvas' : 'hover:bg-canvas/60'
                     }`}
                   >
-                    <span className="text-sm font-medium text-ink">{ENTRY_LABELS[id]}</span>
+                    <span className="text-sm font-semibold text-ink">{ENTRY_LABELS[id]}</span>
                     <span className="text-[11px] leading-snug text-muted">{ENTRY_NOTES[id]}</span>
                   </button>
                 </li>
@@ -151,7 +151,7 @@ export function Shell() {
                                 id === entry ? 'bg-canvas' : 'hover:bg-canvas/60'
                               }`}
                             >
-                              <span className="text-sm font-medium text-ink">
+                              <span className="text-sm font-semibold text-ink">
                                 {ENTRY_LABELS[id]}
                               </span>
                               <span className="text-[11px] leading-snug text-muted">

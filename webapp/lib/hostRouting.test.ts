@@ -55,6 +55,17 @@ describe('canonicalHost', () => {
       for (const path of ['/privacy', '/terms']) {
         expect(canonicalHost('magic-slash.io', path), path).toBeNull()
       }
+      // THE DESIGN SYSTEM, which reaches the apex by a different route from the rows
+      // above: nothing on the public site links to it, so this list is the ONLY thing
+      // keeping it there. A page nobody links to fails silently — it is reached by
+      // someone typing the URL, and what they would get instead is a login form on
+      // `app.magic-slash.io`, which reads as "you are not allowed to see this" rather
+      // than as a routing mistake.
+      //
+      // Its sibling is deliberately absent: `/design-system-web` still 404s in
+      // production from its own page, and is not public here either.
+      expect(canonicalHost('magic-slash.io', '/design-system')).toBeNull()
+      expect(canonicalHost('magic-slash.io', '/design-system-web')).toBe(APP_HOST)
       // AND `/application` IS NOT ONE OF THEM, though the menu row that opens `/desktop`
       // is labelled "Application": that path is the app's own settings section, and it
       // goes where the rest of the product goes.

@@ -103,6 +103,16 @@ const PUBLIC_PATHS = new Set([
   // other side.
   '/privacy',
   '/terms',
+  // THE DESKTOP APP'S DESIGN SYSTEM, published on purpose. It was a workbench that
+  // 404'd in production, and it is now a page: the components on it are the real ones
+  // this repo compiles into Electron, and the repo itself is public, so the page tells a
+  // visitor nothing its own source does not already say out loud.
+  //
+  // `/design-system-web` IS NOT HERE and is still development-only. The two pages were
+  // built as a pair and are being separated on purpose: this one documents a shared
+  // folder that exists to be read, the other documents `components/ui.tsx` — the site's
+  // own internals, which nobody outside the repo has a reason to see.
+  '/design-system',
   // NOT A PAGE ANY MORE. `/documentation` is in `RETIRED_PATHS` below and 308s to
   // `/faq`, and it has to stay listed HERE for that redirect to be the one that fires:
   // drop it and `canonicalHost` decides it belongs to the app, which 307s the reader to
