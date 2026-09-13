@@ -28,7 +28,7 @@ import { getProjectColorMap } from '../../utils/projectColors'
 import { formatUsd } from '../../utils/usageStats'
 import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
 import { CHANGELOG_URL } from '../../../urls'
-import { Switch } from '../../components/Switch'
+import { Switch } from '@ds/desktop'
 import { SELECT } from '../../theme/controls'
 
 const SPOTLIGHT_OPTIONS: { label: string; value: string }[] = [

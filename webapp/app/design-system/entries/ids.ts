@@ -19,6 +19,7 @@ export type EntryId =
   | 'selecticon'
   | 'label'
   | 'status'
+  | 'switch'
   | 'branchcard'
   | 'banner'
   | 'agent'
@@ -52,6 +53,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   avatar: 'Avatar',
   label: 'Label',
   status: 'Status',
+  switch: 'Switch',
   branchcard: 'BranchCard',
   banner: 'Banner',
   agent: 'Agent',
@@ -98,7 +100,7 @@ export const FAMILIES: Family[] = [
   {
     label: 'Foundation',
     note: 'Draws itself. Depends on nothing.',
-    entries: ['icon', 'text', 'progress', 'loader', 'card'],
+    entries: ['icon', 'text', 'progress', 'loader', 'card', 'switch'],
   },
   {
     label: 'Primary',
@@ -167,6 +169,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   avatar: 'A face, or the icon when there is none',
   label: 'Names a thing, on a tinted plate',
   status: 'Reports a state, and changes it',
+  switch: 'On or off, and it takes at once',
   branchcard: 'Where the work is, and where it goes',
   banner: 'States a fact about a surface',
   agent: 'What it is called, and what it is doing',

@@ -23,6 +23,7 @@ import { SelectIconEntry } from './entries/SelectIconEntry'
 import { AppTitleBarEntry } from './entries/AppTitleBarEntry'
 import { SidebarEntry } from './entries/SidebarEntry'
 import { StatusEntry } from './entries/StatusEntry'
+import { SwitchEntry } from './entries/SwitchEntry'
 import { TextEntry } from './entries/TextEntry'
 import { TitleAgentCardEntry } from './entries/TitleAgentCardEntry'
 import { UsageClaudeCodeCardEntry } from './entries/UsageClaudeCodeCardEntry'
@@ -79,6 +80,7 @@ const ENTRIES: Record<
   avatar: AvatarEntry,
   label: LabelEntry,
   status: StatusEntry,
+  switch: SwitchEntry,
   branchcard: BranchCardEntry,
   banner: BannerEntry,
   agent: AgentEntry,

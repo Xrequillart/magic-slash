@@ -62,6 +62,8 @@ export type {
 export { SelectIcon } from './SelectIcon'
 export type { SelectIconGroup, SelectIconItem, SelectIconProps, SelectIconTone } from './SelectIcon'
 export { Status, STATUS_TONES } from './Status'
+export { Switch } from './Switch'
+export type { SwitchProps, SwitchSize } from './Switch'
 export type { StatusOption, StatusProps, StatusSize, StatusStrength, StatusTone } from './Status'
 export { UsageClaudeCodeCard } from './UsageClaudeCodeCard'
 export type { UsageClaudeCodeCardProps, UsageLimit } from './UsageClaudeCodeCard'

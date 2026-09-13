@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { showToast } from '../../components/Toast'
-import { Switch } from '../../components/Switch'
+import { Switch } from '@ds/desktop'
 
 /**
  * One labelled switch: title, help line, switch on the right.
