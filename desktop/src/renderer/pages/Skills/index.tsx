@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Plus, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal, type LucideIcon } from '@ds/desktop/icons'
-import { ProgressBar, type ProgressTone } from '@ds/desktop'
+import { Loader, ProgressBar, type ProgressTone } from '@ds/desktop'
 import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
 import SkillDocument from './SkillDocument'
 import { VSCode } from '@ds/desktop/icons'
@@ -1187,7 +1187,7 @@ export function SkillsPage() {
     // The detail is still loading (getSkill resolves a tick after the route).
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="w-6 h-6 border-2 border-line-strong border-t-accent rounded-full animate-spin" />
+        <Loader variant="spin" size="xl" tone="accent" />
       </div>
     )
   })()
@@ -1207,7 +1207,7 @@ export function SkillsPage() {
 
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <div className="w-6 h-6 border-2 border-line-strong border-t-accent rounded-full animate-spin" />
+          <Loader variant="spin" size="xl" tone="accent" />
         </div>
       )}
 
@@ -1307,7 +1307,7 @@ export function SkillsPage() {
             <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">{t('skills.reposHelp')}</p>
             {repoSkillsLoading && (
               <div className="flex items-center justify-center py-6">
-                <div className="w-5 h-5 border-2 border-line-strong border-t-accent rounded-full animate-spin" />
+                <Loader variant="spin" size="lg" tone="accent" />
               </div>
             )}
             {!repoSkillsLoading && Object.keys(repoSkillsByRepo).length === 0 && (

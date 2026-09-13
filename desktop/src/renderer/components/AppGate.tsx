@@ -1,4 +1,5 @@
-import { CloudOff, WifiOff, Loader2, RotateCcw } from '@ds/desktop/icons'
+import { CloudOff, WifiOff, RotateCcw } from '@ds/desktop/icons'
+import { Loader } from '@ds/desktop'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useConnectivity } from '../hooks/useConnectivity'
@@ -21,7 +22,7 @@ function Checking() {
   const t = useT()
   return (
     <FullScreen>
-      <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      <Loader variant="spin" size="2xl" tone="accent" label={t('app.connecting')} />
       <p className="text-ink/60">{t('app.connecting')}</p>
     </FullScreen>
   )

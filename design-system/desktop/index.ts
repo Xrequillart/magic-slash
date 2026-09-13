@@ -15,6 +15,8 @@ export { AVATAR_SIZES } from './avatarSizes'
 export type { AvatarSize, AvatarGeometry } from './avatarSizes'
 export { Icon, ICON_SIZES } from './Icon'
 export { Label, LABEL_TONES } from './Label'
+export { Loader } from './Loader'
+export type { LoaderProps, LoaderSize, LoaderTone, LoaderVariant } from './Loader'
 export { ProgressBar, PROGRESS_TEXT, progressTone } from './ProgressBar'
 export type {
   ProgressBarProps,

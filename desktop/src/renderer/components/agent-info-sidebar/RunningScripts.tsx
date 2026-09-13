@@ -1,5 +1,5 @@
 import { CircleStop, ExternalLink, Globe, XCircle } from '@ds/desktop/icons'
-import { WaveLoader } from '../WaveLoader'
+import { Loader } from '@ds/desktop'
 import { useScriptRunner } from '../../hooks/useScriptRunner'
 import { useStore } from '../../store'
 import { useT } from '../../i18n'
@@ -69,7 +69,7 @@ export function RunningScripts({ repoPath, agentId }: RunningScriptsProps) {
                   white against the filled surface. */}
               {script.state === 'running' ? (
                 <span className="text-on-brand flex-shrink-0">
-                  <WaveLoader />
+                  <Loader />
                 </span>
               ) : (
                 <XCircle className="w-4 h-4 flex-shrink-0" />

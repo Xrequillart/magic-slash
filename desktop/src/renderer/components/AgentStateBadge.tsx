@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { Check, MessageCircleQuestionMark, XCircle } from '@ds/desktop/icons'
-import { WaveLoader } from './WaveLoader'
+import { Loader } from '@ds/desktop'
 import { stateColors } from '../utils/stateColors'
 import type { TerminalState } from '../../types'
 
@@ -11,7 +11,7 @@ import type { TerminalState } from '../../types'
  *
  * Shared by the sidebar and the menu bar panel: both are lists of the same agents,
  * and a state that reads one way in the app and another in the menu bar is worse
- * than either. The colour comes from `stateColors`, and WaveLoader inherits it
+ * than either. The colour comes from `stateColors`, and the loader inherits it
  * through `currentColor`.
  */
 export const AgentStateBadge = memo(function AgentStateBadge({ state }: { state: TerminalState }) {
@@ -20,7 +20,7 @@ export const AgentStateBadge = memo(function AgentStateBadge({ state }: { state:
   const icon = () => {
     switch (state) {
       case 'working':
-        return <WaveLoader className="flex-shrink-0" />
+        return <Loader className="flex-shrink-0" />
       case 'completed':
         return <Check className="w-4 h-4" />
       case 'waiting':

@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef, useMemo, useState } from 'react'
 import { AlertTriangle, ListTodo, NotebookPen, RotateCcw, Settings, Sparkles, FolderOpen } from '@ds/desktop/icons'
+import { Loader } from '@ds/desktop'
 import { REASON_META, buildRepoSetup, needsRepoSetup } from './utils/repoSetup'
 import type { InvalidRepo } from '../preload'
 import { useStore } from './store'
@@ -67,7 +68,7 @@ function LoadingScreen() {
   return (
     <div className="flex items-center justify-center h-screen bg-transparent">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-8 h-8 border-3 border-line-strong border-t-accent rounded-full animate-spin" />
+        <Loader variant="spin" size="2xl" tone="accent" label={t('common.loading')} />
         <p className="text-ink/60">{t('common.loading')}</p>
       </div>
     </div>

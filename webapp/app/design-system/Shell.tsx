@@ -11,6 +11,7 @@ import { ContextAgentCardEntry } from './entries/ContextAgentCardEntry'
 import { BannerEntry } from './entries/BannerEntry'
 import { IconEntry } from './entries/IconEntry'
 import { LabelEntry } from './entries/LabelEntry'
+import { LoaderEntry } from './entries/LoaderEntry'
 import { ProgressBarEntry } from './entries/ProgressBarEntry'
 import { TextEntry } from './entries/TextEntry'
 import { ENTRY_LABELS, ENTRY_NOTES, FAMILIES, FOUNDATION_PAGES, type EntryId } from './entries/ids'
@@ -50,6 +51,7 @@ const ENTRIES: Record<
   icon: IconEntry,
   text: TextEntry,
   progress: ProgressBarEntry,
+  loader: LoaderEntry,
   card: CardEntry,
   buttonicon: ButtonIconEntry,
   contextagentcard: ContextAgentCardEntry,

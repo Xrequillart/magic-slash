@@ -11,6 +11,7 @@ export type EntryId =
   | 'icon'
   | 'text'
   | 'progress'
+  | 'loader'
   | 'card'
   | 'avatar'
   | 'buttonicon'
@@ -22,6 +23,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   colors: 'Colours',
   icon: 'Icon',
   progress: 'ProgressBar',
+  loader: 'Loader',
   card: 'Card',
   buttonicon: 'ButtonIcon',
   contextagentcard: 'ContextAgentCard',
@@ -72,7 +74,7 @@ export const FAMILIES: Family[] = [
   {
     label: 'Foundation',
     note: 'Draws itself. Depends on nothing.',
-    entries: ['icon', 'text', 'progress', 'card'],
+    entries: ['icon', 'text', 'progress', 'loader', 'card'],
   },
   {
     label: 'Primary',
@@ -95,6 +97,7 @@ export const FAMILIES: Family[] = [
 export const ENTRY_NOTES: Record<EntryId, string> = {
   colors: 'The hexes and the roles, kept apart',
   progress: 'A filled track, green until told otherwise',
+  loader: 'Something is happening, in two shapes',
   card: 'A raised panel, and nothing else',
   buttonicon: 'A control that is only a mark',
   contextagentcard: 'What an agent is spending',

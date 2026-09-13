@@ -13,8 +13,7 @@ import type {
 import { isJiraStatusError, isPRStatusError } from '../../../types'
 import { useLocale, useT, type Translate } from '../../i18n'
 import { BTN, BTN_ICON, BTN_NEUTRAL_STACKED, BTN_PRIMARY_STACKED } from '../../theme/controls'
-import { Banner, ProgressBar } from '@ds/desktop'
-import { WaveLoader } from '../../components/WaveLoader'
+import { Banner, Loader, ProgressBar } from '@ds/desktop'
 import MarkdownView from '../../components/file-preview/MarkdownView'
 import { StatusPill } from '../../components/StatusPill'
 import { JiraEpicBadge, JiraErrorLines, JiraPriorityBadge, JiraStatusPill, StateChip, TaskErrorLines } from './parts'
@@ -193,7 +192,7 @@ function DetailBody({
   if (loading) {
     return (
       <div className="px-5 py-4 flex items-center gap-2 text-text-secondary text-sm">
-        <WaveLoader className="text-accent" />
+        <Loader tone="accent" />
         <span>{t('tasks.detail.loading')}</span>
       </div>
     )

@@ -27,7 +27,7 @@ import type { TaskSelection } from '../../utils/taskSelection'
 import { seedFromTarget, shouldClearSeededQuery } from '../../utils/taskSelection'
 import { readsFrom } from '../../../tracker'
 import { useT, type MessageKey } from '../../i18n'
-import { WaveLoader } from '../../components/WaveLoader'
+import { Loader } from '@ds/desktop'
 import { SweepPane } from '../../components/SweepPane'
 import { GitHubNotConnected } from './GitHubNotConnected'
 import { TaskDetailPage } from './TaskDetailPage'
@@ -650,7 +650,7 @@ export function TasksPage() {
     return (
       <div className="h-full flex flex-col">
         <div className="flex-1 flex items-center justify-center gap-2 text-text-secondary text-sm">
-          <WaveLoader className="text-accent" />
+          <Loader tone="accent" />
           <span>{t('tasks.loading')}</span>
         </div>
       </div>
