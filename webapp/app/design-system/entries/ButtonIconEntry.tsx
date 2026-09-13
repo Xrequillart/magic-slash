@@ -140,7 +140,7 @@ export function ButtonIconEntry({
           <Toggle />
           <Toggle tone="ink" />
           <span className="font-mono text-[10px] text-text-secondary">
-            press them — accent, then ink: the agents sort, then the title bar's panel toggles
+            press them — accent, then ink: the agents sort, then the title bar’s panel toggles
           </span>
         </Stage>
       </EntrySection>
