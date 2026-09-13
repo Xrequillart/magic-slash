@@ -12,10 +12,10 @@ import type { PlanCard, PlanTicketGroup } from '../../utils/planRows'
 import { groupPlanTickets, planLabel } from '../../utils/planRows'
 import { taskSelectionFor } from '../../utils/taskSelection'
 import { detectTicketProvider } from '../../components/agent-info-sidebar/utils'
-import { Label } from '@ds/desktop'
+import { Label, Status } from '@ds/desktop'
 import { TrackerBadge } from '../../components/icons/TrackerIcons'
 import { JiraStatusPill, StateChip } from '../Tasks/parts'
-import { STATUS_LOOK, STATUS_PILL } from './PlanRow'
+import { STATUS_LOOK } from './PlanRow'
 import { PlanIdBadge } from './PlanIdBadge'
 
 /**
@@ -396,18 +396,14 @@ export function PlanDetailPage({
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [onBack])
 
-  const { pill, labelKey } = STATUS_LOOK[card.status]
+  const { tone, labelKey } = STATUS_LOOK[card.status]
   /**
    * The status, drawn ONCE and rendered in two places — the pinned bar while the reader
    * has scrolled past the heading, the heading itself before that. One expression rather
    * than two copies, because the two are the same fact and a pill that changed shape on
    * scroll would read as a second, different status.
    */
-  const statusChip = (
-    <span className={`${STATUS_PILL} ${pill}`}>
-      {t(labelKey)}
-    </span>
-  )
+  const statusChip = <Status label={t(labelKey)} tone={tone} />
   const session = detail?.session
   // Zero for "no such timestamp", the sentinel `planRecency` and `PlanRow` already use
   // for one — an unparseable stamp lands there too, since `NaN > 0` is false.

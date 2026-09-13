@@ -26,6 +26,8 @@ export type {
   ProgressTrack,
 } from './ProgressBar'
 export type { LabelProps, LabelSize, LabelTone } from './Label'
+export { Status, STATUS_TONES } from './Status'
+export type { StatusOption, StatusProps, StatusSize, StatusStrength, StatusTone } from './Status'
 export { Text, TEXT_SIZES, TEXT_WEIGHTS } from './Text'
 export type { TextProps, TextSize, TextTone, TextWeight } from './Text'
 export type { IconProps, IconSize, IconTone } from './Icon'

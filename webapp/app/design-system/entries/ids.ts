@@ -16,6 +16,7 @@ export type EntryId =
   | 'avatar'
   | 'buttonicon'
   | 'label'
+  | 'status'
   | 'banner'
   | 'contextagentcard'
 
@@ -30,6 +31,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   text: 'Text',
   avatar: 'Avatar',
   label: 'Label',
+  status: 'Status',
   banner: 'Banner',
 }
 
@@ -84,7 +86,7 @@ export const FAMILIES: Family[] = [
   {
     label: 'Secondary',
     note: 'Several pieces saying one thing.',
-    entries: ['label', 'banner'],
+    entries: ['label', 'status', 'banner'],
   },
   {
     label: 'Tertiary',
@@ -105,5 +107,6 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   text: 'Cera Pro, six sizes, four weights',
   avatar: 'A face, or the icon when there is none',
   label: 'Names a thing, on a tinted plate',
+  status: 'Reports a state, and changes it',
   banner: 'States a fact about a surface',
 }

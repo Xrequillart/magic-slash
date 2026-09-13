@@ -3,7 +3,7 @@ import { Ticket } from '@ds/desktop/icons'
 import { PlanIdBadge } from './PlanIdBadge'
 import type { PlanCard } from '../../utils/planRows'
 import { planLabel, planRecency } from '../../utils/planRows'
-import { Label } from '@ds/desktop'
+import { Label, Status, type StatusTone } from '@ds/desktop'
 import { RepoColorChip } from '../../components/agent-info-sidebar/RepoMark'
 import { formatTimestamp } from '../../components/agent-info-sidebar/utils'
 import { useStore } from '../../store'
@@ -55,26 +55,17 @@ function ticketCountLabel(count: number, t: Translate): string {
  * tickets exist, `yellow` while the spec is still being written, so a session reads the
  * same on both surfaces.
  *
- * The classes are written out in full, never assembled: Tailwind scans for literals.
+ * A TONE NOW, not a pair of classes. The plate moved to `Status` in the design system,
+ * which a plan uses in its INERT form: no chevron, no picker, nothing in the tab order.
+ * An agent's status is set from its pill; a plan's is derived from whether its tickets
+ * exist, and a plate that lit up under the cursor and did nothing would be lying about
+ * which of the two this is. Same object, one of them inert — which is now a property of
+ * the object rather than a second spelling of it.
  */
 export const STATUS_LOOK = {
-  planned: { pill: 'bg-green/20 text-green', labelKey: 'plans.status.planned' },
-  planning: { pill: 'bg-yellow/20 text-yellow', labelKey: 'plans.status.planning' },
-} as const satisfies Record<PlanCard['status'], { pill: string; labelKey: MessageKey }>
-
-/**
- * The shape an agent's status wears, borrowed for a plan's.
- *
- * `px-2.5 py-1 rounded-full`, straight off `StatusPill` in the agent sidebar. A plan is
- * one more thing in this app that has a state, and there is no reason for its state to
- * be drawn as a tinted word when every agent's is a round plate. The colours stay the
- * plan's own — green once the tickets exist, yellow while the spec is being written —
- * which is also what the webapp uses, so a session reads the same on both surfaces.
- *
- * No chevron and no picker: an agent's status is set from its pill, a plan's is derived
- * from whether its tickets exist. Same object, one of them inert.
- */
-export const STATUS_PILL = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0'
+  planned: { tone: 'green', labelKey: 'plans.status.planned' },
+  planning: { tone: 'yellow', labelKey: 'plans.status.planning' },
+} as const satisfies Record<PlanCard['status'], { tone: StatusTone; labelKey: MessageKey }>
 
 export function PlanRow({ card, now, onSelect }: { card: PlanCard; now: number; onSelect: (card: PlanCard) => void }) {
   const t = useT()
@@ -94,7 +85,7 @@ export function PlanRow({ card, now, onSelect }: { card: PlanCard; now: number; 
    * neutral mark for it.
    */
   const repoColorKey = configKeyForRepoId(card.repoId, repositories)
-  const { pill, labelKey } = STATUS_LOOK[card.status]
+  const { tone, labelKey } = STATUS_LOOK[card.status]
   const statusLabel = t(labelKey)
   // WHEN THE PLAN WAS STARTED, and also the key the list is ordered by: `planRecency`
   // reads creation first now, so the dates run in order down the column instead of
@@ -154,7 +145,7 @@ export function PlanRow({ card, now, onSelect }: { card: PlanCard; now: number; 
               no icon: it is the one piece of metadata whose shape already says what it
               is. */}
           <span className="ml-auto flex items-center gap-2 flex-shrink-0">
-            <span className={`${STATUS_PILL} ${pill}`}>{statusLabel}</span>
+            <Status label={statusLabel} tone={tone} />
             {when > 0 && (
               <span className="text-xs text-text-secondary/50">
                 {t('relative.ago', { time: formatTimestamp(when, now, t) })}
