@@ -13,8 +13,13 @@
  * name would be truncated to nothing to make room for three verbs. The mark says
  * enough: a play triangle, VS Code's ribbon, GitHub's cat.
  *
- * The hover tint is each action's own colour and the rest is shared, so a new action
- * added anywhere cannot drift from the row: `${ACTION_CHIP} ${ACTION_CHIP_SQUARE} …`.
+ * WHAT IS LEFT OF IT. The eight SQUARE chips are `ButtonIcon` from the design system
+ * now, and `ACTION_CHIP_SQUARE` went with them. What stays are the three that are not
+ * icon-only — a branch name, a refresh with its word beside it, and the scripts menu
+ * with its chevron — which is why this file is still here: they wear the same ground,
+ * the same height and the same radius as the buttons, and that agreement is the thing
+ * worth keeping in one place. The values are `ButtonIcon`'s own `sm` rung; a change to
+ * either has to be made in both, which is the price of a chip that is not a button.
  *
  * IT LIVES HERE AND NOT IN `agent-info-sidebar/`, where it was written. The left
  * sidebar's AGENTS header wears it too now, and a left-hand control importing
@@ -24,9 +29,6 @@
 export const ACTION_CHIP =
   'h-6 inline-flex items-center justify-center rounded-lg bg-ink/5 text-icon ' +
   'border-none cursor-pointer transition-colors flex-shrink-0'
-
-/** A single mark, centred: VS Code and GitHub. */
-export const ACTION_CHIP_SQUARE = 'w-6'
 
 /**
  * Scripts, which is a MENU and not a link. It keeps the chevron the other two have no

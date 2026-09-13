@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Activity, ArrowDownUp, Check, Clock, FolderGit2 } from '@ds/desktop/icons'
-import { ACTION_CHIP, ACTION_CHIP_SQUARE } from './actionChip'
+import { ButtonIcon } from '@ds/desktop'
 import { useAnchoredPanel } from './useAnchoredPanel'
 import { useConfig } from '../hooks/useConfig'
 import { useT } from '../i18n'
@@ -53,23 +53,16 @@ export function AgentSortButton() {
 
   return (
     <>
-      <button
+      {/* Tinted once the order is no longer the default one, so a list that is not in
+          the order it was learned in says so from the header rather than only from its
+          contents. `active` carries the tint AND the `aria-pressed` this never had. */}
+      <ButtonIcon
         ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((o) => !o)}
+        icon={ArrowDownUp}
         title={t('sidebar.sort.title', { mode: t(SORT_OPTIONS[current].labelKey) })}
-        aria-label={t('sidebar.sort.title', { mode: t(SORT_OPTIONS[current].labelKey) })}
-        // Tinted once the order is no longer the default one, so a list that is not in
-        // the order it was learned in says so from the header rather than only from its
-        // contents.
-        className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} ${
-          open || current !== DEFAULT_AGENT_SORT
-            ? 'bg-accent/15 text-accent hover:bg-accent/20'
-            : 'hover:bg-ink/10 hover:text-ink'
-        }`}
-      >
-        <ArrowDownUp className="w-3.5 h-3.5" />
-      </button>
+        onClick={() => setOpen((o) => !o)}
+        active={open || current !== DEFAULT_AGENT_SORT}
+      />
 
       {open && createPortal(
         <div

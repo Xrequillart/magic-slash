@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Minus, Plus } from '@ds/desktop/icons'
 import { useStore } from '../store'
-import { Label, PROGRESS_TEXT, ProgressBar, progressTone } from '@ds/desktop'
-import { ACTION_CHIP, ACTION_CHIP_SQUARE } from './actionChip'
+import { ButtonIcon, Label, PROGRESS_TEXT, ProgressBar, progressTone } from '@ds/desktop'
 import { LIMIT_THRESHOLDS, formatReset } from './agent-info-sidebar/LimitGauge'
 import { useT } from '../i18n'
 import type { ClaudeAccount } from '../../types'
@@ -121,13 +120,7 @@ export function SidebarUsageCard() {
           ) : (
             <span className="text-[10px] text-text-secondary/40">{t('usage.noData')}</span>
           )}
-          <button
-            onClick={toggleMinimized}
-            title={t('usage.expand')}
-            className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-ink/10 hover:text-ink`}
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
+          <ButtonIcon icon={Plus} title={t('usage.expand')} onClick={toggleMinimized} />
         </div>
       ) : (
         <>
@@ -144,13 +137,7 @@ export function SidebarUsageCard() {
             <Label tone="claude-code" title={accountLabel} truncate>
               {accountLabel}
             </Label>
-            <button
-              onClick={toggleMinimized}
-              title={t('usage.minimize')}
-              className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-ink/10 hover:text-ink`}
-            >
-              <Minus className="w-3.5 h-3.5" />
-            </button>
+            <ButtonIcon icon={Minus} title={t('usage.minimize')} onClick={toggleMinimized} />
           </div>
           {hasGauges ? (
             <div className="space-y-2">

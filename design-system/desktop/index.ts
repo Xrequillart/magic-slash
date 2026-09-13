@@ -5,7 +5,7 @@
 export { Banner, BANNER_VARIANTS, BANNER_LAYOUTS } from './Banner'
 export { Avatar } from './Avatar'
 export { ButtonIcon } from './ButtonIcon'
-export type { ButtonIconProps, ButtonIconTone } from './ButtonIcon'
+export type { ButtonIconProps, ButtonIconSize, ButtonIconTone } from './ButtonIcon'
 export { Card } from './Card'
 export { ContextAgentCard, CONTEXT_THRESHOLDS } from './ContextAgentCard'
 export type { ContextAgentCardProps } from './ContextAgentCard'

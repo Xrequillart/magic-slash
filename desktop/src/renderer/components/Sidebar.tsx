@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, memo, Fragment } from 'react'
 import { Plus, Sparkles, NotebookPen, ListTodo, AlertTriangle, FolderGit2 } from '@ds/desktop/icons'
+import { ButtonIcon } from '@ds/desktop'
 import { useStore, type ModalId } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos } from '../hooks/useOrderedTerminals'
 import { groupKeyOf, isGroupStart, repoLabel } from '../hooks/terminalOrder'
 import { AgentSortButton } from './AgentSortButton'
-import { ACTION_CHIP, ACTION_CHIP_SQUARE } from './actionChip'
 import { SidebarUsageCard } from './SidebarUsageCard'
 import { SidebarUpdateButton } from './SidebarUpdateButton'
 import { AgentStateBadge } from './AgentStateBadge'
@@ -385,21 +385,14 @@ export function Sidebar() {
             isSplitMode && terminals.length > 0 ? 'text-text-secondary/40 opacity-100' : 'opacity-0'
           }`}>{t('sidebar.paneLeft')}</span>
           <AgentSortButton />
-          <button
-            onClick={() => {
-              const event = new CustomEvent('new-terminal')
-              window.dispatchEvent(event)
-            }}
+          {/* It was a 28px box at a 4px radius, the last survivor of the shape the
+              right-hand panel has given up: two controls in a header, in a vocabulary
+              nothing else in the app still speaks. */}
+          <ButtonIcon
+            icon={Plus}
             title={t('sidebar.newAgentShortcut', { shortcut: shortcutKey })}
-            aria-label={t('sidebar.newAgentShortcut', { shortcut: shortcutKey })}
-            /* The app's action square — 24px at `rounded-lg`, on the ground every other
-               icon action wears. It was a 28px box at a 4px radius, the last survivor of
-               the shape the right-hand panel has given up: two controls in a header, in a
-               vocabulary nothing else in the app still speaks. See `actionChip`. */
-            className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-ink/10 hover:text-ink`}
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
+            onClick={() => window.dispatchEvent(new CustomEvent('new-terminal'))}
+          />
         </div>
 
         {terminals.length === 0 ? (

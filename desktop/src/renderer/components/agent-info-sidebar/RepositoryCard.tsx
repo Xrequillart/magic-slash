@@ -1,8 +1,8 @@
-import { Card } from '@ds/desktop'
+import { ButtonIcon, Card } from '@ds/desktop'
 import { GitBranch, Copy, Check, ArrowRight, X } from '@ds/desktop/icons'
 import { Github, VSCode } from '@ds/desktop/icons'
 import { RepoNameBadge } from './RepoMark'
-import { ACTION_CHIP, ACTION_CHIP_SQUARE } from '../actionChip'
+import { ACTION_CHIP } from '../actionChip'
 import { ScriptsDropdown } from './ScriptsDropdown'
 import { PRWatchCard } from './PRWatchCard'
 import { RunningScripts } from './RunningScripts'
@@ -125,36 +125,29 @@ export function RepositoryCard({
         <div className="flex items-center gap-1.5 ml-auto flex-shrink-0">
           <ScriptsDropdown repoPath={repoPath} repoName={repoName} agentId={agentId} agentName={agentName} />
           {/* Open in VS Code */}
-          <button
-            onClick={() => window.electronAPI.shell.openInVSCode(repoPath)}
-            className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-[#007ACC]/15 hover:text-[#007ACC]`}
+          <ButtonIcon
+            icon={VSCode}
             title={t('agentInfo.openRepoInEditor')}
-            aria-label={t('agentInfo.openRepoInEditor')}
-          >
-            <VSCode className="w-3.5 h-3.5" />
-          </button>
+            onClick={() => window.electronAPI.shell.openInVSCode(repoPath)}
+            tone="vscode"
+          />
           {/* Open on GitHub — hidden when the repo has no known remote */}
           {repoUrl && (
-            <button
-              onClick={() => window.electronAPI.shell.openExternal(repoUrl)}
-              className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-ink/10 hover:text-ink`}
+            <ButtonIcon
+              icon={Github}
               title={t('agentInfo.openRepoOnGitHub')}
-              aria-label={t('agentInfo.openRepoOnGitHub')}
-            >
-              <Github className="w-3.5 h-3.5" />
-            </button>
+              onClick={() => window.electronAPI.shell.openExternal(repoUrl)}
+            />
           )}
           {/* Removing wears the same chip as the three beside it — the row is one set of
               controls — and says what it does through its hover alone, which is red where
               theirs are their own brand's colour. */}
-          <button
-            onClick={onRemove}
-            className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-red/15 hover:text-red`}
+          <ButtonIcon
+            icon={X}
             title={t('agentInfo.removeRepository')}
-            aria-label={t('agentInfo.removeRepository')}
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
+            onClick={onRemove}
+            tone="danger"
+          />
         </div>
       </div>
 
@@ -341,13 +334,11 @@ export function RepositoryCard({
                   )}
                 </button>
                 {commit.isPushed && gitData.gitHubUrl && (
-                  <button
-                    onClick={() => window.electronAPI.shell.openExternal(`${gitData.gitHubUrl}/commit/${commit.hash}`)}
-                    className={`${ACTION_CHIP} ${ACTION_CHIP_SQUARE} hover:bg-ink/10 hover:text-ink`}
+                  <ButtonIcon
+                    icon={Github}
                     title={t('agentInfo.viewOnGitHub')}
-                  >
-                    <Github className="w-3.5 h-3.5" />
-                  </button>
+                    onClick={() => window.electronAPI.shell.openExternal(`${gitData.gitHubUrl}/commit/${commit.hash}`)}
+                  />
                 )}
               </div>
             ))}
