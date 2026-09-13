@@ -11,6 +11,7 @@ import { CardEntry } from './entries/CardEntry'
 import { ColorsEntry } from './entries/ColorsEntry'
 import { ContextAgentCardEntry } from './entries/ContextAgentCardEntry'
 import { BannerEntry } from './entries/BannerEntry'
+import { EditableTextEntry } from './entries/EditableTextEntry'
 import { HeaderRepoCardEntry } from './entries/HeaderRepoCardEntry'
 import { IconEntry } from './entries/IconEntry'
 import { LabelEntry } from './entries/LabelEntry'
@@ -63,6 +64,7 @@ const ENTRIES: Record<
   card: CardEntry,
   buttonicon: ButtonIconEntry,
   selecticon: SelectIconEntry,
+  editabletext: EditableTextEntry,
   contextagentcard: ContextAgentCardEntry,
   headerrepocard: HeaderRepoCardEntry,
   menusidebar: MenuSidebarEntry,

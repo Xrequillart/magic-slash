@@ -15,6 +15,7 @@ export type EntryId =
   | 'card'
   | 'avatar'
   | 'buttonicon'
+  | 'editabletext'
   | 'selecticon'
   | 'label'
   | 'status'
@@ -34,6 +35,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   loader: 'Loader',
   card: 'Card',
   buttonicon: 'ButtonIcon',
+  editabletext: 'EditableText',
   selecticon: 'SelectIcon',
   contextagentcard: 'ContextAgentCard',
   headerrepocard: 'HeaderRepoCard',
@@ -95,7 +97,7 @@ export const FAMILIES: Family[] = [
   {
     label: 'Primary',
     note: 'One control, built from foundations.',
-    entries: ['avatar', 'buttonicon', 'selecticon'],
+    entries: ['avatar', 'buttonicon', 'selecticon', 'editabletext'],
   },
   {
     label: 'Secondary',
@@ -116,6 +118,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   loader: 'Something is happening, in two shapes',
   card: 'A raised panel, and nothing else',
   buttonicon: 'A control that is only a mark',
+  editabletext: 'Words you can click into',
   selecticon: 'That control, opening a menu',
   contextagentcard: 'What an agent is spending',
   headerrepocard: 'A repository, and what you can do to it',

@@ -78,8 +78,6 @@ export function AgentInfoSidebar() {
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
-  const titleInputRef = useRef<HTMLInputElement>(null)
-  const descriptionInputRef = useRef<HTMLTextAreaElement>(null)
   const [isRepoModalOpen, setIsRepoModalOpen] = useState(false)
   const [copiedCommitHash, setCopiedCommitHash] = useState<string | null>(null)
   const [copiedBranch, setCopiedBranch] = useState<string | null>(null)
@@ -333,11 +331,12 @@ export function AgentInfoSidebar() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [rightSidebar, activeTerminal])
 
-  // Start editing title
+  // Start editing title. The FOCUS is `EditableText`'s own — it holds the input, so it
+  // is the only thing that can focus it on the frame the input first exists. This had a
+  // ref and a `setTimeout(…, 0)` here for exactly that reason, and both are gone.
   const startEditingTitle = useCallback(() => {
     setEditTitle(metadata?.title || '')
     setIsEditingTitle(true)
-    setTimeout(() => titleInputRef.current?.focus(), 0)
   }, [metadata?.title])
 
   // Save title
@@ -348,11 +347,10 @@ export function AgentInfoSidebar() {
     setIsEditingTitle(false)
   }, [inspectedTerminalId, editTitle, metadata?.title, updateTerminalMetadata])
 
-  // Start editing description
+  // Start editing description — same as the title above, focus included.
   const startEditingDescription = useCallback(() => {
     setEditDescription(metadata?.description || '')
     setIsEditingDescription(true)
-    setTimeout(() => descriptionInputRef.current?.focus(), 0)
   }, [metadata?.description])
 
   // Save description
@@ -381,8 +379,6 @@ export function AgentInfoSidebar() {
     saveDescription,
     setIsEditingTitle,
     setIsEditingDescription,
-    titleInputRef,
-    descriptionInputRef,
   }), [
     metadata?.title, metadata?.description,
     isEditingTitle, isEditingDescription, editTitle, editDescription,
