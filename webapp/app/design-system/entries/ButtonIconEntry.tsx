@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { ButtonIcon, type ButtonIconSize } from '@ds/desktop'
-import { ArrowDownUp, ExternalLink, Minus, Play, Trash2 } from '@ds/desktop/icons'
+import { ArrowDownUp, Copy, ExternalLink, Minus, Play, Trash2 } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
 
@@ -18,17 +18,17 @@ const PROPS: PropRow[] = [
   { name: 'onClick', type: '() => void', required: true, description: 'It is always a button. There is no inert form of this one.' },
   {
     name: 'tone',
-    type: "'neutral' | 'danger' | 'vscode'",
+    type: "'neutral' | 'danger' | 'vscode' | 'ghost'",
     fallback: "'neutral'",
     description:
-      'A hover tint and nothing at rest: these sit in rows of siblings, and a chip announcing its colour before being touched breaks the row into unrelated controls. The two exceptions are the app’s real ones — removing a repository, and opening one in VS Code, whose blue is the editor’s and not a token.',
+      'A hover tint over the ticket badge’s plate: these sit in rows of siblings, and a chip announcing its colour before being touched breaks the row into unrelated controls. danger and vscode are the app’s real exceptions. ghost is the odd one — no plate at rest, for a button nested inside something that already has one.',
   },
   {
     name: 'size',
-    type: "'sm' | 'md' | 'lg'",
+    type: "'xs' | 'sm' | 'md' | 'lg'",
     fallback: "'sm'",
     description:
-      '24 / 28 / 32 — Label’s and Status’s three. A control that is only a mark sits in rows with the badges that name things; a scale of its own would be a second ladder to keep in step.',
+      '24 / 28 / 32 — Label’s and Status’s three. A control that is only a mark sits in rows with the badges that name things; a scale of its own would be a second ladder to keep in step. xs is 20px and off that ladder: a button nested in a chip is measured against the chip, not against the badges beside it.',
   },
   {
     name: 'active',
@@ -80,6 +80,7 @@ export function ButtonIconEntry({
         <Stage theme={theme} className="flex flex-col gap-4">
           {(
             [
+              ['xs', '20px · only inside a chip'],
               ['sm', '24px · every one of the app’s eight'],
               ['md', '28px · a row of 14px type'],
               ['lg', '32px · the mark is the row’s subject'],
@@ -94,6 +95,25 @@ export function ButtonIconEntry({
               <span className="font-mono text-[10px] text-text-secondary">{note}</span>
             </div>
           ))}
+        </Stage>
+      </EntrySection>
+
+      <EntrySection
+        title="Nested in something else"
+        note="ghost and xs are the two answers to the same situation: a button inside a chip that already has a plate. bg-ink/5 over bg-ink/5 composes to about 10%, so a neutral button in there is a square visible at all times — Label states the rule for its avatar, and this is the same rule for a button. The 20px rung is off the shared ladder for the matching reason: nested, the control is measured against the chip it sits in and not against the badges beside it."
+      >
+        <Stage theme={theme} className="flex items-center gap-6">
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-ink/5 px-2 py-1.5 text-green">
+            <span className="font-mono text-xs">feat/loader</span>
+            <ButtonIcon icon={Copy} title="Copy" tone="ghost" size="xs" onClick={() => undefined} />
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-ink/5 px-2 py-1.5 text-green">
+            <span className="font-mono text-xs">feat/loader</span>
+            <ButtonIcon icon={Copy} title="Copy" onClick={() => undefined} />
+          </span>
+          <span className="font-mono text-[10px] text-text-secondary">
+            ghost · xs, then the neutral default — a plate in a plate, four pixels taller
+          </span>
         </Stage>
       </EntrySection>
 

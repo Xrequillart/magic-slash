@@ -40,10 +40,11 @@ import type { IconComponent } from './types'
  * other two are the app's real exceptions — removing a repository, and opening one in
  * VS Code, whose blue is the editor's own and not a token.
  */
-export type ButtonIconTone = 'neutral' | 'danger' | 'vscode'
+export type ButtonIconTone = 'neutral' | 'danger' | 'vscode' | 'ghost' | 'success'
 
 /**
- * Three, and they are `Label`'s and `Status`'s — the same 24 / 28 / 32.
+ * Three on the shared ladder — `Label`'s and `Status`'s 24 / 28 / 32 — and one below
+ * them for a button that lives inside something else.
  *
  * A control that is only a mark sits in rows with the badges that name things: the
  * repository card is a `Label` and four of these on one line. Giving it a scale of
@@ -54,20 +55,66 @@ export type ButtonIconTone = 'neutral' | 'danger' | 'vscode'
  * 14px mark. The other two are here for rows of 14px type, where a 24px square reads
  * as a control that shrank rather than as one that fits.
  */
-export type ButtonIconSize = 'sm' | 'md' | 'lg'
+export type ButtonIconSize = 'xs' | 'sm' | 'md' | 'lg'
 
 const SIZES: Record<ButtonIconSize, { box: string; icon: IconSize }> = {
+  /**
+   * THE ONE RUNG THAT IS NOT ON THE SHARED LADDER, and it is here because a button
+   * nested inside a chip is not measured against the badges beside it — it is
+   * measured against the chip it sits in. The branch chip is 32px with this in it;
+   * at `sm` the control would be 24 of those 32 and all but fill the row.
+   *
+   * Reach for it ONLY inside something else. A 20px target on its own is small, and
+   * the three rungs below are what a control standing in a row should be.
+   */
+  xs: { box: 'h-5 w-5 rounded-lg', icon: 'xs' },
   sm: { box: 'h-6 w-6 rounded-lg', icon: 'sm' },
   md: { box: 'h-7 w-7 rounded-lg', icon: 'sm' },
   lg: { box: 'h-8 w-8 rounded-xl', icon: 'md' },
 }
 
+/**
+ * THE GROUND AND THE MARK'S COLOUR ARE BOTH IN HERE, and neither is on the button.
+ *
+ * The ground moved in so that `ghost` can have none. The mark's colour moved in after
+ * a measurement: with `text-icon` spelled on the button, a caller passing `text-green`
+ * in `className` to show a copy had landed got a GREY tick — two colour classes on one
+ * element, and which of them wins is decided by the order Tailwind emitted them in,
+ * not by the order they are written. `Text` states that rule for its own three props;
+ * this is the same rule, learned the same way. Exactly one colour class per tone now,
+ * so there is nothing to race.
+ */
 const TONES: Record<ButtonIconTone, string> = {
-  neutral: 'hover:bg-ink/10 hover:text-ink',
-  danger: 'hover:bg-red/15 hover:text-red',
+  neutral: 'bg-ink/5 text-icon hover:bg-ink/10 hover:text-ink',
+  danger: 'bg-ink/5 text-icon hover:bg-red/15 hover:text-red',
   // VS Code's own blue, spelled as an arbitrary value because it is a BRAND's colour:
   // it may not become a token, and Tailwind emits it from this literal.
-  vscode: 'hover:bg-[#007ACC]/15 hover:text-[#007ACC]',
+  vscode: 'bg-ink/5 text-icon hover:bg-[#007ACC]/15 hover:text-[#007ACC]',
+  /**
+   * NO PLATE AT REST — for a control nested inside something that already has one.
+   *
+   * The branch chip is the case it was written for: `bg-ink/5` over `bg-ink/5`
+   * composes to about 10%, so a neutral button in there is a square that is visible
+   * at all times inside a chip that is already a plate. `Label` states the rule for
+   * its avatar — a plate inside a plate — and this is the same rule for a button.
+   *
+   * It is not a quieter neutral. Used on its own ground it is a control with nothing
+   * to say it is one until the pointer arrives, which is the failure every chip in
+   * this app got wrong in one direction or the other.
+   */
+  ghost: 'text-icon hover:bg-ink/10 hover:text-ink',
+  /**
+   * IT JUST WORKED — the tick after a copy, a save, a send.
+   *
+   * A STATE AND NOT A KIND OF BUTTON, which is why it is a tone the caller swaps to
+   * for a second or two rather than something the control is. `danger` says what a
+   * button WILL do; this says what it DID.
+   *
+   * Plate-less like `ghost`, because the one thing that confirms in this app is
+   * nested in a chip. A plated confirmation is a fair thing to want and is not here:
+   * it would be a second axis, and a tone table is not where two axes go.
+   */
+  success: 'text-green hover:bg-green/10 hover:text-green',
 }
 
 export interface ButtonIconProps {
@@ -129,10 +176,10 @@ export const ButtonIcon = forwardRef<HTMLButtonElement, ButtonIconProps>(functio
       aria-label={title}
       disabled={disabled}
       aria-pressed={active}
-      className={`${shape.box} inline-flex items-center justify-center text-icon
+      className={`${shape.box} inline-flex items-center justify-center
         border-none cursor-pointer transition-colors flex-shrink-0 disabled:opacity-50
         disabled:cursor-not-allowed ${
-          active ? 'bg-accent/15 text-accent hover:bg-accent/20' : `bg-ink/5 ${TONES[tone]}`
+          active ? 'bg-accent/15 text-accent hover:bg-accent/20' : TONES[tone]
         } ${className}`}
     >
       <Icon glyph={icon} size={shape.icon} tone="inherit" />

@@ -1,5 +1,5 @@
-import { ButtonIcon, Card } from '@ds/desktop'
-import { GitBranch, Copy, Check, ArrowRight, X } from '@ds/desktop/icons'
+import { BranchCard, ButtonIcon, Card } from '@ds/desktop'
+import { Copy, Check, X } from '@ds/desktop/icons'
 import { Github, VSCode } from '@ds/desktop/icons'
 import { RepoNameBadge } from './RepoMark'
 import { ACTION_CHIP } from '../actionChip'
@@ -155,50 +155,19 @@ export function RepositoryCard({
           repo/agent pair has no script running. */}
       <RunningScripts repoPath={repoPath} agentId={agentId} />
 
-      {/* Branch block */}
+      {/* Branch block. `resolvedBaseBranch` is already undefined when the base is this
+          very branch, so `BranchCard` never has to decide whether `main -> main` is
+          worth a row — it draws what it is handed. */}
       {gitData?.branch && (
-        <div className="flex items-center gap-1.5">
-          {/* Base branch (left) */}
-          {resolvedBaseBranch && (
-            <>
-              <div className="self-stretch flex items-center gap-1.5 px-2 py-1.5 bg-ink/5 rounded-lg min-w-0">
-                <GitBranch className="w-3.5 h-3.5 text-text-secondary flex-shrink-0" />
-                <span
-                  className="text-text-secondary text-xs font-medium truncate"
-                  title={resolvedBaseBranch}
-                >
-                  {resolvedBaseBranch}
-                </span>
-              </div>
-              <ArrowRight className="w-3 h-3 text-icon-muted flex-shrink-0" />
-            </>
-          )}
-          {/* Current branch (right) */}
-          <div className="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1.5 bg-ink/5 rounded-lg">
-            <GitBranch className="w-3.5 h-3.5 text-green flex-shrink-0" />
-            <span
-              className="text-green text-xs font-medium truncate"
-              title={gitData.branch}
-            >
-              {gitData.branch}
-            </span>
-            <button
-              onClick={() => onCopyBranchName(gitData.branch!)}
-              /* `rounded-lg`, the card's one radius — it was the last 4px corner left in
-                 here. Kept at 20px rather than grown to the 24px action square: it is
-                 nested INSIDE the branch chip, and a full-size control there would all
-                 but fill the row it sits in. */
-              className="p-1 ml-auto rounded-lg hover:bg-ink/10 transition-colors group flex-shrink-0"
-              title={t('agentInfo.copyBranch')}
-            >
-              {copiedBranch === gitData.branch ? (
-                <Check className="w-3 h-3 text-green" />
-              ) : (
-                <Copy className="w-3 h-3 text-icon group-hover:text-ink transition-colors" />
-              )}
-            </button>
-          </div>
-        </div>
+        <BranchCard
+          branch={gitData.branch}
+          base={resolvedBaseBranch}
+          copy={{
+            label: t('agentInfo.copyBranch'),
+            copied: copiedBranch === gitData.branch,
+            onCopy: () => onCopyBranchName(gitData.branch!),
+          }}
+        />
       )}
 
       {/* EVERY BLOCK IN THIS CARD IS THE HEADER CHIP, GROWN. `bg-ink/5` and `rounded-lg`
