@@ -4,10 +4,24 @@
  */
 export { Banner, BANNER_VARIANTS, BANNER_LAYOUTS } from './Banner'
 export { Agent, AGENT_STATES } from './Agent'
+export { AppTitleBar, TITLE_BAR_HEIGHT } from './AppTitleBar'
+export type {
+  AppTitleBarProps,
+  TitleBarAction,
+  TitleBarSwitch,
+  TitleBarSwitchOption,
+  TitleBarTitle,
+  TitleBarToggle,
+} from './AppTitleBar'
 export type { AgentProps, AgentState } from './Agent'
 export { Avatar } from './Avatar'
 export { ButtonIcon, BUTTON_ICON_SIZES } from './ButtonIcon'
-export type { ButtonIconProps, ButtonIconSize, ButtonIconTone } from './ButtonIcon'
+export type {
+  ButtonIconActive,
+  ButtonIconProps,
+  ButtonIconSize,
+  ButtonIconTone,
+} from './ButtonIcon'
 export { BranchCard } from './BranchCard'
 export type { BranchCardProps } from './BranchCard'
 export { Card } from './Card'

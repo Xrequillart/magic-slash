@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { TITLE_BAR_HEIGHT } from '@ds/desktop'
 import { Maximize2, Minimize2, X } from '@ds/desktop/icons'
 import { useModalExit } from '../hooks/useModalExit'
 import { useStore } from '../store'
-import { TITLE_BAR_H } from './TitleBar'
 import { TabStrip, type TabStripItem } from './TabStrip'
 import { useT } from '../i18n'
 
@@ -94,7 +94,7 @@ export function PageModal({ title, titleIcon, onClose, tabs, headerRight, childr
   const fullScreen = useStore((s) => s.pageModalFullScreen)
   const toggleFullScreen = useStore((s) => s.togglePageModalFullScreen)
   /**
-   * FULL SCREEN STOPS UNDER THE APP'S OWN TITLE BAR. It is the window minus `TITLE_BAR_H`,
+   * FULL SCREEN STOPS UNDER THE APP'S OWN TITLE BAR. It is the window minus `TITLE_BAR_HEIGHT`,
    * never the whole window, and that one decision retires a pile of geometry this
    * component used to carry.
    *
@@ -167,7 +167,7 @@ export function PageModal({ title, titleIcon, onClose, tabs, headerRight, childr
     // `no-drag` ON THE BACKDROP, AND IT IS NOT COSMETIC. Electron hands macOS a set of
     // RECTANGLES computed from the DOM, not a hit-test: an element painted over a
     // `-webkit-app-region: drag` region does not reclaim those pixels, only a `no-drag`
-    // one does. `TitleBar` drags the window by its full-width top `TITLE_BAR_H`, and
+    // one does. `TitleBar` drags the window by its full-width top `TITLE_BAR_HEIGHT`, and
     // INSET the backdrop lies across that band with the panel's own header — which is at
     // y=24 — partly inside it, so without this the close and full-screen buttons stop
     // responding and the window drags instead. Nothing is drawn over them, which is what
@@ -178,7 +178,7 @@ export function PageModal({ title, titleIcon, onClose, tabs, headerRight, childr
         transition-[padding,top] duration-300 ease-out motion-reduce:transition-none ${
         fullScreen ? 'p-0' : 'p-6'
       } ${closing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop'}`}
-      style={{ top: fullScreen ? TITLE_BAR_H : 0, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      style={{ top: fullScreen ? TITLE_BAR_HEIGHT : 0, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       onClick={requestClose}
     >
       {/* `flex flex-col` with a `flex-1 overflow-hidden` body is the contract every page
@@ -225,7 +225,7 @@ export function PageModal({ title, titleIcon, onClose, tabs, headerRight, childr
           maxWidth: fullScreen ? '100vw' : '72rem',
           // The viewport LESS the title bar the overlay now stops under, which is the
           // whole of what "full screen" means here.
-          height: fullScreen ? `calc(100vh - ${TITLE_BAR_H}px)` : '85vh',
+          height: fullScreen ? `calc(100vh - ${TITLE_BAR_HEIGHT}px)` : '85vh',
           borderRadius: fullScreen ? 0 : '1rem',
         }}
         onClick={(e) => e.stopPropagation()}

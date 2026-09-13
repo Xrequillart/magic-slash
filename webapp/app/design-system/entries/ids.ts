@@ -29,6 +29,7 @@ export type EntryId =
   | 'titleagentcard'
   | 'menusidebaritem'
   | 'sidebar'
+  | 'apptitlebar'
 
 export const ENTRY_LABELS: Record<EntryId, string> = {
   colors: 'Colours',
@@ -46,6 +47,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   titleagentcard: 'TitleAgentCard',
   menusidebaritem: 'MenuSidebarItem',
   sidebar: 'Sidebar',
+  apptitlebar: 'AppTitleBar',
   text: 'Text',
   avatar: 'Avatar',
   label: 'Label',
@@ -111,7 +113,21 @@ export const FAMILIES: Family[] = [
   {
     label: 'Tertiary',
     note: 'A whole region of a page.',
-    entries: ['titleagentcard', 'contextagentcard', 'headerrepocard', 'menusidebar', 'usageclaudecodecard'],
+    /**
+     * `AppTitleBar` IS HERE ON THE NOTE RATHER THAN ON THE GRAPH, which is worth saying
+     * out loud since the graph is what settles every other row. It draws one `ButtonIcon`
+     * and nothing else, so nothing would stop it sitting a tier higher — but a tier is a
+     * position AND this family's note is "a whole region of a page", which a title bar is
+     * exactly. It uses only what is above it, so the rule holds either way.
+     */
+    entries: [
+      'titleagentcard',
+      'contextagentcard',
+      'headerrepocard',
+      'menusidebar',
+      'usageclaudecodecard',
+      'apptitlebar',
+    ],
   },
   /**
    * THE FOURTH TIER EXISTS BECAUSE THE GRAPH SAID SO, the way `Label` moved down when it
@@ -145,6 +161,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   titleagentcard: 'Who an agent is, in four facts',
   menusidebaritem: 'One row that takes you somewhere',
   sidebar: 'The whole left column, and it knows nothing',
+  apptitlebar: 'The bar across the top, and it knows nothing either',
   icon: 'Every glyph, five sizes, three tones',
   text: 'Cera Pro, six sizes, four weights',
   avatar: 'A face, or the icon when there is none',

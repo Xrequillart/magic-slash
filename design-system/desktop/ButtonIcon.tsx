@@ -127,6 +127,26 @@ const TONES: Record<ButtonIconTone, string> = {
   success: 'text-green hover:bg-green/10 hover:text-green',
 }
 
+/**
+ * WHAT `active` LOOKS LIKE, and the two answers are about what the row is.
+ *
+ * `accent` is the loud one and the default: a control in a row of equal siblings, one of
+ * which is doing something — a filter applied, a sort that is not the order things were
+ * learned in. The colour is the whole point, because nothing else in the row differs.
+ *
+ * `ink` is for a PAIR OF TOGGLES THAT ARE ALWAYS ON. The title bar's two panel toggles
+ * are open most of the time, and two accent squares at rest read as an alert about the
+ * app's own furniture rather than as a state. Lit ink says the same thing at the volume
+ * the thing deserves — which is what the app's hand-written bar did before it was one of
+ * these, and it was right. Same plate, same hover: only the mark's colour is the state.
+ */
+export type ButtonIconActive = 'accent' | 'ink'
+
+const ACTIVE: Record<ButtonIconActive, string> = {
+  accent: 'bg-accent/15 text-accent hover:bg-accent/20',
+  ink: 'bg-ink/5 text-ink hover:bg-ink/10',
+}
+
 export interface ButtonIconProps {
   icon: IconComponent
   /**
@@ -142,6 +162,7 @@ export interface ButtonIconProps {
    * held open. It takes the accent ground at rest, which is the one case a chip is
    * allowed to announce a colour before being touched: the row is no longer four
    * equal siblings, and saying which one is doing something is the whole point.
+   * `activeTone` is how loudly it says so.
    *
    * It also makes the button a TOGGLE for a screen reader, through `aria-pressed`.
    * The app's sort button had the tint and not the state, so a control that says
@@ -154,6 +175,8 @@ export interface ButtonIconProps {
    * a state. Left alone, the attribute is simply absent.
    */
   active?: boolean
+  /** How `active` is drawn. `accent` unless the row is toggles that are usually on. */
+  activeTone?: ButtonIconActive
   disabled?: boolean
   /** Margins and placement — `ml-auto`, a gap. Not the size, the ground or the hover. */
   className?: string
@@ -171,7 +194,17 @@ export interface ButtonIconProps {
  */
 
 export const ButtonIcon = forwardRef<HTMLButtonElement, ButtonIconProps>(function ButtonIcon(
-  { icon, title, onClick, tone = 'neutral', size = 'sm', active, disabled = false, className = '' },
+  {
+    icon,
+    title,
+    onClick,
+    tone = 'neutral',
+    size = 'sm',
+    active,
+    activeTone = 'accent',
+    disabled = false,
+    className = '',
+  },
   ref,
 ) {
   const shape = BUTTON_ICON_SIZES[size]
@@ -189,7 +222,7 @@ export const ButtonIcon = forwardRef<HTMLButtonElement, ButtonIconProps>(functio
       className={`${shape.h} ${shape.w} ${shape.radius} inline-flex items-center justify-center
         border-none cursor-pointer transition-colors flex-shrink-0 disabled:opacity-50
         disabled:cursor-not-allowed ${
-          active ? 'bg-accent/15 text-accent hover:bg-accent/20' : TONES[tone]
+          active ? ACTIVE[activeTone] : TONES[tone]
         } ${className}`}
     >
       <Icon glyph={icon} size={shape.icon} tone="inherit" />

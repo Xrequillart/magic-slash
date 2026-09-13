@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ButtonIcon, type ButtonIconSize } from '@ds/desktop'
+import { ButtonIcon, type ButtonIconActive, type ButtonIconSize } from '@ds/desktop'
 import { ArrowDownUp, Copy, ExternalLink, Minus, Play, Trash2 } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
@@ -36,14 +36,29 @@ const PROPS: PropRow[] = [
     description:
       'The control is on — a filter applied, a sort that is not the default. It takes the accent ground at rest, the one case a chip may announce a colour before being touched, and becomes a toggle for a screen reader through aria-pressed. Undefined rather than false by default: a button that does not toggle should not announce itself as an unpressed switch.',
   },
+  {
+    name: 'activeTone',
+    type: "'accent' | 'ink'",
+    fallback: "'accent'",
+    description:
+      'How loudly active says so. accent is for a control in a row of equal siblings, one of which is doing something — the colour is the whole point. ink is for toggles that are usually on: the title bar’s two panels are open most of the time, and two accent squares at rest read as an alert about the app’s own furniture. Same plate, same hover; only the mark’s colour is the state.',
+  },
   { name: 'disabled', type: 'boolean', fallback: 'false', description: 'Half opacity, and no pointer.' },
   { name: 'className', type: 'string', fallback: "''", description: 'Margins and placement — ml-auto, a gap. Not the size, the ground or the hover.' },
 ]
 
 /** The sort button, as the app draws it: tinted while the order is not the default. */
-function Toggle() {
+function Toggle({ tone = 'accent' }: { tone?: ButtonIconActive }) {
   const [on, setOn] = useState(false)
-  return <ButtonIcon icon={ArrowDownUp} title="Sort the agents" active={on} onClick={() => setOn((v) => !v)} />
+  return (
+    <ButtonIcon
+      icon={ArrowDownUp}
+      title="Sort the agents"
+      active={on}
+      activeTone={tone}
+      onClick={() => setOn((v) => !v)}
+    />
+  )
 }
 
 export function ButtonIconEntry({
@@ -119,12 +134,13 @@ export function ButtonIconEntry({
 
       <EntrySection
         title="On, and off"
-        note="The one case a chip may announce a colour before being touched: the row is no longer four equal siblings, and saying which one is doing something is the point. It carries aria-pressed with the tint — the app's sort button had the colour and not the state, so a control that said “sorted by recent” on screen said only “button” out loud."
+        note="The one case a chip may announce a colour before being touched: the row is no longer four equal siblings, and saying which one is doing something is the point. It carries aria-pressed with the tint — the app's sort button had the colour and not the state, so a control that said “sorted by recent” on screen said only “button” out loud. activeTone is how loudly: ink instead, for toggles that are usually on, where an accent showing almost always would be announcing the furniture."
       >
         <Stage theme={theme} className="flex items-center gap-4">
           <Toggle />
+          <Toggle tone="ink" />
           <span className="font-mono text-[10px] text-text-secondary">
-            press it — the sort button in the agents header is this exact control
+            press them — accent, then ink: the agents sort, then the title bar's panel toggles
           </span>
         </Stage>
       </EntrySection>

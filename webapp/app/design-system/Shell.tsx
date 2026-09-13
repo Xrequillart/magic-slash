@@ -20,6 +20,7 @@ import { MenuSidebarEntry } from './entries/MenuSidebarEntry'
 import { MenuSidebarItemEntry } from './entries/MenuSidebarItemEntry'
 import { ProgressBarEntry } from './entries/ProgressBarEntry'
 import { SelectIconEntry } from './entries/SelectIconEntry'
+import { AppTitleBarEntry } from './entries/AppTitleBarEntry'
 import { SidebarEntry } from './entries/SidebarEntry'
 import { StatusEntry } from './entries/StatusEntry'
 import { TextEntry } from './entries/TextEntry'
@@ -74,6 +75,7 @@ const ENTRIES: Record<
   titleagentcard: TitleAgentCardEntry,
   menusidebaritem: MenuSidebarItemEntry,
   sidebar: SidebarEntry,
+  apptitlebar: AppTitleBarEntry,
   avatar: AvatarEntry,
   label: LabelEntry,
   status: StatusEntry,
