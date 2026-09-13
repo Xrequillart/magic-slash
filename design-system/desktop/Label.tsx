@@ -152,6 +152,17 @@ export interface LabelProps {
   color?: string
   size?: LabelSize
   /**
+   * The label names something that is NOT THERE YET — an empty ticket slot, and the
+   * invitation to fill it.
+   *
+   * The plate and the geometry are unchanged; the WORD drops to secondary ink and
+   * comes back to full on hover. That difference is the whole point: "Add a ticket"
+   * sitting in ink beside a status pill reads as a ticket called "Add a ticket". It
+   * was a naked 40%-opacity line once, which read as something that had failed to
+   * load — the chip is right, the weight was not.
+   */
+  quiet?: boolean
+  /**
    * Makes it a BUTTON. Absent, it renders a `<span>` with no hover, no pointer and
    * nothing in the tab order — which is the whole point of the prop: a label that
    * lit up under the cursor and did nothing was the thing every one of these chips
@@ -177,6 +188,7 @@ export function Label({
   avatar,
   color,
   size = 'sm',
+  quiet = false,
   onClick,
   title,
   truncate = false,
@@ -229,7 +241,11 @@ export function Label({
     </>
   )
 
-  const shared = `${shape.box} ${ground ?? ''} ${fit} inline-flex items-center text-ink ${className}`
+  // The ink is the label's, and `quiet` is the one thing allowed to change it — spelled
+  // as whole classes rather than composed, because two colour utilities on one element
+  // are settled by the order Tailwind emitted them in.
+  const ink = quiet ? 'text-text-secondary hover:text-ink transition-colors' : 'text-ink'
+  const shared = `${shape.box} ${ground ?? ''} ${fit} inline-flex items-center ${ink} ${className}`
 
   return onClick ? (
     <button onClick={onClick} title={title} style={style} className={`${shared} ${hover} border-none`}>

@@ -1,4 +1,4 @@
-import { Status, type StatusOption, type StatusStrength, type StatusTone } from '@ds/desktop'
+import { Status, type StatusOption, type StatusProps, type StatusStrength, type StatusTone } from '@ds/desktop'
 import { STATUSES_BY_TYPE, resolveAgentType } from './utils'
 import { useT, type MessageKey } from '../../i18n'
 
@@ -59,6 +59,44 @@ interface StatusPillProps {
 }
 
 /**
+ * The status, as `Status`'s props.
+ *
+ * A HOOK BESIDE THE COMPONENT for the reason the ticket badge has one: `TitleAgentCard`
+ * takes the picker as data and the spec panel renders it itself. Resolving the
+ * catalogue once is what keeps the two from disagreeing about a colour.
+ */
+export function useStatusPicker({
+  status,
+  agentType,
+  onStatusChange,
+}: StatusPillProps): Omit<StatusProps, 'size' | 'className'> {
+  const t = useT()
+
+  const current = STATUS_CATALOGUE.find(s => s.value === status)
+
+  // Filtered from the full catalogue rather than kept as a second list, so the colours
+  // and labels stay defined once. An agent whose current status is not in its kind's
+  // list — the tail of a switch this build did not make — still renders on the plate;
+  // it just cannot be re-selected from the menu.
+  const allowed = STATUSES_BY_TYPE[resolveAgentType(agentType)] as readonly string[]
+  const options: StatusOption[] = STATUS_CATALOGUE
+    .filter(o => allowed.includes(o.value))
+    .map(o => ({ value: o.value, label: t(o.labelKey), tone: o.tone, strength: o.strength }))
+
+  return {
+    // An unrecognised status carries its RAW value through rather than falling back to
+    // "no status", which would hide that the workflow actually progressed — a newer
+    // skill talking to an older desktop is the case that produces it.
+    label: current ? t(current.labelKey) : status,
+    tone: current?.tone ?? 'neutral',
+    strength: current?.strength,
+    value: status,
+    options,
+    onSelect: onStatusChange,
+  }
+}
+
+/**
  * The agent's status, as a pill that opens the picker.
  *
  * Lifted out of TicketHeader because SpecPanel needs it too: while an agent is
@@ -67,31 +105,6 @@ interface StatusPillProps {
  * without re-injecting this would have removed the at-a-glance marker that tells a
  * planning agent from an implementation one — the opposite of the point.
  */
-export function StatusPill({ status, agentType, onStatusChange }: StatusPillProps) {
-  const t = useT()
-
-  const current = STATUS_CATALOGUE.find(s => s.value === status)
-
-  // Filtered from the full catalogue rather than kept as a second list, so the colours
-  // and labels stay defined once. An agent whose current status is not in its kind's
-  // list — the tail of a switch this build did not make — still renders on the plate
-  // below; it just cannot be re-selected from the menu.
-  const allowed = STATUSES_BY_TYPE[resolveAgentType(agentType)] as readonly string[]
-  const options: StatusOption[] = STATUS_CATALOGUE
-    .filter(o => allowed.includes(o.value))
-    .map(o => ({ value: o.value, label: t(o.labelKey), tone: o.tone, strength: o.strength }))
-
-  return (
-    <Status
-      // An unrecognised status carries its RAW value through rather than falling back
-      // to "no status", which would hide that the workflow actually progressed — a
-      // newer skill talking to an older desktop is the case that produces it.
-      label={current ? t(current.labelKey) : status}
-      tone={current?.tone ?? 'neutral'}
-      strength={current?.strength}
-      value={status}
-      options={options}
-      onSelect={onStatusChange}
-    />
-  )
+export function StatusPill(props: StatusPillProps) {
+  return <Status {...useStatusPicker(props)} />
 }

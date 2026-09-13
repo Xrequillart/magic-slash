@@ -26,6 +26,7 @@ export type EntryId =
   | 'headerrepocard'
   | 'menusidebar'
   | 'usageclaudecodecard'
+  | 'titleagentcard'
   | 'menusidebaritem'
 
 export const ENTRY_LABELS: Record<EntryId, string> = {
@@ -41,6 +42,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   headerrepocard: 'HeaderRepoCard',
   menusidebar: 'MenuSidebar',
   usageclaudecodecard: 'UsageClaudeCodeCard',
+  titleagentcard: 'TitleAgentCard',
   menusidebaritem: 'MenuSidebarItem',
   text: 'Text',
   avatar: 'Avatar',
@@ -107,7 +109,7 @@ export const FAMILIES: Family[] = [
   {
     label: 'Tertiary',
     note: 'A whole region of a page.',
-    entries: ['contextagentcard', 'headerrepocard', 'menusidebar', 'usageclaudecodecard'],
+    entries: ['titleagentcard', 'contextagentcard', 'headerrepocard', 'menusidebar', 'usageclaudecodecard'],
   },
 ]
 
@@ -124,6 +126,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   headerrepocard: 'A repository, and what you can do to it',
   menusidebar: 'A menu, as a landmark',
   usageclaudecodecard: 'What is left of the account',
+  titleagentcard: 'Who an agent is, in four facts',
   menusidebaritem: 'One row that takes you somewhere',
   icon: 'Every glyph, five sizes, three tones',
   text: 'Cera Pro, six sizes, four weights',

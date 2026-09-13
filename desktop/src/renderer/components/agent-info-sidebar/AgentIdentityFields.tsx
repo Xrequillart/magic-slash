@@ -1,4 +1,4 @@
-import { EditableText } from '@ds/desktop'
+import { EditableText, type EditableTextProps } from '@ds/desktop'
 import { useT } from '../../i18n'
 
 /**
@@ -36,57 +36,61 @@ export interface AgentIdentity {
   setIsEditingDescription: (v: boolean) => void
 }
 
-/** Click-to-edit agent title. Enter saves, Escape cancels, blur saves. */
-export function AgentTitleField({ identity }: { identity: AgentIdentity }) {
-  const t = useT()
-
-  return (
-    <EditableText
-      as="h2"
-      variant="title"
-      value={identity.title ?? ''}
-      placeholder={t('agentInfo.addTitle')}
-      editPlaceholder={t('agentInfo.titlePlaceholder')}
-      editing={identity.isEditingTitle}
-      draft={identity.editTitle}
-      onDraftChange={identity.setEditTitle}
-      onStartEditing={identity.startEditingTitle}
-      onSave={identity.saveTitle}
-      onCancel={() => identity.setIsEditingTitle(false)}
-    />
-  )
-}
+/** What `EditableText` needs, minus everything the two presets below decide. */
+type FieldProps = Omit<EditableTextProps, 'variant' | 'multiline' | 'as' | 'className'>
 
 /**
- * Click-to-edit agent description. Enter saves, Shift+Enter is a newline, Escape
- * cancels, blur saves.
+ * The two fields, as props.
  *
- * ENTER RATHER THAN ⌘ENTER, and no Save button beside it. The button was the only way
- * out of this field that did not require knowing a shortcut, and it sat under a hint
- * that was hardcoded English — the one string in the sidebar the language switch never
- * reached. Enter is what the title field above has always done, and a description in
- * this card is a line or two, not a document: the multi-line case keeps Shift+Enter,
- * which is the convention every chat box in the app already trains.
- *
- * Blur saves too, which is what makes losing the button safe: clicking away from a
- * field with no button used to discard the edit.
+ * A HOOK BESIDE THE TWO COMPONENTS, for the reason the ticket badge and the status
+ * have one: `TitleAgentCard` takes both fields as data, and the spec panel renders the
+ * title on its own. One resolution, so the strings and the keyboard rules cannot
+ * differ between an implementation agent and a planning one.
  */
-export function AgentDescriptionField({ identity }: { identity: AgentIdentity }) {
+export function useAgentIdentityFields(identity: AgentIdentity): {
+  title: FieldProps
+  description: FieldProps
+} {
   const t = useT()
 
-  return (
-    <EditableText
-      multiline
-      value={identity.description ?? ''}
-      placeholder={t('agentInfo.addDescription')}
-      editPlaceholder={t('agentInfo.descriptionPlaceholder')}
-      hint={t('agentInfo.descriptionHint')}
-      editing={identity.isEditingDescription}
-      draft={identity.editDescription}
-      onDraftChange={identity.setEditDescription}
-      onStartEditing={identity.startEditingDescription}
-      onSave={identity.saveDescription}
-      onCancel={() => identity.setIsEditingDescription(false)}
-    />
-  )
+  return {
+    title: {
+      value: identity.title ?? '',
+      placeholder: t('agentInfo.addTitle'),
+      editPlaceholder: t('agentInfo.titlePlaceholder'),
+      editing: identity.isEditingTitle,
+      draft: identity.editTitle,
+      onDraftChange: identity.setEditTitle,
+      onStartEditing: identity.startEditingTitle,
+      onSave: identity.saveTitle,
+      onCancel: () => identity.setIsEditingTitle(false),
+    },
+    description: {
+      value: identity.description ?? '',
+      placeholder: t('agentInfo.addDescription'),
+      editPlaceholder: t('agentInfo.descriptionPlaceholder'),
+      // ENTER RATHER THAN ⌘ENTER, and no Save button beside it. The button was the only
+      // way out that did not require knowing a shortcut, and it sat under a hint that
+      // was hardcoded English — the one string in the sidebar the language switch never
+      // reached. Enter is what the title does; the multi-line case keeps Shift+Enter,
+      // which every chat box in the app already trains.
+      hint: t('agentInfo.descriptionHint'),
+      editing: identity.isEditingDescription,
+      draft: identity.editDescription,
+      onDraftChange: identity.setEditDescription,
+      onStartEditing: identity.startEditingDescription,
+      onSave: identity.saveDescription,
+      onCancel: () => identity.setIsEditingDescription(false),
+    },
+  }
+}
+
+/** Click-to-edit agent title, for a caller that draws the field itself. */
+export function AgentTitleField({ identity }: { identity: AgentIdentity }) {
+  return <EditableText as="h2" variant="title" {...useAgentIdentityFields(identity).title} />
+}
+
+/** Click-to-edit agent description, for a caller that draws the field itself. */
+export function AgentDescriptionField({ identity }: { identity: AgentIdentity }) {
+  return <EditableText multiline {...useAgentIdentityFields(identity).description} />
 }
