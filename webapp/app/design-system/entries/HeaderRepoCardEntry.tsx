@@ -192,7 +192,7 @@ export function HeaderRepoCardEntry({
       >
         <Stage theme={theme} className="flex flex-col gap-4">
           <div className="w-[288px]">
-            <Live name="poppins-pex-PER-5138-reimbursement-flow" color={ROSE} />
+            <Live name="acme-checkout-api-PAY-318-invoice-vat" color={ROSE} />
           </div>
           <span className="font-mono text-[10px] text-text-secondary">
             288px — hover the name for the path

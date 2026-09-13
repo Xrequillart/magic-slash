@@ -1528,12 +1528,19 @@ export const marketingEn = {
   // "Skills" and "Tasks" are the same string in French, which is why `i18n.test.ts`
   // lists them.
   'site.agentsCard.tasks': 'Tasks',
+  // `team` is the row the app REPLACED with `plans`, and it survives here because
+  // `home/AppWindowMockup.tsx` still draws its own sidebar by hand and still shows it.
+  // The day that window draws the real `Sidebar` too, this key goes with it.
   'site.agentsCard.team': 'Team',
+  'site.agentsCard.plans': 'Plans',
   'site.agentsCard.skills': 'Skills',
   'site.agentsCard.agents': 'Agents',
   'site.agentsCard.attention': 'Needs attention',
-  'site.agentsCard.usageSession': 'Session (5h)',
-  'site.agentsCard.usageWeek': 'Weekly (7d)',
+  // The two controls on the AGENTS header. Tooltips on a drawing nobody can press —
+  // but `ButtonIcon` will not take a control without a name, which is the whole reason
+  // an icon-only button in the app has one.
+  'site.agentsCard.sort': 'Sort agents',
+  'site.agentsCard.newAgent': 'New agent',
   // The four states, and why each one is on screen. The names are the app's own words
   // for them; the sentences are this page's, because the app never has to explain a
   // glyph the person is watching change in front of them.
@@ -1846,11 +1853,26 @@ export const marketingEn = {
   'site.agentPanel.reviewApproved': 'Approved',
   'site.agentPanel.commentOne': '{count} comment',
   'site.agentPanel.commentsCount': '{count} comments',
-  // The left sidebar's usage card — `UsageCardMockup`, the app's own labels.
+  // The left sidebar's usage card — the app's own `UsageClaudeCodeCard`, which the home
+  // window now draws rather than reproduces, and the app's own labels.
   'site.usageCard.session': 'Session (5h)',
   'site.usageCard.weekly': 'Weekly (7d)',
   'site.usageCard.resetSession': '2h14',
   'site.usageCard.resetWeekly': '3d',
+  // The short names for the COLLAPSED line, where the two limits share one row. The
+  // card is drawn open here, so neither is ever read — but a name cut to fit is a name
+  // that stops naming, which is why the component asks for its own rather than
+  // truncating the long one.
+  'site.usageCard.sessionShort': 'session',
+  'site.usageCard.weeklyShort': 'weekly',
+  // The one control, in each direction, and the two lines for an account whose agents
+  // have not reported yet. None of them is on screen in the drawing: the card is open
+  // and it has numbers. They are here because the component will not take a control
+  // without a name, or promise an empty state it cannot word.
+  'site.usageCard.expand': 'Show usage',
+  'site.usageCard.collapse': 'Hide usage',
+  'site.usageCard.empty': 'No usage yet',
+  'site.usageCard.emptyHint': 'Start an agent and its limits appear here.',
   // The PR comments drawer — `PRCommentsMockup`.
   'site.features.prCommentsTitle': 'The PR comments, read in place',
   'site.features.prCommentsDesc': 'A click on the Comments line opens every thread in a panel: the lines it points at, who wrote it, the verdict, the replies. And any thread can be handed straight to the agent.',

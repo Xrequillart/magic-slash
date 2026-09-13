@@ -285,10 +285,13 @@ describe('message catalogues', () => {
         // too. The repository slug on the rail above is a literal in the component, so
         // only this half of the pair reaches the catalogues at all.
         'site.orgTeam.config',
-        // The Agents sidebar's own two: "Skills" is the product's word for them in both
+        // The Agents sidebar's own three: "Skills" is the product's word for them in both
         // languages, and so is "Agents" — the label over the list, which the app's French
-        // catalogue also leaves as it is.
+        // catalogue also leaves as it is. "Plans" is the third, and it is the app's own
+        // French label too (`sidebar.plans` in `desktop/src/i18n/fr.ts`): the page is
+        // named after the plan documents it lists, and the word did not need translating.
         'site.agentsCard.skills',
+        'site.agentsCard.plans',
         // The Skills window's gauge prints its own unit under each bar, and the app's
         // French catalogue spells "tokens" exactly the same way — `skills.budget.unitTokens`
         // in `desktop/src/i18n/fr.ts`. The characters unit beside it is NOT the same word
@@ -303,6 +306,10 @@ describe('message catalogues', () => {
         'site.infoSidebar.scriptsBuild',
         'site.infoSidebar.scriptsTest',
         'site.agentsCard.agents',
+        // The usage card's short name for the five-hour limit. "session" is the same
+        // word in both languages, and the app's own French catalogue leaves it alone
+        // too. Its neighbour does not ("semaine"), which is why only this half is here.
+        'site.usageCard.sessionShort',
         // The Tasks mockup's agent marker. It is the app's own word beside the dot, and
         // the app's French catalogue spells it "agent" too — this string is the app's,
         // not a translation of it.

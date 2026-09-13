@@ -763,11 +763,12 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // Voir la note du catalogue anglais.
   'site.agentsCard.tasks': 'Tâches',
   'site.agentsCard.team': 'Équipe',
+  'site.agentsCard.plans': 'Plans',
   'site.agentsCard.skills': 'Skills',
   'site.agentsCard.agents': 'Agents',
   'site.agentsCard.attention': 'Demande une action',
-  'site.agentsCard.usageSession': 'Session (5 h)',
-  'site.agentsCard.usageWeek': 'Semaine (7 j)',
+  'site.agentsCard.sort': 'Trier les agents',
+  'site.agentsCard.newAgent': 'Nouvel agent',
   'site.agentsCard.working': 'Au travail',
   'site.agentsCard.workingDesc':
     'L’agent tourne — il lit, il écrit, ou il attend une commande. Rien ne vous est demandé.',
@@ -1042,6 +1043,12 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.usageCard.weekly': 'Semaine (7 j)',
   'site.usageCard.resetSession': '2 h 14',
   'site.usageCard.resetWeekly': '3 j',
+  'site.usageCard.sessionShort': 'session',
+  'site.usageCard.weeklyShort': 'semaine',
+  'site.usageCard.expand': 'Afficher la consommation',
+  'site.usageCard.collapse': 'Masquer la consommation',
+  'site.usageCard.empty': 'Pas encore de consommation',
+  'site.usageCard.emptyHint': 'Lancez un agent et ses limites apparaissent ici.',
   // The PR comments drawer — `PRCommentsMockup`.
   'site.features.prCommentsTitle': 'Les commentaires de la PR, lus sur place',
   'site.features.prCommentsDesc': 'Un clic sur la ligne Commentaires ouvre chaque fil dans un panneau : les lignes visées, l’auteur, le verdict, les réponses. Et n’importe quel fil peut être renvoyé directement à l’agent.',

@@ -81,7 +81,7 @@ export function MenuSidebarItemEntry({
       >
         <Stage theme={theme} className="flex flex-wrap items-start gap-8">
           <Column>
-            <MenuSidebarItem avatar={{ src: null, alt: '' }} label="Xavier" shortcut="⌘," onClick={() => undefined} />
+            <MenuSidebarItem avatar={{ src: null, alt: '' }} label="Camille" shortcut="⌘," onClick={() => undefined} />
           </Column>
           <Column>
             <MenuSidebarItem icon={LogIn} label="Login / Sign up" onClick={() => undefined} />
@@ -102,7 +102,7 @@ export function MenuSidebarItemEntry({
       >
         <Stage theme={theme} className="flex items-start gap-8">
           <Column>
-            <MenuSidebarItem avatar={{ src: null, alt: '' }} label="Xavier" shortcut="⌘," alert onClick={() => undefined} />
+            <MenuSidebarItem avatar={{ src: null, alt: '' }} label="Camille" shortcut="⌘," alert onClick={() => undefined} />
             <MenuSidebarItem icon={Settings} label="Settings" shortcut="⌘," alert onClick={() => undefined} />
           </Column>
           <span className="font-mono text-[10px] text-text-secondary">

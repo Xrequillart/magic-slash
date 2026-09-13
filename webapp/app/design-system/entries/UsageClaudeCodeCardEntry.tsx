@@ -69,7 +69,7 @@ function Still({ limits, collapsed = false }: { limits: UsageLimit[]; collapsed?
   return (
     <div className="w-[228px]">
       <UsageClaudeCodeCard
-        account="xavier@poppins.io"
+        account="camille@acme.dev"
         limits={limits}
         thresholds={THRESHOLDS}
         collapsed={collapsed}
@@ -89,7 +89,7 @@ function Live({ limits }: { limits: UsageLimit[] }) {
   return (
     <div className="w-[228px]">
       <UsageClaudeCodeCard
-        account="xavier@poppins.io"
+        account="camille@acme.dev"
         limits={limits}
         thresholds={THRESHOLDS}
         collapsed={collapsed}
@@ -163,7 +163,7 @@ export function UsageClaudeCodeCardEntry({
             <div key={session} className="flex flex-col gap-2">
               <div className="w-[228px]">
                 <UsageClaudeCodeCard
-                  account="xavier@poppins.io"
+                  account="camille@acme.dev"
                   limits={LIMITS(session, weekly)}
                   thresholds={THRESHOLDS}
                   onToggle={() => undefined}
@@ -189,7 +189,7 @@ export function UsageClaudeCodeCardEntry({
           <Live limits={[]} />
           <div className="w-[228px]">
             <UsageClaudeCodeCard
-              account="xavier@poppins.io"
+              account="camille@acme.dev"
               limits={[]}
               collapsed
               onToggle={() => undefined}

@@ -42,7 +42,7 @@ import { GithubMark } from '../features/TasksModalMockup'
  * and the Tasks modal, measured off `desktop/src/renderer/` the way `/features` measures
  * its mockups. The band's claim is that configuration and a backlog stop belonging to one
  * laptop, and both of those claims are settled by a screen a reader recognises — the
- * Scope row that says "Team — Poppins" and the repository filter closed on one repository
+ * Scope row that says "Team — Acme" and the repository filter closed on one repository
  * are the product ACTUALLY DOING IT, and a paraphrase of either would be the site
  * promising something the app does not show.
  *
@@ -123,7 +123,7 @@ const INPUT =
 const REPO = { name: 'checkout-api', slug: 'acme/checkout-api', color: '#6366f1' }
 
 /** The organisation the repository is shared with. A name, so a literal in both. */
-const ORG = 'Poppins'
+const ORG = 'Acme'
 
 /** The label-and-help half of a settings row, and the control beside it. */
 function Row({

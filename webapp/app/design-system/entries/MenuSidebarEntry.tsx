@@ -16,7 +16,7 @@ const PAGES: Omit<Entry, 'onClick'>[] = [
 const ACCOUNT: Omit<Entry, 'onClick'> = {
   id: 'account',
   avatar: { src: null, alt: '' },
-  label: 'Xavier',
+  label: 'Camille',
   shortcut: '⌘,',
 }
 

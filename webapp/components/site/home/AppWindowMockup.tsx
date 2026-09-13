@@ -1,13 +1,9 @@
 'use client'
 
 import {
-  AlertTriangle,
   Archive,
-  ArrowDownUp,
   ArrowRight,
-  Check,
   ChevronDown,
-  CircleUserRound,
   Clock,
   Copy,
   Cpu,
@@ -15,20 +11,22 @@ import {
   FolderGit2,
   Gauge,
   GitBranch,
-  ListTodo,
-  MessageCircleQuestion,
-  Minus,
   Play,
-  Plus,
   RefreshCw,
-  Sparkles,
-  User,
-  Users,
   X,
-  XCircle,
 } from 'lucide-react'
+// The sidebar's own marks come from the design system's lucide rather than the site's:
+// they are handed to a component on the far side of the alias, which types them against
+// the copy `design-system/package.json` owns. See that folder's README, rule 1.
+import { ArrowDownUp, ListTodo, NotebookPen, Plus, Sparkles } from '@ds/desktop/icons'
+import { Sidebar, UsageClaudeCodeCard, type SidebarAgentRow } from '@ds/desktop'
 import { useT } from '@/lib/i18n/useLanguage'
-import { gaugeColors, InfoSidebarPanel } from '../features/InfoSidebarMockup'
+import { InfoSidebarPanel } from '../features/InfoSidebarMockup'
+import { AppGround } from '../AppGround'
+
+/** Nothing happens when any of the sidebar's controls is pressed. The column cannot
+ *  tell the difference, which is what it means for it to be dumb. */
+const noop = () => undefined
 
 /**
  * THE WHOLE DESKTOP WINDOW, redrawn — titlebar, agent list, terminal, info panel — for
@@ -114,30 +112,22 @@ import { gaugeColors, InfoSidebarPanel } from '../features/InfoSidebarMockup'
  *      drawn INSIDE that gutter at their real geometry — 12px discs on a 20px pitch from
  *      x=16 — and the app's own spacer keeps every other element exactly where it is.
  *
- *   2. THE LEFT SIDEBAR — `Sidebar.tsx`, at its declared `SIDEBAR_WIDTH` of 230 and not
- *      resizable, for the reason that file gives. Four top actions in a `px-2 pt-3` /
- *      `gap-1` column, each `w-full flex items-center gap-2 px-2 py-2 text-xs font-medium
- *      rounded-lg` with a `w-3.5` glyph and its shortcut pushed right at `opacity-50`;
- *      the fourth is `SidebarAccount.tsx`, which is the person's own name and carries ⌘,
- *      because it opens Settings. Then the AGENTS header at `pl-2 pt-3 pb-2` — padding on
- *      the LEFT only, which is what keeps the label on the same 16px line as the rows
- *      while the controls stay flush right — with the sort control BEFORE the `+`,
- *      because the one that changes the list reads before the one that adds to it. Then
- *      the attention banner, which is a COUNT and not a group: the one agent it counts
- *      stays exactly where it is in the list, and at zero the banner is not there at all.
- *      Then the rows, `px-2 py-2 text-xs rounded-lg` in a `gap-1` column.
+ *   2. THE LEFT SIDEBAR — and this one is not a reproduction any more. It IS the app's
+ *      `Sidebar`, imported from `@ds/desktop`, handed a fixture: the menu, five agents,
+ *      two rate limits and a build number. Every padding, every tint, the 230px width
+ *      and the rule that an idle agent draws no glyph come from the component rather
+ *      than from a copy of it that has to be kept in step.
  *
- *      THE ACTIVE ROW WEARS ITS OWN STATE'S COLOUR, `stateBgColors` in
- *      `utils/stateColors.ts` — `bg-accent/20` for an agent at work, `bg-orange/20` for
- *      one asking a question — never a neutral highlight. That is what makes a list of a
- *      dozen readable at a glance, and it is why there are no repository dots on a row:
- *      the row's own colour is already saying something.
+ *      IT WAS NINETY LINES OF COPY, and they had drifted: a `Team` row the app replaced
+ *      with `Plans`, and a version four releases behind. `features/AgentsSidebarMockup`
+ *      made the same swap for the same reason. What the two still own is the
+ *      PHOTOGRAPHY — the crop, the scale, the plate — and nothing about the app.
  *
- *      AND THE FOOTER IS HERE, unlike the `/features` zoom which cuts it: the usage card
- *      from `SidebarUsageCard.tsx` (expanded branch, `mx-2 mb-2` on the subtle surface)
- *      and the version line from Sidebar.tsx:390-392 — `v0.88.0` at `opacity-60` and
- *      NOTHING ELSE. No Docs, no Changelog, no GitHub, no dot separators; that footer had
- *      links once and does not now.
+ *      `AppGround` with `paint={false}` is what lets a component from the desktop half
+ *      resolve its `--c-*` tokens inside a window this file already painted.
+ *
+ *      THE FOOTER IS HERE, unlike the `/features` zoom which cuts it: the real
+ *      `UsageClaudeCodeCard` with the account's two limits, and the version line.
  *
  *   3. THE TERMINAL — `TerminalView.tsx`. `w-full h-full bg-surface-sunken p-2`
  *      (TerminalView.tsx:394), 8px of uniform padding and xterm transparent on top of it,
@@ -234,14 +224,11 @@ import { gaugeColors, InfoSidebarPanel } from '../features/InfoSidebarMockup'
  */
 const WINDOW = { width: 1280, height: 800 } as const
 
-/** `SIDEBAR_WIDTH` in `Sidebar.tsx`. Fixed, and deliberately not resizable. */
-const SIDEBAR_WIDTH = 230
-
 /**
  * The version the footer prints. A literal, bumped at release like the app's own — see
- * Sidebar.tsx:391, which holds the same string the same way.
+ * `APP_VERSION` in `Sidebar.tsx`, which holds the same string the same way.
  */
-const VERSION = 'v0.88.0'
+const VERSION = 'v0.94.2'
 
 /**
  * THE AGENT ON SCREEN, and the same invented project every other drawing on this site
@@ -252,29 +239,6 @@ const VERSION = 'v0.88.0'
 const AGENT_TITLE = 'PAY-318 · invoice VAT'
 
 /**
- * The four states with a glyph. `idle` is the fifth and has none — see the note above.
- */
-type AgentState = 'working' | 'waiting' | 'completed' | 'error' | 'idle'
-
-/** `stateBgColors` in `utils/stateColors.ts`: the tint an ACTIVE row wears, by state. */
-const STATE_TINT: Record<AgentState, string> = {
-  idle: 'bg-appink/20',
-  working: 'bg-accent/20',
-  waiting: 'bg-orange/20',
-  completed: 'bg-green/20',
-  error: 'bg-red/20',
-}
-
-/** `stateColors`: the colour the state's own glyph is drawn in. */
-const STATE_TONE: Record<AgentState, string> = {
-  idle: 'text-appink',
-  working: 'text-accent',
-  waiting: 'text-orange',
-  completed: 'text-green',
-  error: 'text-red',
-}
-
-/**
  * The list, newest first — `useOrderedTerminals`' default, so a row stays where the user
  * last saw it. Five agents in four different states, one of them idle, which is what the
  * band is actually claiming: several of these run at once, each in its own worktree.
@@ -282,20 +246,20 @@ const STATE_TONE: Record<AgentState, string> = {
  * The names are what the app shows — an agent's title, or the ticket it was started on —
  * so they are literals on the same invented project as the rest of the site.
  */
-const AGENTS: readonly { name: string; state: AgentState; active?: boolean }[] = [
-  { name: AGENT_TITLE, state: 'working', active: true },
-  { name: '#409 · rate limits', state: 'working' },
-  { name: 'PAY-311 · card change', state: 'waiting' },
-  { name: '#404 · empty basket', state: 'completed' },
-  { name: 'PAY-296 · dunning emails', state: 'idle' },
+const AGENTS: SidebarAgentRow[] = [
+  { id: '1', name: AGENT_TITLE, state: 'working', active: true },
+  { id: '2', name: '#409 · rate limits', state: 'working' },
+  { id: '3', name: 'PAY-311 · card change', state: 'waiting' },
+  { id: '4', name: '#404 · empty basket', state: 'completed' },
+  { id: '5', name: 'PAY-296 · dunning emails', state: 'idle' },
 ]
 
 /**
- * The two account rate limits the left sidebar's usage card shows. `gaugeColors` —
- * `agent-info-sidebar/LimitGauge.tsx`'s thresholds, green below 65%, yellow from 65,
- * red from 85 — now lives with the info panel in `features/InfoSidebarMockup.tsx`, along
- * with the panel's own figures. The session gauge is on the far side of the first
- * threshold here, so the card is caught having changed colour.
+ * The two account rate limits the left sidebar's usage card shows. The thresholds are
+ * `LimitGauge.tsx`'s own — green below 65%, orange from 65, red from 85 — and they are
+ * passed to the card rather than baked into it, because a percentage means different
+ * things on different gauges. The session gauge is on the far side of the first one
+ * here, so the card is caught having changed colour.
  */
 const SESSION_PCT = 72
 const WEEKLY_PCT = 38
@@ -461,85 +425,6 @@ function TrafficLights() {
 }
 
 /**
- * `WaveLoader.tsx`: three parallel bars, the middle one tallest, with a wave travelling
- * across them. Colourless on purpose — the bars are `currentColor`, so whatever wraps it
- * decides, which in the sidebar is the agent's own state colour.
- *
- * The stagger is an `animation-delay` per bar rather than three keyframes, exactly as the
- * app does it. `motion-reduce:animate-none` freezes them at their resting heights, which
- * is a legible shape rather than a mid-animation one.
- */
-function WaveLoader() {
-  return (
-    <span className="flex h-4 w-4 shrink-0 items-center justify-center gap-[2px]">
-      {[0, 0.15, 0.3].map((delay, index) => (
-        <span
-          key={delay}
-          className="w-[2px] animate-wave-bar rounded-[1px] bg-current motion-reduce:animate-none"
-          style={{ height: index === 1 ? 13 : 6, animationDelay: `${delay}s` }}
-        />
-      ))}
-    </span>
-  )
-}
-
-/** `AgentStateBadge.tsx`, state for state — and `idle` returns nothing, as it does there. */
-function AgentStateGlyph({ state }: { state: AgentState }) {
-  switch (state) {
-    case 'working':
-      return <WaveLoader />
-    case 'waiting':
-      // The question bubble ARRIVES rather than gestures: that state is the agent asking
-      // you something, not the agent being slow.
-      return <MessageCircleQuestion className="h-4 w-4 animate-ask-arrive motion-reduce:animate-none" />
-    case 'completed':
-      return <Check className="h-4 w-4" />
-    case 'error':
-      return <XCircle className="h-4 w-4" />
-    case 'idle':
-      return null
-  }
-}
-
-/** A top action of the sidebar, in the geometry all four share. */
-function Action({
-  icon: Icon,
-  label,
-  shortcut,
-}: {
-  icon: typeof ListTodo
-  label: string
-  shortcut: string
-}) {
-  return (
-    <div className="flex w-full items-center justify-start gap-2 rounded-lg px-2 py-2 text-xs font-medium text-appink">
-      <Icon className="h-3.5 w-3.5" />
-      <span className="truncate">{label}</span>
-      <span className="ml-auto text-xs opacity-50">{shortcut}</span>
-    </div>
-  )
-}
-
-/** One `UsageBar` of `SidebarUsageCard.tsx`: label, reset countdown, percent, then a track. */
-function UsageBar({ label, reset, percent }: { label: string; reset: string; percent: number }) {
-  const colors = gaugeColors(percent)
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between text-[10px]">
-        <span className="text-appink/60">{label}</span>
-        <span className="flex items-center gap-1.5">
-          <span className="text-appink/35">{reset}</span>
-          <span className={`font-semibold ${colors.text}`}>{percent}%</span>
-        </span>
-      </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
-        <div className={`h-full rounded-full ${colors.bar}`} style={{ width: `${percent}%` }} />
-      </div>
-    </div>
-  )
-}
-
-/**
  * THE REPOSITORY CARD'S THREE DASHED CONTROLS — Scripts, VSCode and GitHub — which wear
  * one recipe in the app and get one here: `flex items-center gap-1 px-1.5 py-0.5
  * text-[10px] font-semibold` in icon ink inside a dashed filet at 40%
@@ -623,93 +508,81 @@ export function AppWindowMockup() {
 
       <div className="flex min-h-0 flex-1">
         {/* ── 2. THE LEFT SIDEBAR ────────────────────────────────────────────────── */}
-        <div className="flex shrink-0 flex-col bg-black/30" style={{ width: SIDEBAR_WIDTH }}>
-          <div className="flex flex-col gap-1 px-2 pt-3">
-            <Action icon={ListTodo} label={t('site.agentsCard.tasks')} shortcut="⌘J" />
-            <Action icon={Users} label={t('site.agentsCard.team')} shortcut="⌘T" />
-            <Action icon={Sparkles} label={t('site.agentsCard.skills')} shortcut="⌘;" />
-            {/* `SidebarAccount`, signed in: the person's own name, and ⌘, because the row
-                opens Settings rather than saying so. */}
-            <Action icon={CircleUserRound} label="Camille" shortcut="⌘," />
-          </div>
+        {/* THE APP'S OWN `Sidebar`, imported from `@ds/desktop`. It used to be ninety
+            lines of redrawing here — the menu, the AGENTS header, the attention banner,
+            five rows, the usage card and the version line, each padding copied out of
+            `Sidebar.tsx` with a comment saying which line it came from. It had drifted
+            exactly the way `features/AgentsSidebarMockup.tsx` had: a `Team` row the app
+            replaced with `Plans`, and a build number four releases behind.
 
-          <div className="flex min-h-0 flex-1 flex-col px-2 pb-2">
-            {/* `pl-2` and no `pr`: the label lines up with everything above and below it,
-                and the two controls stay flush against the right edge. Sort BEFORE the
-                plus — the one that changes the list reads before the one that adds to it. */}
-            <div className="flex items-center gap-1 pb-2 pl-2 pt-3">
-              <div className="mr-auto text-xs uppercase tracking-wider text-appink/50">
-                {t('site.agentsCard.agents')}
-              </div>
-              <span className="p-1.5 text-appink-icon">
-                <ArrowDownUp className="h-4 w-4" />
-              </span>
-              <span className="p-1.5 text-appink-icon">
-                <Plus className="h-4 w-4" />
-              </span>
-            </div>
-
-            {/* A COUNT, NOT A GROUP — and absent entirely at zero, so a calm list stays
-                calm. `text-orange`, the app's own tone for it. */}
-            {needsAttention > 0 ? (
-              <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-orange">
-                <AlertTriangle className="h-3 w-3 shrink-0" />
-                <span className="truncate">{t('site.agentsCard.attention')}</span>
-                <span className="ml-auto">{needsAttention}</span>
-              </div>
-            ) : null}
-
-            <div className="mt-1 flex flex-col gap-1">
-              {AGENTS.map((agent) => (
-                <div
-                  key={agent.name}
-                  className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-xs ${
-                    agent.active ? `${STATE_TINT[agent.state]} text-white` : 'text-appink'
-                  }`}
-                >
-                  <div className="min-w-0 flex-1 text-left">
-                    <div className="truncate font-medium">{agent.name}</div>
-                  </div>
-                  {/* A FIXED SLOT at the end of the row, so the labels above and below an
-                      idle agent do not shift by the width of a glyph it does not draw. */}
-                  <span className={`flex h-4 w-4 items-center justify-center ${STATE_TONE[agent.state]}`}>
-                    <AgentStateGlyph state={agent.state} />
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── THE FOOTER: the usage card, then the version line ─────────────────── */}
-          <div className="mx-2 mb-2 rounded-lg border border-white/5 bg-white/[0.04] px-2 py-1.5">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="flex min-w-0 items-center gap-1.5 text-[11px] text-appink-icon">
-                <User className="h-3 w-3 shrink-0" />
-                <span className="truncate">Camille</span>
-              </span>
-              <span className="shrink-0 rounded p-0.5 text-appink-icon">
-                <Minus className="h-3 w-3" />
-              </span>
-            </div>
-            <div className="space-y-2">
-              <UsageBar
-                label={t('site.usageCard.session')}
-                reset={t('site.usageCard.resetSession')}
-                percent={SESSION_PCT}
+            `AppGround` with `paint={false}` is the whole trick. It writes the dark
+            theme's `--c-*` variables onto this element WITHOUT painting a window colour
+            under them, because the window above already painted one: `bg-appbg` is that
+            colour, and the column's own `bg-surface-sunken` is translucent and belongs
+            on top of it. So the variables land, the real component resolves its tokens,
+            and the ground stays the one this drawing already had. */}
+        <AppGround paint={false} className="flex shrink-0">
+          <Sidebar
+            menuAriaLabel={t('site.agentsCard.agents')}
+            menu={[
+              { id: 'plans', icon: NotebookPen, label: t('site.agentsCard.plans'), shortcut: '⌘T', onClick: noop },
+              { id: 'tasks', icon: ListTodo, label: t('site.agentsCard.tasks'), shortcut: '⌘J', onClick: noop },
+              { id: 'skills', icon: Sparkles, label: t('site.agentsCard.skills'), shortcut: '⌘;', onClick: noop },
+              // `SidebarAccount`, signed in: the person's own name, and ⌘, because the
+              // row opens Settings rather than saying so. No photo, so the column draws
+              // the bare glyph — what the app shows anyone who never uploads one.
+              { id: 'account', avatar: { src: null, alt: '' }, label: 'Camille', shortcut: '⌘,', onClick: noop },
+            ]}
+            lists={[
+              {
+                id: 'agents',
+                label: t('site.agentsCard.agents'),
+                // The one that CHANGES the list reads before the one that ADDS to it.
+                actions: [
+                  { id: 'sort', icon: ArrowDownUp, title: t('site.agentsCard.sort'), onClick: noop },
+                  { id: 'new', icon: Plus, title: t('site.agentsCard.newAgent'), onClick: noop },
+                ],
+                // Counted rather than written, so the number and the list can never
+                // disagree — and the column draws nothing at zero, so a calm list stays
+                // calm. One agent is waiting here.
+                attention: { label: t('site.agentsCard.attention'), count: needsAttention },
+                agents: AGENTS,
+              },
+            ]}
+            footer={
+              <UsageClaudeCodeCard
+                className="mx-2 mb-2"
+                account="Camille"
+                limits={[
+                  {
+                    id: 'session',
+                    label: t('site.usageCard.session'),
+                    shortLabel: t('site.usageCard.sessionShort'),
+                    percent: SESSION_PCT,
+                    reset: t('site.usageCard.resetSession'),
+                  },
+                  {
+                    id: 'weekly',
+                    label: t('site.usageCard.weekly'),
+                    shortLabel: t('site.usageCard.weeklyShort'),
+                    percent: WEEKLY_PCT,
+                    reset: t('site.usageCard.resetWeekly'),
+                  },
+                ]}
+                // `LimitGauge`'s own: green below 65, orange from 65, red from 85. The
+                // session gauge sits on the far side of the first one, so the card is
+                // caught having changed colour.
+                thresholds={{ warning: 65, danger: 85 }}
+                onToggle={noop}
+                expandLabel={t('site.usageCard.expand')}
+                collapseLabel={t('site.usageCard.collapse')}
+                emptyLabel={t('site.usageCard.empty')}
+                emptyHint={t('site.usageCard.emptyHint')}
               />
-              <UsageBar
-                label={t('site.usageCard.weekly')}
-                reset={t('site.usageCard.resetWeekly')}
-                percent={WEEKLY_PCT}
-              />
-            </div>
-          </div>
-
-          {/* THE VERSION AND NOTHING ELSE. No Docs, no Changelog, no GitHub, no dots. */}
-          <div className="flex items-center justify-start gap-2 px-4 py-2 text-xs text-appink">
-            <span className="opacity-60">{VERSION}</span>
-          </div>
-        </div>
+            }
+            version={VERSION}
+          />
+        </AppGround>
 
         {/* ── 3. THE TERMINAL ────────────────────────────────────────────────────── */}
         {/* `p-2` and nothing else — 8px of uniform padding, xterm transparent on the

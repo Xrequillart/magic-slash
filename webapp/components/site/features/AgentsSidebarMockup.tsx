@@ -1,132 +1,84 @@
 "use client";
 
 import {
-  AlertTriangle,
   ArrowDownUp,
   Check,
-  CircleUserRound,
   ListTodo,
-  MessageCircleQuestion,
-  Minus,
+  MessageCircleQuestionMark,
+  NotebookPen,
   Plus,
   Sparkles,
-  User,
-  Users,
   XCircle,
-} from "lucide-react";
-import type { MessageKey } from "@/lib/i18n";
+} from "@ds/desktop/icons";
+import {
+  Loader,
+  Sidebar,
+  type MenuSidebarEntry,
+  type SidebarAgentRow,
+} from "@ds/desktop";
 import { useT } from "@/lib/i18n/useLanguage";
+import { AppGround } from "../AppGround";
 import { FeatureLegend, LegendTile } from "./FeatureLegend";
 
 /**
- * The visual under the `Agents` row: the desktop app's left sidebar, redrawn, with four
- * agents on it — two at work, one asking a question, one done.
+ * The visual under the `Agents` row: the desktop app's left sidebar, with four agents on
+ * it — two at work, one asking a question, one done.
+ *
+ * IT IS THE APP'S OWN `Sidebar`, imported from `@ds/desktop`. This file used to REDRAW
+ * it: 394 lines, band for band, every padding copied out of `Sidebar.tsx` with a comment
+ * saying which line it came from — and it had fallen behind anyway. It showed a `Team`
+ * row with ⌘T, a page the app replaced with `Plans` long enough ago that the shortcut
+ * table in the app carries a note explaining why the letters no longer match the order.
+ * A drawing that IS the component cannot fall behind it, which is the whole argument for
+ * having moved the column into the design system.
+ *
+ * SO WHAT IS LEFT HERE IS THE PHOTOGRAPHY: the plate, the crop, the magnification, the
+ * fixture the column is handed, and the legend underneath. Not one app class.
+ *
+ * `AppGround` is what makes it possible. The app runs its colours off `--c-*` variables
+ * and this site has one light palette; that component writes a theme's variables onto
+ * one element and paints the app's own window colour under them, so `bg-surface-sunken`
+ * inside resolves here exactly as it does in Electron. The old hand-drawing substituted
+ * `bg-black/30` for the column and `yellow` for the app's `orange`, because neither was
+ * available to it. Both are now the real values.
  *
  * THE SIDEBAR AND NOTHING ELSE. Sixty pixels of dark ground stand for the rest of the
  * window and the frame cuts even those: this is a ZOOM, and a half-drawn terminal beside
  * a faithful sidebar would invite the reader to compare it with the real thing and find
  * it wanting. What is drawn is drawn properly; what is not is not drawn at all.
  *
- * DRAWN FROM `desktop/src/renderer/components/Sidebar.tsx`, band for band, at its own
- * declared 230px:
+ * THE USAGE CARD AND THE VERSION LINE ARE ABSENT rather than merely cropped: no `footer`
+ * and no `version` is passed, and the column draws neither. They are its FOOTER — an
+ * account's two rate limits and a build number — and this drawing is about the list
+ * above them. Left in and cropped, they would have pushed that list up and out of the
+ * frame to say nothing.
  *
- *   1. THE TOP ACTIONS, `px-2 pt-3` with `gap-1`: Tasks, Team, Skills and the account
- *      row, each a `w-full flex items-center gap-2 px-2 py-2 text-xs font-medium
- *      rounded-lg` with a `w-3.5` glyph and its shortcut pushed right at `opacity-50`.
- *   2. THE AGENTS HEADER, `pl-2 pt-3 pb-2` — padding on the LEFT only, which is what puts
- *      the label on the same 16px line as the buttons above and the rows below while
- *      leaving the `+` flush against the right edge. The label is `text-xs
- *      text-text-secondary/50 uppercase tracking-wider`, then the sort control, then the
- *      button that adds to the list, in that order: the one that CHANGES the list reads
- *      before the one that adds to it.
- *   3. THE ATTENTION BANNER, which is a COUNT and not a group — the agents it counts stay
- *      exactly where they are in the list, and it hides itself at zero so a calm list
- *      stays calm. One agent is waiting here, so it reads 1.
- *   4. THE AGENT ROWS, `px-2 py-2 text-xs rounded-lg` in a `gap-1` column. The active one
- *      wears its own state's tint (`stateBgColors`) with full-strength ink; the rest are
- *      secondary text.
- * THE USAGE CARD AND THE VERSION LINE ARE NOT HERE, and they are absent from the markup
- * rather than merely below the crop. They are the sidebar's FOOTER — an account's two
- * rate limits and a build number — and this drawing is about the list above them. Left in
- * and cropped, they would have pushed that list up and out of the frame to say nothing.
- *
- * THE STATE GLYPHS ARE THE APP'S, AND SO IS THEIR MOTION. `AgentStateBadge` draws waving
- * bars at work, a question bubble when it needs an answer, a check when done, a cross on
- * error — and deliberately NOTHING when idle, so a quiet list stays quiet. The two
- * animations are lifted keyframe for keyframe into `tailwind.config.ts`: the wave's three
- * bars 0.15s apart, and the question bubble ARRIVING rather than gesturing, because that
- * state is the agent asking you something and not the agent being slow.
- *
- * IN DARK, the same trade the other two app reproductions on this page make: the app runs
- * its theme off CSS variables and every theme it ships is dark, while this webapp has one
- * light palette. `bg-ink` plus the declared white-alpha ramp stands in, and the app's
- * `text-orange` — which this palette does not have — becomes `yellow`, the nearest
- * declared warm tone. Everything else is shared.
- *
- * `aria-hidden`, and the whole panel: it is a drawing, and a button that cannot be
- * pressed should be announced to nobody.
+ * `aria-hidden` AND `inert`, on the plate. The first is what it always was: a drawing,
+ * announced to nobody. The second is new and is the price of drawing the real thing —
+ * the column's rows are real `<button>`s, and eight controls nobody can see have no
+ * business in the tab order.
  */
 
-/** The app's own sidebar width, and the reason it is not resizable: the agent list is a
- *  column of short labels with a known shape, so there was nothing for a drag handle to
- *  reveal. */
-const SIDEBAR_WIDTH = 230;
-
-/** A top action, in the geometry every one of them shares. */
-function Action({
-  icon: Icon,
-  label,
-  shortcut,
-}: {
-  icon: typeof ListTodo;
-  label: string;
-  shortcut: string;
-}) {
-  return (
-    <div className="flex w-full items-center justify-start gap-2 rounded-lg px-2 py-2 text-xs font-medium text-appink">
-      <Icon className="h-3.5 w-3.5" />
-      <span className="truncate">{label}</span>
-      <span className="ml-auto text-xs opacity-50">{shortcut}</span>
-    </div>
-  );
-}
-
-/**
- * `WaveLoader`: three parallel bars, the middle one tallest, with a wave travelling
- * across them. Colourless on purpose — the bars are `currentColor`, so whatever wraps it
- * decides, which in the sidebar is the agent's own state colour.
- *
- * The stagger is an `animation-delay` per bar rather than three keyframes, exactly as the
- * app does it. `motion-reduce:animate-none` freezes them at their resting heights.
- */
-function WaveLoader() {
-  return (
-    <span className="flex h-4 w-4 shrink-0 items-center justify-center gap-[2px]">
-      {[0, 0.15, 0.3].map((delay, index) => (
-        <span
-          key={delay}
-          className="w-[2px] animate-wave-bar rounded-[1px] bg-current motion-reduce:animate-none"
-          style={{ height: index === 1 ? 13 : 6, animationDelay: `${delay}s` }}
-        />
-      ))}
-    </span>
-  );
-}
+/** Nothing happens when any of this is pressed. The column cannot tell the difference,
+ *  which is what it means for it to be dumb. */
+const noop = () => undefined;
 
 /**
  * The four states an agent can be in, and what each one is drawn as.
  *
- * `idle` is the fifth and has no glyph at all — see the note above — so it is absent
- * here as it is absent from the app's own badge.
+ * `idle` is the fifth and has no glyph at all — a sidebar that puts a mark beside every
+ * agent makes the ones actually doing something invisible — so it is absent here as it
+ * is absent from the app's own row.
  *
- * `orange` IS THE ONE SUBSTITUTION: the app tints `waiting` in a token this palette does
- * not declare, so it takes `yellow`, the nearest warm tone that is declared. Inventing an
- * orange for one drawing is the unfindable value the config exists to prevent.
+ * THE MARKS ARE THE APP'S. `Agent` draws its own inside the list above; these are the
+ * same glyphs at the same size for the legend, which sits outside the app's ground and
+ * cannot borrow them from a row. `orange` is the app's real token now that the palette
+ * declares it with a fallback — the old drawing substituted `yellow` and the legend then
+ * disagreed with the list it was explaining.
  */
 export const AGENT_STATES = [
   {
     id: "working",
-    /** `text-accent` in the app, and `accent` is shared. */
     tone: "text-accent",
     tint: "bg-accent/20",
     name: "site.agentsCard.working",
@@ -134,8 +86,8 @@ export const AGENT_STATES = [
   },
   {
     id: "waiting",
-    tone: "text-yellow",
-    tint: "bg-yellow/20",
+    tone: "text-orange",
+    tint: "bg-orange/20",
     name: "site.agentsCard.waiting",
     description: "site.agentsCard.waitingDesc",
   },
@@ -157,15 +109,14 @@ export const AGENT_STATES = [
 
 type AgentStateId = (typeof AGENT_STATES)[number]["id"];
 
-/** The glyph for a state, drawn at the size the sidebar badge uses. */
+/** The glyph for a state, at the size the row's badge uses. `Loader` is the app's own
+ *  wave — three bars in `currentColor`, so the tile it sits on decides the hue. */
 export function AgentStateGlyph({ state }: { state: AgentStateId }) {
   switch (state) {
     case "working":
-      return <WaveLoader />;
+      return <Loader />;
     case "waiting":
-      return (
-        <MessageCircleQuestion className="h-4 w-4 animate-ask-arrive motion-reduce:animate-none" />
-      );
+      return <MessageCircleQuestionMark className="h-4 w-4" />;
     case "completed":
       return <Check className="h-4 w-4" />;
     case "error":
@@ -182,32 +133,12 @@ export function AgentStateGlyph({ state }: { state: AgentStateId }) {
  * own state's colour rather than a neutral highlight, which is what makes a list of a
  * dozen readable at a glance.
  */
-const AGENTS: readonly {
-  name: string;
-  state: AgentStateId;
-  active?: boolean;
-}[] = [
-  { name: "PAY-318 · invoice VAT", state: "working", active: true },
-  { name: "#409 · rate limits", state: "working" },
-  { name: "PAY-311 · card change", state: "waiting" },
-  { name: "#404 · empty basket", state: "completed" },
+const AGENTS: SidebarAgentRow[] = [
+  { id: "1", name: "PAY-318 · invoice VAT", state: "working", active: true },
+  { id: "2", name: "#409 · rate limits", state: "working" },
+  { id: "3", name: "PAY-311 · card change", state: "waiting" },
+  { id: "4", name: "#404 · empty basket", state: "completed" },
 ];
-
-/** The tint an active row wears, keyed by state — `stateBgColors`, verbatim. */
-const STATE_TINT: Record<AgentStateId, string> = {
-  working: "bg-accent/20",
-  waiting: "bg-yellow/20",
-  completed: "bg-green/20",
-  error: "bg-red/20",
-};
-
-/** The colour a state's glyph is drawn in — `stateColors`, with the one substitution. */
-const STATE_TONE: Record<AgentStateId, string> = {
-  working: "text-accent",
-  waiting: "text-yellow",
-  completed: "text-green",
-  error: "text-red",
-};
 
 /**
  * `legend` — the box of definitions under the drawing. On by default, which is what
@@ -216,6 +147,20 @@ const STATE_TONE: Record<AgentStateId, string> = {
  */
 export function AgentsSidebarMockup({ legend = true }: { legend?: boolean } = {}) {
   const { t } = useT();
+
+  /** The app's four rows, in the app's order — and the shortcuts deliberately do NOT
+   *  follow it: ⌘T opens the first and ⌘J the second. The letters were bound before
+   *  Plans took Team's place, and they are what people's hands know. */
+  const menu: MenuSidebarEntry[] = [
+    { id: "plans", icon: NotebookPen, label: t("site.agentsCard.plans"), shortcut: "⌘T", onClick: noop },
+    { id: "tasks", icon: ListTodo, label: t("site.agentsCard.tasks"), shortcut: "⌘J", onClick: noop },
+    { id: "skills", icon: Sparkles, label: t("site.agentsCard.skills"), shortcut: "⌘;", onClick: noop },
+    // The account row. Signed in, it is the person's own name and it opens Settings —
+    // which is why it carries ⌘, rather than a label saying so. No photo, so the
+    // column draws the bare glyph, exactly as the app does for anyone who never
+    // uploads one.
+    { id: "account", avatar: { src: null, alt: "" }, label: "camille", shortcut: "⌘,", onClick: noop },
+  ];
 
   return (
     <div className="flex flex-col">
@@ -231,135 +176,73 @@ export function AgentsSidebarMockup({ legend = true }: { legend?: boolean } = {}
           height of its unscaled self and overflow it in silence. */}
       <div
         aria-hidden
+        // `inert` is a boolean HTML attribute, so its PRESENCE is what counts — and it
+        // has to reach the DOM as a STRING: React 18 does not know the attribute, and
+        // given `true` it warns and drops it instead of writing it. The types disagree
+        // (they declare it boolean, which is React 19's behaviour), hence the double
+        // cast. `components/ui.tsx` does the same for its closed panels.
+        {...({ inert: "" } as unknown as React.HTMLAttributes<HTMLDivElement>)}
         className="h-[405px] overflow-hidden rounded-2xl bg-tone-sky pl-8 sm:h-[560px] sm:pl-20"
       >
         {/* THE ZOOM, and what makes it one rather than a small picture of a window.
-            
+
             The sidebar is drawn at the app's own 230px — every padding, every type size,
-            every gap is the source's number, and none of them may be nudged for the sake
-            of this page. So the magnification is a `scale` on the whole thing rather than
-            a set of larger values: the proportions survive it exactly, and what changes
-            is only how close the reader is standing.
-            
-            THE OFFSET IS THE TOP CROP, and it is spelled in FINAL pixels rather than the
-            window's own: a transform is visual only, so a margin on this element moves it
-            by what it says, and 334 of these is 152 of the window's — which is exactly
-            the height of the four top actions above the agent list. They are drawn, and
-            then they are pushed out of frame, because this drawing is about the agents
-            and a nav is not one.
-            
+            every gap is the component's own number, and none of them can be nudged for
+            the sake of this page even if someone wanted to. So the magnification is a
+            `scale` on the whole thing rather than a set of larger values: the proportions
+            survive it exactly, and what changes is only how close the reader is standing.
+
             `origin-top-left`, so the growth pushes into the two edges on that side rather
             than off the left one — and the left is where the sidebar's own margin is, the
             one part of it that says it is a panel and not a page. */}
         <div className="w-[406px] origin-top-left scale-[1.6] sm:scale-[2.2]">
-          {/* THE OFFSET IS THE TOP CROP, and it is INSIDE the scaled element on purpose:
-              228 is a number in the window's own pixels, so it means the same slice of
-              the sidebar at either magnification. Spelled outside, it would have been a
-              final-pixel count that cut a different band on a phone than on a desktop.
-              
-              It lands part-way through the top actions, so the frame opens on a row
-              that is visibly cut rather than on a tidy edge — which is the difference
-              between a crop and a picture that happens to start there. The plate's own
-              height does the same thing at the bottom, through the fourth agent. */}
-          {/* `min-h` in the window's own pixels, and it is not decoration: with the
-              usage card gone the sidebar column ends after the last agent, so the app
-              was shorter than the frame at the narrow scale and the plate showed under
-              it. A window that stops inside its own crop is a window with a bottom edge,
-              which is the one thing this composition must not have. */}
-          {/* `shadow-edge`, and only its LEFT side is ever seen: the window is cut by
-              the frame on the other three, so the one edge with a boundary to sell is
-              the app against the plate's blue band. It is a rung of its own precisely
-              because the other four cast DOWNWARD and resolve to nothing on a vertical
-              edge — see the note beside it in `tailwind.config.ts`.
-              
-              The scale takes the shadow with it, which is right rather than a side
-              effect: a magnified screenshot whose shadow stayed at 1× would read as a
-              sticker on the page instead of an object photographed close up. */}
-          <div
-            className="flex min-h-[600px] bg-ink shadow-edge"
-            style={{ marginTop: -228 }}
-          >
-            {/* ── THE SIDEBAR ──────────────────────────────────────────────────── */}
-            <div
-              className="flex shrink-0 flex-col bg-black/30"
-              style={{ width: SIDEBAR_WIDTH }}
-            >
-              <div className="flex flex-col gap-1 px-2 pt-3">
-                <Action
-                  icon={ListTodo}
-                  label={t("site.agentsCard.tasks")}
-                  shortcut="⌘J"
-                />
-                <Action
-                  icon={Users}
-                  label={t("site.agentsCard.team")}
-                  shortcut="⌘T"
-                />
-                <Action
-                  icon={Sparkles}
-                  label={t("site.agentsCard.skills")}
-                  shortcut="⌘;"
-                />
-                {/* The account row. Signed in, it is the person's own name and it opens
-                  Settings — which is why it carries ⌘, rather than a label saying so. */}
-                <Action icon={CircleUserRound} label="camille" shortcut="⌘," />
-              </div>
+          {/* THE TOP CROP, in the window's OWN pixels, so it means the same slice of the
+              sidebar at either magnification. Spelled outside the scaled element it would
+              have been a final-pixel count that cut a different band on a phone than on a
+              desktop.
 
-              <div className="flex flex-1 flex-col px-2 pb-2">
-                {/* The AGENTS header: `pl-2` only, so the label lines up with everything
-                  above it and the `+` stays flush right. */}
-                <div className="flex items-center gap-1 pb-2 pl-2 pt-3">
-                  <div className="mr-auto text-xs uppercase tracking-wider text-appink/50">
-                    {t("site.agentsCard.agents")}
-                  </div>
-                  <span className="p-1.5 text-appink-icon">
-                    <ArrowDownUp className="h-4 w-4" />
-                  </span>
-                  <span className="p-1.5 text-appink-icon">
-                    <Plus className="h-4 w-4" />
-                  </span>
-                </div>
+              228 lands part-way through the menu, so the frame opens on a row that is
+              visibly cut rather than on a tidy edge — which is the difference between a
+              crop and a picture that happens to start there. The plate's own height does
+              the same thing at the bottom, through the fourth agent. */}
+          <div style={{ marginTop: -228 }}>
+            {/* `min-h` in the window's own pixels, and it is not decoration: with the
+                usage card gone the column ends after the last agent, so the app was
+                shorter than the frame at the narrow scale and the plate showed under it.
+                A window that stops inside its own crop is a window with a bottom edge,
+                which is the one thing this composition must not have.
 
-                {/* A COUNT, NOT A GROUP. One agent is waiting, so it reads 1 — and the
-                  row it counts stays exactly where it is in the list below. */}
-                <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-yellow">
-                  <AlertTriangle className="h-3 w-3 shrink-0" />
-                  <span className="truncate">
-                    {t("site.agentsCard.attention")}
-                  </span>
-                  <span className="ml-auto">1</span>
-                </div>
+                `shadow-edge`, and only its LEFT side is ever seen: the window is cut by
+                the frame on the other three, so the one edge with a boundary to sell is
+                the app against the plate's blue band. The scale takes the shadow with it,
+                which is right rather than a side effect: a magnified screenshot whose
+                shadow stayed at 1× would read as a sticker on the page instead of an
+                object photographed close up. */}
+            <AppGround className="flex min-h-[600px] shadow-edge">
+              <Sidebar
+                menu={menu}
+                lists={[
+                  {
+                    id: "agents",
+                    label: t("site.agentsCard.agents"),
+                    // The one that CHANGES the list reads before the one that ADDS to
+                    // it, and both act on the list under them.
+                    actions: [
+                      { id: "sort", icon: ArrowDownUp, title: t("site.agentsCard.sort"), onClick: noop },
+                      { id: "new", icon: Plus, title: t("site.agentsCard.newAgent"), onClick: noop },
+                    ],
+                    // A COUNT, NOT A GROUP. One agent is waiting, so it reads 1 — and the
+                    // row it counts stays exactly where it is in the list below.
+                    attention: { label: t("site.agentsCard.attention"), count: 1 },
+                    agents: AGENTS,
+                  },
+                ]}
+              />
 
-                <div className="mt-1 flex flex-col gap-1">
-                  {AGENTS.map((agent) => (
-                    <div
-                      key={agent.name}
-                      className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-xs ${
-                        agent.active
-                          ? `${STATE_TINT[agent.state]} text-white`
-                          : "text-appink"
-                      }`}
-                    >
-                      <div className="min-w-0 flex-1 text-left">
-                        <div className="truncate font-medium">{agent.name}</div>
-                      </div>
-                      <span
-                        className={`flex items-center ${STATE_TONE[agent.state]}`}
-                      >
-                        <AgentStateGlyph state={agent.state} />
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* ── EVERYTHING ELSE, OUT OF FRAME ────────────────────────────
-                  The rest of the window is a dark ground and nothing more, and most of
-                  even that is cut by the right edge. Drawing a terminal here would
-                  invite the reader to compare it with the real one and find it wanting;
-                  what is drawn is drawn properly, and the rest is out of frame. */}
-            <div className="min-w-0 flex-1" />
+              {/* EVERYTHING ELSE, OUT OF FRAME. The rest of the window is a dark ground
+                  and nothing more, and most of even that is cut by the right edge. */}
+              <div className="min-w-0 flex-1" />
+            </AppGround>
           </div>
         </div>
       </div>
@@ -370,11 +253,7 @@ export function AgentsSidebarMockup({ legend = true }: { legend?: boolean } = {}
           glance, and a paragraph naming four icons is a paragraph nobody maps back onto
           them. `FeatureLegend` is the shape — one closed box rather than four cards,
           because an agent is in one of these states or it is idle, and idle draws
-          nothing.
-
-          The marks are the app's OWN badges, animation and all, on a tile in each
-          state's own tint, so the reader can match one to the list above without looking
-          twice. */}
+          nothing. */}
       {legend ? (
         <FeatureLegend
           items={AGENT_STATES.map((state) => ({

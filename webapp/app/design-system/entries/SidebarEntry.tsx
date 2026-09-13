@@ -21,7 +21,7 @@ const MENU: MenuSidebarEntry[] = [
   { id: 'plans', icon: NotebookPen, label: 'Plans', shortcut: '⌘T', onClick: noop },
   { id: 'tasks', icon: ListTodo, label: 'Tasks', shortcut: '⌘J', onClick: noop },
   { id: 'skills', icon: Sparkles, label: 'Skills', shortcut: '⌘;', onClick: noop },
-  { id: 'account', avatar: { src: null, alt: '' }, label: 'Xavier', shortcut: '⌘,', onClick: noop },
+  { id: 'account', avatar: { src: null, alt: '' }, label: 'Camille', shortcut: '⌘,', onClick: noop },
 ]
 
 /** The two controls on the AGENTS header: the one that CHANGES the list, then the one
@@ -53,7 +53,7 @@ function Foot() {
   const [collapsed, setCollapsed] = useState(false)
   return (
     <UsageClaudeCodeCard
-      account="xavier@poppins.io"
+      account="camille@acme.dev"
       limits={[
         { id: 'session', label: 'Session', shortLabel: '5h', percent: 38, reset: '2h14' },
         { id: 'weekly', label: 'Weekly', shortLabel: '7d', percent: 71, reset: '3d' },
