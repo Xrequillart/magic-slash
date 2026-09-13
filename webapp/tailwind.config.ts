@@ -1656,45 +1656,17 @@ const config: Config = {
         // that answers you is the one you pressed FOR, so it wants to arrive; going back is
         // an undo and can take its time. The owner liked the off exactly as it was, so only
         // the on moved.
-        'switch-knob': {
-          // `cubic-bezier(.32,1.4,.55,1)` overshoots slightly on arrival, which is the
-          // difference between a knob that slides and one that is thrown. Declared INSIDE
-          // the keyframe, as `timeline-run` does: a function on the shorthand would apply
-          // to every segment, including the two long rests where there is nothing to ease.
-          '0%, 16%': { transform: 'translateX(0)', animationTimingFunction: 'cubic-bezier(.32,1.4,.55,1)' },
-          '19%, 60%': { transform: 'translateX(3rem)', animationTimingFunction: 'cubic-bezier(.32,1.4,.55,1)' },
-          '65%, 100%': { transform: 'translateX(0)' },
-        },
-        // 3rem IS NOT A GUESS: the track is `w-28` (112px) with `p-2` (8px a side), so its
-        // inside measures 96px and the knob is `h-12 w-12`. 96 − 48 = 48 = 3rem. The three
-        // numbers have to agree, which is why they are written out here as well as at the
-        // call site.
-        'switch-track': {
-          // OFF is ink at 12% — the switch's own off state on a light ground, not a grey
-          // token, because it has to sit on the card's gradient without picking a fight
-          // with it. ON is `brand`, the same blue the primary button is filled with.
-          //
-          // THE SAME BEATS AS THE KNOB, to the percent. A track still turning after the
-          // knob has arrived is a switch with a lag in it.
-          '0%, 16%': { backgroundColor: 'rgba(10, 10, 10, 0.12)' },
-          '19%, 60%': { backgroundColor: BRAND },
-          '65%, 100%': { backgroundColor: 'rgba(10, 10, 10, 0.12)' },
-        },
-        // The pointer: it ARRIVES from the card's lower right, presses, backs off a little
-        // while the switch answers, comes back to press again, then leaves the way it came.
-        // It does NOT travel with the knob — a cursor that follows the thing it just
-        // switched is a DRAG, which is not how a switch is operated — so the two presses
-        // land on the same spot and the knob moves under a hand that stays put.
+        // `switch-knob` AND `switch-track` WERE HERE, and they went when the card that
+        // used them started drawing the real component. `MakeItYoursArt` renders
+        // `Switch` from `design-system/desktop/` now, so the knob's travel and the
+        // track's two colours are the component's business — and the 3rem translate
+        // that had to be kept in agreement with a `w-28` track by hand, with nothing
+        // to catch it when the two disagreed, is gone with them.
         //
-        // IT MOVED FOR ONE ROUND ONLY WITH THE PRESS, a dip in place, and the owner asked
-        // for it to move ("tu peux le faire bouger le cursor"). The travel is in glyph
-        // widths (`4.5em`-ish at the size the card draws it) so it scales with the arrow.
-        //
-        // THE PRESS HAS TO BEGIN BEFORE THE KNOB MOVES, or the cursor is reacting to the
-        // switch instead of causing it. It goes down at 14% and the knob leaves at 16%;
-        // down at 59% and the knob leaves at 60%. Two percent is ~96ms, which is about the
-        // gap between a real click landing and a real switch answering it. The two glides
-        // (4%→11%, 46%→56%) are what `ease-in-out` on the shorthand shapes.
+        // `switch-cursor` STAYS: the pointer is the card's own drawing and has nothing
+        // to do with the control it presses. Its beats are still the contract between
+        // the two — it goes down at 14% and at 59%, and the card flips `checked` at
+        // 16% and 60% from a timer reading the same 4.8s cycle.
         'switch-cursor': {
           '0%, 4%': { transform: 'translate(140%, 120%) scale(1)', opacity: '0' },
           '6%': { opacity: '1' },
@@ -2002,8 +1974,6 @@ const config: Config = {
         // main". Worth recording because it was not a bug: it worked, and a card that
         // repaints itself twice every five seconds is simply louder than a grid of five
         // wants. The switch is the thing that moves; the card holds still around it.
-        'switch-knob': 'switch-knob 4.8s linear infinite',
-        'switch-track': 'switch-track 4.8s linear infinite',
         'switch-cursor': 'switch-cursor 4.8s ease-in-out infinite',
         // The secrets table's two rows: one 7s loop, no delay on either, the order in
         // the keyframes.

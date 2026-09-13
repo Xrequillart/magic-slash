@@ -1,8 +1,12 @@
 'use client'
 
+import { type HTMLAttributes, useEffect, useState } from 'react'
 import { ChevronDown, ChevronsUp, ListTodo, RefreshCw, Search, X } from 'lucide-react'
+import { Switch } from '@ds/desktop'
 import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
+import { isStill } from '@/lib/stillness'
+import { AppGround } from '../AppGround'
 import { GithubMark } from '../features/TasksModalMockup'
 import { JiraMark } from '../features/TicketCardMockup'
 import { Pointer } from '../Pointer'
@@ -384,8 +388,7 @@ function Keycap({ children }: { children: React.ReactNode }) {
  * taller, so a three-row sheet left this card as a headline over a strip of nothing.
  *
  * SEVEN IS ALSO THE HONEST NUMBER. These are every chord in the app that MOVES you — a new
- * agent, the next, the previous, the split, the two sidebars, and closing one — which is
- * what the card's title claims since the owner renamed it from "Keyboard shortcuts" to
+ * agent, the next, the previous, the split, the two sidebars, and closing one —  * what the card's title claims since the owner renamed it from "Keyboard shortcuts" to
  * "Keyboard navigation". ⌘D (duplicate an agent) is the one the app has that is not here,
  * because duplicating is not navigating; the Settings pane lists all eight.
  *
@@ -559,12 +562,34 @@ export function MacNativeArt() {
 /**
  * One big switch, clicking itself on and off, with the pointer pressing it.
  *
- * THE PRODUCT OWNER'S REFERENCE, cursor kept — "garde le cursor juste change le wording" —
- * and then animated at their request: "peux-tu animer le switch avec une animation de
- * click". The still version read as a screenshot of a settings row; the click is what
- * turns it into the card's actual claim, which is that these things are yours to move.
+ * IT IS THE COMPONENT NOW, not a drawing of one. `Switch` comes from
+ * `design-system/desktop/`, the same file the Electron renderer compiles, on a patch of
+ * the app's own light theme (`AppGround`). This is `UsageCardMockup`'s move and it was
+ * made here for the same reason and at the product owner's asking — "j'aimerai qu'on
+ * utilise ce composant dans l'animation. comme ça si je change de design". Change the
+ * switch and this card changes with it.
  *
- * NO PANEL, and that is the decision. A switch inside a settings row would be a drawing of
+ * WHAT THAT REPLACED: a track and a knob built by hand out of `w-28 h-16 p-2` and
+ * `h-12 w-12`, with their own colours and their own idea of the knob's shape. It was a
+ * faithful drawing of the switch as it stood, and the switch has since grown a pill knob
+ * and three sizes that the drawing knew nothing about. A drawing that IS the component
+ * cannot fall behind one.
+ *
+ * `size="lg"` AT 2× IS THE OLD FOOTPRINT TO THE PIXEL. The component's largest rung is
+ * 56×32 and the hand-built track was 112×64, so `scale-2` lands exactly where the card
+ * already was — the drawing is the same size on the page as it was before, and nothing
+ * in the band's rhythm moved. The scale is a MAGNIFICATION and not a size: this is a
+ * settings control shown at four times life, which is why it is right to take the real
+ * component's proportions up wholesale rather than to ask it for a bigger rung.
+ *
+ * THE APP'S OWN COLOURS, at the owner's choosing: `AppGround` in the `light` theme hands
+ * the component `--c-accent` (#4F46E5) for the on track, ink at 20% for the off one and
+ * white for the knob. The card used to paint the track `brand` (#393BFF), the primary
+ * button's blue, and the two are close enough that the band did not move — but they are
+ * not the same decision. This one says "here is the control the app ships"; the old one
+ * said "here is a switch in our blue", and the first is what the card is claiming.
+ *
+ * NO PANEL, and that is unchanged. A switch inside a settings row would be a drawing of
  * the Settings PANE, and the app has eleven tabs of those — picking one to photograph
  * would say "this preference" where the card says "your preferences". A switch with
  * nothing around it is the preference as an idea.
@@ -577,56 +602,100 @@ export function MacNativeArt() {
  * broken — a card that repaints itself twice every five seconds is simply louder than a
  * grid of five wants, and this drawing already has something moving in it.
  *
- * THE ANIMATION IS THREE DECLARED KEYFRAMES AND NO JAVASCRIPT — `switch-knob`,
- * `switch-track` and `switch-cursor` in `tailwind.config.ts`, sharing one 4.8s cycle and
- * one set of beats. A CSS loop has no mount cost, nothing to clean up on unmount, and it
- * keeps its phase while the tab is backgrounded; the same call every animated drawing on
- * this site makes.
+ * THE KNOB AND THE TRACK ARE NO LONGER KEYFRAMES. `switch-knob` and `switch-track` are
+ * gone from `tailwind.config.ts` along with the 3rem translate that had to be kept in
+ * agreement with the track's width by hand — the component owns both now, and moving a
+ * rung can no longer leave a keyframe lying about the geometry. `switch-cursor` STAYS:
+ * the pointer is the card's own and has nothing to do with the control.
  *
- * THE ON IS FASTER THAN THE OFF, deliberately and at the owner's prompting — "l'animation
- * de l'activation est trop lente". What was actually wrong was not the duration but the
- * easing: a timing function declared inside a keyframe governs the segment that STARTS
- * there, so the overshoot curve sat on the wrong keyframe and only the move OFF had any
- * snap. It is fixed where the keyframes are, and the two moves are now asymmetric on
- * purpose: ~145ms on, ~240ms off.
+ * WHICH COSTS A TIMER, and it is the one thing this move gives up. The old loop was
+ * three declared keyframes and no JavaScript; a React component's state cannot be driven
+ * by a CSS animation, so `checked` is flipped on the same two beats the keyframes used —
+ * 16% and 60% of one 4.8s turn — by the `requestAnimationFrame` loop every other
+ * JS-driven drawing on this site runs. It reads the clock modulo the cycle rather than
+ * counting ticks, so it cannot drift out of step with the cursor beside it, and
+ * `isStill()` is what keeps it off phones, tablets and reduced-motion.
  *
- * THREE ELEMENTS MOVE SEPARATELY AND ARE ONE GESTURE, which is the thing to keep true when
- * touching any end of it: the knob travels `3rem`, which is this track's `w-28` minus two
- * `p-2` insets minus the knob's own `w-12`. Change the track's width here and the
- * keyframe's translate is wrong, with nothing to catch it.
+ * THE ON IS NO LONGER FASTER THAN THE OFF. The two moves were asymmetric here — ~145ms
+ * on, ~240ms off — and the component eases both at 200ms. What survived the move is the
+ * part that was actually doing the work: the overshoot curve, which is in
+ * `design-system/desktop/Switch.tsx` now and which the app's own sixteen switches wear
+ * too. The asymmetry was a second answer to the same complaint and did not need to come.
  *
- * THE ARROW IS AN INLINE SVG because macOS's pointer is a specific silhouette — a black
- * arrow with a white keyline, which is what keeps it legible on any ground — and no icon
- * set ships it.
- *
- * THE ARROW IS THE SITE'S SHARED `Pointer` now, with the preset `drop-shadow` utility (no
+ * THE ARROW IS THE SITE'S SHARED `Pointer`, with the preset `drop-shadow` utility (no
  * bracketed value, so `lib/designTokens.test.ts` has nothing to refuse). It was a
  * hand-traced path with a second copy of itself for a shadow; the owner asked for the
  * workflow page's cursor on every drawing, and that is where the two paths went.
  */
+
+/** One turn of the loop, and the two beats in it where the switch answers the pointer.
+ *  The percentages are `switch-cursor`'s own — it presses at 14% and at 59%, and a
+ *  control that moved on the press rather than just after it would be a control causing
+ *  the cursor instead of the other way round. */
+const SWITCH_CYCLE_MS = 4800
+const SWITCH_ON_AT_MS = 768 // 16%
+const SWITCH_OFF_AT_MS = 2880 // 60%
+
+/** Nothing is listening: the beat is the drawing's, not the reader's. */
+const noop = () => undefined
+
 export function MakeItYoursArt() {
+  const { t } = useT()
+  const [on, setOn] = useState(false)
+
+  useEffect(() => {
+    if (isStill()) return
+
+    const start = performance.now()
+    let frame = 0
+    const tick = () => {
+      const elapsed = (performance.now() - start) % SWITCH_CYCLE_MS
+      // Read off the clock rather than counted: a loop that toggled on a timer would
+      // drift against the cursor's CSS animation over a few hundred turns, and the
+      // press landing on a switch that has already moved is the one thing this
+      // drawing cannot afford.
+      setOn(elapsed >= SWITCH_ON_AT_MS && elapsed < SWITCH_OFF_AT_MS)
+      frame = window.requestAnimationFrame(tick)
+    }
+    frame = window.requestAnimationFrame(tick)
+    return () => window.cancelAnimationFrame(frame)
+  }, [])
+
   return (
     <div aria-hidden className="relative flex h-44 items-center justify-center">
-      {/* THE TRACK, at ~4× the size of a real switch. Its colour is the ANIMATION's, not a
-          class: `switch-track` holds ink-at-12% for the off beats and `brand` for the on
-          ones. The `bg-ink/10` below is only what renders before the first frame and for
-          anyone the animation never reaches, which is why it is the OFF value: a browser
-          that plays nothing shows a switch at rest rather than one stuck mid-flick. */}
-      <div className="relative flex h-16 w-28 animate-switch-track items-center rounded-full bg-ink/10 p-2 shadow-lift">
-        {/* `h-12 w-12` against the track's `h-16` and `p-2` — 64 less two 8px insets is
-            exactly 48, so the knob fills the track's height rather than floating in it.
-            Written as the numbers that add up rather than as an arbitrary one: a knob that
-            does not touch top and bottom reads as a dot on a pill.
+      {/* `paint={false}`: the theme's variables are all a real component needs from this,
+          and the window colour under them would be a dark rectangle on a card whose whole
+          ground is the `sky` tone. `light` and not the app's default `dark`, because the
+          card is a light surface and `bg-ink/20` on a dark theme is white at 20% — which
+          on this ground is a track you cannot see.
 
-            NO `ml-auto`. The knob is at the LEFT and the keyframe moves it, so the two
-            cannot disagree — pinned right, a translate would have taken it off the end. */}
-        <div className="h-12 w-12 animate-switch-knob rounded-full bg-white shadow-button" />
-      </div>
+          `inert` beside the card's `aria-hidden`: the switch is a real `<button>`, and a
+          control nobody can see has no business in the tab order. It has to reach the DOM
+          as a STRING — React 18 does not know the attribute and drops a boolean with a
+          warning — which is the cast `AgentsSidebarMockup` and `components/ui.tsx` make. */}
+      <AppGround
+        theme="light"
+        paint={false}
+        className="inline-flex scale-[2] rounded-full shadow-lift"
+      >
+        <div {...({ inert: '' } as unknown as HTMLAttributes<HTMLDivElement>)}>
+          {/* `noop`, because nothing is listening: the beat is the drawing's, not the
+              reader's. The label is still required and still right — it names what the
+              control would be if this were a settings page. */}
+          <Switch
+            size="lg"
+            checked={on}
+            onChange={noop}
+            label={t('site.builtFor.yoursTitle')}
+          />
+        </div>
+      </AppGround>
 
       {/* THE POINTER, over the track's right half — where a thumb lands on a switch that
           is about to go on. It does NOT travel with the knob: a cursor following the thing
           it just switched is a DRAG, and a switch is not dragged. `left`/`top` in
-          percentages of the wrapper so it holds its place at every card width. */}
+          percentages of the wrapper so it holds its place at every card width, which is
+          also what keeps it clear of the switch's own `scale-[2]`. */}
       <div className="pointer-events-none absolute left-[52%] top-[52%] animate-switch-cursor">
         {/* THE SITE'S ONE CURSOR (`components/site/Pointer.tsx`), at the size the switch
             wants; the keyframe on the wrapper is what presses it. It was a hand-traced path
