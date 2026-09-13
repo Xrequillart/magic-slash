@@ -21,6 +21,7 @@ import { ProgressBarEntry } from './entries/ProgressBarEntry'
 import { SelectIconEntry } from './entries/SelectIconEntry'
 import { StatusEntry } from './entries/StatusEntry'
 import { TextEntry } from './entries/TextEntry'
+import { UsageClaudeCodeCardEntry } from './entries/UsageClaudeCodeCardEntry'
 import { ENTRY_LABELS, ENTRY_NOTES, FAMILIES, FOUNDATION_PAGES, type EntryId } from './entries/ids'
 
 /**
@@ -65,6 +66,7 @@ const ENTRIES: Record<
   contextagentcard: ContextAgentCardEntry,
   headerrepocard: HeaderRepoCardEntry,
   menusidebar: MenuSidebarEntry,
+  usageclaudecodecard: UsageClaudeCodeCardEntry,
   menusidebaritem: MenuSidebarItemEntry,
   avatar: AvatarEntry,
   label: LabelEntry,

@@ -21,16 +21,24 @@ import type { ReactNode } from 'react'
 /**
  * How much air the card puts around its content.
  *
- * `regular` is the one to use. The other two exist because the sidebar genuinely has
- * them: a minimised card is one line, where `p-4` would undo the point of minimising,
- * and a panel whose body SCROLLS cannot have padding on the outside — the scrollbar
- * would sit inside it and the first row would be clipped before it reached the top.
+ * `regular` is the one to use. The other three exist because the sidebars genuinely
+ * have them: a minimised card is one line, where `p-4` would undo the point of
+ * minimising; a panel whose body SCROLLS cannot have padding on the outside — the
+ * scrollbar would sit inside it and the first row would be clipped before it reached
+ * the top; and `tight` is the LEFT sidebar, which is a different column altogether.
+ *
+ * THE LEFT SIDEBAR IS 228px WHERE THE RIGHT IS 320. `compact`'s 16px of side padding
+ * is 14% of the narrow column's width before anything is drawn in it, and the card
+ * that lives there holds two progress bars that need every pixel they can get. It is
+ * a rung and not a `className`, for the reason the note below gives: a second spelling
+ * of the padding wins or loses on the order Tailwind emitted the two.
  */
-export type CardPadding = 'regular' | 'compact' | 'none'
+export type CardPadding = 'regular' | 'compact' | 'tight' | 'none'
 
 const PADDING: Record<CardPadding, string> = {
   regular: 'p-4',
   compact: 'px-4 py-2',
+  tight: 'px-2 py-1.5',
   none: '',
 }
 
