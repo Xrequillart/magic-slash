@@ -188,6 +188,8 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.desktop.subtitle':
     'Magic Slash s’en souvient pour vous. Les tâches à prendre s’affichent dans l’app, chaque agent vous dit s’il a besoin de vous, et vous passez de l’un à l’autre sans perdre le fil.',
   'site.desktop.archiveAgent': 'Archiver l’agent',
+  'site.desktop.toggleAgents': 'Afficher ou masquer les agents',
+  'site.desktop.toggleInfo': 'Afficher ou masquer le panneau de l’agent',
   /** Les quatre atouts sous la fenêtre. « Worktree » reste tel quel, comme dans le
       sous-titre au-dessus et dans toute l’application. */
   'site.desktop.highlightParallel': 'Douze agents en parallèle',

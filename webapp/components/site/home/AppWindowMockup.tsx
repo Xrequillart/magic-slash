@@ -1,7 +1,6 @@
 'use client'
 
 import {
-  Archive,
   ArrowRight,
   ChevronDown,
   Clock,
@@ -19,7 +18,7 @@ import {
 // they are handed to a component on the far side of the alias, which types them against
 // the copy `design-system/package.json` owns. See that folder's README, rule 1.
 import { ArrowDownUp, ListTodo, NotebookPen, Plus, Sparkles } from '@ds/desktop/icons'
-import { Sidebar, UsageClaudeCodeCard, type SidebarAgentRow } from '@ds/desktop'
+import { AppTitleBar, Sidebar, UsageClaudeCodeCard, type SidebarAgentRow } from '@ds/desktop'
 import { useT } from '@/lib/i18n/useLanguage'
 import { InfoSidebarPanel } from '../features/InfoSidebarMockup'
 import { AppGround } from '../AppGround'
@@ -85,7 +84,7 @@ const noop = () => undefined
  * ScriptsDropdown.tsx:161).
  *
  * EVERYTHING ELSE SETS NO WEIGHT IN THE APP, so it sets none here: the titlebar's agent
- * title and its Archive pill (TitleBar.tsx:195, :231), the AGENTS label
+ * title and its Archive pill (`AppTitleBar.tsx`), the AGENTS label
  * (Sidebar.tsx:326), the version line (Sidebar.tsx:429), the usage card's own labels and
  * reset countdowns (SidebarUsageCard.tsx:40-44), the file and commit rows
  * (RepositoryCard.tsx:207, :237), the ticket description (AgentIdentityFields.tsx:114),
@@ -95,22 +94,24 @@ const noop = () => undefined
  *
  * ── WHAT IS REPRODUCED, BAND BY BAND ──────────────────────────────────────────────
  *
- *   1. THE TITLEBAR — `desktop/src/renderer/components/TitleBar.tsx`. `h-10 px-3` on the
- *      sunken ground, with a `w-16` spacer holding the 64px gutter macOS's traffic lights
- *      occupy (TitleBar.tsx:120-124), then the left-sidebar toggle as a `p-[5px]
- *      rounded-full bg-surface` pill carrying `LeftSidebarOpenIcon` — the inline SVG at
- *      TitleBar.tsx:11-19, path for path. The centre is BARE TEXT at `text-sm
- *      text-text-secondary` (TitleBar.tsx:195-199) and it is the AGENT'S TITLE, not a
- *      ticket id: there is no status dot, no eyebrow and no window title. On the right,
- *      the Archive pill that closes the agent (TitleBar.tsx:239-250) and the
- *      right-sidebar toggle, `RightSidebarOpenIcon` being the same SVG rotated 180°.
+ *   1. THE TITLEBAR — and this one is not a reproduction any more either. It IS the
+ *      app's `AppTitleBar`, imported from `@ds/desktop`, handed the state the rest of
+ *      this window shows: both panels out, one agent, its title in the middle and the
+ *      Archive pill that closes it. The 64px gutter, the two toggles and every padding
+ *      come from the component.
+ *
+ *      IT HAD ALREADY DRIFTED, which is the argument for the swap in one line. The two
+ *      sidebar toggles were custom vectors copied out of `TitleBar.tsx` path for path —
+ *      a panel with three rules down one edge — and the app now draws lucide's
+ *      `PanelLeftOpen`/`PanelLeftClose` pair instead. A copy cannot follow a change it
+ *      is not told about.
  *
  *      THE THREE LIGHTS ARE DRAWN HERE AND ARE NOT IN THE APP, which is the one place
  *      this window has to add something rather than copy it: macOS draws them, so the
  *      app's markup only leaves the 64px hole. A web page has no native chrome to fill
  *      it, and an empty notch top-left reads as a rendering fault. So the lights are
  *      drawn INSIDE that gutter at their real geometry — 12px discs on a 20px pitch from
- *      x=16 — and the app's own spacer keeps every other element exactly where it is.
+ *      x=16 — and the component's own spacer keeps every other element where it is.
  *
  *   2. THE LEFT SIDEBAR — and this one is not a reproduction any more. It IS the app's
  *      `Sidebar`, imported from `@ds/desktop`, handed a fixture: the menu, five agents,
@@ -176,10 +177,11 @@ const noop = () => undefined
  * between the sidebar and the terminal is the first thing a person drawing this from
  * memory adds, and the app has never had one.
  *
- * NO SPLIT-VIEW TOGGLE and no coder/planner switcher in the titlebar: both are
- * conditional (TitleBar.tsx:106, :210) and neither is showing for a single coding agent
- * on a window this wide. NO PANE CHIP on the agents header — it stays mounted at
- * `opacity-0` outside split mode, so it is invisible in the state drawn here.
+ * NO SPLIT-VIEW TOGGLE in the titlebar: it is conditional in the app and is not showing
+ * for a single coding agent on a window this wide, so `AppTitleBar` is handed no switch
+ * at all. (There was a coder/planner switch beside it once; the product removed it.)
+ * NO PANE CHIP on the agents header — it stays mounted at `opacity-0` outside split
+ * mode, so it is invisible in the state drawn here.
  *
  * NO PR CARD on the repository card: the agent has opened no pull request yet, which is
  * what `in progress` means, and `PRWatchCard.tsx` renders nothing without one. NO
@@ -368,42 +370,6 @@ const WELCOME = {
  */
 const COMPOSER_HINT = 'Try "round the VAT once, on the invoice total"'
 
-/* ── The two inline SVGs from `TitleBar.tsx` ─────────────────────────────────────── */
-
-/**
- * `LeftSidebarOpenIcon`, TitleBar.tsx:11-19 — the four paths verbatim. A custom vector and
- * not a lucide glyph, which is why it is copied rather than imported: nothing in
- * `lucide-react` draws a panel with three rules down its left edge.
- */
-function LeftSidebarOpenIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M9 21V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M7 21V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M5 21V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-/**
- * `RightSidebarOpenIcon`, TitleBar.tsx:31-39 — the same four paths under the same 180°
- * rotation the app applies as an inline style, so the three rules land on the right edge.
- */
-function RightSidebarOpenIcon() {
-  return (
-    <span className="flex rotate-180">
-      <LeftSidebarOpenIcon />
-    </span>
-  )
-}
-
 /**
  * The three macOS window buttons, at their real geometry inside the app's own 64px gutter:
  * 12px discs on a 20px pitch, the first at x=16, vertically centred in the 40px bar.
@@ -473,38 +439,30 @@ export function AppWindowMockup() {
       style={{ width: WINDOW.width, height: WINDOW.height }}
     >
       {/* ── 1. THE TITLEBAR ──────────────────────────────────────────────────────── */}
-      <div className="relative flex h-10 shrink-0 select-none items-center justify-between bg-black/30 px-3">
+      {/* THE APP'S OWN `AppTitleBar`, like the sidebar below it. This band was a redrawing
+          too — the `w-16` gutter, two `p-[5px]` pills and the sidebar glyphs copied out of
+          `TitleBar.tsx` path for path — and it drifted the moment those glyphs became
+          lucide's `PanelLeft*` pair. The component draws all of it now, on the same
+          `bg-surface-sunken` the column under it resolves.
+
+          `relative` ON THE GROUND AND NOT ON THE BAR: the three lights are absolutely
+          positioned and belong to this drawing rather than to the app, so they need a
+          positioned ancestor that is on THIS side of the alias. */}
+      <AppGround paint={false} className="relative shrink-0">
         <TrafficLights />
-
-        <div className="flex items-center gap-2">
-          {/* The app's own gutter for the traffic lights (TitleBar.tsx:124). The lights
-              above are absolute, so this spacer is the only thing deciding where the
-              toggle beside it lands — as it is in the app. */}
-          <div className="w-16 shrink-0" />
-          <span className="flex items-center gap-1">
-            <span className="rounded-full bg-white/[0.06] p-[5px] text-white">
-              <LeftSidebarOpenIcon />
-            </span>
-          </span>
-        </div>
-
-        {/* BARE TEXT, absolutely positioned and capped at 36% so it stays clear of the
-            controls on both sides. No status dot, no eyebrow, no window title: it is the
-            active agent's own title and nothing else. */}
-        <div className="absolute left-1/2 max-w-[36%] -translate-x-1/2 truncate text-sm">
-          <span className="text-appink">{AGENT_TITLE}</span>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <span className="flex items-center gap-1.5 rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] text-appink">
-            <Archive className="h-3.5 w-3.5 shrink-0" />
-            {t('site.desktop.archiveAgent')}
-          </span>
-          <span className="rounded-full bg-white/[0.06] p-[5px] text-white">
-            <RightSidebarOpenIcon />
-          </span>
-        </div>
-      </div>
+        <AppTitleBar
+          // Both panels are out, which is what the rest of the window shows.
+          left={{ open: true, title: t('site.desktop.toggleAgents'), onToggle: noop }}
+          titles={[{ id: 'active', label: AGENT_TITLE }]}
+          action={{
+            label: t('site.desktop.archiveAgent'),
+            title: t('site.desktop.archiveAgent'),
+            onClick: noop,
+          }}
+          right={{ open: true, title: t('site.desktop.toggleInfo'), onToggle: noop }}
+          // NO SWITCH — see WHAT IS NOT DRAWN at the top of this file.
+        />
+      </AppGround>
 
       <div className="flex min-h-0 flex-1">
         {/* ── 2. THE LEFT SIDEBAR ────────────────────────────────────────────────── */}

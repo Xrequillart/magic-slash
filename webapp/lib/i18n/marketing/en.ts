@@ -492,6 +492,15 @@ export const marketingEn = {
    */
   'site.desktop.archiveAgent': 'Archive the agent',
   /**
+   * The two panel toggles' tooltips, `titlebar.toggleAgentsList` and `titlebar.info` in
+   * the app's own catalogues. They exist because `ButtonIcon` will not draw a control
+   * that has no name: the mark is the whole label, so the tooltip IS the accessible
+   * name. The window is `aria-hidden`, so nothing reads these out — they are here so a
+   * drawing cannot be the one call site that gets to skip the rule.
+   */
+  'site.desktop.toggleAgents': 'Show or hide the agents',
+  'site.desktop.toggleInfo': 'Show or hide the agent panel',
+  /**
    * THE FOUR HIGHLIGHTS under the window, and every one of them is a fact this site
    * already states somewhere else — see the note on `HIGHLIGHTS` in `DesktopHero.tsx`
    * for where each comes from. Four words or so each, because they are set on two lines
