@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.94.3] - 2026-09-13
+
+### Added
+
+- **Desktop**: Eleven more components moved into the shared `design-system/` folder — the whole left sidebar, the agent row, the sidebar menu, the status pill and its picker, the branch card, the repository card header, the scripts menu, the Claude usage card, the agent identity card, the editable title and the loader
+- **Landing**: The design system page is served in production
+
+### Changed
+
+- **Landing**: The sidebar, the ticket cards and the limits gauge are the real components instead of hand-drawn reproductions, so they cannot fall behind the app again
+- **Desktop**: `ButtonIcon` takes a size, and the app's action chips use it; `Label` gains a middle rung on its scale
+
+### Fixed
+
+- **Desktop**: The status wrapper fits its own pill
+
 ## [0.94.2] - 2026-09-13
 
 ### Added
@@ -2837,6 +2853,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.94.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.3
 [0.94.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.2
 [0.94.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.1
 [0.94.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.0
