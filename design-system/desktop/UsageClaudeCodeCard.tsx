@@ -65,6 +65,15 @@ export interface UsageClaudeCodeCardProps {
   thresholds?: ProgressThresholds
   collapsed?: boolean
   onToggle: () => void
+  /**
+   * Whether the bars EASE between readings. On by default, and off for one reason: the
+   * caller is already animating the percentages itself.
+   *
+   * The marketing site's illustration is that caller. `ProgressBar`'s own note has the
+   * measurement — a value that moves every frame restarts the ease on every one of
+   * them, and the bar crawls behind the number it is supposed to be showing.
+   */
+  transition?: boolean
   /** The one control's tooltip, in each direction. Translated. */
   expandLabel: string
   collapseLabel: string
@@ -82,6 +91,7 @@ export function UsageClaudeCodeCard({
   thresholds,
   collapsed = false,
   onToggle,
+  transition = true,
   expandLabel,
   collapseLabel,
   emptyLabel,
@@ -97,7 +107,7 @@ export function UsageClaudeCodeCard({
           {hasLimits ? (
             <div className="flex items-center gap-2 flex-1 min-w-0">
               {limits.map((limit) => (
-                <MiniBar key={limit.id} limit={limit} thresholds={thresholds} />
+                <MiniBar key={limit.id} limit={limit} thresholds={thresholds} transition={transition} />
               ))}
             </div>
           ) : (
@@ -120,7 +130,7 @@ export function UsageClaudeCodeCard({
           {hasLimits ? (
             <div className="space-y-2">
               {limits.map((limit) => (
-                <FullBar key={limit.id} limit={limit} thresholds={thresholds} />
+                <FullBar key={limit.id} limit={limit} thresholds={thresholds} transition={transition} />
               ))}
             </div>
           ) : (
@@ -134,6 +144,12 @@ export function UsageClaudeCodeCard({
   )
 }
 
+interface Bar {
+  limit: UsageLimit
+  thresholds?: ProgressThresholds
+  transition?: boolean
+}
+
 /**
  * One limit on the collapsed line: "session ▬▬ 89%".
  *
@@ -145,7 +161,7 @@ export function UsageClaudeCodeCard({
  * 11px, one step under the open card's 12 — three of these share the row the open
  * card gives to one.
  */
-function MiniBar({ limit, thresholds }: { limit: UsageLimit; thresholds?: ProgressThresholds }) {
+function MiniBar({ limit, thresholds, transition }: Bar) {
   const pct = clamp(limit.percent)
   const tone = progressTone(pct, thresholds)
   return (
@@ -156,6 +172,7 @@ function MiniBar({ limit, thresholds }: { limit: UsageLimit; thresholds?: Progre
         thresholds={thresholds}
         size="xs"
         label={limit.shortLabel}
+        transition={transition}
         className="flex-1 min-w-[8px]"
       />
       <span className={`shrink-0 text-[11px] font-semibold ${PROGRESS_TEXT[tone]}`}>
@@ -173,7 +190,7 @@ function MiniBar({ limit, thresholds }: { limit: UsageLimit; thresholds?: Progre
  * below the two figures it qualifies, at 11px — it is context for the percentage, not
  * a third reading.
  */
-function FullBar({ limit, thresholds }: { limit: UsageLimit; thresholds?: ProgressThresholds }) {
+function FullBar({ limit, thresholds, transition }: Bar) {
   const pct = clamp(limit.percent)
   const tone = progressTone(pct, thresholds)
   return (
@@ -190,7 +207,7 @@ function FullBar({ limit, thresholds }: { limit: UsageLimit; thresholds?: Progre
           <span className={`font-semibold ${PROGRESS_TEXT[tone]}`}>{Math.round(pct)}%</span>
         </span>
       </div>
-      <ProgressBar value={pct} thresholds={thresholds} label={limit.label} />
+      <ProgressBar value={pct} thresholds={thresholds} label={limit.label} transition={transition} />
     </div>
   )
 }
