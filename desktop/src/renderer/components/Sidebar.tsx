@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback, memo, Fragment } from 'react'
+import { useEffect, useCallback, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, Sparkles, NotebookPen, ListTodo, AlertTriangle, FolderGit2 } from '@ds/desktop/icons'
-import { Agent, ButtonIcon, MenuSidebar } from '@ds/desktop'
+import { Plus, Sparkles, NotebookPen, ListTodo } from '@ds/desktop/icons'
+import { Sidebar as SidebarColumn, type SidebarAgentRow, type SidebarList } from '@ds/desktop'
 import { useStore, type ModalId } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos } from '../hooks/useOrderedTerminals'
 import { groupKeyOf, isGroupStart, repoLabel } from '../hooks/terminalOrder'
-import { AgentSortButton } from './AgentSortButton'
+import { useAgentSortAction } from './AgentSort'
 import { SidebarUsageCard } from './SidebarUsageCard'
 import { SidebarUpdateButton } from './SidebarUpdateButton'
 import { useAccountMenuEntry } from './SidebarAccount'
@@ -14,21 +14,32 @@ import { LoginScreen } from './LoginScreen'
 import { useT } from '../i18n'
 
 /**
- * Fixed, and deliberately not resizable. The agent list is a column of short labels
- * with a known shape, so there was nothing for a drag handle to reveal — while the
- * width it produced was one more piece of layout state to keep consistent with the
- * right sidebar, which now sizes itself from the kind of agent being inspected.
+ * The left column, WIRED — and nothing else.
+ *
+ * Not one class string in this file. The column, the menu, the agent rows, the group
+ * headings, the drop zones, the foot and the version line are `Sidebar` in
+ * `@ds/desktop`, which knows none of this app: what is left here is the half that is
+ * genuinely the app's — the store, the translator, the keyboard, and what a drop means.
+ *
+ * IT WAS 472 LINES and most of them were drawing. The same drawing existed a second
+ * time on the public site (`AgentsSidebarMockup`), copied band for band with a comment
+ * saying where each padding came from, and it had already fallen behind — it still
+ * shows the `Team` row this app replaced with `Plans`. Both now render the one
+ * component.
+ *
+ * THE APP'S BUILD, spelled here because this is the app. The version the column draws
+ * is a literal that moves at release, not a value fetched from anywhere.
  */
-const SIDEBAR_WIDTH = 230
+const APP_VERSION = 'v0.94.2'
 
 /**
  * The ⌘/Ctrl shortcuts that open a page overlay, keyed by `KeyboardEvent.key`.
  *
- * KEYED BY LETTER, NOT BY POSITION, and the two deliberately disagree: the buttons below
- * read Plans, Tasks, Skills, while ⌘T opens the first of them and ⌘J the second. The
+ * KEYED BY LETTER, NOT BY POSITION, and the two deliberately disagree: the menu below
+ * reads Plans, Tasks, Skills, while ⌘T opens the first of them and ⌘J the second. The
  * letters were bound before Plans took Team's place and are what people's hands know —
  * rebinding them to follow a reordered column would break every reader's muscle memory
- * to make a table look tidy. Moving a button changes the reading order and nothing else.
+ * to make a table look tidy. Moving a row changes the reading order and nothing else.
  *
  * ⌘J for Tasks rather than ⌘T: T was already spoken for when Tasks arrived, and every
  * other initial the page could claim (b, /, ;, ,, p, n, i, d) is bound elsewhere in the
@@ -43,144 +54,16 @@ const PAGE_SHORTCUTS: Record<string, ModalId> = {
   t: 'plans',
 }
 
-/**
- * How many agents are stuck on the person: waiting on an answer, or dead on an
- * error. A count, NOT a group — the agents it counts stay exactly where they
- * are in the list, and the banner hides itself at zero so a calm list stays calm.
- */
-const AttentionBanner = memo(function AttentionBanner({ terminals }: { terminals: TerminalWithRepos[] }) {
-  const t = useT()
-  const count = terminals.filter(t => t.state === 'waiting' || t.state === 'error').length
-
-  if (count === 0) return null
-
-  return (
-    <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-orange">
-      <AlertTriangle className="w-3 h-3 flex-shrink-0" />
-      <span className="truncate">{t('sidebar.needsAttention')}</span>
-      <span className="ml-auto">{count}</span>
-    </div>
-  )
-})
-
-interface AgentItemProps {
-  terminal: TerminalWithRepos
-  isActive: boolean
-  isSplitTarget: boolean
-  onSelect: (e: React.MouseEvent) => void
-  now: number
-  draggable?: boolean
+/** How many agents on a list are stuck on the person: waiting on an answer, or dead
+ *  on an error. The column hides the banner at zero, so this is only ever a count. */
+function attentionCount(terminals: TerminalWithRepos[]): number {
+  return terminals.filter((terminal) => terminal.state === 'waiting' || terminal.state === 'error').length
 }
-
-const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, onSelect, now: _now, draggable }: AgentItemProps) {
-  // `isActive || isSplitTarget` is the app's own question — which pane a row is bound
-  // to — and `Agent` only needs the answer. It carried a `group/agent` class for a
-  // hover nothing ever claimed: no `group-hover/agent` existed anywhere in the app.
-  return (
-    <Agent
-      name={terminal.metadata?.title || terminal.name}
-      state={terminal.state}
-      active={isActive || isSplitTarget}
-      onClick={onSelect}
-      draggable={draggable}
-      onDragStart={(e) => {
-        e.dataTransfer.setData('terminal-id', terminal.id)
-        e.dataTransfer.effectAllowed = 'move'
-      }}
-    />
-  )
-})
-
-// The agent list, in whatever order `useOrderedTerminals` handed it: newest first by
-// default, so a row stays exactly where the user last saw it, and grouped by status or
-// by repository when they have asked for that instead.
-//
-// In `repository` mode it interleaves group headers between the rows. The ARRAY stays
-// flat — that is `flatVisualOrder`, the keyboard-nav order — and only the rendering
-// gains the headers.
-interface AgentListProps {
-  terminals: TerminalWithRepos[]
-  activeTerminalId: string | null
-  splitTerminalId: string | null
-  isSplitMode: boolean
-  onSelectTerminal: (id: string, e: React.MouseEvent) => void
-  now: number
-  draggable?: boolean
-  showRepoHeaders: boolean
-  colorMap: Record<string, string>
-}
-
-const AgentList = memo(function AgentList({
-  terminals,
-  activeTerminalId,
-  splitTerminalId,
-  isSplitMode,
-  onSelectTerminal,
-  now,
-  draggable,
-  showRepoHeaders,
-  colorMap,
-}: AgentListProps) {
-  const t = useT()
-
-  if (terminals.length === 0) return null
-
-  return (
-    <div className="flex flex-col gap-1">
-      {terminals.map((terminal, index) => {
-        const groupKey = groupKeyOf(terminal)
-        // Group starts are read from THIS list, never from one global pass: each split
-        // pane gets its own filtered array, and a shared pass would leave the right
-        // pane opening mid-group with no header above it.
-        const opensGroup = showRepoHeaders && isGroupStart(terminals, index)
-
-        return (
-          <Fragment key={terminal.id}>
-            {/* The repo's icon, bare and tinted rather than in its backdrop: the
-                sidebar is 230px wide (SIDEBAR_WIDTH), so a filled w-6 h-6 tile
-                would outweigh both the agent rows under it and the AGENTS header
-                above, and eat width the repo name needs to stay readable. The
-                colour still comes across — it is the same one Settings and the
-                agent chips use for this repo.
-                A <div>, never a <button>, and with no tabIndex: these headers are
-                decoration. They stay out of `flatVisualOrder`, so ⌘↑/⌘↓ visit
-                exactly the agents they visited before.
-                The last group has no repo, so `colorMap['']` is undefined and the icon
-                inherits the header's muted colour. That is the intent, not an oversight:
-                there is no repository to be the colour of. */}
-            {opensGroup && (
-              <div className="flex items-center gap-2 px-2 pt-2 pb-1 text-xs text-text-secondary/50 tracking-wider">
-                <FolderGit2 className="w-3 h-3 flex-shrink-0" style={{ color: colorMap[groupKey] }} />
-                <span className="truncate">{groupKey ? repoLabel(groupKey) : t('sidebar.group.noRepository')}</span>
-              </div>
-            )}
-            <AgentItem
-              terminal={terminal}
-              isActive={activeTerminalId === terminal.id}
-              isSplitTarget={isSplitMode && splitTerminalId === terminal.id}
-              onSelect={(e) => onSelectTerminal(terminal.id, e)}
-              now={now}
-              draggable={draggable}
-            />
-          </Fragment>
-        )
-      })}
-    </div>
-  )
-})
 
 export function Sidebar() {
   const { terminals, activeTerminalId, config, leftSidebarVisible, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, moveTerminalToPane, rightPaneTerminalIds, openModal, closeModal, openSettingsModal } = useStore()
   const { setActiveTerminal } = useTerminals()
   const t = useT()
-
-  const [now, setNow] = useState(Date.now())
-
-  // Refresh `now` every 60s to update relative timestamps
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 60_000)
-    return () => clearInterval(interval)
-  }, [])
 
   // Agents in the order the person picked from the header control — newest first
   // unless they said otherwise (see hooks/terminalOrder.ts).
@@ -188,14 +71,13 @@ export function Sidebar() {
   const { leftTerminals, rightTerminals, colorMap: splitColorMap } = useSplitOrderedTerminals()
 
   // Compared against the sort the ordering resolved, not against raw `config.agentSort`:
-  // one value with the default already applied, so the headers cannot describe a grouping
-  // the list is not in. `useSplitOrderedTerminals` resolves the same value from the same
-  // store field, so one flag is right for all three branches.
+  // one value with the default already applied, so the headings cannot describe a
+  // grouping the list is not in. `useSplitOrderedTerminals` resolves the same value from
+  // the same store field, so one flag is right for all three branches.
   const showRepoHeaders = sort === 'repository'
 
   // Drag & drop state for split zones
   const [dragOverZone, setDragOverZone] = useState<'left' | 'right' | null>(null)
-
 
   const handleSelectTerminal = useCallback((id: string, e?: React.MouseEvent) => {
     closeModal()
@@ -255,6 +137,11 @@ export function Sidebar() {
     setDragOverZone(pane)
   }, [])
 
+  const handleAgentDragStart = useCallback((id: string, e: React.DragEvent) => {
+    e.dataTransfer.setData('terminal-id', id)
+    e.dataTransfer.effectAllowed = 'move'
+  }, [])
+
   // Detect platform for keyboard shortcut display
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const shortcutKey = isMac ? '⌘N' : 'Ctrl+N'
@@ -265,13 +152,16 @@ export function Sidebar() {
 
   // After the table above, because it is handed the accelerator it displays.
   const { entry: accountEntry, login } = useAccountMenuEntry({ shortcutKey: settingsShortcutKey })
+  // The sort control, as one action on the AGENTS header plus the panel it opens. A
+  // hook for the same reason the account row is one: the column draws its own controls.
+  const { action: sortAction, panel: sortPanel } = useAgentSortAction()
 
   // One listener for every page shortcut, not one per page: ⌘; / ⌘J / ⌘T all do the
   // same thing to a different modal, and a fourth copy of the same nine lines is a
   // table asking to be written. ⌘, stays out of the map — Settings has its own
   // action, the one that can preselect a tab.
   //
-  // Which letter opens which page, and why they do not follow the column below, is on
+  // Which letter opens which page, and why they do not follow the menu below, is on
   // PAGE_SHORTCUTS.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -303,170 +193,152 @@ export function Sidebar() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [openModal, openSettingsModal])
 
-  return (
-    <div
-      className="bg-surface-sunken flex flex-col h-full relative z-10 transition-all duration-300 ease-in-out"
-      style={{ width: `${SIDEBAR_WIDTH}px`, marginLeft: leftSidebarVisible ? 0 : -SIDEBAR_WIDTH }}
-    >
-      {/* THE MENU. The order is the order the work happens in: you plan something,
-          then you pick it up, and Skills is the reference material for doing so —
-          putting the reference list above either view of live work would be filing the
-          manual in front of the job. The account is last and is the one row that
-          changes shape, which is why it arrives as an entry rather than as markup.
+  /**
+   * A terminal, as a row the column can draw — and the repository heading it opens.
+   *
+   * Group starts are read from THE LIST BEING DRAWN, never from one global pass: each
+   * split pane gets its own filtered array, and a shared pass would leave the right
+   * pane opening mid-group with no heading above it.
+   *
+   * The last group has no repository, so `colors['']` is undefined and the glyph
+   * inherits the heading's muted ink. That is the intent, not an oversight: there is
+   * no repository to be the colour of.
+   */
+  const toRows = useCallback((
+    list: TerminalWithRepos[],
+    activeId: string | null,
+    colors: Record<string, string>,
+  ): SidebarAgentRow[] => list.map((terminal, index) => {
+    const groupKey = groupKeyOf(terminal)
+    return {
+      id: terminal.id,
+      name: terminal.metadata?.title || terminal.name,
+      state: terminal.state,
+      active: activeId === terminal.id,
+      heading: showRepoHeaders && isGroupStart(list, index)
+        ? {
+          label: groupKey ? repoLabel(groupKey) : t('sidebar.group.noRepository'),
+          color: colors[groupKey],
+        }
+        : undefined,
+    }
+  }), [showRepoHeaders, t])
 
-          The keyboard shortcuts are keyed by LETTER and deliberately do NOT follow this
-          order — ⌘T opens the first and ⌘J the second (see PAGE_SHORTCUTS) — so moving
-          a row here changes nothing but the reading order. */}
-      <MenuSidebar
-        ariaLabel={t('sidebar.menu.aria')}
-        className="px-2 pt-3"
-        items={[
+  /**
+   * One list, or one per pane.
+   *
+   * TWO ONLY WHEN THERE IS SOMETHING TO SPLIT: with no agents at all the column shows
+   * a single header and the empty line under it, rather than two headers over two
+   * empty drop zones explaining where to put agents that do not exist.
+   *
+   * The pane chip is passed in BOTH cases and hidden in the single one, because it
+   * holds its width open: the `+` sits flush against the right edge, and a chip that
+   * came and went would shunt it sideways every time the window was split.
+   */
+  const lists = useMemo<SidebarList[]>(() => {
+    const splitting = isSplitMode && terminals.length > 0
+    const actions = [sortAction, {
+      id: 'new',
+      icon: Plus,
+      title: t('sidebar.newAgentShortcut', { shortcut: shortcutKey }),
+      // ⌘N (pages/Terminals) and the native File menu (App.tsx) dispatch this very
+      // same event.
+      onClick: () => window.dispatchEvent(new CustomEvent('new-terminal')),
+    }]
+
+    if (!splitting) {
+      return [{
+        id: 'agents',
+        label: t('sidebar.agents'),
+        pane: { label: t('sidebar.paneLeft'), visible: false },
+        actions,
+        attention: { label: t('sidebar.needsAttention'), count: attentionCount(ordered) },
+        agents: toRows(ordered, activeTerminalId, colorMap),
+        onSelectAgent: handleSelectTerminal,
+      }]
+    }
+
+    return [
+      {
+        id: 'left',
+        label: t('sidebar.agents'),
+        pane: { label: t('sidebar.paneLeft') },
+        actions,
+        attention: { label: t('sidebar.needsAttention'), count: attentionCount(leftTerminals) },
+        agents: toRows(leftTerminals, focusedPane === 'primary' ? activeTerminalId : null, splitColorMap),
+        emptyHint: t('sidebar.dropAgents'),
+        onSelectAgent: handleSelectLeftTerminal,
+        draggable: true,
+        onAgentDragStart: handleAgentDragStart,
+        drop: {
+          over: dragOverZone === 'left',
+          onDragOver: (e) => handleDragOverZone('left', e),
+          onDragLeave: () => setDragOverZone(null),
+          onDrop: (e) => handleDropOnZone('left', e),
+        },
+      },
+      {
+        id: 'right',
+        label: t('sidebar.agents'),
+        pane: { label: t('sidebar.paneRight') },
+        attention: { label: t('sidebar.needsAttention'), count: attentionCount(rightTerminals) },
+        agents: toRows(rightTerminals, focusedPane === 'secondary' ? splitTerminalId : null, splitColorMap),
+        // The right zone reports on the PANE and not on its own array: an agent moved
+        // out of it leaves the pane empty, and the hint is how it says so.
+        emptyHint: rightPaneTerminalIds.length === 0 ? t('sidebar.dropAgents') : undefined,
+        onSelectAgent: handleSelectRightTerminal,
+        draggable: true,
+        onAgentDragStart: handleAgentDragStart,
+        drop: {
+          over: dragOverZone === 'right',
+          onDragOver: (e) => handleDragOverZone('right', e),
+          onDragLeave: () => setDragOverZone(null),
+          onDrop: (e) => handleDropOnZone('right', e),
+        },
+      },
+    ]
+  }, [isSplitMode, terminals.length, sortAction, t, shortcutKey, ordered, activeTerminalId, colorMap, toRows, handleSelectTerminal, leftTerminals, rightTerminals, splitColorMap, focusedPane, splitTerminalId, rightPaneTerminalIds.length, dragOverZone, handleSelectLeftTerminal, handleSelectRightTerminal, handleAgentDragStart, handleDragOverZone, handleDropOnZone])
+
+  return (
+    <>
+      <SidebarColumn
+        collapsed={!leftSidebarVisible}
+        menuAriaLabel={t('sidebar.menu.aria')}
+        listsAriaLabel={t('sidebar.agents')}
+        /* THE ORDER IS THE ORDER THE WORK HAPPENS IN: you plan something, then you pick
+           it up, and Skills is the reference material for doing so — putting the
+           reference list above either view of live work would be filing the manual in
+           front of the job. The account is last and is the one row that changes shape,
+           which is why it arrives as an entry rather than as markup. */
+        menu={[
           { id: 'plans', icon: NotebookPen, label: t('sidebar.plans'), shortcut: plansShortcutKey, onClick: () => openModal('plans') },
           { id: 'tasks', icon: ListTodo, label: t('sidebar.tasks'), shortcut: tasksShortcutKey, onClick: () => openModal('tasks') },
           { id: 'skills', icon: Sparkles, label: t('sidebar.skills'), shortcut: skillsShortcutKey, onClick: () => openModal('skills') },
           accountEntry,
         ]}
+        lists={lists}
+        emptyLabel={t('sidebar.empty')}
+        footer={
+          <>
+            {/* Claude usage card — opt-out: shown unless explicitly disabled. */}
+            {config?.usageCardEnabled !== false && <SidebarUsageCard />}
+            {/* Renders itself only when there is an update to act on. Not behind the
+                usage card's setting: hiding usage must not hide the update. */}
+            <SidebarUpdateButton />
+          </>
+        }
+        version={APP_VERSION}
       />
 
-      {/* Portalled to <body> so the fixed overlay covers the whole app. It belongs to
-          the account row but cannot be rendered from inside a list of entries. */}
+      {/* The sort panel, and the login overlay the account row may need. Both are
+          portalled out of the column — one is anchored to a button inside a scrolling
+          <nav> that would clip it, the other is a fixed overlay covering the whole app
+          — and neither can be rendered from inside a list of entries. */}
+      {sortPanel}
       {createPortal(
         <LoginScreen isOpen={login.open} onClose={login.onClose} />,
         document.body,
       )}
-
-      {/* Mode toggle + Agents list */}
-      <nav className="flex-1 overflow-y-auto px-2 pb-2 flex flex-col">
-
-        {/* Agents label - always in the same position.
-            The "new agent" action sits on this list's header, because the button that
-            adds to a list belongs to it. Icon only: at this size a label costs more
-            width than it explains, so the affordance is the +, and the wording moves
-            to title/aria-label — which an icon-only control needs anyway.
-            Padding on the LEFT only: `pl-2` puts the label on the same 16px line as
-            the top action buttons and the agent rows below, which all sit at px-2
-            inside a px-2 container. No `pr`, so the + stays flush against the right
-            edge — which is also why it is LAST in the row, after the pane chip: that
-            chip stays mounted at opacity-0 outside split mode and keeps occupying its
-            width, so ordering the button before it would leave a permanent invisible
-            gutter to its right. `mr-auto` on the label does the spacing a
-            justify-between could not, for the same reason.
-            The sort control sits between the two, i.e. immediately left of the +: both
-            act on the list under them, and the one that CHANGES the list reads before
-            the one that adds to it.
-            The event is unchanged: ⌘N (pages/Terminals) and the native File menu
-            (App.tsx) dispatch this very same 'new-terminal'. */}
-        <div className="pl-2 pt-3 pb-2 flex items-center gap-1">
-          <div className="text-xs text-text-secondary/50 uppercase tracking-wider mr-auto">{t('sidebar.agents')}</div>
-          <span className={`text-[10px] bg-surface px-1.5 py-0.5 rounded transition-opacity duration-150 ${
-            isSplitMode && terminals.length > 0 ? 'text-text-secondary/40 opacity-100' : 'opacity-0'
-          }`}>{t('sidebar.paneLeft')}</span>
-          <AgentSortButton />
-          {/* It was a 28px box at a 4px radius, the last survivor of the shape the
-              right-hand panel has given up: two controls in a header, in a vocabulary
-              nothing else in the app still speaks. */}
-          <ButtonIcon
-            icon={Plus}
-            title={t('sidebar.newAgentShortcut', { shortcut: shortcutKey })}
-            onClick={() => window.dispatchEvent(new CustomEvent('new-terminal'))}
-          />
-        </div>
-
-        {terminals.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center text-text-secondary text-xs p-4 text-center">
-            {t('sidebar.empty')}
-          </div>
-        ) : isSplitMode ? (
-          <>
-            {/* LEFT zone */}
-            <div
-              className={`flex flex-col gap-1 rounded-lg transition-colors ${dragOverZone === 'left' ? 'bg-accent/10' : ''}`}
-              onDragOver={(e) => handleDragOverZone('left', e)}
-              onDragLeave={() => setDragOverZone(null)}
-              onDrop={(e) => handleDropOnZone('left', e)}
-            >
-              <AttentionBanner terminals={leftTerminals} />
-              <AgentList
-                terminals={leftTerminals}
-                activeTerminalId={focusedPane === 'primary' ? activeTerminalId : null}
-                splitTerminalId={null}
-                isSplitMode={false}
-                onSelectTerminal={handleSelectLeftTerminal}
-                now={now}
-                draggable
-                showRepoHeaders={showRepoHeaders}
-                colorMap={splitColorMap}
-              />
-              {leftTerminals.length === 0 && (
-                <div className="text-text-secondary/30 text-xs text-center py-3">
-                  {t('sidebar.dropAgents')}
-                </div>
-              )}
-            </div>
-
-            {/* Divider */}
-            <div className="border-t border-line-subtle mx-2 my-2" />
-
-            {/* RIGHT zone */}
-            <div
-              className={`flex flex-col gap-1 rounded-lg transition-colors ${dragOverZone === 'right' ? 'bg-accent/10' : ''}`}
-              onDragOver={(e) => handleDragOverZone('right', e)}
-              onDragLeave={() => setDragOverZone(null)}
-              onDrop={(e) => handleDropOnZone('right', e)}
-            >
-              <div className="px-2 pt-2 pb-1 flex items-center justify-between">
-                <div className="text-xs text-text-secondary/50 uppercase tracking-wider">{t('sidebar.agents')}</div>
-                <span className="text-[10px] text-text-secondary/40 bg-surface px-1.5 py-0.5 rounded">{t('sidebar.paneRight')}</span>
-              </div>
-              <AttentionBanner terminals={rightTerminals} />
-              <AgentList
-                terminals={rightTerminals}
-                activeTerminalId={focusedPane === 'secondary' ? splitTerminalId : null}
-                splitTerminalId={null}
-                isSplitMode={false}
-                onSelectTerminal={handleSelectRightTerminal}
-                now={now}
-                draggable
-                showRepoHeaders={showRepoHeaders}
-                colorMap={splitColorMap}
-              />
-              {rightPaneTerminalIds.length === 0 && (
-                <div className="text-text-secondary/30 text-xs text-center py-3">
-                  {t('sidebar.dropAgents')}
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <>
-            <AttentionBanner terminals={ordered} />
-            <AgentList
-              terminals={ordered}
-              activeTerminalId={activeTerminalId}
-              splitTerminalId={splitTerminalId}
-              isSplitMode={isSplitMode}
-              onSelectTerminal={handleSelectTerminal}
-              now={now}
-              showRepoHeaders={showRepoHeaders}
-              colorMap={colorMap}
-            />
-          </>
-        )}
-      </nav>
-
-      {/* Claude usage card — opt-out: shown unless explicitly disabled. */}
-      {config?.usageCardEnabled !== false && <SidebarUsageCard />}
-
-      {/* Renders itself only when there is an update to act on. Not behind the
-          usage card's setting: hiding usage must not hide the update. */}
-      <SidebarUpdateButton />
-
-      {/* Footer */}
-      {/* `pt-1`: the usage card above already carries its own `mb-1`, and the pair used
-          to add up to a blank row between the card and the number. */}
-      <div className="px-4 pt-1 pb-2 text-xs text-text-secondary flex items-center justify-start gap-2">
-        <span className="opacity-60">v0.94.2</span>
-      </div>
-    </div>
+    </>
   )
 }

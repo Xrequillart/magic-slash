@@ -28,6 +28,7 @@ export type EntryId =
   | 'usageclaudecodecard'
   | 'titleagentcard'
   | 'menusidebaritem'
+  | 'sidebar'
 
 export const ENTRY_LABELS: Record<EntryId, string> = {
   colors: 'Colours',
@@ -44,6 +45,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   usageclaudecodecard: 'UsageClaudeCodeCard',
   titleagentcard: 'TitleAgentCard',
   menusidebaritem: 'MenuSidebarItem',
+  sidebar: 'Sidebar',
   text: 'Text',
   avatar: 'Avatar',
   label: 'Label',
@@ -111,6 +113,20 @@ export const FAMILIES: Family[] = [
     note: 'A whole region of a page.',
     entries: ['titleagentcard', 'contextagentcard', 'headerrepocard', 'menusidebar', 'usageclaudecodecard'],
   },
+  /**
+   * THE FOURTH TIER EXISTS BECAUSE THE GRAPH SAID SO, the way `Label` moved down when it
+   * grew an avatar. `Sidebar` draws a `MenuSidebar` and is handed a `UsageClaudeCodeCard`
+   * to hang under it, and both of those are tertiary — a component cannot sit in the
+   * same tier as something it is built from.
+   *
+   * It is atomic design's TEMPLATE, one rung past the organism: not a region of a
+   * window but a whole side of one, with the regions arranged in it.
+   */
+  {
+    label: 'Quaternary',
+    note: 'A whole side of the window, regions arranged in it.',
+    entries: ['sidebar'],
+  },
 ]
 
 /** What each entry's row says under its name. */
@@ -128,6 +144,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   usageclaudecodecard: 'What is left of the account',
   titleagentcard: 'Who an agent is, in four facts',
   menusidebaritem: 'One row that takes you somewhere',
+  sidebar: 'The whole left column, and it knows nothing',
   icon: 'Every glyph, five sizes, three tones',
   text: 'Cera Pro, six sizes, four weights',
   avatar: 'A face, or the icon when there is none',

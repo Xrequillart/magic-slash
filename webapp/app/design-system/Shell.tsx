@@ -20,6 +20,7 @@ import { MenuSidebarEntry } from './entries/MenuSidebarEntry'
 import { MenuSidebarItemEntry } from './entries/MenuSidebarItemEntry'
 import { ProgressBarEntry } from './entries/ProgressBarEntry'
 import { SelectIconEntry } from './entries/SelectIconEntry'
+import { SidebarEntry } from './entries/SidebarEntry'
 import { StatusEntry } from './entries/StatusEntry'
 import { TextEntry } from './entries/TextEntry'
 import { TitleAgentCardEntry } from './entries/TitleAgentCardEntry'
@@ -72,6 +73,7 @@ const ENTRIES: Record<
   usageclaudecodecard: UsageClaudeCodeCardEntry,
   titleagentcard: TitleAgentCardEntry,
   menusidebaritem: MenuSidebarItemEntry,
+  sidebar: SidebarEntry,
   avatar: AvatarEntry,
   label: LabelEntry,
   status: StatusEntry,

@@ -38,6 +38,13 @@ export type {
   ProgressTrack,
 } from './ProgressBar'
 export type { LabelProps, LabelSize, LabelTone } from './Label'
+export { Sidebar, SIDEBAR_WIDTH } from './Sidebar'
+export type {
+  SidebarAction,
+  SidebarAgentRow,
+  SidebarList,
+  SidebarProps,
+} from './Sidebar'
 export { SelectIcon } from './SelectIcon'
 export type { SelectIconGroup, SelectIconItem, SelectIconProps, SelectIconTone } from './SelectIcon'
 export { Status, STATUS_TONES } from './Status'

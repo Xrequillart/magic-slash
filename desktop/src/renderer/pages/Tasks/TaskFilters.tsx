@@ -158,7 +158,7 @@ function FilterSelect({
   // the page down to nothing with no way to see why.
   const selected = options.find((option) => option.value === value)
 
-  // Tinted while it is narrowing or reordering, like `AgentSortButton`: a page showing
+  // Tinted while it is narrowing or reordering, like the agent sort control: a page showing
   // a fraction of its rows, or showing them in an order it was not left in, has to say
   // so from the control rather than only from the gap where the other rows were.
   //

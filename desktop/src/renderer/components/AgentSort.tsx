@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Activity, ArrowDownUp, Check, Clock, FolderGit2 } from '@ds/desktop/icons'
-import { ButtonIcon } from '@ds/desktop'
+import type { SidebarAction } from '@ds/desktop'
 import { useAnchoredPanel } from './useAnchoredPanel'
 import { useConfig } from '../hooks/useConfig'
 import { useT } from '../i18n'
@@ -28,10 +28,11 @@ const PANEL_WIDTH = 248
  * How the agent list is ordered, picked from the AGENTS header — immediately left of
  * the button that adds to that list, because both act on the list beside them.
  *
- * The app's action square, like its neighbour — `ACTION_CHIP` at 24px and `rounded-lg`,
- * see `actionChip`. The accent state overrides only the ground and the ink, so a
- * non-default order still reads as the same object in a second colour, the way the
- * scripts chip does when its menu is open.
+ * A HOOK AND NOT A COMPONENT, for the reason `useAccountMenuEntry` is one: `Sidebar`
+ * draws its own header controls, so what this hands over is an ACTION — the icon, the
+ * name, the handler and the tint — rather than a button of its own. The panel comes
+ * back beside it because it cannot be rendered from inside a list of actions; it is
+ * portalled anyway, and `ref` is what ties it back to the button the sidebar drew.
  *
  * Icon only, like its neighbour: at 230px a label costs more width than it explains,
  * so the affordance is the icon and the wording lives in the title/aria-label and in
@@ -42,7 +43,7 @@ const PANEL_WIDTH = 248
  * The choice is written to the cloud config, so it follows the account rather than the
  * window: the same person's other machine opens on the order they left.
  */
-export function AgentSortButton() {
+export function useAgentSortAction(): { action: SidebarAction; panel: React.ReactNode } {
   const t = useT()
   const { config, updateAgentSort } = useConfig()
   const [open, setOpen] = useState(false)
@@ -51,20 +52,19 @@ export function AgentSortButton() {
 
   const current = config?.agentSort ?? DEFAULT_AGENT_SORT
 
-  return (
-    <>
-      {/* Tinted once the order is no longer the default one, so a list that is not in
-          the order it was learned in says so from the header rather than only from its
-          contents. `active` carries the tint AND the `aria-pressed` this never had. */}
-      <ButtonIcon
-        ref={triggerRef}
-        icon={ArrowDownUp}
-        title={t('sidebar.sort.title', { mode: t(SORT_OPTIONS[current].labelKey) })}
-        onClick={() => setOpen((o) => !o)}
-        active={open || current !== DEFAULT_AGENT_SORT}
-      />
-
-      {open && createPortal(
+  return {
+    // Tinted once the order is no longer the default one, so a list that is not in
+    // the order it was learned in says so from the header rather than only from its
+    // contents. `active` carries the tint AND the `aria-pressed` this never had.
+    action: {
+      id: 'sort',
+      ref: triggerRef,
+      icon: ArrowDownUp,
+      title: t('sidebar.sort.title', { mode: t(SORT_OPTIONS[current].labelKey) }),
+      onClick: () => setOpen((o) => !o),
+      active: open || current !== DEFAULT_AGENT_SORT,
+    },
+    panel: open && createPortal(
         <div
           ref={panelRef}
           style={style()}
@@ -98,8 +98,7 @@ export function AgentSortButton() {
             )
           })}
         </div>,
-        document.body,
-      )}
-    </>
-  )
+      document.body,
+    ),
+  }
 }
