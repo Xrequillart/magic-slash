@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { CircleUserRound, Power, RefreshCw, RotateCw } from '@ds/desktop/icons'
-import { AgentStateBadge } from '../../components/AgentStateBadge'
-import { stateHoverBgColors } from '../../utils/stateColors'
+import { Agent } from '@ds/desktop'
 import { displayNameFromEmail } from '../../utils/displayName'
 import { useT, type Translate } from '../../i18n'
 import { QuestionCard } from './QuestionCard'
@@ -80,20 +79,21 @@ function UpdateButton({ version, update, t }: { version: string; update: TrayUpd
   )
 }
 
-/** Same shape as the sidebar's agent item: inset, rounded, hover tinted by state. */
+/**
+ * The SAME row as the sidebar's, which is now literally true rather than a comment
+ * claiming it: both are `Agent`. They were two hand-written copies, and the copies had
+ * already drifted — only this one drew the ticket id, which the component now carries
+ * for whichever list has one.
+ */
 function AgentRow({ agent, t }: { agent: TrayAgent; t: Translate }) {
   return (
-    <button
-      onClick={() => window.electronAPI.tray.focusAgent(agent.id)}
+    <Agent
+      name={agent.title || agent.name}
+      state={agent.state}
+      ticketId={agent.ticketId}
       title={stateLabel(agent.state, t)}
-      className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-xs text-text-secondary transition-all text-left hover:text-ink ${stateHoverBgColors[agent.state]}`}
-    >
-      <span className="flex-1 min-w-0 truncate font-medium">
-        {agent.ticketId && <span className="text-text-secondary/70">{agent.ticketId} </span>}
-        {agent.title || agent.name}
-      </span>
-      <AgentStateBadge state={agent.state} />
-    </button>
+      onClick={() => window.electronAPI.tray.focusAgent(agent.id)}
+    />
   )
 }
 

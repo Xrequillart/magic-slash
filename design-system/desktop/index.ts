@@ -3,6 +3,8 @@
  * from a file inside it — the alias is what keeps the folder free to reorganise.
  */
 export { Banner, BANNER_VARIANTS, BANNER_LAYOUTS } from './Banner'
+export { Agent, AGENT_STATES } from './Agent'
+export type { AgentProps, AgentState } from './Agent'
 export { Avatar } from './Avatar'
 export { ButtonIcon, BUTTON_ICON_SIZES } from './ButtonIcon'
 export type { ButtonIconProps, ButtonIconSize, ButtonIconTone } from './ButtonIcon'

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { DESKTOP_THEMES, DESKTOP_THEME_IDS, type DesktopTheme, type DesktopThemeId } from '@/lib/desktopTheme'
+import { AgentEntry } from './entries/AgentEntry'
 import { AvatarEntry } from './entries/AvatarEntry'
 import { BranchCardEntry } from './entries/BranchCardEntry'
 import { ButtonIconEntry } from './entries/ButtonIconEntry'
@@ -66,6 +67,7 @@ const ENTRIES: Record<
   status: StatusEntry,
   branchcard: BranchCardEntry,
   banner: BannerEntry,
+  agent: AgentEntry,
 }
 
 export function Shell() {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, memo, Fragment } from 'react'
 import { Plus, Sparkles, NotebookPen, ListTodo, AlertTriangle, FolderGit2 } from '@ds/desktop/icons'
-import { ButtonIcon } from '@ds/desktop'
+import { Agent, ButtonIcon } from '@ds/desktop'
 import { useStore, type ModalId } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos } from '../hooks/useOrderedTerminals'
@@ -8,9 +8,7 @@ import { groupKeyOf, isGroupStart, repoLabel } from '../hooks/terminalOrder'
 import { AgentSortButton } from './AgentSortButton'
 import { SidebarUsageCard } from './SidebarUsageCard'
 import { SidebarUpdateButton } from './SidebarUpdateButton'
-import { AgentStateBadge } from './AgentStateBadge'
 import { SidebarAccount } from './SidebarAccount'
-import { stateBgColors, stateHoverBgColors } from '../utils/stateColors'
 import { useT } from '../i18n'
 
 /**
@@ -73,28 +71,21 @@ interface AgentItemProps {
 }
 
 const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, onSelect, now: _now, draggable }: AgentItemProps) {
+  // `isActive || isSplitTarget` is the app's own question — which pane a row is bound
+  // to — and `Agent` only needs the answer. It carried a `group/agent` class for a
+  // hover nothing ever claimed: no `group-hover/agent` existed anywhere in the app.
   return (
-    <button
+    <Agent
+      name={terminal.metadata?.title || terminal.name}
+      state={terminal.state}
+      active={isActive || isSplitTarget}
       onClick={onSelect}
       draggable={draggable}
       onDragStart={(e) => {
         e.dataTransfer.setData('terminal-id', terminal.id)
         e.dataTransfer.effectAllowed = 'move'
       }}
-      className={`
-        w-full flex items-center gap-2 px-2 py-2 text-xs transition-all rounded-lg group/agent
-        ${draggable ? 'cursor-pointer active:cursor-grab' : 'cursor-pointer'}
-        ${isActive || isSplitTarget
-          ? `${stateBgColors[terminal.state]} text-ink`
-          : `text-text-secondary ${stateHoverBgColors[terminal.state]} hover:text-ink`
-        }
-      `}
-    >
-      <div className="flex-1 text-left min-w-0">
-        <div className="truncate font-medium">{terminal.metadata?.title || terminal.name}</div>
-      </div>
-      <AgentStateBadge state={terminal.state} />
-    </button>
+    />
   )
 })
 

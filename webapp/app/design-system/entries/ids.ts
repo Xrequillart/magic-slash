@@ -20,6 +20,7 @@ export type EntryId =
   | 'status'
   | 'branchcard'
   | 'banner'
+  | 'agent'
   | 'contextagentcard'
   | 'headerrepocard'
 
@@ -39,6 +40,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   status: 'Status',
   branchcard: 'BranchCard',
   banner: 'Banner',
+  agent: 'Agent',
 }
 
 /**
@@ -92,7 +94,7 @@ export const FAMILIES: Family[] = [
   {
     label: 'Secondary',
     note: 'Several pieces saying one thing.',
-    entries: ['label', 'status', 'branchcard', 'banner'],
+    entries: ['label', 'status', 'branchcard', 'agent', 'banner'],
   },
   {
     label: 'Tertiary',
@@ -118,4 +120,5 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   status: 'Reports a state, and changes it',
   branchcard: 'Where the work is, and where it goes',
   banner: 'States a fact about a surface',
+  agent: 'What it is called, and what it is doing',
 }
