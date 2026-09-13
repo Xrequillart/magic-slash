@@ -321,7 +321,10 @@ export function InfoSidebarPanel({
           simply where it was noticed. */}
       <div
         data-part="ticket"
-        className={`transition-opacity duration-500 ${focusClass(focus, 'ticket')}`}
+        // `rounded-xl` for the session wrapper's reason: the ring rides on this element
+        // and follows ITS radius, not the card's, so without it the tour drew a square
+        // outline around a rounded card.
+        className={`rounded-xl transition-opacity duration-500 ${focusClass(focus, 'ticket')}`}
       >
         {/* `paint={false}`: the panel around this IS the app's column and has its own
             ground already. What the card needs from here is the VARIABLES — without
