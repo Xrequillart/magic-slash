@@ -13,13 +13,14 @@
  * name would be truncated to nothing to make room for three verbs. The mark says
  * enough: a play triangle, VS Code's ribbon, GitHub's cat.
  *
- * WHAT IS LEFT OF IT. The eight SQUARE chips are `ButtonIcon` from the design system
- * now, and `ACTION_CHIP_SQUARE` went with them. What stays are the three that are not
- * icon-only — a branch name, a refresh with its word beside it, and the scripts menu
- * with its chevron — which is why this file is still here: they wear the same ground,
- * the same height and the same radius as the buttons, and that agreement is the thing
- * worth keeping in one place. The values are `ButtonIcon`'s own `sm` rung; a change to
- * either has to be made in both, which is the price of a chip that is not a button.
+ * WHAT IS LEFT OF IT, WHICH IS TWO CALL SITES. The eight SQUARE chips are `ButtonIcon`
+ * now and `ACTION_CHIP_SQUARE` went with them; the scripts menu is `SelectIcon` and
+ * `ACTION_CHIP_PILL` went with that. What stays are the two chips that carry a WORD —
+ * a commit's short hash, and a refresh with its label beside it — which is why this
+ * file is still here: they wear the same ground, the same height and the same radius
+ * as the buttons, and that agreement is worth keeping in one place. The values are
+ * `ButtonIcon`'s own `sm` rung; a change to either has to be made in both, which is
+ * the price of a chip that is not a button.
  *
  * IT LIVES HERE AND NOT IN `agent-info-sidebar/`, where it was written. The left
  * sidebar's AGENTS header wears it too now, and a left-hand control importing
@@ -29,10 +30,3 @@
 export const ACTION_CHIP =
   'h-6 inline-flex items-center justify-center rounded-lg bg-ink/5 text-icon ' +
   'border-none cursor-pointer transition-colors flex-shrink-0'
-
-/**
- * Scripts, which is a MENU and not a link. It keeps the chevron the other two have no
- * business carrying, so it is a shade wider than square — the one place the row is
- * allowed to be uneven, because the difference is what says "this one opens something".
- */
-export const ACTION_CHIP_PILL = 'px-1.5 gap-0.5'

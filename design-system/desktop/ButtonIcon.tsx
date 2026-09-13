@@ -57,7 +57,17 @@ export type ButtonIconTone = 'neutral' | 'danger' | 'vscode' | 'ghost' | 'succes
  */
 export type ButtonIconSize = 'xs' | 'sm' | 'md' | 'lg'
 
-const SIZES: Record<ButtonIconSize, { box: string; icon: IconSize }> = {
+/**
+ * EXPORTED, because `SelectIcon` is this control with a chevron and has to stand the
+ * same height in the same row. Split into height, width and radius rather than one
+ * `box` string for exactly that: a select is a PILL — it keeps the height and the
+ * radius and takes its own horizontal padding, and a shared table that only spoke in
+ * whole boxes would have forced it to respell the ladder.
+ */
+export const BUTTON_ICON_SIZES: Record<
+  ButtonIconSize,
+  { h: string; w: string; radius: string; icon: IconSize }
+> = {
   /**
    * THE ONE RUNG THAT IS NOT ON THE SHARED LADDER, and it is here because a button
    * nested inside a chip is not measured against the badges beside it — it is
@@ -67,10 +77,10 @@ const SIZES: Record<ButtonIconSize, { box: string; icon: IconSize }> = {
    * Reach for it ONLY inside something else. A 20px target on its own is small, and
    * the three rungs below are what a control standing in a row should be.
    */
-  xs: { box: 'h-5 w-5 rounded-lg', icon: 'xs' },
-  sm: { box: 'h-6 w-6 rounded-lg', icon: 'sm' },
-  md: { box: 'h-7 w-7 rounded-lg', icon: 'sm' },
-  lg: { box: 'h-8 w-8 rounded-xl', icon: 'md' },
+  xs: { h: 'h-5', w: 'w-5', radius: 'rounded-lg', icon: 'xs' },
+  sm: { h: 'h-6', w: 'w-6', radius: 'rounded-lg', icon: 'sm' },
+  md: { h: 'h-7', w: 'w-7', radius: 'rounded-lg', icon: 'sm' },
+  lg: { h: 'h-8', w: 'w-8', radius: 'rounded-xl', icon: 'md' },
 }
 
 /**
@@ -164,7 +174,7 @@ export const ButtonIcon = forwardRef<HTMLButtonElement, ButtonIconProps>(functio
   { icon, title, onClick, tone = 'neutral', size = 'sm', active, disabled = false, className = '' },
   ref,
 ) {
-  const shape = SIZES[size]
+  const shape = BUTTON_ICON_SIZES[size]
   return (
     <button
       ref={ref}
@@ -176,7 +186,7 @@ export const ButtonIcon = forwardRef<HTMLButtonElement, ButtonIconProps>(functio
       aria-label={title}
       disabled={disabled}
       aria-pressed={active}
-      className={`${shape.box} inline-flex items-center justify-center
+      className={`${shape.h} ${shape.w} ${shape.radius} inline-flex items-center justify-center
         border-none cursor-pointer transition-colors flex-shrink-0 disabled:opacity-50
         disabled:cursor-not-allowed ${
           active ? 'bg-accent/15 text-accent hover:bg-accent/20' : TONES[tone]

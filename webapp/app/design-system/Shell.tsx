@@ -14,6 +14,7 @@ import { IconEntry } from './entries/IconEntry'
 import { LabelEntry } from './entries/LabelEntry'
 import { LoaderEntry } from './entries/LoaderEntry'
 import { ProgressBarEntry } from './entries/ProgressBarEntry'
+import { SelectIconEntry } from './entries/SelectIconEntry'
 import { StatusEntry } from './entries/StatusEntry'
 import { TextEntry } from './entries/TextEntry'
 import { ENTRY_LABELS, ENTRY_NOTES, FAMILIES, FOUNDATION_PAGES, type EntryId } from './entries/ids'
@@ -56,6 +57,7 @@ const ENTRIES: Record<
   loader: LoaderEntry,
   card: CardEntry,
   buttonicon: ButtonIconEntry,
+  selecticon: SelectIconEntry,
   contextagentcard: ContextAgentCardEntry,
   avatar: AvatarEntry,
   label: LabelEntry,

@@ -1,0 +1,390 @@
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { BUTTON_ICON_SIZES, type ButtonIconSize } from './ButtonIcon'
+import { Icon, type IconSize } from './Icon'
+import { ChevronDown } from './icons'
+import { Text, type TextSize } from './Text'
+import type { IconComponent } from './types'
+
+/**
+ * A `ButtonIcon` that opens a menu — the mark, a chevron, and a list under it.
+ *
+ * IT IS THE CHEVRON THAT MAKES IT ONE. Beside two links that open something
+ * elsewhere, a chip with no chevron promises the same thing they do; the chevron is
+ * the only mark on screen saying this one opens a list instead. It turns over while
+ * the panel is up, so the trigger states what it is doing rather than leaving a
+ * panel floating somewhere else to say it.
+ *
+ * IT BORROWS TWO THINGS ON PURPOSE. The ladder is `ButtonIcon`'s, from the same
+ * table — a select and a button in one header row that stood at different heights
+ * would be the whole argument for a shared scale, lost. The panel is `Status`'s: one
+ * ground, one radius, no border and no padding, so a menu is a menu wherever it
+ * opens.
+ *
+ * THE PANEL IS PORTALLED AND `Status`'S IS NOT, and that is the one place they part.
+ * Status opens inside a card that lets it out; this opens in a sidebar with
+ * `overflow-hidden`, where an absolutely-positioned panel was clipped and vanished
+ * under the terminal pane — a thing no z-index inside the sidebar can fix. Portalled
+ * to `<body>` and positioned against the trigger's own box, it flips above when the
+ * room below runs out.
+ *
+ * WHAT IT DOES NOT DO is decide what is in the list. It is handed groups of items,
+ * the way `Status` is handed its options and for the same reason: the twelve scripts
+ * in a repository are that repository's, not a design language.
+ */
+
+/** One row: a name, an optional trailing hint, and whether it can be picked. */
+export interface SelectIconItem {
+  /** What `onSelect` hands back. The caller's key, not shown. */
+  id: string
+  label: string
+  /**
+   * The quiet trailing note — for the scripts menu it is the command as it will
+   * actually run, `pnpm dev`. It truncates before the label does: a name that says
+   * which row this is beats a hint that says what it will do.
+   */
+  hint?: string
+  /** Half opacity, no pointer — a script already running, say. */
+  disabled?: boolean
+}
+
+/**
+ * A headed run of items.
+ *
+ * ALWAYS GROUPS, even when there is one. A menu that is sometimes a flat list and
+ * sometimes grouped is two components wearing one name, and the caller with a single
+ * group can pass a single group — which is what the scripts menu does when a
+ * repository has one package and the useful axis is the KIND of script rather than
+ * which package it came from.
+ */
+export interface SelectIconGroup {
+  label: string
+  items: SelectIconItem[]
+}
+
+/**
+ * What the trigger turns, at rest and while open.
+ *
+ * TWO, and one of them has a caller. The scripts menu is purple, and it is a step
+ * DARKER while open than on hover — pressing an already-open chip has to look like
+ * something happened, and it cannot look like hovering it. `neutral` is the default
+ * that costs nothing. A third goes in when a third menu exists, not before.
+ */
+export type SelectIconTone = 'neutral' | 'purple'
+
+const TONES: Record<SelectIconTone, { rest: string; open: string }> = {
+  neutral: { rest: 'bg-ink/5 text-icon hover:bg-ink/10 hover:text-ink', open: 'bg-ink/10 text-ink' },
+  purple: {
+    rest: 'bg-ink/5 text-icon hover:bg-purple/10 hover:text-purple',
+    open: 'bg-purple/20 text-purple',
+  },
+}
+
+/**
+ * WHAT THE PANEL DOES WHEN THE TRIGGER GROWS.
+ *
+ * A menu whose words were a size apart from the control that opened it reads as a
+ * different object each time it appears — the same reason `Status`'s picker follows
+ * its plate. So the rows take their type from the rung, and their padding grows with
+ * it: a 14px word left in a box built for 12px is a row that fits its text by
+ * accident.
+ *
+ * `xs` AND `sm` LAND ON THE SAME PANEL, and that is the type scale's doing rather
+ * than an oversight: `Text` bottoms out at 12px, and a menu is read at arm's length
+ * whatever opened it. The trigger is what shrinks at `xs`, not the reading.
+ *
+ * The header and the hint are spelled in pixels because they are BELOW the scale —
+ * 10 and 11 are not rungs of anything, they are the two sizes at which a line can sit
+ * under a word without competing with it.
+ */
+const PANELS: Record<ButtonIconSize, { row: string; text: TextSize; mark: IconSize; small: string }> = {
+  xs: { row: 'px-3 py-1.5', text: 'xs', mark: 'xs', small: 'text-[10px]' },
+  sm: { row: 'px-3 py-1.5', text: 'xs', mark: 'xs', small: 'text-[10px]' },
+  md: { row: 'px-3 py-2', text: 'sm', mark: 'sm', small: 'text-[11px]' },
+  lg: { row: 'px-3.5 py-2', text: 'sm', mark: 'sm', small: 'text-[11px]' },
+}
+
+type PanelScale = (typeof PANELS)[ButtonIconSize]
+
+const PANEL_WIDTH = 280
+const PANEL_MAX_HEIGHT = 320
+/** How close to an edge the panel may sit, and how far it stands off the trigger. */
+const VIEWPORT_MARGIN = 8
+const TRIGGER_GAP = 4
+
+export interface SelectIconProps {
+  /** The mark, from `@ds/desktop/icons`. */
+  icon: IconComponent
+  /**
+   * What the menu is. REQUIRED, for `ButtonIcon`'s reason: the trigger carries no
+   * word, so this is the tooltip and the accessible name at once.
+   */
+  title: string
+  groups: SelectIconGroup[]
+  onSelect: (item: SelectIconItem) => void
+  /**
+   * Called when the panel opens. The scripts menu reads `package.json` here rather
+   * than on every render of every repository card — a menu nobody opened should cost
+   * nothing.
+   */
+  onOpen?: () => void
+  /** Shown alone in the panel while `onOpen`'s work is in flight. Translated. */
+  loadingLabel?: string
+  loading?: boolean
+  /** Shown alone when there are no groups. Translated. */
+  emptyLabel?: string
+  size?: ButtonIconSize
+  tone?: SelectIconTone
+  /**
+   * Where the panel is portalled. `document.body` by default, which is right in the
+   * app: `applyTheme` writes the theme onto `document.documentElement`, so a panel
+   * rendered at the end of the body inherits every colour it needs.
+   *
+   * IT IS NOT RIGHT EVERYWHERE, and that is why the prop exists. Somewhere the theme
+   * is scoped to a container rather than to the root — the site's `/design-system`
+   * ground is the case that found this — a panel portalled past that container leaves
+   * the variables behind and paints `rgb(var(--c-bg-tertiary))` with nothing to
+   * resolve: a menu with a transparent ground. Hand it an element INSIDE the themed
+   * container and the panel is themed again.
+   */
+  portalTo?: HTMLElement | null
+  /** Margins and placement. Not the height, the ground or the radius. */
+  className?: string
+}
+
+export function SelectIcon({
+  icon,
+  title,
+  groups,
+  onSelect,
+  onOpen,
+  loading = false,
+  loadingLabel,
+  emptyLabel,
+  size = 'sm',
+  tone = 'neutral',
+  portalTo,
+  className = '',
+}: SelectIconProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const panelId = useId()
+
+  const shape = BUTTON_ICON_SIZES[size]
+  const panel = PANELS[size]
+  const toneSpec = TONES[tone]
+
+  const close = useCallback(() => setIsOpen(false), [])
+
+  const toggle = useCallback(() => {
+    if (!isOpen) onOpen?.()
+    setIsOpen((open) => !open)
+  }, [isOpen, onOpen])
+
+  // Anchored to the trigger, right-aligned, flipping above when the space below runs
+  // out. Re-measured when the contents change: the panel is empty — and so
+  // zero-height — on the frame the menu opens, and a flip decided on that frame would
+  // be decided against a height the panel does not have yet.
+  useLayoutEffect(() => {
+    if (!isOpen) return
+    const trigger = triggerRef.current
+    if (!trigger) return
+
+    const rect = trigger.getBoundingClientRect()
+    const panelHeight = Math.min(panelRef.current?.offsetHeight ?? 0, PANEL_MAX_HEIGHT)
+    const spaceBelow = window.innerHeight - rect.bottom
+
+    const top =
+      panelHeight > 0 && spaceBelow < panelHeight + VIEWPORT_MARGIN
+        ? Math.max(VIEWPORT_MARGIN, rect.top - panelHeight - TRIGGER_GAP)
+        : rect.bottom + TRIGGER_GAP
+
+    const left = Math.max(
+      VIEWPORT_MARGIN,
+      Math.min(rect.right - PANEL_WIDTH, window.innerWidth - PANEL_WIDTH - VIEWPORT_MARGIN),
+    )
+
+    setPosition({ top, left })
+  }, [isOpen, loading, groups])
+
+  // Closes on an outside click, on Escape, and on anything that detaches the panel
+  // from its trigger.
+  //
+  // THE PANEL IS NOT A DESCENDANT OF THE TRIGGER — that is what portalling costs — so
+  // containment has to be checked against both, and the scroll rule needs an
+  // exemption for the panel itself or scrolling a long list would close the very list
+  // being scrolled.
+  useEffect(() => {
+    if (!isOpen) return
+
+    const onPointerDown = (e: MouseEvent) => {
+      const target = e.target as Node
+      if (triggerRef.current?.contains(target)) return
+      if (panelRef.current?.contains(target)) return
+      close()
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close()
+    }
+    const onScroll = (e: Event) => {
+      if (panelRef.current?.contains(e.target as Node)) return
+      close()
+    }
+
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    window.addEventListener('resize', close)
+    // capture: catches a scroll on any ancestor, not only on the window.
+    window.addEventListener('scroll', onScroll, true)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('resize', close)
+      window.removeEventListener('scroll', onScroll, true)
+    }
+  }, [isOpen, close])
+
+  const hasItems = groups.some((group) => group.items.length > 0)
+
+  return (
+    <>
+      {/* A PILL AND NOT A SQUARE, and it is the one place this parts from the ladder's
+          width: the chevron needs room the mark does not. The height and the radius
+          are the rung's own, so it stands level with the buttons beside it. */}
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={toggle}
+        title={title}
+        aria-label={title}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? panelId : undefined}
+        className={`${shape.h} ${shape.radius} inline-flex items-center justify-center gap-0.5 px-1.5
+          border-none cursor-pointer transition-colors flex-shrink-0
+          ${isOpen ? toneSpec.open : toneSpec.rest} ${className}`}
+      >
+        <Icon glyph={icon} size={shape.icon} tone="inherit" />
+        {/* A rung below the mark: it is the grammar of the control, not its subject. */}
+        <Icon
+          glyph={ChevronDown}
+          size="xs"
+          tone="inherit"
+          className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {isOpen &&
+        createPortal(
+          <div
+            ref={panelRef}
+            id={panelId}
+            role="menu"
+            style={{
+              position: 'fixed',
+              top: position?.top ?? -9999,
+              left: position?.left ?? -9999,
+              width: PANEL_WIDTH,
+              maxHeight: PANEL_MAX_HEIGHT,
+              // Hidden until measured, so the first paint never flashes at 0,0.
+              visibility: position ? 'visible' : 'hidden',
+            }}
+            className="z-[60] overflow-y-auto bg-bg-tertiary rounded-lg shadow-xl"
+          >
+            {loading ? (
+              <Message panel={panel}>{loadingLabel ?? ''}</Message>
+            ) : !hasItems ? (
+              <Message panel={panel}>{emptyLabel ?? ''}</Message>
+            ) : (
+              groups.map((group, groupIndex) =>
+                group.items.length === 0 ? null : (
+                  // Keyed by POSITION and not by label: nothing stops two packages in a
+                  // monorepo from carrying the same name, and a duplicate key there
+                  // would drop a whole group out of the menu silently.
+                  <div key={groupIndex}>
+                    <GroupHeader label={group.label} panel={panel} />
+                    {group.items.map((item) => (
+                      <Row
+                        key={item.id}
+                        item={item}
+                        icon={icon}
+                        panel={panel}
+                        onSelect={() => {
+                          onSelect(item)
+                          close()
+                        }}
+                      />
+                    ))}
+                  </div>
+                ),
+              )
+            )}
+          </div>,
+          // Read at render and not in a default parameter: `document` does not exist
+          // when this module is evaluated on a server.
+          portalTo ?? document.body,
+        )}
+    </>
+  )
+}
+
+/** Loading, or empty. One line, quiet, in the row's own padding. */
+function Message({ children, panel }: { children: string; panel: PanelScale }) {
+  return (
+    <div className={panel.row}>
+      <Text size={panel.text} tone="secondary" className="opacity-50">
+        {children}
+      </Text>
+    </div>
+  )
+}
+
+/** The one header style, whatever the groups are grouping. */
+function GroupHeader({ label, panel }: { label: string; panel: PanelScale }) {
+  return (
+    <div
+      className={`${panel.row} ${panel.small} text-text-secondary/40 uppercase tracking-wider font-semibold bg-bg-secondary/40 truncate`}
+    >
+      {label}
+    </div>
+  )
+}
+
+function Row({
+  item,
+  icon,
+  panel,
+  onSelect,
+}: {
+  item: SelectIconItem
+  icon: IconComponent
+  panel: PanelScale
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={() => !item.disabled && onSelect()}
+      disabled={item.disabled}
+      title={item.hint}
+      className={`w-full flex items-center gap-2 ${panel.row} text-left border-none bg-transparent transition-colors ${
+        item.disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-surface cursor-pointer'
+      }`}
+    >
+      {/* THE TRIGGER'S OWN MARK, repeated on every row. The menu is opened by a play
+          triangle and every row is a thing to play; a second glyph here would be a
+          second idea. It takes the accent — the rows are the one place in this
+          component with an action colour, and the trigger's tone is the trigger's. */}
+      <Icon glyph={icon} size={panel.mark} tone="inherit" className="flex-shrink-0 text-accent" />
+      <Text size={panel.text} className="truncate">
+        {item.label}
+      </Text>
+      {item.hint && (
+        <span className={`${panel.small} text-text-secondary/40 truncate ml-auto`}>{item.hint}</span>
+      )}
+    </button>
+  )
+}

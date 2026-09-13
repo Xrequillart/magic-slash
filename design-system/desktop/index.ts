@@ -4,7 +4,7 @@
  */
 export { Banner, BANNER_VARIANTS, BANNER_LAYOUTS } from './Banner'
 export { Avatar } from './Avatar'
-export { ButtonIcon } from './ButtonIcon'
+export { ButtonIcon, BUTTON_ICON_SIZES } from './ButtonIcon'
 export type { ButtonIconProps, ButtonIconSize, ButtonIconTone } from './ButtonIcon'
 export { BranchCard } from './BranchCard'
 export type { BranchCardProps } from './BranchCard'
@@ -28,6 +28,8 @@ export type {
   ProgressTrack,
 } from './ProgressBar'
 export type { LabelProps, LabelSize, LabelTone } from './Label'
+export { SelectIcon } from './SelectIcon'
+export type { SelectIconGroup, SelectIconItem, SelectIconProps, SelectIconTone } from './SelectIcon'
 export { Status, STATUS_TONES } from './Status'
 export type { StatusOption, StatusProps, StatusSize, StatusStrength, StatusTone } from './Status'
 export { Text, TEXT_SIZES, TEXT_WEIGHTS } from './Text'

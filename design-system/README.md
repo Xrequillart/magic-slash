@@ -78,6 +78,12 @@ from the importing FILE, so from here it walks into `design-system/node_modules`
 and then to the repo root, and neither has React types. Without the mapping every
 type in this folder silently becomes `any`.
 
+`react-dom` needs the same two lines, and it is here because `SelectIcon` portals
+its panel to `<body>`. This one does NOT fail silently — `createPortal` comes from
+a module `tsc` cannot resolve at all, so the build stops on it. Any package a
+component here imports and the apps do not re-export needs the same treatment; the
+rule is the resolution, not the package.
+
 Point `include` and Tailwind's `content` at `design-system/desktop/` and
 `design-system/webapp/` BY NAME rather than at `design-system/**`. The wider glob
 swallows this folder's own `node_modules` — four thousand lucide files in the
