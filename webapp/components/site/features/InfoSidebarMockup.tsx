@@ -17,6 +17,7 @@ import {
   ContextAgentCard,
   HeaderRepoCard,
   RepositoryCard,
+  SidebarInfo as SidebarInfoColumn,
   TitleAgentCard,
   UnCommittedChangesCard,
   type StatusTone,
@@ -262,15 +263,21 @@ export function InfoSidebarPanel({
   return (
     // NO HEADER. No title, no agent name, no close X — the close action is the Archive
     // pill in the titlebar, because it belongs to the agent and not to a panel that may
-    // be collapsed. `font-display`: the one region whose family the app sets EXPLICITLY,
-    // as an inline `fontFamily` on the scrolling container (AgentInfoSidebar.tsx:445).
-    <div
-      aria-hidden
-      className={['shrink-0 space-y-4 bg-black/30 p-4 font-display', className].filter(Boolean).join(' ')}
-      style={{ width: PANEL_WIDTH }}
-    >
-      {/* ── 1. THE SESSION CARD (`UsageCard.tsx`) ──────────────────────────────── */}
-      {/* THE REAL CARD, not a reproduction of it. `ContextAgentCard` comes from
+    // be collapsed.
+    //
+    // `SidebarInfo` from `design-system/desktop/` is the column itself now: its ground,
+    // its width, its gutter, the face it sets for everything inside, and the order the
+    // regions are read in. What was here was a copy of all five — down to a comment
+    // pointing at the line of `AgentInfoSidebar.tsx` it had copied the font from, which
+    // is the kind of note that is only ever true on the day it is written.
+    /* `paint={false}`: the column paints its OWN ground (`bg-surface-sunken`), and it
+       only needs the variables to resolve it with. */
+    <AppGround paint={false} className={['shrink-0', className].filter(Boolean).join(' ')}>
+    <SidebarInfoColumn
+      width={PANEL_WIDTH}
+      usage={
+      /* ── 1. THE SESSION CARD (`UsageCard.tsx`) ──────────────────────────────── */
+      /* THE REAL CARD, not a reproduction of it. `ContextAgentCard` comes from
           `design-system/desktop/` — the file the Electron renderer compiles — on a patch
           of the app's theme variables. What stood here was forty lines of copied classes
           that the app had already left behind: a SESSION header it no longer has, a
@@ -281,7 +288,7 @@ export function InfoSidebarPanel({
 
           The wrapper keeps `data-part` and the focus class, because the scroll band
           measures that element to zoom on it — and a wrapper with no padding of its own
-          has exactly the card's rect. */}
+          has exactly the card's rect. */
       <div
         data-part="session"
         // `rounded-xl`, the radius `Card` draws — and the wrapper needs it even though it
@@ -306,8 +313,9 @@ export function InfoSidebarPanel({
           />
         </AppGround>
       </div>
-
-      {/* ── 2. THE TICKET CARD — `TitleAgentCard`, the component itself ─────────
+      }
+      ticket={
+      /* ── 2. THE TICKET CARD — `TitleAgentCard`, the component itself ─────────
           THE TOUR REACHES INSIDE IT, which is the one thing a drawing gave for free and
           a component does not: `SidebarScrollBand` rings the ticket id and the status
           separately and zooms to whichever it names. Both hooks ride on WRAPPERS rather
@@ -318,7 +326,7 @@ export function InfoSidebarPanel({
           The pill FADES between the four status steps because `Status` carries
           `transition-colors`, which it does for `ProgressBar`'s reason rather than for
           this page's: a coloured indicator that snaps reads as a redraw. This band is
-          simply where it was noticed. */}
+          simply where it was noticed. */
       <div
         data-part="ticket"
         // `rounded-xl` for the session wrapper's reason: the ring rides on this element
@@ -354,10 +362,11 @@ export function InfoSidebarPanel({
           />
         </AppGround>
       </div>
-
-      {/* ── 3. THE REPOSITORY CARD (`RepositoryCard.tsx`) ──────────────────────── */}
-      {/* A `space-y-3` LIST, because an agent can carry several repositories — this one
-          carries one, and the list is what makes the second one cost no layout. */}
+      }
+      repositories={
+      /* ── 3. THE REPOSITORY CARD (`RepositoryCard.tsx`) ──────────────────────── */
+      /* A `space-y-3` LIST, because an agent can carry several repositories — this one
+          carries one, and the list is what makes the second one cost no layout. */
       <div className="space-y-3">
         {/* `RepositoryCard` from `design-system/desktop/` is the plate, the padding, the
             air between the blocks and the ORDER they are read in. What was here was a
@@ -539,14 +548,18 @@ export function InfoSidebarPanel({
         </div>
       </div>
 
-      {/* ── 4. THE ADD-REPOSITORY BOX ──────────────────────────────────────────── */}
-      <div
-        className={`w-full rounded-lg border border-dashed border-appline/50 py-4 text-center transition-opacity duration-500 ${
-          focus ? 'opacity-30' : ''
-        }`}
-      >
-        <div className="text-xs text-appink/50">Add a repository</div>
-      </div>
-    </div>
+      }
+      /* ── 4. THE ADD-REPOSITORY BOX ──────────────────────────────────────────── */
+      footer={
+        <div
+          className={`w-full rounded-lg border border-dashed border-appline/50 py-4 text-center transition-opacity duration-500 ${
+            focus ? 'opacity-30' : ''
+          }`}
+        >
+          <div className="text-xs text-appink/50">Add a repository</div>
+        </div>
+      }
+    />
+    </AppGround>
   )
 }
