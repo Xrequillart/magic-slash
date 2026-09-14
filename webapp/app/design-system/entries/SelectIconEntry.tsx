@@ -243,7 +243,7 @@ export function SelectIconEntry({
         <Stage theme={theme} className="flex items-center gap-6">
           <SortDemo />
           <span className="font-mono text-[10px] text-text-secondary">
-            the sidebar's sort order, as the app draws it
+            the sidebar’s sort order, as the app draws it
           </span>
         </Stage>
       </EntrySection>
