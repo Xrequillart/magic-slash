@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { createPortal } from 'react-dom'
 import { BUTTON_ICON_SIZES, type ButtonIconSize } from './ButtonIcon'
 import { Icon, type IconSize } from './Icon'
-import { ChevronDown } from './icons'
+import { Check, ChevronDown } from './icons'
 import { Text, type TextSize } from './Text'
 import type { IconComponent } from './types'
 
@@ -46,6 +46,25 @@ export interface SelectIconItem {
   hint?: string
   /** Half opacity, no pointer — a script already running, say. */
   disabled?: boolean
+  /**
+   * THE ROW'S OWN MARK, when the rows are not all the same action.
+   *
+   * Absent it takes the trigger's, which is right for the scripts menu — one play
+   * triangle over twelve things to play. It is wrong for a menu whose rows are the
+   * KINDS of something: the sidebar's sort picker offers a clock, a pulse and a
+   * repository, and repeating the sort glyph three times would say the three rows do
+   * the same thing.
+   */
+  icon?: IconComponent
+  /**
+   * This row is the one in force — a check after it, its label in the accent.
+   *
+   * IT IS WHAT MAKES THIS A SELECT rather than a list of commands, and only some
+   * menus have one: the scripts menu runs things and nothing is ever "current", so
+   * the field is absent there and no row is marked. Given on any row, the panel
+   * becomes a radio group for a reader rather than a plain menu.
+   */
+  selected?: boolean
 }
 
 /**
@@ -106,7 +125,18 @@ const PANELS: Record<ButtonIconSize, { row: string; text: TextSize; mark: IconSi
 
 type PanelScale = (typeof PANELS)[ButtonIconSize]
 
-const PANEL_WIDTH = 280
+/**
+ * WHAT A MENU IS WIDE, unless the caller says otherwise.
+ *
+ * 280 is the scripts menu's, and it is sized to what that menu holds: a script name
+ * and the command it runs — `package` and `pnpm run package` on one line — where a
+ * narrower panel truncates the hint that says what the row will do.
+ *
+ * IT IS A DEFAULT AND NOT A RULE, which is what `panelWidth` is for: the sidebar's
+ * sort menu holds three short phrases and no hint, and 280 beside a 230px column is a
+ * panel that overhangs the thing it belongs to.
+ */
+const DEFAULT_PANEL_WIDTH = 280
 const PANEL_MAX_HEIGHT = 320
 /** How close to an edge the panel may sit, and how far it stands off the trigger. */
 const VIEWPORT_MARGIN = 8
@@ -154,6 +184,21 @@ export interface SelectIconProps {
   size?: ButtonIconSize
   tone?: SelectIconTone
   /**
+   * How wide the panel is, in pixels. 280 by default — see `DEFAULT_PANEL_WIDTH`.
+   *
+   * A NUMBER AND NOT A CLASS, for `PANEL_WIDTH`'s old reason: the panel is portalled
+   * and positioned by hand, so this same value is what the right-alignment and the
+   * viewport clamp are computed from. A Tailwind width would set the box and leave
+   * the arithmetic reading the old one.
+   *
+   * WHAT TO PASS. The width of the longest row, not the width of the control: a menu
+   * is read at its text. The sort picker asks for 190 — three short phrases, no hint,
+   * and a 230px column to sit inside — and the scripts menu asks for nothing because
+   * 280 is already its own. Mind the row IN FORCE when measuring: its check takes
+   * room the others leave to the label.
+   */
+  panelWidth?: number
+  /**
    * Where the panel is portalled. `document.body` by default, which is right in the
    * app: `applyTheme` writes the theme onto `document.documentElement`, so a panel
    * rendered at the end of the body inherits every colour it needs.
@@ -182,6 +227,7 @@ export function SelectIcon({
   emptyLabel,
   size = 'sm',
   tone = 'neutral',
+  panelWidth = DEFAULT_PANEL_WIDTH,
   portalTo,
   className = '',
 }: SelectIconProps) {
@@ -229,11 +275,11 @@ export function SelectIcon({
 
     const left = Math.max(
       VIEWPORT_MARGIN,
-      Math.min(rect.right - PANEL_WIDTH, window.innerWidth - PANEL_WIDTH - VIEWPORT_MARGIN),
+      Math.min(rect.right - panelWidth, window.innerWidth - panelWidth - VIEWPORT_MARGIN),
     )
 
     setPosition({ top, left })
-  }, [isOpen, loading, groups])
+  }, [isOpen, loading, groups, panelWidth])
 
   // Closes on an outside click, on Escape, and on anything that detaches the panel
   // from its trigger.
@@ -314,7 +360,7 @@ export function SelectIcon({
               position: 'fixed',
               top: position?.top ?? -9999,
               left: position?.left ?? -9999,
-              width: PANEL_WIDTH,
+              width: panelWidth,
               maxHeight: PANEL_MAX_HEIGHT,
               // Hidden until measured, so the first paint never flashes at 0,0.
               visibility: position ? 'visible' : 'hidden',
@@ -391,27 +437,39 @@ function Row({
   panel: PanelScale
   onSelect: () => void
 }) {
+  // A radio group only where a row says it is the current one — `role` is a promise
+  // to a reader, and `menuitemradio` on a menu where nothing is ever checked is a
+  // promise of a state that never arrives.
+  const choosable = item.selected !== undefined
+
   return (
     <button
       type="button"
-      role="menuitem"
+      role={choosable ? 'menuitemradio' : 'menuitem'}
+      aria-checked={choosable ? item.selected : undefined}
       onClick={() => !item.disabled && onSelect()}
       disabled={item.disabled}
       title={item.hint}
-      className={`w-full flex items-center gap-2 ${panel.row} text-left border-none bg-transparent transition-colors ${
-        item.disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-surface cursor-pointer'
-      }`}
+      className={`w-full flex items-center gap-2 ${panel.row} text-left border-none transition-colors ${
+        item.selected ? 'bg-surface' : 'bg-transparent'
+      } ${item.disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-surface cursor-pointer'}`}
     >
-      {/* THE TRIGGER'S OWN MARK, repeated on every row. The menu is opened by a play
-          triangle and every row is a thing to play; a second glyph here would be a
-          second idea. It takes the accent — the rows are the one place in this
+      {/* THE TRIGGER'S OWN MARK unless the row brought one — see `SelectIconItem.icon`.
+          The menu is opened by a play triangle and every row is a thing to play; a
+          second glyph there would be a second idea, while a menu of KINDS needs one
+          mark per kind. It takes the accent — the rows are the one place in this
           component with an action colour, and the trigger's tone is the trigger's. */}
-      <Icon glyph={icon} size={panel.mark} tone="inherit" className="flex-shrink-0 text-accent" />
-      <Text size={panel.text} className="truncate">
+      <Icon glyph={item.icon ?? icon} size={panel.mark} tone="inherit" className="flex-shrink-0 text-accent" />
+      <Text size={panel.text} className={`truncate ${item.selected ? 'text-accent' : ''}`}>
         {item.label}
       </Text>
       {item.hint && (
         <span className={`${panel.small} text-text-secondary/40 truncate ml-auto`}>{item.hint}</span>
+      )}
+      {/* `ml-auto` here and on the hint both: a row has one or the other, never both,
+          and whichever is present is what pushes itself to the right edge. */}
+      {item.selected && (
+        <Icon glyph={Check} size={panel.mark} tone="inherit" className="flex-shrink-0 text-accent ml-auto" />
       )}
     </button>
   )
