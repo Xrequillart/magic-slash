@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.94.9] - 2026-09-14
+
+### Changed
+
+- **Desktop**: Both agent sidebars are drawn by the shared `design-system/` folder. A column takes data and callbacks rather than ready-made elements, and a card draws its own blocks instead of receiving them in slots
+- **Desktop**: A planning agent has a column of its own. It holds what the agent is spending and the spec being written, and nothing else: no ticket card, no repository cards, no add-repository box, because a planner has no branch, no diff and no pull request for them to show
+- **Desktop**: The repository picker is a shared component now, on a new `Modal` foundation. Every row wears the repository's own colour, so the picker matches the card a click adds to the sidebar
+
+### Fixed
+
+- **Desktop**: The Claude usage card no longer fetches the account and keeps a 30 second timer running when it has been switched off
+
 ## [0.94.8] - 2026-09-14
 
 ### Fixed
@@ -2918,6 +2930,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.94.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.9
 [0.94.8]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.8
 [0.94.7]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.7
 [0.94.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.6
