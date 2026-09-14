@@ -770,6 +770,12 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.agentsCard.agents': 'Agents',
   'site.agentsCard.attention': 'Demande une action',
   'site.agentsCard.sort': 'Trier les agents',
+  // Ce que contient le menu de tri : le chevron annonce qu'il s'ouvre, donc un panneau
+  // vide serait la seule promesse que cette colonne ne tient pas.
+  'site.agentsCard.sortBy': 'Trier par',
+  'site.agentsCard.sortRecent': 'Plus récent',
+  'site.agentsCard.sortStatus': 'Par statut',
+  'site.agentsCard.sortRepository': 'Par dépôt',
   'site.agentsCard.newAgent': 'Nouvel agent',
   'site.agentsCard.working': 'Au travail',
   'site.agentsCard.workingDesc':

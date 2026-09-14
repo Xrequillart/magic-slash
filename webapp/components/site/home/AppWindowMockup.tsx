@@ -17,7 +17,19 @@ import {
 // The sidebar's own marks come from the design system's lucide rather than the site's:
 // they are handed to a component on the far side of the alias, which types them against
 // the copy `design-system/package.json` owns. See that folder's README, rule 1.
-import { ArrowDownUp, ListTodo, NotebookPen, Plus, Sparkles } from '@ds/desktop/icons'
+// Two of the sort marks are aliased: the site's own `Clock` and `FolderGit2` are
+// already in scope above from the site's lucide, and these are the same glyphs from
+// the OTHER copy — the one the sidebar is typed against.
+import {
+  Activity,
+  ArrowDownUp,
+  Clock as SortClock,
+  FolderGit2 as SortRepository,
+  ListTodo,
+  NotebookPen,
+  Plus,
+  Sparkles,
+} from '@ds/desktop/icons'
 import { AppTitleBar, Sidebar, UsageClaudeCodeCard, type SidebarAgentRow } from '@ds/desktop'
 import { useT } from '@/lib/i18n/useLanguage'
 import { InfoSidebarPanel } from '../features/InfoSidebarMockup'
@@ -497,7 +509,24 @@ export function AppWindowMockup() {
                 label: t('site.agentsCard.agents'),
                 // The one that CHANGES the list reads before the one that ADDS to it.
                 actions: [
-                  { id: 'sort', icon: ArrowDownUp, title: t('site.agentsCard.sort'), onClick: noop },
+                  {
+                    id: 'sort',
+                    icon: ArrowDownUp,
+                    title: t('site.agentsCard.sort'),
+                    panelWidth: 190,
+                    // A REAL MENU, opened by a real chevron: this is the app's own
+                    // `SelectIcon`, so the drawing cannot promise a list it does not
+                    // have. The check says which order the list below is in.
+                    groups: [{
+                      label: t('site.agentsCard.sortBy'),
+                      items: [
+                        { id: 'recent', label: t('site.agentsCard.sortRecent'), icon: SortClock, selected: true },
+                        { id: 'status', label: t('site.agentsCard.sortStatus'), icon: Activity },
+                        { id: 'repository', label: t('site.agentsCard.sortRepository'), icon: SortRepository },
+                      ],
+                    }],
+                    onSelect: noop,
+                  },
                   { id: 'new', icon: Plus, title: t('site.agentsCard.newAgent'), onClick: noop },
                 ],
                 // Counted rather than written, so the number and the list can never

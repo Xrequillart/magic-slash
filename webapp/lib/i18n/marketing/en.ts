@@ -1549,6 +1549,13 @@ export const marketingEn = {
   // but `ButtonIcon` will not take a control without a name, which is the whole reason
   // an icon-only button in the app has one.
   'site.agentsCard.sort': 'Sort agents',
+  // What the sort menu holds, because the drawing opens a real one: the chevron says
+  // it does before anyone presses it, so a panel with nothing in it would be the one
+  // promise this column breaks.
+  'site.agentsCard.sortBy': 'Sort by',
+  'site.agentsCard.sortRecent': 'Newest first',
+  'site.agentsCard.sortStatus': 'By status',
+  'site.agentsCard.sortRepository': 'By repository',
   'site.agentsCard.newAgent': 'New agent',
   // The four states, and why each one is on screen. The names are the app's own words
   // for them; the sentences are this page's, because the app never has to explain a

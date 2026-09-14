@@ -8,7 +8,7 @@ import {
   type SidebarAgentRow,
   type SidebarList,
 } from '@ds/desktop'
-import { ArrowDownUp, ListTodo, NotebookPen, Plus, Sparkles } from '@ds/desktop/icons'
+import { Activity, ArrowDownUp, Clock, FolderGit2, ListTodo, NotebookPen, Plus, Sparkles } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
 
@@ -25,9 +25,26 @@ const MENU: MenuSidebarEntry[] = [
 ]
 
 /** The two controls on the AGENTS header: the one that CHANGES the list, then the one
- *  that adds to it. */
-const ACTIONS = [
-  { id: 'sort', icon: ArrowDownUp, title: 'Sort agents', onClick: noop },
+ *  that adds to it. The first is a `SelectIcon` — a chevron, and the order in force
+ *  checked inside the menu it opens — and the second a plain mark. */
+const ACTIONS: SidebarList['actions'] = [
+  {
+    id: 'sort',
+    icon: ArrowDownUp,
+    title: 'Sort agents',
+    // Narrower than the default 280: three short phrases, no hint, and a 230px column
+    // to hang under.
+    panelWidth: 190,
+    groups: [{
+      label: 'Sort by',
+      items: [
+        { id: 'recent', label: 'Newest first', icon: Clock, selected: true },
+        { id: 'status', label: 'By status', icon: Activity },
+        { id: 'repository', label: 'By repository', icon: FolderGit2 },
+      ],
+    }],
+    onSelect: noop,
+  },
   { id: 'new', icon: Plus, title: 'New agent  ⌘N', onClick: noop },
 ]
 
@@ -160,6 +177,7 @@ export function SidebarEntry({
           { id: 'menusidebar', label: 'MenuSidebar' },
           { id: 'agent', label: 'Agent' },
           { id: 'buttonicon', label: 'ButtonIcon' },
+          { id: 'selecticon', label: 'SelectIcon' },
         ]}
         onOpen={onOpen}
       >

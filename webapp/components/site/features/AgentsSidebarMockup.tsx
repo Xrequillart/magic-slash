@@ -1,8 +1,11 @@
 "use client";
 
 import {
+  Activity,
   ArrowDownUp,
   Check,
+  Clock,
+  FolderGit2,
   ListTodo,
   MessageCircleQuestionMark,
   NotebookPen,
@@ -228,7 +231,26 @@ export function AgentsSidebarMockup({ legend = true }: { legend?: boolean } = {}
                     // The one that CHANGES the list reads before the one that ADDS to
                     // it, and both act on the list under them.
                     actions: [
-                      { id: "sort", icon: ArrowDownUp, title: t("site.agentsCard.sort"), onClick: noop },
+                      {
+                        id: "sort",
+                        icon: ArrowDownUp,
+                        title: t("site.agentsCard.sort"),
+                        panelWidth: 190,
+                        // A REAL MENU, opened by a real chevron: this is the app's own
+                        // `SelectIcon`, so the drawing cannot promise a list it does not
+                        // have. The check says which order the list below is in.
+                        groups: [
+                          {
+                            label: t("site.agentsCard.sortBy"),
+                            items: [
+                              { id: "recent", label: t("site.agentsCard.sortRecent"), icon: Clock, selected: true },
+                              { id: "status", label: t("site.agentsCard.sortStatus"), icon: Activity },
+                              { id: "repository", label: t("site.agentsCard.sortRepository"), icon: FolderGit2 },
+                            ],
+                          },
+                        ],
+                        onSelect: noop,
+                      },
                       { id: "new", icon: Plus, title: t("site.agentsCard.newAgent"), onClick: noop },
                     ],
                     // A COUNT, NOT A GROUP. One agent is waiting, so it reads 1 — and the

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { SelectIcon, type ButtonIconSize, type SelectIconGroup } from '@ds/desktop'
-import { Play } from '@ds/desktop/icons'
+import { Activity, ArrowDownUp, Clock, FolderGit2, Play } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
 
@@ -47,7 +47,13 @@ const CATEGORIES: SelectIconGroup[] = [
 ]
 
 const PROPS: PropRow[] = [
-  { name: 'icon', type: 'IconComponent', required: true, description: 'The mark, from @ds/desktop/icons. Every row in the panel repeats it.' },
+  {
+    name: 'icon',
+    type: 'IconComponent',
+    required: true,
+    description:
+      'The mark, from @ds/desktop/icons. Every row in the panel repeats it, unless a row carries an icon of its own.',
+  },
   {
     name: 'title',
     type: 'string',
@@ -78,6 +84,13 @@ const PROPS: PropRow[] = [
     fallback: "'sm'",
     description:
       'ButtonIcon’s ladder, read from ButtonIcon’s own table. The height and the radius are the rung’s; the width is not, because the chevron needs room the mark does not.',
+  },
+  {
+    name: 'panelWidth',
+    type: 'number',
+    fallback: '280',
+    description:
+      'How wide the panel is, in pixels. A number and not a class: the panel is portalled and positioned by hand, so this same value is what the right-alignment and the viewport clamp are computed from. Pass the width of the longest row — the sidebar’s sort menu asks for 190, three short phrases and no hint, where 280 beside a 230px column overhangs the list it belongs to.',
   },
   {
     name: 'tone',
@@ -139,6 +152,40 @@ function Demo({ groups, tone, size, loading }: {
   )
 }
 
+/**
+ * The other menu the app opens with this: the sidebar's sort order.
+ *
+ * TWO THINGS THE SCRIPTS MENU HAS NOT. The rows carry their OWN marks, because they
+ * are three kinds of order rather than three of the same action, and one of them is
+ * `selected` — which is what makes a menu a select: it says which order the list is
+ * in before anything is picked.
+ */
+function SortDemo() {
+  const [mode, setMode] = useState('recent')
+  const { ref, host } = usePortalHost()
+  const modes = [
+    { id: 'recent', label: 'Newest first', icon: Clock },
+    { id: 'status', label: 'By status', icon: Activity },
+    { id: 'repository', label: 'By repository', icon: FolderGit2 },
+  ]
+  return (
+    <span className="inline-flex items-center gap-3">
+      <span ref={ref} />
+      <SelectIcon
+        icon={ArrowDownUp}
+        title="Sort agents"
+        panelWidth={190}
+        groups={[{
+          label: 'Sort by',
+          items: modes.map((option) => ({ ...option, selected: option.id === mode })),
+        }]}
+        portalTo={host}
+        onSelect={(item) => setMode(item.id)}
+      />
+    </span>
+  )
+}
+
 export function SelectIconEntry({
   theme,
   onOpen,
@@ -189,6 +236,18 @@ export function SelectIconEntry({
         </Stage>
       </EntrySection>
 
+      <EntrySection
+        title="A current row, and rows with their own marks"
+        note="A row given selected wears a check and the accent, and the panel becomes a radio group for a reader rather than a plain menu — that is what makes this a select rather than a list of commands. The scripts menu passes neither: nothing is ever the current script. A row may bring its own icon too, for a menu whose rows are the KINDS of something: three orders read as three things, where the sort glyph three times would say they do the same one. This one is 190 wide rather than the default 280: it holds three short phrases and no hint, and it opens from a 230px column."
+      >
+        <Stage theme={theme} className="flex items-center gap-6">
+          <SortDemo />
+          <span className="font-mono text-[10px] text-text-secondary">
+            the sidebar's sort order, as the app draws it
+          </span>
+        </Stage>
+      </EntrySection>
+
       <EntrySection title="Loading, and empty">
         <Stage theme={theme} className="flex items-center gap-6">
           <Demo groups={[]} tone="purple" loading />
@@ -222,7 +281,7 @@ export function SelectIconEntry({
       <EntrySection title="Props">
         <PropsTable rows={PROPS} />
         <Snippet>{`import { SelectIcon } from '@ds/desktop'
-import { Play } from '@ds/desktop/icons'
+import { Activity, ArrowDownUp, Clock, FolderGit2, Play } from '@ds/desktop/icons'
 
 <SelectIcon
   icon={Play}
