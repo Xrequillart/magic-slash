@@ -61,8 +61,16 @@ export interface HeaderRepoCardProps {
   /**
    * The scripts menu, and everything `SelectIcon` needs to draw it. The size and the
    * tone are this row's to decide; everything else is the caller's.
+   *
+   * `className` IS THE CALLER'S TOO, and it was not for one release. `SelectIcon` only
+   * takes margins and placement there — it says so itself — so nothing in it can break
+   * this row. What it buys is a HANDLE: the marketing site's scroll tour grabs the parts
+   * it zooms to with a selector, and a part that lives inside a design-system component
+   * has no `data-part` to be found by. A class is how the ticket card's two parts are
+   * already marked, and the scripts trigger is the third. The alternative was the tour
+   * framing the whole header because it could not reach the one button inside it.
    */
-  scripts?: Omit<SelectIconProps, 'size' | 'tone' | 'className'>
+  scripts?: Omit<SelectIconProps, 'size' | 'tone'>
   /**
    * Open in the editor. It wears VS Code's own blue on hover — a borrowed colour that
    * may never become a token, which is exactly why `ButtonIcon` carries it as a tone
