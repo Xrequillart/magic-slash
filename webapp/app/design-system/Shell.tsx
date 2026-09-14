@@ -8,6 +8,8 @@ import { AvatarEntry } from './entries/AvatarEntry'
 import { BranchCardEntry } from './entries/BranchCardEntry'
 import { ButtonIconEntry } from './entries/ButtonIconEntry'
 import { CardEntry } from './entries/CardEntry'
+import { CommitCardEntry } from './entries/CommitCardEntry'
+import { CommitLineEntry } from './entries/CommitLineEntry'
 import { ColorsEntry } from './entries/ColorsEntry'
 import { ContextAgentCardEntry } from './entries/ContextAgentCardEntry'
 import { BannerEntry } from './entries/BannerEntry'
@@ -82,6 +84,8 @@ const ENTRIES: Record<
   status: StatusEntry,
   switch: SwitchEntry,
   branchcard: BranchCardEntry,
+  commitline: CommitLineEntry,
+  commitcard: CommitCardEntry,
   banner: BannerEntry,
   agent: AgentEntry,
 }

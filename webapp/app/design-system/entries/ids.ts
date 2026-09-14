@@ -21,6 +21,8 @@ export type EntryId =
   | 'status'
   | 'switch'
   | 'branchcard'
+  | 'commitline'
+  | 'commitcard'
   | 'banner'
   | 'agent'
   | 'contextagentcard'
@@ -55,6 +57,8 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   status: 'Status',
   switch: 'Switch',
   branchcard: 'BranchCard',
+  commitline: 'CommitLine',
+  commitcard: 'CommitCard',
   banner: 'Banner',
   agent: 'Agent',
 }
@@ -110,7 +114,7 @@ export const FAMILIES: Family[] = [
   {
     label: 'Secondary',
     note: 'Several pieces saying one thing.',
-    entries: ['label', 'status', 'branchcard', 'agent', 'menusidebaritem', 'banner'],
+    entries: ['label', 'status', 'branchcard', 'commitline', 'agent', 'menusidebaritem', 'banner'],
   },
   {
     label: 'Tertiary',
@@ -123,6 +127,7 @@ export const FAMILIES: Family[] = [
      * exactly. It uses only what is above it, so the rule holds either way.
      */
     entries: [
+      'commitcard',
       'titleagentcard',
       'contextagentcard',
       'headerrepocard',
@@ -171,6 +176,8 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   status: 'Reports a state, and changes it',
   switch: 'On or off, and it takes at once',
   branchcard: 'Where the work is, and where it goes',
+  commitline: 'One commit, on the branch’s rail',
+  commitcard: 'What this branch has that its base does not',
   banner: 'States a fact about a surface',
   agent: 'What it is called, and what it is doing',
 }

@@ -1,8 +1,6 @@
-import { BranchCard, ButtonIcon, Card, HeaderRepoCard } from '@ds/desktop'
-import { Copy, Check } from '@ds/desktop/icons'
+import { BranchCard, Card, CommitCard, HeaderRepoCard } from '@ds/desktop'
 import { Github, VSCode } from '@ds/desktop/icons'
 import { useRepoColor } from './RepoMark'
-import { ACTION_CHIP } from '../actionChip'
 import { useScriptsMenu } from './useScriptsMenu'
 import { PRWatchCard } from './PRWatchCard'
 import { RunningScripts } from './RunningScripts'
@@ -30,53 +28,17 @@ interface RepositoryCardProps {
   onRemove: () => void
 }
 
-/**
- * One commit's place on the branch: the yellow rail, and the tick on it.
- *
- * A LIST OF COMMITS IS A SEQUENCE, and nothing in the row said so — five subjects
- * stacked in a box read as five unrelated lines, when what they are is one branch in
- * order. The rail says it in the gutter, at no cost to the width the subjects have.
- *
- * Yellow because this is the branch's own work, unpushed or unmerged: the card already
- * spends green on the current branch and red on deletions, and the third colour has to
- * be one neither of those claims. The tick is hollow — a white centre inside a yellow
- * ring — so it reads as a marker ON the line rather than a blob interrupting it.
- *
- * The rail is drawn per ROW, in two halves that meet at the tick, so a row knows only
- * whether it is the first or the last. `tail` is the "+N more" line: rail, no tick.
- */
-function CommitTick({ first, last, tail = false }: { first: boolean; last: boolean; tail?: boolean }) {
-  return (
-    /* `-my-1` CANCELS THE ROW'S OWN `py-1`. `self-stretch` fills the row's CONTENT box,
-       which stops short of its padding — so each rail segment ended 4px above the next
-       one began, and the trail came out as five dashes with holes between them. The
-       negative margin pushes this one column back out over the padding, so consecutive
-       rows' segments meet exactly. */
-    <div className="relative self-stretch -my-1 w-3 flex-shrink-0 flex items-center justify-center">
-      {/* Two segments rather than one box with conditional insets: the top half stops
-          at the tick on the first row, the bottom half stops at it on the last, and
-          each is simply absent when it would be a stub hanging off the end. */}
-      {/* `left-1/2 -translate-x-1/2` and not a bare `absolute`: the static position of an
-          abspos child of a FLEX container is resolved from that container's alignment,
-          which is not a thing to hang a 3px rail on. Centred explicitly, it lands on the
-          tick whatever the gutter does. */}
-      {/* SQUARE ENDS. `rounded-full` on a 3px bar rounds all four corners, so where two
-          segments met they each tapered to a point and left a pinch in the line — the
-          caps were only ever wanted at the two ends of the whole rail, and a per-row
-          segment has no way to know it is one of those. Butt ends join cleanly, and
-          the tick covers both meeting points anyway. */}
-      {!first && <span className="absolute left-1/2 -translate-x-1/2 top-0 bottom-1/2 w-[3px] bg-yellow" />}
-      {!last && <span className="absolute left-1/2 -translate-x-1/2 top-1/2 bottom-0 w-[3px] bg-yellow" />}
-      {/* The centre is `bg-bg`, the window's own ground, rather than a literal white:
-          hardcoded white is the pre-theme habit themes.test.ts scans for, and on a
-          light theme a white dot on a near-white card would leave only the ring. The
-          window colour reads white on the dark themes — the look asked for — and stays
-          a hole punched in the rail on the light ones, which is the point of it. */}
-      {!tail && <span className="relative w-3 h-3 rounded-full border-2 border-yellow bg-bg" />}
-    </div>
-  )
-}
 
+/**
+ * How many commits the card draws before it stops counting and starts summarising.
+ *
+ * IT LIVES HERE AND NOT IN `CommitCard`, which is the point of the split: the panel
+ * arranges what it is handed, and how much of a branch is worth showing in a 288px
+ * sidebar is this card's judgement rather than the design system's. It is named
+ * because two places need it — the slice and the "+N more" line — and those two
+ * disagreeing is exactly the bug the literal five used to invite.
+ */
+const SHOWN_COMMITS = 5
 export function RepositoryCard({
   repoPath,
   repoName,
@@ -249,77 +211,36 @@ export function RepositoryCard({
         </div>
       )}
 
-      {/* Commits block */}
+      {/* Commits block. The panel, the rail, the hash chip and the "+N more" line are
+          `CommitCard`'s now. What stays here is the three things only the app knows:
+          how many commits there really are, what a relative date reads like in this
+          language, and how to open a URL from inside Electron. */}
       {hasCommits && gitData.commits && (
-        <div className="bg-ink/5 rounded-lg p-3">
-          <div className="flex items-center text-xs mb-1.5">
-            <span className="text-text-secondary/70 font-medium">{t('agentInfo.commits')}</span>
-            <span className="text-text-secondary/50 ml-auto">
-              {gitData.commits.commits.length} ahead of {gitData.commits.baseBranch}
-            </span>
-          </div>
-          {/* A TIMELINE, and therefore NO `space-y`: the rail is drawn per row, top edge
-              to bottom edge, so the segments only join into one line while the rows
-              actually touch. Any gap between them would show as a broken trail — the
-              rows carry their own `py-1` instead.
-
-              The first row's segment starts at its own dot and the last one's stops
-              there, so the line spans the commits rather than overshooting into the
-              padding. Unless commits are hidden: then the last row keeps its full
-              segment and the "+N more" line continues it, which is the trail saying
-              there is more of this branch than the card is showing. */}
-          <div>
-            {gitData.commits.commits.slice(0, 5).map((commit, index, shown) => (
-              <div
-                key={commit.hash}
-                className="flex items-center gap-2 text-xs py-1"
-              >
-                <CommitTick
-                  first={index === 0}
-                  last={index === shown.length - 1 && gitData.commits!.commits.length <= 5}
-                />
-                <span className="text-text-secondary/60 truncate flex-1" title={commit.subject}>
-                  {commit.subject}
-                </span>
-                <span className="text-text-secondary/40 text-xs flex-shrink-0" title={commit.relativeDate}>
-                  {formatRelativeDate(commit.relativeDate, t)}
-                </span>
-                {/* The header's chips, at the header's size: `h-6`, `rounded-lg`, one
-                    ground. They were 20px boxes at a 4px radius, which is what made a
-                    commit row look like a different card from the one above it. */}
-                <button
-                  onClick={() => onCopyCommitHash(commit.hash)}
-                  className={`${ACTION_CHIP} px-2 gap-1 font-mono text-xs hover:bg-ink/10 hover:text-ink`}
-                  title={`Copy full hash: ${commit.hash}`}
-                >
-                  {commit.shortHash}
-                  {copiedCommitHash === commit.hash ? (
-                    <Check className="w-3 h-3 text-green" />
-                  ) : (
-                    <Copy className="w-3 h-3" />
-                  )}
-                </button>
-                {commit.isPushed && gitData.gitHubUrl && (
-                  <ButtonIcon
-                    icon={Github}
-                    title={t('agentInfo.viewOnGitHub')}
-                    onClick={() => window.electronAPI.shell.openExternal(`${gitData.gitHubUrl}/commit/${commit.hash}`)}
-                  />
-                )}
-              </div>
-            ))}
-            {gitData.commits.commits.length > 5 && (
-              <div className="flex items-center gap-2 text-xs py-1">
-                {/* Rail, no dot: these commits are real but not drawn, and a tick for
-                    each of five of them would be a lie about how many there are. */}
-                <CommitTick first={false} last tail />
-                <span className="text-text-secondary/40">
-                  +{gitData.commits.commits.length - 5} more commits
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
+        <CommitCard
+          label={t('agentInfo.commits')}
+          summary={`${gitData.commits.commits.length} ahead of ${gitData.commits.baseBranch}`}
+          commits={gitData.commits.commits.slice(0, SHOWN_COMMITS).map((commit) => ({
+            hash: commit.hash,
+            shortHash: commit.shortHash,
+            subject: commit.subject,
+            relativeDate: formatRelativeDate(commit.relativeDate, t),
+            copyLabel: `Copy full hash: ${commit.hash}`,
+            openable: commit.isPushed && Boolean(gitData.gitHubUrl),
+          }))}
+          moreLabel={
+            gitData.commits.commits.length > SHOWN_COMMITS
+              ? `+${gitData.commits.commits.length - SHOWN_COMMITS} more commits`
+              : undefined
+          }
+          copiedHash={copiedCommitHash}
+          onCopyHash={onCopyCommitHash}
+          open={{
+            label: t('agentInfo.viewOnGitHub'),
+            icon: Github,
+            onOpen: (hash) =>
+              window.electronAPI.shell.openExternal(`${gitData.gitHubUrl}/commit/${hash}`),
+          }}
+        />
       )}
 
       {/* No changes state */}

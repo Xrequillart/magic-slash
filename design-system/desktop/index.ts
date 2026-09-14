@@ -25,6 +25,12 @@ export type {
 export { BranchCard } from './BranchCard'
 export type { BranchCardProps } from './BranchCard'
 export { Card } from './Card'
+export { CommitCard } from './CommitCard'
+export type { CommitCardCommit, CommitCardProps } from './CommitCard'
+// `CommitRail` is deliberately absent: it is `CommitCard`'s and `CommitLine`'s shared
+// gutter, not a thing a page has any business drawing on its own.
+export { CommitLine } from './CommitLine'
+export type { CommitLineProps } from './CommitLine'
 export { ContextAgentCard, CONTEXT_THRESHOLDS } from './ContextAgentCard'
 export type { ContextAgentCardProps } from './ContextAgentCard'
 export type { CardPadding, CardProps } from './Card'
