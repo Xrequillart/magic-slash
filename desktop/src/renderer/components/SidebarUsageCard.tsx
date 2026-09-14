@@ -12,6 +12,12 @@ import type { ClaudeAccount } from '../../types'
  * handed to it is props. A component here would be a second card inside a column that
  * already knows where this one goes.
  *
+ * IT TAKES `enabled` FOR THAT REASON, and it is not a nicety. As a component it was simply
+ * not MOUNTED when the reader had switched the card off, so neither of its effects existed.
+ * A hook has to be called unconditionally — React's rule — so without this flag the account
+ * fetch and the 30s countdown both kept running behind a card nobody was looking at. Same
+ * shape as `usePlanSpec`, which subscribes to nothing while its sidebar is closed.
+ *
  * WHAT IS LEFT IN THIS FILE is where the numbers come from: the account-level rate
  * limits are global — identical across agents — so the card reads the most recently
  * reported usage that actually carries them, rather than any one agent's. The bars,
@@ -23,7 +29,7 @@ import type { ClaudeAccount } from '../../types'
  * The countdown is formatted HERE, for the reason the component's note gives — "2h14"
  * needs a translator and a clock, and neither is on the far side of the alias.
  */
-export function useSidebarUsageCard(): UsageClaudeCodeCardProps {
+export function useSidebarUsageCard({ enabled }: { enabled: boolean }): UsageClaudeCodeCardProps {
   const { terminals, config, setConfig } = useStore()
   const t = useT()
   const minimized = config?.usageCardMinimized === true
@@ -43,17 +49,21 @@ export function useSidebarUsageCard(): UsageClaudeCodeCardProps {
 
   const [account, setAccount] = useState<ClaudeAccount | null>(null)
   useEffect(() => {
+    if (!enabled) return
     let cancelled = false
     window.electronAPI.usage.getAccount().then((a) => { if (!cancelled) setAccount(a) })
     return () => { cancelled = true }
-  }, [])
+  }, [enabled])
 
-  // Refresh every 30s so the reset countdowns stay fresh.
+  // Refresh every 30s so the reset countdowns stay fresh — and only while the card is on
+  // screen: a timer waking the whole column every 30s to restamp a countdown nobody can
+  // read is the cost this hook has that the component it replaced did not.
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
+    if (!enabled) return
     const id = setInterval(() => setNow(Date.now()), 30_000)
     return () => clearInterval(id)
-  }, [])
+  }, [enabled])
 
   const toggleMinimized = async () => {
     const result = await window.electronAPI.config.setUsageCardMinimized(!minimized)

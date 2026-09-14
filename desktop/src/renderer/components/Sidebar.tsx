@@ -67,9 +67,12 @@ export function Sidebar() {
 
   // Agents in the order the person picked from the header control — newest first
   // unless they said otherwise (see hooks/terminalOrder.ts).
-  /* The card's numbers, resolved unconditionally — React's rule. Whether it is SHOWN is
-     decided at the call site below, where it is a condition and not a hook. */
-  const usageCard = useSidebarUsageCard()
+  /* The card's numbers, resolved unconditionally — React's rule. `usageCardEnabled` has to
+     travel INTO the hook rather than only gating the prop below: the effects behind it are
+     an IPC call and a 30s timer, and a hook that is always called would otherwise run both
+     behind a card the reader has switched off. */
+  const usageCardEnabled = config?.usageCardEnabled !== false
+  const usageCard = useSidebarUsageCard({ enabled: usageCardEnabled })
 
   const { ordered, colorMap, sort } = useOrderedTerminals()
   const { leftTerminals, rightTerminals, colorMap: splitColorMap } = useSplitOrderedTerminals()
@@ -324,7 +327,7 @@ export function Sidebar() {
         emptyLabel={t('sidebar.empty')}
         /* Claude usage card — opt-out: shown unless explicitly disabled. The CARD is the
            column's; this is only where its numbers come from. */
-        usage={config?.usageCardEnabled !== false ? usageCard : undefined}
+        usage={usageCardEnabled ? usageCard : undefined}
         /* Renders itself only when there is an update to act on, and stays a node for it:
            the flow talks to Electron. Not behind the usage card's setting either — hiding
            usage must not hide the update. */

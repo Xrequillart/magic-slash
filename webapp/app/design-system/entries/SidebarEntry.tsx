@@ -255,7 +255,7 @@ export function SidebarEntry({
   collapsed={!leftSidebarVisible}
   menu={[plans, tasks, skills, accountEntry]}
   lists={[{ id: 'agents', label: t('sidebar.agents'), actions, agents: rows }]}
-  usage={useSidebarUsageCard()}
+  usage={usageCardEnabled ? usageCard : undefined}
   version="v0.94.2"
 />`}</Snippet>
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
