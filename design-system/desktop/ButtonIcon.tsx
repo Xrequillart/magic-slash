@@ -1,5 +1,6 @@
 import { forwardRef } from 'react'
 import { Icon, type IconSize } from './Icon'
+import { Loader } from './Loader'
 import type { IconComponent } from './types'
 
 /**
@@ -18,11 +19,13 @@ import type { IconComponent } from './types'
  *
  * MIGRATED. The app's `ACTION_CHIP` had eight square call sites — the repository
  * card's four, the usage card's two, the sidebar's new-agent button and the agent
- * sort — and all eight are this component now. `ACTION_CHIP` itself stays, because
- * three of its nineteen uses are not icon-only: a branch name, a refresh with its
- * word beside it, and the scripts menu with its chevron. Those are chips, not
- * buttons that are only a mark, and folding them in here would mean a `children`
- * slot — which is how a component like this one stops being about one thing.
+ * sort — and all eight are this component now. The PR card's refresh is the ninth,
+ * and it is the one that arrived carrying a WORD: it gave the word up rather than
+ * this growing a `children` slot, which is how a component like this one stops being
+ * about one thing. The tooltip says "Refresh", and a spinning arrow beside a
+ * "checked 2 min ago" stamp needs no label to be read. `ACTION_CHIP` itself stays for
+ * the two uses that genuinely are not icon-only: a branch name, and the scripts menu
+ * with its chevron.
  *
  * `BTN_ICON` in the app's `theme/controls.ts` is a SECOND icon-button language —
  * 28px, bordered, on `bg-surface` — and it is still out there in Settings. It is not
@@ -178,6 +181,31 @@ export interface ButtonIconProps {
   /** How `active` is drawn. `accent` unless the row is toggles that are usually on. */
   activeTone?: ButtonIconActive
   disabled?: boolean
+  /**
+   * THE CONTROL IS DOING THE THING RIGHT NOW — a refresh in flight, a save on its way.
+   *
+   * The mark spins, and the click is blocked while it does: a refresh that accepts a
+   * second press queues a second read, and the reader has no way to know that is what
+   * they did. So this implies `disabled` rather than sitting beside it, and a caller
+   * does not have to remember to pass both.
+   *
+   * IT DOES NOT DIM, and that is the difference from `disabled`. A dimmed spinner says
+   * "unavailable" about a control that is in fact working — the two states look the
+   * same and mean opposite things, so the opacity rule is dropped for this one while
+   * the pointer and the block stay. `aria-busy` is what says it out loud.
+   *
+   * THE MARK IS REPLACED BY `Loader`, NOT SPUN. It was the caller's own glyph turning
+   * for one commit, which reads well enough on a refresh arrow and badly on everything
+   * else: a spinning trash can or a rotating chevron is a mark that has lost its
+   * meaning rather than one that is working. `Loader`'s `spin` is the app's single
+   * answer for "an action YOU started and are waiting on" — its own words — so a busy
+   * button now looks like every other thing this app waits on, and the reduced-motion
+   * rule that file carries applies here for free.
+   *
+   * A PROP AND NOT A TONE. A tone is what a button IS; this is what it is doing this
+   * second, and it composes with every one of them — a `danger` control can be busy.
+   */
+  busy?: boolean
   /** Margins and placement — `ml-auto`, a gap. Not the size, the ground or the hover. */
   className?: string
 }
@@ -203,11 +231,15 @@ export const ButtonIcon = forwardRef<HTMLButtonElement, ButtonIconProps>(functio
     active,
     activeTone = 'accent',
     disabled = false,
+    busy = false,
     className = '',
   },
   ref,
 ) {
   const shape = BUTTON_ICON_SIZES[size]
+  // Busy blocks the click the same way `disabled` does — see the prop's note — but
+  // keeps its opacity, so the dimming rule is emitted only for the other case.
+  const blocked = disabled || busy
   return (
     <button
       ref={ref}
@@ -217,15 +249,25 @@ export const ButtonIcon = forwardRef<HTMLButtonElement, ButtonIconProps>(functio
       onClick={onClick}
       title={title}
       aria-label={title}
-      disabled={disabled}
+      disabled={blocked}
       aria-pressed={active}
+      aria-busy={busy || undefined}
       className={`${shape.h} ${shape.w} ${shape.radius} inline-flex items-center justify-center
-        border-none cursor-pointer transition-colors flex-shrink-0 disabled:opacity-50
-        disabled:cursor-not-allowed ${
+        border-none cursor-pointer transition-colors flex-shrink-0
+        disabled:cursor-not-allowed ${busy ? '' : 'disabled:opacity-50'} ${
           active ? ACTIVE[activeTone] : TONES[tone]
         } ${className}`}
     >
-      <Icon glyph={icon} size={shape.icon} tone="inherit" />
+      {/* The loader takes the mark's own rung — `Loader`'s sizes are `Icon`'s, in pixels
+          — so the chip does not resize under it and a row of these does not twitch when
+          one starts working. `tone="inherit"` and no `label`: the button already carries
+          the accessible name and `aria-busy`, and a second voice saying "loading" would
+          be the control announcing itself twice. */}
+      {busy ? (
+        <Loader variant="spin" size={shape.icon} tone="inherit" />
+      ) : (
+        <Icon glyph={icon} size={shape.icon} tone="inherit" />
+      )}
     </button>
   )
 })

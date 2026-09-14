@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { ButtonIcon, type ButtonIconActive, type ButtonIconSize } from '@ds/desktop'
-import { ArrowDownUp, Copy, ExternalLink, Minus, Play, Trash2 } from '@ds/desktop/icons'
+import { ArrowDownUp, Copy, ExternalLink, Minus, Play, RefreshCw, Trash2 } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
-import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
+import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
 
 const PROPS: PropRow[] = [
   { name: 'icon', type: 'IconComponent', required: true, description: 'The mark, from @ds/desktop/icons.' },
@@ -44,6 +44,13 @@ const PROPS: PropRow[] = [
       'How loudly active says so. accent is for a control in a row of equal siblings, one of which is doing something — the colour is the whole point. ink is for toggles that are usually on: the title bar’s two panels are open most of the time, and two accent squares at rest read as an alert about the app’s own furniture. Same plate, same hover; only the mark’s colour is the state.',
   },
   { name: 'disabled', type: 'boolean', fallback: 'false', description: 'Half opacity, and no pointer.' },
+  {
+    name: 'busy',
+    type: 'boolean',
+    fallback: 'false',
+    description:
+      'The control is doing the thing right now. The mark is replaced by Loader’s spin and the click is blocked — a refresh that accepts a second press queues a second read — so it implies disabled rather than sitting beside it. It does not dim, though: a dimmed spinner says “unavailable” about a control that is working, and those two states look the same and mean opposite things. aria-busy says it out loud.',
+  },
   { name: 'className', type: 'string', fallback: "''", description: 'Margins and placement — ml-auto, a gap. Not the size, the ground or the hover.' },
 ]
 
@@ -70,7 +77,10 @@ export function ButtonIconEntry({
 }) {
   return (
     <article className="flex flex-col divide-y divide-hairline">
-      <EntryHeader title="ButtonIcon" uses={[{ id: 'icon', label: 'Icon' }]} onOpen={onOpen}>
+      <EntryHeader title="ButtonIcon" uses={[
+          { id: 'icon', label: 'Icon' },
+          { id: 'loader', label: 'Loader' },
+        ]} onOpen={onOpen}>
         A control that is a mark and nothing else, on the ticket badge’s own ground. Written out, the agent sidebar’s four repository actions ran to some 270px of a
         288px column, so the mark carries the meaning and the tooltip carries the name.
       </EntryHeader>
@@ -143,6 +153,33 @@ export function ButtonIconEntry({
             press them — accent, then ink: the agents sort, then the title bar’s panel toggles
           </span>
         </Stage>
+      </EntrySection>
+
+      <EntrySection
+        title="Busy is not disabled"
+        note="A refresh in flight, a save on its way. The press is blocked, but the chip keeps its full opacity — the opposite of disabled, which is a control that cannot be used at all. The mark is replaced by Loader’s spin rather than spun in place: a rotating trash can or chevron is a mark that has lost its meaning, where the shared loader is the app’s one answer for “an action you started and are waiting on”."
+      >
+        <Stage theme={theme} className="flex items-center gap-6">
+          <Specimen label="resting">
+            <ButtonIcon icon={RefreshCw} title="Refresh" onClick={() => {}} />
+          </Specimen>
+          <Specimen label="busy — the loader takes the mark's place">
+            <ButtonIcon icon={RefreshCw} title="Refresh" onClick={() => {}} busy />
+          </Specimen>
+          <Specimen label="busy on a mark that could not sensibly spin">
+            <ButtonIcon icon={Trash2} title="Removing" tone="danger" onClick={() => {}} busy />
+          </Specimen>
+          <Specimen label="disabled — dimmed, still">
+            <ButtonIcon icon={RefreshCw} title="Refresh" onClick={() => {}} disabled />
+          </Specimen>
+        </Stage>
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          It composes with every tone, because it is what the button is <em>doing</em> and
+          not what it <em>is</em> — a <code>danger</code> control can be busy. The loader
+          takes the mark’s own rung, so the chip does not resize under it and a row of
+          these does not twitch when one starts working; and the reduced-motion rule{' '}
+          <code>Loader</code> carries applies here for free.
+        </p>
       </EntrySection>
 
       <EntrySection title="Props">
