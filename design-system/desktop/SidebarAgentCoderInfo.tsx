@@ -1,5 +1,6 @@
 import { ContextAgentCard, type ContextAgentCardProps } from './ContextAgentCard'
 import { RepositoryCard, type RepositoryCardProps } from './RepositoryCard'
+import { RepositorySelector, type RepositorySelectorProps } from './RepositorySelector'
 import { TitleAgentCard, type TitleAgentCardProps } from './TitleAgentCard'
 import { TEXT_FACE } from './Text'
 
@@ -117,6 +118,19 @@ export interface SidebarAgentCoderInfoProps {
    * has no branch, no diff and no PR, and attaching a repository is not a planning-time
    * action.
    */
+  /**
+   * The picker the box below opens — rendered by this column, because it is this column's
+   * own dialog and not a thing that happens to float next to it.
+   *
+   * IT PORTALS OUT anyway, which is what makes the position in this tree free: the caller
+   * used to render it as a sibling on the grounds that the portal settled the matter, and
+   * that is true of the PIXELS and false of everything else. Where a dialog is declared is
+   * where a reader looks for it, and this column is what opens it.
+   *
+   * Absent while it is shut. The app keeps it mounted a few frames past that so its exit
+   * animation has somewhere to play — see `useModalExit`.
+   */
+  repositorySelector?: RepositorySelectorProps
   addRepository?: {
     label: string
     onClick: () => void
@@ -140,11 +154,13 @@ export function SidebarAgentCoderInfo({
   ticket,
   repositories,
   addRepository,
+  repositorySelector,
   className = '',
 }: SidebarAgentCoderInfoProps) {
   const empty = !usage && !ticket && !repositories?.length && !addRepository
 
   return (
+    <>
     <div
       className={`bg-surface-sunken flex flex-col h-full relative overflow-hidden ${
         animate ? 'transition-[width] duration-300 ease-in-out' : ''
@@ -193,10 +209,16 @@ export function SidebarAgentCoderInfo({
                   <div className="text-xs text-text-secondary/50">{addRepository.label}</div>
                 </button>
               )}
+
             </div>
           )}
         </div>
       </div>
     </div>
+    {/* OUTSIDE THE COLUMN'S BOX, and outside the empty branch: a dialog is not column
+        content. It renders nothing here anyway — it portals — but declared inside the
+        scroll region it would vanish with the cards the day the column had none. */}
+    {repositorySelector && <RepositorySelector {...repositorySelector} />}
+    </>
   )
 }

@@ -8,7 +8,7 @@ import { useUsageCard } from './agent-info-sidebar/usageCard'
 import { toCoderRepository } from './agent-info-sidebar/coderRepository'
 import { useRepoColors } from './agent-info-sidebar/RepoMark'
 import { useScriptsMenus } from './agent-info-sidebar/useScriptsMenu'
-import { RepositorySelector } from './agent-info-sidebar/RepositorySelector'
+import { useRepositorySelector } from './agent-info-sidebar/repositorySelector'
 import { getSpecPanelMode, splitSpecPath } from './agent-info-sidebar/utils'
 import { usePlanSpec } from '../hooks/usePlanSpec'
 import { useT } from '../i18n'
@@ -450,6 +450,14 @@ export function AgentInfoSidebar() {
     onStatusChange: handleStatusChange,
   })
 
+  const repositorySelector = useRepositorySelector({
+    isOpen: isRepoModalOpen,
+    onClose: () => setIsRepoModalOpen(false),
+    availableRepos,
+    attachedRepos,
+    onToggleRepository: handleToggleRepository,
+  })
+
   // The two things a repository row needs that only the app can answer, both resolved for
   // the WHOLE list at once — a hook cannot run inside the `.map()` that builds the cards.
   const repoColors = useRepoColors()
@@ -515,54 +523,42 @@ export function AgentInfoSidebar() {
    * be is worse than the header the agent already has.
    */
   const planning = Boolean(activeTerminal && spec)
-
-  return (
-    <>
-      {/* THE COLUMN AND EVERY CARD IN IT are the design system's — the ground, the fold, the
-          face, the order of the regions, and the cards themselves. What is left in this file
-          is which agent this is and what each region SAYS. */}
-      {planning ? (
-        <SidebarAgentPlannerInfo
-          // A new file starts fresh: at the top of the NEW spec rather than wherever the
-          // previous one had been left.
-          key={specPath}
-          width={width}
-          collapsed={!isOpen}
-          animate={animateWidth}
-          usage={config?.agentContextEnabled !== false ? usageCard : undefined}
-          spec={specCard}
-        />
-      ) : (
-        <SidebarAgentCoderInfo
-          width={width}
-          collapsed={!isOpen}
-          animate={animateWidth}
-          emptyLabel={activeTerminal ? undefined : t('agentInfo.noActiveAgent')}
-          /* Switched off from Appearance → Sidebars; on by default, and shown for the whole
-             life of the agent once on. That second part is deliberate: the usage feed only
-             lands after Claude's first response, and a bar that appears out of nowhere
-             mid-session reads as a glitch. */
-          usage={
-            activeTerminal && config?.agentContextEnabled !== false ? usageCard : undefined
-          }
-          ticket={activeTerminal ? ticketCard : undefined}
-          repositories={repositories}
-          addRepository={
-            activeTerminal
-              ? { label: t('agentInfo.addRepository'), onClick: () => setIsRepoModalOpen(true) }
-              : undefined
-          }
-        />
-      )}
-
-      {/* A `createPortal` to the body, so where it sits in this tree decides nothing. */}
-      <RepositorySelector
-        isOpen={isRepoModalOpen}
-        onClose={() => setIsRepoModalOpen(false)}
-        availableRepos={availableRepos}
-        attachedRepos={attachedRepos}
-        onToggleRepository={handleToggleRepository}
-      />
-    </>
+  /* THE COLUMN AND EVERY CARD IN IT are the design system's — the ground, the fold, the face,
+     the order of the regions, the cards themselves, and the repository picker the column's
+     own box opens. What is left in this file is which agent this is and what each region
+     SAYS. */
+  return planning ? (
+    <SidebarAgentPlannerInfo
+      // A new file starts fresh: at the top of the NEW spec rather than wherever the
+      // previous one had been left.
+      key={specPath}
+      width={width}
+      collapsed={!isOpen}
+      animate={animateWidth}
+      usage={config?.agentContextEnabled !== false ? usageCard : undefined}
+      spec={specCard}
+    />
+  ) : (
+    <SidebarAgentCoderInfo
+      width={width}
+      collapsed={!isOpen}
+      animate={animateWidth}
+      emptyLabel={activeTerminal ? undefined : t('agentInfo.noActiveAgent')}
+      /* Switched off from Appearance → Sidebars; on by default, and shown for the whole life
+         of the agent once on. That second part is deliberate: the usage feed only lands after
+         Claude's first response, and a bar that appears out of nowhere mid-session reads as a
+         glitch. */
+      usage={activeTerminal && config?.agentContextEnabled !== false ? usageCard : undefined}
+      ticket={activeTerminal ? ticketCard : undefined}
+      repositories={repositories}
+      addRepository={
+        activeTerminal
+          ? { label: t('agentInfo.addRepository'), onClick: () => setIsRepoModalOpen(true) }
+          : undefined
+      }
+      /* The dialog the box above opens. The column renders it — it is the column's own
+         dialog, and it portals out regardless of where it is declared. */
+      repositorySelector={repositorySelector}
+    />
   )
 }

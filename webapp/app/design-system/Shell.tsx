@@ -21,6 +21,8 @@ import { ScriptCardEntry } from './entries/ScriptCardEntry'
 import { SidebarAgentCoderInfoEntry } from './entries/SidebarAgentCoderInfoEntry'
 import { SidebarAgentPlannerInfoEntry } from './entries/SidebarAgentPlannerInfoEntry'
 import { SpecCardEntry } from './entries/SpecCardEntry'
+import { ModalEntry } from './entries/ModalEntry'
+import { RepositorySelectorEntry } from './entries/RepositorySelectorEntry'
 import { ColorsEntry } from './entries/ColorsEntry'
 import { ContextAgentCardEntry } from './entries/ContextAgentCardEntry'
 import { BannerEntry } from './entries/BannerEntry'
@@ -108,6 +110,8 @@ const ENTRIES: Record<
   sidebaragentcoderinfo: SidebarAgentCoderInfoEntry,
   sidebaragentplannerinfo: SidebarAgentPlannerInfoEntry,
   speccard: SpecCardEntry,
+  modal: ModalEntry,
+  repositoryselector: RepositorySelectorEntry,
   banner: BannerEntry,
   agent: AgentEntry,
 }

@@ -46,6 +46,12 @@ const PROPS: PropRow[] = [
       'One per attached repository, in reading order. Each entry is RepositoryCard’s own props plus a key, so there is no second vocabulary here and nothing to fall out of date: a prop added to that card arrives in this list for free.',
   },
   {
+    name: 'repositorySelector',
+    type: 'RepositorySelectorProps',
+    description:
+      'The picker the dashed box opens — rendered by this column, because it is this column’s own dialog and not a thing that happens to float next to it. It portals out anyway, which is what used to make the caller render it as a sibling: true of the pixels, false of everything else. Absent while it is shut.',
+  },
+  {
     name: 'addRepository',
     type: '{ label, onClick, className? }',
     description:

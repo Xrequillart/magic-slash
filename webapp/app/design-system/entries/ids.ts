@@ -34,6 +34,8 @@ export type EntryId =
   | 'sidebaragentcoderinfo'
   | 'sidebaragentplannerinfo'
   | 'speccard'
+  | 'modal'
+  | 'repositoryselector'
   | 'banner'
   | 'agent'
   | 'contextagentcard'
@@ -81,6 +83,8 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   sidebaragentcoderinfo: 'SidebarAgentCoderInfo',
   sidebaragentplannerinfo: 'SidebarAgentPlannerInfo',
   speccard: 'SpecCard',
+  modal: 'Modal',
+  repositoryselector: 'RepositorySelector',
   banner: 'Banner',
   agent: 'Agent',
 }
@@ -173,8 +177,10 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   pullrequestcard: ['buttonicon', 'collapsibleline', 'icon', 'text'],
   scriptcard: ['loader', 'icon', 'text'],
   repositorycard: ['card', 'headerrepocard', 'branchcard', 'uncommittedchangescard', 'commitcard'],
-  sidebaragentcoderinfo: ['contextagentcard', 'titleagentcard', 'repositorycard'],
+  sidebaragentcoderinfo: ['contextagentcard', 'titleagentcard', 'repositorycard', 'repositoryselector'],
   sidebaragentplannerinfo: ['contextagentcard', 'speccard'],
+  modal: [],
+  repositoryselector: ['modal', 'card', 'label', 'buttonicon'],
   speccard: ['card', 'label', 'status', 'editabletext', 'buttonicon'],
   banner: ['icon', 'text'],
   agent: ['loader', 'icon', 'text'],
@@ -264,6 +270,8 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   menusidebaritem: 'One row that takes you somewhere',
   sidebar: 'The whole left column, and it knows nothing',
   speccard: 'A plan being written, live',
+  modal: 'The ground a dialog floats on',
+  repositoryselector: 'Which repositories an agent works in',
   sidebaragentplannerinfo: 'The right column of a planner',
   apptitlebar: 'The bar across the top, and it knows nothing either',
   icon: 'Every glyph, five sizes, three tones',
