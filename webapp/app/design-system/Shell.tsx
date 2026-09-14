@@ -16,6 +16,7 @@ import { UnCommittedChangesCardEntry } from './entries/UnCommittedChangesCardEnt
 import { CollapsibleLineEntry } from './entries/CollapsibleLineEntry'
 import { ReviewThreadLineEntry } from './entries/ReviewThreadLineEntry'
 import { PullRequestCardEntry } from './entries/PullRequestCardEntry'
+import { RepositoryCardEntry } from './entries/RepositoryCardEntry'
 import { ColorsEntry } from './entries/ColorsEntry'
 import { ContextAgentCardEntry } from './entries/ContextAgentCardEntry'
 import { BannerEntry } from './entries/BannerEntry'
@@ -98,6 +99,7 @@ const ENTRIES: Record<
   collapsibleline: CollapsibleLineEntry,
   reviewthreadline: ReviewThreadLineEntry,
   pullrequestcard: PullRequestCardEntry,
+  repositorycard: RepositoryCardEntry,
   banner: BannerEntry,
   agent: AgentEntry,
 }

@@ -1,4 +1,10 @@
-import { BranchCard, Card, CommitCard, HeaderRepoCard, UnCommittedChangesCard } from '@ds/desktop'
+import {
+  BranchCard,
+  CommitCard,
+  HeaderRepoCard,
+  RepositoryCard as RepositoryCardShell,
+  UnCommittedChangesCard,
+} from '@ds/desktop'
 import { Github, VSCode } from '@ds/desktop/icons'
 import { useRepoColor } from './RepoMark'
 import { useScriptsMenu } from './useScriptsMenu'
@@ -71,53 +77,41 @@ export function RepositoryCard({
   const resolvedBaseBranch = rawBaseBranch === gitData?.branch ? undefined : rawBaseBranch
 
   return (
-    /* `flex flex-col gap-2` and NOT a `mb-2` per block, which is what this was: the
-       bottom margin of whichever block happened to be last stacked on top of the card's
-       own padding, so the card had 12px of padding above its header and 20px under its
-       last row. A gap sits BETWEEN children only — and it also skips the blocks that
-       render nothing (no branch, no changes, no scripts), which margins could not.
-
-       `p-4` is the sidebar column's card padding, not this card's own choice: the usage
-       card, the ticket card and the spec panel all state it, and at `p-3` this one sat
-       4px narrower than the cards above it — a stepped left edge running down the
-       column, the kind of thing that reads as sloppiness without the reader being able
-       to name it. */
-    <Card className="flex flex-col gap-2">
-      {/* The header row. The order, the gaps and every tone are `HeaderRepoCard`'s;
-          what stays here is which repository it is and what each control does to it.
-          `remote` is simply absent when the repo has no known one — a dead chip would
-          be worse than no chip. */}
-      <HeaderRepoCard
-        name={repoName}
-        title={repoPath}
-        color={repoColor}
-        onNameClick={() => openRepoSettings(repoName)}
-        scripts={scripts}
-        editor={{
-          icon: VSCode,
-          title: t('agentInfo.openRepoInEditor'),
-          onClick: () => window.electronAPI.shell.openInVSCode(repoPath),
-        }}
-        remote={
-          repoUrl
-            ? {
-                icon: Github,
-                title: t('agentInfo.openRepoOnGitHub'),
-                onClick: () => window.electronAPI.shell.openExternal(repoUrl),
-              }
-            : undefined
-        }
-        remove={{ title: t('agentInfo.removeRepository'), onClick: onRemove }}
-      />
-
-      {/* Straight under the row that launched them, and renders nothing when this
-          repo/agent pair has no script running. */}
-      <RunningScripts repoPath={repoPath} agentId={agentId} />
-
-      {/* Branch block. `resolvedBaseBranch` is already undefined when the base is this
-          very branch, so `BranchCard` never has to decide whether `main -> main` is
-          worth a row — it draws what it is handed. */}
-      {gitData?.branch && (
+    /* The plate, the padding, the air between the blocks and the ORDER they are read in
+       are `RepositoryCard`'s now — see that file for why a gap and not a margin, and why
+       the order is not a caller's to choose. What stays here is which repository this is
+       and what each block is made of. */
+    <RepositoryCardShell
+      header={
+        <HeaderRepoCard
+          name={repoName}
+          title={repoPath}
+          color={repoColor}
+          onNameClick={() => openRepoSettings(repoName)}
+          scripts={scripts}
+          editor={{
+            icon: VSCode,
+            title: t('agentInfo.openRepoInEditor'),
+            onClick: () => window.electronAPI.shell.openInVSCode(repoPath),
+          }}
+          remote={
+            repoUrl
+              ? {
+                  icon: Github,
+                  title: t('agentInfo.openRepoOnGitHub'),
+                  onClick: () => window.electronAPI.shell.openExternal(repoUrl),
+                }
+              : undefined
+          }
+          remove={{ title: t('agentInfo.removeRepository'), onClick: onRemove }}
+        />
+      }
+      /* Renders nothing when this repo/agent pair has no script running — and the slot
+         it sits in is what puts it straight under the row that launched them. */
+      activity={<RunningScripts repoPath={repoPath} agentId={agentId} />}
+      /* `resolvedBaseBranch` is already undefined when the base is this very branch, so
+         `BranchCard` never has to decide whether `main -> main` is worth a row. */
+      branch={gitData?.branch && (
         <BranchCard
           branch={gitData.branch}
           base={resolvedBaseBranch}
@@ -128,8 +122,7 @@ export function RepositoryCard({
           }}
         />
       )}
-
-      {/* The panel, the heading, the gauge and every file row are
+      /* The panel, the heading, the gauge and every file row are
           `UnCommittedChangesCard`'s now. What stays here is the three things only the
           app knows: how git counts this tree, how "7 files" pluralises in this
           language, and what clicking a row is supposed to open.
@@ -137,8 +130,8 @@ export function RepositoryCard({
           A click opens the REPOSITORY, anchored on this file — not the file on its
           own. The whole list is handed over so the drawer can freeze it;
           `gitData.stats.files` is replaced wholesale by the poll a few seconds from
-          now, and the review must not follow it. */}
-      {hasChanges && gitData.stats && (
+          now, and the review must not follow it. */
+      changes={hasChanges && gitData.stats && (
         <UnCommittedChangesCard
           label={t('agentInfo.uncommittedChanges')}
           summary={t(
@@ -158,12 +151,11 @@ export function RepositoryCard({
           }
         />
       )}
-
-      {/* Commits block. The panel, the rail, the hash chip and the "+N more" line are
+      /* Commits block. The panel, the rail, the hash chip and the "+N more" line are
           `CommitCard`'s now. What stays here is the three things only the app knows:
           how many commits there really are, what a relative date reads like in this
-          language, and how to open a URL from inside Electron. */}
-      {hasCommits && gitData.commits && (
+          language, and how to open a URL from inside Electron. */
+      commits={hasCommits && gitData.commits && (
         <CommitCard
           label={t('agentInfo.commits')}
           summary={`${gitData.commits.commits.length} ahead of ${gitData.commits.baseBranch}`}
@@ -190,22 +182,23 @@ export function RepositoryCard({
           }}
         />
       )}
-
-      {/* No changes state */}
-      {gitData && !gitData.error && !hasChanges && !hasCommits && gitData.branch && (
+      /* Shown only when the three above are all absent, and that test is the card's —
+         see its `empty` note. What is left here is the one condition only the app can
+         answer: a repository whose read FAILED has an error to report, not a quiet
+         "nothing to commit". */
+      empty={gitData && !gitData.error && gitData.branch && (
         <div className="bg-ink/5 rounded-lg p-2">
           <span className="text-xs text-text-secondary/40 italic">{t('agentInfo.noUncommittedChanges')}</span>
         </div>
       )}
+      /* Keyed off `prUrl` alone, deliberately: when the watcher is switched off the card
+         still shows the last snapshot, dated, instead of vanishing along with the
+         polling.
 
-      {/* Dedicated PR card. Keyed off `prUrl` alone, deliberately: when the watcher
-          is switched off the card still shows the last snapshot, dated, instead of
-          vanishing along with the polling.
-
-          It carries the link to GitHub itself — its header is the link — so the
-          accent "View pull request" button that used to sit right above it is
-          gone: one PR, one card. */}
-      {prUrl && <PRWatchCard prUrl={prUrl} agentId={agentId} metadata={repoMetadata} />}
-    </Card>
+         It carries the link to GitHub itself — its header is the link — so the accent
+         "View pull request" button that used to sit right above it is gone: one PR, one
+         card. */
+      pullRequest={prUrl && <PRWatchCard prUrl={prUrl} agentId={agentId} metadata={repoMetadata} />}
+    />
   )
 }

@@ -29,6 +29,7 @@ export type EntryId =
   | 'collapsibleline'
   | 'reviewthreadline'
   | 'pullrequestcard'
+  | 'repositorycard'
   | 'banner'
   | 'agent'
   | 'contextagentcard'
@@ -71,6 +72,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   collapsibleline: 'CollapsibleLine',
   reviewthreadline: 'ReviewThreadLine',
   pullrequestcard: 'PullRequestCard',
+  repositorycard: 'RepositoryCard',
   banner: 'Banner',
   agent: 'Agent',
 }
@@ -170,7 +172,15 @@ export const FAMILIES: Family[] = [
   {
     label: 'Quaternary',
     note: 'A whole side of the window, regions arranged in it.',
-    entries: ['sidebar'],
+    /**
+     * `RepositoryCard` JOINS `Sidebar` HERE ON THE GRAPH, not on the note. It is not a
+     * whole side of a window — it is one card in a column of them — but it draws
+     * `HeaderRepoCard`, `UnCommittedChangesCard`, `CommitCard` and `PullRequestCard`,
+     * every one of them tertiary, and a component cannot sit in the same tier as
+     * something it is built from. The same reasoning that put the tier here in the
+     * first place.
+     */
+    entries: ['repositorycard', 'sidebar'],
   },
 ]
 
@@ -206,6 +216,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   collapsibleline: 'One box to tick, and what is behind it',
   reviewthreadline: 'One review thread, scanned rather than read',
   pullrequestcard: 'A pull request, as the sidebar watches it',
+  repositorycard: 'One repository, and everything happening to it',
   banner: 'States a fact about a surface',
   agent: 'What it is called, and what it is doing',
 }
