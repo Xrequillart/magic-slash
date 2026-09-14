@@ -97,6 +97,36 @@ const FOCUS_PAD_Y = 28
 const FOCUS_PAD_X = 8
 /** The furthest the panel is ever magnified. */
 const MAX_ZOOM = 1.9
+/**
+ * HOW FAR THE PANEL MAY TRAVEL WHILE A PART IS MAGNIFIED, as plate showing at the edge
+ * it pulls away from.
+ *
+ * `FRAME_PAD` is a MAXIMUM gap, not a minimum: the clamp keeps the panel covering the
+ * frame to within 24px, and that is what a resting card step wants. But the sidebar sits
+ * at the RIGHT of a 1280px window, so every part in it is near the panel's right edge —
+ * and centring one means pulling the panel left, which that same 24px refuses. The parts
+ * came to rest right of centre, every time, by exactly the amount the clamp withheld.
+ *
+ * A wider allowance while zoomed lets them travel to the middle. It costs plate at one
+ * edge, which is the right trade for a camera: the reader is looking at the magnified
+ * thing, not at how much blue is beside it.
+ *
+ * 140 IS MEASURED, not picked. Running the camera's own arithmetic over the parts' real
+ * boxes, at the frame sizes a desktop actually gives it:
+ *
+ *              frame 619×387   frame 700×880   frame 820×880
+ *   scripts      16px → 0        56px → 0       116px → 0
+ *   files         5px → 0        41px → 0          0 → 0
+ *   commits       5px → 0       228px → 112      194px → 78
+ *
+ * Horizontally it is enough at every size, and that is the one the eye catches: the
+ * sidebar hugs the panel's right edge, so an off-centre part is off-centre SIDEWAYS.
+ * Vertically the bottom-most part is still low, and deliberately: centring `commits`
+ * would pull the panel up far enough to leave a quarter of the frame showing plate, and
+ * a sidebar floating in the middle of its own window reads as a broken layout rather
+ * than as a close-up.
+ */
+const FOCUS_EDGE_PAD = 140
 
 /** The scripts scene, in milliseconds after the step becomes active. */
 const SCRIPTS_SCENE: readonly { at: number; phase: ScriptsPhase }[] = [
@@ -181,7 +211,6 @@ export function SidebarScrollBand() {
   const status = step?.status ?? 'inProgress'
   const pr = step?.pr ?? null
   const focus: SidebarPart | null = step?.part ?? null
-  const zoomPart: SidebarPart | null = step?.zoom ?? focus
 
   // ── The scripts scene ───────────────────────────────────────────────────────────
   const [scripts, setScripts] = useState<ScriptsPhase>('closed')
@@ -202,6 +231,26 @@ export function SidebarScrollBand() {
     const timers = SCRIPTS_SCENE.map(({ at, phase }) => window.setTimeout(() => setScripts(phase), at))
     return () => timers.forEach((id) => window.clearTimeout(id))
   }, [active])
+
+  /**
+   * WHAT THE PANEL FRAMES — and the scripts step is the only one that changes its mind
+   * halfway through, which is why this is computed here rather than read off the step.
+   *
+   * It opens TIGHT ON THE TRIGGER, the way `ticketId` sits on the ticket's id: the step
+   * is about that one button, and framing the whole repository card to point at a 24px
+   * control is pointing at everything.
+   *
+   * IT PULLS BACK THE MOMENT THE MENU OPENS, and not later. The dropdown hangs BELOW the
+   * trigger and is four times its height — held tight on the button, the list of scripts
+   * would open mostly outside the frame, which is the one thing this step exists to show.
+   * So the wide frame arrives with the menu and stays for the rest of the scene: the
+   * pointer walking down to `dev`, the purple bar, the address row.
+   *
+   * Every state but `closed` is therefore wide, which includes reduced motion, where the
+   * scene is set straight to `serving` and never animates.
+   */
+  const tightOnTrigger = active === SCRIPTS_STEP && scripts === 'closed'
+  const zoomPart: SidebarPart | null = tightOnTrigger ? 'scripts' : step?.zoom ?? focus
 
   // ── Where the panel goes for that paragraph ─────────────────────────────────────
   useLayoutEffect(() => {
@@ -228,21 +277,28 @@ export function SidebarScrollBand() {
     }
 
     const box = boxWithin(target, panel)
+    // A `card` step frames its whole card at the base scale; a `detail` step magnifies
+    // its part. The scripts step is a card step that spends its first beat being a detail
+    // — it is about one button — so it takes the detail's arithmetic until the menu opens.
+    const zoomed = step ? step.kind !== 'card' || tightOnTrigger : false
     let scale = base
-    if (step && step.kind !== 'card') {
+    if (zoomed) {
       const fitBox = Math.min((fw - FRAME_PAD * 2) / (box.w + FOCUS_PAD_X * 2), (fh - FRAME_PAD * 2) / (box.h + FOCUS_PAD_Y * 2))
       scale = clamp(fitBox, base, Math.max(base, MAX_ZOOM))
     }
 
-    // Centre the part; then keep `FRAME_PAD` of plate at whichever edge the panel reaches.
+    // Centre the part; then keep at most `pad` of plate at whichever edge the panel
+    // reaches. A magnified part gets the wider allowance so it can actually reach the
+    // middle — see `FOCUS_EDGE_PAD`.
+    const pad = zoomed ? FOCUS_EDGE_PAD : FRAME_PAD
     const wantX = fw / 2 - scale * (box.x + box.w / 2)
     const wantY = fh / 2 - scale * (box.y + box.h / 2)
-    const tx = scale * pw <= fw - FRAME_PAD * 2 ? (fw - scale * pw) / 2 : clamp(wantX, fw - FRAME_PAD - scale * pw, FRAME_PAD)
-    const ty = scale * ph <= fh - FRAME_PAD * 2 ? (fh - scale * ph) / 2 : clamp(wantY, fh - FRAME_PAD - scale * ph, FRAME_PAD)
+    const tx = scale * pw <= fw - FRAME_PAD * 2 ? (fw - scale * pw) / 2 : clamp(wantX, fw - pad - scale * pw, pad)
+    const ty = scale * ph <= fh - FRAME_PAD * 2 ? (fh - scale * ph) / 2 : clamp(wantY, fh - pad - scale * ph, pad)
     setTransform(`translate(${tx}px, ${ty}px) scale(${scale})`)
     // `pr` and `scripts` change the panel's height (the PR card appears, the server row
     // appears), so they are dependencies even though the arithmetic never reads them.
-  }, [zoomPart, step, pr, scripts, layoutTick])
+  }, [zoomPart, tightOnTrigger, step, pr, scripts, layoutTick])
 
   return (
     <HomeSection>

@@ -202,9 +202,13 @@ export type SidebarTourStep = {
   /** The part that takes the ring. */
   part: SidebarTourPart
   /**
-   * The part the panel frames, when it is wider than the one ringed. The scripts step
-   * rings the dropdown's trigger but has to show the menu that opens under it and the
-   * server row that appears in the card, so it frames the whole repository card.
+   * The part the panel frames, when it is wider than the one ringed.
+   *
+   * The scripts step is the one that uses it, and it uses it as a RESTING frame rather
+   * than as the step's only one: it opens tight on the dropdown's trigger — the button
+   * is what the step is about — and pulls back to this, the whole repository card, on
+   * the beat the script starts running and the purple bar appears. `SidebarScrollBand`
+   * owns that switch, since only it knows where the scene has got to.
    */
   zoom?: SidebarTourPart
   status: SidebarTourStatus
