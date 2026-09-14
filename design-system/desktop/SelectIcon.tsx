@@ -133,6 +133,24 @@ export interface SelectIconProps {
   loading?: boolean
   /** Shown alone when there are no groups. Translated. */
   emptyLabel?: string
+  /**
+   * FORCES THE PANEL OPEN OR SHUT, taking the state out of this component's hands.
+   *
+   * `undefined` is the normal case and the default: the control owns whether it is
+   * open, which is what a menu in an app should do. Given a boolean, the caller owns
+   * it instead — the trigger still calls `onOpen` when pressed, so a controlled caller
+   * hears the press, but nothing here decides anything any more, and the outside-click
+   * and Escape rules stand down with it: closing is the caller's to do.
+   *
+   * IT EXISTS FOR THE DRAWINGS. The marketing site renders this component inside
+   * storyboards that open the menu on a TIMER — a pointer arrives, presses, the panel
+   * appears, an item lights up — and a component that only opens on a real click
+   * cannot be told that story. The alternative was a second menu drawn by hand beside
+   * this one, which is the exact divergence `AppGround` exists to end.
+   *
+   * The app passes nothing and behaves as it always has.
+   */
+  open?: boolean
   size?: ButtonIconSize
   tone?: SelectIconTone
   /**
@@ -158,6 +176,7 @@ export function SelectIcon({
   groups,
   onSelect,
   onOpen,
+  open,
   loading = false,
   loadingLabel,
   emptyLabel,
@@ -166,7 +185,10 @@ export function SelectIcon({
   portalTo,
   className = '',
 }: SelectIconProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [selfOpen, setSelfOpen] = useState(false)
+  // Controlled when `open` is given, and its own master otherwise — see the prop's note.
+  const controlled = open !== undefined
+  const isOpen = open ?? selfOpen
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -176,12 +198,16 @@ export function SelectIcon({
   const panel = PANELS[size]
   const toneSpec = TONES[tone]
 
-  const close = useCallback(() => setIsOpen(false), [])
+  // A no-op while controlled: the dismissal rules below would otherwise shut a panel
+  // the caller has said is open, and it would spring back open on the next render.
+  const close = useCallback(() => {
+    if (!controlled) setSelfOpen(false)
+  }, [controlled])
 
   const toggle = useCallback(() => {
     if (!isOpen) onOpen?.()
-    setIsOpen((open) => !open)
-  }, [isOpen, onOpen])
+    if (!controlled) setSelfOpen((was) => !was)
+  }, [isOpen, onOpen, controlled])
 
   // Anchored to the trigger, right-aligned, flipping above when the space below runs
   // out. Re-measured when the contents change: the panel is empty — and so
@@ -217,7 +243,9 @@ export function SelectIcon({
   // exemption for the panel itself or scrolling a long list would close the very list
   // being scrolled.
   useEffect(() => {
-    if (!isOpen) return
+    // Nothing to listen for while the caller owns the state: `close` cannot act, so the
+    // four listeners would be four no-ops on every document event.
+    if (!isOpen || controlled) return
 
     const onPointerDown = (e: MouseEvent) => {
       const target = e.target as Node
@@ -244,7 +272,7 @@ export function SelectIcon({
       window.removeEventListener('resize', close)
       window.removeEventListener('scroll', onScroll, true)
     }
-  }, [isOpen, close])
+  }, [isOpen, controlled, close])
 
   const hasItems = groups.some((group) => group.items.length > 0)
 
