@@ -17,6 +17,7 @@ import {
   ContextAgentCard,
   HeaderRepoCard,
   RepositoryCard,
+  ScriptCard,
   SidebarInfo as SidebarInfoColumn,
   TitleAgentCard,
   UnCommittedChangesCard,
@@ -26,7 +27,6 @@ import { Github, Play, VSCode } from '@ds/desktop/icons'
 import { useT } from '@/lib/i18n/useLanguage'
 import { AppGround } from '../AppGround'
 import { PullRequestCard, type PullRequestPart, type PullRequestReview } from './PullRequestCardMockup'
-import { WaveLoader } from './RepoCardMockup'
 import { GithubMark } from './TasksModalMockup'
 import { JiraMark } from './TicketCardMockup'
 
@@ -418,37 +418,24 @@ export function InfoSidebarPanel({
               }
               /* `RunningScripts` is the app's own component — it reads the store and the
                  pty — so it stays drawn here. The slot is what puts it under the header. */
+              /* `ScriptCard` from `design-system/desktop/`: the purple bar, its loader,
+                 the stop chip and the address row hanging off it are all its own. What
+                 was here was a copy of the lot, `WaveLoader` included. */
               activity={
-                /* The purple bar with the app's WaveLoader, the script's name and the Stop
-                   button; then, once the server has opened a port, the address row hung
-                   under it. No `mb-2` any more: the card's own gap sits between its slots
-                   and skips the ones that render nothing, which a margin could not. */
                 scripts === 'running' || scripts === 'serving' ? (
-                  <div data-part="server" className="flex flex-col">
-              <div
-                className={`flex w-full items-center gap-2 bg-purple px-2 py-1.5 text-xs text-white ${
-                  scripts === 'serving' ? 'rounded-t-lg' : 'rounded-lg'
-                }`}
-              >
-                <span className="shrink-0 text-white">
-                  <WaveLoader />
-                </span>
-                <div className="min-w-0 flex-1 text-left">
-                  <div className="truncate text-xs font-medium">dev</div>
-                </div>
-                <span className="flex shrink-0 items-center gap-1 rounded-md bg-white/15 py-1 pl-1.5 pr-2">
-                  <CircleStop className="h-3.5 w-3.5 text-white" />
-                  <span className="text-[11px] font-semibold text-white">{t('site.infoSidebar.stop')}</span>
-                </span>
-              </div>
-              {scripts === 'serving' ? (
-                <div className="flex w-full items-center gap-2.5 rounded-b-lg border border-t-0 border-white/5 bg-white/[0.06] px-3 py-2.5 text-sm text-appink">
-                  <Globe className="h-4 w-4 shrink-0 text-purple" />
-                  <span className="flex-1 truncate text-left font-medium">localhost:3000</span>
-                  <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-60" />
-                </div>
-              ) : null}
-            </div>
+                  <div data-part="server">
+                    <ScriptCard
+                      name="dev"
+                      state="running"
+                      stop={{ label: t('site.infoSidebar.stop'), title: t('site.infoSidebar.stop'), onStop: noop }}
+                      urls={
+                        scripts === 'serving'
+                          ? [{ url: 'http://localhost:3000', label: 'localhost:3000', title: 'localhost:3000' }]
+                          : []
+                      }
+                      onOpenUrl={noop}
+                    />
+                  </div>
                 ) : undefined
               }
               /* `BranchCard`'s, while the slot exists to hold one: base, arrow, current —

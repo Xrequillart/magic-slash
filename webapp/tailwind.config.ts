@@ -1469,15 +1469,10 @@ const config: Config = {
         // because the sidebar drawing beside them is a reproduction and a state that
         // moves differently there is a state the reader will not recognise.
         //
-        // `wave-bar` is `WaveLoader`: three parallel bars scaled on the Y axis, the
-        // middle one tallest, 1.2s, with the three copies 0.15s apart. The stagger is an
-        // `animation-delay` at the call site rather than three keyframes here, exactly as
-        // the app does it.
-        'wave-bar': {
-          '0%, 100%': { transform: 'scaleY(1)' },
-          '35%': { transform: 'scaleY(0.55)' },
-          '70%': { transform: 'scaleY(1.1)' },
-        },
+        // `wave-bar` WAS HERE, and it drew a hand-built copy of the app's wave loader
+        // inside the repository drawing. That drawing renders `ScriptCard` now, which
+        // brings `Loader` with it — the design system had had the shape for a while, and
+        // the keyframe was the site keeping a second one in step by hand.
         /**
          * ── THE SHARE GRAPH'S THREE BEATS ──────────────────────────────────────
          *
@@ -1912,7 +1907,6 @@ const config: Config = {
         // only, so delayed siblings drift out of phase for ever.
         // The sidebar's two states. The wave's stagger is a delay at the call site, so
         // one animation serves all three bars.
-        'wave-bar': 'wave-bar 1.2s ease-in-out infinite',
         // THE SHARE GRAPH'S THREE BEATS, and the 9s has to be IDENTICAL across all three:
         // they are one story told by three keyframes, and a period that differed by even a
         // tenth would have the beats drift out of order over a minute of watching. See the

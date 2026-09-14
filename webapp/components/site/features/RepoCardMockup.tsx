@@ -14,6 +14,7 @@ import {
   CommitCard,
   HeaderRepoCard,
   RepositoryCard,
+  ScriptCard,
   UnCommittedChangesCard,
 } from '@ds/desktop'
 import { Github, Play, VSCode } from '@ds/desktop/icons'
@@ -41,11 +42,10 @@ import { useLoopStep } from './useLoopStep'
  *      Scripts with its play and `w-2.5` chevron, Open in the editor, Open on GitHub —
  *      each `px-1.5 py-0.5 text-[10px] font-semibold` in icon ink, then the `w-3.5` cross.
  *   2. THE RUNNING SCRIPTS, straight under the header and absent until one runs: a filled
- *      `bg-purple` bar at `px-2 py-1.5 text-xs` with the app's `WaveLoader`, the script's
- *      name, and a worded Stop button on a 15% white pill. When the server prints its
- *      address the bar loses its bottom corners and a URL row hangs off it: `px-3 py-2.5
- *      text-sm`, a purple globe, the address with its scheme stripped, an external-link
- *      glyph at 60%.
+ *      `ScriptCard`, the component — the purple bar, its loader, the worded Stop chip
+ *      and the address row that hangs off it once the server prints one. What was drawn
+ *      here instead included a hand-built copy of the app's wave loader, which the
+ *      design system had already had for a while.
  *   3. THE BRANCH, one `px-2 py-1.5` pill on the raised surface: a green branch glyph, the
  *      name in green at `text-xs font-medium`, the copy button pushed right.
  *   4. THE UNCOMMITTED BLOCK, `p-2` on the raised surface: the label, the file count, the
@@ -96,20 +96,6 @@ const COMMITS: readonly { subject: string; age: string; hash: string }[] = [
   { subject: 'refactor(billing): lift applyVat out of the PDF', age: '14m', hash: 'c1d8a05' },
 ]
 
-/** `WaveLoader`, as the Agents drawing has it: three bars, the middle tallest, waving. */
-export function WaveLoader() {
-  return (
-    <span className="flex h-4 w-4 shrink-0 items-center justify-center gap-[2px]">
-      {[0, 0.15, 0.3].map((delay, index) => (
-        <span
-          key={delay}
-          className="w-[2px] animate-wave-bar rounded-[1px] bg-current motion-reduce:animate-none"
-          style={{ height: index === 1 ? 13 : 6, animationDelay: `${delay}s` }}
-        />
-      ))}
-    </span>
-  )
-}
 
 /**
  * The scripts menu's contents, in `SelectIcon`'s shape. Imported from
@@ -171,33 +157,22 @@ function RepoCard({ server, menuOpen }: { server: ServerState; menuOpen: boolean
            component and lives in the renderer, not in the design system — it reads the
            store and the pty. The slot is what puts it straight under the row that
            launched it. */
+        /* `ScriptCard` from `design-system/desktop/`: the purple bar, its loader, the
+           stop chip and the address row hanging off it are all its own. What was here
+           was a copy of the lot, including a hand-built wave loader. */
         activity={
           server !== 'none' ? (
-            <div className="flex flex-col">
-              <div
-                className={`flex w-full items-center gap-2 bg-purple px-2 py-1.5 text-xs text-white ${
-                  server === 'serving' ? 'rounded-t-lg' : 'rounded-lg'
-                }`}
-              >
-                <span className="shrink-0 text-white">
-                  <WaveLoader />
-                </span>
-                <div className="min-w-0 flex-1 text-left">
-                  <div className="truncate text-xs font-medium">dev</div>
-                </div>
-                <span className="flex shrink-0 items-center gap-1 rounded-md bg-white/15 py-1 pl-1.5 pr-2">
-                  <CircleStop className="h-3.5 w-3.5 text-white" />
-                  <span className="text-[11px] font-semibold text-white">{t('site.infoSidebar.stop')}</span>
-                </span>
-              </div>
-              {server === 'serving' ? (
-                <div className="flex w-full items-center gap-2.5 rounded-b-lg border border-t-0 border-white/5 bg-white/[0.06] px-3 py-2.5 text-sm text-appink">
-                  <Globe className="h-4 w-4 shrink-0 text-purple" />
-                  <span className="flex-1 truncate text-left font-medium">localhost:3000</span>
-                  <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-60" />
-                </div>
-              ) : null}
-            </div>
+            <ScriptCard
+              name="dev"
+              state="running"
+              stop={{ label: t('site.infoSidebar.stop'), title: t('site.infoSidebar.stop'), onStop: noop }}
+              urls={
+                server === 'serving'
+                  ? [{ url: 'http://localhost:3000', label: 'localhost:3000', title: 'localhost:3000' }]
+                  : []
+              }
+              onOpenUrl={noop}
+            />
           ) : undefined
         }
         /* `BranchCard`'s, while the slot exists to hold one. The chip drawn here carried
