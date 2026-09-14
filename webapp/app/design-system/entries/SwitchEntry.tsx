@@ -41,6 +41,13 @@ const PROPS: PropRow[] = [
       'Label, Status and ButtonIcon’s ladder — 24, 28, 32 — because a switch lines up in a row with those. No xs: ButtonIcon’s exists for a button nested in a chip, and a switch is never nested in anything.',
   },
   {
+    name: 'variant',
+    type: "'pill' | 'liquid'",
+    fallback: "'pill'",
+    description:
+      'Which drawing. pill is the flat track above; liquid is jh3y’s cross-browser liquid toggle on the same ladder — same track, same knob, same travel, with the knob turned into a lens on press. Opt-in rather than default: each liquid instance mounts two SVG filters and composites five layers, which is the cost the desktop’s Tailwind config turns backdrop-filter off over.',
+  },
+  {
     name: 'disabled',
     type: 'boolean',
     fallback: 'false',
@@ -52,6 +59,8 @@ const PROPS: PropRow[] = [
 export function SwitchEntry({ theme }: { theme: DesktopTheme }) {
   const [demo, setDemo] = useState(true)
   const [off, setOff] = useState(false)
+  const [liquid, setLiquid] = useState(true)
+  const [liquidOff, setLiquidOff] = useState(false)
 
   return (
     <article className="flex flex-col divide-y divide-hairline">
@@ -76,6 +85,75 @@ export function SwitchEntry({ theme }: { theme: DesktopTheme }) {
             <span>{off ? 'On' : 'Off'}</span>
           </label>
         </Stage>
+      </EntrySection>
+
+      <EntrySection
+        title="The liquid variant"
+        note="Press and HOLD one of these, then let go. At rest it is the same control as above — flat track, white knob — because the glass only exists while the switch is open. Press, and the white cover lifts off a lens: the knob stops being a thing sitting on the track and becomes a window looking through it, with the fill bulging to 1.65 and welding itself back to the track by way of an SVG goo filter."
+      >
+        <Stage theme={theme} className="flex flex-col gap-6">
+          <div className="flex items-center gap-10">
+            <label className="flex items-center gap-3 text-[13px] text-text-secondary">
+              <Switch
+                variant="liquid"
+                checked={liquid}
+                onChange={setLiquid}
+                label="Liquid demo switch"
+              />
+              <span>{liquid ? 'On' : 'Off'}</span>
+            </label>
+            <label className="flex items-center gap-3 text-[13px] text-text-secondary">
+              <Switch
+                variant="liquid"
+                checked={liquidOff}
+                onChange={setLiquidOff}
+                label="Second liquid demo switch"
+              />
+              <span>{liquidOff ? 'On' : 'Off'}</span>
+            </label>
+          </div>
+          <div className="flex flex-col gap-5">
+            {SIZES.map(({ size }) => (
+              <div key={size} className="flex items-center gap-4">
+                <span className="w-8 flex-shrink-0 font-mono text-[10px] text-text-secondary">
+                  {size}
+                </span>
+                <Switch variant="liquid" checked onChange={() => {}} label={`${size}, on`} size={size} />
+                <Switch
+                  variant="liquid"
+                  checked={false}
+                  onChange={() => {}}
+                  label={`${size}, off`}
+                  size={size}
+                />
+              </div>
+            ))}
+          </div>
+        </Stage>
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          It is{' '}
+          <a
+            href="https://codepen.io/jh3y/pen/bNVWoBW"
+            target="_blank"
+            rel="noreferrer"
+            className="text-accent hover:underline"
+          >
+            jh3y’s cross-browser liquid toggle
+          </a>{' '}
+          on this component’s ladder rather than its own 140×60. Two things could not come
+          across: the pen tracks a pointer with GSAP and Draggable, which a switch that is
+          tapped and never dragged does not need — <code>--complete</code> is a registered
+          custom property and CSS transitions it unaided — and the pen ramps its colour off an
+          HSL hue, which the app’s accent does not have, so the ramp is a{' '}
+          <code>color-mix</code> that picks the ON end up as <code>currentColor</code>. Point{' '}
+          <code>text-accent</code> somewhere else and the liquid follows.
+        </p>
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          It is not the default, and the reason is the same one that turns{' '}
+          <code>backdrop-filter</code> off across the desktop app: each instance mounts two SVG
+          filters and composites five layers. One on a page is a flourish, and sixteen down a
+          settings page is the cost that config already refused.
+        </p>
       </EntrySection>
 
       <EntrySection
