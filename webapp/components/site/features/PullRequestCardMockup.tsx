@@ -1,16 +1,11 @@
 'use client'
 
-import type { ReactNode } from 'react'
-import {
-  CheckCircle2,
-  ChevronDown,
-  GitPullRequest,
-  Loader2,
-  MessagesSquare,
-  RefreshCw,
-} from 'lucide-react'
+import { CollapsibleLine, PullRequestCard as PullRequestCardComponent, type PRTone } from '@ds/desktop'
+import { CheckCircle2, Loader2 } from '@ds/desktop/icons'
 import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
+import { MessagesSquare } from 'lucide-react'
+import { AppGround } from '../AppGround'
 import { useLoopStep } from './useLoopStep'
 
 /**
@@ -18,29 +13,23 @@ import { useLoopStep } from './useLoopStep'
  * `RepositoryCard` renders when the agent has opened a pull request — redrawn whole and
  * told a story: the checks pass, the review lands, the verdict changes.
  *
- * DRAWN CLASS FOR CLASS from `agent-info-sidebar/PRWatchCard.tsx`:
+ * IT IS THE COMPONENTS NOW, not a drawing of them. `PullRequestCard` and
+ * `CollapsibleLine` come from `design-system/desktop/`, the same files the Electron
+ * renderer compiles, on a patch of the app's own theme (`AppGround`). This is
+ * `MakeItYoursArt`'s move and `UsageCardMockup`'s before it: change the card and this
+ * illustration changes with it.
  *
- *   1. THE HEADER, `p-2` around a `-m-1 p-2` hit area: a `w-4` slot with the state's own
- *      glyph (an open PR is a green `GitPullRequest`), "Pull request #N" at `text-xs
- *      font-medium` at 90% ink over the repo slug at 10px and 50%, and the badge —
- *      `px-1.5 py-0.5 rounded text-[10px] font-semibold` in the pair `STATE_BADGE` or
- *      `REVIEW_BADGE` gives it: the state's while no review has landed, the review's
- *      verdict once one has.
- *   2. THE CHECKLIST under a subtle rule, every row a `h-9` line in a `px-3` band with the
- *      same `w-4` icon slot, and a hairline between rows (the app draws it as an inset
- *      shadow; a top border is the same pixel here):
- *        – Comments, a `MessagesSquare` in blue, the label at 70%, the count at 10px on
- *          the right and the fold chevron.
- *        – Checks, the `ChecklistRow`: a spinning blue loader while any is running, a
- *          green tick once all have passed — at which point the label goes quiet, to the
- *          70% tier, because a ticked box should stop asking for the eye. "N/M passed"
- *          on the right, and the fold open — the app closes it once every check has
- *          passed, but on a card whose whole point is watching them pass, a list that
- *          folded itself away would read as something going missing. Each check inside
- *          is a `w-3` glyph of its own state and its name at 10px.
- *        – Mergeability, a green tick and "No conflicts", quiet.
- *   3. THE STATUS BAR, `px-2 py-1.5` under a rule: "checked just now" at 10px and 50%,
- *      and the bordered Refresh button pushed right.
+ * WHAT THAT REPLACED: a `Row` helper rebuilding `ItemCard`'s geometry by hand — the
+ * `h-9` line, the `w-4` slot, the chevron's `-rotate-90`, the hairline between rows —
+ * plus a header and a status bar spelled out class for class, under a forty-line note
+ * listing which of the app's classes each piece had copied. Every one of those notes was
+ * a promise to keep two files in step by hand, and the card has since grown a fixed
+ * badge height and a refresh that is a `ButtonIcon`. A drawing that IS the component
+ * cannot fall behind one.
+ *
+ * THE BADGE TONES ARE `PRTone`S NOW, not pairs of classes. `bg-green/10 text-green` was
+ * written here and again in the app, which is two places for one decision; the shared
+ * table in `prTones.ts` is what both read.
  *
  * THE STORY, on one fourteen-second loop through `useLoopStep`, and EVERY ROW STAYS PUT
  * through it — only glyphs, counts and the badge change: three checks running, then
@@ -60,52 +49,17 @@ import { useLoopStep } from './useLoopStep'
 
 const CHECKS = ['lint', 'test', 'typecheck'] as const
 
+/** Nothing is listening: the beat is the drawing's, not the reader's. */
+const noop = () => undefined
+
 type Review = 'none' | 'pending' | 'commented' | 'changes' | 'approved'
 
-const BADGE: Record<Review, { tone: string; label: MessageKey }> = {
-  none: { tone: 'bg-green/10 text-green', label: 'site.agentPanel.stateOpen' },
-  pending: { tone: 'bg-yellow/10 text-yellow', label: 'site.agentPanel.reviewPending' },
-  commented: { tone: 'bg-blue/10 text-blue', label: 'site.agentPanel.reviewCommented' },
-  changes: { tone: 'bg-red/10 text-red', label: 'site.agentPanel.reviewChanges' },
-  approved: { tone: 'bg-green/10 text-green', label: 'site.agentPanel.reviewApproved' },
-}
-
-/** `ItemCard`'s line: the icon slot, the header, an optional detail, an optional chevron. */
-function Row({
-  icon,
-  header,
-  detail,
-  chevron,
-  part,
-  ringed = false,
-  children,
-}: {
-  icon: ReactNode
-  header: ReactNode
-  detail?: ReactNode
-  chevron?: 'open' | 'closed'
-  /** The `data-part` the `/desktop` tour pans to. See `InfoSidebarMockup.tsx`. */
-  part?: string
-  /** Whether that tour has this row in focus. */
-  ringed?: boolean
-  children?: ReactNode
-}) {
-  return (
-    <div
-      data-part={part}
-      className={`w-full px-3 [&+&]:border-t [&+&]:border-white/5 ${ringed ? FOCUS_RING : ''}`}
-    >
-      <div className="flex h-9 items-center gap-2">
-        <span className="flex w-4 shrink-0 items-center justify-center">{icon}</span>
-        <div className="min-w-0 flex-1">{header}</div>
-        {detail !== undefined ? <span className="shrink-0">{detail}</span> : null}
-        {chevron ? (
-          <ChevronDown className={`h-3 w-3 shrink-0 text-appink-icon ${chevron === 'open' ? '' : '-rotate-90'}`} />
-        ) : null}
-      </div>
-      {children ? <div className="pb-2.5 pl-6">{children}</div> : null}
-    </div>
-  )
+const BADGE: Record<Review, { tone: PRTone; label: MessageKey }> = {
+  none: { tone: 'green', label: 'site.agentPanel.stateOpen' },
+  pending: { tone: 'yellow', label: 'site.agentPanel.reviewPending' },
+  commented: { tone: 'blue', label: 'site.agentPanel.reviewCommented' },
+  changes: { tone: 'red', label: 'site.agentPanel.reviewChanges' },
+  approved: { tone: 'green', label: 'site.agentPanel.reviewApproved' },
 }
 
 // 0 three running · 1 lint · 2 test · 3 typecheck · 4 awaiting review · 5 commented ·
@@ -152,99 +106,94 @@ export function PullRequestCard({
   const badge = BADGE[review]
 
   return (
-        <div className="overflow-hidden rounded-lg border border-white/5 bg-white/[0.06]">
-          {/* ── 1. THE HEADER ─────────────────────────────────────────────── */}
-          <div data-part="prHeader" className={`flex items-center p-2 ${focus === 'prHeader' ? FOCUS_RING : ''}`}>
-            <div className="-m-1 flex min-w-0 flex-1 items-center gap-2 rounded-md p-2 text-left">
-              <span className="flex w-4 shrink-0 items-center justify-center">
-                <GitPullRequest className="h-4 w-4 text-green" />
+    /* `paint={false}`: the plate around this already paints the window colour, and a
+       second one inside it would be a panel drawn on a panel. The variables still land,
+       which is all a real component needs from this. */
+    <AppGround paint={false}>
+      {/* THE HEADER STEP ANCHORS ON THE WHOLE CARD, which is the one thing this move
+          changed about the tour. The header lives inside the component now, so there is
+          nothing here to hang `data-part` on — and an empty anchor div among the card's
+          children would draw a stray hairline, because the card rules every child it is
+          handed. Pointing at the card is close: the step is about the PR's identity, and
+          the identity is the top of it. A design-system component that knew about a
+          marketing page's camera would be the wrong trade for the missing 40px. */}
+      <div data-part="prHeader" className={focus === 'prHeader' ? `${FOCUS_RING} rounded-lg` : undefined}>
+      <PullRequestCardComponent
+        state="open"
+        title={t('site.agentPanel.prNumber', { number })}
+        subtitle="Xrequillart/magic-pay"
+        badge={{ label: t(badge.label), tone: badge.tone }}
+        /* Nothing is listening: the beat is the drawing's, not the reader's. The label
+           is still required and still right — it names what the control would be. */
+        open={{ label: t('site.agentPanel.prNumber', { number }), onOpen: noop }}
+        footer={{
+          label: t('site.agentPanel.lastChecked', { time: t('site.agentPanel.justNow') }),
+          refresh: { label: t('site.agentPanel.refresh'), onRefresh: noop },
+        }}
+      >
+        {/* THE TOUR'S ANCHORS AND ITS RING stay on wrappers, never inside the component:
+            `data-part` is what `/desktop` pans to and the ring is what it lights up, and
+            both are this SITE's business. Wrapping also keeps the card's hairline rule
+            working — it rules each child it is handed, and these wrappers are the
+            children. */}
+        <div data-part="prComments" className={focus === 'prComments' ? FOCUS_RING : undefined}>
+          <CollapsibleLine
+            icon={MessagesSquare}
+            tone="blue"
+            label={t('site.agentPanel.comments')}
+            muted
+            detail={
+              <span className="text-[10px] tabular-nums text-text-secondary/60">
+                {t(comments === 1 ? 'site.agentPanel.commentOne' : 'site.agentPanel.commentsCount', { count: comments })}
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-medium text-white/90">
-                  {t('site.agentPanel.prNumber', { number })}
-                </span>
-                <span className="block truncate text-[10px] text-appink/50">Xrequillart/magic-pay</span>
-              </span>
-              <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold transition-colors duration-300 ${badge.tone}`}>
-                {t(badge.label)}
-              </span>
-            </div>
-          </div>
-
-          {/* ── 2. THE CHECKLIST ──────────────────────────────────────────── */}
-          <div className="border-t border-white/5">
-            {(
-              <Row
-                icon={<MessagesSquare className="h-3.5 w-3.5 text-blue" />}
-                header={<span className="block truncate text-xs text-appink/70">{t('site.agentPanel.comments')}</span>}
-                detail={
-                  <span className="text-[10px] tabular-nums text-appink/60">
-                    {t(comments === 1 ? 'site.agentPanel.commentOne' : 'site.agentPanel.commentsCount', { count: comments })}
-                  </span>
-                }
-                chevron="closed"
-                part="prComments"
-                ringed={focus === 'prComments'}
-              />
-            )}
-
-            <Row
-              icon={
-                allPassed ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-green" />
-                ) : (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-blue" />
-                )
-              }
-              header={
-                <span className={`block truncate text-xs ${allPassed ? 'text-appink/70' : 'font-medium text-blue'}`}>
-                  {t('site.agentPanel.checks')}
-                </span>
-              }
-              detail={
-                <span className="text-[10px] tabular-nums text-appink/60">
-                  {t('site.agentPanel.checksPassed', { passed, total: 3 })}
-                </span>
-              }
-              chevron="open"
-              part="prChecks"
-              ringed={focus === 'prChecks'}
-            >
-              {(
-                <ul className="space-y-1">
-                  {CHECKS.map((name, index) => (
-                    <li key={name} className="flex items-center gap-1.5">
-                      <span className="flex shrink-0">
-                        {index < passed ? (
-                          <CheckCircle2 className="h-3 w-3 text-green" />
-                        ) : (
-                          <Loader2 className="h-3 w-3 animate-spin text-blue" />
-                        )}
-                      </span>
-                      <span className="min-w-0 truncate text-[10px] text-appink/70">{name}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Row>
-
-            <Row
-              icon={<CheckCircle2 className="h-3.5 w-3.5 text-green" />}
-              header={<span className="block truncate text-xs text-appink/70">{t('site.agentPanel.noConflicts')}</span>}
-            />
-          </div>
-
-          {/* ── 3. THE STATUS BAR ─────────────────────────────────────────── */}
-          <div className="flex items-center gap-2 border-t border-white/5 px-2 py-1.5">
-            <span className="min-w-0 truncate text-[10px] text-appink/50">
-              {t('site.agentPanel.lastChecked', { time: t('site.agentPanel.justNow') })}
-            </span>
-            <span className="ml-auto flex shrink-0 items-center gap-1.5 rounded-md border border-white/5 px-2 py-1 text-[11px] font-medium text-appink">
-              <RefreshCw className="h-3 w-3" />
-              {t('site.agentPanel.refresh')}
-            </span>
-          </div>
+            }
+            toggle={{ open: false, onToggle: noop }}
+          />
         </div>
+
+        <div data-part="prChecks" className={focus === 'prChecks' ? FOCUS_RING : undefined}>
+          {/* The fold is held OPEN, which the app would not do once every check has
+              passed — but on a card whose whole point is watching them pass, a list that
+              folded itself away would read as something going missing. */}
+          <CollapsibleLine
+            icon={allPassed ? CheckCircle2 : Loader2}
+            tone={allPassed ? 'green' : 'blue'}
+            spin={!allPassed}
+            label={t('site.agentPanel.checks')}
+            muted={allPassed}
+            detail={
+              <span className="text-[10px] tabular-nums text-text-secondary/60">
+                {t('site.agentPanel.checksPassed', { passed, total: 3 })}
+              </span>
+            }
+            toggle={{ open: true, onToggle: noop }}
+          >
+            <ul className="space-y-1">
+              {CHECKS.map((name, index) => (
+                <li key={name} className="flex items-center gap-1.5">
+                  <span className="flex shrink-0">
+                    {index < passed ? (
+                      <CheckCircle2 className="h-3 w-3 text-green" />
+                    ) : (
+                      <Loader2 className="h-3 w-3 animate-spin text-blue" />
+                    )}
+                  </span>
+                  <span className="min-w-0 truncate text-[10px] text-text-secondary/70">{name}</span>
+                </li>
+              ))}
+            </ul>
+          </CollapsibleLine>
+        </div>
+
+        <CollapsibleLine
+          icon={CheckCircle2}
+          tone="green"
+          label={t('site.agentPanel.noConflicts')}
+          muted
+        />
+      </PullRequestCardComponent>
+      </div>
+    </AppGround>
   )
 }
 
@@ -256,7 +205,13 @@ export function PullRequestCardMockup() {
   const comments = step >= 6 ? 3 : 1
 
   return (
-    <div aria-hidden className="flex h-[400px] items-center justify-center overflow-hidden rounded-2xl bg-tone-indigo px-6 sm:h-[440px]">
+    /* `tone-sky`, THE SAME GROUND AS THE REPOSITORY CARD three rows above it
+       (`RepoCardMockup`'s `Plate`). The two drawings are the same card — this is the PR
+       block of the repository card, pulled out and told a story — so a second colour
+       under it said they were two different objects. `ReposSettingsMockup` states the
+       same rule for the reverse case: it took sky rather than indigo so two windows a
+       few screens apart would not read as two different products. */
+    <div aria-hidden className="flex h-[400px] items-center justify-center overflow-hidden rounded-2xl bg-tone-sky px-6 sm:h-[440px]">
       <div className="w-full max-w-[500px] rounded-2xl bg-ink p-4 shadow-lift">
         <PullRequestCard passed={passed} review={review} comments={comments} />
       </div>

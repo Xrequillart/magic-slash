@@ -4,15 +4,25 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import {
   ChevronDown,
   CircleStop,
-  Copy,
   ExternalLink,
   FolderGit2,
-  GitBranch,
   Globe,
-  Play,
   X,
 } from 'lucide-react'
+import {
+  BranchCard,
+  CommitCard,
+  HeaderRepoCard,
+  RepositoryCard,
+  UnCommittedChangesCard,
+} from '@ds/desktop'
+import { Github, Play, VSCode } from '@ds/desktop/icons'
 import { useT } from '@/lib/i18n/useLanguage'
+import { SCRIPT_GROUPS } from './InfoSidebarMockup'
+import { AppGround } from '../AppGround'
+
+/** Nothing is listening: these are drawings, and a hash nobody can copy is still a hash. */
+const noop = () => undefined
 import { Pointer } from '../Pointer'
 import { GithubMark } from './TasksModalMockup'
 import { useLoopStep } from './useLoopStep'
@@ -101,198 +111,144 @@ export function WaveLoader() {
   )
 }
 
-const DASHED_BUTTON =
-  'flex items-center gap-1 rounded border border-dashed border-appline/40 px-1.5 py-0.5 text-[10px] font-semibold text-appink-icon'
-
+/**
+ * The scripts menu's contents, in `SelectIcon`'s shape. Imported from
+ * `InfoSidebarMockup` rather than respelled: the two drawings are the same repository
+ * card, and two copies of one menu is how they come to disagree about it.
+ */
 type ServerState = 'none' | 'running' | 'serving'
 
 /** The card itself, in a given state. Shared by the two stories below. */
-function RepoCard({
-  server,
-  menuOpen,
-  menuHover,
-  scriptsRef,
-  devRowRef,
-}: {
-  server: ServerState
-  menuOpen: boolean
-  menuHover: boolean
-  scriptsRef?: React.Ref<HTMLSpanElement>
-  devRowRef?: React.Ref<HTMLDivElement>
-}) {
+function RepoCard({ server, menuOpen }: { server: ServerState; menuOpen: boolean }) {
   const { t } = useT()
+  /**
+   * Where `SelectIcon` hangs its panel: an empty node INSIDE this card's own
+   * `AppGround`, so the menu resolves the app's variables rather than painting a
+   * transparent ground on the body — `SelectIcon`'s own `portalTo` note says why.
+   * State and not a `useRef`, because the target has to EXIST on the render that opens
+   * the panel, and a ref's `.current` is still null then.
+   */
+  const [portal, setPortal] = useState<HTMLDivElement | null>(null)
   const files = FILES
   const commits = COMMITS
   const added = files.reduce((n, f) => n + f.added, 0)
   const removed = files.reduce((n, f) => n + f.removed, 0)
-  const ratio = added / (added + removed || 1)
 
   return (
-    <div className="relative rounded-xl bg-white/[0.06] p-3">
-      {/* ── 1. THE HEADER ─────────────────────────────────────────────────── */}
-      <div className="mb-2 flex items-center gap-2">
-        <span
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
-          style={{ backgroundColor: `${REPO_COLOR}1f`, color: REPO_COLOR }}
-        >
-          <FolderGit2 className="h-3.5 w-3.5" />
-        </span>
-        <span className="truncate text-sm font-medium text-white/90">magic-pay</span>
-        <div className="ml-auto flex items-center gap-1.5">
-          <span ref={scriptsRef} className={`${DASHED_BUTTON} ${menuOpen ? 'border-accent/50 bg-accent/5 text-accent' : ''}`}>
-            <Play className="h-3 w-3" />
-            {t('site.infoSidebar.scripts')}
-            <ChevronDown className="h-2.5 w-2.5" />
-          </span>
-          <span className={DASHED_BUTTON}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/img/vscode-logo.png" alt="" className="h-3 w-3 object-contain" />
-            {t('site.infoSidebar.open')}
-          </span>
-          <span className={DASHED_BUTTON}>
-            <GithubMark className="h-3 w-3" />
-            {t('site.infoSidebar.open')}
-          </span>
-          <span className="flex items-center justify-center rounded p-1 text-appink-icon">
-            <X className="h-3.5 w-3.5" />
-          </span>
-        </div>
-      </div>
-
-      {/* ── 6. THE SCRIPTS MENU, hung under its trigger ───────────────────── */}
-      {menuOpen ? (
-        <div
-          className="absolute right-[calc(0.75rem+7.75rem)] top-[calc(0.75rem+1.5rem+4px)] z-20 w-[280px] overflow-hidden rounded-lg border border-appline/50 bg-appbg-secondary shadow-lift"
-        >
-          <div className="truncate bg-appbg-tertiary/30 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-appink/40">
-            {t('site.infoSidebar.scriptsDev')}
-          </div>
-          <div
-            ref={devRowRef}
-            className={`flex w-full items-center gap-2 px-3 py-1.5 text-left ${menuHover ? 'bg-white/[0.06]' : ''}`}
-          >
-            <Play className="h-3 w-3 shrink-0 text-accent" />
-            <span className="truncate text-xs font-medium text-white/90">dev</span>
-            <span className="ml-auto truncate text-[10px] text-appink/40">pnpm dev</span>
-          </div>
-          <div className="truncate bg-appbg-tertiary/30 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-appink/40">
-            {t('site.infoSidebar.scriptsBuild')}
-          </div>
-          <div className="flex w-full items-center gap-2 px-3 py-1.5 text-left">
-            <Play className="h-3 w-3 shrink-0 text-accent" />
-            <span className="truncate text-xs font-medium text-white/90">build</span>
-            <span className="ml-auto truncate text-[10px] text-appink/40">pnpm build</span>
-          </div>
-          <div className="truncate bg-appbg-tertiary/30 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-appink/40">
-            {t('site.infoSidebar.scriptsTest')}
-          </div>
-          <div className="flex w-full items-center gap-2 px-3 py-1.5 text-left">
-            <Play className="h-3 w-3 shrink-0 text-accent" />
-            <span className="truncate text-xs font-medium text-white/90">test</span>
-            <span className="ml-auto truncate text-[10px] text-appink/40">pnpm test</span>
-          </div>
-        </div>
-      ) : null}
-
-      {/* ── 2. THE RUNNING SCRIPT ─────────────────────────────────────────── */}
-      {server !== 'none' ? (
-        <div className="mb-2 flex flex-col gap-1">
-          <div className="flex flex-col">
-            <div
-              className={`flex w-full items-center gap-2 bg-purple px-2 py-1.5 text-xs text-white ${
-                server === 'serving' ? 'rounded-t-lg' : 'rounded-lg'
-              }`}
-            >
-              <span className="shrink-0 text-white">
-                <WaveLoader />
-              </span>
-              <div className="min-w-0 flex-1 text-left">
-                <div className="truncate text-xs font-medium">dev</div>
-              </div>
-              <span className="flex shrink-0 items-center gap-1 rounded-md bg-white/15 py-1 pl-1.5 pr-2">
-                <CircleStop className="h-3.5 w-3.5 text-white" />
-                <span className="text-[11px] font-semibold text-white">{t('site.infoSidebar.stop')}</span>
-              </span>
-            </div>
-            {server === 'serving' ? (
-              <div className="flex w-full items-center gap-2.5 rounded-b-lg border border-t-0 border-white/5 bg-white/[0.06] px-3 py-2.5 text-sm text-appink">
-                <Globe className="h-4 w-4 shrink-0 text-purple" />
-                <span className="flex-1 truncate text-left font-medium">localhost:3000</span>
-                <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-60" />
-              </div>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-
-      {/* ── 3. THE BRANCH ─────────────────────────────────────────────────── */}
-      <div className="mb-2 flex items-center gap-1.5">
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md border border-white/5 bg-white/[0.06] px-2 py-1.5">
-          <GitBranch className="h-3.5 w-3.5 shrink-0 text-green" />
-          <span className="truncate text-xs font-medium text-green">feature/pay-318-invoice-vat</span>
-          <span className="ml-auto shrink-0 rounded p-1">
-            <Copy className="h-3 w-3 text-appink-icon" />
-          </span>
-        </div>
-      </div>
-
-      {/* ── 4. THE UNCOMMITTED BLOCK ──────────────────────────────────────── */}
-      {files.length > 0 ? (
-        <div className="mb-2 rounded-md border border-white/5 bg-white/[0.06] p-2">
-          <div className="mb-2 flex items-center gap-2 text-xs">
-            <span className="font-medium text-appink/70">{t('site.infoSidebar.uncommitted')}</span>
-            <div className="ml-auto flex items-center gap-2">
-              <span className="text-appink/50">
-                {t(files.length === 1 ? 'site.infoSidebar.fileOne' : 'site.infoSidebar.files', { count: files.length })}
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="text-green">+{added}</span>
-                <span className="text-red">-{removed}</span>
-              </span>
-              <div className="flex gap-0.5">
-                {[0, 1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className={`h-1.5 w-1.5 rounded-sm ${ratio >= (i + 1) / 6 ? 'bg-green' : 'bg-red'}`} />
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="space-y-0.5">
-            {files.map((f) => (
-              <div key={f.file} className="-mx-1 flex items-center gap-1.5 rounded px-1 py-0.5 text-xs">
-                <span className="flex-1 truncate font-mono text-appink/60">{f.file}</span>
-                <span className="shrink-0 text-[10px] text-appink/40">
-                  {f.added > 0 ? <span className="text-green">+{f.added}</span> : null}
-                  {f.added > 0 && f.removed > 0 ? ' ' : null}
-                  {f.removed > 0 ? <span className="text-red">-{f.removed}</span> : null}
+    /* ONE `AppGround` AROUND THE WHOLE CARD, not one per block. `RepositoryCard` from
+       `design-system/desktop/` is the plate, the padding, the air between the blocks and
+       the ORDER they are read in — what was here was a copy of all four, and every block
+       inside had to carry its own patch of the app's theme. */
+    <AppGround paint={false} className="relative">
+      <div ref={setPortal} />
+      <RepositoryCard
+        /* The coloured tile and the name are `HeaderRepoCard`'s `Label`, Scripts its
+           `SelectIcon`, the last three its `ButtonIcon`s. What this changed on screen:
+           three buttons that carried WORDS — "Scripts", "Open", "Open" — on dashed
+           outlines. The app gave those up because written out they ran to some 270px of
+           a 288px sidebar; the marks carry the meaning and the tooltips the names. */
+        header={
+          <HeaderRepoCard
+            name="magic-pay"
+            color={REPO_COLOR}
+            scripts={{
+              icon: Play,
+              title: t('site.infoSidebar.scripts'),
+              groups: SCRIPT_GROUPS(t),
+              onSelect: noop,
+              /* The component's own panel, opened from the storyboard's clock through
+                 `SelectIcon`'s controlled `open`. What hung here before was a second
+                 menu drawn by hand at an offset measured against the trigger. */
+              open: menuOpen,
+              portalTo: portal,
+            }}
+            editor={{ icon: VSCode, title: t('site.infoSidebar.open'), onClick: noop }}
+            remote={{ icon: Github, title: t('site.infoSidebar.open'), onClick: noop }}
+            remove={{ title: t('site.infoSidebar.open'), onClick: noop }}
+          />
+        }
+        /* The running script, drawn here still: `RunningScripts` is the app's own
+           component and lives in the renderer, not in the design system — it reads the
+           store and the pty. The slot is what puts it straight under the row that
+           launched it. */
+        activity={
+          server !== 'none' ? (
+            <div className="flex flex-col">
+              <div
+                className={`flex w-full items-center gap-2 bg-purple px-2 py-1.5 text-xs text-white ${
+                  server === 'serving' ? 'rounded-t-lg' : 'rounded-lg'
+                }`}
+              >
+                <span className="shrink-0 text-white">
+                  <WaveLoader />
+                </span>
+                <div className="min-w-0 flex-1 text-left">
+                  <div className="truncate text-xs font-medium">dev</div>
+                </div>
+                <span className="flex shrink-0 items-center gap-1 rounded-md bg-white/15 py-1 pl-1.5 pr-2">
+                  <CircleStop className="h-3.5 w-3.5 text-white" />
+                  <span className="text-[11px] font-semibold text-white">{t('site.infoSidebar.stop')}</span>
                 </span>
               </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {/* ── 5. THE COMMITS BLOCK ──────────────────────────────────────────── */}
-      {commits.length > 0 ? (
-        <div className="mb-2 rounded-md border border-white/5 bg-white/[0.06] p-2">
-          <div className="mb-1.5 flex items-center text-xs">
-            <span className="font-medium text-appink/70">{t('site.infoSidebar.commits')}</span>
-            <span className="ml-auto text-appink/50">{commits.length} ahead of main</span>
-          </div>
-          <div className="space-y-1">
-            {commits.map((c) => (
-              <div key={c.hash} className="flex items-center gap-2 py-0.5 text-xs">
-                <span className="flex-1 truncate text-appink/60">{c.subject}</span>
-                <span className="shrink-0 text-xs text-appink/40">{c.age}</span>
-                <span className="flex shrink-0 items-center gap-1 rounded border border-appline/30 bg-white/[0.06] px-1.5 py-0.5 font-mono text-xs text-appink-icon">
-                  {c.hash}
-                  <Copy className="h-3 w-3" />
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-    </div>
+              {server === 'serving' ? (
+                <div className="flex w-full items-center gap-2.5 rounded-b-lg border border-t-0 border-white/5 bg-white/[0.06] px-3 py-2.5 text-sm text-appink">
+                  <Globe className="h-4 w-4 shrink-0 text-purple" />
+                  <span className="flex-1 truncate text-left font-medium">localhost:3000</span>
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                </div>
+              ) : null}
+            </div>
+          ) : undefined
+        }
+        /* `BranchCard`'s, while the slot exists to hold one. The chip drawn here carried
+           no base and no arrow — and the RELATION between the two branches is that
+           component's whole subject, so it said "a branch" where the app says "this one
+           goes back to that one". */
+        branch={
+          <BranchCard
+            branch="feature/pay-318-invoice-vat"
+            base="main"
+            copy={{ label: 'feature/pay-318-invoice-vat', onCopy: noop }}
+          />
+        }
+        changes={
+          files.length > 0 ? (
+            <UnCommittedChangesCard
+              label={t('site.infoSidebar.uncommitted')}
+              summary={t(files.length === 1 ? 'site.infoSidebar.fileOne' : 'site.infoSidebar.files', { count: files.length })}
+              additions={added}
+              deletions={removed}
+              files={files.map((f) => ({
+                path: f.file,
+                name: f.file,
+                additions: f.added,
+                deletions: f.removed,
+              }))}
+              /* A handler, even though nothing opens: without one the rows are inert and
+                 the filenames do not lift under the cursor, which is a card this drawing
+                 is not a picture of. */
+              onOpenFile={noop}
+            />
+          ) : undefined
+        }
+        commits={
+          commits.length > 0 ? (
+            <CommitCard
+              label={t('site.infoSidebar.commits')}
+              summary={`${commits.length} ahead of main`}
+              commits={commits.map((c) => ({
+                hash: c.hash,
+                shortHash: c.hash,
+                subject: c.subject,
+                relativeDate: c.age,
+                copyLabel: c.hash,
+              }))}
+              onCopyHash={noop}
+            />
+          ) : undefined
+        }
+      />
+    </AppGround>
   )
 }
 
@@ -312,7 +268,7 @@ function Plate({ tone, children }: { tone: string; children: React.ReactNode }) 
 export function RepoCardMockup() {
   return (
     <Plate tone="bg-tone-sky">
-      <RepoCard server="none" menuOpen={false} menuHover={false} />
+      <RepoCard server="none" menuOpen={false} />
     </Plate>
   )
 }
@@ -324,43 +280,55 @@ export function RepoCardMockup() {
 const SERVER_AT = [0, 900, 1400, 2400, 3000, 3300, 5200] as const
 const SERVER_LOOP = 11000
 
+/**
+ * WHAT THE POINTER AIMS AT, as a SELECTOR rather than as a ref.
+ *
+ * Both targets live inside design-system components now — the trigger is `SelectIcon`'s
+ * own button, the `dev` row is an item in the panel it portals — and neither hands a ref
+ * out. Asking the DOM is what is left, and it is honest here: this is a drawing measuring
+ * a drawing, in an effect that already runs after every paint.
+ *
+ * The trigger is found by its ARIA role, which is the component's contract rather than a
+ * class that could be restyled. The row is found by its label, which is a package.json
+ * key and therefore never translated.
+ */
+const SCRIPTS_TRIGGER = 'button[aria-haspopup="menu"]'
+
 export function DevServerMockup() {
   const step = useLoopStep(SERVER_AT, SERVER_LOOP)
-  const scriptsRef = useRef<HTMLSpanElement>(null)
-  const devRowRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null)
 
   // 0 rest · 1 aim Scripts · 2 click · 3 menu open, aim dev · 4 hover dev · 5 click, menu
   // closes, running · 6 serving.
   const menuOpen = step >= 3 && step < 5
-  const menuHover = step === 4
   const server: ServerState = step >= 6 ? 'serving' : step >= 5 ? 'running' : 'none'
   const pressed = step === 2 || step === 5
-  const target = step >= 1 && step < 3 ? scriptsRef : step >= 3 && step < 6 ? devRowRef : null
+  const aim = step >= 1 && step < 3 ? 'trigger' : step >= 3 && step < 6 ? 'dev' : null
 
   useLayoutEffect(() => {
     const frame = frameRef.current
-    const el = target?.current
-    if (!frame || !el) {
+    if (!frame || !aim) {
+      setPointer(null)
+      return
+    }
+    const el =
+      aim === 'trigger'
+        ? frame.querySelector(SCRIPTS_TRIGGER)
+        : [...frame.querySelectorAll('button')].find((b) => b.textContent?.trim().startsWith('dev'))
+    if (!el) {
       setPointer(null)
       return
     }
     const a = frame.getBoundingClientRect()
     const b = el.getBoundingClientRect()
     setPointer({ x: b.left - a.left + b.width / 2, y: b.top - a.top + b.height / 2 })
-  }, [target, step])
+  }, [aim, step])
 
   return (
     <div aria-hidden className="flex h-[440px] items-center justify-center rounded-2xl bg-tone-mist px-6 sm:h-[480px]">
       <div ref={frameRef} className="relative w-full max-w-[500px] rounded-2xl bg-ink p-4 shadow-lift">
-        <RepoCard
-          server={server}
-          menuOpen={menuOpen}
-          menuHover={menuHover}
-          scriptsRef={scriptsRef}
-          devRowRef={devRowRef}
-        />
+        <RepoCard server={server} menuOpen={menuOpen} />
         {pointer ? (
           <div
             className="pointer-events-none absolute z-30 transition-[left,top] duration-500 ease-in-out"

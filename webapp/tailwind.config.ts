@@ -82,23 +82,14 @@ const strikeAt = (at: number) => ({
 // only the spinner leaves both sets of strokes visible through each other for the whole
 // crossfade — a smudge, not a transition. Each has to carry its own opacity.
 //
-// `at` is the percentage of the shared loop where the check resolves; the swap takes 4%
-// of it. Both end on the settled state, so `motion-reduce:animate-none` shows a passed
-// check rather than a frozen spinner — see the note on `statusIn` below for why the
-// stagger lives in these percentages and not in an `animation-delay`.
-const ciSettled = (at: number) => ({
-  '0%': { opacity: '0' },
-  [`${at}%`]: { opacity: '0' },
-  [`${at + 4}%`]: { opacity: '1' },
-  '100%': { opacity: '1' },
-})
-
-const ciPending = (at: number) => ({
-  '0%': { opacity: '1' },
-  [`${at}%`]: { opacity: '1' },
-  [`${at + 4}%`]: { opacity: '0' },
-  '100%': { opacity: '0' },
-})
+// `ciSettled` AND `ciPending` WERE HERE, six keyframes' worth, and they went when the
+// card that used them started drawing the real components. `PRWatchCardMockup` renders
+// `PullRequestCard` and `CollapsibleLine` from `design-system/desktop/` now, and a React
+// component's state cannot be driven by a CSS animation — so the three checks settle on
+// beats read off the same 8s clock by `useLoopStep`, at the 30/48/66% these keyframes
+// used. The trick they needed went with them: two stroked glyphs stacked in one slot,
+// each carrying its own opacity, because a stroked shape has a transparent middle and
+// fading one left both sets of strokes showing through each other.
 
 const statusIn = (hidden: number, shown: number) => ({
   '0%': { opacity: '0', translate: '0 0.25rem' },
@@ -1472,12 +1463,6 @@ const config: Config = {
         // Three checks resolving in order over an 8s loop, at 30%, 48% and 66% — a
         // beat and a half apart, because CI jobs do not finish together and three
         // ticks landing at once would read as a progress bar reaching the end.
-        'ci-pending-1': ciPending(30),
-        'ci-settled-1': ciSettled(30),
-        'ci-pending-2': ciPending(48),
-        'ci-settled-2': ciSettled(48),
-        'ci-pending-3': ciPending(66),
-        'ci-settled-3': ciSettled(66),
         // ── The `/features` Agents sidebar ───────────────────────────────────────
         //
         // TWO ANIMATIONS LIFTED FROM THE APP'S OWN `index.css`, keyframe for keyframe,
@@ -1925,12 +1910,6 @@ const config: Config = {
         // keyframes. Same discipline as the five status lines above, and for the same
         // reason — a delay on an `infinite` animation applies to the first iteration
         // only, so delayed siblings drift out of phase for ever.
-        'ci-pending-1': 'ci-pending-1 8s linear infinite',
-        'ci-settled-1': 'ci-settled-1 8s linear infinite',
-        'ci-pending-2': 'ci-pending-2 8s linear infinite',
-        'ci-settled-2': 'ci-settled-2 8s linear infinite',
-        'ci-pending-3': 'ci-pending-3 8s linear infinite',
-        'ci-settled-3': 'ci-settled-3 8s linear infinite',
         // The sidebar's two states. The wave's stagger is a delay at the call site, so
         // one animation serves all three bars.
         'wave-bar': 'wave-bar 1.2s ease-in-out infinite',

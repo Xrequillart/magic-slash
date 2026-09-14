@@ -1,29 +1,37 @@
 'use client'
 
-import { Copy } from 'lucide-react'
-import { GithubIcon } from '../icons'
+import { CommitCard } from '@ds/desktop'
+import { Github } from '@ds/desktop/icons'
+import { AppGround } from '../AppGround'
 
 /**
  * The visual inside the `/magic:commit` card: the app's own commits panel, redrawn,
  * CROPPED on the right and at the bottom.
  *
- * DRAWN FROM THE REAL COMPONENT, not from an idea of it. Every measurement is lifted from
- * the `hasCommits` block of
- * `desktop/src/renderer/components/agent-info-sidebar/RepositoryCard.tsx`: the panel as
- * `rounded-md border p-2`, its header row as `flex items-center text-xs mb-1.5` with the
- * label `font-medium` on the left and the ahead-count pushed right by `ml-auto`, the list
- * as `space-y-1`, each row as `flex items-center gap-2 text-xs py-0.5` holding a
- * `truncate flex-1` subject, then a relative date, then the short hash as a
- * `flex items-center gap-1 px-1.5 py-0.5 border rounded font-mono text-xs` button with a
- * `w-3 h-3` `Copy` beside it, and — only on a pushed commit — a `p-1 border rounded`
- * button carrying the GitHub mark at the same size.
+ * IT IS THE COMPONENT NOW, not a drawing of one. `CommitCard` comes from
+ * `design-system/desktop/`, the same file the Electron renderer compiles, on a patch of
+ * the app's own LIGHT theme (`AppGround`). Change the card and this illustration changes
+ * with it.
  *
- * THE THREE SUBSTITUTED TOKENS are the same story as the spec panel's: the desktop app
- * dresses this in `surface`, `line-subtle`, `border` and a `text-secondary` ramp read off
- * CSS variables, and none of those exist in this webapp. So the ground is `white`, the
- * rules are `hairline`, and the app's `text-secondary/70`, `/60`, `/50` and `/40` tiers
- * become `ink/60`, `ink/50` and `ink/40` — the same idea (one ink at falling alphas) in
- * the tokens this page already uses everywhere else.
+ * WHAT THAT REPLACED: every measurement of the `hasCommits` block copied out by hand —
+ * the panel's padding, the header's `ml-auto`, each row's `py-0.5`, the hash chip's
+ * border and its `w-3` copy glyph — under a note listing all of them. The card has since
+ * grown a YELLOW RAIL down its gutter, which says the commits are one branch in order,
+ * and this drawing knew nothing about it. A drawing that IS the component cannot fall
+ * behind one.
+ *
+ * THE THREE SUBSTITUTED TOKENS ARE GONE WITH IT. The note here used to explain that the
+ * app dresses this in `surface`, `line-subtle` and a `text-secondary` ramp read off CSS
+ * variables, none of which exist in this webapp — so the ground became `white`, the rules
+ * `hairline`, and the four alpha tiers three of `ink`. `AppGround` hands the component
+ * the real variables instead, and there is nothing left to substitute.
+ *
+ * `theme="light"` AND `paint={false}`, which is two decisions. Light because this panel
+ * stands on a coloured card in a light grid, and the app's dark theme here would be a
+ * hole punched through the page. `paint={false}` because the wrapper already has a
+ * ground and keeps it: `canvas` (#F4F7FE), the site's declared off-white, chosen over
+ * pure white so the panel clears the page rather than reading as the same surface. The
+ * variables still land, which is all a real component needs.
  *
  * NO ANIMATION, deliberately, and not for lack of one to write. A commit list is a
  * RECORD: it is the thing that is already true when you look at it, where the start
@@ -56,16 +64,29 @@ const COMMITS = [
   { subject: 'test(desktop): cover the pane resize guard', age: '2m', hash: '7b40e18', pushed: true },
   { subject: 'refactor(desktop): lift the pane state out of the view', age: '5m', hash: 'c1d8a05', pushed: true },
   { subject: 'fix(desktop): keep the divider inside its track', age: '11m', hash: '5e2f7b3', pushed: true },
-  { subject: 'chore(deps): bump electron to 28.3.1', age: '18m', hash: 'd9c4160', pushed: false },
 ]
 
 /**
- * FIVE ROWS AND A COUNT, because that is exactly what the app renders: `RepositoryCard`
- * does `commits.slice(0, 5)` and then, when there are more, a
- * `text-xs py-0.5` line reading `+{n} more commits`. Drawing six rows would have shown a
- * list the component cannot produce.
+ * FOUR ROWS AND A COUNT, and the fourth went to the rail.
+ *
+ * It was five — `RepositoryCard` slices at five, so five is what the component can
+ * produce — and five fitted the panel's 224px while each row was `py-0.5`. `CommitCard`
+ * gives every row `py-1` instead, because the rail is drawn edge to edge per row and any
+ * gap between them would show as a broken trail. Measured after the swap: the card came
+ * to 230px in a 224px panel, so the crop this drawing takes at the bottom landed
+ * THROUGH the "+N more" line rather than on the strip of empty panel it is meant to cut.
+ * A crop through the middle of type does not read as a panel continuing past the frame;
+ * it reads as text that failed to fit — which is the same lesson `WorkflowArt` records
+ * about its own minimum width.
+ *
+ * Four rows is not a claim about the component: this drawing is a CROP, and the count
+ * line below is what says the list is a window onto something longer. Seven commits
+ * either way.
  */
-const MORE = 2
+const MORE = 3
+
+/** Nothing is listening: a hash nobody can copy is still a hash. */
+const noop = () => undefined
 
 export function CommitsCardMockup() {
   return (
@@ -87,41 +108,30 @@ export function CommitsCardMockup() {
           `bg-canvas` and not `bg-white`: the page's own ground is white, so a white panel
           read as the same surface as the page rather than as a thing on a card.
           `canvas` (#F4F7FE) is the site's declared off-white. */}
-      <div className="h-56 min-w-96 overflow-hidden rounded-md border border-hairline bg-canvas p-2 shadow-lift">
-        <div className="mb-1.5 flex items-center text-xs">
-          <span className="font-medium text-ink/60">Commits</span>
-          <span className="ml-auto text-ink/50">3 ahead of main</span>
-        </div>
-
-        <div className="space-y-1">
-          {COMMITS.map((commit) => (
-            <div key={commit.hash} className="flex items-center gap-2 py-0.5 text-xs">
-              <span className="flex-1 truncate text-ink/60">{commit.subject}</span>
-              <span className="shrink-0 text-ink/40">{commit.age}</span>
-              {/* The hash is a BUTTON in the app — it copies the full sha — so it is
-                  drawn as one. Static: nothing here can be pressed, and a hover state
-                  would be a promise the drawing cannot keep. */}
-              <span className="flex shrink-0 items-center gap-1 rounded border border-hairline px-1.5 py-0.5 font-mono text-xs text-ink/50">
-                {commit.hash}
-                <Copy className="h-3 w-3" />
-              </span>
-              {/* Only on a pushed commit, exactly as in the app: the button opens the
-                  commit on GitHub, so a local one has nothing to open. Drawing it on all
-                  three would have flattened the one detail in this panel that carries
-                  information. */}
-              {commit.pushed ? (
-                <span className="flex shrink-0 items-center rounded border border-hairline p-1 text-ink/50">
-                  <GithubIcon size={12} />
-                </span>
-              ) : null}
-            </div>
-          ))}
-          {/* The app's own overflow line, verbatim in shape: `text-xs py-0.5` in the
-              faintest tier. It is the one thing in this panel that says the list is a
-              window onto something longer, which is also what the crop is saying. */}
-          <div className="py-0.5 text-xs text-ink/40">+{MORE} more commits</div>
-        </div>
-      </div>
+      <AppGround
+        theme="light"
+        paint={false}
+        className="h-56 min-w-96 overflow-hidden rounded-md border border-hairline bg-canvas p-2 shadow-lift"
+      >
+        <CommitCard
+          label="Commits"
+          summary="3 ahead of main"
+          commits={COMMITS.map((commit) => ({
+            hash: commit.hash,
+            shortHash: commit.hash,
+            subject: commit.subject,
+            relativeDate: commit.age,
+            copyLabel: commit.hash,
+            openable: commit.pushed,
+          }))}
+          moreLabel={`+${MORE} more commits`}
+          onCopyHash={noop}
+          /* Only on a pushed commit, exactly as in the app: the button opens the commit
+             on GitHub, so a local one has nothing to open. `openable` per row is what
+             carries that, and it is the one detail in this panel with information in it. */
+          open={{ label: 'View on GitHub', icon: Github, onOpen: noop }}
+        />
+      </AppGround>
     </div>
   )
 }
