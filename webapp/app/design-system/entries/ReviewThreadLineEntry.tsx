@@ -30,7 +30,7 @@ const PROPS: PropRow[] = [
     name: 'state',
     type: '{ icon: IconComponent; label: string; tone: PRTone; strong?: boolean }',
     description:
-      'Whether GitHub tracks a state for this thread at all. Absent on a conversation comment and on a review summary, which are not threads with a state. strong is the one drawn as a tinted badge rather than as a word beside an icon.',
+      'Whether GitHub tracks a state for this thread at all. Absent on a conversation comment and on a review summary, which are not threads with a state. strong is the one drawn as a Label rather than as a word beside an icon — it wears the tone through Label’s color, the same door a repository’s own hue comes through.',
   },
   { name: 'age', type: 'string', description: 'When it was opened, already formatted and already translated.' },
   {
@@ -38,10 +38,10 @@ const PROPS: PropRow[] = [
     type: 'boolean',
     fallback: 'false',
     description:
-      'Settled, so the row steps back — border tinted green, text dimmed. The badge inside stays at full strength: it is the one thing on the row that has to be readable without stopping.',
+      'Settled, so the row steps back — the text dims, and since the outline went that is all of it. The green was saying the same thing twice, once on a border and once on the “Resolved” chip two inches to its right. The chip stays at full strength: it is the one thing on the row that has to be readable without stopping.',
   },
   { name: 'openLabel / onOpen', type: 'string / () => void', required: true, description: 'The whole row is the control. It reports the click and nothing else.' },
-  { name: 'className', type: 'string', fallback: "''", description: 'Margins and placement. Not the fill, the border or any of the tones.' },
+  { name: 'className', type: 'string', fallback: "''", description: 'Margins and placement. Not the fill or any of the tones.' },
 ]
 
 const THREADS = [
@@ -123,6 +123,7 @@ export function ReviewThreadLineEntry({
         title="ReviewThreadLine"
         uses={[
           { id: 'icon', label: 'Icon' },
+          { id: 'label', label: 'Label' },
           { id: 'text', label: 'Text' },
         ]}
         onOpen={onOpen}
@@ -143,11 +144,17 @@ export function ReviewThreadLineEntry({
           states travel to the right edge as one group, so they line up column-wise down the
           list rather than trailing each row’s own text.
         </p>
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          The fill is the whole separation. The rows carried an outline as well, and an
+          outlined plate inside a fold inside a <code>PullRequestCard</code> is three frames
+          deep for one line of text — a shade of ground is enough to stop rows running
+          together, and the list then reads as a stack rather than as a column of boxes.
+        </p>
       </EntrySection>
 
       <EntrySection
         title="Resolved steps back, and one thing does not"
-        note="Border tinted green, author dimmed — the same reading as the checklist above it, where a ticked line goes quiet so the eye lands on what is still open. The state badge inside stays at full strength: in a list of twenty threads it is what separates “still to do” from “done”, and it has to be readable without stopping."
+        note="The author dims, and that is the whole signal — the same reading as the checklist above it, where a ticked line goes quiet so the eye lands on what is still open. The Resolved label stays at full strength: in a list of twenty threads it is what separates “still to do” from “done”, and it has to be readable without stopping."
       >
         <Stage theme={theme} className="flex flex-col gap-4">
           <Specimen label="open, with a verdict and a place">
@@ -164,7 +171,7 @@ export function ReviewThreadLineEntry({
               />
             </ul>
           </Specimen>
-          <Specimen label="resolved — the badge is the one thing at full strength">
+          <Specimen label="resolved — the label is the one thing at full strength">
             <ul className="max-w-[460px]">
               <ReviewThreadLine
                 author="xrequillart"

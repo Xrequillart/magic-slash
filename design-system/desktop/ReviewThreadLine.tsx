@@ -1,5 +1,6 @@
 import { Icon } from './Icon'
-import { PR_BADGE, PR_MARK, type PRTone } from './prTones'
+import { Label } from './Label'
+import { PR_BADGE, PR_COLOR, PR_MARK, type PRTone } from './prTones'
 import { Text } from './Text'
 import type { IconComponent } from './types'
 
@@ -25,8 +26,10 @@ import type { IconComponent } from './types'
  * IT HAS ITS OWN FILL, unlike every other row in this folder. `bg-surface` is the token
  * the card itself is painted with, so the rows belong to the card rather than to a
  * palette of their own — they still read a shade lighter, because these are TRANSLUCENT
- * overlays and a row sits on three of them. The separation comes from the border; the
- * fill only has to stop the rows running together.
+ * overlays and a row sits on three of them. THE FILL IS THE WHOLE SEPARATION now: the
+ * rows carried an outline as well, and an outlined plate inside a fold inside a card is
+ * three frames deep for one line of text. A shade of ground is enough to stop rows
+ * running together, and the list reads as a stack rather than as a column of boxes.
  */
 
 export interface ReviewThreadLineProps {
@@ -60,19 +63,23 @@ export interface ReviewThreadLineProps {
    * with a state — pinning "open" to every one of them would spend the row's width
    * saying nothing.
    *
-   * `strong` is the one state drawn as a tinted BADGE rather than as a word beside an
-   * icon: resolved is what separates "still to do" from "done" in a list of twenty,
-   * and a grey word carried the same weight as "outdated", which says nothing of the
-   * kind.
+   * `strong` is the one state drawn as a `Label` rather than as a word beside an icon:
+   * resolved is what separates "still to do" from "done" in a list of twenty, and a grey
+   * word carried the same weight as "outdated", which says nothing of the kind. It wears
+   * the tone's colour through `Label`'s `color`, the same door a repository's own hue
+   * comes through — plate at 12%, glyph at full strength, the word in ink.
    */
   state?: { icon: IconComponent; label: string; tone: PRTone; strong?: boolean }
   /** When it was opened, already formatted and already translated. */
   age?: string
   /**
-   * Settled, so the row steps back — border tinted green, text dimmed. The same
-   * reading as the checklist above it, where a ticked line goes quiet so the eye lands
-   * on what is still open. The badge inside stays at full strength: it is the one
-   * thing on the row that has to be readable without stopping.
+   * Settled, so the row steps back — the text dims. The same reading as the checklist
+   * above it, where a ticked line goes quiet so the eye lands on what is still open.
+   *
+   * THE DIMMED TEXT IS ALL OF IT since the outline went, and it is enough: the green
+   * was saying the same thing twice, once on a border and once on the "Resolved" chip
+   * two inches to its right. The chip stays at full strength — it is the one thing on
+   * the row that has to be readable without stopping.
    */
   resolved?: boolean
   /** Tooltip and accessible name for the row. */
@@ -101,9 +108,7 @@ export function ReviewThreadLine({
         type="button"
         onClick={onOpen}
         title={openLabel}
-        className={`flex-1 flex items-center gap-1.5 min-w-0 rounded-lg border bg-surface hover:bg-surface-strong px-2 py-1.5 text-xs text-left transition-colors cursor-pointer ${
-          resolved ? 'border-green/30' : 'border-border/30'
-        }`}
+        className="flex-1 flex items-center gap-1.5 min-w-0 rounded-lg border-none bg-surface hover:bg-surface-strong px-2 py-1.5 text-xs text-left transition-colors cursor-pointer"
       >
         {/* The author gives way to the location: on an inline thread "which file" is
             the part that places the row, and a truncated login is still readable. */}
@@ -128,18 +133,21 @@ export function ReviewThreadLine({
             column-wise down the list rather than trailing each row's own text. */}
         <span className="ml-auto flex items-center gap-1.5 flex-shrink-0 text-[10px]">
           {replies && <span className="text-text-secondary/70 tabular-nums">{replies}</span>}
-          {state && (
-            <span
-              className={`flex items-center gap-1 ${
-                state.strong
-                  ? `${PR_BADGE[state.tone]} font-semibold px-1.5 py-0.5 rounded-md`
-                  : 'text-text-secondary/60'
-              }`}
-            >
-              <Icon glyph={state.icon} size="xs" tone="inherit" className={PR_MARK[state.tone]} />
-              {state.label}
-            </span>
-          )}
+          {state &&
+            (state.strong ? (
+              /* A `Label`, and not one more hand-rolled capsule: this is a word on a
+                 tinted plate with a mark in front of it, which is the thing `Label` is.
+                 `color` rather than a tone, because the tones there are brands — see
+                 `PR_COLOR` for why the value is a variable and not a hex. */
+              <Label color={PR_COLOR[state.tone]} icon={state.icon}>
+                {state.label}
+              </Label>
+            ) : (
+              <span className="flex items-center gap-1 text-text-secondary/60">
+                <Icon glyph={state.icon} size="xs" tone="inherit" className={PR_MARK[state.tone]} />
+                {state.label}
+              </span>
+            ))}
           {age && <span className="text-text-secondary/40">{age}</span>}
         </span>
       </button>
