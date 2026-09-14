@@ -13,6 +13,9 @@ import { CommitLineEntry } from './entries/CommitLineEntry'
 import { DiffStatEntry } from './entries/DiffStatEntry'
 import { FileModifiedLineEntry } from './entries/FileModifiedLineEntry'
 import { UnCommittedChangesCardEntry } from './entries/UnCommittedChangesCardEntry'
+import { CollapsibleLineEntry } from './entries/CollapsibleLineEntry'
+import { ReviewThreadLineEntry } from './entries/ReviewThreadLineEntry'
+import { PullRequestCardEntry } from './entries/PullRequestCardEntry'
 import { ColorsEntry } from './entries/ColorsEntry'
 import { ContextAgentCardEntry } from './entries/ContextAgentCardEntry'
 import { BannerEntry } from './entries/BannerEntry'
@@ -92,6 +95,9 @@ const ENTRIES: Record<
   diffstat: DiffStatEntry,
   filemodifiedline: FileModifiedLineEntry,
   uncommittedchangescard: UnCommittedChangesCardEntry,
+  collapsibleline: CollapsibleLineEntry,
+  reviewthreadline: ReviewThreadLineEntry,
+  pullrequestcard: PullRequestCardEntry,
   banner: BannerEntry,
   agent: AgentEntry,
 }

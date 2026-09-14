@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight } from '@ds/desktop/icons'
 import MarkdownView from '../file-preview/MarkdownView'
 import InitialsAvatar from './InitialsAvatar'
 import DiffHunkView from './DiffHunkView'
+import { PR_BADGE, PR_MARK } from '@ds/desktop'
 import { REVIEW_BADGE, REVIEW_STATE_BADGE, THREAD_STATE } from '../agent-info-sidebar/PRWatchCard'
 import { formatTimestamp } from '../agent-info-sidebar/utils'
 import type { Translate } from '../../i18n'
@@ -62,7 +63,7 @@ function ThreadComment({ comment, now, t }: { comment: PRComment; now: number; t
             product and wears one there. */}
         <span className="text-xs font-medium text-ink">@{comment.author}</span>
         {badge && (
-          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${REVIEW_BADGE[badge].tone}`}>
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${PR_BADGE[REVIEW_BADGE[badge].tone]}`}>
             {t(REVIEW_BADGE[badge].label)}
           </span>
         )}
@@ -165,8 +166,14 @@ export default function PRThread({ thread, now, t }: Props) {
             </span>
           )}
           {state && (
-            <span className={`flex items-center gap-1 ${state.pill}`}>
-              <state.Icon className={`w-3.5 h-3.5 ${state.tone}`} />
+            /* `strong` is the map's own word for "drawn as a badge rather than as a
+               word beside an icon" — resolved, and only resolved. The tint and the mark's
+               colour both come out of the shared `PRTone` it carries, so this panel and
+               the card's row cannot disagree about what one looks like. */
+            <span className={`flex items-center gap-1 ${
+              state.strong ? `${PR_BADGE[state.tone]} font-semibold px-1.5 py-0.5 rounded-md` : 'text-text-secondary/60'
+            }`}>
+              <state.Icon className={`w-3.5 h-3.5 ${PR_MARK[state.tone]}`} />
               {t(state.label)}
             </span>
           )}

@@ -26,6 +26,9 @@ export type EntryId =
   | 'diffstat'
   | 'filemodifiedline'
   | 'uncommittedchangescard'
+  | 'collapsibleline'
+  | 'reviewthreadline'
+  | 'pullrequestcard'
   | 'banner'
   | 'agent'
   | 'contextagentcard'
@@ -65,6 +68,9 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   diffstat: 'DiffStat',
   filemodifiedline: 'FileModifiedLine',
   uncommittedchangescard: 'UnCommittedChangesCard',
+  collapsibleline: 'CollapsibleLine',
+  reviewthreadline: 'ReviewThreadLine',
+  pullrequestcard: 'PullRequestCard',
   banner: 'Banner',
   agent: 'Agent',
 }
@@ -128,7 +134,7 @@ export const FAMILIES: Family[] = [
   {
     label: 'Secondary',
     note: 'Several pieces saying one thing.',
-    entries: ['label', 'status', 'branchcard', 'commitline', 'filemodifiedline', 'agent', 'menusidebaritem', 'banner'],
+    entries: ['label', 'status', 'branchcard', 'commitline', 'filemodifiedline', 'collapsibleline', 'reviewthreadline', 'agent', 'menusidebaritem', 'banner'],
   },
   {
     label: 'Tertiary',
@@ -143,6 +149,7 @@ export const FAMILIES: Family[] = [
     entries: [
       'commitcard',
       'uncommittedchangescard',
+      'pullrequestcard',
       'titleagentcard',
       'contextagentcard',
       'headerrepocard',
@@ -196,6 +203,9 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   diffstat: 'How much was added, how much was taken away',
   filemodifiedline: 'One file that has changed, and by how much',
   uncommittedchangescard: 'The files you are in the middle of',
+  collapsibleline: 'One box to tick, and what is behind it',
+  reviewthreadline: 'One review thread, scanned rather than read',
+  pullrequestcard: 'A pull request, as the sidebar watches it',
   banner: 'States a fact about a surface',
   agent: 'What it is called, and what it is doing',
 }
