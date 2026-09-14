@@ -71,3 +71,6 @@ slides/
 # Misc
 *.bak
 *.orig
+
+# Personal working notes, never part of the repo
+TODO.md
