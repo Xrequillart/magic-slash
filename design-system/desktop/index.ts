@@ -75,6 +75,8 @@ export type {
 } from './ProgressBar'
 export type { LabelProps, LabelSize, LabelTone } from './Label'
 export { Sidebar, SIDEBAR_WIDTH } from './Sidebar'
+export { SidebarInfo } from './SidebarInfo'
+export type { SidebarInfoProps } from './SidebarInfo'
 export type {
   SidebarAction,
   SidebarAgentRow,
@@ -91,7 +93,7 @@ export { UsageClaudeCodeCard } from './UsageClaudeCodeCard'
 export type { UsageClaudeCodeCardProps, UsageLimit } from './UsageClaudeCodeCard'
 export { TitleAgentCard } from './TitleAgentCard'
 export type { TitleAgentCardProps } from './TitleAgentCard'
-export { Text, TEXT_SIZES, TEXT_WEIGHTS } from './Text'
+export { Text, TEXT_FACE, TEXT_SIZES, TEXT_WEIGHTS } from './Text'
 export type { TextProps, TextSize, TextTone, TextWeight } from './Text'
 export type { IconProps, IconSize, IconTone } from './Icon'
 export type { BannerProps, BannerVariant, BannerLayout } from './Banner'

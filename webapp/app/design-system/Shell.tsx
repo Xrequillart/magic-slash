@@ -17,6 +17,7 @@ import { CollapsibleLineEntry } from './entries/CollapsibleLineEntry'
 import { ReviewThreadLineEntry } from './entries/ReviewThreadLineEntry'
 import { PullRequestCardEntry } from './entries/PullRequestCardEntry'
 import { RepositoryCardEntry } from './entries/RepositoryCardEntry'
+import { SidebarInfoEntry } from './entries/SidebarInfoEntry'
 import { ColorsEntry } from './entries/ColorsEntry'
 import { ContextAgentCardEntry } from './entries/ContextAgentCardEntry'
 import { BannerEntry } from './entries/BannerEntry'
@@ -100,6 +101,7 @@ const ENTRIES: Record<
   reviewthreadline: ReviewThreadLineEntry,
   pullrequestcard: PullRequestCardEntry,
   repositorycard: RepositoryCardEntry,
+  sidebarinfo: SidebarInfoEntry,
   banner: BannerEntry,
   agent: AgentEntry,
 }

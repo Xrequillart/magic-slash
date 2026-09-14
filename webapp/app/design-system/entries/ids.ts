@@ -30,6 +30,7 @@ export type EntryId =
   | 'reviewthreadline'
   | 'pullrequestcard'
   | 'repositorycard'
+  | 'sidebarinfo'
   | 'banner'
   | 'agent'
   | 'contextagentcard'
@@ -73,6 +74,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   reviewthreadline: 'ReviewThreadLine',
   pullrequestcard: 'PullRequestCard',
   repositorycard: 'RepositoryCard',
+  sidebarinfo: 'SidebarInfo',
   banner: 'Banner',
   agent: 'Agent',
 }
@@ -180,7 +182,7 @@ export const FAMILIES: Family[] = [
      * something it is built from. The same reasoning that put the tier here in the
      * first place.
      */
-    entries: ['repositorycard', 'sidebar'],
+    entries: ['repositorycard', 'sidebarinfo', 'sidebar'],
   },
 ]
 
@@ -217,6 +219,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   reviewthreadline: 'One review thread, scanned rather than read',
   pullrequestcard: 'A pull request, as the sidebar watches it',
   repositorycard: 'One repository, and everything happening to it',
+  sidebarinfo: 'The right column, and the agent in it',
   banner: 'States a fact about a surface',
   agent: 'What it is called, and what it is doing',
 }

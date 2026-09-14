@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { SidebarInfo } from '@ds/desktop'
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { TicketHeader } from './agent-info-sidebar/TicketHeader'
@@ -71,7 +72,6 @@ export function AgentInfoSidebar() {
   // Git data per repository
   const [repoGitData, setRepoGitData] = useState<Record<string, RepoGitData>>({})
 
-  const sidebarRef = useRef<HTMLDivElement>(null)
 
   // Editing states
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -414,130 +414,116 @@ export function AgentInfoSidebar() {
   }, [])
 
   return (
-    <div
-      ref={sidebarRef}
-      className={`bg-surface-sunken flex flex-col h-full relative overflow-hidden ${
-        animateWidth ? 'transition-[width] duration-300 ease-in-out' : ''
-      }`}
-      style={{ width: isOpen ? `${width}px` : 0 }}
-    >
-      <div className="flex flex-col h-full" style={{ width: `${width}px` }}>
-      {/* Content */}
-      {/* In `replace` mode this container does NOT scroll: the spec card fills the
-          column and owns the only scroll region, so there is never a scrollbar
-          inside a scrollbar. Every other mode keeps the ordinary scrolling column. */}
-      <div
-        className={`flex-1 min-h-0 ${spec?.mode === 'replace' ? 'overflow-hidden' : 'overflow-y-auto'}`}
-        style={{ fontFamily: "'Cera Pro', -apple-system, BlinkMacSystemFont, sans-serif" }}
-      >
-        {!activeTerminal ? (
-          <div className="px-4 py-8 text-center text-text-secondary text-xs">
-            {t('agentInfo.noActiveAgent')}
-          </div>
-        ) : (
-          <div className={spec?.mode === 'replace' ? 'p-4 flex flex-col gap-4 h-full min-h-0' : 'p-4 space-y-4'}>
-            {/* Usage Card (context, cost, model). Switched off from Appearance →
-                Sidebars; on by default, and shown for the whole life of the agent
-                once on. That second part is deliberate: the usage feed only lands
-                after Claude's first response, and a bar that appears out of nowhere
-                mid-session reads as a glitch. With no usage yet the card degrades to
-                the gauge alone — every other row inside it is already conditional. */}
-            {config?.agentContextEnabled !== false && (
-              <UsageCard
-                usage={metadata?.usage ?? {}}
-                minimized={config?.agentContextMinimized === true}
-                onMinimizedChange={setAgentContextMinimized}
-              />
-            )}
+    <>
+      {/* The column, its ground, its fold, the face inside it and the ORDER of the
+          regions are `SidebarInfo`'s now — see that file for why the two nested boxes
+          both matter. What stays here is which agent this is and what each region is
+          made of.
 
-            {/* At `planning` the spec REPLACES the ticket header — no ticket exists
-                yet, so the header would be an empty card above the only thing there
-                is to read. At `planned` both are shown, header first: the ticket has
-                just been created and the spec is what it came from. Anywhere else the
-                header stands alone, exactly as it always has. */}
-            {spec?.mode !== 'replace' && (
-              <TicketHeader
-                metadata={metadata}
-                // Non-null inside this branch: `activeTerminal` is what it was read
-                // from, the same assertion `SpecPanel` makes just below.
-                agentId={inspectedTerminalId!}
-                taskSelection={taskSelection}
-                identity={identity}
-                onStatusChange={handleStatusChange}
-              />
-            )}
-            {spec && (
-              <SpecPanel
-                // A new file starts fresh: expanded, and pinned to its own bottom
-                // rather than wherever the previous spec had been left.
-                key={specPath}
-                // The agent the panel is open FOR, which is where its comments are sent.
-                // Non-null wherever `spec` is: the path came off this terminal's own metadata,
-                // the same assertion `RepositoryCard` makes below for the same reason.
-                agentId={inspectedTerminalId!}
-                identity={identity}
-                repoNames={configuredAttachedRepos.map(getRepoName)}
-                status={metadata?.status ?? ''}
-                repoPath={spec.repoPath}
-                filePath={spec.filePath}
-                refreshToken={specRefreshToken}
-                ticketId={metadata?.ticketId}
-                taskSelection={taskSelection}
-                onStatusChange={handleStatusChange}
-              />
-            )}
-
-            {/* Repository cards with git stats. Gone entirely at `planning`: a planning
-                agent has no branch, no diff and no PR, so every row in these cards is
-                empty — the repository NAME is all that is left to say, and the spec
-                header says it. */}
-            {spec?.mode !== 'replace' && configuredAttachedRepos.length > 0 && (
-              <div className="space-y-3">
-                {configuredAttachedRepos.map((repoPath) => (
-                  <RepositoryCard
-                    key={repoPath}
-                    repoPath={repoPath}
-                    repoName={getRepoName(repoPath)}
-                    agentId={inspectedTerminalId!}
-                    agentName={activeTerminal!.metadata?.title || activeTerminal!.name}
-                    gitData={repoGitData[repoPath]}
-                    baseBranch={metadata?.baseBranch}
-                    prUrl={getRepoPrUrl(repoPath)}
-                    repoUrl={getRepoUrl(repoPath)}
-                    repoMetadata={metadata?.repositoryMetadata?.[repoPath]}
-                    copiedCommitHash={copiedCommitHash}
-                    copiedBranch={copiedBranch}
-                    onCopyCommitHash={copyCommitHash}
-                    onCopyBranchName={copyBranchName}
-                    onRemove={() => handleToggleRepository(repoPath)}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Hidden at `planning` along with the cards it belongs to: it is the only
-                other thing competing for the height the spec now fills, and attaching
-                a repository is not a planning-time action. */}
-            {spec?.mode !== 'replace' && (
+          `fill` is the `replace` spec mode: the spec takes the whole column and owns
+          the only scroll region, so this one stops scrolling. */}
+      <SidebarInfo
+        width={width}
+        collapsed={!isOpen}
+        animate={animateWidth}
+        fill={spec?.mode === 'replace'}
+        emptyLabel={activeTerminal ? undefined : t('agentInfo.noActiveAgent')}
+        /* Switched off from Appearance → Sidebars; on by default, and shown for the
+           whole life of the agent once on. That second part is deliberate: the usage
+           feed only lands after Claude's first response, and a bar that appears out of
+           nowhere mid-session reads as a glitch. */
+        usage={
+          activeTerminal && config?.agentContextEnabled !== false ? (
+            <UsageCard
+              usage={metadata?.usage ?? {}}
+              minimized={config?.agentContextMinimized === true}
+              onMinimizedChange={setAgentContextMinimized}
+            />
+          ) : undefined
+        }
+        /* At `planning` the spec REPLACES the ticket header — no ticket exists yet, so
+           the header would be an empty card above the only thing there is to read. At
+           `planned` both are shown, header first: the ticket has just been created and
+           the spec is what it came from. */
+        ticket={
+          activeTerminal && spec?.mode !== 'replace' ? (
+            <TicketHeader
+              metadata={metadata}
+              // Non-null inside this branch: `activeTerminal` is what it was read from.
+              agentId={inspectedTerminalId!}
+              taskSelection={taskSelection}
+              identity={identity}
+              onStatusChange={handleStatusChange}
+            />
+          ) : undefined
+        }
+        spec={
+          activeTerminal && spec ? (
+            <SpecPanel
+              // A new file starts fresh: expanded, and pinned to its own bottom rather
+              // than wherever the previous spec had been left.
+              key={specPath}
+              // The agent the panel is open FOR, which is where its comments are sent.
+              agentId={inspectedTerminalId!}
+              identity={identity}
+              repoNames={configuredAttachedRepos.map(getRepoName)}
+              status={metadata?.status ?? ''}
+              repoPath={spec.repoPath}
+              filePath={spec.filePath}
+              refreshToken={specRefreshToken}
+              ticketId={metadata?.ticketId}
+              taskSelection={taskSelection}
+              onStatusChange={handleStatusChange}
+            />
+          ) : undefined
+        }
+        /* Gone entirely at `planning`: a planning agent has no branch, no diff and no
+           PR, so every row in these cards is empty — the repository NAME is all that is
+           left to say, and the spec header says it. */
+        repositories={
+          activeTerminal && spec?.mode !== 'replace' && configuredAttachedRepos.length > 0 ? (
+            <div className="space-y-3">
+              {configuredAttachedRepos.map((repoPath) => (
+                <RepositoryCard
+                  key={repoPath}
+                  repoPath={repoPath}
+                  repoName={getRepoName(repoPath)}
+                  agentId={inspectedTerminalId!}
+                  agentName={activeTerminal!.metadata?.title || activeTerminal!.name}
+                  gitData={repoGitData[repoPath]}
+                  baseBranch={metadata?.baseBranch}
+                  prUrl={getRepoPrUrl(repoPath)}
+                  repoUrl={getRepoUrl(repoPath)}
+                  repoMetadata={metadata?.repositoryMetadata?.[repoPath]}
+                  copiedCommitHash={copiedCommitHash}
+                  copiedBranch={copiedBranch}
+                  onCopyCommitHash={copyCommitHash}
+                  onCopyBranchName={copyBranchName}
+                  onRemove={() => handleToggleRepository(repoPath)}
+                />
+              ))}
+            </div>
+          ) : undefined
+        }
+        /* Hidden at `planning` along with the cards it belongs to: it is the only other
+           thing competing for the height the spec now fills, and attaching a repository
+           is not a planning-time action. */
+        footer={
+          activeTerminal && spec?.mode !== 'replace' ? (
             <button
               onClick={() => setIsRepoModalOpen(true)}
               /* `rounded-xl`, the CARD radius. This button stands exactly where another
-                 repository card would, and is the full width of one — at `rounded-lg` it
-                 was a slightly sharper box at the foot of a column of softer ones, which
-                 is the sort of thing that reads as unfinished without being nameable.
-                 The dashed rule stays: it is what says "empty slot", not chrome. */
+                 repository card would, and is the full width of one. The dashed rule
+                 stays: it is what says "empty slot", not chrome. */
               className="w-full py-4 text-center border border-dashed border-border/50 rounded-xl hover:border-text-secondary/50 hover:bg-surface transition-colors"
             >
-              <div className="text-xs text-text-secondary/50">
-                {t('agentInfo.addRepository')}
-              </div>
+              <div className="text-xs text-text-secondary/50">{t('agentInfo.addRepository')}</div>
             </button>
-            )}
-          </div>
-        )}
-      </div>
+          ) : undefined
+        }
+      />
 
-      {/* Repository Selector Modal */}
+      {/* A `createPortal` to the body, so where it sits in this tree decides nothing. */}
       <RepositorySelector
         isOpen={isRepoModalOpen}
         onClose={() => setIsRepoModalOpen(false)}
@@ -545,7 +531,6 @@ export function AgentInfoSidebar() {
         attachedRepos={attachedRepos}
         onToggleRepository={handleToggleRepository}
       />
-      </div>
-    </div>
+    </>
   )
 }

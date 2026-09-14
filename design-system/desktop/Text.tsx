@@ -14,7 +14,7 @@ import type { ReactNode } from 'react'
  * The stack behind it is the same one the desktop's `sans` carries, so a glyph Cera
  * Pro does not have falls back identically here and there.
  */
-const FACE = "font-['Cera_Pro',-apple-system,BlinkMacSystemFont,system-ui,sans-serif]"
+export const TEXT_FACE = "font-['Cera_Pro',-apple-system,BlinkMacSystemFont,system-ui,sans-serif]"
 
 /**
  * The sizes, named after the Tailwind classes they are — one vocabulary, not two.
@@ -125,7 +125,7 @@ export function Text({
   return (
     <span
       title={title}
-      className={`${FACE} ${TEXT_SIZES[size]} ${TEXT_WEIGHTS[weight]} ${TONES[tone]} ${className}`.trim()}
+      className={`${TEXT_FACE} ${TEXT_SIZES[size]} ${TEXT_WEIGHTS[weight]} ${TONES[tone]} ${className}`.trim()}
     >
       {children}
     </span>
