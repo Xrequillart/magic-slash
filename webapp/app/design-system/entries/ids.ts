@@ -23,6 +23,9 @@ export type EntryId =
   | 'branchcard'
   | 'commitline'
   | 'commitcard'
+  | 'diffstat'
+  | 'filemodifiedline'
+  | 'uncommittedchangescard'
   | 'banner'
   | 'agent'
   | 'contextagentcard'
@@ -59,6 +62,9 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   branchcard: 'BranchCard',
   commitline: 'CommitLine',
   commitcard: 'CommitCard',
+  diffstat: 'DiffStat',
+  filemodifiedline: 'FileModifiedLine',
+  uncommittedchangescard: 'UnCommittedChangesCard',
   banner: 'Banner',
   agent: 'Agent',
 }
@@ -109,12 +115,20 @@ export const FAMILIES: Family[] = [
   {
     label: 'Primary',
     note: 'One control, built from foundations.',
-    entries: ['avatar', 'buttonicon', 'selecticon', 'editabletext'],
+    /**
+     * `DiffStat` IS HERE ON THE GRAPH RATHER THAN ON THE NOTE, which is the other half
+     * of what `AppTitleBar` says below. It is not a control — nothing in it can be
+     * pressed — and by the note alone it would file under "several pieces saying one
+     * thing", next to `Label`. But `FileModifiedLine` DRAWS it, and a component cannot
+     * sit in the same tier as something it is built from, so the graph puts it a rung
+     * up and the note gives way.
+     */
+    entries: ['avatar', 'buttonicon', 'selecticon', 'editabletext', 'diffstat'],
   },
   {
     label: 'Secondary',
     note: 'Several pieces saying one thing.',
-    entries: ['label', 'status', 'branchcard', 'commitline', 'agent', 'menusidebaritem', 'banner'],
+    entries: ['label', 'status', 'branchcard', 'commitline', 'filemodifiedline', 'agent', 'menusidebaritem', 'banner'],
   },
   {
     label: 'Tertiary',
@@ -128,6 +142,7 @@ export const FAMILIES: Family[] = [
      */
     entries: [
       'commitcard',
+      'uncommittedchangescard',
       'titleagentcard',
       'contextagentcard',
       'headerrepocard',
@@ -178,6 +193,9 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   branchcard: 'Where the work is, and where it goes',
   commitline: 'One commit, on the branch’s rail',
   commitcard: 'What this branch has that its base does not',
+  diffstat: 'How much was added, how much was taken away',
+  filemodifiedline: 'One file that has changed, and by how much',
+  uncommittedchangescard: 'The files you are in the middle of',
   banner: 'States a fact about a surface',
   agent: 'What it is called, and what it is doing',
 }

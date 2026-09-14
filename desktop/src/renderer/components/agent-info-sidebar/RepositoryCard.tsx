@@ -1,4 +1,4 @@
-import { BranchCard, Card, CommitCard, HeaderRepoCard } from '@ds/desktop'
+import { BranchCard, Card, CommitCard, HeaderRepoCard, UnCommittedChangesCard } from '@ds/desktop'
 import { Github, VSCode } from '@ds/desktop/icons'
 import { useRepoColor } from './RepoMark'
 import { useScriptsMenu } from './useScriptsMenu'
@@ -129,86 +129,34 @@ export function RepositoryCard({
         />
       )}
 
-      {/* EVERY BLOCK IN THIS CARD IS THE HEADER CHIP, GROWN. `bg-ink/5` and `rounded-lg`
-         are `ACTION_CHIP`'s own two values, so the branch chips, the two blocks
-         below, the empty state and the PR card are all one material at one radius —
-         the row of buttons at the top states the vocabulary, and the card repeats it
-         at every size.
+      {/* The panel, the heading, the gauge and every file row are
+          `UnCommittedChangesCard`'s now. What stays here is the three things only the
+          app knows: how git counts this tree, how "7 files" pluralises in this
+          language, and what clicking a row is supposed to open.
 
-         `bg-ink/5` rather than the `bg-surface` these were: both land near 5% on every
-         theme, but ink is an OVERLAY — it composes with the `bg-surface` card beneath
-         to a visible step up, where surface-on-surface painted the same value twice
-         and needed a rule around it to be seen at all. That rule is what is gone. */}
+          A click opens the REPOSITORY, anchored on this file — not the file on its
+          own. The whole list is handed over so the drawer can freeze it;
+          `gitData.stats.files` is replaced wholesale by the poll a few seconds from
+          now, and the review must not follow it. */}
       {hasChanges && gitData.stats && (
-        <div className="bg-ink/5 rounded-lg p-3">
-          {/* Header with title, stats and gauge */}
-          <div className="flex items-center gap-2 text-xs mb-2">
-            <span className="text-text-secondary/70 font-medium">{t('agentInfo.uncommittedChanges')}</span>
-            <div className="flex items-center gap-2 ml-auto">
-              <span className="text-text-secondary/50">
-                {t(gitData.stats.filesChanged > 1 ? 'agentInfo.files.other' : 'agentInfo.files.one', { count: gitData.stats.filesChanged })}
-              </span>
-              {(gitData.stats.additions > 0 || gitData.stats.deletions > 0) && (
-                <>
-                  <span className="flex items-center gap-1">
-                    <span className="text-green">+{gitData.stats.additions}</span>
-                    <span className="text-red">-{gitData.stats.deletions}</span>
-                  </span>
-                  {/* Gauge bar - 6 squares */}
-                  <div className="flex gap-0.5">
-                    {[0, 1, 2, 3, 4, 5].map((i) => {
-                      const ratio = gitData.stats!.additions / (gitData.stats!.additions + gitData.stats!.deletions)
-                      const threshold = (i + 1) / 6
-                      const isGreen = ratio >= threshold
-                      return (
-                        <div
-                          key={i}
-                          className={`w-1.5 h-1.5 rounded-sm ${isGreen ? 'bg-green' : 'bg-red'}`}
-                        />
-                      )
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Files list */}
-          {gitData.stats.files && gitData.stats.files.length > 0 && (
-            <div className="space-y-0.5">
-              {gitData.stats.files.map((file, index) => (
-                <div
-                  key={index}
-                  /* `rounded-lg` and a real hit area. These rows OPEN something, and they
-                     were 4px-radius strips one pixel taller than their own text — the
-                     hover ground came up as a hairline sliver, at a radius nothing else
-                     in the card uses. `-mx-2` against the block's `p-3` lets that ground
-                     run wider than the text without touching the plate's edge. */
-                  className="flex items-center gap-1.5 text-xs px-2 py-1 -mx-2 cursor-pointer hover:bg-ink/10 rounded-lg transition-colors"
-                  /* A click opens the REPOSITORY, anchored on this file — not this file
-                     on its own. The whole list is handed over so the drawer can freeze
-                     it; `gitData.stats.files` is replaced wholesale by the poll a few
-                     seconds from now, and the review must not follow it. */
-                  onClick={() => openRepoReview(
-                    { repoPath, repoName, files: gitData.stats!.files },
-                    file.path,
-                  )}
-                >
-                  <span className="flex-1 text-text-secondary/60 truncate" title={file.path}>
-                    {file.path.split('/').pop()}
-                  </span>
-                  {(file.additions > 0 || file.deletions > 0) && (
-                    <span className="flex-shrink-0 text-[10px] text-text-secondary/40">
-                      {file.additions > 0 && <span className="text-green">+{file.additions}</span>}
-                      {file.additions > 0 && file.deletions > 0 && ' '}
-                      {file.deletions > 0 && <span className="text-red">-{file.deletions}</span>}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
+        <UnCommittedChangesCard
+          label={t('agentInfo.uncommittedChanges')}
+          summary={t(
+            gitData.stats.filesChanged > 1 ? 'agentInfo.files.other' : 'agentInfo.files.one',
+            { count: gitData.stats.filesChanged },
           )}
-        </div>
+          additions={gitData.stats.additions}
+          deletions={gitData.stats.deletions}
+          files={(gitData.stats.files ?? []).map(file => ({
+            path: file.path,
+            name: file.path.split('/').pop() ?? file.path,
+            additions: file.additions,
+            deletions: file.deletions,
+          }))}
+          onOpenFile={path =>
+            openRepoReview({ repoPath, repoName, files: gitData.stats!.files }, path)
+          }
+        />
       )}
 
       {/* Commits block. The panel, the rail, the hash chip and the "+N more" line are

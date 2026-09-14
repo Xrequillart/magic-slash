@@ -10,6 +10,9 @@ import { ButtonIconEntry } from './entries/ButtonIconEntry'
 import { CardEntry } from './entries/CardEntry'
 import { CommitCardEntry } from './entries/CommitCardEntry'
 import { CommitLineEntry } from './entries/CommitLineEntry'
+import { DiffStatEntry } from './entries/DiffStatEntry'
+import { FileModifiedLineEntry } from './entries/FileModifiedLineEntry'
+import { UnCommittedChangesCardEntry } from './entries/UnCommittedChangesCardEntry'
 import { ColorsEntry } from './entries/ColorsEntry'
 import { ContextAgentCardEntry } from './entries/ContextAgentCardEntry'
 import { BannerEntry } from './entries/BannerEntry'
@@ -86,6 +89,9 @@ const ENTRIES: Record<
   branchcard: BranchCardEntry,
   commitline: CommitLineEntry,
   commitcard: CommitCardEntry,
+  diffstat: DiffStatEntry,
+  filemodifiedline: FileModifiedLineEntry,
+  uncommittedchangescard: UnCommittedChangesCardEntry,
   banner: BannerEntry,
   agent: AgentEntry,
 }
