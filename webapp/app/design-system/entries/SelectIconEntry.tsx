@@ -5,6 +5,7 @@ import { SelectIcon, type ButtonIconSize, type SelectIconGroup } from '@ds/deskt
 import { Activity, ArrowDownUp, Clock, FolderGit2, Play } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 /** A monorepo's own menu, which is what the grouped shape was written for. */
 const PACKAGES: SelectIconGroup[] = [
@@ -197,11 +198,7 @@ export function SelectIconEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="SelectIcon"
-        uses={[
-          { id: 'buttonicon', label: 'ButtonIcon' },
-          { id: 'icon', label: 'Icon' },
-          { id: 'text', label: 'Text' },
-        ]}
+        uses={usesOf('selecticon')}
         onOpen={onOpen}
       >
         A <code>ButtonIcon</code> that opens a menu. Beside two links that open something

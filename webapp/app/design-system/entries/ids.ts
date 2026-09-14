@@ -31,7 +31,9 @@ export type EntryId =
   | 'pullrequestcard'
   | 'scriptcard'
   | 'repositorycard'
-  | 'sidebarinfo'
+  | 'sidebaragentcoderinfo'
+  | 'sidebaragentplannerinfo'
+  | 'speccard'
   | 'banner'
   | 'agent'
   | 'contextagentcard'
@@ -76,7 +78,9 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   pullrequestcard: 'PullRequestCard',
   scriptcard: 'ScriptCard',
   repositorycard: 'RepositoryCard',
-  sidebarinfo: 'SidebarInfo',
+  sidebaragentcoderinfo: 'SidebarAgentCoderInfo',
+  sidebaragentplannerinfo: 'SidebarAgentPlannerInfo',
+  speccard: 'SpecCard',
   banner: 'Banner',
   agent: 'Agent',
 }
@@ -118,76 +122,130 @@ export interface Family {
  */
 export const FOUNDATION_PAGES: EntryId[] = ['colors']
 
-export const FAMILIES: Family[] = [
-  {
-    label: 'Foundation',
-    note: 'Draws itself. Depends on nothing.',
-    entries: ['icon', 'text', 'progress', 'loader', 'card', 'switch'],
-  },
-  {
-    label: 'Primary',
-    note: 'One control, built from foundations.',
-    /**
-     * `DiffStat` IS HERE ON THE GRAPH RATHER THAN ON THE NOTE, which is the other half
-     * of what `AppTitleBar` says below. It is not a control — nothing in it can be
-     * pressed — and by the note alone it would file under "several pieces saying one
-     * thing", next to `Label`. But `FileModifiedLine` DRAWS it, and a component cannot
-     * sit in the same tier as something it is built from, so the graph puts it a rung
-     * up and the note gives way.
-     */
-    entries: ['avatar', 'buttonicon', 'selecticon', 'editabletext', 'diffstat'],
-  },
-  {
-    label: 'Secondary',
-    note: 'Several pieces saying one thing.',
-    entries: ['label', 'status', 'branchcard', 'commitline', 'filemodifiedline', 'collapsibleline', 'reviewthreadline', 'agent', 'menusidebaritem', 'banner'],
-  },
-  {
-    label: 'Tertiary',
-    note: 'A whole region of a page.',
-    /**
-     * `AppTitleBar` IS HERE ON THE NOTE RATHER THAN ON THE GRAPH, which is worth saying
-     * out loud since the graph is what settles every other row. It draws one `ButtonIcon`
-     * and nothing else, so nothing would stop it sitting a tier higher — but a tier is a
-     * position AND this family's note is "a whole region of a page", which a title bar is
-     * exactly. It uses only what is above it, so the rule holds either way.
-     */
-    entries: [
-      'commitcard',
-      'uncommittedchangescard',
-      'pullrequestcard',
-      'scriptcard',
-      'titleagentcard',
-      'contextagentcard',
-      'headerrepocard',
-      'menusidebar',
-      'usageclaudecodecard',
-      'apptitlebar',
-    ],
-  },
-  /**
-   * THE FOURTH TIER EXISTS BECAUSE THE GRAPH SAID SO, the way `Label` moved down when it
-   * grew an avatar. `Sidebar` draws a `MenuSidebar` and is handed a `UsageClaudeCodeCard`
-   * to hang under it, and both of those are tertiary — a component cannot sit in the
-   * same tier as something it is built from.
-   *
-   * It is atomic design's TEMPLATE, one rung past the organism: not a region of a
-   * window but a whole side of one, with the regions arranged in it.
-   */
-  {
-    label: 'Quaternary',
-    note: 'A whole side of the window, regions arranged in it.',
-    /**
-     * `RepositoryCard` JOINS `Sidebar` HERE ON THE GRAPH, not on the note. It is not a
-     * whole side of a window — it is one card in a column of them — but it draws
-     * `HeaderRepoCard`, `UnCommittedChangesCard`, `CommitCard` and `PullRequestCard`,
-     * every one of them tertiary, and a component cannot sit in the same tier as
-     * something it is built from. The same reasoning that put the tier here in the
-     * first place.
-     */
-    entries: ['repositorycard', 'sidebarinfo', 'sidebar'],
-  },
+/**
+ * THE COMPOSITION GRAPH: what each entry DRAWS, by id.
+ *
+ * THE ONE PLACE IT IS WRITTEN. Two things read it — the "Built on" chips on an entry's own
+ * page, and the tier that entry is filed under — and for a while they were two separate
+ * hand-kept lists that said different things: `RepositoryCard` claimed five components it
+ * only received in slots, `SidebarAgentCoderInfo` listed four it had stopped drawing. A
+ * reader could not tell which claim was the real one, because neither was derived from
+ * anything.
+ *
+ * DECLARED BY HAND rather than read off the imports, and that stays true: an import list
+ * includes types, constants and everything a file touches, where this is the shorter and
+ * more useful claim — what it DRAWS. What changed is that it is declared ONCE.
+ *
+ * A component that takes something as a `ReactNode` slot does NOT list it. The slot's own
+ * prop documents what belongs there; listing it here would say this component draws it,
+ * and the tier below would then be computed from a dependency it does not have.
+ */
+export const ENTRY_USES: Record<EntryId, EntryId[]> = {
+  colors: [],
+  icon: [],
+  progress: [],
+  loader: [],
+  card: [],
+  buttonicon: ['icon', 'loader'],
+  editabletext: ['icon'],
+  selecticon: ['buttonicon', 'icon', 'text'],
+  contextagentcard: ['card', 'label', 'progress', 'buttonicon'],
+  headerrepocard: ['label', 'selecticon', 'buttonicon'],
+  menusidebar: ['menusidebaritem'],
+  usageclaudecodecard: ['card', 'label', 'buttonicon', 'progress'],
+  titleagentcard: ['card', 'label', 'status', 'editabletext'],
+  menusidebaritem: ['avatar', 'icon', 'text'],
+  sidebar: ['menusidebar', 'agent', 'buttonicon', 'selecticon', 'usageclaudecodecard'],
+  apptitlebar: ['buttonicon', 'label'],
+  text: [],
+  avatar: ['icon'],
+  label: ['icon', 'text', 'avatar'],
+  status: ['icon', 'text'],
+  switch: [],
+  branchcard: ['buttonicon', 'icon', 'text'],
+  commitline: ['buttonicon', 'icon', 'text'],
+  commitcard: ['commitline', 'text'],
+  diffstat: ['text'],
+  filemodifiedline: ['diffstat', 'text'],
+  uncommittedchangescard: ['filemodifiedline', 'diffstat', 'text'],
+  collapsibleline: ['icon', 'text'],
+  reviewthreadline: ['icon', 'label', 'text'],
+  pullrequestcard: ['buttonicon', 'collapsibleline', 'icon', 'text'],
+  scriptcard: ['loader', 'icon', 'text'],
+  repositorycard: ['card', 'headerrepocard', 'branchcard', 'uncommittedchangescard', 'commitcard'],
+  sidebaragentcoderinfo: ['contextagentcard', 'titleagentcard', 'repositorycard'],
+  sidebaragentplannerinfo: ['contextagentcard', 'speccard'],
+  speccard: ['card', 'label', 'status', 'editabletext', 'buttonicon'],
+  banner: ['icon', 'text'],
+  agent: ['loader', 'icon', 'text'],
+}
+
+/** The graph as `EntryHeader` wants it: an id and the label to print on the chip. */
+export function usesOf(id: EntryId): { id: EntryId; label: string }[] {
+  return ENTRY_USES[id].map((dep) => ({ id: dep, label: ENTRY_LABELS[dep] }))
+}
+
+/**
+ * THE TIERS ARE COMPUTED, and this is the rule in one line: a component sits one rung
+ * above the highest thing it draws.
+ *
+ * SO THE GRAPH DECIDES, always, and there is no longer a second answer to argue with. The
+ * tiers used to be five hand-kept arrays, and every judgement call in them carried a
+ * paragraph explaining whether the graph or the family's note had won — `AppTitleBar` was
+ * placed "on the note rather than on the graph", `DiffStat` the other way round. Those
+ * paragraphs were the tell: a taxonomy you have to argue about per row is one nobody can
+ * keep correct. Nine components were filed under the wrong tier by the time this was
+ * written, `SelectIcon` and `SidebarAgentCoderInfo` among them.
+ *
+ * NOTHING IS PINNED. Move a component's drawing and its tier moves with it on the next
+ * render, which is the whole point: the rail cannot fall behind the folder.
+ */
+const TIER_NAMES = ['Foundation', 'Primary', 'Secondary', 'Tertiary', 'Quaternary', 'Quinary']
+
+const TIER_NOTES = [
+  'Draws itself. Depends on nothing.',
+  'One control, built from foundations.',
+  'Several pieces saying one thing.',
+  'A whole region of a page.',
+  'A whole side of the window, regions arranged in it.',
+  'A column with those sides arranged in it.',
 ]
+
+/**
+ * How deep an entry sits: 0 when it draws nothing, otherwise one past the deepest thing it
+ * draws. Memoised across the walk because the foundations are reached from almost every
+ * node, and the graph is acyclic by construction — a component cannot draw something that
+ * draws it.
+ */
+function tierOf(id: EntryId, depth: Map<EntryId, number> = TIER_DEPTHS): number {
+  const cached = depth.get(id)
+  if (cached !== undefined) return cached
+  const deps = ENTRY_USES[id]
+  const own = deps.length === 0 ? 0 : 1 + Math.max(...deps.map((dep) => tierOf(dep, depth)))
+  depth.set(id, own)
+  return own
+}
+
+const TIER_DEPTHS = new Map<EntryId, number>()
+
+/**
+ * The tiers, in the order a component is built up through them.
+ *
+ * EMPTY TIERS ARE NOT SHOWN. A `Quinary` heading over nothing would be a promise the
+ * folder has not kept — and since the depth is computed, a tier empties out on its own the
+ * day its last member loses a dependency.
+ *
+ * `FOUNDATION_PAGES` are excluded: a palette is not something you compose with.
+ */
+export const FAMILIES: Family[] = TIER_NAMES.map((label, tier) => ({
+  label,
+  note: TIER_NOTES[tier],
+  entries: (Object.keys(ENTRY_USES) as EntryId[])
+    .filter((id) => !FOUNDATION_PAGES.includes(id) && tierOf(id) === tier)
+    // Alphabetical inside a tier: nothing about the graph orders two components that sit
+    // at the same depth, and a stable order is worth more than an arbitrary one.
+    .sort((a, b) => ENTRY_LABELS[a].localeCompare(ENTRY_LABELS[b])),
+})).filter((family) => family.entries.length > 0)
 
 /** What each entry's row says under its name. */
 export const ENTRY_NOTES: Record<EntryId, string> = {
@@ -205,6 +263,8 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   titleagentcard: 'Who an agent is, in four facts',
   menusidebaritem: 'One row that takes you somewhere',
   sidebar: 'The whole left column, and it knows nothing',
+  speccard: 'A plan being written, live',
+  sidebaragentplannerinfo: 'The right column of a planner',
   apptitlebar: 'The bar across the top, and it knows nothing either',
   icon: 'Every glyph, five sizes, three tones',
   text: 'Cera Pro, six sizes, four weights',
@@ -223,7 +283,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   pullrequestcard: 'A pull request, as the sidebar watches it',
   scriptcard: 'A process still alive on your machine',
   repositorycard: 'One repository, and everything happening to it',
-  sidebarinfo: 'The right column, and the agent in it',
+  sidebaragentcoderinfo: 'The right column, and the agent in it',
   banner: 'States a fact about a surface',
   agent: 'What it is called, and what it is doing',
 }

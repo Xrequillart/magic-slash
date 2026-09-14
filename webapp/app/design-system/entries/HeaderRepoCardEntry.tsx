@@ -5,6 +5,7 @@ import { HeaderRepoCard, type SelectIconGroup } from '@ds/desktop'
 import { Github, Play, VSCode } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 /** Two of the sixteen hues the app assigns a repository at runtime. */
 const ROSE = '#F43F5E'
@@ -145,11 +146,7 @@ export function HeaderRepoCardEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="HeaderRepoCard"
-        uses={[
-          { id: 'label', label: 'Label' },
-          { id: 'selecticon', label: 'SelectIcon' },
-          { id: 'buttonicon', label: 'ButtonIcon' },
-        ]}
+        uses={usesOf('headerrepocard')}
         onOpen={onOpen}
       >
         The top line of a repository’s card: what it is, and everything you can do to it. The

@@ -11,6 +11,7 @@ import {
 import { Activity, ArrowDownUp, Clock, FolderGit2, ListTodo, NotebookPen, Plus, Sparkles } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 /** Nothing happens when this is pressed, and that is the point: every handler here is
  *  a drawing of a handler. The component cannot tell the difference. */
@@ -66,24 +67,17 @@ const GROUPED: SidebarAgentRow[] = [
 ]
 
 /** The foot: the account's two rate limits, which is what hangs there in the app. */
-function Foot() {
-  const [collapsed, setCollapsed] = useState(false)
-  return (
-    <UsageClaudeCodeCard
-      account="camille@acme.dev"
-      limits={[
-        { id: 'session', label: 'Session', shortLabel: '5h', percent: 38, reset: '2h14' },
-        { id: 'weekly', label: 'Weekly', shortLabel: '7d', percent: 71, reset: '3d' },
-      ]}
-      thresholds={{ warning: 65, danger: 85 }}
-      collapsed={collapsed}
-      onToggle={() => setCollapsed((c) => !c)}
-      expandLabel="Show usage"
-      collapseLabel="Hide usage"
-      emptyLabel="No usage yet"
-      emptyHint="Start an agent and its limits appear here."
-    />
-  )
+const USAGE = {
+  account: 'camille@acme.dev',
+  limits: [
+    { id: 'session', label: 'Session', shortLabel: '5h', percent: 38, reset: '2h14' },
+    { id: 'weekly', label: 'Weekly', shortLabel: '7d', percent: 71, reset: '3d' },
+  ],
+  thresholds: { warning: 65, danger: 85 },
+  expandLabel: 'Show usage',
+  collapseLabel: 'Hide usage',
+  emptyLabel: 'No usage yet',
+  emptyHint: 'Start an agent and its limits appear here.',
 }
 
 /**
@@ -127,7 +121,7 @@ const PROPS: PropRow[] = [
     name: 'footer',
     type: 'ReactNode',
     description:
-      'The only node here, and it is the honest answer: what hangs under the list is an account’s rate limits and an update flow that talks to Electron, and neither is a shape this column can describe in props. What it owns is where the foot sits.',
+      'What hangs under the usage card: an update to install. Still a node, and it is the honest answer — the update flow talks to Electron, decides on its own whether there is anything to show, downloads and relaunches. A folder that cannot import the app cannot own it. What this column owns is where the foot sits, under the usage card and above the version line.',
   },
   {
     name: 'version',
@@ -158,6 +152,8 @@ export function SidebarEntry({
   onOpen?: (id: string) => void
 }) {
   const [selected, setSelected] = useState('a')
+  // The fold the usage card keeps: config in the app, local state in a drawing.
+  const [usageCollapsed, setUsageCollapsed] = useState(false)
 
   const list = (over: Partial<SidebarList> = {}): SidebarList => ({
     id: 'agents',
@@ -173,12 +169,7 @@ export function SidebarEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="Sidebar"
-        uses={[
-          { id: 'menusidebar', label: 'MenuSidebar' },
-          { id: 'agent', label: 'Agent' },
-          { id: 'buttonicon', label: 'ButtonIcon' },
-          { id: 'selecticon', label: 'SelectIcon' },
-        ]}
+        uses={usesOf('sidebar')}
         onOpen={onOpen}
       >
         The app’s left column, whole — and it knows nothing. Every other component in
@@ -196,7 +187,7 @@ export function SidebarEntry({
               menuAriaLabel="Pages"
               listsAriaLabel="Agents"
               lists={[list()]}
-              footer={<Foot />}
+              usage={{ ...USAGE, collapsed: usageCollapsed, onToggle: () => setUsageCollapsed(c => !c) }}
               version="v0.94.2"
             />
           </Column>
@@ -264,7 +255,7 @@ export function SidebarEntry({
   collapsed={!leftSidebarVisible}
   menu={[plans, tasks, skills, accountEntry]}
   lists={[{ id: 'agents', label: t('sidebar.agents'), actions, agents: rows }]}
-  footer={<SidebarUsageCard />}
+  usage={useSidebarUsageCard()}
   version="v0.94.2"
 />`}</Snippet>
         <p className="max-w-2xl text-xs leading-relaxed text-muted">

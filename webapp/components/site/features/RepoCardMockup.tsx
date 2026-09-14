@@ -128,38 +128,35 @@ function RepoCard({ server, menuOpen }: { server: ServerState; menuOpen: boolean
     <AppGround paint={false} className="relative">
       <div ref={setPortal} />
       <RepositoryCard
-        /* The coloured tile and the name are `HeaderRepoCard`'s `Label`, Scripts its
-           `SelectIcon`, the last three its `ButtonIcon`s. What this changed on screen:
-           three buttons that carried WORDS — "Scripts", "Open", "Open" — on dashed
-           outlines. The app gave those up because written out they ran to some 270px of
-           a 288px sidebar; the marks carry the meaning and the tooltips the names. */
-        header={
-          <HeaderRepoCard
-            name="magic-pay"
-            color={REPO_COLOR}
-            scripts={{
-              icon: Play,
-              title: t('site.infoSidebar.scripts'),
-              groups: SCRIPT_GROUPS(t),
-              onSelect: noop,
-              /* The component's own panel, opened from the storyboard's clock through
-                 `SelectIcon`'s controlled `open`. What hung here before was a second
-                 menu drawn by hand at an offset measured against the trigger. */
-              open: menuOpen,
-              portalTo: portal,
-            }}
-            editor={{ icon: VSCode, title: t('site.infoSidebar.open'), onClick: noop }}
-            remote={{ icon: Github, title: t('site.infoSidebar.open'), onClick: noop }}
-            remove={{ title: t('site.infoSidebar.open'), onClick: noop }}
-          />
-        }
-        /* The running script, drawn here still: `RunningScripts` is the app's own
-           component and lives in the renderer, not in the design system — it reads the
-           store and the pty. The slot is what puts it straight under the row that
-           launched it. */
-        /* `ScriptCard` from `design-system/desktop/`: the purple bar, its loader, the
-           stop chip and the address row hanging off it are all its own. What was here
-           was a copy of the lot, including a hand-built wave loader. */
+        /* THE CARD DRAWS ITS OWN BLOCKS NOW, so this passes their DATA. The coloured tile
+           and the name are `HeaderRepoCard`'s `Label`, Scripts its `SelectIcon`, the last
+           three its `ButtonIcon`s. What that changed on screen: three buttons that carried
+           WORDS — "Scripts", "Open", "Open" — on dashed outlines. The app gave those up
+           because written out they ran to some 270px of a 288px sidebar; the marks carry
+           the meaning and the tooltips the names. */
+        header={{
+          name: 'magic-pay',
+          color: REPO_COLOR,
+          scripts: {
+            icon: Play,
+            title: t('site.infoSidebar.scripts'),
+            groups: SCRIPT_GROUPS(t),
+            onSelect: noop,
+            /* The component's own panel, opened from the storyboard's clock through
+               `SelectIcon`'s controlled `open`. What hung here before was a second menu
+               drawn by hand at an offset measured against the trigger. */
+            open: menuOpen,
+            portalTo: portal,
+          },
+          editor: { icon: VSCode, title: t('site.infoSidebar.open'), onClick: noop },
+          remote: { icon: Github, title: t('site.infoSidebar.open'), onClick: noop },
+          remove: { title: t('site.infoSidebar.open'), onClick: noop },
+        }}
+        /* STILL A NODE, and one of the two the card cannot own: a running script is a live
+           process with a terminal behind it. `RunningScripts` is the app's own component and
+           lives in the renderer — it reads the store and the pty — so what stands in for it
+           here is `ScriptCard`, whose purple bar, loader, stop chip and address row are all
+           its own. The slot is what puts it straight under the row that launched it. */
         activity={
           server !== 'none' ? (
             <ScriptCard
@@ -175,52 +172,49 @@ function RepoCard({ server, menuOpen }: { server: ServerState; menuOpen: boolean
             />
           ) : undefined
         }
-        /* `BranchCard`'s, while the slot exists to hold one. The chip drawn here carried
-           no base and no arrow — and the RELATION between the two branches is that
-           component's whole subject, so it said "a branch" where the app says "this one
-           goes back to that one". */
-        branch={
-          <BranchCard
-            branch="feature/pay-318-invoice-vat"
-            base="main"
-            copy={{ label: 'feature/pay-318-invoice-vat', onCopy: noop }}
-          />
-        }
+        /* The RELATION between the two branches is `BranchCard`'s whole subject. The chip
+           drawn here before carried no base and no arrow, so it said "a branch" where the
+           app says "this one goes back to that one". */
+        branch={{
+          branch: 'feature/pay-318-invoice-vat',
+          base: 'main',
+          copy: { label: 'feature/pay-318-invoice-vat', onCopy: noop },
+        }}
         changes={
-          files.length > 0 ? (
-            <UnCommittedChangesCard
-              label={t('site.infoSidebar.uncommitted')}
-              summary={t(files.length === 1 ? 'site.infoSidebar.fileOne' : 'site.infoSidebar.files', { count: files.length })}
-              additions={added}
-              deletions={removed}
-              files={files.map((f) => ({
-                path: f.file,
-                name: f.file,
-                additions: f.added,
-                deletions: f.removed,
-              }))}
-              /* A handler, even though nothing opens: without one the rows are inert and
-                 the filenames do not lift under the cursor, which is a card this drawing
-                 is not a picture of. */
-              onOpenFile={noop}
-            />
-          ) : undefined
+          files.length > 0
+            ? {
+                label: t('site.infoSidebar.uncommitted'),
+                summary: t(files.length === 1 ? 'site.infoSidebar.fileOne' : 'site.infoSidebar.files', { count: files.length }),
+                additions: added,
+                deletions: removed,
+                files: files.map((f) => ({
+                  path: f.file,
+                  name: f.file,
+                  additions: f.added,
+                  deletions: f.removed,
+                })),
+                /* A handler, even though nothing opens: without one the rows are inert and
+                   the filenames do not lift under the cursor, which is a card this drawing
+                   is not a picture of. */
+                onOpenFile: noop,
+              }
+            : undefined
         }
         commits={
-          commits.length > 0 ? (
-            <CommitCard
-              label={t('site.infoSidebar.commits')}
-              summary={`${commits.length} ahead of main`}
-              commits={commits.map((c) => ({
-                hash: c.hash,
-                shortHash: c.hash,
-                subject: c.subject,
-                relativeDate: c.age,
-                copyLabel: c.hash,
-              }))}
-              onCopyHash={noop}
-            />
-          ) : undefined
+          commits.length > 0
+            ? {
+                label: t('site.infoSidebar.commits'),
+                summary: `${commits.length} ahead of main`,
+                commits: commits.map((c) => ({
+                  hash: c.hash,
+                  shortHash: c.hash,
+                  subject: c.subject,
+                  relativeDate: c.age,
+                  copyLabel: c.hash,
+                })),
+                onCopyHash: noop,
+              }
+            : undefined
         }
       />
     </AppGround>

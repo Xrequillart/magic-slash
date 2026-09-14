@@ -18,7 +18,9 @@ import { ReviewThreadLineEntry } from './entries/ReviewThreadLineEntry'
 import { PullRequestCardEntry } from './entries/PullRequestCardEntry'
 import { RepositoryCardEntry } from './entries/RepositoryCardEntry'
 import { ScriptCardEntry } from './entries/ScriptCardEntry'
-import { SidebarInfoEntry } from './entries/SidebarInfoEntry'
+import { SidebarAgentCoderInfoEntry } from './entries/SidebarAgentCoderInfoEntry'
+import { SidebarAgentPlannerInfoEntry } from './entries/SidebarAgentPlannerInfoEntry'
+import { SpecCardEntry } from './entries/SpecCardEntry'
 import { ColorsEntry } from './entries/ColorsEntry'
 import { ContextAgentCardEntry } from './entries/ContextAgentCardEntry'
 import { BannerEntry } from './entries/BannerEntry'
@@ -38,7 +40,7 @@ import { SwitchEntry } from './entries/SwitchEntry'
 import { TextEntry } from './entries/TextEntry'
 import { TitleAgentCardEntry } from './entries/TitleAgentCardEntry'
 import { UsageClaudeCodeCardEntry } from './entries/UsageClaudeCodeCardEntry'
-import { ENTRY_LABELS, ENTRY_NOTES, FAMILIES, FOUNDATION_PAGES, type EntryId } from './entries/ids'
+import { ENTRY_LABELS, FAMILIES, FOUNDATION_PAGES, type EntryId } from './entries/ids'
 
 /**
  * The desktop app's design system: a rail of components on the left, one of them
@@ -103,9 +105,59 @@ const ENTRIES: Record<
   pullrequestcard: PullRequestCardEntry,
   repositorycard: RepositoryCardEntry,
   scriptcard: ScriptCardEntry,
-  sidebarinfo: SidebarInfoEntry,
+  sidebaragentcoderinfo: SidebarAgentCoderInfoEntry,
+  sidebaragentplannerinfo: SidebarAgentPlannerInfoEntry,
+  speccard: SpecCardEntry,
   banner: BannerEntry,
   agent: AgentEntry,
+}
+
+/**
+ * ONE ROW OF THE RAIL: a name, and nothing else.
+ *
+ * NO DESCRIPTION, on any row, selected or not. Every row used to carry a sentence under
+ * its name — 42 of them in a 256px column, which is a page of prose pretending to be a
+ * menu. For one iteration the sentence survived on the active row alone; it is gone from
+ * there too, because the entry it described is already open on the right with its own
+ * heading and its own paragraph. A rail holds names.
+ *
+ * THE SELECTED ROW IS THE ONLY COLOUR ON THE RAIL: the brand fill a primary button wears
+ * on the marketing site. Everything else is ink, muted and a hairline, so the one thing
+ * that has to be findable at a glance is the only thing that is loud.
+ */
+function Row({
+  id,
+  active,
+  indent = false,
+  onSelect,
+}: {
+  id: EntryId
+  active: boolean
+  /**
+   * Inside a family, so it lines up with the heading it belongs to rather than to the left
+   * of it — the chevron pushes the heading in by 18px and nothing used to push the rows.
+   */
+  indent?: boolean
+  onSelect: (id: EntryId) => void
+}) {
+  return (
+    <button
+      onClick={() => onSelect(id)}
+      aria-current={active ? 'page' : undefined}
+      /* `flex` and not `block`: a bare `<span>` in a block button is an inline box that
+         inherits the page's line-height, which put 5px of dead space on every one of 42
+         rows. A flex item is sized by its own content. */
+      className={`flex w-full items-center rounded-button py-1.5 pr-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+        indent ? 'pl-[30px]' : 'pl-3'
+      } ${active ? 'bg-brand' : 'hover:bg-black/[0.04]'}`}
+    >
+      <span
+        className={`font-display text-[13px] font-medium ${active ? 'text-white' : 'text-ink/80'}`}
+      >
+        {ENTRY_LABELS[id]}
+      </span>
+    </button>
+  )
 }
 
 export function Shell() {
@@ -133,27 +185,32 @@ export function Shell() {
         {/* The rail. Sticky on a wide screen, a plain block above the content on a
             narrow one — a 256px column beside a props table does not survive being
             squeezed, and this page is read on a laptop anyway. */}
-        <nav className="flex w-full flex-shrink-0 flex-col border-b border-hairline px-6 py-6 lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:border-b-0 lg:border-r">
-          <div className="flex flex-col gap-1 pb-6">
-            <span className="text-sm font-semibold text-ink">Design system</span>
+        {/* THE RAIL IS A MENU, NOT A DOCUMENT, and that is the whole of this redesign.
+            Every row used to carry its NAME and a SENTENCE at close to the same weight:
+            42 entries over 2 598px of scroll in a 1 000px window, so eleven of them were
+            visible at a time and none of them scanned. The sentences are still here — on
+            the row you are standing on, which is the one you are reading.
+
+            THE FACE AND THE SHAPE ARE THE MARKETING SITE'S. `font-display` at 13px is what
+            `NAV_ITEM_BASE` gives the header's pills; the selected row wears the brand fill
+            a primary button wears. Nothing here invents a colour or a corner.
+
+            NO CAPITALS. The family names were tracked-out 11px uppercase grey, which made a
+            heading quieter than its own children — and the site has no capitals anywhere in
+            its navigation. */}
+        <nav className="flex w-full flex-shrink-0 flex-col border-b border-hairline px-4 py-6 lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:border-b-0 lg:border-r">
+          <div className="flex flex-col gap-0.5 px-3 pb-5">
+            <span className="font-display text-base font-semibold text-ink">Design system</span>
             <span className="text-xs text-muted">Magic Slash Desktop</span>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-5 lg:overflow-y-auto">
-            {/* ABOVE the families and outside them: a palette is not something you
-                compose with, it is what everything below is made of. */}
-            <ul className="flex flex-col gap-0.5">
+          <div className="flex min-h-0 flex-1 flex-col lg:overflow-y-auto">
+            {/* ABOVE the families and outside them: a palette is not something you compose
+                with, it is what everything below is made of. */}
+            <ul className="flex flex-col gap-px">
               {FOUNDATION_PAGES.map((id) => (
                 <li key={id}>
-                  <button
-                    onClick={() => setEntry(id)}
-                    className={`flex w-full flex-col gap-0.5 rounded-xl px-3 py-2 text-left transition-colors ${
-                      id === entry ? 'bg-canvas' : 'hover:bg-canvas/60'
-                    }`}
-                  >
-                    <span className="text-sm font-semibold text-ink">{ENTRY_LABELS[id]}</span>
-                    <span className="text-[11px] leading-snug text-muted">{ENTRY_NOTES[id]}</span>
-                  </button>
+                  <Row id={id} active={id === entry} onSelect={setEntry} />
                 </li>
               ))}
             </ul>
@@ -162,73 +219,66 @@ export function Shell() {
               const open = !folded.includes(family.label)
 
               return (
-                <div key={family.label} className="flex flex-col gap-1">
+                /* A rule per family, so the ladder reads as five bands rather than one
+                   long list. `first:border-t-0`: the top band sits under the title block,
+                   which already has air under it. */
+                <div key={family.label} className="mt-4 border-t border-hairline pt-4 first:mt-3 first:border-t-0 first:pt-0">
                   <button
                     onClick={() => toggle(family.label)}
-                    className="group flex items-center gap-1.5 rounded-lg py-1 text-left"
+                    /* The family's own note lives here rather than under the heading: it is
+                       taxonomy prose, and four lines of it between a heading and its rows
+                       is what a rail cannot afford. */
+                    title={family.note}
+                    className="flex w-full items-center gap-1.5 rounded-button px-3 py-1.5 text-left transition-colors hover:bg-black/[0.04]"
                   >
                     {/* Rotated rather than swapped for a second glyph: one element that
-                        turns reads as the same control in two states, where two glyphs
-                        read as two controls. */}
+                        turns reads as the same control in two states, where two glyphs read
+                        as two controls. */}
                     <ChevronRight
                       className={`h-3 w-3 flex-shrink-0 text-muted transition-transform ${
                         open ? 'rotate-90' : ''
                       }`}
                     />
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                    <span className="font-display text-[13px] font-semibold text-ink">
                       {family.label}
                     </span>
-                    <span className="ml-auto font-mono text-[10px] text-muted/70">
+                    <span className="ml-auto text-[11px] tabular-nums text-muted">
                       {family.entries.length}
                     </span>
                   </button>
 
                   {open && (
-                    <>
-                      <span className="pl-[18px] text-[11px] leading-snug text-muted/80">
-                        {family.note}
-                      </span>
-                      <ul className="flex flex-col gap-0.5 pt-1">
-                        {family.entries.map((id) => (
-                          <li key={id}>
-                            <button
-                              onClick={() => setEntry(id)}
-                              className={`flex w-full flex-col gap-0.5 rounded-xl px-3 py-2 text-left transition-colors ${
-                                id === entry ? 'bg-canvas' : 'hover:bg-canvas/60'
-                              }`}
-                            >
-                              <span className="text-sm font-semibold text-ink">
-                                {ENTRY_LABELS[id]}
-                              </span>
-                              <span className="text-[11px] leading-snug text-muted">
-                                {ENTRY_NOTES[id]}
-                              </span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
+                    <ul className="flex flex-col gap-px pt-0.5">
+                      {family.entries.map((id) => (
+                        <li key={id}>
+                          <Row id={id} active={id === entry} indent onSelect={setEntry} />
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
               )
             })}
           </div>
 
-          {/* THE THEME, at the foot of the rail and not above each page.
-              It is one setting for the whole workbench — every preview on every entry
-              reads it — so repeating it per page made it look like a property of the
-              component being documented. A select rather than eight pills, because
-              eight pills wrap to three rows in a 256px column and would take more of
-              the rail than the components do. */}
-          <div className="flex flex-col gap-1.5 border-t border-hairline pt-4 mt-5">
-            <label htmlFor="ds-theme" className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+          {/* THE THEME, at the foot of the rail and not above each page. It is one setting
+              for the whole workbench — every preview on every entry reads it — so repeating
+              it per page made it look like a property of the component being documented.
+              A select rather than eight pills, because eight pills wrap to three rows in a
+              256px column and would take more of the rail than the components do.
+
+              The three-line note under it became the select's `title`: it explains a choice
+              nobody has to understand before making it. */}
+          <div className="mt-5 flex flex-col gap-1.5 border-t border-hairline px-3 pt-4">
+            <label htmlFor="ds-theme" className="text-[11px] text-muted">
               Theme
             </label>
             <select
               id="ds-theme"
               value={theme}
               onChange={(e) => setTheme(e.target.value as DesktopThemeId)}
-              className="w-full rounded-xl border border-hairline bg-white px-3 py-2 text-sm text-ink"
+              title="Eight of them, and a tint that reads on one can vanish on another. Every preview on the right follows this."
+              className="w-full rounded-button border border-hairline bg-white px-3 py-2 font-display text-[13px] font-medium text-ink transition-colors hover:bg-black/[0.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             >
               {DESKTOP_THEME_IDS.map((id) => (
                 <option key={id} value={id}>
@@ -236,10 +286,6 @@ export function Shell() {
                 </option>
               ))}
             </select>
-            <span className="text-[11px] leading-snug text-muted">
-              Eight of them, and a tint that reads on one can vanish on another. Every preview
-              on the right follows this.
-            </span>
           </div>
         </nav>
 

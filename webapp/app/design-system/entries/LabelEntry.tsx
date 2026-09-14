@@ -4,6 +4,7 @@ import { Label, LABEL_TONES, type LabelSize, type LabelTone } from '@ds/desktop'
 import { Clock, DollarSign, FolderGit2, Ticket } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 /**
  * The Label entry.
@@ -97,11 +98,7 @@ export function LabelEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="Label"
-        uses={[
-          { id: 'icon', label: 'Icon' },
-          { id: 'text', label: 'Text' },
-          { id: 'avatar', label: 'Avatar' },
-        ]}
+        uses={usesOf('label')}
         onOpen={onOpen}
       >
         A mark and a word on a tinted plate — the app’s one badge, and what eight

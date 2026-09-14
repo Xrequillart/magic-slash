@@ -5,6 +5,7 @@ import { ButtonIcon, type ButtonIconActive, type ButtonIconSize } from '@ds/desk
 import { ArrowDownUp, Copy, ExternalLink, Minus, Play, RefreshCw, Trash2 } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 const PROPS: PropRow[] = [
   { name: 'icon', type: 'IconComponent', required: true, description: 'The mark, from @ds/desktop/icons.' },
@@ -77,10 +78,7 @@ export function ButtonIconEntry({
 }) {
   return (
     <article className="flex flex-col divide-y divide-hairline">
-      <EntryHeader title="ButtonIcon" uses={[
-          { id: 'icon', label: 'Icon' },
-          { id: 'loader', label: 'Loader' },
-        ]} onOpen={onOpen}>
+      <EntryHeader title="ButtonIcon" uses={usesOf('buttonicon')} onOpen={onOpen}>
         A control that is a mark and nothing else, on the ticket badge’s own ground. Written out, the agent sidebar’s four repository actions ran to some 270px of a
         288px column, so the mark carries the meaning and the tooltip carries the name.
       </EntryHeader>

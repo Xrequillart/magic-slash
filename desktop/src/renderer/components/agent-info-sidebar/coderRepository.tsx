@@ -1,0 +1,202 @@
+import type { CoderRepository } from '@ds/desktop'
+import { Github, VSCode } from '@ds/desktop/icons'
+import { PRWatchCard } from './PRWatchCard'
+import { RunningScripts } from './RunningScripts'
+import { formatRelativeDate } from './utils'
+import type { ScriptsMenu } from './useScriptsMenu'
+import type { Translate } from '../../i18n'
+import type { RepoGitData } from './types'
+import type { RepositoryMetadata } from '../../../types'
+
+/**
+ * THE DATA PATH for one repository card. The card is `SidebarAgentCoderInfo`'s: the plate,
+ * the padding, the air between the blocks and the ORDER they are read in all live there,
+ * one rung down in `RepositoryCard`.
+ *
+ * A FUNCTION AND NOT A COMPONENT, which is the whole point of this file. It used to render
+ * the card, which meant the sidebar could only draw repositories by mounting one of these
+ * per row — and a component per row is a component the design system cannot see inside. Now
+ * it answers the question "what does this repository have to say", and the answer is data:
+ * a name, a branch, a diff, some commits. Nothing here decides what any of it looks like.
+ *
+ * WHAT IS LEFT IS THE HALF THAT IS GENUINELY THIS APP'S: how git counts a tree, how "7
+ * files" pluralises in this language, what a relative date reads like, and what clicking a
+ * row is supposed to open. Every string arrives translated and every number formatted,
+ * because the column has no translator and no locale.
+ *
+ * TWO SLOTS STAY NODES — the running scripts and the pull-request watcher. Neither is a
+ * drawing: one tracks processes, the other polls GitHub and types slash commands into a
+ * terminal. They are built here because only the app can build them, and handed over as
+ * elements.
+ */
+
+/**
+ * How many commits the card draws before it stops counting and starts summarising.
+ *
+ * IT LIVES HERE AND NOT IN `CommitCard`, which is the point of the split: the design system
+ * arranges what it is handed, and how much of a branch is worth showing in a 288px sidebar
+ * is this app's judgement. It is named because two places need it — the slice and the "+N
+ * more" line — and those two disagreeing is exactly the bug the literal five used to invite.
+ */
+const SHOWN_COMMITS = 5
+
+interface CoderRepositoryInput {
+  repoPath: string
+  repoName: string
+  agentId: string
+  gitData: RepoGitData | undefined
+  baseBranch: string | undefined
+  prUrl: string | undefined
+  /** GitHub address of the repo — the configured remote URL, or the one read from git. */
+  repoUrl: string | undefined
+  repoMetadata: RepositoryMetadata | undefined
+  copiedCommitHash: string | null
+  copiedBranch: string | null
+  /** The hue this repository was given in Settings, from the whole-config map. */
+  repoColor: string | undefined
+  /** This repository's own lazily-fetched script menu. */
+  scripts: ScriptsMenu
+  onCopyCommitHash: (hash: string) => void
+  onCopyBranchName: (branch: string) => void
+  onRemove: () => void
+  onOpenSettings: (repoName: string) => void
+  onOpenReview: (file: string) => void
+  t: Translate
+}
+
+export function toCoderRepository({
+  repoPath,
+  repoName,
+  agentId,
+  gitData,
+  baseBranch,
+  prUrl,
+  repoUrl,
+  repoMetadata,
+  copiedCommitHash,
+  copiedBranch,
+  repoColor,
+  scripts,
+  onCopyCommitHash,
+  onCopyBranchName,
+  onRemove,
+  onOpenSettings,
+  onOpenReview,
+  t,
+}: CoderRepositoryInput): CoderRepository {
+  const hasChanges = Boolean(gitData?.stats?.isGitRepo && gitData.stats.filesChanged > 0)
+  const hasCommits = Boolean(gitData?.commits && gitData.commits.commits.length > 0)
+  /* The parent branch is only worth a card of its own when it is somewhere else: on the
+     base branch itself, `base -> current` would just say the same name twice, so both the
+     card and the arrow drop out. */
+  const rawBaseBranch = baseBranch || gitData?.commits?.baseBranch
+  const resolvedBaseBranch = rawBaseBranch === gitData?.branch ? undefined : rawBaseBranch
+
+  return {
+    // The checkout PATH and not the name: the same repository can be attached twice from
+    // two clones, and two rows sharing a React key is a rendering bug waiting for the day
+    // somebody does it.
+    id: repoPath,
+    header: {
+      name: repoName,
+      title: repoPath,
+      color: repoColor,
+      onNameClick: () => onOpenSettings(repoName),
+      scripts,
+      editor: {
+        icon: VSCode,
+        title: t('agentInfo.openRepoInEditor'),
+        onClick: () => window.electronAPI.shell.openInVSCode(repoPath),
+      },
+      remote: repoUrl
+        ? {
+            icon: Github,
+            title: t('agentInfo.openRepoOnGitHub'),
+            onClick: () => window.electronAPI.shell.openExternal(repoUrl),
+          }
+        : undefined,
+      remove: { title: t('agentInfo.removeRepository'), onClick: onRemove },
+    },
+    /* Renders nothing when this repo/agent pair has no script running — and the slot it
+       sits in is what puts it straight under the row that launched them. */
+    activity: <RunningScripts repoPath={repoPath} agentId={agentId} />,
+    /* `resolvedBaseBranch` is already undefined when the base is this very branch, so
+       `BranchCard` never has to decide whether `main -> main` is worth a row. */
+    branch: gitData?.branch
+      ? {
+          branch: gitData.branch,
+          base: resolvedBaseBranch,
+          copy: {
+            label: t('agentInfo.copyBranch'),
+            copied: copiedBranch === gitData.branch,
+            onCopy: () => onCopyBranchName(gitData.branch!),
+          },
+        }
+      : undefined,
+    /* A click opens the REPOSITORY, anchored on this file — not the file on its own. The
+       whole list is handed over so the drawer can freeze it; `gitData.stats.files` is
+       replaced wholesale by the poll a few seconds from now, and the review must not
+       follow it. */
+    changes:
+      hasChanges && gitData?.stats
+        ? {
+            label: t('agentInfo.uncommittedChanges'),
+            summary: t(
+              gitData.stats.filesChanged > 1 ? 'agentInfo.files.other' : 'agentInfo.files.one',
+              { count: gitData.stats.filesChanged },
+            ),
+            additions: gitData.stats.additions,
+            deletions: gitData.stats.deletions,
+            files: (gitData.stats.files ?? []).map(file => ({
+              path: file.path,
+              name: file.path.split('/').pop() ?? file.path,
+              additions: file.additions,
+              deletions: file.deletions,
+            })),
+            onOpenFile: onOpenReview,
+          }
+        : undefined,
+    commits:
+      hasCommits && gitData?.commits
+        ? {
+            label: t('agentInfo.commits'),
+            summary: `${gitData.commits.commits.length} ahead of ${gitData.commits.baseBranch}`,
+            commits: gitData.commits.commits.slice(0, SHOWN_COMMITS).map(commit => ({
+              hash: commit.hash,
+              shortHash: commit.shortHash,
+              subject: commit.subject,
+              relativeDate: formatRelativeDate(commit.relativeDate, t),
+              copyLabel: `Copy full hash: ${commit.hash}`,
+              openable: commit.isPushed && Boolean(gitData.gitHubUrl),
+            })),
+            moreLabel:
+              gitData.commits.commits.length > SHOWN_COMMITS
+                ? `+${gitData.commits.commits.length - SHOWN_COMMITS} more commits`
+                : undefined,
+            copiedHash: copiedCommitHash,
+            onCopyHash: onCopyCommitHash,
+            open: {
+              label: t('agentInfo.viewOnGitHub'),
+              icon: Github,
+              onOpen: hash =>
+                window.electronAPI.shell.openExternal(`${gitData.gitHubUrl}/commit/${hash}`),
+            },
+          }
+        : undefined,
+    /* Absent rather than empty when the read FAILED: a repository nobody could look at has
+       an error to report, not a quiet "nothing to commit". WHEN it is drawn — only if the
+       branch, the diff and the commits are all absent — is the card's own test. */
+    emptyLabel:
+      gitData && !gitData.error && gitData.branch
+        ? t('agentInfo.noUncommittedChanges')
+        : undefined,
+    /* Keyed off `prUrl` alone, deliberately: when the watcher is switched off the card still
+       shows the last snapshot, dated, instead of vanishing along with the polling.
+
+       It carries the link to GitHub itself — its header is the link — so the accent "View
+       pull request" button that used to sit right above it is gone: one PR, one card. */
+    pullRequest: prUrl ? (
+      <PRWatchCard prUrl={prUrl} agentId={agentId} metadata={repoMetadata} />
+    ) : undefined,
+  }
+}

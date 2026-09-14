@@ -5,6 +5,7 @@ import { CollapsibleLine, PullRequestCard, ReviewThreadLine, type PullRequestSta
 import { AlertTriangle, CheckCircle2, Circle, Loader2, MessagesSquare } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 const PROPS: PropRow[] = [
   {
@@ -152,12 +153,7 @@ export function PullRequestCardEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="PullRequestCard"
-        uses={[
-          { id: 'buttonicon', label: 'ButtonIcon' },
-          { id: 'collapsibleline', label: 'CollapsibleLine' },
-          { id: 'icon', label: 'Icon' },
-          { id: 'text', label: 'Text' },
-        ]}
+        uses={usesOf('pullrequestcard')}
         onOpen={onOpen}
       >
         A pull request, as the sidebar watches it: what it is, what has to be true before it

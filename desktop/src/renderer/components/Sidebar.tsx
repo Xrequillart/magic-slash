@@ -7,7 +7,7 @@ import { useTerminals } from '../hooks/useTerminals'
 import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos } from '../hooks/useOrderedTerminals'
 import { groupKeyOf, isGroupStart, repoLabel } from '../hooks/terminalOrder'
 import { useAgentSortAction } from './AgentSort'
-import { SidebarUsageCard } from './SidebarUsageCard'
+import { useSidebarUsageCard } from './SidebarUsageCard'
 import { SidebarUpdateButton } from './SidebarUpdateButton'
 import { useAccountMenuEntry } from './SidebarAccount'
 import { LoginScreen } from './LoginScreen'
@@ -67,6 +67,10 @@ export function Sidebar() {
 
   // Agents in the order the person picked from the header control — newest first
   // unless they said otherwise (see hooks/terminalOrder.ts).
+  /* The card's numbers, resolved unconditionally — React's rule. Whether it is SHOWN is
+     decided at the call site below, where it is a condition and not a hook. */
+  const usageCard = useSidebarUsageCard()
+
   const { ordered, colorMap, sort } = useOrderedTerminals()
   const { leftTerminals, rightTerminals, colorMap: splitColorMap } = useSplitOrderedTerminals()
 
@@ -318,15 +322,13 @@ export function Sidebar() {
         ]}
         lists={lists}
         emptyLabel={t('sidebar.empty')}
-        footer={
-          <>
-            {/* Claude usage card — opt-out: shown unless explicitly disabled. */}
-            {config?.usageCardEnabled !== false && <SidebarUsageCard />}
-            {/* Renders itself only when there is an update to act on. Not behind the
-                usage card's setting: hiding usage must not hide the update. */}
-            <SidebarUpdateButton />
-          </>
-        }
+        /* Claude usage card — opt-out: shown unless explicitly disabled. The CARD is the
+           column's; this is only where its numbers come from. */
+        usage={config?.usageCardEnabled !== false ? usageCard : undefined}
+        /* Renders itself only when there is an update to act on, and stays a node for it:
+           the flow talks to Electron. Not behind the usage card's setting either — hiding
+           usage must not hide the update. */
+        footer={<SidebarUpdateButton />}
         version={APP_VERSION}
       />
 

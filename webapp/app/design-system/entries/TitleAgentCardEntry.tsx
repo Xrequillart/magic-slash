@@ -5,6 +5,7 @@ import { TitleAgentCard, type StatusOption } from '@ds/desktop'
 import { TicketPlus } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 /** A coder's own states, as the app offers them. */
 const STATUSES: StatusOption[] = [
@@ -112,12 +113,7 @@ export function TitleAgentCardEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="TitleAgentCard"
-        uses={[
-          { id: 'card', label: 'Card' },
-          { id: 'label', label: 'Label' },
-          { id: 'status', label: 'Status' },
-          { id: 'editabletext', label: 'EditableText' },
-        ]}
+        uses={usesOf('titleagentcard')}
         onOpen={onOpen}
       >
         Who an agent is: the ticket it is on, where that ticket stands, and the two things a

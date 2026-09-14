@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { UsageClaudeCodeCard, type UsageLimit } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 /** The app's own two, and the thresholds it draws them against. */
 const THRESHOLDS = { warning: 65, danger: 85 }
@@ -114,12 +115,7 @@ export function UsageClaudeCodeCardEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="UsageClaudeCodeCard"
-        uses={[
-          { id: 'card', label: 'Card' },
-          { id: 'label', label: 'Label' },
-          { id: 'buttonicon', label: 'ButtonIcon' },
-          { id: 'progress', label: 'ProgressBar' },
-        ]}
+        uses={usesOf('usageclaudecodecard')}
         onOpen={onOpen}
       >
         What is left of the Claude Code account: its rate limits, at the foot of the sidebar.

@@ -4,6 +4,7 @@ import { MenuSidebarItem } from '@ds/desktop'
 import { ListTodo, LogIn, NotebookPen, Settings, Sparkles } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 const PROPS: PropRow[] = [
   { name: 'label', type: 'string', required: true, description: 'The word. Translated, and it truncates.' },
@@ -47,11 +48,7 @@ export function MenuSidebarItemEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="MenuSidebarItem"
-        uses={[
-          { id: 'avatar', label: 'Avatar' },
-          { id: 'icon', label: 'Icon' },
-          { id: 'text', label: 'Text' },
-        ]}
+        uses={usesOf('menusidebaritem')}
         onOpen={onOpen}
       >
         One row of the sidebar’s menu: a mark, a word, and the keys that get you there. The app

@@ -4,6 +4,7 @@ import { Agent, type AgentProps } from './Agent'
 import { ButtonIcon } from './ButtonIcon'
 import { AlertTriangle, FolderGit2 } from './icons'
 import { MenuSidebar, type MenuSidebarEntry } from './MenuSidebar'
+import { UsageClaudeCodeCard, type UsageClaudeCodeCardProps } from './UsageClaudeCodeCard'
 import { SelectIcon, type SelectIconProps } from './SelectIcon'
 import type { IconComponent } from './types'
 
@@ -36,11 +37,16 @@ import type { IconComponent } from './types'
  * between them. The component does not know which pane is focused or what a drop
  * means — it takes a list per pane and calls back.
  *
- * THE FOOT IS A NODE, the only one here, and it is the honest answer: what hangs under
- * the list is an account's rate limits (`UsageClaudeCodeCard`) and an update flow that
- * talks to Electron, and neither is a shape this column can describe in props. What it
- * owns is WHERE the foot sits — under the scroll, above the version line — and the
- * gutter it sits in belongs to whatever is passed.
+ * THE USAGE CARD IS DRAWN HERE. `UsageClaudeCodeCard` is imported and rendered by this
+ * column; what arrives is its data. It used to come through the foot slot with everything
+ * else, and that was the mistake this folder keeps making: which component hangs under the
+ * list is a style decision, and a slot posts it out to the call site where no drawing of
+ * this column can reach it.
+ *
+ * THE FOOT IS STILL A NODE, for the one thing left in it: the update flow talks to
+ * Electron — it decides on its own whether there is anything to show, downloads, relaunches
+ * — and a folder that cannot import the app cannot own it. What this column owns is WHERE
+ * the foot sits, under the usage card and above the version line.
  */
 
 /** The app's own width, and deliberately not resizable: see the note in the desktop's
@@ -165,8 +171,10 @@ export interface SidebarProps {
   /** There is no agent at all, anywhere — centred in the space the lists would fill.
    *  Distinct from a list's `emptyHint`, which is one empty zone beside a full one. */
   emptyLabel?: string
-  /** What hangs under the scroll: the usage card, an update to install. See the note
-   *  above on why this one is a node. */
+  /** The account's rate limits, under the scroll. Absent when the reader switched it off. */
+  usage?: UsageClaudeCodeCardProps
+  /** What hangs under the usage card: an update to install. See the note above on why
+   *  this one is still a node. */
   footer?: ReactNode
   /** The build, spelled by the caller — "v0.94.2". Drawn verbatim, because which
    *  prefix a version wears is not this column's question. */
@@ -184,6 +192,7 @@ export function Sidebar({
   listsAriaLabel,
   lists,
   emptyLabel,
+  usage,
   footer,
   version,
   collapsed = false,
@@ -233,6 +242,7 @@ export function Sidebar({
         )}
       </nav>
 
+      {usage && <UsageClaudeCodeCard {...usage} />}
       {footer}
 
       {version && (

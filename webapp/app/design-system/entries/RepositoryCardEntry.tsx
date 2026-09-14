@@ -13,31 +13,37 @@ import {
 import { CheckCircle2, Github, MessagesSquare, Play, VSCode } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 const PROPS: PropRow[] = [
   {
     name: 'header',
-    type: 'ReactNode',
+    type: 'HeaderRepoCardProps',
     required: true,
     description:
-      'The row that names it — HeaderRepoCard. The only required slot: a card with no name on it is a plate, and every other block here is something this repository may simply not have yet.',
+      'The row that names it. The only required one: a card with no name on it is a plate, and every other block here is something this repository may simply not have yet.',
   },
   {
     name: 'activity',
     type: 'ReactNode',
     description:
-      'Straight under the row that launched them: what is running right now. Absent when nothing is.',
+      'Straight under the row that launched them: what is running right now. A node, and the reason is not shyness — a running script is a live process with a terminal behind it, not a shape this card could draw from four values.',
   },
-  { name: 'branch', type: 'ReactNode', description: 'Where the work is — BranchCard.' },
-  { name: 'changes', type: 'ReactNode', description: 'The working tree — UnCommittedChangesCard.' },
-  { name: 'commits', type: 'ReactNode', description: 'What the branch has that its base does not — CommitCard.' },
+  { name: 'branch', type: 'BranchCardProps', description: 'Where the work is.' },
+  { name: 'changes', type: 'UnCommittedChangesCardProps', description: 'The working tree.' },
+  { name: 'commits', type: 'CommitCardProps', description: 'What the branch has that its base does not.' },
   {
-    name: 'empty',
+    name: 'emptyLabel',
+    type: 'string',
+    description:
+      'What to say when the three above have nothing to say. Drawn only when all three are absent, and that test is here rather than at the call site because it is the same test every caller would write and the one they would get wrong: an empty state shown beside a branch row is a card contradicting itself. Absent rather than empty when the repository failed to read: a tree nobody could look at has an error to report, not a quiet “nothing to commit”.',
+  },
+  {
+    name: 'pullRequest',
     type: 'ReactNode',
     description:
-      'What to say when the three above have nothing to say. Drawn only when all three are absent, and that test is here rather than at the call site because it is the same test every caller would write and the one they would get wrong: an empty state shown beside a branch row is a card contradicting itself.',
+      'Last, and its own card: the pull request. A node for activity’s reason — the app’s watcher polls GitHub, holds its own state and writes into a terminal, while the site’s drawings pass PullRequestCard straight through.',
   },
-  { name: 'pullRequest', type: 'ReactNode', description: 'Last, and its own card — PullRequestCard.' },
   {
     name: 'className',
     type: 'string',
@@ -60,47 +66,41 @@ const COMMITS = [
   { hash: 'c1d8a05', subject: 'refactor(billing): lift applyVat out of the PDF', age: '14m' },
 ]
 
-function Header() {
-  return (
-    <HeaderRepoCard
-      name="magic-pay"
-      color={REPO_COLOR}
-      scripts={{ icon: Play, title: 'Run a script', groups: [], onSelect: noop, emptyLabel: 'No scripts' }}
-      editor={{ icon: VSCode, title: 'Open in the editor', onClick: noop }}
-      remote={{ icon: Github, title: 'Open on GitHub', onClick: noop }}
-      remove={{ title: 'Remove this repository', onClick: noop }}
-    />
-  )
+const HEADER = {
+  name: 'magic-pay',
+  color: REPO_COLOR,
+  scripts: { icon: Play, title: 'Run a script', groups: [], onSelect: noop, emptyLabel: 'No scripts' },
+  editor: { icon: VSCode, title: 'Open in the editor', onClick: noop },
+  remote: { icon: Github, title: 'Open on GitHub', onClick: noop },
+  remove: { title: 'Remove this repository', onClick: noop },
 }
 
-function Changes() {
-  return (
-    <UnCommittedChangesCard
-      label="Uncommitted changes"
-      summary="2 files"
-      additions={43}
-      deletions={6}
-      files={FILES}
-      onOpenFile={noop}
-    />
-  )
+const BRANCH = {
+  branch: 'feature/pay-318-invoice-vat',
+  base: 'main',
+  copy: { label: 'Copy branch name', onCopy: noop },
 }
 
-function Commits() {
-  return (
-    <CommitCard
-      label="Commits"
-      summary="3 ahead of main"
-      commits={COMMITS.map(c => ({
-        hash: c.hash,
-        shortHash: c.hash,
-        subject: c.subject,
-        relativeDate: c.age,
-        copyLabel: c.hash,
-      }))}
-      onCopyHash={noop}
-    />
-  )
+const CHANGES = {
+  label: 'Uncommitted changes',
+  summary: '2 files',
+  additions: 43,
+  deletions: 6,
+  files: FILES,
+  onOpenFile: noop,
+}
+
+const COMMIT_CARD = {
+  label: 'Commits',
+  summary: '3 ahead of main',
+  commits: COMMITS.map(c => ({
+    hash: c.hash,
+    shortHash: c.hash,
+    subject: c.subject,
+    relativeDate: c.age,
+    copyLabel: c.hash,
+  })),
+  onCopyHash: noop,
 }
 
 /** The whole card, every slot filled — which is the state it is least often in. */
@@ -112,10 +112,10 @@ function Live({ theme }: { theme: DesktopTheme }) {
     <Stage theme={theme}>
       <div className="max-w-[340px]">
         <RepositoryCard
-          header={<Header />}
-          branch={<BranchCard branch="feature/pay-318-invoice-vat" base="main" copy={{ label: 'Copy branch name', onCopy: noop }} />}
-          changes={<Changes />}
-          commits={<Commits />}
+          header={HEADER}
+          branch={BRANCH}
+          changes={CHANGES}
+          commits={COMMIT_CARD}
           pullRequest={
             <PullRequestCard
               state="open"
@@ -170,24 +170,19 @@ export function RepositoryCardEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="RepositoryCard"
-        uses={[
-          { id: 'card', label: 'Card' },
-          { id: 'headerrepocard', label: 'HeaderRepoCard' },
-          { id: 'branchcard', label: 'BranchCard' },
-          { id: 'uncommittedchangescard', label: 'UnCommittedChangesCard' },
-          { id: 'commitcard', label: 'CommitCard' },
-          { id: 'pullrequestcard', label: 'PullRequestCard' },
-        ]}
+        uses={usesOf('repositorycard')}
         onOpen={onOpen}
       >
         One repository, as an agent’s sidebar shows it: what it is called, where the work
-        is, what has changed, what has been committed, and what is open on GitHub. It is
-        the <em>arrangement</em> — every block it holds already draws itself.
+        is, what has changed, what has been committed, and what is open on GitHub. It
+        <em>draws</em> those blocks — they were <code>ReactNode</code> slots once, and that
+        posted a style decision out to the call site where no drawing of this card could
+        reach it.
       </EntryHeader>
 
       <EntrySection
         title="The order is the meaning"
-        note="It runs from what this repository is down to what is happening to it: the name, then whatever is running right now, then the branch, then the working tree, then what is already committed, then the pull request. A reader scanning four of these down a column finds the same thing in the same place in each. Named slots rather than children for exactly that — a caller cannot put the branch under the commits, because the order is not the caller’s to decide."
+        note="It runs from what this repository is down to what is happening to it: the name, then whatever is running right now, then the branch, then the working tree, then what is already committed, then the pull request. A reader scanning four of these down a column finds the same thing in the same place in each. Named props rather than children for exactly that — a caller cannot put the branch under the commits, because the order is not the caller’s to decide."
       >
         <Live theme={theme} />
       </EntrySection>
@@ -200,27 +195,23 @@ export function RepositoryCardEntry({
           <Specimen label="a fresh checkout — a name and nothing else yet">
             <div className="max-w-[320px]">
               <RepositoryCard
-                header={<Header />}
-                empty={
-                  <div className="rounded-lg bg-ink/5 p-2">
-                    <span className="text-xs italic text-text-secondary/40">No uncommitted changes</span>
-                  </div>
-                }
+                header={HEADER}
+                emptyLabel="No uncommitted changes"
               />
             </div>
           </Specimen>
           <Specimen label="mid-task — no PR yet">
             <div className="max-w-[320px]">
               <RepositoryCard
-                header={<Header />}
-                branch={<BranchCard branch="feature/pay-318-invoice-vat" base="main" copy={{ label: 'Copy branch name', onCopy: noop }} />}
-                changes={<Changes />}
+                header={HEADER}
+                branch={BRANCH}
+                changes={CHANGES}
               />
             </div>
           </Specimen>
         </Stage>
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
-          <code>empty</code> is drawn <em>only</em> when <code>branch</code>,{' '}
+          <code>emptyLabel</code> is drawn <em>only</em> when <code>branch</code>,{' '}
           <code>changes</code> and <code>commits</code> are all absent, and that test is in
           the component rather than at the call site because it is the same test every
           caller would write and the one they would get wrong: an empty state shown beside
@@ -233,12 +224,12 @@ export function RepositoryCardEntry({
         <Snippet>{`import { RepositoryCard } from '@ds/desktop'
 
 <RepositoryCard
-  header={<HeaderRepoCard name={repoName} … />}
+  header={{ name: repoName, color, scripts, editor, remote, remove }}
   activity={<RunningScripts repoPath={repoPath} agentId={agentId} />}
-  branch={gitData?.branch && <BranchCard … />}
-  changes={hasChanges && <UnCommittedChangesCard … />}
-  commits={hasCommits && <CommitCard … />}
-  empty={<span>No uncommitted changes</span>}
+  branch={gitData?.branch ? { branch, base, copy } : undefined}
+  changes={hasChanges ? { label, summary, additions, deletions, files, onOpenFile } : undefined}
+  commits={hasCommits ? { label, summary, commits, onCopyHash, open } : undefined}
+  emptyLabel={t('agentInfo.noUncommittedChanges')}
   pullRequest={prUrl && <PRWatchCard prUrl={prUrl} … />}
 />`}</Snippet>
       </EntrySection>

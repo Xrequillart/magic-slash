@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { UnCommittedChangesCard } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 const PROPS: PropRow[] = [
   {
@@ -95,11 +96,7 @@ export function UnCommittedChangesCardEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="UnCommittedChangesCard"
-        uses={[
-          { id: 'filemodifiedline', label: 'FileModifiedLine' },
-          { id: 'diffstat', label: 'DiffStat' },
-          { id: 'text', label: 'Text' },
-        ]}
+        uses={usesOf('uncommittedchangescard')}
         onOpen={onOpen}
       >
         What the working tree has that git does not: the files you are in the middle of. It

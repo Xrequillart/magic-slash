@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ContextAgentCard } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 const LABELS = { context: 'Context', minimize: 'Fold', expand: 'Unfold' }
 
@@ -46,12 +47,7 @@ export function ContextAgentCardEntry({ theme, onOpen }: { theme: DesktopTheme; 
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="ContextAgentCard"
-        uses={[
-          { id: 'card', label: 'Card' },
-          { id: 'label', label: 'Label' },
-          { id: 'progress', label: 'ProgressBar' },
-          { id: 'buttonicon', label: 'ButtonIcon' },
-        ]}
+        uses={usesOf('contextagentcard')}
         onOpen={onOpen}
       >
         What a Claude Code agent is currently spending: its context window, its model, what the

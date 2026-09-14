@@ -59,6 +59,15 @@ export interface ContextAgentCardProps {
     /** The unfold button's. */
     expand: string
   }
+  /**
+   * Margins, and the caller's own state on the plate. Not the ground, the padding or the
+   * gap — those are the sidebar column's, and this card is drawn inside it.
+   *
+   * It exists because the marketing site's scroll tour rings this card and zooms to it:
+   * `SidebarAgentCoderInfo` renders the card itself now, so a wrapper `div` around it is
+   * no longer somewhere a caller can reach.
+   */
+  className?: string
 }
 
 export function ContextAgentCard({
@@ -71,6 +80,7 @@ export function ContextAgentCard({
   minimized = false,
   onMinimizedChange,
   labels,
+  className = '',
 }: ContextAgentCardProps) {
   // NO FIGURE READS AS A DASH. An empty bar labelled 0% claims a measurement where
   // there is none — true, and it costs more than it buys: the dash appears for the
@@ -115,7 +125,7 @@ export function ContextAgentCard({
   return (
     // `gap-2`, the sidebar column's own spacing: a gap sits between children only, so
     // it also skips the blocks that render nothing.
-    <Card className="flex flex-col gap-2">
+    <Card className={`flex flex-col gap-2 ${className}`.trim()}>
       {/* WHAT IS RUNNING, in one phrase: Claude Code, on this model. The model was
           pinned to the far right once — a pill at the other end of the row from the
           thing it qualifies, with the fold button as its only neighbour, which made it

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { FileModifiedLine } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 const PROPS: PropRow[] = [
   {
@@ -82,10 +83,7 @@ export function FileModifiedLineEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="FileModifiedLine"
-        uses={[
-          { id: 'diffstat', label: 'DiffStat' },
-          { id: 'text', label: 'Text' },
-        ]}
+        uses={usesOf('filemodifiedline')}
         onOpen={onOpen}
       >
         One file that has changed, and by how much: a name and a <code>DiffStat</code>, and

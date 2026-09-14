@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../store'
-import { UsageClaudeCodeCard, type UsageLimit } from '@ds/desktop'
+import type { UsageClaudeCodeCardProps, UsageLimit } from '@ds/desktop'
 import { LIMIT_THRESHOLDS, formatReset } from './agent-info-sidebar/LimitGauge'
 import { useT } from '../i18n'
 import type { ClaudeAccount } from '../../types'
 
 /**
  * The Claude usage card, pinned to the foot of the left sidebar.
+ *
+ * A HOOK AND NOT A COMPONENT, because `Sidebar` draws the card itself now: what it wants
+ * handed to it is props. A component here would be a second card inside a column that
+ * already knows where this one goes.
  *
  * WHAT IS LEFT IN THIS FILE is where the numbers come from: the account-level rate
  * limits are global — identical across agents — so the card reads the most recently
@@ -19,7 +23,7 @@ import type { ClaudeAccount } from '../../types'
  * The countdown is formatted HERE, for the reason the component's note gives — "2h14"
  * needs a translator and a clock, and neither is on the far side of the alias.
  */
-export function SidebarUsageCard() {
+export function useSidebarUsageCard(): UsageClaudeCodeCardProps {
   const { terminals, config, setConfig } = useStore()
   const t = useT()
   const minimized = config?.usageCardMinimized === true
@@ -84,20 +88,18 @@ export function SidebarUsageCard() {
     })
   }
 
-  return (
-    // `mb-1`: the version line below carries 8px of its own padding, and 8+8 put this
-    // card most of a blank row above the number it sits on.
-    <UsageClaudeCodeCard
-      className="mx-2 mb-1"
-      account={accountLabel}
-      limits={limits}
-      thresholds={LIMIT_THRESHOLDS}
-      collapsed={minimized}
-      onToggle={toggleMinimized}
-      expandLabel={t('usage.expand')}
-      collapseLabel={t('usage.minimize')}
-      emptyLabel={t('usage.noData')}
-      emptyHint={t('usage.noDataHint')}
-    />
-  )
+  return {
+    // `mb-1`: the version line below carries 8px of its own padding, and 8+8 put this card
+    // most of a blank row above the number it sits on.
+    className: 'mx-2 mb-1',
+    account: accountLabel,
+    limits,
+    thresholds: LIMIT_THRESHOLDS,
+    collapsed: minimized,
+    onToggle: toggleMinimized,
+    expandLabel: t('usage.expand'),
+    collapseLabel: t('usage.minimize'),
+    emptyLabel: t('usage.noData'),
+    emptyHint: t('usage.noDataHint'),
+  }
 }

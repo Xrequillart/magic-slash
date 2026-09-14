@@ -5,6 +5,7 @@ import { CollapsibleLine } from '@ds/desktop'
 import { AlertTriangle, CheckCircle2, Loader2, MessagesSquare, MinusCircle } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 const PROPS: PropRow[] = [
   { name: 'icon', type: 'IconComponent', required: true, description: 'The mark in the gutter.' },
@@ -140,10 +141,7 @@ export function CollapsibleLineEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="CollapsibleLine"
-        uses={[
-          { id: 'icon', label: 'Icon' },
-          { id: 'text', label: 'Text' },
-        ]}
+        uses={usesOf('collapsibleline')}
         onOpen={onOpen}
       >
         One line of a checklist, and whatever unfolds under it. A mark, a label, a detail and

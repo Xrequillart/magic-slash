@@ -5,6 +5,7 @@ import { MenuSidebar, type MenuSidebarEntry as Entry } from '@ds/desktop'
 import { ListTodo, NotebookPen, Sparkles } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 /** The app's own menu, in the app's own order. */
 const PAGES: Omit<Entry, 'onClick'>[] = [
@@ -73,7 +74,7 @@ export function MenuSidebarEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="MenuSidebar"
-        uses={[{ id: 'menusidebaritem', label: 'MenuSidebarItem' }]}
+        uses={usesOf('menusidebar')}
         onOpen={onOpen}
       >
         The sidebar’s menu: the rows that take you somewhere, as one list. It is a{' '}

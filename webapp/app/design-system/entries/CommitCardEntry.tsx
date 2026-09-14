@@ -5,6 +5,7 @@ import { CommitCard, type CommitCardCommit } from '@ds/desktop'
 import { Github } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 const PROPS: PropRow[] = [
   {
@@ -113,10 +114,7 @@ export function CommitCardEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="CommitCard"
-        uses={[
-          { id: 'commitline', label: 'CommitLine' },
-          { id: 'text', label: 'Text' },
-        ]}
+        uses={usesOf('commitcard')}
         onOpen={onOpen}
       >
         What this branch has that its base does not: the commits, in order, on one rail. It is

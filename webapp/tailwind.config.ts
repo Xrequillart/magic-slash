@@ -1116,6 +1116,12 @@ const config: Config = {
         // colours for surfaces and lines, whose translucency is part of the design and
         // differs per theme.
         'text-secondary': 'rgb(var(--c-text-secondary) / <alpha-value>)',
+        // The OPAQUE divider, `border-border`, and the last of the desktop's roles to
+        // arrive here — for the same reason as the rest, one step later: nothing shared
+        // spelled it until `SidebarInfo` took the add-a-repository box in from its three
+        // callers. The site drew that box with a hardcoded `appline`, which is this
+        // colour on the dark theme and the wrong one on the other five.
+        border: 'rgb(var(--c-border) / <alpha-value>)',
         'on-brand': 'rgb(var(--c-on-brand) / <alpha-value>)',
         icon: {
           DEFAULT: 'rgb(var(--c-icon) / <alpha-value>)',

@@ -3,6 +3,7 @@
 import { Avatar, AVATAR_SIZES, type AvatarSize } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 /**
  * The Avatar entry.
@@ -65,7 +66,7 @@ export function AvatarEntry({
 }) {
   return (
     <article className="flex flex-col divide-y divide-hairline">
-      <EntryHeader title="Avatar" uses={[{ id: 'icon', label: 'Icon' }]} onOpen={onOpen}>
+      <EntryHeader title="Avatar" uses={usesOf('avatar')} onOpen={onOpen}>
         A person, as a round photo — or as an <code>Icon</code> when there is none. It knows
         nothing about who: it takes the bytes it is given and draws them. The fallback is the
         icon and never a letter — an initial is for telling several people apart, and here the

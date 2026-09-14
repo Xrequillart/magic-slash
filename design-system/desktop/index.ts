@@ -77,8 +77,12 @@ export type {
 } from './ProgressBar'
 export type { LabelProps, LabelSize, LabelTone } from './Label'
 export { Sidebar, SIDEBAR_WIDTH } from './Sidebar'
-export { SidebarInfo } from './SidebarInfo'
-export type { SidebarInfoProps } from './SidebarInfo'
+export { SidebarAgentCoderInfo } from './SidebarAgentCoderInfo'
+export type { CoderRepository, SidebarAgentCoderInfoProps } from './SidebarAgentCoderInfo'
+export { SidebarAgentPlannerInfo } from './SidebarAgentPlannerInfo'
+export type { SidebarAgentPlannerInfoProps } from './SidebarAgentPlannerInfo'
+export { SpecCard } from './SpecCard'
+export type { SpecCardProps } from './SpecCard'
 export type {
   SidebarAction,
   SidebarAgentRow,

@@ -4,6 +4,7 @@ import { BotMessageSquare, Unlink } from 'lucide-react'
 import { Banner, BANNER_VARIANTS, type BannerVariant } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 /**
  * The Banner entry — the real component from `design-system/desktop/Banner.tsx`,
@@ -93,10 +94,7 @@ export function BannerEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="Banner"
-        uses={[
-          { id: 'icon', label: 'Icon' },
-          { id: 'text', label: 'Text' },
-        ]}
+        uses={usesOf('banner')}
         onOpen={onOpen}
       >
         A tinted strip that states a fact about the surface it sits on. Not a notification and not a

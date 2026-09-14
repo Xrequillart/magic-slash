@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { EditableText, type EditableTextVariant } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 const PROPS: PropRow[] = [
   { name: 'value', type: 'string', required: true, description: 'What is saved. Empty draws the placeholder in its place, in italic.' },
@@ -105,7 +106,7 @@ export function EditableTextEntry({
 }) {
   return (
     <article className="flex flex-col divide-y divide-hairline">
-      <EntryHeader title="EditableText" uses={[{ id: 'icon', label: 'Icon' }]} onOpen={onOpen}>
+      <EntryHeader title="EditableText" uses={usesOf('editabletext')} onOpen={onOpen}>
         Text you can click into and change. It is <em>not</em> a form field: there is no border
         in either state, because these are not inputs sitting in a form — they are the thing
         itself, read far more often than written, and a box drawn permanently around each one

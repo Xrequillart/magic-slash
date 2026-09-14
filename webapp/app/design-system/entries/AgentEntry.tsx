@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Agent, AGENT_STATES, type AgentState } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 /** What each state is, in the words the app's tooltip uses. */
 const MEANING: Record<AgentState, string> = {
@@ -83,11 +84,7 @@ export function AgentEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="Agent"
-        uses={[
-          { id: 'loader', label: 'Loader' },
-          { id: 'icon', label: 'Icon' },
-          { id: 'text', label: 'Text' },
-        ]}
+        uses={usesOf('agent')}
         onOpen={onOpen}
       >
         One agent, as a row: what it is called and what it is doing. A list of a dozen is read

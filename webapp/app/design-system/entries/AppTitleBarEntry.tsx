@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { AppTitleBar, type TitleBarTitle } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 /** Nothing happens when this is pressed, and that is the point: every handler here is
  *  a drawing of a handler. The component cannot tell the difference. */
@@ -88,10 +89,7 @@ export function AppTitleBarEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="AppTitleBar"
-        uses={[
-          { id: 'buttonicon', label: 'ButtonIcon' },
-          { id: 'label', label: 'Label' },
-        ]}
+        uses={usesOf('apptitlebar')}
         onOpen={onOpen}
       >
         The bar across the top of the window, whole — and like <code>Sidebar</code>, it

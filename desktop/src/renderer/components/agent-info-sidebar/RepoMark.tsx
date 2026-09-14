@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { FolderGit2 } from '@ds/desktop/icons'
 import { useStore } from '../../store'
 import { getProjectColorMap } from '../../utils/projectColors'
@@ -61,11 +62,28 @@ export type RepoMarkSize = keyof typeof REPO_MARK_SIZES
  * Shared by the mark and the name badge below so the two cannot resolve the same repo
  * to two different colours — they are drawn side by side, and now inside one another.
  */
-export function useRepoColor(repoName?: string): string | undefined {
+/**
+ * EVERY repository's colour at once, by name.
+ *
+ * THE PLURAL IS THE USABLE ONE and the singular below is now a thin read of it. A hook
+ * cannot be called inside a `.map()`, so as long as the only way to get a colour was one
+ * call per repository, the repository cards had to be a component per row — and that
+ * component was the last thing standing between `SidebarAgentCoderInfo` and owning the
+ * arrangement of its own cards. The map was always built whole anyway: `getProjectColorMap`
+ * takes the entire config and hands back every entry, so asking it for one name at a time
+ * was rebuilding all sixteen to throw fifteen away.
+ */
+export function useRepoColors(): Record<string, string> {
   const repositories = useStore(s => s.config?.repositories)
-  return repoName
-    ? getProjectColorMap(Object.keys(repositories ?? {}), repositories)[repoName]
-    : undefined
+  return useMemo(
+    () => getProjectColorMap(Object.keys(repositories ?? {}), repositories),
+    [repositories],
+  )
+}
+
+export function useRepoColor(repoName?: string): string | undefined {
+  const colors = useRepoColors()
+  return repoName ? colors[repoName] : undefined
 }
 
 export function RepoMark({ repoName, size = 'card' }: { repoName?: string; size?: RepoMarkSize }) {

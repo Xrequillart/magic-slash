@@ -3,6 +3,7 @@
 import { DiffStat } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 const PROPS: PropRow[] = [
   {
@@ -50,7 +51,7 @@ export function DiffStatEntry({
 }) {
   return (
     <article className="flex flex-col divide-y divide-hairline">
-      <EntryHeader title="DiffStat" uses={[{ id: 'text', label: 'Text' }]} onOpen={onOpen}>
+      <EntryHeader title="DiffStat" uses={usesOf('diffstat')} onOpen={onOpen}>
         How much was added and how much was taken away, and the balance between them. The
         numbers and the gauge are <em>one</em> component because they are one fact stated
         twice — split apart, a caller could show a gauge that disagreed with the counts

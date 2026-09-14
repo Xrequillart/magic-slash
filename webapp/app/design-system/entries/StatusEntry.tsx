@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Status, type StatusOption, type StatusSize, type StatusTone } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 /** The app's own twelve, which is what the tone table has to survive. */
 const WORKFLOW: StatusOption[] = [
@@ -102,10 +103,7 @@ export function StatusEntry({ theme, onOpen }: { theme: DesktopTheme; onOpen?: (
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="Status"
-        uses={[
-          { id: 'icon', label: 'Icon' },
-          { id: 'text', label: 'Text' },
-        ]}
+        uses={usesOf('status')}
         onOpen={onOpen}
       >
         A state on a tinted plate, and the picker that changes it. The other side of the

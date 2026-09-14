@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { BranchCard } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 const PROPS: PropRow[] = [
   {
@@ -63,11 +64,7 @@ export function BranchCardEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="BranchCard"
-        uses={[
-          { id: 'buttonicon', label: 'ButtonIcon' },
-          { id: 'icon', label: 'Icon' },
-          { id: 'text', label: 'Text' },
-        ]}
+        uses={usesOf('branchcard')}
         onOpen={onOpen}
       >
         Where the work is: the branch you are on, and the one it will go back to. Either chip

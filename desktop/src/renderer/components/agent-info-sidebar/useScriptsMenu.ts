@@ -14,8 +14,8 @@ const CATEGORY_LABELS: Record<ScriptCategory, MessageKey> = {
   other: 'scripts.other',
 }
 
-interface ScriptsMenuOptions {
-  repoPath: string
+interface ScriptsMenuRepo {
+  path: string
   /**
    * What to head the ROOT package's group with — the repository name the card itself
    * shows.
@@ -25,10 +25,17 @@ interface ScriptsMenuOptions {
    * under two names, which looks like two projects. Sub-packages keep their directory
    * path, which is what tells them apart.
    */
-  repoName: string
+  name: string
+}
+
+interface ScriptsMenusOptions {
+  repos: ScriptsMenuRepo[]
   agentId: string
   agentName: string
 }
+
+/** What one row's menu needs, once `SelectIcon`'s own sizing is taken out. */
+export type ScriptsMenu = Omit<SelectIconProps, 'size' | 'tone' | 'className'>
 
 /**
  * The identity of a row, and the reason it is an index pair.
@@ -42,53 +49,62 @@ interface ScriptsMenuOptions {
 const rowId = (pkgIndex: number, scriptIndex: number) => `${pkgIndex}:${scriptIndex}`
 
 /**
- * The scripts of a repository, as everything `SelectIcon` needs to draw a menu of them.
+ * The scripts of EVERY attached repository, as everything `SelectIcon` needs to draw a
+ * menu of them — one entry per repository, by checkout path.
  *
  * A HOOK AND NOT A COMPONENT, because the row this belongs to draws its own controls:
  * `HeaderRepoCard` renders the select, so what it wants handed to it is props, not a
- * rendered chip. A component here would be a second chip inside a row that already
- * knows how many it has and in what order.
+ * rendered chip. A component here would be a second chip inside a row that already knows
+ * how many it has and in what order.
+ *
+ * PLURAL, because a hook cannot be called inside a `.map()`. While this resolved ONE
+ * repository it forced the sidebar to keep a component per row just to call it, and that
+ * component was what stopped `SidebarAgentCoderInfo` from arranging its own cards. The
+ * per-repository state that made it a hook in the first place — the fetched `package.json`
+ * and whether it is in flight — is simply keyed by path now.
  *
  * WHAT IS LEFT IN THIS FILE is what a script IS: where it comes from, what running it
- * means, and the two ways a list of them wants to be grouped. The pill, the chevron,
- * the panel, the portal and the flip are all `SelectIcon`'s — see its notes for why a
- * menu in this sidebar cannot be positioned the way `Status`'s is.
+ * means, and the two ways a list of them wants to be grouped. The pill, the chevron, the
+ * panel, the portal and the flip are all `SelectIcon`'s — see its notes for why a menu in
+ * this sidebar cannot be positioned the way `Status`'s is.
  *
- * THE PANEL IS LAZY, through `onOpen`. Every repository card in the sidebar asks for
- * one of these, and reading `package.json` for each of them on mount would be a
- * filesystem call per card for a menu most people never open.
+ * THE PANELS ARE LAZY, through `onOpen`, and that is why the fetch is keyed rather than
+ * done for the whole list: reading `package.json` for every attached repository on mount
+ * would be a filesystem call per card for a menu most people never open.
  */
-export function useScriptsMenu({
-  repoPath,
-  repoName,
+export function useScriptsMenus({
+  repos,
   agentId,
   agentName,
-}: ScriptsMenuOptions): Omit<SelectIconProps, 'size' | 'tone' | 'className'> {
+}: ScriptsMenusOptions): Record<string, ScriptsMenu> {
   const t = useT()
-  const [projectScripts, setProjectScripts] = useState<ProjectScripts | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [projectScripts, setProjectScripts] = useState<Record<string, ProjectScripts>>({})
+  const [loading, setLoading] = useState<Record<string, boolean>>({})
   const { scriptTerminals, runScript } = useScriptRunner()
 
-  const fetchScripts = useCallback(async () => {
-    if (projectScripts) return
-    setLoading(true)
-    try {
-      const result = await window.electronAPI.scripts.getProjectScripts(repoPath)
-      setProjectScripts(result)
-    } catch {
-      setProjectScripts({ packages: [] })
-    } finally {
-      setLoading(false)
-    }
-  }, [repoPath, projectScripts])
-
-  const packages = useMemo(() => projectScripts?.packages ?? [], [projectScripts])
+  /* Keyed by path and merged rather than replaced: two cards can be opened before either
+     answers, and a plain `setState` would drop whichever landed first. */
+  const fetchScripts = useCallback(
+    async (repoPath: string) => {
+      if (projectScripts[repoPath]) return
+      setLoading(prev => ({ ...prev, [repoPath]: true }))
+      try {
+        const result = await window.electronAPI.scripts.getProjectScripts(repoPath)
+        setProjectScripts(prev => ({ ...prev, [repoPath]: result }))
+      } catch {
+        setProjectScripts(prev => ({ ...prev, [repoPath]: { packages: [] } }))
+      } finally {
+        setLoading(prev => ({ ...prev, [repoPath]: false }))
+      }
+    },
+    [projectScripts],
+  )
 
   // Already running for this repo AND this agent AND this package: a monorepo has a
   // `dev` per package, and greying out all of them because one is up would take the
   // other dev servers off the menu.
   const isRunning = useCallback(
-    (workspace: string, scriptName: string) =>
+    (repoPath: string, workspace: string, scriptName: string) =>
       scriptTerminals.some(
         s =>
           s.scriptName === scriptName &&
@@ -96,20 +112,15 @@ export function useScriptsMenu({
           s.projectPath === repoPath &&
           s.agentId === agentId,
       ),
-    [scriptTerminals, repoPath, agentId],
-  )
-
-  const groups = useMemo(
-    () => buildGroups(packages, repoName, isRunning, t),
-    [packages, repoName, isRunning, t],
+    [scriptTerminals, agentId],
   )
 
   // The PACKAGE is what carries the working directory and the package manager, so a
   // script is never run without the group it was picked from.
   const handleSelect = useCallback(
-    async (item: SelectIconItem) => {
+    async (repoPath: string, item: SelectIconItem) => {
       const [pkgIndex, scriptIndex] = item.id.split(':').map(Number)
-      const pkg = packages[pkgIndex]
+      const pkg = projectScripts[repoPath]?.packages[pkgIndex]
       const script = pkg?.scripts[scriptIndex]
       if (!pkg || !script) return
 
@@ -123,19 +134,30 @@ export function useScriptsMenu({
         agentName,
       })
     },
-    [packages, repoPath, agentId, agentName, runScript],
+    [projectScripts, agentId, agentName, runScript],
   )
 
-  return {
-    icon: Play,
-    title: t('agentInfo.runScripts'),
-    groups,
-    loading,
-    loadingLabel: t('common.loading'),
-    emptyLabel: t('agentInfo.noScripts'),
-    onOpen: fetchScripts,
-    onSelect: handleSelect,
-  }
+  return useMemo(() => {
+    const menus: Record<string, ScriptsMenu> = {}
+    for (const repo of repos) {
+      menus[repo.path] = {
+        icon: Play,
+        title: t('agentInfo.runScripts'),
+        groups: buildGroups(
+          projectScripts[repo.path]?.packages ?? [],
+          repo.name,
+          (workspace, scriptName) => isRunning(repo.path, workspace, scriptName),
+          t,
+        ),
+        loading: loading[repo.path] ?? false,
+        loadingLabel: t('common.loading'),
+        emptyLabel: t('agentInfo.noScripts'),
+        onOpen: () => fetchScripts(repo.path),
+        onSelect: item => handleSelect(repo.path, item),
+      }
+    }
+    return menus
+  }, [repos, projectScripts, loading, isRunning, fetchScripts, handleSelect, t])
 }
 
 /**

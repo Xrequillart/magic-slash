@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { SidebarInfo } from '@ds/desktop'
+import { SidebarAgentCoderInfo, SidebarAgentPlannerInfo, type CoderRepository } from '@ds/desktop'
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
-import { TicketHeader } from './agent-info-sidebar/TicketHeader'
-import { SpecPanel } from './agent-info-sidebar/SpecPanel'
-import { UsageCard } from './agent-info-sidebar/UsageCard'
-import { RepositoryCard } from './agent-info-sidebar/RepositoryCard'
+import { useTicketCard } from './agent-info-sidebar/ticketCard'
+import { useSpecCard } from './agent-info-sidebar/specCard'
+import { useUsageCard } from './agent-info-sidebar/usageCard'
+import { toCoderRepository } from './agent-info-sidebar/coderRepository'
+import { useRepoColors } from './agent-info-sidebar/RepoMark'
+import { useScriptsMenus } from './agent-info-sidebar/useScriptsMenu'
 import { RepositorySelector } from './agent-info-sidebar/RepositorySelector'
 import { getSpecPanelMode, splitSpecPath } from './agent-info-sidebar/utils'
 import { usePlanSpec } from '../hooks/usePlanSpec'
@@ -413,115 +415,145 @@ export function AgentInfoSidebar() {
     setTimeout(() => setCopiedBranch(null), 2000)
   }, [])
 
+  /**
+   * THE CARDS, AS DATA. Every hook below answers one region of the column, and every one
+   * of them runs UNCONDITIONALLY — React's rule, and the reason each returns props rather
+   * than a decision. Whether a region is shown at all is decided at the call site a few
+   * lines down, where it is a condition and not a hook.
+   */
+  const usageCard = useUsageCard({
+    usage: metadata?.usage ?? {},
+    minimized: config?.agentContextMinimized === true,
+    onMinimizedChange: setAgentContextMinimized,
+  })
+  const ticketCard = useTicketCard({
+    metadata,
+    // '' when nothing is inspected, which no card ever sees: the region is dropped below.
+    agentId: inspectedTerminalId ?? '',
+    taskSelection,
+    identity,
+    onStatusChange: handleStatusChange,
+  })
+
+  /* `repoPath`/`filePath` are '' when there is no spec, which no card ever sees: the
+     planner column below is only rendered when `spec` is there. */
+  const specCard = useSpecCard({
+    agentId: inspectedTerminalId ?? '',
+    identity,
+    repoNames: configuredAttachedRepos.map(getRepoName),
+    status: metadata?.status ?? '',
+    ticketId: metadata?.ticketId,
+    taskSelection,
+    repoPath: spec?.repoPath ?? '',
+    filePath: spec?.filePath ?? '',
+    refreshToken: specRefreshToken,
+    onStatusChange: handleStatusChange,
+  })
+
+  // The two things a repository row needs that only the app can answer, both resolved for
+  // the WHOLE list at once — a hook cannot run inside the `.map()` that builds the cards.
+  const repoColors = useRepoColors()
+  const scriptsRepos = useMemo(
+    () => configuredAttachedRepos.map(path => ({ path, name: getRepoName(path) })),
+    [configuredAttachedRepos, getRepoName],
+  )
+  const scriptsMenus = useScriptsMenus({
+    repos: scriptsRepos,
+    agentId: inspectedTerminalId ?? '',
+    agentName: activeTerminal?.metadata?.title || activeTerminal?.name || '',
+  })
+  const openRepoSettings = useStore(s => s.openRepoSettings)
+  const openRepoReview = useStore(s => s.openRepoReview)
+
+  /* Gone entirely at `planning`: a planning agent has no branch, no diff and no PR, so
+     every row in these cards is empty — the repository NAME is all that is left to say,
+     and the spec header says it. */
+  const repositories: CoderRepository[] = useMemo(() => {
+    // Not for a planner: the planner column below has no repository cards at all.
+    if (!activeTerminal || spec) return []
+    return configuredAttachedRepos.map(repoPath => {
+      const repoName = getRepoName(repoPath)
+      const gitData = repoGitData[repoPath]
+      return toCoderRepository({
+        repoPath,
+        repoName,
+        agentId: inspectedTerminalId!,
+        gitData,
+        baseBranch: metadata?.baseBranch,
+        prUrl: getRepoPrUrl(repoPath),
+        repoUrl: getRepoUrl(repoPath),
+        repoMetadata: metadata?.repositoryMetadata?.[repoPath],
+        copiedCommitHash,
+        copiedBranch,
+        repoColor: repoColors[repoName],
+        scripts: scriptsMenus[repoPath],
+        onCopyCommitHash: copyCommitHash,
+        onCopyBranchName: copyBranchName,
+        onRemove: () => handleToggleRepository(repoPath),
+        onOpenSettings: openRepoSettings,
+        onOpenReview: file =>
+          openRepoReview({ repoPath, repoName, files: gitData!.stats!.files }, file),
+        t,
+      })
+    })
+  }, [
+    activeTerminal, spec, configuredAttachedRepos, getRepoName, repoGitData,
+    inspectedTerminalId, metadata, getRepoPrUrl, getRepoUrl, copiedCommitHash, copiedBranch,
+    repoColors, scriptsMenus, copyCommitHash, copyBranchName, handleToggleRepository,
+    openRepoSettings, openRepoReview, t,
+  ])
+
+  /**
+   * WHICH COLUMN, and it is a choice between two components rather than a mode inside one.
+   *
+   * A planner that has announced a spec file gets the planner column: no ticket card, no
+   * repository cards, no add-repository box — it has no branch, no diff and no PR, so those
+   * would be four empty cards above the one thing worth reading.
+   *
+   * A planner that has NOT announced one yet keeps the ordinary column, which is why this
+   * is keyed on `spec` and not on the agent's type: an empty frame where the document will
+   * be is worse than the header the agent already has.
+   */
+  const planning = Boolean(activeTerminal && spec)
+
   return (
     <>
-      {/* The column, its ground, its fold, the face inside it and the ORDER of the
-          regions are `SidebarInfo`'s now — see that file for why the two nested boxes
-          both matter. What stays here is which agent this is and what each region is
-          made of.
-
-          `fill` is the `replace` spec mode: the spec takes the whole column and owns
-          the only scroll region, so this one stops scrolling. */}
-      <SidebarInfo
-        width={width}
-        collapsed={!isOpen}
-        animate={animateWidth}
-        fill={spec?.mode === 'replace'}
-        emptyLabel={activeTerminal ? undefined : t('agentInfo.noActiveAgent')}
-        /* Switched off from Appearance → Sidebars; on by default, and shown for the
-           whole life of the agent once on. That second part is deliberate: the usage
-           feed only lands after Claude's first response, and a bar that appears out of
-           nowhere mid-session reads as a glitch. */
-        usage={
-          activeTerminal && config?.agentContextEnabled !== false ? (
-            <UsageCard
-              usage={metadata?.usage ?? {}}
-              minimized={config?.agentContextMinimized === true}
-              onMinimizedChange={setAgentContextMinimized}
-            />
-          ) : undefined
-        }
-        /* At `planning` the spec REPLACES the ticket header — no ticket exists yet, so
-           the header would be an empty card above the only thing there is to read. At
-           `planned` both are shown, header first: the ticket has just been created and
-           the spec is what it came from. */
-        ticket={
-          activeTerminal && spec?.mode !== 'replace' ? (
-            <TicketHeader
-              metadata={metadata}
-              // Non-null inside this branch: `activeTerminal` is what it was read from.
-              agentId={inspectedTerminalId!}
-              taskSelection={taskSelection}
-              identity={identity}
-              onStatusChange={handleStatusChange}
-            />
-          ) : undefined
-        }
-        spec={
-          activeTerminal && spec ? (
-            <SpecPanel
-              // A new file starts fresh: expanded, and pinned to its own bottom rather
-              // than wherever the previous spec had been left.
-              key={specPath}
-              // The agent the panel is open FOR, which is where its comments are sent.
-              agentId={inspectedTerminalId!}
-              identity={identity}
-              repoNames={configuredAttachedRepos.map(getRepoName)}
-              status={metadata?.status ?? ''}
-              repoPath={spec.repoPath}
-              filePath={spec.filePath}
-              refreshToken={specRefreshToken}
-              ticketId={metadata?.ticketId}
-              taskSelection={taskSelection}
-              onStatusChange={handleStatusChange}
-            />
-          ) : undefined
-        }
-        /* Gone entirely at `planning`: a planning agent has no branch, no diff and no
-           PR, so every row in these cards is empty — the repository NAME is all that is
-           left to say, and the spec header says it. */
-        repositories={
-          activeTerminal && spec?.mode !== 'replace' && configuredAttachedRepos.length > 0 ? (
-            <div className="space-y-3">
-              {configuredAttachedRepos.map((repoPath) => (
-                <RepositoryCard
-                  key={repoPath}
-                  repoPath={repoPath}
-                  repoName={getRepoName(repoPath)}
-                  agentId={inspectedTerminalId!}
-                  agentName={activeTerminal!.metadata?.title || activeTerminal!.name}
-                  gitData={repoGitData[repoPath]}
-                  baseBranch={metadata?.baseBranch}
-                  prUrl={getRepoPrUrl(repoPath)}
-                  repoUrl={getRepoUrl(repoPath)}
-                  repoMetadata={metadata?.repositoryMetadata?.[repoPath]}
-                  copiedCommitHash={copiedCommitHash}
-                  copiedBranch={copiedBranch}
-                  onCopyCommitHash={copyCommitHash}
-                  onCopyBranchName={copyBranchName}
-                  onRemove={() => handleToggleRepository(repoPath)}
-                />
-              ))}
-            </div>
-          ) : undefined
-        }
-        /* Hidden at `planning` along with the cards it belongs to: it is the only other
-           thing competing for the height the spec now fills, and attaching a repository
-           is not a planning-time action. */
-        footer={
-          activeTerminal && spec?.mode !== 'replace' ? (
-            <button
-              onClick={() => setIsRepoModalOpen(true)}
-              /* `rounded-xl`, the CARD radius. This button stands exactly where another
-                 repository card would, and is the full width of one. The dashed rule
-                 stays: it is what says "empty slot", not chrome. */
-              className="w-full py-4 text-center border border-dashed border-border/50 rounded-xl hover:border-text-secondary/50 hover:bg-surface transition-colors"
-            >
-              <div className="text-xs text-text-secondary/50">{t('agentInfo.addRepository')}</div>
-            </button>
-          ) : undefined
-        }
-      />
+      {/* THE COLUMN AND EVERY CARD IN IT are the design system's — the ground, the fold, the
+          face, the order of the regions, and the cards themselves. What is left in this file
+          is which agent this is and what each region SAYS. */}
+      {planning ? (
+        <SidebarAgentPlannerInfo
+          // A new file starts fresh: at the top of the NEW spec rather than wherever the
+          // previous one had been left.
+          key={specPath}
+          width={width}
+          collapsed={!isOpen}
+          animate={animateWidth}
+          usage={config?.agentContextEnabled !== false ? usageCard : undefined}
+          spec={specCard}
+        />
+      ) : (
+        <SidebarAgentCoderInfo
+          width={width}
+          collapsed={!isOpen}
+          animate={animateWidth}
+          emptyLabel={activeTerminal ? undefined : t('agentInfo.noActiveAgent')}
+          /* Switched off from Appearance → Sidebars; on by default, and shown for the whole
+             life of the agent once on. That second part is deliberate: the usage feed only
+             lands after Claude's first response, and a bar that appears out of nowhere
+             mid-session reads as a glitch. */
+          usage={
+            activeTerminal && config?.agentContextEnabled !== false ? usageCard : undefined
+          }
+          ticket={activeTerminal ? ticketCard : undefined}
+          repositories={repositories}
+          addRepository={
+            activeTerminal
+              ? { label: t('agentInfo.addRepository'), onClick: () => setIsRepoModalOpen(true) }
+              : undefined
+          }
+        />
+      )}
 
       {/* A `createPortal` to the body, so where it sits in this tree decides nothing. */}
       <RepositorySelector

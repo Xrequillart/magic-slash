@@ -5,6 +5,7 @@ import { CommitLine } from '@ds/desktop'
 import { Github } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 const PROPS: PropRow[] = [
   {
@@ -103,11 +104,7 @@ export function CommitLineEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="CommitLine"
-        uses={[
-          { id: 'buttonicon', label: 'ButtonIcon' },
-          { id: 'icon', label: 'Icon' },
-          { id: 'text', label: 'Text' },
-        ]}
+        uses={usesOf('commitline')}
         onOpen={onOpen}
       >
         One commit, on the rail that says it belongs to a branch. It is the <em>row</em>;{' '}

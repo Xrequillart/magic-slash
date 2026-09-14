@@ -5,6 +5,7 @@ import { ReviewThreadLine } from '@ds/desktop'
 import { CheckCircle2, Circle, MinusCircle } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 const PROPS: PropRow[] = [
   { name: 'author', type: 'string', required: true, description: 'Who opened the thread. Truncates: a shortened login is still readable.' },
@@ -121,11 +122,7 @@ export function ReviewThreadLineEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="ReviewThreadLine"
-        uses={[
-          { id: 'icon', label: 'Icon' },
-          { id: 'label', label: 'Label' },
-          { id: 'text', label: 'Text' },
-        ]}
+        uses={usesOf('reviewthreadline')}
         onOpen={onOpen}
       >
         One review thread, on one line: who opened it, where, how many answers, and whether it

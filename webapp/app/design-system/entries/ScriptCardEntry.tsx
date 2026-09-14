@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ScriptCard } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
+import { usesOf } from './ids'
 
 const PROPS: PropRow[] = [
   { name: 'name', type: 'string', required: true, description: 'The script’s own name, as package.json spells it — dev, build.' },
@@ -73,11 +74,7 @@ export function ScriptCardEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader
         title="ScriptCard"
-        uses={[
-          { id: 'loader', label: 'Loader' },
-          { id: 'icon', label: 'Icon' },
-          { id: 'text', label: 'Text' },
-        ]}
+        uses={usesOf('scriptcard')}
         onOpen={onOpen}
       >
         A script running on a repository, and the addresses it answers on. The one{' '}
