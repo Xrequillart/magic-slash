@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.94.7] - 2026-09-14
+
+### Added
+
+- **Desktop**: A select can mark the row that is in force — a check and the accent — and size its own panel, so a menu opened from the 230px column no longer overhangs it. Its rows may carry their own marks when they are kinds rather than one repeated action
+- **Desktop**: A label can wear a colour from the palette
+- **Desktop**: The script card moved into the shared `design-system/` folder
+- **Desktop**: The agent info sidebar moved into the shared `design-system/` folder
+- **Desktop**: The repository card moved into the shared `design-system/` folder
+- **Desktop**: The scripts trigger takes a class of its own
+- **Desktop**: `SelectIcon` takes a controlled open, so a drawing can play the menu on a timer
+- **Desktop**: The pull request card moved into the shared `design-system/` folder
+- **Desktop**: `ButtonIcon` has a busy state
+- **Desktop**: The uncommitted changes card moved into the shared `design-system/` folder
+- **Desktop**: `CommitLine` and `CommitCard` moved into the shared `design-system/` folder
+- **Desktop**: The switch has a liquid glass variant
+
+### Changed
+
+- **Desktop**: The agent sort opens from a select rather than a bare button: a chevron says it opens a list before it is pressed, and the option descriptions are gone — the labels say what they do
+- **Desktop**: A review thread states itself with a label instead of an outline
+- **Landing**: The sort menu, the running script, the info sidebar and the sidebar illustrations are drawn with the real components instead of copies, so the drawings cannot fall behind what they draw
+- **Deps**: The linters group moved up two versions
+
+### Fixed
+
+- **Landing**: The scripts step of the storyboard is framed on its trigger
+
 ## [0.94.6] - 2026-09-13
 
 ### Added
@@ -2884,6 +2912,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.94.7]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.7
 [0.94.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.6
 [0.94.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.5
 [0.94.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.4
