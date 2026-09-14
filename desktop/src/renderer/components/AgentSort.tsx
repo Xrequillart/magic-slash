@@ -1,104 +1,85 @@
-import { useCallback, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { Activity, ArrowDownUp, Check, Clock, FolderGit2 } from '@ds/desktop/icons'
-import type { SidebarAction } from '@ds/desktop'
-import { useAnchoredPanel } from './useAnchoredPanel'
+import { useCallback } from 'react'
+import { Activity, ArrowDownUp, Clock, FolderGit2 } from '@ds/desktop/icons'
+import type { SelectIconItem, SidebarSelectAction } from '@ds/desktop'
 import { useConfig } from '../hooks/useConfig'
 import { useT } from '../i18n'
 import type { MessageKey } from '../i18n'
-import { AGENT_SORT_MODES, DEFAULT_AGENT_SORT, type AgentSortMode } from '../../types'
+import { AGENT_SORT_MODES, DEFAULT_AGENT_SORT, isValidAgentSort, type AgentSortMode } from '../../types'
 
 // Catalogue keys, not labels — same reason as ROLE_OPTIONS and THEMES: module scope is
 // evaluated once at import, so a literal would freeze at the boot language.
-const SORT_OPTIONS: Record<AgentSortMode, { labelKey: MessageKey; descriptionKey: MessageKey; icon: typeof Clock }> = {
-  recent: { labelKey: 'sidebar.sort.recent', descriptionKey: 'sidebar.sort.recent.help', icon: Clock },
-  status: { labelKey: 'sidebar.sort.status', descriptionKey: 'sidebar.sort.status.help', icon: Activity },
-  repository: { labelKey: 'sidebar.sort.repository', descriptionKey: 'sidebar.sort.repository.help', icon: FolderGit2 },
+//
+// ONE MARK PER MODE, and they are the rows' own rather than the trigger's: the three
+// options are three KINDS of order — a clock, a pulse, a repository — and repeating
+// the sort glyph on all three would say they do the same thing.
+const SORT_OPTIONS: Record<AgentSortMode, { labelKey: MessageKey; icon: typeof Clock }> = {
+  recent: { labelKey: 'sidebar.sort.recent', icon: Clock },
+  status: { labelKey: 'sidebar.sort.status', icon: Activity },
+  repository: { labelKey: 'sidebar.sort.repository', icon: FolderGit2 },
 }
-
-/**
- * A number rather than a Tailwind width, because `useAnchoredPanel` measures with it.
- * Wider than the 230px sidebar on purpose: the panel is portalled to <body> and only
- * anchored to the trigger, so it is free to be readable rather than to fit the column
- * it is opened from.
- */
-const PANEL_WIDTH = 248
 
 /**
  * How the agent list is ordered, picked from the AGENTS header — immediately left of
  * the button that adds to that list, because both act on the list beside them.
  *
- * A HOOK AND NOT A COMPONENT, for the reason `useAccountMenuEntry` is one: `Sidebar`
- * draws its own header controls, so what this hands over is an ACTION — the icon, the
- * name, the handler and the tint — rather than a button of its own. The panel comes
- * back beside it because it cannot be rendered from inside a list of actions; it is
- * portalled anyway, and `ref` is what ties it back to the button the sidebar drew.
+ * A SELECT AND NOT A BUTTON. It was a `ButtonIcon` with a panel this file drew,
+ * positioned and portalled by hand: some seventy lines of markup, a `useAnchoredPanel`
+ * call, and a `ref` travelling inside the action so the column's button could be found
+ * again. All of it is `SelectIcon` now — the chevron that says the mark opens a list
+ * before anyone presses it, the panel, the portal, the flip when the room below runs
+ * out, and the dismissal rules.
  *
- * Icon only, like its neighbour: at 230px a label costs more width than it explains,
- * so the affordance is the icon and the wording lives in the title/aria-label and in
- * the panel itself. The panel is portalled and positioned `fixed` for the reason
- * `useAnchoredPanel` gives — inline it would be clipped by the scrolling `<nav>` the
- * header sits in.
+ * A HOOK AND NOT A COMPONENT, for the reason `useAccountMenuEntry` is one: `Sidebar`
+ * draws its own header controls, so what this hands over is an ACTION — everything the
+ * column needs to draw the select — rather than a control of its own.
+ *
+ * NO DESCRIPTIONS UNDER THE OPTIONS. The three labels say what they do ("Newest
+ * first", "By status", "By repository"), and a menu opened from a 230px column is
+ * read in a glance rather than studied; the check says which one is in force.
  *
  * The choice is written to the cloud config, so it follows the account rather than the
  * window: the same person's other machine opens on the order they left.
  */
-export function useAgentSortAction(): { action: SidebarAction; panel: React.ReactNode } {
+export function useAgentSortAction(): SidebarSelectAction {
   const t = useT()
   const { config, updateAgentSort } = useConfig()
-  const [open, setOpen] = useState(false)
-  const close = useCallback(() => setOpen(false), [])
-  const { triggerRef, panelRef, style } = useAnchoredPanel(open, close, PANEL_WIDTH)
 
   const current = config?.agentSort ?? DEFAULT_AGENT_SORT
 
+  // The row's id IS the mode — the menu has one group and three fixed rows, so there
+  // is nothing to disambiguate the way the scripts menu's index pairs are. Guarded on
+  // the way back all the same: `onSelect` hands over a string, and the type is what
+  // says this one is still a sort mode.
+  const handleSelect = useCallback((item: SelectIconItem) => {
+    if (!isValidAgentSort(item.id)) return
+    // Writing the mode already in force would be a round trip to the cloud for
+    // nothing, and a config broadcast to every other window with it.
+    if (item.id !== current) updateAgentSort(item.id)
+  }, [current, updateAgentSort])
+
   return {
-    // Tinted once the order is no longer the default one, so a list that is not in
-    // the order it was learned in says so from the header rather than only from its
-    // contents. `active` carries the tint AND the `aria-pressed` this never had.
-    action: {
-      id: 'sort',
-      ref: triggerRef,
-      icon: ArrowDownUp,
-      title: t('sidebar.sort.title', { mode: t(SORT_OPTIONS[current].labelKey) }),
-      onClick: () => setOpen((o) => !o),
-      active: open || current !== DEFAULT_AGENT_SORT,
-    },
-    panel: open && createPortal(
-        <div
-          ref={panelRef}
-          style={style()}
-          className="bg-bg-secondary border border-line rounded-xl shadow-2xl overflow-hidden z-[60]"
-        >
-          {AGENT_SORT_MODES.map((mode) => {
-            const option = SORT_OPTIONS[mode]
-            const Icon = option.icon
-            const isSelected = mode === current
-            return (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => {
-                  setOpen(false)
-                  // Writing the mode already in force would be a round trip to the cloud
-                  // for nothing, and a config broadcast to every other window with it.
-                  if (!isSelected) updateAgentSort(mode)
-                }}
-                className={`w-full flex items-start gap-2 px-3 py-2 text-left transition-colors ${
-                  isSelected ? 'bg-surface' : 'hover:bg-surface'
-                }`}
-              >
-                <Icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${isSelected ? 'text-accent' : 'text-text-secondary/60'}`} />
-                <div className="min-w-0 flex-1">
-                  <div className={`text-xs font-medium ${isSelected ? 'text-accent' : 'text-ink'}`}>{t(option.labelKey)}</div>
-                  <div className="text-[11px] text-text-secondary/50 mt-0.5">{t(option.descriptionKey)}</div>
-                </div>
-                {isSelected && <Check className="w-3.5 h-3.5 text-accent shrink-0 mt-0.5" />}
-              </button>
-            )
-          })}
-        </div>,
-      document.body,
-    ),
+    id: 'sort',
+    icon: ArrowDownUp,
+    // NARROWER THAN A SCRIPTS MENU, and it is the rows that decide: three short
+    // phrases and no trailing hint, where a script row carries its command as well.
+    // The default 280 beside a 230px column reads as a panel that overhangs the very
+    // list it belongs to; 190 sits well inside it.
+    //
+    // THE LABELS WERE CUT TO FIT IT, not truncated by it: `sidebar.sort.recent` read
+    // "Du plus récent au plus ancien" in French and is "Plus récent" now. A width is
+    // only honest if the longest row still reads whole at it — the row in force
+    // carries a check as well, and that is the one with the least room.
+    panelWidth: 190,
+    title: t('sidebar.sort.title', { mode: t(SORT_OPTIONS[current].labelKey) }),
+    groups: [{
+      label: t('sidebar.sort.group'),
+      items: AGENT_SORT_MODES.map((mode) => ({
+        id: mode,
+        label: t(SORT_OPTIONS[mode].labelKey),
+        icon: SORT_OPTIONS[mode].icon,
+        selected: mode === current,
+      })),
+    }],
+    onSelect: handleSelect,
   }
 }

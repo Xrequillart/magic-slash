@@ -1,9 +1,10 @@
 import { Fragment } from 'react'
-import type { DragEvent, MouseEvent, ReactNode, Ref } from 'react'
+import type { DragEvent, MouseEvent, ReactNode } from 'react'
 import { Agent, type AgentProps } from './Agent'
 import { ButtonIcon } from './ButtonIcon'
 import { AlertTriangle, FolderGit2 } from './icons'
 import { MenuSidebar, type MenuSidebarEntry } from './MenuSidebar'
+import { SelectIcon, type SelectIconProps } from './SelectIcon'
 import type { IconComponent } from './types'
 
 /**
@@ -46,8 +47,9 @@ import type { IconComponent } from './types'
  *  `Sidebar.tsx`. A number and not a class, because the collapse is the negative of it. */
 export const SIDEBAR_WIDTH = 230
 
-/** One mark in a list's header — the control that adds to the list, the one that
- *  reorders it. The shape `ButtonIcon` needs, and nothing more. */
+/** One mark in a list's header that ACTS when pressed — the control that adds to the
+ *  list. The shape `ButtonIcon` needs, and nothing more; a control that opens a menu
+ *  instead is a `SidebarSelectAction`. */
 export interface SidebarAction {
   id: string
   icon: IconComponent
@@ -62,19 +64,26 @@ export interface SidebarAction {
    * and it says on the page that the button is a drawing.
    */
   onClick: () => void
-  /** Tinted, and `aria-pressed`: the list is not in the order it was learned in, or
-   *  this control's own menu is open. */
+  /** Tinted, and `aria-pressed`: the list is not in the order it was learned in. */
   active?: boolean
-  /**
-   * The trigger element, for a caller anchoring a panel to it.
-   *
-   * A ref in a data object is unusual and it is here for one case: the sort control
-   * opens a panel portalled to `<body>`, which has to be positioned against the button
-   * this component drew. The alternative was taking the whole control as a node, and a
-   * column that accepts arbitrary markup in its header is a column that cannot promise
-   * its header looks the same twice.
-   */
-  ref?: Ref<HTMLButtonElement>
+}
+
+/**
+ * A header control that opens a MENU rather than doing something — the sort order.
+ *
+ * `SelectIcon`'s own props, passed straight through, the way the menu entries are
+ * `MenuSidebar`'s: the chevron, the panel, the portal and the flip are already a
+ * component, and a column that respelled any of them would be a second menu language
+ * living in a header.
+ *
+ * IT REPLACED A BUTTON AND A REF. The sort control used to be a plain `SidebarAction`
+ * whose panel the app drew itself, anchored to a `ref` this interface handed back —
+ * the one ref that ever travelled in a data object here. A chevron says the control
+ * opens a list before it is pressed, which is what the bare mark never did, and the
+ * panel comes with it.
+ */
+export interface SidebarSelectAction extends Omit<SelectIconProps, 'size' | 'className'> {
+  id: string
 }
 
 /** One row of a list: an agent, plus the repository heading it may open. */
@@ -109,8 +118,9 @@ export interface SidebarList {
    */
   pane?: { label: string; visible?: boolean }
   /** The controls on this list's header, in reading order. The one that CHANGES the
-   *  list belongs before the one that ADDS to it. */
-  actions?: SidebarAction[]
+   *  list belongs before the one that ADDS to it. Either kind: a mark that acts, or a
+   *  mark with a chevron that opens a menu. */
+  actions?: (SidebarAction | SidebarSelectAction)[]
   /**
    * How many agents on this list are stuck on the person — waiting on an answer, or
    * dead on an error.
@@ -273,16 +283,22 @@ function ListHeader({ list }: { list: SidebarList }) {
         </span>
       )}
 
-      {list.actions?.map((action) => (
-        <ButtonIcon
-          key={action.id}
-          ref={action.ref}
-          icon={action.icon}
-          title={action.title}
-          onClick={action.onClick}
-          active={action.active}
-        />
-      ))}
+      {/* WHICH KIND IS READ OFF `groups`, not off a `kind` field: a control that opens
+          a menu is exactly a control that was given one, and a discriminant beside it
+          would be a second place to say the same thing — and one day the wrong one. */}
+      {list.actions?.map((action) =>
+        'groups' in action ? (
+          <SelectIcon key={action.id} {...action} />
+        ) : (
+          <ButtonIcon
+            key={action.id}
+            icon={action.icon}
+            title={action.title}
+            onClick={action.onClick}
+            active={action.active}
+          />
+        ),
+      )}
     </div>
   )
 }

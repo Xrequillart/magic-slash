@@ -150,13 +150,11 @@ export const en = {
   // The sort control on the AGENTS header. Icon only, so the current mode is named in
   // the tooltip and the accessible name — and each option carries the one line that
   // says what it costs, since two of the three let the list move under the cursor.
-  'sidebar.sort.title': 'Sort agents — {mode}',
+  'sidebar.sort.title': 'Sort agents: {mode}',
+  'sidebar.sort.group': 'Sort by',
   'sidebar.sort.recent': 'Newest first',
-  'sidebar.sort.recent.help': 'An agent keeps its row for as long as it lives.',
   'sidebar.sort.status': 'By status',
-  'sidebar.sort.status.help': 'Waiting and failed first. The list moves as agents work.',
   'sidebar.sort.repository': 'By repository',
-  'sidebar.sort.repository.help': 'Grouped by project, A to Z. Unlinked agents last.',
   // The header of the last group in `repository` mode: the agents whose working
   // directory matches no configured repository. Decoration, never selectable.
   'sidebar.group.noRepository': 'No repository',

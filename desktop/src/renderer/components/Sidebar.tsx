@@ -152,9 +152,9 @@ export function Sidebar() {
 
   // After the table above, because it is handed the accelerator it displays.
   const { entry: accountEntry, login } = useAccountMenuEntry({ shortcutKey: settingsShortcutKey })
-  // The sort control, as one action on the AGENTS header plus the panel it opens. A
+  // The sort control, as one action on the AGENTS header — a select, panel and all. A
   // hook for the same reason the account row is one: the column draws its own controls.
-  const { action: sortAction, panel: sortPanel } = useAgentSortAction()
+  const sortAction = useAgentSortAction()
 
   // One listener for every page shortcut, not one per page: ⌘; / ⌘J / ⌘T all do the
   // same thing to a different modal, and a fourth copy of the same nine lines is a
@@ -330,11 +330,10 @@ export function Sidebar() {
         version={APP_VERSION}
       />
 
-      {/* The sort panel, and the login overlay the account row may need. Both are
-          portalled out of the column — one is anchored to a button inside a scrolling
-          <nav> that would clip it, the other is a fixed overlay covering the whole app
-          — and neither can be rendered from inside a list of entries. */}
-      {sortPanel}
+      {/* The login overlay the account row may need: a fixed overlay covering the whole
+          app, which cannot be rendered from inside a list of menu entries. The sort
+          menu used to be portalled from here too — `SelectIcon` carries its own panel
+          now. */}
       {createPortal(
         <LoginScreen isOpen={login.open} onClose={login.onClose} />,
         document.body,

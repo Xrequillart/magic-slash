@@ -84,6 +84,7 @@ export type {
   SidebarAgentRow,
   SidebarList,
   SidebarProps,
+  SidebarSelectAction,
 } from './Sidebar'
 export { SelectIcon } from './SelectIcon'
 export type { SelectIconGroup, SelectIconItem, SelectIconProps, SelectIconTone } from './SelectIcon'
