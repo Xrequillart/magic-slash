@@ -1,5 +1,4 @@
-import { CircleStop, ExternalLink, Globe, XCircle } from '@ds/desktop/icons'
-import { Loader } from '@ds/desktop'
+import { ScriptCard } from '@ds/desktop'
 import { useScriptRunner } from '../../hooks/useScriptRunner'
 import { useStore } from '../../store'
 import { useT } from '../../i18n'
@@ -54,96 +53,34 @@ export function RunningScripts({ repoPath, agentId }: RunningScriptsProps) {
 
   return (
     <div className="flex flex-col gap-1">
-      {scripts.map(script => {
-        const urls = script.serverUrls ?? []
-
-        return (
-          <div key={script.id} className="flex flex-col">
-            <button
-              onClick={() => openScriptTerminalModal(script)}
-              className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs transition-all group text-on-brand ${
-                script.state === 'running' ? 'bg-purple' : 'bg-red'
-              } ${urls.length > 0 ? 'rounded-t-lg' : 'rounded-lg'}`}
-            >
-              {/* The loader is `currentColor` by design, so the wrapper is what makes it
-                  white against the filled surface. */}
-              {script.state === 'running' ? (
-                <span className="text-on-brand flex-shrink-0">
-                  <Loader />
-                </span>
-              ) : (
-                <XCircle className="w-4 h-4 flex-shrink-0" />
-              )}
-              <div className="flex-1 text-left min-w-0">
-                {/* The package prefixes the name, dimmed: on a monorepo the card would
-                    otherwise read `dev` three times over, and which package is serving
-                    is the whole question a person opens this card with. */}
-                <div className="truncate text-xs font-medium" title={scriptLabel(script)}>
-                  {script.workspace && <span className="font-normal text-on-brand/70">{script.workspace}/</span>}
-                  {script.scriptName}
-                </div>
-              </div>
-              {/* Always visible and worded, never a hover reveal on a lone glyph:
-                  stopping a server is the action a person comes to this card for, and
-                  a control that only exists under the pointer — or that only ever says
-                  what it does in a tooltip — cannot be found by someone looking for it.
-                  `common.stop` rather than a new key: it is the same verb the rest of
-                  the app already puts on this button. */}
-              <span
-                onClick={(e) => { e.stopPropagation(); stopScript(script.id) }}
-                className="flex items-center gap-1 pl-1.5 pr-2 py-1 rounded-md bg-on-brand/15 hover:bg-on-brand/30 transition-colors flex-shrink-0"
-                title={t('agentInfo.stopScript')}
-              >
-                <CircleStop className="w-3.5 h-3.5 text-on-brand" />
-                <span className="text-[11px] font-semibold text-on-brand">{t('common.stop')}</span>
-              </span>
-            </button>
-
-            {/* Attached to the card above rather than spaced from it: these are that
-                script's addresses, not further items in the list. No rule between two
-                of them — each row is a globe, a URL and an arrow, which is its own
-                shape; a hairline there was drawing a table out of two links. */}
-            {urls.map((url, index) => (
-              <ServerUrlRow key={url} url={url} last={index === urls.length - 1} />
-            ))}
-          </div>
-        )
-      })}
+      {scripts.map(script => (
+        /* The bar, its two states, the stop chip and the address rows hanging off it are
+           `ScriptCard`'s now. What stays here is what only the app can answer: which
+           scripts belong to this (repo, agent) pair, what a script is called once its
+           workspace is folded in, how short a URL may be printed, and what a click does
+           to a running process. */
+        <ScriptCard
+          key={script.id}
+          name={script.scriptName}
+          workspace={script.workspace}
+          state={script.state === 'running' ? 'running' : 'error'}
+          title={scriptLabel(script)}
+          onOpen={() => openScriptTerminalModal(script)}
+          stop={{
+            // `common.stop` rather than a new key: it is the same verb the rest of the
+            // app already puts on this button.
+            label: t('common.stop'),
+            title: t('agentInfo.stopScript'),
+            onStop: () => stopScript(script.id),
+          }}
+          urls={(script.serverUrls ?? []).map(url => ({
+            url,
+            label: serverUrlLabel(url),
+            title: t('agentInfo.openServerInBrowser', { url }),
+          }))}
+          onOpenUrl={url => window.electronAPI.shell.openExternal(url)}
+        />
+      ))}
     </div>
-  )
-}
-
-/**
- * The "open this in a browser" row under a script that serves a page.
- *
- * Its own component so the URL is narrowed once, by the list that renders it, instead of
- * asserted non-null inside a click handler that fires long after the check.
- *
- * `text-xs` and no rule of its own, like everything else in the repository card. It was
- * `text-sm` inside a `line-subtle` box, on the argument that a link to hit should be
- * bigger than the status line above it — but it is the only 14px text anywhere in this
- * column, and one row set apart in its own size and its own frame reads as a fragment
- * of another design rather than as the emphasis it was meant to be. The ground carries
- * the emphasis instead: `bg-ink/5`, the card's material, going a step up under the
- * pointer.
- *
- * `last` still shapes the bottom corners — the rows are attached UNDER the coloured
- * script button and finish the block, so the radius is the block's, not the row's.
- */
-function ServerUrlRow({ url, last }: { url: string; last: boolean }) {
-  const t = useT()
-
-  return (
-    <button
-      onClick={() => window.electronAPI.shell.openExternal(url)}
-      className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs bg-ink/5 text-text-secondary hover:text-ink hover:bg-ink/10 transition-colors group/url ${
-        last ? 'rounded-b-lg' : ''
-      }`}
-      title={t('agentInfo.openServerInBrowser', { url })}
-    >
-      <Globe className="w-3.5 h-3.5 flex-shrink-0 text-purple" />
-      <span className="flex-1 text-left truncate font-medium">{serverUrlLabel(url)}</span>
-      <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-60 group-hover/url:opacity-100 transition-opacity" />
-    </button>
   )
 }

@@ -29,6 +29,7 @@ export type EntryId =
   | 'collapsibleline'
   | 'reviewthreadline'
   | 'pullrequestcard'
+  | 'scriptcard'
   | 'repositorycard'
   | 'sidebarinfo'
   | 'banner'
@@ -73,6 +74,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   collapsibleline: 'CollapsibleLine',
   reviewthreadline: 'ReviewThreadLine',
   pullrequestcard: 'PullRequestCard',
+  scriptcard: 'ScriptCard',
   repositorycard: 'RepositoryCard',
   sidebarinfo: 'SidebarInfo',
   banner: 'Banner',
@@ -154,6 +156,7 @@ export const FAMILIES: Family[] = [
       'commitcard',
       'uncommittedchangescard',
       'pullrequestcard',
+      'scriptcard',
       'titleagentcard',
       'contextagentcard',
       'headerrepocard',
@@ -218,6 +221,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   collapsibleline: 'One box to tick, and what is behind it',
   reviewthreadline: 'One review thread, scanned rather than read',
   pullrequestcard: 'A pull request, as the sidebar watches it',
+  scriptcard: 'A process still alive on your machine',
   repositorycard: 'One repository, and everything happening to it',
   sidebarinfo: 'The right column, and the agent in it',
   banner: 'States a fact about a surface',
