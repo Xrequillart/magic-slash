@@ -6,11 +6,12 @@
  * exist, so anything reaching a `.tsx` is unreachable from it. Keep it that way — the
  * rule is not "prefer pure modules", it is "anything a test can reach imports nothing".
  *
- * TWO TABLES AND NOT ONE, because a colour does two different jobs on this card. A
+ * THREE TABLES AND NOT ONE, because a colour does three different jobs on this card. A
  * check's state is a MARK: a glyph and a word, coloured, on the card's own ground. A
  * PR's state is a BADGE: a word on a tinted capsule. The same green means both, and a
  * single table would have forced every call site to remember which half of its string
- * to use.
+ * to use. The third is neither — it is the colour as a VALUE, for `Label`, which takes
+ * one rather than a class.
  *
  * THE NAMES ARE THE COLOURS, which `Status` settled for this folder: the alternative
  * is a semantic scale — `success`, `danger`, `pending` — and a pull request has more
@@ -62,4 +63,28 @@ export const PR_BADGE: Record<PRTone, string> = {
   blue: 'bg-blue/10 text-blue',
   yellow: 'bg-yellow/10 text-yellow',
   purple: 'bg-purple/10 text-purple',
+}
+
+/**
+ * The colour itself, as a CSS value rather than as a class.
+ *
+ * A THIRD TABLE ONLY BECAUSE `Label` TAKES A VALUE. Its `color` prop paints the plate
+ * and the mark from one colour — the way a repository wears its own hue — and a class
+ * cannot be handed to it. `rgb(var(--c-green))` and not a hex, so a badge built this way
+ * still follows the theme the two tables above follow.
+ *
+ * EACH CARRIES THE FALLBACK the Tailwind config carries, and it is not decoration: an
+ * undefined variable makes the whole `color-mix` invalid, so a page that had not posted
+ * the theme would draw a label with no plate at all rather than a slightly wrong green.
+ *
+ * `neutral` AND `muted` ARE ABSENT, and that is the point rather than an omission:
+ * they are this app's own greys, which `Label`'s neutral ground already paints. A caller
+ * with no entry here asks for no colour and gets that ground.
+ */
+export const PR_COLOR: Partial<Record<PRTone, string>> = {
+  green: 'rgb(var(--c-green, 34 197 94))',
+  red: 'rgb(var(--c-red, 239 68 68))',
+  blue: 'rgb(var(--c-blue, 59 130 246))',
+  yellow: 'rgb(var(--c-yellow, 234 179 8))',
+  purple: 'rgb(var(--c-purple, 168 85 247))',
 }

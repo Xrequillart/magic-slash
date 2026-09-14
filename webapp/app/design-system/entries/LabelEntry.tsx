@@ -55,7 +55,7 @@ const PROPS: PropRow[] = [
     name: 'color',
     type: 'string',
     description:
-      'A hue the design system does not own — a repository’s, picked from the sixteen the app assigns at runtime. The plate takes it at 12% and the mark at full strength. A hex rather than a class, because Tailwind cannot emit a class it never saw in the source.',
+      'A hue the design system does not own — a repository’s, picked from the sixteen the app assigns at runtime. The plate takes it at 12% and the mark at full strength. A value rather than a class, because Tailwind cannot emit a class it never saw in the source; any CSS colour, so a fixed #4f46e5 and a palette token like rgb(var(--c-green)) both work.',
   },
   {
     name: 'size',
@@ -173,7 +173,7 @@ export function LabelEntry({
 
       <EntrySection
         title="A colour of its own"
-        note="A repository has no brand mark to be recognised by, so its colour does that job: the plate at 12% and the mark at full strength. This is the one place a label paints its mark in the ground’s own colour."
+        note="A repository has no brand mark to be recognised by, so its colour does that job: the plate at 12% and the mark at full strength. This is the one place a label paints its mark in the ground’s own colour — and the word stays in ink either way, which is what keeps a coloured label legible on every theme."
       >
         <Stage theme={theme} className="flex flex-wrap gap-3">
           {REPO_COLORS.map((color) => (
@@ -183,6 +183,13 @@ export function LabelEntry({
           ))}
           <Label icon={FolderGit2}>an uncoloured repository</Label>
         </Stage>
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          Any CSS colour, not only a hex, and the difference is what lets a palette colour
+          through the same door: a repository’s hue is a fixed <code>#4f46e5</code> the app
+          picked once, while <code>ReviewThreadLine</code>’s “Resolved” chip passes{' '}
+          <code>rgb(var(--c-green))</code> — a value that has to keep moving when the theme
+          does. The plate is mixed rather than spelled with an alpha suffix so both work.
+        </p>
       </EntrySection>
 
       <EntrySection

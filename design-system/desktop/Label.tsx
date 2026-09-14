@@ -146,8 +146,14 @@ export interface LabelProps {
    * which is the one place a label paints its mark in the ground's own colour — a
    * repository has no brand mark to be recognised by, so the colour has to do that job.
    *
-   * Wins over the tone's ground. A hex rather than a class because the value is
-   * chosen at runtime, and Tailwind cannot emit a class it never saw in the source.
+   * Wins over the tone's ground. A VALUE rather than a class because it is chosen at
+   * runtime, and Tailwind cannot emit a class it never saw in the source.
+   *
+   * ANY CSS COLOUR, not only a hex, and the difference matters: a repository's hue is
+   * a fixed `#4f46e5` the app picked once, but a palette colour is
+   * `rgb(var(--c-green))` — a value that has to keep moving when the theme does. The
+   * plate is mixed rather than spelled with an alpha suffix so both kinds work; `1f`
+   * appended to a hex is 12%, and that is the mix this replaced.
    */
   color?: string
   size?: LabelSize
@@ -199,7 +205,11 @@ export function Label({
   const Mark = icon ?? spec.icon
 
   const ground = color ? undefined : spec.ground
-  const style = color ? { backgroundColor: `${color}1f` } : spec.groundStyle ? { backgroundColor: spec.groundStyle } : undefined
+  const style = color
+    ? { backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)` }
+    : spec.groundStyle
+      ? { backgroundColor: spec.groundStyle }
+      : undefined
 
   // `flex-shrink-0` unless it truncates, and then `min-w-0` instead: a flex child
   // cannot shrink below its content without it, so a truncating label that kept
