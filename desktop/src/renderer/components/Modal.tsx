@@ -1,8 +1,26 @@
 import { useEffect, useCallback, ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import { Modal as ModalGround } from '@ds/desktop'
 import { X } from '@ds/desktop/icons'
 import { useModalExit } from '../hooks/useModalExit'
 
+/**
+ * The app's DIALOG: a title, a body, and optionally a footer of buttons or a hero
+ * image above the lot.
+ *
+ * IT IS NO LONGER THE GROUND IT FLOATS ON. The portal, the dimmed scrim, the stacking
+ * order, the elevation and the opaque plate under the panel are `Modal` in the design
+ * system, and this composes it. What is left here is everything that design system
+ * deliberately does not do, and every line of it is the app's: the Escape key, the
+ * exit animation, and the header/body/footer arrangement that makes a dialog a dialog
+ * rather than a box in the middle of the window.
+ *
+ * WHAT MOVED AND WHAT DID NOT, because the two are easy to confuse when reading this
+ * against the version it replaced. Moved: `createPortal`, `fixed inset-0`, `bg-black/70`,
+ * `z-50`, the centring, `bg-bg-secondary`, `rounded-xl`, and the click on the ground that
+ * closes. Stayed: the border, the width, the height policy, and the animation classes —
+ * all four are passed down as `className`, which is exactly the seam the design system
+ * left open for them.
+ */
 interface ModalProps {
   isOpen: boolean
   onClose: () => void
@@ -35,6 +53,11 @@ export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth
       // inside Settings (every one in CloudAccountSection, the crop included)
       // also tears down the Settings sheet behind it. Only the topmost modal
       // answers Escape.
+      //
+      // It stays HERE and not in the design system's `Modal`, which says in as many
+      // words that it does not close on Escape: a rule about which of several open
+      // dialogs answers a key is a fact about this app's layering, not about the
+      // shape of a dialog.
       e.stopPropagation()
       onClose()
     }
@@ -54,69 +77,58 @@ export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth
 
   if (!mounted) return null
 
-  // Portalled to the body rather than left where it is called from. `fixed` is
-  // measured against the nearest ancestor holding a transform, and several of
-  // the panes a modal is opened from keep one after their entrance animation
-  // settles (SweepPane's layers, for one). Rendered in place, the backdrop would
-  // then cover that pane alone and the dialog would centre on the content column
-  // instead of the window.
-  return createPortal(
-    <div
-      className={`fixed inset-0 bg-black/70 flex items-center justify-center z-50 ${
-        closing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop'
-      }`}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
+  return (
+    <ModalGround
+      onClose={onClose}
+      // The app's keyframes, which is the one thing the design system cannot supply:
+      // they live in `index.css` and that folder cannot reach them. Ground and panel
+      // animate separately, hence two classes rather than one.
+      backdropClassName={closing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop'}
+      className={`border border-line w-full ${maxWidth} ${
+        fillHeight ? 'h-[85vh] flex flex-col' : 'max-h-[90vh] overflow-y-auto'
+      } ${closing ? 'animate-modal-content-out' : 'animate-modal-content'}`}
+      onAnimationEnd={onExitAnimationEnd}
     >
-      <div
-        onAnimationEnd={onExitAnimationEnd}
-        className={`bg-bg-secondary border border-line rounded-xl w-full ${maxWidth} ${
-          fillHeight ? 'h-[85vh] flex flex-col' : 'max-h-[90vh] overflow-y-auto'
-        } ${closing ? 'animate-modal-content-out' : 'animate-modal-content'}`}
-      >
-        {/* Hero */}
-        {hero && (
-          <div className="relative">
-            {hero}
-            <button
-              onClick={onClose}
-              className="absolute top-3 right-3 p-1.5 text-on-brand hover:text-on-brand bg-black/30 hover:bg-black/50 rounded-lg transition-all"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
-        {/* Header */}
-        <div className="flex-shrink-0 flex items-center justify-between px-5 pt-5 pb-4">
-          <h3 className="text-base font-semibold">{title}</h3>
-          {!hero && (
-            <button
-              onClick={onClose}
-              className="p-1.5 text-text-secondary hover:text-ink hover:bg-surface-strong rounded-lg transition-all"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+      {/* Hero */}
+      {hero && (
+        <div className="relative">
+          {hero}
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 p-1.5 text-on-brand hover:text-on-brand bg-black/30 hover:bg-black/50 rounded-lg transition-all"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
+      )}
 
-        {/* Body */}
-        {/* `min-h-0` is what makes `flex-1` a real height here rather than a floor: a
-            flex child defaults to its content's minimum size, and without it a terminal
-            asking for 100% would push the footer off the bottom instead of fitting. */}
-        <div className={`px-5 pb-5 text-sm text-text-secondary ${fillHeight ? 'flex-1 min-h-0' : ''}`}>
-          {children}
-        </div>
-
-        {/* Footer */}
-        {footer && (
-          <div className="flex-shrink-0 flex gap-2 justify-end px-5 pb-5">
-            {footer}
-          </div>
+      {/* Header */}
+      <div className="flex-shrink-0 flex items-center justify-between px-5 pt-5 pb-4">
+        <h3 className="text-base font-semibold">{title}</h3>
+        {!hero && (
+          <button
+            onClick={onClose}
+            className="p-1.5 text-text-secondary hover:text-ink hover:bg-surface-strong rounded-lg transition-all"
+          >
+            <X className="w-4 h-4" />
+          </button>
         )}
       </div>
-    </div>,
-    document.body,
+
+      {/* Body */}
+      {/* `min-h-0` is what makes `flex-1` a real height here rather than a floor: a
+          flex child defaults to its content's minimum size, and without it a terminal
+          asking for 100% would push the footer off the bottom instead of fitting. */}
+      <div className={`px-5 pb-5 text-sm text-text-secondary ${fillHeight ? 'flex-1 min-h-0' : ''}`}>
+        {children}
+      </div>
+
+      {/* Footer */}
+      {footer && (
+        <div className="flex-shrink-0 flex gap-2 justify-end px-5 pb-5">
+          {footer}
+        </div>
+      )}
+    </ModalGround>
   )
 }
