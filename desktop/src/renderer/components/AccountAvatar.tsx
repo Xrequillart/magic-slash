@@ -29,12 +29,13 @@ import { ACCOUNT_AVATAR_VARIANTS, type AccountAvatarVariant } from './accountAva
  * (`popover.html` and `quick-launch.html` stop at `data:`), so bytes rather than a
  * URL is also what would let a menu-bar surface render this component unchanged.
  *
- * The no-photo fallback is the icon, never a letter. An initial is a different thing:
- * `InitialsAvatar` draws one because a GitHub comment has to say WHICH of several
- * people wrote it. Here there is only ever one account, already named in full a few
- * pixels away, so a letter would add a decoration that reads like information. Same
- * badge geometry as that component though — `bg-accent/20` fill, `text-accent` mark,
- * `rounded-full` — so the two never look like two different systems.
+ * The no-photo fallback here is the icon, never a letter — `fallback="badge"` and not
+ * `fallback="initials"`, which `Avatar` also offers. The PR comments panel takes the
+ * letter because a thread has to say WHICH of several people wrote each comment; here
+ * there is only ever one account, already named in full a few pixels away, so a letter
+ * would add a decoration that reads like information. Both are the same plate — the
+ * `bg-accent/20` fill, the `text-accent` mark, `rounded-full` — because they are now
+ * literally the same component, which is what stops them drifting into two systems.
  *
  * THREE VARIANTS, one per caller, measured against the surface each one lands on —
  * the identity card (`w-11`), the settings rail footer (`w-5`, the size of the initial

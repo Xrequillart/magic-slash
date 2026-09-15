@@ -41,10 +41,28 @@ export interface AvatarGeometry {
    * standing alone — see `Avatar`.
    */
   bare: IconRung
+  /**
+   * The `Text` rung a LETTER is drawn at inside the badge, for the `initials`
+   * fallback.
+   *
+   * A third field rather than a formula on the box, because type does not scale with
+   * a box: the letter is held at roughly 45% of the plate across the two rungs that
+   * draw one, which is what keeps an initial reading as a monogram rather than as a
+   * character that happens to be there.
+   *
+   * `xs` AND `sm` ARE HONEST DEAD ENDS. The type scale stops at 12px and those boxes
+   * are 14 and 20, so a letter in either fills it — the record is closed (a missing
+   * rung is a compile error at the call site), not a promise that every rung is a
+   * good place for a monogram. `md` is where the app draws one.
+   */
+  initial: TextRung
 }
 
 /** The rungs `Icon` offers, spelled here so this file still imports nothing. */
 type IconRung = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+
+/** And the rungs `Text` offers, spelled out for the same reason. */
+type TextRung = 'xs' | 'sm' | 'base' | 'lg' | 'xl' | '2xl'
 
 /**
  * Frozen, and a closed record rather than a lookup with a default: a size that is not
@@ -57,13 +75,13 @@ type IconRung = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 export const AVATAR_SIZES: Readonly<Record<AvatarSize, Readonly<AvatarGeometry>>> = Object.freeze({
   // 14 px — the size of the `CircleUserRound` this replaced in the sidebar, and the
   // one rung where the glyph fills the whole box.
-  xs: Object.freeze({ box: 'w-3.5 h-3.5', glyph: 'sm', bare: 'sm' }),
+  xs: Object.freeze({ box: 'w-3.5 h-3.5', glyph: 'sm', bare: 'sm', initial: 'xs' }),
   // 20 px — the initial badge in the settings rail footer, kept so the row's height
   // and baseline are exactly what they were.
-  sm: Object.freeze({ box: 'w-5 h-5', glyph: 'xs', bare: 'lg' }),
+  sm: Object.freeze({ box: 'w-5 h-5', glyph: 'xs', bare: 'lg', initial: 'xs' }),
   // 24 px — one row of the org members table, sized UNDER the 28 px role pill sharing
   // the row rather than at it, so adding faces does not make every roster taller.
-  md: Object.freeze({ box: 'w-6 h-6', glyph: 'sm', bare: 'xl' }),
+  md: Object.freeze({ box: 'w-6 h-6', glyph: 'sm', bare: 'xl', initial: 'xs' }),
   // 44 px — large enough to read a face, small enough to sit on one line of a card.
-  lg: Object.freeze({ box: 'w-11 h-11', glyph: 'xl', bare: 'xl' }),
+  lg: Object.freeze({ box: 'w-11 h-11', glyph: 'xl', bare: 'xl', initial: 'xl' }),
 })

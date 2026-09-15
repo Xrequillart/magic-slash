@@ -1,6 +1,7 @@
 import { AVATAR_SIZES, type AvatarSize } from './avatarSizes'
 import { Icon } from './Icon'
 import { CircleUserRound } from './icons'
+import { Text } from './Text'
 
 /**
  * A person, as a round photo — or as an `Icon` when there is none.
@@ -9,10 +10,14 @@ import { CircleUserRound } from './icons'
  * it is given and draws them. The app decides whose face it is, where the bytes come
  * from and what to say when they are missing.
  *
- * The no-photo fallback is the icon, never a letter. An initial is a different
- * component: one is needed where several people appear in a list and have to be told
- * apart before a name is read. Here the person is named a few pixels away, so a
- * letter would be a decoration that reads like information.
+ * The no-photo fallback is USUALLY the icon. It used to be the icon and nothing else,
+ * on the grounds that an initial is only needed where several people appear in a list
+ * and have to be told apart before a name is read — which is true, and is exactly the
+ * case the PR comments panel turned out to be: a thread of several authors, at 24px,
+ * from queries that ask for `author{login}` and deliberately never select `avatarUrl`.
+ * A letter is what that data can draw. So the letter is a THIRD fallback here rather
+ * than a second component, because everything else about the two is identical — the
+ * box, the plate, the accent, the way a missing photo must not shift the row.
  */
 
 /**
@@ -22,10 +27,12 @@ import { CircleUserRound } from './icons'
  * `badge` is the filled `bg-accent/20` pill — the identity card, the settings footer,
  * the members roster. `glyph` is the bare mark on nothing, which the left sidebar has
  * always drawn: a pill appearing behind that icon would be a visible change for
- * everyone who never uploads a photo. The two are orthogonal to the size, and pinning
- * them together is what made the app's old table name screens instead of drawings.
+ * everyone who never uploads a photo. `initials` is the same pill as `badge` with a
+ * letter in place of the mark, for a list where WHICH person matters before a name is
+ * read. All three are orthogonal to the size, and pinning them together is what made
+ * the app's old table name screens instead of drawings.
  */
-export type AvatarFallback = 'badge' | 'glyph'
+export type AvatarFallback = 'badge' | 'glyph' | 'initials'
 
 export interface AvatarProps {
   /**
@@ -49,12 +56,26 @@ export interface AvatarProps {
   alt: string
   size?: AvatarSize
   fallback?: AvatarFallback
+  /**
+   * The name the monogram is taken from, for `fallback="initials"`. Ignored by the
+   * other two.
+   *
+   * A NAME, not a monogram: the component takes the first character and puts it in
+   * upper case, and that is deliberately not negotiable from outside. One letter is
+   * what a round 24px plate fits — two is a plate with type overflowing it — and a
+   * call site free to pass a string would eventually pass a login's first two
+   * tokens, which for `greptile-apps[bot]` reads as an acronym for nothing.
+   *
+   * Empty, or whitespace: the plate draws `?` rather than nothing, so a row whose
+   * author the API reported as null still has a mark where every other row has one.
+   */
+  name?: string
   /** Layout only — a margin, a ring. Not the box, which the size owns. */
   className?: string
 }
 
-export function Avatar({ src, alt, size = 'lg', fallback = 'badge', className = '' }: AvatarProps) {
-  const { box, glyph, bare } = AVATAR_SIZES[size]
+export function Avatar({ src, alt, size = 'lg', fallback = 'badge', name, className = '' }: AvatarProps) {
+  const { box, glyph, bare, initial } = AVATAR_SIZES[size]
 
   if (src) {
     return <img src={src} alt={alt} className={`${box} rounded-full object-cover shrink-0 ${className}`} />
@@ -70,6 +91,25 @@ export function Avatar({ src, alt, size = 'lg', fallback = 'badge', className = 
     return (
       <span className={`${box} flex items-center justify-center shrink-0 ${className}`}>
         <Icon glyph={CircleUserRound} size={bare} tone="inherit" />
+      </span>
+    )
+  }
+
+  if (fallback === 'initials') {
+    return (
+      <span
+        title={alt || name}
+        className={`${box} flex items-center justify-center rounded-full bg-accent/20 text-accent shrink-0 ${className}`}
+      >
+        {/* `inherit`, so the letter takes the wrapper's `text-accent` exactly as the
+            mark does — one colour stated once for both fallbacks.
+
+            `bold` and not the semibold this drew before it came here: the shipped
+            family has no 600 face, and 600 and 700 measure as the same drawing. See
+            `Text`'s own note. */}
+        <Text size={initial} weight="bold" tone="inherit">
+          {(name?.trim()[0] ?? '?').toUpperCase()}
+        </Text>
       </span>
     )
   }

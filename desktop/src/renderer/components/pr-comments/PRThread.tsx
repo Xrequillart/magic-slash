@@ -1,9 +1,8 @@
 import { memo, useState } from 'react'
 import { ChevronDown, ChevronRight } from '@ds/desktop/icons'
 import MarkdownView from '../file-preview/MarkdownView'
-import InitialsAvatar from './InitialsAvatar'
 import DiffHunkView from './DiffHunkView'
-import { PR_BADGE, PR_MARK } from '@ds/desktop'
+import { Avatar, PR_BADGE, PR_MARK } from '@ds/desktop'
 import { REVIEW_BADGE, REVIEW_STATE_BADGE, THREAD_STATE } from '../agent-info-sidebar/PRWatchCard'
 import { formatTimestamp } from '../agent-info-sidebar/utils'
 import type { Translate } from '../../i18n'
@@ -58,7 +57,13 @@ function ThreadComment({ comment, now, t }: { comment: PRComment; now: number; t
   return (
     <div className="rounded-xl bg-surface border border-line-field overflow-hidden">
       <div className="flex items-center gap-1.5 px-5 py-2.5 bg-surface-subtle border-b border-line-subtle">
-        <InitialsAvatar login={comment.author} />
+        {/* A LETTER and not a face, because there is no face to draw: the queries this
+            panel reads from ask for `author{login}` and deliberately never select
+            `avatarUrl` (`github-graphql.test.ts` asserts it never creeps back in), so an
+            `<img>` here would be a network round trip per author for a 24px portrait in
+            a panel that already knows who wrote what. `md` is that 24px, and the design
+            system takes the initial from the name itself. */}
+        <Avatar src={null} alt="" size="md" fallback="initials" name={comment.author} />
         {/* The `@`, as everywhere the app prints a GitHub login: it is a handle in that
             product and wears one there. */}
         <span className="text-xs font-medium text-ink">@{comment.author}</span>

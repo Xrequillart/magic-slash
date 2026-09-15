@@ -44,10 +44,16 @@ const PROPS: PropRow[] = [
   },
   {
     name: 'fallback',
-    type: "'badge' | 'glyph'",
+    type: "'badge' | 'glyph' | 'initials'",
     fallback: "'badge'",
     description:
-      'What the no-photo state looks like, and orthogonal to the size on purpose. badge is the filled bg-accent/20 pill; glyph is the bare mark the left sidebar has always drawn, where a pill appearing behind the icon would be a visible change for everyone who never uploads a photo.',
+      'What the no-photo state looks like, and orthogonal to the size on purpose. badge is the filled bg-accent/20 pill; glyph is the bare mark the left sidebar has always drawn, where a pill appearing behind the icon would be a visible change for everyone who never uploads a photo; initials is the badge with a letter in place of the mark.',
+  },
+  {
+    name: 'name',
+    type: 'string',
+    description:
+      'The name the monogram is taken from, for fallback="initials" and ignored by the other two. A name and not a monogram: the component takes the first character and upper-cases it, because one letter is what a round 24px plate fits. Empty or missing draws a ?.',
   },
   {
     name: 'className',
@@ -68,9 +74,9 @@ export function AvatarEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader title="Avatar" uses={usesOf('avatar')} onOpen={onOpen}>
         A person, as a round photo — or as an <code>Icon</code> when there is none. It knows
-        nothing about who: it takes the bytes it is given and draws them. The fallback is the
-        icon and never a letter — an initial is for telling several people apart, and here the
-        person is named a few pixels away.
+        nothing about who: it takes the bytes it is given and draws them. The fallback is
+        usually the icon; a letter is the third one, for a list where which person matters
+        before a name is read.
       </EntryHeader>
 
       <EntrySection
@@ -94,8 +100,8 @@ export function AvatarEntry({
       </EntrySection>
 
       <EntrySection
-        title="The two fallbacks"
-        note="Orthogonal to the size, which is the whole reason it is a prop. The left sidebar’s no-photo state is the bare glyph it has always been; everywhere else keeps the filled pill."
+        title="The three fallbacks"
+        note="Orthogonal to the size, which is the whole reason it is a prop. The left sidebar’s no-photo state is the bare glyph it has always been; everywhere else keeps the filled pill, with or without a letter in it."
       >
         <Stage theme={theme} className="flex flex-wrap items-center gap-8">
           <span className="flex items-center gap-3">
@@ -105,6 +111,10 @@ export function AvatarEntry({
           <span className="flex items-center gap-3">
             <Avatar src={null} alt="" size="md" fallback="glyph" />
             <span className="font-mono text-[11px] text-ink">glyph</span>
+          </span>
+          <span className="flex items-center gap-3">
+            <Avatar src={null} alt="" size="md" fallback="initials" name="xrequillart" />
+            <span className="font-mono text-[11px] text-ink">initials</span>
           </span>
           {/* The bare glyph takes `currentColor`, which is the point of it: in the app
               it turns yellow with the rest of the row when no repository is configured. */}
@@ -117,7 +127,8 @@ export function AvatarEntry({
           The bare glyph carries <em>no colour of its own</em> — it inherits{' '}
           <code>currentColor</code> from whatever surrounds it, which is how the sidebar turns it
           yellow along with the row when no repository is configured. The badge states its colour
-          once, on the element that also carries the fill it has to read against.
+          once, on the element that also carries the fill it has to read against, and the letter
+          inherits that same colour rather than naming a second one.
         </p>
       </EntrySection>
 
@@ -126,7 +137,8 @@ export function AvatarEntry({
         <Snippet>{`import { Avatar } from '@ds/desktop'
 
 <Avatar src={dataUrl} alt={t('cloud.avatar.alt')} size="lg" />
-<Avatar src={null} alt="" size="xs" fallback="glyph" />`}</Snippet>
+<Avatar src={null} alt="" size="xs" fallback="glyph" />
+<Avatar src={null} alt="" size="md" fallback="initials" name={comment.author} />`}</Snippet>
       </EntrySection>
     </article>
   )
