@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.95.1] - 2026-09-15
+
+### Added
+
+- **Desktop**: The quick settings sheet says how far the chosen theme reaches, on the line directly under the swatches: one tile matches Claude Code to it in the terminals, and a picker beside it sets which appearance the file preview highlights code in
+
+### Changed
+
+- **Desktop**: The "Left" and "Right" chips over the sidebar's two lists are drawn with the design system's label instead of by hand
+
+### Fixed
+
+- **Desktop**: A quick settings tile with no caption shows its name on the sheet's opaque plate. The old pill was a see-through shape over the frosted window and could barely be read
+- **Desktop**: Turning notifications off now darkens every kind on the sheet rather than leaving lit circles under a red bell. Nothing is written while it is off, so every kind comes back as it was left
+
 ## [0.95.0] - 2026-09-15
 
 ### Added
@@ -2961,6 +2976,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.95.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.95.1
 [0.95.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.95.0
 [0.94.10]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.10
 [0.94.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.9
