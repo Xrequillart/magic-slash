@@ -1135,19 +1135,6 @@ export const en = {
   'duration.daysHours': '{days}d {hours}h',
   'duration.minutesSeconds': '{minutes}m {seconds}s',
 
-  // ── Agent workflow status (badges) ───────────────────────────────────────
-  'status.planning': 'Planning',
-  'status.planned': 'Planned',
-  'status.inProgress': 'In progress',
-  'status.committed': 'Committed',
-  'status.readyForPR': 'Ready for PR',
-  'status.prCreated': 'PR created',
-  'status.ciGreen': 'CI green',
-  'status.inReview': 'In review',
-  'status.changesRequested': 'Changes requested',
-  'status.reviewAddressed': 'Review addressed',
-  'status.prMerged': 'PR merged',
-
   // ── PR review status (badges) ────────────────────────────────────────────
   'prReview.pending': 'Awaiting review',
   'prReview.commented': 'Commented',

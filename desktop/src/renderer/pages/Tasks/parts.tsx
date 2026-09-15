@@ -32,9 +32,9 @@ import { useT, type MessageKey, type Translate } from '../../i18n'
  * between the two would read as two different facts about one ticket. Nothing here owns
  * any layout of its own — every caller supplies the box.
  *
- * What is NOT here is the workflow-status pill both pages also draw: it is shared with
- * more than this page, so it lives in `components/StatusPill.tsx`. These are the ones
- * only Tasks says.
+ * What is NOT here is a ticket's own labels, which both pages also draw: they are a
+ * `Label` from `@ds/desktop`, straight at the call site. These are the ones only Tasks
+ * says.
  */
 
 /**
@@ -274,10 +274,11 @@ export function StateChip({ state, t }: { state: TaskIssueDetail['state']; t: Tr
 /**
  * A Jira status category as a pill.
  *
- * Deliberately NOT `StatusPill`: that component reads `STATUS_CONFIG`, whose keys
- * are the `/magic:*` workflow's own statuses ("in review", "PR created"). A Jira
- * status is a site's word for a column, so every one of them would miss and render
- * neutral — including the In Progress rows this page exists to distinguish.
+ * Deliberately NOT the design system's `Label`, which is what a ticket's own labels
+ * are drawn with a few lines up: a label NAMES a thing and never changes while you
+ * look at it, where this reports a state the board moves between columns on. They
+ * also differ in the one way that matters on screen — `Label` has a single neutral
+ * ground, and In Progress has to be told apart from To Do at a glance.
  *
  * Coloured by CATEGORY and labelled by NAME, which is the split `JiraStatusCategory`
  * exists for: the category is fixed by Jira and can be branched on, the name is what

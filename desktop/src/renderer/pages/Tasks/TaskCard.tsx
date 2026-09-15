@@ -1,4 +1,5 @@
 import { memo, useCallback, type KeyboardEvent } from 'react'
+import { Label } from '@ds/desktop'
 import { BotMessageSquare, Play } from '@ds/desktop/icons'
 import type { RepositoryConfig } from '../../../types'
 import type { BoardCard } from '../../utils/taskBoard'
@@ -6,7 +7,6 @@ import type { TaskSelection } from '../../utils/taskSelection'
 import { useT, type Translate } from '../../i18n'
 import { useTaskAgent } from '../../hooks/useTaskAgent'
 import { useStore } from '../../store'
-import { StatusPill } from '../../components/StatusPill'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { TrackerBadge } from '../../components/icons/TrackerIcons'
 import { JiraEpicBadge, JiraPriorityBadge, JiraStatusPill, subIssuesLabel } from './parts'
@@ -258,7 +258,7 @@ function CardMeta({ card, t }: { card: BoardCard; t: Translate }) {
               {card.issue.reporter}
             </span>
           )}
-          {card.issue.labels.map((label) => <StatusPill key={label} status={label} />)}
+          {card.issue.labels.map((label) => <Label key={label} title={label}>{label}</Label>)}
         </>
       ) : (
         <>
@@ -284,7 +284,7 @@ function CardMeta({ card, t }: { card: BoardCard; t: Translate }) {
           {card.issue.subIssues && (
             <span className="text-xs text-text-secondary">{subIssuesLabel(card.issue.subIssues, t)}</span>
           )}
-          {card.issue.labels.map((label) => <StatusPill key={label} status={label} />)}
+          {card.issue.labels.map((label) => <Label key={label} title={label}>{label}</Label>)}
         </>
       )}
     </div>

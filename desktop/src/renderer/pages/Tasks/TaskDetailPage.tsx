@@ -13,9 +13,8 @@ import type {
 import { isJiraStatusError, isPRStatusError } from '../../../types'
 import { useLocale, useT, type Translate } from '../../i18n'
 import { BTN, BTN_ICON, BTN_NEUTRAL_STACKED, BTN_PRIMARY_STACKED } from '../../theme/controls'
-import { Banner, Loader, ProgressBar } from '@ds/desktop'
+import { Banner, Label, Loader, ProgressBar } from '@ds/desktop'
 import MarkdownView from '../../components/file-preview/MarkdownView'
-import { StatusPill } from '../../components/StatusPill'
 import { JiraEpicBadge, JiraErrorLines, JiraPriorityBadge, JiraStatusPill, StateChip, TaskErrorLines } from './parts'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { useTaskAgent, type TaskAgentRepo } from '../../hooks/useTaskAgent'
@@ -1264,7 +1263,7 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
                 </SideBlock>
                 <SideBlock title={t('tasks.detail.labels')}>
                   {jiraDetail && jiraDetail.labels.length > 0
-                    ? jiraDetail.labels.map((label) => <StatusPill key={label} status={label} />)
+                    ? jiraDetail.labels.map((label) => <Label key={label} title={label}>{label}</Label>)
                     : <NoneYet t={t} />}
                 </SideBlock>
                 {/* THE BYLINE'S OWN TWO FIELDS, kept on screen once the byline itself has
@@ -1307,7 +1306,7 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
                 <SideBlock title={t('tasks.detail.labels')}>
                   {props.issue.labels.length === 0
                     ? <NoneYet t={t} />
-                    : props.issue.labels.map((label) => <StatusPill key={label} status={label} />)}
+                    : props.issue.labels.map((label) => <Label key={label} title={label}>{label}</Label>)}
                 </SideBlock>
                 {/* Both blocks below exist only when GitHub reported the hierarchy —
                     an empty "Sub-issues" on the vast majority of issues would be a

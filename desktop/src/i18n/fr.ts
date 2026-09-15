@@ -1110,19 +1110,6 @@ export const fr: Record<keyof typeof en, string> = {
   'duration.daysHours': '{days} j {hours} h',
   'duration.minutesSeconds': '{minutes} min {seconds} s',
 
-  // ── État de workflow d'un agent (badges) ─────────────────────────────────
-  'status.planning': 'Planification',
-  'status.planned': 'Planifié',
-  'status.inProgress': 'En cours',
-  'status.committed': 'Committé',
-  'status.readyForPR': 'Prêt pour la PR',
-  'status.prCreated': 'PR créée',
-  'status.ciGreen': 'CI verte',
-  'status.inReview': 'En revue',
-  'status.changesRequested': 'Modifications demandées',
-  'status.reviewAddressed': 'Revue traitée',
-  'status.prMerged': 'PR mergée',
-
   // ── État de revue d'une PR (badges) ──────────────────────────────────────
   'prReview.pending': 'En attente de revue',
   'prReview.commented': 'Commentée',
