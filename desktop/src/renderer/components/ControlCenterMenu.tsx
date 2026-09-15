@@ -16,6 +16,7 @@ import {
   SquareSplitHorizontal, TextCursorInput,
 } from '@ds/desktop/icons'
 import { AllSettingsPanel } from './AllSettingsPanel'
+import { getSetupStatus, SETUP_SIMULATION_EVENT } from '../dev/simulatedSetup'
 import { useStore } from '../store'
 import { useConfig } from '../hooks/useConfig'
 import { useZoom } from '../hooks/useZoom'
@@ -88,11 +89,20 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
   const checkSetup = useCallback(() => {
     setSetup(null)
     setSetupFailed(false)
-    window.electronAPI.setup.getStatus().then(setSetup).catch(() => setSetupFailed(true))
+    // Through `dev/simulatedSetup` and not straight to the IPC, so the debug menu can
+    // show what a machine in trouble looks like here. Outside the dev server it is the
+    // IPC call and nothing else.
+    getSetupStatus().then(setSetup).catch(() => setSetupFailed(true))
   }, [])
   useEffect(() => {
     if (open) checkSetup()
   }, [open, checkSetup])
+  // The debug switch flipping while the sheet is down: ask again, so the verdict changes
+  // under the eye rather than on the next open.
+  useEffect(() => {
+    window.addEventListener(SETUP_SIMULATION_EVENT, checkSetup)
+    return () => window.removeEventListener(SETUP_SIMULATION_EVENT, checkSetup)
+  }, [checkSetup])
   // The same three checks `SetupHealthCard` makes, counted rather than listed: the
   // required tools missing or too old, the MCP servers of the chosen integrations not
   // configured, the skills not installed.

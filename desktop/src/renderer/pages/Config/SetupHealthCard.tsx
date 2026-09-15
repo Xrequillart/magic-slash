@@ -3,6 +3,7 @@ import { CheckCircle2, XCircle, Download, RefreshCw, ExternalLink, Copy, Wrench,
 import type { McpServerStatus, PrerequisiteId, PrerequisiteStatus, SetupStatus } from '../../../types'
 import { useT } from '../../i18n'
 import { SectionHeader } from './SectionHeader'
+import { getSetupStatus, SETUP_SIMULATION_EVENT } from '../../dev/simulatedSetup'
 
 /**
  * The machine's setup, stated and repairable — the panel that replaced the install
@@ -47,13 +48,21 @@ export function SetupHealthCard() {
     // you end up trusting a green check that was computed two installs ago.
     setStatus(null)
     setCheckFailed(false)
-    window.electronAPI.setup
-      .getStatus()
+    // Through `dev/simulatedSetup`, which the quick-settings verdict also reads: with
+    // only one of the two in on the simulation, pressing a verdict that says "3 to fix"
+    // would open this card saying the machine is fine.
+    getSetupStatus()
       .then(setStatus)
       .catch(() => setCheckFailed(true))
   }, [])
 
   useEffect(refresh, [refresh])
+
+  // The debug switch, flipped while this card is on screen.
+  useEffect(() => {
+    window.addEventListener(SETUP_SIMULATION_EVENT, refresh)
+    return () => window.removeEventListener(SETUP_SIMULATION_EVENT, refresh)
+  }, [refresh])
 
   useEffect(() => {
     const unsubscribe = window.electronAPI.setup.onInstallProgress(({ chunk }) => {

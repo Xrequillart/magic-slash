@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AlertTriangle, Bot, Bug, Download, FileText, PartyPopper, ScrollText, Sparkles } from '@ds/desktop/icons'
+import { AlertTriangle, Bot, Bug, Download, FileText, PartyPopper, ScrollText, Sparkles, Wrench } from '@ds/desktop/icons'
+import { setSimulatedSetup } from '../dev/simulatedSetup'
 import { useStore } from '../store'
 import { useT } from '../i18n'
 
@@ -108,6 +109,7 @@ export function UpdateOverlay() {
   const [emptyStatePinned, setEmptyStatePinned] = useState(false)
   const [planningAgentPinned, setPlanningAgentPinned] = useState(false)
   const [updateDialogPinned, setUpdateDialogPinned] = useState(false)
+  const [brokenSetupPinned, setBrokenSetupPinned] = useState(false)
   const debugMenuRef = useRef<HTMLDivElement>(null)
   const confettiRef = useRef<HTMLCanvasElement>(null)
   const lastStatusTypeRef = useRef<UpdateStatus['type'] | null>(null)
@@ -122,6 +124,21 @@ export function UpdateOverlay() {
   // Toggle rather than fire-and-forget: the agents page keeps showing its empty
   // state until this is switched back off, so it can be styled with sessions
   // still running underneath.
+  /**
+   * Makes the app believe this machine is in trouble — a required tool missing, another
+   * too old, an MCP server unconfigured, a skill not installed.
+   *
+   * It is the only way to see the quick-settings verdict in red: on the machine of
+   * whoever is drawing it, the setup is always ready. Both surfaces that ask about the
+   * setup read the same fake, so the verdict and the repair card it opens agree.
+   */
+  function toggleBrokenSetup() {
+    const next = !brokenSetupPinned
+    setBrokenSetupPinned(next)
+    setDebugMenuOpen(false)
+    setSimulatedSetup(next)
+  }
+
   function toggleEmptyState() {
     const next = !emptyStatePinned
     setEmptyStatePinned(next)
@@ -342,6 +359,16 @@ export function UpdateOverlay() {
               >
                 <AlertTriangle className="w-3.5 h-3.5" />
                 Update dialog: failed
+              </button>
+              <button
+                onClick={toggleBrokenSetup}
+                className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-bg-tertiary ${
+                  brokenSetupPinned ? 'text-purple' : 'text-text-secondary hover:text-ink'
+                }`}
+              >
+                <Wrench className="w-3.5 h-3.5" />
+                Broken machine setup
+                {brokenSetupPinned && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
               </button>
               <button
                 onClick={toggleEmptyState}
