@@ -44,7 +44,8 @@ import {
  * the stepper three, the theme card all four — and the sections are the product owner's:
  * the machine's setup (its verdict and a re-check), appearance (the eight themes as the miniatures the Appearance page paints, then the
  * scale under them), notifications (the master switch and every kind the Notifications
- * page lists, the kinds greyed while the master is off), features, and language.
+ * page lists, the kinds dark and greyed while the master is off), features, and
+ * language.
  */
 
 export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -132,9 +133,26 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
   // Absent means never chosen, which is on — the reading the main process makes. The
   // digest is the one opt-IN: absent means off, as on the Notifications page.
   const notificationsOn = config?.notifications?.enabled !== false
+  /**
+   * WHAT A KIND'S TILE SHOWS — and it is not quite what the config says: a kind is drawn
+   * LIT ONLY WHILE THE MASTER IS LIT. With the master off, nothing will reach the person
+   * whatever the per-kind flags say, and five filled circles under a red bell were the
+   * sheet claiming otherwise.
+   *
+   * THE MASTER WRITES NOTHING BUT ITS OWN FLAG. The per-kind values stay exactly where
+   * they were — `updateNotifications` in the main process merges rather than replaces,
+   * deliberately — so this is a reading and not a reset: turn the master back on and
+   * every tile comes back as the person left it, which on a config nobody has touched is
+   * all four of them lit. The alternative was writing `false` across the block and the
+   * defaults back over it, and that spends someone's "never tell me about PR reviews"
+   * every time they silence the app for an afternoon.
+   *
+   * The tiles are `disabled` too, so an off kind cannot be pressed into a lie — the
+   * value written would be true while nothing notifies.
+   */
   const notification = (key: 'agentWaiting' | 'agentCompleted' | 'prReview' | 'prChangesRequested') =>
-    config?.notifications?.[key] !== false
-  const digestOn = config?.dailyDigest?.enabled ?? false
+    notificationsOn && config?.notifications?.[key] !== false
+  const digestOn = notificationsOn && (config?.dailyDigest?.enabled ?? false)
   const prWatcherOn = config?.prReviews?.enabled ?? true
   const planSyncOn = config?.planSyncEnabled !== false
   const usageLogsOn = config?.usageLogsEnabled !== false
@@ -222,7 +240,9 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
           lists. The kinds are DISABLED while the master is off rather than hidden: the
           page hides them because three cards of dead controls are noise, but a tile is
           one circle, and a greyed circle says "kept, and coming back" where a missing
-          one says nothing. */}
+          one says nothing. They go DARK with it as well as grey — see `notification`:
+          the master is the whole section's state, and only the config remembers what
+          each kind was. */}
       <ControlCenterGroup label={t('controlCenter.notifications')}>
         <ToggleButton
           icon={Bell}
