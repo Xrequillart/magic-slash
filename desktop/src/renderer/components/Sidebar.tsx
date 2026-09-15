@@ -29,7 +29,7 @@ import { useT } from '../i18n'
  * THE APP'S BUILD, spelled here because this is the app. The version the column draws
  * is a literal that moves at release, not a value fetched from anywhere.
  */
-const APP_VERSION = 'v0.95.1'
+const APP_VERSION = 'v0.95.2'
 
 /**
  * The ⌘/Ctrl shortcuts that open a page overlay, keyed by `KeyboardEvent.key`.
