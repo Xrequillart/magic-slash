@@ -191,14 +191,18 @@ export function StatusEntry({ theme, onOpen }: { theme: DesktopTheme; onOpen?: (
 
       <EntrySection
         title="Sizes"
-        note="Three, and they are Label's — the same 24 / 28 / 32. A status and a label sit in the same rows, and two badges of different heights on one line is the thing a shared scale exists to stop. The plate is a pill rather than a rounded rectangle and takes a little more horizontal padding for it, but the heights are pinned to the same three."
+        note="Seven rungs now — ComponentSize, the folder’s one ladder — so a caller moving between components relearns nothing. Every rung that already existed kept its exact geometry and every default is the one it was: the new ones are additions, there so a size can be changed at a call site in one word instead of being a reason to edit the component. The middle three are Label's — the same 24 / 28 / 32. A status and a label sit in the same rows, and two badges of different heights on one line is the thing a shared scale exists to stop. The plate is a pill rather than a rounded rectangle and takes a little more horizontal padding for it, but the heights are pinned to the same three."
       >
         <Stage theme={theme} className="flex flex-col gap-4">
           {(
             [
+              ['2xs', '16px · a state inside a chip'],
+              ['xs', '20px · under a row rather than in one'],
               ['sm', '24px · a list row, the default'],
               ['md', '28px · a row of 14px type'],
               ['lg', '32px · beside a heading'],
+              ['xl', '36px · beside a page heading'],
+              ['2xl', '40px · the state is the subject'],
             ] as [StatusSize, string][]
           ).map(([size, note]) => (
             <div key={size} className="flex items-center gap-4">

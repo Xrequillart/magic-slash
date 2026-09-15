@@ -211,14 +211,18 @@ export function LabelEntry({
 
       <EntrySection
         title="Sizes"
-        note="Three, and they are the ticket badge’s own. A fixed height rather than padding alone: the label sets the height of the row it sits in, so it is pinned instead of following whatever line-height the theme resolves. md is the rung that was missing between the other two — a row of 14px type, where sm reads as a footnote and lg as a heading of its own. Adding it renamed the old md to lg, which is the whole cost of a scale whose names still run in order; sm is untouched and is the default, so nothing moved that was not asked to."
+        note="Seven rungs now — ComponentSize, the folder’s one ladder — so a caller moving between components relearns nothing. Every rung that already existed kept its exact geometry and every default is the one it was: the new ones are additions, there so a size can be changed at a call site in one word instead of being a reason to edit the component. The middle three are the ticket badge’s own, on the shared control geometry — 16 / 20 / 24 / 28 / 32 / 36 / 40, the same ladder ButtonIcon, Status and Switch measure themselves on. A fixed height rather than padding alone: the label sets the height of the row it sits in, so it is pinned instead of following whatever line-height the theme resolves. md is the rung that was missing between the other two — a row of 14px type, where sm reads as a footnote and lg as a heading of its own. Adding it renamed the old md to lg, which is the whole cost of a scale whose names still run in order; sm is untouched and is the default, so nothing moved that was not asked to."
       >
         <Stage theme={theme} className="flex flex-col gap-4">
           {(
             [
+              ['2xs', '16px · a chip inside a chip — no room for a face'],
+              ['xs', '20px · a tag on a card’s second line'],
               ['sm', '24px · a list row, 12px type'],
               ['md', '28px · a row of 14px type'],
               ['lg', '32px · beside a text-2xl heading'],
+              ['xl', '36px · beside a page heading'],
+              ['2xl', '40px · the label is the heading'],
             ] as [LabelSize, string][]
           ).map(([size, note]) => (
             <div key={size} className="flex items-center gap-4">

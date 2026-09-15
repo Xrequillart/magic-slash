@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 
+import type { ComponentSize } from './componentSizes'
+
 /**
  * A setting that is on or off, and takes effect the moment you say so.
  *
@@ -36,20 +38,25 @@ import type { CSSProperties } from 'react'
  */
 
 /**
- * THE SHARED LADDER, and the three rungs are the ones `Label`, `Status` and
- * `ButtonIcon` already stand on: 24, 28, 32.
+ * THE SHARED LADDER — `ComponentSize`, which is what the three rungs `Label`,
+ * `Status` and `ButtonIcon` already stood on turned into a type: 24, 28, 32.
  *
  * A switch sits in a settings row beside those components, and a control that
  * measured itself against nothing was a control that could only ever line up
  * with the row by accident. An `sm` switch against an `sm` label now agree at
  * 24px because they read the same table, not because someone matched them by eye.
  *
- * `xs` is deliberately absent even though `ButtonIcon` has one. That rung exists
- * there for a button nested INSIDE a chip, measured against the chip and not the
- * row; a switch is never nested in anything, and a 20px switch is a target too
- * small for a control whose whole job is being hit.
+ * SEVEN RUNGS NOW, and the two at the bottom come with a warning rather than a use:
+ * see `SIZES`. A switch is never nested inside anything, so it has no equivalent of
+ * `ButtonIcon`'s chip to be measured against — below `sm` it is simply a small target
+ * for a control whose whole job is being hit.
+ *
+ * THE GEOMETRY IS DERIVED AND NOT CHOSEN, which is what made four new rungs safe to
+ * add: track width is `2h - 8`, knob height is `track h - 8` (4px of padding each
+ * side), and travel is what is left — `track w - knob w - 8`. Every rung in the table
+ * satisfies all three, the three that were already there included.
  */
-export type SwitchSize = 'sm' | 'md' | 'lg'
+export type SwitchSize = ComponentSize
 
 /**
  * The geometry. Three numbers per rung, and they are one decision — so they sit
@@ -88,6 +95,36 @@ const SIZES: Record<
   SwitchSize,
   { track: string; knob: string; travel: string; stretch: string; pressedTravel: string }
 > = {
+  /**
+   * 24×16, knob 12×8, travel 4.
+   *
+   * A TARGET TOO SMALL FOR A CONTROL WHOSE JOB IS BEING HIT, and the note below on
+   * `xs` is the argument — it applies to this rung twice over. It is reachable
+   * because the ladder is shared and because a closed record with a hole in it is a
+   * component you have to edit to try something; it is not a rung to ship.
+   */
+  '2xs': {
+    track: 'w-6 h-4',
+    knob: 'w-3 h-2',
+    travel: 'translate-x-1',
+    stretch: 'group-active:w-4',
+    pressedTravel: 'group-active:translate-x-0',
+  },
+  /**
+   * 32×20, knob 16×12, travel 8.
+   *
+   * DELIBERATELY ABSENT UNTIL THE LADDER WAS SHARED, and the reason still stands: a
+   * 20px switch is a target too small for a control whose whole job is being hit.
+   * `ButtonIcon` has an `xs` because a button nested INSIDE a chip is measured
+   * against the chip; a switch is never nested in anything.
+   */
+  xs: {
+    track: 'w-8 h-5',
+    knob: 'w-4 h-3',
+    travel: 'translate-x-2',
+    stretch: 'group-active:w-5',
+    pressedTravel: 'group-active:translate-x-1',
+  },
   /** 40×24, knob 20×16, travel 12. The settings rows, and the default. */
   sm: {
     track: 'w-10 h-6',
@@ -111,6 +148,28 @@ const SIZES: Record<
     travel: 'translate-x-4',
     stretch: 'group-active:w-9',
     pressedTravel: 'group-active:translate-x-3',
+  },
+  /** 64×36, knob 36×28, travel 20. */
+  xl: {
+    track: 'w-16 h-9',
+    knob: 'w-9 h-7',
+    travel: 'translate-x-5',
+    stretch: 'group-active:w-10',
+    pressedTravel: 'group-active:translate-x-4',
+  },
+  /**
+   * 72×40, knob 40×32, travel 24. The switch as a page's one control.
+   *
+   * THE TRACK IS AN ARBITRARY VALUE because Tailwind's default spacing scale skips
+   * 18 — it runs 16, 20, 24 — and neither app extends it. `w-[72px]` is the same
+   * 72px the ladder's arithmetic asks for, spelled the one way that emits a class.
+   */
+  '2xl': {
+    track: 'w-[72px] h-10',
+    knob: 'w-10 h-8',
+    travel: 'translate-x-6',
+    stretch: 'group-active:w-11',
+    pressedTravel: 'group-active:translate-x-5',
   },
 }
 
@@ -167,15 +226,25 @@ export type SwitchVariant = 'pill' | 'liquid'
  * rung gets its own `<filter>`. The pen ships `13` in its stylesheet and then
  * overwrites it with `2` from its Tweakpane config before first paint, so `2` is what
  * anyone who has seen the pen has actually seen; these are `2 · u`, rounded up a
- * notch because a sub-pixel deviation stops merging anything at all.
+ * notch because a sub-pixel deviation stops merging anything at all — which works
+ * out at `3 · u` across every rung, the four added with the shared ladder included.
+ *
+ * THE FIRST FOUR COLUMNS STAY `SIZES`' OWN ARITHMETIC — `w = 2h - 8`, `knob = w -
+ * travel - 8` — so the two tables cannot drift: a rung whose liquid geometry
+ * disagreed with its pill geometry would be one control that changed shape when a
+ * caller swapped `variant`, which is the exact thing sharing a component is for.
  */
 const LIQUID: Record<
   SwitchSize,
   { w: number; h: number; knob: number; travel: number; u: number; goo: number }
 > = {
+  '2xs': { w: 24, h: 16, knob: 12, travel: 4, u: 0.27, goo: 0.8 },
+  xs: { w: 32, h: 20, knob: 16, travel: 8, u: 0.33, goo: 1 },
   sm: { w: 40, h: 24, knob: 20, travel: 12, u: 0.4, goo: 1.2 },
   md: { w: 48, h: 28, knob: 28, travel: 12, u: 0.47, goo: 1.4 },
   lg: { w: 56, h: 32, knob: 32, travel: 16, u: 0.53, goo: 1.6 },
+  xl: { w: 64, h: 36, knob: 36, travel: 20, u: 0.6, goo: 1.8 },
+  '2xl': { w: 72, h: 40, knob: 40, travel: 24, u: 0.67, goo: 2 },
 }
 
 /**

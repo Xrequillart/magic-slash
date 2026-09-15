@@ -1,5 +1,6 @@
 import { Avatar } from './Avatar'
 import type { AvatarSize } from './avatarSizes'
+import type { ComponentSize } from './componentSizes'
 import { Icon, type IconSize } from './Icon'
 import { CLAUDE_CORAL, ClaudeCode, Github, Jira, MagicSlash } from './icons'
 import { Text, type TextSize } from './Text'
@@ -82,7 +83,12 @@ const TONES: Record<LabelTone, ToneSpec> = {
 }
 
 /**
- * Three, and they are the ticket badge's own.
+ * Seven — `ComponentSize`, the folder's one ladder — standing on the CONTROL
+ * geometry: 16, 20, 24, 28, 32, 36, 40, which is the same ladder `ButtonIcon`,
+ * `Status` and `Switch` measure themselves on. A label beside a button of the same
+ * rung is the same height by construction rather than by eye.
+ *
+ * THE MIDDLE THREE ARE THE TICKET BADGE'S OWN and are what this always drew.
  *
  * `sm` is a list row and a pinned bar — rows of 12px type where the label is the
  * tallest thing on the line. `lg` stands beside a `text-2xl` page heading, where the
@@ -103,10 +109,20 @@ const TONES: Record<LabelTone, ToneSpec> = {
  * A fixed HEIGHT and not padding alone: the label sets the height of the row it sits
  * in, so it is pinned rather than left to follow the line-height of whatever type the
  * theme resolves.
+ *
+ * THE LADDER IS NOW EVERY COMPONENT'S — see `ComponentSize`. The name `LabelSize`
+ * stays for the call sites that import it, and because a `size` prop typed
+ * `LabelSize` says which component it belongs to.
  */
-export type LabelSize = 'sm' | 'md' | 'lg'
+export type LabelSize = ComponentSize
 
 const SIZES: Record<LabelSize, { box: string; text: TextSize; icon: IconSize; avatar: AvatarSize }> = {
+  // 16px — a chip inside a chip. The word is at the type scale's floor and the plate
+  // has 3px of air above and below it; there is no room for a photograph, so the
+  // avatar rung is the dot rather than a face.
+  '2xs': { box: 'h-4 gap-1 px-1.5 rounded-md', text: '2xs', icon: '2xs', avatar: '2xs' },
+  // 20px — a chip under a row rather than in one: a tag on a card's second line.
+  xs: { box: 'h-5 gap-1 px-2 rounded-lg', text: 'xs', icon: 'xs', avatar: '2xs' },
   sm: { box: 'h-6 gap-1.5 px-2 rounded-lg', text: 'xs', icon: 'sm', avatar: 'xs' },
   md: { box: 'h-7 gap-1.5 px-2.5 rounded-lg', text: 'sm', icon: 'sm', avatar: 'xs' },
   // The face is a rung LOUDER than the glyph beside it — 20px against the icon's 16 —
@@ -114,6 +130,12 @@ const SIZES: Record<LabelSize, { box: string; text: TextSize; icon: IconSize; av
   // has to be big enough to be a face, and an `lg` label is 32px tall with the room
   // for it. At `sm` the two agree at 14px, which is what the plans list already drew.
   lg: { box: 'h-8 gap-2 px-2.5 rounded-xl', text: 'sm', icon: 'md', avatar: 'sm' },
+  // 36px — beside a page heading rather than under one. The face keeps its rung
+  // above the glyph, which is the arrangement `lg` established and the reason a
+  // photograph still reads as a face at this size.
+  xl: { box: 'h-9 gap-2 px-3 rounded-xl', text: 'md', icon: 'md', avatar: 'sm' },
+  // 40px — the label IS the heading: one repository named at the top of its own page.
+  '2xl': { box: 'h-10 gap-2.5 px-3.5 rounded-2xl', text: 'lg', icon: 'lg', avatar: 'md' },
 }
 
 export interface LabelProps {

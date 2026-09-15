@@ -33,11 +33,13 @@ import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type P
  */
 
 const SIZES: { size: IconSize; note: string }[] = [
+  { size: '2xs', note: '10px — a mark counted rather than read' },
   { size: 'xs', note: 'a chip, a dense row' },
   { size: 'sm', note: 'the default — 249 uses in the app' },
   { size: 'md', note: 'a button, a list row' },
   { size: 'lg', note: 'a banner, a card head' },
-  { size: 'xl', note: 'a page title' },
+  { size: 'xl', note: 'a page title — the largest that still sits in a line' },
+  { size: '2xl', note: '28px — past the line of text: an empty state’s mark' },
 ]
 
 const TONES: { tone: IconTone; note: string }[] = [
@@ -95,7 +97,7 @@ const PROPS: PropRow[] = [
   },
   {
     name: 'size',
-    type: "'xs' | 'sm' | 'md' | 'lg' | 'xl'",
+    type: "'2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'",
     fallback: "'sm'",
     description:
       'Five rungs, taken from what the app already draws rather than from a doubling scale. sm is its most common icon by a factor of three, which is why it is the default.',

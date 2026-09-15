@@ -13,9 +13,10 @@ import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } f
  */
 
 const SIZES: { size: TextSize; note: string }[] = [
+  { size: '2xs', note: 'detail unfolded under a 12px label — and only that' },
   { size: 'xs', note: 'the default — 460 uses, most of the app' },
   { size: 'sm', note: '191 uses — a banner, a card body' },
-  { size: 'base', note: 'a settings paragraph' },
+  { size: 'md', note: 'a settings paragraph — was called base' },
   { size: 'lg', note: 'a section head' },
   { size: 'xl', note: 'rare' },
   { size: '2xl', note: 'a page title' },
@@ -49,10 +50,10 @@ const PROPS: PropRow[] = [
   },
   {
     name: 'size',
-    type: "'xs' | 'sm' | 'base' | 'lg' | 'xl' | '2xl'",
+    type: "'2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'",
     fallback: "'xs'",
     description:
-      'Named after the Tailwind classes they are, so there is one vocabulary rather than two. xs and sm are 95% of the app’s text, which is why xs is the default and why the scale is dense at the bottom.',
+      'ComponentSize, the folder’s one ladder. The rungs used to be named after their Tailwind classes, which was one vocabulary until every other component grew a scale of its own — then base was the odd name out, since md is a rung on five of them. The class each rung emits is unchanged; only what a caller has to remember is. base had no call sites, which is what made the rename affordable.',
   },
   {
     name: 'weight',
@@ -98,6 +99,16 @@ export function TextEntry({ theme }: { theme: DesktopTheme }) {
         title="Sizes"
         note="Named after the Tailwind classes they are, so there is one vocabulary and not two. Dense at the bottom because that is where the app lives: xs and sm together are 95% of its text."
       >
+        <p className="max-w-2xl pb-2 text-xs leading-relaxed text-muted">
+          <code>2xs</code> is the floor, and the one rung that is not a Tailwind class — there is
+          no <code>text-2xs</code>, so it is spelled as the 10px it is. It exists because the scale
+          stopped one rung above what the app draws: <code>text-[10px]</code> is still spelled by
+          hand twelve times in the desktop folder, and <code>Tally</code> and{' '}
+          <code>CheckList</code> each carried a comment explaining that <code>Text</code> had no
+          rung for it. A scale a dozen call sites step around is the scale being wrong. What it is
+          for is the whole of what it is for: detail under a 12px label, where a fold set at the
+          size of its own header reads as a second card.
+        </p>
         <Stage theme={theme} className="flex flex-col gap-4">
           {SIZES.map(({ size, note }) => (
             <span key={size} className="flex items-baseline gap-4">

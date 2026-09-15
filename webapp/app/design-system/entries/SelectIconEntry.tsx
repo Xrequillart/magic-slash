@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { SelectIcon, type ButtonIconSize, type SelectIconGroup } from '@ds/desktop'
+import { COMPONENT_SIZES, SelectIcon, type ButtonIconSize, type SelectIconGroup } from '@ds/desktop'
 import { Activity, ArrowDownUp, Clock, FolderGit2, Play } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
@@ -260,7 +260,7 @@ export function SelectIconEntry({
         note="The ladder is ButtonIcon's, read from ButtonIcon's own table rather than respelled here — a select and a button standing at different heights in one header row would be the whole argument for a shared scale, lost. The width is the one thing it does not borrow."
       >
         <Stage theme={theme} className="flex flex-col gap-4">
-          {(['xs', 'sm', 'md', 'lg'] as ButtonIconSize[]).map((size) => (
+          {(COMPONENT_SIZES as readonly ButtonIconSize[]).map((size) => (
             <div key={size} className="flex items-center gap-4">
               <span className="w-8 flex-shrink-0 font-mono text-[10px] text-text-secondary">
                 {size}

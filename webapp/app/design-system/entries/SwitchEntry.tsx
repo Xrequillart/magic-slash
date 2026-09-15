@@ -6,9 +6,13 @@ import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
 
 const SIZES: { size: SwitchSize; note: string }[] = [
+  { size: '2xs', note: '24×16 — a target too small to ship: see the note' },
+  { size: 'xs', note: '32×20 — a target too small to ship: see the note' },
   { size: 'sm', note: '40×24, knob 20×16 — the settings rows, and the default' },
   { size: 'md', note: '48×28, knob 28×20' },
   { size: 'lg', note: '56×32, knob 32×24' },
+  { size: 'xl', note: '64×36, knob 36×28' },
+  { size: '2xl', note: '72×40, knob 40×32 — the page’s one control' },
 ]
 
 const PROPS: PropRow[] = [

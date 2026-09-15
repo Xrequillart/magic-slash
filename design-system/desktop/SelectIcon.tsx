@@ -108,19 +108,23 @@ const TONES: Record<SelectIconTone, { rest: string; open: string }> = {
  * it: a 14px word left in a box built for 12px is a row that fits its text by
  * accident.
  *
- * `xs` AND `sm` LAND ON THE SAME PANEL, and that is the type scale's doing rather
- * than an oversight: `Text` bottoms out at 12px, and a menu is read at arm's length
- * whatever opened it. The trigger is what shrinks at `xs`, not the reading.
+ * `2xs`, `xs` AND `sm` ALL LAND ON THE SAME PANEL, and that is deliberate rather
+ * than an oversight: a menu is read at arm's length whatever opened it, and the
+ * TRIGGER is what shrinks down there, not the reading. `Text`'s new 10px rung does
+ * not change that — it exists for detail under a label, and a menu row is not detail.
  *
  * The header and the hint are spelled in pixels because they are BELOW the scale —
  * 10 and 11 are not rungs of anything, they are the two sizes at which a line can sit
  * under a word without competing with it.
  */
 const PANELS: Record<ButtonIconSize, { row: string; text: TextSize; mark: IconSize; small: string }> = {
+  '2xs': { row: 'px-3 py-1.5', text: 'xs', mark: 'xs', small: 'text-[10px]' },
   xs: { row: 'px-3 py-1.5', text: 'xs', mark: 'xs', small: 'text-[10px]' },
   sm: { row: 'px-3 py-1.5', text: 'xs', mark: 'xs', small: 'text-[10px]' },
   md: { row: 'px-3 py-2', text: 'sm', mark: 'sm', small: 'text-[11px]' },
   lg: { row: 'px-3.5 py-2', text: 'sm', mark: 'sm', small: 'text-[11px]' },
+  xl: { row: 'px-3.5 py-2.5', text: 'md', mark: 'md', small: 'text-[12px]' },
+  '2xl': { row: 'px-4 py-3', text: 'md', mark: 'md', small: 'text-[12px]' },
 }
 
 type PanelScale = (typeof PANELS)[ButtonIconSize]

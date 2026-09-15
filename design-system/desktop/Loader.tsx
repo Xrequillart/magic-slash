@@ -1,5 +1,7 @@
 import { useInsertionEffect } from "react";
 import type { CSSProperties } from "react";
+
+import type { ComponentSize } from "./componentSizes";
 import { Loader2 } from "./icons";
 
 /**
@@ -28,8 +30,8 @@ import { Loader2 } from "./icons";
  * around them to inherit from.
  */
 
-/** The rungs, matching `Icon`'s, plus the one above them. */
-export type LoaderSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
+/** The rungs — `ComponentSize`, the folder's one ladder. */
+export type LoaderSize = ComponentSize;
 
 /**
  * Sizes in PIXELS, not in Tailwind classes, and this is the one place in the folder
@@ -42,12 +44,18 @@ export type LoaderSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
  * the two variants swappable at a call site without the row moving — which is the
  * whole reason they share a component.
  *
- * `2xl` is not in `Icon`'s scale on purpose: 32px is past the size anything sits in
- * a line of text at. It is here because a loader legitimately owns a whole screen
- * sometimes — the app's connect gate and its first paint — and that is the size
- * both already used.
+ * `2xl` IS 32 AND NOT `Icon`'S 28, which is the one place the two ladders part. A
+ * loader legitimately owns a whole screen sometimes — the app's connect gate and its
+ * first paint — and 32 is the size both already used. Holding it to 28 for symmetry
+ * would have moved two screens to make a table look tidier.
  */
 const LOADER_PX: Record<LoaderSize, number> = {
+  /**
+   * 10px, and the wave is three bars in it — a spinner this small is a texture
+   * rather than a thing that turns. It is on the ladder because the ladder is
+   * shared, not because a loader wants to be this size.
+   */
+  "2xs": 10,
   xs: 12,
   sm: 14,
   /** The default, and the sidebar's: the size of the ring the wave replaced. */

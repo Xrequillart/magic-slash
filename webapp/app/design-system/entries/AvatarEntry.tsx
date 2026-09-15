@@ -14,10 +14,13 @@ import { usesOf } from './ids'
  */
 
 const SIZES: { size: AvatarSize; note: string }[] = [
+  { size: '2xs', note: '12px — a presence dot: it cannot hold an initial' },
   { size: 'xs', note: '14px — the left sidebar, and the one rung with no pill' },
   { size: 'sm', note: '20px — the settings rail footer' },
   { size: 'md', note: '24px — a row of the members table' },
   { size: 'lg', note: '44px — the identity card' },
+  { size: 'xl', note: '56px — a profile header' },
+  { size: '2xl', note: '64px — one face, alone on the line' },
 ]
 
 const PROPS: PropRow[] = [
@@ -37,7 +40,7 @@ const PROPS: PropRow[] = [
   },
   {
     name: 'size',
-    type: "'xs' | 'sm' | 'md' | 'lg'",
+    type: "'2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'",
     fallback: "'lg'",
     description:
       'Four boxes. They were named card / footer / sidebar / roster while this lived in the app, which is a design system knowing the name of a screen — the app maps its surfaces onto these now.',

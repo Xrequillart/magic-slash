@@ -1,5 +1,6 @@
 import { forwardRef } from 'react'
 import { Icon, type IconSize } from './Icon'
+import type { ComponentSize } from './componentSizes'
 import { Loader } from './Loader'
 import type { IconComponent } from './types'
 
@@ -55,10 +56,14 @@ export type ButtonIconTone = 'neutral' | 'danger' | 'vscode' | 'ghost' | 'succes
  * disagreed would be the one nobody noticed.
  *
  * `sm` IS THE DEFAULT and is every one of the app's eight — 24px, `rounded-lg`, a
- * 14px mark. The other two are here for rows of 14px type, where a 24px square reads
+ * 14px mark. `md` and `lg` are here for rows of 14px type, where a 24px square reads
  * as a control that shrank rather than as one that fits.
+ *
+ * SEVEN RUNGS — `ComponentSize`, the folder's one ladder. The four in the middle are
+ * what this always drew; `2xs`, `xl` and `2xl` are the ladder reaching past a row in
+ * both directions, and the table says what each is for.
  */
-export type ButtonIconSize = 'xs' | 'sm' | 'md' | 'lg'
+export type ButtonIconSize = ComponentSize
 
 /**
  * EXPORTED, because `SelectIcon` is this control with a chevron and has to stand the
@@ -80,10 +85,20 @@ export const BUTTON_ICON_SIZES: Record<
    * Reach for it ONLY inside something else. A 20px target on its own is small, and
    * the three rungs below are what a control standing in a row should be.
    */
+  /**
+   * 16px. SMALLER THAN A FINGER AND SMALLER THAN MOST CURSOR WORK — reach for it
+   * only where the whole row is 16, and never for the one control a user has to
+   * find. It is on the ladder because the ladder is shared.
+   */
+  '2xs': { h: 'h-4', w: 'w-4', radius: 'rounded-md', icon: '2xs' },
   xs: { h: 'h-5', w: 'w-5', radius: 'rounded-lg', icon: 'xs' },
   sm: { h: 'h-6', w: 'w-6', radius: 'rounded-lg', icon: 'sm' },
   md: { h: 'h-7', w: 'w-7', radius: 'rounded-lg', icon: 'sm' },
   lg: { h: 'h-8', w: 'w-8', radius: 'rounded-xl', icon: 'md' },
+  /** 36px — a control beside a heading rather than in a row. */
+  xl: { h: 'h-9', w: 'w-9', radius: 'rounded-xl', icon: 'md' },
+  /** 40px — a control that IS the subject: an empty state's one action. */
+  '2xl': { h: 'h-10', w: 'w-10', radius: 'rounded-2xl', icon: 'lg' },
 }
 
 /**

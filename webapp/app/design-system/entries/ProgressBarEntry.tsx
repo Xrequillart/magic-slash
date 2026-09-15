@@ -9,9 +9,13 @@ const LIMIT = { warning: 65, danger: 85 }
 const CONTEXT = { warning: 40, danger: 70 }
 
 const SIZES: { size: ProgressSize; note: string }[] = [
+  { size: '2xs', note: 'h-0.5 — a hairline, read as an edge' },
   { size: 'xs', note: 'h-1 — a sidebar mini-bar' },
   { size: 'sm', note: 'h-1.5 — the common one' },
   { size: 'md', note: 'h-2 — the bar is the row’s subject' },
+  { size: 'lg', note: 'h-2.5 — a bar with a number inside it' },
+  { size: 'xl', note: 'h-3' },
+  { size: '2xl', note: 'h-4 — a bar that is the screen' },
 ]
 
 const TRACKS: { track: ProgressTrack; note: string }[] = [
@@ -43,7 +47,7 @@ const PROPS: PropRow[] = [
   },
   {
     name: 'size',
-    type: "'xs' | 'sm' | 'md'",
+    type: "'2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'",
     fallback: "'sm'",
     description: 'h-1, h-1.5, h-2 — the three heights the app draws.',
   },

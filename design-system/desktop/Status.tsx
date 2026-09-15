@@ -3,6 +3,7 @@ import type { RefObject } from 'react'
 import { Check, ChevronDown } from './icons'
 import { Icon, type IconSize } from './Icon'
 import { Text, type TextSize } from './Text'
+import type { ComponentSize } from './componentSizes'
 
 /**
  * A state, on a tinted plate — and the picker that changes it.
@@ -133,18 +134,27 @@ const DOTS: Record<StatusTone, string> = {
  * hold it. A picker whose words were a size apart from the word that opened it read as
  * a different control each time it appeared.
  *
+ * SEVEN RUNGS on the shared control ladder — `ComponentSize`, 16 through 40 — and the
+ * menu follows the plate at every one of them. The two below a row keep the chevron
+ * at the type's own size rather than above it: at 16px a caret larger than the word
+ * beside it reads as the subject.
+ *
  * `sm` IS UNCHANGED and is the default — 24px, `px-2.5`, `text-xs`, which is what the
  * agent sidebar and the plans list have always drawn. It is `h-6` now where it was
  * `py-1` before, and those are the same 24px here: `text-xs` carries a 16px
  * line-height from Tailwind, not from the theme, and the browser agrees. Pinning it
  * is what lets the other two rungs be heights rather than a second padding table.
  */
-export type StatusSize = 'sm' | 'md' | 'lg'
+export type StatusSize = ComponentSize
 
 const SIZES: Record<StatusSize, { box: string; text: TextSize; chevron: IconSize; row: string }> = {
+  '2xs': { box: 'h-4 gap-1 px-1.5', text: '2xs', chevron: '2xs', row: 'px-2 py-1' },
+  xs: { box: 'h-5 gap-1 px-2', text: 'xs', chevron: 'xs', row: 'px-2.5 py-1' },
   sm: { box: 'h-6 gap-1.5 px-2.5', text: 'xs', chevron: 'xs', row: 'px-3 py-1.5' },
   md: { box: 'h-7 gap-1.5 px-3', text: 'sm', chevron: 'sm', row: 'px-3 py-2' },
   lg: { box: 'h-8 gap-2 px-3.5', text: 'sm', chevron: 'sm', row: 'px-3.5 py-2' },
+  xl: { box: 'h-9 gap-2 px-4', text: 'md', chevron: 'md', row: 'px-4 py-2.5' },
+  '2xl': { box: 'h-10 gap-2.5 px-5', text: 'lg', chevron: 'md', row: 'px-5 py-3' },
 }
 
 export interface StatusOption {

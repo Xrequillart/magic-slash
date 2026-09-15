@@ -1,3 +1,4 @@
+import type { ComponentSize } from './componentSizes'
 import {
   PROGRESS_FILLS,
   PROGRESS_TEXT,
@@ -22,15 +23,23 @@ import {
  */
 
 /** The three heights the app draws, thinnest first. */
-export type ProgressSize = 'xs' | 'sm' | 'md'
+export type ProgressSize = ComponentSize
 
 const SIZES: Record<ProgressSize, string> = {
+  /** 2px — a hairline under a header, read as an edge rather than as a bar. */
+  '2xs': 'h-0.5',
   /** A sidebar mini-bar, squeezed beside a label and a number. */
   xs: 'h-1',
   /** The common one: the context gauge, the sidebar limits, the download. */
   sm: 'h-1.5',
   /** The agent sidebar's plan limits, where the bar is the row's subject. */
   md: 'h-2',
+  /** 10px — a bar with a number inside it, or one that is the card's subject. */
+  lg: 'h-2.5',
+  /** 12px. */
+  xl: 'h-3',
+  /** 16px — a progress bar that IS the screen: a first-run install, an update. */
+  '2xl': 'h-4',
 }
 
 /**

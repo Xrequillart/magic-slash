@@ -19,7 +19,14 @@
  * the drawing, and the app maps its surfaces onto them.
  */
 
-export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg'
+/**
+ * The shared ladder, SPELLED OUT rather than imported — see the note at the top on
+ * why this file imports nothing at all, type imports included. It is checked against
+ * the real one by `componentSizes.test.ts`, so the copy cannot drift in silence.
+ */
+type ComponentSize = '2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'
+
+export type AvatarSize = ComponentSize
 
 export interface AvatarGeometry {
   /** Box classes for the photo and for the fallback alike, so the two never disagree. */
@@ -50,19 +57,23 @@ export interface AvatarGeometry {
    * draw one, which is what keeps an initial reading as a monogram rather than as a
    * character that happens to be there.
    *
-   * `xs` AND `sm` ARE HONEST DEAD ENDS. The type scale stops at 12px and those boxes
-   * are 14 and 20, so a letter in either fills it — the record is closed (a missing
-   * rung is a compile error at the call site), not a promise that every rung is a
-   * good place for a monogram. `md` is where the app draws one.
+   * `xs` AND `sm` ARE HONEST DEAD ENDS. A 14px and a 20px plate are too small for a
+   * letter at any rung that still reads as a monogram — the record is closed (a
+   * missing rung is a compile error at the call site), not a promise that every rung
+   * is a good place for one. `md` is where the app draws one.
+   *
+   * `2xs` IS NOT THE ANSWER for either of them, now that the type scale has a 10px
+   * rung: 10px of ink in a 14px circle is a character that happens to be there, and
+   * the rung exists for detail under a label rather than for making a plate work.
    */
   initial: TextRung
 }
 
 /** The rungs `Icon` offers, spelled here so this file still imports nothing. */
-type IconRung = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+type IconRung = '2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'
 
 /** And the rungs `Text` offers, spelled out for the same reason. */
-type TextRung = 'xs' | 'sm' | 'base' | 'lg' | 'xl' | '2xl'
+type TextRung = '2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'
 
 /**
  * Frozen, and a closed record rather than a lookup with a default: a size that is not
@@ -73,6 +84,10 @@ type TextRung = 'xs' | 'sm' | 'base' | 'lg' | 'xl' | '2xl'
  * stylesheet. Every value here must stay something a grep can find.
  */
 export const AVATAR_SIZES: Readonly<Record<AvatarSize, Readonly<AvatarGeometry>>> = Object.freeze({
+  // 12 px — a face reduced to a dot. IT CANNOT HOLD AN INITIAL and barely holds a
+  // glyph; it is on the ladder because the ladder is shared, and it is honest about
+  // what it is for: a presence marker in a row that has no room for a person.
+  '2xs': Object.freeze({ box: 'w-3 h-3', glyph: '2xs', bare: 'xs', initial: '2xs' }),
   // 14 px — the size of the `CircleUserRound` this replaced in the sidebar, and the
   // one rung where the glyph fills the whole box.
   xs: Object.freeze({ box: 'w-3.5 h-3.5', glyph: 'sm', bare: 'sm', initial: 'xs' }),
@@ -84,4 +99,10 @@ export const AVATAR_SIZES: Readonly<Record<AvatarSize, Readonly<AvatarGeometry>>
   md: Object.freeze({ box: 'w-6 h-6', glyph: 'sm', bare: 'xl', initial: 'xs' }),
   // 44 px — large enough to read a face, small enough to sit on one line of a card.
   lg: Object.freeze({ box: 'w-11 h-11', glyph: 'xl', bare: 'xl', initial: 'xl' }),
+  // 56 px — a profile header. The glyph stops climbing here: `Icon` tops out at 28,
+  // so the mark is CENTRED in the box rather than filling it, which is what `lg`
+  // already does and the reason the footprint still holds.
+  xl: Object.freeze({ box: 'w-14 h-14', glyph: '2xl', bare: '2xl', initial: '2xl' }),
+  // 64 px — an account page, one face and nothing else on the line.
+  '2xl': Object.freeze({ box: 'w-16 h-16', glyph: '2xl', bare: '2xl', initial: '2xl' }),
 })

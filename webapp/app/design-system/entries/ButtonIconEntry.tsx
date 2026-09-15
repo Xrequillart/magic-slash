@@ -26,7 +26,7 @@ const PROPS: PropRow[] = [
   },
   {
     name: 'size',
-    type: "'xs' | 'sm' | 'md' | 'lg'",
+    type: "'2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'",
     fallback: "'sm'",
     description:
       '24 / 28 / 32 — Label’s and Status’s three. A control that is only a mark sits in rows with the badges that name things; a scale of its own would be a second ladder to keep in step. xs is 20px and off that ladder: a button nested in a chip is measured against the chip, not against the badges beside it.',
@@ -98,15 +98,18 @@ export function ButtonIconEntry({
 
       <EntrySection
         title="Sizes"
-        note="Three, and they are Label's and Status's — the same 24 / 28 / 32. A control that is only a mark sits in rows with the badges that name things: the repository card is a Label and four of these on one line. A scale of its own would be two ladders to keep in step, and the first row where they disagreed would be the one nobody noticed."
+        note="Seven rungs now — ComponentSize, the folder’s one ladder — so a caller moving between components relearns nothing. Every rung that already existed kept its exact geometry and every default is the one it was: the new ones are additions, there so a size can be changed at a call site in one word instead of being a reason to edit the component. The middle four are Label's and Status's — the same 24 / 28 / 32. A control that is only a mark sits in rows with the badges that name things: the repository card is a Label and four of these on one line. A scale of its own would be two ladders to keep in step, and the first row where they disagreed would be the one nobody noticed."
       >
         <Stage theme={theme} className="flex flex-col gap-4">
           {(
             [
+              ['2xs', '16px · smaller than a finger — never the one control to find'],
               ['xs', '20px · only inside a chip'],
               ['sm', '24px · every one of the app’s eight'],
               ['md', '28px · a row of 14px type'],
               ['lg', '32px · the mark is the row’s subject'],
+              ['xl', '36px · beside a heading rather than in a row'],
+              ['2xl', '40px · an empty state’s one action'],
             ] as [ButtonIconSize, string][]
           ).map(([size, note]) => (
             <div key={size} className="flex items-center gap-4">

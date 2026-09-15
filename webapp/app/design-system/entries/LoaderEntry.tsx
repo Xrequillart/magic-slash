@@ -6,6 +6,7 @@ import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } f
 
 /** The rungs, with what each one is actually for in the app. */
 const SIZES: { size: LoaderSize; note: string }[] = [
+  { size: '2xs', note: '10px — a texture rather than a thing that turns' },
   { size: 'xs', note: '12px — inside a dense row' },
   { size: 'sm', note: '14px — beside a button’s label' },
   { size: 'md', note: '16px — the default, and the sidebar badge' },
@@ -24,7 +25,7 @@ const PROPS: PropRow[] = [
   },
   {
     name: 'size',
-    type: "'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'",
+    type: "'2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'",
     fallback: "'md'",
     description:
       'Icon’s five rungs plus one. 2xl is 32px, past anything that sits in a line of text, and it is here because a loader sometimes owns a whole screen.',

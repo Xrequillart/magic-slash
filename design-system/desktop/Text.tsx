@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 
+import type { ComponentSize } from './componentSizes'
+
 /**
  * Text, in the app's own face, at one of six sizes in one of four weights — four
  * REAL ones: see `TEXT_WEIGHTS` for the measurement that cut the scale down.
@@ -17,7 +19,18 @@ import type { ReactNode } from 'react'
 export const TEXT_FACE = "font-['Cera_Pro',-apple-system,BlinkMacSystemFont,system-ui,sans-serif]"
 
 /**
- * The sizes, named after the Tailwind classes they are — one vocabulary, not two.
+ * The sizes — `ComponentSize`, the folder's one ladder, resolved to type.
+ *
+ * THEY USED TO BE NAMED AFTER THEIR TAILWIND CLASSES, which was one vocabulary
+ * instead of two right up until every other component in the folder grew a scale of
+ * its own. Then it was the odd one out: `md` was a rung on five components and this
+ * called its equivalent `base`, so a caller writing `size="md"` on a `Label` and
+ * `size="base"` on the `Text` inside it was spelling one decision two ways. The
+ * class each rung emits is in `TEXT_SIZES` and is still `text-base` — the CLASS did
+ * not move, only what a caller has to remember.
+ *
+ * `base` HAD NO CALL SITES, which is the whole reason this was affordable: the
+ * rename touched the table, the showcase and nothing else.
  *
  * Weighted the way the app actually reads: `text-xs` appears 460 times in the
  * renderer and `text-sm` 191, which together are 95% of its text. Everything from
@@ -25,14 +38,36 @@ export const TEXT_FACE = "font-['Cera_Pro',-apple-system,BlinkMacSystemFont,syst
  * at the bottom and sparse at the top on purpose.
  *
  * `xs` is therefore the DEFAULT. A design system whose default type size is the one
- * its product almost never uses makes every call site argue with it.
+ * its product almost never uses makes every call site argue with it. It is the one
+ * rung whose name and whose class disagree the least — and the reason the scale is
+ * dense at the bottom and sparse at the top is the app, not the ladder.
+ *
+ * `2xs` IS THE FLOOR AND IT IS NOT A TAILWIND CLASS — there is no `text-2xs`, so it
+ * is spelled as the arbitrary value it is. It exists because the scale stopped one
+ * rung above what the app draws: `text-[10px]` is still spelled by hand twelve times in
+ * this folder — three in `PullRequestCard`, two each in `ReviewThreadLine`,
+ * `SelectIcon` and `UsageClaudeCodeCard`, one each in `EditableText`, `SpecCard` and
+ * `Sidebar` — and `Tally` and `CheckList` each carried a comment explaining that
+ * `Text` had no rung for it. A scale a dozen call sites step around is the scale
+ * being wrong, not the call sites.
+ *
+ * WHAT IT IS FOR, and the whole of it: DETAIL UNDER A 12px LABEL. A fold whose
+ * contents are the same size as the header that opened them reads as a second card
+ * rather than as the inside of the first — the drop to 10px is what makes the header
+ * a header. It is not a rung for small print in general, and nothing a reader has to
+ * read on its own belongs here.
+ *
+ * THOSE TWELVE ARE NOT CONVERTED YET, and each is its own small decision about
+ * whether its 10px was a hierarchy or a habit. This rung is what lets them be asked
+ * one at a time rather than standing as an argument against the scale.
  */
-export type TextSize = 'xs' | 'sm' | 'base' | 'lg' | 'xl' | '2xl'
+export type TextSize = ComponentSize
 
 export const TEXT_SIZES: Record<TextSize, string> = {
+  '2xs': 'text-[10px]',
   xs: 'text-xs',
   sm: 'text-sm',
-  base: 'text-base',
+  md: 'text-base',
   lg: 'text-lg',
   xl: 'text-xl',
   '2xl': 'text-2xl',

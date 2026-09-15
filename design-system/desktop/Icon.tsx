@@ -1,4 +1,6 @@
 import type { CSSProperties } from 'react'
+
+import type { ComponentSize } from './componentSizes'
 import type { IconComponent } from './types'
 
 /**
@@ -28,22 +30,38 @@ import type { IconComponent } from './types'
  */
 
 /**
- * The five rungs, in the order a reader meets them.
+ * The seven rungs — `ComponentSize` — in the order a reader meets them.
  *
- * Taken from what the app already does rather than invented: `sm` is its most
- * common icon by a factor of three, which is why it is the default and why the
- * scale is denser at the bottom than a doubling scale would be. `xl` is the
- * largest that still sits IN a line of text; anything above it is an illustration
- * and belongs to its own call site, not to a rung here.
+ * THE MIDDLE FIVE ARE WHAT THE APP ALREADY DID rather than something invented: `sm`
+ * is its most common icon by a factor of three, which is why it is the default and
+ * why the ladder is denser at the bottom than a doubling scale would be.
+ *
+ * THE TWO ENDS ARE NEW and are the folder's shared ladder reaching this far: `2xs`
+ * for a mark below a row, `2xl` for one above a heading. Neither is a rung to reach
+ * for without a reason, and each says its own below.
  */
-export type IconSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+export type IconSize = ComponentSize
 
 export const ICON_SIZES: Record<IconSize, string> = {
+  /**
+   * 10px. BELOW WHAT A GLYPH CAN BE TOLD APART AT, for anything with a shape to
+   * read: a tick and a cross at 10px are two grey smudges. It is here for the marks
+   * that are not read but COUNTED — a dot, a chevron, the caret in a chip — and for
+   * the rare glyph nested inside something already small.
+   */
+  '2xs': 'w-2.5 h-2.5',
   xs: 'w-3 h-3',
   sm: 'w-3.5 h-3.5',
   md: 'w-4 h-4',
   lg: 'w-5 h-5',
   xl: 'w-6 h-6',
+  /**
+   * 28px. PAST THE LINE OF TEXT — `xl` is the largest that still sits IN one, and
+   * this is the first rung that does not. It is for a mark that is the subject: an
+   * empty state, a dialog's icon. Anything above it is an illustration and belongs
+   * to its call site.
+   */
+  '2xl': 'w-7 h-7',
 }
 
 /**
