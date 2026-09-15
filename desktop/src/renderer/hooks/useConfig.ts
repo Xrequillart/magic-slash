@@ -108,12 +108,6 @@ export function useConfig() {
     return result
   }, [setConfig])
 
-  const updateSplitEnabled = useCallback(async (enabled: boolean) => {
-    const result = await window.electronAPI.config.updateSplitEnabled(enabled)
-    setConfig(result.config)
-    return result
-  }, [setConfig])
-
   const updateSpotlight = useCallback(async (spotlight: { enabled: boolean; shortcut: string }) => {
     const result = await window.electronAPI.config.updateSpotlight(spotlight)
     setConfig(result.config)
@@ -277,7 +271,6 @@ export function useConfig() {
     updateRepositoryPlanSettings,
     updateRepositoryBranchSettings,
     updateRepositoryWorktreeFilesSettings,
-    updateSplitEnabled,
     updateSpotlight,
     updateLaunchMode,
     updateDefaultAgentType,

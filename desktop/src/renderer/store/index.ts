@@ -238,7 +238,6 @@ interface AppState {
   focusedPane: 'primary' | 'secondary'
   isSplitMode: boolean
   isWideScreen: boolean
-  splitEnabled: boolean
   splitActive: boolean
   rightPaneTerminalIds: string[]
 
@@ -433,7 +432,6 @@ interface AppState {
   setFocusedPane: (pane: 'primary' | 'secondary') => void
   setSplitMode: (enabled: boolean) => void
   setIsWideScreen: (wide: boolean) => void
-  toggleSplitEnabled: () => void
   toggleSplitActive: () => void
   moveTerminalToPane: (id: string, pane: 'left' | 'right') => void
 
@@ -586,7 +584,6 @@ export const useStore = create<AppState>()(
         focusedPane: 'primary',
         isSplitMode: false,
         isWideScreen: false,
-        splitEnabled: false,
         splitActive: false,
         rightPaneTerminalIds: [],
 
@@ -621,7 +618,6 @@ export const useStore = create<AppState>()(
           config,
           configLoading: false,
           configError: null,
-          ...(config?.splitEnabled !== undefined ? { splitEnabled: config.splitEnabled } : {}),
           ...(config?.splitActive !== undefined ? { splitActive: config.splitActive } : {}),
         }),
         setConfigLoading: (configLoading) => set({ configLoading }),
@@ -743,8 +739,6 @@ export const useStore = create<AppState>()(
           set((state) => state.isSplitMode === isSplitMode ? {} : { isSplitMode }),
         setIsWideScreen: (isWideScreen) =>
           set((state) => state.isWideScreen === isWideScreen ? {} : { isWideScreen }),
-        toggleSplitEnabled: () =>
-          set((state) => ({ splitEnabled: !state.splitEnabled })),
         toggleSplitActive: () =>
           set((state) => {
             if (state.splitActive) {

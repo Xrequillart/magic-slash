@@ -7,7 +7,6 @@ const DEBOUNCE_MS = 150
 export function useWindowSplitMode() {
   const setSplitMode = useStore((s) => s.setSplitMode)
   const setIsWideScreen = useStore((s) => s.setIsWideScreen)
-  const splitEnabled = useStore((s) => s.splitEnabled)
   const splitActive = useStore((s) => s.splitActive)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -15,7 +14,7 @@ export function useWindowSplitMode() {
     const check = () => {
       const wide = window.innerWidth >= SPLIT_THRESHOLD
       setIsWideScreen(wide)
-      setSplitMode(wide && splitEnabled && splitActive)
+      setSplitMode(wide && splitActive)
     }
 
     const debouncedCheck = () => {
@@ -29,5 +28,5 @@ export function useWindowSplitMode() {
       if (timerRef.current) clearTimeout(timerRef.current)
       window.removeEventListener('resize', debouncedCheck)
     }
-  }, [setSplitMode, setIsWideScreen, splitEnabled, splitActive])
+  }, [setSplitMode, setIsWideScreen, splitActive])
 }

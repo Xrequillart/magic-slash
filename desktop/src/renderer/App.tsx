@@ -93,7 +93,7 @@ function ErrorScreen({ error }: { error: string }) {
 
 export function App() {
   const t = useT()
-  const { closeAgentModal, closeCloseAgentModal, terminals, setActiveTerminal, rightPaneTerminalIds, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, setConfig, repoSetupDismissed, setRepoSetupDismissed, activeModal, closeModal, openModal } = useStore()
+  const { closeAgentModal, closeCloseAgentModal, terminals, setActiveTerminal, rightPaneTerminalIds, toggleLeftSidebar, toggleSplitActive, isWideScreen, config, setConfig, repoSetupDismissed, setRepoSetupDismissed, activeModal, closeModal, openModal } = useStore()
   const { configLoading, configError, loadConfig } = useConfig()
   const { killTerminal, launchClaudeTerminal } = useTerminals()
   const { flatVisualOrder } = useOrderedTerminals()
@@ -488,7 +488,7 @@ export function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === '/') {
-        if (isWideScreen && splitEnabled && terminals.length >= 2) {
+        if (isWideScreen && terminals.length >= 2) {
           e.preventDefault()
           toggleSplitActive()
         }
@@ -497,7 +497,7 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isWideScreen, splitEnabled, terminals.length, toggleSplitActive])
+  }, [isWideScreen, terminals.length, toggleSplitActive])
 
   if (configLoading) {
     return <LoadingScreen />

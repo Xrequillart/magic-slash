@@ -52,7 +52,10 @@ export const DEFAULTS = {
   notificationPrReview: true,
   notificationPrChangesRequested: true,
   dailyDigestEnabled: false,
-  splitEnabled: false,
+  // The store's initial state, and now the whole of the split view: the
+  // `split_enabled` permission that used to sit in front of it is gone.
+  // desktop/src/renderer/store/index.ts
+  splitActive: false,
   // The `?? true` the Application tab reads it with, in
   // desktop/src/renderer/pages/Config/index.tsx.
   spotlightEnabled: true,
@@ -78,7 +81,7 @@ export const DEFAULTS = {
  * back-office reports precisely because it cannot edit them.
  */
 export interface AdminUserSettings extends UserSettings {
-  splitActive: boolean | null
+  splitEnabled: boolean | null
   spotlightShortcut: string | null
   autoStartAtLogin: boolean | null
   atlassianIntegrationEnabled: boolean | null
@@ -97,8 +100,10 @@ export interface AdminUserSettings extends UserSettings {
  * here would be a confident lie in the one tool used to answer "why is it behaving
  * like that":
  *
- *  * splitActive — the store's initial state.
- *    desktop/src/renderer/store/index.ts
+ *  * splitEnabled — DEAD, and reported anyway. The app used to need it on TOP of
+ *    split_active before it would show two panes; that second switch is gone and
+ *    nothing writes this column any more, so what it holds is whatever the user
+ *    last left it at. False is what a row that predates the column would read as.
  *  * spotlightShortcut — the `?? 'Control+Space'` the Application tab reads with.
  *    desktop/src/renderer/pages/Config/index.tsx
  *  * autoStartAtLogin — applied only when set, and the OS default for a freshly
@@ -111,7 +116,7 @@ export interface AdminUserSettings extends UserSettings {
  */
 export const SETTING_DEFAULTS: Record<keyof AdminUserSettings, string | number | boolean> = {
   ...DEFAULTS,
-  splitActive: false,
+  splitEnabled: false,
   spotlightShortcut: 'Control+Space',
   autoStartAtLogin: false,
   atlassianIntegrationEnabled: false,
@@ -201,8 +206,10 @@ export const SETTING_GROUPS: SettingGroup[] = [
   {
     title: 'Split View',
     fields: [
-      { field: 'splitEnabled', label: 'Enabled' },
-      { field: 'splitActive', label: 'Currently active' },
+      { field: 'splitActive', label: 'Enabled' },
+      // Kept in the report, not in the app: see SETTING_DEFAULTS on why a dead
+      // column is still worth showing an operator.
+      { field: 'splitEnabled', label: 'Enabled (legacy, unused)' },
     ],
   },
   {

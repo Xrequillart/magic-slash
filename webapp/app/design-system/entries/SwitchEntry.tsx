@@ -252,8 +252,8 @@ export function SwitchEntry({ theme }: { theme: DesktopTheme }) {
 <div className="flex items-center justify-between gap-6 py-4">
   <span className="text-[13px] text-ink">{t('settings.application.split.label')}</span>
   <Switch
-    checked={splitEnabled}
-    onChange={setSplitEnabled}
+    checked={splitActive}
+    onChange={setSplitActive}
     label={t('settings.application.split.label')}
   />
 </div>`}</Snippet>

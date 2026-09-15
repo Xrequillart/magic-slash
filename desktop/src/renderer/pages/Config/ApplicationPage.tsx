@@ -110,8 +110,8 @@ function UsageLogsBreakdown({ t }: { t: Translate }) {
 
 export function ApplicationPage() {
   const t = useT()
-  const { config, splitEnabled, toggleSplitEnabled, setConfig } = useStore()
-  const { updateSplitEnabled, updateSpotlight } = useConfig()
+  const { config, splitActive, toggleSplitActive, setConfig } = useStore()
+  const { updateSpotlight } = useConfig()
 
   const [autoStart, setAutoStart] = useState(false)
   const [spotlightEnabled, setSpotlightEnabled] = useState(config?.spotlight?.enabled ?? true)
@@ -180,7 +180,11 @@ export function ApplicationPage() {
       {/* Machine setup (prerequisites, MCP servers, integrations) */}
       <SetupHealthCard />
 
-      {/* Split View Section */}
+      {/* Split View Section — THE SWITCH IS THE SPLIT ITSELF, the same value the
+          Control Center's tile carries. There used to be a second, wider switch behind
+          it: this one said the feature was allowed, the tile said the window was in two
+          panes, and both had to be on for anything to happen. Nobody could see why a lit
+          switch did nothing, so the permission went and the state stayed. */}
       <div>
         <SectionHeader icon={Columns} title={t('settings.application.split.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4">
@@ -190,8 +194,8 @@ export function ApplicationPage() {
               <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.split.help')}</div>
             </div>
             <Switch
-              checked={splitEnabled}
-              onChange={() => { toggleSplitEnabled(); updateSplitEnabled(!splitEnabled) }}
+              checked={splitActive}
+              onChange={() => toggleSplitActive()}
               label={t('settings.application.split.label')}
             />
           </div>

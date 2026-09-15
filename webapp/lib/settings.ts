@@ -24,7 +24,14 @@ export { DEFAULTS } from './settingsCatalog'
  * Deliberately absent: the Spotlight SHORTCUT and "launch at login", which are
  * properties of a machine rather than of an account (and writing
  * auto_start_at_login=false from here would make the app touch the macOS login
- * item on its next start), plus split_active, which is a transient view state.
+ * item on its next start).
+ *
+ * `split_active` is here, and `split_enabled` is not, though it once was the other
+ * way round. There were two columns: one saying the split view was allowed, one
+ * saying the window was in two panes, and the app needed both to show anything. The
+ * permission is gone — one switch, one meaning — so the writable column is the one
+ * that decides what the window looks like. `split_enabled` still exists in the
+ * table and nothing reads it.
  *
  * `spotlight_enabled` is here even so, and the line between it and the shortcut
  * next to it is not arbitrary: whether you want a global panel at all travels with
@@ -49,7 +56,7 @@ export interface UserSettings {
   notificationPrReview: boolean | null
   notificationPrChangesRequested: boolean | null
   dailyDigestEnabled: boolean | null
-  splitEnabled: boolean | null
+  splitActive: boolean | null
   spotlightEnabled: boolean | null
   prReviewsEnabled: boolean | null
   prReviewsPollIntervalMs: number | null
@@ -77,7 +84,7 @@ interface UserSettingsRow {
   notification_pr_review: boolean | null
   notification_pr_changes_requested: boolean | null
   daily_digest_enabled: boolean | null
-  split_enabled: boolean | null
+  split_active: boolean | null
   spotlight_enabled: boolean | null
   pr_reviews_enabled: boolean | null
   pr_reviews_poll_interval_ms: number | null
@@ -87,7 +94,7 @@ interface UserSettingsRow {
 }
 
 const COLUMNS =
-  'theme, sync_claude_theme, code_theme, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_enabled, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type'
+  'theme, sync_claude_theme, code_theme, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_active, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type'
 
 /** Maps a camelCase field to its column. Also the list of writable fields. */
 const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
@@ -107,7 +114,7 @@ const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
   notificationPrReview: 'notification_pr_review',
   notificationPrChangesRequested: 'notification_pr_changes_requested',
   dailyDigestEnabled: 'daily_digest_enabled',
-  splitEnabled: 'split_enabled',
+  splitActive: 'split_active',
   spotlightEnabled: 'spotlight_enabled',
   prReviewsEnabled: 'pr_reviews_enabled',
   prReviewsPollIntervalMs: 'pr_reviews_poll_interval_ms',
@@ -134,7 +141,7 @@ export const EMPTY_SETTINGS: UserSettings = {
   notificationPrReview: null,
   notificationPrChangesRequested: null,
   dailyDigestEnabled: null,
-  splitEnabled: null,
+  splitActive: null,
   spotlightEnabled: null,
   prReviewsEnabled: null,
   prReviewsPollIntervalMs: null,
@@ -162,7 +169,7 @@ function toSettings(row: UserSettingsRow): UserSettings {
     notificationPrReview: row.notification_pr_review,
     notificationPrChangesRequested: row.notification_pr_changes_requested,
     dailyDigestEnabled: row.daily_digest_enabled,
-    splitEnabled: row.split_enabled,
+    splitActive: row.split_active,
     spotlightEnabled: row.spotlight_enabled,
     prReviewsEnabled: row.pr_reviews_enabled,
     prReviewsPollIntervalMs: row.pr_reviews_poll_interval_ms,

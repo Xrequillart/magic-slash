@@ -52,10 +52,10 @@ import {
 export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
   const {
-    config, updateSplitEnabled, updateSpotlight, updateNotifications,
+    config, updateSpotlight, updateNotifications,
     updateTheme, updateLanguage, updateUsageCardEnabled, updateAgentContextEnabled,
   } = useConfig()
-  const { splitEnabled, splitActive, toggleSplitEnabled, toggleSplitActive, setConfig } = useStore()
+  const { splitActive, toggleSplitActive, setConfig } = useStore()
   const activeTheme = useTheme()
   const activeLanguage = useLanguage()
   const { zoom, set: setZoom, step: stepZoom } = useZoom()
@@ -237,15 +237,14 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
         />
         {/* The split view beside the scale: both are about how the window is laid out.
             THE TILE IS THE SPLIT ITSELF, not the permission for it — the title bar's
-            normal/split switch went when this arrived. Turning it on also turns the
-            feature flag on if it was off, so the tile never lands in the state where it
-            is lit and nothing happens; turning it off leaves the flag alone, since a
-            window put back to one pane is not a feature being disabled. */}
+            normal/split switch went when this arrived, and the feature flag that used to
+            sit behind it went too. One switch, one meaning: the window is in two panes
+            or it is not, and the Application page says the same thing with the same
+            value. */}
         <ToggleButton
           icon={SquareSplitHorizontal}
           checked={splitActive}
           onChange={(next) => {
-            if (next && !splitEnabled) { toggleSplitEnabled(); void write(() => updateSplitEnabled(true)) }
             if (next !== splitActive) toggleSplitActive()
           }}
           caption={false}

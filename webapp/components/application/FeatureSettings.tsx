@@ -101,8 +101,8 @@ export function FeatureSettings() {
       <SettingsCard icon={Sparkles} title={t('settings.features')}>
         <SettingRow label={t('settings.split.label')} description={t('settings.split.help')}>
           <Toggle
-            checked={settings.splitEnabled ?? DEFAULTS.splitEnabled}
-            onChange={(splitEnabled) => patch({ splitEnabled })}
+            checked={settings.splitActive ?? DEFAULTS.splitActive}
+            onChange={(splitActive) => patch({ splitActive })}
             label={t('settings.split.label')}
           />
         </SettingRow>
