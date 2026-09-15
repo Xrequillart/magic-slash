@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CollapsibleLine, PullRequestCard, ReviewThreadLine, type PRTone, type PullRequestState } from '@ds/desktop'
+import {
+  Banner,
+  CheckList,
+  CollapsibleLine,
+  PullRequestCard,
+  ReviewThreadLine,
+  Tally,
+  type PRTone,
+  type PullRequestState,
+} from '@ds/desktop'
 import {
   AlertTriangle,
   CheckCircle,
@@ -105,17 +114,19 @@ const WATCH_ERROR_LABELS: Record<PRWatchError, { label: MessageKey; fix: Message
   network: { label: 'agentInfo.pr.error.network', fix: 'agentInfo.pr.error.networkFix' },
 }
 
-// One entry per state a single check can be in — the icons of the list inside the
-// checks card, and the same vocabulary the card's own checks line is built from.
-const CHECK_STATES = {
-  passed: { Icon: CheckCircle2, tone: 'green', label: 'agentInfo.pr.checkPassed', spin: false },
-  failed: { Icon: XCircle, tone: 'red', label: 'agentInfo.pr.checkFailed', spin: false },
-  running: { Icon: Loader2, tone: 'blue', label: 'agentInfo.pr.checkRunning', spin: true },
-  skipped: { Icon: MinusCircle, tone: 'muted', label: 'agentInfo.pr.checkSkipped', spin: false },
-} as const satisfies Record<
-  PRCheck['state'],
-  { Icon: typeof CheckCircle2; tone: PRTone; label: MessageKey; spin: boolean }
->
+// What each state is CALLED, and nothing else: the glyph and the colour are
+// `CHECK_STATE_MARK`'s in the design system, on `PR_STATE_MARK`'s model — a red cross
+// for a failed check is not a fact about this watcher. What stays here is the half
+// that needs a catalogue and a language. The app's four states and the design
+// system's are the same four words, so `PRCheck['state']` is already a `CheckState`
+// and the list below hands one straight over — the day they diverge, that call site
+// is what stops compiling.
+const CHECK_STATE_LABELS = {
+  passed: 'agentInfo.pr.checkPassed',
+  failed: 'agentInfo.pr.checkFailed',
+  running: 'agentInfo.pr.checkRunning',
+  skipped: 'agentInfo.pr.checkSkipped',
+} as const satisfies Record<PRCheck['state'], MessageKey>
 
 // `undefined` is its own entry, not a missing one: GitHub answers UNKNOWN while it
 // computes mergeability, and that must never render as "conflicts" — nor as a tick,
@@ -771,27 +782,27 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
           the state of the PR — and it carries its own fix, the same way each watch
           error names one. */}
       {watcherOff ? (
-        <div className="p-2">
-          <div className="flex items-start gap-2 rounded-lg bg-surface-sunken px-2 py-1.5">
-            <EyeOff className="w-3.5 h-3.5 text-icon flex-shrink-0 mt-px" />
-            <div className="min-w-0 flex-1">
-              <div className="text-[11px] text-ink/80 font-medium">{t('agentInfo.pr.watcherOff')}</div>
-              <div className="text-[10px] text-text-secondary/70">
-                {/* Two different situations behind one setting: a card that has a
-                    snapshot hidden behind it is dated, one carrying only the link
-                    is empty. */}
-                {t(hasSnapshot ? 'agentInfo.pr.watcherOffStale' : 'agentInfo.pr.watcherOffEmpty')}
-              </div>
-            </div>
-            <button
-              onClick={handleEnableWatcher}
-              disabled={enabling}
-              className="flex-shrink-0 px-2 py-1 rounded-lg bg-accent/10 hover:bg-accent/20 text-accent text-[11px] font-medium transition-colors disabled:opacity-50"
-            >
-              {t('agentInfo.pr.enableWatcher')}
-            </button>
-          </div>
-        </div>
+        /* `accent` AND NOT A SEVERITY, which is exactly what that variant is for:
+           nothing has gone wrong and nothing has succeeded — the reader switched the
+           watcher off and can switch it back on, and the band is here to explain why
+           the card below behaves differently until they do. Its mark is `EyeOff`
+           rather than the variant's own: a mode is a specific thing, and this one is
+           "not looking". */
+        <Banner
+          variant="accent"
+          layout="inset"
+          icon={EyeOff}
+          /* Two different situations behind one setting: a card that has a snapshot
+             hidden behind it is dated, one carrying only the link is empty. */
+          hint={t(hasSnapshot ? 'agentInfo.pr.watcherOffStale' : 'agentInfo.pr.watcherOffEmpty')}
+          action={{
+            label: t('agentInfo.pr.enableWatcher'),
+            onClick: () => void handleEnableWatcher(),
+            busy: enabling,
+          }}
+        >
+          {t('agentInfo.pr.watcherOff')}
+        </Banner>
       ) : (
         /* The checklist — everything that has to be true before this PR can ship, one
            line each, ticked when it is. Straight under the header because it is the band
@@ -810,13 +821,18 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
           {/* Why the watcher is blind, and how to fix it. Above the verdict on
               purpose: a stale verdict is worth less than the reason it is stale. */}
           {watchError && (
-            <div className="flex items-start gap-2 bg-red/10 px-3 py-2">
-              <AlertTriangle className="w-3.5 h-3.5 text-red flex-shrink-0 mt-px" />
-              <div className="min-w-0">
-                <div className="text-[11px] text-red font-medium">{t(WATCH_ERROR_LABELS[watchError].label)}</div>
-                <div className="text-[10px] text-text-secondary/70">{t(WATCH_ERROR_LABELS[watchError].fix)}</div>
-              </div>
-            </div>
+            /* No `icon`: `danger` brings its own, and a variant that names its mark is
+               one this card cannot spell differently from the next surface to report
+               the same failure. The FIX goes in the hint, which is the one thing an
+               `inset` band lets wrap — a truncated remedy is a remedy nobody can
+               follow. */
+            <Banner
+              variant="danger"
+              layout="inset"
+              hint={t(WATCH_ERROR_LABELS[watchError].fix)}
+            >
+              {t(WATCH_ERROR_LABELS[watchError].label)}
+            </Banner>
           )}
 
           {/* No review line here: the verdict is the header badge now, and stating
@@ -849,14 +865,7 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
                 {/* Where they were left, then who left them. Allowed to wrap here —
                     the fold is open because somebody asked for the detail. */}
                 {commentRows.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-text-secondary/70">
-                    {commentRows.map((row) => (
-                      <span key={row.label} className="flex items-center gap-1">
-                        <span className="text-ink/80 font-medium tabular-nums">{row.value}</span>
-                        {t(row.label)}
-                      </span>
-                    ))}
-                  </div>
+                  <Tally counts={commentRows.map((row) => ({ label: t(row.label), value: row.value }))} />
                 )}
                 {/* Who spoke, until we know what they said. The list below names its
                     own authors line by line, so keeping both would say it twice. */}
@@ -953,29 +962,17 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
                 : undefined}
             >
               {checkList.length > 0 && (
-                <ul className="space-y-1">
-                  {checkList.map((check) => {
-                    const { Icon, tone, label, spin } = CHECK_STATES[check.state]
-                    return (
-                      <li key={`${check.state}:${check.name}`} className="flex items-center gap-1.5">
-                        <span className="flex-shrink-0 flex" title={t(label)}>
-                          <Icon className={`w-3 h-3 ${tone} ${spin ? 'animate-spin' : ''}`} />
-                        </span>
-                        {/* Sans, like every other label on this card: a check name is
-                            read as a name, not as code, and the mono face it used to
-                            carry was the one thing here in a different typeface. */}
-                        <span className="min-w-0 text-[10px] text-text-secondary/70 truncate" title={check.name}>
-                          {check.name}
-                        </span>
-                      </li>
-                    )
-                  })}
-                  {hiddenChecks > 0 && (
-                    <li className="pl-[18px] text-[10px] text-text-secondary/50">
-                      {t('agentInfo.pr.checksMore', { count: hiddenChecks })}
-                    </li>
-                  )}
-                </ul>
+                /* The names as the watcher ordered them — worst first, and capped by it
+                   too, which is what `more` says out loud. Every check goes over as a
+                   state and a word: the glyph and the colour are the design system's. */
+                <CheckList
+                  checks={checkList.map((check) => ({
+                    name: check.name,
+                    state: check.state,
+                    stateLabel: t(CHECK_STATE_LABELS[check.state]),
+                  }))}
+                  more={hiddenChecks > 0 ? t('agentInfo.pr.checksMore', { count: hiddenChecks }) : undefined}
+                />
               )}
             </CollapsibleLine>
           )}

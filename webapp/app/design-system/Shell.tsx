@@ -13,7 +13,9 @@ import { CommitLineEntry } from './entries/CommitLineEntry'
 import { DiffStatEntry } from './entries/DiffStatEntry'
 import { FileModifiedLineEntry } from './entries/FileModifiedLineEntry'
 import { UnCommittedChangesCardEntry } from './entries/UnCommittedChangesCardEntry'
+import { CheckListEntry } from './entries/CheckListEntry'
 import { CollapsibleLineEntry } from './entries/CollapsibleLineEntry'
+import { TallyEntry } from './entries/TallyEntry'
 import { ReviewThreadLineEntry } from './entries/ReviewThreadLineEntry'
 import { PullRequestCardEntry } from './entries/PullRequestCardEntry'
 import { RepositoryCardEntry } from './entries/RepositoryCardEntry'
@@ -104,7 +106,9 @@ const ENTRIES: Record<
   diffstat: DiffStatEntry,
   filemodifiedline: FileModifiedLineEntry,
   uncommittedchangescard: UnCommittedChangesCardEntry,
+  checklist: CheckListEntry,
   collapsibleline: CollapsibleLineEntry,
+  tally: TallyEntry,
   reviewthreadline: ReviewThreadLineEntry,
   pullrequestcard: PullRequestCardEntry,
   repositorycard: RepositoryCardEntry,

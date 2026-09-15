@@ -63,11 +63,46 @@ interface BannerTone {
    */
   plate: string
   /**
+   * The ground the variant's own button sits on, at rest and under the pointer.
+   *
+   * The `plate`'s job for a control instead of a mark, and a rung lighter: a plate is a
+   * 28px square that has to hold its colour against a whole strip, where this is a chip
+   * carrying a word in `accent` already. 10% reads as a tint under text, and doubling
+   * it on hover is the whole of the press.
+   *
+   * Both halves spelled in full, for `TONES`' own reason: Tailwind reads source as text
+   * and `hover:bg-${variant}/20` generates nothing.
+   */
+  press: string
+  /**
    * The mark. A variant that could not name its own icon would be a variant with
    * no opinion, and the four would drift apart one call site at a time. A caller
    * may still override it — see `icon` — but never has to supply one.
    */
   icon: IconComponent
+}
+
+/**
+ * The one gesture a banner offers, as data.
+ *
+ * NO ICON AND NO TONE. The mark at the head of the strip already says what kind of
+ * thing this is, and a second glyph on the button beside it says it twice in a row
+ * 288px wide; the colour is the variant's and never the caller's — see `action`.
+ */
+export interface BannerAction {
+  /** The word on it, already translated. */
+  label: string
+  onClick: () => void
+  /**
+   * The gesture is in flight: the button dims and refuses a second click.
+   *
+   * No spinner. The banner is about to be replaced by the fact it is fetching — a
+   * watcher switched back on redraws this whole strip as a checklist — so a loader
+   * here would animate for the moment before its own container disappears.
+   */
+  busy?: boolean
+  /** The native tooltip, when the word alone does not say what will happen. */
+  title?: string
 }
 
 /**
@@ -81,15 +116,15 @@ interface BannerTone {
  * are the ones to move, not this table.
  */
 const TONES: Record<BannerVariant, BannerTone> = {
-  info: { fill: 'bg-blue/10', accent: 'text-blue', edge: 'border-blue/20', plate: 'bg-blue/15', icon: Info },
-  success: { fill: 'bg-green/10', accent: 'text-green', edge: 'border-green/20', plate: 'bg-green/15', icon: CircleCheck },
-  warning: { fill: 'bg-orange/10', accent: 'text-orange', edge: 'border-orange/20', plate: 'bg-orange/15', icon: TriangleAlert },
-  danger: { fill: 'bg-red/10', accent: 'text-red', edge: 'border-red/20', plate: 'bg-red/15', icon: CircleAlert },
+  info: { fill: 'bg-blue/10', accent: 'text-blue', edge: 'border-blue/20', plate: 'bg-blue/15', press: 'bg-blue/10 hover:bg-blue/20', icon: Info },
+  success: { fill: 'bg-green/10', accent: 'text-green', edge: 'border-green/20', plate: 'bg-green/15', press: 'bg-green/10 hover:bg-green/20', icon: CircleCheck },
+  warning: { fill: 'bg-orange/10', accent: 'text-orange', edge: 'border-orange/20', plate: 'bg-orange/15', press: 'bg-orange/10 hover:bg-orange/20', icon: TriangleAlert },
+  danger: { fill: 'bg-red/10', accent: 'text-red', edge: 'border-red/20', plate: 'bg-red/15', press: 'bg-red/10 hover:bg-red/20', icon: CircleAlert },
   // The default mark says what an accent band always says: the click means something
   // else while this is here. A variant that named no icon would be a variant with no
   // opinion — though this is the one tone whose callers nearly always bring their own,
   // because a mode is a specific thing and `TicketPlus` says which.
-  accent: { fill: 'bg-accent/10', accent: 'text-accent', edge: 'border-accent/20', plate: 'bg-accent/15', icon: MousePointerClick },
+  accent: { fill: 'bg-accent/10', accent: 'text-accent', edge: 'border-accent/20', plate: 'bg-accent/15', press: 'bg-accent/10 hover:bg-accent/20', icon: MousePointerClick },
 }
 
 /**
@@ -99,9 +134,9 @@ const TONES: Record<BannerVariant, BannerTone> = {
  * that width the sentence wants the smaller size anyway; splitting them into
  * `layout` and `size` would spell four combinations for the two that exist.
  */
-export type BannerLayout = 'row' | 'stacked' | 'band'
+export type BannerLayout = 'row' | 'stacked' | 'band' | 'inset'
 
-export const BANNER_LAYOUTS: readonly BannerLayout[] = ['row', 'stacked', 'band']
+export const BANNER_LAYOUTS: readonly BannerLayout[] = ['row', 'stacked', 'band', 'inset']
 
 /**
  * The `band` layout's height, in pixels, and the reason it is a number anybody can
@@ -136,9 +171,32 @@ interface BannerShape {
   plate?: boolean
   /**
    * The ground, for a layout that does not take the variant's tint. Absent, the tint
-   * and the radius are used — which is every layout but the band.
+   * is used — and with it the radius, unless `square` says otherwise.
    */
   ground?: string
+  /**
+   * The variant's tint, with no radius under it.
+   *
+   * Only the `inset` layout, and only because it is the one layout that takes the tint
+   * WITHOUT floating on a page: it spans a card's band edge to edge, and a radius there
+   * is a corner with the card's own ground showing through it. The `band` layout is
+   * square for the same reason and does not need the flag — it brings a `ground` of its
+   * own, which already replaces the radius.
+   */
+  square?: boolean
+  /**
+   * The message and the hint wrap instead of truncating.
+   *
+   * A band pinned across a window can truncate: there is always more width to be had by
+   * making the window wider, and what it names is usually a thing the reader chose. An
+   * `inset` band has no such width to find — it is as wide as the card it is a band of,
+   * and that card is 248px inside a sidebar at its minimum. What it says there is a
+   * failure and the FIX for it, and a truncated fix is a fix nobody can follow.
+   *
+   * BOTH LINES OR NEITHER. Truncating the message while the fix below it wrapped would
+   * cut off the shorter of the two, which is the wrong one to lose.
+   */
+  wrap?: boolean
   /** A fixed height, for a layout whose height other things measure themselves against. */
   height?: number
 }
@@ -194,6 +252,36 @@ const LAYOUTS: Record<BannerLayout, BannerShape> = {
     ground: 'bg-bg-secondary border-b border-line',
     height: BANNER_BAND_HEIGHT,
   },
+  /**
+   * INSIDE something else: one band of a card, between two hairlines the card draws.
+   *
+   * It is the `band` shape at a card's scale rather than a window's — full-bleed and
+   * square for the same reason, since a card's band spans the card edge to edge. What
+   * it does NOT take from the band is the opacity and the plate: nothing scrolls under
+   * a band that is part of a card's flow, so the variant's tint can stay where it is on
+   * every other layout, across the whole strip. A 28px plate in a 288px sidebar would
+   * be the largest thing in the card.
+   *
+   * `items-start` AND NOT `items-center`, which every other layout uses. This is the
+   * one place a hint wraps (see `wrap`), and a centred mark beside three lines of fix
+   * floats in the middle of them; what it belongs beside is the message's own line.
+   * The `mt-px` on the mark is that line's optical centre — 16px of glyph against a
+   * 16px strut sits a hair high without it.
+   *
+   * `px-3 py-2` and not the row's `px-4 py-3`: the bands above and below it are
+   * `CollapsibleLine`s at `px-3`, and a strip that paid for a wider gutter than the
+   * rows it is stacked with would read as a different object rather than as the same
+   * list interrupted.
+   */
+  inset: {
+    box: 'flex items-start gap-2 px-3 py-2',
+    icon: 'sm',
+    iconClass: 'flex-shrink-0 mt-px',
+    text: 'xs',
+    head: 'flex items-start gap-2 min-w-0 flex-1',
+    square: true,
+    wrap: true,
+  },
 }
 
 export interface BannerProps {
@@ -237,10 +325,30 @@ export interface BannerProps {
    */
   hint?: string
   /**
-   * What can be done about it, if anything. A `row` banner pushes them to the
-   * right edge, a `stacked` one puts them under the sentence. Style them in the
-   * variant's own colour at the call site: buttons in here would need a tier per
-   * tone for a shape that is one banner in the app.
+   * THE ONE THING TO DO ABOUT IT, as data — the banner draws the button itself.
+   *
+   * A single action and not a list, because a banner says one thing and the way out of
+   * it is one gesture: switch the watcher back on, open the settings. Two buttons on a
+   * strip this size is a dialog that forgot to be one.
+   *
+   * IT WEARS THE VARIANT'S OWN COLOUR, which is the whole reason it can be data here
+   * where `actions` below could not. There is no tier to choose — an `accent` banner's
+   * button is the accent, a `danger` one's is the red — so the call site has nothing to
+   * decide and therefore nothing to spell.
+   */
+  action?: BannerAction
+  /**
+   * What can be done about it, when `action` is not enough — the ticket page's pair of
+   * green buttons, one filled and one outlined.
+   *
+   * THE WAY OUT, AND ON ITS WAY OUT. A node arrives with its shape, its padding and its
+   * colour already decided at the call site, which is exactly how this component's own
+   * strips came to disagree before it existed; `action` above is what a banner should be
+   * handed. This stays for the two banners that genuinely draw a PAIR and rank them,
+   * which needs an emphasis this folder has no button tier to express yet.
+   *
+   * A `row` banner pushes them to the right edge, a `stacked` one puts them under the
+   * sentence. Ignored when `action` is set: a banner has one way out or the other.
    */
   actions?: ReactNode
   layout?: BannerLayout
@@ -274,6 +382,7 @@ export function Banner({
   icon: override,
   children,
   hint,
+  action,
   actions,
   layout = 'row',
   bordered = false,
@@ -315,13 +424,14 @@ export function Banner({
           carries the severity and a whole sentence in red is a sentence nobody
           finishes reading. The mark is coloured, the words are not. */}
       {hint ? (
-        // A column, and both lines truncate: a band is as wide as the pane and its
-        // sentence names something the reader chose, which has no maximum length.
+        // A column, and both lines do the same thing: a layout that truncated the
+        // message while letting the fix under it wrap would be cutting the shorter of
+        // the two off. Which thing they do is `wrap`'s.
         <span className="flex flex-col min-w-0">
-          <Text size={shape.text} className="truncate">
+          <Text size={shape.text} className={shape.wrap ? '' : 'truncate'}>
             {children}
           </Text>
-          <Text size={shape.text} tone="secondary" className="truncate">
+          <Text size={shape.text} tone="secondary" className={shape.wrap ? '' : 'truncate'}>
             {hint}
           </Text>
         </span>
@@ -336,7 +446,8 @@ export function Banner({
   return (
     <div
       className={`${shape.box} ${
-        shape.ground ?? `rounded-xl ${tone.fill} ${bordered ? `border ${tone.edge}` : ''}`
+        shape.ground ??
+        `${shape.square ? '' : 'rounded-xl'} ${tone.fill} ${bordered ? `border ${tone.edge}` : ''}`
       } ${className}`}
       // The height as the exported number rather than as a class, for the reason
       // `BANNER_BAND_HEIGHT` gives: the things that pin under a band lay themselves out
@@ -344,14 +455,35 @@ export function Banner({
       style={shape.height ? { height: shape.height } : undefined}
     >
       {shape.head ? <span className={shape.head}>{head}</span> : head}
-      {actions &&
+      {action ? (
+        /* The variant's own chip. `h-6` with `px-2` rather than a padding pair, so the
+           button is exactly as tall as a `ButtonIcon` at `sm` and a banner that grew one
+           of each would not have two control heights on one strip.
+
+           `flex-shrink-0` and `ml-auto` for the reason every other trailing slot has
+           them: the head beside it carries `min-w-0` and would otherwise hand this the
+           squeeze instead of truncating its own sentence. */
+        <button
+          type="button"
+          onClick={action.onClick}
+          disabled={action.busy}
+          title={action.title}
+          className={`ml-auto flex-shrink-0 h-6 inline-flex items-center px-2 rounded-lg border-none
+            cursor-pointer text-xs font-medium transition-colors disabled:opacity-50
+            disabled:cursor-not-allowed ${tone.press} ${tone.accent}`}
+        >
+          {action.label}
+        </button>
+      ) : (
+        actions &&
         // Everything but `stacked` puts them at the right edge; `stacked` is the narrow
         // column, where there is no right edge to push anything to.
         (layout === 'stacked' ? (
           actions
         ) : (
           <span className="ml-auto flex-shrink-0 flex items-center gap-2">{actions}</span>
-        ))}
+        ))
+      )}
     </div>
   )
 }

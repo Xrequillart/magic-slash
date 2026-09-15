@@ -1,6 +1,6 @@
 'use client'
 
-import { BotMessageSquare, TicketPlus, Unlink, X } from 'lucide-react'
+import { BotMessageSquare, EyeOff, TicketPlus, Unlink, X } from 'lucide-react'
 import { Banner, BANNER_VARIANTS, type BannerVariant } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
@@ -56,10 +56,16 @@ const PROPS: PropRow[] = [
     ),
   },
   {
+    name: 'action',
+    type: '{ label, onClick, busy?, title? }',
+    description:
+      'The one thing to do about it, as data — the banner draws the button itself, in the variant’s own colour. That is the whole reason it can be data here where actions below could not: there is no tier to choose, so the call site has nothing to decide and therefore nothing to spell. A single action and not a list, because two buttons on a strip this size is a dialog that forgot to be one.',
+  },
+  {
     name: 'actions',
     type: 'ReactNode',
     description:
-      'Right edge on a row, under the sentence when stacked. Styled at the call site: buttons in the component would need a tier per tone for a shape used once.',
+      'The way out, and on its way out. Right edge on a row, under the sentence when stacked, styled at the call site. It stays for the two banners that draw a PAIR and rank them — a filled button and an outlined one — which needs an emphasis this folder has no button tier to express yet. Ignored when action is set.',
   },
   {
     name: 'hint',
@@ -69,10 +75,10 @@ const PROPS: PropRow[] = [
   },
   {
     name: 'layout',
-    type: "'row' | 'stacked' | 'band'",
+    type: "'row' | 'stacked' | 'band' | 'inset'",
     fallback: "'row'",
     description:
-      'Arrangement and type scale together, not two props. A banner stacks exactly when its column is too narrow for a sentence beside a button, and at that width it wants the smaller size anyway. band is the pinned drawing: opaque, square-cornered, full-bleed, a hairline underneath and a fixed 53px — BANNER_BAND_HEIGHT, which the bars pinning below it offset themselves by.',
+      'Arrangement and type scale together, not two props. A banner stacks exactly when its column is too narrow for a sentence beside a button, and at that width it wants the smaller size anyway. band is the pinned drawing: opaque, square-cornered, full-bleed, a hairline underneath and a fixed 53px — BANNER_BAND_HEIGHT, which the bars pinning below it offset themselves by. inset is that shape at a card’s scale rather than a window’s: square and full-bleed too, but tinted like every other layout, since nothing scrolls under a band that is part of a card’s flow.',
   },
   {
     name: 'bordered',
@@ -237,6 +243,61 @@ export function BannerEntry({
   actions={<CancelButton />}
 >
   {t('tasks.pick.title', { name: agentName })}
+</Banner>`}</Snippet>
+      </EntrySection>
+
+      <EntrySection
+        title="The inset"
+        note="The band’s shape at a CARD’s scale rather than a window’s: square and full-bleed for the same reason, since a card’s band spans the card edge to edge. What it does not take from the band is the opacity and the plate — nothing scrolls under a strip that is part of a card’s flow, so the variant’s tint stays where it is on every other layout. The agent sidebar’s pull request card stacks these between its checklist rows."
+      >
+        {/* The real arrangement: `PullRequestCard` draws a hairline over every child it
+            is given, so the bands and the rows below them read as one list interrupted
+            rather than as a strip dropped on top of a card. */}
+        <Stage theme={theme} className="flex flex-col gap-3">
+          <Specimen label="danger — the fact, and the fix under it">
+            <div className="max-w-[300px] overflow-hidden rounded-lg bg-ink/5">
+              <Banner variant="danger" layout="inset" hint="Add one in Settings → Integrations.">
+                No GitHub token
+              </Banner>
+            </div>
+          </Specimen>
+          <Specimen label="accent with an action — a mode, and the way out of it">
+            <div className="max-w-[300px] overflow-hidden rounded-lg bg-ink/5">
+              <Banner
+                variant="accent"
+                layout="inset"
+                icon={EyeOff}
+                hint="What is below was last read an hour ago."
+                action={{ label: 'Turn on', onClick: () => {} }}
+              >
+                PR watching is off
+              </Banner>
+            </div>
+          </Specimen>
+        </Stage>
+
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          It is the one layout that <em>wraps</em>. A band pinned across a window can truncate
+          — there is always more width to be had by making the window wider, and what it names
+          is usually a thing the reader chose — where an inset band has no such width to find:
+          it is as wide as the card it is a band of, which is 248px inside a sidebar at its
+          minimum. What it says there is a failure and the <em>fix</em> for it, and a truncated
+          fix is a fix nobody can follow. Both lines or neither: truncating the message while
+          the fix below it wrapped would cut off the shorter of the two.
+        </p>
+
+        <Snippet>{`<Banner
+  variant="accent"
+  layout="inset"
+  icon={EyeOff}
+  hint={t('agentInfo.pr.watcherOffStale')}
+  action={{
+    label: t('agentInfo.pr.enableWatcher'),
+    onClick: () => void enableWatcher(),
+    busy: enabling,
+  }}
+>
+  {t('agentInfo.pr.watcherOff')}
 </Banner>`}</Snippet>
       </EntrySection>
 

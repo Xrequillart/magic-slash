@@ -26,8 +26,10 @@ export type EntryId =
   | 'diffstat'
   | 'filemodifiedline'
   | 'uncommittedchangescard'
+  | 'checklist'
   | 'collapsibleline'
   | 'reviewthreadline'
+  | 'tally'
   | 'pullrequestcard'
   | 'scriptcard'
   | 'repositorycard'
@@ -77,8 +79,10 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   diffstat: 'DiffStat',
   filemodifiedline: 'FileModifiedLine',
   uncommittedchangescard: 'UnCommittedChangesCard',
+  checklist: 'CheckList',
   collapsibleline: 'CollapsibleLine',
   reviewthreadline: 'ReviewThreadLine',
+  tally: 'Tally',
   pullrequestcard: 'PullRequestCard',
   scriptcard: 'ScriptCard',
   repositorycard: 'RepositoryCard',
@@ -175,8 +179,10 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   diffstat: ['text'],
   filemodifiedline: ['diffstat', 'text'],
   uncommittedchangescard: ['filemodifiedline', 'diffstat', 'text'],
+  checklist: ['icon'],
   collapsibleline: ['icon', 'text'],
   reviewthreadline: ['icon', 'label', 'text'],
+  tally: [],
   pullrequestcard: ['buttonicon', 'collapsibleline', 'icon', 'text'],
   scriptcard: ['loader', 'icon', 'text'],
   repositorycard: ['card', 'headerrepocard', 'branchcard', 'uncommittedchangescard', 'commitcard'],
@@ -290,8 +296,10 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   diffstat: 'How much was added, how much was taken away',
   filemodifiedline: 'One file that has changed, and by how much',
   uncommittedchangescard: 'The files you are in the middle of',
+  checklist: 'Every check the run is made of, named',
   collapsibleline: 'One box to tick, and what is behind it',
   reviewthreadline: 'One review thread, scanned rather than read',
+  tally: 'A total, broken into the parts it is made of',
   pullrequestcard: 'A pull request, as the sidebar watches it',
   scriptcard: 'A process still alive on your machine',
   repositorycard: 'One repository, and everything happening to it',
