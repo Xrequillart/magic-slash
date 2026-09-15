@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.94.10] - 2026-09-15
+
+### Added
+
+- **Desktop**: The update flow is a dialog that holds the screen, from the release found at launch to the relaunch: the version found, then the download running, then a five second countdown before the app restarts into it. The button that used to sit at the foot of the left sidebar is gone, and with it the last slot in that column
+- **Desktop**: The uncommitted changes card says when there is nothing in flight instead of disappearing. It only says so when the branch is not ahead either, so the sentence and the commit card under it can never disagree
+
+### Changed
+
+- **Desktop**: The repository card's own empty state is gone. It could never appear: the app passed it only when a branch existed, and a branch that exists was one of the three things that had to be absent for it to draw
+
 ## [0.94.9] - 2026-09-14
 
 ### Changed
@@ -2930,6 +2941,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.94.10]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.10
 [0.94.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.9
 [0.94.8]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.8
 [0.94.7]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.7
