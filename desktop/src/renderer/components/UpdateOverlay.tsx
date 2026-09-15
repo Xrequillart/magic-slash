@@ -100,14 +100,14 @@ export function UpdateOverlay() {
   const t = useT()
   const activeTerminalId = useStore((s) => s.activeTerminalId)
   // The one thing left that is worth interrupting for: the download is on disk, the
-  // restart was asked for, and it did not happen. Everything else the updater has to
-  // say is reported by the sidebar row instead.
+  // restart happened, and the app did not come back. Everything else the updater has
+  // to say is `UpdateModal`'s dialog to report.
   const [installError, setInstallError] = useState<string | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
   const [debugMenuOpen, setDebugMenuOpen] = useState(false)
   const [emptyStatePinned, setEmptyStatePinned] = useState(false)
   const [planningAgentPinned, setPlanningAgentPinned] = useState(false)
-  const [updateRowPinned, setUpdateRowPinned] = useState(false)
+  const [updateDialogPinned, setUpdateDialogPinned] = useState(false)
   const debugMenuRef = useRef<HTMLDivElement>(null)
   const confettiRef = useRef<HTMLCanvasElement>(null)
   const lastStatusTypeRef = useRef<UpdateStatus['type'] | null>(null)
@@ -130,26 +130,26 @@ export function UpdateOverlay() {
   }
 
   /**
-   * Hands the sidebar update row a fake status to hold. It is the only way to see
-   * that row in development: checkForUpdatesOnStartup() returns early under the dev
+   * Hands the update dialog a fake status to hold. It is the only way to see that
+   * dialog in development: checkForUpdatesOnStartup() returns early under the dev
    * server, so no real status ever reaches it.
    *
-   * A toggle rather than a scripted playback, because the point is to CLICK it —
-   * the row simulates its own download and restart while pinned, so the whole
-   * offered → transferring → ready path is walked by hand.
+   * A toggle rather than a scripted playback, because the point is to WATCH it — the
+   * dialog simulates its own download and relaunch while pinned, so the whole found →
+   * transferring → counting down path plays out by hand.
    */
-  function toggleUpdateRow() {
-    const next = !updateRowPinned
-    setUpdateRowPinned(next)
+  function toggleUpdateDialog() {
+    const next = !updateDialogPinned
+    setUpdateDialogPinned(next)
     setDebugMenuOpen(false)
     window.dispatchEvent(new CustomEvent('debug:update-sim', {
       detail: next ? { type: 'available', version: '1.0.0' } : null,
     }))
   }
 
-  /** Jumps the pinned row straight to a failed download, so retry can be clicked. */
-  function pinUpdateRowError() {
-    setUpdateRowPinned(true)
+  /** Jumps the pinned dialog straight to a failed download, so retry can be clicked. */
+  function pinUpdateDialogError() {
+    setUpdateDialogPinned(true)
     setDebugMenuOpen(false)
     window.dispatchEvent(new CustomEvent('debug:update-sim', {
       detail: { type: 'error', message: 'net::ERR_CONNECTION_RESET (simulated)', phase: 'download' },
@@ -247,10 +247,9 @@ export function UpdateOverlay() {
   }, [debugMenuOpen])
 
   // The real update flow, and all that is left of it here. The whole sequence —
-  // check, download, restart — is reported and driven by the sidebar update row now:
-  // nothing about an update in progress blacks out the app, not the automatic startup
-  // check, not the transfer, and not the finished download either (its Restart and
-  // Later sit in that row, next to the progress bar that preceded them).
+  // check, download, relaunch — is reported and driven by `UpdateModal` now, in a
+  // dialog that holds the screen from the moment a release is found until the app
+  // comes back newer.
   //
   // Two things still belong to this component: the burst of confetti when a download
   // lands, and the overlay for a restart that failed.
@@ -282,8 +281,8 @@ export function UpdateOverlay() {
 
   return (
     <>
-      {/* Over the live app, never blocking it: the update is ready, and clicking
-          straight through the celebration to keep working is the point. */}
+      {/* Over the dialog, and never in its way: `pointer-events-none` means the
+          countdown underneath still takes the one click it offers. */}
       {showConfetti && (
         <canvas ref={confettiRef} className="fixed inset-0 w-full h-full pointer-events-none z-[101]" />
       )}
@@ -328,21 +327,21 @@ export function UpdateOverlay() {
                 {installError && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
               </button>
               <button
-                onClick={toggleUpdateRow}
+                onClick={toggleUpdateDialog}
                 className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-bg-tertiary ${
-                  updateRowPinned ? 'text-purple' : 'text-text-secondary hover:text-ink'
+                  updateDialogPinned ? 'text-purple' : 'text-text-secondary hover:text-ink'
                 }`}
               >
                 <Download className="w-3.5 h-3.5" />
-                Sidebar update row
-                {updateRowPinned && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
+                Update dialog
+                {updateDialogPinned && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
               </button>
               <button
-                onClick={pinUpdateRowError}
+                onClick={pinUpdateDialogError}
                 className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors"
               >
                 <AlertTriangle className="w-3.5 h-3.5" />
-                Update row: failed
+                Update dialog: failed
               </button>
               <button
                 onClick={toggleEmptyState}

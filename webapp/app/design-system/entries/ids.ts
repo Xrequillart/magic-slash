@@ -46,6 +46,7 @@ export type EntryId =
   | 'menusidebaritem'
   | 'sidebar'
   | 'apptitlebar'
+  | 'updatedialog'
 
 export const ENTRY_LABELS: Record<EntryId, string> = {
   colors: 'Colours',
@@ -64,6 +65,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   menusidebaritem: 'MenuSidebarItem',
   sidebar: 'Sidebar',
   apptitlebar: 'AppTitleBar',
+  updatedialog: 'UpdateDialog',
   text: 'Text',
   avatar: 'Avatar',
   label: 'Label',
@@ -161,6 +163,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   menusidebaritem: ['avatar', 'icon', 'text'],
   sidebar: ['menusidebar', 'agent', 'buttonicon', 'selecticon', 'usageclaudecodecard'],
   apptitlebar: ['buttonicon', 'label'],
+  updatedialog: ['modal', 'card', 'icon', 'progress', 'text'],
   text: [],
   avatar: ['icon'],
   label: ['icon', 'text', 'avatar'],
@@ -269,6 +272,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   titleagentcard: 'Who an agent is, in four facts',
   menusidebaritem: 'One row that takes you somewhere',
   sidebar: 'The whole left column, and it knows nothing',
+  updatedialog: 'The app, about to become a newer app',
   speccard: 'A plan being written, live',
   modal: 'The ground a dialog floats on',
   repositoryselector: 'Which repositories an agent works in',

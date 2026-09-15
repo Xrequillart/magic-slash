@@ -16,6 +16,7 @@ import type { TabStripItem } from './components/TabStrip'
 import { Sidebar } from './components/Sidebar'
 import { AgentInfoSidebar } from './components/AgentInfoSidebar'
 import { ToastContainer, showToast } from './components/Toast'
+import { UpdateModal } from './components/UpdateModal'
 import { UpdateOverlay } from './components/UpdateOverlay'
 import { WhatsNewModal } from './components/WhatsNewModal'
 import { ScriptTerminalModal } from './components/ScriptTerminalModal'
@@ -679,7 +680,12 @@ export function App() {
           pending payload when the user closes it, so it comes back on its own. */}
       {!showRepoWizard && <WhatsNewModal />}
 
-      {/* Update Overlay */}
+      {/* The update flow, from the release found at launch to the relaunch. It holds
+          the screen for the whole of it, so it is drawn last and over everything. */}
+      <UpdateModal />
+
+      {/* What is left of the overlay: the confetti, and the one failure that has to
+          take the window on its own — a restart that did not happen. */}
       <UpdateOverlay />
     </div>
   )

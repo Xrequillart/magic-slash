@@ -1597,15 +1597,13 @@ export const fr: Record<keyof typeof en, string> = {
   'terminalView.scrollToBottom': 'Aller en bas',
   'terminalView.dropFiles': 'Déposez des fichiers ici',
 
-  // ── Ligne de mise à jour de la barre latérale ────────────────────────────
-  'sidebar.update.available': 'Mise à jour disponible',
-  'sidebar.update.availableTitle': 'Version {version} trouvée — téléchargement en cours',
-  'sidebar.update.downloading': 'Téléchargement…',
-  'sidebar.update.ready': 'Mise à jour prête',
-  'sidebar.update.restart': 'Redémarrer pour installer',
-  'sidebar.update.restartNow': 'Redémarrer',
-  'sidebar.update.restartTitle': 'Redémarrer pour installer la v{version}',
-  'sidebar.update.retry': 'Téléchargement échoué — réessayer',
+  // ── Dialogue de mise à jour ──────────────────────────────────────────────
+  'update.available': 'Mise à jour disponible',
+  'update.downloading': 'Téléchargement de la nouvelle version…',
+  'update.ready': 'Mise à jour prête',
+  'update.restartingIn': 'Redémarrage dans {seconds} s…',
+  'update.failed': 'Téléchargement échoué',
+  'update.retry': 'Réessayer',
 
   // ── Overlay de mise à jour et nouveautés ─────────────────────────────────
   'update.installFailed': 'La mise à jour a bien été téléchargée, mais le redémarrage a échoué. Quittez puis relancez l’application.',

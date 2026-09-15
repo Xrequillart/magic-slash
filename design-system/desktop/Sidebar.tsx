@@ -12,9 +12,9 @@ import type { IconComponent } from './types'
  * THE LEFT COLUMN, WHOLE — and it knows nothing.
  *
  * Every other component in this folder is a piece of the sidebar; this is the sidebar.
- * It draws the menu, the agent list with its header and its groups, whatever foot it
- * is given and the build number, in that order, on the app's own ground at the app's
- * own width. What it does NOT have is a single fact of its own: no store, no
+ * It draws the menu, the agent list with its header and its groups, the usage card and
+ * the build number, in that order, on the app's own ground at the app's own width. What
+ * it does NOT have is a single fact of its own: no store, no
  * translator, no clock, no idea what an agent IS beyond a name and a state. Hand it
  * arrays and it draws them; hand it nothing and it draws an empty column.
  *
@@ -43,10 +43,12 @@ import type { IconComponent } from './types'
  * list is a style decision, and a slot posts it out to the call site where no drawing of
  * this column can reach it.
  *
- * THE FOOT IS STILL A NODE, for the one thing left in it: the update flow talks to
- * Electron — it decides on its own whether there is anything to show, downloads, relaunches
- * — and a folder that cannot import the app cannot own it. What this column owns is WHERE
- * the foot sits, under the usage card and above the version line.
+ * AND THERE IS NO SLOT LEFT. The foot used to be a `ReactNode` for the update flow, on the
+ * grounds that a folder which cannot import the app cannot own something that talks to
+ * Electron. Half of that was true and the half that mattered was not: the DRAWING was
+ * never the IPC's. The update is a dialog now — `UpdateDialog`, in this folder, over the
+ * whole window rather than under this column — and nothing hangs beneath the usage card,
+ * so every prop this component takes is data.
  */
 
 /** The app's own width, and deliberately not resizable: see the note in the desktop's
@@ -173,9 +175,6 @@ export interface SidebarProps {
   emptyLabel?: string
   /** The account's rate limits, under the scroll. Absent when the reader switched it off. */
   usage?: UsageClaudeCodeCardProps
-  /** What hangs under the usage card: an update to install. See the note above on why
-   *  this one is still a node. */
-  footer?: ReactNode
   /** The build, spelled by the caller — "v0.94.2". Drawn verbatim, because which
    *  prefix a version wears is not this column's question. */
   version?: string
@@ -193,7 +192,6 @@ export function Sidebar({
   lists,
   emptyLabel,
   usage,
-  footer,
   version,
   collapsed = false,
   className = '',
@@ -243,11 +241,10 @@ export function Sidebar({
       </nav>
 
       {usage && <UsageClaudeCodeCard {...usage} />}
-      {footer}
 
       {version && (
-        // `pt-1`: whatever sits in the foot carries its own bottom margin, and the
-        // pair used to add up to a blank row between the card and the number.
+        // `pt-1`: the usage card above carries its own bottom margin, and the pair
+        // used to add up to a blank row between the card and the number.
         <div className="px-4 pt-1 pb-2 text-xs text-text-secondary flex items-center justify-start gap-2">
           <span className="opacity-60">{version}</span>
         </div>

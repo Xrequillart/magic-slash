@@ -1720,15 +1720,13 @@ export const en = {
   'terminalView.scrollToBottom': 'Scroll to bottom',
   'terminalView.dropFiles': 'Drop files here',
 
-  // ── Sidebar update row ───────────────────────────────────────────────────
-  'sidebar.update.available': 'Update available',
-  'sidebar.update.availableTitle': 'Version {version} found — downloading it now',
-  'sidebar.update.downloading': 'Downloading…',
-  'sidebar.update.ready': 'Update ready',
-  'sidebar.update.restart': 'Restart to install',
-  'sidebar.update.restartNow': 'Restart',
-  'sidebar.update.restartTitle': 'Restart to install v{version}',
-  'sidebar.update.retry': 'Download failed — retry',
+  // ── Update dialog ────────────────────────────────────────────────────────
+  'update.available': 'Update available',
+  'update.downloading': 'Downloading the new version…',
+  'update.ready': 'Update ready',
+  'update.restartingIn': 'Restarting in {seconds}s…',
+  'update.failed': 'Download failed',
+  'update.retry': 'Try again',
 
   // ── Update overlay & What’s New ──────────────────────────────────────────
   'update.installFailed': 'The update was downloaded, but the restart failed. Please quit and reopen the app.',

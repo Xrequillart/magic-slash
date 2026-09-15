@@ -30,7 +30,7 @@ import {
   Plus,
   Sparkles,
 } from '@ds/desktop/icons'
-import { AppTitleBar, Sidebar, UsageClaudeCodeCard, type SidebarAgentRow } from '@ds/desktop'
+import { AppTitleBar, Sidebar, type SidebarAgentRow } from '@ds/desktop'
 import { useT } from '@/lib/i18n/useLanguage'
 import { InfoSidebarPanel } from '../features/InfoSidebarMockup'
 import { AppGround } from '../AppGround'
@@ -536,37 +536,39 @@ export function AppWindowMockup() {
                 agents: AGENTS,
               },
             ]}
-            footer={
-              <UsageClaudeCodeCard
-                className="mx-2 mb-2"
-                account="Camille"
-                limits={[
-                  {
-                    id: 'session',
-                    label: t('site.usageCard.session'),
-                    shortLabel: t('site.usageCard.sessionShort'),
-                    percent: SESSION_PCT,
-                    reset: t('site.usageCard.resetSession'),
-                  },
-                  {
-                    id: 'weekly',
-                    label: t('site.usageCard.weekly'),
-                    shortLabel: t('site.usageCard.weeklyShort'),
-                    percent: WEEKLY_PCT,
-                    reset: t('site.usageCard.resetWeekly'),
-                  },
-                ]}
-                // `LimitGauge`'s own: green below 65, orange from 65, red from 85. The
-                // session gauge sits on the far side of the first one, so the card is
-                // caught having changed colour.
-                thresholds={{ warning: 65, danger: 85 }}
-                onToggle={noop}
-                expandLabel={t('site.usageCard.expand')}
-                collapseLabel={t('site.usageCard.collapse')}
-                emptyLabel={t('site.usageCard.empty')}
-                emptyHint={t('site.usageCard.emptyHint')}
-              />
-            }
+            /* DATA, not a card. The column draws `UsageClaudeCodeCard` itself — this
+               used to come through a `footer` slot, which was the drawing deciding
+               where the app's own card goes. That slot is gone and so is the copy of
+               that decision. */
+            usage={{
+              className: 'mx-2 mb-2',
+              account: 'Camille',
+              limits: [
+                {
+                  id: 'session',
+                  label: t('site.usageCard.session'),
+                  shortLabel: t('site.usageCard.sessionShort'),
+                  percent: SESSION_PCT,
+                  reset: t('site.usageCard.resetSession'),
+                },
+                {
+                  id: 'weekly',
+                  label: t('site.usageCard.weekly'),
+                  shortLabel: t('site.usageCard.weeklyShort'),
+                  percent: WEEKLY_PCT,
+                  reset: t('site.usageCard.resetWeekly'),
+                },
+              ],
+              // `LimitGauge`'s own: green below 65, orange from 65, red from 85. The
+              // session gauge sits on the far side of the first one, so the card is
+              // caught having changed colour.
+              thresholds: { warning: 65, danger: 85 },
+              onToggle: noop,
+              expandLabel: t('site.usageCard.expand'),
+              collapseLabel: t('site.usageCard.collapse'),
+              emptyLabel: t('site.usageCard.empty'),
+              emptyHint: t('site.usageCard.emptyHint'),
+            }}
             version={VERSION}
           />
         </AppGround>

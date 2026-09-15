@@ -8,7 +8,6 @@ import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos }
 import { groupKeyOf, isGroupStart, repoLabel } from '../hooks/terminalOrder'
 import { useAgentSortAction } from './AgentSort'
 import { useSidebarUsageCard } from './SidebarUsageCard'
-import { SidebarUpdateButton } from './SidebarUpdateButton'
 import { useAccountMenuEntry } from './SidebarAccount'
 import { LoginScreen } from './LoginScreen'
 import { useT } from '../i18n'
@@ -328,10 +327,6 @@ export function Sidebar() {
         /* Claude usage card — opt-out: shown unless explicitly disabled. The CARD is the
            column's; this is only where its numbers come from. */
         usage={usageCardEnabled ? usageCard : undefined}
-        /* Renders itself only when there is an update to act on, and stays a node for it:
-           the flow talks to Electron. Not behind the usage card's setting either — hiding
-           usage must not hide the update. */
-        footer={<SidebarUpdateButton />}
         version={APP_VERSION}
       />
 

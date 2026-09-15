@@ -37,6 +37,7 @@ import { ProgressBarEntry } from './entries/ProgressBarEntry'
 import { SelectIconEntry } from './entries/SelectIconEntry'
 import { AppTitleBarEntry } from './entries/AppTitleBarEntry'
 import { SidebarEntry } from './entries/SidebarEntry'
+import { UpdateDialogEntry } from './entries/UpdateDialogEntry'
 import { StatusEntry } from './entries/StatusEntry'
 import { SwitchEntry } from './entries/SwitchEntry'
 import { TextEntry } from './entries/TextEntry'
@@ -92,6 +93,7 @@ const ENTRIES: Record<
   menusidebaritem: MenuSidebarItemEntry,
   sidebar: SidebarEntry,
   apptitlebar: AppTitleBarEntry,
+  updatedialog: UpdateDialogEntry,
   avatar: AvatarEntry,
   label: LabelEntry,
   status: StatusEntry,

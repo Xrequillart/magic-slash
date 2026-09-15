@@ -118,12 +118,6 @@ const PROPS: PropRow[] = [
       'There is no agent at all, anywhere — centred in the space the lists would fill. Distinct from a list’s emptyHint, which is one empty zone beside a full one.',
   },
   {
-    name: 'footer',
-    type: 'ReactNode',
-    description:
-      'What hangs under the usage card: an update to install. Still a node, and it is the honest answer — the update flow talks to Electron, decides on its own whether there is anything to show, downloads and relaunches. A folder that cannot import the app cannot own it. What this column owns is where the foot sits, under the usage card and above the version line.',
-  },
-  {
     name: 'version',
     type: 'string',
     description:
