@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckList, CollapsibleLine, type CheckListEntry as Check } from '@ds/desktop'
+import { CheckList, COMPONENT_SIZES, CollapsibleLine, type CheckListEntry as Check } from '@ds/desktop'
 import { AlertTriangle } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
@@ -19,6 +19,13 @@ const PROPS: PropRow[] = [
     type: 'string',
     description:
       '“and 14 more”, when the list is capped — already composed and already translated. A fold showing 20 checks under a header that reads 12/34 invites the reader to count, and the count they arrive at is wrong.',
+  },
+  {
+    name: 'size',
+    type: "'sm' | 'md' | 'lg'",
+    fallback: "'sm'",
+    description:
+      'ComponentSize, which is Label’s scale promoted to the shared one. sm is the fold this was built for — a 10px name beside a 12px tick. It climbs because the line above it climbed, never because the list wants to be louder.',
   },
   {
     name: 'className',
@@ -106,6 +113,28 @@ export function CheckListEntry({ theme, onOpen }: { theme: DesktopTheme; onOpen?
           <code>skipped</code> is muted rather than neutral. It is the one state that is
           settled without having been done, and a grey minus beside a green tick reads as
           “not applicable” where a full-strength one reads as a third outcome.
+        </p>
+      </EntrySection>
+
+      <EntrySection
+        title="Seven rungs, and they are the folder’s"
+        note="ComponentSize — 2xs through 2xl — is the folder’s one ladder, so a caller moving between components relearns nothing. sm is what this always drew: the names used to be a hand-spelled text-[10px], and now they are Text’s 2xs rung."
+      >
+        <Stage theme={theme} className="flex flex-col gap-3">
+          {COMPONENT_SIZES.map((size) => (
+            <Specimen key={size} label={size}>
+              <div className="max-w-[420px] rounded-lg bg-ink/5 p-3">
+                <CheckList checks={RUN.slice(0, 3)} more="and 31 more" size={size} />
+              </div>
+            </Specimen>
+          ))}
+        </Stage>
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          The mark is a rung above the word at the bottom two, and they meet at the top. A tick, a
+          cross and a spinner have to be told apart at a glance, and below 12px they cannot be — so
+          the glyph holds its own floor while the name drops beneath it. The indent on{' '}
+          <code>more</code> is measured rather than chosen: the mark’s width plus the gap, so the
+          remark starts where the names start and not where their icons do.
         </p>
       </EntrySection>
 

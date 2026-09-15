@@ -1,6 +1,6 @@
 'use client'
 
-import { CollapsibleLine, Tally } from '@ds/desktop'
+import { COMPONENT_SIZES, CollapsibleLine, Tally } from '@ds/desktop'
 import { MessagesSquare } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
@@ -13,6 +13,13 @@ const PROPS: PropRow[] = [
     required: true,
     description:
       'The parts, in the order they should be read. Zeroes are the caller’s to drop: which of them is worth stating is a question about what the surface is for, and this component cannot answer it.',
+  },
+  {
+    name: 'size',
+    type: "'sm' | 'md' | 'lg'",
+    fallback: "'sm'",
+    description:
+      'ComponentSize, which is Label’s scale promoted to the shared one. sm is the fold this was built for — a 10px pair under a 12px header. The rung only climbs because the thing above the breakdown climbed: it has no size of its own to choose.',
   },
   {
     name: 'className',
@@ -79,6 +86,27 @@ export function TallyEntry({ theme, onOpen }: { theme: DesktopTheme; onOpen?: (i
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
           The gutters are uneven on purpose — wide between pairs, tight within one — so a
           wrapped line still reads as pairs rather than as six loose words.
+        </p>
+      </EntrySection>
+
+      <EntrySection
+        title="Seven rungs, and they are the folder’s"
+        note="ComponentSize — 2xs through 2xl — is the folder’s one ladder, so a caller moving between components relearns nothing. sm is what this always drew: the pair used to be a hand-spelled text-[10px], and now it is Text’s 2xs rung."
+      >
+        <Stage theme={theme} className="flex flex-col gap-3">
+          {COMPONENT_SIZES.map((size) => (
+            <Specimen key={size} label={size}>
+              <div className="max-w-[420px] rounded-lg bg-ink/5 p-3">
+                <Tally counts={COMMENTS} size={size} />
+              </div>
+            </Specimen>
+          ))}
+        </Stage>
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          One size for BOTH halves of a pair, stated once on the row: the number and its name are
+          one phrase and must not be able to end up at two sizes. The gutters climb with the type —
+          a 14px pair on 12px of gutter reads as two columns that collided, and the ratio is what
+          keeps a wrapped line reading as pairs.
         </p>
       </EntrySection>
 

@@ -1,3 +1,6 @@
+import type { ComponentSize } from './componentSizes'
+import { Text, type TextSize } from './Text'
+
 /**
  * Several named counts on one line — "4 inline · 2 conversation · 1 review".
  *
@@ -31,6 +34,37 @@ export interface TallyCount {
   value: number
 }
 
+/**
+ * The three rungs, which are `ComponentSize`'s and therefore `Label`'s.
+ *
+ * `sm` IS WHAT IT ALWAYS DREW. The pair used to be a hand-spelled `text-[10px]` with a
+ * comment saying `Text` had no rung that small; now it does, and `sm` resolves to it.
+ * Nothing on the pull request card moved.
+ *
+ * THE BOTTOM THREE ARE ONE TYPE SIZE AND THREE GUTTERS. 10px is the floor of the type
+ * scale, so below `sm` there is nothing left to shrink but the SPACE between pairs —
+ * which is the honest answer for a breakdown squeezed into a narrower column, and
+ * better than a rung that silently draws the same thing as the one above it.
+ *
+ * ONE SIZE FOR BOTH HALVES OF A PAIR, stated once on the row so the number and its
+ * name cannot end up at two sizes — they are one phrase. The rung only ever climbs
+ * because the thing ABOVE the breakdown climbed: a tally under a 14px header takes
+ * `md`, under a heading `lg`. It has no size of its own to choose, which is why there
+ * is no rung here that is not one of `Text`'s.
+ *
+ * THE GUTTERS CLIMB WITH IT. A 14px pair on 12px of gutter reads as two columns that
+ * collided; the ratio is what makes a wrapped line still read as pairs.
+ */
+const SIZES: Record<ComponentSize, { text: TextSize; gutter: string }> = {
+  '2xs': { text: '2xs', gutter: 'gap-x-2 gap-y-0.5' },
+  xs: { text: '2xs', gutter: 'gap-x-2.5 gap-y-0.5' },
+  sm: { text: '2xs', gutter: 'gap-x-3 gap-y-0.5' },
+  md: { text: 'xs', gutter: 'gap-x-3.5 gap-y-1' },
+  lg: { text: 'sm', gutter: 'gap-x-4 gap-y-1' },
+  xl: { text: 'md', gutter: 'gap-x-5 gap-y-1.5' },
+  '2xl': { text: 'lg', gutter: 'gap-x-6 gap-y-2' },
+}
+
 export interface TallyProps {
   /**
    * The parts, in the order they should be read.
@@ -41,24 +75,36 @@ export interface TallyProps {
    * cannot answer it. It draws what it is given.
    */
   counts: TallyCount[]
+  /** Which rung. `sm` is the fold it was built for; see `SIZES`. */
+  size?: ComponentSize
   /** Margins and placement. Not the sizes, the gutters or either colour. */
   className?: string
 }
 
-export function Tally({ counts, className = '' }: TallyProps) {
+export function Tally({ counts, size = 'sm', className = '' }: TallyProps) {
+  const rung = SIZES[size]
+
   return (
-    /* `text-[10px]` rather than a `Text` rung, for `PullRequestCard`'s reason: the
-       smallest thing on the scale is 12px, and this is detail unfolded UNDER a 12px
-       label that already said the total. Stated once on the row so both halves of every
-       pair inherit it — the number and its name are one phrase and must not be able to
-       end up at two sizes. */
+    /* The two colours live on the WRAPPERS rather than inside the `Text`s: `Text` owns
+       exactly two ink rungs and neither is an alpha, and passing one as a class would
+       be a second spelling of a prop it already has — which of them won would come
+       down to the order Tailwind emitted them in. `tone="inherit"` is the way out it
+       provides, and these are the shades that way out exists for. */
     <div
-      className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-text-secondary/70 ${className}`.trim()}
+      className={`flex flex-wrap items-center ${rung.gutter} text-text-secondary/70 ${className}`.trim()}
     >
       {counts.map((count) => (
         <span key={count.label} className="flex items-center gap-1">
-          <span className="text-ink/80 font-medium tabular-nums">{count.value}</span>
-          {count.label}
+          <span className="text-ink/80">
+            {/* The number as a STRING: `Text` takes words, and a component that
+                accepted a number would be one that accepted an object next. */}
+            <Text size={rung.text} tone="inherit" className="tabular-nums">
+              {String(count.value)}
+            </Text>
+          </span>
+          <Text size={rung.text} tone="inherit">
+            {count.label}
+          </Text>
         </span>
       ))}
     </div>
