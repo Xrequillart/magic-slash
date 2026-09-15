@@ -59,6 +59,13 @@ const PROPS: PropRow[] = [
       'A hue the design system does not own — a repository’s, picked from the sixteen the app assigns at runtime. The plate takes it at 12% and the mark at full strength. A value rather than a class, because Tailwind cannot emit a class it never saw in the source; any CSS colour, so a fixed #4f46e5 and a palette token like rgb(var(--c-green)) both work.',
   },
   {
+    name: 'raised',
+    type: 'boolean',
+    fallback: 'false',
+    description:
+      'The opaque plate instead of the tone’s own — RAISED_PLATE, Card’s raised ground and the one every tile on the quick-settings sheet stands on. For the one place a label is drawn over frost, where bg-ink/5 is a plate at whatever the blur happens to be. color still wins. A prop and not a className, for color’s reason: two background classes on one element are settled by Tailwind’s emit order.',
+  },
+  {
     name: 'size',
     type: "'sm' | 'md' | 'lg'",
     fallback: "'sm'",
@@ -187,6 +194,26 @@ export function LabelEntry({
           <code>rgb(var(--c-green))</code> — a value that has to keep moving when the theme
           does. The plate is mixed rather than spelled with an alpha suffix so both work.
         </p>
+      </EntrySection>
+
+      <EntrySection
+        title="On frost"
+        note="raised swaps the tinted plate for the opaque one — the same RAISED_PLATE the tiles, the stepper and a raised card stand on. It is for ToggleButton’s tooltip, the one label that hangs over ControlCenter’s sheet: there the whole window behind it is blurred, and a plate of 5% ink is a plate at whatever the blur happens to be. No backdrop-filter can rescue it — measured, this window renders one so slight that text stays legible under it at any radius, which is why the sheet’s blur is a plain filter on the app’s body."
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <Specimen label="neutral — on the app’s own ground">
+            <Stage theme={theme}>
+              <Label>Split view</Label>
+            </Stage>
+          </Specimen>
+          <Specimen label="raised — over the frosted sheet">
+            <Stage theme={theme}>
+              <Label raised className="shadow-lg">
+                Split view
+              </Label>
+            </Stage>
+          </Specimen>
+        </div>
       </EntrySection>
 
       <EntrySection

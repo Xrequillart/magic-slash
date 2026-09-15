@@ -172,8 +172,8 @@ export function ToggleButton({
     return (
       // NO CAPTION, SO A TOOLTIP — the word has to be somewhere a hand can find it, and
       // the native `title` arrives a second late and in the platform's own dress. This
-      // one is a `Label` under the circle: the same plate, mark-less, that names things
-      // everywhere else in the app. HOVER ONLY. The first draft also showed it on
+      // one is a `Label` under the circle: mark-less, and on the tiles' own plate that
+      // names things everywhere else in the app. HOVER ONLY. The first draft also showed it on
       // `focus-within`, and a pressed tile keeps the focus after the pointer has left —
       // so the pill stayed up over one tile while the pointer was on another, which is
       // the bug the product owner found. Keyboard readers have the `aria-label`. Out of
@@ -186,7 +186,13 @@ export function ToggleButton({
           className="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 -translate-x-1/2
             opacity-0 transition-opacity duration-150 group-hover:opacity-100"
         >
-          <Label tone="neutral" size="sm" className="whitespace-nowrap shadow-lg">{label}</Label>
+          {/* `raised` AND NOT THE NEUTRAL PLATE. A tooltip hangs over the frost like the
+              tile it names — `bg-ink/5` there is a plate at whatever the blur happens to
+              be, which is the see-through pill the product owner could barely read — so it
+              stands on `RAISED_PLATE`, opaque, the same plate the tile wears while off.
+              No `backdrop-filter`: see `ControlCenter`, where that was measured and the
+              window's blur moved to a plain `filter` on the app's body instead. */}
+          <Label raised size="sm" className="whitespace-nowrap shadow-lg">{label}</Label>
         </span>
       </span>
     )

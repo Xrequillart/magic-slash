@@ -3,6 +3,7 @@ import type { AvatarSize } from './avatarSizes'
 import type { ComponentSize } from './componentSizes'
 import { Icon, type IconSize } from './Icon'
 import { CLAUDE_CORAL, ClaudeCode, Github, Jira, MagicSlash } from './icons'
+import { RAISED_PLATE } from './plate'
 import { Text, type TextSize } from './Text'
 import type { IconComponent } from './types'
 
@@ -180,6 +181,25 @@ export interface LabelProps {
   color?: string
   size?: LabelSize
   /**
+   * THE OPAQUE PLATE instead of the tone's own — `RAISED_PLATE`, `Card`'s `raised`
+   * ground and the one every tile on the quick-settings sheet stands on.
+   *
+   * For the one place a label is drawn over FROST: `ToggleButton`'s tooltip, which hangs
+   * under a tile on `ControlCenter`'s sheet where the whole window behind it is blurred.
+   * `neutral`'s `bg-ink/5` there is a plate at whatever the blur happens to be — the
+   * product owner's word for it was "full transparent, barely visible" — and no
+   * `backdrop-filter` can rescue it: measured, this window renders one so slight the
+   * text under it stays legible at any radius, which is why the sheet's blur is a plain
+   * `filter` on the app's body in the first place. An opaque plate stands ON the frost,
+   * and it is the plate the tiles either side of the tooltip already wear.
+   *
+   * A PROP AND NOT A `className`, for `color`'s reason and `Card`'s: two background
+   * classes on one element are settled by Tailwind's emit order, not by the order they
+   * were written in. `color` still wins — a hue the caller picked is more specific than
+   * a ground the component offers.
+   */
+  raised?: boolean
+  /**
    * The label names something that is NOT THERE YET — an empty ticket slot, and the
    * invitation to fill it.
    *
@@ -215,6 +235,7 @@ export function Label({
   icon,
   avatar,
   color,
+  raised = false,
   size = 'sm',
   quiet = false,
   onClick,
@@ -226,7 +247,7 @@ export function Label({
   const shape = SIZES[size]
   const Mark = icon ?? spec.icon
 
-  const ground = color ? undefined : spec.ground
+  const ground = color ? undefined : raised ? RAISED_PLATE : spec.ground
   const style = color
     ? { backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)` }
     : spec.groundStyle
