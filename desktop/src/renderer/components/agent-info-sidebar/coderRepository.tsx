@@ -204,13 +204,6 @@ export function toCoderRepository({
             },
           }
         : undefined,
-    /* Absent rather than empty when the read FAILED: a repository nobody could look at has
-       an error to report, not a quiet "nothing to commit". WHEN it is drawn — only if the
-       branch, the diff and the commits are all absent — is the card's own test. */
-    emptyLabel:
-      gitData && !gitData.error && gitData.branch
-        ? t('agentInfo.noUncommittedChanges')
-        : undefined,
     /* Keyed off `prUrl` alone, deliberately: when the watcher is switched off the card still
        shows the last snapshot, dated, instead of vanishing along with the polling.
 

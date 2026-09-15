@@ -33,12 +33,6 @@ const PROPS: PropRow[] = [
   { name: 'changes', type: 'UnCommittedChangesCardProps', description: 'The working tree.' },
   { name: 'commits', type: 'CommitCardProps', description: 'What the branch has that its base does not.' },
   {
-    name: 'emptyLabel',
-    type: 'string',
-    description:
-      'What to say when the three above have nothing to say. Drawn only when all three are absent, and that test is here rather than at the call site because it is the same test every caller would write and the one they would get wrong: an empty state shown beside a branch row is a card contradicting itself. Absent rather than empty when the repository failed to read: a tree nobody could look at has an error to report, not a quiet “nothing to commit”.',
-  },
-  {
     name: 'pullRequest',
     type: 'ReactNode',
     description:
@@ -194,10 +188,7 @@ export function RepositoryCardEntry({
         <Stage theme={theme} className="grid gap-6 sm:grid-cols-2">
           <Specimen label="a fresh checkout — a name and nothing else yet">
             <div className="max-w-[320px]">
-              <RepositoryCard
-                header={HEADER}
-                emptyLabel="No uncommitted changes"
-              />
+              <RepositoryCard header={HEADER} />
             </div>
           </Specimen>
           <Specimen label="mid-task — no PR yet">
@@ -211,11 +202,14 @@ export function RepositoryCardEntry({
           </Specimen>
         </Stage>
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
-          <code>emptyLabel</code> is drawn <em>only</em> when <code>branch</code>,{' '}
-          <code>changes</code> and <code>commits</code> are all absent, and that test is in
-          the component rather than at the call site because it is the same test every
-          caller would write and the one they would get wrong: an empty state shown beside
-          a branch row is a card contradicting itself.
+          There is no card-level empty state, and there used to be: an{' '}
+          <code>emptyLabel</code> drawn only when <code>branch</code>, <code>changes</code>{' '}
+          and <code>commits</code> were all absent. It could never appear. The app passed it
+          only when a branch existed, and a branch that exists fills the <code>branch</code>{' '}
+          slot, which was one of the three that had to be empty — the two rules contradicted
+          each other and nothing was ever drawn. Saying nothing is in flight is{' '}
+          <code>UnCommittedChangesCard</code>’s job now, where it is a sentence about the
+          working tree rather than about the card.
         </p>
       </EntrySection>
 
@@ -229,7 +223,6 @@ export function RepositoryCardEntry({
   branch={gitData?.branch ? { branch, base, copy } : undefined}
   changes={hasChanges ? { label, summary, additions, deletions, files, onOpenFile } : undefined}
   commits={hasCommits ? { label, summary, commits, onCopyHash, open } : undefined}
-  emptyLabel={t('agentInfo.noUncommittedChanges')}
   pullRequest={prUrl && <PRWatchCard prUrl={prUrl} … />}
 />`}</Snippet>
       </EntrySection>

@@ -60,18 +60,6 @@ export interface RepositoryCardProps {
   /** What the branch has that its base does not. */
   commits?: CommitCardProps
   /**
-   * What to say when the three above have nothing to say.
-   *
-   * DRAWN ONLY WHEN ALL THREE ARE ABSENT, and that test is here rather than at the call
-   * site because it is the same test every caller would write and the one they would get
-   * wrong: an empty state shown beside a branch row is a card contradicting itself.
-   *
-   * Absent rather than empty when the repository FAILED to read: a tree nobody could look
-   * at has an error to report, not a quiet "nothing to commit". Only the app can tell those
-   * two apart, so it decides by passing this or not.
-   */
-  emptyLabel?: string
-  /**
    * Last, and its own card: the pull request.
    *
    * A NODE for `activity`'s reason. The app's watcher polls GitHub, holds its own state and
@@ -88,12 +76,9 @@ export function RepositoryCard({
   branch,
   changes,
   commits,
-  emptyLabel,
   pullRequest,
   className = '',
 }: RepositoryCardProps) {
-  const hasGit = Boolean(branch || changes || commits)
-
   return (
     <Card className={`flex flex-col gap-2 ${className}`.trim()}>
       <HeaderRepoCard {...header} />
@@ -101,11 +86,6 @@ export function RepositoryCard({
       {branch && <BranchCard {...branch} />}
       {changes && <UnCommittedChangesCard {...changes} />}
       {commits && <CommitCard {...commits} />}
-      {!hasGit && emptyLabel && (
-        <div className="bg-ink/5 rounded-lg p-2">
-          <span className="text-xs text-text-secondary/40 italic">{emptyLabel}</span>
-        </div>
-      )}
       {pullRequest}
     </Card>
   )
