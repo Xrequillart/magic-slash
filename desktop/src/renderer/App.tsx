@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef, useMemo, useState } from 'react'
 import { AlertTriangle, ListTodo, NotebookPen, RotateCcw, Settings, Sparkles, FolderOpen } from '@ds/desktop/icons'
-import { Loader } from '@ds/desktop'
+import { Loader, type TabStripItem } from '@ds/desktop'
 import { REASON_META, buildRepoSetup, needsRepoSetup } from './utils/repoSetup'
 import type { InvalidRepo } from '../preload'
 import { useStore } from './store'
@@ -10,9 +10,7 @@ import { useConfig } from './hooks/useConfig'
 import { useTerminals } from './hooks/useTerminals'
 import { useOrderedTerminals } from './hooks/useOrderedTerminals'
 import { TitleBar } from './components/TitleBar'
-import { AccountAvatar } from './components/AccountAvatar'
 import { useAccountIdentity } from './components/SidebarAccount'
-import type { TabStripItem } from './components/TabStrip'
 import { Sidebar } from './components/Sidebar'
 import { AgentInfoSidebar } from './components/AgentInfoSidebar'
 import { ToastContainer, showToast } from './components/Toast'
@@ -306,7 +304,10 @@ export function App() {
     ? {
       key: 'settings',
       label: accountName,
-      leading: <AccountAvatar variant="sidebar" dataUrl={avatar} alt="" />,
+      // DATA AND NOT A NODE — see `TabStripItem.avatar`. The strip draws the photo
+      // at the sidebar account button's own rung, bare, which is exactly what
+      // `AccountAvatar variant="sidebar"` drew here before it moved inside.
+      avatar: { src: avatar, alt: '' },
     }
     : null
 

@@ -29,6 +29,7 @@ export type EntryId =
   | 'checklist'
   | 'collapsibleline'
   | 'reviewthreadline'
+  | 'tabstrip'
   | 'tally'
   | 'pullrequestcard'
   | 'scriptcard'
@@ -92,6 +93,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   checklist: 'CheckList',
   collapsibleline: 'CollapsibleLine',
   reviewthreadline: 'ReviewThreadLine',
+  tabstrip: 'TabStrip',
   tally: 'Tally',
   pullrequestcard: 'PullRequestCard',
   scriptcard: 'ScriptCard',
@@ -179,6 +181,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   apptitlebar: ['buttonicon', 'label'],
   togglebutton: ['icon', 'text', 'label'],
   stepper: ['buttonicon', 'text'],
+  tabstrip: ['avatar', 'icon', 'text'],
   // The tiles, the stepper and the pickers on the sheet are the CALLER's — slots, not
   // drawings — so only the group heading counts.
   controlcenter: ['text'],
@@ -321,6 +324,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   checklist: 'Every check the run is made of, named',
   collapsibleline: 'One box to tick, and what is behind it',
   reviewthreadline: 'One review thread, scanned rather than read',
+  tabstrip: 'A pill rail that slides to the tab you pick',
   tally: 'A total, broken into the parts it is made of',
   pullrequestcard: 'A pull request, as the sidebar watches it',
   scriptcard: 'A process still alive on your machine',

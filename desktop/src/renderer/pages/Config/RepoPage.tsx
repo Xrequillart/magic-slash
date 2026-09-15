@@ -12,9 +12,8 @@ import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
 import { RepoColorPicker } from './RepoColorPicker'
 import { useT, type MessageKey } from '../../i18n'
-import { Switch } from '@ds/desktop'
+import { Switch, TabStrip } from '@ds/desktop'
 import { LanguageSelect } from '../../components/LanguageSelect'
-import { TabStrip } from '../../components/TabStrip'
 import { TabSweep } from '../../components/TabSweep'
 import {
   COMMIT_FORMAT_LABELS,

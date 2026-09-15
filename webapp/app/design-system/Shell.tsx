@@ -15,6 +15,7 @@ import { FileModifiedLineEntry } from './entries/FileModifiedLineEntry'
 import { UnCommittedChangesCardEntry } from './entries/UnCommittedChangesCardEntry'
 import { CheckListEntry } from './entries/CheckListEntry'
 import { CollapsibleLineEntry } from './entries/CollapsibleLineEntry'
+import { TabStripEntry } from './entries/TabStripEntry'
 import { TallyEntry } from './entries/TallyEntry'
 import { ReviewThreadLineEntry } from './entries/ReviewThreadLineEntry'
 import { PullRequestCardEntry } from './entries/PullRequestCardEntry'
@@ -103,6 +104,7 @@ const ENTRIES: Record<
   updatedialog: UpdateDialogEntry,
   togglebutton: ToggleButtonEntry,
   stepper: StepperEntry,
+  tabstrip: TabStripEntry,
   controlcenter: ControlCenterEntry,
   setupstatuscard: SetupStatusCardEntry,
   themegrid: ThemeGridEntry,

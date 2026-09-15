@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { TITLE_BAR_HEIGHT } from '@ds/desktop'
+import { TabStrip, type TabStripItem, TITLE_BAR_HEIGHT } from '@ds/desktop'
 import { Maximize2, Minimize2, X } from '@ds/desktop/icons'
 import { useModalExit } from '../hooks/useModalExit'
 import { useStore } from '../store'
-import { TabStrip, type TabStripItem } from './TabStrip'
 import { useT } from '../i18n'
 
 interface PageModalProps {
@@ -17,9 +16,9 @@ interface PageModalProps {
   /**
    * A small mark to the left of the title, naming the same page the word does.
    *
-   * A NODE and not a `LucideIcon`, for `TabStripItem.leading`'s reason: what belongs
-   * there is not always a glyph, and a caller that already holds one should be able to
-   * hand it over rather than have it looked up again. It has to size itself — `w-4 h-4
+   * A NODE and not a `LucideIcon`: what belongs there is not always a glyph — the
+   * account's photo goes here on one page — and a caller that already holds one should
+   * be able to hand it over rather than have it looked up again. It has to size itself — `w-4 h-4
    * shrink-0` beside `text-sm` type — since the header sets no box around it.
    */
   titleIcon?: ReactNode
@@ -31,7 +30,7 @@ interface PageModalProps {
    *
    * THE SHARED `TabStrip` AND NOT A CONTROL OF THIS COMPONENT'S OWN — the same rail a
    * repository's settings are cut into, the Team page switches organizations with, and
-   * the webapp draws from its own copy. A modal header that invented its own tabs would
+   * the marketing site draws from its own copy. A modal header that invented its own tabs would
    * be a second tab vocabulary in an app that already has one, and the pill that slides
    * to the tab you picked is the part a reader recognises.
    *
