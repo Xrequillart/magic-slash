@@ -1,6 +1,6 @@
 'use client'
 
-import { BotMessageSquare, Unlink } from 'lucide-react'
+import { BotMessageSquare, TicketPlus, Unlink, X } from 'lucide-react'
 import { Banner, BANNER_VARIANTS, type BannerVariant } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
@@ -17,15 +17,16 @@ const COPY: Record<BannerVariant, string> = {
   success: 'An agent is already working on this ticket.',
   warning: 'Two agents are running on the same worktree.',
   danger: 'The Jira token expired. Ticket transitions will fail until it is renewed.',
+  accent: 'Choose a ticket for Ada.',
 }
 
 const PROPS: PropRow[] = [
   {
     name: 'variant',
-    type: "'info' | 'success' | 'warning' | 'danger'",
+    type: "'info' | 'success' | 'warning' | 'danger' | 'accent'",
     fallback: "'info'",
     description:
-      'The reader’s question — “should I worry?” — and not the app’s internal severity. There is deliberately no neutral: a strip with no colour is a card.',
+      'Four of them are the reader’s question — “should I worry?” — and not the app’s internal severity. There is deliberately no neutral: a strip with no colour is a card. accent is the fifth and is not a severity at all: it is a mode the reader switched on and can leave, which is the one hue that means “you did this”.',
   },
   {
     name: 'children',
@@ -61,25 +62,31 @@ const PROPS: PropRow[] = [
       'Right edge on a row, under the sentence when stacked. Styled at the call site: buttons in the component would need a tier per tone for a shape used once.',
   },
   {
+    name: 'hint',
+    type: 'string',
+    description:
+      'A second, quieter line under the sentence, and the only structure a banner has. It is for what is different while the strip is on screen — “clicking a card attaches it instead of opening it” — which does not belong in the same sentence as the fact itself. Not a place for a second fact: two facts are two banners, or a card.',
+  },
+  {
     name: 'layout',
-    type: "'row' | 'stacked'",
+    type: "'row' | 'stacked' | 'band'",
     fallback: "'row'",
     description:
-      'Arrangement and type scale together, not two props. A banner stacks exactly when its column is too narrow for a sentence beside a button, and at that width it wants the smaller size anyway.',
+      'Arrangement and type scale together, not two props. A banner stacks exactly when its column is too narrow for a sentence beside a button, and at that width it wants the smaller size anyway. band is the pinned drawing: opaque, square-cornered, full-bleed, a hairline underneath and a fixed 53px — BANNER_BAND_HEIGHT, which the bars pinning below it offset themselves by.',
   },
   {
     name: 'bordered',
     type: 'boolean',
     fallback: 'false',
     description:
-      'An outline in the variant’s colour. Off by default — on a tinted ground it is a second edge on a shape that already has one. The setup wizards’ error strips still want it.',
+      'An outline in the variant’s colour. Off by default — on a tinted ground it is a second edge on a shape that already has one. The setup wizards’ error strips still want it. Ignored by the band, which carries a hairline as part of being a band.',
   },
   {
     name: 'className',
     type: 'string',
     fallback: "''",
     description:
-      'Margins and widths only. The banner owns its ground, padding and radius; respelling those at a call site is the duplication this component ended.',
+      'Margins and widths only. The banner owns its ground, padding and radius; respelling those at a call site is the duplication this component ended. A band’s pinning is the exception — sticky top-0 z-30 is a fact about the page around it, which this folder cannot know.',
   },
 ]
 
@@ -134,7 +141,7 @@ export function BannerEntry({
 
       <EntrySection
         title="Variants"
-        note="Four, and each one carries its own mark and its own tone — nothing below passes an icon. Every mark goes through Icon at the layout's rung, so a banner's glyph is the same size as the one in the row above it by construction rather than by memory."
+        note="Five, and each one carries its own mark and its own tone — nothing below passes an icon. Every mark goes through Icon at the layout's rung, so a banner's glyph is the same size as the one in the row above it by construction rather than by memory."
       >
         <Stage theme={theme} className="flex flex-col gap-3">
           {BANNER_VARIANTS.map((variant) => (
@@ -180,6 +187,57 @@ export function BannerEntry({
             </Stage>
           </Specimen>
         </div>
+      </EntrySection>
+
+      <EntrySection
+        title="The band"
+        note="The third layout, and the one a strip takes when it is PINNED rather than sitting in a page’s flow: opaque, square-cornered, edge to edge, with a hairline under it. The Tasks board pins this one while a ticket is being chosen for an agent."
+      >
+        {/* No `sticky` here — there is nothing to scroll under it on this page. What the
+            specimen has to show is the drawing: the opaque ground, the square corners,
+            the mark on its plate and the two lines of type. */}
+        {/* `-m-6` rather than a `p-0` on the Stage: both are padding utilities and which
+            one wins is decided by the order Tailwind emitted them in, not by the order
+            they are spelled here. A negative margin cancels the stage's 24px whatever
+            that order turns out to be, and `overflow-hidden` keeps the band's square
+            corners inside the stage's rounded ones. */}
+        <Stage theme={theme} className="overflow-hidden">
+          <div className="-m-6">
+            <Banner
+              variant="accent"
+              layout="band"
+              icon={TicketPlus}
+              hint="Clicking a card attaches it to the agent instead of opening it."
+              actions={
+                <button className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-medium text-text-secondary transition-colors hover:text-ink">
+                  <X className="h-3.5 w-3.5" />
+                  Cancel
+                </button>
+              }
+            >
+              Choose a ticket for Ada.
+            </Banner>
+          </div>
+        </Stage>
+
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          <em>Opaque is the whole point.</em> Every other layout is a 10% tint, which is right on
+          a page and wrong the moment the strip is <code>sticky</code>: the rows scroll{' '}
+          <em>under</em> it, and a translucent bar shows them sliding about behind the words. The
+          variant’s colour moves to the mark’s plate instead. Square corners for the same reason —
+          a radius on a full-bleed band is a gap with the content showing through it.
+        </p>
+
+        <Snippet>{`<Banner
+  variant="accent"
+  layout="band"
+  icon={TicketPlus}
+  className="sticky top-0 z-30"
+  hint={t('tasks.pick.hint')}
+  actions={<CancelButton />}
+>
+  {t('tasks.pick.title', { name: agentName })}
+</Banner>`}</Snippet>
       </EntrySection>
 
       <EntrySection

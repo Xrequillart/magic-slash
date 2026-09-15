@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Icon, type IconSize } from './Icon'
 import { Text, type TextSize } from './Text'
-import { CircleAlert, CircleCheck, Info, TriangleAlert } from './icons'
+import { CircleAlert, CircleCheck, Info, MousePointerClick, TriangleAlert } from './icons'
 import type { IconComponent } from './types'
 
 /**
@@ -23,14 +23,28 @@ import type { IconComponent } from './types'
  */
 
 /**
- * The four things a banner can be saying. They are the reader's question —
+ * The five things a banner can be saying. Four of them are the reader's question —
  * "should I worry?" — and not the app's internal severity, which is why there is
  * no `neutral`: a strip with no colour is a card, and reaching for one here means
  * the sentence did not need a banner.
+ *
+ * `accent` IS THE FIFTH AND IT IS NOT A SEVERITY. It is for a MODE the reader put
+ * the app into and can leave again — the Tasks board being used to choose a ticket
+ * for an agent rather than to read one. Nothing is wrong, nothing has succeeded,
+ * and none of the four would be true; what the strip is doing is explaining why
+ * the surface underneath it behaves differently for as long as it is there. The
+ * app's own accent is the right colour for exactly that reason: it is the one hue
+ * that means "you did this", where the other four report what happened to you.
  */
-export type BannerVariant = 'info' | 'success' | 'warning' | 'danger'
+export type BannerVariant = 'info' | 'success' | 'warning' | 'danger' | 'accent'
 
-export const BANNER_VARIANTS: readonly BannerVariant[] = ['info', 'success', 'warning', 'danger']
+export const BANNER_VARIANTS: readonly BannerVariant[] = [
+  'info',
+  'success',
+  'warning',
+  'danger',
+  'accent',
+]
 
 interface BannerTone {
   /** The ground. 10% is the lightest tint that still reads as a tint on the light themes. */
@@ -39,6 +53,15 @@ interface BannerTone {
   accent: string
   /** The outline, for `bordered`. Twice the fill's weight — a border at 10% disappears. */
   edge: string
+  /**
+   * The little rounded plate the mark sits on in the `band` layout, and nowhere else.
+   *
+   * A band has no tint of its own to carry the variant — it is opaque, see `LAYOUTS`
+   * — so the colour has to live somewhere, and it lives under the icon. 15% and not
+   * the fill's 10%: a 28px square has a fraction of a full-width strip's area, and
+   * the same tint on it reads as grey.
+   */
+  plate: string
   /**
    * The mark. A variant that could not name its own icon would be a variant with
    * no opinion, and the four would drift apart one call site at a time. A caller
@@ -58,10 +81,15 @@ interface BannerTone {
  * are the ones to move, not this table.
  */
 const TONES: Record<BannerVariant, BannerTone> = {
-  info: { fill: 'bg-blue/10', accent: 'text-blue', edge: 'border-blue/20', icon: Info },
-  success: { fill: 'bg-green/10', accent: 'text-green', edge: 'border-green/20', icon: CircleCheck },
-  warning: { fill: 'bg-orange/10', accent: 'text-orange', edge: 'border-orange/20', icon: TriangleAlert },
-  danger: { fill: 'bg-red/10', accent: 'text-red', edge: 'border-red/20', icon: CircleAlert },
+  info: { fill: 'bg-blue/10', accent: 'text-blue', edge: 'border-blue/20', plate: 'bg-blue/15', icon: Info },
+  success: { fill: 'bg-green/10', accent: 'text-green', edge: 'border-green/20', plate: 'bg-green/15', icon: CircleCheck },
+  warning: { fill: 'bg-orange/10', accent: 'text-orange', edge: 'border-orange/20', plate: 'bg-orange/15', icon: TriangleAlert },
+  danger: { fill: 'bg-red/10', accent: 'text-red', edge: 'border-red/20', plate: 'bg-red/15', icon: CircleAlert },
+  // The default mark says what an accent band always says: the click means something
+  // else while this is here. A variant that named no icon would be a variant with no
+  // opinion — though this is the one tone whose callers nearly always bring their own,
+  // because a mode is a specific thing and `TicketPlus` says which.
+  accent: { fill: 'bg-accent/10', accent: 'text-accent', edge: 'border-accent/20', plate: 'bg-accent/15', icon: MousePointerClick },
 }
 
 /**
@@ -71,14 +99,51 @@ const TONES: Record<BannerVariant, BannerTone> = {
  * that width the sentence wants the smaller size anyway; splitting them into
  * `layout` and `size` would spell four combinations for the two that exist.
  */
-export type BannerLayout = 'row' | 'stacked'
+export type BannerLayout = 'row' | 'stacked' | 'band'
 
-export const BANNER_LAYOUTS: readonly BannerLayout[] = ['row', 'stacked']
+export const BANNER_LAYOUTS: readonly BannerLayout[] = ['row', 'stacked', 'band']
 
-const LAYOUTS: Record<
-  BannerLayout,
-  { box: string; icon: IconSize; iconClass: string; text: TextSize; head: string }
-> = {
+/**
+ * The `band` layout's height, in pixels, and the reason it is a number anybody can
+ * import — `TITLE_BAR_HEIGHT`'s reason exactly.
+ *
+ * A band is PINNED, and nothing pinned is ever alone on a page: the Tasks board has a
+ * filter bar under this one and column headings under that, and a sticky element knows
+ * nothing about the sticky element above it. Each of them offsets itself by whatever is
+ * already there, so the height has to be a value they can all read. Two places holding
+ * the same 53 is how one of them ends up holding 57.
+ *
+ * 53 is what the shape comes to: two 16px lines of text between 10px of padding either
+ * side, plus the hairline. It is stated rather than computed because the padding is a
+ * class and the hairline is a border — there is nothing to compute it from that would
+ * not itself be a second spelling of the same three numbers.
+ */
+export const BANNER_BAND_HEIGHT = 53
+
+interface BannerShape {
+  box: string
+  icon: IconSize
+  iconClass: string
+  text: TextSize
+  head: string
+  /**
+   * The mark goes on its own little tinted square rather than bare on the ground.
+   *
+   * Only the band does this, and only because the band is opaque: with no tint across
+   * the strip there is nowhere else for the variant's colour to be, and a lone coloured
+   * glyph on a full-width neutral bar reads as an icon somebody forgot to align.
+   */
+  plate?: boolean
+  /**
+   * The ground, for a layout that does not take the variant's tint. Absent, the tint
+   * and the radius are used — which is every layout but the band.
+   */
+  ground?: string
+  /** A fixed height, for a layout whose height other things measure themselves against. */
+  height?: number
+}
+
+const LAYOUTS: Record<BannerLayout, BannerShape> = {
   /** Full width: icon, sentence, actions pushed to the right edge, all on one line. */
   row: {
     box: 'flex items-center gap-3 px-4 py-3',
@@ -98,6 +163,36 @@ const LAYOUTS: Record<
     iconClass: 'flex-shrink-0 mt-0.5',
     text: 'xs',
     head: 'flex items-start gap-2 min-w-0',
+  },
+  /**
+   * A BAND: full-bleed, square-cornered, opaque, with a hairline under it — the shape
+   * a strip takes when it is pinned to the top of a scrolling pane rather than sitting
+   * in a page's flow.
+   *
+   * OPAQUE IS THE WHOLE POINT and it is not a matter of taste. Every other layout is a
+   * 10% tint, which is exactly right on a page and wrong the moment the thing is
+   * `sticky`: the content scrolls UNDER it, and a translucent bar shows the rows sliding
+   * about behind the words. The variant's colour moves to the mark's plate instead.
+   *
+   * Square corners for the same reason. A radius is a shape floating on a page; a band
+   * spans its pane edge to edge and a rounded corner there is a gap with the scrolling
+   * content showing through it.
+   *
+   * `px-6` because the panes this pins to have no padding of their own — the band is a
+   * sibling of the page's layers, not a child of them, so it pays for its own gutter and
+   * pays the same 24px the layers inside it do.
+   */
+  band: {
+    box: 'flex items-center gap-3 px-6',
+    // `sm` in a 28px plate: 16px of mark leaves 6px of tint visible all round, which is
+    // what makes the square read as a plate rather than as a box the icon overflowed.
+    icon: 'sm',
+    iconClass: '',
+    text: 'xs',
+    head: 'flex items-center gap-3 min-w-0',
+    plate: true,
+    ground: 'bg-bg-secondary border-b border-line',
+    height: BANNER_BAND_HEIGHT,
   },
 }
 
@@ -126,6 +221,22 @@ export interface BannerProps {
    */
   children: string
   /**
+   * A second, quieter line UNDER the sentence — and the only structure a banner has.
+   *
+   * It exists for the one thing a mode band has to say and a page banner does not:
+   * what is different while this is on screen. "Choose a ticket for Ada" is the fact;
+   * "clicking a card attaches it instead of opening it" is why the band is pinned
+   * rather than merely rendered, and putting the two in one sentence makes a sentence
+   * nobody finishes.
+   *
+   * A STRING, for `children`'s reason, and drawn at the layout's own text rung in
+   * secondary ink — a hint that names its own size is a hint that will disagree with
+   * the sentence above it on some other screen.
+   *
+   * NOT A PLACE FOR A SECOND FACT. Two facts are two banners, or a card.
+   */
+  hint?: string
+  /**
    * What can be done about it, if anything. A `row` banner pushes them to the
    * right edge, a `stacked` one puts them under the sentence. Style them in the
    * variant's own colour at the call site: buttons in here would need a tier per
@@ -138,11 +249,19 @@ export interface BannerProps {
    * adds a second edge to a shape that already has one, and the ticket page read
    * better without it. The wizards' error strips still want it, which is the only
    * reason it is a prop.
+   *
+   * IGNORED BY THE BAND, which carries a hairline under it as part of being a band
+   * and has no tint for a coloured outline to belong to.
    */
   bordered?: boolean
   /**
    * Margins and widths only. The banner owns its ground, its padding and its
    * radius — a caller respelling those is the duplication this component ended.
+   *
+   * A band's PINNING goes here, and it is the exception that proves the rule: where
+   * an element sticks and what it stacks above are facts about the page around it,
+   * which is the one thing this folder cannot know. `sticky top-0 z-30` is the caller's
+   * to write; the ground, the height and the hairline are not.
    */
   className?: string
 }
@@ -154,6 +273,7 @@ export function Banner({
   // error that talked about JSX construct signatures rather than about the shadowing.
   icon: override,
   children,
+  hint,
   actions,
   layout = 'row',
   bordered = false,
@@ -163,6 +283,15 @@ export function Banner({
   const shape = LAYOUTS[layout]
   const Mark = override ?? tone.icon
 
+  const mark = (
+    <Icon
+      glyph={Mark}
+      size={shape.icon}
+      tone="inherit"
+      className={`${shape.plate ? '' : tone.accent} ${shape.iconClass}`.trim()}
+    />
+  )
+
   const head = (
     <>
       {/* Through `Icon` rather than rendering the glyph directly: the size is a rung
@@ -171,27 +300,57 @@ export function Banner({
 
           `tone="inherit"` because this is the one thing a banner colours itself —
           the variant's accent IS the severity, and the theme's two icon weights have
-          nothing to say about it. */}
-      <Icon glyph={Mark} size={shape.icon} tone="inherit" className={`${tone.accent} ${shape.iconClass}`} />
+          nothing to say about it. On a plate the colour is stated once on the plate
+          and inherited down, so the tint and the mark cannot disagree. */}
+      {shape.plate ? (
+        <span
+          className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${tone.plate} ${tone.accent}`}
+        >
+          {mark}
+        </span>
+      ) : (
+        mark
+      )}
       {/* `tone="ink"` — Text's own default — and NOT the variant's colour: the ground
           carries the severity and a whole sentence in red is a sentence nobody
           finishes reading. The mark is coloured, the words are not. */}
-      <Text size={shape.text} className="min-w-0">
-        {children}
-      </Text>
+      {hint ? (
+        // A column, and both lines truncate: a band is as wide as the pane and its
+        // sentence names something the reader chose, which has no maximum length.
+        <span className="flex flex-col min-w-0">
+          <Text size={shape.text} className="truncate">
+            {children}
+          </Text>
+          <Text size={shape.text} tone="secondary" className="truncate">
+            {hint}
+          </Text>
+        </span>
+      ) : (
+        <Text size={shape.text} className="min-w-0">
+          {children}
+        </Text>
+      )}
     </>
   )
 
   return (
     <div
-      className={`${shape.box} rounded-xl ${tone.fill} ${bordered ? `border ${tone.edge}` : ''} ${className}`}
+      className={`${shape.box} ${
+        shape.ground ?? `rounded-xl ${tone.fill} ${bordered ? `border ${tone.edge}` : ''}`
+      } ${className}`}
+      // The height as the exported number rather than as a class, for the reason
+      // `BANNER_BAND_HEIGHT` gives: the things that pin under a band lay themselves out
+      // against exactly this value, and a class would be a second place to change it.
+      style={shape.height ? { height: shape.height } : undefined}
     >
       {shape.head ? <span className={shape.head}>{head}</span> : head}
       {actions &&
-        (layout === 'row' ? (
-          <span className="ml-auto flex-shrink-0 flex items-center gap-2">{actions}</span>
-        ) : (
+        // Everything but `stacked` puts them at the right edge; `stacked` is the narrow
+        // column, where there is no right edge to push anything to.
+        (layout === 'stacked' ? (
           actions
+        ) : (
+          <span className="ml-auto flex-shrink-0 flex items-center gap-2">{actions}</span>
         ))}
     </div>
   )
