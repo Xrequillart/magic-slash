@@ -40,6 +40,11 @@ import { SelectIconEntry } from './entries/SelectIconEntry'
 import { AppTitleBarEntry } from './entries/AppTitleBarEntry'
 import { SidebarEntry } from './entries/SidebarEntry'
 import { UpdateDialogEntry } from './entries/UpdateDialogEntry'
+import { ToggleButtonEntry } from './entries/ToggleButtonEntry'
+import { StepperEntry } from './entries/StepperEntry'
+import { ControlCenterEntry } from './entries/ControlCenterEntry'
+import { SetupStatusCardEntry } from './entries/SetupStatusCardEntry'
+import { ThemeGridEntry } from './entries/ThemeGridEntry'
 import { StatusEntry } from './entries/StatusEntry'
 import { SwitchEntry } from './entries/SwitchEntry'
 import { TextEntry } from './entries/TextEntry'
@@ -96,6 +101,11 @@ const ENTRIES: Record<
   sidebar: SidebarEntry,
   apptitlebar: AppTitleBarEntry,
   updatedialog: UpdateDialogEntry,
+  togglebutton: ToggleButtonEntry,
+  stepper: StepperEntry,
+  controlcenter: ControlCenterEntry,
+  setupstatuscard: SetupStatusCardEntry,
+  themegrid: ThemeGridEntry,
   avatar: AvatarEntry,
   label: LabelEntry,
   status: StatusEntry,

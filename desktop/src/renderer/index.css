@@ -104,6 +104,25 @@ body {
   overflow: hidden;
 }
 
+/* THE QUICK-SETTINGS BLUR. The sheet under the title bar (`ControlCenter`, in the design
+   system) cannot blur its own backdrop: measured, a `backdrop-filter` in this transparent
+   vibrancy window renders a blur so slight that text stays legible under it at any radius.
+   So the sheet puts `data-control-center` on <html> while it is down and the app blurs its
+   own body — everything below the title bar, the bar itself left sharp because the button
+   that closes the sheet is on it.
+
+   Only `open` is matched. The attribute turns to `closing` the moment the sheet starts its
+   exit, so the blur runs out over the same 200ms the sheet takes to slide up, and the two
+   arrive together. The durations are the sheet's own — 320ms in, 200ms out. */
+.app-body {
+  transition: filter 200ms ease-in;
+}
+
+html[data-control-center='open'] .app-body {
+  filter: blur(14px);
+  transition: filter 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
 /* Hide scrollbars globally while keeping scroll functionality */
 * {
   scrollbar-width: none; /* Firefox */

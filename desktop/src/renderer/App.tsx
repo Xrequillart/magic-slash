@@ -511,8 +511,12 @@ export function App() {
       {/* Title Bar */}
       <TitleBar />
 
-      {/* Main Layout */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* Main Layout. `app-body` is what the quick-settings sheet blurs while it is down —
+          see `index.css` and the note on `ControlCenter`: a `backdrop-filter` in this
+          transparent window renders almost no blur, so the sheet asks the app to blur this
+          region instead. The title bar stays outside it, sharp, because the button that
+          closes the sheet is on it. */}
+      <div className="app-body flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <Sidebar />
 

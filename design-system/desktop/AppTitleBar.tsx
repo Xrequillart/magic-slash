@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { ButtonIcon } from './ButtonIcon'
-import { Archive, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from './icons'
+import { Archive, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Settings2 } from './icons'
 import { Label } from './Label'
 import type { IconComponent } from './types'
 
@@ -160,8 +160,29 @@ export interface AppTitleBarProps {
   titles?: TitleBarTitle[]
   /** The action before the right toggle. */
   action?: TitleBarAction
-  /** The toggle for the panel on the right, last in the bar. */
+  /** The toggle for the panel on the right, after the action. */
   right?: TitleBarToggle
+  /**
+   * THE QUICK-SETTINGS TOGGLE, last in the bar — where the platform keeps its own
+   * Control Center, at the far right of the menu bar.
+   *
+   * `open` is the MENU's state, `TitleBarToggle`'s rule: the mark lights in ink while
+   * the sheet is down, and `aria-pressed` says so out loud. The sheet itself is the
+   * caller's `ControlCenter`, portalled elsewhere; this is only the button that pulls
+   * it down and puts it back. `Settings2` — two sliders — unless the caller says
+   * otherwise, because a cog is what opens the settings PAGE and these are not it.
+   */
+  settings?: TitleBarToggle & { icon?: IconComponent }
+  /**
+   * A STANDING NOTICE, before the quick-settings toggle — "Notifications off".
+   *
+   * `TitleBarAction`'s shape because it is one: a mark and a word on a plate, and a click
+   * that does something about it — the app opens the quick settings, where the switch
+   * is. It is here and not in a corner of a page because it says something about the
+   * whole app for as long as it is true, and the bar is the one strip on screen for as
+   * long as the app is.
+   */
+  notice?: TitleBarAction
   /** Margins and placement. Not the height, the ground, or the order of the regions. */
   className?: string
 }
@@ -173,9 +194,11 @@ export function AppTitleBar({
   titles = [],
   action,
   right,
+  settings,
+  notice,
   className = '',
 }: AppTitleBarProps) {
-  const hasRight = Boolean(action || right)
+  const hasRight = Boolean(action || right || settings || notice)
 
   return (
     <div
@@ -220,6 +243,16 @@ export function AppTitleBar({
               title={right.title}
               onClick={right.onToggle}
               active={right.open}
+              activeTone="ink"
+            />
+          )}
+          {notice && <Action {...notice} />}
+          {settings && (
+            <ButtonIcon
+              icon={settings.icon ?? Settings2}
+              title={settings.title}
+              onClick={settings.onToggle}
+              active={settings.open}
               activeTone="ink"
             />
           )}

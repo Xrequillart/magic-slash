@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 
+import { RAISED_PLATE } from './plate'
+
 /**
  * A raised panel on the app's ground — the shape every card in the right-hand agent
  * sidebar is drawn in.
@@ -42,9 +44,43 @@ const PADDING: Record<CardPadding, string> = {
   none: '',
 }
 
+/**
+ * What the card is painted on.
+ *
+ * `surface` is the card — 6% ink over the window, which is what a raised panel on the
+ * app's ground has always been. `raised` is `RAISED_PLATE`: opaque, and the same plate the
+ * tiles and the stepper stand on, for the one place a card sits among them —
+ * `ControlCenter`'s sheet, where a translucent card over frost was a lighter hole beside
+ * darker holes. It is a ground and not a `className` for `padding`'s reason: two
+ * background classes on one element are decided by Tailwind's emit order.
+ */
+export type CardGround = 'surface' | 'raised'
+
+const GROUND: Record<CardGround, string> = {
+  surface: 'bg-surface',
+  raised: RAISED_PLATE,
+}
+
+/**
+ * The corners. `rounded` is the card — `rounded-xl`, the radius every panel in the app
+ * wears. `pill` is for a card ONE ROW TALL among round things: on the quick-settings
+ * sheet every control of one point's height is a circle or a pill, and a card of that
+ * height with 12px corners was the one square-shouldered thing in the column. A prop and
+ * not a `className`, for `padding`'s reason: two radius classes on one element are decided
+ * by Tailwind's emit order, and `rounded-full` passed in lost to the card's own.
+ */
+export type CardShape = 'rounded' | 'pill'
+
+const SHAPE: Record<CardShape, string> = {
+  rounded: 'rounded-xl',
+  pill: 'rounded-full',
+}
+
 export interface CardProps {
   children: ReactNode
   padding?: CardPadding
+  ground?: CardGround
+  shape?: CardShape
   /**
    * Layout INSIDE and around — `flex flex-col gap-2`, `flex-1 min-h-0`, a margin.
    * Not the ground, the radius or the padding: those are the card, and a second
@@ -53,6 +89,6 @@ export interface CardProps {
   className?: string
 }
 
-export function Card({ children, padding = 'regular', className = '' }: CardProps) {
-  return <div className={`bg-surface rounded-xl ${PADDING[padding]} ${className}`.trim()}>{children}</div>
+export function Card({ children, padding = 'regular', ground = 'surface', shape = 'rounded', className = '' }: CardProps) {
+  return <div className={`${GROUND[ground]} ${SHAPE[shape]} ${PADDING[padding]} ${className}`.trim()}>{children}</div>
 }

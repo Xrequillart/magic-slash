@@ -131,6 +131,34 @@ export const en = {
   'titlebar.normalViewTitle': 'Normal view (⌘/)',
   'titlebar.splitViewTitle': 'Split view (⌘/)',
   'titlebar.info': 'Info',
+  /** The title bar's sliders button, and the sheet it pulls down. */
+  'titlebar.quickSettings': 'Quick settings',
+
+  // ── Quick settings (the sheet under the title bar) ───────────────────────
+  'controlCenter.title': 'Quick settings',
+  'controlCenter.features': 'Features',
+  // Two words at most under a 40px circle: these are captions, not sentences.
+  'controlCenter.splitView': 'Split view',
+  'controlCenter.quickLaunch': 'Quick Launch',
+  'controlCenter.notifications': 'Notifications',
+  'controlCenter.launchAtLogin': 'Start at login',
+  'controlCenter.prWatcher': 'PR watcher',
+  'controlCenter.planSync': 'Plan sync',
+  'controlCenter.shareActivity': 'Share activity',
+  'controlCenter.appearance': 'Appearance',
+  'controlCenter.theme': 'Theme',
+  'controlCenter.language': 'Language',
+  'controlCenter.about': 'About',
+  'controlCenter.allSettings': 'All settings',
+  'controlCenter.saveFailed': 'Failed to save that setting.',
+  /** The title bar's standing notice while notifications are off; pressing it opens the sheet. */
+  'controlCenter.notificationsOff': 'Notifications off',
+  // The machine's setup, in two words: a 3-point card has no room for the page's sentences.
+  'controlCenter.setup.ready': 'Machine ready',
+  'controlCenter.setup.issues': '{count} to fix',
+  'controlCenter.setup.checking': 'Checking…',
+  'controlCenter.setup.failed': 'Check failed',
+  'controlCenter.setup.open': 'Open the machine setup',
 
   // ── Left sidebar ─────────────────────────────────────────────────────────
   'sidebar.newAgent': 'New agent',

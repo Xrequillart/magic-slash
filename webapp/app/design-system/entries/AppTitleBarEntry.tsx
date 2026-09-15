@@ -50,6 +50,18 @@ const PROPS: PropRow[] = [
       'The one action in the bar, and it belongs to the agent rather than to a panel — which is why it is here at all: a control that closes the agent cannot live in something the agent’s owner may have collapsed. Drawn by Label, so it wears the plate, the height and the radius of the toggles beside it.',
   },
   {
+    name: 'settings',
+    type: 'TitleBarToggle & { icon?: IconComponent }',
+    description:
+      'The quick-settings toggle, last in the bar — where the platform keeps its own Control Center. `open` is the MENU’s state: the mark lights in ink while the sheet is down. The sheet itself is the caller’s ControlCenter; this is only the button that pulls it down. Settings2 unless the caller says otherwise, because a cog is what opens the settings PAGE.',
+  },
+  {
+    name: 'notice',
+    type: 'TitleBarAction',
+    description:
+      'A standing notice before the quick-settings toggle — “Notifications off”. TitleBarAction’s shape because it is one: a mark and a word on a plate, and a click that does something about it. It says something about the whole app for as long as it is true, and the bar is the one strip on screen for as long as the app is.',
+  },
+  {
     name: 'trafficLightGutter',
     type: 'boolean',
     fallback: 'true',

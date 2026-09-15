@@ -49,6 +49,11 @@ export type EntryId =
   | 'sidebar'
   | 'apptitlebar'
   | 'updatedialog'
+  | 'togglebutton'
+  | 'stepper'
+  | 'controlcenter'
+  | 'setupstatuscard'
+  | 'themegrid'
 
 export const ENTRY_LABELS: Record<EntryId, string> = {
   colors: 'Colours',
@@ -68,6 +73,11 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   sidebar: 'Sidebar',
   apptitlebar: 'AppTitleBar',
   updatedialog: 'UpdateDialog',
+  togglebutton: 'ToggleButton',
+  stepper: 'Stepper',
+  controlcenter: 'ControlCenter',
+  setupstatuscard: 'SetupStatusCard',
+  themegrid: 'ThemeGrid',
   text: 'Text',
   avatar: 'Avatar',
   label: 'Label',
@@ -167,6 +177,13 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   menusidebaritem: ['avatar', 'icon', 'text'],
   sidebar: ['menusidebar', 'agent', 'buttonicon', 'selecticon', 'usageclaudecodecard'],
   apptitlebar: ['buttonicon', 'label'],
+  togglebutton: ['icon', 'text', 'label'],
+  stepper: ['buttonicon', 'text'],
+  // The tiles, the stepper and the pickers on the sheet are the CALLER's — slots, not
+  // drawings — so only the group heading counts.
+  controlcenter: ['text'],
+  setupstatuscard: ['card', 'buttonicon', 'icon', 'loader', 'text'],
+  themegrid: ['card'],
   updatedialog: ['modal', 'card', 'icon', 'progress', 'text'],
   text: [],
   avatar: ['icon'],
@@ -284,6 +301,11 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   repositoryselector: 'Which repositories an agent works in',
   sidebaragentplannerinfo: 'The right column of a planner',
   apptitlebar: 'The bar across the top, and it knows nothing either',
+  togglebutton: 'A feature, on or off, in one circle',
+  stepper: 'A value walked up and down',
+  controlcenter: 'The quick settings, sliding down from under the bar',
+  setupstatuscard: 'The machine’s verdict in one row',
+  themegrid: 'Eight themes to look at, four to a line',
   icon: 'Every glyph, five sizes, three tones',
   text: 'Cera Pro, six sizes, four weights',
   avatar: 'A face, or the icon when there is none',

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { BUTTON_ICON_SIZES, type ButtonIconSize } from './ButtonIcon'
 import { Icon, type IconSize } from './Icon'
 import { Check, ChevronDown } from './icons'
+import { RAISED_PLATE, RAISED_PLATE_HOVER } from './plate'
 import { Text, type TextSize } from './Text'
 import type { IconComponent } from './types'
 
@@ -84,18 +85,32 @@ export interface SelectIconGroup {
 /**
  * What the trigger turns, at rest and while open.
  *
- * TWO, and one of them has a caller. The scripts menu is purple, and it is a step
- * DARKER while open than on hover — pressing an already-open chip has to look like
- * something happened, and it cannot look like hovering it. `neutral` is the default
- * that costs nothing. A third goes in when a third menu exists, not before.
+ * THREE, each with a caller. The scripts menu is purple, and it is a step DARKER while
+ * open than on hover — pressing an already-open chip has to look like something
+ * happened, and it cannot look like hovering it. `neutral` is the default that costs
+ * nothing. `solid` is the quick-settings sheet's, and the note on it says why a
+ * translucent plate could not do there.
  */
-export type SelectIconTone = 'neutral' | 'purple'
+export type SelectIconTone = 'neutral' | 'purple' | 'solid'
 
 const TONES: Record<SelectIconTone, { rest: string; open: string }> = {
   neutral: { rest: 'bg-ink/5 text-icon hover:bg-ink/10 hover:text-ink', open: 'bg-ink/10 text-ink' },
   purple: {
     rest: 'bg-ink/5 text-icon hover:bg-purple/10 hover:text-purple',
     open: 'bg-purple/20 text-purple',
+  },
+  /**
+   * THE THIRD MENU, and the one the note above was waiting for: the pickers on
+   * `ControlCenter`'s sheet. Its ground is a thin frost over the blurred app, and a
+   * `bg-ink/5` trigger there is a trigger at 5% of whatever is behind — invisible on a
+   * dark terminal, a smudge on a light one. `RAISED_PLATE` is `ToggleButton`'s and
+   * `Stepper`'s plate, opaque, so the three stand on the sheet as one family; the
+   * hover and the open state are brightness steps because a second translucent colour
+   * would be a second hole.
+   */
+  solid: {
+    rest: `${RAISED_PLATE} text-icon ${RAISED_PLATE_HOVER} hover:text-ink`,
+    open: `${RAISED_PLATE} text-ink brightness-125`,
   },
 }
 
@@ -149,6 +164,18 @@ const TRIGGER_GAP = 4
 export interface SelectIconProps {
   /** The mark, from `@ds/desktop/icons`. */
   icon: IconComponent
+  /**
+   * THE WORD IN FORCE, drawn between the mark and the chevron — "Dark", "Français".
+   *
+   * Absent, the control is the icon-only chip it always was. Given, it becomes a field
+   * that SAYS its value, for a row where three controls must read as one: the quick
+   * settings put a theme picker, a scale stepper and a language picker side by side at
+   * one fixed width (`className="w-44"`), and a chip that showed only its mark beside a
+   * stepper that showed its number would be two controls telling different amounts.
+   * The word truncates rather than widening the control — the width is the row's, not
+   * the word's — and the tooltip still carries the full name.
+   */
+  value?: string
   /**
    * What the menu is. REQUIRED, for `ButtonIcon`'s reason: the trigger carries no
    * word, so this is the tooltip and the accessible name at once.
@@ -215,12 +242,18 @@ export interface SelectIconProps {
    * container and the panel is themed again.
    */
   portalTo?: HTMLElement | null
+  /**
+   * A PILL WITH SEMICIRCULAR ENDS rather than the rung's rounded corners — `ButtonIcon`'s
+   * `round`, for the same row: a picker beside `ToggleButton` tiles that are circles.
+   */
+  round?: boolean
   /** Margins and placement. Not the height, the ground or the radius. */
   className?: string
 }
 
 export function SelectIcon({
   icon,
+  value,
   title,
   groups,
   onSelect,
@@ -233,6 +266,7 @@ export function SelectIcon({
   tone = 'neutral',
   panelWidth = DEFAULT_PANEL_WIDTH,
   portalTo,
+  round = false,
   className = '',
 }: SelectIconProps) {
   const [selfOpen, setSelfOpen] = useState(false)
@@ -340,17 +374,29 @@ export function SelectIcon({
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-controls={isOpen ? panelId : undefined}
-        className={`${shape.h} ${shape.radius} inline-flex items-center justify-center gap-0.5 px-1.5
-          border-none cursor-pointer transition-colors flex-shrink-0
+        className={`${shape.h} ${round ? 'rounded-full' : shape.radius} inline-flex items-center ${
+          value ? 'justify-between gap-2 px-3' : `justify-center gap-0.5 ${round ? 'px-2.5' : 'px-1.5'}`
+        } border-none cursor-pointer transition-colors flex-shrink-0
           ${isOpen ? toneSpec.open : toneSpec.rest} ${className}`}
       >
-        <Icon glyph={icon} size={shape.icon} tone="inherit" />
-        {/* A rung below the mark: it is the grammar of the control, not its subject. */}
+        <Icon glyph={icon} size={shape.icon} tone="inherit" className="flex-shrink-0" />
+        {/* The word, when there is one: it takes the room between the mark and the chevron
+            and gives it up first — `min-w-0 flex-1 truncate` — so a fixed-width control
+            stays fixed and a long name loses its tail rather than its chevron. */}
+        {value && (
+          <Text size={panel.text} weight="medium" tone="inherit" className="min-w-0 flex-1 truncate text-left">
+            {value}
+          </Text>
+        )}
+        {/* A rung below the mark on a chip: it is the grammar of the control, not its
+            subject. On a FIELD — one with a word — it grows to the mark's own rung: a
+            control that says its value is read like a select, and a select's chevron is
+            what you aim for. */}
         <Icon
           glyph={ChevronDown}
-          size="xs"
+          size={value ? shape.icon : 'xs'}
           tone="inherit"
-          className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          className={`flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 

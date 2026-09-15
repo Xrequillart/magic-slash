@@ -15,11 +15,25 @@ const PROPS: PropRow[] = [
       'regular is the one to use. compact is a card folded to one line, where p-4 would undo the point of folding it. none is for a panel whose body scrolls — padding on the outside puts the scrollbar inside it and clips the first row.',
   },
   {
+    name: 'ground',
+    type: "'surface' | 'raised'",
+    fallback: "'surface'",
+    description:
+      'What the card is painted on. surface is 6% ink over the window, the card as it has always been. raised is the opaque plate the ControlCenter tiles and stepper stand on, for the one place a card sits among them: over frost, a translucent card was a lighter hole beside darker holes.',
+  },
+  {
+    name: 'shape',
+    type: "'rounded' | 'pill'",
+    fallback: "'rounded'",
+    description:
+      'The corners. rounded is the card, rounded-xl like every panel in the app. pill is for a card one row tall among round things, the quick-settings sheet’s setup verdict: a 12px corner there was the one square-shouldered thing in the column.',
+  },
+  {
     name: 'className',
     type: 'string',
     fallback: "''",
     description:
-      'Layout inside and around — flex flex-col gap-2, flex-1 min-h-0, a margin. Not the ground, the radius or the padding: a second spelling of the padding would win or lose on the order Tailwind emitted them in.',
+      'Layout inside and around — flex flex-col gap-2, flex-1 min-h-0, a margin. Not the ground, the radius or the padding: a second spelling of either would win or lose on the order Tailwind emitted them in.',
   },
 ]
 

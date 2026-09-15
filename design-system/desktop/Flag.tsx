@@ -15,9 +15,14 @@ import { useId } from 'react'
  * to everyone who does not write it, and a flagless row loses the scanning speed the
  * flags are here for.
  *
- * The same component exists in `webapp/components/Flag.tsx`. Ported rather than
- * shared: two builds, no common module — and the paths are a fixed drawing that has
- * no reason to change on one side only.
+ * IN THE DESIGN SYSTEM and not in the desktop's components any more, because two
+ * things draw it: the desktop's language picker on the settings page and, here,
+ * `ToggleButton`'s `flag` for the language tiles on the quick-settings sheet. It carries no
+ * theme token — a flag's colours are the flag's — so it is the rare drawing here that
+ * looks the same on every ground, which is exactly what a flag is for.
+ *
+ * The same component exists in `webapp/components/Flag.tsx`, the site's copy. It should
+ * import this one now that this one is importable; it did not yet.
  */
 
 /**
@@ -86,4 +91,47 @@ export function Flag({ code, className = 'h-3 w-[18px]' }: { code: string; class
   if (code === 'fr') return <FranceFlag className={cls} />
   if (code === 'en') return <UnionFlag className={cls} />
   return null
+}
+
+/**
+ * THE ROUND FLAG — the marketing site's, from `LanguagesArt`, ported for the language
+ * tiles on the quick-settings sheet: a disc rather than a rectangle, because the tile it
+ * fills is a circle and a rectangle cut to a circle loses its corners and its meaning.
+ *
+ * DRAWN, NOT LOADED, and in the ICON'S palette rather than the flags' real colours — the
+ * site's own choice, kept: the two marks were Icons8's 96px "round flag" PNGs redrawn as
+ * SVG, indigo `#3F51B5`, off-white `#ECEFF1`, red `#FF3D00`, and the disc has to match
+ * the site a reader may have just come from. These are icons of flags, in a flat set's
+ * palette; the rectangles above are the ones that carry the real colours. The hexes
+ * are the drawing's, like the rectangles' — a flag has no theme.
+ *
+ * Flat and uncounterchanged, as the icon is. `useId` on the clip for the reason
+ * `UnionFlag` gives: `url(#id)` resolves against the whole document.
+ */
+export function RoundFlag({ code, className = 'h-10 w-10' }: { code: string; className?: string }) {
+  const clip = useId()
+  const clipPath = `url(#${clip})`
+  if (code !== 'fr' && code !== 'en') return null
+  return (
+    <svg viewBox="0 0 96 96" className={`shrink-0 rounded-full ${className}`} aria-hidden focusable="false">
+      <clipPath id={clip}>
+        <circle cx="48" cy="48" r="48" />
+      </clipPath>
+      {code === 'fr' ? (
+        <g clipPath={clipPath}>
+          <rect width="32" height="96" fill="#3F51B5" />
+          <rect x="32" width="32" height="96" fill="#ECEFF1" />
+          <rect x="64" width="32" height="96" fill="#FF3D00" />
+        </g>
+      ) : (
+        <g clipPath={clipPath}>
+          <rect width="96" height="96" fill="#3F51B5" />
+          <path d="M0,0 L96,96 M96,0 L0,96" stroke="#ECEFF1" strokeWidth="16" />
+          <path d="M0,0 L96,96 M96,0 L0,96" stroke="#FF3D00" strokeWidth="6" />
+          <path d="M48,0 V96 M0,48 H96" stroke="#ECEFF1" strokeWidth="26" />
+          <path d="M48,0 V96 M0,48 H96" stroke="#FF3D00" strokeWidth="14" />
+        </g>
+      )}
+    </svg>
+  )
 }

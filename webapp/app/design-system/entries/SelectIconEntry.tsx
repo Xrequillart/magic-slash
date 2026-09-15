@@ -94,11 +94,17 @@ const PROPS: PropRow[] = [
       'How wide the panel is, in pixels. A number and not a class: the panel is portalled and positioned by hand, so this same value is what the right-alignment and the viewport clamp are computed from. Pass the width of the longest row — the sidebar’s sort menu asks for 190, three short phrases and no hint, where 280 beside a 230px column overhangs the list it belongs to.',
   },
   {
+    name: 'value',
+    type: 'string',
+    description:
+      'The word in force, drawn between the mark and the chevron — “Dark”, “Français”. Absent, the control is the icon-only chip. Given, it becomes a field that says its value, for a row where a picker must read like the stepper beside it; it truncates rather than widening a control given a fixed width.',
+  },
+  {
     name: 'tone',
-    type: "'neutral' | 'purple'",
+    type: "'neutral' | 'purple' | 'solid'",
     fallback: "'neutral'",
     description:
-      'What it turns at rest and while open. The open tint is a step darker than the hover: pressing an already-open chip has to look like something happened, and it cannot look like hovering it.',
+      'What it turns at rest and while open. The open tint is a step darker than the hover: pressing an already-open chip has to look like something happened, and it cannot look like hovering it. solid is an opaque plate for the quick-settings sheet, whose frosted ground would make a translucent trigger read as a hole.',
   },
   { name: 'className', type: 'string', fallback: "''", description: 'Margins and placement. Not the height, the ground or the radius.' },
 ]
@@ -125,7 +131,7 @@ function usePortalHost() {
 
 function Demo({ groups, tone, size, loading }: {
   groups: SelectIconGroup[]
-  tone?: 'neutral' | 'purple'
+  tone?: 'neutral' | 'purple' | 'solid'
   size?: ButtonIconSize
   loading?: boolean
 }) {

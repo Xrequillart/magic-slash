@@ -2,6 +2,7 @@ import { forwardRef } from 'react'
 import { Icon, type IconSize } from './Icon'
 import type { ComponentSize } from './componentSizes'
 import { Loader } from './Loader'
+import { RAISED_PLATE, RAISED_PLATE_HOVER } from './plate'
 import type { IconComponent } from './types'
 
 /**
@@ -44,7 +45,7 @@ import type { IconComponent } from './types'
  * other two are the app's real exceptions — removing a repository, and opening one in
  * VS Code, whose blue is the editor's own and not a token.
  */
-export type ButtonIconTone = 'neutral' | 'danger' | 'vscode' | 'ghost' | 'success'
+export type ButtonIconTone = 'neutral' | 'danger' | 'vscode' | 'ghost' | 'success' | 'solid'
 
 /**
  * Three on the shared ladder — `Label`'s and `Status`'s 24 / 28 / 32 — and one below
@@ -143,6 +144,14 @@ const TONES: Record<ButtonIconTone, string> = {
    * it would be a second axis, and a tone table is not where two axes go.
    */
   success: 'text-green hover:bg-green/10 hover:text-green',
+  /**
+   * THE OPAQUE PLATE — `RAISED_PLATE`, the one the quick-settings sheet's tiles, stepper
+   * and pickers stand on — for a button standing among them. `neutral`'s `ink/5` on that
+   * sheet's frost is a plate at 5% of whatever is behind, which is no plate; this is the
+   * same answer `SelectIcon`'s `solid` gives, for the same row. The hover is a brightness
+   * step, never a second translucent colour.
+   */
+  solid: `${RAISED_PLATE} text-icon ${RAISED_PLATE_HOVER} hover:text-ink`,
 }
 
 /**
@@ -221,6 +230,16 @@ export interface ButtonIconProps {
    * second, and it composes with every one of them — a `danger` control can be busy.
    */
   busy?: boolean
+  /**
+   * A CIRCLE rather than the rung's rounded square.
+   *
+   * For a control standing among round things — the arrows of a `Stepper`, a picker
+   * in a row of `ToggleButton` tiles — where a square corner would be the one square
+   * corner in the row. The ladder is untouched: only the radius changes, and it is
+   * swapped rather than added so there is never a second radius class for Tailwind's
+   * emit order to arbitrate.
+   */
+  round?: boolean
   /** Margins and placement — `ml-auto`, a gap. Not the size, the ground or the hover. */
   className?: string
 }
@@ -247,11 +266,13 @@ export const ButtonIcon = forwardRef<HTMLButtonElement, ButtonIconProps>(functio
     activeTone = 'accent',
     disabled = false,
     busy = false,
+    round = false,
     className = '',
   },
   ref,
 ) {
   const shape = BUTTON_ICON_SIZES[size]
+  const radius = round ? 'rounded-full' : shape.radius
   // Busy blocks the click the same way `disabled` does — see the prop's note — but
   // keeps its opacity, so the dimming rule is emitted only for the other case.
   const blocked = disabled || busy
@@ -267,7 +288,7 @@ export const ButtonIcon = forwardRef<HTMLButtonElement, ButtonIconProps>(functio
       disabled={blocked}
       aria-pressed={active}
       aria-busy={busy || undefined}
-      className={`${shape.h} ${shape.w} ${shape.radius} inline-flex items-center justify-center
+      className={`${shape.h} ${shape.w} ${radius} inline-flex items-center justify-center
         border-none cursor-pointer transition-colors flex-shrink-0
         disabled:cursor-not-allowed ${busy ? '' : 'disabled:opacity-50'} ${
           active ? ACTIVE[activeTone] : TONES[tone]

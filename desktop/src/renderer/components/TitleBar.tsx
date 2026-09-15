@@ -4,6 +4,9 @@ import { useStore } from '../store'
 import { canCloseAgent } from './agent-info-sidebar/utils'
 import { useIsFullScreen } from '../hooks/useIsFullScreen'
 import { useT } from '../i18n'
+import { ControlCenterMenu } from './ControlCenterMenu'
+import { BellOff } from '@ds/desktop/icons'
+import { useConfig } from '../hooks/useConfig'
 
 /**
  * THE BAR IS `AppTitleBar` NOW — `@ds/desktop/AppTitleBar.tsx` — and what is left here is
@@ -19,6 +22,9 @@ import { useT } from '../i18n'
  * The marketing site's `AppWindowMockup` had copied those SVGs path for path. It renders
  * the component now, so the drawing and the app cannot disagree again.
  *
+ * THE VIEW SWITCH IS GONE from the bar too: the split view is a tile on the quick
+ * settings sheet, which turns it on outright rather than only allowing it.
+ *
  * THE CODER/PLANNER SWITCH IS GONE from the bar — the product's call, it earned nothing
  * there. `canChangeAgentType` in `agent-info-sidebar/utils.ts` was its gate and no
  * surface calls it any more; it and its tests are left standing rather than deleted on
@@ -27,8 +33,11 @@ import { useT } from '../i18n'
 
 export function TitleBar() {
   const t = useT()
-  const { terminals, activeTerminalId, rightSidebar, leftSidebarVisible, toggleRightSidebar, toggleLeftSidebar, openCloseAgentModal, isSplitMode, splitTerminalId, focusedPane, isWideScreen, splitEnabled, splitActive, toggleSplitActive } = useStore()
+  const { terminals, activeTerminalId, rightSidebar, leftSidebarVisible, toggleRightSidebar, toggleLeftSidebar, openCloseAgentModal, isSplitMode, splitTerminalId, focusedPane } = useStore()
   const isFullScreen = useIsFullScreen()
+  // Absent means never chosen, which is on — the reading the main process makes.
+  const { config } = useConfig()
+  const notificationsOff = config?.notifications?.enabled === false
   const activeTerminal = terminals.find((t) => t.id === activeTerminalId)
   const splitTerminal = terminals.find((t) => t.id === splitTerminalId)
 
@@ -65,18 +74,9 @@ export function TitleBar() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [closeableTerminal, openCloseAgentModal])
 
-  const splitToggleVisible = isWideScreen && splitEnabled && terminals.length >= 2
-  const [showSplitToggle, setShowSplitToggle] = useState(splitToggleVisible)
-  const [splitToggleExiting, setSplitToggleExiting] = useState(false)
-
-  useEffect(() => {
-    if (splitToggleVisible) {
-      setShowSplitToggle(true)
-      setSplitToggleExiting(false)
-    } else if (showSplitToggle) {
-      setSplitToggleExiting(true)
-    }
-  }, [splitToggleVisible])
+  // THE QUICK SETTINGS, held here and nowhere else: the button in the bar and the sheet
+  // under it are one state, and no other surface opens or closes it.
+  const [quickSettingsOpen, setQuickSettingsOpen] = useState(false)
 
   // One title normally, two when the window is split: the component draws a rule between
   // the pair and dims whichever is not being typed into.
@@ -97,6 +97,7 @@ export function TitleBar() {
   }
 
   return (
+    <>
     <AppTitleBar
       // In native fullscreen the traffic lights are gone, and their gutter with them.
       trafficLightGutter={!isFullScreen}
@@ -105,23 +106,9 @@ export function TitleBar() {
         title: t('titlebar.toggleAgentsList'),
         onToggle: () => toggleLeftSidebar(),
       }}
-      leftSwitch={showSplitToggle ? {
-        options: [
-          { id: 'normal', label: t('titlebar.normalView'), title: t('titlebar.normalViewTitle') },
-          { id: 'split', label: t('titlebar.splitView'), title: t('titlebar.splitViewTitle') },
-        ],
-        value: splitActive ? 'split' : 'normal',
-        onSelect: () => toggleSplitActive(),
-        // The switch slides out by its own width when the second agent goes away, and
-        // the keyframes are the desktop's own — which is why the animation is passed
-        // IN rather than owned by the component, and why the unmount waits on it.
-        className: splitToggleExiting ? 'animate-slide-out' : 'animate-slide-in',
-        onAnimationEnd: () => {
-          if (!splitToggleExiting) return
-          setShowSplitToggle(false)
-          setSplitToggleExiting(false)
-        },
-      } : undefined}
+      // THE VIEW SWITCH IS GONE FROM THE BAR — the split view is a tile on the quick
+      // settings now, and it turns the split ON rather than merely allowing it. ⌘/ still
+      // toggles it from `App.tsx`.
       titles={titles}
       // Closing the agent is offered here, next to the sidebar toggle, because the
       // info sidebar no longer has a header to carry it — and the action belongs
@@ -141,6 +128,25 @@ export function TitleBar() {
         title: t('titlebar.info'),
         onToggle: () => toggleRightSidebar('info'),
       } : undefined}
+      // Last in the bar, where the platform keeps its Control Center. The sheet it
+      // pulls down is `ControlCenterMenu`, portalled to the body so the bar's own
+      // stacking never clips it — and starting UNDER the bar, so this button is still
+      // there to close it.
+      // Standing while notifications are off, and pressing it opens the sheet where the
+      // switch is — the same sheet the sliders beside it open.
+      notice={notificationsOff ? {
+        label: t('controlCenter.notificationsOff'),
+        title: t('controlCenter.notificationsOff'),
+        icon: BellOff,
+        onClick: () => setQuickSettingsOpen(true),
+      } : undefined}
+      settings={{
+        open: quickSettingsOpen,
+        title: t('titlebar.quickSettings'),
+        onToggle: () => setQuickSettingsOpen((was) => !was),
+      }}
     />
+    <ControlCenterMenu open={quickSettingsOpen} onClose={() => setQuickSettingsOpen(false)} />
+    </>
   )
 }
