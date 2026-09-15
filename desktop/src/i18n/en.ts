@@ -1436,7 +1436,7 @@ export const en = {
   'agentInfo.removeRepository': 'Remove repository',
   'agentInfo.copyBranch': 'Copy branch name',
   'agentInfo.uncommittedChanges': 'Uncommitted changes',
-  'agentInfo.noUncommittedChanges': 'No uncommitted changes',
+  'agentInfo.noUncommittedChanges': 'No file being modified or waiting to be committed',
   'agentInfo.commits': 'Commits',
   'agentInfo.viewOnGitHub': 'View on GitHub',
   'agentInfo.viewPullRequest': 'View Pull Request',

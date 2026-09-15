@@ -34,6 +34,12 @@ const PROPS: PropRow[] = [
       'The rows to draw, in order. All of them: slice before you get here. Each carries a path (its key, its tooltip and what onOpenFile is handed), a name (what the row shows), and its own two counts.',
   },
   {
+    name: 'emptyLabel',
+    type: 'string',
+    description:
+      'One line, in place of the list, when the tree is clean. Translated, and free to claim more than this panel can see — the app’s says nothing is waiting for a commit either, which is why the app only mounts the panel at all when that is true. Its absence is also an answer: without it a clean panel draws its heading and nothing under it.',
+  },
+  {
     name: 'onOpenFile',
     type: '(path: string) => void',
     description:
@@ -139,6 +145,17 @@ export function UnCommittedChangesCardEntry({
               />
             </div>
           </Specimen>
+          <Specimen label="a clean tree, which is a state and not an absence">
+            <div className="max-w-[288px]">
+              <UnCommittedChangesCard
+                label="Uncommitted changes"
+                additions={0}
+                deletions={0}
+                files={[]}
+                emptyLabel="No file being modified or waiting to be committed"
+              />
+            </div>
+          </Specimen>
         </Stage>
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
           One padding, on the card, around everything — nothing bleeds out of it. Measured
@@ -152,6 +169,33 @@ export function UnCommittedChangesCardEntry({
           They sit on <code>space-y-0.5</code> and not the flush stack{' '}
           <code>CommitCard</code> uses: there is no rail to break here, and a hair of air is
           what keeps a dense list of filenames from reading as a paragraph.
+        </p>
+      </EntrySection>
+
+      <EntrySection
+        title="A clean tree is a state, not an absence"
+        note="Handed an emptyLabel, the panel stays on screen with one line saying so instead of vanishing — because a card that disappears makes the reader work out why: nothing to commit, or the poll has not answered, or the repository was detached. It costs one row to say which."
+      >
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          It works that out rather than being told: no files, no additions, no deletions. The
+          three cannot disagree — a rename with no content change is +0 −0 but still a{' '}
+          <em>file</em>, so <code>files</code> is non-empty and this is not the clean case.
+          What it is <em>not</em> is “the caller sliced the list”: the specimen above it has
+          totals with no rows, which is a real state and keeps the heading it had.
+        </p>
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          The count and the <code>DiffStat</code> both drop out with it, and neither is a
+          judgement call: “0 files” is a plural composed for a list that is not there, and
+          “+0 −0” with a gauge is a bar drawn at nothing — two ways of writing the word the
+          line below already says in full.
+        </p>
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          Whether the panel exists <em>at all</em> is still the caller’s. This one knows
+          about a working tree and nothing else, so a sentence that also claims something
+          about the <em>commits</em> — the app’s does — can only be true if whoever can see
+          both decides to say it. The app drops the whole panel instead when the branch is
+          ahead: the commit card below is already saying what is in flight, and a heading
+          over an empty plate would be a second, quieter way of saying nothing.
         </p>
       </EntrySection>
 
@@ -170,8 +214,12 @@ export function UnCommittedChangesCardEntry({
     additions: file.additions,
     deletions: file.deletions,
   }))}
+  emptyLabel={t('agentInfo.noUncommittedChanges')}
   onOpenFile={path => openRepoReview(snapshot, path)}
-/>`}</Snippet>
+/>
+
+// …and the app only reaches that at all when there is something to say:
+const showChanges = isGitRepo && (hasChanges || !hasCommits)`}</Snippet>
       </EntrySection>
     </article>
   )

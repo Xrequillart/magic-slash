@@ -86,6 +86,18 @@ export function toCoderRepository({
 }: CoderRepositoryInput): CoderRepository {
   const hasChanges = Boolean(gitData?.stats?.isGitRepo && gitData.stats.filesChanged > 0)
   const hasCommits = Boolean(gitData?.commits && gitData.commits.commits.length > 0)
+  /* WHEN THE WORKING-TREE PANEL IS DRAWN AT ALL, and it is not simply "when there are
+     changes" any more.
+
+     With files to list, it lists them. With none, it stays only to say that NOTHING is
+     in flight — no file being modified, none waiting for a commit — and that sentence is
+     only true when the branch is not ahead either. So a clean tree with commits on it
+     drops the panel entirely rather than showing a placeholder that would contradict the
+     commit card two rows below it.
+
+     A folder that is not a git repository has no working tree to report on at all, and
+     keeps no panel in any case. */
+  const showChanges = Boolean(gitData?.stats?.isGitRepo) && (hasChanges || !hasCommits)
   /* The parent branch is only worth a card of its own when it is somewhere else: on the
      base branch itself, `base -> current` would just say the same name twice, so both the
      card and the arrow drop out. */
@@ -138,13 +150,18 @@ export function toCoderRepository({
        replaced wholesale by the poll a few seconds from now, and the review must not
        follow it. */
     changes:
-      hasChanges && gitData?.stats
+      showChanges && gitData?.stats
         ? {
             label: t('agentInfo.uncommittedChanges'),
-            summary: t(
-              gitData.stats.filesChanged > 1 ? 'agentInfo.files.other' : 'agentInfo.files.one',
-              { count: gitData.stats.filesChanged },
-            ),
+            /* The count is dropped on a clean tree rather than sent as "0 files": the
+               panel hides it in that state anyway, and composing a plural for a list
+               that is not there is the kind of string that outlives the reason for it. */
+            summary: hasChanges
+              ? t(
+                  gitData.stats.filesChanged > 1 ? 'agentInfo.files.other' : 'agentInfo.files.one',
+                  { count: gitData.stats.filesChanged },
+                )
+              : undefined,
             additions: gitData.stats.additions,
             deletions: gitData.stats.deletions,
             files: (gitData.stats.files ?? []).map(file => ({
@@ -153,6 +170,10 @@ export function toCoderRepository({
               additions: file.additions,
               deletions: file.deletions,
             })),
+            /* Passed whether or not the tree is clean: the panel works that out from the
+               three numbers itself, and a second copy of that test here is a second
+               place for it to go wrong. */
+            emptyLabel: t('agentInfo.noUncommittedChanges'),
             onOpenFile: onOpenReview,
           }
         : undefined,

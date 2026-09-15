@@ -1380,7 +1380,7 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.removeRepository': 'Retirer le dépôt',
   'agentInfo.copyBranch': 'Copier le nom de la branche',
   'agentInfo.uncommittedChanges': 'Modifications non committées',
-  'agentInfo.noUncommittedChanges': 'Aucune modification non committée',
+  'agentInfo.noUncommittedChanges': 'Aucun fichier en cours de modification ou en attente de commit',
   'agentInfo.commits': 'Commits',
   'agentInfo.viewOnGitHub': 'Voir sur GitHub',
   'agentInfo.viewPullRequest': 'Voir la pull request',

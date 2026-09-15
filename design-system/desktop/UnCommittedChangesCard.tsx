@@ -21,6 +21,24 @@ import { Text } from './Text'
  * whole tree, and the list may be a slice of it — a panel that added up what it could
  * see would quietly report a different diff from the one `git diff --stat` prints.
  * The caller owns the count, exactly as it owns `CommitCard`'s.
+ *
+ * A CLEAN TREE IS A STATE, NOT AN ABSENCE. Handed an `emptyLabel`, the panel stays on
+ * screen with one line saying so instead of vanishing — because a card that disappears
+ * makes the reader work out WHY: nothing to commit, or the poll has not answered, or
+ * the repository was detached. It costs one row to say which, and the row below the
+ * heading is the only place in the card where that sentence can go.
+ *
+ * WHICH IT WORKS OUT RATHER THAN BEING TOLD: no files, no additions, no deletions. The
+ * three cannot disagree — a rename with no content change is +0 −0 but still a FILE, so
+ * `files` is non-empty and this is not the clean case. What it is NOT is "the caller
+ * sliced the list": totals with no rows is a real state and keeps the heading it had.
+ *
+ * WHETHER THE PANEL EXISTS AT ALL IS STILL THE CALLER'S. This one knows about a working
+ * tree and nothing else, so a sentence that also claims something about the COMMITS —
+ * the app's does — can only be true if whoever can see both decides to say it. The app
+ * drops the whole panel instead when the branch is ahead: the commit card below is
+ * already saying what is in flight, and a heading over an empty plate would be a second,
+ * quieter way of saying nothing.
  */
 
 /** One row's worth of facts. The shape `FileModifiedLine` draws, plus its identity. */
@@ -56,6 +74,16 @@ export interface UnCommittedChangesCardProps {
   /** The rows to draw, in order. All of them: slice before you get here. */
   files: UnCommittedChangesFile[]
   /**
+   * One line, in place of the list, when the tree is clean. Translated, and free to
+   * claim more than this panel can see — the app's says nothing is waiting for a commit
+   * either, which is why the app only mounts the panel at all when that is true.
+   *
+   * ITS ABSENCE IS ALSO AN ANSWER: without it a clean panel draws its heading and
+   * nothing under it, which is what a caller that only mounts this card when there IS
+   * something to show wants. Passing it is what turns the empty case into a sentence.
+   */
+  emptyLabel?: string
+  /**
    * Opening a file. One handler for the panel rather than one per row, since only
    * the path differs between them. Absent, the rows are text: see
    * `FileModifiedLine`'s note on why there is no way to have the hover without it —
@@ -72,9 +100,13 @@ export function UnCommittedChangesCard({
   additions,
   deletions,
   files,
+  emptyLabel,
   onOpenFile,
   className = '',
 }: UnCommittedChangesCardProps) {
+  const clean = files.length === 0 && additions === 0 && deletions === 0
+  const empty = clean && Boolean(emptyLabel)
+
   return (
     <div className={`bg-ink/5 rounded-lg p-3 ${className}`.trim()}>
       {/* The heading carries the colour and both halves take it with `inherit`; the
@@ -112,7 +144,12 @@ export function UnCommittedChangesCard({
           {label}
         </Text>
 
-        {summary && (
+        {/* BOTH DROP OUT ON A CLEAN TREE, and neither is a judgement call. "0 files" is
+            the count the caller composed for a list that is not there, and "+0 −0" with
+            a gauge is a bar drawn at nothing — two ways of writing the word the line
+            below already says in full. The heading stays, because it is what the
+            sentence under it is an answer to. */}
+        {!empty && summary && (
           <Text
             tone="inherit"
             className="min-w-0 truncate text-text-secondary/50"
@@ -126,8 +163,32 @@ export function UnCommittedChangesCard({
             own accord, and needs no `ml-auto` now that the heading grows into the slack.
             Truncating "+248 -12" would print a different number, which is worse than
             printing none; the words around it only get shorter. */}
-        <DiffStat additions={additions} deletions={deletions} gauge />
+        {!empty && <DiffStat additions={additions} deletions={deletions} gauge />}
       </div>
+
+      {/* CENTRED, AND DIMMER THAN THE HEADING ABOVE IT. A placeholder is the one line in
+          the card nobody is trying to read — it is there to be recognised at a glance and
+          then skipped, which is the opposite of a filename. Same treatment as
+          `UsageClaudeCodeCard`'s empty hint, so the two read as one kind of thing.
+
+          `opacity` and not `text-text-secondary/40`: `Text` owns the colour, and a second
+          colour class on one element is settled by the order Tailwind emitted the two
+          rather than by the order they are written. */}
+      {/* `clean && emptyLabel` rather than the `empty` flag above: the two say the same
+          thing, but only this spelling narrows `emptyLabel` to a string, and `Text` takes
+          a string for the reason its own note gives. */}
+      {clean && emptyLabel && (
+        <div className="text-center py-1.5">
+          {/* `leading-snug` because this one WRAPS: it is a sentence rather than the two
+              or three words a placeholder usually is, and at the sidebar's 288px it takes
+              two lines. Default leading on a two-line centred block reads as two separate
+              lines rather than one sentence. `UsageClaudeCodeCard`'s empty hint says the
+              same thing for the same reason. */}
+          <Text tone="secondary" className="opacity-40 leading-snug">
+            {emptyLabel}
+          </Text>
+        </div>
+      )}
 
       {/* NOTHING BLEEDS OUT OF THE PLATE'S PADDING. One padding, on the card, around
           everything: the rows fill the content box, so a filename starts on the
