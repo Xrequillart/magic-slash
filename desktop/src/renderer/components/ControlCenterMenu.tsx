@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   ControlCenter,
   ControlCenterGroup,
+  SelectIcon,
   SetupStatusCard,
   Stepper,
   ThemeGrid,
@@ -11,9 +12,9 @@ import {
   type ThemeGridOption,
 } from '@ds/desktop'
 import {
-  Bell, BellOff, Brain, ChartSpline, CircleCheck, CloudCheck, GitPullRequest, GitPullRequestArrow,
-  MessageCircleQuestionMark, MessageSquareWarning, MonitorPlay, Newspaper, ScrollText,
-  SquareSplitHorizontal, TextCursorInput,
+  Bell, BellOff, Braces, Brain, ChartSpline, CircleCheck, ClaudeCode, CloudCheck, GitPullRequest,
+  GitPullRequestArrow, MessageCircleQuestionMark, MessageSquareWarning, MonitorPlay, Newspaper,
+  ScrollText, SquareSplitHorizontal, TextCursorInput,
 } from '@ds/desktop/icons'
 import { useStore } from '../store'
 import { useConfig } from '../hooks/useConfig'
@@ -22,7 +23,8 @@ import { THEMES, THEME_IDS, useTheme } from '../theme'
 import { useLanguage, useT } from '../i18n'
 import { showToast } from './Toast'
 import {
-  DEFAULT_ZOOM, LANGUAGE_IDS, MAX_ZOOM, MIN_ZOOM, type LanguageId, type SetupStatus, type ThemeId,
+  CODE_THEME_MODES, DEFAULT_CODE_THEME_MODE, DEFAULT_ZOOM, LANGUAGE_IDS, MAX_ZOOM, MIN_ZOOM,
+  isValidCodeThemeMode, type LanguageId, type SetupStatus, type ThemeId,
 } from '../../types'
 
 /**
@@ -42,10 +44,11 @@ import {
  *
  * FIVE SECTIONS, each a grid of four points to a row — a tile is one point, a picker or
  * the stepper three, the theme card all four — and the sections are the product owner's:
- * the machine's setup (its verdict and a re-check), appearance (the eight themes as the miniatures the Appearance page paints, then the
- * scale under them), notifications (the master switch and every kind the Notifications
- * page lists, the kinds dark and greyed while the master is off), features, and
- * language.
+ * the machine's setup (its verdict and a re-check), appearance (the eight themes as the
+ * miniatures the Appearance page paints, then the scale and the split view, then how far
+ * the theme reaches — Claude Code in the terminals, and what the file preview highlights
+ * code in), notifications (the master switch and every kind the Notifications page lists,
+ * the kinds dark and greyed while the master is off), features, and language.
  */
 
 export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -53,6 +56,7 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
   const {
     config, updateSplitEnabled, updateSpotlight, updateNotifications, updateDailyDigestEnabled,
     updateTheme, updateLanguage, updateUsageCardEnabled, updateAgentContextEnabled,
+    updateSyncClaudeTheme, updateCodeTheme,
   } = useConfig()
   const { splitEnabled, splitActive, toggleSplitEnabled, toggleSplitActive, setConfig, openSettingsModal } = useStore()
   const activeTheme = useTheme()
@@ -160,6 +164,11 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
   // reading the Appearance page's rows make.
   const usageCardOn = config?.usageCardEnabled !== false
   const agentContextOn = config?.agentContextEnabled !== false
+  // HOW FAR THE THEME REACHES — the Appearance page's card under its picker, and the
+  // same two readings: absent means on for Claude Code (a light theme with an unpainted
+  // transcript reads as a bug), and the code preview follows the theme until told not to.
+  const claudeThemeOn = config?.syncClaudeTheme !== false
+  const codeTheme = config?.codeTheme ?? DEFAULT_CODE_THEME_MODE
 
 
   const percent = Math.round(zoom * 100)
@@ -197,13 +206,65 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
         />
       </ControlCenterGroup>
 
-      {/* APPEARANCE — the eight themes to look at, then the scale and the split view. */}
+      {/* APPEARANCE — the eight themes to look at, then how far the chosen one reaches,
+          then the scale and the split view: the window's own layout comes last. */}
       <ControlCenterGroup label={t('controlCenter.appearance')}>
         <ThemeGrid
           themes={themeOptions}
           value={activeTheme}
           onSelect={(id) => void write(() => updateTheme(id as ThemeId))}
         />
+        {/* HOW FAR THE CHOSEN THEME REACHES, on the line DIRECTLY UNDER the miniatures —
+            the Appearance page's second card, in one tile and one field. Both are
+            meaningless apart from the theme above them, which is why they sit against it
+            rather than after the scale: the eye picks a theme, then reads where it
+            applies, and the window's own layout — the scale, the split — comes after.
+
+            The tile first and the field after it, which is the scale row turned around:
+            a tile and three points of field against three points and a tile, so the two
+            lines fill the grid from opposite ends and the section reads as two pairs. */}
+        <ToggleButton
+          icon={ClaudeCode}
+          checked={claudeThemeOn}
+          onChange={(next) => void write(() => updateSyncClaudeTheme(next))}
+          caption={false}
+          label={t('settings.appearance.claudeTheme.label')}
+        />
+        {/* A SELECT AND NOT A TILE, because the choice is three-way: the code preview
+            can follow the theme or be pinned to either appearance, and a circle can only
+            say yes or no. `solid` and `round` are what put it in this row — the sheet's
+            opaque plate, and the pill ends every control of one height wears here.
+
+            THE TRIGGER SAYS THE SHORT WORD and the rows say the whole sentence: "Auto"
+            at three tiles wide, where "Follows the theme" loses its tail, and the panel
+            has the room to say what following the theme means. */}
+        <SelectIcon
+          icon={Braces}
+          value={t(`controlCenter.codeTheme.${codeTheme}`)}
+          title={t('settings.appearance.codeTheme.label')}
+          size="2xl"
+          tone="solid"
+          round
+          className="col-span-3 w-full"
+          panelWidth={200}
+          groups={[{
+            label: t('settings.appearance.codeTheme.label'),
+            items: CODE_THEME_MODES.map((mode) => ({
+              id: mode,
+              label: t(`settings.appearance.codeTheme.${mode}`),
+              selected: mode === codeTheme,
+            })),
+          }]}
+          // Guarded on the way back the way `AgentSort` guards its own: `onSelect` hands
+          // over a string, and the type is what says this one is still a code theme.
+          onSelect={({ id }) => {
+            // Pulled out of the item before the closure: a property's narrowing does
+            // not survive into a callback, and `write` takes one.
+            if (!isValidCodeThemeMode(id) || id === codeTheme) return
+            void write(() => updateCodeTheme(id))
+          }}
+        />
+
         <Stepper
           value={`${percent}%`}
           label={t('settings.appearance.scale')}
