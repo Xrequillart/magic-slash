@@ -140,19 +140,10 @@ export const en = {
   // Two words at most under a 40px circle: these are captions, not sentences.
   'controlCenter.splitView': 'Split view',
   'controlCenter.quickLaunch': 'Quick Launch',
-  'controlCenter.notifications': 'Notifications',
   'controlCenter.launchAtLogin': 'Start at login',
   'controlCenter.prWatcher': 'PR watcher',
-  'controlCenter.planSync': 'Plan sync',
-  'controlCenter.shareActivity': 'Share activity',
   'controlCenter.appearance': 'Appearance',
   'controlCenter.theme': 'Theme',
-  // The syntax-highlighting field says its value in ONE word: the sheet gives it three
-  // tiles of width, where the page's own "Follows the theme" loses its tail. The panel
-  // it opens still carries the full phrases — see settings.appearance.codeTheme.*.
-  'controlCenter.codeTheme.auto': 'Auto',
-  'controlCenter.codeTheme.light': 'Light',
-  'controlCenter.codeTheme.dark': 'Dark',
   'controlCenter.language': 'Language',
   'controlCenter.about': 'About',
   'controlCenter.allSettings': 'All settings',

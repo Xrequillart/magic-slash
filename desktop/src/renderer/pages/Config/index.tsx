@@ -1,19 +1,17 @@
 import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode } from 'react'
-import { Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit2, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, Plug, SquareTerminal, Palette, Languages, AppWindow, Lightbulb, Bot, type LucideIcon } from '@ds/desktop/icons'
+import { Plus, ChevronRight, Folder, Sparkles, FolderGit2, Keyboard, Info, Clock, ChevronDown, AlertTriangle, Shield, Gauge, User, Coins, LogOut, Building2, Lock, CircleUserRound, Plug, SquareTerminal, Bot, type LucideIcon } from '@ds/desktop/icons'
 // lucide v1 dropped the brand glyphs, so the GitHub mark is the app's own —
 // the same one the tracker badges wear.
 import { Github } from '@ds/desktop/icons'
 import { AccountPage } from './AccountPage'
+// The chords live with the page that CHANGES them; this one only shows which is
+// in force, and two spellings of the same eight is how the two drift apart.
+import { SPOTLIGHT_OPTIONS } from './ApplicationPage'
 import { ConnectionsPage } from './ConnectionsPage'
 import { RepoPage } from './RepoPage'
 import { OrgPage, resolveActiveOrgId } from './OrgPage'
-import { AppearancePage } from './AppearancePage'
-import { NotificationsPage } from './NotificationsPage'
-import { LanguagePage } from './LanguagePage'
 import { SectionHeader } from './SectionHeader'
-import { ToggleRow } from './ToggleRow'
 import { TelemetryHealthCard } from './TelemetryHealthCard'
-import { SetupHealthCard } from './SetupHealthCard'
 import { RateLimitBar } from '../../components/agent-info-sidebar/LimitGauge'
 import { SweepPane } from '../../components/SweepPane'
 import { AccountAvatar } from '../../components/AccountAvatar'
@@ -22,25 +20,14 @@ import { useConfig } from '../../hooks/useConfig'
 import { useAuth } from '../../hooks/useAuth'
 import { useAvatar } from '../../hooks/useAvatar'
 import { displayNameFromEmail } from '../../utils/displayName'
-import type { SpotlightShortcut, LaunchMode, AgentType, ClaudeAccount, SpendSummary, SettingsTab, RepositoryConfig, Org } from '../../../types'
+import type { LaunchMode, AgentType, ClaudeAccount, SpendSummary, SettingsTab, RepositoryConfig, Org } from '../../../types'
 import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
 import { formatUsd } from '../../utils/usageStats'
 import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
 import { CHANGELOG_URL } from '../../../urls'
-import { Switch } from '@ds/desktop'
 import { SELECT } from '../../theme/controls'
 
-const SPOTLIGHT_OPTIONS: { label: string; value: string }[] = [
-  { label: '\u2303 Space', value: 'Control+Space' },
-  { label: '\u2303\u21E7 Space', value: 'Control+Shift+Space' },
-  { label: '\u2325 Space', value: 'Alt+Space' },
-  { label: '\u2325\u21E7 Space', value: 'Alt+Shift+Space' },
-  { label: '\u2303 M', value: 'Control+M' },
-  { label: '\u2303\u21E7 M', value: 'Control+Shift+M' },
-  { label: '\u2325 M', value: 'Alt+M' },
-  { label: '\u2325\u21E7 M', value: 'Alt+Shift+M' },
-]
 
 // Message keys rather than labels, for the same reason as SETTINGS_TABS below:
 // module scope is evaluated once at import, so a literal here would pin the
@@ -59,10 +46,16 @@ const AGENT_TYPE_OPTIONS: { value: AgentType; labelKey: MessageKey; descriptionK
 ]
 
 // Icons mirror each tab's own section header, so the rail and the content agree.
-// Claude Code and Application are the exceptions: each holds several sections —
-// the CLI's account/launch mode/usage on one side, the machine's setup and every
-// feature toggle on the other — so each gets an icon for the whole rather than
-// one borrowed from a single section.
+// Claude Code is the exception: it holds several sections — the CLI's account, its
+// launch mode, its usage — so it gets an icon for the whole rather than one borrowed
+// from a single section.
+//
+// SEVEN AND NOT ELEVEN. Appearance, Language & Region, Notifications and Application
+// are gone: everything on them either moved to the quick settings sheet under the
+// title bar, which is a faster door to the same values, or went with them on purpose —
+// the Quick Launch shortcut waits for a keyboard page of its own, the PR watcher's
+// interval and its skill auto-launch keep their defaults, and a machine is repaired by
+// the launch wizard rather than by a card behind four clicks.
 //
 // Message KEYS, not labels: this list is module scope, so a `t()` call here would
 // be evaluated once at import and pin the rail to whatever language the app
@@ -72,11 +65,7 @@ const SETTINGS_TABS: { id: SettingsTab; labelKey: MessageKey; icon: LucideIcon }
   { id: 'connections', labelKey: 'settings.tab.connections', icon: Plug },
   { id: 'organization', labelKey: 'settings.tab.organization', icon: Building2 },
   { id: 'repositories', labelKey: 'settings.tab.repositories', icon: FolderGit2 },
-  { id: 'application', labelKey: 'settings.tab.application', icon: AppWindow },
   { id: 'claude-code', labelKey: 'settings.tab.claudeCode', icon: SquareTerminal },
-  { id: 'notifications', labelKey: 'settings.tab.notifications', icon: Bell },
-  { id: 'appearance', labelKey: 'settings.tab.appearance', icon: Palette },
-  { id: 'language', labelKey: 'settings.tab.language', icon: Languages },
   { id: 'shortcuts', labelKey: 'settings.tab.shortcuts', icon: Keyboard },
   { id: 'about', labelKey: 'settings.tab.about', icon: Info },
 ]
@@ -177,71 +166,6 @@ function SettingsAccountFooter() {
         <LogOut className="w-3.5 h-3.5" />
         <span>{t('settings.footer.signOut')}</span>
       </button>
-    </div>
-  )
-}
-
-// The two halves of the activity-recording breakdown. Message keys rather than
-// labels, for the same reason as SETTINGS_TABS: module scope is evaluated once at
-// import, so a literal would pin the list to the boot language.
-const USAGE_LOGS_COLLECTED: MessageKey[] = [
-  'settings.application.usageLogs.collected.activity',
-  'settings.application.usageLogs.collected.skills',
-  'settings.application.usageLogs.collected.session',
-  'settings.application.usageLogs.collected.context',
-]
-
-// The last two are the counterweight to the skills line opposite: now that a run
-// carries its duration and its outcome, the obvious next question is whether the
-// words next to /magic:pr travel with it (they do not — types.ts, SkillInvocationInput)
-// and which skills reach the table at all.
-//
-// That second one is worded as a NAME test, not as ownership, because that is all
-// isMagicSkill does (main/usage/skill-invocations.ts): it folds the plugin prefix,
-// then requires the basename to start with `magic-`. Promising "nothing that is not
-// ours" would over-claim — a third-party skill called `acme:magic-deploy` clears that
-// filter. The panel states the rule the code actually enforces.
-const USAGE_LOGS_EXCLUDED: MessageKey[] = [
-  'settings.application.usageLogs.excluded.prompts',
-  'settings.application.usageLogs.excluded.code',
-  'settings.application.usageLogs.excluded.terminal',
-  'settings.application.usageLogs.excluded.secrets',
-  'settings.application.usageLogs.excluded.args',
-  'settings.application.usageLogs.excluded.otherSkills',
-]
-
-/**
- * What activity recording does and does not send, side by side. Shown whatever
- * the toggle's state: someone who turned it off is exactly the person who wants
- * to know what they turned off, and someone deciding needs the two lists to
- * compare — a paragraph the length of both never gets read.
- *
- * `t` is passed in rather than pulled from useT() so the desktop and the webapp's
- * copy of this block stay diffable line by line.
- */
-function UsageLogsBreakdown({ t }: { t: Translate }) {
-  const columns = [
-    { titleKey: 'settings.application.usageLogs.collected', keys: USAGE_LOGS_COLLECTED, Icon: Check, tone: 'text-green' },
-    { titleKey: 'settings.application.usageLogs.excluded', keys: USAGE_LOGS_EXCLUDED, Icon: X, tone: 'text-red' },
-  ] as const
-
-  return (
-    <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4 mt-4 pt-4 border-t border-line-subtle">
-      {columns.map(({ titleKey, keys, Icon, tone }) => (
-        <div key={titleKey}>
-          <div className="text-[11px] uppercase tracking-wider text-text-secondary/50 mb-2">
-            {t(titleKey)}
-          </div>
-          <ul className="space-y-1.5">
-            {keys.map((key) => (
-              <li key={key} className="flex items-start gap-2 text-xs text-text-secondary leading-snug">
-                <Icon className={`w-3.5 h-3.5 shrink-0 mt-px ${tone}`} />
-                <span>{t(key)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
     </div>
   )
 }
@@ -418,8 +342,8 @@ function OrgRailItems({
 }
 
 function WelcomePage({ route }: { route: SettingsRoute }) {
-  const { config, terminals, splitEnabled, toggleSplitEnabled, setConfig, settingsInitialTab, setSettingsInitialTab } = useStore()
-  const { addRepository, updateSplitEnabled, updateSpotlight, updateLaunchMode, updateDefaultAgentType } = useConfig()
+  const { config, terminals, settingsInitialTab, setSettingsInitialTab } = useStore()
+  const { addRepository, updateLaunchMode, updateDefaultAgentType } = useConfig()
   const orgs = useStore((s) => s.orgs)
   // The rail lists the organizations too, so it needs the same selection the
   // Organization page reads — and the same fallback rule, hence the shared
@@ -475,17 +399,11 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   const [isAdding, setIsAdding] = useState(false)
   const [appVersion, setAppVersion] = useState('')
   const [loadingWhatsNew, setLoadingWhatsNew] = useState(false)
-  const [autoStart, setAutoStart] = useState(false)
   const [spotlightEnabled, setSpotlightEnabled] = useState(config?.spotlight?.enabled ?? true)
   const [spotlightShortcut, setSpotlightShortcut] = useState(config?.spotlight?.shortcut ?? 'Control+Space')
-  const [spotlightError, setSpotlightError] = useState(false)
   const [launchMode, setLaunchMode] = useState<LaunchMode>(config?.launchMode ?? 'default')
   const [defaultAgentType, setDefaultAgentType] = useState<AgentType>(config?.defaultAgentType ?? 'coder')
   const [showBypassWarning, setShowBypassWarning] = useState(false)
-  const [usageLogsEnabled, setUsageLogsEnabled] = useState(config?.usageLogsEnabled ?? true)
-  const [prWatcherEnabled, setPrWatcherEnabled] = useState(config?.prReviews?.enabled ?? true)
-  const [prWatcherInterval, setPrWatcherInterval] = useState(config?.prReviews?.pollIntervalMs ?? 60_000)
-  const [prWatcherAutoLaunch, setPrWatcherAutoLaunch] = useState(config?.prReviews?.autoLaunchSkills ?? false)
 
   const configSpotlightEnabled = config?.spotlight?.enabled
   const configSpotlightShortcut = config?.spotlight?.shortcut
@@ -498,48 +416,6 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   useEffect(() => {
     if (configLaunchMode !== undefined) setLaunchMode(configLaunchMode)
   }, [configLaunchMode])
-
-  const configUsageLogsEnabled = config?.usageLogsEnabled
-  useEffect(() => {
-    if (configUsageLogsEnabled !== undefined) setUsageLogsEnabled(configUsageLogsEnabled)
-  }, [configUsageLogsEnabled])
-
-  const configPrWatcherEnabled = config?.prReviews?.enabled
-  const configPrWatcherInterval = config?.prReviews?.pollIntervalMs
-  const configPrWatcherAutoLaunch = config?.prReviews?.autoLaunchSkills
-  useEffect(() => {
-    if (configPrWatcherEnabled !== undefined) setPrWatcherEnabled(configPrWatcherEnabled)
-    if (configPrWatcherInterval !== undefined) setPrWatcherInterval(configPrWatcherInterval)
-    if (configPrWatcherAutoLaunch !== undefined) setPrWatcherAutoLaunch(configPrWatcherAutoLaunch)
-  }, [configPrWatcherEnabled, configPrWatcherInterval, configPrWatcherAutoLaunch])
-
-  const handleSpotlightToggle = async () => {
-    const newEnabled = !spotlightEnabled
-    setSpotlightEnabled(newEnabled)
-    setSpotlightError(false)
-    try {
-      const result = await updateSpotlight({ enabled: newEnabled, shortcut: spotlightShortcut })
-      if (newEnabled && !result.registered) {
-        setSpotlightError(true)
-      }
-    } catch {
-      setSpotlightEnabled(!newEnabled) // revert on error
-    }
-  }
-
-  const handleSpotlightShortcutChange = async (newShortcut: SpotlightShortcut) => {
-    const previousShortcut = spotlightShortcut
-    setSpotlightShortcut(newShortcut)
-    setSpotlightError(false)
-    try {
-      const result = await updateSpotlight({ enabled: spotlightEnabled, shortcut: newShortcut })
-      if (spotlightEnabled && !result.registered) {
-        setSpotlightError(true)
-      }
-    } catch {
-      setSpotlightShortcut(previousShortcut)
-    }
-  }
 
   const applyLaunchMode = async (mode: LaunchMode) => {
     const previous = launchMode
@@ -731,10 +607,9 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
     return () => { cancelled = true }
   }, [activeTab])
 
-  // Fetch app version and auto-start state
+  // Fetch app version
   useEffect(() => {
     window.electronAPI.updater.getVersion().then(setAppVersion)
-    window.electronAPI.config.getAutoStart().then(setAutoStart)
   }, [])
 
   const handleWhatsNew = async () => {
@@ -1182,247 +1057,6 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
           view, Spotlight, menu bar), and last what the app does on its own in the
           background (activity recording, digest, PR watcher). Which panels the
           sidebars show is an appearance decision and lives in that tab. */}
-      {contentTab === 'application' && <div className="flex flex-col gap-8">
-
-      {/* Machine setup (prerequisites, MCP servers, integrations) */}
-      <SetupHealthCard />
-
-      {/* Split View Section */}
-      <div>
-        <SectionHeader icon={Columns} title={t('settings.application.split.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.split.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.split.help')}</div>
-            </div>
-            <Switch
-              checked={splitEnabled}
-              onChange={() => { toggleSplitEnabled(); updateSplitEnabled(!splitEnabled) }}
-              label={t('settings.application.split.label')}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Spotlight Section */}
-      <div>
-        <SectionHeader icon={Search} title={t('settings.application.spotlight.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.spotlight.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.spotlight.help')}</div>
-            </div>
-            <Switch
-              checked={spotlightEnabled}
-              onChange={handleSpotlightToggle}
-              label={t('settings.application.spotlight.label')}
-            />
-          </div>
-          <div className="border-t border-line-subtle pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">{t('settings.application.spotlight.shortcutLabel')}</div>
-                <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.spotlight.shortcutHelp')}</div>
-              </div>
-              <div className="relative">
-                <select
-                  value={spotlightShortcut}
-                  onChange={(e) => handleSpotlightShortcutChange(e.target.value as SpotlightShortcut)}
-                  disabled={!spotlightEnabled}
-                  className={`${SELECT} w-52 disabled:opacity-50`}
-                >
-                  {SPOTLIGHT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
-              </div>
-            </div>
-          </div>
-          {spotlightError && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-red/10 border border-red/20 rounded-lg text-xs text-red">
-              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>{t('settings.application.spotlight.error')}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Background App Section */}
-      <div>
-        <SectionHeader icon={MonitorSmartphone} title={t('settings.application.background.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.background.autoStartLabel')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.background.autoStartHelp')}</div>
-            </div>
-            <Switch
-              checked={autoStart}
-              onChange={() => {
-                const newValue = !autoStart
-                setAutoStart(newValue)
-                window.electronAPI.config.setAutoStart(newValue)
-              }}
-              label={t('settings.application.background.autoStartLabel')}
-            />
-          </div>
-          <div className="border-t border-line-subtle pt-4">
-            <div className="text-sm font-medium mb-1">{t('settings.application.background.menuBarLabel')}</div>
-            <div className="text-xs text-text-secondary/50">
-              {t('settings.application.background.menuBarHelp')}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Plan session sync (ON by default — an explicit false opts out) */}
-      <div>
-        <SectionHeader icon={Lightbulb} title={t('settings.application.planSync.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <ToggleRow
-            label={t('settings.application.planSync.label')}
-            help={t('settings.application.planSync.help')}
-            value={config?.planSyncEnabled}
-            onChange={async (next) => {
-              const result = await window.electronAPI.config.setPlanSyncEnabled(next)
-              setConfig(result.config)
-            }}
-            errorMessage={t('settings.application.planSync.error')}
-          />
-          <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-            {t('settings.application.planSync.footnote')}
-          </div>
-        </div>
-      </div>
-
-      {/* PR Review Watcher Section */}
-      <div>
-        <SectionHeader icon={GitPullRequest} title={t('settings.application.prWatcher.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.prWatcher.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.prWatcher.help')}</div>
-            </div>
-            <Switch
-              checked={prWatcherEnabled}
-              onChange={async () => {
-                const newValue = !prWatcherEnabled
-                setPrWatcherEnabled(newValue)
-                // Pushed into the store, not just written to disk: the PR card in
-                // the agent sidebar reads this setting to decide whether to say
-                // "watching is off", and it would otherwise keep claiming the
-                // opposite until the next config load.
-                setConfig(await window.electronAPI.prWatcher.setEnabled(newValue))
-              }}
-              label={t('settings.application.prWatcher.label')}
-            />
-          </div>
-          {prWatcherEnabled && (
-            <>
-              <div className="border-t border-line-subtle pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium">{t('settings.application.prWatcher.intervalLabel')}</div>
-                    <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.prWatcher.intervalHelp')}</div>
-                  </div>
-                  <div className="relative">
-                    <select
-                      value={prWatcherInterval}
-                      onChange={(e) => {
-                        const newInterval = parseInt(e.target.value, 10)
-                        setPrWatcherInterval(newInterval)
-                        window.electronAPI.prWatcher.setInterval(newInterval)
-                      }}
-                      className={`${SELECT} w-52`}
-                    >
-                      <option value={30_000}>{t('settings.application.prWatcher.interval30s')}</option>
-                      <option value={60_000}>{t('settings.application.prWatcher.interval1m')}</option>
-                      <option value={120_000}>{t('settings.application.prWatcher.interval2m')}</option>
-                      <option value={300_000}>{t('settings.application.prWatcher.interval5m')}</option>
-                    </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
-                  </div>
-                </div>
-              </div>
-              <div className="border-t border-line-subtle pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium">{t('settings.application.prWatcher.autoLaunchLabel')}</div>
-                    <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.prWatcher.autoLaunchHelp')}</div>
-                  </div>
-                  <Switch
-              checked={prWatcherAutoLaunch}
-              onChange={() => {
-                const newValue = !prWatcherAutoLaunch
-                setPrWatcherAutoLaunch(newValue)
-                window.electronAPI.prWatcher.setAutoLaunchSkills(newValue)
-              }}
-              label={t('settings.application.prWatcher.autoLaunchLabel')}
-            />
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Activity recording (ON by default — an explicit false opts out) */}
-      <div>
-        <SectionHeader icon={BarChart3} title={t('settings.application.usageLogs.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.usageLogs.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">
-                {t('settings.application.usageLogs.help')}
-              </div>
-            </div>
-            <Switch
-              checked={usageLogsEnabled}
-              onChange={async () => {
-                const newValue = !usageLogsEnabled
-                setUsageLogsEnabled(newValue)
-                const result = await window.electronAPI.config.setUsageLogsEnabled(newValue)
-                setConfig(result.config)
-              }}
-              label={t('settings.application.usageLogs.label')}
-            />
-          </div>
-          {/*
-            The breakdown answers "what am I sharing?", so it goes away with the
-            sharing — same for the sentence about who can read it. What stays in
-            both states is the agents caveat: it is truest for the person who just
-            turned this off, since their agents keep syncing regardless.
-          */}
-          {usageLogsEnabled && (
-            <>
-              <UsageLogsBreakdown t={t} />
-              <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-                {t('settings.application.usageLogs.footnote')}
-              </div>
-            </>
-          )}
-          <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-            {t('settings.application.usageLogs.footnote.agents')}
-          </div>
-        </div>
-      </div>
-
-      </div>}
-
-      {/* Notifications tab */}
-      {contentTab === 'notifications' && <NotificationsPage />}
-
-      {/* Appearance tab */}
-      {contentTab === 'appearance' && <AppearancePage />}
-
-      {/* Language & Region tab */}
-      {contentTab === 'language' && <LanguagePage />}
-
       {/* Shortcuts tab */}
       {contentTab === 'shortcuts' && <div>
         <SectionHeader icon={Keyboard} title={t('settings.shortcuts.section')} />

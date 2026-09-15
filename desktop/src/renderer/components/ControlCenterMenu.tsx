@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   ControlCenter,
   ControlCenterGroup,
-  SelectIcon,
+  Label,
   SetupStatusCard,
   Stepper,
   ThemeGrid,
@@ -12,10 +12,10 @@ import {
   type ThemeGridOption,
 } from '@ds/desktop'
 import {
-  Bell, BellOff, Braces, Brain, ChartSpline, CircleCheck, ClaudeCode, CloudCheck, GitPullRequest,
-  GitPullRequestArrow, MessageCircleQuestionMark, MessageSquareWarning, MonitorPlay, Newspaper,
-  ScrollText, SquareSplitHorizontal, TextCursorInput,
+  Bell, BellOff, Brain, ChartSpline, Cog, GitPullRequest, MonitorPlay,
+  SquareSplitHorizontal, TextCursorInput,
 } from '@ds/desktop/icons'
+import { AllSettingsPanel } from './AllSettingsPanel'
 import { useStore } from '../store'
 import { useConfig } from '../hooks/useConfig'
 import { useZoom } from '../hooks/useZoom'
@@ -23,8 +23,7 @@ import { THEMES, THEME_IDS, useTheme } from '../theme'
 import { useLanguage, useT } from '../i18n'
 import { showToast } from './Toast'
 import {
-  CODE_THEME_MODES, DEFAULT_CODE_THEME_MODE, DEFAULT_ZOOM, LANGUAGE_IDS, MAX_ZOOM, MIN_ZOOM,
-  isValidCodeThemeMode, type LanguageId, type SetupStatus, type ThemeId,
+  DEFAULT_ZOOM, LANGUAGE_IDS, MAX_ZOOM, MIN_ZOOM, type LanguageId, type SetupStatus, type ThemeId,
 } from '../../types'
 
 /**
@@ -42,26 +41,36 @@ import {
  * pages. Nothing is moved OFF the pages by this menu; it is a second, faster door to
  * the same values.
  *
- * FIVE SECTIONS, each a grid of four points to a row — a tile is one point, a picker or
+ * FOUR SECTIONS, each a grid of four points to a row — a tile is one point, a picker or
  * the stepper three, the theme card all four — and the sections are the product owner's:
  * the machine's setup (its verdict and a re-check), appearance (the eight themes as the
- * miniatures the Appearance page paints, then the scale and the split view, then how far
- * the theme reaches — Claude Code in the terminals, and what the file preview highlights
- * code in), notifications (the master switch and every kind the Notifications page lists,
- * the kinds dark and greyed while the master is off), features, and language.
+ * miniatures the Appearance page paints, then the scale and the split view), features
+ * (notifications first, then what the app does that can be switched off), and language.
  */
 
 export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
   const {
-    config, updateSplitEnabled, updateSpotlight, updateNotifications, updateDailyDigestEnabled,
+    config, updateSplitEnabled, updateSpotlight, updateNotifications,
     updateTheme, updateLanguage, updateUsageCardEnabled, updateAgentContextEnabled,
-    updateSyncClaudeTheme, updateCodeTheme,
   } = useConfig()
-  const { splitEnabled, splitActive, toggleSplitEnabled, toggleSplitActive, setConfig, openSettingsModal } = useStore()
+  const { splitEnabled, splitActive, toggleSplitEnabled, toggleSplitActive, setConfig } = useStore()
   const activeTheme = useTheme()
   const activeLanguage = useLanguage()
   const { zoom, set: setZoom, step: stepZoom } = useZoom()
+
+  /**
+   * WHETHER THE ALL-SETTINGS PANEL IS OUT, beside the sheet.
+   *
+   * Here and not in the store, because nothing outside this menu opens it and nothing
+   * outside this menu needs to know: it is the state of one control on one sheet. It is
+   * cleared whenever the sheet goes, so the menu always comes back the way it opens —
+   * tiles first, and the page only if you ask for it again.
+   */
+  const [allSettings, setAllSettings] = useState(false)
+  useEffect(() => {
+    if (!open) setAllSettings(false)
+  }, [open])
 
   // ── Launch at login: not in the config, asked of the main process ─────────
   const [autoStart, setAutoStart] = useState(false)
@@ -134,41 +143,15 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
     }
   }
 
-  // Absent means never chosen, which is on — the reading the main process makes. The
-  // digest is the one opt-IN: absent means off, as on the Notifications page.
+  // Absent means never chosen, which is on — the reading the main process makes. WHICH
+  // KINDS it may speak about is the Notifications page's question now, not the sheet's;
+  // this tile is the master and nothing else.
   const notificationsOn = config?.notifications?.enabled !== false
-  /**
-   * WHAT A KIND'S TILE SHOWS — and it is not quite what the config says: a kind is drawn
-   * LIT ONLY WHILE THE MASTER IS LIT. With the master off, nothing will reach the person
-   * whatever the per-kind flags say, and five filled circles under a red bell were the
-   * sheet claiming otherwise.
-   *
-   * THE MASTER WRITES NOTHING BUT ITS OWN FLAG. The per-kind values stay exactly where
-   * they were — `updateNotifications` in the main process merges rather than replaces,
-   * deliberately — so this is a reading and not a reset: turn the master back on and
-   * every tile comes back as the person left it, which on a config nobody has touched is
-   * all four of them lit. The alternative was writing `false` across the block and the
-   * defaults back over it, and that spends someone's "never tell me about PR reviews"
-   * every time they silence the app for an afternoon.
-   *
-   * The tiles are `disabled` too, so an off kind cannot be pressed into a lie — the
-   * value written would be true while nothing notifies.
-   */
-  const notification = (key: 'agentWaiting' | 'agentCompleted' | 'prReview' | 'prChangesRequested') =>
-    notificationsOn && config?.notifications?.[key] !== false
-  const digestOn = notificationsOn && (config?.dailyDigest?.enabled ?? false)
   const prWatcherOn = config?.prReviews?.enabled ?? true
-  const planSyncOn = config?.planSyncEnabled !== false
-  const usageLogsOn = config?.usageLogsEnabled !== false
   // The two optional sidebar panels — absent means never chosen, which is shown, the
   // reading the Appearance page's rows make.
   const usageCardOn = config?.usageCardEnabled !== false
   const agentContextOn = config?.agentContextEnabled !== false
-  // HOW FAR THE THEME REACHES — the Appearance page's card under its picker, and the
-  // same two readings: absent means on for Claude Code (a light theme with an unpainted
-  // transcript reads as a bug), and the code preview follows the theme until told not to.
-  const claudeThemeOn = config?.syncClaudeTheme !== false
-  const codeTheme = config?.codeTheme ?? DEFAULT_CODE_THEME_MODE
 
 
   const percent = Math.round(zoom * 100)
@@ -192,79 +175,42 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
   })
 
   return (
-    <ControlCenter open={open} onClose={onClose} top={TITLE_BAR_HEIGHT} label={t('controlCenter.title')}>
+    <ControlCenter
+      open={open}
+      onClose={onClose}
+      top={TITLE_BAR_HEIGHT}
+      label={t('controlCenter.title')}
+      aside={<AllSettingsPanel />}
+      asideOpen={allSettings}
+    >
       {/* MACHINE SETUP — the verdict on three points and the re-check on the fourth.
-          Pressing the verdict opens the Application page, where the fixes are. */}
+          Pressing the verdict opens the panel beside the sheet, where the setup card
+          with the fixes is the first thing on it. It used to open the settings modal's
+          Application tab; the tab is gone and the card came with it, so the menu no
+          longer has to send you to another window to act on what it just told you. */}
       <ControlCenterGroup label={t('settings.application.setup.title')}>
         <SetupStatusCard
           state={setupState}
           label={t(SETUP_LABEL[setupState], { count: setupIssues })}
           openTitle={t('controlCenter.setup.open')}
-          onOpen={() => { onClose(); openSettingsModal('application') }}
+          onOpen={() => setAllSettings(true)}
           refreshTitle={t('settings.application.setup.recheck')}
           onRefresh={checkSetup}
         />
       </ControlCenterGroup>
 
-      {/* APPEARANCE — the eight themes to look at, then how far the chosen one reaches,
-          then the scale and the split view: the window's own layout comes last. */}
+      {/* APPEARANCE — the eight themes to look at, then the scale and the split view.
+          HOW FAR THE THEME REACHES IS NOT HERE: Claude Code's terminals and the file
+          preview's highlighting were a tile and a picker on this row for a while, and
+          they went back to the Appearance page in the settings panel. A tile says
+          whether a feature is on; "does the code preview follow the theme" is a
+          sentence, and the sheet has no room for the sentence. */}
       <ControlCenterGroup label={t('controlCenter.appearance')}>
         <ThemeGrid
           themes={themeOptions}
           value={activeTheme}
           onSelect={(id) => void write(() => updateTheme(id as ThemeId))}
         />
-        {/* HOW FAR THE CHOSEN THEME REACHES, on the line DIRECTLY UNDER the miniatures —
-            the Appearance page's second card, in one tile and one field. Both are
-            meaningless apart from the theme above them, which is why they sit against it
-            rather than after the scale: the eye picks a theme, then reads where it
-            applies, and the window's own layout — the scale, the split — comes after.
-
-            The tile first and the field after it, which is the scale row turned around:
-            a tile and three points of field against three points and a tile, so the two
-            lines fill the grid from opposite ends and the section reads as two pairs. */}
-        <ToggleButton
-          icon={ClaudeCode}
-          checked={claudeThemeOn}
-          onChange={(next) => void write(() => updateSyncClaudeTheme(next))}
-          caption={false}
-          label={t('settings.appearance.claudeTheme.label')}
-        />
-        {/* A SELECT AND NOT A TILE, because the choice is three-way: the code preview
-            can follow the theme or be pinned to either appearance, and a circle can only
-            say yes or no. `solid` and `round` are what put it in this row — the sheet's
-            opaque plate, and the pill ends every control of one height wears here.
-
-            THE TRIGGER SAYS THE SHORT WORD and the rows say the whole sentence: "Auto"
-            at three tiles wide, where "Follows the theme" loses its tail, and the panel
-            has the room to say what following the theme means. */}
-        <SelectIcon
-          icon={Braces}
-          value={t(`controlCenter.codeTheme.${codeTheme}`)}
-          title={t('settings.appearance.codeTheme.label')}
-          size="2xl"
-          tone="solid"
-          round
-          className="col-span-3 w-full"
-          panelWidth={200}
-          groups={[{
-            label: t('settings.appearance.codeTheme.label'),
-            items: CODE_THEME_MODES.map((mode) => ({
-              id: mode,
-              label: t(`settings.appearance.codeTheme.${mode}`),
-              selected: mode === codeTheme,
-            })),
-          }]}
-          // Guarded on the way back the way `AgentSort` guards its own: `onSelect` hands
-          // over a string, and the type is what says this one is still a code theme.
-          onSelect={({ id }) => {
-            // Pulled out of the item before the closure: a property's narrowing does
-            // not survive into a callback, and `write` takes one.
-            if (!isValidCodeThemeMode(id) || id === codeTheme) return
-            void write(() => updateCodeTheme(id))
-          }}
-        />
-
         <Stepper
           value={`${percent}%`}
           label={t('settings.appearance.scale')}
@@ -297,14 +243,15 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
         />
       </ControlCenterGroup>
 
-      {/* NOTIFICATIONS — the master first, red while off, then every kind the page
-          lists. The kinds are DISABLED while the master is off rather than hidden: the
-          page hides them because three cards of dead controls are noise, but a tile is
-          one circle, and a greyed circle says "kept, and coming back" where a missing
-          one says nothing. They go DARK with it as well as grey — see `notification`:
-          the master is the whole section's state, and only the config remembers what
-          each kind was. */}
-      <ControlCenterGroup label={t('controlCenter.notifications')}>
+      {/* FEATURES — what the app does that can be switched off, NOTIFICATIONS FIRST.
+          They were a section of their own, six tiles: a master and every kind the
+          Notifications page lists. The kinds went back to that page — a tile can say
+          whether the app may speak to you, and it takes a page to say which of five
+          things it may speak about — and one switch is not a section, so the master
+          stands at the head of this one. It is first because it is the loudest thing
+          the app does: everything else here changes what you see when you look, this
+          changes what reaches you when you are not looking. */}
+      <ControlCenterGroup label={t('controlCenter.features')}>
         <ToggleButton
           icon={Bell}
           offIcon={BellOff}
@@ -314,50 +261,6 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
           caption={false}
           label={t('settings.notifications.master.label')}
         />
-        <ToggleButton
-          icon={MessageCircleQuestionMark}
-          checked={notification('agentWaiting')}
-          disabled={!notificationsOn}
-          onChange={(next) => void write(() => updateNotifications({ agentWaiting: next }))}
-          caption={false}
-          label={t('settings.notifications.agentWaiting.label')}
-        />
-        <ToggleButton
-          icon={CircleCheck}
-          checked={notification('agentCompleted')}
-          disabled={!notificationsOn}
-          onChange={(next) => void write(() => updateNotifications({ agentCompleted: next }))}
-          caption={false}
-          label={t('settings.notifications.agentCompleted.label')}
-        />
-        <ToggleButton
-          icon={GitPullRequestArrow}
-          checked={notification('prReview')}
-          disabled={!notificationsOn}
-          onChange={(next) => void write(() => updateNotifications({ prReview: next }))}
-          caption={false}
-          label={t('settings.notifications.prReview.label')}
-        />
-        <ToggleButton
-          icon={MessageSquareWarning}
-          checked={notification('prChangesRequested')}
-          disabled={!notificationsOn}
-          onChange={(next) => void write(() => updateNotifications({ prChangesRequested: next }))}
-          caption={false}
-          label={t('settings.notifications.prChangesRequested.label')}
-        />
-        <ToggleButton
-          icon={Newspaper}
-          checked={digestOn}
-          disabled={!notificationsOn}
-          onChange={(next) => void write(() => updateDailyDigestEnabled(next))}
-          caption={false}
-          label={t('settings.notifications.digest.label')}
-        />
-      </ControlCenterGroup>
-
-      {/* FEATURES — what the app does that can be switched off. */}
-      <ControlCenterGroup label={t('controlCenter.features')}>
         <ToggleButton
           icon={TextCursorInput}
           checked={spotlightEnabled}
@@ -393,26 +296,6 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
           caption={false}
           label={t('controlCenter.prWatcher')}
         />
-        <ToggleButton
-          icon={CloudCheck}
-          checked={planSyncOn}
-          onChange={(next) => void write(async () => {
-            const result = await window.electronAPI.config.setPlanSyncEnabled(next)
-            setConfig(result.config)
-          })}
-          caption={false}
-          label={t('controlCenter.planSync')}
-        />
-        <ToggleButton
-          icon={ScrollText}
-          checked={usageLogsOn}
-          onChange={(next) => void write(async () => {
-            const result = await window.electronAPI.config.setUsageLogsEnabled(next)
-            setConfig(result.config)
-          })}
-          caption={false}
-          label={t('controlCenter.shareActivity')}
-        />
       </ControlCenterGroup>
 
       {/* LANGUAGE — one tile per language, its flag on it, the one in force lit: the
@@ -430,6 +313,22 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
           />
         ))}
       </ControlCenterGroup>
+
+      {/* ALL SETTINGS — the way to everything the tiles cannot say, under the last
+          group and centred: a foot, not a fifth section, so it takes a `Label` rather
+          than a tile. A LABEL AND NOT A BUTTON because that is what this folder's one
+          chip is — a mark and a word on a plate — and `onClick` is what makes it
+          pressable at all; without one it would light up under the cursor and do
+          nothing, which is the bug that prop exists to prevent.
+
+          It TOGGLES rather than opens: the control that brought the panel out is the
+          obvious thing to press to put it away, and it is the only one on screen — the
+          panel has no chrome of its own. */}
+      <div className="flex justify-center">
+        <Label icon={Cog} size="md" onClick={() => setAllSettings((out) => !out)}>
+          {t('controlCenter.allSettings')}
+        </Label>
+      </div>
     </ControlCenter>
   )
 }

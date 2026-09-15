@@ -1657,18 +1657,16 @@ export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired'
  *  apart from 'account' because a connection is a credential on THIS machine
  *  rather than part of who the user is. 'claude-code' gathers everything about
  *  the Claude Code CLI itself — the account it runs as, its launch mode, and its
- *  rate/spend usage. 'application' is the app itself: how this machine is set up,
- *  plus every feature toggle. */
+ *  rate/spend usage. What the app itself looks like and does — the theme, the
+ *  language, the notifications, the feature toggles, the machine's setup — has no tab
+ *  any more: the quick settings sheet under the title bar holds everything that fits
+ *  in a tile, and the panel it opens beside itself holds the rest. */
 export type SettingsTab =
   | 'account'
   | 'connections'
   | 'organization'
   | 'repositories'
-  | 'application'
   | 'claude-code'
-  | 'notifications'
-  | 'appearance'
-  | 'language'
   | 'shortcuts'
   | 'about'
 

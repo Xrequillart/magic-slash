@@ -60,6 +60,34 @@ export interface ControlCenterProps {
   /** The controls, grouped. `ControlCenterGroup` is the shape they come in. */
   children: ReactNode
   /**
+   * A PANEL IN THE MIDDLE OF THE WINDOW, out only while `asideOpen`.
+   *
+   * The sheet answers the settings that fit in a circle; everything else is a page, and
+   * a page does not go in a 40px grid. So the caller may hang one panel off the menu —
+   * the app hangs all the settings the tiles cannot say — and it opens from inside the
+   * sheet rather than replacing it: the tiles stay under your hand while you read it,
+   * which is the whole difference between this and a modal.
+   *
+   * THE MIDDLE OF THE WINDOW AND NOT THE SIDE OF THE SHEET. It sat immediately left of
+   * the column first, which tied a page-sized thing to the edge the menu happens to
+   * hug: on a wide window it opened far off to the right with the whole app empty
+   * beside it. Centred, it is where the eye already is, and it is the same place
+   * whatever the sheet is holding. The sheet still paints over it where the two meet —
+   * the menu is what you are in, the panel is what it opened.
+   *
+   * IT IS NOT MODAL. No veil, no focus trap: the layer under it is the same
+   * click-to-dismiss layer the sheet has always had, so a click beside the panel closes
+   * the whole menu rather than just the panel.
+   *
+   * A SLOT, like `children`, and for `children`'s reason: what is ON it is the app's and
+   * this folder cannot import it. What this component owns is WHERE it sits, how tall it
+   * may be, that a click inside it does not dismiss the menu, and that it fades with the
+   * rest.
+   */
+  aside?: ReactNode
+  /** Whether that panel is out. The CALLER's state — it owns the control that opens it. */
+  asideOpen?: boolean
+  /**
    * How wide the sheet may be, in pixels. It is as wide as its controls and hugs the
    * right edge under the button that opened it; this is the cap for a caller whose
    * controls would otherwise run on.
@@ -77,6 +105,8 @@ export function ControlCenter({
   top = 0,
   label,
   children,
+  aside,
+  asideOpen = false,
   width = 440,
   portalTo,
   className = '',
@@ -190,31 +220,66 @@ ${Array.from({ length: 16 }, (_, i) => `.${scope}[data-shown="true"] [data-cc-it
       style={{ top }}
       onClick={onClose}
     >
-      {/* THE SHEET: as wide as its controls, standing 12px in from the bar and from the
-          window's right edge under the button that opened it. Fully transparent and
-          still: the controls stand on their own plates over the blurred app, and the
-          motion is theirs — a fade for the whole, a pop for each. */}
-      <div
-        role="dialog"
-        aria-modal="false"
-        aria-label={label}
-        className="relative ml-auto mt-3 mr-3 w-fit rounded-2xl"
-        style={{ maxWidth: width }}
-      >
-        {/* THE COLUMN: the controls, and the ONE thing a click may land on without
-            closing the menu — everything else on the layer is "outside". It fades as a
-            whole while its controls pop one by one. */}
-        <style dangerouslySetInnerHTML={{ __html: bubbles }} />
+      {/* THE PANEL, centred on the WINDOW — `fixed inset-0` rather than a box inside the
+          layer, because the layer starts under the title bar and centring in it would
+          leave the panel sitting half a bar low. `pointer-events-none` on the centring
+          box and back on for the panel itself: the empty space around it is the layer's
+          again, so a click there dismisses the menu the way a click anywhere else does.
+
+          `max-h-[80vh]` and `min-h-0` are the pair that keeps it INSIDE the window: the
+          panel's own body is the scroller (see the caller), and a flex child will not go
+          shorter than its content without `min-h-0`. 80 and not 100 so a full-height
+          panel still clears the bar at the top, which the centring alone does not
+          guarantee. It is a CAP and not a height — how tall the panel actually stands is
+          the panel's own business, and the app's stands at a fixed 608px so that turning
+          to a page with one row on it does not resize the card under the pointer.
+
+          It fades on the sheet's own flag, one beat faster: a panel that lingered after
+          the sheet had gone would read as a window of its own. */}
+      {aside && asideOpen && (
+        <div className="pointer-events-none fixed inset-0 flex items-center justify-center p-6">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`pointer-events-auto flex min-h-0 max-h-[80vh] transition-opacity duration-200 ${
+              shown ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            {aside}
+          </div>
+        </div>
+      )}
+
+      {/* THE ROW: the sheet, hard against the right edge, 12px in from the bar and from
+          the window's edge — where it has always stood. It keeps the row it was given
+          when the panel was its neighbour; the panel has moved out, and the row is one
+          line of layout rather than two spellings of the same inset. */}
+      <div className="flex h-full items-start justify-end p-3">
+        {/* THE SHEET: as wide as its controls, standing 12px in from the bar and from the
+            window's right edge under the button that opened it. Fully transparent and
+            still: the controls stand on their own plates over the blurred app, and the
+            motion is theirs — a fade for the whole, a pop for each. */}
         <div
-          onClick={(e) => e.stopPropagation()}
-          onTransitionEnd={onTransitionEnd}
-          data-shown={shown ? 'true' : 'false'}
-          className={`${scope} relative flex flex-col gap-5 px-5 pt-4 pb-6 transition-opacity ${
-            shown ? 'opacity-100' : 'opacity-0'
-          } ${className}`}
-          style={{ transitionDuration: `${shown ? ENTER_MS : EXIT_MS}ms` }}
+          role="dialog"
+          aria-modal="false"
+          aria-label={label}
+          className="relative w-fit rounded-2xl"
+          style={{ maxWidth: width }}
         >
-          {children}
+          {/* THE COLUMN: the controls, and the ONE thing a click may land on without
+              closing the menu — everything else on the layer is "outside". It fades as a
+              whole while its controls pop one by one. */}
+          <style dangerouslySetInnerHTML={{ __html: bubbles }} />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            onTransitionEnd={onTransitionEnd}
+            data-shown={shown ? 'true' : 'false'}
+            className={`${scope} relative flex flex-col gap-5 px-5 pt-4 pb-6 transition-opacity ${
+              shown ? 'opacity-100' : 'opacity-0'
+            } ${className}`}
+            style={{ transitionDuration: `${shown ? ENTER_MS : EXIT_MS}ms` }}
+          >
+            {children}
+          </div>
         </div>
       </div>
     </div>,
