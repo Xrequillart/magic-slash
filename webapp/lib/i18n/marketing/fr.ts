@@ -190,6 +190,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.desktop.archiveAgent': 'Archiver l’agent',
   'site.desktop.toggleAgents': 'Afficher ou masquer les agents',
   'site.desktop.toggleInfo': 'Afficher ou masquer le panneau de l’agent',
+  'site.desktop.quickSettings': 'Réglages rapides',
   /** Les quatre atouts sous la fenêtre. « Worktree » reste tel quel, comme dans le
       sous-titre au-dessus et dans toute l’application. */
   'site.desktop.highlightParallel': 'Douze agents en parallèle',

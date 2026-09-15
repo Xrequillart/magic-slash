@@ -500,6 +500,7 @@ export const marketingEn = {
    */
   'site.desktop.toggleAgents': 'Show or hide the agents',
   'site.desktop.toggleInfo': 'Show or hide the agent panel',
+  'site.desktop.quickSettings': 'Quick settings',
   /**
    * THE FOUR HIGHLIGHTS under the window, and every one of them is a fact this site
    * already states somewhere else — see the note on `HIGHLIGHTS` in `DesktopHero.tsx`

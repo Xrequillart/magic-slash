@@ -108,9 +108,9 @@ const noop = () => undefined
  *
  *   1. THE TITLEBAR — and this one is not a reproduction any more either. It IS the
  *      app's `AppTitleBar`, imported from `@ds/desktop`, handed the state the rest of
- *      this window shows: both panels out, one agent, its title in the middle and the
- *      Archive pill that closes it. The 64px gutter, the two toggles and every padding
- *      come from the component.
+ *      this window shows: both panels out, one agent, its title in the middle, the
+ *      Archive pill that closes it and the quick-settings toggle at the far right. The
+ *      64px gutter, the toggles and every padding come from the component.
  *
  *      IT HAD ALREADY DRIFTED, which is the argument for the swap in one line. The two
  *      sidebar toggles were custom vectors copied out of `TitleBar.tsx` path for path —
@@ -472,6 +472,9 @@ export function AppWindowMockup() {
             onClick: noop,
           }}
           right={{ open: true, title: t('site.desktop.toggleInfo'), onToggle: noop }}
+          // The quick-settings toggle, last in the bar, drawn SHUT: the sheet it pulls
+          // down is a second surface and this window is the drawing of the first.
+          settings={{ open: false, title: t('site.desktop.quickSettings'), onToggle: noop }}
           // NO SWITCH — see WHAT IS NOT DRAWN at the top of this file.
         />
       </AppGround>

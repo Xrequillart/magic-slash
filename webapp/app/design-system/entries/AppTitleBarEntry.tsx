@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { AppTitleBar, type TitleBarTitle } from '@ds/desktop'
+import { BellOff } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
 import { usesOf } from './ids'
@@ -11,6 +12,7 @@ import { usesOf } from './ids'
 const noop = () => undefined
 
 const TOGGLE_TITLES = { left: 'Show or hide the agents', right: 'Show or hide the agent panel' }
+const SETTINGS_TITLE = 'Quick settings'
 
 /**
  * The bar, boxed.
@@ -86,11 +88,13 @@ export function AppTitleBarEntry({
   const [leftOpen, setLeftOpen] = useState(true)
   const [rightOpen, setRightOpen] = useState(true)
   const [view, setView] = useState('normal')
+  const [quickOpen, setQuickOpen] = useState(false)
 
   const toggles = {
     left: { open: leftOpen, title: TOGGLE_TITLES.left, onToggle: () => setLeftOpen((o) => !o) },
     right: { open: rightOpen, title: TOGGLE_TITLES.right, onToggle: () => setRightOpen((o) => !o) },
   }
+  const settings = { open: quickOpen, title: SETTINGS_TITLE, onToggle: () => setQuickOpen((o) => !o) }
 
   const PAIR: TitleBarTitle[] = [
     { id: 'a', label: 'PAY-318 · invoice VAT', focused: true },
@@ -106,7 +110,8 @@ export function AppTitleBarEntry({
       >
         The bar across the top of the window, whole — and like <code>Sidebar</code>, it
         knows nothing. The gutter the traffic lights sit in, the two panel toggles, the
-        agent’s name and the one action that closes it.
+        agent’s name, the one action that closes it, and the sliders that pull the quick
+        settings down.
       </EntryHeader>
 
       <EntrySection
@@ -120,6 +125,7 @@ export function AppTitleBarEntry({
               titles={[{ id: 'a', label: 'PAY-318 · invoice VAT' }]}
               action={{ label: 'Archive', title: 'Archive the agent  ⌘W', onClick: noop }}
               right={toggles.right}
+              settings={settings}
             />
           </Window>
         </Stage>
@@ -203,6 +209,36 @@ export function AppTitleBarEntry({
       </EntrySection>
 
       <EntrySection
+        title="The far right belongs to the app, not to the agent"
+        note="Two slots after the info toggle, and neither is about the agent in the middle. The sliders open the quick-settings sheet and light in ink while it is down, the same way the panel toggles do — the sheet is a panel like any other. The notice before them stands only while something about the whole app is true, and pressing it goes to where that can be changed. Press the sliders."
+      >
+        <Stage theme={theme} className="flex flex-col gap-6">
+          <Specimen label="settings — shut, then lit while the sheet is down">
+            <Window>
+              <AppTitleBar
+                left={toggles.left}
+                titles={[{ id: 'a', label: 'PAY-318 · invoice VAT' }]}
+                right={toggles.right}
+                settings={settings}
+              />
+            </Window>
+          </Specimen>
+          <Specimen label="notice — a standing fact about the app, and the way to act on it">
+            <Window>
+              <AppTitleBar
+                left={{ open: true, title: TOGGLE_TITLES.left, onToggle: noop }}
+                titles={[{ id: 'a', label: 'PAY-318 · invoice VAT' }]}
+                right={{ open: true, title: TOGGLE_TITLES.right, onToggle: noop }}
+                notice={{ label: 'Notifications off', title: 'Notifications off', icon: BellOff, onClick: noop }}
+                settings={{ open: false, title: SETTINGS_TITLE, onToggle: noop }}
+              />
+            </Window>
+          </Specimen>
+          <Snippet>{`settings={{ open, title, onToggle }}`}</Snippet>
+        </Stage>
+      </EntrySection>
+
+      <EntrySection
         title="The gutter is the app’s, the lights are not"
         note="macOS draws the three buttons; the bar only leaves the 64px hole they land in. In native fullscreen they are gone and the gutter goes with them, or the first toggle sits beside a notch nothing fills — so the app turns it off rather than the component guessing. A web page drawing this window has to add the lights itself, inside that same gutter."
       >
@@ -213,6 +249,7 @@ export function AppTitleBarEntry({
                 left={{ open: true, title: TOGGLE_TITLES.left, onToggle: noop }}
                 titles={[{ id: 'a', label: 'PAY-318 · invoice VAT' }]}
                 right={{ open: true, title: TOGGLE_TITLES.right, onToggle: noop }}
+                settings={{ open: false, title: SETTINGS_TITLE, onToggle: noop }}
               />
             </Window>
           </Specimen>
@@ -223,6 +260,7 @@ export function AppTitleBarEntry({
                 left={{ open: true, title: TOGGLE_TITLES.left, onToggle: noop }}
                 titles={[{ id: 'a', label: 'PAY-318 · invoice VAT' }]}
                 right={{ open: true, title: TOGGLE_TITLES.right, onToggle: noop }}
+                settings={{ open: false, title: SETTINGS_TITLE, onToggle: noop }}
               />
             </Window>
           </Specimen>
