@@ -3,6 +3,7 @@ import type { DragEvent, MouseEvent, ReactNode } from 'react'
 import { Agent, type AgentProps } from './Agent'
 import { ButtonIcon } from './ButtonIcon'
 import { AlertTriangle, FolderGit2 } from './icons'
+import { Label } from './Label'
 import { MenuSidebar, type MenuSidebarEntry } from './MenuSidebar'
 import { UsageClaudeCodeCard, type UsageClaudeCodeCardProps } from './UsageClaudeCodeCard'
 import { SelectIcon, type SelectIconProps } from './SelectIcon'
@@ -275,18 +276,24 @@ function ListHeader({ list }: { list: SidebarList }) {
         {list.label}
       </div>
 
+      {/* THE PANE CHIP IS A `Label` — the folder's one badge, at its smallest rung,
+          because "Left" and "Right" NAME the pane the list fills and that is what a
+          label is for. It was a hand-drawn `text-[10px] bg-surface px-1.5 py-0.5`
+          span, which is the ninth respelling of the chip this component exists to
+          stop — and `2xs` is the same 10px word on the shared plate.
+
+          `aria-hidden` on a wrapper and not on the label: the chip holds its width
+          while the window is whole (see `SidebarList.pane`), and a pane name read
+          aloud that the eye never sees is noise. The opacity lives out here too —
+          the label owns its ground, the header owns whether it is there. */}
       {list.pane && (
         <span
-          className={`text-[10px] bg-surface px-1.5 py-0.5 rounded transition-opacity duration-150 ${
-            list.pane.visible === false
-              ? 'opacity-0'
-              : 'text-text-secondary/40 opacity-100'
+          className={`inline-flex transition-opacity duration-150 ${
+            list.pane.visible === false ? 'opacity-0' : 'opacity-100'
           }`}
-          // Out of the tree for a reader when it is only holding its width open: an
-          // empty pane name read aloud is noise the eye never sees.
           aria-hidden={list.pane.visible === false}
         >
-          {list.pane.label}
+          <Label size="2xs">{list.pane.label}</Label>
         </span>
       )}
 
