@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.95.0] - 2026-09-15
+
+### Added
+
+- **Desktop**: A quick settings sheet pulls down from the title bar, the way macOS opens its Control Center. One sheet holds the machine's setup verdict, the eight themes as swatches you pick by looking, the interface scale, every notification switch, the feature toggles and the language as flags — and the app frosts over behind it while it is down
+- **Desktop**: The title bar says so while notifications are off, and pressing that notice opens the sheet where the switch is
+- **Desktop**: Every design system component stands on one seven-rung size ladder. A size can be changed at a call site in one word instead of being a reason to edit the component
+- **Desktop**: The pull request card finished its move to the shared `design-system/` folder, along with its review threads and its check list
+- **Desktop**: The banner has a pinned band layout, and the avatar falls back to initials when there is no picture
+
+### Changed
+
+- **Desktop**: The normal/split switch is gone from the title bar. The split view is a tile on the quick settings sheet now, and it turns the split on rather than merely allowing it
+- **Desktop**: The tally, the check list and the ticket labels are drawn with the design system's own text and label components
+- **Desktop**: The confirmation dialog is built on the design system's modal, and the action chip left over from the button migration is gone
+
+### Fixed
+
+- **Landing**: The window drawn on the home page and in the design system showcase was missing the quick settings toggle the app carries. Both drawings render the real component, so they now show it too
+
 ## [0.94.10] - 2026-09-15
 
 ### Added
@@ -2941,6 +2961,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.95.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.95.0
 [0.94.10]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.10
 [0.94.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.9
 [0.94.8]: https://github.com/xrequillart/magic-slash/releases/tag/v0.94.8
