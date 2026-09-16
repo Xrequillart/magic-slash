@@ -1,18 +1,16 @@
 import { useState, useCallback } from 'react'
-import { Input } from '@ds/desktop'
+import { AccountCard, Input } from '@ds/desktop'
 import { Cloud, LogOut, LogIn, UserPlus, Loader2, KeyRound, AtSign, Trash2, AlertTriangle, ImagePlus, ImageOff } from '@ds/desktop/icons'
 import { useAuth } from '../../hooks/useAuth'
 import { useAvatar, publishAvatar, avatarSession } from '../../hooks/useAvatar'
 import { useOrg } from '../../hooks/useOrg'
 import { LoginScreen } from '../../components/LoginScreen'
 import { Modal } from '../../components/Modal'
-import { AccountAvatar } from '../../components/AccountAvatar'
 import { AvatarCropModal, type AvatarCropView } from '../../components/AvatarCropModal'
 import { SectionHeader } from './SectionHeader'
 import { InvitationOnboardingWizard } from '../../components/InvitationOnboardingWizard'
 import { showToast } from '../../components/Toast'
 import { useT, type MessageKey } from '../../i18n'
-import { BTN, BTN_DANGER } from '../../theme/controls'
 import { formatSize } from '../../utils/formatSize'
 import { AVATAR_MAX_BYTES, AVATAR_MIME_TYPE, AVATAR_SIZE, type AvatarRejection } from '../../../avatar'
 import { sourceRectFor } from '../../../avatarCrop'
@@ -443,7 +441,11 @@ export function CloudAccountSection() {
     return (
       <div>
         <SectionHeader icon={Cloud} title={t('cloud.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-6 text-center">
+        {/* The same plate `AccountCard` draws, minus the border for the same reason —
+            a hairline around something already a different colour from the page is the
+            same thing said twice. Not the card itself: this state has no identity and no
+            actions, only a mark and two lines saying there is nothing to sign in to. */}
+        <div className="bg-surface rounded-xl p-6 text-center">
           <Cloud className="w-8 h-8 text-icon-muted mx-auto mb-3" />
           <div className="text-sm text-text-secondary/60">{t('org.cloudDisabled')}</div>
           <div className="text-xs text-text-secondary/40 mt-1">{t('org.cloudDisabledHint')}</div>
@@ -455,94 +457,87 @@ export function CloudAccountSection() {
   return (
     <div>
       <SectionHeader icon={Cloud} title={t('cloud.section')} />
-      <div className="bg-surface border border-line-strong rounded-xl p-4">
-        {status.loggedIn ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <AccountAvatar dataUrl={avatar} />
-                <div>
-                  <div className="text-sm font-medium">{status.user?.email ?? t('cloud.signedInFallback')}</div>
-                  <div className="text-xs text-text-secondary/50 mt-0.5">{t('cloud.signedInHint')}</div>
-                </div>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                {t('cloud.signOut')}
-              </button>
-            </div>
-            <div className="border-t border-line-subtle pt-3 flex flex-wrap items-center gap-2">
-              {/* The photo actions lead the row, next to the face they act on. */}
-              <button
-                onClick={handleChoosePhoto}
-                disabled={avatarBusy || cropSource !== null}
-                className={`${BTN} disabled:opacity-40`}
-              >
-                {avatarBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
-                {t('cloud.avatar.choose')}
-              </button>
-              {/* No photo, no remove button — there is nothing to undo. */}
-              {avatar && (
-                <button
-                  onClick={handleRemovePhoto}
-                  disabled={avatarBusy}
-                  className={`${BTN_DANGER} disabled:opacity-40`}
-                >
-                  <ImageOff className="w-3.5 h-3.5" />
-                  {t('cloud.avatar.remove')}
-                </button>
-              )}
-              <button
-                onClick={() => setShowChangePassword(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-              >
-                <KeyRound className="w-3.5 h-3.5" />
-                {t('cloud.changePassword')}
-              </button>
-              <button
-                onClick={() => setShowChangeEmail(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-              >
-                <AtSign className="w-3.5 h-3.5" />
-                {t('cloud.changeEmail')}
-              </button>
-              <button
-                onClick={() => setShowDeleteAccount(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all ml-auto"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                {t('cloud.deleteAccount')}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('cloud.notSignedIn')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('cloud.notSignedInHint')}</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowInvitationWizard(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                {t('cloud.joinWithInvitation')}
-              </button>
-              <button
-                onClick={() => setShowLogin(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                {t('cloud.signIn')}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* THE CARD IS `AccountCard` NOW — the drawing went to the design system whole, both
+          branches of it, and what is left here is the wiring: the session, the avatar
+          bytes, the translator, and four dialogs. The two branches used to be two blocks
+          of markup sharing a plate and nothing else, which is how they had drifted into
+          different button heights; the difference between them is DATA now.
+
+          `alt` comes from this side because the design system cannot read a translation —
+          the same split `AccountAvatar` already made, and the reason that component is
+          still here for the surfaces that are not this card. */}
+      {status.loggedIn ? (
+        <AccountCard
+          avatar={{ src: avatar, alt: t('cloud.avatar.alt') }}
+          name={status.user?.email ?? t('cloud.signedInFallback')}
+          hint={t('cloud.signedInHint')}
+          actions={[
+            { id: 'sign-out', label: t('cloud.signOut'), icon: LogOut, onClick: handleLogout },
+          ]}
+          manage={[
+            // The photo actions lead the row, next to the face they act on.
+            {
+              id: 'choose-photo',
+              label: t('cloud.avatar.choose'),
+              icon: ImagePlus,
+              busy: avatarBusy,
+              disabled: cropSource !== null,
+              onClick: handleChoosePhoto,
+            },
+            // No photo, no remove button — there is nothing to undo.
+            ...(avatar
+              ? [{
+                  id: 'remove-photo',
+                  label: t('cloud.avatar.remove'),
+                  icon: ImageOff,
+                  tone: 'danger' as const,
+                  disabled: avatarBusy,
+                  onClick: handleRemovePhoto,
+                }]
+              : []),
+            {
+              id: 'change-password',
+              label: t('cloud.changePassword'),
+              icon: KeyRound,
+              onClick: () => setShowChangePassword(true),
+            },
+            {
+              id: 'change-email',
+              label: t('cloud.changeEmail'),
+              icon: AtSign,
+              onClick: () => setShowChangeEmail(true),
+            },
+            {
+              id: 'delete-account',
+              label: t('cloud.deleteAccount'),
+              icon: Trash2,
+              tone: 'danger',
+              trailing: true,
+              onClick: () => setShowDeleteAccount(true),
+            },
+          ]}
+        />
+      ) : (
+        <AccountCard
+          name={t('cloud.notSignedIn')}
+          hint={t('cloud.notSignedInHint')}
+          actions={[
+            {
+              id: 'join',
+              label: t('cloud.joinWithInvitation'),
+              icon: UserPlus,
+              onClick: () => setShowInvitationWizard(true),
+            },
+            {
+              id: 'sign-in',
+              label: t('cloud.signIn'),
+              icon: LogIn,
+              tone: 'accent',
+              onClick: () => setShowLogin(true),
+            },
+          ]}
+        />
+      )}
 
       {/* Frame the picked photo. Open only between the picker and the upload, and
           the only thing that can start the upload at all. */}
