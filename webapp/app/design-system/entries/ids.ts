@@ -223,7 +223,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   modal: [],
   repositoryselector: ['modal', 'card', 'label', 'buttonicon'],
   speccard: ['card', 'label', 'status', 'editabletext', 'buttonicon'],
-  banner: ['icon', 'text'],
+  banner: ['button', 'icon', 'text'],
   agent: ['loader', 'icon', 'text'],
 }
 

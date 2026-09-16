@@ -1,7 +1,7 @@
 'use client'
 
 import { BotMessageSquare, EyeOff, TicketPlus, Unlink, X } from 'lucide-react'
-import { Banner, BANNER_VARIANTS, type BannerVariant } from '@ds/desktop'
+import { Banner, BANNER_VARIANTS, type BannerAction, type BannerVariant } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
 import { usesOf } from './ids'
@@ -19,6 +19,16 @@ const COPY: Record<BannerVariant, string> = {
   danger: 'The Jira token expired. Ticket transitions will fail until it is renewed.',
   accent: 'Choose a ticket for Ada.',
 }
+
+/**
+ * The ticket page's pair, declared once here as it is declared once there — which is the
+ * change worth showing: the row and the stacked column below draw the SAME list, and the
+ * banner puts the primary at the right edge in one and at the top in the other.
+ */
+const AGENT_ACTIONS: BannerAction[] = [
+  { label: 'View agent', icon: BotMessageSquare, onClick: () => {}, primary: true },
+  { label: 'Detach', icon: Unlink, onClick: () => {}, title: 'Take the agent off this ticket' },
+]
 
 const PROPS: PropRow[] = [
   {
@@ -56,16 +66,16 @@ const PROPS: PropRow[] = [
     ),
   },
   {
-    name: 'action',
-    type: '{ label, onClick, busy?, title? }',
+    name: 'actions',
+    type: '{ label, onClick, icon?, primary?, busy?, title? }[]',
     description:
-      'The one thing to do about it, as data — the banner draws the button itself, in the variant’s own colour. That is the whole reason it can be data here where actions below could not: there is no tier to choose, so the call site has nothing to decide and therefore nothing to spell. A single action and not a list, because two buttons on a strip this size is a dialog that forgot to be one.',
+      'What can be done about it, as data — the banner draws every Button itself, in the variant’s own colour. One prop where there were two: an action taking a typed object and an actions taking a ReactNode, the second existing only because this folder had no button tier to rank a pair with. It has one now, so the node is gone and with it the last way for a call site to put its own chrome on a banner. An absent or empty list draws nothing, which is what the ticket page needs — its pair exists only when there is a local agent to view.',
   },
   {
-    name: 'actions',
-    type: 'ReactNode',
+    name: 'actions[].primary',
+    type: 'boolean',
     description:
-      'The way out, and on its way out. Right edge on a row, under the sentence when stacked, styled at the call site. It stays for the two banners that draw a PAIR and rank them — a filled button and an outlined one — which needs an emphasis this folder has no button tier to express yet. Ignored when action is set.',
+      'The louder of the two ranks — filled with the variant’s colour rather than tinted with it, at most one per banner. It also decides where the button sits: a row puts the primary last, against the right edge the eye arrives at, and a stacked column puts it first, at the top where a ranking reads when it runs downwards. The ticket page had the same pair written out in both orders for exactly that reason, and either could have been edited without the other.',
   },
   {
     name: 'hint',
@@ -123,24 +133,20 @@ export function BannerEntry({
           <Banner
             variant="success"
             icon={BotMessageSquare}
-            actions={
-              <>
-                <button className="inline-flex items-center gap-1.5 rounded-lg border border-green/40 px-3 py-1.5 text-xs font-medium text-green transition-colors hover:bg-green/10">
-                  <Unlink className="h-3.5 w-3.5" />
-                  <span>Detach</span>
-                </button>
-                <button className="inline-flex items-center gap-1.5 rounded-lg bg-green px-3 py-1.5 text-xs font-medium text-bg transition-all hover:bg-green/90">
-                  <BotMessageSquare className="h-3.5 w-3.5" />
-                  <span>View agent</span>
-                </button>
-              </>
-            }
+            actions={AGENT_ACTIONS}
           >
             An agent is already working on this ticket.
           </Banner>
         </Stage>
 
-        <Snippet>{`<Banner variant="success" icon={BotMessageSquare} actions={<ViewAgentButton />}>
+        <Snippet>{`<Banner
+  variant="success"
+  icon={BotMessageSquare}
+  actions={agentTerminalId ? [
+    { label: t('tasks.viewAgent'), icon: BotMessageSquare, onClick: viewAgent, primary: true },
+    { label: t('tasks.detachAgent'), icon: Unlink, onClick: detachAgent, title: t('tasks.detachAgentHint') },
+  ] : undefined}
+>
   {t('tasks.hasAgentHint')}
 </Banner>`}</Snippet>
       </EntrySection>
@@ -180,12 +186,11 @@ export function BannerEntry({
                   variant="success"
                   icon={BotMessageSquare}
                   layout="stacked"
-                  actions={
-                    <button className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-green px-3 py-1.5 text-xs font-medium text-bg">
-                      <BotMessageSquare className="h-3.5 w-3.5" />
-                      <span>View agent</span>
-                    </button>
-                  }
+                  /* THE SAME LIST as the row above, which is the specimen's whole
+                     point: the primary sits at the right edge there and at the top
+                     here, and both buttons go full width because the column is 256px
+                     and there is no right edge to push anything to. */
+                  actions={AGENT_ACTIONS}
                 >
                   An agent is already working on this ticket.
                 </Banner>
@@ -214,12 +219,7 @@ export function BannerEntry({
               layout="band"
               icon={TicketPlus}
               hint="Clicking a card attaches it to the agent instead of opening it."
-              actions={
-                <button className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-medium text-text-secondary transition-colors hover:text-ink">
-                  <X className="h-3.5 w-3.5" />
-                  Cancel
-                </button>
-              }
+              actions={[{ label: 'Cancel', icon: X, onClick: () => {} }]}
             >
               Choose a ticket for Ada.
             </Banner>
@@ -240,7 +240,7 @@ export function BannerEntry({
   icon={TicketPlus}
   className="sticky top-0 z-30"
   hint={t('tasks.pick.hint')}
-  actions={<CancelButton />}
+  actions={[{ label: t('tasks.pick.cancel'), icon: X, onClick: onCancel }]}
 >
   {t('tasks.pick.title', { name: agentName })}
 </Banner>`}</Snippet>
@@ -268,7 +268,7 @@ export function BannerEntry({
                 layout="inset"
                 icon={EyeOff}
                 hint="What is below was last read an hour ago."
-                action={{ label: 'Turn on', onClick: () => {} }}
+                actions={[{ label: 'Turn on', onClick: () => {}, primary: true }]}
               >
                 PR watching is off
               </Banner>
@@ -291,11 +291,12 @@ export function BannerEntry({
   layout="inset"
   icon={EyeOff}
   hint={t('agentInfo.pr.watcherOffStale')}
-  action={{
+  actions={[{
     label: t('agentInfo.pr.enableWatcher'),
     onClick: () => void enableWatcher(),
     busy: enabling,
-  }}
+    primary: true,
+  }]}
 >
   {t('agentInfo.pr.watcherOff')}
 </Banner>`}</Snippet>

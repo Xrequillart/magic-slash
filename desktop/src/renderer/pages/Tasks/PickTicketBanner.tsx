@@ -64,16 +64,11 @@ export function PickTicketBanner({
       // gesture on this board normally opens a ticket, and the Play button on a card
       // starts an agent. Neither happens here.
       hint={t('tasks.pick.hint')}
-      actions={
-        <button
-          onClick={onCancel}
-          className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-text-secondary
-            border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-colors"
-        >
-          <X className="w-3.5 h-3.5" />
-          {t('tasks.pick.cancel')}
-        </button>
-      }
+      // ONE WAY OUT, and it is not the primary: leaving the mode is the correction, not
+      // the point of being in it. It wears the band's accent now where it was a neutral
+      // outline — the banner decides the colour of its own buttons, which is what lets
+      // this be data instead of a button spelled here.
+      actions={[{ label: t('tasks.pick.cancel'), icon: X, onClick: onCancel }]}
     >
       {t('tasks.pick.title', { name: agentName })}
     </Banner>

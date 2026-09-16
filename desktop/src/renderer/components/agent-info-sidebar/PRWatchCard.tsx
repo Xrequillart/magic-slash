@@ -795,11 +795,14 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
           /* Two different situations behind one setting: a card that has a snapshot
              hidden behind it is dated, one carrying only the link is empty. */
           hint={t(hasSnapshot ? 'agentInfo.pr.watcherOffStale' : 'agentInfo.pr.watcherOffEmpty')}
-          action={{
-            label: t('agentInfo.pr.enableWatcher'),
-            onClick: () => void handleEnableWatcher(),
-            busy: enabling,
-          }}
+          actions={[
+            {
+              label: t('agentInfo.pr.enableWatcher'),
+              onClick: () => void handleEnableWatcher(),
+              busy: enabling,
+              primary: true,
+            },
+          ]}
         >
           {t('agentInfo.pr.watcherOff')}
         </Banner>

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { Button, type ButtonSize } from './Button'
 import { Icon, type IconSize } from './Icon'
 import { Text, type TextSize } from './Text'
 import { CircleAlert, CircleCheck, Info, MousePointerClick, TriangleAlert } from './icons'
@@ -63,17 +63,18 @@ interface BannerTone {
    */
   plate: string
   /**
-   * The ground the variant's own button sits on, at rest and under the pointer.
+   * The variant's colour as a VALUE rather than as a class — what the buttons are handed.
    *
-   * The `plate`'s job for a control instead of a mark, and a rung lighter: a plate is a
-   * 28px square that has to hold its colour against a whole strip, where this is a chip
-   * carrying a word in `accent` already. 10% reads as a tint under text, and doubling
-   * it on hover is the whole of the press.
+   * A THIRD SPELLING OF THE SAME HUE, and it is not redundancy: `Button`'s `tint` and
+   * `fill` take a colour they mix themselves, and no class can be handed to them. This is
+   * `prTones.ts`'s `PR_COLOR` move, for the same reason and with the same shape.
    *
-   * Both halves spelled in full, for `TONES`' own reason: Tailwind reads source as text
-   * and `hover:bg-${variant}/20` generates nothing.
+   * EACH CARRIES THE FALLBACK the two Tailwind configs carry, and it is load-bearing: an
+   * undefined variable makes the whole `color-mix` invalid, so a page that had not posted
+   * a theme would draw a button with NO background at all rather than a slightly wrong
+   * green.
    */
-  press: string
+  value: string
   /**
    * The mark. A variant that could not name its own icon would be a variant with
    * no opinion, and the four would drift apart one call site at a time. A caller
@@ -83,16 +84,47 @@ interface BannerTone {
 }
 
 /**
- * The one gesture a banner offers, as data.
+ * One gesture a banner offers, AS DATA. The banner draws the `Button` itself.
  *
- * NO ICON AND NO TONE. The mark at the head of the strip already says what kind of
- * thing this is, and a second glyph on the button beside it says it twice in a row
- * 288px wide; the colour is the variant's and never the caller's — see `action`.
+ * NO TONE, NO SIZE, NO CLASSES. That is the whole of the bargain and it is what the
+ * `ReactNode` this replaces could not keep: a node arrives with its shape, its padding
+ * and its colour already decided at the call site, which is exactly how the hand-built
+ * strips this component replaced came to disagree in the first place. Three of these
+ * lists were nodes until recently and between them they spelled four different button
+ * chromes — one `bg-green text-bg`, one `border border-green/40`, one `border-line` on a
+ * band, and the banner's own `h-6 px-2` chip.
+ *
+ * THE COLOUR IS THE VARIANT'S, ALWAYS. A `success` banner's buttons are the green, a
+ * `danger` one's are the red, and the call site has nothing to decide and therefore
+ * nothing to spell. The one place this changes what was on screen is the pick-a-ticket
+ * band, whose cancel was a neutral outline: it now wears the accent like everything else
+ * on that strip, which is what the rest of this file has always claimed happens.
  */
 export interface BannerAction {
   /** The word on it, already translated. */
   label: string
   onClick: () => void
+  /**
+   * A mark before the word.
+   *
+   * IT WAS ONCE FORBIDDEN HERE, on the argument that the strip's own mark already says
+   * what kind of thing this is. That held while a banner had ONE button; it does not hold
+   * for a pair, where the glyph is the fastest way to tell "View agent" from "Detach" in
+   * a row read at a glance. Optional, and a single button rarely needs one.
+   */
+  icon?: IconComponent
+  /**
+   * THE LOUDER OF THE TWO RANKS — filled with the variant's colour rather than tinted
+   * with it. At most one per banner: two primaries are none.
+   *
+   * IT ALSO DECIDES WHERE THIS SITS, which is the rule that used to live at the call
+   * sites and be spelled twice. A row puts the primary LAST, against the right edge the
+   * eye arrives at; a stacked column puts it FIRST, at the top, because that is where a
+   * ranking reads when it runs downwards. The ticket page had the same pair written out
+   * in both orders for exactly this reason, and either could have been edited without
+   * the other.
+   */
+  primary?: boolean
   /**
    * The gesture is in flight: the button dims and refuses a second click.
    *
@@ -116,15 +148,15 @@ export interface BannerAction {
  * are the ones to move, not this table.
  */
 const TONES: Record<BannerVariant, BannerTone> = {
-  info: { fill: 'bg-blue/10', accent: 'text-blue', edge: 'border-blue/20', plate: 'bg-blue/15', press: 'bg-blue/10 hover:bg-blue/20', icon: Info },
-  success: { fill: 'bg-green/10', accent: 'text-green', edge: 'border-green/20', plate: 'bg-green/15', press: 'bg-green/10 hover:bg-green/20', icon: CircleCheck },
-  warning: { fill: 'bg-orange/10', accent: 'text-orange', edge: 'border-orange/20', plate: 'bg-orange/15', press: 'bg-orange/10 hover:bg-orange/20', icon: TriangleAlert },
-  danger: { fill: 'bg-red/10', accent: 'text-red', edge: 'border-red/20', plate: 'bg-red/15', press: 'bg-red/10 hover:bg-red/20', icon: CircleAlert },
+  info: { fill: 'bg-blue/10', accent: 'text-blue', edge: 'border-blue/20', plate: 'bg-blue/15', value: 'rgb(var(--c-blue, 59 130 246))', icon: Info },
+  success: { fill: 'bg-green/10', accent: 'text-green', edge: 'border-green/20', plate: 'bg-green/15', value: 'rgb(var(--c-green, 34 197 94))', icon: CircleCheck },
+  warning: { fill: 'bg-orange/10', accent: 'text-orange', edge: 'border-orange/20', plate: 'bg-orange/15', value: 'rgb(var(--c-orange, 249 115 22))', icon: TriangleAlert },
+  danger: { fill: 'bg-red/10', accent: 'text-red', edge: 'border-red/20', plate: 'bg-red/15', value: 'rgb(var(--c-red, 239 68 68))', icon: CircleAlert },
   // The default mark says what an accent band always says: the click means something
   // else while this is here. A variant that named no icon would be a variant with no
   // opinion — though this is the one tone whose callers nearly always bring their own,
   // because a mode is a specific thing and `TicketPlus` says which.
-  accent: { fill: 'bg-accent/10', accent: 'text-accent', edge: 'border-accent/20', plate: 'bg-accent/15', press: 'bg-accent/10 hover:bg-accent/20', icon: MousePointerClick },
+  accent: { fill: 'bg-accent/10', accent: 'text-accent', edge: 'border-accent/20', plate: 'bg-accent/15', value: 'rgb(var(--c-accent, 99 102 241))', icon: MousePointerClick },
 }
 
 /**
@@ -161,6 +193,12 @@ interface BannerShape {
   iconClass: string
   text: TextSize
   head: string
+  /**
+   * The rung the buttons stand on, which is the layout's and not the caller's — the
+   * `icon` and `text` rungs above are the layout's for the same reason. A strip whose
+   * button size were a prop would be a strip that can disagree with itself.
+   */
+  button: ButtonSize
   /**
    * The mark goes on its own little tinted square rather than bare on the ground.
    *
@@ -209,6 +247,8 @@ const LAYOUTS: Record<BannerLayout, BannerShape> = {
     iconClass: 'flex-shrink-0',
     text: 'sm',
     head: '',
+    // 28px, which is what the ticket page's pair already stood at by hand.
+    button: 'md',
   },
   /**
    * A narrow column (the ticket page's 256px rail): the sentence beside nothing,
@@ -221,6 +261,9 @@ const LAYOUTS: Record<BannerLayout, BannerShape> = {
     iconClass: 'flex-shrink-0 mt-0.5',
     text: 'xs',
     head: 'flex items-start gap-2 min-w-0',
+    // The row's rung, not a smaller one: these go FULL WIDTH under the sentence, and a
+    // 24px bar across a 256px column reads as a control that shrank.
+    button: 'md',
   },
   /**
    * A BAND: full-bleed, square-cornered, opaque, with a hairline under it — the shape
@@ -248,6 +291,9 @@ const LAYOUTS: Record<BannerLayout, BannerShape> = {
     iconClass: '',
     text: 'xs',
     head: 'flex items-center gap-3 min-w-0',
+    // 24px inside a 53px band. A `md` here would leave 12px of air above and below it
+    // and the band would read as a toolbar.
+    button: 'sm',
     plate: true,
     ground: 'bg-bg-secondary border-b border-line',
     height: BANNER_BAND_HEIGHT,
@@ -279,6 +325,9 @@ const LAYOUTS: Record<BannerLayout, BannerShape> = {
     iconClass: 'flex-shrink-0 mt-px',
     text: 'xs',
     head: 'flex items-start gap-2 min-w-0 flex-1',
+    // 24px, which is what this layout's one button already was — and what a
+    // `ButtonIcon` at `sm` is, so a card growing one of each has one control height.
+    button: 'sm',
     square: true,
     wrap: true,
   },
@@ -325,32 +374,28 @@ export interface BannerProps {
    */
   hint?: string
   /**
-   * THE ONE THING TO DO ABOUT IT, as data — the banner draws the button itself.
+   * WHAT CAN BE DONE ABOUT IT, as data — the banner draws every button itself.
    *
-   * A single action and not a list, because a banner says one thing and the way out of
-   * it is one gesture: switch the watcher back on, open the settings. Two buttons on a
-   * strip this size is a dialog that forgot to be one.
+   * ONE PROP WHERE THERE WERE TWO. There was an `action` taking a single typed object and
+   * an `actions` taking a `ReactNode`, and the second existed only because this folder had
+   * no button tier to rank a pair with. It has one now — see `BannerAction.primary` — so
+   * the node is gone and with it the last way for a call site to put its own chrome on a
+   * banner.
    *
-   * IT WEARS THE VARIANT'S OWN COLOUR, which is the whole reason it can be data here
-   * where `actions` below could not. There is no tier to choose — an `accent` banner's
-   * button is the accent, a `danger` one's is the red — so the call site has nothing to
-   * decide and therefore nothing to spell.
+   * TWO IS THE CEILING IN PRACTICE, not in the type: a banner says one thing, and three
+   * buttons on a strip is a dialog that forgot to be one. The type does not enforce it
+   * because the one rule worth enforcing — at most one primary — is about rank rather
+   * than count, and a list of two unranked verbs is legitimate.
+   *
+   * AN EMPTY OR ABSENT LIST DRAWS NOTHING, which is what the call sites need: the ticket
+   * page's pair exists only when there is a local agent to view, and `actions={agentId ?
+   * [...] : undefined}` should be the whole of that at the call site rather than a
+   * conditional wrapped around a fragment.
+   *
+   * A `row` and a `band` push them to the right edge; a `stacked` column puts them full
+   * width under the sentence, because there is no right edge in 256px to push anything to.
    */
-  action?: BannerAction
-  /**
-   * What can be done about it, when `action` is not enough — the ticket page's pair of
-   * green buttons, one filled and one outlined.
-   *
-   * THE WAY OUT, AND ON ITS WAY OUT. A node arrives with its shape, its padding and its
-   * colour already decided at the call site, which is exactly how this component's own
-   * strips came to disagree before it existed; `action` above is what a banner should be
-   * handed. This stays for the two banners that genuinely draw a PAIR and rank them,
-   * which needs an emphasis this folder has no button tier to express yet.
-   *
-   * A `row` banner pushes them to the right edge, a `stacked` one puts them under the
-   * sentence. Ignored when `action` is set: a banner has one way out or the other.
-   */
-  actions?: ReactNode
+  actions?: BannerAction[]
   layout?: BannerLayout
   /**
    * An outline in the variant's colour. OFF by default: on a tinted ground it
@@ -382,7 +427,6 @@ export function Banner({
   icon: override,
   children,
   hint,
-  action,
   actions,
   layout = 'row',
   bordered = false,
@@ -391,6 +435,45 @@ export function Banner({
   const tone = TONES[variant]
   const shape = LAYOUTS[layout]
   const Mark = override ?? tone.icon
+  const stacked = layout === 'stacked'
+
+  /**
+   * THE RANK DECIDES THE ORDER, and the component decides what the rank means — which is
+   * the whole point of the list being data. The primary goes LAST in a row, against the
+   * right edge the eye arrives at, and FIRST in a stacked column, at the top where a
+   * ranking reads when it runs downwards. Both orders were spelled by hand at two call
+   * sites that drew the same pair, and either could have been edited without the other.
+   *
+   * A stable partition rather than a sort: `Array.prototype.sort` is stable in every
+   * engine this ships on, but a partition SAYS there are two groups where a comparator
+   * only implies it, and it keeps the caller's order inside each group.
+   */
+  const list = actions ?? []
+  const lead = list.filter((entry) => entry.primary)
+  const rest = list.filter((entry) => !entry.primary)
+  const ordered = stacked ? [...lead, ...rest] : [...rest, ...lead]
+
+  const buttons = ordered.map((entry) => (
+    <Button
+      key={entry.label}
+      // `fill` for the one that is the point, `tint` for the way round it — and the hue
+      // is the variant's in both cases, handed over as a value because no class can
+      // reach a colour Tailwind never saw. See `BannerTone.value`.
+      tone={entry.primary ? 'fill' : 'tint'}
+      color={tone.value}
+      size={shape.button}
+      icon={entry.icon}
+      onClick={entry.onClick}
+      disabled={entry.busy}
+      title={entry.title}
+      // FULL WIDTH ONLY WHEN STACKED. The column is 256px and a button hugging its word
+      // in the middle of it reads as something that failed to lay out; in a row the
+      // opposite is true and a stretched button would eat the sentence.
+      className={stacked ? 'w-full' : ''}
+    >
+      {entry.label}
+    </Button>
+  ))
 
   const mark = (
     <Icon
@@ -455,35 +538,16 @@ export function Banner({
       style={shape.height ? { height: shape.height } : undefined}
     >
       {shape.head ? <span className={shape.head}>{head}</span> : head}
-      {action ? (
-        /* The variant's own chip. `h-6` with `px-2` rather than a padding pair, so the
-           button is exactly as tall as a `ButtonIcon` at `sm` and a banner that grew one
-           of each would not have two control heights on one strip.
-
-           `flex-shrink-0` and `ml-auto` for the reason every other trailing slot has
-           them: the head beside it carries `min-w-0` and would otherwise hand this the
-           squeeze instead of truncating its own sentence. */
-        <button
-          type="button"
-          onClick={action.onClick}
-          disabled={action.busy}
-          title={action.title}
-          className={`ml-auto flex-shrink-0 h-6 inline-flex items-center px-2 rounded-lg border-none
-            cursor-pointer text-xs font-medium transition-colors disabled:opacity-50
-            disabled:cursor-not-allowed ${tone.press} ${tone.accent}`}
-        >
-          {action.label}
-        </button>
-      ) : (
-        actions &&
-        // Everything but `stacked` puts them at the right edge; `stacked` is the narrow
-        // column, where there is no right edge to push anything to.
-        (layout === 'stacked' ? (
-          actions
+      {ordered.length > 0 &&
+        /* `flex-shrink-0` and `ml-auto` for the reason every other trailing slot has them:
+           the head beside it carries `min-w-0` and would otherwise hand these the squeeze
+           instead of truncating its own sentence. A stacked column has neither — it is
+           already below the sentence and already the full width. */
+        (stacked ? (
+          <span className="flex flex-col gap-2">{buttons}</span>
         ) : (
-          <span className="ml-auto flex-shrink-0 flex items-center gap-2">{actions}</span>
-        ))
-      )}
+          <span className="ml-auto flex flex-shrink-0 items-center gap-2">{buttons}</span>
+        ))}
     </div>
   )
 }

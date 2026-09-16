@@ -760,6 +760,30 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
     useStore.getState().detachTicketFromAgent(agentTerminalId)
   }, [agentTerminalId])
 
+  /**
+   * WHAT THE AGENT BANNER OFFERS, DECLARED ONCE — and the banner is drawn twice: full
+   * width at the top of the page, and stacked in the sidebar once that copy has scrolled
+   * away. It was two fragments of hand-built buttons, identical but for their order,
+   * because the order that reads as a ranking is left-to-right in a row and top-down in
+   * a column. `Banner` knows that now, so what is declared here is the RANK and the two
+   * verbs; where each one lands is its layout's business.
+   *
+   * `undefined` AND NOT AN EMPTY ARRAY when there is no local terminal — the banner takes
+   * either, and this is the one that reads as "there is nothing to offer" rather than as
+   * a list that happens to be short. A teammate's agent is a row in the org roster with
+   * no terminal in this window, and nothing here can act on it.
+   */
+  const agentBannerActions = useMemo(
+    () =>
+      agentTerminalId
+        ? [
+            { label: t('tasks.viewAgent'), icon: BotMessageSquare, onClick: viewAgent, primary: true },
+            { label: t('tasks.detachAgent'), icon: Unlink, onClick: detachAgent, title: t('tasks.detachAgentHint') },
+          ]
+        : undefined,
+    [agentTerminalId, viewAgent, detachAgent, t],
+  )
+
   const openedOn = formatIssueDate(createdAt, locale)
 
   /**
@@ -1040,38 +1064,15 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
           variant="success"
           icon={BotMessageSquare}
           className="mb-5"
-          actions={
-            agentTerminalId && (
-              <>
-                {/* SECOND and outlined, because the two are not a pair of equals: going to
-                    look at the agent is what somebody reading this banner nearly always
-                    wants, and cutting the link is the occasional correction. Same green,
-                    so both read as belonging to the banner rather than to the page. */}
-                <button
-                  onClick={detachAgent}
-                  title={t('tasks.detachAgentHint')}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
-                    rounded-lg transition-colors border border-green/40 text-green hover:bg-green/10"
-                >
-                  <Unlink className="w-3.5 h-3.5" />
-                  <span>{t('tasks.detachAgent')}</span>
-                </button>
-                {/* `bg-green text-bg`, the inversion `BTN_NEUTRAL_STACKED` is built on: green
-                    is a bright colour on the dark themes and a deep one on the light themes
-                    (see themes.ts), so a fixed label colour would fail half of them. `text-bg`
-                    follows the ground and reads on both. Not a tier in `controls.ts` — one
-                    green button in the app is a call site, not a size. */}
-                <button
-                  onClick={viewAgent}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5
-                    text-xs font-medium rounded-lg transition-all bg-green text-bg hover:bg-green/90"
-                >
-                  <BotMessageSquare className="w-3.5 h-3.5" />
-                  <span>{t('tasks.viewAgent')}</span>
-                </button>
-              </>
-            )
-          }
+          /* ONE LIST FOR BOTH LAYOUTS. This pair used to be written out twice — a
+             fragment here and the same fragment in the sidebar with its two buttons
+             swapped — because the order that reads as a ranking is left-to-right in a
+             row and top-down in a column. The rank is declared now and `Banner` puts
+             each one where its own layout wants it, so there is one place to edit.
+
+             Going to look at the agent is what somebody reading this banner nearly
+             always wants; cutting the link is the occasional correction. */
+          actions={agentBannerActions}
         >
           {t('tasks.hasAgentHint')}
         </Banner>
@@ -1147,33 +1148,10 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
               variant="success"
               icon={BotMessageSquare}
               layout="stacked"
-              actions={
-                agentTerminalId && (
-                  <>
-                    <button
-                      onClick={viewAgent}
-                      className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5
-                        text-xs font-medium rounded-lg transition-all bg-green text-bg hover:bg-green/90"
-                    >
-                      <BotMessageSquare className="w-3.5 h-3.5" />
-                      <span>{t('tasks.viewAgent')}</span>
-                    </button>
-                    {/* UNDER the primary one here, where the full-width copy puts it before:
-                        this column stacks, and the order that reads as a ranking when
-                        stacked is top-down. */}
-                    <button
-                      onClick={detachAgent}
-                      title={t('tasks.detachAgentHint')}
-                      className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5
-                        text-xs font-medium rounded-lg transition-colors border border-green/40
-                        text-green hover:bg-green/10"
-                    >
-                      <Unlink className="w-3.5 h-3.5" />
-                      <span>{t('tasks.detachAgent')}</span>
-                    </button>
-                  </>
-                )
-              }
+              /* THE SAME LIST as the full-width copy above, and that is the point: the
+                 `stacked` layout puts the primary at the top where the row puts it at
+                 the right, so one declaration draws both. */
+              actions={agentBannerActions}
             >
               {t('tasks.hasAgentHint')}
             </Banner>
