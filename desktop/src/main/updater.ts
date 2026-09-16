@@ -135,7 +135,18 @@ export function setupAutoUpdater() {
   })
 
   // IPC handlers
-  ipcMain.handle('updater:check', async () => checkForUpdates())
+  // The result is flattened to two plain fields on purpose. electron-updater's
+  // UpdateCheckResult carries a `downloadPromise` and a `cancellationToken` as soon
+  // as there is something to fetch, and neither survives the structured clone an
+  // invoke reply goes through — returning it whole made every successful check that
+  // found an update come back to the renderer as a rejected invoke, which the
+  // account menu then reported as a failure in red. Nothing reads these fields
+  // today: the real outcome arrives on the 'updater:status' channel.
+  ipcMain.handle('updater:check', async () => {
+    const result = await checkForUpdates()
+    if (!result) return null
+    return { isUpdateAvailable: result.isUpdateAvailable, version: result.updateInfo?.version }
+  })
 
   ipcMain.handle('updater:download', async () => {
     // Guarded rather than trusting the caller. A transfer already running wins:
