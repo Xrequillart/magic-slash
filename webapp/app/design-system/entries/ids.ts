@@ -215,7 +215,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   reviewthreadline: ['icon', 'label', 'text'],
   tally: ['text'],
   pullrequestcard: ['buttonicon', 'collapsibleline', 'icon', 'text'],
-  scriptcard: ['loader', 'icon', 'text'],
+  scriptcard: ['button', 'loader', 'icon', 'text'],
   repositorycard: ['card', 'headerrepocard', 'branchcard', 'uncommittedchangescard', 'commitcard'],
   repositoryitem: ['icon', 'label', 'text'],
   sidebaragentcoderinfo: ['contextagentcard', 'titleagentcard', 'repositorycard', 'repositoryselector'],

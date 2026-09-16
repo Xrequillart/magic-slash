@@ -132,9 +132,16 @@ export function ScriptCardEntry({
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
           Stop is not a <code>ButtonIcon</code> either: that component is icon-only by
           construction and this control carries its verb in the open, which is the whole
-          reason it reads. Its plate is <code>on-brand/15</code> — the fill’s own ink at a
-          tint — so it is a chip <em>on</em> the coloured bar rather than a second colour
-          beside it.
+          reason it reads. It is a <code>Button</code> in the <code>overlay</code> tone —
+          the one mixed from the fill’s own ink rather than from the app’s, so the chip is{' '}
+          <em>on</em> the coloured bar rather than a second colour beside it.
+        </p>
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          It was a hand-built chip here until that tone existed: <code>bg-on-brand/15</code>,
+          its own radius, its own <code>text-[11px] font-semibold</code>. Every one of those
+          values was this card inventing a control because no tone in the folder was mixed
+          against a saturated fill. It sits on the ladder now, at <code>sm</code> — 2px taller
+          than the chip was, which is what being on the ladder costs.
         </p>
       </EntrySection>
 

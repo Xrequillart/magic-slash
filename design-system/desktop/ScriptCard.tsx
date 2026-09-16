@@ -1,3 +1,4 @@
+import { Button } from './Button'
 import { CircleStop, ExternalLink, Globe, XCircle } from './icons'
 import { Icon } from './Icon'
 import { Loader } from './Loader'
@@ -112,17 +113,27 @@ export function ScriptCard({
         {stop && (
           /* NOT a `ButtonIcon`: that component is icon-only by construction and this
              control carries its verb in the open, which is the whole reason it reads.
-             The plate is `on-brand/15` — the fill's own ink at a tint — so it is a
-             chip ON the coloured bar rather than a second colour beside it. */
-          <button
-            type="button"
-            onClick={stop.onStop}
+
+             `overlay` IS THE TONE THIS CARD ASKED FOR. It was a hand-built chip here —
+             `bg-on-brand/15`, its own radius, its own `text-[11px] font-semibold` — and
+             every one of those values was this file inventing a control because no tone
+             in the folder was mixed from the fill's ink rather than from the app's. Now
+             one is, and the reasoning moved to where the next card on a fill can find it.
+
+             `sm`, the list-row rung, and NOT one of the two below it. A chip nested in
+             something else belongs down there, and this one is not decoration: the prop
+             below says stopping a server is the action a person comes to this card for.
+             It stands 2px taller than the hand-built chip did, which is what it costs to
+             be on the ladder rather than beside it. */
+          <Button
+            tone="overlay"
+            size="sm"
+            icon={CircleStop}
             title={stop.title}
-            className="flex flex-shrink-0 items-center gap-1 rounded-md border-none bg-on-brand/15 py-1 pl-1.5 pr-2 text-on-brand cursor-pointer transition-colors hover:bg-on-brand/30"
+            onClick={stop.onStop}
           >
-            <Icon glyph={CircleStop} tone="inherit" />
-            <span className="text-[11px] font-semibold">{stop.label}</span>
-          </button>
+            {stop.label}
+          </Button>
         )}
       </div>
 
