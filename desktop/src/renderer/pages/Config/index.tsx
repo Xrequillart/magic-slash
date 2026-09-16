@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Plus, Folder, FolderGit2, Building2, Lock } from '@ds/desktop/icons'
-import { RepositoryItem } from '@ds/desktop'
+import { FolderPlus, Folder, Building2, Lock } from '@ds/desktop/icons'
+import { Button, RepositoryItem } from '@ds/desktop'
 import { RepoPage } from './RepoPage'
-import { SectionHeader } from './SectionHeader'
 import { SweepPane } from '../../components/SweepPane'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
@@ -292,20 +291,44 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* The repository list — the whole of this window, the detail above excepted. */}
       {!isRepoRoute && <div>
-        <SectionHeader
-          icon={FolderGit2}
-          title={t('settings.repos.section')}
-          action={
-            <button
-              onClick={handleOpenProject}
-              disabled={isAdding}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all disabled:opacity-50"
-            >
-              <Plus className="w-3 h-3" />
-              <span>{isAdding ? t('settings.repos.adding') : t('settings.repos.add')}</span>
-            </button>
-          }
-        />
+        {/* NO HEADING, AND NOT A `SectionHeader` ANY MORE. This window has one page and
+            the page is the repositories — a heading saying so names the thing a reader
+            is already looking at, which is what a section header is for when there are
+            several sections and dead weight when there is one. What is left is the
+            action, so the row exists only to put it at the right edge.
+
+            `justify-end` and `mb-4`, the two things `SectionHeader` was still supplying.
+            Its `h-5` is deliberately NOT kept: that height pins a row to the natural
+            height of a bare title so sections with and without a button line up, and
+            with no title there is nothing to line up with — the button would simply
+            overflow a 20px box for no one's benefit. The row is the button's height now.
+
+            `SectionHeader` itself stays: ten other settings surfaces draw one. */}
+        <div className="mb-4 flex items-center justify-end">
+          {/* `neutral` and not `accent`, which is the weight this button already had:
+              it is an affordance in the corner rather than the step the page is asking
+              for. The border went with the migration — a plate a shade off the ground
+              and a hairline around it are the same statement made twice, which is the
+              whole of what `Button` refuses to draw.
+
+              `md` — 28px, one rung up from a list row, and the mark goes up with it to
+              16px because `Button` sizes its glyph from the rung and will not let a call
+              site pick the two apart.
+
+              `busy` RATHER THAN `disabled`. Picking a folder opens a native dialog and
+              the wait is the reader's own, but adding what comes back is not — it hits
+              the cloud — and a button that only dims says "unavailable" about a control
+              that is working. The mark becomes a spinner and the word already says
+              `adding`. */}
+          <Button
+            size="md"
+            icon={FolderPlus}
+            busy={isAdding}
+            onClick={handleOpenProject}
+          >
+            {isAdding ? t('settings.repos.adding') : t('settings.repos.add')}
+          </Button>
+        </div>
 
         {repos.length === 0 ? (
           <button

@@ -250,7 +250,6 @@ export const en = {
   'settings.footer.signOut': 'Sign out',
 
   // ── Settings → Repositories ──────────────────────────────────────────────
-  'settings.repos.section': 'Repositories',
   'settings.repos.add': 'Add repository',
   'settings.repos.adding': 'Adding…',
   'settings.repos.emptyTitle': 'No repositories configured',

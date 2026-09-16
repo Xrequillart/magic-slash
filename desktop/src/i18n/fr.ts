@@ -211,7 +211,6 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.footer.signOut': 'Se déconnecter',
 
   // ── Réglages → Dépôts ────────────────────────────────────────────────────
-  'settings.repos.section': 'Dépôts',
   'settings.repos.add': 'Ajouter un dépôt',
   'settings.repos.adding': 'Ajout…',
   'settings.repos.emptyTitle': 'Aucun dépôt configuré',
