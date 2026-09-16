@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AlertTriangle, Bot, Bug, Download, FileText, PartyPopper, ScrollText, Sparkles, Wrench } from '@ds/desktop/icons'
+import { AlertTriangle, Bot, Bug, Download, FileText, LogIn, PartyPopper, ScrollText, Sparkles, Wrench } from '@ds/desktop/icons'
 import { setSimulatedSetup } from '../dev/simulatedSetup'
 import { useStore } from '../store'
 import { useT } from '../i18n'
@@ -224,6 +224,19 @@ export function UpdateOverlay() {
     }))
   }
 
+  /**
+   * Opens the sign-in card over whatever is on screen, signed in or not.
+   *
+   * It is the only way to SEE that screen without ending your own session: the title
+   * bar's label opens the account menu once there is an account, so the card is
+   * otherwise reachable only by signing out — and then again after every change to it.
+   * `useAccountTitleBarControl` listens for this and holds the open state.
+   */
+  function showLoginScreen() {
+    setDebugMenuOpen(false)
+    window.dispatchEvent(new CustomEvent('debug:login-screen'))
+  }
+
   const triggerConfetti = useCallback(() => setShowConfetti(true), [])
 
   // Driven by an effect rather than by the rAF that used to follow setShowConfetti:
@@ -396,6 +409,13 @@ export function UpdateOverlay() {
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 What&apos;s New modal
+              </button>
+              <button
+                onClick={showLoginScreen}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                Login screen
               </button>
               <button
                 onClick={floodTerminal}

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Cloud, X, LogIn, Loader2, KeyRound } from '@ds/desktop/icons'
+import { Button, ButtonIcon, Input } from '@ds/desktop'
+import { X, LogIn, KeyRound } from '@ds/desktop/icons'
 import { useAuth } from '../hooks/useAuth'
 import { useT } from '../i18n'
-import { BTN_PRIMARY, INPUT } from '../theme/controls'
 
 interface LoginScreenProps {
   isOpen: boolean
@@ -19,7 +19,52 @@ type ResetStep = 'request' | 'confirm'
  * Optional email/password sign-in. Fully SKIPPABLE — the app never blocks on
  * auth. Account creation is NOT offered here: the only in-app path to a new
  * account is the invitation wizard (see InvitationOnboardingWizard).
+ *
+ * ── IT TAKES THE WHOLE WINDOW NOW, AND IT IS THE RELEASE MESH ──────────────────────
+ *
+ * It was a `max-w-md` panel on `bg-black/70`, which is the shape of a question the app
+ * is asking mid-task — "are you sure?", "pick a repository". Signing in is not that: it
+ * is the one moment the app has nothing else to show, and dimming a window the reader
+ * cannot use anyway to put a small box in the middle of it was a dialog standing in for
+ * a screen.
+ *
+ * THE GROUND IS `bg-release-mesh`, the same picture the What's New dialog opens on —
+ * the site's `tone-sky`, `/features`' own ground. Two surfaces, one image: this is what
+ * the product looks like when it is talking about ITSELF rather than about your code.
+ *
+ * ── THE CARD IS GLASS, AND THE BLUR IS AN INLINE STYLE ON PURPOSE ──────────────────
+ *
+ * `tailwind.config.cjs` turns `backdropBlur` and `backdropFilter` OFF at the core-plugin
+ * level, and the comment there is a measurement rather than a preference: a backdrop
+ * filter re-reads and re-blurs whatever sits behind it on every frame, which took the
+ * settings page from ~10ms to ~53ms per frame. Writing `backdrop-blur-*` in a className
+ * is a no-op by design, and that stays true.
+ *
+ * This is the one place it is worth paying for, and the reason is that none of what made
+ * it expensive is here: ONE element, over a STATIC background, on a screen with nothing
+ * scrolling behind it and nothing animating under it. So the filter is written as an
+ * inline style — which bypasses the disabled plugin rather than re-enabling it for the
+ * 284 other elements that must not have one.
+ *
+ * The recipe is css.glass's: a white fill well under half, a blur, a lighter hairline
+ * than the fill, and a soft wide shadow. What it needs from the ground is texture to
+ * refract, which is exactly what a mesh of six blooms is and what `bg-black/70` was not.
+ *
+ * ── SO THE CARD IS A FIXED-LIGHT SURFACE ───────────────────────────────────────────
+ *
+ * White glass over a light mesh is white whatever the theme is, so nothing on it can be
+ * typeset in `ink` — that token is white on four of the eight themes and would vanish.
+ * Everything here takes `release-ink`, the fixed near-black declared beside
+ * `release-paper` for the release notes dialog, which is the app's other fixed-light
+ * surface. The close button takes `ButtonIcon`'s `paper` tone for the same reason, and
+ * that tone exists because of these two screens.
+ *
+ * THE FIELDS ARE `Input` IN ITS `paper` TONE, and that tone exists because of this
+ * screen. They were spelled by hand here for one commit, with a note saying there was no
+ * input in the design system to reach for; there is now, and it carries the two grounds
+ * rather than this file carrying one of them.
  */
+
 export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
   const { login, requestPasswordReset, confirmPasswordReset } = useAuth()
   const [mode, setMode] = useState<Mode>('signin')
@@ -117,124 +162,138 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
   const title = mode === 'signin' ? t('login.signinTitle') : t('login.resetTitle')
 
   return (
-    <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-modal-backdrop"
-      onClick={onClose}
-    >
+    /* THE WHOLE WINDOW. `z-[56]` is the modal rung — see the note in the design system's
+       `Modal`, which holds the ladder: app < sheet < modal < select. This was at 50,
+       which is UNDER the quick-settings sheet, and the sheet is one of the places that
+       opens it.
+
+       `pt-10` and not a plain centre: the title bar is 40px of draggable chrome the card
+       must not sit under, since the window is dragged by it and a card overlapping it
+       would swallow the drag. */
+    <div className="fixed inset-0 z-[56] flex items-center justify-center bg-release-mesh px-6 pb-6 pt-10 animate-modal-backdrop">
       <div
-        className="bg-bg-secondary border border-line rounded-xl w-full max-w-md mx-4 animate-modal-content"
-        onClick={(e) => e.stopPropagation()}
+        /* THE GLASS. css.glass's recipe, with the blur inline — see the header for why
+           that is a deliberate bypass of a disabled core plugin and not an oversight.
+
+           `saturate` alongside the blur is the half of the recipe that is easy to leave
+           out: a blur alone greys what it samples, and the six blooms behind this card
+           are the only colour on the screen. */
+        style={{ backdropFilter: 'blur(14px) saturate(140%)', WebkitBackdropFilter: 'blur(14px) saturate(140%)' }}
+        className="w-full max-w-md rounded-3xl border border-release-paper/50 bg-release-paper/35 p-7 text-release-ink shadow-glass animate-modal-content"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-accent/10 rounded-lg">
-              <Cloud className="w-4 h-4 text-accent" />
-            </div>
-            <h3 className="text-base font-semibold">{title}</h3>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="text-xl font-bold leading-tight tracking-tight">{title}</h2>
+            <p className="mt-1.5 text-xs leading-relaxed text-release-ink/60">
+              {mode === 'reset' ? t('login.resetHelp') : t('login.signinHelp')}
+            </p>
           </div>
-          <button
+          {/* `paper`, the one tone mixed from the fixed ink rather than the theme's —
+              on white glass every other tone is a mark you cannot see on half the
+              themes. `-mr-1 -mt-1` pulls it into the card's own padding so the square
+              lines up with the heading's cap rather than floating inside it. */}
+          <ButtonIcon
+            icon={X}
+            tone="paper"
+            title={t('modal.closeEsc')}
             onClick={onClose}
-            className="p-1 text-text-secondary hover:text-ink hover:bg-surface-strong rounded-lg transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+            className="-mr-1 -mt-1 shrink-0"
+          />
         </div>
 
-        {/* Body */}
-        <div className="px-5 pb-5 space-y-3">
-          <p className="text-xs text-text-secondary/60">
-            {mode === 'reset' ? t('login.resetHelp') : t('login.signinHelp')}
+        <div className="mt-6 flex flex-col gap-2">
+          {/* Email is shown for sign in, and for the reset "request" step. In the reset
+              "confirm" step the email is locked in already. */}
+          {(mode !== 'reset' || resetStep === 'request') && (
+            <Input
+              type="email"
+              tone="paper"
+              size="xl"
+              value={email}
+              onChange={setEmail}
+              placeholder={t('login.emailPlaceholder')}
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
+            />
+          )}
+
+          {mode === 'reset' && resetStep === 'confirm' && (
+            <Input
+              inputMode="numeric"
+              tone="paper"
+              size="xl"
+              value={code}
+              onChange={setCode}
+              placeholder={t('login.codePlaceholder')}
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
+            />
+          )}
+
+          {/* Password: hidden during the reset "request" step (email only). */}
+          {!(mode === 'reset' && resetStep === 'request') && (
+            <Input
+              type="password"
+              tone="paper"
+              size="xl"
+              value={password}
+              onChange={setPassword}
+              placeholder={mode === 'reset' ? t('login.newPasswordPlaceholder') : t('login.passwordPlaceholder')}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
+            />
+          )}
+        </div>
+
+        {/* The two reports, on the glass rather than on the theme's surfaces: a red at
+            10% of the app's own ground is invisible here. Both keep the hue — red and
+            green read on white in every theme — and take the fixed ink for the sentence,
+            so a long message is readable rather than merely coloured. */}
+        {error && (
+          <p className="mt-3 rounded-xl border border-red/30 bg-red/15 px-3 py-2 text-xs leading-relaxed text-release-ink">
+            {error}
           </p>
+        )}
+        {notice && (
+          <p className="mt-3 rounded-xl border border-release-paper/60 bg-release-paper/50 px-3 py-2 text-xs leading-relaxed text-release-ink">
+            {notice}
+          </p>
+        )}
 
-          <div className="space-y-2">
-            {/* Email is shown for sign in / sign up, and for the reset "request" step.
-                In the reset "confirm" step the email is locked in already. */}
-            {(mode !== 'reset' || resetStep === 'request') && (
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t('login.emailPlaceholder')}
-                autoFocus
-                onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
-                className={`${INPUT} w-full`}
-              />
-            )}
+        {/* The design system's own button, where this was a `BTN_PRIMARY` string. `busy`
+            blocks the press and spins the mark on its own — a sign-in that accepts a
+            second press sends a second sign-in, and the reader has no way to know that
+            is what they did. */}
+        <Button
+          tone="accent"
+          size="xl"
+          icon={mode === 'signin' ? LogIn : KeyRound}
+          busy={busy}
+          onClick={handleSubmit}
+          className="mt-5 w-full"
+        >
+          {mode === 'signin'
+            ? t('login.signIn')
+            : resetStep === 'request'
+              ? t('login.sendCode')
+              : t('login.resetPassword')}
+        </Button>
 
-            {mode === 'reset' && resetStep === 'confirm' && (
-              <input
-                type="text"
-                inputMode="numeric"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder={t('login.codePlaceholder')}
-                autoFocus
-                onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
-                className={`${INPUT} w-full`}
-              />
-            )}
-
-            {/* Password: hidden during the reset "request" step (email only). */}
-            {!(mode === 'reset' && resetStep === 'request') && (
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={mode === 'reset' ? t('login.newPasswordPlaceholder') : t('login.passwordPlaceholder')}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
-                className={`${INPUT} w-full`}
-              />
-            )}
-
-          </div>
-
-          {error && (
-            <div className="px-3 py-2 bg-red/10 border border-red/20 rounded-lg text-xs text-red">
-              {error}
-            </div>
+        <div className="mt-4 text-center">
+          {mode === 'signin' ? (
+            <button
+              onClick={() => goToMode('reset')}
+              className="text-xs font-medium text-release-ink/60 underline-offset-2 transition-colors hover:text-release-ink hover:underline"
+            >
+              {t('login.forgotPassword')}
+            </button>
+          ) : (
+            <button
+              onClick={() => goToMode('signin')}
+              className="text-xs font-medium text-release-ink/60 underline-offset-2 transition-colors hover:text-release-ink hover:underline"
+            >
+              {t('login.backToSignIn')}
+            </button>
           )}
-          {notice && (
-            <div className="px-3 py-2 bg-accent/10 border border-accent/20 rounded-lg text-xs text-accent">
-              {notice}
-            </div>
-          )}
-
-          <button
-            onClick={handleSubmit}
-            disabled={busy}
-            className={`${BTN_PRIMARY} w-full justify-center disabled:opacity-50`}
-          >
-            {busy ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : mode === 'signin' ? (
-              <LogIn className="w-3.5 h-3.5" />
-            ) : (
-              <KeyRound className="w-3.5 h-3.5" />
-            )}
-            {mode === 'signin'
-              ? t('login.signIn')
-              : resetStep === 'request'
-                ? t('login.sendCode')
-                : t('login.resetPassword')}
-          </button>
-
-          <div className="text-center text-xs text-text-secondary/60 space-y-1">
-            {mode === 'signin' && (
-              <div>
-                <button onClick={() => goToMode('reset')} className="text-accent hover:underline">
-                  {t('login.forgotPassword')}
-                </button>
-              </div>
-            )}
-            {mode === 'reset' && (
-              <div>
-                <button onClick={() => goToMode('signin')} className="text-accent hover:underline">
-                  {t('login.backToSignIn')}
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>

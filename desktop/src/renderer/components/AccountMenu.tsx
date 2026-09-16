@@ -214,6 +214,24 @@ export function useAccountTitleBarControl(): {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   useEffect(() => { setAnchor(anchorRef.current) }, [signedIn])
 
+  /**
+   * THE DEBUG MENU'S WAY IN, and it is here rather than in `LoginScreen` because this is
+   * where the screen's open state lives.
+   *
+   * Without it the sign-in card is only reachable by signing OUT: the label in the title
+   * bar opens the account menu once there is an account, so anyone working on the screen
+   * had to end their session to look at it, and then end it again after every change.
+   * The event is what the debug menu dispatches (`UpdateOverlay`).
+   *
+   * MOUNTED UNCONDITIONALLY, signed in or not: the screen is rendered by `TitleBar`
+   * whatever this hook returns for `account`, so the fixture works in every state.
+   */
+  useEffect(() => {
+    const show = () => setLoginOpen(true)
+    window.addEventListener('debug:login-screen', show)
+    return () => window.removeEventListener('debug:login-screen', show)
+  }, [])
+
   const login = { open: loginOpen, onClose: () => setLoginOpen(false) }
 
   if (signedIn) {
