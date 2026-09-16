@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.96.2] - 2026-09-16
+
+### Added
+
+- **Desktop**: The repositories list is redrawn — no border, the name and its GitHub status as labels, the path underneath, and the remote and agent count gathered at the right edge
+- **Desktop**: A Button component in the design system, seven sizes and nine tones, replacing the seven hand-kept button constants the app had grown
+
+### Changed
+
+- **Desktop**: The repositories page drops its heading and keeps its one action, now a design-system button
+- **Desktop**: A banner takes its actions as data rather than as rendered buttons, so every banner draws the same control at the same size in its own colour — and ranks a pair by itself
+- **Desktop**: The script card's stop control is that same button
+
+### Fixed
+
+- **Desktop**: Leaving a repository's settings sweeps back the way it arrived instead of repeating the arrival, and no longer clips the page against the pane's edge on the way
+- **Desktop**: Checking for updates from the account menu no longer reports a red failure when it finds one
+
 ## [0.96.1] - 2026-09-16
 
 ### Added
@@ -3019,6 +3037,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.96.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.2
 [0.96.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.1
 [0.96.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.0
 [0.95.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.95.2
