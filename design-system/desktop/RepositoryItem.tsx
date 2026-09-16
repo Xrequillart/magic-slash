@@ -1,5 +1,6 @@
 import { AlertTriangle, ChevronRight, FolderGit2 } from './icons'
 import { Icon } from './Icon'
+import { Item } from './Item'
 import { Label } from './Label'
 import { PR_COLOR } from './prTones'
 import { Text } from './Text'
@@ -13,11 +14,16 @@ import { Text } from './Text'
  * branch and diff and commits. This is a ROW in a list you scan: four facts and a
  * chevron, and the only thing you can do with it is open it.
  *
- * NO BORDER, which is the change that made it worth extracting. The row wore
- * `border-line-strong` on a `bg-surface` plate, and a list of them drew a ladder of
- * hairlines down the panel — a table's rules without a table's columns. The surface
- * already separates the row from the ground behind it; the line was saying the same
- * thing a second time, louder.
+ * THE CHROME IS `Item`'S, and that is the change that made this worth extracting twice.
+ * The row wore `border-line-strong` all the way round its own plate, and eight of them
+ * drew a ladder of hairlines down the panel — a table's rules without a table's columns.
+ * Then it wore a plate of its own with a gap either side, which made a list of eight read
+ * as eight cards that happened to be near each other.
+ *
+ * It is FLUSH now, on the ground, the hover, the rule and the radius `PlanItem` stands
+ * on: one panel divided into eight. Two lists of rows in one app, reached from the same
+ * tab strip, had two answers to what a list of rows looks like, and `Item` is the one
+ * answer. Everything below this line is about the CONTENTS of the row and nothing else.
  *
  * WHAT IT IS ON THE LEFT, WHAT IS TRUE OF IT ON THE RIGHT. The name and the path are
  * the repository; the remote and the agent count are states it happens to be in. Those
@@ -78,9 +84,13 @@ export interface RepositoryItemProps {
    * component that cannot know which language it is rendering in.
    */
   agents?: string
-  /** Where the row goes. It renders an `<a>`, which is what a row of a list is. */
+  /** Where the row goes. `Item` renders an `<a>` for it, which is what a row of a list is. */
   href: string
-  /** Margins and width. Not the ground, the padding or the order. */
+  /**
+   * Placement. NOT a margin, which is the one thing it used to be for: the rows are
+   * flush now, and a gap between two of them breaks the stack the first and last radii
+   * are describing. Not the ground, the padding or the order either.
+   */
   className?: string
 }
 
@@ -95,10 +105,7 @@ export function RepositoryItem({
   className = '',
 }: RepositoryItemProps) {
   return (
-    <a
-      href={href}
-      className={`group flex items-center gap-3 rounded-xl bg-surface px-4 py-3 transition-all hover:bg-surface-strong ${className}`.trim()}
-    >
+    <Item href={href} className={className}>
       {/* WHAT THE REPOSITORY IS, and it is the only part of the row that gives way.
           `min-w-0` on the column and on the name inside it: a flex child will not
           shrink below its content without it, so a long name would push the status
@@ -169,6 +176,6 @@ export function RepositoryItem({
         tone="muted"
         className="flex-shrink-0 transition-colors group-hover:text-icon"
       />
-    </a>
+    </Item>
   )
 }

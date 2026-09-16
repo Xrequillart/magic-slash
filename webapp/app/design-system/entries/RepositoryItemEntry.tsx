@@ -1,6 +1,6 @@
 'use client'
 
-import { RepositoryItem } from '@ds/desktop'
+import { ItemGroup, RepositoryItem } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
 import { usesOf } from './ids'
@@ -46,13 +46,14 @@ const PROPS: PropRow[] = [
     name: 'href',
     type: 'string',
     required: true,
-    description: 'Where the row goes. It renders an <a>, which is what a row of a list is.',
+    description: 'Where the row goes. Item renders an <a> for it, which is what a row of a list is.',
   },
   {
     name: 'className',
     type: 'string',
     fallback: "''",
-    description: 'Margins and width. Not the ground, the padding or the order.',
+    description:
+      'Placement. Not a margin, which is the one thing it used to be for: the rows are flush now, and a gap between two of them breaks the stack the first and last radii are describing.',
   },
 ]
 
@@ -73,30 +74,32 @@ export function RepositoryItemEntry({
 
       <EntrySection
         title="The list"
-        note="No border, which is the change that made it worth extracting. The row wore border-line-strong on a bg-surface plate, and a list of them drew a ladder of hairlines down the panel — a table's rules without a table's columns. The surface already separates the row from the ground behind it; the line was saying the same thing a second time, louder."
+        note="The chrome is Item's. The row wore border-line-strong all the way round its own plate, and eight of them drew a ladder of hairlines down the panel — a table's rules without a table's columns. Then it wore a plate of its own with a gap either side, which made a list of eight read as eight cards that happened to be near each other. It is flush now, on the ground, the hover, the rule and the radius PlanItem stands on: one panel divided into eight."
       >
-        <Stage theme={theme} className="flex flex-col gap-2">
-          <RepositoryItem
-            name="magic-slash"
-            color={ROSE}
-            remote={{ connected: true, label: 'Connected' }}
-            path="/Users/you/Documents/magic-slash"
-            agents="3 agents"
-            href="#"
-          />
-          <RepositoryItem
-            name="notes"
-            color={CYAN}
-            remote={{ connected: true, label: 'Connected' }}
-            path="/Users/you/Documents/notes"
-            href="#"
-          />
-          <RepositoryItem
-            name="scratch"
-            remote={{ connected: false, label: 'No remote' }}
-            path="/Users/you/Documents/scratch"
-            href="#"
-          />
+        <Stage theme={theme}>
+          <ItemGroup>
+            <RepositoryItem
+              name="magic-slash"
+              color={ROSE}
+              remote={{ connected: true, label: 'Connected' }}
+              path="/Users/you/Documents/magic-slash"
+              agents="3 agents"
+              href="#"
+            />
+            <RepositoryItem
+              name="notes"
+              color={CYAN}
+              remote={{ connected: true, label: 'Connected' }}
+              path="/Users/you/Documents/notes"
+              href="#"
+            />
+            <RepositoryItem
+              name="scratch"
+              remote={{ connected: false, label: 'No remote' }}
+              path="/Users/you/Documents/scratch"
+              href="#"
+            />
+          </ItemGroup>
         </Stage>
       </EntrySection>
 
@@ -105,14 +108,16 @@ export function RepositoryItemEntry({
         note="The name and the path are the repository; the remote and the agent count are states it happens to be in. Those two used to sit on either side of the row — the remote beside the name, the count at the far edge — which put one fact of a pair in the title and the other in the margin. Gathered at the right edge they read as one column of statuses you can scan straight down, both a rung under the name, and the left column is then only ever a name over a path."
       >
         <Stage theme={theme} className="flex flex-col gap-4">
-          <RepositoryItem
-            name="acme-checkout-api"
-            color={AMBER}
-            remote={{ connected: true, label: 'Connected' }}
-            path="/Users/you/Developer/acme/services/checkout-api"
-            agents="1 agent"
-            href="#"
-          />
+          <ItemGroup>
+            <RepositoryItem
+              name="acme-checkout-api"
+              color={AMBER}
+              remote={{ connected: true, label: 'Connected' }}
+              path="/Users/you/Developer/acme/services/checkout-api"
+              agents="1 agent"
+              href="#"
+            />
+          </ItemGroup>
           <span className="font-mono text-[10px] text-text-secondary">
             the mark sits inside the name’s plate, where it used to be a 32px tile of its own
             in front of the row — it gives the name a left edge that lines up down the column.
@@ -126,13 +131,15 @@ export function RepositoryItemEntry({
         title="A repository with no local folder"
         note="The path line becomes the warning, and the remote chip goes away rather than reporting none: until a folder is bound there is nothing to read a remote off, so “No remote” would be a verdict on a question nobody has asked."
       >
-        <Stage theme={theme} className="flex flex-col gap-2">
-          <RepositoryItem
-            name="shared-design-tokens"
-            color={CYAN}
-            missingPath="No local folder — click to set it"
-            href="#"
-          />
+        <Stage theme={theme}>
+          <ItemGroup>
+            <RepositoryItem
+              name="shared-design-tokens"
+              color={CYAN}
+              missingPath="No local folder — click to set it"
+              href="#"
+            />
+          </ItemGroup>
         </Stage>
       </EntrySection>
 
@@ -142,14 +149,16 @@ export function RepositoryItemEntry({
       >
         <Stage theme={theme} className="flex flex-col gap-4">
           <div className="w-[360px]">
-            <RepositoryItem
-              name="acme-checkout-api-PAY-318-invoice-vat"
-              color={ROSE}
-              remote={{ connected: true, label: 'Connected' }}
-              path="/Users/you/Developer/acme/services/checkout-api-PAY-318-invoice-vat"
-              agents="2 agents"
-              href="#"
-            />
+            <ItemGroup>
+              <RepositoryItem
+                name="acme-checkout-api-PAY-318-invoice-vat"
+                color={ROSE}
+                remote={{ connected: true, label: 'Connected' }}
+                path="/Users/you/Developer/acme/services/checkout-api-PAY-318-invoice-vat"
+                agents="2 agents"
+                href="#"
+              />
+            </ItemGroup>
           </div>
           <span className="font-mono text-[10px] text-text-secondary">
             360px — hover the name for the path

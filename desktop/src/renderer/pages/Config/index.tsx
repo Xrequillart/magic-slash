@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { FolderPlus, Folder, Building2, Lock } from '@ds/desktop/icons'
-import { Button, RepositoryItem } from '@ds/desktop'
+import { Button, ItemGroup, RepositoryItem } from '@ds/desktop'
 import { RepoPage } from './RepoPage'
 import { SweepPane } from '../../components/SweepPane'
 import { useStore } from '../../store'
@@ -354,7 +354,11 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                   {t('settings.repos.noPersonal')}
                 </div>
               ) : (
-                <div className="space-y-2">{personalRepos.map(renderRepoRow)}</div>
+                /* `ItemGroup` AND NOT `space-y-2`: the rows are flush now, on the
+                   ground and the hover the Plans list uses, so a section reads as one
+                   panel divided into its repositories rather than as a stack of separate
+                   plates. The radius is on the first and the last row — see `Item`. */
+                <ItemGroup>{personalRepos.map(renderRepoRow)}</ItemGroup>
               )}
             </div>
 
@@ -371,7 +375,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                     {t('settings.repos.noTeam')}
                   </div>
                 ) : (
-                  <div className="space-y-2">{section.repos.map(renderRepoRow)}</div>
+                  <ItemGroup>{section.repos.map(renderRepoRow)}</ItemGroup>
                 )}
               </div>
             ))}

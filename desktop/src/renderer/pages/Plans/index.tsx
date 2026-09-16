@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { CloudOff, NotebookPen, RotateCcw, Users } from '@ds/desktop/icons'
+import { ItemGroup, ItemNote } from '@ds/desktop'
 import type { PlanOverview } from '../../../types'
 import { useConfig } from '../../hooks/useConfig'
 import { useT, type MessageKey } from '../../i18n'
@@ -424,41 +425,35 @@ export function PlansPage() {
               ) : empty ? (
                 <EmptyState {...empty} />
               ) : (
-                /* NO OUTER RULE. The list used to be framed in the same `line-subtle` as
-                   the rules between its rows — but a line all the way round a list that
-                   already sits on its own ground draws a box around something that was not
-                   in doubt, and the rules INSIDE are doing the separating. The ground is
-                   what marks the region now; the hairlines only part the rows.
+                /* `ItemGroup`, AND IT HOLDS NOTHING BUT THE COLUMN. The ground, the
+                   rule between rows, the radius at the two ends and the hover are on the
+                   ROWS now — `Item`, which the repositories list stands on too, so the
+                   two pages have one answer to what a list of rows looks like instead of
+                   two.
 
-                   No padding, on purpose. The rows carry their own `px-4 py-3` and must reach
-                   the frame on both sides: an inset would leave the rules stopping short of the
-                   border and turn a continuous list into a stack of slabs.
-
-                   `overflow-hidden` is what makes the radius real. Each row's hover ground is a
-                   full-bleed rectangle, so without it the first and last rows would paint square
-                   corners over the rounded ones on the way past. It also spares the first and
-                   last rows a radius of their own, which would have to be kept in step with this
-                   one. The first row drops its top rule (`first:border-t-0` on the row) so the
-                   frame is not doubled by it.
-
-                   `rounded-xl bg-surface-subtle` is the board column's own pair, from
-                   `Tasks/TaskBoard.tsx` minus its border, so the two pages read as one app: a
-                   region of it sits on `surface-subtle` everywhere here. */
-                <div className="rounded-xl bg-surface-subtle overflow-hidden">
+                   WHAT WENT WITH THE FRAME: the `rounded-xl bg-surface-subtle` pair, and
+                   `overflow-hidden` with it. That last one was doing real work — it
+                   clipped each row's full-bleed hover to the rounded corners — and its
+                   cost was that it clipped the focus ring too, which is why the ring had
+                   to be drawn inset to survive at all. With the radius on the first and
+                   last rows there is nothing left to clip. */
+                <ItemGroup>
                   {visible.map((card) => (
                     <PlanRow key={card.id} card={card} now={now} onSelect={select} />
                   ))}
-                  {/* A list that came back at its cap says so, as its own last line INSIDE the
-                      frame — the sentence is about this list, and a note floating under the
-                      box would read as being about the page. The read is newest-first, so
-                      what is missing is always the old end of it: without this line a list
-                      silently short of its tail looks exactly like a complete one. */}
-                  {overview.truncated && (
-                    <p className="px-4 py-2 border-t border-line-subtle text-xs text-text-secondary/60">
-                      {t('plans.truncated')}
-                    </p>
-                  )}
-                </div>
+                  {/* A list that came back at its cap says so, as its own last row INSIDE
+                      the group — the sentence is about this list, and a note floating under
+                      the stack would read as being about the page. The read is
+                      newest-first, so what is missing is always the old end of it: without
+                      this line a list silently short of its tail looks exactly like a
+                      complete one.
+
+                      `ItemNote` and not a `<p>` of our own: being the last element, it is
+                      what takes the group's bottom radius, and a bare paragraph there
+                      would take the shape while wearing no ground and leave the last real
+                      row square. */}
+                  {overview.truncated && <ItemNote>{t('plans.truncated')}</ItemNote>}
+                </ItemGroup>
               )}
             </div>
           </>
