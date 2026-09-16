@@ -21,6 +21,8 @@ import { TallyEntry } from './entries/TallyEntry'
 import { ReviewThreadLineEntry } from './entries/ReviewThreadLineEntry'
 import { PullRequestCardEntry } from './entries/PullRequestCardEntry'
 import { RepositoryCardEntry } from './entries/RepositoryCardEntry'
+import { ItemEntry } from './entries/ItemEntry'
+import { PlanItemEntry } from './entries/PlanItemEntry'
 import { RepositoryItemEntry } from './entries/RepositoryItemEntry'
 import { ScriptCardEntry } from './entries/ScriptCardEntry'
 import { SidebarAgentCoderInfoEntry } from './entries/SidebarAgentCoderInfoEntry'
@@ -131,7 +133,9 @@ const ENTRIES: Record<
   reviewthreadline: ReviewThreadLineEntry,
   pullrequestcard: PullRequestCardEntry,
   repositorycard: RepositoryCardEntry,
+  item: ItemEntry,
   repositoryitem: RepositoryItemEntry,
+  planitem: PlanItemEntry,
   scriptcard: ScriptCardEntry,
   sidebaragentcoderinfo: SidebarAgentCoderInfoEntry,
   sidebaragentplannerinfo: SidebarAgentPlannerInfoEntry,

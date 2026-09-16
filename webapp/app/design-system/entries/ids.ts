@@ -37,7 +37,9 @@ export type EntryId =
   | 'pullrequestcard'
   | 'scriptcard'
   | 'repositorycard'
+  | 'item'
   | 'repositoryitem'
+  | 'planitem'
   | 'sidebaragentcoderinfo'
   | 'sidebaragentplannerinfo'
   | 'speccard'
@@ -105,7 +107,9 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   pullrequestcard: 'PullRequestCard',
   scriptcard: 'ScriptCard',
   repositorycard: 'RepositoryCard',
+  item: 'Item',
   repositoryitem: 'RepositoryItem',
+  planitem: 'PlanItem',
   sidebaragentcoderinfo: 'SidebarAgentCoderInfo',
   sidebaragentplannerinfo: 'SidebarAgentPlannerInfo',
   speccard: 'SpecCard',
@@ -217,7 +221,11 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   pullrequestcard: ['buttonicon', 'collapsibleline', 'icon', 'text'],
   scriptcard: ['button', 'loader', 'icon', 'text'],
   repositorycard: ['card', 'headerrepocard', 'branchcard', 'uncommittedchangescard', 'commitcard'],
-  repositoryitem: ['icon', 'label', 'text'],
+  // `Item` holds a ground and a shape and draws nothing: the rows inside it are the
+  // caller's, the same way `Card`'s children are.
+  item: [],
+  repositoryitem: ['item', 'icon', 'label', 'text'],
+  planitem: ['item', 'label', 'status', 'text'],
   sidebaragentcoderinfo: ['contextagentcard', 'titleagentcard', 'repositorycard', 'repositoryselector'],
   sidebaragentplannerinfo: ['contextagentcard', 'speccard'],
   modal: [],
@@ -317,7 +325,9 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   speccard: 'A plan being written, live',
   modal: 'The ground a dialog floats on',
   repositoryselector: 'Which repositories an agent works in',
+  item: 'One row of a list, and the stack it belongs to',
   repositoryitem: 'A repository, as a list scans it',
+  planitem: 'One plan, as one dense line',
   sidebaragentplannerinfo: 'The right column of a planner',
   apptitlebar: 'The bar across the top, and it knows nothing either',
   togglebutton: 'A feature, on or off, in one circle',
