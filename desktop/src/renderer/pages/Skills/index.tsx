@@ -849,6 +849,7 @@ function SkillEditor({
             onChange={setName}
             disabled={!isNew}
             placeholder="my-skill"
+            className="w-full"
           />
           {isNew && (
             <p className="mt-1 text-xs text-text-secondary/60">{t('skills.editor.nameHelp')}</p>
@@ -864,6 +865,7 @@ function SkillEditor({
             onChange={setDescription}
             placeholder={t('skills.editor.descriptionPlaceholder')}
             rows={3}
+            className="w-full"
           />
         </div>
 
@@ -874,6 +876,7 @@ function SkillEditor({
             value={allowedTools}
             onChange={setAllowedTools}
             placeholder="Bash(*), Read, Edit, Write, Glob, Grep"
+            className="w-full"
           />
         </div>
 
@@ -924,6 +927,7 @@ function SkillEditor({
             rows={16}
             mono
             resize="vertical"
+            className="w-full"
           />
         </div>
       </div>

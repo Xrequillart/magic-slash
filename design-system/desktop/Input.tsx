@@ -158,9 +158,14 @@ interface InputBase {
   onFocus?: () => void
   onBlur?: () => void
   /**
-   * Width and placement — `w-full`, `flex-1`, `w-72`, a margin. NOT the ground, the
-   * padding, the height, the radius or the type size: a second utility from any of those
-   * groups is settled by Tailwind's emit order rather than by where it was written.
+   * Width and placement — `w-full`, `flex-1`, `w-72`, a margin, and THIS COMPONENT SETS
+   * NONE OF THEM. A field is as wide as the form says; it has no opinion.
+   *
+   * NOT the ground, the padding, the height, the radius or the type size: a second
+   * utility from any of those groups is settled by Tailwind's emit order rather than by
+   * where it was written. That is not a theoretical hazard — this component shipped with
+   * `w-full` baked in, and because `w-full` is emitted after `w-72`, every caller asking
+   * for a narrow field silently got a full-width one.
    */
   className?: string
 }
@@ -215,9 +220,15 @@ export type InputProps = SingleLineProps | MultilineProps
  * own answer and it is worth keeping. A ring around a field sitting flush in a form adds
  * a second rectangle at every focus; the hairline is already there and only changes
  * colour.
+ *
+ * NO WIDTH IN HERE, and that is a correction rather than an omission. It carried `w-full`
+ * for one release, which read as a convenience and was a silent override: `w-full` is
+ * emitted AFTER `w-72` in Tailwind's width group, so a caller asking for 18rem got 100%
+ * and nothing said so. Width is the caller's, exactly as `className` promises — and the
+ * one place the component still sets it is INSIDE the icon wrapper, where no caller class
+ * can reach and there is nothing to race.
  */
-const CHROME =
-  'w-full border transition-colors focus:outline-none disabled:cursor-not-allowed'
+const CHROME = 'border transition-colors focus:outline-none disabled:cursor-not-allowed'
 
 /**
  * FORWARDS ITS REF, and to whichever element it drew.
@@ -300,7 +311,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, InputPro
       onFocus={onFocus}
       onBlur={onBlur}
       className={`${shape.box} ${ground} ${CHROME} ${face} ${
-        props.icon ? WITH_ICON[size] : ''
+        props.icon ? `w-full ${WITH_ICON[size]}` : ''
       } ${TRAILING[props.trailing ?? 'none']} ${props.icon ? '' : className}`}
     />
   )
@@ -312,7 +323,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, InputPro
      field cannot be its own. `pointer-events-none` so clicking the mark still lands in
      the box — a glyph that swallowed the click would be a field with a dead corner. */
   return (
-    <span className={`relative inline-flex items-center ${className}`}>
+    <span className={`relative flex items-center ${className}`}>
       <Icon
         glyph={props.icon}
         size="sm"

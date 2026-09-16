@@ -68,7 +68,7 @@ const PROPS: PropRow[] = [
     type: 'string',
     fallback: "''",
     description:
-      'Width and placement — w-full, flex-1, w-72, a margin. Not the ground, the padding, the height, the radius or the type size.',
+      'Width and placement — w-full, flex-1, w-72, a margin — and the component sets none of them. A field is as wide as the form says. It shipped with w-full baked in for one release, which read as a convenience and was a silent override: w-full is emitted after w-72 in Tailwind’s width group, so every caller asking for a narrow field got a full-width one and nothing said so.',
   },
 ]
 
@@ -87,10 +87,10 @@ export function InputEntry({ theme, onOpen }: { theme: DesktopTheme; onOpen?: (i
       >
         <Stage theme={theme} className="flex flex-col gap-4">
           <Specimen label="single line">
-            <Playground placeholder="acme-checkout-api" />
+            <Playground placeholder="acme-checkout-api"  className="w-full"/>
           </Specimen>
           <Specimen label="multiline — three rows, no resize">
-            <Playground multiline placeholder="What this skill is for…" />
+            <Playground multiline placeholder="What this skill is for…"  className="w-full"/>
           </Specimen>
         </Stage>
       </EntrySection>
@@ -149,8 +149,8 @@ export function InputEntry({ theme, onOpen }: { theme: DesktopTheme; onOpen?: (i
               style={{ backdropFilter: 'blur(14px) saturate(140%)' }}
               className="flex flex-col gap-2 rounded-2xl border border-release-paper/50 bg-release-paper/35 p-5 shadow-glass"
             >
-              <Playground tone="paper" size="xl" type="email" placeholder="you@acme.dev" />
-              <Playground tone="paper" size="xl" type="password" placeholder="Password" />
+              <Playground tone="paper" size="xl" type="email" placeholder="you@acme.dev"  className="w-full"/>
+              <Playground tone="paper" size="xl" type="password" placeholder="Password"  className="w-full"/>
             </div>
           </div>
         </Stage>

@@ -446,6 +446,7 @@ export default function CommentCard({ comment, range, quote, host, width, spec, 
                  view now, so a line of it holds two or three times the words it used to, and
                  four rows of that is a panel rather than a comment box. */
               rows={3}
+              className="w-full"
             />
             <div className="flex items-center justify-end gap-1.5">
               <button type="button" onClick={dismiss} className={BTN_GHOST}>

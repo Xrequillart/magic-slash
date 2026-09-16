@@ -617,6 +617,7 @@ export function OrgPage() {
             placeholder={t('org.inviteModal.emailPlaceholder')}
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleInvite() }}
+            className="w-full"
           />
           <div className="flex items-center justify-between">
             <span className="text-xs text-text-secondary/60">{t('org.colRole')}</span>
@@ -659,6 +660,7 @@ export function OrgPage() {
             placeholder={t('org.createModal.namePlaceholder')}
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleCreate() }}
+            className="w-full"
           />
         </div>
       </Modal>
@@ -697,6 +699,7 @@ export function OrgPage() {
             placeholder={t('org.joinModal.tokenPlaceholder')}
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleJoin() }}
+            className="w-full"
           />
         </div>
       </Modal>

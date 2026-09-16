@@ -494,6 +494,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 placeholder={t('invite.wizard.tokenPlaceholder')}
                 autoFocus
                 mono
+                className="w-full"
               />
               <div className="flex gap-2">
                 <button
@@ -514,6 +515,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 value={email}
                 onChange={setEmail}
                 placeholder={t('invite.wizard.emailPlaceholder')}
+                className="w-full"
               />
               <Input
                 type="password"
@@ -521,6 +523,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 onChange={setPassword}
                 placeholder={t('invite.wizard.passwordPlaceholder')}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleAcceptInvitation() }}
+                className="w-full"
               />
             </div>
           )}

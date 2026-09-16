@@ -482,6 +482,7 @@ export function TaskFilters({
           trailing={
             value.query && (searching || searchFailed) ? 'wide' : value.query || searching ? 'narrow' : 'none'
           }
+          className="w-full"
         />
         {/* THREE THINGS CAN SIT AT THE RIGHT EDGE and only ever one of them does, which
             is why they share a row rather than each claiming `right-2`: a spinner while

@@ -873,6 +873,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
           value={remoteUrl}
           placeholder="https://github.com/owner/repo"
           onChange={handleRemoteUrlChange}
+          className="w-full"
         />
         {remoteUrlError && (
           <div className="flex items-center gap-1.5 text-xs text-red">
@@ -1078,6 +1079,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 <Input
                   value={editedName}
                   onChange={setEditedName}
+                  className="w-full"
                 />
                 {editedName !== repoName && editedName.trim() && (
                   <button onClick={handleRename} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">

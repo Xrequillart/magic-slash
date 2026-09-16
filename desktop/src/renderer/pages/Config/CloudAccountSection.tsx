@@ -588,6 +588,7 @@ export function CloudAccountSection() {
             onChange={setNewPassword}
             placeholder={t('cloud.password.newPlaceholder')}
             autoFocus
+            className="w-full"
           />
           <Input
             type="password"
@@ -595,6 +596,7 @@ export function CloudAccountSection() {
             onChange={setConfirmPassword}
             placeholder={t('cloud.password.confirmPlaceholder')}
             onKeyDown={(e) => { if (e.key === 'Enter') handleChangePassword() }}
+            className="w-full"
           />
         </div>
       </Modal>
@@ -635,6 +637,7 @@ export function CloudAccountSection() {
               placeholder={t('cloud.email.newPlaceholder')}
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') handleChangeEmail() }}
+              className="w-full"
             />
           </div>
         ) : (
@@ -649,6 +652,7 @@ export function CloudAccountSection() {
               placeholder={t('cloud.email.codePlaceholder')}
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') handleChangeEmail() }}
+              className="w-full"
             />
           </div>
         )}

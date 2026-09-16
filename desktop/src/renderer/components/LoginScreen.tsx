@@ -214,6 +214,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
               placeholder={t('login.emailPlaceholder')}
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
+              className="w-full"
             />
           )}
 
@@ -227,6 +228,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
               placeholder={t('login.codePlaceholder')}
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
+              className="w-full"
             />
           )}
 
@@ -240,6 +242,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
               onChange={setPassword}
               placeholder={mode === 'reset' ? t('login.newPasswordPlaceholder') : t('login.passwordPlaceholder')}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
+              className="w-full"
             />
           )}
         </div>

@@ -171,6 +171,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                 placeholder={t('profile.form.firstNamePlaceholder')}
                 autoFocus
                 onKeyDown={(e) => { if (e.key === 'Enter' && canAdvance()) handleNext() }}
+                className="w-full"
               />
             </div>
           )}
@@ -290,6 +291,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                 onChange={setFreeText}
                 placeholder={t('profile.form.freeTextPlaceholder')}
                 rows={4}
+                className="w-full"
               />
             </div>
           )}
