@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { AppTitleBar, type TitleBarTitle } from '@ds/desktop'
 import { useStore } from '../store'
 import { canCloseAgent } from './agent-info-sidebar/utils'
 import { useIsFullScreen } from '../hooks/useIsFullScreen'
 import { useT } from '../i18n'
 import { ControlCenterMenu } from './ControlCenterMenu'
+import { AccountMenu, useAccountTitleBarControl } from './AccountMenu'
+import { LoginScreen } from './LoginScreen'
 import { BellOff } from '@ds/desktop/icons'
 import { useConfig } from '../hooks/useConfig'
 
@@ -74,9 +76,17 @@ export function TitleBar() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [closeableTerminal, openCloseAgentModal])
 
-  // THE QUICK SETTINGS, held here and nowhere else: the button in the bar and the sheet
-  // under it are one state, and no other surface opens or closes it.
-  const [quickSettingsOpen, setQuickSettingsOpen] = useState(false)
+  // THE QUICK SETTINGS, in the STORE and no longer here: ⌘, opens the sheet from a
+  // window-level listener in `Sidebar`, and the settings dialog closes it on the way
+  // out. The button in the bar is one of three things that move this value.
+  const quickSettingsOpen = useStore((s) => s.quickSettingsOpen)
+  const setQuickSettingsOpen = useStore((s) => s.setQuickSettingsOpen)
+
+  // THE ACCOUNT — the label at the far right, the element its dropdown hangs from, and
+  // the login overlay the signed-out label needs. Mutual exclusion with the sheet is the
+  // store's, not this file's: both controls set the other to false, so a surface that
+  // opens either one from somewhere else cannot forget to.
+  const { account, anchor: accountAnchor, login } = useAccountTitleBarControl()
 
   // One title normally, two when the window is split: the component draws a rule between
   // the pair and dims whichever is not being typed into.
@@ -143,10 +153,18 @@ export function TitleBar() {
       settings={{
         open: quickSettingsOpen,
         title: t('titlebar.quickSettings'),
-        onToggle: () => setQuickSettingsOpen((was) => !was),
+        onToggle: () => setQuickSettingsOpen(!quickSettingsOpen),
+
       }}
+      // Past the sliders, where the platform keeps its own account: the person, and the
+      // sheet of everything they are signed in to.
+      account={account}
     />
     <ControlCenterMenu open={quickSettingsOpen} onClose={() => setQuickSettingsOpen(false)} />
+    <AccountMenu anchor={accountAnchor} />
+    {/* Signed out with the cloud on, the label is a way in — see `useAccountTitleBarControl`.
+        Rendered here because the hook hands back state, not overlays. */}
+    <LoginScreen isOpen={login.open} onClose={login.onClose} />
     </>
   )
 }

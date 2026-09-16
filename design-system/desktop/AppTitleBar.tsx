@@ -1,6 +1,6 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, ReactNode, RefObject } from 'react'
 import { ButtonIcon } from './ButtonIcon'
-import { Archive, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Settings2 } from './icons'
+import { Archive, CircleUserRound, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Settings2 } from './icons'
 import { Label } from './Label'
 import type { IconComponent } from './types'
 
@@ -142,6 +142,53 @@ export interface TitleBarAction {
   icon?: IconComponent
 }
 
+/**
+ * WHO IS SIGNED IN, last in the bar — a face and a name on the same plate the archive
+ * and the notice wear.
+ *
+ * IT IS PAST THE QUICK-SETTINGS TOGGLE and that is the whole of its placement: the bar
+ * reads left to right as the window, then the agent, then the app, and an account is
+ * further out than any of them. macOS puts its own account at the end of the menu bar
+ * for the same reason.
+ *
+ * A `Label` AND NOT A `ButtonIcon`, unlike the two toggles beside it: a photograph with
+ * no name is a riddle at 24px, and the one question this control answers is WHOSE app
+ * this is. `avatar` wins over `icon` inside `Label`, so a caller with an account passes
+ * the face — `src: null` included, which draws the bare person glyph — and a caller
+ * with none passes a mark and the word that invites signing in.
+ *
+ * NO PRESSED STATE, unlike `settings` next door. `Label` has no `active`, and the sheet
+ * this opens IS the feedback — it lands under the control and covers half the window.
+ * The toggles need one because a folded panel leaves nothing else on screen to say so.
+ */
+export interface TitleBarAccount {
+  /** The person's name, or the invitation to sign in. Translated. */
+  label: string
+  /** The tooltip, and the accessible name when the word is truncated. Translated. */
+  title: string
+  onClick: () => void
+  /**
+   * The face. `{ src: null }` is a signed-in person with no photo — the bare glyph —
+   * and ABSENT is a different state: nobody is signed in, so `icon` is drawn instead.
+   */
+  avatar?: { src: string | null; alt: string }
+  /** The mark when there is no account to show a face for. `CircleUserRound` by default. */
+  icon?: IconComponent
+  /**
+   * THE ELEMENT A DROPDOWN HANGS FROM, filled with the label's own wrapper.
+   *
+   * `Menu` is portalled to the body and positions itself against a real box, so
+   * something has to hand it one — and the label is drawn in HERE, where the caller
+   * cannot reach it. A ref out is the smallest thing that closes that gap: no state
+   * crosses the boundary, and a caller with no menu simply passes nothing.
+   *
+   * It is on a `<span>` WRAPPING the label rather than on the label itself, because
+   * `Label` forwards no ref and growing one on it would be a change to the app's one
+   * badge for the sake of one call site.
+   */
+  anchorRef?: RefObject<HTMLSpanElement>
+}
+
 export interface AppTitleBarProps {
   /**
    * Keeps the 64px the traffic lights occupy clear.
@@ -183,6 +230,8 @@ export interface AppTitleBarProps {
    * long as the app is.
    */
   notice?: TitleBarAction
+  /** The account, last in the bar — see `TitleBarAccount`. */
+  account?: TitleBarAccount
   /** Margins and placement. Not the height, the ground, or the order of the regions. */
   className?: string
 }
@@ -196,9 +245,10 @@ export function AppTitleBar({
   right,
   settings,
   notice,
+  account,
   className = '',
 }: AppTitleBarProps) {
-  const hasRight = Boolean(action || right || settings || notice)
+  const hasRight = Boolean(action || right || settings || notice || account)
 
   return (
     <div
@@ -256,6 +306,7 @@ export function AppTitleBar({
               activeTone="ink"
             />
           )}
+          {account && <Account {...account} />}
         </Controls>
       )}
     </div>
@@ -355,5 +406,29 @@ function Action({ label, title, onClick, icon = Archive }: TitleBarAction) {
     <Label tone="neutral" icon={icon} title={title} onClick={onClick}>
       {label}
     </Label>
+  )
+}
+
+/** The person at the end of the bar. `truncate` and a cap, because a name is the one
+ *  string here with no maximum length — an address whose local part is a full name
+ *  would otherwise push the whole right-hand group into the titles. */
+function Account({ label, title, onClick, avatar, icon = CircleUserRound, anchorRef }: TitleBarAccount) {
+  return (
+    // `inline-flex` and not `contents`: a dropdown measures this box, and an element
+    // with `display: contents` has no box to measure — it reports zeros and the menu
+    // lands in the corner of the window.
+    <span ref={anchorRef} className="inline-flex">
+      <Label
+        tone="neutral"
+        avatar={avatar}
+        icon={icon}
+        title={title}
+        onClick={onClick}
+        truncate
+        className="max-w-40"
+      >
+        {label}
+      </Label>
+    </span>
   )
 }

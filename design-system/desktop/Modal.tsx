@@ -31,6 +31,11 @@ import { createPortal } from 'react-dom'
  * where they go, along with the width. Handed nothing, the dialog simply appears — which is
  * what the marketing site's drawings of it want anyway.
  *
+ * `rounded-2xl` AND NO BORDER, which is `PageModal`'s frame exactly — the two are the
+ * app's only dialogs and they were 12px-with-a-hairline and 16px-without. A panel lifted
+ * off a dimmed background by a shadow does not also need a line saying where it ends, and
+ * two dialogs that disagreed about their corners read as two different windows.
+ *
  * WHAT IT DOES NOT DO, said plainly so nobody assumes otherwise: it does not trap focus, it
  * does not close on Escape, and it does not restore focus to whatever opened it. Those are
  * real obligations for a dialog and they are not here yet.
@@ -80,8 +85,19 @@ export function Modal({
   if (!ready) return null
 
   return createPortal(
+    // z-56 AND NOT z-50, which is where this sat for as long as a modal was the only
+    // full-window overlay the app had. `ControlCenter` is 55, and its `aside` panel now
+    // holds the account pages — so "change your password", "delete this account", the
+    // avatar cropper and the organization's own dialogs are all opened from INSIDE that
+    // layer. At 50 every one of them appeared under the frost, which reads as a dialog
+    // that failed to open.
+    //
+    // 56 and not 60, which is the next rung up: 60 is where the SELECT panels live
+    // (`SelectIcon`, `LanguageSelect`, `RoleSelect`, the page filters), and those have to
+    // stay above the modal they drop open inside. The order is app < sheet < modal <
+    // select, and 56 is the only value that keeps all three relations.
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 ${backdropClassName}`.trim()}
+      className={`fixed inset-0 z-[56] flex items-center justify-center bg-black/70 ${backdropClassName}`.trim()}
       onClick={onClose}
     >
       <div
@@ -90,7 +106,7 @@ export function Modal({
         aria-labelledby={labelledBy}
         onAnimationEnd={onAnimationEnd}
         onClick={(event) => event.stopPropagation()}
-        className={`bg-bg-secondary rounded-xl shadow-xl ${className}`.trim()}
+        className={`bg-bg-secondary rounded-2xl shadow-xl ${className}`.trim()}
       >
         {children}
       </div>

@@ -7,6 +7,7 @@ export { Agent, AGENT_STATES } from './Agent'
 export { AppTitleBar, TITLE_BAR_HEIGHT } from './AppTitleBar'
 export type {
   AppTitleBarProps,
+  TitleBarAccount,
   TitleBarAction,
   TitleBarSwitch,
   TitleBarSwitchOption,
@@ -65,6 +66,12 @@ export { EditableText } from './EditableText'
 export type { EditableTextProps, EditableTextVariant } from './EditableText'
 export { Icon, ICON_SIZES } from './Icon'
 export { Label, LABEL_TONES } from './Label'
+export { ModalHeader, MODAL_HEADER_HEIGHT } from './ModalHeader'
+export type { ModalHeaderProps } from './ModalHeader'
+export { PageModal } from './PageModal'
+export type { PageModalProps } from './PageModal'
+export { Menu } from './Menu'
+export type { MenuGroup, MenuHeader, MenuItem, MenuProps } from './Menu'
 export { MenuSidebar } from './MenuSidebar'
 export type { MenuSidebarEntry, MenuSidebarProps } from './MenuSidebar'
 export { MenuSidebarItem } from './MenuSidebarItem'
@@ -121,7 +128,7 @@ export type { BannerAction, BannerProps, BannerVariant, BannerLayout } from './B
 export type { IconComponent } from './types'
 export { Flag, RoundFlag } from './Flag'
 export { RAISED_PLATE, RAISED_PLATE_HOVER } from './plate'
-export { ControlCenter, ControlCenterGroup, CONTROL_CENTER_GRID } from './ControlCenter'
+export { ControlCenter, ControlCenterGroup, CONTROL_CENTER_GRID, CONTROL_CENTER_STACK } from './ControlCenter'
 export type { ControlCenterGroupProps, ControlCenterProps } from './ControlCenter'
 export { SetupStatusCard } from './SetupStatusCard'
 export type { SetupState, SetupStatusCardProps } from './SetupStatusCard'

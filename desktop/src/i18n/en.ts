@@ -133,6 +133,21 @@ export const en = {
   'titlebar.info': 'Info',
   /** The title bar's sliders button, and the sheet it pulls down. */
   'titlebar.quickSettings': 'Quick settings',
+  /** The title bar's account label, past the sliders, and the sheet it pulls down. */
+  'titlebar.account': 'Account',
+
+  // ── Account menu (the dropdown under the title bar's account label) ──────
+  'accountMenu.title': 'Account',
+  'accountMenu.settings': 'Settings',
+  'accountMenu.checking': 'Checking…',
+  'accountMenu.upToDate': 'Magic Slash is up to date.',
+  'accountMenu.checkUpdates': 'Check for updates',
+  'accountMenu.checkUpdatesFailed': 'Could not check for updates.',
+  'accountMenu.signOutFailed': 'Could not sign out.',
+
+  // ── Account sheet (the title bar's other sheet) ──────────────────────────
+  // Cards rather than tiles: every line is a fact, and a fact needs a sentence.
+  // A count per grammatical form, never a suffix rule — see t() on why.
 
   // ── Quick settings (the sheet under the title bar) ───────────────────────
   'controlCenter.title': 'Quick settings',

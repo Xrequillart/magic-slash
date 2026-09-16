@@ -72,7 +72,7 @@ export function TerminalsPage() {
         showToast(
           t(invalid.length > 1 ? 'terminals.invalidRepos.other' : 'terminals.invalidRepos.one', { count: invalid.length }),
           'error',
-          { actions: [{ label: t('terminals.openSettings'), onClick: () => openSettingsModal('repositories') }] },
+          { actions: [{ label: t('terminals.openSettings'), onClick: () => openSettingsModal() }] },
         )
         return true
       }

@@ -76,7 +76,13 @@ export function ToastContainer() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+    // z-90, ABOVE EVERY OTHER LAYER THE APP HAS — the modal at 56, the select panels at
+    // 60, the review panel at 70, the quick-settings and account sheets at 55. It was 50,
+    // which tied with the modal and lost to anything above it. A toast is the app
+    // answering something you just did, and the surface you did it on is by definition
+    // still on screen: a confirmation hidden behind it reads as an action that did
+    // nothing. Only the update overlay (100+) outranks it, and that one is a wall.
+    <div className="fixed bottom-6 right-6 z-[90] flex flex-col gap-3">
       {toasts.map(toast => (
         <div
           key={toast.id}

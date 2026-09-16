@@ -20,7 +20,7 @@ import type { IconComponent } from './types'
  * keep it on the tab it belongs to.
  *
  * THEME-AWARE THROUGHOUT: the rail, the pill and the labels are theme tokens
- * (`surface-*`, `line-*`, `ink`, `text-secondary`). The marketing site paints the same
+ * (`surface-*`, `ink`, `text-secondary`). The marketing site paints the same
  * two shapes with a solid light rail and a translucent black pill, which it can afford —
  * its pages have one appearance. Transplanted here they would be a pill that disappears
  * the moment the window is dark, so every colour goes through a token instead.
@@ -38,8 +38,12 @@ export interface TabStripItem {
   /** The mark before the word. From `@ds/desktop/icons`. */
   icon?: IconComponent
   /**
-   * A PERSON in front of the word instead of a glyph — the settings tab wears the
-   * signed-in account's photo. Wins over `icon`.
+   * A PERSON in front of the word instead of a glyph. Wins over `icon`.
+   *
+   * NO CALL SITE TODAY: the page overlay's settings tab wore the signed-in account's
+   * photo, and that tab is the repositories now — the account moved to the title bar.
+   * The prop stays because it costs one branch and the shape it answers keeps coming
+   * back; a roster of people as tabs is the obvious next one.
    *
    * DATA AND NOT A NODE, which is the whole reason it can exist here, and it is
    * `Label`'s `avatar` to the letter: `{ src, alt }` is what this hands to `Avatar`,
@@ -129,9 +133,16 @@ export function TabStrip({ items, activeKey, onSelect, ariaLabel, className = ''
 
   return (
     <nav aria-label={ariaLabel} className={className}>
+      {/* NO BORDER ON THE TRACK. There was a `border border-line-subtle`, and it went the
+          way the modal frame's did: the track already reads as a track from its ground
+          — `bg-surface-subtle`, a tint the rows either side of it do not have — and a
+          hairline around a tinted pill is a second answer to where the control ends. It
+          also mattered most where the strip is now drawn: centred in a modal header that
+          has no rule of its own, a rounded outline was the one hard edge left on a band
+          whose whole point is to be quiet. */}
       <div
         ref={listRef}
-        className="relative inline-flex max-w-full gap-1 overflow-x-auto rounded-full bg-surface-subtle border border-line-subtle p-1"
+        className="relative inline-flex max-w-full gap-1 overflow-x-auto rounded-full bg-surface-subtle p-1"
       >
         {/* The moving background. `aria-hidden` because the active tab already says it is
             active — to a screen reader this is decoration. */}

@@ -64,6 +64,12 @@ const PROPS: PropRow[] = [
       'A standing notice before the quick-settings toggle — “Notifications off”. TitleBarAction’s shape because it is one: a mark and a word on a plate, and a click that does something about it. It says something about the whole app for as long as it is true, and the bar is the one strip on screen for as long as the app is.',
   },
   {
+    name: 'account',
+    type: 'TitleBarAccount',
+    description:
+      'Who is signed in, past the quick-settings toggle — where macOS keeps its own account, at the end of the menu bar. A Label and not a ButtonIcon: a photograph with no name is a riddle at 24px, and the one question this control answers is whose app this is. `avatar` wins over `icon` inside Label, so an account passes the face (`src: null` included, which draws the bare person glyph) and no account passes a mark and the word that invites signing in. No pressed state, unlike settings beside it: the sheet it opens covers half the window and is its own feedback.',
+  },
+  {
     name: 'trafficLightGutter',
     type: 'boolean',
     fallback: 'true',
@@ -210,7 +216,7 @@ export function AppTitleBarEntry({
 
       <EntrySection
         title="The far right belongs to the app, not to the agent"
-        note="Two slots after the info toggle, and neither is about the agent in the middle. The sliders open the quick-settings sheet and light in ink while it is down, the same way the panel toggles do — the sheet is a panel like any other. The notice before them stands only while something about the whole app is true, and pressing it goes to where that can be changed. Press the sliders."
+        note="Three slots after the info toggle, and none of them is about the agent in the middle. The sliders open the quick-settings sheet and light in ink while it is down, the same way the panel toggles do — the sheet is a panel like any other. The notice before them stands only while something about the whole app is true, and pressing it goes to where that can be changed. The account comes last, past the sliders, and names the person rather than a setting. Press the sliders."
       >
         <Stage theme={theme} className="flex flex-col gap-6">
           <Specimen label="settings — shut, then lit while the sheet is down">
@@ -234,7 +240,17 @@ export function AppTitleBarEntry({
               />
             </Window>
           </Specimen>
-          <Snippet>{`settings={{ open, title, onToggle }}`}</Snippet>
+          <Specimen label="account — the person, at the very end of the bar">
+            <Window>
+              <AppTitleBar
+                titles={[{ id: 'a', label: 'Refonte du volet compte' }]}
+                settings={{ open: false, title: SETTINGS_TITLE, onToggle: noop }}
+                account={{ label: 'Xavier', title: 'Account', avatar: { src: null, alt: '' }, onClick: noop }}
+              />
+            </Window>
+          </Specimen>
+          <Snippet>{`settings={{ open, title, onToggle }}
+account={{ label, title, avatar, onClick }}`}</Snippet>
         </Stage>
       </EntrySection>
 

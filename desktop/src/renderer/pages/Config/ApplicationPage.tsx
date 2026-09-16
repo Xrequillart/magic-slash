@@ -5,6 +5,7 @@ import {
 } from '@ds/desktop/icons'
 import { Switch } from '@ds/desktop'
 import { SectionHeader } from './SectionHeader'
+import { TelemetryHealthCard } from './TelemetryHealthCard'
 import { SetupHealthCard } from './SetupHealthCard'
 import { ToggleRow } from './ToggleRow'
 import { useStore } from '../../store'
@@ -407,6 +408,13 @@ export function ApplicationPage() {
             {t('settings.application.usageLogs.footnote.agents')}
           </div>
         </div>
+        {/* WHETHER THE RECORDING ABOVE IS ACTUALLY ARRIVING. Every link in that chain
+            fails quietly by design — the shell hook ends in `|| true`, the writers
+            swallow their errors so telemetry can never break a session — which made an
+            empty dashboard indistinguishable from a broken pipeline. It lived on the
+            About tab, where nothing else mentioned recording and it read as a verdict on
+            the RELEASE. Here it is a verdict on the switch directly above it. */}
+        <TelemetryHealthCard />
       </div>
     </div>
   )

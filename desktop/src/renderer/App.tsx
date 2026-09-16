@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef, useMemo, useState } from 'react'
-import { AlertTriangle, ListTodo, NotebookPen, RotateCcw, Settings, Sparkles, FolderOpen } from '@ds/desktop/icons'
-import { Loader, type TabStripItem } from '@ds/desktop'
+import { AlertTriangle, FolderGit2, ListTodo, NotebookPen, RotateCcw, Sparkles, FolderOpen } from '@ds/desktop/icons'
+import { Loader } from '@ds/desktop'
 import { REASON_META, buildRepoSetup, needsRepoSetup } from './utils/repoSetup'
 import type { InvalidRepo } from '../preload'
 import { useStore } from './store'
@@ -10,7 +10,6 @@ import { useConfig } from './hooks/useConfig'
 import { useTerminals } from './hooks/useTerminals'
 import { useOrderedTerminals } from './hooks/useOrderedTerminals'
 import { TitleBar } from './components/TitleBar'
-import { useAccountIdentity } from './components/SidebarAccount'
 import { Sidebar } from './components/Sidebar'
 import { AgentInfoSidebar } from './components/AgentInfoSidebar'
 import { ToastContainer, showToast } from './components/Toast'
@@ -18,6 +17,8 @@ import { UpdateModal } from './components/UpdateModal'
 import { UpdateOverlay } from './components/UpdateOverlay'
 import { WhatsNewModal } from './components/WhatsNewModal'
 import { ScriptTerminalModal } from './components/ScriptTerminalModal'
+import { SettingsModal } from './components/SettingsModal'
+import { AccountModal } from './components/AccountModal'
 import { ConfigPage } from './pages/Config'
 import { TerminalsPage } from './pages/Terminals'
 import { SkillsPage } from './pages/Skills'
@@ -55,10 +56,13 @@ const PAGE_TABS: { key: ModalId; labelKey: MessageKey; icon: LucideIcon }[] = [
   { key: 'plans', labelKey: 'plans.title', icon: NotebookPen },
   { key: 'tasks', labelKey: 'tasks.title', icon: ListTodo },
   { key: 'skills', labelKey: 'sidebar.skills', icon: Sparkles },
-  // Settings is LAST and is the odd one out: signed in, it is drawn as the account
-  // rather than as a gear — see `accountTab` in the component. The gear and the word
-  // here are what it falls back to, and what its `title` uses either way.
-  { key: 'settings', labelKey: 'sidebar.settings', icon: Settings },
+  // Settings is LAST, and it is the REPOSITORIES — a folder mark and the word, not a
+  // gear and not a face. It was drawn as whoever was signed in, with their photo and
+  // their name, on the grounds that Settings was the one page about the reader rather
+  // than about the work. It is not any more: the account moved to the title bar's own
+  // sheet, and what is left in this window is the list of repositories. A tab wearing
+  // somebody's photograph would now be a promise about a page that is not there.
+  { key: 'settings', labelKey: 'settings.tab.repositories', icon: FolderGit2 },
 ]
 
 
@@ -260,7 +264,10 @@ export function App() {
           store.openModal('plans')
           break
         case 'account':
-          store.openSettingsModal('account')
+          // Straight to the dialog rather than to the dropdown that normally opens it:
+          // somebody who picked "Account" in the menu bar asked for the page, not for a
+          // list of pages.
+          store.setAccountTab('account')
           break
       }
     })
@@ -280,36 +287,6 @@ export function App() {
    * the wrong one.
    */
   const activePage = PAGE_TABS.find((tab) => tab.key === activeModal) ?? PAGE_TABS[0]
-
-  /**
-   * The Settings tab, drawn as WHO IS SIGNED IN rather than as a gear: their photo and
-   * the name the sidebar's account row already calls them by.
-   *
-   * Settings is the one page of the four that is about the reader instead of about the
-   * work, and the account is what they actually go there for — the organization, the
-   * connections, the profile. Naming the tab after them says that; a gear labelled
-   * "Settings" says the same thing every gear in every app says.
-   *
-   * `null` when there is no account to draw — signed out, or cloud disabled — and the
-   * strip falls back to the gear from `PAGE_TABS`. Not a placeholder avatar and not the
-   * word "Account": those states are real, they are what `SidebarAccount` branches on
-   * too, and a tab showing a blank photo would be claiming somebody is signed in.
-   *
-   * `alt=""` on the photo because the name is right beside it: the two together are one
-   * label, and a screen reader reading "Account photo Xavier" would be reading the
-   * decoration out loud.
-   */
-  const { signedIn, name: accountName, avatar } = useAccountIdentity()
-  const accountTab: TabStripItem | null = signedIn
-    ? {
-      key: 'settings',
-      label: accountName,
-      // DATA AND NOT A NODE — see `TabStripItem.avatar`. The strip draws the photo
-      // at the sidebar account button's own rung, bare, which is exactly what
-      // `AccountAvatar variant="sidebar"` drew here before it moved inside.
-      avatar: { src: avatar, alt: '' },
-    }
-    : null
 
   const handleCloseModal = useCallback(() => {
     closeModal()
@@ -588,19 +565,15 @@ export function App() {
         <PageModal
           title={t(activePage.labelKey)}
           // The ACTIVE TAB'S OWN ICON, so the mark and the word name the same page. The
-          // Settings tab wears the account photo in the strip and the gear here, and the
-          // pair is deliberate rather than an oversight: the strip says whose settings
-          // these are, the title says what page you are on, and each is marked by the
-          // thing it names.
-          titleIcon={<activePage.icon className="w-4 h-4 shrink-0 text-text-secondary" />}
+          // component draws it — see `titleIcon` — which is what keeps every one of the
+          // four at the same rung and in the same tone.
+          titleIcon={activePage.icon}
           onClose={handleCloseModal}
           headerRight={activeModal === 'plans' ? <LiveIndicator /> : undefined}
           tabs={{
             ariaLabel: t('workspace.tabs.aria'),
             activeKey: activeModal,
-            items: PAGE_TABS.map(({ key, labelKey, icon }) => (
-              key === 'settings' && accountTab ? accountTab : { key, label: t(labelKey), icon }
-            )),
+            items: PAGE_TABS.map(({ key, labelKey, icon }) => ({ key, label: t(labelKey), icon })),
             // The cast holds because TabStrip only ever reports back a key it was
             // handed, and every key here is a `ModalId` by construction.
             onSelect: (key) => openModal(key as ModalId),
@@ -615,6 +588,14 @@ export function App() {
 
       {/* Mounted unconditionally on purpose — see the component. */}
       <ScriptTerminalModal />
+
+      {/* THE TITLE BAR'S TWO DIALOGS, at the app's root and not under the bar that leads
+          to them: each is opened from three or four places — the quick settings sheet,
+          the account dropdown, the app menu, the Tasks page — and a dialog rendered
+          inside one of its openers would go when that opener did. Both read their own
+          open state from the store, so mounting them costs a null render. */}
+      <SettingsModal />
+      <AccountModal />
 
       {/* Toast Notifications */}
       <ToastContainer />

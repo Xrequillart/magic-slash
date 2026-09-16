@@ -1,7 +1,8 @@
 import { useEffect, useCallback, ReactNode } from 'react'
-import { Modal as ModalGround } from '@ds/desktop'
+import { Modal as ModalGround, ModalHeader } from '@ds/desktop'
 import { X } from '@ds/desktop/icons'
 import { useModalExit } from '../hooks/useModalExit'
+import { useT } from '../i18n'
 
 /**
  * The app's DIALOG: a title, a body, and optionally a footer of buttons or a hero
@@ -16,10 +17,15 @@ import { useModalExit } from '../hooks/useModalExit'
  *
  * WHAT MOVED AND WHAT DID NOT, because the two are easy to confuse when reading this
  * against the version it replaced. Moved: `createPortal`, `fixed inset-0`, `bg-black/70`,
- * `z-50`, the centring, `bg-bg-secondary`, `rounded-xl`, and the click on the ground that
- * closes. Stayed: the border, the width, the height policy, and the animation classes —
- * all four are passed down as `className`, which is exactly the seam the design system
- * left open for them.
+ * the centring, `bg-bg-secondary`, the radius, the click on the ground that closes — and
+ * now the HEADER, which is `ModalHeader` and is the same band the page overlay wears.
+ * Stayed: the width, the height policy, and the animation classes, all passed down as
+ * `className`, which is exactly the seam the design system left open for them.
+ *
+ * THE BORDER IS GONE rather than moved. It was `border border-line` on the panel, and a
+ * hairline around something already lifted off a dimmed background by a shadow is a
+ * second answer to "where does this window end". The rule under the header went with it,
+ * for the same reason: a dialog is one surface.
  */
 interface ModalProps {
   isOpen: boolean
@@ -45,6 +51,7 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth = 'max-w-md', fillHeight = false }: ModalProps) {
+  const t = useT()
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       // Stop here, or Escape closes two dialogs at once. This listener sits on
@@ -84,7 +91,7 @@ export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth
       // they live in `index.css` and that folder cannot reach them. Ground and panel
       // animate separately, hence two classes rather than one.
       backdropClassName={closing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop'}
-      className={`border border-line w-full ${maxWidth} ${
+      className={`w-full ${maxWidth} ${
         fillHeight ? 'h-[85vh] flex flex-col' : 'max-h-[90vh] overflow-y-auto'
       } ${closing ? 'animate-modal-content-out' : 'animate-modal-content'}`}
       onAnimationEnd={onExitAnimationEnd}
@@ -102,18 +109,17 @@ export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex-shrink-0 flex items-center justify-between px-5 pt-5 pb-4">
-        <h3 className="text-base font-semibold">{title}</h3>
-        {!hero && (
-          <button
-            onClick={onClose}
-            className="p-1.5 text-text-secondary hover:text-ink hover:bg-surface-strong rounded-lg transition-all"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
-      </div>
+      {/* THE SAME BAND THE PAGE OVERLAY WEARS. It was a bare `<h3>` and a hand-rolled
+          close button at a padding of its own; there is one header in this app now.
+          No `fullScreen`, so no expand button is drawn — there is nothing in "are you
+          sure?" to expand into. `onClose` is dropped when a hero is present, because
+          the image carries the dismiss in its own corner and two ways out of one
+          window is one too many. */}
+      <ModalHeader
+        title={title}
+        onClose={hero ? undefined : onClose}
+        closeTitle={t('modal.closeEsc')}
+      />
 
       {/* Body */}
       {/* `min-h-0` is what makes `flex-1` a real height here rather than a floor: a

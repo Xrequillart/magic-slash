@@ -12,10 +12,8 @@ import {
   type ThemeGridOption,
 } from '@ds/desktop'
 import {
-  Bell, BellOff, Brain, ChartSpline, Cog, GitPullRequest, MonitorPlay,
-  SquareSplitHorizontal, TextCursorInput,
+  Bell, BellOff, Brain, ChartSpline, Cog, SquareSplitHorizontal, TextCursorInput,
 } from '@ds/desktop/icons'
-import { AllSettingsPanel } from './AllSettingsPanel'
 import { getSetupStatus, SETUP_SIMULATION_EVENT } from '../dev/simulatedSetup'
 import { useStore } from '../store'
 import { useConfig } from '../hooks/useConfig'
@@ -37,7 +35,21 @@ import {
  * WHAT IS ON IT, and why these and not everything: the Settings pages hold some forty
  * controls, and a menu that pulls down from the bar has room for the ones a person
  * reaches for WITHOUT wanting a page — the features that are on or off, the scale, the
- * theme and the language. A polling interval, a keyboard shortcut, a theme's reach into
+ * theme and the language.
+ *
+ * TWO TILES WENT, and the rule they broke is worth naming because it is the rule for
+ * anything added here. "Start at login" and the PR watcher are settings you decide ONCE,
+ * when you set the machine up, and then never touch — where everything left on this
+ * sheet is something you reach for in the middle of doing something else: the theme, the
+ * scale, the split, whether the app may speak to you, whether the sidebar panels are
+ * showing. A tile for a once-a-year decision is a tile that is in the way every other
+ * day of the year. Both keep their rows on the Application page, which is one press away
+ * at the foot of this sheet.
+ *
+ * QUICK LAUNCH WENT WITH THEM AND CAME BACK, which is the useful half of that rule: a
+ * global keyboard chord is not a once-a-year decision. It is the one setting here people
+ * reach for in anger — the moment it starts fighting with another app for ⌃Space, they
+ * want it off NOW and not four clicks into a settings page. A polling interval, a keyboard shortcut, a theme's reach into
  * Claude Code's terminal, the version and its changelog: those keep their rows on the
  * pages. Nothing is moved OFF the pages by this menu; it is a second, faster door to
  * the same values.
@@ -52,33 +64,35 @@ import {
 export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
   const {
-    config, updateSpotlight, updateNotifications,
+    config, updateNotifications, updateSpotlight,
     updateTheme, updateLanguage, updateUsageCardEnabled, updateAgentContextEnabled,
   } = useConfig()
-  const { splitActive, toggleSplitActive, setConfig } = useStore()
+  const { splitActive, toggleSplitActive } = useStore()
+  const setAppSettingsTab = useStore((s) => s.setAppSettingsTab)
   const activeTheme = useTheme()
   const activeLanguage = useLanguage()
   const { zoom, set: setZoom, step: stepZoom } = useZoom()
 
-  /**
-   * WHETHER THE ALL-SETTINGS PANEL IS OUT, beside the sheet.
-   *
-   * Here and not in the store, because nothing outside this menu opens it and nothing
-   * outside this menu needs to know: it is the state of one control on one sheet. It is
-   * cleared whenever the sheet goes, so the menu always comes back the way it opens —
-   * tiles first, and the page only if you ask for it again.
-   */
-  const [allSettings, setAllSettings] = useState(false)
+  // ── Quick Launch: a write that can succeed and still not register ──────────
+  // The only tile here with a local copy, and the reason is the shortcut: the config
+  // write lands, and then the OS refuses the chord because something else already holds
+  // it. `result.registered` is how that comes back, so the tile has to be able to move
+  // and then be told it did not.
+  const [spotlightEnabled, setSpotlightEnabled] = useState(config?.spotlight?.enabled ?? true)
+  const configSpotlightEnabled = config?.spotlight?.enabled
   useEffect(() => {
-    if (!open) setAllSettings(false)
-  }, [open])
+    if (configSpotlightEnabled !== undefined) setSpotlightEnabled(configSpotlightEnabled)
+  }, [configSpotlightEnabled])
 
-  // ── Launch at login: not in the config, asked of the main process ─────────
-  const [autoStart, setAutoStart] = useState(false)
-  useEffect(() => {
-    if (!open) return
-    window.electronAPI.config.getAutoStart().then(setAutoStart)
-  }, [open])
+  const toggleSpotlight = async (next: boolean) => {
+    setSpotlightEnabled(next)
+    try {
+      const result = await updateSpotlight({ enabled: next, shortcut: config?.spotlight?.shortcut ?? 'Control+Space' })
+      if (next && !result.registered) showToast(t('settings.application.spotlight.error'), 'error')
+    } catch {
+      setSpotlightEnabled(!next)
+    }
+  }
 
   // ── Machine setup: the verdict `SetupHealthCard` gives, in two words ───────
   // Null while the check is in flight, so the card shows it is checking rather than a
@@ -113,33 +127,6 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
     : 0
   const setupState: SetupState = setupFailed ? 'failed' : setup === null ? 'checking' : setupIssues > 0 ? 'issues' : 'ready'
 
-  // ── Quick Launch: a write that can succeed and still not register ───────────
-  const [spotlightEnabled, setSpotlightEnabled] = useState(config?.spotlight?.enabled ?? true)
-  const configSpotlightEnabled = config?.spotlight?.enabled
-  useEffect(() => {
-    if (configSpotlightEnabled !== undefined) setSpotlightEnabled(configSpotlightEnabled)
-  }, [configSpotlightEnabled])
-
-  const toggleSpotlight = async (next: boolean) => {
-    setSpotlightEnabled(next)
-    try {
-      const result = await updateSpotlight({ enabled: next, shortcut: config?.spotlight?.shortcut ?? 'Control+Space' })
-      if (next && !result.registered) showToast(t('settings.application.spotlight.error'), 'error')
-    } catch {
-      setSpotlightEnabled(!next)
-    }
-  }
-
-  const toggleAutoStart = async (next: boolean) => {
-    setAutoStart(next)
-    try {
-      await window.electronAPI.config.setAutoStart(next)
-    } catch (error) {
-      setAutoStart(!next)
-      showToast(error instanceof Error ? error.message : t('controlCenter.saveFailed'), 'error')
-    }
-  }
-
   /**
    * The config-backed tiles share one shape: fire the write, let the store move the
    * tile, and if the write throws, say so. There is no local copy to revert because
@@ -157,7 +144,6 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
   // KINDS it may speak about is the Notifications page's question now, not the sheet's;
   // this tile is the master and nothing else.
   const notificationsOn = config?.notifications?.enabled !== false
-  const prWatcherOn = config?.prReviews?.enabled ?? true
   // The two optional sidebar panels — absent means never chosen, which is shown, the
   // reading the Appearance page's rows make.
   const usageCardOn = config?.usageCardEnabled !== false
@@ -190,8 +176,6 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
       onClose={onClose}
       top={TITLE_BAR_HEIGHT}
       label={t('controlCenter.title')}
-      aside={<AllSettingsPanel />}
-      asideOpen={allSettings}
     >
       {/* MACHINE SETUP — the verdict on three points and the re-check on the fourth.
           Pressing the verdict opens the panel beside the sheet, where the setup card
@@ -203,7 +187,7 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
           state={setupState}
           label={t(SETUP_LABEL[setupState], { count: setupIssues })}
           openTitle={t('controlCenter.setup.open')}
-          onOpen={() => setAllSettings(true)}
+          onOpen={() => setAppSettingsTab('application')}
           refreshTitle={t('settings.application.setup.recheck')}
           onRefresh={checkSetup}
         />
@@ -270,19 +254,18 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
           caption={false}
           label={t('settings.notifications.master.label')}
         />
+        {/* Quick Launch, between the notifications and the two sidebar panels: those
+            three are all "may the app do this", where the theme and the scale above are
+            "what does it look like". It came off this sheet once, on the grounds that a
+            panel you set up once does not deserve a tile — and came back, because the
+            one thing people do turn off mid-session is a global chord that has started
+            fighting with another app. */}
         <ToggleButton
           icon={TextCursorInput}
           checked={spotlightEnabled}
           onChange={toggleSpotlight}
           caption={false}
           label={t('controlCenter.quickLaunch')}
-        />
-        <ToggleButton
-          icon={MonitorPlay}
-          checked={autoStart}
-          onChange={toggleAutoStart}
-          caption={false}
-          label={t('controlCenter.launchAtLogin')}
         />
         <ToggleButton
           icon={ChartSpline}
@@ -297,13 +280,6 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
           onChange={(next) => void write(() => updateAgentContextEnabled(next))}
           caption={false}
           label={t('settings.appearance.sidebars.agentContext.label')}
-        />
-        <ToggleButton
-          icon={GitPullRequest}
-          checked={prWatcherOn}
-          onChange={(next) => void write(async () => setConfig(await window.electronAPI.prWatcher.setEnabled(next)))}
-          caption={false}
-          label={t('controlCenter.prWatcher')}
         />
       </ControlCenterGroup>
 
@@ -330,11 +306,13 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
           pressable at all; without one it would light up under the cursor and do
           nothing, which is the bug that prop exists to prevent.
 
-          It TOGGLES rather than opens: the control that brought the panel out is the
-          obvious thing to press to put it away, and it is the only one on screen — the
-          panel has no chrome of its own. */}
+          IT OPENS A DIALOG AND CLOSES THIS. It used to slide a card out beside the
+          sheet with the tiles still lit under your hand, which read as a menu that had
+          grown a second window. Pressing a menu item asks for the thing; the menu's job
+          after that is to get out of the way. The store closes the sheet — see
+          `setAppSettingsTab` — so a row that opens a dialog cannot forget to. */}
       <div className="flex justify-center">
-        <Label icon={Cog} size="md" onClick={() => setAllSettings((out) => !out)}>
+        <Label icon={Cog} size="md" onClick={() => setAppSettingsTab('application')}>
           {t('controlCenter.allSettings')}
         </Label>
       </div>

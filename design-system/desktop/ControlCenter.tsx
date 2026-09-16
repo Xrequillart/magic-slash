@@ -28,6 +28,12 @@ import { Text } from './Text'
  * leaving. It stays mounted while the exit plays: the caller flips `open` and this
  * component decides when the DOM can go.
  *
+ * IT HELD A PANEL ONCE — a page-sized card in the middle of the window that slid out
+ * with the tiles still lit under your hand. It went with the thing it was built for: the
+ * app's "All settings" now CLOSES the sheet and opens an ordinary dialog, because a menu
+ * that grows a second window beside itself reads as two windows rather than as a menu.
+ * Anything wanting that shape again should read this paragraph first.
+ *
  * WHAT IT DOES NOT DECIDE is what is on it. The tiles, the stepper, the pickers, the
  * card are the app's — grouped with `ControlCenterGroup`, which is the one bit of layout
  * this file offers — and the marketing site's drawing of the menu hands it a different
@@ -44,6 +50,55 @@ import { Text } from './Text'
 const ENTER_MS = 320
 const EXIT_MS = 200
 
+/**
+ * THE CASCADE, in two steps — one between sections, one between the controls inside
+ * them. The section step is the larger because a section is the bigger event: the eye
+ * should register that a new group has arrived before its tiles start popping.
+ *
+ * AND TWO CAPS, because the delays are multiplied out into one CSS rule per pair. Six
+ * sections and sixteen controls is 96 rules, which is nothing; the app's own sheet
+ * holds four sections and a foot. A seventh section or a seventeenth control simply
+ * gets no delay and arrives with the last one that had one — degraded, not broken,
+ * which is the right failure for an animation.
+ */
+const SECTION_STEP_MS = 90
+const ITEM_STEP_MS = 40
+const MAX_SECTIONS = 6
+const MAX_ITEMS = 16
+
+/**
+ * WHICH SHEETS ARE DOWN, because the attribute they all ask the app to blur under is
+ * ONE and `<html>` has room for a single value.
+ *
+ * There was one sheet and this was a plain set-and-remove. There are two now — the
+ * quick settings and the account, both hanging off the same title bar — and handing
+ * one sheet the attribute outright loses on the handover: opening the second closes
+ * the first, the first spends 200ms leaving, and when it finally unmounts its cleanup
+ * removes the attribute out from under the sheet that is still on screen. The app
+ * un-blurs behind an open menu.
+ *
+ * So each instance publishes its own state and the ATTRIBUTE IS DERIVED: present while
+ * any sheet is mounted, and `open` if any one of them is open — a sheet leaving must
+ * not pull the blur off a sheet arriving. Keyed by the instance's `useId`, so an
+ * instance that unmounts mid-flight takes exactly its own entry with it.
+ */
+const openSheets = new Map<string, 'open' | 'closing'>()
+
+function publishSheetState(id: string, state: 'open' | 'closing' | null): void {
+  if (typeof document === 'undefined') return
+  if (state === null) openSheets.delete(id)
+  else openSheets.set(id, state)
+
+  const root = document.documentElement
+  if (openSheets.size === 0) {
+    root.removeAttribute('data-control-center')
+    return
+  }
+  let value: 'open' | 'closing' = 'closing'
+  for (const sheet of openSheets.values()) if (sheet === 'open') value = 'open'
+  root.setAttribute('data-control-center', value)
+}
+
 export interface ControlCenterProps {
   open: boolean
   /** Escape, a click off the controls, or anything the caller wires to it. */
@@ -59,34 +114,6 @@ export interface ControlCenterProps {
   label: string
   /** The controls, grouped. `ControlCenterGroup` is the shape they come in. */
   children: ReactNode
-  /**
-   * A PANEL IN THE MIDDLE OF THE WINDOW, out only while `asideOpen`.
-   *
-   * The sheet answers the settings that fit in a circle; everything else is a page, and
-   * a page does not go in a 40px grid. So the caller may hang one panel off the menu —
-   * the app hangs all the settings the tiles cannot say — and it opens from inside the
-   * sheet rather than replacing it: the tiles stay under your hand while you read it,
-   * which is the whole difference between this and a modal.
-   *
-   * THE MIDDLE OF THE WINDOW AND NOT THE SIDE OF THE SHEET. It sat immediately left of
-   * the column first, which tied a page-sized thing to the edge the menu happens to
-   * hug: on a wide window it opened far off to the right with the whole app empty
-   * beside it. Centred, it is where the eye already is, and it is the same place
-   * whatever the sheet is holding. The sheet still paints over it where the two meet —
-   * the menu is what you are in, the panel is what it opened.
-   *
-   * IT IS NOT MODAL. No veil, no focus trap: the layer under it is the same
-   * click-to-dismiss layer the sheet has always had, so a click beside the panel closes
-   * the whole menu rather than just the panel.
-   *
-   * A SLOT, like `children`, and for `children`'s reason: what is ON it is the app's and
-   * this folder cannot import it. What this component owns is WHERE it sits, how tall it
-   * may be, that a click inside it does not dismiss the menu, and that it fades with the
-   * rest.
-   */
-  aside?: ReactNode
-  /** Whether that panel is out. The CALLER's state — it owns the control that opens it. */
-  asideOpen?: boolean
   /**
    * How wide the sheet may be, in pixels. It is as wide as its controls and hugs the
    * right edge under the button that opened it; this is the cap for a caller whose
@@ -105,8 +132,6 @@ export function ControlCenter({
   top = 0,
   label,
   children,
-  aside,
-  asideOpen = false,
   width = 440,
   portalTo,
   className = '',
@@ -123,6 +148,9 @@ export function ControlCenter({
    */
   const [mounted, setMounted] = useState(open)
   const [shown, setShown] = useState(false)
+  // Declared up here and not beside the stylesheet it also names: the blur's refcount
+  // keys on it, and that effect runs first.
+  const scope = `ms-cc-${useId().replace(/[^a-zA-Z0-9]/g, '')}`
   const frame = useRef<number | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -164,34 +192,60 @@ export function ControlCenter({
   /**
    * THE ASK FOR THE BLUR — see the note at the top. `open` while the sheet is down and
    * `closing` while it leaves, so the app's own transition can run the blur out in step
-   * with the sheet sliding up; gone with the DOM.
+   * with the sheet sliding up; gone with the DOM. Published rather than written, because
+   * the app may have two sheets and there is one attribute — see `publishSheetState`.
    */
   useEffect(() => {
-    if (!mounted || typeof document === 'undefined') return
-    const root = document.documentElement
-    root.setAttribute('data-control-center', open ? 'open' : 'closing')
-    return () => root.removeAttribute('data-control-center')
-  }, [mounted, open])
+    if (!mounted) return
+    publishSheetState(scope, open ? 'open' : 'closing')
+    return () => publishSheetState(scope, null)
+  }, [mounted, open, scope])
 
   /**
    * THE BUBBLES. Every control on the sheet pops in — « les boutons pop comme des
    * bulles » — from a fifth of its size with an overshoot past 1 and back, which is the
-   * curve that makes a pop, one after another in reading order within each group. A
-   * stylesheet scoped to this instance and not classes on the controls, because the
-   * controls are the CALLER's and know nothing of the sheet; the sheet reaches them as
-   * the children of a `ControlCenterGroup`'s items box, whatever they are — a tile, a
-   * picker, a card of theme swatches. Delays apply on the way IN only: a dismissed menu
-   * leaves as one piece, with the column's own fade.
+   * curve that makes a pop, one after another in reading order. A stylesheet scoped to
+   * this instance and not classes on the controls, because the controls are the
+   * CALLER's and know nothing of the sheet; the sheet reaches them as the children of a
+   * `ControlCenterGroup`'s items box, whatever they are — a tile, a picker, a card of
+   * theme swatches. Delays apply on the way IN only: a dismissed menu leaves as one
+   * piece, with the column's own fade.
+   *
+   * THE SECTIONS CASCADE TOO, and that is the part this got wrong for a while. Every
+   * heading arrived at once and only the tiles UNDER them were staggered, so the sheet
+   * read as a finished list that was still filling itself in — four headings over four
+   * empty grids, then the grids populating. Now the column runs top to bottom: each
+   * section rises into place in its turn, and its own controls pop after IT has, so the
+   * eye is led down the sheet once rather than told to watch four places at once.
+   *
+   * THE ARITHMETIC IS IN THE SELECTOR AND NOT IN A VARIABLE. A control's delay is its
+   * section's plus its own position, and CSS cannot add two custom properties into a
+   * `transition-delay` without `calc()` on a registered property — so the two indices
+   * are multiplied out here into one nested rule apiece. The caps below are what keeps
+   * that from being a thousand rules.
    */
-  const scope = `ms-cc-${useId().replace(/[^a-zA-Z0-9]/g, '')}`
-  const items = `.${scope} [data-cc-items] > *`
   const bubbles = `
-${items} {
+.${scope} > * {
+  transition: opacity 260ms ease-out, transform 380ms cubic-bezier(.22, 1, .36, 1);
+}
+.${scope}[data-shown="false"] > * { opacity: 0; transform: translateY(-8px); }
+${Array.from(
+    { length: MAX_SECTIONS },
+    (_, section) =>
+      `.${scope}[data-shown="true"] > :nth-child(${section + 1}) { transition-delay: ${section * SECTION_STEP_MS}ms; }`,
+  ).join('\n')}
+.${scope} [data-cc-items] > * {
   transition: background-color 200ms, color 200ms, opacity 160ms ease-out,
     transform 460ms cubic-bezier(.34, 1.56, .64, 1);
 }
 .${scope}[data-shown="false"] [data-cc-items] > * { transform: scale(.2); opacity: 0; }
-${Array.from({ length: 16 }, (_, i) => `.${scope}[data-shown="true"] [data-cc-items] > :nth-child(${i + 1}) { transition-delay: ${i * 40}ms; }`).join('\n')}
+${Array.from({ length: MAX_SECTIONS }, (_, section) =>
+    Array.from(
+      { length: MAX_ITEMS },
+      (_, item) =>
+        `.${scope}[data-shown="true"] > :nth-child(${section + 1}) [data-cc-items] > :nth-child(${item + 1}) { transition-delay: ${section * SECTION_STEP_MS + item * ITEM_STEP_MS}ms; }`,
+    ).join('\n'),
+  ).join('\n')}
 `
 
   const onTransitionEnd = useCallback(
@@ -220,35 +274,6 @@ ${Array.from({ length: 16 }, (_, i) => `.${scope}[data-shown="true"] [data-cc-it
       style={{ top }}
       onClick={onClose}
     >
-      {/* THE PANEL, centred on the WINDOW — `fixed inset-0` rather than a box inside the
-          layer, because the layer starts under the title bar and centring in it would
-          leave the panel sitting half a bar low. `pointer-events-none` on the centring
-          box and back on for the panel itself: the empty space around it is the layer's
-          again, so a click there dismisses the menu the way a click anywhere else does.
-
-          `max-h-[80vh]` and `min-h-0` are the pair that keeps it INSIDE the window: the
-          panel's own body is the scroller (see the caller), and a flex child will not go
-          shorter than its content without `min-h-0`. 80 and not 100 so a full-height
-          panel still clears the bar at the top, which the centring alone does not
-          guarantee. It is a CAP and not a height — how tall the panel actually stands is
-          the panel's own business, and the app's stands at a fixed 608px so that turning
-          to a page with one row on it does not resize the card under the pointer.
-
-          It fades on the sheet's own flag, one beat faster: a panel that lingered after
-          the sheet had gone would read as a window of its own. */}
-      {aside && asideOpen && (
-        <div className="pointer-events-none fixed inset-0 flex items-center justify-center p-6">
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className={`pointer-events-auto flex min-h-0 max-h-[80vh] transition-opacity duration-200 ${
-              shown ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
-            {aside}
-          </div>
-        </div>
-      )}
-
       {/* THE ROW: the sheet, hard against the right edge, 12px in from the bar and from
           the window's edge — where it has always stood. It keeps the row it was given
           when the panel was its neighbour; the panel has moved out, and the row is one
@@ -297,12 +322,32 @@ ${Array.from({ length: 16 }, (_, i) => `.${scope}[data-shown="true"] [data-cc-it
  */
 export const CONTROL_CENTER_GRID = 'grid grid-cols-[repeat(4,2.5rem)] gap-3 justify-items-center'
 
+/**
+ * THE OTHER TRACK: one card per row, each as wide as the sheet.
+ *
+ * A sheet is tiles or it is cards, and the two do not mix — which is why this is a
+ * choice the GROUP offers rather than a class the app passes. A tile is a yes or a no,
+ * and four in a row is a control panel; a card is a fact with a sentence under it, and
+ * a fact does not fit in a 40px circle. The account sheet is the second kind whole.
+ *
+ * It carries no width of its own. The 4×40 grid fixes the tile sheet at 196px by
+ * construction; a stack takes whatever the column is given, so a cards sheet sets its
+ * width on `ControlCenter`'s `className` and every group on it agrees by inheritance.
+ */
+export const CONTROL_CENTER_STACK = 'flex flex-col gap-3'
+
 export interface ControlCenterGroupProps {
   /** The heading over a run of controls — "Features", "Appearance". Translated. */
   label: string
   /** The controls, each a direct child: a tile is one point, a picker three, a card four. */
   children: ReactNode
-  /** Margins and placement of the items box. Not the grid — that is the group's. */
+  /**
+   * Which track the items are laid on. `tiles` is the 4×40 grid and the default — the
+   * quick settings sheet, and the reason `CONTROL_CENTER_GRID` is not a per-section
+   * decision. `cards` is a full-width stack; see `CONTROL_CENTER_STACK`.
+   */
+  layout?: 'tiles' | 'cards'
+  /** Margins and placement of the items box. Not the track — that is the group's. */
   className?: string
 }
 
@@ -313,7 +358,7 @@ export interface ControlCenterGroupProps {
  * cluster of tiles — because it is a signpost and not a title: the tiles are what the
  * eye lands on, the word above them says which cluster this is once the eye has landed.
  */
-export function ControlCenterGroup({ label, children, className = '' }: ControlCenterGroupProps) {
+export function ControlCenterGroup({ label, children, layout = 'tiles', className = '' }: ControlCenterGroupProps) {
   return (
     <section className="flex flex-col gap-2.5">
       <Text size="2xs" weight="bold" tone="secondary" className="uppercase tracking-[0.12em] px-0.5">
@@ -321,7 +366,12 @@ export function ControlCenterGroup({ label, children, className = '' }: ControlC
       </Text>
       {/* `data-cc-items` is what the sheet's bubble stylesheet reaches for: each direct
           child of this box pops in its turn. */}
-      <div data-cc-items="" className={`${CONTROL_CENTER_GRID} ${className}`}>{children}</div>
+      <div
+        data-cc-items=""
+        className={`${layout === 'cards' ? CONTROL_CENTER_STACK : CONTROL_CENTER_GRID} ${className}`}
+      >
+        {children}
+      </div>
     </section>
   )
 }

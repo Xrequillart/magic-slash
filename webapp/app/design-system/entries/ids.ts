@@ -16,6 +16,8 @@ export type EntryId =
   | 'avatar'
   | 'buttonicon'
   | 'editabletext'
+  | 'menu'
+  | 'modalheader'
   | 'selecticon'
   | 'label'
   | 'status'
@@ -64,6 +66,8 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   card: 'Card',
   buttonicon: 'ButtonIcon',
   editabletext: 'EditableText',
+  menu: 'Menu',
+  modalheader: 'ModalHeader',
   selecticon: 'SelectIcon',
   contextagentcard: 'ContextAgentCard',
   headerrepocard: 'HeaderRepoCard',
@@ -170,6 +174,8 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   card: [],
   buttonicon: ['icon', 'loader'],
   editabletext: ['icon'],
+  menu: ['avatar', 'icon', 'text'],
+  modalheader: ['buttonicon', 'icon', 'tabstrip', 'text'],
   selecticon: ['buttonicon', 'icon', 'text'],
   contextagentcard: ['card', 'label', 'progress', 'buttonicon'],
   headerrepocard: ['label', 'selecticon', 'buttonicon'],
@@ -290,6 +296,8 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   card: 'A raised panel, and nothing else',
   buttonicon: 'A control that is only a mark',
   editabletext: 'Words you can click into',
+  menu: 'Rows under something you drew',
+  modalheader: 'The top of every dialog, once',
   selecticon: 'That control, opening a menu',
   contextagentcard: 'What an agent is spending',
   headerrepocard: 'A repository, and what you can do to it',

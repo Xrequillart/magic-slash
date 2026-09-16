@@ -318,20 +318,11 @@ export function AgentInfoSidebar() {
     }
   }, [activeTerminal?.repositories, getRepoConfig, metadata?.baseBranch])
 
-  // Listen for Command+P keyboard shortcut to open repositories modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
-        if (rightSidebar === 'info' && activeTerminal) {
-          e.preventDefault()
-          setIsRepoModalOpen(true)
-        }
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [rightSidebar, activeTerminal])
+  // ⌘P USED TO OPEN THIS PANEL'S REPOSITORY PICKER, and only while the info sidebar
+  // happened to be out — which meant the chord silently did nothing most of the time,
+  // and did two different things depending on a panel the reader may have collapsed
+  // and forgotten. It is the global repositories window's now (`Sidebar`), and the
+  // picker keeps its button, which was always the way people actually reached it.
 
   // Start editing title. The FOCUS is `EditableText`'s own — it holds the input, so it
   // is the only thing that can focus it on the frame the input first exists. This had a

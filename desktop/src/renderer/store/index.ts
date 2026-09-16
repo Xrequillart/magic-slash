@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { ChangedFile, Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo, SettingsTab, Org, PRReviewThread } from '../../types'
+import type { ChangedFile, Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo, Org, PRReviewThread } from '../../types'
 import { reviewFileKey } from '../utils/reviewLayout'
 import {
   commentFileKey, commentFileKeyPrefix,
@@ -8,6 +8,8 @@ import {
 } from '../utils/commentAnchors'
 import { migrateSkillsContextWindow } from '../pages/Skills/contextWindow'
 import type { TasksTarget } from '../utils/taskSelection'
+import type { AccountModalTab } from '../components/AccountModal'
+import type { AppSettingsTab } from '../components/SettingsModal'
 
 interface CloseAgentModalData {
   terminalId: string
@@ -242,9 +244,24 @@ interface AppState {
   rightPaneTerminalIds: string[]
 
   // UI
-  // When set, the Config page selects this settings tab on mount, then resets it
-  // to null. Lets other views (e.g. the sidebar account menu) deep-link a tab.
-  settingsInitialTab: SettingsTab | null
+  /**
+   * THE TITLE BAR'S TWO CONTROLS AND THE TWO DIALOGS THEY LEAD TO.
+   *
+   * IN THE STORE AND NOT IN `TitleBar`, which is where the sheet started, because none
+   * of the four is opened only by the control beside it any more. ⌘, opens the sheet
+   * from a window-level listener; the app menu's Account item and the Tasks page's
+   * missing-credential banner both open the account modal; the sheet itself opens the
+   * settings modal and closes on the way. Four surfaces that share no ancestor short of
+   * the app root.
+   *
+   * A NULL TAB IS A SHUT DIALOG, for both of them. It is one value rather than an
+   * `open` boolean beside a tab, because the two can only ever disagree: an open dialog
+   * showing no page, or a page nobody can see.
+   */
+  quickSettingsOpen: boolean
+  accountMenuOpen: boolean
+  appSettingsTab: AppSettingsTab | null
+  accountTab: AccountModalTab | null
   // When set, the Tasks page opens on this ticket rather than on the backlog, then
   // resets it to null. Same one-shot deep link as `settingsInitialTab`, and one-shot
   // for the same reason: reopening Tasks by hand with ⌘J must not replay the last
@@ -435,13 +452,23 @@ interface AppState {
   toggleSplitActive: () => void
   moveTerminalToPane: (id: string, pane: 'left' | 'right') => void
 
-  setSettingsInitialTab: (tab: SettingsTab | null) => void
+  setQuickSettingsOpen: (open: boolean) => void
+  /** ⌘, — the same key puts the sheet away again. */
+  toggleQuickSettings: () => void
+  setAccountMenuOpen: (open: boolean) => void
+  /** Open the app-settings dialog on `tab`, or shut it with null. */
+  setAppSettingsTab: (tab: AppSettingsTab | null) => void
+  /** Open the account dialog on `tab`, or shut it with null. */
+  setAccountTab: (tab: AccountModalTab | null) => void
+
   setTasksInitialTarget: (target: TasksTarget | null) => void
   setPlansInitialPlanId: (id: string | null) => void
   setSettingsOrgId: (orgId: string | null) => void
   openModal: (modal: ModalId) => void
   closeModal: () => void
-  openSettingsModal: (tab?: SettingsTab) => void
+  /** Open the settings window. It is the repository list and its detail pages now,
+   *  so there is no tab to name — everything else moved to the two title-bar sheets. */
+  openSettingsModal: () => void
   /** Open one repository's settings page. See the implementation for the hash route. */
   openRepoSettings: (repoName: string) => void
   openTasksModal: (target: TasksTarget) => void
@@ -587,7 +614,10 @@ export const useStore = create<AppState>()(
         splitActive: false,
         rightPaneTerminalIds: [],
 
-        settingsInitialTab: null,
+        quickSettingsOpen: false,
+        accountMenuOpen: false,
+        appSettingsTab: null,
+        accountTab: null,
         tasksInitialTarget: null,
         tasksPickAgentId: null,
         plansInitialPlanId: null,
@@ -779,7 +809,24 @@ export const useStore = create<AppState>()(
           })
         },
 
-        setSettingsInitialTab: (settingsInitialTab) => set({ settingsInitialTab }),
+        // The two are EXCLUSIVE and it is settled here rather than in the title bar:
+        // they hang from the same corner of the same bar, and the sheet blurs the whole
+        // window behind it — a dropdown over that is a menu floating on fog.
+        setQuickSettingsOpen: (quickSettingsOpen) =>
+          set(quickSettingsOpen ? { quickSettingsOpen, accountMenuOpen: false } : { quickSettingsOpen }),
+        // Through the setter above and not a bare flip, so the chord cannot open the
+        // sheet over an account dropdown the setter would have closed.
+        toggleQuickSettings: () => get().setQuickSettingsOpen(!get().quickSettingsOpen),
+        setAccountMenuOpen: (accountMenuOpen) =>
+          set(accountMenuOpen ? { accountMenuOpen, quickSettingsOpen: false } : { accountMenuOpen }),
+        // Opening either dialog puts away whatever opened it: you asked for the page, so
+        // the menu gets out of the way rather than sitting under a dialog it cannot be
+        // reached past.
+        setAppSettingsTab: (appSettingsTab) =>
+          set(appSettingsTab ? { appSettingsTab, quickSettingsOpen: false, accountMenuOpen: false } : { appSettingsTab }),
+        setAccountTab: (accountTab) =>
+          set(accountTab ? { accountTab, quickSettingsOpen: false, accountMenuOpen: false } : { accountTab }),
+
         setTasksInitialTarget: (tasksInitialTarget) => set({ tasksInitialTarget }),
         setPlansInitialPlanId: (plansInitialPlanId) => set({ plansInitialPlanId }),
         setSettingsOrgId: (settingsOrgId) => set({ settingsOrgId }),
@@ -796,11 +843,7 @@ export const useStore = create<AppState>()(
           return updates
         }),
         closeModal: () => set({ activeModal: null, tasksPickAgentId: null }),
-        // Convenience wrapper: opens Settings straight on a given tab.
-        openSettingsModal: (tab) => {
-          if (tab) set({ settingsInitialTab: tab })
-          get().openModal('settings')
-        },
+        openSettingsModal: () => get().openModal('settings'),
         /**
          * Settings, opened straight on ONE repository's page.
          *
@@ -810,16 +853,15 @@ export const useStore = create<AppState>()(
          * modal opened first would paint the repository list for a frame and then
          * jump. When Settings is already up, the `hashchange` carries it instead.
          *
-         * The tab is still set, and is not redundant with the route: closing the
-         * detail returns to `#/`, and `activeTab` is what the reader lands on then —
-         * the repository list they came from rather than the profile.
+         * Closing the detail returns to `#/`, which is the repository list — the one
+         * other thing this window has to show.
          *
          * `repoName` is the KEY the repository has in `Config.repositories`, which is
          * what the route matches on — not a display name. See `RepoMark`.
          */
         openRepoSettings: (repoName) => {
           window.location.hash = `#/repo/${encodeURIComponent(repoName)}`
-          get().openSettingsModal('repositories')
+          get().openSettingsModal()
         },
         // Same wrapper for Tasks, scoped to one ticket. The target is REQUIRED, unlike
         // `openSettingsModal`'s tab: opening Tasks plain is what `openModal('tasks')`

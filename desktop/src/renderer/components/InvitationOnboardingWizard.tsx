@@ -443,7 +443,9 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-modal-backdrop"
+      // z-56 like `Modal`, and for its reason: this opens from the account page, which
+      // lives inside `ControlCenter`'s panel at 55. See the note on that component.
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-[56] animate-modal-backdrop"
       onClick={onClose}
     >
       <div

@@ -111,6 +111,17 @@ export const fr: Record<keyof typeof en, string> = {
   'titlebar.splitViewTitle': 'Vue divisée (⌘/)',
   'titlebar.info': 'Infos',
   'titlebar.quickSettings': 'Réglages rapides',
+  'titlebar.account': 'Compte',
+
+  // ── Account menu (the dropdown under the title bar's account label) ──────
+  'accountMenu.title': 'Compte',
+  'accountMenu.settings': 'Réglages',
+  'accountMenu.checking': 'Vérification…',
+  'accountMenu.upToDate': 'Magic Slash est à jour.',
+  'accountMenu.checkUpdates': 'Vérifier les mises à jour',
+  'accountMenu.checkUpdatesFailed': 'Vérification des mises à jour impossible.',
+  'accountMenu.signOutFailed': 'Déconnexion impossible.',
+
 
   // ── Réglages rapides (le volet sous la barre de titre) ───────────────────
   'controlCenter.title': 'Réglages rapides',

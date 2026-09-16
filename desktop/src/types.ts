@@ -1661,14 +1661,11 @@ export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired'
  *  language, the notifications, the feature toggles, the machine's setup — has no tab
  *  any more: the quick settings sheet under the title bar holds everything that fits
  *  in a tile, and the panel it opens beside itself holds the rest. */
-export type SettingsTab =
-  | 'account'
-  | 'connections'
-  | 'organization'
-  | 'repositories'
-  | 'claude-code'
-  | 'shortcuts'
-  | 'about'
+// `SettingsTab` was here. The settings window is ONE page now — the repository list
+// and a detail page per repository — so there is no tab to name. What used to be the
+// other six tabs hangs off the title bar: the quick settings sheet and its panel hold
+// what the app does, the account sheet and its panel hold who it is signed in as.
+// See `AccountPanelTab` in renderer/components/AccountSettingsPanel.tsx.
 
 /**
  * A menu item the main process cannot act on alone.

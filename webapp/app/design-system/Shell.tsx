@@ -37,6 +37,8 @@ import { LoaderEntry } from './entries/LoaderEntry'
 import { MenuSidebarEntry } from './entries/MenuSidebarEntry'
 import { MenuSidebarItemEntry } from './entries/MenuSidebarItemEntry'
 import { ProgressBarEntry } from './entries/ProgressBarEntry'
+import { MenuEntry } from './entries/MenuEntry'
+import { ModalHeaderEntry } from './entries/ModalHeaderEntry'
 import { SelectIconEntry } from './entries/SelectIconEntry'
 import { AppTitleBarEntry } from './entries/AppTitleBarEntry'
 import { SidebarEntry } from './entries/SidebarEntry'
@@ -91,6 +93,8 @@ const ENTRIES: Record<
   loader: LoaderEntry,
   card: CardEntry,
   buttonicon: ButtonIconEntry,
+  menu: MenuEntry,
+  modalheader: ModalHeaderEntry,
   selecticon: SelectIconEntry,
   editabletext: EditableTextEntry,
   contextagentcard: ContextAgentCardEntry,

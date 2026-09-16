@@ -1,5 +1,4 @@
 import { useEffect, useCallback, useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Plus, Sparkles, NotebookPen, ListTodo } from '@ds/desktop/icons'
 import { Sidebar as SidebarColumn, type SidebarAgentRow, type SidebarList } from '@ds/desktop'
 import { useStore, type ModalId } from '../store'
@@ -8,8 +7,7 @@ import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos }
 import { groupKeyOf, isGroupStart, repoLabel } from '../hooks/terminalOrder'
 import { useAgentSortAction } from './AgentSort'
 import { useSidebarUsageCard } from './SidebarUsageCard'
-import { useAccountMenuEntry } from './SidebarAccount'
-import { LoginScreen } from './LoginScreen'
+import { useRepositoriesMenuEntry } from './SidebarAccount'
 import { useT } from '../i18n'
 
 /**
@@ -44,8 +42,9 @@ const APP_VERSION = 'v0.95.2'
  * other initial the page could claim (b, /, ;, ,, p, n, i, d) is bound elsewhere in the
  * app.
  *
- * Settings is absent on purpose: ⌘, goes through `openSettingsModal`, the wrapper
- * that can preselect a tab, so it is not a plain `openModal` like the other three.
+ * Repositories is absent on purpose: ⌘P goes through `openSettingsModal`, which is its
+ * own wrapper rather than a plain `openModal` like the other three. ⌘, is not in the map
+ * either, and is not even a modal — it pulls the quick settings sheet down.
  */
 const PAGE_SHORTCUTS: Record<string, ModalId> = {
   ';': 'skills',
@@ -60,7 +59,7 @@ function attentionCount(terminals: TerminalWithRepos[]): number {
 }
 
 export function Sidebar() {
-  const { terminals, activeTerminalId, config, leftSidebarVisible, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, moveTerminalToPane, rightPaneTerminalIds, openModal, closeModal, openSettingsModal } = useStore()
+  const { terminals, activeTerminalId, config, leftSidebarVisible, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, moveTerminalToPane, rightPaneTerminalIds, openModal, closeModal, openSettingsModal, toggleQuickSettings } = useStore()
   const { setActiveTerminal } = useTerminals()
   const t = useT()
 
@@ -154,12 +153,13 @@ export function Sidebar() {
   const skillsShortcutKey = isMac ? '⌘;' : 'Ctrl+;'
   const tasksShortcutKey = isMac ? '⌘J' : 'Ctrl+J'
   const plansShortcutKey = isMac ? '⌘T' : 'Ctrl+T'
-  const settingsShortcutKey = isMac ? '⌘,' : 'Ctrl+,'
+  const settingsShortcutKey = isMac ? '⌘P' : 'Ctrl+P'
 
-  // After the table above, because it is handed the accelerator it displays.
-  const { entry: accountEntry, login } = useAccountMenuEntry({ shortcutKey: settingsShortcutKey })
+  // After the table above, because it is handed the accelerator it displays. It was the
+  // account row; the account is in the title bar now and this opens the repositories.
+  const accountEntry = useRepositoriesMenuEntry({ shortcutKey: settingsShortcutKey })
   // The sort control, as one action on the AGENTS header — a select, panel and all. A
-  // hook for the same reason the account row is one: the column draws its own controls.
+  // hook for the same reason that row is one: the column draws its own controls.
   const sortAction = useAgentSortAction()
 
   // One listener for every page shortcut, not one per page: ⌘; / ⌘J / ⌘T all do the
@@ -181,7 +181,22 @@ export function Sidebar() {
       // and same reasoning, as TitleBar.tsx's ⌘W handler.
       // (`.xterm` is the class the library puts on the element it is opened into.)
       if (!e.metaKey && e.target instanceof Element && e.target.closest('.xterm')) return
+      // ⌘, IS THE QUICK SETTINGS NOW, not the settings window. It is the platform's own
+      // binding for "preferences", and preferences is what that sheet holds — the theme,
+      // the scale, the language, what the app may do. The window it used to open is the
+      // repository list, which took ⌘P: P for project, and the list of them is the one
+      // thing that window shows.
+      //
+      // IT TOGGLES, where the other three chords only open. The difference is what they
+      // open onto: a modal has its own close button and answers Escape, and a sheet has
+      // neither — the one control that puts it away is the sliders in the title bar,
+      // which is a long way from the keys your hands are already on.
       if (e.key === ',') {
+        e.preventDefault()
+        toggleQuickSettings()
+        return
+      }
+      if (e.key === 'p') {
         e.preventDefault()
         openSettingsModal()
         return
@@ -197,7 +212,7 @@ export function Sidebar() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [openModal, openSettingsModal])
+  }, [openModal, openSettingsModal, toggleQuickSettings])
 
   /**
    * A terminal, as a row the column can draw — and the repository heading it opens.
@@ -329,15 +344,6 @@ export function Sidebar() {
         usage={usageCardEnabled ? usageCard : undefined}
         version={APP_VERSION}
       />
-
-      {/* The login overlay the account row may need: a fixed overlay covering the whole
-          app, which cannot be rendered from inside a list of menu entries. The sort
-          menu used to be portalled from here too — `SelectIcon` carries its own panel
-          now. */}
-      {createPortal(
-        <LoginScreen isOpen={login.open} onClose={login.onClose} />,
-        document.body,
-      )}
     </>
   )
 }
