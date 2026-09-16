@@ -1,12 +1,10 @@
 import { useEffect, useCallback, ReactNode } from 'react'
 import { Modal as ModalGround, ModalHeader } from '@ds/desktop'
-import { X } from '@ds/desktop/icons'
 import { useModalExit } from '../hooks/useModalExit'
 import { useT } from '../i18n'
 
 /**
- * The app's DIALOG: a title, a body, and optionally a footer of buttons or a hero
- * image above the lot.
+ * The app's DIALOG: a title, a body, and optionally a footer of buttons.
  *
  * IT IS NO LONGER THE GROUND IT FLOATS ON. The portal, the dimmed scrim, the stacking
  * order, the elevation and the opaque plate under the panel are `Modal` in the design
@@ -26,6 +24,11 @@ import { useT } from '../i18n'
  * hairline around something already lifted off a dimmed background by a shadow is a
  * second answer to "where does this window end". The rule under the header went with it,
  * for the same reason: a dialog is one surface.
+ *
+ * AND SO IS THE `hero` SLOT, with the close button it carried in its own corner. It had
+ * exactly one caller — the What's New dialog, which is `WhatsNewDialog` in the design
+ * system now and owns its own band. A slot nobody fills is a shape this dialog promises
+ * and never has to keep.
  */
 interface ModalProps {
   isOpen: boolean
@@ -33,7 +36,6 @@ interface ModalProps {
   title: string
   children: ReactNode
   footer?: ReactNode
-  hero?: ReactNode
   maxWidth?: string
   /**
    * Give the body all the height that is left instead of letting the dialog grow to
@@ -50,7 +52,7 @@ interface ModalProps {
   fillHeight?: boolean
 }
 
-export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth = 'max-w-md', fillHeight = false }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, footer, maxWidth = 'max-w-md', fillHeight = false }: ModalProps) {
   const t = useT()
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -96,30 +98,11 @@ export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth
       } ${closing ? 'animate-modal-content-out' : 'animate-modal-content'}`}
       onAnimationEnd={onExitAnimationEnd}
     >
-      {/* Hero */}
-      {hero && (
-        <div className="relative">
-          {hero}
-          <button
-            onClick={onClose}
-            className="absolute top-3 right-3 p-1.5 text-on-brand hover:text-on-brand bg-black/30 hover:bg-black/50 rounded-lg transition-all"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
       {/* THE SAME BAND THE PAGE OVERLAY WEARS. It was a bare `<h3>` and a hand-rolled
           close button at a padding of its own; there is one header in this app now.
           No `fullScreen`, so no expand button is drawn — there is nothing in "are you
-          sure?" to expand into. `onClose` is dropped when a hero is present, because
-          the image carries the dismiss in its own corner and two ways out of one
-          window is one too many. */}
-      <ModalHeader
-        title={title}
-        onClose={hero ? undefined : onClose}
-        closeTitle={t('modal.closeEsc')}
-      />
+          sure?" to expand into. */}
+      <ModalHeader title={title} onClose={onClose} closeTitle={t('modal.closeEsc')} />
 
       {/* Body */}
       {/* `min-h-0` is what makes `flex-1` a real height here rather than a floor: a

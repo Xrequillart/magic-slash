@@ -32,15 +32,15 @@ export function AboutPage() {
     if (loadingWhatsNew || !appVersion) return
     setLoadingWhatsNew(true)
     try {
-      const html = await window.electronAPI.updater.getReleaseNotes(appVersion)
-      if (!html) {
+      const release = await window.electronAPI.updater.getReleaseNotes(appVersion)
+      if (!release) {
         showToast(t('toast.releaseNotesFailed'), 'error')
         return
       }
       // A window event and not a state flag: the dialog that shows this is mounted at
       // the app's root, far above a settings tab, and it was already listening.
       window.dispatchEvent(new CustomEvent('show:whats-new', {
-        detail: { version: appVersion, releaseNotes: html },
+        detail: { version: appVersion, ...release },
       }))
     } catch {
       showToast(t('toast.releaseNotesFailed'), 'error')

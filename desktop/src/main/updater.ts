@@ -10,15 +10,25 @@ function getPendingWhatsNewPath() {
   return join(app.getPath('userData'), 'pending-whats-new.json')
 }
 
-function savePendingWhatsNew(version: string, releaseNotes: string) {
+/**
+ * `releaseDate` IS `UpdateInfo`'s OWN FIELD and not something this file computes: the
+ * dialog prints the day the version shipped, and the only honest source for that is the
+ * feed the update came from. electron-updater carries it through from the release
+ * metadata as an ISO timestamp; the renderer formats it into the reader's language.
+ *
+ * OPTIONAL THROUGHOUT, because a pending file written by an older build has no date in
+ * it. The dialog simply draws no line, which is the right answer — a release whose date
+ * this machine never learned is not a release that shipped on today's date.
+ */
+function savePendingWhatsNew(version: string, releaseNotes: string, releaseDate?: string) {
   try {
-    writeFileSync(getPendingWhatsNewPath(), JSON.stringify({ version, releaseNotes }), 'utf-8')
+    writeFileSync(getPendingWhatsNewPath(), JSON.stringify({ version, releaseNotes, releaseDate }), 'utf-8')
   } catch (err) {
     console.error('[Updater] Failed to save pending what\'s new:', err)
   }
 }
 
-function readPendingWhatsNew(): { version: string; releaseNotes: string } | null {
+function readPendingWhatsNew(): { version: string; releaseNotes: string; releaseDate?: string } | null {
   try {
     const filePath = getPendingWhatsNewPath()
     if (!existsSync(filePath)) return null
@@ -124,7 +134,7 @@ export function setupAutoUpdater() {
         : undefined
     sendStatus({ type: 'downloaded', version: info.version, releaseNotes: notes || undefined })
     if (notes) {
-      savePendingWhatsNew(info.version, notes)
+      savePendingWhatsNew(info.version, notes, info.releaseDate)
     }
   })
 
@@ -200,7 +210,10 @@ export function setupAutoUpdater() {
       )
       if (!response.ok) return null
       const data = await response.json()
-      return data.body_html || null
+      if (!data.body_html) return null
+      // `published_at` rather than `created_at`: a release is drafted well before it is
+      // published, and the day people could install it is the day it shipped.
+      return { releaseNotes: data.body_html as string, releaseDate: data.published_at as string | undefined }
     } catch {
       return null
     }

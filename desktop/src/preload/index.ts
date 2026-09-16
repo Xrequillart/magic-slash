@@ -527,10 +527,10 @@ const updaterApi = {
    */
   getStatus: (): Promise<UpdateStatus> => ipcRenderer.invoke('updater:getStatus'),
   getVersion: (): Promise<string> => ipcRenderer.invoke('updater:getVersion'),
-  getPendingWhatsNew: (): Promise<{ version: string; releaseNotes: string } | null> =>
+  getPendingWhatsNew: (): Promise<{ version: string; releaseNotes: string; releaseDate?: string } | null> =>
     ipcRenderer.invoke('updater:getPendingWhatsNew'),
   clearPendingWhatsNew: (): Promise<void> => ipcRenderer.invoke('updater:clearPendingWhatsNew'),
-  getReleaseNotes: (version: string): Promise<string | null> =>
+  getReleaseNotes: (version: string): Promise<{ releaseNotes: string; releaseDate?: string } | null> =>
     ipcRenderer.invoke('updater:getReleaseNotes', version),
   onStatus: (callback: (status: UpdateStatus) => void) => {
     const listener = (_event: IpcRendererEvent, status: UpdateStatus) => callback(status)
