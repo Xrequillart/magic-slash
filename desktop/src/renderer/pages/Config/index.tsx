@@ -49,6 +49,18 @@ function isRepoDetailSwitch(fromKey: string, toKey: string): boolean {
   )
 }
 
+/**
+ * How deep a page sits, which is the whole of what `SweepPane` needs: it compares two
+ * ranks and takes the SIGN, so the numbers only have to be in the right order.
+ *
+ * Declared at module scope because `SweepPane` reads it during render — a fresh closure
+ * on every render would be a new prop each time, which is what `pages/Tasks/index.tsx`
+ * and `pages/Plans/index.tsx` both note where they declare theirs.
+ */
+function pageDepth(pageKey: string): number {
+  return pageKey.startsWith('repo:') ? 1 : 0
+}
+
 /** Hash route within Settings. `repo` is a sub-page of the Repositories tab. */
 interface SettingsRoute {
   page: string
@@ -236,16 +248,32 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
   return (
     <div className="h-full animate-fade-in">
-      {/* THE WHOLE WINDOW, where it used to be the half beside the rail. */}
-      <div ref={contentScrollRef} className="h-full overflow-y-auto p-6">
+      {/* THE WHOLE WINDOW, where it used to be the half beside the rail.
+
+          NO PADDING ON THE PANE — it is on the SWEEP LAYERS below, which is
+          `pages/Plans/index.tsx`'s arrangement and it is load-bearing for the sideways
+          sweep. A scrolling box clips at its padding box, so a page inset 24px from the
+          pane's edge has nowhere to travel: sliding it 24px left puts its first column
+          of pixels exactly on the clip edge, and the row you are leaving loses its left
+          side for the length of the animation. Padding on the LAYER instead means the
+          24px that leaves the box is the layer's own empty inset, and the content
+          arrives and departs whole. */}
+      <div ref={contentScrollRef} className="h-full overflow-y-auto">
         <SweepPane
           pageKey={contentKey}
-          // The rail is gone and with it the top-to-bottom order the sweep read its
-          // direction from. Two keys are left — the list and a repository — and
-          // `horizontal` already decides that hop, so every switch is that one. A
-          // constant keeps `SweepPane`'s contract without inventing a ranking for a
-          // list of one.
-          order={() => 0}
+          // `depth` AND NOT A CONSTANT, which is what this was — and the constant was
+          // the bug. `SweepPane` reads the SIGN of the gap between two ranks to decide
+          // which way a switch travels; with every page ranked 0 the gap is always 0,
+          // never negative, so no switch here was ever a switch BACK. Opening a
+          // repository and leaving it both played `sweep-*-left`, and the return
+          // repeated the arrival instead of undoing it.
+          //
+          // The rail is gone, so there is no longer a menu order to read this off —
+          // but there is still a DEPTH, and depth is all the sign needs: the list is
+          // the surface and a repository is one page under it. Going down sweeps left,
+          // coming back up sweeps right, which is what the comment at the top of this
+          // file already promised.
+          order={pageDepth}
           horizontal={isRepoDetailSwitch}
           scrollRef={contentScrollRef}
           // A CAP AGAIN, and centred — which reverses a decision the rail had made for
@@ -256,7 +284,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
           // maximised window, with its name at one end and its chevron at the other.
           // 72rem is wider than the measure prose would ask for, because these are rows
           // and not paragraphs — it is a limit on the reach of the eye, not on the line.
-          className="mx-auto flex w-full max-w-6xl flex-col gap-6"
+          className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-6"
         >
 
       {/* One repository, under `#/repo/<name>` — the window's only sub-page. */}
