@@ -1209,6 +1209,24 @@ const config: Config = {
       // arbitrary `shadow-[0_1px_2px_…]` at a call site is the failure this scale
       // exists to prevent, and `lib/designTokens.test.ts` fails the build on one.
       boxShadow: {
+        /**
+         * THE GLASS CARD'S LIFT — wide, soft and barely there.
+         *
+         * css.glass's own fourth ingredient, and the one that keeps a translucent card
+         * from reading as a hole cut in the ground behind it: a blurred plate with no
+         * shadow has no thickness, so the blur looks like a property of the background
+         * rather than of an object in front of it.
+         *
+         * BLACK AND NOT THE TINT the buttons above use. Those sit on this site's own
+         * canvas and take a shadow mixed from it; this one sits on a fixed light mesh
+         * that belongs to neither app's palette, and a tinted lift under it would be the
+         * canvas showing through an object that is not on the canvas.
+         *
+         * Declared HERE rather than written as an arbitrary value, which
+         * `lib/designTokens.test.ts` enforces and is right to: a shadow spelled at a call
+         * site is a shadow nobody can find when the next card wants the same one.
+         */
+        glass: '0 4px 30px rgba(0, 0, 0, 0.12)',
         // The primary button at rest. Two layers because one cannot do both jobs:
         // the 1px contact shadow gives the white face an edge to sit on, the wide
         // soft one lifts it off the card. Small numbers on purpose — a button that

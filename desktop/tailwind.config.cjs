@@ -160,6 +160,23 @@ module.exports = {
        * Everything drawn ON it takes `on-brand`, which is the ink these stops were chosen
        * to carry.
        */
+      boxShadow: {
+        /**
+         * THE GLASS CARD'S LIFT — the sign-in card on the release mesh.
+         *
+         * css.glass's fourth ingredient, and the one that keeps a translucent card from
+         * reading as a hole cut in the ground behind it: a blurred plate with no shadow
+         * has no thickness, so the blur looks like a property of the background rather
+         * than of an object in front of it.
+         *
+         * A TOKEN AND NOT AN ARBITRARY VALUE, which is the webapp's rule (its
+         * `lib/designTokens.test.ts` refuses one) and is worth keeping on this side for
+         * the same reason: the two halves draw the same card, one in the app and one in
+         * `/design-system`, and a shadow spelled at a call site is one the other copy
+         * cannot find.
+         */
+        glass: '0 4px 30px rgba(0, 0, 0, 0.12)',
+      },
       backgroundImage: {
         'release-mesh': "radial-gradient(22% 52% at 34% 51%, #E2EEFCB3 0%, #E2EEFC98 25%, #E2EEFC59 50%, #E2EEFC1A 75%, #E2EEFC00 100%), radial-gradient(30% 40% at 67% 48%, #4D77EE3B 0%, #4D77EE32 25%, #4D77EE1D 50%, #4D77EE09 75%, #4D77EE00 100%), radial-gradient(30% 32% at 73% 85%, #61A7F4A6 0%, #61A7F48D 25%, #61A7F453 50%, #61A7F418 75%, #61A7F400 100%), radial-gradient(23% 68% at 51% 88%, #61A7F494 0%, #61A7F47E 25%, #61A7F44A 50%, #61A7F416 75%, #61A7F400 100%), radial-gradient(66% 43% at 10% 95%, #4D77EE9E 0%, #4D77EE87 25%, #4D77EE4F 50%, #4D77EE17 75%, #4D77EE00 100%), radial-gradient(49% 43% at 34% 78%, #4D77EEA1 0%, #4D77EE89 25%, #4D77EE50 50%, #4D77EE18 75%, #4D77EE00 100%), linear-gradient(#E2EEFC, #E2EEFC)",
       },

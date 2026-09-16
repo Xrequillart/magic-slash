@@ -34,6 +34,7 @@ import { ColorsEntry } from './entries/ColorsEntry'
 import { ContextAgentCardEntry } from './entries/ContextAgentCardEntry'
 import { BannerEntry } from './entries/BannerEntry'
 import { EditableTextEntry } from './entries/EditableTextEntry'
+import { InputEntry } from './entries/InputEntry'
 import { HeaderRepoCardEntry } from './entries/HeaderRepoCardEntry'
 import { IconEntry } from './entries/IconEntry'
 import { LabelEntry } from './entries/LabelEntry'
@@ -103,6 +104,7 @@ const ENTRIES: Record<
   modalheader: ModalHeaderEntry,
   selecticon: SelectIconEntry,
   editabletext: EditableTextEntry,
+  input: InputEntry,
   contextagentcard: ContextAgentCardEntry,
   headerrepocard: HeaderRepoCardEntry,
   menusidebar: MenuSidebarEntry,

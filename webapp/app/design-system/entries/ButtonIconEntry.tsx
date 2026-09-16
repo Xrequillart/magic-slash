@@ -19,10 +19,10 @@ const PROPS: PropRow[] = [
   { name: 'onClick', type: '() => void', required: true, description: 'It is always a button. There is no inert form of this one.' },
   {
     name: 'tone',
-    type: "'neutral' | 'danger' | 'vscode' | 'ghost' | 'success' | 'solid'",
+    type: "'neutral' | 'danger' | 'vscode' | 'ghost' | 'success' | 'solid' | 'paper'",
     fallback: "'neutral'",
     description:
-      'A hover tint over the ticket badge’s plate: these sit in rows of siblings, and a chip announcing its colour before being touched breaks the row into unrelated controls. danger and vscode are the app’s real exceptions. ghost is the odd one — no plate at rest, for a button nested inside something that already has one. success is a state, the tick after a copy. solid is the opaque plate of the quick-settings sheet, for a button standing among its tiles.',
+      'A hover tint over the ticket badge’s plate: these sit in rows of siblings, and a chip announcing its colour before being touched breaks the row into unrelated controls. danger and vscode are the app’s real exceptions. ghost is the odd one — no plate at rest, for a button nested inside something that already has one. success is a state, the tick after a copy. solid is the opaque plate of the quick-settings sheet, for a button standing among its tiles. paper is the one mixed from the fixed ink rather than the theme’s, for the two surfaces that are white whatever the theme is — the release notes page and the sign-in card.',
   },
   {
     name: 'size',

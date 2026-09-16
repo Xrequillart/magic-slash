@@ -45,7 +45,7 @@ import type { IconComponent } from './types'
  * other two are the app's real exceptions — removing a repository, and opening one in
  * VS Code, whose blue is the editor's own and not a token.
  */
-export type ButtonIconTone = 'neutral' | 'danger' | 'vscode' | 'ghost' | 'success' | 'solid'
+export type ButtonIconTone = 'neutral' | 'danger' | 'vscode' | 'ghost' | 'success' | 'solid' | 'paper'
 
 /**
  * Three on the shared ladder — `Label`'s and `Status`'s 24 / 28 / 32 — and one below
@@ -152,6 +152,25 @@ const TONES: Record<ButtonIconTone, string> = {
    * step, never a second translucent colour.
    */
   solid: `${RAISED_PLATE} text-icon ${RAISED_PLATE_HOVER} hover:text-ink`,
+  /**
+   * ON A SURFACE THAT IS WHITE WHATEVER THE THEME IS.
+   *
+   * The app has two of those now — the release notes dialog's page, and the sign-in card
+   * on its mesh — and they are white on `midnight` exactly as they are on `light`. Every
+   * tone above is mixed from `ink`, which is the colour that reads against the app's own
+   * GROUND: white on four themes and near-black on the other four. On a fixed white
+   * surface half of them are a mark you cannot see.
+   *
+   * So this one is mixed from `release-ink`, the fixed near-black those surfaces are
+   * typeset in — the same token their body text uses, declared beside `release-paper` in
+   * both Tailwind configs. `neutral`'s geometry and `neutral`'s strengths, and the only
+   * thing that changes is which ink.
+   *
+   * IT IS NOT A LIGHT-THEME TONE. A caller on the app's own ground wants `neutral`,
+   * which already follows the theme; reach for this only where the ground itself does
+   * not.
+   */
+  paper: 'bg-release-ink/5 text-release-ink/60 hover:bg-release-ink/10 hover:text-release-ink',
 }
 
 /**
