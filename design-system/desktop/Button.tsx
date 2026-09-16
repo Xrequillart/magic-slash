@@ -27,11 +27,27 @@ import type { IconComponent } from './types'
  * repository row's border said it (`RepositoryItem`). What separates this from what is
  * behind it is its GROUND, and every tone below has one or deliberately has none.
  *
- * THE SEVEN RUNGS ARE THE CONTROL LADDER — 16/20/24/28/32/36/40, the same pixels
- * `ButtonIcon`, `Label`, `Status` and `Switch` stand on, with `ButtonIcon`'s radius at
- * every rung. A button beside an icon button of the same rung is the same height and the
- * same roundness by construction rather than by eye, which is the whole point of there
- * being one ladder.
+ * THE SEVEN RUNGS ARE THE SHARED VOCABULARY AND NOT THE SHARED PIXELS — 20/24/28/32/36/
+ * 40/44, which is one 4px step above the boxes `ButtonIcon`, `Label` and `Status` stand
+ * on.
+ *
+ * THAT IS ALLOWED AND IS THE SYSTEM WORKING, not a deviation from it: `componentSizes.ts`
+ * says in as many words that the ladder is a NAME and an ORDER, never one table of boxes
+ * — `Text` resolves it to 10/12/14/16/18/20/24 and `Avatar` to something else again,
+ * because a 24px plate and a 14px tick are not the same drawing. A button is not the same
+ * drawing as a badge either.
+ *
+ * WHY A STEP UP. A badge is a word on a plate and a button is a TARGET, and on a control
+ * with no border the AIR is the whole of what tells them apart — on both axes. At the
+ * shared boxes a `md` button had 4px above and below its label; it has 6px now, and the
+ * two large rungs have 8px. The horizontal padding says the same thing at the same time,
+ * two steps wider than `Label`'s.
+ *
+ * WHAT IT COSTS, honestly: a button no longer lines up with an icon button of the SAME
+ * rung, so a row holding both wants the button one rung down. Nothing in the app does
+ * that today — all six call sites stand alone in their row — and the day one does, the
+ * fix is one word at the call site rather than a component that is cramped everywhere so
+ * that one row can be tidy.
  *
  * IT DRAWS A `Text` AND AN `Icon` and owns neither's size: both come off the rung. And
  * it takes the word as a STRING, not a node — `Text` says why, and a button whose label
@@ -237,11 +253,16 @@ export type ButtonSize = ComponentSize
  * button and a mark button on the same row must agree on both or the row has two
  * languages in it.
  *
- * THE PADDING IS THIS COMPONENT'S OWN and is one step wider than `Label`'s at every
- * rung. A badge is a word on a plate and wants the plate tight around it; a button is a
- * TARGET, and the air either side of the word is what you are aiming at. They are the
- * same height, which is what a row needs — the difference is in the axis a row does not
- * measure.
+ * THE PADDING IS THIS COMPONENT'S OWN on both axes now, and horizontally it is TWO steps
+ * wider than `Label`'s at every rung, where it used to be one. A badge is a word on a plate and wants the plate tight
+ * around it; a button is a TARGET, and the air either side of the word is what you are
+ * aiming at. At one step the two read as the same object with different jobs, which is
+ * exactly the confusion a button does not want: pressable has to look different from
+ * merely labelled, and on a control with no border the padding is the whole of what says
+ * so.
+ *
+ * THE HEIGHT MOVED WITH IT, one 4px step at every rung — see the rungs note above for why
+ * that is the ladder working rather than the ladder broken.
  *
  * THE TYPE SCALE IS `Label`'S, so a button and a badge beside it read at one size.
  */
@@ -254,26 +275,43 @@ const SIZES: Record<
    * it only where the whole row is 16 and never for the one control a reader has to
    * find. It is here because the ladder is shared.
    */
-  '2xs': { box: 'h-4 gap-1 px-1.5 rounded-md', text: '2xs', icon: '2xs' },
-  /** 20px — a button under a row rather than in one. */
-  xs: { box: 'h-5 gap-1 px-2 rounded-lg', text: 'xs', icon: 'xs' },
-  sm: { box: 'h-6 gap-1.5 px-2.5 rounded-lg', text: 'xs', icon: 'sm' },
-  md: { box: 'h-7 gap-1.5 px-3 rounded-lg', text: 'sm', icon: 'sm' },
-  lg: { box: 'h-8 gap-2 px-3.5 rounded-xl', text: 'sm', icon: 'md' },
-  /** 36px — a control beside a heading rather than in a row. */
-  xl: { box: 'h-9 gap-2 px-4 rounded-xl', text: 'md', icon: 'md' },
-  /** 40px — the button IS the subject: an empty state's one action, a dialog's. */
-  '2xl': { box: 'h-10 gap-2.5 px-5 rounded-2xl', text: 'lg', icon: 'lg' },
+  '2xs': { box: 'h-5 gap-1 px-2 rounded-lg', text: '2xs', icon: '2xs' },
+  /** 24px — a button under a row rather than in one. */
+  xs: { box: 'h-6 gap-1 px-2.5 rounded-lg', text: 'xs', icon: 'xs' },
+  sm: { box: 'h-7 gap-1.5 px-3 rounded-lg', text: 'xs', icon: 'sm' },
+  md: { box: 'h-8 gap-1.5 px-3.5 rounded-lg', text: 'sm', icon: 'sm' },
+  lg: { box: 'h-9 gap-2 px-4 rounded-xl', text: 'sm', icon: 'md' },
+  /** 40px — a control beside a heading rather than in a row. */
+  xl: { box: 'h-10 gap-2 px-5 rounded-xl', text: 'md', icon: 'md' },
+  /** 44px — the button IS the subject: an empty state's one action, a dialog's. */
+  '2xl': { box: 'h-11 gap-2.5 px-6 rounded-2xl', text: 'lg', icon: 'lg' },
 }
 
 /**
  * What every button wears, whatever its tone and whatever its rung.
  *
- * THE PRESS is the cheapest thing separating a button from a coloured rectangle, and 3%
- * is the whole of it — far enough to be felt under the finger, near enough that a row of
- * them does not ripple. `Switch` already presses this way; this is the same idea on a
- * control that has nowhere to travel. It is held back when the button cannot be pressed,
- * because a disabled control that squashes has just told the reader it worked.
+ * THE BUTTON MOVES UNDER THE POINTER, and 4% is the whole of it.
+ *
+ * FOUR AND NOT TEN, which is a measurement rather than a preference. A row of buttons in
+ * this app is spaced by `gap-2` — 8px — and a scale grows a box from its CENTRE, so half
+ * the growth goes each way. At 1.04 a 130px button ("Change password", the widest in the
+ * account card's row) gains 5px, which is 2.6px a side and leaves 5.4px of the gap
+ * standing. At 1.10 it gains 13px, 6.5px a side, and the row's five buttons start
+ * touching — and the one full-width button in the app, the sign-in submit, would grow
+ * 38px inside a card whose padding is 28px.
+ *
+ * `transform-gpu` so the growth is composited rather than re-laid-out: a transform never
+ * affects layout, but promoting the layer is what keeps the label's antialiasing steady
+ * through the 150ms rather than reflowing the glyphs at each step.
+ *
+ * THE PRESS ANSWERS IT, and is the older half of the pair: 3% INWARD, far enough to be
+ * felt under the finger and near enough that a row of them does not ripple. `Switch`
+ * already presses this way. Together they are an object that comes up to meet the pointer
+ * and gives when it is pushed.
+ *
+ * BOTH ARE HELD BACK WHEN THE BUTTON CANNOT BE PRESSED. A disabled control that grew
+ * under the cursor would be inviting a press it will refuse, and one that squashed has
+ * just told the reader it worked.
  *
  * THE FOCUS RING is `ToggleButton`'s, spelled the same way, and `focus-visible` rather
  * than `focus` so it answers the keyboard and stays out of the way of the mouse. Its
@@ -285,8 +323,9 @@ const SIZES: Record<
  * break the rung's height — which is the one promise the shared ladder makes.
  */
 const CHROME = `inline-flex items-center justify-center border-none cursor-pointer
-  whitespace-nowrap flex-shrink-0 transition-all duration-150
-  active:scale-[0.97] disabled:active:scale-100 disabled:cursor-not-allowed
+  whitespace-nowrap flex-shrink-0 transition-all duration-150 transform-gpu
+  hover:scale-[1.04] active:scale-[0.97]
+  disabled:hover:scale-100 disabled:active:scale-100 disabled:cursor-not-allowed
   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-bg`
 
 interface ButtonBase {

@@ -123,8 +123,10 @@ export function ScriptCard({
              `sm`, the list-row rung, and NOT one of the two below it. A chip nested in
              something else belongs down there, and this one is not decoration: the prop
              below says stopping a server is the action a person comes to this card for.
-             It stands 2px taller than the hand-built chip did, which is what it costs to
-             be on the ladder rather than beside it. */
+             It stands 6px taller than the hand-built chip did — 2px for being on the
+             ladder at all, and 4px more since `Button` took a step up it for the air a
+             borderless target needs. That is what it costs to be a control rather than a
+             label, and the bar it sits on has the room. */
           <Button
             tone="overlay"
             size="sm"

@@ -31,13 +31,13 @@ const TONE_NOTES: Record<ButtonTone, string> = {
 
 /** What each rung is for, shortest form. The component's table says it at length. */
 const SIZE_NOTES: Record<ButtonSize, string> = {
-  '2xs': '16px — below a row',
-  xs: '20px — under a row',
-  sm: '24px — a list row. The default',
-  md: '28px — a row of 14px type',
-  lg: '32px — beside a heading',
-  xl: '36px — above a heading',
-  '2xl': '40px — the button is the subject',
+  '2xs': '20px — below a row',
+  xs: '24px — under a row',
+  sm: '28px — a list row. The default',
+  md: '32px — a row of 14px type',
+  lg: '36px — beside a heading',
+  xl: '40px — above a heading',
+  '2xl': '44px — the button is the subject',
 }
 
 const PROPS: PropRow[] = [
@@ -280,8 +280,28 @@ export function ButtonEntry({
       </EntrySection>
 
       <EntrySection
+        title="It comes up to meet the pointer"
+        note="4% out on hover, 3% in on press — an object that rises under the cursor and gives when it is pushed. Four and not ten is a measurement: a row of buttons is spaced by gap-2, a scale grows a box from its centre, and at 1.10 the account card's five-button row starts touching. Both are held back when the button cannot be pressed — a disabled control that grew would be inviting a press it will refuse. Hover the row below, then hold one down."
+      >
+        <Stage theme={theme} className="flex flex-wrap items-center gap-2">
+          <Button tone="accent" icon={Plus} size="md" onClick={() => undefined}>
+            Add repository
+          </Button>
+          <Button size="md" onClick={() => undefined}>
+            Change password
+          </Button>
+          <Button tone="danger" size="md" onClick={() => undefined}>
+            Delete account
+          </Button>
+          <Button size="md" disabled onClick={() => undefined}>
+            Disabled — nothing moves
+          </Button>
+        </Stage>
+      </EntrySection>
+
+      <EntrySection
         title="The seven rungs"
-        note="Height and radius are ButtonIcon's at every rung — 16/20/24/28/32/36/40, the same pixels Label, Status and Switch stand on. The padding is this component's own and is one step wider than Label's: a badge wants its plate tight around the word, a button is a target and the air either side is what you are aiming at."
+        note="20/24/28/32/36/40/44 — one 4px step above the boxes ButtonIcon, Label and Status stand on, and that is the ladder working rather than broken: componentSizes says in as many words that the rungs are a name and an order, never one table of boxes. Text resolves them to 10/12/14/16/18/20/24 and Avatar to something else again. A button is not the same drawing as a badge — it is a target, and on a control with no border the air is the whole of what says so, on both axes. What it costs: a button no longer lines up with an icon button of the SAME rung, so a row holding both wants the button one rung down."
       >
         <Stage theme={theme} className="flex flex-col gap-4">
           {COMPONENT_SIZES.map((size) => (

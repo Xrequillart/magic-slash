@@ -311,7 +311,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               and a hairline around it are the same statement made twice, which is the
               whole of what `Button` refuses to draw.
 
-              `md` — 28px, one rung up from a list row, and the mark goes up with it to
+              `md` — 32px, one rung up from a list row, and the mark goes up with it to
               16px because `Button` sizes its glyph from the rung and will not let a call
               site pick the two apart.
 
