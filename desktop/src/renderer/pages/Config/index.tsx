@@ -1,8 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Plus, ChevronRight, Folder, FolderGit2, AlertTriangle, Building2, Lock } from '@ds/desktop/icons'
-// lucide v1 dropped the brand glyphs, so the GitHub mark is the app's own —
-// the same one the tracker badges wear.
-import { Github } from '@ds/desktop/icons'
+import { Plus, Folder, FolderGit2, Building2, Lock } from '@ds/desktop/icons'
+import { RepositoryItem } from '@ds/desktop'
 import { RepoPage } from './RepoPage'
 import { SectionHeader } from './SectionHeader'
 import { SweepPane } from '../../components/SweepPane'
@@ -148,64 +146,34 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   // a plain render function, not a component, so React keeps the same elements
   // across renders instead of remounting a freshly-declared type.
   const renderRepoRow = ([name, repo]: [string, RepositoryConfig]) => {
-    const hasGithub = githubStatus[name]
-    const color = colorMap[name]
     const agentCount = agentCountByRepo[name] || 0
 
     return (
-      <a
+      <RepositoryItem
         key={name}
+        name={name}
+        color={colorMap[name]}
         href={`#/repo/${encodeURIComponent(name)}`}
-        className="group flex items-center gap-3 px-4 py-3 bg-surface hover:bg-surface-strong border border-line-strong hover:border-line-strong rounded-xl transition-all"
-      >
-        {/* Repository tile — the same one the webapp's repository list and the
-            agent sidebar's cards use: the repo's colour tints the icon and its
-            backdrop, instead of a bare dot that named nothing. */}
-        <span
-          className="flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0"
-          style={{ backgroundColor: `${color}1f`, color }}
-        >
-          <FolderGit2 className="w-4 h-4" />
-        </span>
-
-        {/* Repo info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium truncate">{name}</span>
-            {/* GitHub status badge — only meaningful once a local folder is bound */}
-            {!repo.needsLocalPath && (
-              <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                hasGithub
-                  ? 'bg-green/10 text-green'
-                  : 'bg-red/10 text-red'
-              }`}>
-                <Github className="w-2.5 h-2.5" />
-                {hasGithub ? t('settings.repos.connected') : t('settings.repos.noRemote')}
-              </span>
-            )}
-          </div>
-          {repo.needsLocalPath ? (
-            <div className="flex items-center gap-1 text-xs text-yellow mt-0.5">
-              <AlertTriangle className="w-3 h-3" />
-              {t('settings.repos.noLocalFolder')}
-            </div>
-          ) : (
-            <div className="text-xs text-text-secondary/50 truncate mt-0.5">
-              {repo.path}
-            </div>
-          )}
-        </div>
-
-        {/* Agent count */}
-        {agentCount > 0 && (
-          <span className="px-2 py-0.5 bg-accent/10 text-accent text-xs font-medium rounded">
-            {t(agentCount > 1 ? 'settings.repos.agents.other' : 'settings.repos.agents.one', { count: agentCount })}
-          </span>
-        )}
-
-        {/* Arrow */}
-        <ChevronRight className="w-4 h-4 text-icon-muted group-hover:text-icon transition-colors" />
-      </a>
+        // Only meaningful once a local folder is bound: until then there is nothing
+        // to read a remote off, so the chip stays away rather than reporting none.
+        remote={
+          repo.needsLocalPath
+            ? undefined
+            : {
+                connected: !!githubStatus[name],
+                label: githubStatus[name] ? t('settings.repos.connected') : t('settings.repos.noRemote'),
+              }
+        }
+        path={repo.needsLocalPath ? undefined : repo.path}
+        missingPath={repo.needsLocalPath ? t('settings.repos.noLocalFolder') : undefined}
+        // Worded here, where the catalogue is. The row takes the sentence, not the
+        // number — the plural rule is the app's and not the design system's.
+        agents={
+          agentCount > 0
+            ? t(agentCount > 1 ? 'settings.repos.agents.other' : 'settings.repos.agents.one', { count: agentCount })
+            : undefined
+        }
+      />
     )
   }
 
