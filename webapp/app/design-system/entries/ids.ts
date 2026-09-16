@@ -14,6 +14,7 @@ export type EntryId =
   | 'loader'
   | 'card'
   | 'avatar'
+  | 'accountcard'
   | 'button'
   | 'buttonicon'
   | 'editabletext'
@@ -94,6 +95,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   themegrid: 'ThemeGrid',
   text: 'Text',
   avatar: 'Avatar',
+  accountcard: 'AccountCard',
   label: 'Label',
   status: 'Status',
   switch: 'Switch',
@@ -239,6 +241,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   speccard: ['card', 'label', 'status', 'editabletext', 'buttonicon'],
   banner: ['button', 'icon', 'text'],
   agent: ['loader', 'icon', 'text'],
+  accountcard: ['avatar', 'button', 'text'],
 }
 
 /** The graph as `EntryHeader` wants it: an id and the label to print on the chip. */
@@ -329,6 +332,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   menusidebaritem: 'One row that takes you somewhere',
   sidebar: 'The whole left column, and it knows nothing',
   updatedialog: 'The app, about to become a newer app',
+  accountcard: 'Who is signed in, and what you can do about it',
   whatsnewdialog: 'What the version you just installed brought',
   speccard: 'A plan being written, live',
   modal: 'The ground a dialog floats on',

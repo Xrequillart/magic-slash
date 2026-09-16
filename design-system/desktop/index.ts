@@ -3,6 +3,8 @@
  * from a file inside it — the alias is what keeps the folder free to reorganise.
  */
 export { Banner, BANNER_VARIANTS, BANNER_LAYOUTS, BANNER_BAND_HEIGHT } from './Banner'
+export { AccountCard } from './AccountCard'
+export type { AccountCardAction, AccountCardProps } from './AccountCard'
 export { Agent, AGENT_STATES } from './Agent'
 export { AppTitleBar, TITLE_BAR_HEIGHT } from './AppTitleBar'
 export type {
