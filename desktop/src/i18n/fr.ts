@@ -853,9 +853,47 @@ export const fr: Record<keyof typeof en, string> = {
   'cloud.section': 'Compte cloud',
   'cloud.signedInFallback': 'Connecté',
   'cloud.signedInHint': 'Connecté au cloud Magic Slash',
+  // ── La colonne des libellés du tableau de la carte ───────────────────────
+  // Le nom de chaque réglage, et rien d'autre : la VALEUR est dans la colonne d'à côté
+  // et vient du compte, pas d'ici. Ils forment un groupe parce qu'ils forment une
+  // colonne, et ils s'alignent à l'écran : un mot qui passe seul mais casse la série
+  // se voit donc ici avant de se voir dans l'app. Le cinquième est
+  // `cloud.deleteAccount` plus bas, avec le reste de sa modale.
+  //
+  // PAS DE DEUX-POINTS. Une version précédente écrivait « E-mail : » parce que le
+  // libellé et la valeur partageaient une ligne ; ce sont deux colonnes maintenant,
+  // c'est l'alignement qui les sépare, et les deux-points pointeraient vers un vide.
+  'cloud.row.username': 'Pseudo',
+  'cloud.row.avatar': 'Avatar',
+  'cloud.row.email': 'E-mail',
+  'cloud.row.password': 'Mot de passe',
+  // ── La valeur de l'avatar ────────────────────────────────────────────────
+  // La date vient du `updated_at` de Storage sur l'objet : c'est la ligne de la photo
+  // elle-même, pas une date que l'app pense à écrire.
+  'cloud.avatar.updatedOn': 'Mise à jour le {date}',
+  // Une photo dont la date n'a pas pu être lue. Il y en a bien une, les octets sont à
+  // l'écran, donc la cellule dit ce dont elle est sûre plutôt que de rester vide.
+  'cloud.avatar.set': 'Photo enregistrée',
+  'cloud.avatar.none': 'Aucune photo',
+  // La ligne du pseudo tant qu'il n'y en a pas. La carte l'affiche en discret, pour
+  // qu'elle ne se lise pas comme un pseudo réellement choisi.
+  'cloud.username.none': 'Aucun pseudo',
+  'cloud.username.hint': 'Affiché à la place de votre adresse e-mail',
+  'cloud.username.title': 'Choisir un pseudo',
+  'cloud.username.placeholder': 'pseudo',
+  'cloud.username.help':
+    'Entre {min} et {max} caractères : lettres, chiffres, point, tiret et tiret bas, en commençant par une lettre ou un chiffre.',
+  'cloud.username.submit': 'Enregistrer le pseudo',
+  'cloud.username.checking': 'Vérification de la disponibilité…',
+  'cloud.username.available': '{username} est disponible',
+  // Le seul refus que le formulaire ne peut pas anticiper : c'est l'index unique qui
+  // tranche, donc ce message sert pendant la saisie et après un enregistrement perdu.
+  'cloud.username.taken': '{username} est déjà pris',
+  'cloud.username.tooShort': 'Au moins {min} caractères.',
+  'cloud.username.tooLong': 'Au plus {max} caractères.',
+  'cloud.username.badCharacters':
+    'Lettres, chiffres, point, tiret et tiret bas uniquement, en commençant par une lettre ou un chiffre.',
   'cloud.avatar.alt': 'Photo du compte',
-  'cloud.avatar.choose': 'Choisir une photo',
-  'cloud.avatar.remove': 'Retirer la photo',
   'cloud.avatar.crop.title': 'Cadrez votre photo',
   // Nomme la surface que l'on manipule, ce que ne fait pas `cloud.avatar.alt` :
   // celle-ci décrit la photo déjà enregistrée sur le compte. Elle NOMME seulement :
@@ -874,6 +912,18 @@ export const fr: Record<keyof typeof en, string> = {
   'cloud.notSignedInHint': 'Connectez-vous pour gérer votre organisation (facultatif)',
   'cloud.joinWithInvitation': 'Rejoindre avec une invitation',
   'cloud.signIn': 'Se connecter',
+  // ── Ce que dit la LIGNE du mot de passe, sous « Mot de passe » ───────────
+  // Deux phrases et non une seule avec une date de repli : elles n'affirment pas la
+  // même chose, et une seule des deux est démontrable.
+  'cloud.password.changedOn': 'Modifié le {date}',
+  // PAS « jamais modifié ». GoTrue ne stocke aucune date de mot de passe, donc l'app
+  // enregistre la sienne, et cette colonne est postérieure à la plupart des comptes :
+  // qui a changé son mot de passe l'an dernier reste à null ici, pour toujours.
+  // « Aucun changement enregistré » est tout ce qu'un null permet d'affirmer, donc
+  // c'est tout ce que dit cette phrase. La date de création vaut la peine d'être
+  // montrée : c'est la plus ancienne date possible du mot de passe actuel.
+  'cloud.password.notRecorded':
+    'Aucun changement enregistré depuis la création du compte, le {date}',
   'cloud.password.submit': 'Mettre à jour le mot de passe',
   'cloud.password.newPlaceholder': 'Nouveau mot de passe',
   'cloud.password.confirmPlaceholder': 'Confirmer le nouveau mot de passe',
@@ -884,6 +934,16 @@ export const fr: Record<keyof typeof en, string> = {
   'cloud.email.newPlaceholder': 'Nouvel e-mail',
   'cloud.email.confirmHelp': 'Relevez le code de confirmation envoyé à {email}, puis saisissez-le ci-dessous.',
   'cloud.email.codePlaceholder': 'Code à 6 chiffres',
+  // Ce que dit la LIGNE, sous « Supprimer mon compte », avant d'avoir cliqué.
+  //
+  // Elle nomme la conséquence qu'on ne peut pas deviner et qu'on découvrirait une
+  // fois faite : une organisation où l'on est seul part avec nous, une organisation
+  // partagée NON, elle est confiée à un autre membre (delete_account prend un admin
+  // en priorité, sinon le membre le plus ancien). Le corps de la modale répète
+  // l'irréversibilité et ajoute que l'app continue en local ; cette ligne s'adresse
+  // à qui décide s'il ouvre la modale.
+  'cloud.delete.rowHint':
+    'Les organisations dont vous êtes le seul membre sont supprimées avec leurs données. Les autres passent à un autre membre. Irréversible.',
   'cloud.delete.submit': 'Supprimer définitivement',
   'cloud.delete.warning': 'Cette action supprime définitivement votre compte et vos données personnelles.',
   'cloud.delete.body':
@@ -905,6 +965,9 @@ export const fr: Record<keyof typeof en, string> = {
     'Ce fichier n’est pas une image prise en charge. Choisissez un PNG, un JPEG ou un WebP (le SVG n’est pas accepté).',
   'toast.avatarUnreadable': 'Cette image n’a pas pu être lue. Choisissez un PNG, un JPEG ou un WebP.',
   'toast.avatarNotWebp': 'Cette photo n’a pas pu être encodée correctement. Essayez une autre image.',
+  'toast.usernameUpdated': 'Pseudo mis à jour',
+  'toast.usernameSaveFailed': 'Impossible d’enregistrer votre pseudo. Réessayez.',
+  'toast.usernameOffline': 'Connectez-vous pour choisir un pseudo',
   'toast.avatarSaveFailed': 'Impossible d’enregistrer votre photo. Réessayez.',
   'toast.avatarRemoveFailed': 'Impossible de retirer votre photo',
 

@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, PlanSession, PlanSpecInput, PlanTicketsInput, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
+import type { AccountSettings, Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, PlanSession, PlanSpecInput, PlanTicketsInput, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
 import {
   AVATAR_BUCKET,
   AVATAR_DATA_URL_PREFIX,
@@ -13,7 +13,7 @@ import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
 import { isCloudEnabled } from '../cloud/supabase-client'
 import { mapOrgAgentRow, type OrgAgentRow } from '../cloud/realtime'
-import type { ConnectivityStatus, Store } from './Store'
+import type { ConnectivityStatus, Store, UsernameWriteOutcome } from './Store'
 import { enqueuePendingArchive, resolvePendingArchive } from './pending-archives'
 import { ideaFrom, slugFor, specKeyFor } from './plan-sync'
 import {
@@ -207,6 +207,13 @@ interface ProfileRow {
   // The Storage object path of the profile photo. Written only by setAvatar /
   // removeAvatar below, never by saveProfile.
   avatar_url: string | null
+  // The handle. Written only by setUsername, never by saveProfile — same rule as
+  // the photo, and the same reason.
+  username: string | null
+  // When the password last changed, as recorded by the app. Written only by
+  // `stampPasswordChange` (cloud/password-stamp.ts), from wherever a password
+  // actually changes; GoTrue keeps no timestamp of its own. Same rule again.
+  password_changed_at: string | null
 }
 
 /**
@@ -2012,6 +2019,175 @@ export class CloudStore implements Store {
 
     const { error } = await ctx.client.from('profiles').upsert(payload, { onConflict: 'user_id' })
     if (error) throw new Error(`saveProfile failed: ${error.message}`)
+  }
+
+  // -------------------------------------------------------------------------
+  // Handle (profiles.username)
+  // -------------------------------------------------------------------------
+  //
+  // Kept off load/saveProfile for the photo's reason, stated once at `saveProfile`:
+  // that method rewrites every optional column as `?? null`, and a handle must
+  // survive a profile edit — and must exist for a user whose profile is too
+  // incomplete for `loadProfile` to return at all. The Account tab is reachable
+  // without ever opening the Profile tab.
+
+  /**
+   * The account facts the card draws off the caller's own row: the handle, and when
+   * the password last changed. Plus the date the account was created, which is not on
+   * that row at all.
+   *
+   * ONE SELECT FOR THE TWO COLUMNS, because they are two columns of one row and the
+   * card wants both at once. This is also why it is not `getUsername` any more.
+   *
+   * THE CREATION DATE COMES FROM THE SESSION and not from a query, because there is no
+   * query that could get it: `auth.users` is not readable by an authenticated client at
+   * all, and a definer function to expose one timestamp would be a new privileged
+   * surface for a line of text. The SDK already holds the user object the sign-in
+   * returned, `created_at` included, and `getSession()` reads it out of memory —
+   * `getAuthedClient()` above has just made sure that session is live, so this costs
+   * nothing and cannot be stale.
+   *
+   * NEVER THROWS. Every field is separately nullable and each null is a state the card
+   * draws (see `AccountSettings`), so a failure degrades one line rather than the page.
+   */
+  async getAccountSettings(): Promise<AccountSettings> {
+    const empty: AccountSettings = {
+      username: null,
+      passwordChangedAt: null,
+      accountCreatedAt: null,
+      avatarUpdatedAt: null,
+    }
+
+    const ctx = await this.userContext()
+    if (!ctx) return empty
+
+    let accountCreatedAt: string | null = null
+    try {
+      const { data } = await ctx.client.auth.getSession()
+      accountCreatedAt = data.session?.user?.created_at ?? null
+    } catch (error) {
+      console.error('[cloud] could not read the account creation date:', error)
+    }
+
+    const avatarUpdatedAt = await this.readAvatarUpdatedAt(ctx.client, ctx.uid)
+
+    const { data, error } = await ctx.client
+      .from('profiles')
+      .select('username, password_changed_at')
+      .eq('user_id', ctx.uid)
+      .maybeSingle()
+    // No row is the ordinary state for someone who never opened the Profile tab, and
+    // it is not distinguishable from a failure here — both mean "nothing to show but
+    // what the session already told us".
+    if (error || !data) return { ...empty, accountCreatedAt, avatarUpdatedAt }
+
+    const row = data as Pick<ProfileRow, 'username' | 'password_changed_at'>
+    return {
+      username: row.username,
+      passwordChangedAt: row.password_changed_at,
+      accountCreatedAt,
+      avatarUpdatedAt,
+    }
+  }
+
+  /**
+   * When the photo was last written, from STORAGE rather than from a column we keep.
+   *
+   * `storage.objects` maintains `updated_at` on every object, so this is the row the
+   * photo actually lives in rather than a date somebody has to remember to stamp. It
+   * cannot drift from the bytes, and there is no migration and no write path to get
+   * wrong — which is exactly what `password_changed_at` costs, and what it costs only
+   * because GoTrue keeps no such fact of its own.
+   *
+   * `list()` ON THE USER'S OWN FOLDER, with the file named in the search rather than
+   * the whole folder listed: there is one blessed object per user
+   * (`avatarObjectPath`), so this asks for that one. The folder is the uid, which is
+   * what `avatars_select` scopes on, so this reads only ever the caller's own.
+   *
+   * AN EMPTY LIST IS THE NORMAL ANSWER for someone with no photo, and it returns null
+   * the same way a failure does. The two are not worth telling apart here: the caller
+   * draws a date or it draws nothing, and it already knows from the bytes whether there
+   * is a photo at all.
+   */
+  private async readAvatarUpdatedAt(client: SupabaseClient, uid: string): Promise<string | null> {
+    try {
+      const path = avatarObjectPath(uid)
+      const slash = path.lastIndexOf('/')
+      const { data, error } = await client.storage
+        .from(AVATAR_BUCKET)
+        .list(path.slice(0, slash), { search: path.slice(slash + 1), limit: 1 })
+      if (error || !data?.length) return null
+      return data[0].updated_at ?? null
+    } catch (error) {
+      console.error('[cloud] could not read the avatar date:', error)
+      return null
+    }
+  }
+
+  /**
+   * Is this handle free for the caller to take?
+   *
+   * ADVISORY, and the caller must not treat it as a reservation: it answers for the
+   * instant it ran, and `profiles_username_lower_key` is what actually decides. It
+   * exists so the form can say "taken" while the user is still typing rather than
+   * only after they press save — see the migration's note.
+   *
+   * An RPC rather than a select, because `profiles_select` is own-rows only: there
+   * is no query this client can write that would see somebody else's handle. The
+   * function is SECURITY DEFINER and returns a bare boolean.
+   *
+   * A FAILURE ANSWERS `true`, which is the surprising half and is deliberate. This
+   * only ever gates a hint and the enabling of a button; answering `false` when the
+   * network hiccuped would tell a user their own free handle is taken and leave them
+   * unable to press anything. Answering `true` lets them press, and the write is
+   * where the truth is — a genuine collision comes back as 23505 and is reported
+   * then.
+   */
+  async isUsernameAvailable(candidate: string): Promise<boolean> {
+    const ctx = await this.userContext()
+    if (!ctx) return true
+
+    const { data, error } = await ctx.client.rpc('username_available', { candidate })
+    if (error) {
+      console.error('[cloud] username_available failed:', error.message)
+      return true
+    }
+    return data !== false
+  }
+
+  /**
+   * Claim a handle.
+   *
+   * An UPSERT and not an update, for `setAvatar`'s reason: there may be no `profiles`
+   * row at all, and an `update` would report success while matching zero rows — the
+   * card would show a handle that was never stored, until the next launch disagreed.
+   * PostgREST writes only the columns present in the payload, so this cannot touch
+   * `name`/`role`/`technical_level`/`avatar_url`.
+   *
+   * `23505` IS A RESULT, NOT AN ERROR. Someone else holding the handle is an ordinary
+   * answer the user acts on by typing a different one, so it comes back as
+   * `{ ok: false, reason: 'taken' }` and everything else throws. That is also the only
+   * check that counts: `isUsernameAvailable` above describes a moment that has passed
+   * by the time this runs, and two people claiming one handle at the same instant is
+   * exactly what it cannot decide. The unique index decides, here.
+   *
+   * `23514` is the check constraint — a handle whose shape `validateUsername` should
+   * already have refused on the way in. It is mapped rather than thrown so that a rule
+   * drifting between `desktop/src/username.ts` and the SQL surfaces as a legible
+   * message instead of an unhandled IPC rejection.
+   */
+  async setUsername(username: string): Promise<UsernameWriteOutcome> {
+    const ctx = await this.userContext()
+    if (!ctx) return { ok: false, reason: 'offline' }
+
+    const { error } = await ctx.client
+      .from('profiles')
+      .upsert({ user_id: ctx.uid, username }, { onConflict: 'user_id' })
+
+    if (!error) return { ok: true }
+    if (error.code === '23505') return { ok: false, reason: 'taken' }
+    if (error.code === '23514') return { ok: false, reason: 'invalid' }
+    throw new Error(`setUsername failed: ${error.message}`)
   }
 
   // -------------------------------------------------------------------------

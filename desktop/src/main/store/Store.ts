@@ -1,4 +1,4 @@
-import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, OrgSharedConfig, OrgAgent, PlanSession, PlanSpecInput, PlanTicketsInput, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
+import type { AccountSettings, AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, OrgSharedConfig, OrgAgent, PlanSession, PlanSpecInput, PlanTicketsInput, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
 
 /**
  * Result of a backend reachability probe.
@@ -12,6 +12,20 @@ import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, Org
  *                   the app must show the "cloud not configured" blocking screen.
  */
 export type ConnectivityStatus = 'ok' | 'unauthorized' | 'unreachable' | 'disabled'
+
+/**
+ * How claiming a handle turned out.
+ *
+ * Three of the four outcomes are things the USER does something about, which is why
+ * they are values rather than exceptions: `taken` means type another one, `invalid`
+ * means the shape was refused by the column (and `validateUsername` should have said
+ * so first — see `setUsername`), and `offline` means there is no session to write
+ * through, which the card reports rather than silently swallowing. A transport failure
+ * is none of those and still throws.
+ */
+export type UsernameWriteOutcome =
+  | { ok: true }
+  | { ok: false; reason: 'taken' | 'invalid' | 'offline' }
 
 /**
  * The single persistence contract for config, agents and history. The Supabase
@@ -181,6 +195,38 @@ export interface Store {
   loadProfile(): Promise<UserProfile | null>
   saveProfile(profile: UserProfile): Promise<void>
 
+  // The ACCOUNT fields, which are not profile fields either — off load/saveProfile for
+  // the photo's reason, and readable for a user whose profile is too incomplete for
+  // loadProfile to return at all.
+  /**
+   * The handle, when the password last changed, and when the account was created —
+   * everything the account card draws that is not already in `AuthStatus`.
+   *
+   * ONE CALL because the first two are two columns of one row. Never throws: each
+   * field is separately nullable and each null is a state the card draws.
+   */
+  getAccountSettings(): Promise<AccountSettings>
+  /**
+   * Is `candidate` free for the caller to take? Their own current handle counts as
+   * free, so re-saving it — or only changing its capitalisation — is not a collision.
+   *
+   * ADVISORY. It answers for the instant it ran and reserves nothing; the unique
+   * index is what decides, at `setUsername`. An implementation that cannot find out
+   * answers `true` rather than blocking a user out of a handle that may well be
+   * theirs.
+   */
+  isUsernameAvailable(candidate: string): Promise<boolean>
+  /**
+   * Claim a handle. `username` is UNTRUSTED — it crosses the preload bridge — so a
+   * caller validates its shape with `validateUsername` (desktop/src/username.ts)
+   * first; the database states the same rule and an implementation reports a
+   * violation as `invalid` rather than throwing.
+   *
+   * A handle somebody else holds is a RESULT and not a failure: the user acts on it
+   * by typing another one. Everything that is not one of the three outcomes throws.
+   */
+  setUsername(username: string): Promise<UsernameWriteOutcome>
+
   // The profile PHOTO, which is not a profile field: the bytes live in the
   // `avatars` Storage bucket and only the path is on the row. Kept off
   // load/saveProfile deliberately — saveProfile rewrites every optional column
@@ -268,6 +314,12 @@ export const NOOP_STORE: Store = {
   async setOrgSharedConfig() { /* no-op */ },
   async loadProfile() { return null },
   async saveProfile() { /* no-op */ },
+  async getAccountSettings() {
+    return { username: null, passwordChangedAt: null, accountCreatedAt: null, avatarUpdatedAt: null }
+  },
+  // Nothing is stored, so nothing is taken.
+  async isUsernameAvailable() { return true },
+  async setUsername() { return { ok: false as const, reason: 'offline' as const } },
   async setAvatar() { /* no-op */ },
   async removeAvatar() { /* no-op */ },
   async getAvatarDataUrl() { return null },

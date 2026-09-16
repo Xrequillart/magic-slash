@@ -3,8 +3,9 @@ import { ipcMain } from 'electron'
 import { readProfile, writeProfile } from '../config/profile'
 import { getStore } from '../store/Store'
 import { validateAvatarFile, type AvatarSourceResult } from '../../avatar'
+import { validateUsername, type UsernameCheckResult, type UsernameSaveResult } from '../../username'
 import { openImageFileDialog } from './skills-handlers'
-import type { UserProfile } from '../../types'
+import type { AccountSettings, UserProfile } from '../../types'
 
 export function setupProfileHandlers(): void {
   // Cloud is the source of truth. Read it and mirror to profile.md so the skills
@@ -27,6 +28,92 @@ export function setupProfileHandlers(): void {
     // Persist to the cloud (source of truth) AND mirror to profile.md for skills.
     await getStore().saveProfile(data)
     writeProfile(data)
+  })
+
+  // ─── Handle ───────────────────────────────────────────────────────────────
+  //
+  // The two writes below are the trust boundary, not the modal: `raw` is renderer
+  // input whatever produced it, so the SHAPE is judged here with the shared rules in
+  // desktop/src/username.ts — the same module the form greys its button with, and the
+  // same rule the column states in SQL. Three copies, one spelling; see that module's
+  // header for why the third cannot be imported.
+  //
+  // Nothing here goes near writeProfile: a handle is an account field, not one of the
+  // things ~/.config/magic-slash/profile.md carries for the /magic:* skills to read.
+
+  /**
+   * What the account card reads on mount: the handle, when the password last changed,
+   * and when the account was created.
+   *
+   * ONE CHANNEL FOR THE THREE, because the first two are two columns of one row. Never
+   * throws — every field is separately nullable and each null is a state the card
+   * already draws, so a failure costs one line rather than the tab.
+   */
+  ipcMain.handle('profile:getAccountSettings', async (): Promise<AccountSettings> => {
+    try {
+      return await getStore().getAccountSettings()
+    } catch (error) {
+      console.error('[profile] getAccountSettings failed:', error)
+      return { username: null, passwordChangedAt: null, accountCreatedAt: null, avatarUpdatedAt: null }
+    }
+  })
+
+  /**
+   * Is this handle free? Asked while the user is still typing, so it is cheap and it
+   * never throws.
+   *
+   * THE SHAPE IS JUDGED FIRST AND WITHOUT A ROUND TRIP. A field holding two characters
+   * is not a question for the server — it is already refused — and short-circuiting
+   * here is what stops every keystroke of `x`, `xa`, `xav` from becoming a request.
+   *
+   * ADVISORY, and the caller must not treat a `true` as a reservation: it describes
+   * the instant it ran, and the unique index is what decides at the write. A lookup
+   * that FAILS answers available (see `CloudStore.isUsernameAvailable`) — this gates a
+   * hint, and a network hiccup must not tell someone their own free handle is taken.
+   */
+  ipcMain.handle('profile:checkUsername', async (_event, raw: string): Promise<UsernameCheckResult> => {
+    const verdict = validateUsername(String(raw ?? ''))
+    if (!verdict.ok) return verdict
+
+    try {
+      return { ok: true, available: await getStore().isUsernameAvailable(verdict.username) }
+    } catch (error) {
+      console.error('[profile] checkUsername failed:', error)
+      return { ok: true, available: true }
+    }
+  })
+
+  /**
+   * Claim a handle.
+   *
+   * Reports every outcome as a VALUE, the way setAvatar and setup:provisionMcp do, so
+   * the modal can put the reason next to the field instead of surfacing an unhandled
+   * IPC error. `taken` is the outcome that matters and it is established HERE and not
+   * by the check above: two people claiming one handle at the same instant is exactly
+   * what a pre-flight read cannot decide, and the unique index can.
+   *
+   * `invalid` from the store means the column's check constraint fired although
+   * `validateUsername` had passed the string — a drift between the TypeScript rule and
+   * the SQL one. It is folded into `bad_characters` rather than given a code of its
+   * own: to the person typing it is the same message, and the drift belongs in the
+   * console for whoever has to go and fix the migration.
+   */
+  ipcMain.handle('profile:setUsername', async (_event, raw: string): Promise<UsernameSaveResult> => {
+    const verdict = validateUsername(String(raw ?? ''))
+    if (!verdict.ok) return verdict
+
+    try {
+      const outcome = await getStore().setUsername(verdict.username)
+      if (outcome.ok) return { ok: true, username: verdict.username }
+      if (outcome.reason === 'invalid') {
+        console.error('[profile] the database refused a handle that validateUsername accepted:', verdict.username)
+        return { ok: false, reason: 'bad_characters' }
+      }
+      return { ok: false, reason: outcome.reason }
+    } catch (error) {
+      console.error('[profile] setUsername failed:', error)
+      return { ok: false, reason: 'error' }
+    }
   })
 
   // ─── Profile photo ────────────────────────────────────────────────────────

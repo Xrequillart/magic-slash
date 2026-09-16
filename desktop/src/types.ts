@@ -1689,6 +1689,45 @@ export interface AuthStatus {
   user?: CloudUser
 }
 
+/**
+ * The account facts the Account tab's card draws that are not in `AuthStatus` — read
+ * once, together, because they come off one row.
+ *
+ * ONE CALL AND NOT THREE. The card needs the handle and the password date, and both
+ * live on the caller's `profiles` row; two channels would be two round trips to read
+ * one row, and they could disagree with each other by however long the second took.
+ * The photo is NOT here, deliberately: those are bytes, they travel on their own
+ * channel, and they are shared with two surfaces this card knows nothing about (see
+ * `renderer/hooks/useAvatar`).
+ *
+ * EVERY FIELD IS NULLABLE AND NULL IS A STATE, a different one per field:
+ *
+ *   * `username` — no handle picked. The card falls back to the email address.
+ *   * `passwordChangedAt` — no change RECORDED, which is weaker than "never changed":
+ *     the column postdates most accounts, so a password changed last year reads as
+ *     null forever. The card says only what that supports.
+ *   * `accountCreatedAt` — the session could not be read. It is the FALLBACK date the
+ *     password line falls back to, so its absence simply removes the line.
+ *   * `avatarUpdatedAt` — no photo, or its date could not be read. The photo BYTES do
+ *     not travel with this (see above); only the date the object was last written.
+ *
+ * `avatarUpdatedAt` IS THE ONE FIELD NOT RECORDED BY THIS APP. It is Storage's own
+ * `updated_at` on the object, which makes it ground truth rather than a column someone
+ * has to remember to write: it cannot drift from the photo because it IS the photo's
+ * row. `passwordChangedAt` would be the same kind of fact if GoTrue kept one, and the
+ * reason it is a column of ours is precisely that GoTrue does not.
+ *
+ * Every date is an ISO 8601 string and not a `Date`: they cross the preload bridge, and
+ * structured clone would survive a Date while every other date in this app's IPC is a
+ * string. The renderer formats them with the active locale.
+ */
+export interface AccountSettings {
+  username: string | null
+  passwordChangedAt: string | null
+  accountCreatedAt: string | null
+  avatarUpdatedAt: string | null
+}
+
 export interface Org {
   id: string
   name: string

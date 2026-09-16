@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AuthStatus } from '../../types'
 import { AVATAR_BUCKET, avatarObjectPath } from '../../avatar'
 import { getSupabaseClient, isCloudEnabled } from './supabase-client'
+import { stampPasswordChange } from './password-stamp'
 import {
   saveSession,
   loadSession,
@@ -254,8 +255,16 @@ export async function confirmPasswordReset(email: string, code: string, newPassw
   })
   if (verifyError) throw new Error(verifyError.message)
 
-  const { error: updateError } = await client.auth.updateUser({ password: newPassword })
+  const { data: updated, error: updateError } = await client.auth.updateUser({ password: newPassword })
   if (updateError) throw new Error(updateError.message)
+
+  // BEFORE the sign-out, and that ordering is the whole reason this line is here
+  // rather than in the IPC handler: a stamp attempted after `clearSession()` has no
+  // session to write through, and somebody who reset a forgotten password would be
+  // told afterwards that nothing had changed since they created the account. The uid
+  // comes from the update's own response because the recovery session was never
+  // persisted, so `loadSession()` has nothing to offer here.
+  if (updated.user) await stampPasswordChange(client, updated.user.id)
 
   // Recovery session is transient — drop it so the user logs in cleanly.
   await signOutQuietly(client, 'after password reset')
@@ -271,8 +280,13 @@ export async function updatePassword(newPassword: string): Promise<void> {
   const client = await getAuthedClient()
   if (!client) throw new Error('You must be signed in to change your password')
 
-  const { error } = await client.auth.updateUser({ password: newPassword })
+  const { data, error } = await client.auth.updateUser({ password: newPassword })
   if (error) throw new Error(error.message)
+
+  // The account card's password line reads this back. It never throws and it is not
+  // awaited for its result — the password has already changed, and a failed stamp is a
+  // missing sentence, not a failed operation. See `stampPasswordChange`.
+  if (data.user) await stampPasswordChange(client, data.user.id)
 }
 
 /**

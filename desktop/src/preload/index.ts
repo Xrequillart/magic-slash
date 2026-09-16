@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AvatarSourceResult } from '../avatar'
-import type { AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, PlanDetail, PlanOverview, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
+import type { UsernameCheckResult, UsernameSaveResult } from '../username'
+import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, PlanDetail, PlanOverview, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -589,6 +590,35 @@ interface PRWatcherUpdate {
 const profileApi = {
   get: (): Promise<UserProfile | null> => ipcRenderer.invoke('profile:get'),
   save: (data: UserProfile) => ipcRenderer.invoke('profile:save', data),
+
+  // The HANDLE. Not part of the profile the two calls above move around either: it
+  // is an account field, it is UNIQUE across every user, and `profile:save` must
+  // never carry it — that write rebuilds every optional column, so a handle riding
+  // along would be cleared by the next profile edit.
+
+  /**
+   * What the account card reads on mount: the handle, when the password last changed,
+   * and when the account was created. One channel for the three, because the first two
+   * are two columns of one row.
+   */
+  getAccountSettings: (): Promise<AccountSettings> => ipcRenderer.invoke('profile:getAccountSettings'),
+  /**
+   * Is this one free? For the hint under the field, on every keystroke.
+   *
+   * ADVISORY — it answers for the instant it ran and reserves nothing. A `false`
+   * from `setUsername` is the only authoritative answer, because the unique index is
+   * what decides. Main judges the SHAPE without a round trip, so a half-typed handle
+   * costs nothing.
+   */
+  checkUsername: (raw: string): Promise<UsernameCheckResult> =>
+    ipcRenderer.invoke('profile:checkUsername', raw),
+  /**
+   * Claim it. Refusals come back as reason CODES the caller maps to a message key —
+   * `taken` among them, which is a result and not an error: the user answers it by
+   * typing a different handle.
+   */
+  setUsername: (raw: string): Promise<UsernameSaveResult> =>
+    ipcRenderer.invoke('profile:setUsername', raw),
 
   // The profile photo. It is NOT part of the profile the two calls above move
   // around: the bytes live in a private Supabase Storage bucket the main process

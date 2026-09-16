@@ -877,9 +877,47 @@ export const en = {
   'cloud.section': 'Cloud account',
   'cloud.signedInFallback': 'Signed in',
   'cloud.signedInHint': 'Signed in to Magic Slash cloud',
+  // ── The label column of the card's table ─────────────────────────────────
+  // The name of each setting, and nothing else: the VALUE is the next column over and
+  // comes from the account, not from here. They are one group because they are one
+  // column, and they line up on screen — so a word that reads fine alone but breaks
+  // the set is a mistake visible here before it is visible in the app. The fifth is
+  // `cloud.deleteAccount` further down, where the rest of that dialog lives.
+  //
+  // NO COLONS. An earlier pass put "Email:" in this column because the label and the
+  // value shared one line; they are two columns now, the alignment is what separates
+  // them, and a colon would be punctuation pointing at a gap.
+  'cloud.row.username': 'Username',
+  'cloud.row.avatar': 'Avatar',
+  'cloud.row.email': 'Email',
+  'cloud.row.password': 'Password',
+  // ── The avatar's value ───────────────────────────────────────────────────
+  // The date comes from Storage's own `updated_at` on the object, so it is the photo's
+  // own row rather than something this app remembers to write.
+  'cloud.avatar.updatedOn': 'Updated on {date}',
+  // A photo whose date could not be read. There IS one — the bytes are on screen — so
+  // the cell says the fact it is sure of rather than going blank.
+  'cloud.avatar.set': 'Photo set',
+  'cloud.avatar.none': 'No photo',
+  // The handle's line while there is none. Drawn quiet by the card, so it does not
+  // read as a handle someone actually picked.
+  'cloud.username.none': 'No username yet',
+  'cloud.username.hint': 'Shown instead of your email address',
+  'cloud.username.title': 'Choose a username',
+  'cloud.username.placeholder': 'username',
+  'cloud.username.help':
+    'Between {min} and {max} characters: letters, digits, dot, dash and underscore, starting with a letter or a digit.',
+  'cloud.username.submit': 'Save username',
+  'cloud.username.checking': 'Checking availability…',
+  'cloud.username.available': '{username} is available',
+  // The one refusal the form cannot pre-empt: it is the unique index that decides,
+  // so this is shown both while typing and after a save that lost the race.
+  'cloud.username.taken': '{username} is already taken',
+  'cloud.username.tooShort': 'At least {min} characters.',
+  'cloud.username.tooLong': 'At most {max} characters.',
+  'cloud.username.badCharacters':
+    'Letters, digits, dot, dash and underscore only, starting with a letter or a digit.',
   'cloud.avatar.alt': 'Account photo',
-  'cloud.avatar.choose': 'Choose a photo',
-  'cloud.avatar.remove': 'Remove photo',
   'cloud.avatar.crop.title': 'Frame your photo',
   // Names the surface being dragged, which `cloud.avatar.alt` does not: that one
   // labels the photo already on the account. It NAMES only: the instructions are
@@ -898,6 +936,17 @@ export const en = {
   'cloud.notSignedInHint': 'Sign in to manage your organization (optional)',
   'cloud.joinWithInvitation': 'Join with invitation',
   'cloud.signIn': 'Sign in',
+  // ── What the password LINE says, under "Password" ────────────────────────
+  // Two sentences and not one with a fallback date in it, because they make
+  // different claims and only one of them is provable.
+  'cloud.password.changedOn': 'Last changed on {date}',
+  // NOT "never changed". GoTrue stores no password timestamp, so the app records its
+  // own — and that column postdates most accounts: somebody who changed their
+  // password last year still reads as null here, and always will. "No change
+  // recorded" is the whole of what a null supports, so it is the whole of what this
+  // says. The creation date is still worth showing: it is the earliest the current
+  // password can possibly date from.
+  'cloud.password.notRecorded': 'No change recorded since the account was created on {date}',
   'cloud.password.submit': 'Update password',
   'cloud.password.newPlaceholder': 'New password',
   'cloud.password.confirmPlaceholder': 'Confirm new password',
@@ -907,6 +956,16 @@ export const en = {
   'cloud.email.newPlaceholder': 'New email',
   'cloud.email.confirmHelp': 'Check {email} for the confirmation code and enter it below.',
   'cloud.email.codePlaceholder': '6-digit code',
+  // What the LINE says, under "Delete my account", before anything is pressed.
+  //
+  // It names the consequence a person cannot guess and would not find out until it
+  // had happened: an organization they are alone in goes with them, and one they
+  // share does NOT — it is handed to another member (delete_account picks an admin
+  // first, else the oldest member). The modal's own body repeats the irreversibility
+  // and adds that the app keeps working locally; this line is for the reader who is
+  // deciding whether to open it at all.
+  'cloud.delete.rowHint':
+    'Organizations where you are the only member are deleted with their data. The others pass to another member. This cannot be undone.',
   'cloud.delete.submit': 'Delete permanently',
   'cloud.delete.warning': 'This permanently deletes your account and personal data.',
   'cloud.delete.body':
@@ -933,6 +992,9 @@ export const en = {
   'toast.avatarNotWebp': 'That photo could not be encoded correctly. Try another image.',
   // No claim about what the photo is now: a failed save may have already replaced
   // the stored bytes, and the card re-reads the server rather than guess.
+  'toast.usernameUpdated': 'Username updated',
+  'toast.usernameSaveFailed': 'Failed to save your username. Please try again.',
+  'toast.usernameOffline': 'Sign in to choose a username',
   'toast.avatarSaveFailed': 'Failed to save your photo. Please try again.',
   'toast.avatarRemoveFailed': 'Failed to remove your photo',
 

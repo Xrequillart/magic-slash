@@ -18,16 +18,20 @@ const h = vi.hoisted(() => {
   // every call so a test can assert the bucket AND the keys.
   const mockStorageRemove = vi.fn()
   const mockStorageFrom = vi.fn(() => ({ remove: mockStorageRemove }))
-  // PostgREST is reached by exactly one function too: deleteAccount reads
-  // `profiles.avatar_url` to find out whether there is a photo to delete at all.
-  // A chainable recorder whose terminal call is maybeSingle().
+  // PostgREST is reached by two functions: deleteAccount reads `profiles.avatar_url`
+  // to find out whether there is a photo to delete at all, and both password paths
+  // upsert `profiles.password_changed_at` through `stampPasswordChange`. A chainable
+  // recorder with two terminals — maybeSingle() for the read, upsert() for the write.
   const mockMaybeSingle = vi.fn()
+  const mockUpsert = vi.fn()
   const mockFrom = vi.fn(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const builder: any = {
       select: () => builder,
       eq: () => builder,
       maybeSingle: () => mockMaybeSingle(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      upsert: (...args: any[]) => mockUpsert(...args),
     }
     return builder
   })
@@ -40,7 +44,7 @@ const h = vi.hoisted(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     stored: null as any,
   }
-  return { mockAuth, mockRpc, mockStorageRemove, mockStorageFrom, mockFrom, mockMaybeSingle, state }
+  return { mockAuth, mockRpc, mockStorageRemove, mockStorageFrom, mockFrom, mockMaybeSingle, mockUpsert, state }
 })
 
 vi.mock('./supabase-client', () => ({
@@ -89,6 +93,8 @@ beforeEach(() => {
   // Default: the user HAS a photo, so the removal path is the one under test
   // unless a test says otherwise.
   h.mockMaybeSingle.mockResolvedValue({ data: { avatar_url: 'u1/avatar.webp' }, error: null })
+  // The password stamp's write. Succeeds unless a test says otherwise.
+  h.mockUpsert.mockResolvedValue({ error: null })
   h.state.stored = { access_token: 'access-1', refresh_token: 'refresh-1', expires_at: 9999999999, user: { id: 'u1', email: 'user@example.com' } }
   // Default to a cold client (nothing in memory) so getAuthedClient() takes the
   // setSession path; the fast-path tests below override getSession explicitly.
@@ -203,10 +209,28 @@ describe('confirmPasswordReset', () => {
     expect(h.state.clearSession).toHaveBeenCalled()
   })
 
+  // The ordering here is the point, not the stamp itself: this flow ends by clearing
+  // a transient recovery session, and a stamp attempted after that has no session to
+  // write through. Somebody who reset a forgotten password would then be told, on the
+  // account card, that no change had been recorded since they created the account.
+  it('records the change before the transient session is cleared', async () => {
+    h.mockAuth.verifyOtp.mockResolvedValue({ data: { session: SESSION }, error: null })
+    h.mockAuth.updateUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null })
+
+    await confirmPasswordReset('user@example.com', '123456', 'newpass')
+
+    expect(h.mockUpsert).toHaveBeenCalled()
+    expect(h.mockUpsert.mock.calls[0][0].user_id).toBe('u1')
+    expect(h.mockUpsert.mock.invocationCallOrder[0]).toBeLessThan(
+      h.state.clearSession.mock.invocationCallOrder[0],
+    )
+  })
+
   it('throws on an invalid code and does not update the password', async () => {
     h.mockAuth.verifyOtp.mockResolvedValue({ data: {}, error: { message: 'Token has expired or is invalid' } })
     await expect(confirmPasswordReset('user@example.com', '000000', 'newpass')).rejects.toThrow('Token has expired or is invalid')
     expect(h.mockAuth.updateUser).not.toHaveBeenCalled()
+    expect(h.mockUpsert).not.toHaveBeenCalled()
   })
 
   it('throws when cloud is disabled', async () => {
@@ -231,6 +255,31 @@ describe('updatePassword', () => {
   it('propagates an update error', async () => {
     h.mockAuth.updateUser.mockResolvedValue({ data: {}, error: { message: 'weak password' } })
     await expect(updatePassword('x')).rejects.toThrow('weak password')
+  })
+
+  // The account card's password line has no other source: GoTrue records no password
+  // timestamp, so a change that is not stamped here is a change the app can never
+  // report. See cloud/password-stamp.ts.
+  it('records when the password changed', async () => {
+    h.mockAuth.updateUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null })
+    await updatePassword('newpass')
+
+    expect(h.mockFrom).toHaveBeenCalledWith('profiles')
+    const [payload, options] = h.mockUpsert.mock.calls[0]
+    expect(payload.user_id).toBe('u1')
+    expect(Number.isNaN(Date.parse(payload.password_changed_at))).toBe(false)
+    // Only the two columns: an upsert carrying anything else would overwrite the
+    // profile a password change has no business touching.
+    expect(Object.keys(payload).sort()).toEqual(['password_changed_at', 'user_id'])
+    expect(options).toEqual({ onConflict: 'user_id' })
+  })
+
+  // The password HAS changed by then. Reporting a failed stamp as a failed change
+  // would invite the user to do it again, for a line of text.
+  it('still succeeds when the stamp cannot be written', async () => {
+    h.mockAuth.updateUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null })
+    h.mockUpsert.mockResolvedValue({ error: { message: 'offline' } })
+    await expect(updatePassword('newpass')).resolves.toBeUndefined()
   })
 })
 
