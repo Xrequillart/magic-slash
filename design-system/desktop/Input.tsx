@@ -66,6 +66,27 @@ const TONES: Record<InputTone, string> = {
 const INVALID = 'border-red focus:border-red'
 
 /**
+ * WHAT A PASSWORD FIELD LOOKS LIKE WHILE YOU TYPE IN IT.
+ *
+ * The browser replaces every character with a bullet, and bullets set at the text
+ * tracking of a normal sentence run together into a grey bar: there is no word shape to
+ * read, so the only thing left to tell you your keystroke registered is that the bar got
+ * marginally longer. Spacing them is what turns that bar back into countable marks, and
+ * it is the one typographic rule this component applies to a single `type`.
+ *
+ * `0.25em` AND NOT `tracking-widest`, which is 0.1em: that ladder is tuned for words,
+ * where a tenth of an em is already a deliberate-looking gap between letters that have
+ * their own shapes. A column of identical circles needs a quarter to read as separate.
+ *
+ * ONLY WHILE THERE IS SOMETHING TO SPACE, which is what the `:placeholder-shown` guard
+ * buys. "Confirm new password" stretched to a quarter-em reads as a title rather than a
+ * prompt, and it is the one string in the field that is words and not bullets. A field
+ * with NO placeholder matches `:not(:placeholder-shown)` at all times, which is the
+ * right answer there too — nothing to distort.
+ */
+const PASSWORD_TRACKING = '[&:not(:placeholder-shown)]:tracking-[0.25em]'
+
+/**
  * FOUR RUNGS OFF THE SHARED LADDER — 24 / 28 / 32 / 36, the same pixels `Button`,
  * `ButtonIcon`, `Label` and `Status` stand on, so a field and a button on one row are
  * the same height by construction rather than by eye.
@@ -261,7 +282,10 @@ export const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, InputPro
   } = props
 
   const shape = SIZES[size]
-  const face = mono ? 'font-mono' : ''
+  // A password's bullets are spaced, and nothing else is — see PASSWORD_TRACKING. It
+  // rides on `face` because that is already the "what the glyphs look like" slot, and a
+  // field cannot be both `mono` and a password in this app.
+  const face = mono ? 'font-mono' : props.type === 'password' ? PASSWORD_TRACKING : ''
   const ground = `${TONES[tone]} ${invalid ? INVALID : ''}`
 
   if (props.multiline) {

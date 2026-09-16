@@ -156,6 +156,25 @@ export function InputEntry({ theme, onOpen }: { theme: DesktopTheme; onOpen?: (i
         </Stage>
       </EntrySection>
 
+      <EntrySection
+        title="A password is spaced"
+        note="The browser replaces every character with a bullet, and bullets set at the tracking of a normal sentence run together into a grey bar: there is no word shape to read, so the only thing left telling you a keystroke registered is that the bar got marginally longer. 0.25em and not tracking-widest’s 0.1em — that ladder is tuned for letters, which have shapes of their own; a column of identical circles needs a quarter of an em to read as separate marks."
+      >
+        <Stage theme={theme} className="flex flex-col gap-2">
+          <Specimen label="type in it — the placeholder is untouched, the bullets are not">
+            <Playground type="password" placeholder="Password" className="w-full" />
+          </Specimen>
+        </Stage>
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          The spacing applies only while there is something to space. “Confirm new
+          password” stretched to a quarter of an em reads as a title rather than a
+          prompt, and it is the one string in the field that is words and not bullets —
+          hence the <code>:not(:placeholder-shown)</code> guard. A field with no
+          placeholder matches it at all times, which is the right answer there too:
+          nothing to distort.
+        </p>
+      </EntrySection>
+
       <EntrySection title="Props">
         <PropsTable rows={PROPS} />
         <Snippet>{`import { Input } from '@ds/desktop'
