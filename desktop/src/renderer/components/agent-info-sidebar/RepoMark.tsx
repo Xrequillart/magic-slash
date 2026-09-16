@@ -27,10 +27,10 @@ import { getProjectColorMap } from '../../utils/projectColors'
  * identities into one large one and one small. Matching the avatar is the point: they are
  * read as a pair.
  *
- * A table rather than a free `className` prop, for the reason `accountAvatarSize.ts`
- * gives about its own variants: the glyph has to shrink WITH the box, so the two numbers
- * are one decision and a caller passing only the outer size would get a tile with an
- * oversized folder in it.
+ * A table rather than a free `className` prop, for the reason `avatarSizes.ts` gives
+ * about its own rungs: the glyph has to shrink WITH the box, so the two numbers are one
+ * decision and a caller passing only the outer size would get a tile with an oversized
+ * folder in it.
  */
 const REPO_MARK_SIZES = Object.freeze({
   card: Object.freeze({ box: 'w-6 h-6 rounded-lg', glyph: 'w-3.5 h-3.5' }),

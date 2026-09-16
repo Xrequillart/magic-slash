@@ -463,9 +463,10 @@ export function CloudAccountSection() {
           of markup sharing a plate and nothing else, which is how they had drifted into
           different button heights; the difference between them is DATA now.
 
-          `alt` comes from this side because the design system cannot read a translation —
-          the same split `AccountAvatar` already made, and the reason that component is
-          still here for the surfaces that are not this card. */}
+          `alt` comes from this side because the design system cannot read a translation.
+          That split used to live in an `AccountAvatar` wrapper with a table of four
+          surfaces; the card was the last of them that still needed a name, so the wrapper
+          is gone and the caller names the rung. */}
       {status.loggedIn ? (
         <AccountCard
           avatar={{ src: avatar, alt: t('cloud.avatar.alt') }}

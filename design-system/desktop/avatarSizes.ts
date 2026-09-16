@@ -9,8 +9,10 @@
  * makes the part worth asserting — the class strings — testable at all.
  *
  * Keep it that way: the day this file imports React it stops being covered, silently.
- * It inherits that rule from `desktop/src/renderer/components/accountAvatarSize.ts`,
- * which is now the SURFACE map that points into this one.
+ * It inherited that rule from the app's own `accountAvatarSize.ts`, which mapped the
+ * app's SURFACES onto these rungs. That file is gone: three of its four surfaces went
+ * with the redesigns that removed them, and the fourth — the identity card — is drawn by
+ * `AccountCard` in this folder now. The one caller left asks for a rung by name.
  *
  * A SIZE AND NOT A SURFACE. The app's table named `card`, `footer`, `sidebar` and
  * `roster` — which was right while the component lived in the app, and is wrong here:

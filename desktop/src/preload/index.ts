@@ -774,7 +774,8 @@ const orgApi = {
   // orgId omitted → the active org.
   members: (orgId?: string): Promise<Member[]> => ipcRenderer.invoke('org:members', { orgId }),
   // The members' photos, keyed by user id, as `data:image/webp;base64,…` strings —
-  // the bucket is private, so bytes travel rather than URLs (see AccountAvatar).
+  // the bucket is private and its only web-facing form is a signed URL that expires, so
+  // bytes travel rather than URLs. `OrgPage` is the one surface that draws them.
   // A member with no photo has no key; the renderer draws the generic icon.
   memberAvatars: (orgId?: string): Promise<Record<string, string>> =>
     ipcRenderer.invoke('org:memberAvatars', { orgId }),

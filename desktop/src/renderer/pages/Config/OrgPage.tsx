@@ -4,11 +4,10 @@ import { useAuth } from '../../hooks/useAuth'
 import { useOrg } from '../../hooks/useOrg'
 import { useMemberAvatars } from '../../hooks/useMemberAvatars'
 import { useStore } from '../../store'
-import { AccountAvatar } from '../../components/AccountAvatar'
 import { Modal } from '../../components/Modal'
 import { RoleSelect } from './RoleSelect'
 import { SectionHeader } from './SectionHeader'
-import { Input, TabStrip } from '@ds/desktop'
+import { Avatar, Input, TabStrip } from '@ds/desktop'
 import { TabSweep } from '../../components/TabSweep'
 import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
@@ -175,9 +174,31 @@ function OrganizationCard({
                             width, so a long email would push the column wide instead
                             of eliding. */}
                         <div className="flex items-center gap-2 min-w-0">
-                          {/* alt="" on purpose — the email right beside it already
-                              names the person; see AccountAvatar's `alt`. */}
-                          <AccountAvatar dataUrl={avatars[m.userId] ?? null} variant="roster" alt="" />
+                          {/* `Avatar` DIRECTLY, where this went through the app's own
+                              `AccountAvatar` and its table of surfaces. That table had
+                              four entries and this row is the last one standing: the
+                              identity card's geometry moved into `AccountCard` when that
+                              card moved into the design system, and the settings rail
+                              and the sidebar's account button are both gone. A map from
+                              one surface to one rung is a map.
+
+                              `md` — 24px, sized UNDER the 28px role pill it shares the
+                              row with rather than at it, so adding faces does not make
+                              every roster taller. `badge` keeps the `bg-accent/20` plate
+                              for a member with no photo, and `Avatar` gives the bare
+                              fallback the same box, so a missing photo never shifts the
+                              row.
+
+                              The SOURCE is always a data URL from the main process,
+                              never a remote one: the Storage bucket is private and its
+                              only web-facing form is a signed URL that expires, so an
+                              `<img src>` pointed at one would work for an hour and then
+                              render a broken box. See `useMemberAvatars`.
+
+                              `alt=""` on purpose — the email right beside it already
+                              names the person, and an alt repeating the adjacent label
+                              makes a screen reader say them twice per row. */}
+                          <Avatar src={avatars[m.userId] ?? null} alt="" size="md" fallback="badge" />
                           <span className="block truncate text-sm">
                             {m.email ?? m.userId}
                             {isSelf && <span className="text-text-secondary/40">{t('org.you')}</span>}
