@@ -25,13 +25,13 @@ const PROPS: PropRow[] = [
     type: 'CommitCardCommit[]',
     required: true,
     description:
-      'The rows to draw, in order. All of them — slice before you get here. The version this came from took the whole list and sliced five off it, which put the number five inside the component and let the tail line disagree with the slice.',
+      'Every commit, in order — no slicing before you get here. more.shown decides how many stand at rest, and the rest are mounted behind the tail waiting to be revealed.',
   },
   {
-    name: 'moreLabel',
-    type: 'string',
+    name: 'more',
+    type: '{ shown: number; label: string; lessLabel?: string }',
     description:
-      'The tail line when the caller is showing fewer commits than exist — “+2 more commits”, already composed. It also changes the rail: present, the last drawn row keeps its lower segment and this line continues it past a rail with no tick.',
+      'There are more commits than the card shows at rest, and the tail line that opens them. shown is how many stand at rest and label is what the tail says — both the caller’s, as they always were. Absent means the list is whole: every row drawn, the rail stopped at the last tick, nothing to press. lessLabel absent leaves it one-way.',
   },
   {
     name: 'copiedHash',
@@ -85,14 +85,19 @@ const COMMITS: CommitCardCommit[] = [
 ]
 
 /** The real thing, clipboard and all. */
-function Live({ commits, moreLabel }: { commits: CommitCardCommit[]; moreLabel?: string }) {
+function Live({ commits, shown }: { commits: CommitCardCommit[]; shown?: number }) {
   const [copied, setCopied] = useState<string | null>(null)
+  const hidden = shown === undefined ? 0 : Math.max(0, commits.length - shown)
   return (
     <CommitCard
       label="Commits"
-      summary={`${commits.length + (moreLabel ? 2 : 0)} ahead of main`}
+      summary={`${commits.length} ahead of main`}
       commits={commits}
-      moreLabel={moreLabel}
+      more={
+        hidden > 0
+          ? { shown: shown as number, label: `+${hidden} more commits`, lessLabel: 'Show fewer' }
+          : undefined
+      }
       copiedHash={copied}
       onCopyHash={(hash) => {
         setCopied(hash)
@@ -141,15 +146,15 @@ export function CommitCardEntry({
       </EntrySection>
 
       <EntrySection
-        title="It draws every commit it is handed"
-        note="A deliberate refusal. The version this came from sliced five off the list itself, which put the number five inside the design system — a caller wanting ten rows would have had to change this file, and the tail line could disagree with the slice. The caller slices and writes its own tail; this arranges what it is given."
+        title="The tail opens"
+        note="It was a line of muted text saying how many rows were being withheld, which named a thing a reader could do nothing about. It is a control now: the hidden rows are always mounted, and a grid track travels from 0fr to 1fr to reveal them. That is the one way to transition to a height nobody knows in advance — height: auto is not interpolable, and a max-height guess either clips or eases across empty space. Press it."
       >
         <Stage theme={theme} className="flex flex-col gap-6">
           <div className="max-w-md">
             <span className="mb-1 block font-mono text-[10px] text-text-secondary">
-              with a tail — the rail runs past the last tick
+              three standing, two behind the tail
             </span>
-            <Live commits={COMMITS} moreLabel="+2 more commits" />
+            <Live commits={COMMITS} shown={3} />
           </div>
           <div className="max-w-md">
             <span className="mb-1 block font-mono text-[10px] text-text-secondary">
@@ -159,10 +164,12 @@ export function CommitCardEntry({
           </div>
         </Stage>
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
-          <code>moreLabel</code> is the only thing that tells the rail where the list ends.
-          Present, the last drawn row keeps its lower segment and the tail line continues it
-          past a rail with no tick — the trail saying there is more of this branch than the
-          panel is showing. Absent, the rail stops at the last tick.
+          <code>more</code> is also what tells the rail where the list ends. Shut, the last
+          standing row keeps its lower segment and the tail continues it past a rail with no
+          tick — the trail saying there is more of this branch than the panel is showing.
+          Open, the rail closes at the true last commit and the control below it draws none:
+          it is no longer part of the list. The rows are <code>inert</code> while they are
+          hidden, so Tab never lands on a copy button nobody can see.
         </p>
       </EntrySection>
 
@@ -179,7 +186,7 @@ const SHOWN_COMMITS = 5
 <CommitCard
   label={t('agentInfo.commits')}
   summary={\`\${commits.length} ahead of \${baseBranch}\`}
-  commits={commits.slice(0, SHOWN_COMMITS).map((commit) => ({
+  commits={commits.map((commit) => ({
     hash: commit.hash,
     shortHash: commit.shortHash,
     subject: commit.subject,
@@ -187,9 +194,13 @@ const SHOWN_COMMITS = 5
     copyLabel: \`Copy full hash: \${commit.hash}\`,
     openable: commit.isPushed && Boolean(gitHubUrl),
   }))}
-  moreLabel={
+  more={
     commits.length > SHOWN_COMMITS
-      ? \`+\${commits.length - SHOWN_COMMITS} more commits\`
+      ? {
+          shown: SHOWN_COMMITS,
+          label: t('agentInfo.commitsMore', { count: commits.length - SHOWN_COMMITS }),
+          lessLabel: t('agentInfo.commitsLess'),
+        }
       : undefined
   }
   copiedHash={copiedCommitHash}

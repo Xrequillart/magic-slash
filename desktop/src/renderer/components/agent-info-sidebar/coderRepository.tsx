@@ -31,12 +31,16 @@ import type { RepositoryMetadata } from '../../../types'
  */
 
 /**
- * How many commits the card draws before it stops counting and starts summarising.
+ * How many commits the card stands on before the tail takes over.
  *
  * IT LIVES HERE AND NOT IN `CommitCard`, which is the point of the split: the design system
  * arranges what it is handed, and how much of a branch is worth showing in a 288px sidebar
- * is this app's judgement. It is named because two places need it — the slice and the "+N
- * more" line — and those two disagreeing is exactly the bug the literal five used to invite.
+ * is this app's judgement.
+ *
+ * ONE PLACE NEEDS IT NOW, where two used to. It was read here twice — once to slice the
+ * list and once to word the "+N more" line — and the header of `CommitCard` warned that
+ * the two could disagree. The card does the slicing now, so this is handed over once and
+ * the count in the label is arithmetic on the same number.
  */
 const SHOWN_COMMITS = 5
 
@@ -182,7 +186,9 @@ export function toCoderRepository({
         ? {
             label: t('agentInfo.commits'),
             summary: `${gitData.commits.commits.length} ahead of ${gitData.commits.baseBranch}`,
-            commits: gitData.commits.commits.slice(0, SHOWN_COMMITS).map(commit => ({
+            // EVERY commit, unsliced: the card holds the ones it hides so the tail can
+            // open onto them, and `more.shown` is where it cuts.
+            commits: gitData.commits.commits.map(commit => ({
               hash: commit.hash,
               shortHash: commit.shortHash,
               subject: commit.subject,
@@ -190,9 +196,15 @@ export function toCoderRepository({
               copyLabel: `Copy full hash: ${commit.hash}`,
               openable: commit.isPushed && Boolean(gitData.gitHubUrl),
             })),
-            moreLabel:
+            more:
               gitData.commits.commits.length > SHOWN_COMMITS
-                ? `+${gitData.commits.commits.length - SHOWN_COMMITS} more commits`
+                ? {
+                    shown: SHOWN_COMMITS,
+                    label: t('agentInfo.commitsMore', {
+                      count: gitData.commits.commits.length - SHOWN_COMMITS,
+                    }),
+                    lessLabel: t('agentInfo.commitsLess'),
+                  }
                 : undefined,
             copiedHash: copiedCommitHash,
             onCopyHash: onCopyCommitHash,

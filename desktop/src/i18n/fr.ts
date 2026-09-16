@@ -1401,6 +1401,8 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.uncommittedChanges': 'Modifications non committées',
   'agentInfo.noUncommittedChanges': 'Aucun fichier en cours de modification ou en attente de commit',
   'agentInfo.commits': 'Commits',
+  'agentInfo.commitsMore': '+{count} commits de plus',
+  'agentInfo.commitsLess': 'Afficher moins',
   'agentInfo.viewOnGitHub': 'Voir sur GitHub',
   'agentInfo.viewPullRequest': 'Voir la pull request',
   'agentInfo.addTicket': 'Ajouter un ticket',

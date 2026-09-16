@@ -64,6 +64,11 @@ const COMMITS = [
   { subject: 'test(desktop): cover the pane resize guard', age: '2m', hash: '7b40e18', pushed: true },
   { subject: 'refactor(desktop): lift the pane state out of the view', age: '5m', hash: 'c1d8a05', pushed: true },
   { subject: 'fix(desktop): keep the divider inside its track', age: '11m', hash: '5e2f7b3', pushed: true },
+  // THE THREE THE TAIL IS COUNTING, and they are here rather than implied because the
+  // card holds what it hides now: the "+3 more commits" line opens onto these.
+  { subject: 'feat(desktop): remember the divider position per agent', age: '14m', hash: '9c07e4a', pushed: true },
+  { subject: 'chore(desktop): drop the unused pane reducer', age: '20m', hash: '2fb61d9', pushed: false },
+  { subject: 'docs(desktop): note why the divider is not a range input', age: '26m', hash: 'e84a3c7', pushed: false },
 ]
 
 /**
@@ -81,9 +86,12 @@ const COMMITS = [
  *
  * Four rows is not a claim about the component: this drawing is a CROP, and the count
  * line below is what says the list is a window onto something longer. Seven commits
- * either way.
+ * either way — and the other three are real rows now rather than a number, because the
+ * tail OPENS them. `MORE` is arithmetic on the list rather than a literal, so the line
+ * cannot claim a count the card does not hold.
  */
-const MORE = 3
+const SHOWN = 4
+const MORE = COMMITS.length - SHOWN
 
 /** Nothing is listening: a hash nobody can copy is still a hash. */
 const noop = () => undefined
@@ -92,7 +100,16 @@ export function CommitsCardMockup() {
   return (
     // `-mr-8` and `-mb-6` pull the panel past the card's padding on two sides, which is
     // the crop. WHERE it sits is `ToneCard`'s business, not this component's.
-    <div aria-hidden className="-mb-6 -mr-8 pl-7 pt-6">
+    /* `inert` ALONGSIDE `aria-hidden`, which it did not need until the tail became a
+       button: a decorative panel holding a real control is one a reader can Tab into and
+       press, on a page where nothing is listening. It reaches the DOM as a STRING — React
+       18 does not know the attribute and drops a boolean `true` with a warning — hence the
+       cast, the same one `components/ui.tsx` makes for its closed panels. */
+    <div
+      aria-hidden
+      {...({ inert: '' } as unknown as React.HTMLAttributes<HTMLDivElement>)}
+      className="-mb-6 -mr-8 pl-7 pt-6"
+    >
       {/* `shadow-lift`, the top rung of the declared scale — the same call the start
           card's terminal makes, and for the same reason: this is a panel sitting ON a
           coloured card, not a region of it.
@@ -124,7 +141,7 @@ export function CommitsCardMockup() {
             copyLabel: commit.hash,
             openable: commit.pushed,
           }))}
-          moreLabel={`+${MORE} more commits`}
+          more={{ shown: SHOWN, label: `+${MORE} more commits`, lessLabel: 'Show fewer' }}
           onCopyHash={noop}
           /* Only on a pushed commit, exactly as in the app: the button opens the commit
              on GitHub, so a local one has nothing to open. `openable` per row is what

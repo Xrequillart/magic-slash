@@ -1467,6 +1467,11 @@ export const en = {
   'agentInfo.uncommittedChanges': 'Uncommitted changes',
   'agentInfo.noUncommittedChanges': 'No file being modified or waiting to be committed',
   'agentInfo.commits': 'Commits',
+  // The tail of the commits card, which opens the rows it is counting. `count` is the
+  // HIDDEN ones — total minus what stands at rest — so the line says what pressing it
+  // gains rather than restating the summary already on the heading.
+  'agentInfo.commitsMore': '+{count} more commits',
+  'agentInfo.commitsLess': 'Show fewer',
   'agentInfo.viewOnGitHub': 'View on GitHub',
   'agentInfo.viewPullRequest': 'View Pull Request',
   'agentInfo.addTicket': 'Add a ticket',
