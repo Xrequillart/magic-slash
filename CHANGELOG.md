@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.96.3] - 2026-09-16
+
+### Added
+
+- **Desktop**: Item and PlanItem in the design system — one row shape for the plans and repositories lists, flush, with a radius only at the two ends of the stack
+- **Desktop**: A WhatsNewDialog in the design system, typeset like the public changelog
+- **Desktop**: The release notes dialog is redrawn and says which day the version shipped
+- **Desktop**: An Input in the design system — one line or several, four rungs, two grounds
+- **Desktop**: The sign-in screen takes the whole window, on the release mesh behind a glass card, and the debug menu can open it at any time
+- **Desktop**: An AccountCard in the design system, one card for both signed-in states
+- **Desktop**: The "+N more commits" line is a control — pressing it sweeps the hidden commits open
+
+### Changed
+
+- **Desktop**: The plans and repositories lists are drawn with Item
+- **Desktop**: Every text field is drawn with Input, and INPUT leaves theme/controls.ts
+- **Desktop**: The account card is drawn with the design system and loses its border
+- **Desktop**: The account avatar wrapper is gone — three of its four surfaces no longer existed
+- **Desktop**: The button has more air on both axes and rises under the pointer
+
+### Fixed
+
+- **Desktop**: A field takes the width its form gives it — the design system input was silently overriding every caller asking for a narrow one
+- **Landing**: The drawn title bar shows the account, and the sidebar's fourth row is the repositories
+
 ## [0.96.2] - 2026-09-16
 
 ### Added
@@ -3037,6 +3062,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.96.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.3
 [0.96.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.2
 [0.96.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.1
 [0.96.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.0
