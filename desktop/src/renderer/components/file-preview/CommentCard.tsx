@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { MessageSquare, MessageSquarePlus, Pencil, Trash2 } from '@ds/desktop/icons'
 import { commentAnchorKind, commentLabel, type LineRange } from '../../utils/commentAnchors'
-import { BTN_DANGER, BTN_GHOST, BTN_PRIMARY, INPUT } from '../../theme/controls'
+import { BTN_DANGER, BTN_GHOST, BTN_PRIMARY } from '../../theme/controls'
 import type { FileComment } from '../../store'
 import { useT, type MessageKey } from '../../i18n'
+import { Input } from '@ds/desktop'
 
 /**
  * The card's own box: a block in the code column, not a panel sitting on the file.
@@ -337,7 +338,8 @@ export default function CommentCard({ comment, range, quote, host, width, spec, 
   // on an empty card.
   const [editing, setEditing] = useState(comment === null)
   const [body, setBody] = useState(comment?.body ?? '')
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  // `Input` forwards to whichever element it drew, so the ref is the union it hands back.
+  const textareaRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
   /**
@@ -429,10 +431,11 @@ export default function CommentCard({ comment, range, quote, host, width, spec, 
 
         {editing ? (
           <>
-            <textarea
+            <Input
+              multiline
               ref={textareaRef}
               value={body}
-              onChange={e => setBody(e.target.value)}
+              onChange={setBody}
               /* Asked about the LINES or about the PASSAGE, whichever this comment is
                  attached to. One placeholder for both said "these lines" over a quotation,
                  which is the one thing the reader has to get right before typing. */
@@ -443,9 +446,6 @@ export default function CommentCard({ comment, range, quote, host, width, spec, 
                  view now, so a line of it holds two or three times the words it used to, and
                  four rows of that is a panel rather than a comment box. */
               rows={3}
-              /* `INPUT` composed, never re-spelled: this is the same field box as every
-                 other one in the app, plus the two things a comment box adds. */
-              className={`${INPUT} w-full resize-none`}
             />
             <div className="flex items-center justify-end gap-1.5">
               <button type="button" onClick={dismiss} className={BTN_GHOST}>

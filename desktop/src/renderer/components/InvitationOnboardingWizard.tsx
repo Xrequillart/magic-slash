@@ -1,11 +1,11 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Mail, ChevronLeft, ChevronRight, X, Check, Download, Folder, FolderOpen, Loader2 } from '@ds/desktop/icons'
+import { Input } from '@ds/desktop'
 import { useAuth } from '../hooks/useAuth'
 import { useOrg } from '../hooks/useOrg'
 import { useConfig } from '../hooks/useConfig'
 import { useT, type Translate } from '../i18n'
 import { isCloneErrorCode } from '../../types'
-import { INPUT } from '../theme/controls'
 import { repoBasename } from '../../repoMatch'
 import { REASON_META, type RepoSetupReason } from '../utils/repoSetup'
 import {
@@ -488,13 +488,12 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                   {t('invite.wizard.acceptHelp')}
                 </div>
               </div>
-              <input
-                type="text"
+              <Input
                 value={token}
-                onChange={(e) => setToken(e.target.value)}
+                onChange={setToken}
                 placeholder={t('invite.wizard.tokenPlaceholder')}
                 autoFocus
-                className={`${INPUT} w-full font-mono`}
+                mono
               />
               <div className="flex gap-2">
                 <button
@@ -510,20 +509,18 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                   {t('invite.wizard.existingAccount')}
                 </button>
               </div>
-              <input
+              <Input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={setEmail}
                 placeholder={t('invite.wizard.emailPlaceholder')}
-                className={`${INPUT} w-full`}
               />
-              <input
+              <Input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={setPassword}
                 placeholder={t('invite.wizard.passwordPlaceholder')}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleAcceptInvitation() }}
-                className={`${INPUT} w-full`}
               />
             </div>
           )}

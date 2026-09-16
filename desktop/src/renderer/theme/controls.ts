@@ -75,12 +75,21 @@ export const BTN_COMPACT = 'inline-flex items-center gap-1.5 h-7 px-2 text-[11px
 export const BTN_ICON = 'flex items-center justify-center h-7 w-7 shrink-0 rounded-lg transition-all text-icon bg-surface border border-line hover:bg-surface-strong hover:text-ink'
 
 /**
- * Text field. Same 30px box as the buttons above, deliberately: a field and the
- * button next to it sit on the same row all over Settings, and the `py-2 text-sm`
- * this used to be stood 8px taller than everything around it — which is what made
- * the settings pages read as a size bigger than the organization page.
+ * `INPUT` IS GONE — it is `Input` in `@ds/desktop` now, and every one of its
+ * twenty-four fields with it.
+ *
+ * It was the largest piece left in this module, and the same argument `Button` made
+ * applies to it word for word: a class string cannot offer a SIZE, a TONE or a SHAPE, so
+ * every call site composed it by hand with whatever that field needed — `resize-none`,
+ * `font-mono`, `disabled:opacity-50`, a `pl-9` for a glyph, a `pr-14` for a spinner —
+ * and fields that meant the same thing did not always agree. The component carries all
+ * of it, the textarea included.
+ *
+ * `SELECT` STAYS, for now. It is a NATIVE `<select>` and a different control: its popup
+ * is the platform's, which is why it needs `appearance-none` and a chevron drawn over
+ * it. `SelectIcon` in the design system is the app's own menu and not a replacement for
+ * the two places that still want the native one.
  */
-export const INPUT = 'px-3 py-1.5 bg-surface border border-line-field rounded-lg text-xs text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30'
 
 /**
  * Native `<select>`. `appearance-none` because macOS otherwise draws its own

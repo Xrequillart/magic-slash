@@ -1,9 +1,9 @@
 import { useCallback, useState } from 'react'
+import { Input } from '@ds/desktop'
 import { createPortal } from 'react-dom'
 import { ArrowDownWideNarrow, BotMessageSquare, CalendarRange, Check, ChevronDown, FolderGit2, LoaderCircle, Search, TriangleAlert, X } from '@ds/desktop/icons'
 import { useAnchoredPanel } from '../../components/useAnchoredPanel'
 import { useT } from '../../i18n'
-import { INPUT } from '../../theme/controls'
 import type { TaskAgentFilter, TaskFilter, TaskSort } from '../../utils/taskRows'
 
 /**
@@ -454,11 +454,14 @@ export function TaskFilters({
           the picker says which repository, and this says which of its sprints. */}
       {sprintName && <SprintChip name={sprintName} hint={t('tasks.jira.sprintHint', { sprint: sprintName })} />}
       <div className="relative flex-1 min-w-0">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
-        <input
-          type="text"
+        {/* The MARK is the field's (`icon`), the STATUS ROW at the other edge is this
+            page's — a spinner, a warning, a clear button, and which of them is showing
+            is a fact about this board. So the field is asked only to keep room
+            (`trailing`), and the row is positioned against the wrapper here. */}
+        <Input
+          type="search"
           value={value.query}
-          onChange={(e) => onChange({ ...value, query: e.target.value })}
+          onChange={(query) => onChange({ ...value, query })}
           // Escape clears the box rather than closing the page. PageModal listens for
           // it on `window`, so a reader whose first instinct is Escape would otherwise
           // lose the whole backlog to clear one word — and clearing is what Escape
@@ -475,9 +478,10 @@ export function TaskFilters({
           // ticket I cannot see" is the question. A caption under the bar would say it
           // after the fact, and to everyone including the boards it is not true of.
           placeholder={searchesSprint ? t('tasks.filter.searchSprintPlaceholder') : t('tasks.filter.searchPlaceholder')}
-          className={`${INPUT} w-full pl-9 ${
-            value.query && (searching || searchFailed) ? 'pr-14' : value.query || searching ? 'pr-8' : ''
-          }`}
+          icon={Search}
+          trailing={
+            value.query && (searching || searchFailed) ? 'wide' : value.query || searching ? 'narrow' : 'none'
+          }
         />
         {/* THREE THINGS CAN SIT AT THE RIGHT EDGE and only ever one of them does, which
             is why they share a row rather than each claiming `right-2`: a spinner while

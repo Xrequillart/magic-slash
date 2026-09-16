@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useT, ROLE_LABEL_KEYS, LEVEL_LABEL_KEYS, STYLE_LABEL_KEYS, type MessageKey } from '../../i18n'
 import type { UserProfile } from '../../../types'
-import { INPUT } from '../../theme/controls'
+import { Input } from '@ds/desktop'
 
 const ROLE_OPTIONS = Object.entries(ROLE_LABEL_KEYS) as [UserProfile['role'], MessageKey][]
 const LEVEL_OPTIONS = Object.entries(LEVEL_LABEL_KEYS) as [UserProfile['technical_level'], MessageKey][]
@@ -103,7 +103,7 @@ function useCommittedText(value: string, onCommit: (next: string) => void) {
 
   return {
     value: text,
-    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setText(e.target.value),
+    onChange: setText,
     onFocus: () => setFocused(true),
     onBlur: () => {
       setFocused(false)
@@ -124,12 +124,11 @@ function CommittedInput({
   const bind = useCommittedText(value, onCommit)
 
   return (
-    <input
-      type="text"
+    <Input
       {...bind}
       onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
       placeholder={placeholder}
-      className={`${INPUT} w-52`}
+      className="w-52"
     />
   )
 }
@@ -248,11 +247,12 @@ function CommittedTextarea({
   const bind = useCommittedText(value, onCommit)
 
   return (
-    <textarea
+    <Input
+      multiline
       {...bind}
       placeholder={placeholder}
       rows={3}
-      className={`${INPUT} w-full resize-none`}
+      className="w-full"
     />
   )
 }

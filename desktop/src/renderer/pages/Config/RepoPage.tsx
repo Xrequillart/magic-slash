@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import {
   Trash2, Check, AlertTriangle, Plus, Loader2, ChevronDown, ArrowLeft, Building2, Lock, FolderOpen,
   Ticket, Settings2, Languages, GitBranch, GitCommitHorizontal, MessageSquare, GitPullRequest,
@@ -12,7 +12,7 @@ import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
 import { RepoColorPicker } from './RepoColorPicker'
 import { useT, type MessageKey } from '../../i18n'
-import { Switch, TabStrip } from '@ds/desktop'
+import { Input, Switch, TabStrip } from '@ds/desktop'
 import { LanguageSelect } from '../../components/LanguageSelect'
 import { TabSweep } from '../../components/TabSweep'
 import {
@@ -24,7 +24,7 @@ import {
   resolveSummary,
   type SkillSummary,
 } from '../../utils/skillSummary'
-import { BTN, INPUT, SELECT } from '../../theme/controls'
+import { BTN, SELECT } from '../../theme/controls'
 import {
   PLAN_SPLITTING_MODES,
   PLAN_ACCEPTANCE_CRITERIA_FORMATS,
@@ -253,14 +253,17 @@ function ChipList({ items, onChange, placeholder, inputId }: {
   inputId: string
 }) {
   const t = useT()
-  const inputRef = useRef<HTMLInputElement>(null)
+  // CONTROLLED, where this used to read `inputRef.current.value` and clear the field by
+  // assigning to it. That worked and was the only field in the app holding its draft in
+  // the DOM rather than in React — which `Input` cannot support and should not: a value
+  // the component cannot see is a value it cannot render.
+  const [draft, setDraft] = useState('')
 
   const add = () => {
-    const input = inputRef.current
-    const value = input?.value.trim()
-    if (!input || !value || items.includes(value)) return
+    const value = draft.trim()
+    if (!value || items.includes(value)) return
     onChange([...items, value])
-    input.value = ''
+    setDraft('')
   }
 
   return (
@@ -285,12 +288,12 @@ function ChipList({ items, onChange, placeholder, inputId }: {
         </div>
       )}
       <div className="flex gap-2">
-        <input
-          ref={inputRef}
-          type="text"
+        <Input
           id={inputId}
+          value={draft}
+          onChange={setDraft}
           placeholder={placeholder}
-          className={`${INPUT} flex-1`}
+          className="flex-1"
           onKeyDown={(e) => {
             if (e.key !== 'Enter') return
             e.preventDefault()
@@ -866,12 +869,10 @@ export function RepoPage({ repoName }: RepoPageProps) {
         <p className="text-xs text-text-secondary/50">{description}</p>
       </div>
       <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
-        <input
-          type="text"
+        <Input
           value={remoteUrl}
           placeholder="https://github.com/owner/repo"
-          onChange={(e) => handleRemoteUrlChange(e.target.value)}
-          className={`${INPUT} w-full`}
+          onChange={handleRemoteUrlChange}
         />
         {remoteUrlError && (
           <div className="flex items-center gap-1.5 text-xs text-red">
@@ -1074,11 +1075,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 <p className="text-xs text-text-secondary/50">{t('repo.general.nameHelp')}</p>
               </div>
               <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
-                <input
-                  type="text"
+                <Input
                   value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                  className={`${INPUT} w-full`}
+                  onChange={setEditedName}
                 />
                 {editedName !== repoName && editedName.trim() && (
                   <button onClick={handleRename} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
@@ -1181,13 +1180,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <div className="flex flex-col gap-2 w-72">
                 {/* `items-stretch`, so the picker is exactly as tall as the field beside
                     it: its own padding made it 4px taller, and a hardcoded height would
-                    go stale the day INPUT's padding changes. */}
+                    go stale the day the field's rung changes. */}
                 <div className="flex items-stretch gap-2">
-                  <input
-                    type="text"
+                  <Input
                     value={path}
-                    onChange={(e) => handlePathChange(e.target.value)}
-                    className={`${INPUT} flex-1 min-w-0`}
+                    onChange={handlePathChange}
+                    className="flex-1 min-w-0"
                   />
                   <button
                     onClick={handlePickFolder}
@@ -1352,22 +1350,20 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   the tickets. Only the key is needed to WRITE one — the site decides
                   whether a ticket can be shown as a link (trackers.md §3.1). */}
               <SettingRow label={t('repo.tracker.jiraLink')} description={t('repo.tracker.jiraLinkHelp')}>
-                <input
-                  type="text"
+                <Input
                   value={jiraSiteUrlVal}
-                  onChange={(e) => handleJiraSettingChange('siteUrl', e.target.value)}
+                  onChange={(next) => handleJiraSettingChange('siteUrl', next)}
                   placeholder="https://company.atlassian.net/browse/"
-                  className={`${INPUT} w-72`}
+                  className="w-72"
                 />
               </SettingRow>
 
               <SettingRow label={t('repo.plan.jiraProject')} description={t('repo.plan.jiraProjectHelp')}>
-                <input
-                  type="text"
+                <Input
                   value={jiraProjectVal}
-                  onChange={(e) => handleJiraSettingChange('projectKey', e.target.value)}
+                  onChange={(next) => handleJiraSettingChange('projectKey', next)}
                   placeholder="PROJ"
-                  className={`${INPUT} w-72`}
+                  className="w-72"
                 />
               </SettingRow>
             </fieldset>
@@ -1519,22 +1515,20 @@ export function RepoPage({ repoName }: RepoPageProps) {
             {trackerModeVal === 'jira' && (
               <>
                 <SettingRow label={t('repo.plan.epicType')} description={t('repo.plan.epicTypeHelp')}>
-                  <input
-                    type="text"
+                  <Input
                     value={planEpicTypeVal}
-                    onChange={(e) => handlePlanIssueTypeChange('epic', e.target.value)}
+                    onChange={(next) => handlePlanIssueTypeChange('epic', next)}
                     placeholder="Epic"
-                    className={`${INPUT} w-72`}
+                    className="w-72"
                   />
                 </SettingRow>
 
                 <SettingRow label={t('repo.plan.storyType')} description={t('repo.plan.storyTypeHelp')}>
-                  <input
-                    type="text"
+                  <Input
                     value={planStoryTypeVal}
-                    onChange={(e) => handlePlanIssueTypeChange('story', e.target.value)}
+                    onChange={(next) => handlePlanIssueTypeChange('story', next)}
                     placeholder="Story"
-                    className={`${INPUT} w-72`}
+                    className="w-72"
                   />
                 </SettingRow>
               </>
@@ -1764,12 +1758,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
                     {t('repo.pr.testAccountsSourceHelp')}
                   </p>
                 </div>
-                <input
-                  type="text"
+                <Input
                   value={testAccountsSourceVal}
-                  onChange={(e) => handlePRSettingChange('testAccountsSource', e.target.value)}
+                  onChange={(next) => handlePRSettingChange('testAccountsSource', next)}
                   placeholder="docs/test-accounts.md"
-                  className={`${INPUT} w-72`}
+                  className="w-72"
                 />
               </div>
             )}

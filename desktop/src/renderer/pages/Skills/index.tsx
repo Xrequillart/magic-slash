@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Plus, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal, type LucideIcon } from '@ds/desktop/icons'
-import { Loader, ProgressBar, type ProgressTone } from '@ds/desktop'
+import { Input, Loader, ProgressBar, type ProgressTone } from '@ds/desktop'
 import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
 import SkillDocument from './SkillDocument'
 import { VSCode } from '@ds/desktop/icons'
@@ -8,7 +8,7 @@ import { SweepPane } from '../../components/SweepPane'
 import { useTerminals } from '../../hooks/useTerminals'
 import { useStore, type SkillsContextWindow, type SkillsContextWindowSetting } from '../../store'
 import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
-import { BTN, BTN_DANGER, BTN_PRIMARY, INPUT } from '../../theme/controls'
+import { BTN, BTN_DANGER, BTN_PRIMARY } from '../../theme/controls'
 import { DEFAULT_CONTEXT_WINDOW, detectContextWindow, resolveContextWindow, formatWindow } from './contextWindow'
 
 /**
@@ -844,13 +844,11 @@ function SkillEditor({
         {/* Name */}
         <div>
           <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.name')}</label>
-          <input
-            type="text"
+          <Input
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={setName}
             disabled={!isNew}
             placeholder="my-skill"
-            className={`${INPUT} w-full disabled:opacity-50`}
           />
           {isNew && (
             <p className="mt-1 text-xs text-text-secondary/60">{t('skills.editor.nameHelp')}</p>
@@ -860,24 +858,22 @@ function SkillEditor({
         {/* Description */}
         <div>
           <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.description')}</label>
-          <textarea
+          <Input
+            multiline
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={setDescription}
             placeholder={t('skills.editor.descriptionPlaceholder')}
             rows={3}
-            className={`${INPUT} w-full disabled:opacity-50 resize-none`}
           />
         </div>
 
         {/* Allowed Tools */}
         <div>
           <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.allowedTools')}</label>
-          <input
-            type="text"
+          <Input
             value={allowedTools}
-            onChange={(e) => setAllowedTools(e.target.value)}
+            onChange={setAllowedTools}
             placeholder="Bash(*), Read, Edit, Write, Glob, Grep"
-            className={`${INPUT} w-full disabled:opacity-50`}
           />
         </div>
 
@@ -919,12 +915,15 @@ function SkillEditor({
           <label className="block text-base font-medium text-text-secondary mb-1.5">
             {t('skills.editor.content')}
           </label>
-          <textarea
+          {/* The one field that IS the page, so it is the one allowed to grow. */}
+          <Input
+            multiline
             value={body}
-            onChange={(e) => setBody(e.target.value)}
+            onChange={setBody}
             placeholder={t('skills.editor.contentPlaceholder')}
             rows={16}
-            className={`${INPUT} w-full font-mono disabled:opacity-50 resize-y`}
+            mono
+            resize="vertical"
           />
         </div>
       </div>

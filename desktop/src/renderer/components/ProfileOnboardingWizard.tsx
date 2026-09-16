@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { User, ChevronLeft, ChevronRight, X, Check } from '@ds/desktop/icons'
 import { useT, ROLE_LABEL_KEYS, LEVEL_LABEL_KEYS, STYLE_LABEL_KEYS, type MessageKey } from '../i18n'
 import type { UserProfile } from '../../types'
-import { INPUT } from '../theme/controls'
+import { Input } from '@ds/desktop'
 
 interface ProfileOnboardingWizardProps {
   isOpen: boolean
@@ -165,13 +165,11 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                 <div className="text-sm font-medium mb-1">{t('profile.wizard.nameQuestion')}</div>
                 <div className="text-xs text-text-secondary/50 mb-3">{t('profile.wizard.nameHelp')}</div>
               </div>
-              <input
-                type="text"
+              <Input
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={setName}
                 placeholder={t('profile.form.firstNamePlaceholder')}
                 autoFocus
-                className={`${INPUT} w-full`}
                 onKeyDown={(e) => { if (e.key === 'Enter' && canAdvance()) handleNext() }}
               />
             </div>
@@ -286,12 +284,12 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                 <div className="text-sm font-medium mb-1">{t('profile.wizard.freeTextQuestion')}</div>
                 <div className="text-xs text-text-secondary/50 mb-3">{t('profile.wizard.freeTextHelp')}</div>
               </div>
-              <textarea
+              <Input
+                multiline
                 value={freeText}
-                onChange={(e) => setFreeText(e.target.value)}
+                onChange={setFreeText}
                 placeholder={t('profile.form.freeTextPlaceholder')}
                 rows={4}
-                className={`${INPUT} w-full resize-none`}
               />
             </div>
           )}

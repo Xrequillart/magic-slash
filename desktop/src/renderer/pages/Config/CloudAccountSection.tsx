@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { Input } from '@ds/desktop'
 import { Cloud, LogOut, LogIn, UserPlus, Loader2, KeyRound, AtSign, Trash2, AlertTriangle, ImagePlus, ImageOff } from '@ds/desktop/icons'
 import { useAuth } from '../../hooks/useAuth'
 import { useAvatar, publishAvatar, avatarSession } from '../../hooks/useAvatar'
@@ -11,7 +12,7 @@ import { SectionHeader } from './SectionHeader'
 import { InvitationOnboardingWizard } from '../../components/InvitationOnboardingWizard'
 import { showToast } from '../../components/Toast'
 import { useT, type MessageKey } from '../../i18n'
-import { BTN, BTN_DANGER, INPUT } from '../../theme/controls'
+import { BTN, BTN_DANGER } from '../../theme/controls'
 import { formatSize } from '../../utils/formatSize'
 import { AVATAR_MAX_BYTES, AVATAR_MIME_TYPE, AVATAR_SIZE, type AvatarRejection } from '../../../avatar'
 import { sourceRectFor } from '../../../avatarCrop'
@@ -581,21 +582,19 @@ export function CloudAccountSection() {
         }
       >
         <div className="space-y-2">
-          <input
+          <Input
             type="password"
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={setNewPassword}
             placeholder={t('cloud.password.newPlaceholder')}
             autoFocus
-            className={`${INPUT} w-full`}
           />
-          <input
+          <Input
             type="password"
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={setConfirmPassword}
             placeholder={t('cloud.password.confirmPlaceholder')}
             onKeyDown={(e) => { if (e.key === 'Enter') handleChangePassword() }}
-            className={`${INPUT} w-full`}
           />
         </div>
       </Modal>
@@ -629,14 +628,13 @@ export function CloudAccountSection() {
             <p className="text-xs text-text-secondary/60">
               {t('cloud.email.requestHelp')}
             </p>
-            <input
+            <Input
               type="email"
               value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
+              onChange={setNewEmail}
               placeholder={t('cloud.email.newPlaceholder')}
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') handleChangeEmail() }}
-              className={`${INPUT} w-full`}
             />
           </div>
         ) : (
@@ -644,15 +642,13 @@ export function CloudAccountSection() {
             <p className="text-xs text-text-secondary/60">
               {t('cloud.email.confirmHelp', { email: newEmail })}
             </p>
-            <input
-              type="text"
+            <Input
               inputMode="numeric"
               value={emailCode}
-              onChange={(e) => setEmailCode(e.target.value)}
+              onChange={setEmailCode}
               placeholder={t('cloud.email.codePlaceholder')}
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') handleChangeEmail() }}
-              className={`${INPUT} w-full`}
             />
           </div>
         )}

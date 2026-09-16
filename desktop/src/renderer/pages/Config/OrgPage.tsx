@@ -8,14 +8,13 @@ import { AccountAvatar } from '../../components/AccountAvatar'
 import { Modal } from '../../components/Modal'
 import { RoleSelect } from './RoleSelect'
 import { SectionHeader } from './SectionHeader'
-import { TabStrip } from '@ds/desktop'
+import { Input, TabStrip } from '@ds/desktop'
 import { TabSweep } from '../../components/TabSweep'
 import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
 import type { MessageKey, Translate } from '../../i18n'
 import type { Invitation, Member, MembershipRole, Org } from '../../../types'
 import { extractInviteToken, inviteLink } from '../../../urls'
-import { INPUT } from '../../theme/controls'
 
 /**
  * Which organization is open, given the user's pick and the list as it stands.
@@ -611,14 +610,13 @@ export function OrgPage() {
           <p className="text-xs text-text-secondary/60">
             {t('org.inviteModal.help')}
           </p>
-          <input
+          <Input
             type="email"
             value={inviteEmail}
-            onChange={(e) => setInviteEmail(e.target.value)}
+            onChange={setInviteEmail}
             placeholder={t('org.inviteModal.emailPlaceholder')}
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleInvite() }}
-            className={`${INPUT} w-full`}
           />
           <div className="flex items-center justify-between">
             <span className="text-xs text-text-secondary/60">{t('org.colRole')}</span>
@@ -655,14 +653,12 @@ export function OrgPage() {
           <p className="text-xs text-text-secondary/60">
             {t('org.createModal.help')}
           </p>
-          <input
-            type="text"
+          <Input
             value={createName}
-            onChange={(e) => setCreateName(e.target.value)}
+            onChange={setCreateName}
             placeholder={t('org.createModal.namePlaceholder')}
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleCreate() }}
-            className={`${INPUT} w-full`}
           />
         </div>
       </Modal>
@@ -695,14 +691,12 @@ export function OrgPage() {
           <p className="text-xs text-text-secondary/60">
             {t('org.joinModal.help')}
           </p>
-          <input
-            type="text"
+          <Input
             value={joinToken}
-            onChange={(e) => setJoinToken(e.target.value)}
+            onChange={setJoinToken}
             placeholder={t('org.joinModal.tokenPlaceholder')}
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleJoin() }}
-            className={`${INPUT} w-full`}
           />
         </div>
       </Modal>
