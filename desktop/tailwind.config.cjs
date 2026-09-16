@@ -29,6 +29,32 @@ module.exports = {
       // translucency is part of the design and has to differ per theme, since
       // black over a light window needs more of it than white over a dark one.
       colors: {
+        /**
+         * THE PAPER AND THE INK THIS ONE DIALOG IS PRINTED ON, and neither moves.
+         *
+         * `WhatsNewDialog` is the single surface in the app that ignores the theme. It
+         * opens on a fixed light band (`release-mesh` below) and it is typeset like the
+         * public `/changelog`, which is a white page with near-black ink — so the panel
+         * under that band is that page rather than whichever of the eight grounds the app
+         * happens to be wearing. A release read on `midnight` and the same release read on
+         * `light` are the same document, and this is what makes them look like it.
+         *
+         * THE INK IS CHANNELS AND THE PAPER IS A COLOUR, which is this table's own split:
+         * the ink is asked for at four strengths — the version at full, the date at 60%, a
+         * category label at 50%, a bullet at 30% — and only the `R G B` form keeps `/60`
+         * working. The paper is never modulated.
+         *
+         * `10 10 11` is the `dark` theme's own window colour, which is the site's `ink`
+         * to within a point. Not a variable: a value that followed the theme would be the
+         * opposite of what this pair is for.
+         *
+         * WHAT STILL FOLLOWS THE THEME inside that dialog, deliberately: the three category
+         * dots and the one button. Those are the two places colour carries MEANING rather
+         * than surface, they are the app's own green / accent / yellow, and all three are
+         * saturated enough to read on white under every theme.
+         */
+        'release-paper': '#FFFFFF',
+        'release-ink': 'rgb(10 10 11 / <alpha-value>)',
         bg: {
           DEFAULT: 'rgb(var(--c-bg) / <alpha-value>)',
           secondary: 'rgb(var(--c-bg-secondary) / <alpha-value>)',
@@ -110,6 +136,32 @@ module.exports = {
         'slide-in': 'slideIn 0.3s ease',
         'slide-out': 'slideOut 0.3s ease forwards',
         'tada': 'tada 0.8s ease-in-out',
+      },
+      /**
+       * THE RELEASE MESH — the one picture in this config, and the ground the What's New
+       * dialog opens on.
+       *
+       * IT IS THE SITE'S `tone-sky`, VALUE FOR VALUE. That token is built in
+       * `webapp/tailwind.config.ts` by a `mesh()` of six radial blooms over a flat wash,
+       * from two stops (`SKY_LIGHT` / `SKY_DEEP`) that are a reference picture's own — it
+       * is the ground `/features` sets the context card on. This is that function's output,
+       * evaluated once and pasted, because the two halves of the design system share
+       * nothing: `design-system/README.md` rule 1 forbids importing across them, and a
+       * config is per app anyway. Regenerate it by building `bg-tone-sky` against the
+       * webapp's config if those stops ever move.
+       *
+       * A TOKEN AND NOT A CLASS IN THE COMPONENT, which is rule 2's other half: a shared
+       * component names a ROLE and never a value, so `WhatsNewDialog` asks for
+       * `bg-release-mesh` and the seven colours live here.
+       *
+       * IT DOES NOT FOLLOW THE THEME, and that is deliberate rather than an oversight: it
+       * is ARTWORK, the replacement for the 2.4MB illustration this dialog used to open
+       * with, and a picture that restated the app's own eight grounds would say nothing.
+       * Everything drawn ON it takes `on-brand`, which is the ink these stops were chosen
+       * to carry.
+       */
+      backgroundImage: {
+        'release-mesh': "radial-gradient(22% 52% at 34% 51%, #E2EEFCB3 0%, #E2EEFC98 25%, #E2EEFC59 50%, #E2EEFC1A 75%, #E2EEFC00 100%), radial-gradient(30% 40% at 67% 48%, #4D77EE3B 0%, #4D77EE32 25%, #4D77EE1D 50%, #4D77EE09 75%, #4D77EE00 100%), radial-gradient(30% 32% at 73% 85%, #61A7F4A6 0%, #61A7F48D 25%, #61A7F453 50%, #61A7F418 75%, #61A7F400 100%), radial-gradient(23% 68% at 51% 88%, #61A7F494 0%, #61A7F47E 25%, #61A7F44A 50%, #61A7F416 75%, #61A7F400 100%), radial-gradient(66% 43% at 10% 95%, #4D77EE9E 0%, #4D77EE87 25%, #4D77EE4F 50%, #4D77EE17 75%, #4D77EE00 100%), radial-gradient(49% 43% at 34% 78%, #4D77EEA1 0%, #4D77EE89 25%, #4D77EE50 50%, #4D77EE18 75%, #4D77EE00 100%), linear-gradient(#E2EEFC, #E2EEFC)",
       },
       keyframes: {
         tada: {

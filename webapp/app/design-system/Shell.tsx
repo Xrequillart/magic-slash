@@ -47,6 +47,7 @@ import { SelectIconEntry } from './entries/SelectIconEntry'
 import { AppTitleBarEntry } from './entries/AppTitleBarEntry'
 import { SidebarEntry } from './entries/SidebarEntry'
 import { UpdateDialogEntry } from './entries/UpdateDialogEntry'
+import { WhatsNewDialogEntry } from './entries/WhatsNewDialogEntry'
 import { ToggleButtonEntry } from './entries/ToggleButtonEntry'
 import { StepperEntry } from './entries/StepperEntry'
 import { ControlCenterEntry } from './entries/ControlCenterEntry'
@@ -111,6 +112,7 @@ const ENTRIES: Record<
   sidebar: SidebarEntry,
   apptitlebar: AppTitleBarEntry,
   updatedialog: UpdateDialogEntry,
+  whatsnewdialog: WhatsNewDialogEntry,
   togglebutton: ToggleButtonEntry,
   stepper: StepperEntry,
   tabstrip: TabStripEntry,

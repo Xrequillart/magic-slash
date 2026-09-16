@@ -56,6 +56,7 @@ export type EntryId =
   | 'sidebar'
   | 'apptitlebar'
   | 'updatedialog'
+  | 'whatsnewdialog'
   | 'togglebutton'
   | 'stepper'
   | 'controlcenter'
@@ -83,6 +84,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   sidebar: 'Sidebar',
   apptitlebar: 'AppTitleBar',
   updatedialog: 'UpdateDialog',
+  whatsnewdialog: 'WhatsNewDialog',
   togglebutton: 'ToggleButton',
   stepper: 'Stepper',
   controlcenter: 'ControlCenter',
@@ -203,6 +205,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   setupstatuscard: ['card', 'buttonicon', 'icon', 'loader', 'text'],
   themegrid: ['card'],
   updatedialog: ['modal', 'card', 'icon', 'progress', 'text'],
+  whatsnewdialog: ['modal', 'button', 'text'],
   text: [],
   avatar: ['icon'],
   label: ['icon', 'text', 'avatar'],
@@ -322,6 +325,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   menusidebaritem: 'One row that takes you somewhere',
   sidebar: 'The whole left column, and it knows nothing',
   updatedialog: 'The app, about to become a newer app',
+  whatsnewdialog: 'What the version you just installed brought',
   speccard: 'A plan being written, live',
   modal: 'The ground a dialog floats on',
   repositoryselector: 'Which repositories an agent works in',

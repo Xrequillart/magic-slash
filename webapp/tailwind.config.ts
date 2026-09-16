@@ -834,6 +834,15 @@ const config: Config = {
     extend: {
       colors: {
         /**
+         * `WhatsNewDialog`'s fixed paper and ink, declared here for the same reason
+         * `release-mesh` is: that component is a DESKTOP one, `/design-system` renders it
+         * live on this side, and the two halves of `design-system/` share no tokens. See
+         * the long note in `desktop/tailwind.config.cjs` for why the dialog ignores the
+         * theme at all.
+         */
+        'release-paper': '#FFFFFF',
+        'release-ink': 'rgb(10 10 11 / <alpha-value>)',
+        /**
          * The page's black — and, on `/design-system` only, the DESKTOP app's
          * primary text instead.
          *
@@ -1169,7 +1178,28 @@ const config: Config = {
       // declarations and their comments, and a second copy here is the copy that would
       // go stale. Two objects and not one merged constant, because they are two
       // different KINDS of ground — see the note on `PLATES`.
-      backgroundImage: { ...TONES, ...PLATES, ...MARKS },
+      backgroundImage: {
+        ...TONES,
+        ...PLATES,
+        ...MARKS,
+        /**
+         * `tone-sky` UNDER A SECOND NAME, for the design system's `WhatsNewDialog`.
+         *
+         * That dialog is a DESKTOP component: it asks for `bg-release-mesh`, and the
+         * desktop's own config declares it as the pasted output of `mesh(SKY_LIGHT,
+         * SKY_DEEP)` — the two halves of `design-system/` share nothing, so neither can
+         * import the other's ground. `/design-system` renders that component here, so
+         * this side needs the name too, and on this side it can be the CALL rather than
+         * a copy of its output.
+         *
+         * OUTSIDE `TONES` on purpose. That object is the card palette — eight grounds a
+         * `ToneCard` may be given, each held to an ink pairing by
+         * `lib/designTokens.test.ts` — and this is one component's backdrop under an
+         * alias. Adding it there would put a ninth tone in a picker nobody should reach
+         * for it from.
+         */
+        'release-mesh': mesh(SKY_LIGHT, SKY_DEEP),
+      },
       // The elevation scale. Four rungs, deliberately few: a white-on-white
       // interface separates things by space and by a whisper of a shadow, and a
       // seven-step ramp only invites two neighbouring surfaces to differ by an

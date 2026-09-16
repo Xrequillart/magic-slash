@@ -121,6 +121,13 @@ export type { SwitchProps, SwitchSize, SwitchVariant } from './Switch'
 export type { StatusOption, StatusProps, StatusSize, StatusStrength, StatusTone } from './Status'
 export { UpdateDialog } from './UpdateDialog'
 export type { UpdateDialogProps, UpdateStage } from './UpdateDialog'
+export { WhatsNewDialog } from './WhatsNewDialog'
+export type {
+  WhatsNewCategory,
+  WhatsNewDialogProps,
+  WhatsNewEntry,
+  WhatsNewHue,
+} from './WhatsNewDialog'
 export { UsageClaudeCodeCard } from './UsageClaudeCodeCard'
 export type { UsageClaudeCodeCardProps, UsageLimit } from './UsageClaudeCodeCard'
 export { TitleAgentCard } from './TitleAgentCard'
