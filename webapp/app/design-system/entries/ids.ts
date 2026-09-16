@@ -14,6 +14,7 @@ export type EntryId =
   | 'loader'
   | 'card'
   | 'avatar'
+  | 'button'
   | 'buttonicon'
   | 'editabletext'
   | 'menu'
@@ -65,6 +66,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   progress: 'ProgressBar',
   loader: 'Loader',
   card: 'Card',
+  button: 'Button',
   buttonicon: 'ButtonIcon',
   editabletext: 'EditableText',
   menu: 'Menu',
@@ -174,6 +176,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   progress: [],
   loader: [],
   card: [],
+  button: ['icon', 'loader', 'text'],
   buttonicon: ['icon', 'loader'],
   editabletext: ['icon'],
   menu: ['avatar', 'icon', 'text'],
@@ -297,6 +300,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   progress: 'A filled track, green until told otherwise',
   loader: 'Something is happening, in two shapes',
   card: 'A raised panel, and nothing else',
+  button: 'A control that is a word',
   buttonicon: 'A control that is only a mark',
   editabletext: 'Words you can click into',
   menu: 'Rows under something you drew',

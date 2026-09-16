@@ -6,6 +6,7 @@ import { DESKTOP_THEMES, DESKTOP_THEME_IDS, type DesktopTheme, type DesktopTheme
 import { AgentEntry } from './entries/AgentEntry'
 import { AvatarEntry } from './entries/AvatarEntry'
 import { BranchCardEntry } from './entries/BranchCardEntry'
+import { ButtonEntry } from './entries/ButtonEntry'
 import { ButtonIconEntry } from './entries/ButtonIconEntry'
 import { CardEntry } from './entries/CardEntry'
 import { CommitCardEntry } from './entries/CommitCardEntry'
@@ -93,6 +94,7 @@ const ENTRIES: Record<
   progress: ProgressBarEntry,
   loader: LoaderEntry,
   card: CardEntry,
+  button: ButtonEntry,
   buttonicon: ButtonIconEntry,
   menu: MenuEntry,
   modalheader: ModalHeaderEntry,

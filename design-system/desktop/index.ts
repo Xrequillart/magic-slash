@@ -16,6 +16,8 @@ export type {
 } from './AppTitleBar'
 export type { AgentProps, AgentState } from './Agent'
 export { Avatar } from './Avatar'
+export { Button, BUTTON_TONES } from './Button'
+export type { ButtonProps, ButtonSize, ButtonTone } from './Button'
 export { ButtonIcon, BUTTON_ICON_SIZES } from './ButtonIcon'
 export type {
   ButtonIconActive,
