@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.96.0] - 2026-09-16
+
+### Added
+
+- **Desktop**: The account is in the title bar, as a dropdown carrying your name and address, the five pages behind them — account, organization, connections, Claude Code, about — plus checking for updates and signing out
+- **Desktop**: The settings window is the repository list and nothing else. Everything that was a preference opens from the quick settings sheet, everything that was an identity opens from the account menu, and both open as a dialog in the middle of the window
+- **Desktop**: A keyboard shortcuts page listing every chord the app answers to, Tasks and Plans included — they were missing from it for as long as it existed
+- **Desktop**: ⌘, opens and closes the quick settings sheet, where it used to open the settings window; ⌘P opens the repositories
+
+### Changed
+
+- **Desktop**: Every dialog wears the same header — a mark, a name, the pages in the middle when there are several, and the two buttons that expand or close it — drawn by the design system rather than written twice
+- **Desktop**: Dialogs have no border, no rule under the header, and the same corners; a click on the dimmed app around a page overlay closes it, unless the press started inside and you were selecting text
+- **Desktop**: The quick settings sheet drops "start at login" and the PR watcher — settings you decide once when you set the machine up — and its sections now arrive one after another from the top rather than all at once
+- **Desktop**: The card reporting whether usage recording reaches the server sits beside the switch it is about, instead of under the version number where nothing else mentioned recording
+
+### Fixed
+
+- **Desktop**: The split view has one switch instead of two. The settings card armed a feature flag and the quick settings tile turned the split on, and both had to be set before the window would divide — so a lit switch could do nothing
+- **Desktop**: A toast is no longer drawn behind the dialog or the sheet that produced it
+
 ## [0.95.2] - 2026-09-15
 
 ### Added
@@ -2987,6 +3008,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.96.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.0
 [0.95.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.95.2
 [0.95.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.95.1
 [0.95.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.95.0
