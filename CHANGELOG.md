@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.96.1] - 2026-09-16
+
+### Added
+
+- **Desktop**: ⌘;, ⌘J, ⌘T and ⌘P close the page they opened, the way ⌘, already closed the quick settings sheet. Pressing another page's chord still switches to it rather than dismissing
+
+### Fixed
+
+- **Desktop**: Team repositories are back in the settings list. The organizations they group under were only ever fetched by the pages that manage them, so the list showed the personal repositories and swallowed every shared one
+- **Desktop**: Leaving a dialog by any route other than its close button or Escape no longer strands it on a sub-page, so the next open lands on the page's home
+
 ## [0.96.0] - 2026-09-16
 
 ### Added
@@ -3008,6 +3019,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.96.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.1
 [0.96.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.0
 [0.95.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.95.2
 [0.95.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.95.1
