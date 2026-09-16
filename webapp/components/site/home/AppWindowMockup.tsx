@@ -17,14 +17,16 @@ import {
 // The sidebar's own marks come from the design system's lucide rather than the site's:
 // they are handed to a component on the far side of the alias, which types them against
 // the copy `design-system/package.json` owns. See that folder's README, rule 1.
-// Two of the sort marks are aliased: the site's own `Clock` and `FolderGit2` are
-// already in scope above from the site's lucide, and these are the same glyphs from
-// the OTHER copy — the one the sidebar is typed against.
+// Two of them are aliased: the site's own `Clock` and `FolderGit2` are already in scope
+// above from the site's lucide, and these are the same glyphs from the OTHER copy — the
+// one the sidebar is typed against. `RepositoryMark` is handed to two of the column's
+// controls at once, the repositories row of the menu and the sort order named after the
+// same thing, which is the app's own doing: one page, one mark, wherever it is named.
 import {
   Activity,
   ArrowDownUp,
   Clock as SortClock,
-  FolderGit2 as SortRepository,
+  FolderGit2 as RepositoryMark,
   ListTodo,
   NotebookPen,
   Plus,
@@ -109,8 +111,8 @@ const noop = () => undefined
  *   1. THE TITLEBAR — and this one is not a reproduction any more either. It IS the
  *      app's `AppTitleBar`, imported from `@ds/desktop`, handed the state the rest of
  *      this window shows: both panels out, one agent, its title in the middle, the
- *      Archive pill that closes it and the quick-settings toggle at the far right. The
- *      64px gutter, the toggles and every padding come from the component.
+ *      Archive pill that closes it, the quick-settings toggle and the account at the far
+ *      right. The 64px gutter, the toggles and every padding come from the component.
  *
  *      IT HAD ALREADY DRIFTED, which is the argument for the swap in one line. The two
  *      sidebar toggles were custom vectors copied out of `TitleBar.tsx` path for path —
@@ -192,6 +194,8 @@ const noop = () => undefined
  * NO SPLIT-VIEW TOGGLE in the titlebar: it is conditional in the app and is not showing
  * for a single coding agent on a window this wide, so `AppTitleBar` is handed no switch
  * at all. (There was a coder/planner switch beside it once; the product removed it.)
+ * NO "NOTIFICATIONS OFF" NOTICE beside the quick settings either: the bar carries that
+ * plate only while they ARE off, and this window is drawn with the app working normally.
  * NO PANE CHIP on the agents header — it stays mounted at `opacity-0` outside split
  * mode, so it is invisible in the state drawn here.
  *
@@ -242,7 +246,7 @@ const WINDOW = { width: 1280, height: 800 } as const
  * The version the footer prints. A literal, bumped at release like the app's own — see
  * `APP_VERSION` in `Sidebar.tsx`, which holds the same string the same way.
  */
-const VERSION = 'v0.94.2'
+const VERSION = 'v0.96.2'
 
 /**
  * THE AGENT ON SCREEN, and the same invented project every other drawing on this site
@@ -251,6 +255,14 @@ const VERSION = 'v0.94.2'
  * construction rather than by anyone remembering to keep them in step.
  */
 const AGENT_TITLE = 'PAY-318 · invoice VAT'
+
+/**
+ * WHOSE WINDOW THIS IS, and it is named in two places at once now: the title bar's
+ * account, at the far right, and the usage card at the foot of the sidebar, whose two
+ * rate limits belong to that same person. A constant rather than the string twice —
+ * two literals is one rename away from a window signed by two different people.
+ */
+const ACCOUNT_NAME = 'Camille'
 
 /**
  * The list, newest first — `useOrderedTerminals`' default, so a row stays where the user
@@ -472,10 +484,20 @@ export function AppWindowMockup() {
             onClick: noop,
           }}
           right={{ open: true, title: t('site.desktop.toggleInfo'), onToggle: noop }}
-          // The quick-settings toggle, last in the bar, drawn SHUT: the sheet it pulls
-          // down is a second surface and this window is the drawing of the first.
+          // The quick-settings toggle, drawn SHUT: the sheet it pulls down is a second
+          // surface and this window is the drawing of the first.
           settings={{ open: false, title: t('site.desktop.quickSettings'), onToggle: noop }}
-          // NO SWITCH — see WHAT IS NOT DRAWN at the top of this file.
+          // THE ACCOUNT, last in the bar, where the platform keeps its own — and where
+          // the app moved it the day the sidebar's fourth row stopped being a face. Same
+          // person as the usage card below, `src: null` so the bare glyph is drawn: what
+          // the app shows anyone who never uploads a photo.
+          account={{
+            label: ACCOUNT_NAME,
+            title: t('site.desktop.account'),
+            avatar: { src: null, alt: '' },
+            onClick: noop,
+          }}
+          // NO SWITCH, AND NO NOTICE — see WHAT IS NOT DRAWN at the top of this file.
         />
       </AppGround>
 
@@ -501,10 +523,13 @@ export function AppWindowMockup() {
               { id: 'plans', icon: NotebookPen, label: t('site.agentsCard.plans'), shortcut: '⌘T', onClick: noop },
               { id: 'tasks', icon: ListTodo, label: t('site.agentsCard.tasks'), shortcut: '⌘J', onClick: noop },
               { id: 'skills', icon: Sparkles, label: t('site.agentsCard.skills'), shortcut: '⌘;', onClick: noop },
-              // `SidebarAccount`, signed in: the person's own name, and ⌘, because the
-              // row opens Settings rather than saying so. No photo, so the column draws
-              // the bare glyph — what the app shows anyone who never uploads one.
-              { id: 'account', avatar: { src: null, alt: '' }, label: 'Camille', shortcut: '⌘,', onClick: noop },
+              // THE REPOSITORIES, and this row was the ACCOUNT until the app moved the
+              // person up into the title bar — where this drawing now shows them, at the
+              // far right of the bar above. What opens behind this row is a list of
+              // repositories (`useRepositoriesMenuEntry`), so it wears that page's mark
+              // and that page's word rather than a face, and it carries ⌘P: ⌘, went to
+              // the quick settings sheet.
+              { id: 'repositories', icon: RepositoryMark, label: t('site.agentsCard.repositories'), shortcut: '⌘P', onClick: noop },
             ]}
             lists={[
               {
@@ -525,7 +550,7 @@ export function AppWindowMockup() {
                       items: [
                         { id: 'recent', label: t('site.agentsCard.sortRecent'), icon: SortClock, selected: true },
                         { id: 'status', label: t('site.agentsCard.sortStatus'), icon: Activity },
-                        { id: 'repository', label: t('site.agentsCard.sortRepository'), icon: SortRepository },
+                        { id: 'repository', label: t('site.agentsCard.sortRepository'), icon: RepositoryMark },
                       ],
                     }],
                     onSelect: noop,
@@ -545,7 +570,7 @@ export function AppWindowMockup() {
                that decision. */
             usage={{
               className: 'mx-2 mb-2',
-              account: 'Camille',
+              account: ACCOUNT_NAME,
               limits: [
                 {
                   id: 'session',

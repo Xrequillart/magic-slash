@@ -191,6 +191,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.desktop.toggleAgents': 'Afficher ou masquer les agents',
   'site.desktop.toggleInfo': 'Afficher ou masquer le panneau de l’agent',
   'site.desktop.quickSettings': 'Réglages rapides',
+  'site.desktop.account': 'Compte',
   /** Les quatre atouts sous la fenêtre. « Worktree » reste tel quel, comme dans le
       sous-titre au-dessus et dans toute l’application. */
   'site.desktop.highlightParallel': 'Douze agents en parallèle',
@@ -765,7 +766,6 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.notificationCard.when': 'maintenant',
   // Voir la note du catalogue anglais.
   'site.agentsCard.tasks': 'Tâches',
-  'site.agentsCard.team': 'Équipe',
   'site.agentsCard.plans': 'Plans',
   'site.agentsCard.skills': 'Skills',
   'site.agentsCard.agents': 'Agents',
@@ -778,6 +778,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.agentsCard.sortStatus': 'Par statut',
   'site.agentsCard.sortRepository': 'Par dépôt',
   'site.agentsCard.newAgent': 'Nouvel agent',
+  'site.agentsCard.repositories': 'Dépôts',
   'site.agentsCard.working': 'Au travail',
   'site.agentsCard.workingDesc':
     'L’agent tourne — il lit, il écrit, ou il attend une commande. Rien ne vous est demandé.',

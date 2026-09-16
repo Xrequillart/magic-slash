@@ -158,11 +158,12 @@ export function AgentsSidebarMockup({ legend = true }: { legend?: boolean } = {}
     { id: "plans", icon: NotebookPen, label: t("site.agentsCard.plans"), shortcut: "⌘T", onClick: noop },
     { id: "tasks", icon: ListTodo, label: t("site.agentsCard.tasks"), shortcut: "⌘J", onClick: noop },
     { id: "skills", icon: Sparkles, label: t("site.agentsCard.skills"), shortcut: "⌘;", onClick: noop },
-    // The account row. Signed in, it is the person's own name and it opens Settings —
-    // which is why it carries ⌘, rather than a label saying so. No photo, so the
-    // column draws the bare glyph, exactly as the app does for anyone who never
-    // uploads one.
-    { id: "account", avatar: { src: null, alt: "" }, label: "camille", shortcut: "⌘,", onClick: noop },
+    // THE REPOSITORIES, and this row was the ACCOUNT until the app moved the person into
+    // the title bar (`SidebarAccount.tsx`, `useRepositoriesMenuEntry`). What opens behind
+    // it is a list of repositories, so it wears that page's mark and that page's word
+    // rather than somebody's photograph — and ⌘P rather than ⌘,, which the quick
+    // settings sheet took with it.
+    { id: "repositories", icon: FolderGit2, label: t("site.agentsCard.repositories"), shortcut: "⌘P", onClick: noop },
   ];
 
   return (

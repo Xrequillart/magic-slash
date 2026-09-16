@@ -502,6 +502,12 @@ export const marketingEn = {
   'site.desktop.toggleInfo': 'Show or hide the agent panel',
   'site.desktop.quickSettings': 'Quick settings',
   /**
+   * The account at the far right of the bar, `titlebar.account` in the app's own
+   * catalogues. The NAME beside it is a literal — an invented person, like every other
+   * name in that window — and this is only the tooltip on it.
+   */
+  'site.desktop.account': 'Account',
+  /**
    * THE FOUR HIGHLIGHTS under the window, and every one of them is a fact this site
    * already states somewhere else — see the note on `HIGHLIGHTS` in `DesktopHero.tsx`
    * for where each comes from. Four words or so each, because they are set on two lines
@@ -1538,10 +1544,6 @@ export const marketingEn = {
   // "Skills" and "Tasks" are the same string in French, which is why `i18n.test.ts`
   // lists them.
   'site.agentsCard.tasks': 'Tasks',
-  // `team` is the row the app REPLACED with `plans`, and it survives here because
-  // `home/AppWindowMockup.tsx` still draws its own sidebar by hand and still shows it.
-  // The day that window draws the real `Sidebar` too, this key goes with it.
-  'site.agentsCard.team': 'Team',
   'site.agentsCard.plans': 'Plans',
   'site.agentsCard.skills': 'Skills',
   'site.agentsCard.agents': 'Agents',
@@ -1558,6 +1560,10 @@ export const marketingEn = {
   'site.agentsCard.sortStatus': 'By status',
   'site.agentsCard.sortRepository': 'By repository',
   'site.agentsCard.newAgent': 'New agent',
+  // The menu's fourth row. It was the ACCOUNT until the app moved the person into the
+  // title bar; what opens behind it is the repositories page, and this is that page's
+  // own word — `settings.tab.repositories` in `desktop/src/i18n/`.
+  'site.agentsCard.repositories': 'Repositories',
   // The four states, and why each one is on screen. The names are the app's own words
   // for them; the sentences are this page's, because the app never has to explain a
   // glyph the person is watching change in front of them.
