@@ -93,7 +93,20 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   // visible: that is how you discover a colleague's repo and point it at your
   // own clone.
   const personalRepos = useMemo(() => repos.filter(([, r]) => !r.orgId), [repos])
-  const reposByOrg = useMemo(() => {
+  /**
+   * The team sections: the organizations `useOrgList` hydrated, in its order, and then
+   * any org a REPOSITORY names that the list does not hold.
+   *
+   * That tail is the whole point. This used to render `orgs.map(...)` and nothing else,
+   * so a repository whose org was missing from the list had no section to sit in and
+   * simply was not drawn — the page showed the personal repos and swallowed every team
+   * one. And `orgs` is missing far more often than it looks: it lands asynchronously
+   * from the cloud, it stays empty when that read fails or the user is offline, and it
+   * never holds an org the user has since left while a local repo still points at it.
+   * Grouping by what the repositories themselves say, with `orgs` supplying only names
+   * and order, means a repo can lose its heading but never its row.
+   */
+  const orgSections = useMemo(() => {
     const byOrg = new Map<string, typeof repos>()
     for (const org of orgs) byOrg.set(org.id, [])
     for (const entry of repos) {
@@ -101,8 +114,13 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       if (!orgId) continue
       byOrg.set(orgId, [...(byOrg.get(orgId) ?? []), entry])
     }
-    return byOrg
-  }, [repos, orgs])
+    const names = new Map(orgs.map((org) => [org.id, org.name]))
+    return [...byOrg].map(([id, orgRepos]) => ({
+      id,
+      name: names.get(id) ?? t('settings.repos.otherOrg'),
+      repos: orgRepos,
+    }))
+  }, [repos, orgs, t])
 
   const colorMap = useMemo(
     () => getProjectColorMap(projectNames, config?.repositories),
@@ -321,26 +339,23 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               )}
             </div>
 
-            {/* One section per organization, in the order useOrg lists them */}
-            {orgs.map((org) => {
-              const orgRepos = reposByOrg.get(org.id) ?? []
-              return (
-                <div key={org.id}>
-                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-icon mb-2">
-                    <Building2 className="w-3 h-3" />
-                    <span>{org.name}</span>
-                    <span className="text-text-secondary/30">{orgRepos.length}</span>
-                  </div>
-                  {orgRepos.length === 0 ? (
-                    <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-line-field rounded-xl">
-                      {t('settings.repos.noTeam')}
-                    </div>
-                  ) : (
-                    <div className="space-y-2">{orgRepos.map(renderRepoRow)}</div>
-                  )}
+            {/* One section per organization, in the order useOrgList lists them */}
+            {orgSections.map((section) => (
+              <div key={section.id}>
+                <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-icon mb-2">
+                  <Building2 className="w-3 h-3" />
+                  <span>{section.name}</span>
+                  <span className="text-text-secondary/30">{section.repos.length}</span>
                 </div>
-              )
-            })}
+                {section.repos.length === 0 ? (
+                  <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-line-field rounded-xl">
+                    {t('settings.repos.noTeam')}
+                  </div>
+                ) : (
+                  <div className="space-y-2">{section.repos.map(renderRepoRow)}</div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>}

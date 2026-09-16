@@ -31,6 +31,7 @@ import { ProfileOnboardingWizard } from './components/ProfileOnboardingWizard'
 import { SetupWizard } from './components/SetupWizard'
 import { RepoSetupWizard } from './components/RepoSetupWizard'
 import { useWindowSplitMode } from './hooks/useWindowSplitMode'
+import { useOrgList } from './hooks/useOrg'
 import FilePreviewPanel from './components/FilePreviewPanel'
 import PRCommentsPanel from './components/pr-comments/PRCommentsPanel'
 import { useT, type MessageKey } from './i18n'
@@ -102,6 +103,9 @@ export function App() {
   const { killTerminal, launchClaudeTerminal } = useTerminals()
   const { flatVisualOrder } = useOrderedTerminals()
   useWindowSplitMode()
+  // The organization list is read all over the app (the repository list groups by
+  // it) but was only ever fetched by the pages that manage it, so it belongs here.
+  useOrgList()
   const confirmCloseButtonRef = useRef<HTMLButtonElement>(null)
   const [showProfileWizard, setShowProfileWizard] = useState(false)
   const [profileChecked, setProfileChecked] = useState(false)

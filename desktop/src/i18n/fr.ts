@@ -219,6 +219,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.repos.personal': 'Personnels',
   'settings.repos.noPersonal': 'Aucun dépôt personnel — utilisez « Ajouter un dépôt » ci-dessus.',
   'settings.repos.noTeam': 'Aucun dépôt partagé dans cette organisation pour l’instant.',
+  'settings.repos.otherOrg': 'Autre organisation',
   'settings.repos.connected': 'Connecté',
   'settings.repos.noRemote': 'Aucun remote',
   'settings.repos.noLocalFolder': 'Aucun dossier local — cliquez pour le définir',

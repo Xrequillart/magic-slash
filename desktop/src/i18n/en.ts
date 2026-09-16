@@ -258,6 +258,9 @@ export const en = {
   'settings.repos.personal': 'Personal',
   'settings.repos.noPersonal': 'No personal repository — use “Add repository” above.',
   'settings.repos.noTeam': 'No shared repository in this organization yet.',
+  // A repository points at an organization the account's list does not hold: the
+  // membership is gone, or the list has not come back. The row still gets a heading.
+  'settings.repos.otherOrg': 'Other organization',
   'settings.repos.connected': 'Connected',
   'settings.repos.noRemote': 'No remote',
   'settings.repos.noLocalFolder': 'No local folder — click to set it',
