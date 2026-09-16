@@ -466,6 +466,8 @@ interface AppState {
   setSettingsOrgId: (orgId: string | null) => void
   openModal: (modal: ModalId) => void
   closeModal: () => void
+  /** Open `modal`, or shut it if it is the one already up. See the implementation. */
+  toggleModal: (modal: ModalId) => void
   /** Open the settings window. It is the repository list and its detail pages now,
    *  so there is no tab to name — everything else moved to the two title-bar sheets. */
   openSettingsModal: () => void
@@ -842,7 +844,49 @@ export const useStore = create<AppState>()(
           }
           return updates
         }),
-        closeModal: () => set({ activeModal: null, tasksPickAgentId: null }),
+        /**
+         * Shut the overlay — and put the SHARED HASH ROUTE back to its home.
+         *
+         * Two of the four pages route off `window.location.hash`: Settings has
+         * `#/repo/<name>`, Skills has `#/skill/<name>`, `#/new` and
+         * `#/repo-skill/<path>`. Leaving the hash where it was means the next open of
+         * that page lands on whatever sub-page was abandoned, which is not what any of
+         * the ways out of here mean — Escape, the close button, picking an agent in the
+         * sidebar, a tray notification, and now the chord that toggles the page shut.
+         *
+         * It used to live in `App`'s `onClose` handler, so it only covered the button
+         * and Escape: closing by any of the other paths left a stale route behind for
+         * the next open to land on.
+         */
+        closeModal: () => {
+          set({ activeModal: null, tasksPickAgentId: null })
+          if (window.location.hash && window.location.hash !== '#/') {
+            window.location.hash = '#/'
+          }
+        },
+        /**
+         * THE CHORDS TOGGLE, which is what a chord is for: the hand that pressed ⌘J to
+         * look at the board is already on the keys when it is done looking, and reaching
+         * for Escape or the corner of the window to put it away is a trip the same two
+         * fingers could have made. ⌘, has worked this way since the quick settings sheet
+         * arrived; this is the other four catching up.
+         *
+         * ONLY THE SAME PAGE CLOSES. ⌘J with Skills open is not "put Skills away" — the
+         * four are tabs of one overlay, so it switches to the board, exactly as the tab
+         * strip would. A toggle that closed on any modal would make every chord a
+         * coin-flip between switching and dismissing, depending on which page happened
+         * to be up.
+         *
+         * Openers with an argument — `openTasksModal`, `openPlansModal`,
+         * `openRepoSettings` — stay plain opens and must not route through this: they
+         * are deep links, and a deep link that dismissed the page when it was already
+         * showing something else in the same modal would drop the thing the caller
+         * asked for.
+         */
+        toggleModal: (modal) => {
+          if (get().activeModal === modal) get().closeModal()
+          else get().openModal(modal)
+        },
         openSettingsModal: () => get().openModal('settings'),
         /**
          * Settings, opened straight on ONE repository's page.

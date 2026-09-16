@@ -278,9 +278,6 @@ export function App() {
     return () => { unsubscribe() }
   }, [])
 
-  // Reset the shared hash route on close so the next open lands on the modal's
-  // home rather than a stale sub-page. Both Settings (#/repo/<name>) and Skills
-  // (#/skill/<name>, #/new, #/repo-skill/<path>) route off window.location.hash.
   /**
    * The page the overlay is on, as its row of `PAGE_TABS` — what the header's title and
    * mark are both drawn from.
@@ -292,12 +289,9 @@ export function App() {
    */
   const activePage = PAGE_TABS.find((tab) => tab.key === activeModal) ?? PAGE_TABS[0]
 
-  const handleCloseModal = useCallback(() => {
-    closeModal()
-    if (window.location.hash && window.location.hash !== '#/') {
-      window.location.hash = '#/'
-    }
-  }, [closeModal])
+  // The hash reset that used to be spelled out here is in `closeModal` itself now:
+  // this handler only covered the close button and Escape, and the shared route was
+  // left stale by every other way out of the overlay. See the store.
 
   // Listen for quicklaunch:dispatch IPC events
   useEffect(() => {
@@ -572,7 +566,7 @@ export function App() {
           // component draws it — see `titleIcon` — which is what keeps every one of the
           // four at the same rung and in the same tone.
           titleIcon={activePage.icon}
-          onClose={handleCloseModal}
+          onClose={closeModal}
           headerRight={activeModal === 'plans' ? <LiveIndicator /> : undefined}
           tabs={{
             ariaLabel: t('workspace.tabs.aria'),

@@ -42,9 +42,10 @@ const APP_VERSION = 'v0.96.0'
  * other initial the page could claim (b, /, ;, ,, p, n, i, d) is bound elsewhere in the
  * app.
  *
- * Repositories is absent on purpose: ⌘P goes through `openSettingsModal`, which is its
- * own wrapper rather than a plain `openModal` like the other three. ⌘, is not in the map
- * either, and is not even a modal — it pulls the quick settings sheet down.
+ * Repositories is absent on purpose: ⌘P is 'p', a plain letter that would sit in this
+ * map indistinguishable from the punctuation around it, and it is the one chord whose
+ * page has a hash route of its own. It is spelled out in the handler instead. ⌘, is not
+ * in the map either, and is not even a modal — it pulls the quick settings sheet down.
  */
 const PAGE_SHORTCUTS: Record<string, ModalId> = {
   ';': 'skills',
@@ -59,7 +60,7 @@ function attentionCount(terminals: TerminalWithRepos[]): number {
 }
 
 export function Sidebar() {
-  const { terminals, activeTerminalId, config, leftSidebarVisible, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, moveTerminalToPane, rightPaneTerminalIds, openModal, closeModal, openSettingsModal, toggleQuickSettings } = useStore()
+  const { terminals, activeTerminalId, config, leftSidebarVisible, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, moveTerminalToPane, rightPaneTerminalIds, openModal, closeModal, toggleModal, toggleQuickSettings } = useStore()
   const { setActiveTerminal } = useTerminals()
   const t = useT()
 
@@ -164,8 +165,12 @@ export function Sidebar() {
 
   // One listener for every page shortcut, not one per page: ⌘; / ⌘J / ⌘T all do the
   // same thing to a different modal, and a fourth copy of the same nine lines is a
-  // table asking to be written. ⌘, stays out of the map — Settings has its own
-  // action, the one that can preselect a tab.
+  // table asking to be written. ⌘, stays out of the map — the quick settings sheet is
+  // not a modal.
+  //
+  // EVERY ONE OF THEM TOGGLES. See `toggleModal` for what that does and does not mean;
+  // the short of it is that the chord that opened a page is the chord that puts it away,
+  // and that pressing a DIFFERENT page's chord still switches rather than dismissing.
   //
   // Which letter opens which page, and why they do not follow the menu below, is on
   // PAGE_SHORTCUTS.
@@ -187,18 +192,20 @@ export function Sidebar() {
       // repository list, which took ⌘P: P for project, and the list of them is the one
       // thing that window shows.
       //
-      // IT TOGGLES, where the other three chords only open. The difference is what they
-      // open onto: a modal has its own close button and answers Escape, and a sheet has
-      // neither — the one control that puts it away is the sliders in the title bar,
-      // which is a long way from the keys your hands are already on.
+      // It toggles, as all four of the modal chords below now do — the sheet has no
+      // close button and does not answer Escape, so the keys that pulled it down were
+      // always the only reasonable way back up.
       if (e.key === ',') {
         e.preventDefault()
         toggleQuickSettings()
         return
       }
+      // Not in PAGE_SHORTCUTS for the reason given there: ⌘P is spelled out because
+      // 'p' is a plain key and the map is indexed by `e.key`, so a letter that reads
+      // as a route wrapper elsewhere in the app is worth seeing on its own line.
       if (e.key === 'p') {
         e.preventDefault()
-        openSettingsModal()
+        toggleModal('settings')
         return
       }
       // hasOwn, not a bare lookup: `e.key` is whatever the keyboard produced, and
@@ -207,12 +214,12 @@ export function Sidebar() {
       if (!Object.hasOwn(PAGE_SHORTCUTS, e.key)) return
       const modal = PAGE_SHORTCUTS[e.key]
       e.preventDefault()
-      openModal(modal)
+      toggleModal(modal)
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [openModal, openSettingsModal, toggleQuickSettings])
+  }, [toggleModal, toggleQuickSettings])
 
   /**
    * A terminal, as a row the column can draw — and the repository heading it opens.
