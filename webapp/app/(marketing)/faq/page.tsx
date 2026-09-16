@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageMetadata } from '@/lib/pageMetadata'
 import { FaqContent } from '@/components/site/faq/FaqContent'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 
@@ -39,11 +40,11 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * and both are on `ink`, so the page ends on one dark sheet.
  */
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: 'FAQ — magic-slash',
   description:
     'Installing Magic Slash, configuring it, and living with it — the questions people actually ask.',
-}
+})
 
 export default function FaqPage() {
   return (

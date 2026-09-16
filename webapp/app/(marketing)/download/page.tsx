@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageMetadata } from '@/lib/pageMetadata'
 import { DownloadContent } from '@/components/site/download/DownloadContent'
 import { loadChangelog } from '@/lib/changelog'
 import { LATEST_DESKTOP_VERSION } from '@/lib/desktopRelease'
@@ -30,11 +31,11 @@ import { LATEST_DESKTOP_VERSION } from '@/lib/desktopRelease'
  * component as text to make sure the button is built from them and not spelled by hand.
  */
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: 'Download — magic-slash',
   description:
     'Download Magic Slash for macOS: the installer, what it needs, and what the first launch sets up.',
-}
+})
 
 export default function DownloadPage() {
   const release = loadChangelog().find((version) => version.version === LATEST_DESKTOP_VERSION) ?? null

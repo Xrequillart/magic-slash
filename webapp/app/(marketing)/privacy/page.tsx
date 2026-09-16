@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageMetadata } from '@/lib/pageMetadata'
 import { PrivacyContent } from '@/components/site/privacy/PrivacyContent'
 
 /**
@@ -39,11 +40,11 @@ import { PrivacyContent } from '@/components/site/privacy/PrivacyContent'
  * code before changing a sentence; do not take this comment as the check.
  */
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: 'Privacy — magic-slash',
   description:
     'What Magic Slash stores, what stays on your machine, and how to get rid of all of it.',
-}
+})
 
 export default function PrivacyPage() {
   return <PrivacyContent />

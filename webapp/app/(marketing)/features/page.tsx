@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageMetadata } from '@/lib/pageMetadata'
 import { FeaturesContent } from '@/components/site/features/FeaturesContent'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 
@@ -32,10 +33,10 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * two are one grep apart, so this note is here to save the next reader the detour.
  */
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: 'Features — magic-slash',
   description: 'Every command, every panel, every switch — grouped the way the app groups them.',
-}
+})
 
 export default function FeaturesPage() {
   return (

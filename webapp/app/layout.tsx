@@ -1,40 +1,27 @@
 import type { Metadata } from 'next'
+import { pageMetadata, SITE_URL } from '@/lib/pageMetadata'
 import { LANGUAGE_IDS, LANGUAGE_STORAGE_KEY, DEFAULT_LANGUAGE } from '@/lib/i18n/languages'
 import './globals.css'
 
 const DESCRIPTION = 'Magic Slash — the desktop agent for your Jira + GitHub development cycle.'
 
 /**
- * `metadataBase` is what lets the relative image path below resolve to an absolute
- * URL. Crawlers for X, Slack and iMessage do not resolve relative URLs, so without
- * it the image is simply dropped and the card renders bare.
+ * The fallback card for every route that sets no metadata of its own: the product app
+ * under `/dashboard`, `/login`, `/plans`, `/organization` and `/admin/*`, where a generic
+ * site-level card is the right one. Every PUBLIC marketing page builds its own through
+ * the same helper and inherits none of this — see `lib/pageMetadata.ts` for why that
+ * distinction is load-bearing rather than tidy.
  *
- * Deliberately no `openGraph.url` here. Metadata is inherited by every route that
- * does not set its own, so a fixed URL at the root would make `/features`, `/faq`,
- * `/download` and the rest each advertise the homepage as the page being shared.
- * Pages that care set their own; the rest are better off with no `og:url` than a
- * wrong one.
+ * `metadataBase` lives here and only here. It is what resolves the card's relative image
+ * path to an absolute URL, and crawlers for X, Slack and iMessage do not resolve relative
+ * URLs — without it the image is dropped and the card renders bare.
  *
- * The card is `summary` rather than `summary_large_image` because the icon is
- * square (256x256); a large card expects ~1.91:1 and would letterbox it.
+ * No `og:url` at this level, deliberately: it would be inherited by every route that does
+ * not override it, making each one advertise the homepage as the page being shared.
  */
 export const metadata: Metadata = {
-  metadataBase: new URL('https://magic-slash.io'),
-  title: 'Magic Slash',
-  description: DESCRIPTION,
-  openGraph: {
-    type: 'website',
-    siteName: 'Magic Slash',
-    title: 'Magic Slash',
-    description: DESCRIPTION,
-    images: [{ url: '/img/app-icon-desktop.png', width: 256, height: 256, alt: 'Magic Slash' }],
-  },
-  twitter: {
-    card: 'summary',
-    title: 'Magic Slash',
-    description: DESCRIPTION,
-    images: ['/img/app-icon-desktop.png'],
-  },
+  metadataBase: new URL(SITE_URL),
+  ...pageMetadata({ title: 'Magic Slash', description: DESCRIPTION }),
 }
 
 /**
