@@ -1,11 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { SectionHeader } from '@ds/desktop'
-import { Ticket, Link2, Unlink, RefreshCw, Loader2, ShieldAlert } from '@ds/desktop/icons'
+import { AccountCard, SectionHeader, type AccountCardAlert } from '@ds/desktop'
+import { Ticket, Link2, Unlink, RefreshCw, ShieldAlert, Jira, JIRA_CHIP_GROUND } from '@ds/desktop/icons'
 import type { JiraConnectFailure, JiraDisconnectReason } from '../../../types'
 import { useJiraAuth } from '../../hooks/useJiraAuth'
-import { BTN, BTN_PRIMARY } from '../../theme/controls'
 import { showToast } from '../../components/Toast'
-import { TrackerTile } from '../../components/icons/TrackerIcons'
 import { useT, type MessageKey } from '../../i18n'
 
 /**
@@ -36,6 +34,21 @@ import { useT, type MessageKey } from '../../i18n'
  * because a consent screen the user simply CLOSES sends no answer at all, that optimism
  * also has to expire on its own — coming back to this window is what ends it, and the
  * focus effect below is where that is spelled out.
+ *
+ * ── THE DRAWING IS `AccountCard`'S NOW ─────────────────────────────────────────────
+ *
+ * "Built on CloudAccountSection" was true of the shape and false of the code: this file
+ * drew its own plate, its own hairlines, its own tile, and its buttons out of the
+ * `BTN`/`BTN_PRIMARY` strings — and it had already drifted into a button height and a
+ * padding the account card no longer used. Same card means the same component, so what
+ * is left here is the WIRING: the hook, the browser round-trip, the toasts and the
+ * sentence each failure code becomes.
+ *
+ * EVERY STATE IS THE SAME CARD AND THE DIFFERENCE IS DATA, which is the card's own rule
+ * and the reason the guard clause below stopped being a hand-built empty plate. "No
+ * client id in this build" is an account you cannot connect: a mark, a line saying so,
+ * and no button — the same component as the three above it rather than a plate beside
+ * them.
  */
 
 /** The reason codes, as messages. A record so the mapping is total and typo-proof. */
@@ -62,6 +75,16 @@ const FAILURE_MESSAGE: Record<JiraConnectFailure, MessageKey> = {
   browser: 'jira.toast.connectFailed',
   unexpected: 'jira.toast.connectUnexpected',
 }
+
+/**
+ * The front of the card, in every state — the mark the account card draws where a
+ * person's card draws a face.
+ *
+ * The ground is `JIRA_CHIP_GROUND`, the value that travels with the mark itself: it is
+ * Atlassian's blue and not this palette's, so it can only ever be a value. The tracker
+ * tile on the Tasks rows reads the same one.
+ */
+const JIRA_MARK = { glyph: Jira, title: 'Jira', tint: JIRA_CHIP_GROUND }
 
 export function JiraAccountSection() {
   const { status, loading, lastEvent, connect, disconnect } = useJiraAuth()
@@ -159,15 +182,15 @@ export function JiraAccountSection() {
   // machine that holds an Atlassian token with no way to remove it. So a stored
   // credential always gets its card, with Disconnect; only CONNECTING is unavailable
   // (see `canConnect` below).
+  //
+  // NO PRIVACY NOTE ON THIS ONE. The foot of the card is a promise about a credential
+  // this machine holds, and this is the state in which it holds none and cannot be made
+  // to.
   if (!loading && !status.configured && !status.connected) {
     return (
       <div>
         <SectionHeader icon={Ticket} title={t('jira.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-6 text-center">
-          <Ticket className="w-8 h-8 text-icon-muted mx-auto mb-3" />
-          <div className="text-sm text-text-secondary/60">{t('jira.notConfigured')}</div>
-          <div className="text-xs text-text-secondary/40 mt-1">{t('jira.notConfiguredHint')}</div>
-        </div>
+        <AccountCard mark={JIRA_MARK} name={t('jira.notConfigured')} hint={t('jira.notConfiguredHint')} />
       </div>
     )
   }
@@ -179,102 +202,69 @@ export function JiraAccountSection() {
   // first paint, before the real status has been read.
   const canConnect = loading || status.configured
 
-  const connectButton = (label: string, Icon: typeof Link2) => (
-    <button
-      onClick={handleConnect}
-      disabled={pending || !canConnect}
-      title={canConnect ? undefined : t('jira.notConfigured')}
-      // `shrink-0 whitespace-nowrap` so the row's text is what gives way when the
-      // subtitle runs long: without it the flex parent squeezes the button first and
-      // "Connect Atlassian" breaks over two lines, which is the one element on the
-      // card that must stay one line whatever the copy says.
-      className={`${BTN_PRIMARY} shrink-0 whitespace-nowrap disabled:opacity-40`}
-    >
-      {pending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
-      {pending ? t('jira.connecting') : label}
-    </button>
-  )
+  /* The revoked credential, as the card's own band. `danger` is the variant it would
+     take anyway; `ShieldAlert` is named because the band is about an AUTHORISATION and
+     not about a generic failure, which is the one thing the default mark cannot say.
+
+     NO BUTTON WHEN THERE IS NO CLIENT ID, and the hint says why instead: a reconnect
+     that cannot start is a button that can only lead to an Atlassian error page. */
+  const alert: AccountCardAlert | undefined = status.unverified
+    ? {
+        variant: 'danger',
+        icon: ShieldAlert,
+        message: t('jira.unverified'),
+        hint: canConnect ? t('jira.unverifiedHint') : t('jira.notConfigured'),
+        actions: canConnect
+          ? [{
+              label: pending ? t('jira.connecting') : t('jira.reconnect'),
+              icon: RefreshCw,
+              busy: pending,
+              primary: true,
+              onClick: handleConnect,
+            }]
+          : undefined,
+      }
+    : undefined
 
   return (
     <div>
       <SectionHeader icon={Ticket} title={t('jira.section')} />
-      <div className="bg-surface border border-line-strong rounded-xl p-4">
-        {/* The mark on the left of the card, at the size the repository tile is
-            drawn at in Settings — this is the same kind of row (a thing you have
-            connected, and what to do about it) and it was the only one with nothing
-            in front of its name. Outside the state branches so all three wear it,
-            and `items-start` so it stays level with the FIRST block when the revoked
-            branch below adds a second one under it — `items-center` there would
-            centre the tile on the pair and leave it floating between them.
-
-            The centring the name and its subtitle want is bought on the header row
-            instead (`min-h-12`, the tile's own height, with `items-center`): the
-            tile fills that row exactly, so the two lines sit on its middle in both
-            branches without the tile moving when the second block appears. */}
-        <div className="flex items-start gap-4">
-          <TrackerTile tracker="jira" size="lg" title="Jira" />
-          <div className="flex-1 min-w-0">
-            {status.connected ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between min-h-12">
-                  <div>
-                    <div className="text-sm font-medium">{status.accountName || t('jira.connectedFallback')}</div>
-                    <div className="text-xs text-text-secondary/50 mt-0.5">
-                      {status.siteUrl ? t('jira.connectedHint', { site: status.siteUrl }) : t('jira.connectedHintNoSite')}
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleDisconnect}
-                    className={BTN}
-                  >
-                    <Unlink className="w-3.5 h-3.5" />
-                    {t('jira.disconnect')}
-                  </button>
-                </div>
-
-                {/* The revoked branch. Sits INSIDE "connected" because the credential is
-                    still on disk — it is simply no longer being accepted. */}
-                {status.unverified && (
-                  <div className="border-t border-line-subtle pt-3 flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-2.5">
-                      <div className="p-1.5 bg-red/10 rounded-lg flex-shrink-0">
-                        <ShieldAlert className="w-3.5 h-3.5 text-red" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium">{t('jira.unverified')}</div>
-                        <div className="text-xs text-text-secondary/50 mt-0.5">{t('jira.unverifiedHint')}</div>
-                      </div>
-                    </div>
-                    {/* No client id left in this build: reconnecting is impossible, so say
-                        so instead of offering a dead button. Disconnect stays available. */}
-                    {canConnect
-                      ? connectButton(t('jira.reconnect'), RefreshCw)
-                      : (
-                        <div className="text-xs text-text-secondary/40 flex-shrink-0 max-w-[12rem] text-right">
-                          {t('jira.notConfigured')}
-                        </div>
-                      )}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center justify-between gap-4 min-h-12">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium">{t('jira.notConnected')}</div>
-                  <div className="text-xs text-text-secondary/50 mt-0.5">{t('jira.notConnectedHint')}</div>
-                </div>
-                {connectButton(t('jira.connect'), Link2)}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Said in the UI rather than only in the code: the credential is nominative,
-            encrypted by the OS keychain, and never reaches our servers. */}
-        <div className="border-t border-line-subtle mt-3 pt-3 text-xs text-text-secondary/40">
-          {t('jira.privacy')}
-        </div>
-      </div>
+      {status.connected ? (
+        <AccountCard
+          mark={JIRA_MARK}
+          /* The Atlassian account's own name, and the site under it — which is the same
+             division the cloud card makes between who you are and where. */
+          name={status.accountName || t('jira.connectedFallback')}
+          hint={status.siteUrl ? t('jira.connectedHint', { site: status.siteUrl }) : t('jira.connectedHintNoSite')}
+          actions={[
+            { id: 'disconnect', label: t('jira.disconnect'), icon: Unlink, onClick: handleDisconnect },
+          ]}
+          alert={alert}
+          note={t('jira.privacy')}
+        />
+      ) : (
+        <AccountCard
+          mark={JIRA_MARK}
+          name={t('jira.notConnected')}
+          hint={t('jira.notConnectedHint')}
+          /* `accent`, and the only one on the tab: connecting is what this card is for.
+             `busy` is the whole of the pending state now — the button spins its own mark
+             and refuses a second press, where this file used to swap the glyph for a
+             `Loader2` and disable the element by hand. The disabled case is gone with it:
+             a build with no client id and no credential never reaches this branch. */
+          actions={[
+            {
+              id: 'connect',
+              label: pending ? t('jira.connecting') : t('jira.connect'),
+              icon: Link2,
+              tone: 'accent',
+              busy: pending,
+              onClick: handleConnect,
+            },
+          ]}
+          note={t('jira.privacy')}
+        />
+      )}
     </div>
   )
 }
