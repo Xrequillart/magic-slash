@@ -12,6 +12,7 @@ import { ButtonIconEntry } from './entries/ButtonIconEntry'
 import { CardEntry } from './entries/CardEntry'
 import { KbdEntry } from './entries/KbdEntry'
 import { SelectEntry } from './entries/SelectEntry'
+import { OrganizationCardEntry } from './entries/OrganizationCardEntry'
 import { CommitCardEntry } from './entries/CommitCardEntry'
 import { CommitLineEntry } from './entries/CommitLineEntry'
 import { DiffStatEntry } from './entries/DiffStatEntry'
@@ -132,6 +133,7 @@ const ENTRIES: Record<
   accountcard: AccountCardEntry,
   kbd: KbdEntry,
   select: SelectEntry,
+  organizationcard: OrganizationCardEntry,
   label: LabelEntry,
   status: StatusEntry,
   switch: SwitchEntry,

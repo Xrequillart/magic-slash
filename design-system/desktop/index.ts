@@ -96,6 +96,12 @@ export { Icon, ICON_SIZES } from './Icon'
 export { Label, LABEL_TONES } from './Label'
 export { ModalHeader, MODAL_HEADER_HEIGHT } from './ModalHeader'
 export type { ModalHeaderProps } from './ModalHeader'
+export { OrganizationCard } from './OrganizationCard'
+export type {
+  OrganizationCardInvitation,
+  OrganizationCardMember,
+  OrganizationCardProps,
+} from './OrganizationCard'
 export { PageModal } from './PageModal'
 export type { PageModalProps } from './PageModal'
 export { Menu } from './Menu'

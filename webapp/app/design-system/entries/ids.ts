@@ -43,6 +43,7 @@ export type EntryId =
   | 'fieldtable'
   | 'sectionheader'
   | 'profilecard'
+  | 'organizationcard'
   | 'scriptcard'
   | 'repositorycard'
   | 'item'
@@ -123,6 +124,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   fieldtable: 'FieldTable',
   sectionheader: 'SectionHeader',
   profilecard: 'ProfileCard',
+  organizationcard: 'OrganizationCard',
   scriptcard: 'ScriptCard',
   repositorycard: 'RepositoryCard',
   item: 'Item',
@@ -245,6 +247,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   fieldtable: ['button', 'text'],
   sectionheader: ['button', 'icon', 'text'],
   profilecard: ['fieldtable', 'text'],
+  organizationcard: ['card', 'avatar', 'button', 'buttonicon', 'icon', 'loader', 'select', 'status', 'text'],
   scriptcard: ['button', 'loader', 'icon', 'text'],
   repositorycard: ['card', 'headerrepocard', 'branchcard', 'uncommittedchangescard', 'commitcard'],
   // `Item` holds a ground and a shape and draws nothing: the rows inside it are the
@@ -389,6 +392,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   fieldtable: 'A list of settings, as a table',
   sectionheader: 'What the thing under it is',
   profilecard: 'Who the human is, as the skills read it',
+  organizationcard: 'One organization, and everyone in it',
   scriptcard: 'A process still alive on your machine',
   repositorycard: 'One repository, and everything happening to it',
   sidebaragentcoderinfo: 'The right column, and the agent in it',
