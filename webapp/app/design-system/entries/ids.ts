@@ -41,6 +41,11 @@ export type EntryId =
   | 'pullrequestcard'
   | 'checklistcard'
   | 'fieldtable'
+  | 'factlist'
+  | 'languagecard'
+  | 'settingrow'
+  | 'ratelimitbar'
+  | 'usagetable'
   | 'sectionheader'
   | 'profilecard'
   | 'organizationcard'
@@ -122,6 +127,11 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   pullrequestcard: 'PullRequestCard',
   checklistcard: 'ChecklistCard',
   fieldtable: 'FieldTable',
+  factlist: 'FactList',
+  languagecard: 'LanguageCard',
+  settingrow: 'SettingRow',
+  ratelimitbar: 'RateLimitBar',
+  usagetable: 'UsageTable',
   sectionheader: 'SectionHeader',
   profilecard: 'ProfileCard',
   organizationcard: 'OrganizationCard',
@@ -245,6 +255,11 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   pullrequestcard: ['buttonicon', 'collapsibleline', 'icon', 'text'],
   checklistcard: ['collapsibleline', 'icon', 'text'],
   fieldtable: ['button', 'text'],
+  factlist: ['status', 'text'],
+  languagecard: ['card', 'settingrow', 'text'],
+  settingrow: ['select', 'switch', 'text'],
+  ratelimitbar: ['progress', 'text'],
+  usagetable: ['text'],
   sectionheader: ['button', 'icon', 'text'],
   profilecard: ['fieldtable', 'text'],
   organizationcard: ['card', 'avatar', 'button', 'buttonicon', 'icon', 'loader', 'select', 'status', 'text'],
@@ -390,6 +405,11 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   pullrequestcard: 'A pull request, as the sidebar watches it',
   checklistcard: 'What is left to do, and how far through you are',
   fieldtable: 'A list of settings, as a table',
+  factlist: 'A list of facts, nothing to press',
+  languagecard: 'Which language the product speaks to you in',
+  settingrow: 'One setting, and the control that changes it',
+  ratelimitbar: 'One plan limit, and when it turns over',
+  usagetable: 'Figures over periods, in columns',
   sectionheader: 'What the thing under it is',
   profilecard: 'Who the human is, as the skills read it',
   organizationcard: 'One organization, and everyone in it',

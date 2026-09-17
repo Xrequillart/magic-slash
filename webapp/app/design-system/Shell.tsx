@@ -13,6 +13,11 @@ import { CardEntry } from './entries/CardEntry'
 import { KbdEntry } from './entries/KbdEntry'
 import { SelectEntry } from './entries/SelectEntry'
 import { OrganizationCardEntry } from './entries/OrganizationCardEntry'
+import { FactListEntry } from './entries/FactListEntry'
+import { LanguageCardEntry } from './entries/LanguageCardEntry'
+import { SettingRowEntry } from './entries/SettingRowEntry'
+import { RateLimitBarEntry } from './entries/RateLimitBarEntry'
+import { UsageTableEntry } from './entries/UsageTableEntry'
 import { CommitCardEntry } from './entries/CommitCardEntry'
 import { CommitLineEntry } from './entries/CommitLineEntry'
 import { DiffStatEntry } from './entries/DiffStatEntry'
@@ -134,6 +139,11 @@ const ENTRIES: Record<
   kbd: KbdEntry,
   select: SelectEntry,
   organizationcard: OrganizationCardEntry,
+  factlist: FactListEntry,
+  languagecard: LanguageCardEntry,
+  settingrow: SettingRowEntry,
+  ratelimitbar: RateLimitBarEntry,
+  usagetable: UsageTableEntry,
   label: LabelEntry,
   status: StatusEntry,
   switch: SwitchEntry,
