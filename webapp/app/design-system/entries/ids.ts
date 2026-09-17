@@ -253,7 +253,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   speccard: ['card', 'label', 'status', 'editabletext', 'buttonicon'],
   banner: ['button', 'icon', 'text'],
   agent: ['loader', 'icon', 'text'],
-  accountcard: ['fieldtable', 'avatar', 'button', 'text'],
+  accountcard: ['fieldtable', 'avatar', 'banner', 'button', 'icon', 'text'],
 }
 
 /** The graph as `EntryHeader` wants it: an id and the label to print on the chip. */

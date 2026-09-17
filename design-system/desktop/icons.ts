@@ -39,4 +39,4 @@ export * from 'lucide-react'
 export { ClaudeCode, Github, Jira, MagicSlash, VSCode } from './brand'
 // The brand COLOURS travel with the marks: a call site painting Claude Code's robot
 // coral and one painting its chip's ground read the same two values.
-export { CLAUDE_CHIP_GROUND, CLAUDE_CORAL } from './brand'
+export { CLAUDE_CHIP_GROUND, CLAUDE_CORAL, JIRA_BLUE, JIRA_CHIP_GROUND } from './brand'

@@ -48,6 +48,21 @@ export const Github: IconComponent = ({ className, style }) => (
 )
 
 /**
+ * Jira's blue, and the ground a tile wearing its mark sits on.
+ *
+ * `CLAUDE_CORAL`'s pair, for `CLAUDE_CORAL`'s reason: the mark below paints itself,
+ * but a TILE around it cannot, and the app was spelling that ground as a literal
+ * `rgba(38, 132, 255, 0.14)` in the tracker tile while the same 14% lived here under
+ * Claude Code's name. Two spellings of one brand's tint is one of them going stale.
+ *
+ * A HEX AND AN RGBA, never tokens. This is Atlassian's colour: a blue in this
+ * system's palette would be the app claiming it, and it would drift the day the
+ * palette is retuned.
+ */
+export const JIRA_BLUE = '#2684FF'
+export const JIRA_CHIP_GROUND = 'rgba(38, 132, 255, 0.14)'
+
+/**
  * Jira's mark, in its own blue. The gradient is the brand's, not a token.
  */
 export const Jira: IconComponent = ({ className, style }) => {

@@ -1,7 +1,23 @@
 'use client'
 
 import { AccountCard, type AccountCardRow } from '@ds/desktop'
-import { ImageOff, LogIn, LogOut, Pencil, Trash2, UserPlus } from '@ds/desktop/icons'
+import {
+  ImageOff,
+  Jira,
+  JIRA_CHIP_GROUND,
+  Clock,
+  Link2,
+  LogIn,
+  LogOut,
+  MagicSlash,
+  Pencil,
+  RefreshCw,
+  ShieldAlert,
+  Sparkles,
+  Trash2,
+  Unlink,
+  UserPlus,
+} from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
 import { usesOf } from './ids'
@@ -49,6 +65,9 @@ const ROWS: AccountCardRow[] = [
   },
 ]
 
+/** The front the Connections tab hands over, in all four of its states. */
+const JIRA_MARK = { glyph: Jira, title: 'Jira', tint: JIRA_CHIP_GROUND }
+
 const PROPS: PropRow[] = [
   {
     name: 'avatar',
@@ -86,6 +105,24 @@ const PROPS: PropRow[] = [
     type: '{ id, label, onClick, icon?, tone?, busy?, disabled? }',
     description:
       'Banner’s shape, plus the two states a control talking to a server needs. tone is neutral | accent | danger — at most one accent per card, and danger is tinted rather than filled because deleting an account should read as available, never as the obvious next step.',
+  },
+  {
+    name: 'mark',
+    type: '{ glyph, title, tint? }',
+    description:
+      'The front, for an account that is not a person’s: a service’s logo on its own tile where the avatar draws a face. It sits on Avatar’s lg geometry, read from the ladder rather than respelled, so the identity band is exactly as tall either way — and it is square where the face is round, because every one of these logos is drawn on a square grid and a circle crops it. tint is a value and never a token: a brand’s colour belongs to that brand, and a class in this palette would be the app claiming it. With avatar and not beside it — a card has one subject, so it has one front.',
+  },
+  {
+    name: 'alert',
+    type: '{ message, hint?, variant?, icon?, actions? }',
+    description:
+      'The account is listed but not working — a revoked authorisation, a credential the service has started refusing. Banner draws it in its inset layout, full-bleed across the card, and the card gives back its own padding so the band reaches its edges. It is not a row, because a row is a setting: a thing with a value you can change. This has no value and nothing to set; it is the reason the account above it does not work. danger unless stated.',
+  },
+  {
+    name: 'note',
+    type: 'string',
+    description:
+      'The last line, under a hairline: what holds true for the whole card — where a credential is kept, and who never sees it. Not a row for the alert’s reason, and not a hint, because that line belongs to the identity above while this one belongs to the card. Translated.',
   },
   {
     name: 'className',
@@ -233,6 +270,72 @@ export function AccountCardEntry({ theme, onOpen }: { theme: DesktopTheme; onOpe
             />
           </Specimen>
         </Stage>
+      </EntrySection>
+
+      <EntrySection
+        title="An account is not always a person"
+        note="The Connections tab holds the same card about a service: who you are on Atlassian, where, and the one button that ends it. It was drawn by hand there — its own plate, its own hairline, its own BTN_PRIMARY string — and it had already drifted into a different button height and a different padding from this one, which is the exact drift this card was extracted to stop. So the three things that block did and this one could not are props: a mark, an alert and a note."
+      >
+        <Stage theme={theme} className="flex flex-col gap-5">
+          <Specimen label="connected — a logo for a front, and the promise at the foot">
+            <AccountCard
+              mark={JIRA_MARK}
+              name="Camille Dubois"
+              hint="Connected to acme.atlassian.net"
+              actions={[{ id: 'disconnect', label: 'Disconnect', icon: Unlink, onClick: noop }]}
+              note="The credential is yours alone, encrypted by this machine’s keychain. It never reaches our servers."
+            />
+          </Specimen>
+          <Specimen label="revoked — the credential is still here and no longer accepted">
+            <AccountCard
+              mark={JIRA_MARK}
+              name="Camille Dubois"
+              hint="Connected to acme.atlassian.net"
+              actions={[{ id: 'disconnect', label: 'Disconnect', icon: Unlink, onClick: noop }]}
+              alert={{
+                icon: ShieldAlert,
+                message: 'Atlassian is refusing this credential',
+                hint: 'The app was probably revoked from your Atlassian account. Reconnect to authorise it again.',
+                actions: [{ label: 'Reconnect', icon: RefreshCw, primary: true, onClick: noop }],
+              }}
+              note="The credential is yours alone, encrypted by this machine’s keychain. It never reaches our servers."
+            />
+          </Specimen>
+          <Specimen label="not connected — one accent, and nothing to say about a credential that does not exist">
+            <AccountCard
+              mark={JIRA_MARK}
+              name="Not connected"
+              hint="Connect Atlassian to read your sprint and open your tickets from here"
+              actions={[{ id: 'connect', label: 'Connect Atlassian', icon: Link2, tone: 'accent', onClick: noop }]}
+              note="The credential is yours alone, encrypted by this machine’s keychain. It never reaches our servers."
+            />
+          </Specimen>
+          <Specimen label="no tint — the app's own mark, on the theme's plate">
+            <AccountCard
+              mark={{ glyph: MagicSlash, title: 'Magic Slash' }}
+              name="Magic Slash"
+              hint="v0.96.4"
+              actions={[
+                { id: 'changelog', label: 'Changelog', icon: Clock, onClick: noop },
+                { id: 'whats-new', label: 'What’s new', icon: Sparkles, tone: 'accent', onClick: noop },
+              ]}
+            />
+          </Specimen>
+        </Stage>
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          <code>tint</code> is for a colour this system does not own. The About tab’s card
+          is about the app itself, whose accent is a <em>token</em> that moves with the
+          theme — so it passes none, and the tile falls back to the neutral plate the mark
+          takes its ink from.
+        </p>
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          The band is <code>Banner</code> in its <code>inset</code> layout — the one built
+          to be part of a card rather than a strip on a page — and the card gives back its
+          own <code>p-4</code> so it reaches the edges. It is not a row: a row is a
+          setting, a thing with a value you can change, and “Atlassian is refusing this
+          credential” has no value and nothing to set. It is the reason the account above
+          it does not work.
+        </p>
       </EntrySection>
 
       <EntrySection title="Props">

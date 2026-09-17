@@ -1,4 +1,4 @@
-import { Github, Jira } from '@ds/desktop/icons'
+import { Github, Jira, JIRA_CHIP_GROUND } from '@ds/desktop/icons'
 import { Label, type LabelSize } from '@ds/desktop'
 
 /**
@@ -30,6 +30,11 @@ import { Label, type LabelSize } from '@ds/desktop'
  * the same `#2684FF` the mark itself is painted in — and not a theme token. Tailwind
  * only emits classes it can see, so an arbitrary value would also have to be spelled
  * out per size.
+ *
+ * IT IS `JIRA_CHIP_GROUND` NOW, and not the literal that used to sit here. The value
+ * travels with the mark, beside Claude Code's coral and for the same reason: this
+ * tile and the account card's front both wear it, and two spellings of one brand's
+ * tint is one of them going stale.
  *
  * `title` rather than `aria-hidden`: on a mixed page the mark is the only thing
  * saying which tracker a row came from, so it is content and not decoration. The
@@ -69,7 +74,7 @@ export function TrackerTile({
       className={`flex items-center justify-center flex-shrink-0 ${tile} ${
         jira ? '' : 'bg-surface-strong text-ink'
       } ${className}`}
-      style={jira ? { backgroundColor: 'rgba(38, 132, 255, 0.14)' } : undefined}
+      style={jira ? { backgroundColor: JIRA_CHIP_GROUND } : undefined}
       title={title}
       role="img"
       aria-label={title}
