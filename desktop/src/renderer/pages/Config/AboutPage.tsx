@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
+import { SectionHeader } from '@ds/desktop'
 import { Clock, Info, Sparkles } from '@ds/desktop/icons'
-import { SectionHeader } from './SectionHeader'
 import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
 import { CHANGELOG_URL } from '../../../urls'

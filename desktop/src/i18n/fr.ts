@@ -937,9 +937,28 @@ export const fr: Record<keyof typeof en, string> = {
   // montrée : c'est la plus ancienne date possible du mot de passe actuel.
   'cloud.password.notRecorded':
     'Aucun changement enregistré depuis la création du compte, le {date}',
+  // ── La ligne en tête de la modale de changement de mot de passe ──────────
+  // Les deux mêmes faits que porte la ligne de la carte, retournés : la ligne dit QUAND
+  // il a changé la dernière fois, la modale dit depuis combien de temps il tient, ce
+  // qui est l'information utile au moment où l'on décide d'en changer. Aucune des deux
+  // n'affirme plus que ce que la colonne permet ; voir `cloud.password.notRecorded`.
+  'cloud.password.modalHelp': 'Vous ne l’avez pas changé depuis le {date}.',
+  'cloud.password.modalHelpNotRecorded':
+    'Aucun changement n’a été enregistré depuis la création de votre compte, le {date}.',
   'cloud.password.submit': 'Mettre à jour le mot de passe',
   'cloud.password.newPlaceholder': 'Nouveau mot de passe',
   'cloud.password.confirmPlaceholder': 'Confirmer le nouveau mot de passe',
+  // ── La modale de changement d'e-mail ─────────────────────────────────────
+  // UNE SEULE ÉTAPE, SANS CODE. Le projet est sur le palier gratuit de Supabase avec
+  // leur propre fournisseur de mail, qui interdit les gabarits personnalisés : le
+  // message envoyé est donc celui d'origine, et il contient un LIEN. Les clés de code
+  // en dessous sont conservées, inutilisées : elles reviennent le jour où un SMTP
+  // personnalisé débloque {{ .Token }}.
+  'cloud.email.sendLink': 'Envoyer le lien de confirmation',
+  'cloud.email.linkHelp':
+    'Nous enverrons un lien de confirmation à votre nouvelle adresse. Le compte bascule dès que vous l’ouvrez, depuis l’appareil où vous lisez vos mails.',
+  'cloud.email.changed.title': 'Adresse e-mail modifiée',
+  'cloud.email.changed.body': 'Votre compte se connecte désormais avec {email}.',
   'cloud.email.sendCode': 'Envoyer le code',
   'cloud.email.confirmChange': 'Confirmer le changement',
   'cloud.email.requestHelp':
@@ -965,7 +984,9 @@ export const fr: Record<keyof typeof en, string> = {
   'toast.passwordMismatch': 'Les mots de passe ne correspondent pas',
   'toast.passwordUpdated': 'Mot de passe mis à jour',
   'toast.passwordUpdateFailed': 'Impossible de mettre à jour le mot de passe',
+  'toast.emailInvalid': 'Cette adresse n’a pas l’air d’un e-mail',
   'toast.emailRequired': 'Saisissez un nouvel e-mail',
+  'toast.emailLinkSent': 'Lien de confirmation envoyé. Ouvrez-le depuis votre nouvelle adresse.',
   'toast.emailCodeSent': 'Le code de confirmation vous a été envoyé sur votre nouvelle adresse',
   'toast.emailCodeRequired': 'Saisissez le code',
   'toast.emailUpdated': 'E-mail mis à jour',
@@ -1132,7 +1153,21 @@ export const fr: Record<keyof typeof en, string> = {
   'profile.form.freeText': 'Autre chose',
   'profile.form.freeTextPlaceholder':
     'ex. : je préfère les réponses courtes, je travaille sur des apps mobiles…',
-  'profile.form.optional': 'facultatif',
+  // ── Ce qu'affiche une ligne quand le champ est vide ──────────────────────
+  // Une absence est NOMMÉE plutôt que laissée vide : une cellule vide se lit comme un
+  // défaut d'affichage, là où « Non renseigné » se lit comme un fait sur le profil, et
+  // c'est ce qui signale qu'il y a quelque chose à remplir. La carte les affiche en
+  // discret, pour qu'un placeholder ne passe pas pour une réponse.
+  'profile.form.notSet': 'Non renseigné',
+  // Sa propre formulation : « Non renseigné » est le vocabulaire d'un champ à options,
+  // celui-ci est du texte libre.
+  'profile.form.freeTextEmpty': 'Rien d’écrit pour l’instant',
+  // De même : « Aucune sélection » est ce que veut dire un choix multiple vide, là où
+  // « Non renseigné » suggérerait une réponse unique que personne n'a donnée.
+  'profile.form.noLanguages': 'Aucune sélection',
+  // Sous le groupe d'options facultatif, le seul que l'on puisse revider. Les deux
+  // groupes obligatoires ne le peuvent pas, donc ils ne disent pas ça.
+  'profile.form.clearHint': 'Appuyez de nouveau sur l’option choisie pour l’effacer.',
   'profile.form.save': 'Enregistrer le profil',
   'toast.profileSaved': 'Profil enregistré',
   'toast.profileSaveFailed': 'Impossible d’enregistrer le profil',

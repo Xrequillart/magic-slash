@@ -3,8 +3,7 @@ import {
   AlertTriangle, BarChart3, ChevronDown, Check, Columns, GitPullRequest, Lightbulb,
   MonitorSmartphone, Search, X,
 } from '@ds/desktop/icons'
-import { Switch } from '@ds/desktop'
-import { SectionHeader } from './SectionHeader'
+import { SectionHeader, Switch } from '@ds/desktop'
 import { TelemetryHealthCard } from './TelemetryHealthCard'
 import { SetupHealthCard } from './SetupHealthCard'
 import { ToggleRow } from './ToggleRow'

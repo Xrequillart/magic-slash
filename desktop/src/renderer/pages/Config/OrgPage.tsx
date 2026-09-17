@@ -6,8 +6,7 @@ import { useMemberAvatars } from '../../hooks/useMemberAvatars'
 import { useStore } from '../../store'
 import { Modal } from '../../components/Modal'
 import { RoleSelect } from './RoleSelect'
-import { SectionHeader } from './SectionHeader'
-import { Avatar, Input, TabStrip } from '@ds/desktop'
+import { Avatar, Input, SectionHeader, TabStrip } from '@ds/desktop'
 import { TabSweep } from '../../components/TabSweep'
 import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
@@ -533,24 +532,10 @@ export function OrgPage() {
         icon={Building2}
         title={t('org.sectionCount', { count: orgs.length })}
         spacing="none"
-        action={
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => { setCreateName(''); setShowCreate(true) }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              {t('org.create')}
-            </button>
-            <button
-              onClick={() => { setJoinToken(''); setShowJoin(true) }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              {t('org.join')}
-            </button>
-          </div>
-        }
+        actions={[
+          { id: 'create', label: t('org.create'), icon: Plus, onClick: () => { setCreateName(''); setShowCreate(true) } },
+          { id: 'join', label: t('org.join'), icon: UserPlus, onClick: () => { setJoinToken(''); setShowJoin(true) } },
+        ]}
       />
 
       {orgLoading && orgs.length === 0 ? (

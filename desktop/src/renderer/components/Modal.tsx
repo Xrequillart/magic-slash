@@ -20,6 +20,14 @@ import { useT } from '../i18n'
  * Stayed: the width, the height policy, and the animation classes, all passed down as
  * `className`, which is exactly the seam the design system left open for them.
  *
+ * IT HAS ROOM NOW. The body and the footer sat at `px-5 pb-5` and the header at its own
+ * `px-4`, which is two things at once: a dialog too tight for a form, and a title four
+ * pixels left of the text under it. Both are fixed by one number — `px-6` here and
+ * `gutter="wide"` on the header, which is the rung that exists so the two cannot
+ * disagree again. The body also takes a little off the top, because the header's 48px
+ * band ends flush against it and a field starting on that seam reads as part of the
+ * chrome.
+ *
  * THE BORDER IS GONE rather than moved. It was `border border-line` on the panel, and a
  * hairline around something already lifted off a dimmed background by a shadow is a
  * second answer to "where does this window end". The rule under the header went with it,
@@ -102,19 +110,19 @@ export function Modal({ isOpen, onClose, title, children, footer, maxWidth = 'ma
           close button at a padding of its own; there is one header in this app now.
           No `fullScreen`, so no expand button is drawn — there is nothing in "are you
           sure?" to expand into. */}
-      <ModalHeader title={title} onClose={onClose} closeTitle={t('modal.closeEsc')} />
+      <ModalHeader title={title} onClose={onClose} closeTitle={t('modal.closeEsc')} gutter="wide" />
 
       {/* Body */}
       {/* `min-h-0` is what makes `flex-1` a real height here rather than a floor: a
           flex child defaults to its content's minimum size, and without it a terminal
           asking for 100% would push the footer off the bottom instead of fitting. */}
-      <div className={`px-5 pb-5 text-sm text-text-secondary ${fillHeight ? 'flex-1 min-h-0' : ''}`}>
+      <div className={`px-6 pb-6 pt-1 text-sm text-text-secondary ${fillHeight ? 'flex-1 min-h-0' : ''}`}>
         {children}
       </div>
 
       {/* Footer */}
       {footer && (
-        <div className="flex-shrink-0 flex gap-2 justify-end px-5 pb-5">
+        <div className="flex-shrink-0 flex gap-2 justify-end px-6 pb-6">
           {footer}
         </div>
       )}

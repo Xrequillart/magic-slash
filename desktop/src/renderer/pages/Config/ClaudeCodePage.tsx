@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, Fragment } from 'react'
+import { SectionHeader } from '@ds/desktop'
 import { AlertTriangle, Bot, ChevronDown, Coins, Gauge, Shield, User } from '@ds/desktop/icons'
-import { SectionHeader } from './SectionHeader'
 import { RateLimitBar } from '../../components/agent-info-sidebar/LimitGauge'
 import { showToast } from '../../components/Toast'
 import { useConfig } from '../../hooks/useConfig'

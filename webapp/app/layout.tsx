@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { LANGUAGE_IDS, LANGUAGE_STORAGE_KEY, DEFAULT_LANGUAGE } from '@/lib/i18n/languages'
+import { EmailConfirmed } from '@/components/EmailConfirmed'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -50,7 +51,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           (0,1,0 beats 0,0,2) and the landing page's hero would render white — which
           is only visible in the hero, because every section below it paints its own
           background. */}
-      <body className="min-h-screen font-sans text-ink antialiased">{children}</body>
+      <body className="min-h-screen font-sans text-ink antialiased">
+        {children}
+        {/* IN THE LAYOUT AND NOT ON A PAGE, because the confirmation redirect lands on
+            the ROOT of the app host with everything that explains it in the URL
+            fragment — which no server ever sees. It renders nothing until it finds its
+            own marker there. See the component. */}
+        <EmailConfirmed />
+      </body>
     </html>
   )
 }

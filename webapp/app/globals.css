@@ -180,3 +180,37 @@ body {
   font-family: 'Avenir', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+/* ── The email-confirmation landing (components/EmailConfirmed.tsx) ──────────
+   Spelled here rather than inline because Tailwind's arbitrary `animate-[…]`
+   names a keyframe it does not define: the utility sets `animation`, and the
+   @keyframes has to exist in the stylesheet or the element simply never moves.
+
+   Three, because the page arrives in three beats: the disc behind the mark, the
+   mark being struck, and the words rising in after it. Staggering them is what
+   makes the page read in that order rather than all at once. */
+@keyframes ec-ring {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+/* The tick is a path with its dash offset animated to zero, so it draws itself.
+   No library and no sprite, and it stays sharp at any size. */
+@keyframes ec-tick {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes ec-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Anyone who has asked not to be moved gets the end state, immediately. The
+   information is the tick being THERE; the drawing of it is decoration, and this
+   is exactly the kind of decoration that setting exists to switch off. */
+@media (prefers-reduced-motion: reduce) {
+  [class*='animate-[ec-'] {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}

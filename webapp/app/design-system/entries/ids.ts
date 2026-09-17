@@ -38,6 +38,9 @@ export type EntryId =
   | 'tally'
   | 'pullrequestcard'
   | 'checklistcard'
+  | 'fieldtable'
+  | 'sectionheader'
+  | 'profilecard'
   | 'scriptcard'
   | 'repositorycard'
   | 'item'
@@ -113,6 +116,9 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   tally: 'Tally',
   pullrequestcard: 'PullRequestCard',
   checklistcard: 'ChecklistCard',
+  fieldtable: 'FieldTable',
+  sectionheader: 'SectionHeader',
+  profilecard: 'ProfileCard',
   scriptcard: 'ScriptCard',
   repositorycard: 'RepositoryCard',
   item: 'Item',
@@ -230,6 +236,9 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   tally: ['text'],
   pullrequestcard: ['buttonicon', 'collapsibleline', 'icon', 'text'],
   checklistcard: ['collapsibleline', 'icon', 'text'],
+  fieldtable: ['button', 'text'],
+  sectionheader: ['button', 'icon', 'text'],
+  profilecard: ['fieldtable', 'text'],
   scriptcard: ['button', 'loader', 'icon', 'text'],
   repositorycard: ['card', 'headerrepocard', 'branchcard', 'uncommittedchangescard', 'commitcard'],
   // `Item` holds a ground and a shape and draws nothing: the rows inside it are the
@@ -244,7 +253,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   speccard: ['card', 'label', 'status', 'editabletext', 'buttonicon'],
   banner: ['button', 'icon', 'text'],
   agent: ['loader', 'icon', 'text'],
-  accountcard: ['avatar', 'button', 'text'],
+  accountcard: ['fieldtable', 'avatar', 'button', 'text'],
 }
 
 /** The graph as `EntryHeader` wants it: an id and the label to print on the chip. */
@@ -369,6 +378,9 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   tally: 'A total, broken into the parts it is made of',
   pullrequestcard: 'A pull request, as the sidebar watches it',
   checklistcard: 'What is left to do, and how far through you are',
+  fieldtable: 'A list of settings, as a table',
+  sectionheader: 'What the thing under it is',
+  profilecard: 'Who the human is, as the skills read it',
   scriptcard: 'A process still alive on your machine',
   repositorycard: 'One repository, and everything happening to it',
   sidebaragentcoderinfo: 'The right column, and the agent in it',

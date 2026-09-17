@@ -1,8 +1,8 @@
 import { Languages } from '@ds/desktop/icons'
+import { SectionHeader } from '@ds/desktop'
 import { useConfig } from '../../hooks/useConfig'
 import { LanguageSelect } from '../../components/LanguageSelect'
 import { showToast } from '../../components/Toast'
-import { SectionHeader } from './SectionHeader'
 import { useLanguage, useT } from '../../i18n'
 import { type LanguageId } from '../../../types'
 

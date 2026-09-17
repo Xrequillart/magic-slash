@@ -340,6 +340,55 @@ export async function confirmEmailChange(newEmail: string, code: string): Promis
   return toStatus(stored)
 }
 
+/**
+ * What the server says about us now, and whether that differs from what we stored.
+ *
+ * WHY THIS EXISTS: an email change is confirmed by clicking a link in a mailbox, which
+ * happens in a BROWSER, on a machine this app knows nothing about. Nothing pushes the
+ * result back — no webhook, no realtime channel on `auth.users` — so the only way the
+ * desktop learns its own address changed is to go and ask. `confirmEmailChange` used to
+ * be that moment, because the user typed the code here; with a link, there is no moment.
+ *
+ * `getUser()` AND NOT `refreshSession()`, which would also pick the new address up. A
+ * refresh ROTATES the refresh token, and this file's own notes explain what that costs:
+ * handing Supabase a token it has already rotated trips reuse detection and revokes the
+ * whole session family. This runs on a timer, so it would be doing that every few
+ * seconds. `getUser()` is a plain read against the access token we already hold.
+ *
+ * `pending` IS THE POLLER'S STOP CONDITION. GoTrue keeps the requested address in
+ * `new_email` until it is confirmed, so "is there still a change in flight" is a fact
+ * the server holds rather than something this app has to remember across restarts.
+ *
+ * NEVER THROWS. It runs unattended; a network blip must leave the stored session exactly
+ * as it was and be indistinguishable from "nothing has changed yet".
+ */
+export async function refreshUser(): Promise<{ changed: boolean; pending: boolean; status: AuthStatus }> {
+  const stored = loadSession()
+  if (!stored) return { changed: false, pending: false, status: LOGGED_OUT }
+
+  const unchanged = { changed: false, pending: false, status: toStatus(stored) }
+
+  try {
+    const client = await getAuthedClient()
+    if (!client) return unchanged
+
+    const { data, error } = await client.auth.getUser()
+    if (error || !data.user) return unchanged
+
+    // `new_email` is typed as optional on the user; an empty string is GoTrue's "none".
+    const pending = Boolean(data.user.new_email)
+    const email = data.user.email
+    if (!email || email === stored.user?.email) return { ...unchanged, pending }
+
+    const next: StoredSession = { ...stored, user: { id: data.user.id, email } }
+    saveSession(next)
+    return { changed: true, pending, status: toStatus(next) }
+  } catch (error) {
+    console.error('[cloud] refreshUser failed:', error)
+    return unchanged
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Account deletion (GDPR)
 // ---------------------------------------------------------------------------

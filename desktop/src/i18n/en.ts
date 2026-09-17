@@ -960,9 +960,27 @@ export const en = {
   // says. The creation date is still worth showing: it is the earliest the current
   // password can possibly date from.
   'cloud.password.notRecorded': 'No change recorded since the account was created on {date}',
+  // ── The line at the top of the change-password dialog ────────────────────
+  // The same two facts the card's password line carries, turned around: the row states
+  // WHEN it last changed, the dialog states how long it has stood — which is the thing
+  // worth knowing at the moment somebody is deciding whether to change it. Neither
+  // claims more than the column supports; see `cloud.password.notRecorded`.
+  'cloud.password.modalHelp': 'You have not changed it since {date}.',
+  'cloud.password.modalHelpNotRecorded':
+    'No change has been recorded since your account was created on {date}.',
   'cloud.password.submit': 'Update password',
   'cloud.password.newPlaceholder': 'New password',
   'cloud.password.confirmPlaceholder': 'Confirm new password',
+  // ── The change-email dialog ──────────────────────────────────────────────
+  // ONE STEP AND NO CODE. The project is on Supabase's free tier with their own mail
+  // provider, which forbids custom templates, so the message that goes out is the
+  // stock one and it carries a LINK. The code keys below it are kept, unused: they
+  // are what comes back the day a custom SMTP provider unlocks {{ .Token }}.
+  'cloud.email.sendLink': 'Send confirmation link',
+  'cloud.email.linkHelp':
+    'We’ll email a confirmation link to your new address. Your account moves the moment you open it, from wherever you read your mail.',
+  'cloud.email.changed.title': 'Email address changed',
+  'cloud.email.changed.body': 'Your account now signs in as {email}.',
   'cloud.email.sendCode': 'Send code',
   'cloud.email.confirmChange': 'Confirm change',
   'cloud.email.requestHelp': 'We’ll email a 6-digit confirmation code to your new address.',
@@ -987,7 +1005,9 @@ export const en = {
   'toast.passwordMismatch': 'Passwords do not match',
   'toast.passwordUpdated': 'Password updated',
   'toast.passwordUpdateFailed': 'Failed to update password',
+  'toast.emailInvalid': 'That does not look like an email address',
   'toast.emailRequired': 'Enter a new email',
+  'toast.emailLinkSent': 'Confirmation link sent. Open it from your new address.',
   'toast.emailCodeSent': 'Check your new email for the confirmation code',
   'toast.emailCodeRequired': 'Enter the code',
   'toast.emailUpdated': 'Email updated',
@@ -1164,7 +1184,21 @@ export const en = {
   'profile.form.languages': 'Languages',
   'profile.form.freeText': 'Anything else',
   'profile.form.freeTextPlaceholder': 'e.g., I prefer short answers, I work on mobile apps…',
-  'profile.form.optional': 'optional',
+  // ── What a row says when the field is empty ──────────────────────────────
+  // An absence is NAMED rather than left blank: an empty value cell reads as a
+  // rendering fault, where a row saying "Not set" reads as a fact about the profile
+  // and is the one that tells somebody there is something here worth filling in. The
+  // card draws these quiet, so a placeholder cannot be mistaken for an answer.
+  'profile.form.notSet': 'Not set',
+  // Its own wording, because "Not set" is the language of a field with options and
+  // this one is prose.
+  'profile.form.freeTextEmpty': 'Nothing written yet',
+  // Likewise: "None chosen" is what an empty multi-select means, where "Not set"
+  // would suggest a single answer nobody gave.
+  'profile.form.noLanguages': 'None chosen',
+  // Under the optional group of options, which is the only one that can be emptied
+  // again. The two required groups deliberately cannot, so they do not say this.
+  'profile.form.clearHint': 'Press the selected one again to clear it.',
   'profile.form.save': 'Save profile',
   'toast.profileSaved': 'Profile saved',
   'toast.profileSaveFailed': 'Failed to save profile',

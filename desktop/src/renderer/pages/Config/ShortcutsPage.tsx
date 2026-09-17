@@ -1,6 +1,6 @@
 import { Keyboard } from '@ds/desktop/icons'
+import { SectionHeader } from '@ds/desktop'
 import { SPOTLIGHT_OPTIONS } from './ApplicationPage'
-import { SectionHeader } from './SectionHeader'
 import { useStore } from '../../store'
 import { useT, type MessageKey } from '../../i18n'
 

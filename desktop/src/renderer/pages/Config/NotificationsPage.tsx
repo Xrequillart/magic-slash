@@ -1,6 +1,6 @@
 import { Bell, Bot, GitPullRequest, Users } from '@ds/desktop/icons'
+import { SectionHeader } from '@ds/desktop'
 import { useConfig } from '../../hooks/useConfig'
-import { SectionHeader } from './SectionHeader'
 import { ToggleRow } from './ToggleRow'
 import { useT } from '../../i18n'
 

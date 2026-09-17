@@ -853,4 +853,14 @@ export const en = {
   'repo.danger.deletePersonalHelp': 'Removes it from your Magic Slash configuration.',
   'repo.danger.deleteAction': 'Delete repository',
   'repo.teamNote': 'Changes here apply for every member of {org}.',
+
+  // ── The email-confirmation landing ───────────────────────────────────────
+  // Read by components/EmailConfirmed.tsx, which draws over whatever the root of the
+  // app host rendered. The visitor got here by opening a link in a mailbox and may
+  // not be signed in on the web at all, so the copy says what happened and sends them
+  // back to the app rather than offering anything to do here.
+  'emailConfirmed.title': 'Email address confirmed',
+  'emailConfirmed.body':
+    'Your Magic Slash account now signs in with this address. Nothing else has changed.',
+  'emailConfirmed.hint': 'You can close this tab and go back to the app.',
 } as const

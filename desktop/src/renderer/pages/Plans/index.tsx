@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { CloudOff, NotebookPen, RotateCcw, Users } from '@ds/desktop/icons'
-import { ItemGroup, ItemNote } from '@ds/desktop'
+import { ItemGroup, ItemNote, SectionHeader } from '@ds/desktop'
 import type { PlanOverview } from '../../../types'
 import { useConfig } from '../../hooks/useConfig'
 import { useT, type MessageKey } from '../../i18n'
@@ -410,16 +410,19 @@ export function PlansPage() {
 
             {/* `gap-3` between the heading and what it heads, as on the board. */}
             <div className={`flex flex-col gap-3 ${repoOptions.length > 1 ? 'pt-4' : 'pt-6'}`}>
-              {/* The same heading the Tasks board puts over its list, down to the classes:
-                  two pages reached from the same rail should name what is under them the
-                  same way, and the glyph is the one the sidebar's Plans button already
-                  carries so the nav entry and the heading read as one place. Above the list
-                  and below the filter bar, which is pinned and would otherwise scroll a
-                  heading out from under itself. */}
-              <div className="flex items-center gap-2 text-sm text-text-secondary">
-                <NotebookPen className="w-4 h-4" />
-                <span>{t('plans.section')}</span>
-              </div>
+              {/* `SectionHeader` FROM THE DESIGN SYSTEM, where this used to be the same
+                  classes spelled out by hand — and spelled out again on the Tasks board,
+                  and again in four places in Skills, and differently again on the
+                  repository list. Two pages reached from the same rail should name what
+                  is under them the same way, and the only arrangement where they cannot
+                  drift apart is one component. The glyph is the one the sidebar's Plans
+                  button already carries, so the nav entry and the heading read as one
+                  place.
+
+                  `spacing="none"` because the wrapper's `gap-3` already spaces it from
+                  the list. Above the list and below the filter bar, which is pinned and
+                  would otherwise scroll a heading out from under itself. */}
+              <SectionHeader icon={NotebookPen} title={t('plans.section')} spacing="none" />
 
               {/* ONE gate, because there is now one read. Whether the reader belongs to an
                   organization rides in on the overview (`hasOrg`), so the page no longer has

@@ -21,6 +21,9 @@ import { TabStripEntry } from './entries/TabStripEntry'
 import { TallyEntry } from './entries/TallyEntry'
 import { ReviewThreadLineEntry } from './entries/ReviewThreadLineEntry'
 import { ChecklistCardEntry } from './entries/ChecklistCardEntry'
+import { FieldTableEntry } from './entries/FieldTableEntry'
+import { SectionHeaderEntry } from './entries/SectionHeaderEntry'
+import { ProfileCardEntry } from './entries/ProfileCardEntry'
 import { PullRequestCardEntry } from './entries/PullRequestCardEntry'
 import { RepositoryCardEntry } from './entries/RepositoryCardEntry'
 import { ItemEntry } from './entries/ItemEntry'
@@ -140,6 +143,9 @@ const ENTRIES: Record<
   reviewthreadline: ReviewThreadLineEntry,
   pullrequestcard: PullRequestCardEntry,
   checklistcard: ChecklistCardEntry,
+  fieldtable: FieldTableEntry,
+  sectionheader: SectionHeaderEntry,
+  profilecard: ProfileCardEntry,
   repositorycard: RepositoryCardEntry,
   item: ItemEntry,
   repositoryitem: RepositoryItemEntry,

@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react'
-import { AccountCard, Input } from '@ds/desktop'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import { AccountCard, Button, Input } from '@ds/desktop'
 import { Cloud, LogOut, LogIn, UserPlus, Loader2, KeyRound, AtSign, Trash2, AlertTriangle, ImageOff, Pencil, Check } from '@ds/desktop/icons'
 import { useAuth } from '../../hooks/useAuth'
 import { useAvatar, publishAvatar, avatarSession } from '../../hooks/useAvatar'
@@ -13,6 +13,7 @@ import { useT, useLocale, type MessageKey } from '../../i18n'
 import { formatSize } from '../../utils/formatSize'
 import { AVATAR_MAX_BYTES, AVATAR_MIME_TYPE, AVATAR_SIZE, type AvatarRejection } from '../../../avatar'
 import { sourceRectFor } from '../../../avatarCrop'
+import { looksLikeEmail } from '../../../email'
 import {
   USERNAME_MAX_LENGTH,
   USERNAME_MIN_LENGTH,
@@ -246,7 +247,7 @@ async function toAvatarDataUrl(sourceDataUrl: string, view: AvatarCropView): Pro
  * drops what no longer matches.
  */
 export function CloudAccountSection() {
-  const { status, loading: authLoading, logout, updatePassword, requestEmailChange, confirmEmailChange, deleteAccount } = useAuth()
+  const { status, loading: authLoading, logout, updatePassword, requestEmailChange, deleteAccount } = useAuth()
   const { refresh } = useOrg()
   const t = useT()
   const locale = useLocale()
@@ -260,10 +261,17 @@ export function CloudAccountSection() {
   const [changingPassword, setChangingPassword] = useState(false)
 
   const [showChangeEmail, setShowChangeEmail] = useState(false)
-  const [emailStep, setEmailStep] = useState<'request' | 'confirm'>('request')
   const [newEmail, setNewEmail] = useState('')
-  const [emailCode, setEmailCode] = useState('')
   const [changingEmail, setChangingEmail] = useState(false)
+  /**
+   * The address the account moved TO, once the server confirms it did.
+   *
+   * Non-null IS "show the confirmation dialog". The change is confirmed in a browser,
+   * so there is no moment in this app to celebrate it at — main watches for it and the
+   * effect below turns that into a dialog, which is the only acknowledgement the user
+   * gets on this side.
+   */
+  const [changedEmail, setChangedEmail] = useState<string | null>(null)
 
   const [showDeleteAccount, setShowDeleteAccount] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -718,33 +726,74 @@ export function CloudAccountSection() {
 
   const resetEmailModal = useCallback(() => {
     setShowChangeEmail(false)
-    setEmailStep('request')
     setNewEmail('')
-    setEmailCode('')
   }, [])
 
+  /**
+   * Ask for the change, and stop there.
+   *
+   * ONE STEP, WHERE THERE WERE TWO. The second used to take a 6-digit code out of the
+   * email, and there is no code: the project is on the free tier with Supabase's own
+   * mail provider, which forbids custom templates, so the message that goes out is the
+   * stock one and it carries a LINK. A box asking for a code that no email contains is
+   * a dead end with a cursor blinking in it.
+   *
+   * SO NOTHING IS CONFIRMED HERE. Opening the link applies the change server-side, in a
+   * browser, on whatever machine the mailbox is on. This app finds out by asking — see
+   * `email-change-watcher` in main, and the effect below that turns its answer into a
+   * dialog.
+   *
+   * `confirmEmailChange` is still wired end to end, unused. It is the path back the day
+   * a custom SMTP provider unlocks the token template.
+   */
   const handleChangeEmail = useCallback(async () => {
     if (changingEmail) return
+    if (!newEmail.trim()) { showToast(t('toast.emailRequired'), 'error'); return }
+    // BEFORE the round trip, and before the server mails anything: a typo in the domain
+    // costs a message sent to an inbox nobody can open, and a change left pending
+    // against an address that does not exist. `looksLikeEmail` only catches what is
+    // nonsense in any reading — it is a gate, not a verdict on delivery.
+    if (!looksLikeEmail(newEmail)) { showToast(t('toast.emailInvalid'), 'error'); return }
+
     setChangingEmail(true)
     try {
-      if (emailStep === 'request') {
-        if (!newEmail.trim()) { showToast(t('toast.emailRequired'), 'error'); return }
-        await requestEmailChange(newEmail.trim())
-        showToast(t('toast.emailCodeSent'), 'success')
-        setEmailStep('confirm')
-      } else {
-        if (!emailCode.trim()) { showToast(t('toast.emailCodeRequired'), 'error'); return }
-        await confirmEmailChange(newEmail.trim(), emailCode.trim())
-        showToast(t('toast.emailUpdated'), 'success')
-        resetEmailModal()
-        await refresh()
-      }
+      await requestEmailChange(newEmail.trim())
+      showToast(t('toast.emailLinkSent'), 'success')
+      resetEmailModal()
     } catch (e) {
       showToast(e instanceof Error ? e.message : t('toast.emailChangeFailed'), 'error')
     } finally {
       setChangingEmail(false)
     }
-  }, [changingEmail, emailStep, newEmail, emailCode, requestEmailChange, confirmEmailChange, resetEmailModal, refresh])
+  }, [changingEmail, newEmail, requestEmailChange, resetEmailModal, t])
+
+  /**
+   * Notice that the address actually moved.
+   *
+   * MAIN IS WHAT WATCHES; this only reacts. The poller there emits `auth:statusChanged`
+   * when the server reports a new address, `useAuth` re-renders with it, and the two
+   * refs below turn that into the one thing a user needs: an acknowledgement that the
+   * thing they did in another window worked.
+   *
+   * IT COMPARES AGAINST THE PREVIOUS EMAIL, AND ONLY WITHIN ONE ACCOUNT. Signing out
+   * and back in as somebody else also changes `status.user.email`, and congratulating
+   * the new arrival on a change they never made would be worse than saying nothing —
+   * hence the `user.id` guard. The first render seeds the ref and announces nothing,
+   * because an address that was already this one when the tab opened did not change.
+   */
+  const seenAccount = useRef<{ id: string; email: string } | null>(null)
+  useEffect(() => {
+    const id = status.user?.id
+    const email = status.user?.email
+    if (!status.loggedIn || !id || !email) {
+      seenAccount.current = null
+      return
+    }
+    const seen = seenAccount.current
+    seenAccount.current = { id, email }
+    if (seen && seen.id === id && seen.email !== email) setChangedEmail(email)
+  }, [status])
+
 
   const handleDeleteAccount = useCallback(async () => {
     if (deleting) return
@@ -782,6 +831,26 @@ export function CloudAccountSection() {
     ? t('cloud.password.changedOn', { date: changedOn })
     : createdOn
       ? t('cloud.password.notRecorded', { date: createdOn })
+      : undefined
+
+  /**
+   * The same two facts, turned around for the dialog.
+   *
+   * THE ROW SAYS WHEN, THE DIALOG SAYS HOW LONG IT HAS STOOD. They are one date read two
+   * ways, and the difference is what the reader is doing at the time: scanning the card
+   * they want the value of the setting, and standing in front of an empty password field
+   * they want the reason to fill it in. "Last changed on 4 March" and "you have not
+   * changed it since 4 March" are the same sentence pointed at two different decisions.
+   *
+   * IT CLAIMS NOTHING MORE THAN THE COLUMN SUPPORTS, which is the same discipline the row
+   * keeps: a null `passwordChangedAt` does NOT mean the password has never changed, only
+   * that no change was recorded, so the fallback says exactly that and dates it from the
+   * account instead. No date at all draws no line rather than an empty paragraph.
+   */
+  const passwordModalHelp = changedOn
+    ? t('cloud.password.modalHelp', { date: changedOn })
+    : createdOn
+      ? t('cloud.password.modalHelpNotRecorded', { date: createdOn })
       : undefined
 
   // Cloud disabled entirely (no Supabase env baked in) → nothing to sign in to.
@@ -980,30 +1049,29 @@ export function CloudAccountSection() {
         title={t('cloud.username.title')}
         footer={
           <>
-            <button
-              onClick={resetUsernameModal}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-            >
+            <Button size="md" tone="neutral" onClick={resetUsernameModal}>
               {t('common.cancel')}
-            </button>
+            </Button>
             {/* AVAILABLE IS THE ONLY STATE THAT ENABLES THIS, which makes the button a
                 second reading of the line above it rather than a separate rule to keep
                 in step: `checking` and `idle` both leave it off, so there is no press
                 that can be made while the answer is still in the air. It is still not a
                 guarantee — see `handleChangeUsername` on why `taken` can come back from
                 here anyway. */}
-            <button
-              onClick={handleChangeUsername}
+            <Button
+              size="md"
+              tone="accent"
+              icon={Check}
+              busy={savingUsername}
               disabled={savingUsername || usernameCheck.kind !== 'available'}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
+              onClick={handleChangeUsername}
             >
-              {savingUsername ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
               {t('cloud.username.submit')}
-            </button>
+            </Button>
           </>
         }
       >
-        <div className="space-y-2">
+        <div className="space-y-3">
           <p className="text-xs text-text-secondary/60">
             {t('cloud.username.help', { min: USERNAME_MIN_LENGTH, max: USERNAME_MAX_LENGTH })}
           </p>
@@ -1012,6 +1080,7 @@ export function CloudAccountSection() {
               message. The other rules cannot be expressed as an input attribute, which
               is what the line below is for. */}
           <Input
+            size="lg"
             value={usernameDraft}
             onChange={setUsernameDraft}
             placeholder={t('cloud.username.placeholder')}
@@ -1061,25 +1130,30 @@ export function CloudAccountSection() {
         title={t('cloud.changePassword')}
         footer={
           <>
-            <button
-              onClick={resetPasswordModal}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-            >
+            <Button size="md" tone="neutral" onClick={resetPasswordModal}>
               {t('common.cancel')}
-            </button>
-            <button
-              onClick={handleChangePassword}
+            </Button>
+            <Button
+              size="md"
+              tone="accent"
+              icon={KeyRound}
+              busy={changingPassword}
               disabled={changingPassword || !newPassword || newPassword !== confirmPassword}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
+              onClick={handleChangePassword}
             >
-              {changingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
               {t('cloud.password.submit')}
-            </button>
+            </Button>
           </>
         }
       >
-        <div className="space-y-2">
+        <div className="space-y-3">
+          {/* Above the fields, where the email dialog puts its own help line: it is the
+              context for what you are about to type, not a footnote about it. */}
+          {passwordModalHelp && (
+            <p className="text-xs text-text-secondary/60">{passwordModalHelp}</p>
+          )}
           <Input
+            size="lg"
             type="password"
             value={newPassword}
             onChange={setNewPassword}
@@ -1088,6 +1162,7 @@ export function CloudAccountSection() {
             className="w-full"
           />
           <Input
+            size="lg"
             type="password"
             value={confirmPassword}
             onChange={setConfirmPassword}
@@ -1105,54 +1180,65 @@ export function CloudAccountSection() {
         title={t('cloud.changeEmail')}
         footer={
           <>
-            <button
-              onClick={resetEmailModal}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-            >
+            <Button size="md" tone="neutral" onClick={resetEmailModal}>
               {t('common.cancel')}
-            </button>
-            <button
+            </Button>
+            <Button
+              size="md"
+              tone="accent"
+              icon={AtSign}
+              busy={changingEmail}
+              disabled={changingEmail || !looksLikeEmail(newEmail)}
               onClick={handleChangeEmail}
-              disabled={changingEmail}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
             >
-              {changingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AtSign className="w-3.5 h-3.5" />}
-              {emailStep === 'request' ? t('cloud.email.sendCode') : t('cloud.email.confirmChange')}
-            </button>
+              {t('cloud.email.sendLink')}
+            </Button>
           </>
         }
       >
-        {emailStep === 'request' ? (
-          <div className="space-y-2">
-            <p className="text-xs text-text-secondary/60">
-              {t('cloud.email.requestHelp')}
-            </p>
-            <Input
-              type="email"
-              value={newEmail}
-              onChange={setNewEmail}
-              placeholder={t('cloud.email.newPlaceholder')}
-              autoFocus
-              onKeyDown={(e) => { if (e.key === 'Enter') handleChangeEmail() }}
-              className="w-full"
-            />
+        {/* ONE STEP. The second one asked for a 6-digit code out of the email, and the
+            email has no code in it — see `handleChangeEmail`. What is left is the
+            address and a sentence saying what happens next, because what happens next
+            is somewhere else entirely. */}
+        <div className="space-y-3">
+          <p className="text-xs text-text-secondary/60">
+            {t('cloud.email.linkHelp')}
+          </p>
+          <Input
+            size="lg"
+            type="email"
+            value={newEmail}
+            onChange={setNewEmail}
+            placeholder={t('cloud.email.newPlaceholder')}
+            autoFocus
+            onKeyDown={(e) => { if (e.key === 'Enter') handleChangeEmail() }}
+            className="w-full"
+          />
+        </div>
+      </Modal>
+
+      {/* THE ACKNOWLEDGEMENT, and the only one this side of the app can give.
+          The change is applied in a browser and the user comes back here to an
+          address that has silently become correct — which reads as nothing having
+          happened. This is main's watcher arriving: see the effect on `seenAccount`. */}
+      <Modal
+        isOpen={changedEmail !== null}
+        onClose={() => setChangedEmail(null)}
+        title={t('cloud.email.changed.title')}
+        footer={
+          <Button size="md" tone="accent" icon={Check} onClick={() => setChangedEmail(null)}>
+            {t('common.done')}
+          </Button>
+        }
+      >
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-green/10 rounded-lg flex-shrink-0">
+            <Check className="w-4 h-4 text-green" />
           </div>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-xs text-text-secondary/60">
-              {t('cloud.email.confirmHelp', { email: newEmail })}
-            </p>
-            <Input
-              inputMode="numeric"
-              value={emailCode}
-              onChange={setEmailCode}
-              placeholder={t('cloud.email.codePlaceholder')}
-              autoFocus
-              onKeyDown={(e) => { if (e.key === 'Enter') handleChangeEmail() }}
-              className="w-full"
-            />
-          </div>
-        )}
+          <p className="text-sm text-ink">
+            {t('cloud.email.changed.body', { email: changedEmail ?? '' })}
+          </p>
+        </div>
       </Modal>
 
       {/* Delete account (danger) */}
@@ -1162,20 +1248,22 @@ export function CloudAccountSection() {
         title={t('cloud.deleteAccount')}
         footer={
           <>
-            <button
-              onClick={() => setShowDeleteAccount(false)}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-            >
+            <Button size="md" tone="neutral" onClick={() => setShowDeleteAccount(false)}>
               {t('common.cancel')}
-            </button>
-            <button
-              onClick={handleDeleteAccount}
+            </Button>
+            {/* `danger` — tinted rather than filled, which is `Button`'s own judgement
+                and the right one on the button that ends an account: available, never
+                the obvious next step. It replaces a hand-built `bg-red` fill. */}
+            <Button
+              size="md"
+              tone="danger"
+              icon={Trash2}
+              busy={deleting}
               disabled={deleting}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-red hover:bg-red/80 rounded-lg transition-all disabled:opacity-40"
+              onClick={handleDeleteAccount}
             >
-              {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
               {t('cloud.delete.submit')}
-            </button>
+            </Button>
           </>
         }
       >

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
+import { SectionHeader } from '@ds/desktop'
 import { CheckCircle2, XCircle, Download, RefreshCw, ExternalLink, Copy, Wrench, Loader2, ChevronDown } from '@ds/desktop/icons'
 import type { McpServerStatus, PrerequisiteId, PrerequisiteStatus, SetupStatus } from '../../../types'
 import { useT } from '../../i18n'
-import { SectionHeader } from './SectionHeader'
 import { getSetupStatus, SETUP_SIMULATION_EVENT } from '../../dev/simulatedSetup'
 
 /**
@@ -145,16 +145,16 @@ export function SetupHealthCard() {
     <SectionHeader
       icon={Wrench}
       title={t('settings.application.setup.title')}
-      action={
-        <button
-          onClick={refresh}
-          disabled={status === null && !checkFailed}
-          className="text-xs text-text-secondary/60 hover:text-ink transition-colors flex items-center gap-1 disabled:opacity-50"
-        >
-          <RefreshCw className="w-3 h-3" />
-          {t('settings.application.setup.recheck')}
-        </button>
-      }
+      // Data rather than a hand-built button: `SectionHeader` draws every control
+      // beside a heading at one rung now, which is what stops this one and the two on
+      // the Organization tab being three spellings of the same thing.
+      actions={[{
+        id: 'recheck',
+        label: t('settings.application.setup.recheck'),
+        icon: RefreshCw,
+        disabled: status === null && !checkFailed,
+        onClick: refresh,
+      }]}
     />
   )
 

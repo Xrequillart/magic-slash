@@ -60,6 +60,20 @@ export interface ModalHeaderProps {
   /** A page's own chrome, before the buttons — a live indicator, a count. */
   right?: ReactNode
   /**
+   * How far in the title sits, so the header can line up with the body under it.
+   *
+   * A RUNG AND NOT A `className`, for the reason every other size in this folder is: a
+   * second spelling of the padding wins or loses on the order Tailwind emitted the two,
+   * and a header that disagreed with its own dialog by four pixels is precisely the bug
+   * this is here to stop — the app's dialog sat at `px-5` against this header's `px-4`
+   * for as long as both were hand-written.
+   *
+   * `default` is the page overlay, which is a window and pads like one. `wide` is the
+   * dialog, whose body has room to breathe and would otherwise start eight pixels right
+   * of its own title.
+   */
+  gutter?: 'default' | 'wide'
+  /**
    * THE EXPAND CONTROL, and absent it simply is not drawn.
    *
    * A page overlay can take the whole window and a confirmation dialog cannot — there
@@ -99,10 +113,11 @@ export function ModalHeader({
   fullScreen,
   onClose,
   closeTitle,
+  gutter = 'default',
 }: ModalHeaderProps) {
   return (
     <div
-      className="relative flex shrink-0 items-center justify-between gap-3 px-4"
+      className={`relative flex shrink-0 items-center justify-between gap-3 ${gutter === 'wide' ? 'px-6' : 'px-4'}`}
       style={{ height: MODAL_HEADER_HEIGHT }}
     >
       {/* The name keeps the left, where every window in the app puts it.
