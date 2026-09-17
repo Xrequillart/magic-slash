@@ -378,7 +378,19 @@ export function PlansPage() {
         order={pagePosition}
         horizontal={alwaysSideways}
         scrollRef={paneRef}
-        className="px-6 pb-6"
+        /* THE SAME CAP THE REPOSITORY PAGE TAKES, and for the same reason it took it:
+           without one, a plan row runs the full width of a maximised window, with its
+           title at one end and its date at the other. 72rem is wider than the measure
+           prose would ask for, because these are rows and not paragraphs — it is a limit
+           on the reach of the eye, not on the line.
+
+           ON THE SWEEP LAYERS and not on the pane, which is where the padding already
+           had to go: `SweepPane` puts this string on BOTH layers, so the page on its way
+           out is capped and centred exactly like the one arriving and nothing slides
+           sideways mid-sweep. The outgoing layer is `absolute inset-x-0`, which `mx-auto`
+           still centres — the repository page has been doing this since it got its own
+           cap. */
+        className="mx-auto w-full max-w-6xl px-6 pb-6"
       >
         {selected ? (
           <PlanDetailPage card={selected} now={now} paneRef={paneRef} onBack={back} />
