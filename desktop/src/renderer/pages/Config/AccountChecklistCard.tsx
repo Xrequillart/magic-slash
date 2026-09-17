@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, Circle, ListChecks } from '@ds/desktop/icons'
+import { ChecklistCard, CollapsibleLine, Text } from '@ds/desktop'
+import { CheckCircle2, Circle } from '@ds/desktop/icons'
 import type { InvalidRepo } from '../../../preload'
 import type { SetupStatus } from '../../../types'
 import { useAuth } from '../../hooks/useAuth'
@@ -7,7 +8,6 @@ import { useJiraAuth } from '../../hooks/useJiraAuth'
 import { useStore } from '../../store'
 import { buildRepoSetup, needsRepoSetup } from '../../utils/repoSetup'
 import { useT, type MessageKey } from '../../i18n'
-import { SectionHeader } from './SectionHeader'
 
 /**
  * The onboarding checklist, kept visible after onboarding.
@@ -23,10 +23,23 @@ import { SectionHeader } from './SectionHeader'
  * shown only when they are steps the user can actually complete, which is why the
  * total in the hint is counted from the list rather than written as a constant.
  *
- * Read-only on purpose: each row's repair already lives one tab away (Application
- * for the machine setup, Repositories for the repos, Connections for the
- * Atlassian link) or right below it in this same tab. Duplicating those
- * affordances here would mean two places to keep in sync for no new capability.
+ * NO CONTROLS, BUT NOT SILENT ABOUT THE FIX. Each row's repair already lives one tab
+ * away (Application for the machine setup, Repositories for the repos, Connections for
+ * the Atlassian link) or right below it in this same tab, and duplicating those
+ * affordances here would mean two places to keep in sync for no new capability. What a
+ * pending row DOES carry is a fold saying where that place is — which costs a sentence
+ * and nothing else, and is the difference between a card that names a gap and a card
+ * that closes it.
+ *
+ * A TICKED ROW HAS NO FOLD AND NO CHEVRON. There is nothing behind it: the step is
+ * done, and a button that opens an empty drawer is an affordance that lies. That is
+ * `CollapsibleLine`'s own rule, stated in its header.
+ *
+ * THE NEXT STEP OPENS ITSELF. Landing on this tab with the first pending row already
+ * unfolded answers "what do I do now" without a click; touching any chevron switches
+ * the card to whatever the reader has chosen since. `opened === null` is what tells
+ * those two apart — an empty Set means "they closed everything", which is a different
+ * state from "they have not touched it yet" and must not re-open anything.
  */
 export function AccountChecklistCard() {
   const t = useT()
@@ -42,6 +55,13 @@ export function AccountChecklistCard() {
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null)
   const [setupFailed, setSetupFailed] = useState(false)
   const [invalidRepos, setInvalidRepos] = useState<InvalidRepo[]>([])
+  /**
+   * Which folds are open — and `null` for "the reader has not touched a chevron yet",
+   * which is NOT the same as an empty Set. Null defers to the first pending step, so
+   * the tab opens on what to do next; an empty Set means they closed everything, and
+   * re-opening a row they just shut would be the card arguing with them.
+   */
+  const [opened, setOpened] = useState<Set<string> | null>(null)
 
   useEffect(() => {
     window.electronAPI.profile
@@ -100,11 +120,18 @@ export function AccountChecklistCard() {
     return <ChecklistSkeleton rows={authLoading || authStatus.enabled ? 5 : 4} />
   }
 
-  const steps: { key: MessageKey; done: boolean }[] = [
+  // `todo` is what unfolds under a row that is NOT ticked: one sentence naming the
+  // place that fixes it. Never read for a done step — see the render, which gives a
+  // ticked row neither a fold nor a chevron.
+  const steps: { key: MessageKey; todo: MessageKey; done: boolean }[] = [
     // The cloud account is optional and hidden entirely when no Supabase env is
     // baked in — it cannot be a step the user is failing to complete.
     ...(authStatus.enabled
-      ? [{ key: 'account.checklist.step.account' as MessageKey, done: authStatus.loggedIn }]
+      ? [{
+        key: 'account.checklist.step.account' as MessageKey,
+        todo: 'account.checklist.todo.account' as MessageKey,
+        done: authStatus.loggedIn,
+      }]
       : []),
     // Right after the cloud account: it is the next thing to set up, even though the
     // section that sets it up now lives on the Connections tab rather than under this
@@ -115,6 +142,7 @@ export function AccountChecklistCard() {
     ...(setupStatus.integrations.atlassian && jiraStatus.configured
       ? [{
         key: 'account.checklist.step.atlassian' as MessageKey,
+        todo: 'account.checklist.todo.atlassian' as MessageKey,
         // `unverified` is connected-but-refused — Atlassian turned the stored
         // credential down, which usually means the user revoked the app. Ticking it
         // would mark a step done whose feature returns nothing, which is the exact
@@ -122,88 +150,92 @@ export function AccountChecklistCard() {
         done: jiraStatus.connected && !jiraStatus.unverified,
       }]
       : []),
-    { key: 'account.checklist.step.profile', done: profileFilled },
-    { key: 'account.checklist.step.repository', done: repoReady },
-    { key: 'account.checklist.step.setup', done: setupReady },
+    { key: 'account.checklist.step.profile', todo: 'account.checklist.todo.profile', done: profileFilled },
+    { key: 'account.checklist.step.repository', todo: 'account.checklist.todo.repository', done: repoReady },
+    { key: 'account.checklist.step.setup', todo: 'account.checklist.todo.setup', done: setupReady },
   ]
 
   const done = steps.filter((step) => step.done).length
   const ready = done === steps.length
 
-  return (
-    <div>
-      <SectionHeader icon={ListChecks} title={t('account.checklist.section')} />
-      <div className="bg-surface border border-line-strong rounded-xl p-4">
-        <div className="flex items-start gap-2.5">
-          {/* Theme tokens rather than Tailwind's numbered scale — a fixed colour
-              stops being readable on half the themes (see themes.test.ts). */}
-          {ready
-            ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-green" />
-            : <Circle className="w-4 h-4 mt-0.5 shrink-0 text-yellow" />}
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium">
-              {ready ? t('account.checklist.ready') : t('account.checklist.pending')}
-            </div>
-            <div className="text-xs text-text-secondary/60 mt-0.5">
-              {ready
-                ? t('account.checklist.readyHint')
-                : t('account.checklist.pendingHint', { done, total: steps.length })}
-            </div>
+  // The one that opens itself while `opened` is null. Undefined when everything is
+  // ticked, which is also when no row has a fold at all.
+  const nextStep = steps.find((step) => !step.done)?.key
+  const isOpen = (key: MessageKey) => (opened ? opened.has(key) : key === nextStep)
+  const toggleStep = (key: MessageKey) => {
+    setOpened((previous) => {
+      // The first toggle starts from what is ON SCREEN, not from nothing: the reader
+      // sees the next step already unfolded, so a click on a second row has to add to
+      // that rather than silently close it.
+      const next = new Set(previous ?? (nextStep ? [nextStep as string] : []))
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
-            <ul className="mt-3 space-y-1.5">
-              {steps.map((step) => (
-                <li key={step.key} className="flex items-center gap-2">
-                  {step.done
-                    ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-green" />
-                    : <Circle className="w-3.5 h-3.5 shrink-0 text-icon-muted" />}
-                  <span className={`text-xs ${step.done ? 'text-text-secondary/60' : 'text-ink'}`}>
-                    {t(step.key)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
+  return (
+    /* THE CARD IS `ChecklistCard` NOW — the plate, the verdict band, the badge and the
+       hairline over every row went to the design system whole, on `PullRequestCard`'s
+       shape. What is left here is what only the app knows: which steps exist for this
+       install, whether each is done, and the words.
+
+       NO SECTION HEADER, and no wrapper left to hold one. "Account status" sat above
+       this card in the rung the profile section still uses, and the card's own header
+       band now states the verdict in words with the count beside it — a title saying
+       the same thing one line higher is the same thing said twice. `CloudAccountSection`
+       lost its own for the same reason. */
+    <ChecklistCard
+        verdict={ready ? 'ready' : 'pending'}
+        title={ready ? t('account.checklist.ready') : t('account.checklist.pending')}
+        subtitle={ready
+          ? t('account.checklist.readyHint')
+          : t('account.checklist.pendingHint', { done, total: steps.length })}
+        // The arithmetic behind the verdict, which the words above state but do not
+        // quantify. Green only when it is ALL of them: a 4/5 in green would be a tick
+        // on a card whose own mark says otherwise.
+        badge={{ label: `${done}/${steps.length}`, tone: ready ? 'green' : 'yellow' }}
+      >
+        {steps.map((step) => (
+          <CollapsibleLine
+            key={step.key}
+            // The mark keeps its colour when ticked while the LABEL steps back to grey
+            // — `muted`'s whole point, and what makes scanning the list land on the
+            // rows that still need doing.
+            icon={step.done ? CheckCircle2 : Circle}
+            tone={step.done ? 'green' : 'neutral'}
+            label={t(step.key)}
+            muted={step.done}
+            // No toggle on a ticked row, and therefore no chevron: there is nothing
+            // behind it. Passing one would be a button that opens an empty drawer.
+            toggle={step.done ? undefined : { open: isOpen(step.key), onToggle: () => toggleStep(step.key) }}
+          >
+            {/* Only ever rendered for a pending row — `CollapsibleLine` draws children
+                whenever there is no toggle, so a done row must be handed none at all. */}
+            {step.done ? undefined : (
+              <Text size="xs" tone="secondary" className="block opacity-70">
+                {t(step.todo)}
+              </Text>
+            )}
+          </CollapsibleLine>
+        ))}
+    </ChecklistCard>
   )
 }
 
-/** The card's own layout with every string swapped for a bar of its size. */
+/**
+ * The wait, in the card's own shape.
+ *
+ * THE DRAWING IS `ChecklistCard`'S NOW — it takes a row count and a label and renders
+ * its own placeholder, so the skeleton cannot describe a card that has since changed.
+ * What is left here is the row count, which only this side knows.
+ *
+ * Kept as a named function rather than inlined at the one `return` that uses it: the
+ * caller's line reads as a sentence about what it is doing — show a placeholder of this
+ * many rows — where the props spelled out there would read as a second card.
+ */
 function ChecklistSkeleton({ rows }: { rows: number }) {
   const t = useT()
 
-  return (
-    <div>
-      <SectionHeader icon={ListChecks} title={t('account.checklist.section')} />
-      <div
-        className="bg-surface border border-line-strong rounded-xl p-4"
-        role="status"
-        aria-busy="true"
-        aria-label={t('common.loading')}
-      >
-        <div className="flex items-start gap-2.5 animate-pulse">
-          <span aria-hidden className="w-4 h-4 mt-0.5 shrink-0 rounded-full bg-surface-strong" />
-          <div className="min-w-0 flex-1">
-            {/* Heights match the verdict and its hint so nothing moves when they land. */}
-            <span aria-hidden className="block h-5 w-32 rounded bg-surface-strong" />
-            <span aria-hidden className="block h-4 w-48 max-w-full rounded bg-surface-strong mt-0.5" />
-
-            <ul className="mt-3 space-y-1.5">
-              {/* Widths staggered per row: four identical bars read as a table, not a list. */}
-              {Array.from({ length: rows }, (_, i) => (
-                <li key={i} className="flex items-center gap-2">
-                  <span aria-hidden className="w-3.5 h-3.5 shrink-0 rounded-full bg-surface-strong" />
-                  <span
-                    aria-hidden
-                    className={`block h-4 rounded bg-surface-strong ${['w-40', 'w-28', 'w-44', 'w-36'][i % 4]}`}
-                  />
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+  return <ChecklistCard verdict="pending" title="" loading={{ rows, label: t('common.loading') }} />
 }

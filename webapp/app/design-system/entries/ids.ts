@@ -37,6 +37,7 @@ export type EntryId =
   | 'tabstrip'
   | 'tally'
   | 'pullrequestcard'
+  | 'checklistcard'
   | 'scriptcard'
   | 'repositorycard'
   | 'item'
@@ -111,6 +112,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   tabstrip: 'TabStrip',
   tally: 'Tally',
   pullrequestcard: 'PullRequestCard',
+  checklistcard: 'ChecklistCard',
   scriptcard: 'ScriptCard',
   repositorycard: 'RepositoryCard',
   item: 'Item',
@@ -227,6 +229,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   reviewthreadline: ['icon', 'label', 'text'],
   tally: ['text'],
   pullrequestcard: ['buttonicon', 'collapsibleline', 'icon', 'text'],
+  checklistcard: ['collapsibleline', 'icon', 'text'],
   scriptcard: ['button', 'loader', 'icon', 'text'],
   repositorycard: ['card', 'headerrepocard', 'branchcard', 'uncommittedchangescard', 'commitcard'],
   // `Item` holds a ground and a shape and draws nothing: the rows inside it are the
@@ -365,6 +368,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   tabstrip: 'A pill rail that slides to the tab you pick',
   tally: 'A total, broken into the parts it is made of',
   pullrequestcard: 'A pull request, as the sidebar watches it',
+  checklistcard: 'What is left to do, and how far through you are',
   scriptcard: 'A process still alive on your machine',
   repositorycard: 'One repository, and everything happening to it',
   sidebaragentcoderinfo: 'The right column, and the agent in it',

@@ -838,7 +838,6 @@ export const fr: Record<keyof typeof en, string> = {
   'toast.orgJoinFailed': 'Impossible de rejoindre l’organisation',
 
   // ── Réglages → Compte → Statut du compte ─────────────────────────────────
-  'account.checklist.section': 'Statut du compte',
   'account.checklist.ready': 'Prêt à l’emploi',
   'account.checklist.readyHint': 'L’onboarding est terminé — toutes les skills peuvent tourner de bout en bout.',
   'account.checklist.pending': 'Configuration en cours',
@@ -848,6 +847,21 @@ export const fr: Record<keyof typeof en, string> = {
   'account.checklist.step.profile': 'Profil renseigné',
   'account.checklist.step.repository': 'Au moins un dépôt utilisable',
   'account.checklist.step.setup': 'Configuration de la machine complète',
+  // ── Ce qui se déplie sous une étape NON cochée ───────────────────────────
+  // Une phrase chacune, qui nomme l'endroit où la régler. La carte reste en lecture
+  // seule : chaque réparation vit déjà un onglet plus loin ou plus bas dans celui-ci,
+  // et un second jeu de commandes ici ferait deux endroits à tenir synchronisés. Une
+  // étape cochée n'a aucun repli, donc aucune de ces phrases n'est lue pour elle.
+  'account.checklist.todo.account':
+    'Connectez-vous depuis la carte juste en dessous. Magic Slash fonctionne sans compte, mais vos plans et vos dépôts ne vous suivront pas d’une machine à l’autre.',
+  'account.checklist.todo.atlassian':
+    'Connectez Atlassian depuis l’onglet Connexions, pour que les skills lisent vos tickets Jira et les fassent avancer.',
+  'account.checklist.todo.profile':
+    'Remplissez votre profil en bas de cet onglet. Les skills le lisent pour ajuster leur vocabulaire et leur niveau de détail.',
+  'account.checklist.todo.repository':
+    'Ajoutez un dépôt depuis l’onglet Dépôts, ou faites pointer un dépôt existant vers un dossier qui existe encore.',
+  'account.checklist.todo.setup':
+    'Terminez la configuration de la machine depuis l’onglet Application : les prérequis, les serveurs MCP et les skills.',
 
   // ── Réglages → Compte → Compte cloud ─────────────────────────────────────
   'cloud.signedInFallback': 'Connecté',

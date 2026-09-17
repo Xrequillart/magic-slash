@@ -862,7 +862,6 @@ export const en = {
   'toast.orgJoinFailed': 'Failed to join organization',
 
   // ── Settings → Account → Account status checklist ────────────────────────
-  'account.checklist.section': 'Account status',
   'account.checklist.ready': 'Ready to use',
   'account.checklist.readyHint': 'Onboarding is complete — every skill can run end to end.',
   'account.checklist.pending': 'Setup in progress',
@@ -872,6 +871,21 @@ export const en = {
   'account.checklist.step.profile': 'Profile filled in',
   'account.checklist.step.repository': 'At least one usable repository',
   'account.checklist.step.setup': 'Machine setup complete',
+  // ── What unfolds under a step that is NOT ticked ─────────────────────────
+  // One sentence each, naming the place that fixes it. The card itself stays
+  // read-only: every repair already lives one tab away or lower on this one, and a
+  // second set of controls here would be two places to keep in sync. A ticked step
+  // has no fold at all, so none of these is ever read for a done row.
+  'account.checklist.todo.account':
+    'Sign in from the card just below. Magic Slash works without an account, but your plans and repositories will not follow you from one machine to the next.',
+  'account.checklist.todo.atlassian':
+    'Connect Atlassian from the Connections tab, so the skills can read your Jira tickets and move them along.',
+  'account.checklist.todo.profile':
+    'Fill in your profile at the bottom of this tab. The skills read it to pitch their vocabulary and their level of detail at you.',
+  'account.checklist.todo.repository':
+    'Add a repository from the Repositories tab, or point an existing one back at a folder that still exists.',
+  'account.checklist.todo.setup':
+    'Finish the machine setup from the Application tab: the prerequisites, the MCP servers and the skills.',
 
   // ── Settings → Account → Cloud account ───────────────────────────────────
   'cloud.signedInFallback': 'Signed in',
