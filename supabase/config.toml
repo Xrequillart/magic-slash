@@ -67,14 +67,56 @@ enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
+# ── WHAT DIFFERS BETWEEN THIS MACHINE AND PRODUCTION ─────────────────────────
+# `supabase config push` sends this WHOLE [auth] section to the linked project,
+# and every value the CLI defaults is part of it — including ones written nowhere
+# in this file. A real push against csihmkzqbizblpmawhgt reported SEVEN
+# differences, of which only three were addresses; the rest were policy this file
+# had never mentioned and would have silently overwritten:
+#
+#     mfa.totp.enroll_enabled   true  -> false   (MFA switched off in production)
+#     mfa.totp.verify_enabled   true  -> false
+#     email.max_frequency       1m0s  -> 1s      (email rate limit removed)
+#     email.otp_length          8     -> 6
+#     email.double_confirm_changes  true -> false
+#
+# So the rule is not "env() the values that look local". It is: anything that can
+# differ must be STATED here, either as env() or as the value production is meant
+# to have. A value this file leaves out is not a value left alone — it is the
+# CLI's default, pushed.
+#
+# `supabase/.env` carries the local values and is committed, so `supabase start`,
+# `db reset` and `test db` need no setup. A shell variable OVERRIDES that file,
+# which is what makes a push with production values possible:
+#
+#     npm run supabase:config:push -- supabase/.env.production
+#
+# NEVER run a bare `supabase config push`. It loads supabase/.env — this machine —
+# and with a non-interactive stdin it does NOT ask before applying (verified: the
+# confirmation prompt is skipped entirely when stdin is not a TTY). The npm script
+# above is the guard; it requires an env file and refuses an empty answer.
+#
+# A missing variable behaves differently per type: a hard parse error on a bool,
+# a silent empty string on a string. `enable_confirmations` is therefore the
+# canary — a bool, so a missing env file fails the command outright.
 [auth]
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for
 # constructing URLs used in emails.
-site_url = "http://127.0.0.1:3000"
+site_url = "env(SUPABASE_AUTH_SITE_URL)"
 # A list of *exact* URLs that auth providers are permitted to redirect to
 # post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# EMPTY, EVERYWHERE, which is what production already reports. This is the OAuth
+# redirect allow-list and nothing in this codebase redirects: no `redirectTo`, no
+# `emailRedirectTo`, no OAuth provider — the desktop app signs in with a password
+# and confirms with a typed code. It used to hold "https://127.0.0.1:3000" on a
+# local server that speaks http, so it had never matched anything either.
+#
+# Hardcoded rather than env(): an empty list cannot be expressed through a
+# variable — `config.toml` needs a string inside the array, and an empty variable
+# yields [""] rather than []. One value that is right everywhere beats a variable
+# that cannot say the right thing.
+additional_redirect_urls = []
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour).
 jwt_expiry = 3600
 # If disabled, the refresh token will never expire.
@@ -87,9 +129,29 @@ enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
 
+# STATED BECAUSE A PUSH SENDS IT EITHER WAY. Production has TOTP enrolment on and
+# this file said nothing, so the CLI offered its own default — false — and a push
+# would have turned MFA off for everyone. Written out and set to what production
+# already is, so the diff is empty rather than dangerous. Nothing local needs it
+# off.
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
 [auth.email]
 # Allow/disallow new user signups via email to your project.
 enable_signup = true
+# How long a sender must wait between two auth emails. One second locally, because
+# testing a flow means sending several in a row; a minute in production, which is
+# what it is already set to. STATED rather than left to the default, which is the
+# lesson of the push that would have dropped production to one second.
+max_frequency = "env(SUPABASE_AUTH_EMAIL_MAX_FREQUENCY)"
+# The number of digits in an emailed code. SIX EVERYWHERE, because the app says so
+# in as many words — `cloud.email.codePlaceholder` reads "6-digit code" and the
+# password reset says the same. Production is currently on EIGHT, which means the
+# code a user is emailed today does not fit the sentence asking for it. Pushing
+# this fixes that; it is a deliberate change to production, not an address.
+otp_length = 6
 # If enabled, a user will be required to confirm any email change on both the
 # old, and new email addresses. If disabled, only the new email is required to
 # confirm.
@@ -100,7 +162,16 @@ enable_signup = true
 # access to the new inbox.
 double_confirm_changes = false
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+#
+# THE ONE VALUE HERE THAT IS A DIFFERENCE OF POLICY rather than of address, and
+# the canary described at the top of [auth]: a bool, so a missing env file stops
+# the command instead of pushing a guess at what production signup policy is.
+#
+# It does NOT govern email CHANGES. GoTrue confirms those whatever this says —
+# verified against the running server, which answers updateUser({email}) with
+# the address unchanged and `new_email` left pending. The 6-digit code in the
+# change-email dialog is not optional decoration.
+enable_confirmations = "env(SUPABASE_AUTH_EMAIL_CONFIRMATIONS)"
 
 # Email templates. The desktop app uses Supabase's 6-digit OTP code flow (no deep
 # links / no custom protocol): the user is emailed a code and types it into the

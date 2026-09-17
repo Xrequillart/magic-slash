@@ -32,7 +32,8 @@
     "desktop:package": "cd desktop && npm run package:mac",
     "test": "vitest run",
     "test:watch": "vitest",
-    "ds:install": "npm --prefix design-system install"
+    "ds:install": "npm --prefix design-system install",
+    "supabase:config:push": "bash scripts/supabase-config-push.sh"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.2",
