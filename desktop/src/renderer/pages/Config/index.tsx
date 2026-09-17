@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { FolderPlus, Folder, Building2, Lock } from '@ds/desktop/icons'
 import { Button, ItemGroup, RepositoryItem } from '@ds/desktop'
 import { RepoPage } from './RepoPage'
+import { SectionHeader } from './SectionHeader'
 import { SweepPane } from '../../components/SweepPane'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
@@ -342,13 +343,27 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
           </button>
         ) : (
           <div className="flex flex-col gap-6">
-            {/* Personal */}
-            <div>
-              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-icon mb-2">
-                <Lock className="w-3 h-3" />
-                <span>{t('settings.repos.personal')}</span>
-                <span className="text-text-secondary/30">{personalRepos.length}</span>
-              </div>
+            {/* Personal.
+
+                `SectionHeader` AND NOT THE 11px UPPERCASE ROW this used to draw. That
+                treatment was this list's own, and nothing else in the app wore it: the
+                Plans page, the Tasks board and every settings section head their lists
+                with a 14px secondary line and a 16px glyph, which is exactly what this
+                component is. A heading that says "Personal" and a heading that says
+                "Planning sessions" are the same kind of statement about the list under
+                it, so they are now the same object rather than two spellings that
+                happened to agree on nothing.
+
+                `gap-3` from the wrapper with `spacing="none"`, which is the Plans page's
+                own arrangement — the heading spaces itself from its list with the
+                parent's gap rather than with a margin only one of the two knows about. */}
+            <div className="flex flex-col gap-3">
+              <SectionHeader
+                icon={Lock}
+                title={t('settings.repos.personal')}
+                count={personalRepos.length}
+                spacing="none"
+              />
               {personalRepos.length === 0 ? (
                 <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-line-field rounded-xl">
                   {t('settings.repos.noPersonal')}
@@ -364,12 +379,13 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
             {/* One section per organization, in the order useOrgList lists them */}
             {orgSections.map((section) => (
-              <div key={section.id}>
-                <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-icon mb-2">
-                  <Building2 className="w-3 h-3" />
-                  <span>{section.name}</span>
-                  <span className="text-text-secondary/30">{section.repos.length}</span>
-                </div>
+              <div key={section.id} className="flex flex-col gap-3">
+                <SectionHeader
+                  icon={Building2}
+                  title={section.name}
+                  count={section.repos.length}
+                  spacing="none"
+                />
                 {section.repos.length === 0 ? (
                   <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-line-field rounded-xl">
                     {t('settings.repos.noTeam')}
