@@ -1,38 +1,36 @@
-import { useCallback, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { Check, ChevronDown, FolderGit2 } from '@ds/desktop/icons'
+import { Select } from '@ds/desktop'
+import { FolderGit2 } from '@ds/desktop/icons'
 import type { PlanRepoRef } from '../../../types'
-import { useAnchoredPanel } from '../../components/useAnchoredPanel'
 import { useT } from '../../i18n'
 
 /**
  * The one control over the list: which repository's plans are showing.
  *
- * Built on `pages/Tasks/TaskFilters.tsx` — the same pinned full-bleed band, the same
- * portalled picker on the same `useAnchoredPanel`, the same trigger and panel classes.
- * What differs is that THIS PICKER HAS AN "ALL REPOSITORIES" ENTRY and opens on it. The
- * board's does not, deliberately, because four columns holding six repositories' tickets
- * are four columns nobody can read down; a list of plans stays readable at any length,
- * and reading your own and your team's planning in one chronology is the point of the
- * page. It is also plainer: no colour tile, no icon-per-mode.
+ * IT IS `Select` NOW, and this file is where that was asked for. The note that stood
+ * here said it in as many words — the board's picker already expressed the one
+ * difference this one has, as its optional `clearLabel`, and only being module-private
+ * to `TaskFilters.tsx` kept the two apart; do that rather than growing this copy. The
+ * component went one folder further, into the design system, because the eighteen native
+ * `<select>`s in Settings were the other half of the same problem.
  *
- * WORTH KNOWING BEFORE TOUCHING THIS. That difference is not a reason the board's picker
- * could not have been used: `FilterSelect` over there already expresses it, as its
- * optional `clearLabel` prop — the epic picker passes one and gets exactly this leading
- * entry. It is module-private to `TaskFilters.tsx`, which is the only thing keeping the
- * two apart. Exporting it (or lifting it to `components/`) and rendering it here with
- * `clearLabel` and `icon={FolderGit2}` would delete most of this file and put the tint
- * rule, the truncation and the check mark back in one place — which is what that
- * component's own docblock says it exists for. Do that rather than growing this copy.
+ * THE DIFFERENCE THAT REMAINS is the one worth keeping: THIS PICKER HAS AN "ALL
+ * REPOSITORIES" ENTRY and opens on it. The board's does not, deliberately, because four
+ * columns holding six repositories' tickets are four columns nobody can read down; a
+ * list of plans stays readable at any length, and reading your own and your team's
+ * planning in one chronology is the point of the page.
  */
 
-/** Matched to the trigger, because `useAnchoredPanel` measures the panel with it. */
+/** Pinned, so the control does not resize with the repository name it is showing. */
 const REPO_WIDTH = 224
 
 /**
- * What the picker is set to when nothing is narrowed. A page-local sentinel and not a
- * value `filterPlanCards` knows about: that function takes `null` for "every
- * repository", and a `<button>` value has to be a string.
+ * What the page holds when nothing is narrowed. A page-local sentinel and not a value
+ * `filterPlanCards` knows about: that function takes `null` for "every repository".
+ *
+ * IT STOPS AT THIS FILE. `Select` spells "nothing picked" as the empty string — that is
+ * what its `clearLabel` entry sets — so the two are mapped on the way in and on the way
+ * out, right here, and neither the page nor the design system has to know the other's
+ * spelling.
  */
 export const ALL_REPOS = '__all__'
 
@@ -51,16 +49,7 @@ export function PlanFilters({
   onChange: (repoId: string) => void
 }) {
   const t = useT()
-  const [open, setOpen] = useState(false)
-  const close = useCallback(() => setOpen(false), [])
-  const { triggerRef, panelRef, style } = useAnchoredPanel(open, close, REPO_WIDTH)
-
-  // Falls back to the "all repositories" label rather than rendering an empty trigger:
-  // the selected repository can leave the list under it — a plan deleted, a repository
-  // unshared — and a control naming something no longer on offer would narrow the page
-  // to nothing with no way to see why.
-  const selected = repos.find((repo) => repo.id === repoId)
-  const narrowed = !!selected
+  const narrowed = repoId !== ALL_REPOS && repos.some((repo) => repo.id === repoId)
 
   return (
     // PINNED, and full-bleed via `-mx-6 px-6`, for `TaskFilters`' reasons: what scrolls
@@ -72,67 +61,26 @@ export function PlanFilters({
     // has pinned. The list below opens on a rule of its own on every row, so a bar with
     // no edge would read as the first row of it.
     <div className="sticky top-0 z-20 -mx-6 px-6 py-3 bg-bg-secondary border-b border-line-subtle flex items-center gap-3 min-w-0">
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        style={{ width: REPO_WIDTH }}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border text-xs cursor-pointer transition-colors flex-shrink-0 ${
-          narrowed ? 'border-accent/40 text-ink' : 'border-line-field text-ink hover:border-accent'
-        }`}
-      >
-        <FolderGit2 className="w-3.5 h-3.5 shrink-0 text-text-secondary" />
-        <span className="truncate">{selected ? selected.name : t('plans.filter.all')}</span>
-        <ChevronDown
-          className={`w-3.5 h-3.5 shrink-0 ml-auto text-text-secondary transition-transform ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
+      <Select
+        // The sentinel does not cross into the design system: nothing picked is `''`
+        // there, and a repository that has left the list falls back to the same state —
+        // which is the "all repositories" entry, and the honest answer either way.
+        value={narrowed ? repoId : ''}
+        options={repos.map((repo) => ({ value: repo.id, label: repo.name }))}
+        onChange={(next) => onChange(next || ALL_REPOS)}
+        placeholder={t('plans.filter.all')}
+        // FIRST in the list, because it is the entry people reach for after having
+        // narrowed wrongly — `Select` puts a clear entry at the top for that reason.
+        clearLabel={t('plans.filter.all')}
+        width={REPO_WIDTH}
+        icon={FolderGit2}
+        active={narrowed}
+      />
 
       {count > 0 && (
         <span className="text-xs text-text-secondary/50 ml-auto flex-shrink-0">
           {t(count === 1 ? 'plans.count.one' : 'plans.count.other', { count })}
         </span>
-      )}
-
-      {open && createPortal(
-        <div
-          ref={panelRef}
-          style={style()}
-          // `gap-0.5` between entries and `overscroll-contain` on the scroll, both for
-          // the reasons the board's panel gives: touching rows read as one banded block,
-          // and a wheel at either end of a long list would otherwise chain outwards into
-          // a scroll the hook reads as "outside" and closes on.
-          className="bg-bg-secondary border border-line rounded-xl shadow-2xl z-[60] p-1 max-h-80 overflow-y-auto overscroll-contain flex flex-col gap-0.5"
-        >
-          {/* "All repositories" is an ENTRY OF THE LIST, not a button of its own beside
-              it: `repoId` is `ALL_REPOS` exactly when nothing is narrowed, so prepending
-              it lets one mapping draw every row under one polarity. Written out twice it
-              was the same markup with every condition negated, and a style landing on one
-              copy but not its mirror would have read as a deliberate difference.
-
-              FIRST in the list, because it is the entry people reach for after having
-              narrowed wrongly — and because it is where the list starts. */}
-          {[{ id: ALL_REPOS, name: t('plans.filter.all') }, ...repos].map((repo) => {
-            const isSelected = repo.id === repoId
-            return (
-              <button
-                key={repo.id}
-                type="button"
-                onClick={() => {
-                  setOpen(false)
-                  if (!isSelected) onChange(repo.id)
-                }}
-                className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-colors ${
-                  isSelected ? 'bg-surface' : 'hover:bg-surface'
-                }`}
-              >
-                <span className={`text-xs truncate ${isSelected ? 'text-accent' : 'text-ink'}`}>{repo.name}</span>
-                {isSelected && <Check className="w-3.5 h-3.5 text-accent shrink-0 ml-auto" />}
-              </button>
-            )
-          })}
-        </div>,
-        document.body,
       )}
     </div>
   )

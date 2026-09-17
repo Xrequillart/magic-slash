@@ -14,17 +14,37 @@ const VIEWPORT_MARGIN = 8
  *
  * That is all this hook is: the measuring, and the listeners that close. The trigger
  * and the panel markup stay with the caller, because they are what differs between one
- * picker and the next — RoleSelect pins its trigger to the width of a table column,
- * LanguageSelect fills the width of a settings row.
+ * panel and the next — `Select` draws a list of options under a control, the review
+ * button draws a column of comment threads.
+ *
+ * IT LIVES HERE NOW, where it was `renderer/components/useAnchoredPanel.ts`. Every
+ * picker in the app was built on it, and the picker itself is `Select` in this folder
+ * now — a component cannot stand on a hook the app owns, and two copies of this
+ * measuring would be the drift the move is undoing. The app's own remaining caller
+ * imports it from `@ds/desktop` like everything else.
  *
  * Same shape as `useAnchoredPanel` in `webapp/components/Dropdown.tsx`, deliberately:
  * two builds with no shared module, and a panel that behaves differently on the two
  * surfaces would be a bug on one of them.
  */
-export function useAnchoredPanel(open: boolean, close: () => void, width: number) {
+export function useAnchoredPanel(open: boolean, close: () => void, width?: number) {
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
+  /**
+   * The panel's width when the caller names none: the TRIGGER's, measured.
+   *
+   * A number was the only option while every caller was a picker pinned to a `w-52` or
+   * a table column. A settings row's control fills the row instead — the width is a
+   * fraction of a panel nobody can read off a class — and a panel narrower or wider
+   * than the control it drops from reads as a menu that landed near it by accident.
+   *
+   * Measured rather than watched: it is read in the same layout pass that places the
+   * panel, so a window resized while the panel is open is handled the way it already
+   * was — by closing it.
+   */
+  const [triggerWidth, setTriggerWidth] = useState(0)
+  const panelWidth = width ?? triggerWidth
 
   // Layout effect, so the panel is placed in the same frame it is painted in. Cleared
   // on close, so the next opening measures again instead of flashing at the old spot.
@@ -39,6 +59,8 @@ export function useAnchoredPanel(open: boolean, close: () => void, width: number
     const rect = trigger.getBoundingClientRect()
     const panelHeight = panelRef.current?.offsetHeight ?? 0
     const spaceBelow = window.innerHeight - rect.bottom
+    const box = width ?? rect.width
+    setTriggerWidth(rect.width)
 
     setPosition({
       // Flips above when it would run off the bottom. `panelHeight > 0` guards the
@@ -50,7 +72,7 @@ export function useAnchoredPanel(open: boolean, close: () => void, width: number
       // Right-aligned on the trigger, then pulled back inside the window.
       left: Math.max(
         VIEWPORT_MARGIN,
-        Math.min(rect.right - width, window.innerWidth - width - VIEWPORT_MARGIN),
+        Math.min(rect.right - box, window.innerWidth - box - VIEWPORT_MARGIN),
       ),
     })
   }, [open, width])
@@ -114,10 +136,10 @@ export function useAnchoredPanel(open: boolean, close: () => void, width: number
       position: 'fixed',
       top: position?.top ?? -9999,
       left: position?.left ?? -9999,
-      width,
+      width: panelWidth,
       visibility: position ? 'visible' : 'hidden',
     }),
-    [position, width],
+    [position, panelWidth],
   )
 
   return { triggerRef, panelRef, style }

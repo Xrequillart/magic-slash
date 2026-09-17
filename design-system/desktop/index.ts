@@ -133,6 +133,9 @@ export type {
   SidebarProps,
   SidebarSelectAction,
 } from './Sidebar'
+export { Select } from './Select'
+export type { SelectMarker, SelectOption, SelectProps, SelectSize } from './Select'
+export { useAnchoredPanel } from './useAnchoredPanel'
 export { SelectIcon } from './SelectIcon'
 export type { SelectIconGroup, SelectIconItem, SelectIconProps, SelectIconTone } from './SelectIcon'
 export { Status, STATUS_TONES } from './Status'

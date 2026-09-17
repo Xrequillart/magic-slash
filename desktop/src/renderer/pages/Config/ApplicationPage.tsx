@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react'
 import {
-  AlertTriangle, BarChart3, ChevronDown, Check, Columns, GitPullRequest, Lightbulb,
+  AlertTriangle, BarChart3, Check, Columns, GitPullRequest, Lightbulb,
   MonitorSmartphone, Search, X,
 } from '@ds/desktop/icons'
-import { SectionHeader, Switch } from '@ds/desktop'
+import { SectionHeader, Select, Switch } from '@ds/desktop'
 import { TelemetryHealthCard } from './TelemetryHealthCard'
 import { SetupHealthCard } from './SetupHealthCard'
 import { ToggleRow } from './ToggleRow'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
 import { useT, type MessageKey, type Translate } from '../../i18n'
-import { SELECT } from '../../theme/controls'
+import { SELECT_WIDTH } from '../../theme/controls'
 import type { SpotlightShortcut } from '../../../types'
 
 /**
@@ -40,6 +40,20 @@ import type { SpotlightShortcut } from '../../../types'
  * would have to be split on a space that is a separator here and a KEY NAME there.
  * Composed where the chords are written rather than parsed where they are drawn.
  */
+/**
+ * How often the pull-request watcher looks, in milliseconds, and what each interval is
+ * called. Keys rather than labels, for `SPOTLIGHT_OPTIONS`' reason: module scope is
+ * evaluated once at import, so a `t()` here would pin the list to the boot language.
+ */
+export const PR_WATCHER_INTERVALS = [30_000, 60_000, 120_000, 300_000] as const
+
+const PR_WATCHER_INTERVAL_LABEL: Record<(typeof PR_WATCHER_INTERVALS)[number], MessageKey> = {
+  30_000: 'settings.application.prWatcher.interval30s',
+  60_000: 'settings.application.prWatcher.interval1m',
+  120_000: 'settings.application.prWatcher.interval2m',
+  300_000: 'settings.application.prWatcher.interval5m',
+}
+
 export const SPOTLIGHT_OPTIONS: { keys: string[]; value: string }[] = [
   { keys: ['\u2303', 'Space'], value: 'Control+Space' },
   { keys: ['\u2303\u21E7', 'Space'], value: 'Control+Shift+Space' },
@@ -231,19 +245,14 @@ export function ApplicationPage() {
                 <div className="text-sm font-medium">{t('settings.application.spotlight.shortcutLabel')}</div>
                 <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.spotlight.shortcutHelp')}</div>
               </div>
-              <div className="relative">
-                <select
-                  value={spotlightShortcut}
-                  onChange={(e) => handleSpotlightShortcutChange(e.target.value as SpotlightShortcut)}
-                  disabled={!spotlightEnabled}
-                  className={`${SELECT} w-52 disabled:opacity-50`}
-                >
-                  {SPOTLIGHT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.keys.join(' ')}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
-              </div>
+              <Select
+                value={spotlightShortcut}
+                options={SPOTLIGHT_OPTIONS.map((opt) => ({ value: opt.value, label: opt.keys.join(' ') }))}
+                onChange={(next) => handleSpotlightShortcutChange(next as SpotlightShortcut)}
+                disabled={!spotlightEnabled}
+                ariaLabel={t('settings.application.spotlight.shortcutLabel')}
+                width={SELECT_WIDTH}
+              />
             </div>
           </div>
           {spotlightError && (
@@ -334,23 +343,23 @@ export function ApplicationPage() {
                     <div className="text-sm font-medium">{t('settings.application.prWatcher.intervalLabel')}</div>
                     <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.prWatcher.intervalHelp')}</div>
                   </div>
-                  <div className="relative">
-                    <select
-                      value={prWatcherInterval}
-                      onChange={(e) => {
-                        const newInterval = parseInt(e.target.value, 10)
-                        setPrWatcherInterval(newInterval)
-                        window.electronAPI.prWatcher.setInterval(newInterval)
-                      }}
-                      className={`${SELECT} w-52`}
-                    >
-                      <option value={30_000}>{t('settings.application.prWatcher.interval30s')}</option>
-                      <option value={60_000}>{t('settings.application.prWatcher.interval1m')}</option>
-                      <option value={120_000}>{t('settings.application.prWatcher.interval2m')}</option>
-                      <option value={300_000}>{t('settings.application.prWatcher.interval5m')}</option>
-                    </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
-                  </div>
+                  {/* The interval is a NUMBER of milliseconds and the picker deals in
+                      strings, so it is parsed on the way back — where the native select
+                      made the same trip through `e.target.value`. */}
+                  <Select
+                    value={String(prWatcherInterval)}
+                    options={PR_WATCHER_INTERVALS.map((ms) => ({
+                      value: String(ms),
+                      label: t(PR_WATCHER_INTERVAL_LABEL[ms]),
+                    }))}
+                    onChange={(next) => {
+                      const newInterval = parseInt(next, 10)
+                      setPrWatcherInterval(newInterval)
+                      window.electronAPI.prWatcher.setInterval(newInterval)
+                    }}
+                    ariaLabel={t('settings.application.prWatcher.intervalLabel')}
+                    width={SELECT_WIDTH}
+                  />
                 </div>
               </div>
               <div className="border-t border-line-subtle pt-4">

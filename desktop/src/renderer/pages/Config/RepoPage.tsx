@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import {
-  Trash2, Check, AlertTriangle, Plus, Loader2, ChevronDown, ArrowLeft, Building2, Lock, FolderOpen,
+  Trash2, Check, AlertTriangle, Plus, Loader2, ArrowLeft, Building2, Lock, FolderOpen,
   Ticket, Settings2, Languages, GitBranch, GitCommitHorizontal, MessageSquare, GitPullRequest,
   ClipboardList, FolderGit2, type LucideIcon
 } from '@ds/desktop/icons'
@@ -12,7 +12,7 @@ import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
 import { RepoColorPicker } from './RepoColorPicker'
 import { useT, type MessageKey } from '../../i18n'
-import { Input, Switch, TabStrip } from '@ds/desktop'
+import { Input, Select, Switch, TabStrip } from '@ds/desktop'
 import { LanguageSelect } from '../../components/LanguageSelect'
 import { TabSweep } from '../../components/TabSweep'
 import {
@@ -24,7 +24,7 @@ import {
   resolveSummary,
   type SkillSummary,
 } from '../../utils/skillSummary'
-import { BTN, SELECT } from '../../theme/controls'
+import { BTN, SELECT_WIDTH } from '../../theme/controls'
 import {
   PLAN_SPLITTING_MODES,
   PLAN_ACCEPTANCE_CRITERIA_FORMATS,
@@ -221,24 +221,80 @@ function SkillIntro({ skill, summary }: { skill: keyof typeof SKILL_INTROS; summ
   )
 }
 
-/** Native select over a closed value list, with its label map. */
-function EnumSelect<T extends string>({ value, values, labels, onChange }: {
+/**
+ * A picker over a closed value list, with its label map.
+ *
+ * `Select`'s, where it was a native `<select>` — every one on this page was, and the
+ * nine that were written out row by row are this component now. What it adds is the
+ * pairing a settings row actually wants: the values, and the message key each one is
+ * called by, so no call site spells an `<option>` at all.
+ */
+function EnumSelect<T extends string>({ value, values, labels, onChange, ariaLabel }: {
   value: string
   values: readonly T[]
   labels: Record<T, MessageKey>
   onChange: (value: string) => void
+  /** The control's accessible name — the row's own label. Translated. */
+  ariaLabel?: string
 }) {
   const t = useT()
   return (
-    <div className="relative">
-      <select value={value} onChange={(e) => onChange(e.target.value)} className={`${SELECT} w-52`}>
-        {values.map((v) => (
-          <option key={v} value={v}>{t(labels[v])}</option>
-        ))}
-      </select>
-      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-    </div>
+    <Select
+      value={value}
+      options={values.map((v) => ({ value: v, label: t(labels[v]) }))}
+      onChange={onChange}
+      width={SELECT_WIDTH}
+      ariaLabel={ariaLabel}
+    />
   )
+}
+
+/**
+ * The value lists this page picks from, and what each entry is called.
+ *
+ * Message KEYS and not labels, for the reason every catalogue in this app gives:
+ * module scope is evaluated once at import, so a `t()` here would pin the list to
+ * whatever language the app booted in.
+ */
+const COMMIT_STYLES = ['single-line', 'multi-line'] as const
+const COMMIT_STYLE_LABEL: Record<(typeof COMMIT_STYLES)[number], MessageKey> = {
+  'single-line': 'repo.commit.styleSingle',
+  'multi-line': 'repo.commit.styleMulti',
+}
+
+const COMMIT_FORMATS = ['conventional', 'angular', 'gitmoji', 'none'] as const
+const COMMIT_FORMAT_LABEL: Record<(typeof COMMIT_FORMATS)[number], MessageKey> = {
+  conventional: 'repo.commit.formatConventional',
+  angular: 'repo.commit.formatAngular',
+  gitmoji: 'repo.commit.formatGitmoji',
+  none: 'repo.commit.formatNone',
+}
+
+const TEST_ACCOUNT_MODES = ['off', 'reference', 'inline'] as const
+const TEST_ACCOUNT_LABEL: Record<(typeof TEST_ACCOUNT_MODES)[number], MessageKey> = {
+  off: 'repo.pr.testAccountsOff',
+  reference: 'repo.pr.testAccountsReference',
+  inline: 'repo.pr.testAccountsInline',
+}
+
+const RESOLVE_COMMIT_MODES = ['new', 'amend', 'ask'] as const
+const RESOLVE_COMMIT_MODE_LABEL: Record<(typeof RESOLVE_COMMIT_MODES)[number], MessageKey> = {
+  new: 'repo.resolve.modeNew',
+  amend: 'repo.resolve.modeAmend',
+  ask: 'repo.resolve.modeAsk',
+}
+
+const RESOLVE_CONFIG_SOURCES = ['commit', 'custom'] as const
+const RESOLVE_CONFIG_SOURCE_LABEL: Record<(typeof RESOLVE_CONFIG_SOURCES)[number], MessageKey> = {
+  commit: 'repo.resolve.useCommitConfig',
+  custom: 'repo.resolve.customConfig',
+}
+
+const RESOLVE_VERBOSITIES = ['minimal', 'normal', 'detailed'] as const
+const RESOLVE_VERBOSITY_LABEL: Record<(typeof RESOLVE_VERBOSITIES)[number], MessageKey> = {
+  minimal: 'repo.resolve.verbosityMinimal',
+  normal: 'repo.resolve.verbosityNormal',
+  detailed: 'repo.resolve.verbosityDetailed',
 }
 
 /**
@@ -1045,19 +1101,18 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   {t('repo.scope.makePersonal')}
                 </button>
               ) : orgs.length > 0 ? (
-                <div className="relative">
-                  <select
-                    value=""
-                    onChange={(e) => handleShare(e.target.value)}
-                    className={`${SELECT} w-full`}
-                  >
-                    <option value="" disabled>{t('repo.scope.sharePlaceholder')}</option>
-                    {orgs.map((o) => (
-                      <option key={o.id} value={o.id}>{o.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
-                </div>
+                // Held at `''` on purpose: picking an organization SHARES the repository
+                // with it rather than setting the control to it, so the trigger goes back
+                // to the placeholder and the row is replaced by the shared state. No
+                // `width` — this one fills the column it is in, and the panel measures
+                // the trigger for it.
+                <Select
+                  value=""
+                  options={orgs.map((o) => ({ value: o.id, label: o.name }))}
+                  onChange={handleShare}
+                  placeholder={t('repo.scope.sharePlaceholder')}
+                  ariaLabel={t('repo.scope.sharePlaceholder')}
+                />
               ) : (
                 <p className="text-xs text-text-secondary/40 text-right">{t('repo.scope.joinOrg')}</p>
               )}
@@ -1237,22 +1292,18 @@ export function RepoPage({ repoName }: RepoPageProps) {
               label={t('repo.branches.development')}
               description={t('repo.branches.developmentHelp')}
             >
-              <div className="relative">
-                <select
-                  value={branchSettings.development || ''}
-                  onChange={(e) => handleBranchSettingChange('development', e.target.value)}
-                  disabled={branchesLoading}
-                  className={`${SELECT} w-52 disabled:opacity-50`}
-                >
-                  <option value="">
-                    {branchesLoading ? t('common.loading') : t('repo.branches.select')}
-                  </option>
-                  {remoteBranches.map((branch) => (
-                    <option key={branch} value={branch}>{branch}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
-              </div>
+              {/* The placeholder does double duty while the branches are being read:
+                  the list is empty then, and "Loading…" is the honest name for a picker
+                  that has nothing to offer yet. */}
+              <Select
+                value={branchSettings.development || ''}
+                options={remoteBranches.map((branch) => ({ value: branch, label: branch }))}
+                onChange={(next) => handleBranchSettingChange('development', next)}
+                disabled={branchesLoading}
+                placeholder={branchesLoading ? t('common.loading') : t('repo.branches.select')}
+                ariaLabel={t('repo.branches.development')}
+                width={SELECT_WIDTH}
+              />
             </SettingRow>
           </fieldset>
         </div>
@@ -1600,17 +1651,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 <label className="block text-sm font-medium mb-0.5">{t('repo.commit.style')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.commit.styleHelp')}</p>
               </div>
-              <div className="relative">
-                <select
-                  value={styleVal}
-                  onChange={(e) => handleCommitSettingChange('style', e.target.value)}
-                  className={`${SELECT} w-52`}
-                >
-                  <option value="single-line">{t('repo.commit.styleSingle')}</option>
-                  <option value="multi-line">{t('repo.commit.styleMulti')}</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-              </div>
+              <EnumSelect
+                value={styleVal}
+                values={COMMIT_STYLES}
+                labels={COMMIT_STYLE_LABEL}
+                onChange={(next) => handleCommitSettingChange('style', next)}
+                ariaLabel={t('repo.commit.style')}
+              />
             </div>
 
             {/* Format */}
@@ -1619,19 +1666,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 <label className="block text-sm font-medium mb-0.5">{t('repo.commit.format')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.commit.formatHelp')}</p>
               </div>
-              <div className="relative">
-                <select
-                  value={formatVal}
-                  onChange={(e) => handleCommitSettingChange('format', e.target.value)}
-                  className={`${SELECT} w-52`}
-                >
-                  <option value="conventional">{t('repo.commit.formatConventional')}</option>
-                  <option value="angular">{t('repo.commit.formatAngular')}</option>
-                  <option value="gitmoji">{t('repo.commit.formatGitmoji')}</option>
-                  <option value="none">{t('repo.commit.formatNone')}</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-              </div>
+              <EnumSelect
+                value={formatVal}
+                values={COMMIT_FORMATS}
+                labels={COMMIT_FORMAT_LABEL}
+                onChange={(next) => handleCommitSettingChange('format', next)}
+                ariaLabel={t('repo.commit.format')}
+              />
             </div>
 
             {/* Co-Author Toggle */}
@@ -1737,18 +1778,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   <p className="text-xs text-yellow mt-1">{t('repo.pr.testAccountsPublicWarn')}</p>
                 )}
               </div>
-              <div className="relative">
-                <select
-                  value={testAccountsVal}
-                  onChange={(e) => handlePRSettingChange('testAccounts', e.target.value)}
-                  className={`${SELECT} w-52`}
-                >
-                  <option value="off">{t('repo.pr.testAccountsOff')}</option>
-                  <option value="reference">{t('repo.pr.testAccountsReference')}</option>
-                  <option value="inline">{t('repo.pr.testAccountsInline')}</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-              </div>
+              <EnumSelect
+                value={testAccountsVal}
+                values={TEST_ACCOUNT_MODES}
+                labels={TEST_ACCOUNT_LABEL}
+                onChange={(next) => handlePRSettingChange('testAccounts', next)}
+                ariaLabel={t('repo.pr.testAccounts')}
+              />
             </div>
 
             {/* Test Accounts Source - only when test accounts are surfaced */}
@@ -1881,18 +1917,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.commitMode')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.resolve.commitModeHelp')}</p>
               </div>
-              <div className="relative">
-                <select
-                  value={resolveCommitModeVal}
-                  onChange={(e) => handleResolveSettingChange('commitMode', e.target.value)}
-                  className={`${SELECT} w-52`}
-                >
-                  <option value="new">{t('repo.resolve.modeNew')}</option>
-                  <option value="amend">{t('repo.resolve.modeAmend')}</option>
-                  <option value="ask">{t('repo.resolve.modeAsk')}</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-              </div>
+              <EnumSelect
+                value={resolveCommitModeVal}
+                values={RESOLVE_COMMIT_MODES}
+                labels={RESOLVE_COMMIT_MODE_LABEL}
+                onChange={(next) => handleResolveSettingChange('commitMode', next)}
+                ariaLabel={t('repo.resolve.commitMode')}
+              />
             </div>
 
             {/* Commit Format Source - shown when a new commit is possible (new or ask) */}
@@ -1902,17 +1933,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.commitFormat')}</label>
                   <p className="text-xs text-text-secondary/50">{t('repo.resolve.commitFormatHelp')}</p>
                 </div>
-                <div className="relative">
-                  <select
-                    value={resolveUseCommitConfigVal ? 'commit' : 'custom'}
-                    onChange={(e) => handleResolveSettingChange('useCommitConfig', e.target.value === 'commit')}
-                    className={`${SELECT} w-52`}
-                  >
-                    <option value="commit">{t('repo.resolve.useCommitConfig')}</option>
-                    <option value="custom">{t('repo.resolve.customConfig')}</option>
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                </div>
+                <EnumSelect
+                  value={resolveUseCommitConfigVal ? 'commit' : 'custom'}
+                  values={RESOLVE_CONFIG_SOURCES}
+                  labels={RESOLVE_CONFIG_SOURCE_LABEL}
+                  onChange={(next) => handleResolveSettingChange('useCommitConfig', next === 'commit')}
+                  ariaLabel={t('repo.resolve.commitFormat')}
+                />
               </div>
             )}
 
@@ -1924,17 +1951,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
                     <label className="block text-sm font-medium mb-0.5">{t('repo.commit.style')}</label>
                     <p className="text-xs text-text-secondary/50">{t('repo.commit.styleHelp')}</p>
                   </div>
-                  <div className="relative">
-                    <select
-                      value={resolveStyleVal}
-                      onChange={(e) => handleResolveSettingChange('style', e.target.value)}
-                      className={`${SELECT} w-52`}
-                    >
-                      <option value="single-line">{t('repo.commit.styleSingle')}</option>
-                      <option value="multi-line">{t('repo.commit.styleMulti')}</option>
-                    </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                  </div>
+                  <EnumSelect
+                    value={resolveStyleVal}
+                    values={COMMIT_STYLES}
+                    labels={COMMIT_STYLE_LABEL}
+                    onChange={(next) => handleResolveSettingChange('style', next)}
+                    ariaLabel={t('repo.commit.style')}
+                  />
                 </div>
 
                 <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
@@ -1942,19 +1965,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
                     <label className="block text-sm font-medium mb-0.5">{t('repo.commit.format')}</label>
                     <p className="text-xs text-text-secondary/50">{t('repo.commit.formatHelp')}</p>
                   </div>
-                  <div className="relative">
-                    <select
-                      value={resolveFormatVal}
-                      onChange={(e) => handleResolveSettingChange('format', e.target.value)}
-                      className={`${SELECT} w-52`}
-                    >
-                      <option value="conventional">{t('repo.commit.formatConventional')}</option>
-                      <option value="angular">{t('repo.commit.formatAngular')}</option>
-                      <option value="gitmoji">{t('repo.commit.formatGitmoji')}</option>
-                      <option value="none">{t('repo.commit.formatNone')}</option>
-                    </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                  </div>
+                  <EnumSelect
+                    value={resolveFormatVal}
+                    values={COMMIT_FORMATS}
+                    labels={COMMIT_FORMAT_LABEL}
+                    onChange={(next) => handleResolveSettingChange('format', next)}
+                    ariaLabel={t('repo.commit.format')}
+                  />
                 </div>
               </>
             )}
@@ -2008,18 +2025,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.replyVerbosity')}</label>
                   <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyVerbosityHelp')}</p>
                 </div>
-                <div className="relative">
-                  <select
-                    value={resolveReplyVerbosityVal}
-                    onChange={(e) => handleResolveSettingChange('replyVerbosity', e.target.value)}
-                    className={`${SELECT} w-52`}
-                  >
-                    <option value="minimal">{t('repo.resolve.verbosityMinimal')}</option>
-                    <option value="normal">{t('repo.resolve.verbosityNormal')}</option>
-                    <option value="detailed">{t('repo.resolve.verbosityDetailed')}</option>
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                </div>
+                <EnumSelect
+                  value={resolveReplyVerbosityVal}
+                  values={RESOLVE_VERBOSITIES}
+                  labels={RESOLVE_VERBOSITY_LABEL}
+                  onChange={(next) => handleResolveSettingChange('replyVerbosity', next)}
+                  ariaLabel={t('repo.resolve.replyVerbosity')}
+                />
               </div>
             )}
           </fieldset>

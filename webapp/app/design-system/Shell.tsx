@@ -11,6 +11,7 @@ import { ButtonEntry } from './entries/ButtonEntry'
 import { ButtonIconEntry } from './entries/ButtonIconEntry'
 import { CardEntry } from './entries/CardEntry'
 import { KbdEntry } from './entries/KbdEntry'
+import { SelectEntry } from './entries/SelectEntry'
 import { CommitCardEntry } from './entries/CommitCardEntry'
 import { CommitLineEntry } from './entries/CommitLineEntry'
 import { DiffStatEntry } from './entries/DiffStatEntry'
@@ -130,6 +131,7 @@ const ENTRIES: Record<
   avatar: AvatarEntry,
   accountcard: AccountCardEntry,
   kbd: KbdEntry,
+  select: SelectEntry,
   label: LabelEntry,
   status: StatusEntry,
   switch: SwitchEntry,

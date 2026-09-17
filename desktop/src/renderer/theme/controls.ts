@@ -96,3 +96,14 @@ export const BTN_ICON = 'flex items-center justify-center h-7 w-7 shrink-0 round
  * popup and ignores the theme; the caller draws the chevron over the `pr-9`.
  */
 export const SELECT = 'px-3 py-1.5 pr-9 bg-surface border border-line-field rounded-lg text-xs cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors'
+
+/**
+ * The width a settings row's control stands at — `w-52`, the class every one of those
+ * selects carries.
+ *
+ * A NUMBER, because `Select` is handed one: its panel is portalled and positioned by
+ * hand, so a width in a class is a width the panel cannot read. It is here rather than
+ * in the design system for the reason the rest of this file is: how wide the right-hand
+ * column of a settings row runs is this app's layout, not a design language.
+ */
+export const SELECT_WIDTH = 208

@@ -22,6 +22,7 @@ export type EntryId =
   | 'kbd'
   | 'menu'
   | 'modalheader'
+  | 'select'
   | 'selecticon'
   | 'label'
   | 'status'
@@ -83,6 +84,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   kbd: 'Kbd',
   menu: 'Menu',
   modalheader: 'ModalHeader',
+  select: 'Select',
   selecticon: 'SelectIcon',
   contextagentcard: 'ContextAgentCard',
   headerrepocard: 'HeaderRepoCard',
@@ -203,6 +205,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   kbd: ['text'],
   menu: ['avatar', 'icon', 'text'],
   modalheader: ['buttonicon', 'icon', 'tabstrip', 'text'],
+  select: ['icon', 'text'],
   selecticon: ['buttonicon', 'icon', 'text'],
   contextagentcard: ['card', 'label', 'progress', 'buttonicon'],
   headerrepocard: ['label', 'selecticon', 'buttonicon'],
@@ -339,6 +342,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   kbd: 'A key you press, as the cap it is written on',
   menu: 'Rows under something you drew',
   modalheader: 'The top of every dialog, once',
+  select: 'The app’s one picker, and the list under it',
   selecticon: 'That control, opening a menu',
   contextagentcard: 'What an agent is spending',
   headerrepocard: 'A repository, and what you can do to it',

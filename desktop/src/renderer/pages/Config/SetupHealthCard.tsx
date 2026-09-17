@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { SectionHeader } from '@ds/desktop'
-import { CheckCircle2, XCircle, Download, RefreshCw, ExternalLink, Copy, Wrench, Loader2, ChevronDown } from '@ds/desktop/icons'
+import { SectionHeader, Select } from '@ds/desktop'
+import { CheckCircle2, XCircle, Download, RefreshCw, ExternalLink, Copy, Wrench, Loader2 } from '@ds/desktop/icons'
 import type { McpServerStatus, PrerequisiteId, PrerequisiteStatus, SetupStatus } from '../../../types'
 import { useT } from '../../i18n'
+import { SELECT_WIDTH } from '../../theme/controls'
 import { getSetupStatus, SETUP_SIMULATION_EVENT } from '../../dev/simulatedSetup'
 
 /**
@@ -284,19 +285,17 @@ export function SetupHealthCard() {
                 <div className="text-xs font-medium text-text-secondary/70">
                   {t('settings.application.setup.integrations.title')}
                 </div>
-                <div className="relative shrink-0">
-                  <select
-                    value={atlassianSelected ? 'both' : 'github'}
-                    onChange={(e) => pickIntegrations(e.target.value === 'both', status.integrations.atlassian)}
-                    disabled={busy === 'integrations'}
-                    aria-label={t('settings.application.setup.integrations.title')}
-                    className="pl-3 pr-7 py-1.5 bg-surface border border-line-field rounded-lg text-xs focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50"
-                  >
-                    <option value="both">{t('setup.wizard.integrations.both')}</option>
-                    <option value="github">{t('setup.wizard.integrations.githubOnly')}</option>
-                  </select>
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
-                </div>
+                <Select
+                  value={atlassianSelected ? 'both' : 'github'}
+                  options={[
+                    { value: 'both', label: t('setup.wizard.integrations.both') },
+                    { value: 'github', label: t('setup.wizard.integrations.githubOnly') },
+                  ]}
+                  onChange={(next) => pickIntegrations(next === 'both', status.integrations.atlassian)}
+                  disabled={busy === 'integrations'}
+                  ariaLabel={t('settings.application.setup.integrations.title')}
+                  width={SELECT_WIDTH}
+                />
               </div>
               {confirmingOff && (
                 <div className="mt-2 flex items-start justify-between gap-2">
