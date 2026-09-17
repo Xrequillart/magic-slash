@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.96.5] - 2026-09-17
+
+### Added
+
+- **Desktop**: One picker for the whole app — a `Select` in the design system, replacing four hand-built dropdowns and eighteen native ones whose popup macOS drew in its own colours
+- **Desktop**: The account card can front a service, so the Atlassian connection is the same card as the cloud account — with a band for a credential the service has started refusing
+- **Desktop**: A keycap component, with the modifier glyphs set a rung above the letters so `⌘` no longer reads smaller than the `N` beside it
+- **Desktop**: An organization card: the roster, the invitations and the two ways out, in one component
+- **Desktop**: The settings blocks joined it — a setting row, a list of facts, a plan gauge, a table of figures and a language card
+
+### Changed
+
+- **Desktop**: The Connections tab's Atlassian card is the account card now, and its revoked state is a band inside it rather than a hand-built strip
+- **Desktop**: The About card opens on the product's own mark, and its changelog link goes through the app like every other outside link
+- **Desktop**: Every keyboard shortcut is drawn by one component, on the shortcuts tab and in the zoom help line
+- **Desktop**: The organization page is wiring only, and the count beside its heading is drawn quiet like the repository lists'
+- **Desktop**: The Claude Code page is five design-system blocks — the account, the two pickers, the plan gauges and the spend table
+- **Desktop**: The language page is one card, and the app has a single list of languages where it carried three copies of it
+
 ## [0.96.4] - 2026-09-17
 
 ### Added
@@ -3085,6 +3104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.96.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.5
 [0.96.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.4
 [0.96.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.3
 [0.96.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.2
