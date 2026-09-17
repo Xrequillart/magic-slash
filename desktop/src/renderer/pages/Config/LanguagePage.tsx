@@ -1,15 +1,31 @@
 import { Languages } from '@ds/desktop/icons'
-import { SectionHeader } from '@ds/desktop'
+import { LanguageCard, SectionHeader, Text } from '@ds/desktop'
 import { useConfig } from '../../hooks/useConfig'
-import { LanguageSelect } from '../../components/LanguageSelect'
 import { showToast } from '../../components/Toast'
+import { LANGUAGES } from '../../languages'
 import { useLanguage, useT } from '../../i18n'
+import { SELECT_WIDTH } from '../../theme/controls'
 import { type LanguageId } from '../../../types'
 
 /**
- * Language & Region. Its own section rather than a row under Appearance: the
- * choice is about who is reading, not about how the window looks, and it is the
- * one setting users most often go looking for by name.
+ * Language & Region. Its own section rather than a row under Appearance: the choice is
+ * about who is reading, not about how the window looks, and it is the one setting users
+ * most often go looking for by name.
+ *
+ * THE CARD IS `LanguageCard` — the design system's, which holds the three parts of this
+ * choice that kept drifting apart: a picker showing a flag beside each name, the names
+ * written in the language they name, and the small print separating this setting from
+ * the languages Claude WRITES in. That last one is why the card exists rather than a
+ * `SettingRow` in a plate: the desktop has language settings per REPOSITORY, and the two
+ * are confused constantly.
+ *
+ * THE LIST IS `renderer/languages.ts`, which is also what the quick-settings sheet and
+ * the repository rows read. Each language is named in itself, so a reader who has set the
+ * app to a language they cannot read still has a way back.
+ *
+ * THE LINE UNDER THE CARD IS NOT PART OF IT. "The language follows your account" is a
+ * fact about where the value is STORED — it travels with the cloud identity, not with
+ * this machine — and it is true of nothing else on the card.
  */
 export function LanguagePage() {
   const { updateLanguage } = useConfig()
@@ -28,27 +44,18 @@ export function LanguagePage() {
   return (
     <div>
       <SectionHeader icon={Languages} title={t('settings.language.section')} />
-      <div className="bg-surface border border-line-strong rounded-xl p-4">
-        <div className="flex items-center justify-between gap-6">
-          <div className="flex-1">
-            <div className="text-sm font-medium mb-0.5">{t('settings.language.label')}</div>
-            <p className="text-xs text-text-secondary/50">{t('settings.language.help')}</p>
-          </div>
-          {/* The same picker the repository language rows use, so the app's own
-              language is chosen the same way as the ones Claude writes in — flag
-              included. LANGUAGE_OPTIONS above is now only read by nothing else here:
-              the picker carries its own autonyms, for the same module-scope reason. */}
-          <div className="shrink-0">
-            <LanguageSelect value={active} onChange={(id) => choose(id as LanguageId)} />
-          </div>
-        </div>
-        {/* Spelled out because the two are constantly confused: this setting is
-            read by a person, the repository ones are written by Claude. */}
-        <p className="text-xs text-text-secondary/50 mt-4 leading-relaxed">
-          {t('settings.language.distinction')}
-        </p>
-      </div>
-      <p className="text-xs text-text-secondary/50 mt-3">{t('settings.language.followsAccount')}</p>
+      <LanguageCard
+        label={t('settings.language.label')}
+        hint={t('settings.language.help')}
+        note={t('settings.language.distinction')}
+        value={active}
+        options={LANGUAGES}
+        onChange={(id) => choose(id as LanguageId)}
+        width={SELECT_WIDTH}
+      />
+      <Text size="xs" tone="secondary" className="mt-3 block opacity-50">
+        {t('settings.language.followsAccount')}
+      </Text>
     </div>
   )
 }

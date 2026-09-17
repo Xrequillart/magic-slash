@@ -20,9 +20,10 @@ import { useConfig } from '../hooks/useConfig'
 import { useZoom } from '../hooks/useZoom'
 import { THEMES, THEME_IDS, useTheme } from '../theme'
 import { useLanguage, useT } from '../i18n'
+import { languageName } from '../languages'
 import { showToast } from './Toast'
 import {
-  DEFAULT_ZOOM, LANGUAGE_IDS, MAX_ZOOM, MIN_ZOOM, type LanguageId, type SetupStatus, type ThemeId,
+  DEFAULT_ZOOM, LANGUAGE_IDS, MAX_ZOOM, MIN_ZOOM, type SetupStatus, type ThemeId,
 } from '../../types'
 
 /**
@@ -294,7 +295,7 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
             checked={id === activeLanguage}
             onChange={(next) => { if (next && id !== activeLanguage) void write(() => updateLanguage(id)) }}
             caption={false}
-            label={LANGUAGE_AUTONYMS[id]}
+            label={languageName(id)}
           />
         ))}
       </ControlCenterGroup>
@@ -328,12 +329,4 @@ const SETUP_LABEL = {
   failed: 'controlCenter.setup.failed',
 } as const
 
-/**
- * Each language named in itself — the same two words `LanguageSelect` carries, and for
- * the same reason: the list has to read correctly whatever the app is showing, so it
- * needs no translation and is clear of the module-scope freeze a `t()` here would bring.
- */
-const LANGUAGE_AUTONYMS: Record<LanguageId, string> = {
-  en: 'English',
-  fr: 'Français',
-}
+
