@@ -763,7 +763,7 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Réglages → Organisation ──────────────────────────────────────────────
   'org.section': 'Organisation',
-  'org.sectionCount': 'Organisations ({count})',
+  'org.sectionPlural': 'Organisations',
   'org.cloudDisabled': 'Les fonctions cloud ne sont pas configurées dans cette version.',
   'org.cloudDisabledHint': 'Magic Slash fonctionne entièrement hors ligne — aucun compte requis.',
   'org.signInTitle': 'Connectez-vous pour gérer votre organisation.',

@@ -787,7 +787,7 @@ export const en = {
 
   // ── Settings → Organization ──────────────────────────────────────────────
   'org.section': 'Organization',
-  'org.sectionCount': 'Organizations ({count})',
+  'org.sectionPlural': 'Organizations',
   'org.cloudDisabled': 'Cloud features are not configured in this build.',
   'org.cloudDisabledHint': 'Magic Slash works fully offline — no account required.',
   'org.signInTitle': 'Sign in to manage your organization.',

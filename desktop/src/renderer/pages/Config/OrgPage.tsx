@@ -1,17 +1,17 @@
 import { useState, useCallback, useMemo } from 'react'
-import { Cloud, Users, Mail, LogOut, Copy, Check, Loader2, Building2, Trash2, AlertTriangle, Archive, X, Plus, UserPlus } from '@ds/desktop/icons'
+import { Cloud, Users, Mail, Loader2, Building2, AlertTriangle, Archive, Plus, UserPlus } from '@ds/desktop/icons'
 import { useAuth } from '../../hooks/useAuth'
 import { useOrg } from '../../hooks/useOrg'
 import { useMemberAvatars } from '../../hooks/useMemberAvatars'
 import { useStore } from '../../store'
 import { Modal } from '../../components/Modal'
-import { RoleSelect } from './RoleSelect'
-import { Avatar, Input, SectionHeader, TabStrip } from '@ds/desktop'
+import { RoleSelect, roleOptions } from './RoleSelect'
+import { Input, OrganizationCard, SectionHeader, TabStrip } from '@ds/desktop'
 import { TabSweep } from '../../components/TabSweep'
 import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
 import type { MessageKey, Translate } from '../../i18n'
-import type { Invitation, Member, MembershipRole, Org } from '../../../types'
+import type { MembershipRole, Org } from '../../../types'
 import { extractInviteToken, inviteLink } from '../../../urls'
 
 /**
@@ -55,273 +55,17 @@ function inviteStatusLabel(status: string, t: Translate): string {
   return key ? t(key) : status
 }
 
-/** Sub-heading inside an organization card. */
-function CardSection({ label, count, action }: { label: string; count?: number; action?: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between h-5 mb-2">
-      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-text-secondary/50">
-        <span>{label}</span>
-        {count !== undefined && <span className="text-text-secondary/30">{count}</span>}
-      </div>
-      {action}
-    </div>
-  )
-}
-
-interface OrganizationCardProps {
-  org: Org
-  members: Member[]
-  /**
-   * Every member's photo, keyed by user id. Absent key = no photo, drawn as the
-   * generic icon — the same fallback the Account tab uses, so a colleague who has
-   * not uploaded one looks the way the signed-in user does.
-   *
-   * The whole app's worth of faces, not this org's: `useMemberAvatars` keys on the
-   * person, and a colleague in two orgs is one entry. Handing each card the flat map
-   * is cheaper than slicing it per org and reads the same at the call site.
-   */
-  avatars: Record<string, string>
-  invitations: Invitation[]
-  currentUserId?: string
-  busyMember: string | null
-  deletingInvite: string | null
-  copiedToken: string | null
-  leaving: boolean
-  onInvite: (org: Org) => void
-  onChangeRole: (orgId: string, userId: string, role: MembershipRole) => void
-  onRemoveMember: (orgId: string, userId: string) => void
-  onCopyToken: (token: string) => void
-  onDeleteInvitation: (id: string) => void
-  onLeave: (orgId: string) => void
-  onArchive: (org: Org) => void
-}
-
 /**
- * One organization, self-contained: identity, members, invitations and the
- * destructive actions. A user can belong to several orgs, and all of them are
- * live at once — there is no active one to single out.
+ * THE CARD IS `OrganizationCard` NOW, in the design system, and what is left in this file
+ * is the wiring: the hooks, the six handlers, the four modals and the translator.
+ *
+ * It went whole — the identity band, the members table, the invitations and the two ways
+ * out. What went with it is what was never about an organization: seven hand-built
+ * controls, three plates spelled out here, and two roster pills with their own idea of
+ * what an accent tint is. WHO MAY DO WHAT STAYS HERE, and it crosses over as the presence
+ * or absence of a handler — a non-admin is handed no invitations, no role options and no
+ * remove button, rather than a permission the design system would have to interpret.
  */
-function OrganizationCard({
-  org,
-  members,
-  avatars,
-  invitations,
-  currentUserId,
-  busyMember,
-  deletingInvite,
-  copiedToken,
-  leaving,
-  onInvite,
-  onChangeRole,
-  onRemoveMember,
-  onCopyToken,
-  onDeleteInvitation,
-  onLeave,
-  onArchive,
-}: OrganizationCardProps) {
-  const t = useT()
-  const isAdmin = org.role === 'admin'
-  // An accepted invitation is a member now — it is already listed (with its role
-  // and actions) in Members just above, so repeating it here is pure noise. Only
-  // invitations that still need attention are shown: pending, expired, revoked.
-  const openInvitations = invitations.filter((inv) => inv.status !== 'accepted')
-  const adminCount = members.filter((m) => m.role === 'admin').length
-  // Sole admin: the last admin cannot leave without locking everyone out — they
-  // must promote someone or archive the org instead.
-  const isSoleAdmin = isAdmin && adminCount <= 1
-
-  return (
-    <div className="bg-surface border border-line-strong rounded-xl overflow-hidden">
-      {/* Identity */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-line-subtle">
-        <div className="p-1.5 bg-accent/10 rounded-lg shrink-0">
-          <Building2 className="w-4 h-4 text-accent" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium truncate">{org.name}</div>
-        </div>
-      </div>
-
-      {/* Members */}
-      <div className="px-4 py-3 border-b border-line-subtle">
-        <CardSection label={t('org.members')} count={members.length} />
-        {members.length === 0 ? (
-          <div className="text-xs text-text-secondary/40 py-1">{t('org.membersEmpty')}</div>
-        ) : (
-          <div className="-mx-1 overflow-x-auto">
-            <table className="w-full min-w-[22rem] border-collapse text-left">
-              {/* Headers are visually hidden: the rows read fine without them,
-                  but a screen reader still needs the columns named. */}
-              <thead className="sr-only">
-                <tr>
-                  <th scope="col">{t('org.colMember')}</th>
-                  <th scope="col">{t('org.colRole')}</th>
-                  {isAdmin && <th scope="col">{t('org.colActions')}</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line-subtle">
-                {members.map((m) => {
-                  const isSelf = m.userId === currentUserId
-                  const rowBusy = busyMember === m.userId
-                  return (
-                    <tr key={m.userId}>
-                      {/* max-w-0 lets a long email truncate instead of widening
-                          the column past the card. */}
-                      <td className="max-w-0 px-1 py-2">
-                        {/* `min-w-0` on the flex row, or the truncate above it stops
-                            working: a flex child defaults to its content's minimum
-                            width, so a long email would push the column wide instead
-                            of eliding. */}
-                        <div className="flex items-center gap-2 min-w-0">
-                          {/* `Avatar` DIRECTLY, where this went through the app's own
-                              `AccountAvatar` and its table of surfaces. That table had
-                              four entries and this row is the last one standing: the
-                              identity card's geometry moved into `AccountCard` when that
-                              card moved into the design system, and the settings rail
-                              and the sidebar's account button are both gone. A map from
-                              one surface to one rung is a map.
-
-                              `md` — 24px, sized UNDER the 28px role pill it shares the
-                              row with rather than at it, so adding faces does not make
-                              every roster taller. `badge` keeps the `bg-accent/20` plate
-                              for a member with no photo, and `Avatar` gives the bare
-                              fallback the same box, so a missing photo never shifts the
-                              row.
-
-                              The SOURCE is always a data URL from the main process,
-                              never a remote one: the Storage bucket is private and its
-                              only web-facing form is a signed URL that expires, so an
-                              `<img src>` pointed at one would work for an hour and then
-                              render a broken box. See `useMemberAvatars`.
-
-                              `alt=""` on purpose — the email right beside it already
-                              names the person, and an alt repeating the adjacent label
-                              makes a screen reader say them twice per row. */}
-                          <Avatar src={avatars[m.userId] ?? null} alt="" size="md" fallback="badge" />
-                          <span className="block truncate text-sm">
-                            {m.email ?? m.userId}
-                            {isSelf && <span className="text-text-secondary/40">{t('org.you')}</span>}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="w-px whitespace-nowrap px-1 py-2">
-                        {rowBusy ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-icon" />
-                        ) : isAdmin ? (
-                          <RoleSelect value={m.role} onChange={(role) => onChangeRole(org.id, m.userId, role)} />
-                        ) : (
-                          <span className={`inline-flex items-center h-7 px-2 rounded-lg text-[11px] font-medium ${
-                            m.role === 'admin' ? 'bg-accent/15 text-accent' : 'bg-surface-strong text-text-secondary'
-                          }`}>
-                            {roleLabel(m.role, t)}
-                          </span>
-                        )}
-                      </td>
-                      {isAdmin && (
-                        <td className="w-px px-1 py-2">
-                          {/* Removing yourself is what "Leave organization" is for. */}
-                          {!isSelf && !rowBusy && (
-                            <button
-                              onClick={() => onRemoveMember(org.id, m.userId)}
-                              className="flex items-center justify-center h-7 w-7 shrink-0 text-icon bg-surface border border-line rounded-lg hover:text-red hover:border-red/20 hover:bg-red/10 transition-all"
-                              title={t('org.removeMember')}
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Invitations (admin only — a non-admin read yields [] anyway) */}
-      {isAdmin && (
-        <div className="px-4 py-3 border-b border-line-subtle">
-          <CardSection
-            label={t('org.invitations')}
-            count={openInvitations.length}
-            action={
-              <button
-                onClick={() => onInvite(org)}
-                className="flex items-center gap-1.5 h-7 px-2 text-[11px] font-medium text-text-secondary bg-surface border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-              >
-                <UserPlus className="w-3 h-3" />
-                {t('org.invite')}
-              </button>
-            }
-          />
-          {openInvitations.length === 0 ? (
-            <div className="text-xs text-text-secondary/40 py-1">{t('org.invitationsEmpty')}</div>
-          ) : (
-            <div className="space-y-1">
-              {openInvitations.map((inv) => (
-                <div key={inv.id} className="flex items-center gap-2 text-sm py-0.5">
-                  <span className="flex-1 truncate min-w-0">{inv.email}</span>
-                  <span className={`flex items-center h-7 px-2 rounded-lg text-[11px] font-medium ${
-                    inv.status === 'pending' ? 'bg-yellow/10 text-yellow' : 'bg-surface-strong text-text-secondary'
-                  }`}>
-                    {inviteStatusLabel(inv.status, t)}
-                  </span>
-                  {inv.status === 'pending' && (
-                    <button
-                      onClick={() => onCopyToken(inv.token)}
-                      className="flex items-center gap-1 h-7 px-2 text-[11px] font-medium text-text-secondary bg-surface border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                      title={t('org.copyInviteLink')}
-                    >
-                      {copiedToken === inv.token ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      {copiedToken === inv.token ? t('common.copied') : t('org.inviteLink')}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => onDeleteInvitation(inv.id)}
-                    disabled={deletingInvite === inv.id}
-                    className="flex items-center justify-center h-7 w-7 shrink-0 text-icon bg-surface border border-line rounded-lg hover:text-red hover:border-red/20 hover:bg-red/10 transition-all disabled:opacity-50"
-                    title={t('org.deleteInvitation')}
-                  >
-                    {deletingInvite === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Danger zone */}
-      <div className="px-4 py-3 flex items-center gap-2">
-        {isSoleAdmin ? (
-          <p className="text-xs text-text-secondary/50">
-            {t('org.soleAdmin')}
-          </p>
-        ) : (
-          <button
-            onClick={() => onLeave(org.id)}
-            disabled={leaving}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all disabled:opacity-40"
-          >
-            {leaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
-            {t('org.leave')}
-          </button>
-        )}
-        {isAdmin && (
-          <button
-            onClick={() => onArchive(org)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all ml-auto"
-          >
-            <Archive className="w-3.5 h-3.5" />
-            {t('org.archive')}
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
 
 export function OrgPage() {
   const { status, loading: authLoading } = useAuth()
@@ -530,7 +274,12 @@ export function OrgPage() {
     <div className="flex flex-col gap-4">
       <SectionHeader
         icon={Building2}
-        title={t('org.sectionCount', { count: orgs.length })}
+        // The figure is `SectionHeader`'s and not part of the words, which is what the
+        // repository lists one tab over already do: a count inside the title is a count
+        // in the title's ink, and it reads as part of the name of the section rather
+        // than as how many things are under it.
+        title={t('org.sectionPlural')}
+        count={orgs.length}
         spacing="none"
         actions={[
           { id: 'create', label: t('org.create'), icon: Plus, onClick: () => { setCreateName(''); setShowCreate(true) } },
@@ -563,27 +312,93 @@ export function OrgPage() {
               are listed in, not the order of `visibleOrgs`: that one is filtered down to
               the active tab and knows nothing about which side the previous one was on. */}
           <TabSweep tabKey={activeOrgId} order={orgs.map((o) => o.id)} className="flex flex-col gap-4">
-          {visibleOrgs.map((o) => (
-          <OrganizationCard
-            key={o.id}
-            org={o}
-            members={membersByOrg[o.id] ?? []}
-            avatars={memberAvatars}
-            invitations={invitationsByOrg[o.id] ?? []}
-            currentUserId={currentUserId}
-            busyMember={busyMember}
-            deletingInvite={deletingInvite}
-            copiedToken={copiedToken}
-            leaving={leavingOrgId === o.id}
-            onInvite={openInvite}
-            onChangeRole={handleChangeRole}
-            onRemoveMember={handleRemoveMember}
-            onCopyToken={handleCopyToken}
-            onDeleteInvitation={handleDeleteInvitation}
-            onLeave={handleLeave}
-            onArchive={setArchiveOrgTarget}
-          />
-          ))}
+          {visibleOrgs.map((o) => {
+            const orgMembers = membersByOrg[o.id] ?? []
+            const isAdmin = o.role === 'admin'
+            // Sole admin: the last admin cannot leave without locking everyone out — they
+            // must promote someone or archive the organization instead. The card draws
+            // the sentence where the Leave button would be; which of the two it gets is
+            // decided here, because counting admins is not a card's job.
+            const isSoleAdmin = isAdmin && orgMembers.filter((m) => m.role === 'admin').length <= 1
+            // An accepted invitation is a member now — it is already listed above, with
+            // its role and its actions, so repeating it here is pure noise. Only the ones
+            // that still need attention are shown: pending, expired, revoked.
+            const openInvitations = (invitationsByOrg[o.id] ?? []).filter((inv) => inv.status !== 'accepted')
+
+            return (
+              <OrganizationCard
+                key={o.id}
+                name={o.name}
+                members={{
+                  label: t('org.members'),
+                  empty: t('org.membersEmpty'),
+                  columns: {
+                    member: t('org.colMember'),
+                    role: t('org.colRole'),
+                    actions: t('org.colActions'),
+                  },
+                  rows: orgMembers.map((m) => {
+                    const isSelf = m.userId === currentUserId
+                    return {
+                      id: m.userId,
+                      name: m.email ?? m.userId,
+                      note: isSelf ? t('org.you') : undefined,
+                      // The whole app's worth of faces, keyed on the PERSON: a colleague
+                      // in two organizations is one entry, fetched once for the page.
+                      avatar: memberAvatars[m.userId] ?? null,
+                      role: m.role,
+                      roleLabel: roleLabel(m.role, t),
+                      roleStrong: m.role === 'admin',
+                      // Only an admin may change a role, and the picker is simply absent
+                      // otherwise — the pill takes its place.
+                      roleOptions: isAdmin ? roleOptions(t) : undefined,
+                      onRoleChange: isAdmin
+                        ? (role: string) => handleChangeRole(o.id, m.userId, role as MembershipRole)
+                        : undefined,
+                      busy: busyMember === m.userId,
+                      // Removing yourself is what "Leave organization" is for.
+                      remove: isAdmin && !isSelf
+                        ? { title: t('org.removeMember'), onClick: () => handleRemoveMember(o.id, m.userId) }
+                        : undefined,
+                    }
+                  }),
+                }}
+                // Admin only, and absent rather than empty for a member: a non-admin read
+                // yields [] anyway, so a band drawn from it would say "no invitation" to
+                // somebody who is not allowed to know.
+                invitations={isAdmin ? {
+                  label: t('org.invitations'),
+                  empty: t('org.invitationsEmpty'),
+                  invite: { label: t('org.invite'), onClick: () => openInvite(o) },
+                  rows: openInvitations.map((inv) => ({
+                    id: inv.id,
+                    email: inv.email,
+                    status: inviteStatusLabel(inv.status, t),
+                    pending: inv.status === 'pending',
+                    copy: inv.status === 'pending' ? {
+                      label: t('org.inviteLink'),
+                      copiedLabel: t('common.copied'),
+                      title: t('org.copyInviteLink'),
+                      copied: copiedToken === inv.token,
+                      onClick: () => handleCopyToken(inv.token),
+                    } : undefined,
+                    remove: {
+                      title: t('org.deleteInvitation'),
+                      busy: deletingInvite === inv.id,
+                      onClick: () => handleDeleteInvitation(inv.id),
+                    },
+                  })),
+                } : undefined}
+                leave={isSoleAdmin ? undefined : {
+                  label: t('org.leave'),
+                  busy: leavingOrgId === o.id,
+                  onClick: () => handleLeave(o.id),
+                }}
+                note={isSoleAdmin ? t('org.soleAdmin') : undefined}
+                archive={isAdmin ? { label: t('org.archive'), onClick: () => setArchiveOrgTarget(o) } : undefined}
+              />
+            )
+          })}
           </TabSweep>
         </>
       )}
