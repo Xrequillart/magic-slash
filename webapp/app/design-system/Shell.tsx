@@ -10,6 +10,7 @@ import { BranchCardEntry } from './entries/BranchCardEntry'
 import { ButtonEntry } from './entries/ButtonEntry'
 import { ButtonIconEntry } from './entries/ButtonIconEntry'
 import { CardEntry } from './entries/CardEntry'
+import { KbdEntry } from './entries/KbdEntry'
 import { CommitCardEntry } from './entries/CommitCardEntry'
 import { CommitLineEntry } from './entries/CommitLineEntry'
 import { DiffStatEntry } from './entries/DiffStatEntry'
@@ -128,6 +129,7 @@ const ENTRIES: Record<
   themegrid: ThemeGridEntry,
   avatar: AvatarEntry,
   accountcard: AccountCardEntry,
+  kbd: KbdEntry,
   label: LabelEntry,
   status: StatusEntry,
   switch: SwitchEntry,

@@ -19,6 +19,7 @@ export type EntryId =
   | 'buttonicon'
   | 'editabletext'
   | 'input'
+  | 'kbd'
   | 'menu'
   | 'modalheader'
   | 'selecticon'
@@ -79,6 +80,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   buttonicon: 'ButtonIcon',
   editabletext: 'EditableText',
   input: 'Input',
+  kbd: 'Kbd',
   menu: 'Menu',
   modalheader: 'ModalHeader',
   selecticon: 'SelectIcon',
@@ -198,6 +200,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   buttonicon: ['icon', 'loader'],
   editabletext: ['icon'],
   input: ['icon'],
+  kbd: ['text'],
   menu: ['avatar', 'icon', 'text'],
   modalheader: ['buttonicon', 'icon', 'tabstrip', 'text'],
   selecticon: ['buttonicon', 'icon', 'text'],
@@ -333,6 +336,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   buttonicon: 'A control that is only a mark',
   editabletext: 'Words you can click into',
   input: 'A box you type in, one line or several',
+  kbd: 'A key you press, as the cap it is written on',
   menu: 'Rows under something you drew',
   modalheader: 'The top of every dialog, once',
   selecticon: 'That control, opening a menu',
