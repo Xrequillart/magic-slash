@@ -44,6 +44,7 @@ export type EntryId =
   | 'factlist'
   | 'languagecard'
   | 'settingrow'
+  | 'settingscard'
   | 'ratelimitbar'
   | 'usagetable'
   | 'sectionheader'
@@ -130,6 +131,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   factlist: 'FactList',
   languagecard: 'LanguageCard',
   settingrow: 'SettingRow',
+  settingscard: 'SettingsCard',
   ratelimitbar: 'RateLimitBar',
   usagetable: 'UsageTable',
   sectionheader: 'SectionHeader',
@@ -258,6 +260,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   factlist: ['status', 'text'],
   languagecard: ['card', 'settingrow', 'text'],
   settingrow: ['select', 'switch', 'text'],
+  settingscard: ['card', 'settingrow'],
   ratelimitbar: ['progress', 'text'],
   usagetable: ['text'],
   sectionheader: ['button', 'icon', 'text'],
@@ -408,6 +411,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   factlist: 'A list of facts, nothing to press',
   languagecard: 'Which language the product speaks to you in',
   settingrow: 'One setting, and the control that changes it',
+  settingscard: 'Settings stacked, with the rules between them',
   ratelimitbar: 'One plan limit, and when it turns over',
   usagetable: 'Figures over periods, in columns',
   sectionheader: 'What the thing under it is',

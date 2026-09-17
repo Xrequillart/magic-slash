@@ -16,6 +16,7 @@ import { OrganizationCardEntry } from './entries/OrganizationCardEntry'
 import { FactListEntry } from './entries/FactListEntry'
 import { LanguageCardEntry } from './entries/LanguageCardEntry'
 import { SettingRowEntry } from './entries/SettingRowEntry'
+import { SettingsCardEntry } from './entries/SettingsCardEntry'
 import { RateLimitBarEntry } from './entries/RateLimitBarEntry'
 import { UsageTableEntry } from './entries/UsageTableEntry'
 import { CommitCardEntry } from './entries/CommitCardEntry'
@@ -142,6 +143,7 @@ const ENTRIES: Record<
   factlist: FactListEntry,
   languagecard: LanguageCardEntry,
   settingrow: SettingRowEntry,
+  settingscard: SettingsCardEntry,
   ratelimitbar: RateLimitBarEntry,
   usagetable: UsageTableEntry,
   label: LabelEntry,
