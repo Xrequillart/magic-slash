@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.96.4] - 2026-09-17
+
+### Added
+
+- **Desktop**: The account card is a table — one row per setting, with a username you can pick (unique, checked as you type) and the date the password last changed
+- **Desktop**: The account checklist moved into the design system on the pull request card's shape — one line per step, and the next one unfolds itself to say where to fix it
+- **Desktop**: The profile card joined it — the same table, with each field edited behind a modal instead of six controls stacked in a card
+- **Desktop**: An email change is confirmed by a link instead of a code, and the app notices it without a restart
+- **Landing**: A page that greets you when an email change is confirmed, logo and all
+
+### Changed
+
+- **Desktop**: A password field spaces its bullets, so they read as marks rather than as a grey bar
+- **Desktop**: One SectionHeader in the design system, where the same heading was drawn eighteen different places
+- **Desktop**: The section headers above the account and checklist cards are gone — both cards name themselves
+- **Desktop**: The plans list is capped at the repository page's width
+- **Desktop**: Dialogs have room — a wider gutter, larger fields, and every button drawn by the design system
+- **Ci**: The Supabase auth config is driven from the environment, so a config push can no longer send this machine's localhost to production
+
+### Fixed
+
+- **Desktop**: A failed read at startup can no longer become an unhandled rejection, and the auth handler tests cover the email-change watch
+
 ## [0.96.3] - 2026-09-16
 
 ### Added
@@ -3062,6 +3085,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.96.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.4
 [0.96.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.3
 [0.96.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.2
 [0.96.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.1
