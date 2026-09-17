@@ -126,6 +126,14 @@ export function setupAuthHandlers(getMainWindow: () => BrowserWindow | null): vo
    * watch if the server says one is still in flight. Not awaited: the window must not
    * wait on a network call to open, and the answer arrives as a `statusChanged` like
    * every other.
+   *
+   * `.catch()` AND NOT `void`, which is what it was. `void` on a promise nobody awaits
+   * turns any rejection into an unhandled one — and in Electron's main process that is
+   * a process-level event, raised while the app is still opening its window, for a
+   * background read whose entire purpose is to be optional. Nothing here is worth
+   * failing a launch over: the address is re-read at the next tick, or the next start.
    */
-  void resumeEmailChangeWatch(emit)
+  resumeEmailChangeWatch(emit).catch((error) => {
+    console.error('[auth] could not resume the email-change watch:', error)
+  })
 }
