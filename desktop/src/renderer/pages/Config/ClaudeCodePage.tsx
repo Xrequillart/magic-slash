@@ -1,13 +1,23 @@
-import { useEffect, useMemo, useState, Fragment } from 'react'
-import { SectionHeader } from '@ds/desktop'
-import { AlertTriangle, Bot, ChevronDown, Coins, Gauge, Shield, User } from '@ds/desktop/icons'
-import { RateLimitBar } from '../../components/agent-info-sidebar/LimitGauge'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  Banner,
+  Card,
+  EmptyLine,
+  FactList,
+  RateLimitBar,
+  SectionHeader,
+  SettingRow,
+  UsageTable,
+  type FactListRow,
+} from '@ds/desktop'
+import { AlertTriangle, Bot, Coins, Gauge, Shield, User } from '@ds/desktop/icons'
+import { formatReset } from '../../components/agent-info-sidebar/LimitGauge'
 import { showToast } from '../../components/Toast'
 import { useConfig } from '../../hooks/useConfig'
 import { useStore } from '../../store'
 import { formatUsd } from '../../utils/usageStats'
 import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
-import { SELECT } from '../../theme/controls'
+import { SELECT_WIDTH } from '../../theme/controls'
 import type { AgentType, ClaudeAccount, LaunchMode, SpendSummary } from '../../../types'
 
 /**
@@ -23,6 +33,18 @@ import type { AgentType, ClaudeAccount, LaunchMode, SpendSummary } from '../../.
  * NOTHING HERE CAME FROM THE CLOUD ACCOUNT and the distinction is the reason this is
  * its own tab rather than a section of Account: signing out of Magic Slash says nothing
  * about which Claude you are, and the two can perfectly well be different people.
+ *
+ * ── FIVE BLOCKS, FIVE COMPONENTS ──────────────────────────────────────────────────
+ *
+ * Every one of them is the design system's now, and each went whole: `FactList` for the
+ * account read off disk, `SettingRow` twice for the two pickers, `Banner` for the
+ * confirmation the bypass mode asks for, `RateLimitBar` for the gauges and `UsageTable`
+ * for the figures. Between them they took away four spellings of the same plate, three
+ * of the same centred empty line, two of the same "name over a help line with a control
+ * at the right", and a pair of confirmation buttons drawn out of raw classes.
+ *
+ * WHAT IS LEFT HERE IS THE READING: which account is on disk, which usage report is the
+ * freshest, how a figure is written in the reader's language, and the optimistic writes.
  */
 
 // Message keys rather than labels: module scope is evaluated once at import, so a
@@ -140,6 +162,14 @@ export function ClaudeCodePage() {
     return () => clearInterval(id)
   }, [])
 
+  // The countdown as a SENTENCE, built here and handed over: the design system's gauge
+  // cannot read a translation, and a component that set its own interval would re-render
+  // every surface drawing one on a timer none of them asked for.
+  const resetLabel = (resetsAt?: number) =>
+    typeof resetsAt === 'number'
+      ? t('usage.resetsIn', { time: formatReset(resetsAt, usageNow, t) })
+      : undefined
+
   // Claude account identity + estimated spend, sourced from ~/.claude on disk. On mount
   // and not on a tab flag, unlike the version this was lifted out of: the panel mounts
   // only the open tab, so being mounted IS being the tab on screen.
@@ -152,210 +182,150 @@ export function ClaudeCodePage() {
     return () => { cancelled = true }
   }, [])
 
+  // The account as a list of facts, built here because WHICH facts exist is a property
+  // of what was on disk: a personal account has no organization, a token-less one has no
+  // plan. Absent fields are dropped rather than drawn empty.
+  const accountFacts: FactListRow[] = claudeAccount
+    ? [
+        { id: 'name', label: t('settings.claude.name'), value: claudeAccount.displayName },
+        { id: 'email', label: t('settings.claude.email'), value: claudeAccount.emailAddress },
+        { id: 'organization', label: t('settings.claude.organization'), value: claudeAccount.organizationName },
+        {
+          id: 'plan',
+          label: t('settings.claude.plan'),
+          // Anthropic's own plan names, not translated — identical in every language.
+          value: claudeAccount.seatTier ? SEAT_TIER_LABELS[claudeAccount.seatTier] ?? claudeAccount.seatTier : undefined,
+          badge: true,
+        },
+      ].flatMap((fact) => (fact.value ? [{ ...fact, value: fact.value }] : []))
+    : []
+
+  const activeAgentType = AGENT_TYPE_OPTIONS.find((option) => option.value === defaultAgentType)
+  const activeLaunchMode = LAUNCH_MODE_OPTIONS.find((option) => option.value === launchMode)
+
   return (
     <div className="flex flex-col gap-8">
       {/* Account — the Claude identity read from ~/.claude, not the cloud account */}
       <div>
         <SectionHeader icon={User} title={t('settings.claude.account')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          {claudeAccount ? (
-            <div className="space-y-2 text-sm">
-              {claudeAccount.displayName && (
-                <div className="flex items-center justify-between">
-                  <span className="text-text-secondary/60">{t('settings.claude.name')}</span>
-                  <span className="font-medium">{claudeAccount.displayName}</span>
-                </div>
-              )}
-              {claudeAccount.emailAddress && (
-                <div className="flex items-center justify-between">
-                  <span className="text-text-secondary/60">{t('settings.claude.email')}</span>
-                  <span className="font-medium">{claudeAccount.emailAddress}</span>
-                </div>
-              )}
-              {claudeAccount.organizationName && (
-                <div className="flex items-center justify-between">
-                  <span className="text-text-secondary/60">{t('settings.claude.organization')}</span>
-                  <span className="font-medium">{claudeAccount.organizationName}</span>
-                </div>
-              )}
-              {claudeAccount.seatTier && (
-                <div className="flex items-center justify-between">
-                  <span className="text-text-secondary/60">{t('settings.claude.plan')}</span>
-                  <span className="px-1.5 py-0.5 rounded-md bg-accent/15 text-accent text-xs font-medium">
-                    {SEAT_TIER_LABELS[claudeAccount.seatTier] ?? claudeAccount.seatTier}
-                  </span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-sm text-text-secondary/50 text-center py-2">
-              {t('settings.claude.noAccount')}
-            </div>
-          )}
-        </div>
+        <Card>
+          <FactList rows={accountFacts} empty={t('settings.claude.noAccount')} />
+        </Card>
       </div>
 
-      {/* Launch mode */}
       <div>
         <SectionHeader icon={Bot} title={t('settings.defaultAgentType.title')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.defaultAgentType.title')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.defaultAgentType.description')}</div>
-            </div>
-            <div className="relative">
-              <select
-                value={defaultAgentType}
-                onChange={(e) => applyDefaultAgentType(e.target.value as AgentType)}
-                className={`${SELECT} w-52`}
-              >
-                {AGENT_TYPE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
-            </div>
-          </div>
-          <div className="text-xs text-text-secondary/50">
-            {(() => {
-              const active = AGENT_TYPE_OPTIONS.find(o => o.value === defaultAgentType)
-              return active ? t(active.descriptionKey) : null
-            })()}
-          </div>
-        </div>
+        <Card>
+          <SettingRow
+            label={t('settings.defaultAgentType.title')}
+            hint={t('settings.defaultAgentType.description')}
+            note={activeAgentType ? t(activeAgentType.descriptionKey) : undefined}
+            control={{
+              kind: 'select',
+              value: defaultAgentType,
+              options: AGENT_TYPE_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.labelKey) })),
+              onChange: (next) => applyDefaultAgentType(next as AgentType),
+              ariaLabel: t('settings.defaultAgentType.title'),
+              width: SELECT_WIDTH,
+            }}
+          />
+        </Card>
       </div>
 
       <div>
         <SectionHeader icon={Shield} title={t('settings.launchMode.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.launchMode.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.launchMode.help')}</div>
-            </div>
-            <div className="relative">
-              <select
-                value={launchMode}
-                onChange={(e) => handleLaunchModeChange(e.target.value as LaunchMode)}
-                className={`${SELECT} w-52`}
-              >
-                {LAUNCH_MODE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
-            </div>
-          </div>
-          <div className="text-xs text-text-secondary/50">
-            {(() => {
-              const active = LAUNCH_MODE_OPTIONS.find(o => o.value === launchMode)
-              return active ? t(active.descriptionKey) : null
-            })()}
-          </div>
+        <Card className="flex flex-col gap-4">
+          <SettingRow
+            label={t('settings.launchMode.label')}
+            hint={t('settings.launchMode.help')}
+            note={activeLaunchMode ? t(activeLaunchMode.descriptionKey) : undefined}
+            control={{
+              kind: 'select',
+              value: launchMode,
+              options: LAUNCH_MODE_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.labelKey) })),
+              onChange: (next) => handleLaunchModeChange(next as LaunchMode),
+              ariaLabel: t('settings.launchMode.label'),
+              width: SELECT_WIDTH,
+            }}
+          />
+          {/* The one mode that asks before it is set. It is not a toast and not a modal:
+              the question is about the row above it and the answer changes that row, so
+              it belongs in the card, which is what `Banner` is. The confirm is the
+              primary — it is what the reader just asked for — and cancelling simply puts
+              the picker back where it was. */}
           {showBypassWarning && (
-            <div className="flex flex-col gap-3 px-3 py-3 bg-red/10 border border-red/20 rounded-lg">
-              <div className="flex items-center gap-2 text-xs text-red">
-                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="font-medium">{t('settings.launchMode.bypassWarning')}</span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => applyLaunchMode('bypassPermissions')}
-                  className="px-3 py-1.5 bg-red/20 hover:bg-red/30 text-red text-xs rounded-lg transition-colors"
-                >
-                  {t('settings.launchMode.bypassConfirm')}
-                </button>
-                <button
-                  onClick={() => setShowBypassWarning(false)}
-                  className="px-3 py-1.5 bg-surface-strong hover:bg-ink/15 text-text-secondary text-xs rounded-lg transition-colors"
-                >
-                  {t('common.cancel')}
-                </button>
-              </div>
-            </div>
+            <Banner
+              variant="danger"
+              icon={AlertTriangle}
+              layout="stacked"
+              actions={[
+                {
+                  label: t('settings.launchMode.bypassConfirm'),
+                  primary: true,
+                  onClick: () => applyLaunchMode('bypassPermissions'),
+                },
+                { label: t('common.cancel'), onClick: () => setShowBypassWarning(false) },
+              ]}
+            >
+              {t('settings.launchMode.bypassWarning')}
+            </Banner>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* Rate usage — plan limits reported by the running agents */}
       <div>
         <SectionHeader icon={Gauge} title={t('settings.rate.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
+        <Card className="flex flex-col gap-4">
           {hasRateLimits ? (
-            <div className="space-y-4">
+            <>
               {typeof accountUsage?.fiveHourPercent === 'number' && (
                 <RateLimitBar
                   label={t('usage.session')}
                   percent={accountUsage.fiveHourPercent}
-                  resetsAt={accountUsage.fiveHourResetsAt}
-                  now={usageNow}
+                  resets={resetLabel(accountUsage.fiveHourResetsAt)}
                 />
               )}
               {typeof accountUsage?.sevenDayPercent === 'number' && (
                 <RateLimitBar
                   label={t('usage.weekly')}
                   percent={accountUsage.sevenDayPercent}
-                  resetsAt={accountUsage.sevenDayResetsAt}
-                  now={usageNow}
+                  resets={resetLabel(accountUsage.sevenDayResetsAt)}
                 />
               )}
-            </div>
+            </>
           ) : (
-            <div className="text-sm text-text-secondary/50 text-center py-2">
-              {t('settings.rate.empty')}
-            </div>
+            <EmptyLine>{t('settings.rate.empty')}</EmptyLine>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* Spend & tokens */}
       <div>
         <SectionHeader icon={Coins} title={t('settings.spend.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          {/* Three states, not two: `spend` is null until the fold comes back, and
-              showing the empty copy during that read said "no history" to users who
-              have plenty of it. */}
-          {spend === null || spend.hasData ? (
-            <>
-              <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-2 text-sm items-baseline">
-                <span className="text-text-secondary/50 text-xs uppercase tracking-wider"></span>
-                <span className="text-text-secondary/50 text-xs uppercase tracking-wider text-right">{t('settings.spend.tokens')}</span>
-                <span className="text-text-secondary/50 text-xs uppercase tracking-wider text-right">{t('settings.spend.estCost')}</span>
-
-                {([
-                  { key: 'settings.spend.today', b: spend?.today },
-                  { key: 'settings.spend.week', b: spend?.week },
-                  { key: 'settings.spend.allTime', b: spend?.allTime },
-                ] as const).map(({ key, b }) => (
-                  <Fragment key={key}>
-                    <span className="text-text-secondary">{t(key)}</span>
-                    {b ? (
-                      <>
-                        <span className="font-mono text-right">{formatTokensCompact(b.tokens, locale, t)}</span>
-                        <span className="font-mono text-right text-ink">~{formatUsd(b.costUsd, locale)}</span>
-                      </>
-                    ) : (
-                      // Sized to the numbers they stand in for, so nothing shifts
-                      // when the values land.
-                      <>
-                        <span aria-hidden className="block h-4 w-16 justify-self-end rounded bg-surface-strong animate-pulse" />
-                        <span aria-hidden className="block h-4 w-14 justify-self-end rounded bg-surface-strong animate-pulse" />
-                      </>
-                    )}
-                  </Fragment>
-                ))}
-              </div>
-              <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-                {t('settings.spend.disclaimer')}
-              </div>
-            </>
-          ) : (
-            <div className="text-sm text-text-secondary/50 text-center py-2">
-              {t('settings.spend.empty')}
-            </div>
-          )}
-        </div>
+        <Card>
+          {/* Three states, not two: `spend` is null until the fold comes back, and showing
+              the empty copy during that read said "no history" to users who have plenty of
+              it. A row with no figures is what `UsageTable` draws its skeletons for. */}
+          <UsageTable
+            columns={[t('settings.spend.tokens'), t('settings.spend.estCost')]}
+            rows={spend === null || spend.hasData
+              ? ([
+                  { id: 'today', label: t('settings.spend.today'), bucket: spend?.today },
+                  { id: 'week', label: t('settings.spend.week'), bucket: spend?.week },
+                  { id: 'allTime', label: t('settings.spend.allTime'), bucket: spend?.allTime },
+                ]).map(({ id, label, bucket }) => ({
+                  id,
+                  label,
+                  figures: bucket
+                    ? [formatTokensCompact(bucket.tokens, locale, t), `~${formatUsd(bucket.costUsd, locale)}`]
+                    : undefined,
+                }))
+              : []}
+            note={t('settings.spend.disclaimer')}
+            empty={t('settings.spend.empty')}
+          />
+        </Card>
       </div>
     </div>
   )

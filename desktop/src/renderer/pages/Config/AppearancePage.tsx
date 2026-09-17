@@ -1,5 +1,5 @@
-import { Check, ChevronDown, Minus, Palette, PanelsTopLeft, Plus, RotateCcw, Scaling } from '@ds/desktop/icons'
-import { Kbd, SectionHeader } from '@ds/desktop'
+import { Check, Minus, Palette, PanelsTopLeft, Plus, RotateCcw, Scaling } from '@ds/desktop/icons'
+import { Kbd, SectionHeader, Select, type SettingRowControl } from '@ds/desktop'
 import { useEffect, useState } from 'react'
 import { useConfig } from '../../hooks/useConfig'
 import { useZoom } from '../../hooks/useZoom'
@@ -123,11 +123,16 @@ interface FormatSelectProps {
  * Expanded or compact, for one card.
  *
  * The same value the card's own ± button writes, so the two never disagree: pick
- * "Compact" here and the card in the sidebar collapses; collapse it there and
- * this select follows. Native <select> with the chevron drawn over it, like the
- * launch-mode picker in Settings.
+ * "Compact" here and the card in the sidebar collapses; collapse it there and this
+ * follows.
+ *
+ * A HOOK AND NOT A COMPONENT, which is the shape `SettingRow` asks for: that row draws
+ * its own controls, at its own rung, and takes them as DATA rather than as nodes — a
+ * node arrives with a size the call site has already decided, which is the whole thing
+ * the row exists to stop. So what is this app's stays here (the optimistic write, the
+ * toast, the two words) and what comes out is a control the row can draw.
  */
-function FormatSelect({ minimized, onChange, ariaLabel, errorMessage }: FormatSelectProps) {
+function useFormatSelect({ minimized, onChange, ariaLabel, errorMessage }: FormatSelectProps): SettingRowControl {
   const t = useT()
   const [value, setValue] = useState(minimized === true)
 
@@ -145,20 +150,17 @@ function FormatSelect({ minimized, onChange, ariaLabel, errorMessage }: FormatSe
     }
   }
 
-  return (
-    <div className="relative">
-      <select
-        value={value ? 'minimized' : 'full'}
-        onChange={(e) => choose(e.target.value === 'minimized')}
-        aria-label={ariaLabel}
-        className="w-32 pl-3 pr-7 py-1.5 bg-surface border border-line-field rounded-lg text-xs focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
-      >
-        <option value="full">{t('settings.appearance.sidebars.format.full')}</option>
-        <option value="minimized">{t('settings.appearance.sidebars.format.minimized')}</option>
-      </select>
-      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
-    </div>
-  )
+  return {
+    kind: 'select',
+    value: value ? 'minimized' : 'full',
+    options: [
+      { value: 'full', label: t('settings.appearance.sidebars.format.full') },
+      { value: 'minimized', label: t('settings.appearance.sidebars.format.minimized') },
+    ],
+    onChange: (next) => choose(next === 'minimized'),
+    ariaLabel,
+    width: 128,
+  }
 }
 
 /**
@@ -200,18 +202,17 @@ function CodeThemeSelect() {
         <div className="text-sm font-medium">{t('settings.appearance.codeTheme.label')}</div>
         <p className="text-xs text-text-secondary/50 mt-0.5">{t('settings.appearance.codeTheme.help')}</p>
       </div>
-      <div className="relative shrink-0">
-        <select
+      <div className="shrink-0">
+        <Select
           value={value}
-          onChange={(e) => choose(e.target.value as CodeThemeMode)}
-          aria-label={t('settings.appearance.codeTheme.label')}
-          className="w-40 pl-3 pr-7 py-1.5 bg-surface border border-line-field rounded-lg text-xs focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
-        >
-          {CODE_THEME_MODES.map((mode) => (
-            <option key={mode} value={mode}>{t(`settings.appearance.codeTheme.${mode}`)}</option>
-          ))}
-        </select>
-        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
+          options={CODE_THEME_MODES.map((mode) => ({
+            value: mode,
+            label: t(`settings.appearance.codeTheme.${mode}`),
+          }))}
+          onChange={(next) => choose(next as CodeThemeMode)}
+          ariaLabel={t('settings.appearance.codeTheme.label')}
+          width={160}
+        />
       </div>
     </div>
   )
@@ -265,6 +266,23 @@ function SidebarPanelsSection() {
   } = useConfig()
   const t = useT()
 
+  // At the top of the component and not inside the rows' `trailing` callbacks: these are
+  // hooks, and a hook called from a callback is a hook called conditionally. What the
+  // rows decide is whether to OFFER the control, which is what the callbacks do with the
+  // value these return.
+  const usageCardFormat = useFormatSelect({
+    minimized: config?.usageCardMinimized,
+    onChange: updateUsageCardMinimized,
+    ariaLabel: `${t('settings.appearance.sidebars.usageCard.label')} — ${t('settings.appearance.sidebars.format.label')}`,
+    errorMessage: t('toast.sidebarPanelFailed'),
+  })
+  const agentContextFormat = useFormatSelect({
+    minimized: config?.agentContextMinimized,
+    onChange: updateAgentContextMinimized,
+    ariaLabel: `${t('settings.appearance.sidebars.agentContext.label')} — ${t('settings.appearance.sidebars.format.label')}`,
+    errorMessage: t('toast.sidebarPanelFailed'),
+  })
+
   return (
     <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
       <ToggleRow
@@ -276,14 +294,7 @@ function SidebarPanelsSection() {
         /* Hidden card, hidden format: the choice still exists in the config and
            comes back untouched when the card does, but offering it here would be
            asking how to lay out something that is not on screen. */
-        trailing={(enabled) => enabled && (
-          <FormatSelect
-            minimized={config?.usageCardMinimized}
-            onChange={updateUsageCardMinimized}
-            ariaLabel={`${t('settings.appearance.sidebars.usageCard.label')} — ${t('settings.appearance.sidebars.format.label')}`}
-            errorMessage={t('toast.sidebarPanelFailed')}
-          />
-        )}
+        trailing={(enabled) => enabled && usageCardFormat}
       />
       <div className="border-t border-line-subtle" />
       <ToggleRow
@@ -292,14 +303,7 @@ function SidebarPanelsSection() {
         value={config?.agentContextEnabled}
         onChange={updateAgentContextEnabled}
         errorMessage={t('toast.sidebarPanelFailed')}
-        trailing={(enabled) => enabled && (
-          <FormatSelect
-            minimized={config?.agentContextMinimized}
-            onChange={updateAgentContextMinimized}
-            ariaLabel={`${t('settings.appearance.sidebars.agentContext.label')} — ${t('settings.appearance.sidebars.format.label')}`}
-            errorMessage={t('toast.sidebarPanelFailed')}
-          />
-        )}
+        trailing={(enabled) => enabled && agentContextFormat}
       />
     </div>
   )
