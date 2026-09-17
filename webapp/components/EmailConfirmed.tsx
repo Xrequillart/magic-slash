@@ -59,6 +59,26 @@ export function EmailConfirmed() {
       aria-live="polite"
       className="fixed inset-0 z-50 flex items-center justify-center bg-white px-6"
     >
+      {/* THE MARK, TOP LEFT, AND IT DOES NOT MOVE.
+          The page animates its CONTENT — the tick, then the words — and this is not
+          content, it is the frame: the same kind of thing as the white ground behind
+          it. Fading it in with the rest would put the reader's eye on the corner at
+          the exact moment the one piece of news is being struck in the middle.
+
+          `logo-black.svg` because this page is white in every state, which is the
+          same call `SiteHeader` makes for the same reason. `alt` is EMPTY on purpose:
+          the body copy two lines down already says "Magic Slash", and a screen reader
+          announcing the name twice is a worse page than one that skips a decoration.
+
+          `h-10` rather than the header's `h-12`: there it anchors a 64px navigation
+          bar, here it is a corner mark on an otherwise empty page and the heading is
+          what the eye should land on. */}
+      <img
+        src="/img/logo-black.svg"
+        alt=""
+        className="absolute left-6 top-6 h-10 w-auto"
+      />
+
       <div className="flex w-full max-w-sm flex-col items-center text-center">
         {/* THE MARK DRAWS ITSELF. A tick that is simply present is a state; a tick that
             is struck in front of you is an event, and this is the only moment in the
