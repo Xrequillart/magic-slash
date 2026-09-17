@@ -1,5 +1,5 @@
 import { Check, ChevronDown, Minus, Palette, PanelsTopLeft, Plus, RotateCcw, Scaling } from '@ds/desktop/icons'
-import { SectionHeader } from '@ds/desktop'
+import { Kbd, SectionHeader } from '@ds/desktop'
 import { useEffect, useState } from 'react'
 import { useConfig } from '../../hooks/useConfig'
 import { useZoom } from '../../hooks/useZoom'
@@ -71,8 +71,11 @@ function ZoomControl() {
         <div className="text-sm font-medium mb-0.5">{t('settings.appearance.scale')}</div>
         <p className="text-xs text-text-secondary/50">
           {t('settings.appearance.scaleHelpBefore')}{' '}
-          <kbd className="px-1 py-0.5 bg-surface-strong rounded text-[10px]">⌘ +</kbd>{' '}
-          <kbd className="px-1 py-0.5 bg-surface-strong rounded text-[10px]">⌘ −</kbd>
+          {/* `Kbd` at its inline rung, where this was a `<kbd>` spelled here — the same
+              object the Shortcuts tab drew with a different ground and a `⌘` that was
+              not lifted. Two chords and two caps: these are two gestures, not one. */}
+          <Kbd size="xs" keys={['⌘', '+']} />{' '}
+          <Kbd size="xs" keys={['⌘', '−']} />
           {t('settings.appearance.scaleHelpAfter')}
         </p>
       </div>

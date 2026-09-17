@@ -30,17 +30,25 @@ import type { SpotlightShortcut } from '../../../types'
  * the ten tabs that never looked at them.
  */
 
-/** The eight chords Quick Launch will take. Also read by the Shortcuts tab, which
- *  SHOWS the one in force without offering to change it — see `pages/Config/index.tsx`. */
-export const SPOTLIGHT_OPTIONS: { label: string; value: string }[] = [
-  { label: '\u2303 Space', value: 'Control+Space' },
-  { label: '\u2303\u21E7 Space', value: 'Control+Shift+Space' },
-  { label: '\u2325 Space', value: 'Alt+Space' },
-  { label: '\u2325\u21E7 Space', value: 'Alt+Shift+Space' },
-  { label: '\u2303 M', value: 'Control+M' },
-  { label: '\u2303\u21E7 M', value: 'Control+Shift+M' },
-  { label: '\u2325 M', value: 'Alt+M' },
-  { label: '\u2325\u21E7 M', value: 'Alt+Shift+M' },
+/**
+ * The eight chords Quick Launch will take. Also read by the Shortcuts tab, which SHOWS
+ * the one in force without offering to change it — see `pages/Config/index.tsx`.
+ *
+ * ONE ENTRY PER KEY, and not the single label this was. A `<select>` needs a flat
+ * string and joins them below; the Shortcuts tab needs the keys apart, because `Kbd`
+ * sets a modifier glyph a rung above a word and a chord arriving as `'\u2303 Space'`
+ * would have to be split on a space that is a separator here and a KEY NAME there.
+ * Composed where the chords are written rather than parsed where they are drawn.
+ */
+export const SPOTLIGHT_OPTIONS: { keys: string[]; value: string }[] = [
+  { keys: ['\u2303', 'Space'], value: 'Control+Space' },
+  { keys: ['\u2303\u21E7', 'Space'], value: 'Control+Shift+Space' },
+  { keys: ['\u2325', 'Space'], value: 'Alt+Space' },
+  { keys: ['\u2325\u21E7', 'Space'], value: 'Alt+Shift+Space' },
+  { keys: ['\u2303', 'M'], value: 'Control+M' },
+  { keys: ['\u2303\u21E7', 'M'], value: 'Control+Shift+M' },
+  { keys: ['\u2325', 'M'], value: 'Alt+M' },
+  { keys: ['\u2325\u21E7', 'M'], value: 'Alt+Shift+M' },
 ]
 
 // The two halves of the activity-recording breakdown. Message keys rather than
@@ -231,7 +239,7 @@ export function ApplicationPage() {
                   className={`${SELECT} w-52 disabled:opacity-50`}
                 >
                   {SPOTLIGHT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    <option key={opt.value} value={opt.value}>{opt.keys.join(' ')}</option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />

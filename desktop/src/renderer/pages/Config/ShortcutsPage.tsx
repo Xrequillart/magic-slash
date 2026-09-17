@@ -1,5 +1,5 @@
 import { Keyboard } from '@ds/desktop/icons'
-import { SectionHeader } from '@ds/desktop'
+import { Card, Kbd, SectionHeader, Text } from '@ds/desktop'
 import { SPOTLIGHT_OPTIONS } from './ApplicationPage'
 import { useStore } from '../../store'
 import { useT, type MessageKey } from '../../i18n'
@@ -19,6 +19,17 @@ import { useT, type MessageKey } from '../../i18n'
  * panel on, because which keys are free is a property of the machine and belongs next to
  * the feature rather than in a list of facts. It is REPEATED here, read-only, so that
  * this page can honestly claim to be every shortcut.
+ *
+ * ── THE CAPS ARE `Kbd` ────────────────────────────────────────────────────────────
+ *
+ * Every chord below was a `<kbd>` spelled here — a ground, a border, a radius and two
+ * type sizes, with the `⌘` bumped a rung by hand so it would not read smaller than the
+ * letter beside it. The appearance page drew the same object with a different ground and
+ * without that correction, which is the drift a design system exists to end. The plate
+ * is `Card` and the labels are `Text`; what is left in this file is the LIST.
+ *
+ * THE GRID IS STILL THIS PAGE'S. Two columns of fourteen facts is a layout, and a layout
+ * is what a page owns — the design system draws the things in it, not the arrangement.
  */
 
 /** The thirteen chords, each ⌘ plus one key. Message KEYS, resolved in the render
@@ -59,26 +70,34 @@ export function ShortcutsPage() {
     <div className="flex flex-col gap-8">
       <div>
         <SectionHeader icon={Keyboard} title={t('settings.shortcuts.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <div className="grid grid-cols-2 gap-3 text-sm">
+        <Card>
+          {/* `items-center` on every row and not `baseline`: what the eye lines up down
+              the right-hand edge is the CAPS, and two rows whose labels wrap to
+              different heights would otherwise stagger them. */}
+          <div className="grid grid-cols-2 gap-3">
             {CHORDS.map(([labelKey, key]) => (
-              <div key={labelKey} className="flex items-center justify-between">
-                <span className="text-text-secondary">{t(labelKey)}</span>
-                <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> {key}</kbd>
+              <div key={labelKey} className="flex items-center justify-between gap-3">
+                <Text size="sm" tone="secondary">{t(labelKey)}</Text>
+                <Kbd keys={['⌘', key]} />
               </div>
             ))}
-            <div className="flex items-center justify-between">
-              <span className="text-text-secondary">{t('settings.shortcuts.quickLaunch')}</span>
+            <div className="flex items-center justify-between gap-3">
+              <Text size="sm" tone="secondary">{t('settings.shortcuts.quickLaunch')}</Text>
               {spotlightEnabled ? (
-                <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary">
-                  {SPOTLIGHT_OPTIONS.find((o) => o.value === spotlightShortcut)?.label ?? spotlightShortcut}
-                </kbd>
+                /* The option's own keys, handed over as they were written. The chord
+                   this page cannot find is one the config holds and the build no longer
+                   offers, so it falls back to the raw value — `Control+Space` — which is
+                   ugly and true, where drawing nothing would be a page claiming there is
+                   no shortcut when there is one. */
+                <Kbd keys={SPOTLIGHT_OPTIONS.find((o) => o.value === spotlightShortcut)?.keys ?? [spotlightShortcut]} />
               ) : (
-                <span className="px-2 py-0.5 text-xs text-text-secondary/40">{t('settings.shortcuts.disabled')}</span>
+                /* No cap when there is no chord: a key nobody can press drawn as a key
+                   is a lie about what the keyboard does. */
+                <Text size="xs" tone="secondary" className="opacity-40">{t('settings.shortcuts.disabled')}</Text>
               )}
             </div>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   )
