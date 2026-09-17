@@ -874,7 +874,6 @@ export const en = {
   'account.checklist.step.setup': 'Machine setup complete',
 
   // ── Settings → Account → Cloud account ───────────────────────────────────
-  'cloud.section': 'Cloud account',
   'cloud.signedInFallback': 'Signed in',
   'cloud.signedInHint': 'Signed in to Magic Slash cloud',
   // ── The label column of the card's table ─────────────────────────────────

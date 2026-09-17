@@ -7,7 +7,6 @@ import { useOrg } from '../../hooks/useOrg'
 import { LoginScreen } from '../../components/LoginScreen'
 import { Modal } from '../../components/Modal'
 import { AvatarCropModal, type AvatarCropView } from '../../components/AvatarCropModal'
-import { SectionHeader } from './SectionHeader'
 import { InvitationOnboardingWizard } from '../../components/InvitationOnboardingWizard'
 import { showToast } from '../../components/Toast'
 import { useT, useLocale, type MessageKey } from '../../i18n'
@@ -788,24 +787,29 @@ export function CloudAccountSection() {
   // Cloud disabled entirely (no Supabase env baked in) → nothing to sign in to.
   if (!authLoading && !status.enabled) {
     return (
-      <div>
-        <SectionHeader icon={Cloud} title={t('cloud.section')} />
-        {/* The same plate `AccountCard` draws, minus the border for the same reason —
-            a hairline around something already a different colour from the page is the
-            same thing said twice. Not the card itself: this state has no identity and no
-            actions, only a mark and two lines saying there is nothing to sign in to. */}
-        <div className="bg-surface rounded-xl p-6 text-center">
-          <Cloud className="w-8 h-8 text-icon-muted mx-auto mb-3" />
-          <div className="text-sm text-text-secondary/60">{t('org.cloudDisabled')}</div>
-          <div className="text-xs text-text-secondary/40 mt-1">{t('org.cloudDisabledHint')}</div>
-        </div>
+      /* The same plate `AccountCard` draws, minus the border for the same reason — a
+         hairline around something already a different colour from the page is the same
+         thing said twice. Not the card itself: this state has no identity and no
+         actions, only a mark and two lines saying there is nothing to sign in to.
+
+         RETURNED BARE, where it used to sit in a wrapper under a section header. With
+         the header gone the wrapper held exactly one child and contributed nothing —
+         see the note on the signed-in branch for why the header went. */
+      <div className="bg-surface rounded-xl p-6 text-center">
+        <Cloud className="w-8 h-8 text-icon-muted mx-auto mb-3" />
+        <div className="text-sm text-text-secondary/60">{t('org.cloudDisabled')}</div>
+        <div className="text-xs text-text-secondary/40 mt-1">{t('org.cloudDisabledHint')}</div>
       </div>
     )
   }
 
   return (
+    /* NO SECTION HEADER. "Cloud account" sat above this card in the same rung the
+       checklist and the profile still use, and it was the one of the three that named
+       something the card already says: the plate opens on a face, an address and a Sign
+       out button, which is not a block a reader has to be told is about their account.
+       The wrapper stays — it groups the card with the five dialogs below it. */
     <div>
-      <SectionHeader icon={Cloud} title={t('cloud.section')} />
       {/* THE CARD IS `AccountCard` NOW — the drawing went to the design system whole, both
           branches of it, and what is left here is the wiring: the session, the avatar
           bytes, the translator, and four dialogs. The two branches used to be two blocks

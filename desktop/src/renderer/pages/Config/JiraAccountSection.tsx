@@ -11,8 +11,14 @@ import { useT, type MessageKey } from '../../i18n'
 /**
  * Atlassian block of the Connections tab: one button, one browser consent screen.
  *
- * Built on `CloudAccountSection` — same header, same card, same rows, same CTA — with
- * THREE states where that one has two, and the third is the point:
+ * Built on `CloudAccountSection` — same card, same rows, same CTA — with THREE states
+ * where that one has two, and the third is the point:
+ *
+ * It keeps a SECTION HEADER, which that one has since dropped, and the asymmetry is
+ * deliberate rather than drift: this block sits among several on the Connections tab
+ * and nothing else on screen says which service it is about. The account card names
+ * itself — it opens on your own face and address — so a title above it repeated what
+ * the plate already said.
  *
  *  • disconnected → the CTA,
  *  • connected → who and where, plus Disconnect,

@@ -850,7 +850,6 @@ export const fr: Record<keyof typeof en, string> = {
   'account.checklist.step.setup': 'Configuration de la machine complète',
 
   // ── Réglages → Compte → Compte cloud ─────────────────────────────────────
-  'cloud.section': 'Compte cloud',
   'cloud.signedInFallback': 'Connecté',
   'cloud.signedInHint': 'Connecté au cloud Magic Slash',
   // ── La colonne des libellés du tableau de la carte ───────────────────────
