@@ -176,6 +176,7 @@ describe('prSummary', () => {
     testAccountsSource: '',
     commentOnPR: true,
     watchCI: true,
+    templateCheckboxes: 'never',
   }
 
   it('names the tracker the ticket lives in', () => {
@@ -206,6 +207,21 @@ describe('prSummary', () => {
     expect(inline.tail).toEqual([
       { key: 'repo.pr.tail.accountsSource', vars: { source: 'docs/accounts.md' } },
     ])
+  })
+
+  it('mentions the template checkboxes only when the setting departs from never', () => {
+    expect(prSummary(PR).tail).toEqual([])
+    expect(prSummary({ ...PR, templateCheckboxes: 'type' }).tail).toEqual([
+      { key: 'repo.pr.tail.checkboxesType' },
+    ])
+    expect(prSummary({ ...PR, templateCheckboxes: 'all' }).tail).toEqual([
+      { key: 'repo.pr.tail.checkboxesAll' },
+    ])
+    // An org-shared block is copied without re-validation and a stored row can be
+    // edited outside the app, so a value that is not a mode does reach here. It reads
+    // as 'never', which is no line at all — never a line naming the unknown value.
+    expect(prSummary({ ...PR, templateCheckboxes: 'everything' }).tail).toEqual([])
+    expect(prSummary({ ...PR, templateCheckboxes: '' }).tail).toEqual([])
   })
 })
 
@@ -303,15 +319,18 @@ describe('every line a setting can produce', () => {
     ),
     ...['off', 'reference', 'inline'].flatMap((testAccounts) =>
       ['jira', 'github'].flatMap((trackerMode) =>
-        [true, false].map((watchCI) =>
-          prSummary({
-            trackerMode,
-            autoLinkTickets: watchCI,
-            testAccounts,
-            testAccountsSource: 'docs/accounts.md',
-            commentOnPR: watchCI,
-            watchCI,
-          }),
+        ['never', 'type', 'all'].flatMap((templateCheckboxes) =>
+          [true, false].map((watchCI) =>
+            prSummary({
+              trackerMode,
+              autoLinkTickets: watchCI,
+              testAccounts,
+              testAccountsSource: 'docs/accounts.md',
+              commentOnPR: watchCI,
+              watchCI,
+              templateCheckboxes,
+            }),
+          ),
         ),
       ),
     ),

@@ -116,6 +116,24 @@ function buildOptions(t: Translate) {
     { value: 'inline', label: t('repo.pr.testAccountsInline'), description: t('repo.pr.testAccountsInlineHelp') },
   ]
 
+  const templateCheckboxes: DropdownOption<string>[] = [
+    {
+      value: 'never',
+      label: t('repo.pr.templateCheckboxesNever'),
+      description: t('repo.pr.templateCheckboxesNeverHelp'),
+    },
+    {
+      value: 'type',
+      label: t('repo.pr.templateCheckboxesType'),
+      description: t('repo.pr.templateCheckboxesTypeHelp'),
+    },
+    {
+      value: 'all',
+      label: t('repo.pr.templateCheckboxesAll'),
+      description: t('repo.pr.templateCheckboxesAllHelp'),
+    },
+  ]
+
   // The two trackers a repo can file into — a view onto `plan.tracker`, which the
   // skills read and which keeps its third value, `ask`. That one is not a tracker but
   // an instruction to ask at runtime, so it is a toggle beside this select rather than
@@ -153,7 +171,18 @@ function buildOptions(t: Translate) {
     { value: 'none', label: t('repo.plan.acceptanceCriteriaNone'), description: t('repo.plan.acceptanceCriteriaNoneHelp') },
   ]
 
-  return { style, format, commitMode, replyVerbosity, formatSource, testAccounts, trackerMode, splitting, acceptance }
+  return {
+    style,
+    format,
+    commitMode,
+    replyVerbosity,
+    formatSource,
+    testAccounts,
+    templateCheckboxes,
+    trackerMode,
+    splitting,
+    acceptance,
+  }
 }
 
 /**
@@ -373,6 +402,14 @@ export function RepositoryForm({
   const autoLinkTickets = repo.pullRequest.autoLinkTickets ?? DEFAULTS.autoLinkTickets
   const watchCI = repo.pullRequest.watchCI ?? DEFAULTS.watchCI
   const testAccounts = repo.pullRequest.testAccounts ?? DEFAULTS.testAccounts
+  // Matched against the modes the dropdown offers, not merely defaulted: this block is
+  // jsonb an org-shared config copies without re-validation and a row can be edited
+  // outside the app, so a value that is not a mode does reach here. It reads as
+  // `never`, the way the skill reads it.
+  const storedTemplateCheckboxes = repo.pullRequest.templateCheckboxes ?? DEFAULTS.templateCheckboxes
+  const templateCheckboxes = options.templateCheckboxes.some((o) => o.value === storedTemplateCheckboxes)
+    ? storedTemplateCheckboxes
+    : DEFAULTS.templateCheckboxes
   const commentOnPR = repo.issues.commentOnPR ?? DEFAULTS.commentOnPR
   // The language tickets are WRITTEN IN falls back to the comment language before
   // English: with only `?? DEFAULTS.language` this row would claim English while
@@ -1132,6 +1169,7 @@ export function RepositoryForm({
             autoLinkTickets,
             testAccounts,
             testAccountsSource: repo.pullRequest.testAccountsSource ?? '',
+            templateCheckboxes,
             commentOnPR,
             watchCI,
           })}
@@ -1180,6 +1218,21 @@ export function RepositoryForm({
           )}
 
           <SettingRow label={t('repo.pr.template')} description={t('repo.pr.templateHelp')} />
+
+          {/* Directly under the template row: the template itself is a file this form
+              cannot edit, and this is the one thing about it that IS a setting. */}
+          <SettingRow
+            label={t('repo.pr.templateCheckboxes')}
+            description={t('repo.pr.templateCheckboxesHelp')}
+          >
+            <Dropdown
+              value={templateCheckboxes}
+              options={options.templateCheckboxes}
+              onChange={(templateCheckboxes) => onPatch({ pullRequest: { templateCheckboxes } })}
+              width={240}
+              className="w-52"
+            />
+          </SettingRow>
         </SettingsCard>
 
         <SettingsCard icon={Activity} title={t('repo.pr.groupAfter')}>

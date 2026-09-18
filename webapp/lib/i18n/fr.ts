@@ -764,6 +764,8 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.step.watchOff':
     'S’arrête dès que la pull request est ouverte — aucun check surveillé, aucune URL de preview.',
   'repo.pr.tail.accountsSource': 'comptes lus depuis {source}',
+  'repo.pr.tail.checkboxesType': 'coche le type de changement dans le modèle de PR',
+  'repo.pr.tail.checkboxesAll': 'coche les cases du modèle de PR qu’il estime vérifiées',
   'repo.pr.languageHelp': 'Langue des titres et descriptions de pull request',
   'repo.pr.autoLink': 'Lier automatiquement les tickets',
   'repo.pr.autoLinkHelp':
@@ -785,6 +787,15 @@ export const fr: Record<keyof typeof en, string> = {
     'Chemin de fichier ou nom de skill projet contenant les comptes — détecté automatiquement si vide',
   'repo.pr.testAccountsPublicWarn':
     'Les identifiants ne sont jamais copiés sur un dépôt public : le mode en clair y retombe sur le mode référence.',
+  'repo.pr.templateCheckboxes': 'Cases du modèle de PR',
+  'repo.pr.templateCheckboxesHelp':
+    'Autorise ou non /magic:pr à cocher les cases du modèle de PR de votre dépôt. Laissées vides, elles reviennent au relecteur.',
+  'repo.pr.templateCheckboxesNever': 'Ne jamais cocher',
+  'repo.pr.templateCheckboxesNeverHelp': 'Toutes les cases restent vides pour le relecteur',
+  'repo.pr.templateCheckboxesType': 'Type de changement uniquement',
+  'repo.pr.templateCheckboxesTypeHelp': 'Une seule case, dans le groupe de catégorisation',
+  'repo.pr.templateCheckboxesAll': 'Cocher ce qui est vérifié',
+  'repo.pr.templateCheckboxesAllHelp': 'Toutes les cases que l’agent estime avoir vérifiées',
   'repo.pr.template': 'Modèle de PR',
   'repo.pr.templateHelp':
     'Modifié dans l’application desktop — le modèle est un fichier du dépôt (.github/pull_request_template.md), pas un réglage.',

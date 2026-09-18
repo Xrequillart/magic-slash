@@ -99,6 +99,7 @@ Use `AskUserQuestion` with the text from **`MSG_BRANCH_ASK`**.
 | Watch CI             | `.repositories.<name>.pullRequest.watchCI`            | `true`  | Watch checks and review feedback after Step 7, and keep the preview URL in the test scenarios current (off: local-only) |
 | Test accounts        | `.repositories.<name>.pullRequest.testAccounts`       | `'off'` | Test-account mode: `off` / `reference` / `inline` |
 | Test accounts source | `.repositories.<name>.pullRequest.testAccountsSource` | `''`    | Explicit source file path or project-skill name   |
+| Template checkboxes  | `.repositories.<name>.pullRequest.templateCheckboxes` | `'never'` | Which boxes of a project PR template may be ticked: `never` / `type` / `all` (Step 6.1) |
 
 ### Issues parameters
 
@@ -421,7 +422,11 @@ Prepare the PR content:
 - **Title**: Based on the branch name or the first commit
   - If the branch contains a ticket ID (e.g.: `feature/PROJ-123`), use the format: `[PROJ-123] Description`
 - **Description**:
-  - **If a PR template exists**: Use it and fill in all its sections
+  - **If a PR template exists**: Use it and fill in all its sections. Filling a section never means ticking its boxes: read `pullRequest.templateCheckboxes` from the config already loaded in Step 0 (default `never`, and any value other than `type` / `all` is read as `never`) and apply it to every checkbox line the template ships as `- [ ]`
+    - `never`: leave each one exactly `- [ ]`, in every section
+    - `type`: at most **one** box may be ticked, and only inside a categorisation group whose heading belongs to the type-of-change family (e.g. `## Type of change`, `### Type of Change:`, `**Change type**`, `## Kind of change`, `## Type de changement`) — matched case-insensitively and ignoring the surrounding markdown noise, so leading `#` marks, bold markers and a trailing `:` never break the match. The family is a closed list, not an open-ended guess: `Type of change`, `Change type`, `Kind of change`, `Type de changement`. Every other group keeps its boxes empty, and a heading that still matches none of them is treated as `never`
+    - `all`: tick the boxes genuinely verified, and only those
+    - Every mode wins over the template's own instruction comments (`<!-- Mark the appropriate option with an "x" -->` and the like), and is inert on a repo with no template of its own: **`MSG_PR_TEMPLATE_EN`** / **`MSG_PR_TEMPLATE_FR`** carry no checkboxes, and no mode invents one to have something to tick
   - **Otherwise**: Use the default template matching `.languages.pullRequest` (see **`MSG_PR_TEMPLATE_EN`** / **`MSG_PR_TEMPLATE_FR`**)
   - **Add a "Linked Issues" section** with the ticket link (unless `autoLinkTickets` is `false`)
 
@@ -496,6 +501,7 @@ After the user confirms, verify the PR body before passing it to the MCP tool. I
    - **(b)** If `pullRequest.testAccounts` IS `off`, that section must carry **no test-account output of this feature** — no resolved account line, no "no test account documented" note, no "log in with…" placeholder. What it must NOT do is fail a PR whose own subject is test accounts: a manual step like "set `testAccounts` to `reference` and check the body points at `TESTING.md`" is a legitimate test instruction, not a leak. Fail only when the section carries the *output* of Step 6.1.1, which at `off` never ran.
    - **(c)** No invented or placeholder credential ever ships, in any mode: that section must not contain a credential the resolved source did not actually document. Reject on sight anything of the form `test@example.com`, `user@test.com`, `admin/admin`, `password123`, `changeme`, `<your-password>`, or a made-up token — even when it "looks plausible". If Step 6.1.1 found nothing, the correct section carries the "no test account documented" line and no credential at all.
    - **(d)** In `reference` mode (including a `reference` reached by the public-repo downgrade), that section must contain no password, token or API key — only a pointer plus the role to use.
+6. **Template checkboxes match the configured mode**, as a count, not a line-by-line diff: count the ticked lines in the body — `- [x]` and `* [x]`, with the marker matched case-insensitively so `- [X]` and `* [X]` count too — and compare with the same count in the template output `cat`-ed at Step 5. If that output is no longer in context, `cat` the template file again to recount it; never skip this check for want of the earlier output. At `never` the two counts are equal; at `type` the body may have one more, and only in the categorisation group; at `all` any count passes.
 
 **If any check fails:**
 - Log which check(s) failed

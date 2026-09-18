@@ -217,6 +217,10 @@
             },
             "testAccountsSource": {
               "type": "string"
+            },
+            "templateCheckboxes": {
+              "type": "string",
+              "enum": ["never", "type", "all"]
             }
           },
           "additionalProperties": false,

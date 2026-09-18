@@ -687,6 +687,10 @@ export const en = {
   'repo.pr.step.watchOff':
     'Stops once the pull request is open — no checks watched, no preview URL.',
   'repo.pr.tail.accountsSource': 'accounts read from {source}',
+  // Only emitted for 'type' and 'all': leaving the boxes alone is the default, and a
+  // line saying so would be noise on every repository that never touched the setting.
+  'repo.pr.tail.checkboxesType': 'ticks the type of change in the PR template',
+  'repo.pr.tail.checkboxesAll': 'ticks the PR template boxes it considers verified',
   'repo.pr.languageHelp': 'Language used for pull request titles and descriptions',
   'repo.pr.autoLink': 'Auto-link Tickets',
   'repo.pr.autoLinkHelp': 'Add Jira/GitHub ticket links in PR description',
@@ -706,6 +710,13 @@ export const en = {
   'repo.pr.templateFound': 'Template found',
   'repo.pr.templateGenerate': 'Generate template',
   'repo.pr.templatePlaceholder': 'PR template content…',
+  // A different setting from `repo.pr.template` above, which is the template itself.
+  // These govern what the agent is allowed to do with the boxes that template ships.
+  'repo.pr.templateCheckboxes': 'PR template checkboxes',
+  'repo.pr.templateCheckboxesHelp': 'Whether /magic:pr may tick the checkboxes your repository’s PR template ships. Leaving them empty hands the ticking back to the reviewer',
+  'repo.pr.templateCheckboxesNever': 'Never tick',
+  'repo.pr.templateCheckboxesType': 'Type of change only',
+  'repo.pr.templateCheckboxesAll': 'Tick what is verified',
 
   'repo.issues.commentLang': 'Ticket Comment Language',
   'repo.issues.commentLangHelp': 'Language of the comments /magic:pr and /magic:done post on the ticket',
