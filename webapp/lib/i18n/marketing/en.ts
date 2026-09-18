@@ -162,7 +162,7 @@ export const marketingEn = {
   'site.downloadPage.requirementsEyebrow': 'Before you install',
   'site.downloadPage.requirementsTitle': 'Three things your Mac needs first.',
   'site.downloadPage.requirementsLead':
-    'The first launch checks all three and tells you which one is missing. Nothing else is required — no account to create, no script to run.',
+    'The first launch checks all three and tells you which one is missing. Nothing else is required: no account to create, no script to run.',
   'site.downloadPage.reqClaudeTitle': 'Claude Code',
   'site.downloadPage.reqClaudeBody':
     'Installed and signed in. Every <code>/magic:</code> command runs inside it, so the app is only as ready as Claude Code is.',
@@ -171,7 +171,7 @@ export const marketingEn = {
     'The Jira and GitHub MCP servers the commands talk to run on it.',
   'site.downloadPage.reqGitTitle': 'Git 2.20 or newer',
   'site.downloadPage.reqGitBody':
-    'For worktree support — one branch per agent, each in a folder of its own, so two agents never step on the same checkout.',
+    'For worktree support: one branch per agent, each in a folder of its own, so two agents never step on the same checkout.',
   /**
    * THE LINE UNDER THE THREE CARDS, set large and bold and centred: the cards read as a
    * checklist to complete BEFORE pressing the button, and they are not one. The app
@@ -180,7 +180,7 @@ export const marketingEn = {
    * anything. The cards say what; this line says "and you don't have to".
    */
   'site.downloadPage.requirementsReassure':
-    'Don’t worry about it. The app checks all of this on first launch — and if something is missing, it offers to install it for you.',
+    'Don’t worry about it. The app checks all of this on first launch, and if something is missing it offers to install it for you.',
 
   /**
    * THE FIRST-LAUNCH BAND, as three numbered steps in the app's own order. It is what
@@ -193,7 +193,7 @@ export const marketingEn = {
     'There is no install script. The app sets up its own machine on the first launch, and shows you each step as it goes.',
   'site.downloadPage.stepChecksTitle': 'Checks the prerequisites',
   'site.downloadPage.stepChecksBody':
-    'Claude Code, Node.js and Git, with their versions — and a one-line fix for whichever one is missing.',
+    'Claude Code, Node.js and Git, with their versions and a one-line fix for whichever one is missing.',
   'site.downloadPage.stepSkillsTitle': 'Installs the eight commands',
   'site.downloadPage.stepSkillsBody':
     'The <code>/magic:</code> skills land in <code>~/.claude/skills/</code>, where Claude Code picks them up in every project on the machine.',

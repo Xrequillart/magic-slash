@@ -45,10 +45,12 @@ import { RichText } from '../RichText'
  *
  * ── THE FOUR BANDS ─────────────────────────────────────────────────────────────────
  *
- *   1. THE ASK, on the same opening every reference page in this group has
- *      (`padding="hero"`, `softblue → white`, `Bloom` fading `to-white`). One primary
- *      button, and it is the only primary on the page: `brand` is the primary CTA fill
- *      and this is the one page on the site whose entire purpose is that one press.
+ *   1. THE ASK, on a white band with four drawn arrows converging on the button. It used
+ *      to carry the group's opening wash in green (`softgreen → white`, a green `Bloom`);
+ *      that is gone, with `/changelog`'s and `/faq`'s blue. One primary button, and it is
+ *      the only primary on the page: `brand` is the primary CTA fill and this is the one
+ *      page on the site whose entire purpose is that one press. The arrows are the whole
+ *      reason the wash could go — they point at it, which a wash never did.
  *   2. PREREQUISITES — three `Card`s, one per thing the first launch checks. The same
  *      three `site.faq.prerequisites.a` lists; a paragraph there, a row of cards here,
  *      because a reader about to install scans rather than reads.
@@ -104,11 +106,18 @@ export function DownloadContent({ release }: { release: ChangelogVersion | null 
   return (
     <div className="bg-white">
       {/* ── 1. THE ASK ──────────────────────────────────────────────────────────── */}
-      <HomeSection
-        padding="hero"
-        backdrop={<GreenBloom />}
-        className="bg-gradient-to-b from-softgreen to-white"
-      >
+      {/* NO WASH AND NO `backdrop`. This band opened on `softgreen → white` with a green
+          `Bloom` behind it — the one page on the site that opened green rather than blue,
+          because the header's Download row is drawn in green and the two agreed. Both are
+          gone, the way `/changelog` and `/faq` lost their blue: what fills the band now is
+          four drawn arrows pointing at the button, and a wash behind them would be a
+          second decoration competing with the one that actually says something.
+
+          Dropping the prop rather than passing an empty layer also drops an
+          `overflow-hidden` — `HomeSection` only clips itself when it is given a backdrop —
+          and that one matters here: the arrows sit in the band's own margins and a clip
+          would cut them off. */}
+      <HomeSection padding="hero">
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
           <Reveal order={1}>
             {/* WHICH BUILD, said before the title. The pill is `/desktop`'s eyebrow
@@ -140,7 +149,64 @@ export function DownloadContent({ release }: { release: ChangelogVersion | null 
             </p>
           </Reveal>
 
-          <Reveal order={4} className="flex flex-col items-center gap-3">
+          <Reveal order={4} className="relative flex w-full flex-col items-center gap-3">
+            {/* FOUR ARROWS, TWO A SIDE, ALL POINTING AT THE BUTTON — what replaced the
+                green wash, and the reason the band does not need one.
+
+                MIRRORED ACROSS THE BUTTON, THEN AIMED. The source art is four different
+                hands (a swirl, a zigzag, a wave, a bolt) and every one of them points UP
+                AND RIGHT at 45°. The right-hand pair is therefore `scale-x-[-1]` — a
+                mirror and not a 90° turn, because a mirrored hand-drawn line keeps the
+                weight its partner has and a rotated one does not.
+
+                THE ROTATION IS THE AIM, and it is what the first attempt got wrong. Left
+                at 45° with their tips level with the top of the button, all four rays
+                carried on PAST it and read as pointing at the subtitle above — which is
+                what they were doing on screen. Flattening them (28° for the inner pair,
+                14° for the outer) turns the tips in at the button's own left and right
+                edges instead. The angles differ between the two pairs on purpose: two
+                arrows a side at one angle read as a queue, at two they read as a fan.
+
+                They stay OUT of the band under the button, where the `.dmg` line sits.
+                That is the whole reason the aim is sideways rather than upward from
+                below: there is no room under the button that is not already text.
+
+                ABSOLUTE, so they cost the layout nothing. The flex column above lays out
+                the button and the file hint; the arrows are out of flow entirely, which
+                is what lets them sit in the band's side margins without widening
+                anything or pushing the reassurance line down.
+
+                `hidden lg:block`. Below that the column is narrower than the button plus
+                two arrows, and they would either overlap the label or be squeezed to a
+                smudge. A decoration that cannot be drawn properly is better not drawn.
+
+                `aria-hidden` and `alt=""` BOTH: these say "press this" to someone who can
+                see them, and the button beside them already says it in words. */}
+            <img
+              src="/img/arrow-swirl.svg"
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute left-[17%] top-0 hidden w-[100px] rotate-[28deg] lg:block"
+            />
+            <img
+              src="/img/arrow-wave.svg"
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute left-[2%] top-8 hidden w-[88px] rotate-[14deg] lg:block"
+            />
+            <img
+              src="/img/arrow-zigzag.svg"
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute right-[17%] top-0 hidden w-[100px] -rotate-[28deg] scale-x-[-1] lg:block"
+            />
+            <img
+              src="/img/arrow-bolt.svg"
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute right-[2%] top-8 hidden w-[88px] -rotate-[14deg] scale-x-[-1] lg:block"
+            />
+
             {/* A PLAIN `<a>` (`ButtonLink`) AND NOT `ButtonNavLink`: the href is a file
                 on GitHub, not a route, and a `<Link>` to another origin prefetches a
                 redirect for nothing. No `target="_blank"` either — GitHub answers with
@@ -244,7 +310,36 @@ export function DownloadContent({ release }: { release: ChangelogVersion | null 
         />
 
         {release ? (
-          <ReleaseNotes release={release} />
+          /* THE DRAWING STANDS BEHIND THE CARD, and the card's own top edge is what cuts
+             it off. No `overflow-hidden` anywhere: `Card` is `bg-white` and opaque, so
+             raising it one stacking rung is the whole mechanism — the lower two thirds of
+             the picture are simply painted over. That is why the crop has a hard, straight
+             edge that lines up exactly with the card, which a clipped box could only
+             imitate by being measured against it.
+
+             THE `z-10` IS LOAD-BEARING and not decoration. A positioned element paints
+             above in-flow content by default, so without it the absolutely-placed drawing
+             would sit ON TOP of the card and cover the release notes.
+
+             `/changelog`'S OWN FILE, not a second copy: this band is that page's opening
+             in miniature — one version's notes, with the way through to the whole history
+             underneath — so a different picture would say they are about different things.
+
+             `-top-40` against a `w-72` drawing: 288px wide is 360px tall at its 761×950
+             ratio, so 160px stand above the card and the remaining 200px are behind it.
+             `hidden lg:block` because below that width the card reaches the band's edge
+             and there is no margin left for a picture to stand in. */
+          <div className="relative">
+            <img
+              src="/img/illustration-storage.svg"
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute -top-40 right-6 hidden w-72 lg:block"
+            />
+            <div className="relative z-10">
+              <ReleaseNotes release={release} />
+            </div>
+          </div>
         ) : (
           /* THE HONEST EMPTY STATE, the same one `/changelog` prints when the build could
              not read `CHANGELOG.md`: the notes exist, this build just does not have them.
@@ -303,28 +398,6 @@ export function DownloadContent({ release }: { release: ChangelogVersion | null 
 
 function Dot() {
   return <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/50" />
-}
-
-/**
- * `Bloom` (`HeroSection.tsx`) in green: the same three pools at the same places and the
- * same fade to white, with the blue swapped for the green the header's Download row is
- * drawn in. Every other page in this group opens blue; this one opens on the colour the
- * menu already gave the ask, so the row and the page it opens agree.
- *
- * `green` IS A STATUS TOKEN (see `tailwind.config.ts`) and this is the second place on
- * the site it is spent on decoration, after that menu row — and for the same reason: a
- * download that is ready is the one unambiguously good news on the site, so the two
- * readings do not fight. At 20% and 15% it is a wash rather than a signal.
- */
-function GreenBloom() {
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0">
-      <div className="absolute left-1/2 top-0 h-2/3 w-2/3 -translate-x-1/2 rounded-full bg-green/20 blur-3xl" />
-      <div className="absolute -left-1/4 top-1/4 h-1/2 w-1/2 rounded-full bg-green/15 blur-3xl" />
-      <div className="absolute -right-1/4 top-1/4 h-1/2 w-1/2 rounded-full bg-green/15 blur-3xl" />
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white" />
-    </div>
-  )
 }
 
 /** One prerequisite: a tiled glyph, a name, and one sentence on why the app needs it. */

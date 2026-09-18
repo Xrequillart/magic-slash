@@ -59,7 +59,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.downloadPage.requirementsEyebrow': 'Avant d’installer',
   'site.downloadPage.requirementsTitle': 'Trois choses dont votre Mac a besoin d’abord.',
   'site.downloadPage.requirementsLead':
-    'Le premier lancement vérifie les trois et vous dit laquelle manque. Rien d’autre n’est demandé — pas de compte à créer, pas de script à lancer.',
+    'Le premier lancement vérifie les trois et vous dit laquelle manque. Rien d’autre n’est demandé : pas de compte à créer, pas de script à lancer.',
   'site.downloadPage.reqClaudeTitle': 'Claude Code',
   'site.downloadPage.reqClaudeBody':
     'Installé et connecté. Chaque commande <code>/magic:</code> tourne dedans : l’app n’est prête que si Claude Code l’est.',
@@ -68,9 +68,9 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Les serveurs MCP Jira et GitHub auxquels parlent les commandes tournent dessus.',
   'site.downloadPage.reqGitTitle': 'Git 2.20 ou plus récent',
   'site.downloadPage.reqGitBody':
-    'Pour les worktrees — une branche par agent, chacune dans son propre dossier, pour que deux agents ne se marchent jamais sur le même checkout.',
+    'Pour les worktrees : une branche par agent, chacune dans son propre dossier, pour que deux agents ne se marchent jamais sur le même checkout.',
   'site.downloadPage.requirementsReassure':
-    'Pas d’inquiétude. L’app vérifie tout cela au premier lancement — et s’il manque quelque chose, elle vous propose de l’installer.',
+    'Pas d’inquiétude. L’app vérifie tout cela au premier lancement, et s’il manque quelque chose elle vous propose de l’installer.',
 
   'site.downloadPage.launchEyebrow': 'Premier lancement',
   'site.downloadPage.launchTitle': 'Ouvrez-la une fois. Elle fait le reste.',
@@ -78,7 +78,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Il n’y a pas de script d’installation. L’app prépare sa propre machine au premier lancement, et vous montre chaque étape au fil de l’eau.',
   'site.downloadPage.stepChecksTitle': 'Vérifie les prérequis',
   'site.downloadPage.stepChecksBody':
-    'Claude Code, Node.js et Git, avec leurs versions — et la ligne à lancer pour celui qui manque.',
+    'Claude Code, Node.js et Git, avec leurs versions et la ligne à lancer pour celui qui manque.',
   'site.downloadPage.stepSkillsTitle': 'Installe les huit commandes',
   'site.downloadPage.stepSkillsBody':
     'Les skills <code>/magic:</code> se posent dans <code>~/.claude/skills/</code>, où Claude Code les retrouve dans chaque projet de la machine.',
