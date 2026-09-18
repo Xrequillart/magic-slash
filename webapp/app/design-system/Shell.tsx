@@ -71,6 +71,7 @@ import { StepperEntry } from './entries/StepperEntry'
 import { ControlCenterEntry } from './entries/ControlCenterEntry'
 import { SetupStatusCardEntry } from './entries/SetupStatusCardEntry'
 import { ThemeGridEntry } from './entries/ThemeGridEntry'
+import { ThemePreviewGridEntry } from './entries/ThemePreviewGridEntry'
 import { StatusEntry } from './entries/StatusEntry'
 import { SwitchEntry } from './entries/SwitchEntry'
 import { TextEntry } from './entries/TextEntry'
@@ -138,6 +139,7 @@ const ENTRIES: Record<
   controlcenter: ControlCenterEntry,
   setupstatuscard: SetupStatusCardEntry,
   themegrid: ThemeGridEntry,
+  themepreviewgrid: ThemePreviewGridEntry,
   avatar: AvatarEntry,
   accountcard: AccountCardEntry,
   kbd: KbdEntry,

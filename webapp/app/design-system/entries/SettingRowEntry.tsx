@@ -29,7 +29,13 @@ const PROPS: PropRow[] = [
     name: 'control',
     type: 'SettingRowControl | SettingRowControl[]',
     description:
-      'A tagged union — { kind: "select", ...SelectProps } or { kind: "switch", ...SwitchProps } — and never a node. A row that took children would let each call site decide the control’s size, and a settings page whose pickers are 28px on one tab and 32 on the next is exactly what this exists to stop. A list keeps a pair in one cluster at one gap, in reading order.',
+      'A tagged union — { kind: "select" }, { kind: "switch" } or { kind: "stepper" }, each with that control’s own props — and never a node. A row that took children would let each call site decide the control’s size, and a settings page whose pickers are 28px on one tab and 32 on the next is exactly what this exists to stop. A list keeps a pair in one cluster at one gap, in reading order.',
+  },
+  {
+    name: 'hintKeys',
+    type: 'string[][]',
+    description:
+      'Chords the setting is also reachable by, drawn as caps at the end of the help line — [[\u2318, +], [\u2318, \u2212]] for the interface scale. Two gestures are two caps, which is Kbd’s own rule. The sentence is written towards them; what used to happen instead was a help line split into two catalogue entries with the caps spliced between, which is a sentence no translator can reorder.',
   },
   {
     name: 'control (absent)',

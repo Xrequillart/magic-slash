@@ -207,6 +207,12 @@ export { SetupStatusCard } from './SetupStatusCard'
 export type { SetupState, SetupStatusCardProps } from './SetupStatusCard'
 export { ThemeGrid } from './ThemeGrid'
 export type { ThemeGridOption, ThemeGridProps, ThemeSwatchColors } from './ThemeGrid'
+export { ThemePreviewGrid } from './ThemePreviewGrid'
+export type {
+  ThemePreviewColors,
+  ThemePreviewGridProps,
+  ThemePreviewOption,
+} from './ThemePreviewGrid'
 export { Stepper } from './Stepper'
 export type { StepperProps, StepperSize } from './Stepper'
 export { ToggleButton } from './ToggleButton'

@@ -80,6 +80,7 @@ export type EntryId =
   | 'controlcenter'
   | 'setupstatuscard'
   | 'themegrid'
+  | 'themepreviewgrid'
 
 export const ENTRY_LABELS: Record<EntryId, string> = {
   colors: 'Colours',
@@ -111,6 +112,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   controlcenter: 'ControlCenter',
   setupstatuscard: 'SetupStatusCard',
   themegrid: 'ThemeGrid',
+  themepreviewgrid: 'ThemePreviewGrid',
   text: 'Text',
   avatar: 'Avatar',
   accountcard: 'AccountCard',
@@ -243,6 +245,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   controlcenter: ['text'],
   setupstatuscard: ['card', 'buttonicon', 'icon', 'loader', 'text'],
   themegrid: ['card'],
+  themepreviewgrid: ['icon', 'text'],
   updatedialog: ['modal', 'card', 'icon', 'progress', 'text'],
   whatsnewdialog: ['modal', 'button', 'text'],
   text: [],
@@ -397,6 +400,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   controlcenter: 'The quick settings, sliding down from under the bar',
   setupstatuscard: 'The machine’s verdict in one row',
   themegrid: 'Eight themes to look at, four to a line',
+  themepreviewgrid: 'Every theme as a little window, with its name',
   icon: 'Every glyph, five sizes, three tones',
   text: 'Cera Pro, six sizes, four weights',
   avatar: 'A face, or the icon when there is none',
