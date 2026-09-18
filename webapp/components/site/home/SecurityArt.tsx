@@ -303,9 +303,16 @@ export function PrivateRepoArt() {
           />
 
           {/* THE KEYHOLE: a circle and the slot widening under it, as one solid. Filled in
-              `midnight`'s own deep stop, so it is the darkest thing on the card. */}
-          <circle cx="64" cy="80" r="7.5" fill="#1B1C6B" />
-          <path d="M60.5 85h7l2.5 15h-12z" fill="#1B1C6B" />
+              `midnight`'s own deep stop, so it is the darkest thing on the card.
+
+              THE VALUE IS PASTED, which an SVG `fill` leaves no way around — it takes a
+              colour, not a class, so the token cannot reach it. It is `BRAND_DEEP` in
+              `tailwind.config.ts` (`BLUE[80]`), and it has to be kept level with it by
+              hand: the card behind this drawing IS that gradient, so a keyhole left on
+              the previous palette's deep stops being the darkest thing on the card and
+              becomes a violet hole in a blue one. */}
+          <circle cx="64" cy="80" r="7.5" fill="#013165" />
+          <path d="M60.5 85h7l2.5 15h-12z" fill="#013165" />
         </g>
       </svg>
     </div>

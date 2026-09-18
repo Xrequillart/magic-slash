@@ -12,7 +12,54 @@ import defaultColors from 'tailwindcss/colors'
 //
 // Namespaced so nothing leaks into the user pages by autocomplete, and so the two
 // can be retuned independently.
-const BRAND = '#393BFF'
+/**
+ * THE BLUE, AS A TEN-STOP LADDER — the site's one chromatic family, and the only place
+ * any of its values is written.
+ *
+ * It replaced an indigo (`brand` was #393BFF, `accent` #6366F1). That was not a retune
+ * of a hue: it was two hand-picked blues plus two deeps derived from them by eye, and
+ * every one of the four had to be reasoned about separately whenever one moved. A ramp
+ * removes that — the four tokens below are now four STOPS of one thing, so "a step
+ * deeper" is a number rather than a colour somebody has to invent.
+ *
+ * ONE HUE ON EVERY RUNG, which is what makes it a ladder rather than a set: every stop
+ * is hue 211 at 98-100% saturation, and only the lightness moves (90 is 10%, 5 is 97%).
+ * The indigo family it replaced held that property too (hue 239 throughout) and it is
+ * the property to preserve if these values are ever re-tuned — the tone gradients below
+ * read as one colour lit from two depths precisely because their stops share a hue.
+ *
+ * NUMBERED BY LIGHTNESS THE WAY THE SOURCE PALETTE NUMBERS THEM: 90 is the darkest and 5
+ * the palest, which is the inverse of Tailwind's own 50→900 convention. Kept as given
+ * rather than flipped to match Tailwind, because these keys are how the palette is
+ * spoken about outside this file, and a scale that reads backwards from its own
+ * reference is worse than one that reads backwards from Tailwind's.
+ */
+const BLUE = Object.freeze({
+  90: '#001832',
+  80: '#013165',
+  70: '#004997',
+  60: '#0062ca',
+  50: '#007afc',
+  40: '#3195ff',
+  30: '#64afff',
+  20: '#98caff',
+  10: '#cbe4ff',
+  5: '#eff7ff',
+})
+
+/**
+ * THE COMMITTING BLUE: the fill of the primary button, and the colour of a name that
+ * matters (the organisation on the invitation page).
+ *
+ * `60` AND NOT `50`, although 50 is the stop a ten-rung palette usually calls its base,
+ * and the reason is measured rather than felt. A primary button is white text on this
+ * fill at 14-16px, which WCAG AA holds to 4.5:1. `50` (#007afc) gives 4.05 and fails it;
+ * `60` gives 5.83 and passes. It is also the rung nearest the indigo it replaces — that
+ * one sat at 6.47 — so the button carries the same weight on the page as before, which
+ * is the point of choosing by contrast rather than by number: the palette changed hue,
+ * not loudness.
+ */
+const BRAND = BLUE[60]
 
 // The page's own black.
 //
@@ -163,10 +210,14 @@ const statusIn = (hidden: number, shown: number) => ({
 // itself, which at full saturation would end the card brighter than the page it sits on.
 //
 // THE THREE BRAND-HUE DEPTHS ARE A LADDER, and it is worth reading as one: `brand` at
-// hsl(239, 100%, 61%), `INDIGO_DEEP` at 45%, `BRAND_DEEP` at 26%. Same hue on all three,
+// hsl(211, 100%, 40%), `INDIGO_DEEP` at 30%, `BRAND_DEEP` at 20%. Same hue on all three,
 // so they are one colour at three depths rather than three blues, and each rung is far
 // enough from its neighbour to be a decision somebody could defend.
-const BRAND_DEEP = '#1B1C6B'
+//
+// They are three rungs of `BLUE` now rather than three hand-tuned hexes, which is what
+// makes that paragraph a fact about the file instead of a promise about it: the ladder
+// property used to depend on whoever moved a value next checking the other two.
+const BRAND_DEEP = BLUE[80]
 
 // `accent`, and `indigo`'s quiet stop.
 //
@@ -174,7 +225,7 @@ const BRAND_DEEP = '#1B1C6B'
 // `tone-indigo`. That pairing is the reason it needs a name — the tone is "the accent,
 // lit" and the day somebody retunes the accent without it the card becomes a blue the
 // palette no longer contains.
-const ACCENT = '#6366F1'
+const ACCENT = BLUE[50]
 
 // `indigo`'s deep stop, and the one value in the blue family that is neither `brand` nor
 // a shade of the page.
@@ -187,12 +238,12 @@ const ACCENT = '#6366F1'
 // gives the tone eighteen points of travel — the same weight `midnight` carries — while
 // still being unmistakably the brand blue rather than a navy.
 //
-// SATURATION SITS AT 92% AND NOT `brand`'s 100%, which is the one number here that was
-// chosen by eye rather than solved for. At full saturation this deep is very nearly pure
-// blue, and `cooled()` swings the second lamp off it into something electric; eight
-// points back is the difference between a card that reads as lit and one that reads as a
-// screensaver.
-const INDIGO_DEEP = '#090DDC'
+// SATURATION USED TO SIT AT 92% AND NOT `brand`'s 100% — a number chosen by eye, because
+// at full saturation the old indigo deep was very nearly pure blue and `cooled()` swung
+// the second lamp off it into something electric. That adjustment is gone with the hue it
+// was correcting: this family IS a blue, so there is nothing for it to tip over into, and
+// the stop is `70` at the ramp's own saturation like every other rung.
+const INDIGO_DEEP = BLUE[70]
 
 // The palest tone's two stops.
 //
@@ -345,7 +396,7 @@ const MARKS = {
  * loads its config, on eight colours, and what is required of it is that
  * `toHex(...toHsl(c))` gives `c` back. It is NOT a colour-science conversion: the round
  * trip is through sRGB HSL, so "13 degrees" is 13 degrees of the hue wheel the rest of
- * this file already thinks in (`#393BFF` is 239, `#F9A96A` is 27), not of a perceptual
+ * this file already thinks in (`#0062CA` is 211, `#F9A96A` is 27), not of a perceptual
  * space. A perceptual swing would be the better instrument and it would also mean a
  * colour library in the build, for one derived value on eight grounds.
  *
@@ -919,14 +970,14 @@ const config: Config = {
         // This reversed once, and the note is kept in that shape on purpose so the
         // next reader does not have to guess which way round it went.
         //
-        // `brand` (#393BFF) is the fill of the `primary` button — `BUTTON_VARIANTS`
+        // `brand` (#0062CA) is the fill of the `primary` button — `BUTTON_VARIANTS`
         // in `components/ui.tsx`, the single definition. For one iteration of this
         // scale it was banned from every CTA and the primary button was white; that
         // white recipe is still here, as `secondary`, and the ban is lifted. So a
         // blue button in the signed-in product is now the INTENDED primary action,
         // not the regression this note used to call it.
         //
-        // `accent` (#6366f1 / #818cf8) did NOT come along. It stays non-CTA: it is
+        // `accent` (#007afc / #3195ff) did NOT come along. It stays non-CTA: it is
         // the selected-state and focus-ring blue, one step off `brand` and never a
         // fill you press. Two blues doing one job is how a palette stops meaning
         // anything — if a CTA is wearing `accent`, that is the bug.
@@ -984,18 +1035,46 @@ const config: Config = {
         // exemption to justify but simply an inventory of where blue means state,
         // measurement or decoration instead of action.
         // A VARIABLE WITH A FALLBACK, for the reason `ink` is one: the shared
-        // components write `bg-accent/20 text-accent` — `Avatar`'s no-photo badge —
-        // and on `/design-system` that has to be the DESKTOP's accent, not this
-        // site's. The fallbacks are the two values that were here, and they are not
-        // an approximation: `#6366F1` and `#818cf8` are `themes.ts`'s own `dark`
-        // accent and accent-hover, which is where they were copied from. Nothing
-        // outside a theme ground sets `--c-accent`, so every marketing page resolves
-        // to the exact hex it did before.
+        // components write `bg-accent/20` — and on `/design-system` that has to be the
+        // DESKTOP's accent, not this site's. Nothing outside a theme ground sets
+        // `--c-accent`, so the fallback is what every marketing page actually resolves
+        // to, and it is `BLUE[50]` / `BLUE[40]`: this site's accent, one rung lighter
+        // than `brand` and its hover one lighter again.
+        //
+        // THE FALLBACKS USED TO BE THE DESKTOP'S OWN (#6366F1 / #818cf8, copied out of
+        // `themes.ts`), which made the two sides accidentally identical and read as
+        // though the variable were merely restating its default. They are the SITE's
+        // values now and the desktop's are not: two products, two palettes, and the
+        // variable is the seam between them rather than a formality.
+        //
+        // Bare channels rather than the hexes, because `text-accent/70` is used on the
+        // site and `var(--x, #007afc)` cannot take an alpha modifier. They are `BLUE[50]`
+        // and `BLUE[40]` written out — the one place in this file a stop is respelled,
+        // and only because the CSS syntax leaves no way to interpolate one.
         accent: {
-          DEFAULT: `rgb(var(--c-accent, 99 102 241) / <alpha-value>)`,
-          hover: `rgb(var(--c-accent-hover, 129 140 248) / <alpha-value>)`,
+          DEFAULT: `rgb(var(--c-accent, 0 122 252) / <alpha-value>)`,
+          hover: `rgb(var(--c-accent-hover, 49 149 255) / <alpha-value>)`,
         },
-        brand: BRAND,
+        /**
+         * The whole ladder, so a page can reach for a rung without respelling a hex.
+         *
+         * `DEFAULT` is what `bg-brand` and `text-brand` have always meant — the
+         * committing blue — so every existing call site is untouched; `bg-brand-10`,
+         * `text-brand-80` and the rest are new.
+         */
+        brand: {
+          DEFAULT: BRAND,
+          5: BLUE[5],
+          10: BLUE[10],
+          20: BLUE[20],
+          30: BLUE[30],
+          40: BLUE[40],
+          50: BLUE[50],
+          60: BLUE[60],
+          70: BLUE[70],
+          80: BLUE[80],
+          90: BLUE[90],
+        },
         regie: {
           // A deeper tint of the app's own blue than the user canvas (#F4F7FE), so
           // white panels floating on it read as cards rather than as page. Between
@@ -1014,7 +1093,13 @@ const config: Config = {
           dim: '#5a6684',
           // Row hover and the tinted fills. Kept as a token rather than a
           // `bg-brand/[0.04]` at each site so every hover in the console matches.
-          tint: 'rgba(57, 59, 255, 0.05)',
+          //
+          // `brand`'s own channels at 5% — 0 98 202, which is `BLUE[60]`. It held the
+          // OLD brand's channels (57 59 255) and had to be found by hand when the
+          // palette changed hue, which is the argument for `rgb(… / <alpha-value>)`
+          // everywhere it is possible; here it is not, because this is a flat value a
+          // call site takes as `bg-regie-tint` with no modifier to carry the alpha.
+          tint: 'rgba(0, 98, 202, 0.05)',
           rail: BRAND,
         },
         // macOS'S NOTIFICATION BANNER, sampled from a real one, for the drawing beside

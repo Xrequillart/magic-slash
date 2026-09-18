@@ -11,7 +11,13 @@ import { useEffect, useRef } from 'react'
  * dependency list, and a burst is a couple of dozen lines of physics.
  */
 
-const COLORS = ['#393BFF', '#6366f1', '#a855f7', '#22c55e', '#eab308']
+// The palette's own two blues, then three that are not it — the burst has to read as
+// celebration rather than as a brand asset, and five pieces of one hue is a spill.
+//
+// PASTED, because these go to `canvas.fillStyle`, which takes a colour and never a
+// class. The first two are `brand` and `accent` — `BLUE[60]` and `BLUE[50]` in
+// `tailwind.config.ts` — and they are the pair to update the day that palette moves.
+const COLORS = ['#0062ca', '#007afc', '#a855f7', '#22c55e', '#eab308']
 const COUNT = 90
 const GRAVITY = 0.32
 const DRAG = 0.988
