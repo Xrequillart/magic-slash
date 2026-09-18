@@ -7,6 +7,7 @@ import { DESKTOP_DOWNLOAD_URL } from '@/lib/desktopRelease'
 import { useT } from '@/lib/i18n/useLanguage'
 import type { MessageKey } from '@/lib/i18n'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { Logo } from '@/components/Logo'
 import { Button, ButtonLink, Input } from '@/components/ui'
 
 interface InvitationPreview {
@@ -120,16 +121,23 @@ export default function InvitePage({ params }: { params: { token: string } }) {
 
   return (
     <main className="flex min-h-screen">
-      {/* Left — illustration */}
-      <aside className="hidden w-1/2 flex-col items-center justify-center bg-softblue px-12 lg:flex">
+      {/* Left — illustration.
+
+          WHITE, AND WORDLESS. It was a blue panel carrying the mark, a mascot, a heading
+          and a paragraph — four things competing with the form that is the only reason
+          anyone opens this page. What is left is the mark and one drawing, on the same
+          ground as the form beside it: the page reads as one surface now rather than as
+          two halves arguing.
+
+          `relative` so the mark hangs off THIS column. It was `absolute` inside a static
+          parent, which pinned it to the page — the same place, by luck, and only while
+          this column starts at the page's own left edge. */}
+      <aside className="relative hidden w-1/2 flex-col items-center justify-center bg-white px-12 lg:flex">
+        <Logo size="lg" className="absolute left-10 top-8" />
+        {/* `alt=""` because it is a decoration: it says nothing the heading in the next
+            column does not, and a screen reader has no use for a description of it. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="absolute left-10 top-8 h-9" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/img/mascot-peace.png" alt="" className="w-64 drop-shadow-xl" />
-        <h2 className="mt-10 max-w-sm text-center font-display text-3xl font-black leading-tight text-ink">
-          {t('invite.asideTitle')}
-        </h2>
-        <p className="mt-3 max-w-sm text-center text-muted">{t('invite.asideBody')}</p>
+        <img src="/img/illustration-launch.svg" alt="" className="w-full max-w-lg" />
       </aside>
 
       {/* Right — form */}
@@ -140,9 +148,10 @@ export default function InvitePage({ params }: { params: { token: string } }) {
           <LanguageSwitcher />
         </div>
 
-        {/* mobile logo */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="mb-10 mt-12 h-9 lg:hidden" />
+        {/* The mark, for the one layout where the column beside it is not on screen.
+            `hidden` is `display:none`, so only ever one of the two is in the
+            accessibility tree and neither has to be silenced for the other. */}
+        <Logo size="lg" className="mb-10 mt-12 lg:hidden" />
 
         <div className="w-full max-w-sm">
           {phase === 'loading' && <p className="text-center text-muted">{t('invite.loading')}</p>}
@@ -175,10 +184,9 @@ export default function InvitePage({ params }: { params: { token: string } }) {
           {phase === 'ready' && preview && (
             <>
               <div className="mb-8">
-                <span className="inline-flex items-center rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
-                  {preview.role === 'admin' ? t('invite.badge.admin') : t('invite.badge.team')}
-                </span>
-                <h1 className="mt-4 font-display text-3xl font-black leading-tight text-ink">
+                {/* No `mt-4`: the badge that used to sit above this — "Team invitation" —
+                    is gone, and with it the gap it needed. The heading opens the column. */}
+                <h1 className="font-display text-3xl font-black leading-tight text-ink">
                   {t('invite.joinLead')} <span className="text-brand">{preview.org_name}</span>
                 </h1>
                 <p className="mt-2 text-sm text-muted">{t('invite.subtitle')}</p>

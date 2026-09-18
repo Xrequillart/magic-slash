@@ -57,9 +57,6 @@ export const fr: Record<keyof typeof en, string> = {
     'Invité dans une équipe ? Ouvrez votre lien d’invitation pour créer votre compte.',
 
   // ── Invitation ─────────────────────────────────────────────────────────────
-  'invite.asideTitle': 'Votre équipe vous attend.',
-  'invite.asideBody':
-    'Rejoignez votre organisation sur Magic Slash et livrez avec vos agents de dev IA.',
   'invite.loading': 'Chargement de votre invitation…',
   'invite.notFound.title': 'Invitation introuvable',
   'invite.notFound.body':
@@ -73,8 +70,6 @@ export const fr: Record<keyof typeof en, string> = {
     'Cette invitation a expiré. Demandez à un admin de vous en envoyer une nouvelle.',
   'invite.unavailable.fallback': 'Cette invitation ne peut plus être utilisée.',
   'invite.downloadApp': 'Télécharger l’application',
-  'invite.badge.admin': 'Invitation admin',
-  'invite.badge.team': 'Invitation équipe',
   'invite.joinLead': 'Rejoignez',
   'invite.subtitle': 'Créez votre compte Magic Slash pour accepter cette invitation.',
   'invite.email': 'E-mail',

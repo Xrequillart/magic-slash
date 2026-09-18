@@ -62,9 +62,6 @@ export const en = {
   'login.invited': 'Invited to a team? Open your invitation link to create your account.',
 
   // ── Invitation ─────────────────────────────────────────────────────────────
-  'invite.asideTitle': 'Your team is waiting for you.',
-  'invite.asideBody':
-    'Join your organization on Magic Slash and start shipping with your AI dev agents.',
   'invite.loading': 'Loading your invitation…',
   'invite.notFound.title': 'Invitation not found',
   'invite.notFound.body': 'This invitation link is invalid. Ask an admin to send you a new one.',
@@ -76,8 +73,6 @@ export const en = {
   'invite.unavailable.expired': 'This invitation has expired. Ask an admin to send you a new one.',
   'invite.unavailable.fallback': 'This invitation can no longer be used.',
   'invite.downloadApp': 'Download the app',
-  'invite.badge.admin': 'Admin invitation',
-  'invite.badge.team': 'Team invitation',
   'invite.joinLead': 'Join',
   'invite.subtitle': 'Create your Magic Slash account to accept this invitation.',
   'invite.email': 'Email',
