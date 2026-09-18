@@ -311,7 +311,14 @@ export function OrgPage() {
               the right. `order` is the tab order, which is the order the organizations
               are listed in, not the order of `visibleOrgs`: that one is filtered down to
               the active tab and knows nothing about which side the previous one was on. */}
-          <TabSweep tabKey={activeOrgId} order={orgs.map((o) => o.id)} className="flex flex-col gap-4">
+          <TabSweep
+            tabKey={activeOrgId}
+            order={orgs.map((o) => o.id)}
+            className="flex flex-col gap-4"
+            // Nested too: the account overlay insets this page by the measured column
+            // padding, so the card would otherwise be sliced down its side as it arrives.
+            bleed
+          >
           {visibleOrgs.map((o) => {
             const orgMembers = membersByOrg[o.id] ?? []
             const isAdmin = o.role === 'admin'

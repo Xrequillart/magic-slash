@@ -1064,8 +1064,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Every tab's panel, in one wrapper so the switch between them travels the way
           the strip does: a tab further right arrives from the right. The panels keep
           their own indentation rather than gaining a level from this — the alternative
-          was reindenting nine hundred lines of settings to add a div. */}
-      <TabSweep tabKey={tab} order={REPO_TABS.map(({ id }) => id)}>
+          was reindenting nine hundred lines of settings to add a div.
+
+          `bleed` because this sweep is NESTED: the window's own sweep layer already
+          insets every page by `p-6` (see `pages/Config/index.tsx`), so without it the
+          cards start flush against the box that clips and each one loses 24px of its
+          side for the length of the slide. */}
+      <TabSweep tabKey={tab} order={REPO_TABS.map(({ id }) => id)} bleed>
 
       {tab === 'general' && (
         <>
