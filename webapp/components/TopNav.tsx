@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Logo } from '@/components/Logo'
 import { AppWindow, Building2, ChevronDown, LogOut, NotebookPen, ShieldCheck, UserRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { isPlatformAdmin } from '@/lib/admin'
@@ -100,8 +101,10 @@ export function TopNav({ email }: { email?: string }) {
     <header className="sticky top-0 z-40 bg-canvas">
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-5 sm:px-8">
         <Link href="/dashboard" className="shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="h-8" />
+          {/* `md` in a 64px bar, the same rung the site header takes — this bar and that
+              one are the same object on two hosts, and they were drawing two different
+              wordmarks at two unrelated heights until `Logo` held both. */}
+          <Logo size="md" decorative />
         </Link>
 
         <div ref={menuRef} className="relative shrink-0">

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase'
 import { HOME_PATH, useRequireGuest } from '@/lib/session'
+import { Logo } from '@/components/Logo'
 import { useT } from '@/lib/i18n/useLanguage'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { Button, Card, FullPageLoader, Input } from '@/components/ui'
@@ -38,8 +39,10 @@ export default function Login() {
     <main className="flex min-h-screen items-center justify-center bg-softblue px-6 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="h-11" />
+          {/* `lg` — this page OPENS on the mark, with no navigation above it to share the
+              attention. Named rather than decorative: the heading under it says "Sign in",
+              not the product's name, so nothing else here would say whose page this is. */}
+          <Logo size="lg" />
           <h1 className="mt-8 font-display text-3xl font-black text-ink">{t('login.title')}</h1>
           <p className="mt-2 text-sm text-muted">{t('login.subtitle')}</p>
         </div>

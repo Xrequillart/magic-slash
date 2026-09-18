@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Logo } from '@/components/Logo'
 import { isEmailChangeRedirect } from '@/lib/emailConfirmRedirect'
 import { useT } from '@/lib/i18n/useLanguage'
 
@@ -65,19 +66,15 @@ export function EmailConfirmed() {
           it. Fading it in with the rest would put the reader's eye on the corner at
           the exact moment the one piece of news is being struck in the middle.
 
-          `logo-black.svg` because this page is white in every state, which is the
-          same call `SiteHeader` makes for the same reason. `alt` is EMPTY on purpose:
+          The black variant because this page is white in every state, which is the
+          same call `SiteHeader` makes for the same reason. `decorative` on purpose:
           the body copy two lines down already says "Magic Slash", and a screen reader
           announcing the name twice is a worse page than one that skips a decoration.
 
-          `h-10` rather than the header's `h-12`: there it anchors a 64px navigation
+          `sm` (40px) rather than the header's `md`: there it anchors a 64px navigation
           bar, here it is a corner mark on an otherwise empty page and the heading is
           what the eye should land on. */}
-      <img
-        src="/img/logo-black.svg"
-        alt=""
-        className="absolute left-6 top-6 h-10 w-auto"
-      />
+      <Logo variant="black" size="sm" decorative className="absolute left-6 top-6" />
 
       <div className="flex w-full max-w-sm flex-col items-center text-center">
         {/* THE MARK DRAWS ITSELF. A tick that is simply present is a state; a tick that

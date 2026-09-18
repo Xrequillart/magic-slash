@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import Link from 'next/link'
+import { Logo } from '@/components/Logo'
 import {
   type LucideIcon,
   AppWindow,
@@ -447,19 +448,14 @@ export function SiteHeader() {
     >
       <div className="mx-auto flex h-16 max-w-site items-center gap-4">
         <Link href="/" className="flex h-12 shrink-0 items-center" aria-label="magic-slash">
-          {/* The bar is light in every state, so it always wants the black variant.
-              `alt` is empty because the link around it is already labelled.
+          {/* The bar is light in every state, so it always wants the black variant, and
+              `decorative` because the link around it is already labelled.
 
-              `logo-black.svg`, not the old `logo-readme-light.svg`: new artwork, on a
-              736×214 canvas where the old wordmark was 693×130 — 3.44:1 against 5.33:1.
-              The consequence is that height and PRESENCE came apart: this artwork carries
-              vertical air the old wordmark did not, so a box of the same height puts less
-              ink on the screen. `h-12` (48px, ~165px wide) is what brings it back level
-              with the 160px the old one occupied at `h-[30px]`, and it is a round number
-              rather than an arbitrary one — the value tuned to the old ratio had nothing
-              left to preserve. In a 64px bar that leaves 8px of air above and below; one
-              class to dial back if it reads tight. */}
-          <img className="h-full w-auto" src="/img/logo-black.svg" alt="" />
+              `md` is 48px in a 64px bar — 8px of air above and below. The reason it is a
+              rung and not a height, and where the number came from, are `Logo`'s: this
+              bar is where the conversion between the old wordmark and the current one
+              was worked out, and the table now holds it for every other page too. */}
+          <Logo variant="black" size="md" decorative />
         </Link>
 
         {/* `hidden md:flex`: 768px is the threshold `marketing.css` used, and the same one

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { Logo } from '@/components/Logo'
 import { usePathname } from 'next/navigation'
 import { Building2, GaugeCircle, LogOut, Users } from 'lucide-react'
 
@@ -148,8 +149,9 @@ export function ConsoleShell({
             badge beside it names the place: on a blue ground with rounded cards the
             console could pass for a user page at a glance. */}
         <Link href="/dashboard" className="shrink-0" title="Retour à l'application">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="h-7" />
+          {/* `sm` — 40px in this 56px bar. A rung under the user chrome's, because the
+              badge beside it is what names this place and the mark is only the way out. */}
+          <Logo size="sm" decorative />
         </Link>
         <span className="hidden shrink-0 rounded-full bg-brand/10 px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-[0.12em] text-brand sm:inline-block">
           Back-office
