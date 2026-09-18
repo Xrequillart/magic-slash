@@ -2317,7 +2317,8 @@ export const marketingEn = {
   // every one of them up here for real.
   'site.changelog.title': 'Changelog',
   'site.changelog.lead':
-    'Every release of magic-slash, newest first — what was added, what changed, what was fixed.',
+    'Every release of Magic Slash, newest first: what was added, what changed, what was fixed.',
+  'site.changelog.seeLatest': 'See what changed in {version}',
   'site.changelog.readOnGithub': 'Read CHANGELOG.md on GitHub',
   'site.changelog.showMore': 'Show older versions',
   'site.changelog.unavailable': 'The changelog could not be read when this page was built.',

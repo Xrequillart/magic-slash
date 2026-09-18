@@ -1436,7 +1436,8 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // et la documentation utilisent déjà — d'où sa ligne dans `SAME_IN_BOTH.site`.
   'site.changelog.title': 'Changelog',
   'site.changelog.lead':
-    'Chaque version de magic-slash, de la plus récente à la plus ancienne — ce qui a été ajouté, modifié, corrigé.',
+    'Chaque version de Magic Slash, de la plus récente à la plus ancienne : ce qui a été ajouté, modifié, corrigé.',
+  'site.changelog.seeLatest': 'Voir ce qui a changé dans la {version}',
   'site.changelog.readOnGithub': 'Lire CHANGELOG.md sur GitHub',
   'site.changelog.showMore': 'Afficher les versions plus anciennes',
   'site.changelog.unavailable':
