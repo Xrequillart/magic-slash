@@ -17,6 +17,9 @@ import { FactListEntry } from './entries/FactListEntry'
 import { LanguageCardEntry } from './entries/LanguageCardEntry'
 import { SettingRowEntry } from './entries/SettingRowEntry'
 import { SettingsCardEntry } from './entries/SettingsCardEntry'
+import { DisclosureCardEntry } from './entries/DisclosureCardEntry'
+import { HealthCardEntry } from './entries/HealthCardEntry'
+import { RepairListEntry } from './entries/RepairListEntry'
 import { RateLimitBarEntry } from './entries/RateLimitBarEntry'
 import { UsageTableEntry } from './entries/UsageTableEntry'
 import { CommitCardEntry } from './entries/CommitCardEntry'
@@ -144,6 +147,9 @@ const ENTRIES: Record<
   languagecard: LanguageCardEntry,
   settingrow: SettingRowEntry,
   settingscard: SettingsCardEntry,
+  disclosurecard: DisclosureCardEntry,
+  healthcard: HealthCardEntry,
+  repairlist: RepairListEntry,
   ratelimitbar: RateLimitBarEntry,
   usagetable: UsageTableEntry,
   label: LabelEntry,

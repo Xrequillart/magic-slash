@@ -28,9 +28,14 @@ const PROPS: PropRow[] = [
   {
     name: 'control',
     type: 'SettingRowControl | SettingRowControl[]',
-    required: true,
     description:
       'A tagged union — { kind: "select", ...SelectProps } or { kind: "switch", ...SwitchProps } — and never a node. A row that took children would let each call site decide the control’s size, and a settings page whose pickers are 28px on one tab and 32 on the next is exactly what this exists to stop. A list keeps a pair in one cluster at one gap, in reading order.',
+  },
+  {
+    name: 'control (absent)',
+    type: '—',
+    description:
+      'A row with no control states something instead of offering it: “closing the window leaves the app in the menu bar” is a fact about the setting above it, written at the same rung so it reads as part of the same card. The empty right-hand side is the whole message — there is nothing to set here.',
   },
   {
     name: 'disabled',

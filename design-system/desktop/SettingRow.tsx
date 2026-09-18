@@ -56,8 +56,20 @@ export interface SettingRowProps {
    * laid out by a picker beside it, and the picker is only offered while the switch is
    * on. A list keeps them in one cluster at one gap; two props ("control" and something
    * trailing it) would be the row deciding which of them is the important one.
+   *
+   * ── NONE IS ALSO REAL, AND RARER ──────────────────────────────────────────────
+   *
+   * A row with no control STATES something instead of offering it: "closing the window
+   * leaves the app in the menu bar" is a fact about the setting above it, written at the
+   * same rung so it reads as part of the same card rather than as a paragraph glued
+   * underneath. The app spelled exactly that by hand, twice.
+   *
+   * IT IS NOT A `note`, which hangs off a row and is about that row's VALUE, and it is
+   * not the card's small print, which is about the whole card. This is its own line with
+   * its own name — and the empty right-hand side is the whole message: there is nothing
+   * to set here.
    */
-  control: SettingRowControl | SettingRowControl[]
+  control?: SettingRowControl | SettingRowControl[]
   /**
    * Dimmed and inert, for a row a master switch has switched off.
    *
@@ -70,6 +82,9 @@ export interface SettingRowProps {
 }
 
 export function SettingRow({ label, hint, note, control, disabled = false, className = '' }: SettingRowProps) {
+  // An absent control and an empty list are the same row: nothing on the right. Resolved
+  // once here so the JSX below asks one question rather than two.
+  const controls = control ? (Array.isArray(control) ? control : [control]) : []
   return (
     <div
       className={`flex flex-col gap-3 transition-opacity ${disabled ? 'pointer-events-none opacity-40' : ''} ${className}`.trim()}
@@ -88,7 +103,7 @@ export function SettingRow({ label, hint, note, control, disabled = false, class
           )}
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          {(Array.isArray(control) ? control : [control]).map((one, index) =>
+          {controls.map((one, index) =>
             one.kind === 'select' ? (
               // The key is the index because a row's controls are a fixed arrangement
               // and not a list that reorders: the second control of a row is always the

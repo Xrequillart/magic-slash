@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { SettingsCard } from '@ds/desktop'
+import { AlertTriangle } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
 import { usesOf } from './ids'
@@ -13,6 +14,18 @@ const PROPS: PropRow[] = [
     required: true,
     description:
       'The rows, top to bottom. Each one is SettingRow’s own props plus a stable id — the setting’s name in the config, typically, never the index: rows come and go, and React would carry a row’s switch state over to whichever row slid into its place. false and undefined are dropped, so a caller can write enabled && row inline and the hairlines still land between what is actually on screen. Nothing left means nothing is drawn.',
+  },
+  {
+    name: 'alert',
+    type: 'SettingsCardAlert',
+    description:
+      'Something is wrong with what is set here — one Banner strip under the rows, danger unless stated. A row is a thing with a value you can change; “the system refused this shortcut” has no value and nothing to set. It is what the app’s four hand-rolled bg-red/10 border border-red/20 strips were each approximating.',
+  },
+  {
+    name: 'note',
+    type: 'string | string[]',
+    description:
+      'The small print, under everything: what holds true of the whole card. Not a row — it names no setting — and not a row’s note, which is about that row’s value. A list is two paragraphs and not two cards: the Application tab has a card whose second line holds in both states of its switch while the first only applies when it is on.',
   },
   {
     name: 'className',
@@ -117,9 +130,48 @@ export function SettingsCardEntry({ theme, onOpen }: { theme: DesktopTheme; onOp
         </p>
       </EntrySection>
 
+      <EntrySection
+        title="Two things that are not rows"
+        note="alert and note, both on AccountCard’s model and for its reasons. What is wrong comes first, because it is the reason the reader stopped; the small print comes last, because it is true whatever the rows say."
+      >
+        <Stage theme={theme}>
+          <Specimen label="a chord the system refused, and a line that holds either way">
+            <SettingsCard
+              rows={[
+                {
+                  id: 'spotlight',
+                  label: 'Quick Launch',
+                  hint: 'A panel anywhere, over whatever you are in',
+                  control: { kind: 'switch', checked: true, onChange: () => undefined, label: 'Quick Launch' },
+                },
+                {
+                  id: 'shortcut',
+                  label: 'Shortcut',
+                  hint: 'The chord that opens it',
+                  control: {
+                    kind: 'select',
+                    value: 'Control+Space',
+                    options: [{ value: 'Control+Space', label: '⌃ Space' }],
+                    onChange: () => undefined,
+                    ariaLabel: 'Shortcut',
+                    width: 208,
+                  },
+                },
+              ]}
+              alert={{
+                message: 'The system refused this shortcut — another app already holds it.',
+                icon: AlertTriangle,
+              }}
+              note="Quick Launch is this machine’s, not your account’s: the chord you pick here stays here."
+            />
+          </Specimen>
+        </Stage>
+      </EntrySection>
+
       <EntrySection title="Props">
         <PropsTable rows={PROPS} />
         <Snippet>{`import { SettingsCard } from '@ds/desktop'
+import { AlertTriangle } from '@ds/desktop/icons'
 
 <SettingsCard
   rows={[

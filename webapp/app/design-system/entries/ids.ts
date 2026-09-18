@@ -45,6 +45,9 @@ export type EntryId =
   | 'languagecard'
   | 'settingrow'
   | 'settingscard'
+  | 'disclosurecard'
+  | 'healthcard'
+  | 'repairlist'
   | 'ratelimitbar'
   | 'usagetable'
   | 'sectionheader'
@@ -132,6 +135,9 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   languagecard: 'LanguageCard',
   settingrow: 'SettingRow',
   settingscard: 'SettingsCard',
+  disclosurecard: 'DisclosureCard',
+  healthcard: 'HealthCard',
+  repairlist: 'RepairList',
   ratelimitbar: 'RateLimitBar',
   usagetable: 'UsageTable',
   sectionheader: 'SectionHeader',
@@ -260,7 +266,10 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   factlist: ['status', 'text'],
   languagecard: ['card', 'settingrow', 'text'],
   settingrow: ['select', 'switch', 'text'],
-  settingscard: ['card', 'settingrow'],
+  settingscard: ['banner', 'card', 'settingrow', 'text'],
+  disclosurecard: ['card', 'icon', 'settingrow', 'text'],
+  healthcard: ['banner', 'card', 'icon', 'loader', 'repairlist', 'settingrow', 'text'],
+  repairlist: ['button', 'text'],
   ratelimitbar: ['progress', 'text'],
   usagetable: ['text'],
   sectionheader: ['button', 'icon', 'text'],
@@ -412,6 +421,9 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   languagecard: 'Which language the product speaks to you in',
   settingrow: 'One setting, and the control that changes it',
   settingscard: 'Settings stacked, with the rules between them',
+  disclosurecard: 'What a feature records, and what it never touches',
+  healthcard: 'Is this working, and what is wrong if not',
+  repairlist: 'What is broken, and the way to it not being',
   ratelimitbar: 'One plan limit, and when it turns over',
   usagetable: 'Figures over periods, in columns',
   sectionheader: 'What the thing under it is',

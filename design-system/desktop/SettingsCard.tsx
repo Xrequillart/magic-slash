@@ -1,5 +1,8 @@
+import { Banner } from './Banner'
 import { Card } from './Card'
+import type { CardAlert } from './cardAlert'
 import { SettingRow, type SettingRowProps } from './SettingRow'
+import { Text } from './Text'
 
 /**
  * A CARD OF SETTINGS: several rows of the same kind, stacked, with a hairline between
@@ -38,10 +41,29 @@ import { SettingRow, type SettingRowProps } from './SettingRow'
  *
  * Not a section: the heading above these cards is `SectionHeader`, and an icon and a
  * title belong to the region, not to the plate the controls stand on. Not the small print
- * under a card either — that line is about where the value is STORED or what happens when
- * the switch is off, it holds true of the whole section, and it sits outside the plate
- * where the page can put it.
+ * that sits OUTSIDE the plate either — the line about where a value is stored belongs to
+ * the whole section, and the page draws it under the card with a `Text`.
+ *
+ * ── AND TWO THINGS THAT ARE NOT ROWS ──────────────────────────────────────────────
+ *
+ * `alert` and `note`, both on `AccountCard`'s model and for its reasons. A row is a thing
+ * with a value you can change; "the system refused this shortcut" has no value and nothing
+ * to set, and "your agents keep syncing regardless" is a fact about the card rather than
+ * about any one row in it. Drawn under the rows, in that order — what is wrong first,
+ * because it is the reason the reader stopped.
  */
+
+/**
+ * SOMETHING IS WRONG WITH WHAT IS SET HERE — one strip under the rows.
+ *
+ * `CardAlert`, which is the one shape the cards in this folder share, and `Banner` draws
+ * it: that is what the app's hand-rolled `bg-red/10 border border-red/20 rounded-lg
+ * text-xs text-red` strips were each approximating. The one on the Application tab is the
+ * shape in a sentence — you picked a chord, the OS refused to register it, and the picker
+ * above still shows what you picked, so the strip is the only thing saying it did not
+ * take.
+ */
+export type SettingsCardAlert = CardAlert
 
 /** One row of the card. `SettingRow`'s own props, plus a key that is not the index. */
 export type SettingsCardRow = SettingRowProps & {
@@ -63,13 +85,34 @@ export interface SettingsCardProps {
    * settings it does not have.
    */
   rows: (SettingsCardRow | false | null | undefined)[]
+  /**
+   * A write that did not land, or a setting the system is refusing — see
+   * `SettingsCardAlert`. Absent is the ordinary case and draws nothing.
+   */
+  alert?: SettingsCardAlert
+  /**
+   * THE SMALL PRINT, under everything: what holds true of the whole card.
+   *
+   * Where the recording goes and who can read it; that agents keep syncing whatever this
+   * switch says. It is not a row — it names no setting — and it is not a row's `note`,
+   * which is about that row's value. Translated.
+   *
+   * A LIST IS TWO PARAGRAPHS AND NOT TWO CARDS: the Application tab has a card whose
+   * second line holds true in both states of the switch while the first only applies when
+   * it is on, so the caller drops one and keeps the other.
+   */
+  note?: string | string[]
   /** Margins and width. Not the ground, the padding, the radius or the gaps. */
   className?: string
 }
 
-export function SettingsCard({ rows, className = '' }: SettingsCardProps) {
+export function SettingsCard({ rows, alert, note, className = '' }: SettingsCardProps) {
   const shown = rows.filter((row): row is SettingsCardRow => Boolean(row))
-  if (shown.length === 0) return null
+  const notes = note === undefined ? [] : Array.isArray(note) ? note : [note]
+  // A card with no rows but something to say is still a card: the caller dropped every
+  // row behind a switch and kept the line explaining why. Empty of everything draws
+  // nothing — an empty plate is a card promising settings it does not have.
+  if (shown.length === 0 && !alert && notes.length === 0) return null
 
   return (
     <Card className={`flex flex-col gap-4 ${className}`.trim()}>
@@ -79,6 +122,22 @@ export function SettingsCard({ rows, className = '' }: SettingsCardProps) {
         <div key={id} className={index > 0 ? 'border-t border-line-subtle pt-4' : ''}>
           <SettingRow {...row} />
         </div>
+      ))}
+      {alert && (
+        <Banner
+          variant={alert.variant ?? 'danger'}
+          icon={alert.icon}
+          hint={alert.hint}
+          actions={alert.actions}
+          bordered
+        >
+          {alert.message}
+        </Banner>
+      )}
+      {notes.map((line) => (
+        <Text key={line} size="xs" tone="secondary" className="block leading-snug opacity-50">
+          {line}
+        </Text>
       ))}
     </Card>
   )

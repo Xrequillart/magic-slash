@@ -1,6 +1,7 @@
 import { AVATAR_SIZES } from './avatarSizes'
 import { Avatar } from './Avatar'
-import { Banner, type BannerAction, type BannerVariant } from './Banner'
+import { Banner } from './Banner'
+import type { CardAlert } from './cardAlert'
 import { Button } from './Button'
 import { FieldTable, type FieldTableAction, type FieldTableRow } from './FieldTable'
 import { Icon } from './Icon'
@@ -137,24 +138,7 @@ export interface AccountCardMark {
  * is refusing this credential" has no value and nothing to set; it is the reason the
  * account above it does not work.
  */
-export interface AccountCardAlert {
-  /** The sentence. Translated, and one fact — see `Banner`. */
-  message: string
-  /** The quieter line under it: what to do, or why it cannot be done. Translated. */
-  hint?: string
-  /**
-   * `danger` unless stated, because the reason this band exists is a credential that
-   * has stopped working. A warning that could wait is a `warning`.
-   */
-  variant?: BannerVariant
-  /** Overrides the variant's mark, for a band about a specific thing. */
-  icon?: IconComponent
-  /**
-   * The fix, as data. At most one, in practice: a band saying one thing has one answer,
-   * and the second button on it is the one the card already carries beside the name.
-   */
-  actions?: BannerAction[]
-}
+export type AccountCardAlert = CardAlert
 
 export interface AccountCardProps {
   /**
