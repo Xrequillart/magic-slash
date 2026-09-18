@@ -69,6 +69,7 @@ Read the live config fetched in Step 0 (kept in memory — `$CONFIG_FILE` does n
 | Reply language    | `.repositories.<name>.resolve.replyLanguage`   | `"en"`    |
 | Reply verbosity   | `.repositories.<name>.resolve.replyVerbosity`  | `"minimal"` |
 | Re-request review | `.repositories.<name>.resolve.autoReRequestReview` | `true`  |
+| Template checkboxes | `.repositories.<name>.pullRequest.templateCheckboxes` | `"never"` |
 
 **Logic:**
 - `commitMode: "new"` (default) → create new commit + `git push`
@@ -83,6 +84,7 @@ Read the live config fetched in Step 0 (kept in memory — `$CONFIG_FILE` does n
 - `replyVerbosity` (default `"minimal"`) → how much each in-thread reply says in Step 7: `minimal` one line, `normal` one line plus why when the fix departs from the comment, `detailed` a conversational reply that keeps the reasoning. Any other value is read as `minimal`.
 - `autoReRequestReview: true` (default) → automatically re-request review from original reviewers (Step 7.5)
 - `autoReRequestReview: false` → skip Step 7.5, suggest manual re-request in summary
+- `templateCheckboxes` (default `"never"`) → read from the `pullRequest` block, not `resolve`, the way `useCommitConfig` reads the `commit` one. Listed here **defensively**: this skill writes no PR body today, so nothing reads it yet; do not go looking for the code path. It is a **hard invariant**, not a soft default: should this skill ever write a PR body, a project template's checkbox state must come out byte-for-byte as this setting allows, exactly as in `/magic:pr` Step 6.1
 
 ## Step 0: Check configuration, detect Node.js version and multi-repo worktrees
 

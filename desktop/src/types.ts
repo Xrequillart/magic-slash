@@ -1119,6 +1119,13 @@ export interface RepositoryConfig {
     watchCI?: boolean            // true = watch checks + review feedback after creating the PR
     testAccounts?: string        // 'off' | 'reference' | 'inline'
     testAccountsSource?: string  // explicit file path or project-skill name holding the accounts
+    /**
+     * Whether /magic:pr may tick the checkboxes of the repository's PR template.
+     * Absent means 'never', resolved at read time: the key is deliberately NOT in
+     * DEFAULT_REPOSITORY_FIELDS, so an org-shared value can still reach a repo that
+     * never set one (see mergeOrgSharedConfig).
+     */
+    templateCheckboxes?: string  // 'never' | 'type' | 'all'
   }
   issues?: {
     commentOnPR?: boolean
@@ -2357,6 +2364,7 @@ export interface OrgSharedConfig {
     watchCI?: boolean
     testAccounts?: string        // 'off' | 'reference' | 'inline'
     testAccountsSource?: string
+    templateCheckboxes?: string  // 'never' | 'type' | 'all'
   }
   repoKeywords?: Record<string, string[]>
 }

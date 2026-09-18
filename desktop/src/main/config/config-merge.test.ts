@@ -97,6 +97,23 @@ describe('mergeOrgSharedConfig', () => {
     })
   })
 
+  // The whole reason `templateCheckboxes` is kept out of DEFAULT_REPOSITORY_FIELDS:
+  // a locally stamped 'never' would be a set value, and this fill would never run.
+  it('delivers the shared template-checkbox mode to a repo that never set one', async () => {
+    const config = baseConfig()
+    config.repositories = {
+      api: repo('api', { keywords: ['api'], pullRequest: { templateCheckboxes: 'never' } }),
+      web: repo('web', { keywords: ['web'] }),
+    }
+    await seed(config)
+
+    const shared: OrgSharedConfig = { pullRequest: { templateCheckboxes: 'type' } }
+    const result = mergeOrgSharedConfig(shared, ORG)
+
+    expect(result.repositories.api.pullRequest?.templateCheckboxes).toBe('never') // local wins
+    expect(result.repositories.web.pullRequest?.templateCheckboxes).toBe('type')
+  })
+
   it('applies shared keywords only to repos with defaulted keywords', async () => {
     const config = baseConfig()
     config.repositories = {

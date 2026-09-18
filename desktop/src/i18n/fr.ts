@@ -656,6 +656,8 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.step.watchOff':
     'S’arrête dès que la pull request est ouverte — aucun check surveillé, aucune URL de preview.',
   'repo.pr.tail.accountsSource': 'comptes lus depuis {source}',
+  'repo.pr.tail.checkboxesType': 'coche le type de changement dans le modèle de PR',
+  'repo.pr.tail.checkboxesAll': 'coche les cases du modèle de PR qu’il estime vérifiées',
   'repo.pr.languageHelp': 'Langue des titres et descriptions de pull request',
   'repo.pr.autoLink': 'Lier automatiquement les tickets',
   'repo.pr.autoLinkHelp': 'Ajouter les liens des tickets Jira/GitHub dans la description de la PR',
@@ -678,6 +680,12 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.templateFound': 'Modèle trouvé',
   'repo.pr.templateGenerate': 'Générer un modèle',
   'repo.pr.templatePlaceholder': 'Contenu du modèle de PR…',
+  'repo.pr.templateCheckboxes': 'Cases du modèle de PR',
+  'repo.pr.templateCheckboxesHelp':
+    'Si /magic:pr a le droit de cocher les cases du modèle de PR de votre dépôt. Les laisser vides, c’est en laisser la responsabilité au relecteur',
+  'repo.pr.templateCheckboxesNever': 'Ne jamais cocher',
+  'repo.pr.templateCheckboxesType': 'Type de changement uniquement',
+  'repo.pr.templateCheckboxesAll': 'Cocher ce qui est vérifié',
 
   'repo.issues.commentLang': 'Langue des commentaires de ticket',
   'repo.issues.commentLangHelp': 'Langue des commentaires que /magic:pr et /magic:done publient sur le ticket',

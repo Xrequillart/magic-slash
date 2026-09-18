@@ -22,6 +22,7 @@ import {
   updateRepositoryJiraSettings,
   updateRepositoryLanguages,
   updateRepositoryPlanSettings,
+  updateRepositoryPullRequestSettings,
   updateUsageLogsEnabled,
 } from './config'
 
@@ -390,6 +391,55 @@ describe('updateRepositoryCommitSettings', () => {
   it('ignores a non-boolean, rather than storing it', () => {
     updateRepositoryCommitSettings('api', { allowOnProtectedBranch: 'yes' as unknown as boolean })
     expect(readConfig().repositories.api.commit?.allowOnProtectedBranch).toBeUndefined()
+  })
+})
+
+describe('updateRepositoryPullRequestSettings — templateCheckboxes', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  // applySetting is a per-key whitelist. A key missing from it is dropped silently,
+  // which reads as "the select in Settings does not save".
+  it('persists each of the three modes', () => {
+    expect(updateRepositoryPullRequestSettings('api', { templateCheckboxes: 'all' })
+      .repositories.api.pullRequest?.templateCheckboxes).toBe('all')
+    expect(readConfig().repositories.api.pullRequest?.templateCheckboxes).toBe('all')
+
+    updateRepositoryPullRequestSettings('api', { templateCheckboxes: 'type' })
+    expect(readConfig().repositories.api.pullRequest?.templateCheckboxes).toBe('type')
+
+    updateRepositoryPullRequestSettings('api', { templateCheckboxes: 'never' })
+    expect(readConfig().repositories.api.pullRequest?.templateCheckboxes).toBe('never')
+  })
+
+  it('ignores a value outside the enum, rather than storing it', () => {
+    updateRepositoryPullRequestSettings('api', { templateCheckboxes: 'sometimes' })
+    expect(readConfig().repositories.api.pullRequest?.templateCheckboxes).toBeUndefined()
+  })
+
+  it('leaves the sibling pull request settings alone', () => {
+    updateRepositoryPullRequestSettings('api', { testAccounts: 'reference' })
+    updateRepositoryPullRequestSettings('api', { templateCheckboxes: 'type' })
+
+    const pullRequest = readConfig().repositories.api.pullRequest
+    expect(pullRequest?.testAccounts).toBe('reference')
+    expect(pullRequest?.templateCheckboxes).toBe('type')
+  })
+
+  // The absent key IS the default: materialising 'never' here would pin the value
+  // locally and stop an org-shared one ever reaching this repo (mergeOrgSharedConfig
+  // only fills what is undefined). The renderer falls back to 'never' at read time.
+  it('never materialises the default on a repo that saved another setting', () => {
+    updateRepositoryPullRequestSettings('api', { testAccounts: 'inline' })
+    const pullRequest = readConfig().repositories.api.pullRequest
+    expect(pullRequest).toEqual({ testAccounts: 'inline' })
+    expect('templateCheckboxes' in (pullRequest ?? {})).toBe(false)
   })
 })
 

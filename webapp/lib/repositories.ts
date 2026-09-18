@@ -87,6 +87,8 @@ export interface RepoPullRequest {
   /** 'off' | 'reference' | 'inline' */
   testAccounts?: string
   testAccountsSource?: string
+  /** 'never' | 'type' | 'all' */
+  templateCheckboxes?: string
 }
 
 export interface RepoIssues {
@@ -467,6 +469,7 @@ export const DEFAULTS = {
   autoLinkTickets: true,
   watchCI: true,
   testAccounts: 'off',
+  templateCheckboxes: 'never',
   commentOnPR: true,
   // /magic:plan. `issueTypes` is nested, so the level above supplies the prefix here
   // (`issueTypeEpic`) the way the block name does elsewhere; nothing else collides, so

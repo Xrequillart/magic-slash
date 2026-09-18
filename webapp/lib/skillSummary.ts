@@ -88,6 +88,12 @@ const TEST_ACCOUNT_STEPS: Record<string, MessageKey> = {
   inline: 'repo.pr.step.accountsInline',
 }
 
+/** No entry for 'never': the default says nothing. See prSummary's tail. */
+const TEMPLATE_CHECKBOX_TAILS: Record<string, MessageKey | undefined> = {
+  type: 'repo.pr.tail.checkboxesType',
+  all: 'repo.pr.tail.checkboxesAll',
+}
+
 const RESOLVE_COMMIT_STEPS: Record<string, MessageKey> = {
   new: 'repo.resolve.step.commitNew',
   amend: 'repo.resolve.step.commitAmend',
@@ -232,6 +238,8 @@ export interface PrSummaryInput {
   testAccountsSource: string
   commentOnPR: boolean
   watchCI: boolean
+  /** 'never' | 'type' | 'all'. 'never' is the default, and says nothing. */
+  templateCheckboxes: string
 }
 
 export function prSummary(input: PrSummaryInput): SkillSummary {
@@ -258,6 +266,10 @@ export function prSummary(input: PrSummaryInput): SkillSummary {
   if (source && input.testAccounts !== 'off') {
     tail.push({ key: 'repo.pr.tail.accountsSource', vars: { source } })
   }
+  // Same rule: 'never' is what a repository that never opened this setting gets, so
+  // only the two modes that depart from it are worth a line.
+  const checkboxes = TEMPLATE_CHECKBOX_TAILS[input.templateCheckboxes]
+  if (checkboxes) tail.push({ key: checkboxes })
 
   return { steps, tail }
 }

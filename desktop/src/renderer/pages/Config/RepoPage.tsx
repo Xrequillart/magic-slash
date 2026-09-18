@@ -277,6 +277,13 @@ const TEST_ACCOUNT_LABEL: Record<(typeof TEST_ACCOUNT_MODES)[number], MessageKey
   inline: 'repo.pr.testAccountsInline',
 }
 
+const TEMPLATE_CHECKBOX_MODES = ['never', 'type', 'all'] as const
+const TEMPLATE_CHECKBOX_LABEL: Record<(typeof TEMPLATE_CHECKBOX_MODES)[number], MessageKey> = {
+  never: 'repo.pr.templateCheckboxesNever',
+  type: 'repo.pr.templateCheckboxesType',
+  all: 'repo.pr.templateCheckboxesAll',
+}
+
 const RESOLVE_COMMIT_MODES = ['new', 'amend', 'ask'] as const
 const RESOLVE_COMMIT_MODE_LABEL: Record<(typeof RESOLVE_COMMIT_MODES)[number], MessageKey> = {
   new: 'repo.resolve.modeNew',
@@ -855,6 +862,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const watchCIVal = prSettings.watchCI !== undefined ? prSettings.watchCI : true
   const testAccountsVal = prSettings.testAccounts || 'off'
   const testAccountsSourceVal = prSettings.testAccountsSource || ''
+  // Read-time fallback on purpose: the key is kept OUT of DEFAULT_REPOSITORY_FIELDS so
+  // that "absent" stays absent and an org-shared value can still fill it in. Matched
+  // against the mode list rather than merely defaulted: an org-shared block is copied
+  // without re-validation and a Supabase row can be edited outside the app, so a value
+  // that is not a mode does reach here, and it reads as `never` like everywhere else.
+  const templateCheckboxesVal =
+    TEMPLATE_CHECKBOX_MODES.find((mode) => mode === prSettings.templateCheckboxes) ?? 'never'
   const commentOnPRVal = issuesSettings.commentOnPR !== undefined ? issuesSettings.commentOnPR : true
   const planTrackerVal = planSettings.tracker || 'ask'
   // Resolved, not read: both keys fall back to the legacy `issues.jiraUrl` /
@@ -1753,6 +1767,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             testAccountsSource: testAccountsSourceVal,
             commentOnPR: commentOnPRVal,
             watchCI: watchCIVal,
+            templateCheckboxes: templateCheckboxesVal,
           })}
         />
         {/* Pull request — what goes INTO it, then what happens once it is open. Those
@@ -1809,6 +1824,21 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 />
               </div>
             )}
+
+            {/* What /magic:pr may do with the boxes of the template edited just below,
+                which is why it sits against that block rather than with the rows above. */}
+            <SettingRow
+              label={t('repo.pr.templateCheckboxes')}
+              description={t('repo.pr.templateCheckboxesHelp')}
+            >
+              <EnumSelect
+                value={templateCheckboxesVal}
+                values={TEMPLATE_CHECKBOX_MODES}
+                labels={TEMPLATE_CHECKBOX_LABEL}
+                onChange={(next) => handlePRSettingChange('templateCheckboxes', next)}
+                ariaLabel={t('repo.pr.templateCheckboxes')}
+              />
+            </SettingRow>
 
             {/* PR Template */}
             <div className="py-4">

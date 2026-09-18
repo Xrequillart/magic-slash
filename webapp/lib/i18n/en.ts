@@ -746,6 +746,8 @@ export const en = {
   'repo.pr.step.watchOff':
     'Stops once the pull request is open — no checks watched, no preview URL.',
   'repo.pr.tail.accountsSource': 'accounts read from {source}',
+  'repo.pr.tail.checkboxesType': 'ticks the type of change in the PR template',
+  'repo.pr.tail.checkboxesAll': 'ticks the PR template boxes it considers verified',
   'repo.pr.languageHelp': 'Language used for PR titles and descriptions',
   'repo.pr.autoLink': 'Auto-link tickets',
   'repo.pr.autoLinkHelp': 'Add Jira / GitHub ticket links in the PR description',
@@ -766,6 +768,15 @@ export const en = {
     'Optional file path or project skill name holding the accounts — auto-detected when empty',
   'repo.pr.testAccountsPublicWarn':
     'Credentials are never pasted on a public repository: inline falls back to reference there.',
+  'repo.pr.templateCheckboxes': 'PR template checkboxes',
+  'repo.pr.templateCheckboxesHelp':
+    'Whether /magic:pr may tick the checkboxes your repository PR template ships. Left empty, they stay for the reviewer to tick.',
+  'repo.pr.templateCheckboxesNever': 'Never tick',
+  'repo.pr.templateCheckboxesNeverHelp': 'Every box stays empty for the reviewer',
+  'repo.pr.templateCheckboxesType': 'Type of change only',
+  'repo.pr.templateCheckboxesTypeHelp': 'One box, in the categorisation group',
+  'repo.pr.templateCheckboxesAll': 'Tick what is verified',
+  'repo.pr.templateCheckboxesAllHelp': 'Every box the agent believes it has checked',
   'repo.pr.template': 'PR template',
   'repo.pr.templateHelp':
     'Edited in the desktop app — the template is a file in the repository (.github/pull_request_template.md), not a setting.',
