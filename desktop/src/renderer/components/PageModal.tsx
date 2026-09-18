@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { PageModal as PageModalGround, type ModalHeaderProps } from '@ds/desktop'
+import { PageModal as PageModalGround, type ModalHeaderProps, type PageModalSize } from '@ds/desktop'
 import type { IconComponent } from '@ds/desktop/types'
 import { useModalExit } from '../hooks/useModalExit'
 import { useStore } from '../store'
@@ -99,10 +99,22 @@ interface PageModalProps {
   tabs?: ModalHeaderProps['tabs']
   /** Optional content pinned to the right of the title bar (e.g. a live indicator). */
   headerRight?: ReactNode
+  /**
+   * How wide the overlay is — the design system's two sizes. `page` unless stated.
+   *
+   * `column` is Account and Settings: a single column of forms, in a window exactly as
+   * wide as that column and its padding. See `@ds/desktop/modalSizes`.
+   */
+  size?: PageModalSize
+  /**
+   * `column` only: the open page's id, so switching tabs puts the new page at its top.
+   * The scroller is the design system's at that size, and this is what remounts it.
+   */
+  bodyKey?: string
   children: ReactNode
 }
 
-export function PageModal({ title, titleIcon, onClose, tabs, headerRight, children }: PageModalProps) {
+export function PageModal({ title, titleIcon, onClose, tabs, headerRight, size, bodyKey, children }: PageModalProps) {
   const t = useT()
   const fullScreen = useStore((s) => s.pageModalFullScreen)
   const toggleFullScreen = useStore((s) => s.togglePageModalFullScreen)
@@ -168,6 +180,8 @@ export function PageModal({ title, titleIcon, onClose, tabs, headerRight, childr
   return (
     <PageModalGround
       fullScreen={fullScreen}
+      size={size}
+      bodyKey={bodyKey}
       header={{
         title,
         icon: titleIcon,

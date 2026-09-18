@@ -116,37 +116,49 @@ export function ModalHeader({
   gutter = 'default',
 }: ModalHeaderProps) {
   return (
+    // THREE TRACKS AND NOT AN ABSOLUTE STRIP — `minmax(0,1fr) auto minmax(0,1fr)`.
+    //
+    // The strip was absolutely centred on the band, which centred it perfectly and let
+    // it go UNDER the title when the band got narrow: the title's guard was a share of
+    // the header's own width (`max-w-[25%]`), a number that knows nothing about where
+    // the strip actually starts. At 72rem the two never met and the guard read as
+    // sufficient. At the narrow overlay's 51rem they very nearly do — 30px apart with
+    // today's longest tab set — and one longer page name would have put a word across
+    // the pills with no ellipsis anywhere.
+    //
+    // Two equal side tracks centre the middle one on the BAND just as exactly, because
+    // `1fr` and `1fr` are equal by construction — so nothing is given up — and the sides
+    // are now real columns with a width: `minmax(0, …)` lets the left one shrink below
+    // its text, which is what turns a word too long for the space into an ellipsis
+    // instead of an overlap. The strip cannot be reached at all.
     <div
-      className={`relative flex shrink-0 items-center justify-between gap-3 ${gutter === 'wide' ? 'px-6' : 'px-4'}`}
+      className={`grid shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 ${gutter === 'wide' ? 'px-6' : 'px-4'}`}
       style={{ height: MODAL_HEADER_HEIGHT }}
     >
       {/* The name keeps the left, where every window in the app puts it.
           `truncate` is on the WORD and not on the row, now that a mark shares it: on the
           row it would apply to a flex container, which ellipses nothing and would let
-          the icon be the thing that got cut. The width cap keeps it clear of the centred
-          strip — the same guard `AppTitleBar` puts on its own centred element. */}
-      <span className="flex min-w-0 max-w-[25%] items-center gap-2">
+          the icon be the thing that got cut. */}
+      <span className="flex min-w-0 items-center gap-2">
         {icon && <Icon glyph={icon} size="sm" tone="muted" className="flex-shrink-0" />}
         <Text size="xs" weight="bold" className="truncate">{title}</Text>
       </span>
 
-      {/* CENTRED ON THE BAND, not on the space left between the name and the buttons:
-          absolutely positioned, so the two groups either side can be any width they like
-          and the strip does not drift as a title or an indicator changes. `left-1/2`
-          measures the header's own box, so the strip sits in the middle of the WINDOW
-          rather than in the middle of what is left over. */}
-      {tabs && (
-        <div className="absolute left-1/2 -translate-x-1/2">
-          <TabStrip
-            ariaLabel={tabs.ariaLabel}
-            items={tabs.items}
-            activeKey={tabs.activeKey}
-            onSelect={tabs.onSelect}
-          />
-        </div>
+      {/* The middle track, which is the strip's when there is one and empty when there is
+          not — an empty cell rather than no cell, so the buttons stay in the THIRD track
+          and keep the right edge whatever the header holds. */}
+      {tabs ? (
+        <TabStrip
+          ariaLabel={tabs.ariaLabel}
+          items={tabs.items}
+          activeKey={tabs.activeKey}
+          onSelect={tabs.onSelect}
+        />
+      ) : (
+        <span />
       )}
 
-      <div className="flex flex-shrink-0 items-center gap-1">
+      <div className="flex flex-shrink-0 items-center justify-self-end gap-1">
         {right}
         {/* Expanding comes BEFORE closing: it acts on the overlay rather than on what is
             inside it, and closing stays the last thing in the row, where every window in

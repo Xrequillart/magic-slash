@@ -1,4 +1,6 @@
 import { PageModal } from './PageModal'
+import { TabSweep } from './TabSweep'
+import { MODAL_COLUMN_PADDING } from '@ds/desktop'
 import { ApplicationPage } from '../pages/Config/ApplicationPage'
 import { NotificationsPage } from '../pages/Config/NotificationsPage'
 import { AppearancePage } from '../pages/Config/AppearancePage'
@@ -68,20 +70,29 @@ export function SettingsModal() {
         onSelect: (key) => setTab(key as AppSettingsTab),
         ariaLabel: t('controlCenter.allSettings'),
       }}
+      /* ONE COLUMN OF FORMS, so the window is exactly that column and its padding rather
+         than the 72rem the pages with layouts open into — twelve rem of empty panel
+         either side read as a page that had failed to load on the short tabs.
+         `bodyKey` is what puts each page at its top: the scroller belongs to the design
+         system at this size, and it is the scroller that holds the offset. */
+      size="column"
+      bodyKey={tab}
     >
-      {/* The body is the SCROLLER, which is why the padding is inside it: padding on the
-          box would put the scrollbar in the air and clip the first row before it reached
-          the top. `key` on it and not on the page — remounting on every switch is what
-          puts the new page at its top, and it is the scroller that holds the offset. */}
-      <div key={tab} className="h-full overflow-y-auto px-6 py-5">
-        <div className="mx-auto w-full max-w-3xl">
-          {tab === 'application' && <ApplicationPage />}
-          {tab === 'notifications' && <NotificationsPage />}
-          {tab === 'appearance' && <AppearancePage />}
-          {tab === 'language' && <LanguagePage />}
-          {tab === 'shortcuts' && <ShortcutsPage />}
-        </div>
-      </div>
+      {/* The arriving page travels in the direction of the pill you pressed — the same
+          `TabSweep` the organization and repository tabs move by, so no two tab strips
+          in the app slide differently. It sits INSIDE the scroller, which is why that
+          scroller is reset rather than remounted: a sweep rebuilt on every switch has
+          nothing to sweep from. */}
+      {/* THE PAGE'S PADDING RIDES ON THE SWEEP, not on the scroller around it — see
+          `MODAL_COLUMN_PADDING`. On the scroller, the cards sit flush against the box
+          that clips, and a card that slides 24px arrives with 24px missing. */}
+      <TabSweep tabKey={tab} order={PAGES.map(({ id }) => id)} style={MODAL_COLUMN_PADDING}>
+        {tab === 'application' && <ApplicationPage />}
+        {tab === 'notifications' && <NotificationsPage />}
+        {tab === 'appearance' && <AppearancePage />}
+        {tab === 'language' && <LanguagePage />}
+        {tab === 'shortcuts' && <ShortcutsPage />}
+      </TabSweep>
     </PageModal>
   )
 }

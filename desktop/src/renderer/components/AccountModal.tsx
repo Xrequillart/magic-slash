@@ -1,4 +1,6 @@
 import { PageModal } from './PageModal'
+import { TabSweep } from './TabSweep'
+import { MODAL_COLUMN_PADDING } from '@ds/desktop'
 import { AboutPage } from '../pages/Config/AboutPage'
 import { AccountPage } from '../pages/Config/AccountPage'
 import { ClaudeCodePage } from '../pages/Config/ClaudeCodePage'
@@ -67,19 +69,29 @@ export function AccountModal() {
         onSelect: (key) => setTab(key as AccountModalTab),
         ariaLabel: t('accountMenu.title'),
       }}
+      /* NARROWER THAN THE OTHER OVERLAYS, and `SettingsModal` beside it is the same:
+         these five are one column of forms, not a page with a layout, and the window is
+         now exactly that column plus its padding. The scroller and the measure are the
+         design system's at this size — see `@ds/desktop/modalSizes` — because the panel's
+         width is computed FROM them, and a call site respelling either is a sliver of
+         empty plate the day one of them moves. */
+      size="column"
+      bodyKey={tab}
     >
-      {/* The measure is `SettingsModal`'s: these are forms and two-column rows, and the
-          window is 72rem wide — a settings row stretched across all of it puts its label
-          at one end and its control at the other. */}
-      <div key={tab} className="h-full overflow-y-auto px-6 py-5">
-        <div className="mx-auto w-full max-w-3xl">
-          {tab === 'account' && <AccountPage />}
-          {tab === 'organization' && <OrgPage />}
-          {tab === 'connections' && <ConnectionsPage />}
-          {tab === 'claude-code' && <ClaudeCodePage />}
-          {tab === 'about' && <AboutPage />}
-        </div>
-      </div>
+      {/* `SettingsModal`'s sweep, for its reasons: the page arrives from the side the
+          pill you pressed is on. The organization tab has a strip of its own inside it
+          and the two nest without fighting — the inner one animates its own element,
+          which is already at rest by the time anybody reaches it. */}
+      {/* THE PAGE'S PADDING RIDES ON THE SWEEP, not on the scroller around it — see
+          `MODAL_COLUMN_PADDING`. On the scroller, the cards sit flush against the box
+          that clips, and a card that slides 24px arrives with 24px missing. */}
+      <TabSweep tabKey={tab} order={PAGES.map(({ id }) => id)} style={MODAL_COLUMN_PADDING}>
+        {tab === 'account' && <AccountPage />}
+        {tab === 'organization' && <OrgPage />}
+        {tab === 'connections' && <ConnectionsPage />}
+        {tab === 'claude-code' && <ClaudeCodePage />}
+        {tab === 'about' && <AboutPage />}
+      </TabSweep>
     </PageModal>
   )
 }

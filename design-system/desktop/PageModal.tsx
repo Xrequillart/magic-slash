@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type AnimationEvent, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type AnimationEvent, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { ModalHeader, type ModalHeaderProps } from './ModalHeader'
 import { TITLE_BAR_HEIGHT } from './AppTitleBar'
+import { PAGE_MODAL_WIDTH, type PageModalSize } from './modalSizes'
 
 /**
  * THE BIG ONE — a dialog the size of a page, floating on the dimmed app, with a header
@@ -36,6 +37,19 @@ import { TITLE_BAR_HEIGHT } from './AppTitleBar'
  * NO BORDER ON THE FRAME. There was a `border border-line`, and it is gone with the rule
  * under the header: a hairline around a panel that is already lifted off a dimmed
  * background by a shadow is a second answer to "where does this window end".
+ *
+ * ── TWO WIDTHS, AND THE NARROW ONE BRINGS ITS OWN BODY ────────────────────────────
+ *
+ * See `modalSizes.ts` for why there are two. What matters here is that `column` is the
+ * one size where this component lays the content out rather than handing over a box: the
+ * panel's width IS the measure plus its gutters, so the measure and the gutters have to
+ * be the same two numbers the panel was computed from. Spelled at the call site — a
+ * `max-w-3xl px-6` in the app, which is exactly what they were — they are two numbers
+ * that agree today and a sliver of empty plate the day either moves.
+ *
+ * A `page` still gets a bare `overflow-hidden` box and is told nothing else. A page
+ * brings its own layout; a column of forms is laid out by the window, because at that
+ * width the window IS the column.
  */
 
 export interface PageModalProps {
@@ -50,8 +64,36 @@ export interface PageModalProps {
    * the one shape that decision must not have.
    */
   fullScreen?: boolean
-  /** The page. It is handed a box with `overflow-hidden` and told nothing else. */
+  /**
+   * How wide the panel is at rest — see `modalSizes.ts`. `page` unless stated, which is
+   * the four overlays that were here first.
+   */
+  size?: PageModalSize
+  /**
+   * The page. A `page` is handed a box with `overflow-hidden` and told nothing else; a
+   * `column` is scrolled and measured for — see the header.
+   *
+   * A `column`'s children carry their own padding, `MODAL_COLUMN_PADDING`, and put it on
+   * whatever element animates. See the note by the scroller for why it cannot live here.
+   */
   children: ReactNode
+  /**
+   * `column` only: put the scroller back at the top when this changes.
+   *
+   * THE SCROLLER HOLDS THE OFFSET, and an overlay that switches pages under one header
+   * keeps the same scroller across the switch — so a reader coming from the foot of a
+   * long tab lands halfway down a short one, on a page they have never seen. Passing the
+   * open page's id here puts every page at its top, which is what a settings page should
+   * do. Absent, the scroll survives the switch.
+   *
+   * IT SETS `scrollTop` RATHER THAN REMOUNTING, and the difference matters to what is
+   * INSIDE: a `key` here would throw away the whole subtree on every switch, and
+   * anything in it that animates the change — the app slides the arriving page in the
+   * direction of the tab you picked — would be rebuilt with no memory of what it was
+   * switching from, so it would never play. Resetting the offset is the whole of what
+   * was wanted; replacing the element was how it happened to be done.
+   */
+  bodyKey?: string
   /**
    * The caller's enter and exit animation for the dimmed ground, and for the panel.
    *
@@ -83,13 +125,26 @@ export interface PageModalProps {
 export function PageModal({
   header,
   fullScreen = false,
+  size = 'page',
   children,
+  bodyKey,
   backdropClassName = '',
   panelClassName = '',
   onBackdropClick,
   onAnimationEnd,
   portalTo,
 }: PageModalProps) {
+  /**
+   * The `column` scroller, so `bodyKey` can put it back at the top — see the prop.
+   *
+   * A LAYOUT EFFECT and not an effect: it runs after the new page is in the DOM and
+   * before the frame is painted, so nobody sees the old offset against the new page.
+   */
+  const scroller = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (scroller.current) scroller.current.scrollTop = 0
+  }, [bodyKey])
+
   /** Whether the press that is in flight began on the ground — see `onBackdropClick`. */
   const pressedGround = useRef(false)
   const onGroundMouseDown = (event: MouseEvent<HTMLDivElement>) => {
@@ -177,14 +232,36 @@ export function PageModal({
         // They agree at rest: full screen is exactly when the backdrop's padding is zero,
         // so the padded box IS the viewport.
         style={{
-          maxWidth: fullScreen ? '100vw' : '72rem',
+          maxWidth: fullScreen ? '100vw' : PAGE_MODAL_WIDTH[size],
           height: fullScreen ? `calc(100vh - ${TITLE_BAR_HEIGHT}px)` : '85vh',
           borderRadius: fullScreen ? 0 : '1rem',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         <ModalHeader {...header} />
-        <div className="flex-1 overflow-hidden">{children}</div>
+        <div className="flex-1 overflow-hidden">
+          {size === 'column' ? (
+            // NO PADDING ON EITHER OF THESE, and it is load-bearing rather than tidy: a
+            // scrolling box clips at its PADDING BOX, so content inset from the scroller's
+            // edge has nowhere to travel — slide it and its leading pixels are cut off for
+            // the length of the animation, which is every card in the page arriving with a
+            // side missing. The inset belongs to whatever moves, and the caller puts it
+            // there with `MODAL_COLUMN_PADDING`. The 24px that leaves the box is then the
+            // layer's own empty margin and the content arrives whole.
+            //
+            // The column is capped even though the panel is exactly this wide, because
+            // FULL SCREEN is where the two part: the panel becomes the window, and without
+            // the cap the forms would stretch across all of it, label at one end and
+            // control at the other.
+            <div ref={scroller} className="h-full overflow-y-auto">
+              <div className="mx-auto w-full" style={{ maxWidth: PAGE_MODAL_WIDTH.column }}>
+                {children}
+              </div>
+            </div>
+          ) : (
+            children
+          )}
+        </div>
       </div>
     </div>,
     portalTo ?? document.body,

@@ -33,7 +33,7 @@ const PROPS: PropRow[] = [
     name: 'tabs',
     type: '{ items, activeKey, onSelect, ariaLabel }',
     description:
-      'The pages this dialog switches between, as `TabStrip`’s own items — so a second level of pages looks like every other one in the app rather than like a control this header invented. Absolutely centred on the band, so the two groups either side can be any width they like and the strip never drifts as a title changes. A dialog with one page passes nothing, which is most of them.',
+      'The pages this dialog switches between, as `TabStrip`’s own items — so a second level of pages looks like every other one in the app rather than like a control this header invented. Centred on the band by two equal side tracks, so it never drifts as a title or an indicator changes — and a title too long for its track is ellipsed rather than run under the pills, which an absolutely centred strip could not promise at the narrow overlay’s width. A dialog with one page passes nothing, which is most of them.',
   },
   {
     name: 'fullScreen',

@@ -122,6 +122,15 @@ export type {
 } from './OrganizationCard'
 export { PageModal } from './PageModal'
 export type { PageModalProps } from './PageModal'
+export {
+  MODAL_COLUMN_GUTTER,
+  MODAL_COLUMN_MEASURE,
+  MODAL_COLUMN_PADDING,
+  MODAL_COLUMN_PADDING_Y,
+  PAGE_MODAL_SIZES,
+  PAGE_MODAL_WIDTH,
+} from './modalSizes'
+export type { PageModalSize } from './modalSizes'
 export { Menu } from './Menu'
 export type { MenuGroup, MenuHeader, MenuItem, MenuProps } from './Menu'
 export { MenuSidebar } from './MenuSidebar'
