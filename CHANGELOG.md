@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.96.6] - 2026-09-18
+
+### Added
+
+- **Desktop**: A settings card that owns the rules between its rows — so a hairline can no longer trail the last setting, or outlive a row that is no longer there
+- **Desktop**: A health card and a repair list: whether something is working, and the one button, command or page that fixes each fault under it
+- **Desktop**: A disclosure card for what a feature records and what it never touches — two columns rather than a paragraph nobody reads
+- **Desktop**: A theme preview grid, every theme as a little window, beside the swatches the quick-settings sheet already had
+- **Desktop**: Settings rows take a stepper, and a help line can end in the keys the setting also answers to
+- **Desktop**: The account and settings overlays are now as wide as their content and no wider, and their pages sweep in the direction of the tab you pressed
+
+### Changed
+
+- **Desktop**: The notifications page is the design system's, and the optimistic write under every switch is a hook the cards can be built from
+- **Desktop**: The application page too — six hand-drawn plates, nine rows of label-over-help and a hand-rolled red strip gone, the machine setup card included
+- **Desktop**: The appearance page as well, where the interface scale is one stepper instead of three bordered buttons and a number
+- **Desktop**: A dialog's header lays its title, its tabs and its buttons on three tracks, so a title too long for the band is ellipsed rather than run under the pills
+- **Desktop**: One alert shape for every card that carries one, where three near-identical ones were about to exist
+
+### Fixed
+
+- **Desktop**: A page sliding in no longer arrives with a side of each card sliced off — the padding travels with the page instead of clipping it
+
 ## [0.96.5] - 2026-09-17
 
 ### Added
@@ -3104,6 +3127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.96.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.6
 [0.96.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.5
 [0.96.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.4
 [0.96.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.3
