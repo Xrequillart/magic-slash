@@ -5,6 +5,7 @@ import { ChevronRight } from 'lucide-react'
 import { DESKTOP_THEMES, DESKTOP_THEME_IDS, type DesktopTheme, type DesktopThemeId } from '@/lib/desktopTheme'
 import { AgentEntry } from './entries/AgentEntry'
 import { AvatarEntry } from './entries/AvatarEntry'
+import { AvatarPickerEntry } from './entries/AvatarPickerEntry'
 import { AccountCardEntry } from './entries/AccountCardEntry'
 import { BranchCardEntry } from './entries/BranchCardEntry'
 import { ButtonEntry } from './entries/ButtonEntry'
@@ -141,6 +142,7 @@ const ENTRIES: Record<
   themegrid: ThemeGridEntry,
   themepreviewgrid: ThemePreviewGridEntry,
   avatar: AvatarEntry,
+  avatarpicker: AvatarPickerEntry,
   accountcard: AccountCardEntry,
   kbd: KbdEntry,
   select: SelectEntry,

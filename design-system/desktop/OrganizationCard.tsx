@@ -56,8 +56,8 @@ export interface OrganizationCardMember {
    */
   note?: string
   /**
-   * The face. `null` is somebody with no photo, which draws the badge; absent is the
-   * same thing, so a caller with no avatars at all passes nothing.
+   * The face. `null` is somebody with no photo, which draws the default portrait;
+   * absent is the same thing, so a caller with no avatars at all passes nothing.
    *
    * A DATA URL and never a remote one — the app's buckets are private and their only
    * web-facing form expires, so an `<img src>` pointed at one works for an hour and
@@ -252,7 +252,7 @@ export function OrganizationCard({
                             roster taller. `alt=""` on purpose: the address beside it
                             already names the person, and an alt repeating the adjacent
                             label makes a screen reader say them twice per row. */}
-                        <Avatar src={member.avatar ?? null} alt="" size="md" fallback="badge" />
+                        <Avatar src={member.avatar ?? null} alt="" size="md" fallback="portrait" />
                         {/* Two spans and not one string: `Text` takes words, never a
                             node, so the quiet "(you)" is its own.
 

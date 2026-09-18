@@ -202,10 +202,11 @@ export function AccountCard({
       <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           {/* `lg` — 44px, large enough to read a face and small enough to sit on one
-              line of a card. `badge` rather than `initials`: there is only ever one
+              line of a card. `portrait` rather than `initials`: there is only ever one
               account here and it is named in full a few pixels away, so a letter would
-              add a decoration that reads like information. */}
-          {avatar && <Avatar src={avatar.src} alt={avatar.alt} size="lg" fallback="badge" />}
+              add a decoration that reads like information — and an account with no photo
+              has a drawn face of its own now, which is the thing this card is about. */}
+          {avatar && <Avatar src={avatar.src} alt={avatar.alt} size="lg" fallback="portrait" />}
 
           {/* The service's front. The box and the glyph come from `AVATAR_SIZES.lg` —
               the face's own rung — so the two never disagree about how tall this band

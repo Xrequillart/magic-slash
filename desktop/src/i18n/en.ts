@@ -919,10 +919,15 @@ export const en = {
   // The date comes from Storage's own `updated_at` on the object, so it is the photo's
   // own row rather than something this app remembers to write.
   'cloud.avatar.updatedOn': 'Updated on {date}',
-  // A photo whose date could not be read. There IS one — the bytes are on screen — so
-  // the cell says the fact it is sure of rather than going blank.
-  'cloud.avatar.set': 'Photo set',
-  'cloud.avatar.none': 'No photo',
+  // An avatar whose date could not be read. There IS one — the bytes are on screen — so
+  // the cell says the fact it is sure of rather than going blank. "Picture" and not
+  // "photo": the stored bytes are now just as likely to be one of the thirty portraits,
+  // and the row cannot tell which without loading the whole catalogue to compare.
+  'cloud.avatar.set': 'Picture set',
+  // Nothing stored — which is no longer nothing SHOWN: every surface draws the default
+  // portrait in its place, so the cell names what is on screen rather than reporting an
+  // absence the user cannot see.
+  'cloud.avatar.none': 'Default portrait',
   // The handle's line while there is none. Drawn quiet by the card, so it does not
   // read as a handle someone actually picked.
   'cloud.username.none': 'No username yet',
@@ -952,6 +957,18 @@ export const en = {
   'cloud.avatar.crop.zoomIn': 'Zoom in',
   'cloud.avatar.crop.zoomOut': 'Zoom out',
   'cloud.avatar.crop.confirm': 'Use this photo',
+  // ── The portrait grid ────────────────────────────────────────────────────
+  'cloud.avatar.picker.title': 'Choose your avatar',
+  'cloud.avatar.picker.hint': 'Pick one of our portraits, or use a photo of your own.',
+  // The radiogroup's name. It is the QUESTION the thirty tiles answer, which is not the
+  // dialog's title said twice: a screen reader announces the group on entering it, after
+  // the title has already been read.
+  'cloud.avatar.picker.group': 'Portraits',
+  // Each tile's name. A number rather than a description — see `AvatarPickerModal` on
+  // why thirty drawn strangers are better numbered than adjectived.
+  'cloud.avatar.portrait': 'Portrait {number}',
+  'cloud.avatar.picker.upload': 'Use a photo',
+  'cloud.avatar.picker.confirm': 'Use this portrait',
   'cloud.signOut': 'Sign out',
   'cloud.changePassword': 'Change password',
   'cloud.changeEmail': 'Change email',

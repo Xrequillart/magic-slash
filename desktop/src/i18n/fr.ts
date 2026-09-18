@@ -892,10 +892,16 @@ export const fr: Record<keyof typeof en, string> = {
   // La date vient du `updated_at` de Storage sur l'objet : c'est la ligne de la photo
   // elle-même, pas une date que l'app pense à écrire.
   'cloud.avatar.updatedOn': 'Mise à jour le {date}',
-  // Une photo dont la date n'a pas pu être lue. Il y en a bien une, les octets sont à
+  // Un avatar dont la date n'a pas pu être lue. Il y en a bien un, les octets sont à
   // l'écran, donc la cellule dit ce dont elle est sûre plutôt que de rester vide.
-  'cloud.avatar.set': 'Photo enregistrée',
-  'cloud.avatar.none': 'Aucune photo',
+  // « Image » et non « photo » : les octets stockés sont désormais tout aussi souvent
+  // l'un des trente portraits, et la ligne ne peut pas savoir lequel sans charger tout
+  // le catalogue pour comparer.
+  'cloud.avatar.set': 'Image enregistrée',
+  // Rien de stocké, ce qui ne veut plus dire rien d'AFFICHÉ : toutes les surfaces
+  // dessinent le portrait par défaut à la place, donc la cellule nomme ce qui est à
+  // l'écran plutôt qu'une absence que l'utilisateur ne voit pas.
+  'cloud.avatar.none': 'Portrait par défaut',
   // La ligne du pseudo tant qu'il n'y en a pas. La carte l'affiche en discret, pour
   // qu'elle ne se lise pas comme un pseudo réellement choisi.
   'cloud.username.none': 'Aucun pseudo',
@@ -925,6 +931,19 @@ export const fr: Record<keyof typeof en, string> = {
   'cloud.avatar.crop.zoomIn': 'Zoomer',
   'cloud.avatar.crop.zoomOut': 'Dézoomer',
   'cloud.avatar.crop.confirm': 'Utiliser cette photo',
+  // ── La grille de portraits ───────────────────────────────────────────────
+  'cloud.avatar.picker.title': 'Choisir votre avatar',
+  'cloud.avatar.picker.hint': 'Choisissez l\'un de nos portraits, ou utilisez une photo à vous.',
+  // Le nom du radiogroup. C'est la QUESTION à laquelle répondent les trente vignettes,
+  // et pas le titre de la fenêtre répété : un lecteur d'écran annonce le groupe en y
+  // entrant, une fois le titre déjà lu.
+  'cloud.avatar.picker.group': 'Portraits',
+  // Le nom de chaque vignette. Un numéro plutôt qu'une description : voir
+  // `AvatarPickerModal` sur pourquoi trente inconnus dessinés se numérotent mieux
+  // qu'ils ne se décrivent.
+  'cloud.avatar.portrait': 'Portrait {number}',
+  'cloud.avatar.picker.upload': 'Utiliser une photo',
+  'cloud.avatar.picker.confirm': 'Utiliser ce portrait',
   'cloud.signOut': 'Se déconnecter',
   'cloud.changePassword': 'Changer de mot de passe',
   'cloud.changeEmail': 'Changer d’e-mail',

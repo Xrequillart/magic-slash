@@ -11,6 +11,9 @@ import { usesOf } from './ids'
  * No photo is loaded here and that is on purpose: every specimen below is the
  * FALLBACK, which is the half of this component with decisions in it. A page of
  * stock faces would document nothing but the stock.
+ *
+ * The default one now IS a face — the app's default portrait, which ships with the
+ * component precisely so this page can draw it without reaching into the desktop app.
  */
 
 const SIZES: { size: AvatarSize; note: string }[] = [
@@ -47,10 +50,10 @@ const PROPS: PropRow[] = [
   },
   {
     name: 'fallback',
-    type: "'badge' | 'glyph' | 'initials'",
-    fallback: "'badge'",
+    type: "'portrait' | 'glyph' | 'initials'",
+    fallback: "'portrait'",
     description:
-      'What the no-photo state looks like, and orthogonal to the size on purpose. badge is the filled bg-accent/20 pill; glyph is the bare mark the left sidebar has always drawn, where a pill appearing behind the icon would be a visible change for everyone who never uploads a photo; initials is the badge with a letter in place of the mark.',
+      'What the no-photo state looks like, and orthogonal to the size on purpose. portrait is the app’s default drawn face, for a person with an account and no picture — it replaced a tinted pill with a CircleUserRound in it; glyph is the bare mark the title bar’s account row draws, which takes currentColor and therefore turns yellow with its row, something a picture cannot do; initials is an accent plate with a letter on it, for GitHub authors who have no account here and would otherwise all be the same stranger.',
   },
   {
     name: 'name',
@@ -77,9 +80,9 @@ export function AvatarEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader title="Avatar" uses={usesOf('avatar')} onOpen={onOpen}>
         A person, as a round photo — or as an <code>Icon</code> when there is none. It knows
-        nothing about who: it takes the bytes it is given and draws them. The fallback is
-        usually the icon; a letter is the third one, for a list where which person matters
-        before a name is read.
+        nothing about who: it takes the bytes it is given and draws them. With no photo it
+        draws the app’s default portrait; the bare mark and the letter are the two cases a
+        drawn face cannot answer.
       </EntryHeader>
 
       <EntrySection
@@ -104,12 +107,12 @@ export function AvatarEntry({
 
       <EntrySection
         title="The three fallbacks"
-        note="Orthogonal to the size, which is the whole reason it is a prop. The left sidebar’s no-photo state is the bare glyph it has always been; everywhere else keeps the filled pill, with or without a letter in it."
+        note="Orthogonal to the size, which is the whole reason it is a prop. A person with an account gets the default portrait; the title bar’s account row keeps the bare glyph, and a GitHub author with no account here keeps a letter."
       >
         <Stage theme={theme} className="flex flex-wrap items-center gap-8">
           <span className="flex items-center gap-3">
-            <Avatar src={null} alt="" size="md" fallback="badge" />
-            <span className="font-mono text-[11px] text-ink">badge</span>
+            <Avatar src={null} alt="" size="md" fallback="portrait" />
+            <span className="font-mono text-[11px] text-ink">portrait</span>
           </span>
           <span className="flex items-center gap-3">
             <Avatar src={null} alt="" size="md" fallback="glyph" />
@@ -129,9 +132,10 @@ export function AvatarEntry({
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
           The bare glyph carries <em>no colour of its own</em> — it inherits{' '}
           <code>currentColor</code> from whatever surrounds it, which is how the sidebar turns it
-          yellow along with the row when no repository is configured. The badge states its colour
-          once, on the element that also carries the fill it has to read against, and the letter
-          inherits that same colour rather than naming a second one.
+          yellow along with the row when no repository is configured. That is the reason it did
+          not become a portrait with the rest: a picture cannot inherit a colour. The letter
+          states its colour once, on the element that also carries the fill it has to read
+          against.
         </p>
       </EntrySection>
 

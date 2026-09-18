@@ -1,4 +1,5 @@
 import { AVATAR_SIZES, type AvatarSize } from './avatarSizes'
+import { DEFAULT_PORTRAIT_SRC } from './defaultAvatar'
 import { Icon } from './Icon'
 import { CircleUserRound } from './icons'
 import { Text } from './Text'
@@ -10,29 +11,39 @@ import { Text } from './Text'
  * it is given and draws them. The app decides whose face it is, where the bytes come
  * from and what to say when they are missing.
  *
- * The no-photo fallback is USUALLY the icon. It used to be the icon and nothing else,
- * on the grounds that an initial is only needed where several people appear in a list
- * and have to be told apart before a name is read — which is true, and is exactly the
- * case the PR comments panel turned out to be: a thread of several authors, at 24px,
- * from queries that ask for `author{login}` and deliberately never select `avatarUrl`.
- * A letter is what that data can draw. So the letter is a THIRD fallback here rather
- * than a second component, because everything else about the two is identical — the
- * box, the plate, the accent, the way a missing photo must not shift the row.
+ * THE NO-PHOTO FALLBACK IS A FACE NOW. It was an accent-tinted pill with a
+ * `CircleUserRound` in it — the shape a form draws where a picture is missing — and the
+ * app has thirty drawn portraits to offer instead, one of which is the default. So an
+ * account that has never chosen anything wears `DEFAULT_PORTRAIT_SRC` rather than the
+ * mark for a person, and the pill is gone rather than kept as an option nothing asks
+ * for. See `defaultAvatar.ts` for why that picture is a `data:` URL and not a file.
+ *
+ * THE OTHER TWO FALLBACKS STAYED, and both for reasons a portrait does not answer:
+ *
+ *  • `glyph` is the bare mark on nothing, which the title bar's account row draws at
+ *    14px. A portrait at that size is a smudge, and — the part that actually decides it
+ *    — the mark there takes `currentColor`, which is how the whole row turns yellow
+ *    when no repository is configured. A picture cannot inherit a colour, so drawing
+ *    one there would quietly delete a signal.
+ *  • `initials` is a letter, for a list where WHICH person matters before a name is
+ *    read: a PR thread of several authors, at 24px, from queries that ask for
+ *    `author{login}` and deliberately never select `avatarUrl`. Those people have no
+ *    account here, so the default portrait would make every one of them the same
+ *    stranger; a letter is what that data can actually draw.
  */
 
 /**
  * What the no-photo state looks like, and the reason this is a prop rather than a
  * consequence of the size.
  *
- * `badge` is the filled `bg-accent/20` pill — the identity card, the settings footer,
- * the members roster. `glyph` is the bare mark on nothing, which the left sidebar has
- * always drawn: a pill appearing behind that icon would be a visible change for
- * everyone who never uploads a photo. `initials` is the same pill as `badge` with a
- * letter in place of the mark, for a list where WHICH person matters before a name is
- * read. All three are orthogonal to the size, and pinning them together is what made
+ * `portrait` is the default drawn face — the identity card, the account menu, the
+ * members roster: anywhere a PERSON with an account is missing a photo. `glyph` is the
+ * bare mark on nothing, which the title bar's account row draws. `initials` is an
+ * accent plate with a letter on it, for a list where WHICH person matters before a name
+ * is read. All three are orthogonal to the size, and pinning them together is what made
  * the app's old table name screens instead of drawings.
  */
-export type AvatarFallback = 'badge' | 'glyph' | 'initials'
+export type AvatarFallback = 'portrait' | 'glyph' | 'initials'
 
 export interface AvatarProps {
   /**
@@ -74,11 +85,16 @@ export interface AvatarProps {
   className?: string
 }
 
-export function Avatar({ src, alt, size = 'lg', fallback = 'badge', name, className = '' }: AvatarProps) {
-  const { box, glyph, bare, initial } = AVATAR_SIZES[size]
+export function Avatar({ src, alt, size = 'lg', fallback = 'portrait', name, className = '' }: AvatarProps) {
+  const { box, bare, initial } = AVATAR_SIZES[size]
 
-  if (src) {
-    return <img src={src} alt={alt} className={`${box} rounded-full object-cover shrink-0 ${className}`} />
+  // The default portrait is drawn by the SAME line as a real photo, and not merely by a
+  // similar one: it is a 256px WebP on a plate, exactly what the app stores, so any
+  // difference in the box, the crop or the radius here would be a face that moves the
+  // moment somebody uploads one.
+  const photo = src ?? (fallback === 'portrait' ? DEFAULT_PORTRAIT_SRC : null)
+  if (photo) {
+    return <img src={photo} alt={alt} className={`${box} rounded-full object-cover shrink-0 ${className}`} />
   }
 
   if (fallback === 'glyph') {
@@ -95,33 +111,22 @@ export function Avatar({ src, alt, size = 'lg', fallback = 'badge', name, classN
     )
   }
 
-  if (fallback === 'initials') {
-    return (
-      <span
-        title={alt || name}
-        className={`${box} flex items-center justify-center rounded-full bg-accent/20 text-accent shrink-0 ${className}`}
-      >
-        {/* `inherit`, so the letter takes the wrapper's `text-accent` exactly as the
-            mark does — one colour stated once for both fallbacks.
-
-            `bold` and not the semibold this drew before it came here: the shipped
-            family has no 600 face, and 600 and 700 measure as the same drawing. See
-            `Text`'s own note. */}
-        <Text size={initial} weight="bold" tone="inherit">
-          {(name?.trim()[0] ?? '?').toUpperCase()}
-        </Text>
-      </span>
-    )
-  }
-
+  // `initials`, and the last branch rather than one of three: the accent plate used to
+  // be shared with `badge`, which is gone — a person with an account has a portrait now.
+  // What is left of it is this, and it is the only thing that still draws the plate.
   return (
     <span
+      title={alt || name}
       className={`${box} flex items-center justify-center rounded-full bg-accent/20 text-accent shrink-0 ${className}`}
     >
-      {/* `inherit` again, and here it is the wrapper's `text-accent` that it inherits —
-          one colour stated once, on the thing that also carries the fill it has to
-          read against. */}
-      <Icon glyph={CircleUserRound} size={glyph} tone="inherit" />
+      {/* `inherit`, so the letter takes the wrapper's `text-accent` rather than naming a
+          second colour beside the fill it has to read against.
+
+          `bold` and not the semibold this drew before it came here: the shipped family
+          has no 600 face, and 600 and 700 measure as the same drawing. See `Text`. */}
+      <Text size={initial} weight="bold" tone="inherit">
+        {(name?.trim()[0] ?? '?').toUpperCase()}
+      </Text>
     </span>
   )
 }

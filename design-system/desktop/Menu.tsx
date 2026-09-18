@@ -281,7 +281,7 @@ function Header({ title, subtitle, avatar, icon }: MenuHeader) {
   return (
     <div className="flex items-center gap-2.5 px-3 py-2">
       {avatar ? (
-        <Avatar src={avatar.src} alt={avatar.alt} size="md" fallback="badge" />
+        <Avatar src={avatar.src} alt={avatar.alt} size="md" fallback="portrait" />
       ) : icon ? (
         <Icon glyph={icon} size="sm" tone="muted" className="flex-shrink-0" />
       ) : null}

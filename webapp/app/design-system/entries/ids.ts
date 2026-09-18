@@ -14,6 +14,7 @@ export type EntryId =
   | 'loader'
   | 'card'
   | 'avatar'
+  | 'avatarpicker'
   | 'accountcard'
   | 'button'
   | 'buttonicon'
@@ -115,6 +116,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   themepreviewgrid: 'ThemePreviewGrid',
   text: 'Text',
   avatar: 'Avatar',
+  avatarpicker: 'AvatarPicker',
   accountcard: 'AccountCard',
   label: 'Label',
   status: 'Status',
@@ -250,6 +252,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   whatsnewdialog: ['modal', 'button', 'text'],
   text: [],
   avatar: ['icon'],
+  avatarpicker: [],
   label: ['icon', 'text', 'avatar'],
   status: ['icon', 'text'],
   switch: [],
@@ -403,7 +406,8 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   themepreviewgrid: 'Every theme as a little window, with its name',
   icon: 'Every glyph, five sizes, three tones',
   text: 'Cera Pro, six sizes, four weights',
-  avatar: 'A face, or the icon when there is none',
+  avatar: 'A face, or the default portrait when there is none',
+  avatarpicker: 'Thirty drawn faces, six to a line',
   label: 'Names a thing, on a tinted plate',
   status: 'Reports a state, and changes it',
   switch: 'On or off, and it takes at once',

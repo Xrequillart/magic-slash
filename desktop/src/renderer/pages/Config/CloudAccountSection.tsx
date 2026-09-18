@@ -7,6 +7,7 @@ import { useOrg } from '../../hooks/useOrg'
 import { LoginScreen } from '../../components/LoginScreen'
 import { Modal } from '../../components/Modal'
 import { AvatarCropModal, type AvatarCropView } from '../../components/AvatarCropModal'
+import { AvatarPickerModal } from '../../components/AvatarPickerModal'
 import { InvitationOnboardingWizard } from '../../components/InvitationOnboardingWizard'
 import { showToast } from '../../components/Toast'
 import { useT, useLocale, type MessageKey } from '../../i18n'
@@ -316,6 +317,15 @@ export function CloudAccountSection() {
   const avatar = useAvatar()
   const [avatarBusy, setAvatarBusy] = useState(false)
   /**
+   * The grid of drawn portraits, and now the FIRST thing the Edit button opens.
+   *
+   * It used to open the native file dialog directly, which made "change my avatar" and
+   * "upload a photograph" one and the same act — and left everyone without a square
+   * photo of themselves on the generic mark. The photo route is still exactly the route
+   * it was; it is reached from inside this dialog rather than instead of it.
+   */
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
+  /**
    * The picked file, waiting to be framed. Non-null IS "the crop dialog is open",
    * and it is the only thing the picker produces: nothing reaches Storage, and the
    * photo on screen does not change, until the user confirms a square.
@@ -349,6 +359,54 @@ export function CloudAccountSection() {
       /* Nothing to correct it with; the toast has already told the user. */
     }
   }, [])
+
+  /**
+   * WRITE THESE BYTES AS THE ACCOUNT'S FACE — the one path to Storage, whatever chose
+   * them.
+   *
+   * Extracted the day a second thing could choose an avatar. A framed photograph and a
+   * drawn portrait differ in exactly one respect — where the 256px WebP came from — and
+   * every line below is about what happens AFTER that: the epoch the result belongs to,
+   * the resync when Storage refuses, the write-through to the store, the date in the
+   * value column, the one toast. Two copies of that would be two places for the
+   * sign-out-mid-upload guard to be got subtly right.
+   *
+   * `forSession` IS THE CALLER'S, taken before ITS first await and not read here: the
+   * account a face was chosen for is decided when the choosing started, and by the time
+   * this function runs an encode has already happened. Reading `avatarSession()` inside
+   * would stamp the result with whoever is signed in by now, which is precisely the
+   * value that cannot detect the switch.
+   *
+   * Neither the busy flag nor the dialogs are touched here. Both callers raise and clear
+   * `avatarBusy` around their own whole act — the encode included — so moving it in
+   * would leave the encode outside the spinner it exists for.
+   */
+  const uploadAvatar = useCallback(async (encoded: string, forSession: number) => {
+    try {
+      const result = await window.electronAPI.profile.setAvatar(encoded)
+      if (!result.ok) {
+        // `result.error` is a transport or Storage message in English; it goes to the
+        // console for whoever is debugging, not into a toast the user has to decode.
+        if (result.error) console.error('avatar upload failed:', result.error)
+        await resyncAvatar(result, forSession)
+        showToast(t('toast.avatarSaveFailed'), 'error')
+        return
+      }
+
+      publishAvatar(encoded, forSession)
+      // Write-through for the value column, on the SUCCESS path only: a failed upload
+      // must not leave the row claiming a photo was written today. The epoch guard is
+      // `publishAvatar`'s, restated because this state is local and has none of its
+      // own — a result belonging to an account that has since been signed out of would
+      // otherwise date the NEXT user's photo.
+      if (avatarSession() === forSession) setAvatarUpdatedAt(new Date().toISOString())
+    } catch (e) {
+      // An IPC rejection: no result to read a resynced value out of, so ask.
+      console.error('avatar upload failed:', e)
+      await resyncAvatar({}, forSession)
+      showToast(t('toast.avatarSaveFailed'), 'error')
+    }
+  }, [resyncAvatar, t])
 
   /**
    * Pick a file — and stop there. On any REFUSAL, change nothing.
@@ -398,6 +456,51 @@ export function CloudAccountSection() {
   }, [avatarBusy, cropSource, t])
 
   /**
+   * Open the grid. The guard is `handleChoosePhoto`'s, kept because this is now the
+   * button that used to be it: a dialog opened over a crop already in progress would
+   * offer to replace bytes that are mid-flight.
+   */
+  const openAvatarPicker = useCallback(() => {
+    if (avatarBusy || cropSource !== null) return
+    setShowAvatarPicker(true)
+  }, [avatarBusy, cropSource])
+
+  /**
+   * A portrait was confirmed. It is ALREADY the payload — see `avatars/portraits.ts` —
+   * so there is no encode between here and Storage, which is the whole difference
+   * between this handler and the crop one.
+   *
+   * Closed before the first await, for `handleCropConfirm`'s reason: leaving the grid
+   * up during the upload lets a second confirm fire the whole thing twice.
+   */
+  const handleChoosePortrait = useCallback(async (dataUrl: string) => {
+    setShowAvatarPicker(false)
+    setAvatarBusy(true)
+    // Taken before the first await: the account this face was chosen FOR. Same guard
+    // the photo path takes, and it is needed here for the same reason — signing out
+    // mid-upload must not drop this face onto whoever signs in next.
+    const forSession = avatarSession()
+    try {
+      await uploadAvatar(dataUrl, forSession)
+    } finally {
+      setAvatarBusy(false)
+    }
+  }, [uploadAvatar])
+
+  /**
+   * "Use a photo instead": the grid steps aside and the file dialog takes over.
+   *
+   * The two dialogs are never open together — this one closes before the picker is
+   * asked for — because the native dialog is modal to the window, and a grid still
+   * mounted behind it would come back into view between the file being picked and the
+   * crop dialog appearing.
+   */
+  const handleUploadInstead = useCallback(() => {
+    setShowAvatarPicker(false)
+    void handleChoosePhoto()
+  }, [handleChoosePhoto])
+
+  /**
    * The user confirmed a square: encode it and upload it.
    *
    * This is the half of the old `handleChoosePhoto` that WRITES, unchanged in
@@ -436,32 +539,11 @@ export function CloudAccountSection() {
         return
       }
 
-      const result = await window.electronAPI.profile.setAvatar(encoded)
-      if (!result.ok) {
-        // `result.error` is a transport or Storage message in English; it goes to the
-        // console for whoever is debugging, not into a toast the user has to decode.
-        if (result.error) console.error('avatar upload failed:', result.error)
-        await resyncAvatar(result, forSession)
-        showToast(t('toast.avatarSaveFailed'), 'error')
-        return
-      }
-
-      publishAvatar(encoded, forSession)
-      // Write-through for the value column, on the SUCCESS path only: a failed upload
-      // must not leave the row claiming a photo was written today. The epoch guard is
-      // `publishAvatar`'s, restated because this state is local and has none of its
-      // own — a result belonging to an account that has since been signed out of would
-      // otherwise date the NEXT user's photo.
-      if (avatarSession() === forSession) setAvatarUpdatedAt(new Date().toISOString())
-    } catch (e) {
-      // An IPC rejection: no result to read a resynced value out of, so ask.
-      console.error('avatar upload failed:', e)
-      await resyncAvatar({}, forSession)
-      showToast(t('toast.avatarSaveFailed'), 'error')
+      await uploadAvatar(encoded, forSession)
     } finally {
       setAvatarBusy(false)
     }
-  }, [cropSource, resyncAvatar, t])
+  }, [cropSource, uploadAvatar, t])
 
   /** Dismissed. The bytes are dropped and the photo already on the account stays. */
   const handleCropCancel = useCallback(() => setCropSource(null), [])
@@ -936,12 +1018,12 @@ export function CloudAccountSection() {
               unset: !avatar,
               actions: [
                 {
-                  id: 'choose-photo',
+                  id: 'choose-avatar',
                   label: t('common.edit'),
                   icon: Pencil,
                   busy: avatarBusy,
                   disabled: cropSource !== null,
-                  onClick: handleChoosePhoto,
+                  onClick: openAvatarPicker,
                 },
                 // No photo, no remove button — there is nothing to undo.
                 ...(avatar
@@ -1028,6 +1110,17 @@ export function CloudAccountSection() {
           ]}
         />
       )}
+
+      {/* Pick a face. The FIRST dialog now — the file picker is reached from inside it,
+          and `avatar` is passed so the grid can open on the portrait already in force. */}
+      <AvatarPickerModal
+        isOpen={showAvatarPicker}
+        currentSrc={avatar}
+        busy={avatarBusy}
+        onConfirm={handleChoosePortrait}
+        onUploadPhoto={handleUploadInstead}
+        onClose={() => setShowAvatarPicker(false)}
+      />
 
       {/* Frame the picked photo. Open only between the picker and the upload, and
           the only thing that can start the upload at all. */}

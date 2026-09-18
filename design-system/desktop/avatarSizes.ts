@@ -33,7 +33,16 @@ export type AvatarSize = ComponentSize
 export interface AvatarGeometry {
   /** Box classes for the photo and for the fallback alike, so the two never disagree. */
   box: string
-  /** The `Icon` rung the mark is drawn at INSIDE the badge, leaving the fill visible. */
+  /**
+   * The `Icon` rung a mark is drawn at INSIDE a round plate of this box, leaving the
+   * fill visible around it.
+   *
+   * `Avatar` itself no longer reads this: an account with no photo wears a drawn face
+   * now, so the tinted pill with a `CircleUserRound` on it is gone. What kept the field
+   * alive is `AccountCard`'s SERVICE tile — a logo on a square plate at the face's own
+   * rung, which is what makes a card about Jira exactly as tall as a card about a
+   * person. Delete it and that band stops agreeing with this one.
+   */
   glyph: IconRung
   /**
    * The rung it is drawn at with no badge around it, where the mark IS the whole
