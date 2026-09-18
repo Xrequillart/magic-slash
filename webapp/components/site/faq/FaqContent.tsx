@@ -5,7 +5,7 @@ import { Collapse } from '@/components/ui'
 import { NEW_ISSUE_URL } from '@/components/site/links'
 import { PAGE_CHROME, QUESTIONS } from '@/lib/faq'
 import { useT } from '@/lib/i18n/useLanguage'
-import { Bloom } from '../home/HeroSection'
+import { Reveal } from '../Reveal'
 import { HomeSection } from '../home/Shell'
 import { RichText } from '../RichText'
 
@@ -64,8 +64,8 @@ import { RichText } from '../RichText'
  * one weakened, and a page made of nothing but text hierarchy cannot afford that.
  *
  * Every alpha on this page is inside `Collapse` rather than here, which is the point of
- * putting the row in `components/ui.tsx`: this file names no colour at all bar the
- * hero's gradient and the two links. Note that the ANSWERS are full `text-ink` and not
+ * putting the row in `components/ui.tsx`: this file names no colour at all now bar the
+ * two links — the hero's gradient was the third and it is gone (see the band below). Note that the ANSWERS are full `text-ink` and not
  * the `/changelog` rows' 70% — the reasoning is on the component, and it is about a row
  * that has no rule under it.
  *
@@ -84,26 +84,79 @@ export function FaqContent() {
     // WHITE, not `canvas`. See the ink note above; `/features` and `/changelog` paint
     // their own ground the same way, and the `(marketing)` layout deliberately paints
     // none.
-    <div className="bg-white">
-      {/* `/changelog`'s opening band verbatim: `padding="hero"` because the bar is
-          `fixed` at `h-16` and the first line owes it that, the `softblue → white` wash,
-          and `Bloom` fading `to-white` so the band lands on the ground below instead of
-          leaving a blue-grey step at its bottom edge. */}
-      <HomeSection
-        padding="hero"
-        backdrop={<Bloom fadeTo="to-white" />}
-        className="bg-gradient-to-b from-softblue to-white"
-      >
-        {/* Centred, and the list below is not. Centring an opening says "this is the
-            page"; centring a column of questions would make them harder to scan. The
-            same split `/features` and `/changelog` make. */}
-        <div className="mx-auto max-w-3xl text-center">
-          <h1 className="font-display text-4xl font-black leading-[1.1] text-ink md:text-6xl">
-            {t(PAGE_CHROME.title)}
-          </h1>
-          <p className="mx-auto mt-8 max-w-xl text-lg leading-relaxed text-ink/60">
-            {t(PAGE_CHROME.lead)}
-          </p>
+    <div className="bg-white [--reveal-from:0px]">
+      {/* A FADE AND NOT A RISE, and it is one custom property rather than a second
+          animation. `reveal-a`/`reveal-b` translate by `var(--reveal-from, 0.75rem)`,
+          so setting that to zero HERE leaves the opacity half of the keyframes and
+          takes the movement out — for every `Reveal` on the page at once, because a
+          custom property inherits. The site bar already uses the same seam from the
+          other end (`[--reveal-from:-1.25rem]`, to drop in from above).
+
+          IT IS THESE TWO PAGES ONLY. The home, `/desktop` and `/workflow` still rise
+          12px; that is deliberate, at the owner's request, and not a divergence to
+          propagate by reading this file. To make the whole site fade, move this class
+          onto the keyframes' own default in `tailwind.config.ts` and delete it here. */}
+      {/* `/changelog`'s opening band, and still verbatim — both pages left the wash
+          together. `padding="hero"` because the bar is `fixed` at `h-16` and a page's
+          first line owes it that; no `softblue → white` gradient and no `Bloom`.
+
+          NO `backdrop` AT ALL rather than an empty one: `HomeSection` turns `relative`
+          and clips itself only when it is passed a layer, so dropping the prop drops an
+          `overflow-hidden` this band no longer needs. And no ground class either — the
+          page's own `bg-white` is right underneath.
+
+          `/privacy` and `/terms` still open on the wash. That divergence is deliberate
+          and it is not a pattern to read off this file: those two are documents, and a
+          document has no drawing to put beside its title. */}
+      <HomeSection padding="hero">
+        {/* TWO COLUMNS: what the page IS on the left, a drawing of it on the right —
+            `/changelog`'s opening, for the reason that page gives. It was one centred
+            column on the argument that centring says "this is the page"; a split says the
+            same thing with the width the band actually has.
+
+            It stacks below `lg`, text first: the drawing is a decoration, so it is the
+            half that waits. `items-center` because the text block is two elements tall
+            and the drawing several times that — aligning their tops would hang the title
+            off a column of empty space. */}
+        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+          <div>
+            {/* THE ENTRANCE, and the margin moved onto the wrapper with it: a `mt-6` on a
+                child of a `Reveal` would have to collapse through an element that is being
+                translated, which happens to work and is not a thing to depend on.
+
+                `order` counts the way the band is read — heading, line, then the drawing,
+                80ms apart. `Reveal` does the rest: it plays on mount for what is already
+                in view, waits for an `IntersectionObserver` for what is not, and leaves
+                everything at rest for a reader who asked for less motion. */}
+            <Reveal order={1}>
+              <h1 className="font-display text-4xl font-black leading-[1.1] text-ink md:text-6xl">
+                {t(PAGE_CHROME.title)}
+              </h1>
+            </Reveal>
+            {/* `max-w-md` inside a half-column already about that wide: the measure holds
+                on the screens where the column grows past it, so the line length stays
+                readable instead of tracking the viewport. */}
+            <Reveal order={2} className="mt-6">
+              <p className="max-w-md text-lg leading-relaxed text-ink/60">
+                {t(PAGE_CHROME.lead)}
+              </p>
+            </Reveal>
+          </div>
+
+          {/* THE DRAWING, and its file is CROPPED rather than sized down here. The source
+              is a 1000×1000 canvas carrying the drawing at 878×950, so the box has dead
+              margin on every side. `illustration-faq.svg` therefore ships with a
+              `viewBox` of `61 25 878 950` and matching `width`/`height`, which is its
+              measured bounding box — nothing in this file has to correct for empty space.
+
+              `alt=""`: a decoration. It says nothing the heading beside it does not, and
+              a screen reader on its way to the questions wants to get there. */}
+          {/* THE `justify-self` MOVED TO THE WRAPPER, and it had to: `Reveal` renders a
+              div, so that div is the grid item now and the image inside it is not. Left
+              on the image the rule would simply stop applying, silently. */}
+          <Reveal order={3} className="justify-self-center lg:justify-self-end">
+            <img src="/img/illustration-faq.svg" alt="" className="w-full max-w-md" />
+          </Reveal>
         </div>
       </HomeSection>
 
@@ -144,9 +197,16 @@ export function FaqContent() {
                and the questions carry nothing, which is not an accident: a heading with
                markup in it is a heading someone will eventually want to link, and the
                questions are already the pressable part of the row. */
-            <Collapse key={entry.id} id={entry.id} title={t(entry.question)}>
-              <RichText k={entry.answer} as="p" />
-            </Collapse>
+            /* EACH ROW RISES INTO PLACE AS IT ARRIVES, and with NO `order`. A stagger
+               is for the few elements of one band crossing the fold together; twelve rows
+               in a column taller than the screen do not, so an index delay would sit on
+               top of an arrival the reader has already waited for. The scroll IS the
+               stagger here. The wrapper is what the `gap-1` above now spaces. */
+            <Reveal key={entry.id}>
+              <Collapse id={entry.id} title={t(entry.question)}>
+                <RichText k={entry.answer} as="p" />
+              </Collapse>
+            </Reveal>
           ))}
         </div>
 
@@ -159,7 +219,7 @@ export function FaqContent() {
             than on a blank box — see `links.ts`. A plain `<a>` and not `ButtonLink`:
             this is a footnote under a list, and the page's own ask is the closing band
             `page.tsx` puts under it. */}
-        <div className="mx-auto mt-10 flex max-w-3xl flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+        <Reveal className="mx-auto mt-10 flex max-w-3xl flex-wrap items-center gap-x-2 gap-y-1 text-sm">
           <span className="text-ink/60">{t(PAGE_CHROME.stillStuck)}</span>
           <a
             href={NEW_ISSUE_URL}
@@ -170,7 +230,7 @@ export function FaqContent() {
             {t(PAGE_CHROME.openIssue)}
             <ArrowUpRight className="h-4 w-4" aria-hidden />
           </a>
-        </div>
+        </Reveal>
       </HomeSection>
     </div>
   )
