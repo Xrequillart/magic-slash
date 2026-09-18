@@ -1114,10 +1114,10 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.appearance.codeTheme.dark': 'Toujours sombre',
   'settings.appearance.displaySection': 'Affichage',
   'settings.appearance.scale': 'Échelle de l’interface',
-  'settings.appearance.scaleHelpBefore':
+  'settings.appearance.scaleHelp':
     'Met à l’échelle toute la fenêtre, terminal compris — comme le zoom d’un navigateur. Aussi via',
-  'settings.appearance.scaleHelpAfter':
-    '. Reste sur cette machine, puisqu’elle compense les particularités de cet écran.',
+  'settings.appearance.scaleNote':
+    'Reste sur cette machine, puisqu’elle compense les particularités de cet écran.',
   'settings.appearance.zoomReset': 'Revenir à 100 %',
   'toast.themeChangeFailed': 'Impossible de changer de thème',
   'toast.claudeThemeSyncFailed': 'Impossible de changer le thème de Claude Code',

@@ -1146,10 +1146,11 @@ export const en = {
   'settings.appearance.codeTheme.dark': 'Always dark',
   'settings.appearance.displaySection': 'Display',
   'settings.appearance.scale': 'Interface scale',
-  // Split around the two <kbd> accelerators rendered between them.
-  'settings.appearance.scaleHelpBefore':
+  // Written towards the two accelerator caps the row draws at the end of it — see
+  // `SettingRow`'s `hintKeys`. Where the value is KEPT is the card's own note, below.
+  'settings.appearance.scaleHelp':
     'Scales the whole window, terminal included — like a browser’s zoom. Also on',
-  'settings.appearance.scaleHelpAfter': '. Stays on this machine, since it compensates for this screen.',
+  'settings.appearance.scaleNote': 'Stays on this machine, since it compensates for this screen.',
   'settings.appearance.zoomReset': 'Reset to 100%',
   'toast.themeChangeFailed': 'Failed to change theme',
   'toast.claudeThemeSyncFailed': 'Failed to change the Claude Code theme',

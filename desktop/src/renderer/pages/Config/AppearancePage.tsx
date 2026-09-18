@@ -1,10 +1,18 @@
-import { Check, Minus, Palette, PanelsTopLeft, Plus, RotateCcw, Scaling } from '@ds/desktop/icons'
-import { Kbd, SectionHeader, Select, type SettingRowControl } from '@ds/desktop'
+import { Palette, PanelsTopLeft, Scaling } from '@ds/desktop/icons'
+import {
+  SectionHeader,
+  SettingsCard,
+  Text,
+  ThemePreviewGrid,
+  type SettingRowControl,
+  type SettingsCardRow,
+  type ThemePreviewOption,
+} from '@ds/desktop'
 import { useEffect, useState } from 'react'
 import { useConfig } from '../../hooks/useConfig'
 import { useZoom } from '../../hooks/useZoom'
 import { showToast } from '../../components/Toast'
-import { ToggleRow } from './ToggleRow'
+import { useToggleRow } from './ToggleRow'
 import { THEMES, THEME_IDS, useTheme } from '../../theme'
 import { useT } from '../../i18n'
 import {
@@ -13,103 +21,27 @@ import {
 } from '../../../types'
 
 /**
- * Miniature of a theme, painted with that theme's own tokens rather than the
- * one in use — the point is to show what you are about to switch to.
+ * WHAT THE WINDOW LOOKS LIKE: the theme, how far it reaches, which optional panels are
+ * on, and how big the whole thing is drawn.
+ *
+ * ── FOUR BLOCKS, ALL OF THEM THE DESIGN SYSTEM'S ──────────────────────────────────
+ *
+ * `ThemePreviewGrid` for the eight miniatures and `SettingsCard` for the three cards
+ * under them. What went with the migration: a hand-drawn tile with its own ring and its
+ * own truncation, a `ThemePreview` that painted a window out of nine inline styles,
+ * three spellings of the settings plate, a `CodeThemeSelect` that respelled
+ * `SettingRow`'s own arrangement to "line up inside the card" — its comment said so —
+ * and the interface scale, which was three bordered squares and a number that a reader
+ * had to group by proximity into one control.
+ *
+ * THE SCALE IS A `Stepper` NOW, through `SettingRow`'s new `stepper` kind: the value sits
+ * visibly between the two arrows that change it, and the reset is the readout itself,
+ * which is the platform's own convention. Three buttons became one pill.
+ *
+ * WHAT IS LEFT HERE is this app's: the theme registry (which the main process reads too,
+ * so it cannot move into the design system), the optimistic writes, and which of the two
+ * language-independent numbers the zoom is at.
  */
-function ThemePreview({ id }: { id: ThemeId }) {
-  const { tokens } = THEMES[id]
-  return (
-    <div
-      className="h-20 w-full overflow-hidden rounded-lg border"
-      style={{
-        backgroundColor: `rgb(${tokens.bgRgb})`,
-        borderColor: tokens.lineStrong,
-      }}
-    >
-      {/* Title bar */}
-      <div className="flex items-center gap-1 px-2 py-1.5" style={{ backgroundColor: tokens.surface }}>
-        {['redRgb', 'yellowRgb', 'greenRgb'].map((key) => (
-          <span
-            key={key}
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: `rgb(${tokens[key as 'redRgb']})` }}
-          />
-        ))}
-      </div>
-      {/* A sidebar, some text, an accent */}
-      <div className="flex h-full gap-1.5 p-2">
-        <div className="w-1/4 rounded" style={{ backgroundColor: tokens.surfaceStrong }} />
-        <div className="flex flex-1 flex-col gap-1">
-          <span className="h-1.5 w-3/4 rounded-full" style={{ backgroundColor: `rgb(${tokens.inkRgb})` }} />
-          <span
-            className="h-1.5 w-1/2 rounded-full"
-            style={{ backgroundColor: `rgb(${tokens.textSecondaryRgb})` }}
-          />
-          <span className="mt-1 h-2.5 w-2/5 rounded" style={{ backgroundColor: `rgb(${tokens.accentRgb})` }} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/**
- * Theme picker. The list is the registry, so a theme added in
- * src/themes.ts shows up here with no change to this file.
- */
-/**
- * Interface scale. The buttons walk the same steps as ⌘+ / ⌘−, and the value
- * shown follows the menu too — both go through the main process.
- */
-function ZoomControl() {
-  const { zoom, set, step } = useZoom()
-  const t = useT()
-  const percent = Math.round(zoom * 100)
-
-  return (
-    <div className="bg-surface border border-line-strong rounded-xl p-4 flex items-center justify-between gap-6">
-      <div className="flex-1">
-        <div className="text-sm font-medium mb-0.5">{t('settings.appearance.scale')}</div>
-        <p className="text-xs text-text-secondary/50">
-          {t('settings.appearance.scaleHelpBefore')}{' '}
-          {/* `Kbd` at its inline rung, where this was a `<kbd>` spelled here — the same
-              object the Shortcuts tab drew with a different ground and a `⌘` that was
-              not lifted. Two chords and two caps: these are two gestures, not one. */}
-          <Kbd size="xs" keys={['⌘', '+']} />{' '}
-          <Kbd size="xs" keys={['⌘', '−']} />
-          {t('settings.appearance.scaleHelpAfter')}
-        </p>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <button
-          onClick={() => step(-1)}
-          disabled={zoom <= MIN_ZOOM}
-          title={t('menu.zoomOut')}
-          className="flex items-center justify-center h-7 w-7 text-text-secondary bg-surface border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all disabled:opacity-40 disabled:hover:bg-surface"
-        >
-          <Minus className="w-3.5 h-3.5" />
-        </button>
-        {/* Tabular figures so the row does not jitter between 90% and 125%. */}
-        <span className="w-12 text-center text-sm font-medium tabular-nums">{percent}%</span>
-        <button
-          onClick={() => step(1)}
-          disabled={zoom >= MAX_ZOOM}
-          title={t('menu.zoomIn')}
-          className="flex items-center justify-center h-7 w-7 text-text-secondary bg-surface border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all disabled:opacity-40 disabled:hover:bg-surface"
-        >
-          <Plus className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => set(DEFAULT_ZOOM)}
-          disabled={zoom === DEFAULT_ZOOM}
-          title={t('settings.appearance.zoomReset')}
-          className="flex items-center justify-center h-7 w-7 text-text-secondary bg-surface border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all disabled:opacity-40 disabled:hover:bg-surface"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-        </button>
-      </div>
-    </div>
-  )
-}
 
 interface FormatSelectProps {
   /** The stored flag. `undefined` = never chosen, which reads as expanded. */
@@ -164,16 +96,16 @@ function useFormatSelect({ minimized, onChange, ariaLabel, errorMessage }: Forma
 }
 
 /**
- * Which appearance the file preview highlights code in.
+ * Which appearance the file preview highlights code in, as a row.
  *
- * A select rather than a switch because "follow the theme" is a third state, not
- * the off position of a toggle: pinning light and pinning dark are both real
- * answers, and neither is "don't follow".
+ * A select rather than a switch because "follow the theme" is a third state, not the off
+ * position of a toggle: pinning light and pinning dark are both real answers, and neither
+ * is "don't follow".
  *
- * Optimistic like every other control in Settings — the value moves first and
- * reverts if the write fails.
+ * Optimistic like every other control in Settings — the value moves first and reverts if
+ * the write fails.
  */
-function CodeThemeSelect() {
+function useCodeThemeRow(): SettingsCardRow {
   const { config, updateCodeTheme } = useConfig()
   const t = useT()
   const stored = config?.codeTheme ?? DEFAULT_CODE_THEME_MODE
@@ -195,76 +127,69 @@ function CodeThemeSelect() {
     }
   }
 
-  return (
-    <div className="flex items-center justify-between gap-6">
-      {/* Same shape as ToggleRow's own row, so the two line up inside the card. */}
-      <div className="min-w-0">
-        <div className="text-sm font-medium">{t('settings.appearance.codeTheme.label')}</div>
-        <p className="text-xs text-text-secondary/50 mt-0.5">{t('settings.appearance.codeTheme.help')}</p>
-      </div>
-      <div className="shrink-0">
-        <Select
-          value={value}
-          options={CODE_THEME_MODES.map((mode) => ({
-            value: mode,
-            label: t(`settings.appearance.codeTheme.${mode}`),
-          }))}
-          onChange={(next) => choose(next as CodeThemeMode)}
-          ariaLabel={t('settings.appearance.codeTheme.label')}
-          width={160}
-        />
-      </div>
-    </div>
-  )
+  return {
+    id: 'codeTheme',
+    label: t('settings.appearance.codeTheme.label'),
+    hint: t('settings.appearance.codeTheme.help'),
+    control: {
+      kind: 'select',
+      value,
+      options: CODE_THEME_MODES.map((mode) => ({
+        value: mode,
+        label: t(`settings.appearance.codeTheme.${mode}`),
+      })),
+      onChange: (next) => choose(next as CodeThemeMode),
+      ariaLabel: t('settings.appearance.codeTheme.label'),
+      width: 160,
+    },
+  }
 }
 
-/**
- * How far the theme chosen above reaches: Claude Code in the terminal panes, and
- * the syntax highlighting in the file preview.
- *
- * One card directly under the picker rather than a section of its own. Both rows
- * are meaningless apart from that choice — they say where it applies — and a
- * heading of their own made them read as separate subjects you had to scroll past
- * the sidebars to find.
- */
-function ThemeReachSection() {
-  const { config, updateSyncClaudeTheme } = useConfig()
-  const t = useT()
-
-  return (
-    <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-      <ToggleRow
-        label={t('settings.appearance.claudeTheme.label')}
-        help={t('settings.appearance.claudeTheme.help')}
-        value={config?.syncClaudeTheme}
-        onChange={updateSyncClaudeTheme}
-        errorMessage={t('toast.claudeThemeSyncFailed')}
-      />
-      <div className="border-t border-line-subtle" />
-      <CodeThemeSelect />
-    </div>
-  )
-}
-
-/**
- * The two optional panels of the two sidebars, in one card.
- *
- * The usage card switch used to live under Application, next to the machine
- * setup and the background workers — things the app DOES. Showing a panel or not
- * is a decision about what the window looks like, so it belongs here, and the
- * agent's context card (the same kind of panel, on the other side of the screen)
- * is only comprehensible next to it: one card, one question — which panels do
- * you want to see, and in which form.
- */
-function SidebarPanelsSection() {
+export function AppearancePage() {
   const {
     config,
+    updateTheme,
+    updateSyncClaudeTheme,
     updateUsageCardEnabled,
     updateUsageCardMinimized,
     updateAgentContextEnabled,
     updateAgentContextMinimized,
   } = useConfig()
+  const active = useTheme()
+  const { zoom, set, step } = useZoom()
   const t = useT()
+
+  const choose = async (id: ThemeId) => {
+    if (id === active) return
+    try {
+      await updateTheme(id)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t('toast.themeChangeFailed'), 'error')
+    }
+  }
+
+  // The registry's eight, as the colours a miniature is painted with — resolved here,
+  // because `ThemePreviewGrid` knows no theme and the registry cannot move into the
+  // design system (the main process reads it too). Same mapping as the quick-settings
+  // sheet's swatches, plus the three fields a window has and a colour patch has not.
+  const themes: ThemePreviewOption[] = THEME_IDS.map((id) => {
+    const { tokens } = THEMES[id]
+    return {
+      id,
+      label: t(THEMES[id].labelKey),
+      description: t(THEMES[id].descriptionKey),
+      colors: {
+        floor: `rgb(${tokens.bgRgb})`,
+        bar: tokens.surface,
+        panel: tokens.surfaceStrong,
+        line: tokens.lineStrong,
+        ink: `rgb(${tokens.inkRgb})`,
+        textSecondary: `rgb(${tokens.textSecondaryRgb})`,
+        accent: `rgb(${tokens.accentRgb})`,
+        lights: [`rgb(${tokens.redRgb})`, `rgb(${tokens.yellowRgb})`, `rgb(${tokens.greenRgb})`],
+      },
+    }
+  })
 
   // At the top of the component and not inside the rows' `trailing` callbacks: these are
   // hooks, and a hook called from a callback is a hook called conditionally. What the
@@ -283,95 +208,102 @@ function SidebarPanelsSection() {
     errorMessage: t('toast.sidebarPanelFailed'),
   })
 
-  return (
-    <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-      <ToggleRow
-        label={t('settings.appearance.sidebars.usageCard.label')}
-        help={t('settings.appearance.sidebars.usageCard.help')}
-        value={config?.usageCardEnabled}
-        onChange={updateUsageCardEnabled}
-        errorMessage={t('toast.sidebarPanelFailed')}
-        /* Hidden card, hidden format: the choice still exists in the config and
-           comes back untouched when the card does, but offering it here would be
-           asking how to lay out something that is not on screen. */
-        trailing={(enabled) => enabled && usageCardFormat}
-      />
-      <div className="border-t border-line-subtle" />
-      <ToggleRow
-        label={t('settings.appearance.sidebars.agentContext.label')}
-        help={t('settings.appearance.sidebars.agentContext.help')}
-        value={config?.agentContextEnabled}
-        onChange={updateAgentContextEnabled}
-        errorMessage={t('toast.sidebarPanelFailed')}
-        trailing={(enabled) => enabled && agentContextFormat}
-      />
-    </div>
-  )
-}
+  const claudeThemeRow = useToggleRow({
+    label: t('settings.appearance.claudeTheme.label'),
+    help: t('settings.appearance.claudeTheme.help'),
+    value: config?.syncClaudeTheme,
+    onChange: updateSyncClaudeTheme,
+    errorMessage: t('toast.claudeThemeSyncFailed'),
+  })
+  const codeThemeRow = useCodeThemeRow()
 
-export function AppearancePage() {
-  const { updateTheme } = useConfig()
-  const active = useTheme()
-  const t = useT()
-
-  const choose = async (id: ThemeId) => {
-    if (id === active) return
-    try {
-      await updateTheme(id)
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : t('toast.themeChangeFailed'), 'error')
-    }
-  }
+  const usageCardRow = useToggleRow({
+    label: t('settings.appearance.sidebars.usageCard.label'),
+    help: t('settings.appearance.sidebars.usageCard.help'),
+    value: config?.usageCardEnabled,
+    onChange: updateUsageCardEnabled,
+    errorMessage: t('toast.sidebarPanelFailed'),
+    /* Hidden card, hidden format: the choice still exists in the config and comes back
+       untouched when the card does, but offering it here would be asking how to lay out
+       something that is not on screen. */
+    trailing: (enabled) => enabled && usageCardFormat,
+  })
+  const agentContextRow = useToggleRow({
+    label: t('settings.appearance.sidebars.agentContext.label'),
+    help: t('settings.appearance.sidebars.agentContext.help'),
+    value: config?.agentContextEnabled,
+    onChange: updateAgentContextEnabled,
+    errorMessage: t('toast.sidebarPanelFailed'),
+    trailing: (enabled) => enabled && agentContextFormat,
+  })
 
   return (
     <div>
       <SectionHeader icon={Palette} title={t('settings.appearance.themeSection')} />
-      <div className="grid grid-cols-4 gap-3">
-        {THEME_IDS.map((id) => {
-          const theme = THEMES[id]
-          const isActive = id === active
-          return (
-            <button
-              key={id}
-              onClick={() => choose(id)}
-              aria-pressed={isActive}
-              className={`text-left p-2.5 rounded-xl border transition-all ${
-                isActive
-                  ? 'border-accent bg-accent/10'
-                  : 'border-line-strong bg-surface hover:bg-surface-strong'
-              }`}
-            >
-              <ThemePreview id={id} />
-              <div className="flex items-center gap-1.5 mt-2.5">
-                {/* min-w-0 + truncate: a longer theme name must not widen its
-                    column and unbalance the row. */}
-                <span className="text-sm font-medium truncate min-w-0">{t(theme.labelKey)}</span>
-                {isActive && <Check className="w-3.5 h-3.5 text-accent shrink-0" />}
-              </div>
-              <p className="text-xs text-text-secondary/50 mt-0.5">{t(theme.descriptionKey)}</p>
-            </button>
-          )
-        })}
-      </div>
-      <p className="text-xs text-text-secondary/50 mt-3">
+      <ThemePreviewGrid themes={themes} value={active} onSelect={(id) => choose(id as ThemeId)} />
+      <Text size="xs" tone="secondary" className="mt-3 block opacity-50">
         {t('settings.appearance.followsAccount')}
-      </p>
+      </Text>
 
-      {/* Part of the theme section, not a section of its own: it decides how far
-          the theme above reaches, and read anywhere else it is a question about
+      {/* Part of the theme section, not a section of its own: these two decide how far
+          the theme above reaches, and read anywhere else they are a question about
           nothing. */}
-      <div className="mt-3">
-        <ThemeReachSection />
-      </div>
+      <SettingsCard
+        className="mt-3"
+        rows={[{ id: 'claudeTheme', ...claudeThemeRow }, codeThemeRow]}
+      />
 
       <div className="mt-8">
         <SectionHeader icon={PanelsTopLeft} title={t('settings.appearance.sidebars.section')} />
-        <SidebarPanelsSection />
+        {/* The two optional panels of the two sidebars, in one card. The usage card's
+            switch used to live under Application, next to the machine setup and the
+            background workers — things the app DOES. Showing a panel or not is a decision
+            about what the window looks like, so it belongs here, and the agent's context
+            card (the same kind of panel, on the other side of the screen) is only
+            comprehensible next to it: one card, one question — which panels do you want
+            to see, and in which form. */}
+        <SettingsCard
+          rows={[
+            { id: 'usageCard', ...usageCardRow },
+            { id: 'agentContext', ...agentContextRow },
+          ]}
+        />
       </div>
 
       <div className="mt-8">
         <SectionHeader icon={Scaling} title={t('settings.appearance.displaySection')} />
-        <ZoomControl />
+        {/* The scale walks the same steps as ⌘+ / ⌘−, and the value shown follows the
+            menu too — both go through the main process. The caps at the end of the help
+            line are the row's (`hintKeys`), and where the value is KEPT is the card's
+            note: it is a fact about the whole card rather than about the control. */}
+        <SettingsCard
+          rows={[
+            {
+              id: 'zoom',
+              label: t('settings.appearance.scale'),
+              hint: t('settings.appearance.scaleHelp'),
+              hintKeys: [['⌘', '+'], ['⌘', '−']],
+              control: {
+                kind: 'stepper',
+                // Formatted here: the stepper draws a readout and does not know the
+                // number — the zoom walks 0.8, 0.9, 1, 1.1, 1.25, and a control that
+                // added one would be wrong at every rung.
+                value: `${Math.round(zoom * 100)}%`,
+                label: t('settings.appearance.scale'),
+                onDecrement: () => step(-1),
+                onIncrement: () => step(1),
+                canDecrement: zoom > MIN_ZOOM,
+                canIncrement: zoom < MAX_ZOOM,
+                decrementTitle: t('menu.zoomOut'),
+                incrementTitle: t('menu.zoomIn'),
+                onReset: () => set(DEFAULT_ZOOM),
+                resetTitle: t('settings.appearance.zoomReset'),
+                canReset: zoom !== DEFAULT_ZOOM,
+              },
+            },
+          ]}
+          note={t('settings.appearance.scaleNote')}
+        />
       </div>
     </div>
   )
