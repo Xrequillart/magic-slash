@@ -147,7 +147,7 @@ const BUTTON_ICON_SIZES = {
 const BUTTON_VARIANTS = {
   // Blue fill, white text — the one CTA in the product that carries the brand
   // colour. Shares the disabled recipe below rather than fading the blue: a
-  // `bg-brand/40` would put white text on a pale periwinkle and lose the contrast
+  // `bg-brand/40` would put white text on a pale blue and lose the contrast
   // the fill exists to provide.
   primary:
     'border-transparent bg-brand text-white shadow-button hover:bg-brand/90 hover:shadow-button-hover disabled:bg-black/[0.04] disabled:text-muted disabled:shadow-none',
