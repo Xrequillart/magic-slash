@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { SectionHeader, Select } from '@ds/desktop'
-import { CheckCircle2, XCircle, Download, RefreshCw, ExternalLink, Copy, Wrench, Loader2 } from '@ds/desktop/icons'
-import type { McpServerStatus, PrerequisiteId, PrerequisiteStatus, SetupStatus } from '../../../types'
+import { HealthCard, SectionHeader, type RepairRow } from '@ds/desktop'
+import { Download, RefreshCw, Wrench } from '@ds/desktop/icons'
+import type { McpServerStatus, PrerequisiteId, SetupStatus } from '../../../types'
 import { useT } from '../../i18n'
 import { SELECT_WIDTH } from '../../theme/controls'
 import { getSetupStatus, SETUP_SIMULATION_EVENT } from '../../dev/simulatedSetup'
@@ -27,6 +27,20 @@ import { getSetupStatus, SETUP_SIMULATION_EVENT } from '../../dev/simulatedSetup
  * ever raised the question of whether it mattered, and the answer was always the
  * same: fix it or ignore it forever. Optional tools are checked by the first-run
  * wizard, which is where a nice-to-have belongs.
+ *
+ * WHAT DRAWS IT
+ * ---------------------------------------------------------------------------
+ * `HealthCard`, the design system's, in all three states — checking, failed, and the
+ * verdict with its repairs — so the mark, the tone and the arrangement are the same
+ * ones the telemetry card downstairs wears. The faults are `RepairList`: they were
+ * three lists in three shapes here, with the repair button spelled out four times in
+ * raw classes and one of them an `<a target="_blank">`, which in Electron is a
+ * renderer that can be navigated away from the app.
+ *
+ * WHAT IS LEFT IN THIS FILE is the whole of the reading and none of the drawing: which
+ * tools count as missing, which MCP servers are worth fixing given the integrations in
+ * force, what each repair does, and the one confirmation that stands between a picker
+ * and somebody losing their Jira access mid-ticket.
  */
 export function SetupHealthCard() {
   const t = useT()
@@ -159,24 +173,23 @@ export function SetupHealthCard() {
     />
   )
 
-  // Checking, or the check never came back. Same shape as the resolved card — an
-  // icon and a sentence — so nothing shifts when the answer lands.
+  // Checking, or the check never came back. `HealthCard` is the same shape as the
+  // resolved card below — a mark and a sentence — so nothing shifts when the answer
+  // lands, and the two states it is drawn in are its own: `checking` is the spinner,
+  // `failed` is the check not coming back, which is not the same as something being
+  // broken. No `title`: the section heading above already says what this is about.
   if (!status) {
     return (
       <div>
         {header}
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <div className="flex items-start gap-2.5">
-            {checkFailed
-              ? <XCircle className="w-4 h-4 mt-0.5 shrink-0 text-red" />
-              : <Loader2 className="w-4 h-4 mt-0.5 shrink-0 text-icon animate-spin" />}
-            <div className="text-xs text-text-secondary/70">
-              {checkFailed
-                ? t('settings.application.setup.checkFailed')
-                : t('settings.application.setup.checking')}
-            </div>
-          </div>
-        </div>
+        <HealthCard
+          state={checkFailed ? 'failed' : 'checking'}
+          message={
+            checkFailed
+              ? t('settings.application.setup.checkFailed')
+              : t('settings.application.setup.checking')
+          }
+        />
       </div>
     )
   }
@@ -194,6 +207,87 @@ export function SetupHealthCard() {
   // so the sentence under it reads as being about what you just picked.
   const atlassianSelected = confirmingOff ? false : status.integrations.atlassian
 
+  // THE FAULTS, IN ONE LIST — see `RepairList`. They were three lists in three shapes:
+  // bulleted tools with a button, unbulleted MCP servers with another, and a skills line
+  // with a third. They are the same kind of thing (something this machine needs and has
+  // not got) and they are counted together in the verdict above, so they are one list.
+  const fixes: RepairRow[] = [
+    ...missingRequired.map((prerequisite) => ({
+      id: `tool:${prerequisite.id}`,
+      message: prerequisite.outdated
+        ? t('settings.application.setup.prerequisite.outdated', {
+            name: prerequisite.id,
+            version: prerequisite.version ?? '?',
+            min: prerequisite.minVersion ?? '?',
+          })
+        : t('settings.application.setup.prerequisite.missing', { name: prerequisite.id }),
+      // Three affordances for three genuinely different cases, and collapsing them would
+      // strand someone: we can install it ourselves, we know the command but cannot run
+      // it, or we can only point at a page. Claude Code takes the first branch like
+      // everything else — it has no brew formula, but it ships an official installer we
+      // run for the user, and being the one REQUIRED tool the app could not repair made
+      // it the worst possible thing to leave as a link.
+      action: prerequisite.installable
+        ? {
+            kind: 'fix' as const,
+            label: installing === prerequisite.id
+              ? t('settings.application.setup.installing')
+              : t('settings.application.setup.install'),
+            icon: Download,
+            busy: installing === prerequisite.id,
+            disabled: installing !== null,
+            onClick: () => install(prerequisite.id),
+          }
+        : prerequisite.installCommand
+          ? {
+              kind: 'copy' as const,
+              command: prerequisite.installCommand,
+              copiedLabel: t('common.copied'),
+              copied: copied === prerequisite.installCommand,
+              onCopy: copy,
+            }
+          : prerequisite.docsUrl
+            ? {
+                kind: 'open' as const,
+                label: t('settings.application.setup.getIt'),
+                // The app's own way out to the browser. This was an `<a target="_blank">`,
+                // the only one in the app: in Electron that is a renderer that can be
+                // navigated away from itself.
+                onOpen: () => window.electronAPI.shell.openExternal(prerequisite.docsUrl!),
+              }
+            : undefined,
+    })),
+    ...mcpToFix.map((server) => ({
+      id: `mcp:${server.id}`,
+      // `legacy` and `missing` are genuinely different situations: one is an absence to
+      // fill, the other a working config we refuse to overwrite without asking (see
+      // main/setup/mcp.ts).
+      message: server.state === 'legacy'
+        ? t('settings.application.setup.mcp.legacy', { name: server.id })
+        : t('settings.application.setup.mcp.missing', { name: server.id }),
+      action: {
+        kind: 'fix' as const,
+        label: server.state === 'legacy'
+          ? t('settings.application.setup.mcp.migrate')
+          : t('settings.application.setup.mcp.configure'),
+        busy: busy === `mcp:${server.id}`,
+        onClick: () => provisionMcp(server.id),
+      },
+    })),
+    ...(status.missingSkills.length > 0
+      ? [{
+          id: 'skills',
+          message: t('settings.application.setup.skills.missing', { names: status.missingSkills.join(', ') }),
+          action: {
+            kind: 'fix' as const,
+            label: t('settings.application.setup.skills.reinstall'),
+            busy: busy === 'skills',
+            onClick: reinstallSkills,
+          },
+        }]
+      : []),
+  ]
+
   return (
     <div>
       {/* Titled like every other section of the Application tab, rather than from
@@ -201,190 +295,50 @@ export function SetupHealthCard() {
           in the box would make it read as a different kind of thing. The status
           icon stays inside — it belongs to the verdict, not to the heading. */}
       {header}
-      <div className="bg-surface border border-line-strong rounded-xl p-4">
-        <div className="flex items-start gap-2.5">
-          {/* Theme tokens rather than Tailwind's numbered scale — a fixed colour
-              stops being readable on half the themes (see themes.test.ts). */}
-          {healthy
-            ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-green" />
-            : <XCircle className="w-4 h-4 mt-0.5 shrink-0 text-red" />}
-          <div className="min-w-0 flex-1">
-            <div className="text-xs text-text-secondary/70">
-              {healthy ? t('settings.application.setup.healthy') : t('settings.application.setup.degraded')}
-            </div>
-
-            {/* Required tools that are missing or too old: nothing runs until these are fixed. */}
-            {missingRequired.length > 0 && (
-              <ul className="mt-2.5 space-y-2">
-                {missingRequired.map((prerequisite) => (
-                  <PrerequisiteRow
-                    key={prerequisite.id}
-                    prerequisite={prerequisite}
-                    installing={installing === prerequisite.id}
-                    disabled={installing !== null}
-                    onInstall={() => install(prerequisite.id)}
-                    onCopy={copy}
-                    copied={copied}
-                  />
-                ))}
-              </ul>
-            )}
-
-            {/* The installer's own output while it works. Hidden when idle. */}
-            {installing && installLog && (
-              <pre className="mt-2 max-h-24 overflow-y-auto text-[10px] leading-relaxed text-text-secondary/60 bg-bg border border-line rounded-lg p-2 whitespace-pre-wrap">
-                {installLog}
-              </pre>
-            )}
-
-            {mcpToFix.map((server) => (
-              <div key={server.id} className="mt-2 flex items-start justify-between gap-2">
-                <div className="text-xs text-text-secondary/70">
-                  {/* `legacy` and `missing` are genuinely different situations: one is an
-                      absence to fill, the other a working config we refuse to overwrite
-                      without asking (see main/setup/mcp.ts). */}
-                  {server.state === 'legacy'
-                    ? t('settings.application.setup.mcp.legacy', { name: server.id })
-                    : t('settings.application.setup.mcp.missing', { name: server.id })}
-                </div>
-                <button
-                  onClick={() => provisionMcp(server.id)}
-                  disabled={busy === `mcp:${server.id}`}
-                  className="shrink-0 px-2 py-1 text-[11px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-50"
-                >
-                  {server.state === 'legacy'
-                    ? t('settings.application.setup.mcp.migrate')
-                    : t('settings.application.setup.mcp.configure')}
-                </button>
-              </div>
-            ))}
-
-            {status.missingSkills.length > 0 && (
-              <div className="mt-2 flex items-start justify-between gap-2">
-                <div className="text-xs text-text-secondary/70">
-                  {t('settings.application.setup.skills.missing', { names: status.missingSkills.join(', ') })}
-                </div>
-                <button
-                  onClick={reinstallSkills}
-                  disabled={busy === 'skills'}
-                  className="shrink-0 px-2 py-1 text-[11px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-50"
-                >
-                  {busy === 'skills' ? t('common.loading') : t('settings.application.setup.skills.reinstall')}
-                </button>
-              </div>
-            )}
-
-            {/* Integrations. Lives here rather than in its own section because it is the
-                same decision the first-run wizard makes, reading the same status — and
-                because the wizard promises it can be changed later, which has to be
-                true somewhere. A select rather than a pair of buttons: it is one choice
-                between two mutually exclusive values, and it says which one is in
-                effect without the reader having to compare two highlight states. */}
-            <div className="mt-3 pt-3 border-t border-line">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-xs font-medium text-text-secondary/70">
-                  {t('settings.application.setup.integrations.title')}
-                </div>
-                <Select
-                  value={atlassianSelected ? 'both' : 'github'}
-                  options={[
-                    { value: 'both', label: t('setup.wizard.integrations.both') },
-                    { value: 'github', label: t('setup.wizard.integrations.githubOnly') },
-                  ]}
-                  onChange={(next) => pickIntegrations(next === 'both', status.integrations.atlassian)}
-                  disabled={busy === 'integrations'}
-                  ariaLabel={t('settings.application.setup.integrations.title')}
-                  width={SELECT_WIDTH}
-                />
-              </div>
-              {confirmingOff && (
-                <div className="mt-2 flex items-start justify-between gap-2">
-                  <div className="text-[11px] text-text-secondary/50">
-                    {t('settings.application.setup.integrations.offWarning')}
-                  </div>
-                  <button
-                    onClick={() => applyIntegrations(false)}
-                    disabled={busy === 'integrations'}
-                    className="shrink-0 px-2 py-1 text-[11px] font-medium text-red bg-red/10 border border-red/20 rounded-md hover:bg-red/20 transition-colors disabled:opacity-50"
-                  >
-                    {t('settings.application.setup.integrations.confirmOff')}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      <HealthCard
+        state={healthy ? 'healthy' : 'degraded'}
+        message={healthy
+          ? t('settings.application.setup.healthy')
+          : t('settings.application.setup.degraded')}
+        fixes={fixes}
+        // The installer's own output while it works. Cleared when idle, so the pane
+        // cannot outlive the install it belonged to.
+        log={installing ? installLog : undefined}
+        // Integrations. In this card rather than in a section of its own because it is
+        // the same decision the first-run wizard makes, reading the same status — and
+        // because the wizard promises it can be changed later, which has to be true
+        // somewhere. A select rather than a pair of buttons: it is one choice between two
+        // mutually exclusive values, and it says which one is in effect without the
+        // reader having to compare two highlight states.
+        setting={{
+          label: t('settings.application.setup.integrations.title'),
+          control: {
+            kind: 'select',
+            value: atlassianSelected ? 'both' : 'github',
+            options: [
+              { value: 'both', label: t('setup.wizard.integrations.both') },
+              { value: 'github', label: t('setup.wizard.integrations.githubOnly') },
+            ],
+            onChange: (next) => pickIntegrations(next === 'both', status.integrations.atlassian),
+            disabled: busy === 'integrations',
+            ariaLabel: t('settings.application.setup.integrations.title'),
+            width: SELECT_WIDTH,
+          },
+        }}
+        // The one choice on this card that is not applied on the spot — see
+        // `applyIntegrations`. It is an alert and not a row because it has no value of
+        // its own: it is the reason the picker above is showing something that is not in
+        // effect yet.
+        alert={confirmingOff
+          ? {
+              message: t('settings.application.setup.integrations.offWarning'),
+              actions: [{
+                label: t('settings.application.setup.integrations.confirmOff'),
+                onClick: () => applyIntegrations(false),
+              }],
+            }
+          : undefined}
+      />
     </div>
-  )
-}
-
-interface PrerequisiteRowProps {
-  prerequisite: PrerequisiteStatus
-  installing: boolean
-  disabled: boolean
-  copied: string | null
-  onInstall: () => void
-  onCopy: (text: string) => void
-}
-
-/**
- * One tool, and the shortest path to having it.
- *
- * Three different affordances, because there are three genuinely different cases and
- * collapsing them would strand someone: we can install it ourselves (button), we know
- * the command but cannot run it (copy), or we can only point at a page (link).
- *
- * Claude Code takes the first branch like everything else. It has no brew formula, but
- * it ships an official installer we run for the user — being the one REQUIRED tool the
- * app could not repair made it the worst possible thing to leave as a link.
- */
-function PrerequisiteRow({ prerequisite, installing, disabled, copied, onInstall, onCopy }: PrerequisiteRowProps) {
-  const t = useT()
-
-  return (
-    <li className="flex items-start justify-between gap-2">
-      <div className="text-xs text-text-secondary/70 flex gap-1.5 min-w-0">
-        <span aria-hidden className="text-red">•</span>
-        <span>
-          {prerequisite.outdated
-            ? t('settings.application.setup.prerequisite.outdated', {
-                name: prerequisite.id,
-                version: prerequisite.version ?? '?',
-                min: prerequisite.minVersion ?? '?',
-              })
-            : t('settings.application.setup.prerequisite.missing', { name: prerequisite.id })}
-        </span>
-      </div>
-
-      {prerequisite.installable ? (
-        <button
-          onClick={onInstall}
-          disabled={disabled}
-          className="shrink-0 flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-50"
-        >
-          <Download className="w-3 h-3" />
-          {installing ? t('settings.application.setup.installing') : t('settings.application.setup.install')}
-        </button>
-      ) : prerequisite.installCommand ? (
-        <button
-          onClick={() => onCopy(prerequisite.installCommand!)}
-          className="shrink-0 flex items-center gap-1 px-2 py-1 text-[11px] font-mono text-text-secondary border border-line rounded-md hover:bg-surface hover:text-ink transition-colors"
-        >
-          <Copy className="w-3 h-3" />
-          {copied === prerequisite.installCommand ? t('common.copied') : prerequisite.installCommand}
-        </button>
-      ) : prerequisite.docsUrl ? (
-        <a
-          href={prerequisite.docsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="shrink-0 flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-text-secondary border border-line rounded-md hover:bg-surface hover:text-ink transition-colors"
-        >
-          <ExternalLink className="w-3 h-3" />
-          {t('settings.application.setup.getIt')}
-        </a>
-      ) : null}
-    </li>
   )
 }

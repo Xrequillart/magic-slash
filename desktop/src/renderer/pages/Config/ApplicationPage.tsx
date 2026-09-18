@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react'
 import {
-  AlertTriangle, BarChart3, Check, Columns, GitPullRequest, Lightbulb,
-  MonitorSmartphone, Search, X,
+  AlertTriangle, BarChart3, Columns, GitPullRequest, Lightbulb,
+  MonitorSmartphone, Search,
 } from '@ds/desktop/icons'
-import { SectionHeader, Select, Switch } from '@ds/desktop'
+import { DisclosureCard, SectionHeader, SettingsCard } from '@ds/desktop'
 import { TelemetryHealthCard } from './TelemetryHealthCard'
 import { SetupHealthCard } from './SetupHealthCard'
-import { ToggleRow } from './ToggleRow'
+import { useToggleRow } from './ToggleRow'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
-import { useT, type MessageKey, type Translate } from '../../i18n'
+import { useT, type MessageKey } from '../../i18n'
 import { SELECT_WIDTH } from '../../theme/controls'
 import type { SpotlightShortcut } from '../../../types'
 
@@ -28,6 +28,19 @@ import type { SpotlightShortcut } from '../../../types'
  * It owns its own state, which is what moving out of the modal bought: the page used to
  * borrow eight `useState`s from the settings shell, and the shell kept them alive for
  * the ten tabs that never looked at them.
+ *
+ * ── SIX CARDS, TWO COMPONENTS ─────────────────────────────────────────────────────
+ *
+ * `SettingsCard` for five of them and `DisclosureCard` for the sixth, both the design
+ * system's. This page was the last and worst of the hand-drawn plates: six spellings of
+ * `bg-surface border border-line-strong rounded-xl p-4`, nine rows of label-over-help
+ * with a control at the right written out by hand — the shape `SettingRow` has owned
+ * since the Claude Code tab — a red strip approximating `Banner`, four sizes of small
+ * print, and dividers pushed between the rows as loose `<div>`s that only stayed correct
+ * while nobody added a row at the end.
+ *
+ * WHAT IS LEFT HERE IS THE WIRING: which switch writes where, which of them go through
+ * the store because another pane reads them, and which rows are offered at all.
  */
 
 /**
@@ -36,7 +49,7 @@ import type { SpotlightShortcut } from '../../../types'
  *
  * ONE ENTRY PER KEY, and not the single label this was. A `<select>` needs a flat
  * string and joins them below; the Shortcuts tab needs the keys apart, because `Kbd`
- * sets a modifier glyph a rung above a word and a chord arriving as `'\u2303 Space'`
+ * sets a modifier glyph a rung above a word and a chord arriving as `'⌃ Space'`
  * would have to be split on a space that is a separator here and a KEY NAME there.
  * Composed where the chords are written rather than parsed where they are drawn.
  */
@@ -55,14 +68,14 @@ const PR_WATCHER_INTERVAL_LABEL: Record<(typeof PR_WATCHER_INTERVALS)[number], M
 }
 
 export const SPOTLIGHT_OPTIONS: { keys: string[]; value: string }[] = [
-  { keys: ['\u2303', 'Space'], value: 'Control+Space' },
-  { keys: ['\u2303\u21E7', 'Space'], value: 'Control+Shift+Space' },
-  { keys: ['\u2325', 'Space'], value: 'Alt+Space' },
-  { keys: ['\u2325\u21E7', 'Space'], value: 'Alt+Shift+Space' },
-  { keys: ['\u2303', 'M'], value: 'Control+M' },
-  { keys: ['\u2303\u21E7', 'M'], value: 'Control+Shift+M' },
-  { keys: ['\u2325', 'M'], value: 'Alt+M' },
-  { keys: ['\u2325\u21E7', 'M'], value: 'Alt+Shift+M' },
+  { keys: ['⌃', 'Space'], value: 'Control+Space' },
+  { keys: ['⌃⇧', 'Space'], value: 'Control+Shift+Space' },
+  { keys: ['⌥', 'Space'], value: 'Alt+Space' },
+  { keys: ['⌥⇧', 'Space'], value: 'Alt+Shift+Space' },
+  { keys: ['⌃', 'M'], value: 'Control+M' },
+  { keys: ['⌃⇧', 'M'], value: 'Control+Shift+M' },
+  { keys: ['⌥', 'M'], value: 'Alt+M' },
+  { keys: ['⌥⇧', 'M'], value: 'Alt+Shift+M' },
 ]
 
 // The two halves of the activity-recording breakdown. Message keys rather than
@@ -93,42 +106,6 @@ const USAGE_LOGS_EXCLUDED: MessageKey[] = [
   'settings.application.usageLogs.excluded.args',
   'settings.application.usageLogs.excluded.otherSkills',
 ]
-
-/**
- * What activity recording does and does not send, side by side. Shown whatever
- * the toggle's state: someone who turned it off is exactly the person who wants
- * to know what they turned off, and someone deciding needs the two lists to
- * compare — a paragraph the length of both never gets read.
- *
- * `t` is passed in rather than pulled from useT() so the desktop and the webapp's
- * copy of this block stay diffable line by line.
- */
-function UsageLogsBreakdown({ t }: { t: Translate }) {
-  const columns = [
-    { titleKey: 'settings.application.usageLogs.collected', keys: USAGE_LOGS_COLLECTED, Icon: Check, tone: 'text-green' },
-    { titleKey: 'settings.application.usageLogs.excluded', keys: USAGE_LOGS_EXCLUDED, Icon: X, tone: 'text-red' },
-  ] as const
-
-  return (
-    <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4 mt-4 pt-4 border-t border-line-subtle">
-      {columns.map(({ titleKey, keys, Icon, tone }) => (
-        <div key={titleKey}>
-          <div className="text-[11px] uppercase tracking-wider text-text-secondary/50 mb-2">
-            {t(titleKey)}
-          </div>
-          <ul className="space-y-1.5">
-            {keys.map((key) => (
-              <li key={key} className="flex items-start gap-2 text-xs text-text-secondary leading-snug">
-                <Icon className={`w-3.5 h-3.5 shrink-0 mt-px ${tone}`} />
-                <span>{t(key)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
-  )
-}
 
 export function ApplicationPage() {
   const t = useT()
@@ -197,6 +174,37 @@ export function ApplicationPage() {
     }
   }
 
+  // The one switch on this page whose write is the app's ordinary optimistic one, so it
+  // is the one that reaches for the hook. The others each do something particular on the
+  // way — registering a global shortcut with the OS, pushing the result into the store —
+  // and spell their own handler above.
+  const planSyncRow = useToggleRow({
+    label: t('settings.application.planSync.label'),
+    help: t('settings.application.planSync.help'),
+    value: config?.planSyncEnabled,
+    onChange: async (next) => {
+      const result = await window.electronAPI.config.setPlanSyncEnabled(next)
+      setConfig(result.config)
+    },
+    errorMessage: t('settings.application.planSync.error'),
+  })
+
+  const usageLogsRow = useToggleRow({
+    label: t('settings.application.usageLogs.label'),
+    help: t('settings.application.usageLogs.help'),
+    value: usageLogsEnabled,
+    onChange: async (next) => {
+      setUsageLogsEnabled(next)
+      const result = await window.electronAPI.config.setUsageLogsEnabled(next)
+      setConfig(result.config)
+    },
+    // The generic key: a failed write here is a setting that did not save, and the
+    // switch springing back is most of the message. Previously this switch had no
+    // failure path at all — it moved, the write rejected into nothing, and the next
+    // config load put it back with no explanation.
+    errorMessage: t('toast.settingUpdateFailed'),
+  })
+
   return (
     <div className="flex flex-col gap-8">
       {/* Machine setup (prerequisites, MCP servers, integrations) */}
@@ -209,221 +217,207 @@ export function ApplicationPage() {
           switch did nothing, so the permission went and the state stayed. */}
       <div>
         <SectionHeader icon={Columns} title={t('settings.application.split.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.split.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.split.help')}</div>
-            </div>
-            <Switch
-              checked={splitActive}
-              onChange={() => toggleSplitActive()}
-              label={t('settings.application.split.label')}
-            />
-          </div>
-        </div>
+        <SettingsCard
+          rows={[
+            {
+              id: 'split',
+              label: t('settings.application.split.label'),
+              hint: t('settings.application.split.help'),
+              control: {
+                kind: 'switch',
+                checked: splitActive,
+                onChange: () => toggleSplitActive(),
+                label: t('settings.application.split.label'),
+              },
+            },
+          ]}
+        />
       </div>
 
       {/* Spotlight Section */}
       <div>
         <SectionHeader icon={Search} title={t('settings.application.spotlight.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.spotlight.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.spotlight.help')}</div>
-            </div>
-            <Switch
-              checked={spotlightEnabled}
-              onChange={handleSpotlightToggle}
-              label={t('settings.application.spotlight.label')}
-            />
-          </div>
-          <div className="border-t border-line-subtle pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">{t('settings.application.spotlight.shortcutLabel')}</div>
-                <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.spotlight.shortcutHelp')}</div>
-              </div>
-              <Select
-                value={spotlightShortcut}
-                options={SPOTLIGHT_OPTIONS.map((opt) => ({ value: opt.value, label: opt.keys.join(' ') }))}
-                onChange={(next) => handleSpotlightShortcutChange(next as SpotlightShortcut)}
-                disabled={!spotlightEnabled}
-                ariaLabel={t('settings.application.spotlight.shortcutLabel')}
-                width={SELECT_WIDTH}
-              />
-            </div>
-          </div>
-          {spotlightError && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-red/10 border border-red/20 rounded-lg text-xs text-red">
-              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>{t('settings.application.spotlight.error')}</span>
-            </div>
-          )}
-        </div>
+        <SettingsCard
+          rows={[
+            {
+              id: 'spotlight',
+              label: t('settings.application.spotlight.label'),
+              hint: t('settings.application.spotlight.help'),
+              control: {
+                kind: 'switch',
+                checked: spotlightEnabled,
+                onChange: handleSpotlightToggle,
+                label: t('settings.application.spotlight.label'),
+              },
+            },
+            {
+              id: 'spotlightShortcut',
+              label: t('settings.application.spotlight.shortcutLabel'),
+              hint: t('settings.application.spotlight.shortcutHelp'),
+              control: {
+                kind: 'select',
+                value: spotlightShortcut,
+                options: SPOTLIGHT_OPTIONS.map((opt) => ({ value: opt.value, label: opt.keys.join(' ') })),
+                onChange: (next) => handleSpotlightShortcutChange(next as SpotlightShortcut),
+                disabled: !spotlightEnabled,
+                ariaLabel: t('settings.application.spotlight.shortcutLabel'),
+                width: SELECT_WIDTH,
+              },
+            },
+          ]}
+          /* The chord is set and the OS refused to register it — another app holds it.
+             The picker above still shows what was chosen, so this strip is the only
+             thing saying it did not take. */
+          alert={
+            spotlightError
+              ? { message: t('settings.application.spotlight.error'), icon: AlertTriangle }
+              : undefined
+          }
+        />
       </div>
 
       {/* Background App Section */}
       <div>
         <SectionHeader icon={MonitorSmartphone} title={t('settings.application.background.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.background.autoStartLabel')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.background.autoStartHelp')}</div>
-            </div>
-            <Switch
-              checked={autoStart}
-              onChange={() => {
-                const newValue = !autoStart
-                setAutoStart(newValue)
-                window.electronAPI.config.setAutoStart(newValue)
-              }}
-              label={t('settings.application.background.autoStartLabel')}
-            />
-          </div>
-          <div className="border-t border-line-subtle pt-4">
-            <div className="text-sm font-medium mb-1">{t('settings.application.background.menuBarLabel')}</div>
-            <div className="text-xs text-text-secondary/50">
-              {t('settings.application.background.menuBarHelp')}
-            </div>
-          </div>
-        </div>
+        <SettingsCard
+          rows={[
+            {
+              id: 'autoStart',
+              label: t('settings.application.background.autoStartLabel'),
+              hint: t('settings.application.background.autoStartHelp'),
+              control: {
+                kind: 'switch',
+                checked: autoStart,
+                onChange: () => {
+                  const newValue = !autoStart
+                  setAutoStart(newValue)
+                  window.electronAPI.config.setAutoStart(newValue)
+                },
+                label: t('settings.application.background.autoStartLabel'),
+              },
+            },
+            // No control, deliberately: closing the window leaving the app in the menu
+            // bar is not a setting, it is what the row above implies. It is in the card
+            // because that is what it is about.
+            {
+              id: 'menuBar',
+              label: t('settings.application.background.menuBarLabel'),
+              hint: t('settings.application.background.menuBarHelp'),
+            },
+          ]}
+        />
       </div>
 
       {/* Plan session sync (ON by default — an explicit false opts out) */}
       <div>
         <SectionHeader icon={Lightbulb} title={t('settings.application.planSync.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <ToggleRow
-            label={t('settings.application.planSync.label')}
-            help={t('settings.application.planSync.help')}
-            value={config?.planSyncEnabled}
-            onChange={async (next) => {
-              const result = await window.electronAPI.config.setPlanSyncEnabled(next)
-              setConfig(result.config)
-            }}
-            errorMessage={t('settings.application.planSync.error')}
-          />
-          <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-            {t('settings.application.planSync.footnote')}
-          </div>
-        </div>
+        <SettingsCard
+          rows={[{ id: 'planSync', ...planSyncRow }]}
+          note={t('settings.application.planSync.footnote')}
+        />
       </div>
 
       {/* PR Review Watcher Section */}
       <div>
         <SectionHeader icon={GitPullRequest} title={t('settings.application.prWatcher.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.prWatcher.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.prWatcher.help')}</div>
-            </div>
-            <Switch
-              checked={prWatcherEnabled}
-              onChange={async () => {
-                const newValue = !prWatcherEnabled
-                setPrWatcherEnabled(newValue)
-                // Pushed into the store, not just written to disk: the PR card in
-                // the agent sidebar reads this setting to decide whether to say
-                // "watching is off", and it would otherwise keep claiming the
-                // opposite until the next config load.
-                setConfig(await window.electronAPI.prWatcher.setEnabled(newValue))
-              }}
-              label={t('settings.application.prWatcher.label')}
-            />
-          </div>
-          {prWatcherEnabled && (
-            <>
-              <div className="border-t border-line-subtle pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium">{t('settings.application.prWatcher.intervalLabel')}</div>
-                    <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.prWatcher.intervalHelp')}</div>
-                  </div>
-                  {/* The interval is a NUMBER of milliseconds and the picker deals in
-                      strings, so it is parsed on the way back — where the native select
-                      made the same trip through `e.target.value`. */}
-                  <Select
-                    value={String(prWatcherInterval)}
-                    options={PR_WATCHER_INTERVALS.map((ms) => ({
-                      value: String(ms),
-                      label: t(PR_WATCHER_INTERVAL_LABEL[ms]),
-                    }))}
-                    onChange={(next) => {
-                      const newInterval = parseInt(next, 10)
-                      setPrWatcherInterval(newInterval)
-                      window.electronAPI.prWatcher.setInterval(newInterval)
-                    }}
-                    ariaLabel={t('settings.application.prWatcher.intervalLabel')}
-                    width={SELECT_WIDTH}
-                  />
-                </div>
-              </div>
-              <div className="border-t border-line-subtle pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium">{t('settings.application.prWatcher.autoLaunchLabel')}</div>
-                    <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.prWatcher.autoLaunchHelp')}</div>
-                  </div>
-                  <Switch
-              checked={prWatcherAutoLaunch}
-              onChange={() => {
-                const newValue = !prWatcherAutoLaunch
-                setPrWatcherAutoLaunch(newValue)
-                window.electronAPI.prWatcher.setAutoLaunchSkills(newValue)
-              }}
-              label={t('settings.application.prWatcher.autoLaunchLabel')}
-            />
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+        <SettingsCard
+          rows={[
+            {
+              id: 'prWatcher',
+              label: t('settings.application.prWatcher.label'),
+              hint: t('settings.application.prWatcher.help'),
+              control: {
+                kind: 'switch',
+                checked: prWatcherEnabled,
+                onChange: async () => {
+                  const newValue = !prWatcherEnabled
+                  setPrWatcherEnabled(newValue)
+                  // Pushed into the store, not just written to disk: the PR card in
+                  // the agent sidebar reads this setting to decide whether to say
+                  // "watching is off", and it would otherwise keep claiming the
+                  // opposite until the next config load.
+                  setConfig(await window.electronAPI.prWatcher.setEnabled(newValue))
+                },
+                label: t('settings.application.prWatcher.label'),
+              },
+            },
+            // Both are questions about a watcher that is running: how often, and what it
+            // may start on its own. Left out rather than dimmed while it is not.
+            prWatcherEnabled && {
+              id: 'prWatcherInterval',
+              label: t('settings.application.prWatcher.intervalLabel'),
+              hint: t('settings.application.prWatcher.intervalHelp'),
+              control: {
+                kind: 'select' as const,
+                value: String(prWatcherInterval),
+                // The interval is a NUMBER of milliseconds and the picker deals in
+                // strings, so it is parsed on the way back — where the native select
+                // made the same trip through `e.target.value`.
+                options: PR_WATCHER_INTERVALS.map((ms) => ({
+                  value: String(ms),
+                  label: t(PR_WATCHER_INTERVAL_LABEL[ms]),
+                })),
+                onChange: (next: string) => {
+                  const newInterval = parseInt(next, 10)
+                  setPrWatcherInterval(newInterval)
+                  window.electronAPI.prWatcher.setInterval(newInterval)
+                },
+                ariaLabel: t('settings.application.prWatcher.intervalLabel'),
+                width: SELECT_WIDTH,
+              },
+            },
+            prWatcherEnabled && {
+              id: 'prWatcherAutoLaunch',
+              label: t('settings.application.prWatcher.autoLaunchLabel'),
+              hint: t('settings.application.prWatcher.autoLaunchHelp'),
+              control: {
+                kind: 'switch' as const,
+                checked: prWatcherAutoLaunch,
+                onChange: () => {
+                  const newValue = !prWatcherAutoLaunch
+                  setPrWatcherAutoLaunch(newValue)
+                  window.electronAPI.prWatcher.setAutoLaunchSkills(newValue)
+                },
+                label: t('settings.application.prWatcher.autoLaunchLabel'),
+              },
+            },
+          ]}
+        />
       </div>
 
       {/* Activity recording (ON by default — an explicit false opts out) */}
       <div>
         <SectionHeader icon={BarChart3} title={t('settings.application.usageLogs.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.usageLogs.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">
-                {t('settings.application.usageLogs.help')}
-              </div>
-            </div>
-            <Switch
-              checked={usageLogsEnabled}
-              onChange={async () => {
-                const newValue = !usageLogsEnabled
-                setUsageLogsEnabled(newValue)
-                const result = await window.electronAPI.config.setUsageLogsEnabled(newValue)
-                setConfig(result.config)
-              }}
-              label={t('settings.application.usageLogs.label')}
-            />
-          </div>
-          {/*
-            The breakdown answers "what am I sharing?", so it goes away with the
-            sharing — same for the sentence about who can read it. What stays in
-            both states is the agents caveat: it is truest for the person who just
-            turned this off, since their agents keep syncing regardless.
-          */}
-          {usageLogsEnabled && (
-            <>
-              <UsageLogsBreakdown t={t} />
-              <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-                {t('settings.application.usageLogs.footnote')}
-              </div>
-            </>
-          )}
-          <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-            {t('settings.application.usageLogs.footnote.agents')}
-          </div>
-        </div>
+        {/*
+          The breakdown answers "what am I sharing?", so it goes away with the
+          sharing — same for the sentence about who can read it. What stays in
+          both states is the agents caveat: it is truest for the person who just
+          turned this off, since their agents keep syncing regardless.
+        */}
+        <DisclosureCard
+          row={usageLogsRow}
+          collected={
+            usageLogsEnabled
+              ? {
+                  title: t('settings.application.usageLogs.collected'),
+                  items: USAGE_LOGS_COLLECTED.map((key) => t(key)),
+                }
+              : undefined
+          }
+          excluded={
+            usageLogsEnabled
+              ? {
+                  title: t('settings.application.usageLogs.excluded'),
+                  items: USAGE_LOGS_EXCLUDED.map((key) => t(key)),
+                }
+              : undefined
+          }
+          note={
+            usageLogsEnabled
+              ? [t('settings.application.usageLogs.footnote'), t('settings.application.usageLogs.footnote.agents')]
+              : t('settings.application.usageLogs.footnote.agents')
+          }
+        />
         {/* WHETHER THE RECORDING ABOVE IS ACTUALLY ARRIVING. Every link in that chain
             fails quietly by design — the shell hook ends in `|| true`, the writers
             swallow their errors so telemetry can never break a session — which made an

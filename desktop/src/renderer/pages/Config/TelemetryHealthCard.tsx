@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, AlertTriangle, MinusCircle } from '@ds/desktop/icons'
+import { HealthCard } from '@ds/desktop'
 import type { TelemetryHealth } from '../../../types'
 import { useT } from '../../i18n'
 
@@ -14,7 +14,9 @@ import { useT } from '../../i18n'
  *
  * Three states, deliberately distinct: recording off is the USER'S CHOICE and is shown
  * neutrally, never as a fault — dressing a deliberate setting as an error is how a
- * panel like this teaches people to ignore it.
+ * panel like this teaches people to ignore it. That rule is `HealthCard`'s now, in the
+ * design system, along with the mark, the tone and the arrangement; what stays here is
+ * the read, the mapping onto the three states, and the words.
  */
 export function TelemetryHealthCard() {
   const t = useT()
@@ -33,48 +35,29 @@ export function TelemetryHealthCard() {
 
   const disabled = !health.recordingEnabled
   const degraded = health.issues.length > 0
-
-  const Icon = disabled ? MinusCircle : degraded ? AlertTriangle : CheckCircle2
-  // Theme tokens, not Tailwind's numbered scale: a fixed colour survives a theme
-  // switch and stops being readable on half of them (see themes.test.ts).
-  const tone = disabled ? 'text-text-secondary/60' : degraded ? 'text-yellow' : 'text-green'
+  const pending = health.queuedEvents + health.spooledSkillRuns
 
   return (
-    <div className="bg-surface border border-line-strong rounded-xl p-4 mt-3">
-      <div className="flex items-start gap-2.5">
-        <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${tone}`} />
-        <div className="min-w-0">
-          <div className="font-medium text-sm">{t('settings.about.telemetry.title')}</div>
-          <div className="text-xs text-text-secondary/70 mt-1">
-            {disabled
-              ? t('settings.about.telemetry.off')
-              : degraded
-                ? t('settings.about.telemetry.degraded')
-                : t('settings.about.telemetry.healthy')}
-          </div>
-
-          {!disabled && degraded && (
-            <ul className="mt-2 space-y-1.5">
-              {health.issues.map((issue) => (
-                <li key={issue} className="text-xs text-text-secondary/70 flex gap-1.5">
-                  <span aria-hidden className="text-yellow">•</span>
-                  <span>{t(`settings.about.telemetry.issue.${issue}` as Parameters<typeof t>[0])}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {/* Pending work is NOT an issue: it retries by itself. Shown so a user who
-              was offline can see their runs are queued rather than lost. */}
-          {!disabled && health.queuedEvents + health.spooledSkillRuns > 0 && (
-            <div className="text-xs text-text-secondary/50 mt-2">
-              {t('settings.about.telemetry.pending', {
-                count: String(health.queuedEvents + health.spooledSkillRuns),
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    <HealthCard
+      state={disabled ? 'off' : degraded ? 'degraded' : 'healthy'}
+      title={t('settings.about.telemetry.title')}
+      message={
+        disabled
+          ? t('settings.about.telemetry.off')
+          : degraded
+            ? t('settings.about.telemetry.degraded')
+            : t('settings.about.telemetry.healthy')
+      }
+      details={
+        !disabled && degraded
+          ? health.issues.map((issue) => t(`settings.about.telemetry.issue.${issue}` as Parameters<typeof t>[0]))
+          : undefined
+      }
+      // Pending work is NOT an issue: it retries by itself. Shown so a user who was
+      // offline can see their runs are queued rather than lost — and not shown at all
+      // while recording is off, where there is nothing to be behind on.
+      note={!disabled && pending > 0 ? t('settings.about.telemetry.pending', { count: String(pending) }) : undefined}
+      className="mt-3"
+    />
   )
 }
