@@ -60,11 +60,15 @@ import { HomeSection } from '../home/Shell'
  *
  * ── THE OPENING IS WHITE, AND IT IS THE ONE PAGE THAT IS ────────────────────────────
  *
- * `/features`, `/faq`, `/privacy` and `/terms` all open on the same `softblue → white`
- * wash with `Bloom` behind it, in one centred column. This one dropped both and split the
+ * Every page in this group opened on the same `softblue → white` wash with `Bloom`
+ * behind it, in one centred column. This one went first: it dropped both and split the
  * band in two instead — the page's name and its one line on the left, a drawing on the
  * right. The wash and the drawing were two decorations competing for the same band, and
  * only one of them says anything about the page.
+ *
+ * `/faq`, `/download` and `/features` have since followed. `/privacy` and `/terms` have
+ * not, and that is deliberate rather than a job half done: those two are documents, and
+ * a document has no drawing to put beside its title.
  *
  * THE LINK OUT TO `CHANGELOG.md` WENT WITH THEM. It sat under the lead, on the argument
  * that a reader after a two-year-old version should be told the whole file is one click
@@ -72,9 +76,6 @@ import { HomeSection } from '../home/Shell'
  * offers it in the one place it is genuinely needed: the empty state below, where there
  * is no list to page through at all.
  *
- * So the divergence is deliberate and it is NOT a pattern to propagate — the other four
- * keep the wash and the centred column. If a fifth page ever wants this treatment, that
- * is a decision about the site's openings, not a precedent to read off this file.
  *
  * ── ONE INK AT SEVERAL ALPHAS ───────────────────────────────────────────────────────
  *

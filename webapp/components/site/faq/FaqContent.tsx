@@ -105,9 +105,9 @@ export function FaqContent() {
           `overflow-hidden` this band no longer needs. And no ground class either — the
           page's own `bg-white` is right underneath.
 
-          `/privacy` and `/terms` still open on the wash. That divergence is deliberate
-          and it is not a pattern to read off this file: those two are documents, and a
-          document has no drawing to put beside its title. */}
+          `/download` and `/features` have since done the same. `/privacy` and `/terms`
+          still open on the wash, deliberately: those two are documents, and a document
+          has no drawing to put beside its title. */}
       <HomeSection padding="hero">
         {/* TWO COLUMNS: what the page IS on the left, a drawing of it on the right —
             `/changelog`'s opening, for the reason that page gives. It was one centred
