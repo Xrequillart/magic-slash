@@ -382,6 +382,13 @@ export function TasksModalMockup({ legend = true }: { legend?: boolean } = {}) {
           the section; on a coloured ground it reads as a screen photographed on a desk,
           which is what it is.
 
+          `tone-sky`, WHICH IS WHAT THIS FILE'S OWN HEADER ALREADY SAID. The markup had
+          drifted to `tone-indigo` — the family's one saturated ground — and the drift
+          only became loud when the site's palette moved to blue: `tone-indigo`'s stops
+          are `BLUE[50]` into `BLUE[70]` now, so a deep periwinkle became an electric
+          block in a column of pale plates. `SkillsModalMockup` and `AgentsSidebarMockup`,
+          the next two rows down, are both on `tone-sky`; this one is again.
+
           `pb-0` AND A NEGATIVE MARGIN BELOW: the window runs 48px past the bottom of the
           plate and the plate's `overflow-hidden` cuts it. That is the same bottom crop
           the panels in the skills grid take, moved out to the frame — a list that ends
@@ -389,7 +396,7 @@ export function TasksModalMockup({ legend = true }: { legend?: boolean } = {}) {
           that. */}
       <div
         aria-hidden
-        className="overflow-hidden rounded-2xl bg-tone-indigo p-5 pb-0 sm:p-12 sm:pb-0"
+        className="overflow-hidden rounded-2xl bg-tone-sky p-5 pb-0 sm:p-12 sm:pb-0"
       >
         {/* The modal. `bg-ink` is this site's stand-in for the app's darkest ground, and
           `shadow-lift` — the scale's loudest rung — is what lifts it off the plate. */}
