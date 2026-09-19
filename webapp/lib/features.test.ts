@@ -53,6 +53,7 @@ const EXPECTED: { family: string; anchor: string; layout: string; features: stri
     anchor: 'desktop',
     layout: 'rows',
     features: [
+      'plans',
       'tasks',
       'skillsPage',
       'worktrees',
@@ -409,6 +410,7 @@ describe('FEATURE_FAMILIES', () => {
       'contextCard',
       'macNotification',
       'menuBar',
+      'planModal',
       'continueTask',
       'devServer',
       'doneChecklist',
@@ -457,6 +459,7 @@ describe('FEATURE_FAMILIES', () => {
     )
     const rowVisuals = drawn.filter((entry) => !entry.startsWith('workflow/'))
     expect(rowVisuals).toEqual([
+      'desktop/plans',
       'desktop/tasks',
       'desktop/skillsPage',
       'desktop/worktrees',
@@ -486,9 +489,9 @@ describe('FEATURE_FAMILIES', () => {
 
     // And the SHAPE each of them takes, pinned separately because it is a different
     // decision from "does this row have a picture at all". `block` is full width and
-    // costs a third of a section; the desktop family carries three of them — Tasks,
-    // Skills and Agents — and a fourth arriving as an omitted field is exactly the
-    // change nothing else would notice.
+    // costs a third of a section; the desktop family carries four of them — Plans,
+    // Tasks, Skills and Agents — and a fifth arriving as an omitted field is exactly
+    // the change nothing else would notice.
     const shapes = EVERY_FEATURE.filter(({ feature }) => feature.visual).map(
       ({ feature }) => feature.shape ?? 'block',
     )

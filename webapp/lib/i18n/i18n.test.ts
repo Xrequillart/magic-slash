@@ -310,6 +310,14 @@ describe('message catalogues', () => {
         // word in both languages, and the app's own French catalogue leaves it alone
         // too. Its neighbour does not ("semaine"), which is why only this half is here.
         'site.usageCard.sessionShort',
+        // The Plans mockup. Three of its four ticket counts are the app's own wording
+        // and spell identically in French ("aucun ticket" does not, which is why the
+        // fourth is absent), and so does the count of plans under the filter bar — the
+        // app's `plans.count.other` is "{count} plans" in both catalogues.
+        'site.planCard.count',
+        'site.planCard.tickets1',
+        'site.planCard.tickets3',
+        'site.planCard.tickets4',
         // The Tasks mockup's agent marker. It is the app's own word beside the dot, and
         // the app's French catalogue spells it "agent" too — this string is the app's,
         // not a translation of it.

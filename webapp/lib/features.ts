@@ -114,6 +114,10 @@ export const LITERAL_TITLES = [
   // also how "Split View" and "Spotlight" below have always been handled.
   'Tasks',
   'Agents',
+  // The window's own name for the list of planning sessions, and `plans.title` in the
+  // app's FRENCH catalogue is "Plans" too — translating it here would be the page and
+  // the app using two words for one screen.
+  'Plans',
   // The window's own title bar, and the rail heading inside it. `sidebar.skills` is
   // "Skills" in the app's French catalogue too, so translating it here would be the page
   // and the app using two words for one screen.
@@ -429,6 +433,7 @@ export type FeatureVisual =
   | 'agentsSidebar'
   | 'macNotification'
   | 'menuBar'
+  | 'planModal'
   | 'tasksModal'
   | 'reposSettings'
   | 'commitConfig'
@@ -700,6 +705,27 @@ export const FEATURE_FAMILIES: readonly FeatureFamily[] = [
     intro: 'site.features.desktopDesc',
     layout: 'rows',
     features: [
+      {
+        // THE FAMILY OPENS ON THE PLANNING, which is the order the work happens in: a
+        // plan is written before there is a ticket to pick up, and the row under this
+        // one is the board those tickets land on. It was the last screen of the app
+        // with nothing on this page about it at all.
+        //
+        // A BLOCK, like the two rows under it. The claim is that your team's planning
+        // sessions are one chronology you can read and reopen, and a drawing of the
+        // list is what makes that concrete — a sentence can say "shared" and cannot
+        // show an author column.
+        //
+        // "Plans" AND NOT "The Plans page", the call `Tasks`, `Skills` and `Agents`
+        // below all make: it is the word on the window's own title bar, in both
+        // languages, and heading the row with anything else would be the page and the
+        // app disagreeing about the name of a screen.
+        id: 'plans',
+        icon: 'NotebookPen',
+        title: 'Plans',
+        description: 'site.features.plansDesc',
+        visual: 'planModal',
+      },
       {
         // MOVED OUT OF `integrations`, where it sat because its contents are read from
         // Jira and GitHub. But what the row describes is a SURFACE — `pages/Tasks/` in

@@ -7,6 +7,7 @@ import { LanguagesArt } from './LanguagesArt'
 import { LaunchModesGrid } from './LaunchModesGrid'
 import { MacNotificationMockup } from './MacNotificationMockup'
 import { MenuBarMockup } from './MenuBarMockup'
+import { PlanModalMockup } from './PlanModalMockup'
 import { PRCommentsMockup } from './PRCommentsMockup'
 import {
   CommitCompleteArt,
@@ -51,6 +52,7 @@ export const VISUALS: Record<FeatureVisual, () => React.ReactElement> = {
   contextCard: ContextCardMockup,
   macNotification: MacNotificationMockup,
   menuBar: MenuBarMockup,
+  planModal: PlanModalMockup,
   continueTask: ContinuePencilArt,
   devServer: DevServerMockup,
   doneChecklist: DoneApprovedArt,

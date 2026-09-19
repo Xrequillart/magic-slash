@@ -1625,6 +1625,65 @@ export const marketingEn = {
   'site.tasksCard.gh1': 'Webhook retries drop the idempotency key',
   'site.tasksCard.gh2': 'Rate-limit the public search',
   'site.tasksCard.gh3': 'Checkout returns a 500 when the basket is empty',
+  // ── The /features Plans modal ──────────────────────────────────────────────
+  // The app's Plans window, drawn with the app's OWN components rather than redrawn in
+  // the site's — see `PlanModalMockup`. The chrome is therefore the app's sentences from
+  // `desktop/src/i18n/` key for key (`plans.*`, `relative.*`), and what the app reads
+  // from a database is a literal in the component: repository names, plan numbers, and
+  // the people who wrote them.
+  //
+  // "Plans" and "Skills", the two tabs missing from this list, are printed rather than
+  // translated: the app's French catalogue spells both the same way, which is the call
+  // `LITERAL_TITLES` in `lib/features.ts` already makes for those two words.
+  'site.planCard.tabTasks': 'Tasks',
+  'site.planCard.tabRepositories': 'Repositories',
+  'site.planCard.live': 'Live',
+  'site.planCard.allRepos': 'All repositories',
+  'site.planCard.count': '4 plans',
+  'site.planCard.section': 'Planning sessions',
+  // The two states, and neither is typed by anybody: the app derives them from whether
+  // the tickets exist. `plans.status.*`.
+  'site.planCard.statusPlanned': 'Tickets filed',
+  'site.planCard.statusPlanning': 'Being written',
+  // Four invented planning sessions on the two repositories the Tasks drawing above
+  // already invented. The titles and the ideas are prose, so they are copy; the numbers,
+  // the repositories and the authors are not.
+  'site.planCard.plan1': 'Rewrite the checkout funnel',
+  'site.planCard.idea1': 'three steps instead of five, with the card form on the same page as the basket',
+  'site.planCard.plan2': 'One invoice per subscription period',
+  'site.planCard.idea2': 'stop merging two months onto one document when a plan changes mid-cycle',
+  'site.planCard.plan3': 'Idempotent webhook retries',
+  'site.planCard.idea3': 'a retry that arrives twice must never charge twice',
+  'site.planCard.plan4': 'Payment reminders in the customer’s language',
+  'site.planCard.idea4': 'the locale on the account, not the one the browser happened to send',
+  // `relative.ago` wrapped around `relative.days` and `relative.weeks`, which is what the
+  // rows really print. Newest first, the order `planRecency` sorts them in.
+  'site.planCard.when1': '2d ago',
+  'site.planCard.when2': '4d ago',
+  'site.planCard.when3': '1w ago',
+  'site.planCard.when4': '3w ago',
+  // Already counted and already worded by the app, `plans.tickets.*` — "no ticket"
+  // rather than a hidden chip. Three of the four spell identically in French, hence
+  // their lines in `i18n.test.ts`.
+  'site.planCard.tickets1': '9 tickets',
+  'site.planCard.tickets2': 'no ticket',
+  'site.planCard.tickets3': '5 tickets',
+  'site.planCard.tickets4': '12 tickets',
+  // The legend under the drawing. Four things the screen does that a still image cannot
+  // show, each checked against `pages/Plans/index.tsx`, `PlanRow.tsx` and
+  // `PlanDetailPage.tsx` rather than written from the feature's reputation.
+  'site.planCard.legendSharedTitle': 'Yours and your team’s, in one list',
+  'site.planCard.legendSharedDesc':
+    'One chronology rather than a personal tab and a shared one. A plan is read for what it says, so the author is a column on the row instead of a place you have to go.',
+  'site.planCard.legendStatusTitle': 'Two states, neither set by hand',
+  'site.planCard.legendStatusDesc':
+    'Being written while the spec is still open, Tickets filed once the epic and its stories exist. The colour follows the tickets, not a status somebody remembered to change.',
+  'site.planCard.legendSpecTitle': 'The spec opens in full',
+  'site.planCard.legendSpecDesc':
+    'A row opens the plan itself as a page of its own: a long markdown document with its headings, its tables and its code, and the tickets that came out of it.',
+  'site.planCard.legendFilterTitle': 'Narrowed to one repository',
+  'site.planCard.legendFilterDesc':
+    'The picker keeps the whole list one click away, and where you left it is remembered on your account rather than on this machine.',
   // ── The /features Repositories settings ────────────────────────────────────
   // The app's Settings modal open on Repositories, redrawn (`ReposSettingsMockup`). Same
   // rule as the Tasks drawing above: the chrome is the app's own sentences from
@@ -1829,6 +1888,8 @@ export const marketingEn = {
   // does the describing — and it says the whole claim rather than half of it: not only
   // that the backlog is in the window, but that a ticket in it is one click from an
   // agent running `/magic:start` on it.
+  'site.features.plansDesc':
+    'Every /magic:plan session your team has run, in one window: the idea it started from, the repository it belongs to, who wrote it, and the tickets it produced. Open one and the spec itself is there, headings, tables and code included.',
   'site.features.tasksDesc':
     'Every open issue and every backlog ticket, from GitHub and from Jira, grouped by repository in your own window — and one click on any of them starts an agent on it with /magic:start.',
 

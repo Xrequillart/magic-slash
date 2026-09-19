@@ -821,6 +821,43 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.tasksCard.gh2': 'Limiter le débit de la recherche publique',
   'site.tasksCard.gh3': 'Le paiement renvoie une 500 quand le panier est vide',
   // Voir la note du catalogue anglais.
+  'site.planCard.tabTasks': 'Tâches',
+  'site.planCard.tabRepositories': 'Dépôts',
+  'site.planCard.live': 'En direct',
+  'site.planCard.allRepos': 'Tous les dépôts',
+  'site.planCard.count': '4 plans',
+  'site.planCard.section': 'Sessions de planification',
+  'site.planCard.statusPlanned': 'Tickets créés',
+  'site.planCard.statusPlanning': 'En cours d’écriture',
+  'site.planCard.plan1': 'Refondre le tunnel de paiement',
+  'site.planCard.idea1': 'trois étapes au lieu de cinq, avec le formulaire carte sur la même page que le panier',
+  'site.planCard.plan2': 'Une facture par période d’abonnement',
+  'site.planCard.idea2': 'arrêter de fusionner deux mois sur un même document quand le plan change en cours de cycle',
+  'site.planCard.plan3': 'Des relances de webhook idempotentes',
+  'site.planCard.idea3': 'une relance qui arrive deux fois ne doit jamais débiter deux fois',
+  'site.planCard.plan4': 'Les relances de paiement dans la langue du client',
+  'site.planCard.idea4': 'la locale du compte, pas celle que le navigateur a envoyée',
+  'site.planCard.when1': 'il y a 2 j',
+  'site.planCard.when2': 'il y a 4 j',
+  'site.planCard.when3': 'il y a 1 sem',
+  'site.planCard.when4': 'il y a 3 sem',
+  'site.planCard.tickets1': '9 tickets',
+  'site.planCard.tickets2': 'aucun ticket',
+  'site.planCard.tickets3': '5 tickets',
+  'site.planCard.tickets4': '12 tickets',
+  'site.planCard.legendSharedTitle': 'Les vôtres et ceux de l’équipe, dans une seule liste',
+  'site.planCard.legendSharedDesc':
+    'Une seule chronologie plutôt qu’un onglet perso et un onglet partagé. Un plan se lit pour ce qu’il dit : l’auteur est une colonne sur la ligne, pas un endroit où il faut aller.',
+  'site.planCard.legendStatusTitle': 'Deux états, et aucun ne se règle à la main',
+  'site.planCard.legendStatusDesc':
+    'En cours d’écriture tant que la spec est ouverte, Tickets créés une fois l’epic et ses stories en place. La couleur suit les tickets, pas un statut que quelqu’un a pensé à changer.',
+  'site.planCard.legendSpecTitle': 'La spec s’ouvre en entier',
+  'site.planCard.legendSpecDesc':
+    'Une ligne ouvre le plan lui-même, en pleine page : un long document markdown avec ses titres, ses tableaux et son code, et les tickets qui en sont sortis.',
+  'site.planCard.legendFilterTitle': 'Restreint à un seul dépôt',
+  'site.planCard.legendFilterDesc':
+    'Le sélecteur garde la liste complète à un clic, et le dépôt où vous l’avez laissée est mémorisé sur votre compte, pas sur cette machine.',
+  // Voir la note du catalogue anglais.
   'site.reposCard.title': 'Réglages',
   'site.reposCard.tabAccount': 'Compte',
   'site.reposCard.tabConnections': 'Connexions',
@@ -1003,6 +1040,8 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.features.machineSetupDesc':
     'Les huit skills, les serveurs MCP, les hooks et les permissions sont vérifiés, et installés s’ils manquent, à chaque lancement de l’app.',
   // Voir la note du catalogue anglais.
+  'site.features.plansDesc':
+    'Toutes les sessions /magic:plan de votre équipe dans une seule fenêtre : l’idée de départ, le dépôt concerné, qui l’a écrite et les tickets qu’elle a produits. Ouvrez-en une et la spec est là, titres, tableaux et code compris.',
   'site.features.tasksDesc':
     'Toutes les issues ouvertes et tous les tickets de backlog, GitHub comme Jira, groupés par dépôt dans votre propre fenêtre — et un clic sur l’un d’eux lance un agent dessus avec /magic:start.',
 
