@@ -174,6 +174,72 @@ const PLATE_MARKS: Record<PlateGround, { src: string; fit: PlateFit }> = {
   magic: { src: '/img/app-icon-desktop.png', fit: 'bleed' },
 }
 
+/**
+ * ── THE PALETTE ──────────────────────────────────────────────────────────────────────
+ *
+ * Every colour the public site is allowed to spend, on one row each, as the first thing
+ * on this page — because it is the first decision every other block inherits.
+ *
+ * THE SWATCH IS THE CLASS AND THE CAPTION IS TRANSCRIBED, which is the one thing to know
+ * before trusting a hex here. The block is drawn by `bg-brand-60` and its kind, so what
+ * you SEE is always whatever `tailwind.config.ts` currently resolves those to; the hex
+ * under it is typed out. They cannot be kept in step by the compiler — a caption is a
+ * string — so they are kept in step by being side by side on a page somebody looks at.
+ * A hex that no longer matches its own swatch is visible here and nowhere else.
+ *
+ * THE LADDER IS NUMBERED BY LIGHTNESS, 90 darkest to 5 palest, which is the inverse of
+ * Tailwind's own 50→900. That is the source palette's numbering and it is kept rather
+ * than flipped: these keys are how the blues are spoken about outside the codebase.
+ */
+type SwatchProps = {
+  /** The Tailwind class that paints it — a literal, so the JIT can find it. */
+  klass: string
+  /** What it is called. */
+  name: string
+  /** Its value, transcribed from the config. See the note above. */
+  hex: string
+  /** What the site spends it on, where it spends it on anything. */
+  role?: string
+  /**
+   * A hairline round the block, for the five values that are too pale to have an edge of
+   * their own. Without it `white`, `blue5` and the two grounds are a caption with nothing
+   * above it on this page's own near-white canvas — which is the truth about them, but
+   * not a useful specimen.
+   */
+  outlined?: boolean
+}
+
+function Swatch({ klass, name, hex, role, outlined }: SwatchProps) {
+  return (
+    <div>
+      <div
+        className={`h-16 w-full rounded-xl ${klass} ${outlined ? 'border border-hairline' : ''}`}
+      />
+      <code className="mt-2 block font-mono text-[11px] text-ink">{name}</code>
+      <code className="block font-mono text-[11px] text-muted">{hex}</code>
+      {role && <p className="mt-0.5 text-[11px] leading-snug text-muted">{role}</p>}
+    </div>
+  )
+}
+
+/**
+ * The ten stops, darkest first. Spelled as literals rather than mapped from a range:
+ * Tailwind's JIT scans source text, so a `bg-brand-${n}` built at runtime compiles to a
+ * class that exists in the DOM and in no stylesheet.
+ */
+const BLUE_RAMP: SwatchProps[] = [
+  { klass: 'bg-brand-90', name: 'blue90', hex: '#001832' },
+  { klass: 'bg-brand-80', name: 'blue80', hex: '#013165', role: 'the midnight tone’s deep stop' },
+  { klass: 'bg-brand-70', name: 'blue70', hex: '#004997', role: 'the indigo tone’s deep stop' },
+  { klass: 'bg-brand-60', name: 'blue60', hex: '#0062ca' },
+  { klass: 'bg-brand-50', name: 'blue50', hex: '#007afc', role: 'brand AND accent — the primary button, links, badges, focus rings' },
+  { klass: 'bg-brand-40', name: 'blue40', hex: '#3195ff', role: 'accent-hover' },
+  { klass: 'bg-brand-30', name: 'blue30', hex: '#64afff' },
+  { klass: 'bg-brand-20', name: 'blue20', hex: '#98caff' },
+  { klass: 'bg-brand-10', name: 'blue10', hex: '#cbe4ff', outlined: true },
+  { klass: 'bg-brand-5', name: 'blue5', hex: '#eff7ff', outlined: true },
+]
+
 export function Gallery() {
   const [onCanvas, setOnCanvas] = useState(true)
   const [rows, setRows] = useState(6)
@@ -205,6 +271,30 @@ export function Gallery() {
             Shadows are tinted indigo, not black — switch the ground to judge them.
           </span>
         </div>
+
+        <Block
+          title="The palette — ink, paper, and one blue at ten depths"
+          why="Three families and nothing else. Black and white are the page; the ten blues are ONE hue (211°) at ten lightnesses, so they read as one colour at ten depths rather than as ten blues — that property is what makes the tone gradients look lit instead of striped, and it is the one to preserve if a value is ever retuned. Three stops carry a job today: blue50 is both brand and accent since the primary moved onto it, blue40 is the accent's hover, and blue80 and blue70 are the deep ends of the two tone gradients. Note what blue50 costs — white text on it is 4.05:1, under the 4.5 AA asks of normal text, which the owner chose knowingly. The two pale grounds at the bottom are the site's own and predate the ramp: they are close to blue5 and blue10 without being them, which is a loose end rather than a design."
+        >
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Swatch klass="bg-ink" name="ink" hex="#0A0A0A" role="every heading, every paragraph, the footer plate" />
+            <Swatch klass="bg-white" name="white" hex="#FFFFFF" role="the page, every card, the button that is not primary" outlined />
+            <Swatch klass="bg-muted" name="muted" hex="#52525b" role="secondary copy, where the page is not already using ink at an alpha" />
+          </div>
+
+          <p className="mt-8 font-mono text-[11px] text-muted">The ramp, darkest first</p>
+          <div className="mt-3 grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            {BLUE_RAMP.map((stop) => (
+              <Swatch key={stop.name} {...stop} />
+            ))}
+          </div>
+
+          <p className="mt-8 font-mono text-[11px] text-muted">The two pale grounds, which are not on the ramp</p>
+          <div className="mt-3 grid gap-4 sm:grid-cols-3">
+            <Swatch klass="bg-canvas" name="canvas" hex="#F4F7FE" role="the product pages’ floor" outlined />
+            <Swatch klass="bg-softblue" name="softblue" hex="#D9E8FF" role="the wash /privacy and /terms still open on" outlined />
+          </div>
+        </Block>
 
         <Block
           title="The ladder — five rungs of commitment"
