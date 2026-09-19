@@ -51,15 +51,20 @@ const BLUE = Object.freeze({
  * THE COMMITTING BLUE: the fill of the primary button, and the colour of a name that
  * matters (the organisation on the invitation page).
  *
- * `60` AND NOT `50`, although 50 is the stop a ten-rung palette usually calls its base,
- * and the reason is measured rather than felt. A primary button is white text on this
- * fill at 14-16px, which WCAG AA holds to 4.5:1. `50` (#007afc) gives 4.05 and fails it;
- * `60` gives 5.83 and passes. It is also the rung nearest the indigo it replaces — that
- * one sat at 6.47 — so the button carries the same weight on the page as before, which
- * is the point of choosing by contrast rather than by number: the palette changed hue,
- * not loudness.
+ * `50`, THE STOP THE PALETTE CALLS ITS BASE, at the owner's request and against the
+ * measurement. It shipped on `60` first, chosen by contrast rather than by number: a
+ * primary button is white text on this fill at 14-16px, which WCAG AA holds to 4.5:1, and
+ * `60` gives 5.83 where `50` gives 4.05. The owner saw both rendered and picked the
+ * brighter one.
+ *
+ * SO THE BUTTON IS BELOW AA FOR NORMAL TEXT, and this is the line that records it. It
+ * clears the 3:1 AA asks of LARGE text, which the `lg` rung's 18px label meets on the
+ * pages whose CTA is the page; the `md` rung's 14px label does not. Moving back is one
+ * character here.
+ *
+ * IT IS ALSO `ACCENT` NOW — see the note there.
  */
-const BRAND = BLUE[60]
+const BRAND = BLUE[50]
 
 // The page's own black.
 //
@@ -225,6 +230,16 @@ const BRAND_DEEP = BLUE[80]
 // `tone-indigo`. That pairing is the reason it needs a name — the tone is "the accent,
 // lit" and the day somebody retunes the accent without it the card becomes a blue the
 // palette no longer contains.
+//
+// IT IS THE SAME STOP AS `BRAND` since the owner moved the primary to `50`, and that is
+// worth naming rather than leaving to be discovered. The palette note further down still
+// says `accent` is "one step off `brand` and never a fill you press"; the first half of
+// that stopped being true. Nothing breaks — the two names still mean different things and
+// are spent in different places — but the page can no longer SHOW the difference, so a
+// CTA wearing `accent` by mistake is invisible to the eye that used to catch it.
+//
+// Separating them again is one character: `BLUE[60]` here makes the accent the deeper of
+// the two, which also reads better as link text (5.83 against white, against 4.05).
 const ACCENT = BLUE[50]
 
 // `indigo`'s deep stop, and the one value in the blue family that is neither `brand` nor
@@ -396,7 +411,7 @@ const MARKS = {
  * loads its config, on eight colours, and what is required of it is that
  * `toHex(...toHsl(c))` gives `c` back. It is NOT a colour-science conversion: the round
  * trip is through sRGB HSL, so "13 degrees" is 13 degrees of the hue wheel the rest of
- * this file already thinks in (`#0062CA` is 211, `#F9A96A` is 27), not of a perceptual
+ * this file already thinks in (`#007AFC` is 211, `#F9A96A` is 27), not of a perceptual
  * space. A perceptual swing would be the better instrument and it would also mean a
  * colour library in the build, for one derived value on eight grounds.
  *
@@ -971,7 +986,7 @@ const config: Config = {
         // This reversed once, and the note is kept in that shape on purpose so the
         // next reader does not have to guess which way round it went.
         //
-        // `brand` (#0062CA) is the fill of the `primary` button — `BUTTON_VARIANTS`
+        // `brand` (#007AFC) is the fill of the `primary` button — `BUTTON_VARIANTS`
         // in `components/ui.tsx`, the single definition. For one iteration of this
         // scale it was banned from every CTA and the primary button was white; that
         // white recipe is still here, as `secondary`, and the ban is lifted. So a
@@ -1079,8 +1094,8 @@ const config: Config = {
          * and a `backgroundImage` both called `tone-sky` would emit two `.bg-tone-sky`
          * rules, and which one an element got would be decided by stylesheet order.
          *
-         * EACH VALUE IS THE LIGHT STOP OF THAT TONE'S OWN GRADIENT, so a card and its
-         * plate are still the same colour rather than two guesses at one.
+         * EACH VALUE IS THE LIGHT STOP OF THAT TONE'S OWN GRADIENT — except the two blue
+         * ones, which are ramp stops now; see the note on them below.
          *
          * SIX AND NOT EIGHT: `indigo` and `midnight` were here and are not any more. They
          * were the two DARK card grounds, the owner removed them, and their washes stay
@@ -1089,8 +1104,21 @@ const config: Config = {
          * nobody can find a use for.
          */
         card: {
-          mist: MIST_LIGHT,
-          sky: SKY_LIGHT,
+          // THE TWO BLUE CARDS TAKE RAMP STOPS, not their tones' own light ends. `mist`
+          // was `MIST_LIGHT` (#F7FAFF) and `sky` was `SKY_LIGHT` (#E2EEFC): both predate
+          // the blue ramp and neither is on it, so the site's two blue cards were the two
+          // surfaces wearing a blue the charter does not contain. `blue5` and `blue10` are
+          // what they were reaching for.
+          //
+          // IT COSTS THE CARD/PLATE PAIRING, and that is the one thing to know. The other
+          // four grounds here are still the light stop of their own `tone-*` wash, so a
+          // card and the plate a mockup sits on are the same colour. These two are not any
+          // more: `tone-mist` and `tone-sky` still open on the old values, because the
+          // plates were not part of what the owner asked to move. Moving them is two lines
+          // — `MIST_LIGHT` and `SKY_LIGHT` — and it would shift every mockup ground on the
+          // site, which is why it is a separate decision rather than a tidy-up.
+          mist: BLUE[5],
+          sky: BLUE[10],
           mint: MINT_LIGHT,
           amber: AMBER_LIGHT,
           rose: ROSE_LIGHT,
@@ -1128,12 +1156,12 @@ const config: Config = {
           // Row hover and the tinted fills. Kept as a token rather than a
           // `bg-brand/[0.04]` at each site so every hover in the console matches.
           //
-          // `brand`'s own channels at 5% — 0 98 202, which is `BLUE[60]`. It held the
-          // OLD brand's channels (57 59 255) and had to be found by hand when the
-          // palette changed hue, which is the argument for `rgb(… / <alpha-value>)`
+          // `brand`'s own channels at 5% — 0 122 252, which is `BLUE[50]`. It has had to
+          // be found by hand twice: once when the palette changed hue, once when the
+          // primary moved a rung. That is the argument for `rgb(… / <alpha-value>)`
           // everywhere it is possible; here it is not, because this is a flat value a
           // call site takes as `bg-regie-tint` with no modifier to carry the alpha.
-          tint: 'rgba(0, 98, 202, 0.05)',
+          tint: 'rgba(0, 122, 252, 0.05)',
           rail: BRAND,
         },
         // macOS'S NOTIFICATION BANNER, sampled from a real one, for the drawing beside

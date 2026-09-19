@@ -264,7 +264,16 @@ export function DownloadContent({ release }: { release: ChangelogVersion | null 
       </HomeSection>
 
       {/* ── 3. FIRST LAUNCH ─────────────────────────────────────────────────────── */}
-      <HomeSection className="bg-canvas">
+      {/* `brand-5` AND NOT `canvas`, at the owner's request: the palest stop of the site's
+          own ramp instead of the blue-violet that predates it. The two are within a point
+          of each other and the change is barely visible — which is the point of making it
+          anyway. This band is the one full-bleed ground on the page, so leaving it on a
+          value from outside the charter meant the page's only large area of colour was
+          the one area not drawn from it.
+
+          The white cards on top separate by their border and their shadow either way:
+          #eff7ff against white is 1.08:1, which is what #F4F7FE was. */}
+      <HomeSection className="bg-brand-5">
         <HomeHeading
           eyebrow={t(PAGE_CHROME.launchEyebrow)}
           title={t(PAGE_CHROME.launchTitle)}
