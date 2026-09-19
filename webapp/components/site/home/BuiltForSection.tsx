@@ -172,7 +172,7 @@ const CARDS: readonly {
   },
   {
     id: 'mac',
-    tone: 'midnight',
+    tone: 'lemon',
     title: 'site.builtFor.macTitle',
     description: 'site.builtFor.macDesc',
     Art: MacNativeArt,

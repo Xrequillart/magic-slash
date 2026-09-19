@@ -311,10 +311,11 @@ export type Feature = {
    * is read. Both are facts about the COMMAND rather than about its position in a grid —
    * reorder the eight and each should keep its ground, which a positional tone would not.
    *
-   * TWO, AND THAT IS THE NUMBER TO DEFEND. A third named tone is where the palette stops
-   * being a rhythm and starts being a key the reader has to learn, and it would arrive as
-   * a one-word edit with nothing on screen to argue with it — hence the exact assertion
-   * in `features.test.ts`.
+   * IT USED TO BE TWO, AND TWO WAS THE NUMBER TO DEFEND — past that, the palette stops
+   * being a rhythm and starts being a key the reader has to learn. It is four now, all
+   * four asked for by the owner card by card; see `CARD_TONES_BY_COMMAND` for what each
+   * one cost. The defence that remains is the exact assertion in `features.test.ts`: a
+   * fifth cannot arrive as a one-word edit with nothing on screen to argue with it.
    *
    * A STRING AND NOT `CardTone`, the same trick `icon` and `visual` use: `CardTone`
    * lives in `components/ui.tsx`, which imports React, and this module has to stay
@@ -345,18 +346,26 @@ export type Feature = {
 }
 
 /**
- * The tones a card on THIS page may ask for by name. A deliberate subset of `CARD_TONES`
- * in `components/ui.tsx` — only the ones that mean something here — kept as its own union
- * for the purity reason above.
+ * The tones a card on THIS page may ask for by name. A subset of `CARD_TONES` in
+ * `components/ui.tsx`, kept as its own union for the purity reason above.
  *
- * `CARD_TONES` declares eight grounds and this union admits two. That gap is the design
- * rather than a lag: four of the eight are the positional cycle and must not be nameable
- * (naming one would defeat the point of cycling them), and `rose` and `lemon` are grounds
- * the palette offers that mean nothing about a command — widening this union to include
- * them would make "which colour is `/magic:review`?" a question with an answer, which is
- * exactly the legend the cycle exists to avoid.
+ * IT USED TO ADMIT TWO, and the argument for that is worth keeping in view because it was
+ * a good one: `mint` and `amber` sit outside the positional cycle, so naming them says
+ * something about a command without turning the palette into a key. The four cycle tones
+ * were deliberately NOT nameable, on the grounds that naming one defeats the point of
+ * cycling it.
+ *
+ * `sky` IS NAMEABLE NOW, at the owner's request, so that `/magic:continue` can wear
+ * `/magic:review`'s ground. That is a real cost and not a technicality: half the skills
+ * grid is named after it, the cycle deals to four cards instead of six, and "which colour
+ * is this command?" is closer to being a question with an answer than it was.
+ *
+ * `rose` and `lemon` stay out, and `mist` / `indigo` / `midnight` with them. The line to
+ * hold is no longer "the cycle is not nameable" — it is that each addition is a decision
+ * somebody made on purpose, which `features.test.ts` pins as an exact list precisely so
+ * the next one cannot arrive as a one-word edit.
  */
-export type FeatureTone = 'mint' | 'amber'
+export type FeatureTone = 'mint' | 'amber' | 'sky'
 
 /**
  * The plates a row may sit its mark on. A subset of `PLATE_GROUNDS` in
@@ -526,17 +535,30 @@ const CARD_VISUALS: Partial<Record<MagicCommandId, FeatureVisual>> = {
 }
 
 /**
- * The commands whose card ground is chosen rather than cycled: the two BOOKENDS, and
- * nothing between them. `start` opens the loop and `done` closes it, so the grid runs
- * warm to green — see the note on `Feature.tone` for why two is the number to defend,
- * and `features.test.ts` for the assertion that keeps it there.
+ * The commands whose card ground is chosen rather than cycled.
  *
- * They are also the two commands whose ground would otherwise be an accident of the
- * cycle: `start` sits at index 1 and `done` at index 7, which is `sky` and `midnight`,
- * and neither says anything about the command underneath it.
+ * TWO BOOKENDS AND ONE PAIR. `start` opens the loop and `done` closes it, so the grid
+ * runs warm to green; both would otherwise take an accident of the cycle (`sky` at index
+ * 1, `midnight` at index 7) that says nothing about the command underneath.
+ *
+ * `resolve` AND `continue` ARE THE OTHER TWO, both at the owner's request, and neither
+ * introduces a colour: `resolve` takes `start`'s `amber`, `continue` takes `review`'s
+ * `sky`. So the four named cards are two warm and two blue, in pairs across the grid.
+ *
+ * WHAT IT COSTS is that `amber` no longer marks the ONE point where work enters the loop,
+ * and that `sky` is now a name rather than a position — see `FeatureTone`. WHAT IT BUYS
+ * is the dark cards: `continue` and `resolve` were both `indigo`, at opposite ends of the
+ * grid, and two identical dark cards at a distance read as a pairing the loop does not
+ * have. `commit` is the only dark card left, which is the rhythm the owner wanted.
+ *
+ * NAMING A TONE COSTS THE OTHER CARDS NOTHING: the cycle is indexed on a card's position
+ * in the family (`FeaturesContent`'s `index % CARD_TONE_CYCLE.length`), not on a counter
+ * over the unnamed ones, so each of these changes its own card and no other.
  */
 const CARD_TONES_BY_COMMAND: Partial<Record<MagicCommandId, FeatureTone>> = {
   start: 'amber',
+  continue: 'sky',
+  resolve: 'amber',
   done: 'mint',
 }
 

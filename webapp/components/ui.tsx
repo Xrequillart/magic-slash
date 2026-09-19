@@ -421,30 +421,31 @@ export function Card({
  *
  * WHY IT IS NOT A VARIANT OF `Card`. `Card` is the product's surface: white, a
  * hairline border, one shadow rung, and it appears on ~35 screens where the content
- * is what should be read. This one has no border and no shadow, its ground carries
- * the colour, and the copy inside it changes ink depending on that ground. A `tone`
+ * is what should be read. This one wears the same border and the same shadow rung now,
+ * but its ground carries the colour and the copy inside it changes ink depending on that
+ * ground — which is the whole of the difference and the whole of the reason. A `tone`
  * prop on `Card` would have made every one of those 35 call sites able to reach for
  * a gradient, and made `Card`'s own recipe conditional on a prop it has no other use
  * for. Two components, one for each job.
  *
- * THE TONE IS A SLOT AND IT CARRIES ITS OWN INK. That pairing is the point of the
- * table below: `midnight` is near-black, so its title has to be white and its body
- * a white alpha, and `mist` is barely a tint, so the same card needs `ink`. Left to
- * a caller, that is two decisions that can disagree — a `text-ink` title on a
- * `midnight` ground is invisible, renders fine and passes every check. Here they
- * cannot come apart: naming the tone names the ink with it.
+ * THE TONE IS A SLOT AND IT CARRIES ITS OWN INK. That pairing is the point of the table
+ * below: left to a caller, the ground and the ink are two decisions that can disagree,
+ * and a title that cannot be read against its own card renders fine and passes every
+ * check. Here they cannot come apart — naming the tone names the ink with it.
+ *
+ * EVERY TONE IS LIGHT NOW and every one of them takes `text-ink`, which makes that
+ * pairing look like ceremony. It is not: `indigo` and `midnight` were the two dark
+ * grounds, they were removed at the owner's request, and the table is the reason their
+ * removal was a six-line edit with a `tsc` error at every call site rather than a hunt
+ * for white text left stranded on a pale card.
  *
  * `className` STAYS ADDITIVE, as everywhere in this file: layout only — a column
  * span, a min-height. Anything that would argue with the recipe (the ground, the
  * radius, the ink) is a slot or is not available.
  */
 export const CARD_TONES = {
-  mist: { surface: 'bg-tone-mist', title: 'text-ink', body: 'text-ink/60' },
-  sky: { surface: 'bg-tone-sky', title: 'text-ink', body: 'text-ink/60' },
-  // `onink-body` is the declared white-on-dark body alpha the footer plate already
-  // uses, rather than a second `text-white/60` spelling of the same number.
-  indigo: { surface: 'bg-tone-indigo', title: 'text-white', body: 'text-onink-body' },
-  midnight: { surface: 'bg-tone-midnight', title: 'text-white', body: 'text-onink-body' },
+  mist: { surface: 'bg-card-mist', title: 'text-ink', body: 'text-ink/60' },
+  sky: { surface: 'bg-card-sky', title: 'text-ink', body: 'text-ink/60' },
   // Green, and the only tone outside the blue family. See the note on `tone-mint` in
   // `tailwind.config.ts` for why it is earned rather than added, why it is PALE rather
   // than the saturated green it started as, and why it is absent from the cycle below:
@@ -453,10 +454,12 @@ export const CARD_TONES = {
   // Light ground, so it takes the same dark ink `mist` and `sky` take. That pairing is
   // not a detail — it changed with the ground, and `lib/designTokens.test.ts` is what
   // makes sure the two moved together.
-  mint: { surface: 'bg-tone-mint', title: 'text-ink', body: 'text-ink/60' },
+  mint: { surface: 'bg-card-mint', title: 'text-ink', body: 'text-ink/60' },
   // Orange, and the second tone outside the blue family. Same standing as `mint` and
   // earned the same way: it dresses the card for `/magic:start`, where work ENTERS the
-  // loop, so the grid opens warm and closes green. See the note on `tone-amber` in
+  // loop, so the grid opens warm and closes green. It dresses `/magic:resolve` too now,
+  // at the owner's request — see `CARD_TONES_BY_COMMAND` in `lib/features.ts` for what
+  // that softens and what it buys. See the note on `tone-amber` in
   // `tailwind.config.ts` for why it sweeps as wide as `sky` rather than as gently as
   // `mint`, and for the two colours it is deliberately not — `yellow`, which is a
   // status, and Claude's coral, which is somebody else's brand.
@@ -464,7 +467,7 @@ export const CARD_TONES = {
   // Light ground, so it takes the same dark ink `mist`, `sky` and `mint` take. Absent
   // from the cycle below, for `mint`'s reason: it MEANS something, so it is asked for by
   // name.
-  amber: { surface: 'bg-tone-amber', title: 'text-ink', body: 'text-ink/60' },
+  amber: { surface: 'bg-card-amber', title: 'text-ink', body: 'text-ink/60' },
   // Pink and yellow, and their standing is deliberately different from the two above:
   // `mint` and `amber` MEAN something on `/features`, these are grounds the palette
   // offers and nothing names yet. Declared rather than left out because the alternative
@@ -475,22 +478,27 @@ export const CARD_TONES = {
   // Light grounds, so both take the dark ink every light tone here takes. Out of the
   // cycle below with `mint` and `amber`: the cycle is positional and deals four, and
   // widening it would change the rhythm of a grid neither of these is on.
-  rose: { surface: 'bg-tone-rose', title: 'text-ink', body: 'text-ink/60' },
-  lemon: { surface: 'bg-tone-lemon', title: 'text-ink', body: 'text-ink/60' },
+  rose: { surface: 'bg-card-rose', title: 'text-ink', body: 'text-ink/60' },
+  lemon: { surface: 'bg-card-lemon', title: 'text-ink', body: 'text-ink/60' },
 } as const
 
 export type CardTone = keyof typeof CARD_TONES
 
 /**
- * The tone order the grids cycle through, and it is an ORDER rather than a set: two
- * light then two dark, so a four-column row lands one of each and no two neighbours
- * carry the same weight. Exported because the cycling belongs to the caller — it
- * knows how many cards it has and how wide its grid is.
+ * The tone order the grids cycle through, and it is an ORDER rather than a set: no two
+ * neighbours carry the same hue, so a four-column row lands four different grounds.
+ * Exported because the cycling belongs to the caller — it knows how many cards it has and
+ * how wide its grid is.
  *
- * FOUR OF THE EIGHT. The other four — `mint`, `amber`, `rose`, `lemon` — are asked for
- * by name and are never dealt to whichever card happens to land on their index. Two of
- * them mean something today (`amber` opens the loop on `/magic:start`, `mint` closes it
- * on `/magic:done`); the other two are grounds the palette offers and nothing names yet.
+ * IT USED TO RUN `mist, sky, indigo, midnight` — two light then two dark, so a row landed
+ * one of each WEIGHT as well as one of each hue. That property is gone with the two dark
+ * tones, which the owner removed: every ground in the table is light now, and the rhythm
+ * the cycle can still offer is hue rather than weight.
+ *
+ * `rose` and `lemon` TOOK THEIR SLOTS because they are the two grounds the palette offers
+ * that mean nothing about a command — which is the only qualification the cycle asks for.
+ * `mint` and `amber` stay out of it for the opposite reason: they DO mean something, and
+ * dealing a meaningful ground positionally is what naming one was meant to stop.
  *
  * WIDENING THE CYCLE IS NOT THE WAY TO USE THEM. Two light then two dark is what makes a
  * four-column row land one of each, so a fifth entry would put two neighbours on the
@@ -501,7 +509,7 @@ export type CardTone = keyof typeof CARD_TONES
  * it keep theirs, because the index is the card's own and not a running counter. See
  * `FeaturesContent`.
  */
-export const CARD_TONE_CYCLE: readonly CardTone[] = ['mist', 'sky', 'indigo', 'midnight']
+export const CARD_TONE_CYCLE: readonly CardTone[] = ['mist', 'sky', 'rose', 'lemon']
 
 /**
  * `rounded-2xl`, not a radius of its own. The Tailwind config says it outright —
@@ -510,11 +518,28 @@ export const CARD_TONE_CYCLE: readonly CardTone[] = ['mist', 'sky', 'indigo', 'm
  * these were drawn from rounds a little harder; one surface convention is worth more
  * than the four pixels.
  *
- * `overflow-hidden` so a visual handed to `children` can bleed to the card's edges
- * and still be clipped to the corner. NO SHADOW: the ground is doing the separating,
- * and `shadow-card` under a saturated gradient reads as dirt rather than as lift.
+ * `overflow-hidden` so a visual handed to `children` can bleed to the card's edges and
+ * still be clipped to the corner.
+ *
+ * A SHADOW AND A BORDER, WHICH IS A REVERSAL. This carried neither, on the argument that
+ * the ground did the separating and that `shadow-card` under a saturated gradient read as
+ * dirt rather than as lift. The second half of that was true and is no longer relevant:
+ * the grounds are FLAT now (`bg-card-*`, see `CARD_TONES`), and a shadow under a flat
+ * field is the lift it was always meant to be. The first half was the weaker claim — a
+ * pale tone like `mist` is three points off white, and three points is not separation.
+ *
+ * `shadow-card` IS `Card`'S OWN RUNG, deliberately: a page that stacks a white card and a
+ * coloured one wants them at one elevation, or the difference reads as importance rather
+ * than as colour.
+ *
+ * THE BORDER IS THE GROUND, DARKENED — literally, since `black/[0.08]` over the card's
+ * own fill is that fill eight percent darker, whatever the fill is. That is what makes
+ * one token right for all six tones where six hand-picked edge colours would be six
+ * chances to pick one wrong. It reads on every one of them now that all six grounds are
+ * light; when there were two dark ones, `midnight`'s was invisible and the shadow carried
+ * that card alone.
  */
-const TONE_SURFACE = 'relative overflow-hidden rounded-2xl'
+const TONE_SURFACE = 'relative overflow-hidden rounded-2xl border border-black/[0.08] shadow-card'
 
 /**
  * ONE HEIGHT FOR EVERY COLOURED CARD, and it lives here rather than at the call sites.
@@ -639,8 +664,10 @@ export function ToneCard({
             
             The WEIGHT went up only one step, not two. 400 was too thin — a coloured
             ground eats weight, and a light face loses more to a saturated background
-            than a heavy one does, so the title and the description were drifting apart
-            on `indigo` and `midnight` while looking right on `mist`. But 600 at 16px
+            than a heavy one does, so the title and the description were drifting apart on
+            the two dark grounds this table used to have while looking right on `mist`.
+            Those are gone and the reasoning still holds on a saturated light ground like
+            `amber`. But 600 at 16px
             overcorrected: the description started competing with the `font-bold` title
             above it, and two headlines on a card is none. 500 is the step that fixes
             the thinness without picking a fight. */}

@@ -790,7 +790,8 @@ const TONES = {
   'tone-mint': mesh(MINT_LIGHT, MINT_DEEP, 'mint'),
   /**
    * THE SECOND TONE OUTSIDE THE BLUE FAMILY, and earned the same way `mint` is: it
-   * dresses the card for `/magic:start`, which is where a piece of work ENTERS the loop.
+   * dresses the card for `/magic:start`, which is where a piece of work ENTERS the loop —
+   * and, since the owner asked for it, `/magic:resolve` as well.
    * The grid now opens warm and closes green, which says the shape of the thing before a
    * word of the copy is read — and it is a fact about the command, not about its
    * position, so reordering the eight leaves it where it belongs.
@@ -1062,6 +1063,39 @@ const config: Config = {
          * committing blue — so every existing call site is untouched; `bg-brand-10`,
          * `text-brand-80` and the rest are new.
          */
+        /**
+         * THE COLOUR CARDS' FLAT GROUNDS — one per tone, and a SEPARATE family from the
+         * `tone-*` washes in `backgroundImage`.
+         *
+         * `ToneCard` used to wear the wash itself (`bg-tone-sky` and the rest). It does
+         * not any more: the cards are flat, bordered and lifted now, at the owner's
+         * request. The washes stay exactly where they were and are still worn by the
+         * PLATES — the grounds a mockup is photographed against on `/features` and the
+         * homepage — which is why this is a second family rather than an edit to the
+         * first. Two jobs, two sets of values; a card and a plate simply stopped wanting
+         * the same thing.
+         *
+         * A SEPARATE NAMESPACE ALSO BECAUSE THE FIRST ONE IS TAKEN: a `backgroundColor`
+         * and a `backgroundImage` both called `tone-sky` would emit two `.bg-tone-sky`
+         * rules, and which one an element got would be decided by stylesheet order.
+         *
+         * EACH VALUE IS THE LIGHT STOP OF THAT TONE'S OWN GRADIENT, so a card and its
+         * plate are still the same colour rather than two guesses at one.
+         *
+         * SIX AND NOT EIGHT: `indigo` and `midnight` were here and are not any more. They
+         * were the two DARK card grounds, the owner removed them, and their washes stay
+         * in `backgroundImage` because the plates still wear those — which is the whole
+         * reason these are a separate family. A card ground with no card is just a hex
+         * nobody can find a use for.
+         */
+        card: {
+          mist: MIST_LIGHT,
+          sky: SKY_LIGHT,
+          mint: MINT_LIGHT,
+          amber: AMBER_LIGHT,
+          rose: ROSE_LIGHT,
+          lemon: LEMON_LIGHT,
+        },
         brand: {
           DEFAULT: BRAND,
           5: BLUE[5],

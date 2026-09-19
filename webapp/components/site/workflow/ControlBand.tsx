@@ -37,7 +37,7 @@ import { CommitListArt, MergeButtonArt, PlanTerminalArt } from './ControlArt'
 const CARD: Record<string, { tone: CardTone; visual: ToneCardVisual; Art: () => React.ReactElement }> = {
   spec: { tone: 'sky', visual: 'end', Art: PlanSpecArt },
   plan: { tone: 'amber', visual: 'end', Art: PlanTerminalArt },
-  commits: { tone: 'midnight', visual: 'end', Art: CommitListArt },
+  commits: { tone: 'lemon', visual: 'end', Art: CommitListArt },
   // An object rather than a crop, so it is centred in the height the copy leaves: see
   // `ToneCardVisual`.
   merge: { tone: 'mint', visual: 'center', Art: MergeButtonArt },

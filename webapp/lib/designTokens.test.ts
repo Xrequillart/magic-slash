@@ -323,8 +323,6 @@ describe('design tokens', () => {
     for (const [tone, ink] of [
       ['mist', 'text-ink'],
       ['sky', 'text-ink'],
-      ['indigo', 'text-white'],
-      ['midnight', 'text-white'],
       ['mint', 'text-ink'],
       ['amber', 'text-ink'],
       ['rose', 'text-ink'],
@@ -332,16 +330,18 @@ describe('design tokens', () => {
     ]) {
       const row = tones.split('\n').find((line) => line.trim().startsWith(`${tone}:`))
       expect(row, `CARD_TONES.${tone} is missing`).toBeTruthy()
-      expect(row, `CARD_TONES.${tone}`).toContain(`bg-tone-${tone}`)
+      // `bg-card-*` and not `bg-tone-*`: the cards took flat grounds when they gained a
+      // border and a shadow, and the `tone-*` washes stayed behind on the plates. A test
+      // still naming the wash would pass a card that had quietly gone back to a gradient.
+      expect(row, `CARD_TONES.${tone}`).toContain(`bg-card-${tone}`)
       expect(row, `CARD_TONES.${tone}`).toContain(ink)
     }
 
-    // And the dark pair must not reach for `ink` at all, which is the mistake this
-    // exists to prevent rather than merely to describe.
-    for (const dark of ['indigo', 'midnight']) {
-      const row = tones.split('\n').find((line) => line.trim().startsWith(`${dark}:`)) ?? ''
-      expect(row, `CARD_TONES.${dark} must not use the light ink`).not.toContain('text-ink')
-    }
+    // The pairing USED TO HAVE A SECOND HALF here: `indigo` and `midnight` were the two
+    // dark grounds and had to be checked for NOT reaching for the light ink. Both were
+    // removed from the table at the owner's request, so every tone is light and the
+    // assertion has nothing left to catch. It is deleted rather than left passing on an
+    // empty list — a loop over nothing is a guard that reports success for ever.
   })
 
   /**

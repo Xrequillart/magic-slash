@@ -89,7 +89,7 @@ export function PillarsSection() {
       <div className="grid gap-6 md:grid-cols-2">
         <Reveal order={1} className="min-w-0">
           <ToneCard
-            tone="midnight"
+            tone="lemon"
             title={t('site.pillars.skillsTitle')}
             description={t('site.pillars.skillsDesc')}
             className="h-full"

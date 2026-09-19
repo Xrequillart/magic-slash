@@ -93,7 +93,7 @@ describe('the workflow band and its page', () => {
 
     for (const step of WORKFLOW_STEPS) {
       expect(ui, `${step.id} → tone "${step.tone}"`).toContain(
-        `${step.tone}: { surface: 'bg-tone-${step.tone}'`,
+        `${step.tone}: { surface: 'bg-card-${step.tone}'`,
       )
     }
   })

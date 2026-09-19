@@ -135,7 +135,7 @@ const CARDS: readonly {
   },
   {
     id: 'plan',
-    tone: 'indigo',
+    tone: 'rose',
     title: 'site.orgBand.planTitle',
     description: 'site.orgBand.planDesc',
     visual: 'center',

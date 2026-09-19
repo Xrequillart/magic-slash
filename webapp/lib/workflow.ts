@@ -129,7 +129,7 @@ export type WorkflowStepId = 'plan' | 'start' | 'commit' | 'review' | 'done'
  * by any page that wants it, spent by none. `rose` likewise, and it is the one a sixth step
  * would reach for.
  */
-export type WorkflowTone = 'sky' | 'amber' | 'midnight' | 'indigo' | 'mint'
+export type WorkflowTone = 'sky' | 'amber' | 'lemon' | 'rose' | 'mint'
 
 export type WorkflowStep = {
   id: WorkflowStepId
@@ -175,14 +175,14 @@ export const WORKFLOW_STEPS: readonly WorkflowStep[] = [
   },
   {
     id: 'commit',
-    tone: 'midnight',
+    tone: 'lemon',
     title: 'site.workflow.commitTitle',
     description: 'site.workflow.commitDesc',
     commands: ['commit', 'pr'],
   },
   {
     id: 'review',
-    tone: 'indigo',
+    tone: 'rose',
     title: 'site.workflow.reviewTitle',
     description: 'site.workflow.reviewDesc',
     commands: ['review', 'resolve'],

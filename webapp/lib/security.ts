@@ -123,20 +123,25 @@ export type SecurityArt = 'privateRepo' | 'gdpr' | 'commitGuard' | 'secrets'
  * `shadow-lift` and on the tone's own blooms gathering under the panel rather than on the
  * ground being a different colour. It reads, and it reads less.
  *
- * WHAT IT ALSO COSTS IS THE BAND'S SECOND DARK CARD. Before the move each row paired one
- * light card with one dark one and the two rows inverted each other — `sky` beside
- * `midnight`, then `indigo` beside `mist`. It is now `sky`, `midnight`, `mist`, `sky`:
- * three light grounds and one dark, with the only dark card in the top-right corner. The
- * band is lighter and flatter than it was, which is a legitimate thing to want and not
- * something that fell out of the pairing rule. The GDPR card's move to `mint` since then
- * makes the run `sky`, `midnight`, `mint`, `sky` — same weights, one of them no longer
- * blue.
+ * THE BAND HAS NO DARK CARD AT ALL NOW. It used to pair one light card with one dark one
+ * per row, the two rows inverting each other. Then the secrets table moved to `sky`,
+ * leaving one dark card; then `indigo` and `midnight` were removed from `CARD_TONES`
+ * outright, and `privateRepo` went to `lemon` with them. The run is `sky`, `lemon`,
+ * `mint`, `sky`: four light grounds.
  *
- * `mist` AND `indigo` ARE STILL IN THIS UNION with no card on them, and deliberately: it is
- * the set of grounds this band is allowed to use, not an inventory of the four in use today.
- * Both were on cards one round ago and either could come back.
+ * WHAT THAT COSTS IS THE PADLOCK, and it is written down rather than argued. The drawing
+ * is a pale 3D object lit from the top-left for a dark field; on `lemon` its body barely
+ * separates from the card and the shading has nothing to model against. It reads, and it
+ * reads worse than it did. The owner chose that with the rendering in front of them, over
+ * keeping one dark ground alive for one card. Anyone minded to fix it should redraw the
+ * padlock in ink rather than reach for a dark tone that is no longer there.
+ *
+ * `mist` AND `rose` ARE IN THIS UNION with no card on them, and deliberately: it is the set
+ * of grounds this band is allowed to use, not an inventory of the four in use today.
+ * `rose` is here because it is what `indigo` became when the dark tones were removed —
+ * the union kept its shape, one light ground standing in for each dark one it lost.
  */
-export type SecurityTone = 'midnight' | 'mist' | 'sky' | 'indigo' | 'mint'
+export type SecurityTone = 'lemon' | 'mist' | 'sky' | 'rose' | 'mint'
 
 export type SecurityCard = {
   id: SecurityArt
@@ -203,7 +208,7 @@ export const SECURITY_CARDS: readonly SecurityCard[] = [
    */
   {
     id: 'privateRepo',
-    tone: 'midnight',
+    tone: 'lemon',
     title: 'site.security.repoTitle',
     description: 'site.security.repoDesc',
   },

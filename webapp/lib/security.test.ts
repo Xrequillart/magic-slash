@@ -76,11 +76,10 @@ describe('the security band', () => {
     ])
   })
 
-  it('pairs every white drawing with a dark card and every dark one with a light card', () => {
-    // THE ONE RULE THIS BAND'S GROUNDS EXIST FOR, and the only band on the site where the
-    // tone is chosen by what stands on it rather than by rhythm: the padlock is drawn in
-    // white and the branch graph is drawn in near-black ink on a hairline, so either card
-    // taking the other's ground makes its drawing invisible.
+  it('names a ground that the design system actually declares', () => {
+    // THIS USED TO BE THE RULE THIS BAND'S GROUNDS EXISTED FOR — the padlock drawn in
+    // white, the branch graph in near-black ink, so either card taking the other's ground
+    // made its drawing invisible. Half of it is unenforceable now; see below.
     //
     // THE SECRETS PANEL USED TO BE HELD TO THE SAME RULE and no longer is. It is
     // `bg-canvas`, so it wanted the dark ground the padlock wants, for the same reason in
@@ -104,14 +103,18 @@ describe('the security band', () => {
       expect(tone(card.tone), `${card.tone} declared in CARD_TONES`).toBeTruthy()
     }
 
-    const on = (id: string) => SECURITY_CARDS.find((card) => card.id === id)?.tone ?? ''
-    expect(isDark(on('privateRepo')), 'the white padlock needs a dark card').toBe(true)
-    expect(isDark(on('commitGuard')), 'the ink branch graph needs a light card').toBe(false)
-    // The seal is the one drawing here that could sit on anything, so its ground is the
-    // owner's free choice — `mist` first, `mint` now. What is still asserted is the only
-    // part that is not free: the emblem is a blue disc on a pale field, so the card under
-    // it has to be light whichever light ground it is given.
-    expect(isDark(on('gdpr')), 'the seal needs a light card whichever one it takes').toBe(false)
+    // THE PADLOCK'S HALF OF THIS RULE IS GONE, and not because it stopped mattering: the
+    // two dark card grounds were removed from `CARD_TONES` at the owner's request, so
+    // there is no dark ground left for a white drawing to ask for. `privateRepo` is on
+    // `lemon` now and its padlock — a pale 3D object lit for a dark field — reads washed
+    // out there. That was the owner's call, made with the rendering in front of them.
+    //
+    // The assertion is deleted rather than inverted. `isDark` can only ever be false now,
+    // so `toBe(false)` on all three would be three tautologies dressed as a guard, and a
+    // guard that cannot fail is worse than none: it reports success for ever. What is
+    // left below is the half that still has teeth — every tone named here has to be one
+    // `CARD_TONES` actually declares, which is what catches a card left on a ground that
+    // no longer exists.
   })
 
   it('still has a commit guard rail to promise', () => {
