@@ -1031,6 +1031,7 @@ export const fr: Record<keyof typeof en, string> = {
   'toast.usernameOffline': 'Connectez-vous pour choisir un pseudo',
   'toast.avatarSaveFailed': 'Impossible d’enregistrer votre photo. Réessayez.',
   'toast.avatarRemoveFailed': 'Impossible de retirer votre photo',
+  'toast.avatarSignedOut': 'Connectez-vous pour changer votre photo',
 
   // ── Réglages → Connexions → Compte Atlassian ─────────────────────────────
   'jira.section': 'Compte Atlassian',

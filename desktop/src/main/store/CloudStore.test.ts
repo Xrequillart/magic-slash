@@ -2867,24 +2867,53 @@ describe('avatar', () => {
     await expect(new CloudStore().getAvatarDataUrl()).resolves.toBeNull()
   })
 
-  it('all three answer neutrally and touch nothing when there is no session', async () => {
+  it('reports a write it did make', async () => {
+    const { client } = makeClient(
+      { profiles: { data: null, error: null } },
+      {},
+      {},
+      { upload: { data: { path: PATH }, error: null }, remove: { data: null, error: null } },
+    )
+    h.state.client = client
+
+    const store = new CloudStore()
+    await expect(store.setAvatar(DATA_URL)).resolves.toEqual({ ok: true })
+    await expect(store.removeAvatar()).resolves.toEqual({ ok: true })
+  })
+
+  /**
+   * THE READ MAY ANSWER NEUTRALLY; THE TWO WRITES MAY NOT.
+   *
+   * `getAvatarDataUrl` returning null with no session is the honest answer to a
+   * question — there is nothing to show, and the card draws the generic face. The
+   * writes are not questions. Resolving quietly told the IPC layer above that an
+   * upload had completed, so it answered `{ ok: true }` and the Account tab published
+   * the bytes it was holding to every surface that draws a face: the change looked
+   * saved, in the card and in the sidebar, and was gone at the next read.
+   *
+   * `calls` staying empty is asserted alongside, because the two claims are different
+   * and both matter: `offline` says no write happened, and this says none was even
+   * attempted.
+   */
+  it('reports a write it did not make, and touches nothing, when there is no session', async () => {
     const { client, calls } = makeClient({ profiles: { data: null, error: null } })
     h.state.client = client
     h.state.session = null // userContext() bails after the client resolves
 
     const store = new CloudStore()
-    await expect(store.setAvatar(DATA_URL)).resolves.toBeUndefined()
-    await expect(store.removeAvatar()).resolves.toBeUndefined()
+    await expect(store.setAvatar(DATA_URL)).resolves.toEqual({ ok: false, reason: 'offline' })
+    await expect(store.removeAvatar()).resolves.toEqual({ ok: false, reason: 'offline' })
+    // The read is the one of the three that MAY answer with nothing.
     await expect(store.getAvatarDataUrl()).resolves.toBeNull()
     expect(calls).toEqual([])
   })
 
-  it('all three answer neutrally when there is no authed client at all', async () => {
+  it('reports a write it did not make when there is no authed client at all', async () => {
     h.state.client = null // getAuthedClient() → null → userContext() bails
 
     const store = new CloudStore()
-    await expect(store.setAvatar(DATA_URL)).resolves.toBeUndefined()
-    await expect(store.removeAvatar()).resolves.toBeUndefined()
+    await expect(store.setAvatar(DATA_URL)).resolves.toEqual({ ok: false, reason: 'offline' })
+    await expect(store.removeAvatar()).resolves.toEqual({ ok: false, reason: 'offline' })
     await expect(store.getAvatarDataUrl()).resolves.toBeNull()
   })
 })

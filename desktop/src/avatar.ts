@@ -145,6 +145,31 @@ export type AvatarSourceResult =
   | { reason: AvatarRejection | 'cancelled' }
 
 /**
+ * What `profile:setAvatar` and `profile:removeAvatar` answer with.
+ *
+ * Named here for `AvatarSourceResult`'s reason, stated just above: the handler and the
+ * preload signature are two halves of one contract, and it had drifted into two
+ * independent literals already.
+ *
+ * THREE OUTCOMES WEARING TWO FLAGS, which is why this is worth reading before adding a
+ * field. `ok: true` wrote. `ok: false` with an `error` means a write was attempted and
+ * something threw, so `avatar` carries where the photo actually stands now (absent when
+ * even that re-read failed — see the handler). `ok: false` with `reason: 'offline'`
+ * means NOTHING was attempted: there was no session, nothing is stored differently, and
+ * there is deliberately no `avatar` field to adopt, because a signed-out read answers
+ * `null` and adopting that would blank a face that is still on the server.
+ *
+ * The distinction exists because the caller acts on it: one says try again or pick a
+ * smaller file, the other says sign back in.
+ */
+export type AvatarWriteResult = {
+  ok: boolean
+  error?: string
+  reason?: 'offline'
+  avatar?: string | null
+}
+
+/**
  * What we let a user pick, and what each accepted extension is CALLED.
  *
  * One map rather than a set here and a mime lookup in the main process: the two

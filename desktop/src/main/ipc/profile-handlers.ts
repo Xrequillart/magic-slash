@@ -2,7 +2,7 @@ import fs from 'fs'
 import { ipcMain } from 'electron'
 import { readProfile, writeProfile } from '../config/profile'
 import { getStore } from '../store/Store'
-import { validateAvatarFile, type AvatarSourceResult } from '../../avatar'
+import { validateAvatarFile, type AvatarSourceResult, type AvatarWriteResult } from '../../avatar'
 import { validateUsername, type UsernameCheckResult, type UsernameSaveResult } from '../../username'
 import { openImageFileDialog } from './skills-handlers'
 import type { AccountSettings, UserProfile } from '../../types'
@@ -199,25 +199,17 @@ export function setupProfileHandlers(): void {
     }
   })
 
-  /**
-   * What a failed photo write hands back: the reason, and where the photo actually
-   * stands now.
-   *
-   * `avatar` is OPTIONAL and its absence means something different from `null`.
-   * Both writes are two operations — a blob in the bucket, then a pointer on the
-   * row — and a failure of the second happens with the first already done: the new
-   * bytes have replaced the old ones, or the object is already gone, while the
-   * renderer is still showing what it was showing before. So a failure re-reads the
-   * authoritative state and sends it along, and the renderer adopts it. Where the
-   * re-read ALSO fails we send no `avatar` at all rather than a `null` we invented,
-   * because "there is no photo" and "we could not find out" are not the same claim
-   * and the renderer can go and ask again.
-   *
-   * The successful paths do not re-read, on purpose: setAvatar already holds the
-   * exact bytes it uploaded and removeAvatar knows the answer is nothing, so a
-   * round trip could only confirm what the caller already has.
-   */
-  type AvatarWriteResult = { ok: boolean; error?: string; avatar?: string | null }
+  // What these two channels answer with is `AvatarWriteResult` in desktop/src/avatar.ts,
+  // next to the rules it describes and shared with the preload signature. The note
+  // there spells out why `avatar` being ABSENT differs from it being `null`, and why an
+  // `offline` result carries neither that field nor an `error`.
+  //
+  // What stays here is the half that is this file's own: which branch re-reads. Both
+  // writes are two operations — a blob in the bucket, then a pointer on the row — so a
+  // failure of the second happens with the first already done, and what the renderer is
+  // drawing is no longer true. That is the branch that re-reads and sends the
+  // authoritative value along. The successful paths do not, on purpose: setAvatar holds
+  // the exact bytes it uploaded and removeAvatar knows the answer is nothing.
 
   /** The stored photo, or nothing at all when even reading it fails. */
   async function authoritativeAvatar(): Promise<{ avatar?: string | null }> {
@@ -234,7 +226,13 @@ export function setupProfileHandlers(): void {
   // IPC error. Same contract as setup:provisionMcp and friends.
   ipcMain.handle('profile:setAvatar', async (_event, dataUrl: string): Promise<AvatarWriteResult> => {
     try {
-      await getStore().setAvatar(dataUrl)
+      const outcome = await getStore().setAvatar(dataUrl)
+      // No `authoritativeAvatar()` on this branch, unlike the catch below, and the
+      // asymmetry is the point: nothing was written, so the stored photo is whatever
+      // it already was. Re-reading it without a session answers `null`, which the
+      // renderer would adopt — blanking a face that is still perfectly safe on the
+      // server because we happen to be signed out.
+      if (!outcome.ok) return { ok: false, reason: outcome.reason }
       return { ok: true }
     } catch (error) {
       return {
@@ -247,7 +245,8 @@ export function setupProfileHandlers(): void {
 
   ipcMain.handle('profile:removeAvatar', async (): Promise<AvatarWriteResult> => {
     try {
-      await getStore().removeAvatar()
+      const outcome = await getStore().removeAvatar()
+      if (!outcome.ok) return { ok: false, reason: outcome.reason }
       return { ok: true }
     } catch (error) {
       return {

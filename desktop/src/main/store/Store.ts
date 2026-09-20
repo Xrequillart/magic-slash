@@ -28,6 +28,29 @@ export type UsernameWriteOutcome =
   | { ok: false; reason: 'taken' | 'invalid' | 'offline' }
 
 /**
+ * How writing (or clearing) the profile photo turned out.
+ *
+ * ONE REASON, and it is `UsernameWriteOutcome`'s: there is no session to write
+ * through. The photo has no equivalent of `taken` or `invalid` — a payload the bytes
+ * rules refuse never reaches a session at all, it throws out of `parseAvatarDataUrl`
+ * long before — so this is a two-state answer and not a three-state one.
+ *
+ * IT EXISTS BECAUSE `Promise<void>` COULD NOT SAY IT. Both writes used to return
+ * nothing and simply stop when there was no session, which the IPC layer above had no
+ * way to tell apart from a completed upload: it reported `{ ok: true }`, and the
+ * Account tab then published the bytes it was holding to every surface that draws a
+ * face. The change looked saved, in the card and in the sidebar, and was gone at the
+ * next read — nothing had been written and nothing had failed. A write that did not
+ * happen has to be sayable, which is all this type does.
+ *
+ * A transport failure is still NOT one of these. Like `setUsername`, the values here
+ * are the outcomes a user acts on; everything else throws and is reported as an error.
+ */
+export type AvatarWriteOutcome =
+  | { ok: true }
+  | { ok: false; reason: 'offline' }
+
+/**
  * The single persistence contract for config, agents and history. The Supabase
  * database is the single source of truth — there is deliberately NO local JSON
  * persistence behind any implementation of this interface. Callers keep an
@@ -239,10 +262,18 @@ export interface Store {
    * validates it (prefix, base64, decoded size against AVATAR_MAX_BYTES, WebP
    * container) before it allocates or uploads anything, and throws when it will
    * not. `parseAvatarDataUrl` in desktop/src/avatar.ts is that check.
+   *
+   * Answers whether it WROTE, rather than returning nothing — see `AvatarWriteOutcome`.
+   * An implementation with no session reports `offline`; it must never resolve as a
+   * success it did not perform.
    */
-  setAvatar(dataUrl: string): Promise<void>
-  /** Delete the caller's photo — the Storage object and the row's pointer. */
-  removeAvatar(): Promise<void>
+  setAvatar(dataUrl: string): Promise<AvatarWriteOutcome>
+  /**
+   * Delete the caller's photo — the Storage object and the row's pointer.
+   *
+   * Same contract as `setAvatar`: a removal that could not be performed says so.
+   */
+  removeAvatar(): Promise<AvatarWriteOutcome>
   /** The caller's photo as a data URL, or null when there is none (or it cannot be read). */
   getAvatarDataUrl(): Promise<string | null>
   /**
@@ -320,8 +351,11 @@ export const NOOP_STORE: Store = {
   // Nothing is stored, so nothing is taken.
   async isUsernameAvailable() { return true },
   async setUsername() { return { ok: false as const, reason: 'offline' as const } },
-  async setAvatar() { /* no-op */ },
-  async removeAvatar() { /* no-op */ },
+  // `offline` and not a no-op, for the reason the two lines above already take: this
+  // store persists nothing, so reporting a write it never made is the one answer it
+  // must not give.
+  async setAvatar() { return { ok: false as const, reason: 'offline' as const } },
+  async removeAvatar() { return { ok: false as const, reason: 'offline' as const } },
   async getAvatarDataUrl() { return null },
   async loadAvatarDataUrls() { return {} },
   async recordAppInstallation() { /* no-op */ },

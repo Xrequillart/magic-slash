@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { AvatarSourceResult } from '../avatar'
+import type { AvatarSourceResult, AvatarWriteResult } from '../avatar'
 import type { UsernameCheckResult, UsernameSaveResult } from '../username'
 import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, PlanDetail, PlanOverview, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
 
@@ -651,11 +651,17 @@ const profileApi = {
    * A write is a blob then a pointer, so a failure of the second happens with the
    * first already done and whatever is on screen is no longer true. An ABSENT
    * `avatar` means main could not find out either — refetch rather than assume.
+   *
+   * `reason: 'offline'` is the OTHER kind of `ok: false`, and it carries neither an
+   * `error` nor an `avatar` because neither exists: there was no session, so nothing
+   * was attempted and the stored photo is untouched. Do not resync on it — the value
+   * a signed-out read returns is `null`, and adopting it would blank a face that is
+   * still on the server.
    */
-  setAvatar: (dataUrl: string): Promise<{ ok: boolean; error?: string; avatar?: string | null }> =>
+  setAvatar: (dataUrl: string): Promise<AvatarWriteResult> =>
     ipcRenderer.invoke('profile:setAvatar', dataUrl),
-  /** Delete the photo, blob and pointer. Same `avatar` resync contract on failure. */
-  removeAvatar: (): Promise<{ ok: boolean; error?: string; avatar?: string | null }> =>
+  /** Delete the photo, blob and pointer. Same result contract as setAvatar. */
+  removeAvatar: (): Promise<AvatarWriteResult> =>
     ipcRenderer.invoke('profile:removeAvatar'),
 }
 

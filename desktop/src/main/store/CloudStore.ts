@@ -14,7 +14,7 @@ import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
 import { isCloudEnabled } from '../cloud/supabase-client'
 import { mapOrgAgentRow, type OrgAgentRow } from '../cloud/realtime'
-import type { ConnectivityStatus, Store, UsernameWriteOutcome } from './Store'
+import type { AvatarWriteOutcome, ConnectivityStatus, Store, UsernameWriteOutcome } from './Store'
 import { enqueuePendingArchive, resolvePendingArchive } from './pending-archives'
 import { ideaFrom, slugFor, specKeyFor } from './plan-sync'
 import {
@@ -2218,7 +2218,7 @@ export class CloudStore implements Store {
    * writes only the columns present in the payload, so upserting these two
    * cannot touch `name`/`role`/`technical_level`.
    */
-  async setAvatar(dataUrl: string): Promise<void> {
+  async setAvatar(dataUrl: string): Promise<AvatarWriteOutcome> {
     // Parsed BEFORE the session is even looked up: this is the main-process end of
     // the preload bridge, and `dataUrl` is renderer input whatever produced it. The
     // parser is the whole guard — exact prefix, strict base64, the decoded size
@@ -2234,8 +2234,11 @@ export class CloudStore implements Store {
     const parsed = parseAvatarDataUrl(dataUrl)
     if (!parsed.ok) throw new Error(`setAvatar failed: the image was refused (${parsed.reason})`)
 
+    // REPORTED, not swallowed. Returning here used to look to the caller exactly like
+    // a completed upload, so the Account tab published the bytes it held and every
+    // surface drew a face that existed nowhere but in that window.
     const ctx = await this.userContext()
-    if (!ctx) return
+    if (!ctx) return { ok: false, reason: 'offline' }
 
     const buffer = Buffer.from(parsed.bytes)
     const path = avatarObjectPath(ctx.uid)
@@ -2261,6 +2264,7 @@ export class CloudStore implements Store {
     // the PATH tells a reader the bytes changed. Dropping the entry here is what stops
     // the roster showing this user their own previous face for the rest of the TTL.
     this.avatarCache.delete(path)
+    return { ok: true }
   }
 
   /**
@@ -2270,9 +2274,12 @@ export class CloudStore implements Store {
    * missing key is not an error to Storage, and a pointer left behind would keep
    * the UI showing a broken avatar it could no longer delete.
    */
-  async removeAvatar(): Promise<void> {
+  async removeAvatar(): Promise<AvatarWriteOutcome> {
+    // Same reason as `setAvatar`, and it matters more here: a removal reported as
+    // done is one the user believes has taken their face off their colleagues'
+    // screens.
     const ctx = await this.userContext()
-    if (!ctx) return
+    if (!ctx) return { ok: false, reason: 'offline' }
 
     const path = avatarObjectPath(ctx.uid)
     const { error: removeError } = await ctx.client.storage.from(AVATAR_BUCKET).remove([path])
@@ -2284,6 +2291,7 @@ export class CloudStore implements Store {
     if (error) throw new Error(`removeAvatar failed: ${error.message}`)
 
     this.avatarCache.delete(path)
+    return { ok: true }
   }
 
   /**

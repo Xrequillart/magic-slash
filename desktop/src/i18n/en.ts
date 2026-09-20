@@ -1058,6 +1058,9 @@ export const en = {
   'toast.usernameOffline': 'Sign in to choose a username',
   'toast.avatarSaveFailed': 'Failed to save your photo. Please try again.',
   'toast.avatarRemoveFailed': 'Failed to remove your photo',
+  // The photo's `usernameOffline`, and worded like it: nothing was written, and what
+  // the person has to do is sign back in rather than try a different picture.
+  'toast.avatarSignedOut': 'Sign in to change your photo',
 
   // ── Settings → Connections → Atlassian account ───────────────────────────
   // This credential is what the APP reads Jira with — the Tasks page, a ticket's

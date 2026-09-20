@@ -384,6 +384,16 @@ export function CloudAccountSection() {
   const uploadAvatar = useCallback(async (encoded: string, forSession: number) => {
     try {
       const result = await window.electronAPI.profile.setAvatar(encoded)
+      // NOTHING WAS ATTEMPTED — there is no session. Handled before the failure branch
+      // below and, above all, WITHOUT a resync: nothing changed on the server, and the
+      // value a signed-out read answers is `null`, so adopting it would blank a photo
+      // that is still there. This used to arrive as `{ ok: true }` and the bytes were
+      // published to every surface, which is what made a change that never happened
+      // look saved until the next read.
+      if (!result.ok && result.reason === 'offline') {
+        showToast(t('toast.avatarSignedOut'), 'error')
+        return
+      }
       if (!result.ok) {
         // `result.error` is a transport or Storage message in English; it goes to the
         // console for whoever is debugging, not into a toast the user has to decode.
@@ -568,6 +578,13 @@ export function CloudAccountSection() {
     const forSession = avatarSession()
     try {
       const result = await window.electronAPI.profile.removeAvatar()
+      // No session, so the photo is exactly where it was. Reporting this as done would
+      // be the worse half of the bug: the face leaves this screen while it stays on
+      // every colleague's.
+      if (!result.ok && result.reason === 'offline') {
+        showToast(t('toast.avatarSignedOut'), 'error')
+        return
+      }
       if (!result.ok) {
         if (result.error) console.error('avatar removal failed:', result.error)
         // The blob may already be gone with only the pointer left — the photo the
