@@ -8,7 +8,19 @@ import { usesOf } from './ids'
 
 const PROPS: PropRow[] = [
   { name: 'label', type: 'string', required: true, description: 'The word. Translated, and it truncates.' },
-  { name: 'icon', type: 'IconComponent', description: 'The mark. Ignored when avatar is given.' },
+  { name: 'icon', type: 'IconComponent', description: 'The mark. Ignored when avatar or thumb is given.' },
+  {
+    name: 'thumb',
+    type: '{ src: string | null; alt: string }',
+    description:
+      'A SQUARE picture in front of the word \u2014 a skill\u2019s own artwork, as the skills rail draws it. Square and not avatar, which is rounded-full throughout because it draws a FACE: a round crop of artwork cuts its corners off. Wins over icon, loses to avatar.',
+  },
+  {
+    name: 'active',
+    type: 'boolean',
+    description:
+      'This row is the pane currently open beside it. Accent ground at rest, the word up to full ink, and aria-current="page" saying it out loud. Undefined by default, ButtonIcon.active\u2019s rule: a row that never lights up and a row currently unlit are two different claims.',
+  },
   {
     name: 'avatar',
     type: '{ src: string | null; alt: string }',
@@ -133,11 +145,13 @@ import { NotebookPen } from '@ds/desktop/icons'
 <MenuSidebarItem icon={NotebookPen} label={t('sidebar.plans')} shortcut="⌘T" onClick={openPlans} />
 <MenuSidebarItem avatar={{ src: photo, alt: '' }} label={name} shortcut="⌘," alert={hasNoRepos} onClick={openSettings} />`}</Snippet>
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
-          <strong className="font-semibold text-ink">No active state</strong>, and that is the
-          app’s own shape rather than an omission: every one of these opens an <em>overlay</em>,
-          which closes back onto whatever was underneath. A row that stayed lit for a page you
-          had already dismissed would be lying. The day the sidebar navigates rather than
-          overlays, this grows one.
+          <strong className="font-semibold text-ink">It grew an active state</strong>, on the
+          terms the old note set. Every row in the app’s own sidebar opens an <em>overlay</em>,
+          which closes back onto whatever was underneath, so a row that stayed lit for a page
+          you had already dismissed would be lying — and the note ended “the day the sidebar
+          navigates rather than overlays, this grows one”. The skills rail is that day: picking
+          a skill replaces the pane beside it and the row stays picked, which is a fact about
+          the screen rather than a decoration.
         </p>
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
           Rows are drawn one at a time here to show the row itself; in the app they arrive as

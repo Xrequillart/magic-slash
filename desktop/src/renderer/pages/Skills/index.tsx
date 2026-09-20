@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Plus, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal } from '@ds/desktop/icons'
-import { Banner, BreakdownList, BudgetMeter, Input, Loader, NoteCard, NoticeCard, SectionHeader, TabStrip, Text, type BannerAction, type TabStripItem } from '@ds/desktop'
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react'
+import { Plus, Trash2, Save, ImagePlus, X, ChevronRight, Share2, FolderInput, FolderGit2, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal } from '@ds/desktop/icons'
+import { Banner, BreakdownList, BudgetMeter, ButtonIcon, EmptyState, Icon, Input, Label, Loader, MenuSidebarItem, NoteCard, NoticeCard, SectionHeader, SkillCard, TabStrip, Text, type BannerAction, type MenuSidebarItemProps, type TabStripItem } from '@ds/desktop'
 import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
 import SkillDocument from './SkillDocument'
 import { VSCode } from '@ds/desktop/icons'
@@ -92,6 +92,13 @@ const SOURCE_COLOR: Record<string, string> = {
   repo: 'rgb(var(--c-blue, 59 130 246))',
   custom: 'rgb(var(--c-green, 34 197 94))',
 }
+
+/**
+ * The disc beside a repository that has chosen no colour of its own. A grey, and a
+ * VALUE rather than a class for `SOURCE_COLOR`'s reason — `SectionHeader.dot` paints it
+ * inline, so Tailwind never sees it.
+ */
+const REPO_FALLBACK_COLOR = 'rgb(var(--c-text-secondary, 107 114 128))'
 
 /** How loud a skill's share of the budget is. Same contract as `SOURCE_COLOR`. */
 const WEIGHT_COLOR: Record<string, string> = {
@@ -435,55 +442,19 @@ function SkillsWarnings({ duplicates, longDescriptions, onFixLongDescriptions }:
   )
 }
 
-function SkillCard({
-  skill,
-  imageUrl,
-  badge,
-  onClick,
-}: {
-  skill: SkillInfo | RepoSkillInfo
-  imageUrl: string | null
-  badge?: { label: string; className: string }
-  onClick: () => void
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center gap-3 px-2 py-2 rounded-xl bg-surface border border-line-strong hover:bg-surface-strong hover:border-line-strong transition-all group"
-    >
-      {/* Avatar */}
-      <div className="w-12 h-12 rounded-lg bg-surface flex items-center justify-center overflow-hidden flex-shrink-0">
-        {imageUrl ? (
-          <img src={imageUrl} alt={skill.name} className="w-full h-full object-cover" />
-        ) : (
-          <Image className="w-5 h-5 text-text-secondary" />
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="flex-1 min-w-0 text-left">
-        <div className="flex items-center gap-2">
-          <span className="text-base font-semibold text-ink truncate capitalize">{skill.name}</span>
-          {badge && (
-            <span className={`px-1.5 py-0.5 text-xs font-medium rounded flex-shrink-0 ${badge.className}`}>{badge.label}</span>
-          )}
-        </div>
-        {skill.description && (
-          <p className="text-sm text-text-secondary/60 truncate mt-1">{skill.description}</p>
-        )}
-      </div>
-
-      {/* Arrow */}
-      <ChevronRight className="w-4 h-4 text-icon-muted group-hover:text-icon transition-colors flex-shrink-0" />
-    </button>
-  )
-}
-
 /**
  * Permanent left rail: every skill, grouped by origin, so you can move from one
  * to the next without going back to the list first. "All skills" at the top is
  * a destination of its own — the overview with the gauges and the warnings.
- * Mirrors the settings rail: same width, same surface, same active pill.
+ *
+ * EVERY ROW IS A `MenuSidebarItem` NOW, which is the component the app's own sidebar
+ * is built from — and the one whose notes said it would grow an active state "the day
+ * the sidebar navigates rather than overlays". This rail is that day, so the pill that
+ * was spelled here by hand is the component's.
+ *
+ * A REPOSITORY IS A `Label`. It was a bare 8px disc beside a word, which is a colour
+ * with nothing to say it is a name; `Label` in the repo's own hue IS that object, and
+ * the listing on the right now draws the same one.
  */
 function SkillsRail({
   builtInSkills,
@@ -505,126 +476,136 @@ function SkillsRail({
   const t = useT()
   // The active row can sit far down a long rail — a skill opened from the list
   // would otherwise be selected off-screen.
-  const activeRef = useRef<HTMLButtonElement>(null)
+  const activeRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     activeRef.current?.scrollIntoView({ block: 'nearest' })
   }, [activeKey])
 
-  const renderRow = (key: string, label: string, hash: string, leading: React.ReactNode) => {
+  /**
+   * One row. Wrapped in a `div` ONLY to carry the scroll ref: `MenuSidebarItem`
+   * forwards no ref, and a component that did would be a component whose caller can
+   * reach into its DOM. The wrapper costs nothing — it is `display: block` around a
+   * full-width button.
+   */
+  const row = (key: string, label: string, hash: string, mark: Partial<MenuSidebarItemProps>) => {
     const isActive = activeKey === key
     return (
-      <button
-        key={key}
-        ref={isActive ? activeRef : undefined}
-        onClick={() => onSelect(hash)}
-        className={`w-full flex items-center gap-2 text-left px-2.5 py-1.5 mt-0.5 text-sm rounded-lg transition-all ${
-          isActive ? 'bg-accent/15 text-ink font-medium' : 'text-text-secondary hover:text-ink hover:bg-surface'
-        }`}
-      >
-        {leading}
-        <span className="truncate capitalize">{label}</span>
-      </button>
+      <div key={key} ref={isActive ? activeRef : undefined}>
+        <MenuSidebarItem
+          label={label}
+          active={isActive}
+          onClick={() => onSelect(hash)}
+          className="capitalize"
+          {...mark}
+        />
+      </div>
     )
   }
 
-  // `first` rather than a `first:` variant: the repository groups each sit in
-  // their own wrapper, so a CSS first-child rule would fire on every one of them
-  // and eat the separation instead of only skipping it at the top of the rail.
+  /**
+   * A group heading. `first` rather than a `first:` variant: the repository groups each
+   * sit in their own wrapper, so a CSS first-child rule would fire on every one of them
+   * and eat the separation instead of only skipping it at the top of the rail.
+   *
+   * NOT A `SectionHeader`. That heading is 14px beside a 16px glyph, which is the scale
+   * of a heading over a PAGE's section; this is the quiet 11px caps of a rail, under
+   * which the rows are the content. Two different rungs, and the rail's is the one that
+   * keeps 40 rows readable in 224px.
+   */
   const groupHeader = (
-    icon: React.ReactNode,
+    mark: ReactNode,
     label: string,
     count: number,
-    { action, first }: { action?: React.ReactNode; first?: boolean } = {}
+    { action, first }: { action?: ReactNode; first?: boolean } = {}
   ) => (
-    <div className={`flex items-center gap-1.5 px-2.5 mb-1.5 ${first ? 'mt-3' : 'mt-7'} text-[11px] uppercase tracking-wider text-text-secondary/50`}>
-      {icon}
-      <span className="truncate">{label}</span>
-      <span className="text-text-secondary/30">{count}</span>
-      {action && <span className="ml-auto">{action}</span>}
+    <div className={`flex items-center gap-1.5 px-2.5 mb-1.5 ${first ? 'mt-3' : 'mt-7'} text-text-secondary/50`}>
+      {mark}
+      <Text size="2xs" tone="inherit" className="truncate uppercase tracking-wider">
+        {label}
+      </Text>
+      <Text size="2xs" tone="inherit" className="flex-shrink-0 opacity-60">
+        {String(count)}
+      </Text>
+      {action && <span className="ml-auto flex items-center">{action}</span>}
     </div>
   )
 
-  const avatar = (dirName: string, name: string) => {
-    const url = imageCache[dirName] ?? null
-    return url ? (
-      <img src={url} alt={name} className="w-5 h-5 rounded object-cover shrink-0" />
-    ) : (
-      <span className="w-5 h-5 rounded bg-surface-strong flex items-center justify-center shrink-0">
-        <Image className="w-3 h-3 text-icon" />
-      </span>
-    )
-  }
+  const thumb = (dirName: string, name: string) => ({
+    thumb: { src: imageCache[dirName] ?? null, alt: name },
+  })
 
   return (
     <div className="w-56 shrink-0 flex flex-col border-r border-line-field bg-surface-sunken-soft">
       <div className="px-2 pt-3 pb-1 border-b border-line-field">
-        <button
+        <MenuSidebarItem
+          label={t('skills.allSkills')}
+          icon={LayoutGrid}
+          active={activeKey === 'all'}
           onClick={() => onSelect('#/')}
-          className={`w-full flex items-center gap-2 px-2.5 py-1.5 mb-2 text-sm font-medium rounded-lg transition-colors ${
-            activeKey === 'all'
-              ? 'bg-accent/15 text-ink'
-              : 'text-text-secondary hover:bg-surface hover:text-ink'
-          }`}
-        >
-          <LayoutGrid className="w-4 h-4 shrink-0" />
-          <span className="truncate">{t('skills.allSkills')}</span>
-        </button>
+          className="mb-2"
+        />
       </div>
 
       {/* No `space-y` here: its `> * + *` rule outranks a plain `mt-*` class, so
-          it would flatten every group header's separation back to 2px. The rows
-          carry their own `mt-0.5` instead, and sibling margins collapse — a
-          header's `mt-7` wins over the 2px above it. */}
-      <nav className="flex-1 overflow-y-auto px-2 pb-3">
+          it would flatten every group header's separation back to 2px. */}
+      <nav className="flex-1 overflow-y-auto px-2 pb-3" aria-label={t('skills.allSkills')}>
         {builtInSkills.length > 0 && (
           <>
-            {groupHeader(<Sparkles className="w-3 h-3" />, t('skills.builtIn'), builtInSkills.length, { first: true })}
+            {groupHeader(<Icon glyph={Sparkles} size="2xs" tone="inherit" />, t('skills.builtIn'), builtInSkills.length, { first: true })}
             {builtInSkills.map((s) =>
-              renderRow(`skill:${s.dirName}`, s.name, `#/skill/${encodeURIComponent(s.dirName)}`, avatar(s.dirName, s.name))
+              row(`skill:${s.dirName}`, s.name, `#/skill/${encodeURIComponent(s.dirName)}`, thumb(s.dirName, s.name))
             )}
           </>
         )}
 
-        {groupHeader(<PenTool className="w-3 h-3" />, t('skills.custom'), customSkills.length, {
+        {groupHeader(<Icon glyph={PenTool} size="2xs" tone="inherit" />, t('skills.custom'), customSkills.length, {
           first: builtInSkills.length === 0,
-          action: (
-            <button
-              onClick={onNew}
-              title={t('skills.new')}
-              className="p-0.5 rounded text-icon hover:text-ink hover:bg-surface transition-colors"
-            >
-              <Plus className="w-3 h-3" />
-            </button>
-          ),
+          /* `neutral` and not `ghost`: `ghost` has NO PLATE AT REST and is for a button
+             nested inside something that already has one — see its note. A group header
+             is bare ground, where a plateless control is a control with nothing to say
+             it is one until the pointer arrives.
+
+             `sm` — 24px. The rung note calls the three above `2xs` "what a control
+             standing in a row should be", and this one stands in a row: it is the only
+             thing in the rail somebody comes looking for rather than reads past. It is
+             taller than the 10px caps beside it, which is what `items-center` on the
+             header is for — the word sits against the middle of the button rather than
+             the button hanging off the text's baseline. */
+          action: <ButtonIcon icon={Plus} title={t('skills.new')} size="sm" tone="neutral" onClick={onNew} />,
         })}
         {customSkills.length === 0 ? (
-          <p className="px-2.5 py-1 text-xs text-text-secondary/40">{t('skills.customEmpty')}</p>
+          <Text size="xs" tone="secondary" className="block px-2.5 py-1 opacity-40">
+            {t('skills.customEmpty')}
+          </Text>
         ) : (
           customSkills.map((s) =>
-            renderRow(`skill:${s.dirName}`, s.name, `#/skill/${encodeURIComponent(s.dirName)}`, avatar(s.dirName, s.name))
+            row(`skill:${s.dirName}`, s.name, `#/skill/${encodeURIComponent(s.dirName)}`, thumb(s.dirName, s.name))
           )
         )}
+        {/* The skill being written has no route to go to yet, so it is a row that
+            reports rather than navigates — `MenuSidebarItem` with a no-op click would
+            be a control that lies about being one. */}
         {activeKey === 'new' && (
-          <div className="w-full flex items-center gap-2 px-2.5 py-1.5 mt-0.5 text-sm rounded-lg bg-accent/15 text-ink font-medium">
-            <Plus className="w-4 h-4 shrink-0" />
-            <span className="truncate">{t('skills.editor.newTitle')}</span>
+          <div className="w-full flex items-center gap-2 px-2 py-2 rounded-lg bg-accent/15 text-ink text-xs font-medium">
+            <Icon glyph={Plus} tone="inherit" className="flex-shrink-0" />
+            <Text tone="inherit" className="truncate">{t('skills.editor.newTitle')}</Text>
           </div>
         )}
 
         {Object.entries(repoSkillsByRepo).map(([repoName, { color, skills: rSkills }]) => (
           <div key={repoName}>
-            {groupHeader(
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color || '#6B7280' }} />,
-              repoName,
-              rSkills.length
-            )}
+            {/* The repository IS the heading here: a `Label` in its own hue carries the
+                name, so the row needs no separate word beside it. */}
+            <div className="flex items-center gap-1.5 px-2.5 mb-1.5 mt-7 text-text-secondary/50">
+              <Label size="xs" icon={FolderGit2} color={color || REPO_FALLBACK_COLOR} truncate title={repoName}>
+                {repoName}
+              </Label>
+              <Text size="2xs" tone="inherit" className="flex-shrink-0 opacity-60">
+                {String(rSkills.length)}
+              </Text>
+            </div>
             {rSkills.map((rs) =>
-              renderRow(
-                `repo-skill:${rs.filePath}`,
-                rs.name,
-                `#/repo-skill/${encodeURIComponent(rs.filePath)}`,
-                <GitFork className="w-4 h-4 shrink-0 text-icon-muted" />
-              )
+              row(`repo-skill:${rs.filePath}`, rs.name, `#/repo-skill/${encodeURIComponent(rs.filePath)}`, { icon: GitFork })
             )}
           </div>
         ))}
@@ -1124,6 +1105,35 @@ export function SkillsPage() {
     )
   })()
 
+  /**
+   * CREATE AND IMPORT, declared ONCE for the two places that offer them.
+   *
+   * They used to be four hand-built buttons: two beside the section heading and two
+   * more inside the empty state, each spelling `px-2.5 py-1.5 text-xs font-medium
+   * text-text-secondary bg-surface border border-line-strong rounded-lg` — and the
+   * empty state's pair had drifted to `px-3`. `SectionHeader` and `EmptyState` both
+   * take their controls as data and draw them at one rung, so this is the list and
+   * neither of them decides what a button looks like.
+   */
+  const newAction = useMemo(
+    () => ({ id: 'new', label: t('skills.new'), icon: Plus, onClick: () => { window.location.hash = '#/new' } }),
+    [t],
+  )
+  const importAction = useMemo(
+    () => ({ id: 'import', label: t('skills.import'), icon: FolderInput, onClick: handleImport }),
+    [t, handleImport],
+  )
+  // The heading reads import-then-new; the empty state leads with creating, which is
+  // what somebody with no skills at all is nearly always there to do.
+  const customActions = useMemo(() => [importAction, newAction], [importAction, newAction])
+  const emptyActions = useMemo(
+    () => [
+      { ...newAction, label: t('skills.create') },
+      { ...importAction, label: t('skills.importFolder') },
+    ],
+    [newAction, importAction, t],
+  )
+
   // Overview — the "All skills" destination: warnings, budget, and the cards.
   const overview = (
     <div className="flex flex-col gap-10 w-full">
@@ -1148,18 +1158,21 @@ export function SkillsPage() {
           {/* Built-in section */}
           {builtInSkills.length > 0 && (
             <div>
-              <div className="flex items-center gap-2 text-sm text-text-secondary">
-                <Sparkles className="w-4 h-4" />
-                <span>{t('skills.builtIn')}</span>
-              </div>
-              <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">{t('skills.builtInHelp')}</p>
+              <SectionHeader
+                icon={Sparkles}
+                title={t('skills.builtIn')}
+                hint={t('skills.builtInHelp')}
+                className="mb-3"
+                spacing="none"
+              />
               <div className="grid grid-cols-3 gap-2">
                 {builtInSkills.map((skill) => (
                   <SkillCard
                     key={skill.dirName}
-                    skill={skill}
+                    name={skill.name}
+                    description={skill.description}
                     imageUrl={imageCache[skill.dirName] ?? null}
-                    badge={{ label: t('skills.source.builtIn'), className: 'bg-accent/10 text-accent' }}
+                    badge={{ label: t('skills.source.builtIn'), color: SOURCE_COLOR['built-in'] }}
                     onClick={() => { window.location.hash = `#/skill/${encodeURIComponent(skill.dirName)}` }}
                   />
                 ))}
@@ -1169,59 +1182,26 @@ export function SkillsPage() {
 
           {/* Custom section */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <div className="flex items-center gap-2 text-sm text-text-secondary">
-                  <PenTool className="w-4 h-4" />
-                  <span>{t('skills.custom')}</span>
-                </div>
-                <p className="text-xs text-text-secondary/30 mt-0.5">{t('skills.customHelp')}</p>
-              </div>
-              {customSkills.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleImport}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                  >
-                    <FolderInput className="w-3 h-3" />
-                    <span>{t('skills.import')}</span>
-                  </button>
-                  <button
-                    onClick={() => { window.location.hash = '#/new' }}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>{t('skills.new')}</span>
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* The two controls only exist once there is a list to act on: with no
+                custom skills the same two verbs are the `EmptyState`'s, and offering
+                them twice on one screen is two answers to one question. */}
+            <SectionHeader
+              icon={PenTool}
+              title={t('skills.custom')}
+              hint={t('skills.customHelp')}
+              actions={customSkills.length > 0 ? customActions : []}
+              className="mb-3"
+              spacing="none"
+            />
             {customSkills.length === 0 ? (
-              <div className="w-full py-8 border border-dashed border-border/50 rounded-xl">
-                <div className="text-sm text-text-secondary/50 mb-3 text-center">{t('skills.customEmpty')}</div>
-                <div className="flex items-center justify-center gap-3">
-                  <button
-                    onClick={() => { window.location.hash = '#/new' }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>{t('skills.create')}</span>
-                  </button>
-                  <button
-                    onClick={handleImport}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                  >
-                    <FolderInput className="w-3 h-3" />
-                    <span>{t('skills.importFolder')}</span>
-                  </button>
-                </div>
-              </div>
+              <EmptyState actions={emptyActions}>{t('skills.customEmpty')}</EmptyState>
             ) : (
               <div className="grid grid-cols-3 gap-2">
                 {customSkills.map((skill) => (
                   <SkillCard
                     key={skill.dirName}
-                    skill={skill}
+                    name={skill.name}
+                    description={skill.description}
                     imageUrl={imageCache[skill.dirName] ?? null}
                     onClick={() => { window.location.hash = `#/skill/${encodeURIComponent(skill.dirName)}` }}
                   />
@@ -1232,35 +1212,41 @@ export function SkillsPage() {
 
           {/* Repository Skills section */}
           <div>
-            <div className="flex items-center gap-2 text-sm text-text-secondary">
-              <GitFork className="w-4 h-4" />
-              <span>{t('skills.repos')}</span>
-            </div>
-            <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">{t('skills.reposHelp')}</p>
+            <SectionHeader
+              icon={GitFork}
+              title={t('skills.repos')}
+              hint={t('skills.reposHelp')}
+              className="mb-3"
+              spacing="none"
+            />
             {repoSkillsLoading && (
               <div className="flex items-center justify-center py-6">
                 <Loader variant="spin" size="lg" tone="accent" />
               </div>
             )}
             {!repoSkillsLoading && Object.keys(repoSkillsByRepo).length === 0 && (
-              <p className="text-sm text-text-secondary/40">{t('skills.reposEmpty')}</p>
+              <EmptyState>{t('skills.reposEmpty')}</EmptyState>
             )}
             {!repoSkillsLoading && Object.entries(repoSkillsByRepo).map(([repoName, { color, skills: rSkills }]) => (
               <div key={repoName} className="mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span
-                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: color || '#6B7280' }}
-                  />
-                  <span className="text-sm font-medium text-text-secondary">{repoName}</span>
-                  <span className="text-xs text-text-secondary/40">{rSkills.length}</span>
+                {/* THE REPOSITORY IS A `Label` — a name on a plate in its own hue, which
+                    is what a repo has instead of a glyph. It was a bare disc beside a
+                    word: a colour with nothing to say it was a name. The rail draws the
+                    same object one rung smaller. */}
+                <div className="mb-2 flex items-center gap-2">
+                  <Label size="sm" icon={FolderGit2} color={color || REPO_FALLBACK_COLOR} truncate title={repoName}>
+                    {repoName}
+                  </Label>
+                  <Text size="xs" tone="secondary" className="flex-shrink-0 opacity-40">
+                    {String(rSkills.length)}
+                  </Text>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {rSkills.map((rs) => (
                     <SkillCard
                       key={rs.filePath}
-                      skill={rs}
-                      imageUrl={null}
+                      name={rs.name}
+                      description={rs.description}
                       onClick={() => { window.location.hash = `#/repo-skill/${encodeURIComponent(rs.filePath)}` }}
                     />
                   ))}

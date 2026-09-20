@@ -53,6 +53,8 @@ export type EntryId =
   | 'breakdownlist'
   | 'budgetmeter'
   | 'notecard'
+  | 'skillcard'
+  | 'emptystate'
   | 'ratelimitbar'
   | 'usagetable'
   | 'sectionheader'
@@ -150,6 +152,8 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   breakdownlist: 'BreakdownList',
   budgetmeter: 'BudgetMeter',
   notecard: 'NoteCard',
+  skillcard: 'SkillCard',
+  emptystate: 'EmptyState',
   ratelimitbar: 'RateLimitBar',
   usagetable: 'UsageTable',
   sectionheader: 'SectionHeader',
@@ -288,6 +292,8 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   breakdownlist: ['label', 'text'],
   budgetmeter: ['progress', 'text'],
   notecard: ['icon', 'text'],
+  skillcard: ['icon', 'label', 'text'],
+  emptystate: ['button', 'text'],
   ratelimitbar: ['progress', 'text'],
   usagetable: ['text'],
   sectionheader: ['button', 'icon', 'text'],
@@ -448,6 +454,8 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   breakdownlist: 'What a total is made of, ranked',
   budgetmeter: 'A quantity against its allowance',
   notecard: 'One thing worth knowing, on a quiet plate',
+  skillcard: 'One skill as a tile you can open',
+  emptystate: 'Nothing here yet, and the ways to change that',
   ratelimitbar: 'One plan limit, and when it turns over',
   usagetable: 'Figures over periods, in columns',
   sectionheader: 'What the thing under it is',

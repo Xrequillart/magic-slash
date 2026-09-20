@@ -25,6 +25,8 @@ import { NoticeCardEntry } from './entries/NoticeCardEntry'
 import { BreakdownListEntry } from './entries/BreakdownListEntry'
 import { BudgetMeterEntry } from './entries/BudgetMeterEntry'
 import { NoteCardEntry } from './entries/NoteCardEntry'
+import { SkillCardEntry } from './entries/SkillCardEntry'
+import { EmptyStateEntry } from './entries/EmptyStateEntry'
 import { RateLimitBarEntry } from './entries/RateLimitBarEntry'
 import { UsageTableEntry } from './entries/UsageTableEntry'
 import { CommitCardEntry } from './entries/CommitCardEntry'
@@ -162,6 +164,8 @@ const ENTRIES: Record<
   breakdownlist: BreakdownListEntry,
   budgetmeter: BudgetMeterEntry,
   notecard: NoteCardEntry,
+  skillcard: SkillCardEntry,
+  emptystate: EmptyStateEntry,
   ratelimitbar: RateLimitBarEntry,
   usagetable: UsageTableEntry,
   label: LabelEntry,

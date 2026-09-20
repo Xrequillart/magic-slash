@@ -9,8 +9,14 @@ import { usesOf } from './ids'
 const noop = () => undefined
 
 const PROPS: PropRow[] = [
-  { name: 'icon', type: 'IconComponent', required: true, description: 'The mark in the gutter, at 16px.' },
+  { name: 'icon', type: 'IconComponent', required: true, description: 'The mark in the gutter, at 16px. A glyph, and only a glyph \u2014 a group whose identity is a colour rather than a mark wears a Label instead.' },
   { name: 'title', type: 'string', required: true, description: 'What the section is. Already translated; truncates.' },
+  {
+    name: 'hint',
+    type: 'string',
+    description:
+      'One quiet line under the title, saying what the section is FOR. It hangs BELOW the h-5 pin rather than growing it, so a section that explains itself still starts its title on the same y as one that does not. It was spelled at the call site four times on the skills page, one of them with a different bottom margin.',
+  },
   {
     name: 'count',
     type: 'number',
