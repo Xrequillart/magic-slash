@@ -2260,10 +2260,21 @@ export class CloudStore implements Store {
       .upsert({ user_id: ctx.uid, avatar_url: path }, { onConflict: 'user_id' })
     if (error) throw new Error(`setAvatar failed: ${error.message}`)
 
-    // The key is stable across saves — one blessed object per user — so nothing about
-    // the PATH tells a reader the bytes changed. Dropping the entry here is what stops
-    // the roster showing this user their own previous face for the rest of the TTL.
-    this.avatarCache.delete(path)
+    // SEEDED WITH WHAT WE JUST WROTE, not dropped — and this is the line that makes a
+    // saved avatar actually appear.
+    //
+    // The key is stable across saves, so nothing about the PATH tells a reader the
+    // bytes changed, and the object is served through a CDN that purges ASYNCHRONOUSLY.
+    // Measured against production: for the first seconds after a save, a download of
+    // this path answers with the PREVIOUS version, while `list()` — which reads the
+    // metadata row rather than the object — already reports the new size. Dropping the
+    // entry here therefore did the opposite of what it intended: the next roster read
+    // raced the purge, lost, and cached the old face for the whole TTL.
+    //
+    // There is nothing to race for. These are the bytes, they are the ones the server
+    // now holds, and `dataUrl` is already in the exact shape a reader wants. Whatever
+    // the CDN is still handing out in the meantime is of no interest to this process.
+    this.avatarCache.set(path, { dataUrl, at: Date.now() })
     return { ok: true }
   }
 
@@ -2290,7 +2301,10 @@ export class CloudStore implements Store {
       .upsert({ user_id: ctx.uid, avatar_url: null }, { onConflict: 'user_id' })
     if (error) throw new Error(`removeAvatar failed: ${error.message}`)
 
-    this.avatarCache.delete(path)
+    // `null`, not a delete, for `setAvatar`'s reason wearing the other sign: a dropped
+    // entry sends the next reader back to a CDN that may still be serving the object we
+    // just deleted, which would put the removed face back on screen.
+    this.avatarCache.set(path, { dataUrl: null, at: Date.now() })
     return { ok: true }
   }
 
@@ -2327,6 +2341,23 @@ export class CloudStore implements Store {
     const path = (data as Pick<ProfileRow, 'avatar_url'>).avatar_url
     if (!path) return null
 
+    // THE SAME CACHE THE ROSTER USES, and reading it here is what makes a photo the user
+    // just saved survive a window reload.
+    //
+    // `Cmd+R` reloads the RENDERER; this process, and this map, stay. So after a save
+    // the entry `setAvatar` seeded is still here, holding the bytes we know the server
+    // took — while a download of the path would, for the first seconds, still be handed
+    // the previous version by the CDN. Going to the network there is how a save looked
+    // undone the moment the window reloaded.
+    //
+    // The TTL is what keeps this honest rather than a place a wrong face could hide: an
+    // entry older than AVATAR_CACHE_TTL_MS is ignored and the object is fetched again,
+    // by which time the purge has long since happened. A photo changed on another
+    // machine therefore still arrives, within that window or at the next launch — the
+    // same contract `loadAvatarDataUrls` already states for teammates' faces.
+    const hit = this.avatarCache.get(path)
+    if (hit && Date.now() - hit.at < AVATAR_CACHE_TTL_MS) return hit.dataUrl
+
     const { data: blob, error: downloadError } = await ctx.client.storage.from(AVATAR_BUCKET).download(path)
     // The pointer says there ARE bytes, so failing to get them is always a fault:
     // storage policies, connectivity, or an object the pointer outlived.
@@ -2334,7 +2365,14 @@ export class CloudStore implements Store {
     if (downloadError || !blob) return null
     const buffer = Buffer.from(await blob.arrayBuffer())
     if (buffer.length === 0) return null
-    return `${AVATAR_DATA_URL_PREFIX}${buffer.toString('base64')}`
+    const dataUrl = `${AVATAR_DATA_URL_PREFIX}${buffer.toString('base64')}`
+    // Populated on the way out, so the roster does not re-fetch the caller's own face
+    // it has just been handed. A failed read is deliberately NOT cached here, unlike in
+    // `loadAvatarDataUrls`: that method caches its misses to stop a wrong pointer
+    // costing a request per call over a whole team, whereas this is one object the user
+    // is looking at, and a blip must not fix a blank face in place for five minutes.
+    this.avatarCache.set(path, { dataUrl, at: Date.now() })
+    return dataUrl
   }
 
   /**

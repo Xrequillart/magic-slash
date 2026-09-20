@@ -2843,6 +2843,33 @@ describe('avatar', () => {
     expect(download?.args).toEqual([PATH])
   })
 
+  /**
+   * THE `Cmd+R` REGRESSION, in one test.
+   *
+   * Reloading the window restarts the RENDERER, not this process, so a save made a
+   * moment earlier is still known here. It has to be, because a download of the path at
+   * that instant is answered by the CDN with the PREVIOUS version — which is exactly
+   * what made a saved avatar revert the moment the window reloaded.
+   *
+   * The download mock therefore hands back DIFFERENT bytes on purpose: it stands in for
+   * the stale copy production really serves, and the assertion is that we do not take
+   * it.
+   */
+  it('getAvatarDataUrl answers with the just-saved photo, not the stale object', async () => {
+    const stale = Buffer.from([0x52, 0x49, 0x46, 0x46, 0x99, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50])
+    const { client } = makeClient(
+      { profiles: { data: { avatar_url: PATH }, error: null } },
+      {},
+      {},
+      { upload: { data: { path: PATH }, error: null }, download: { data: blobOf(stale), error: null } },
+    )
+    h.state.client = client
+
+    const store = new CloudStore()
+    await expect(store.setAvatar(DATA_URL)).resolves.toEqual({ ok: true })
+    await expect(store.getAvatarDataUrl()).resolves.toBe(DATA_URL)
+  })
+
   it('getAvatarDataUrl returns null without a download when the column is empty', async () => {
     const { client, calls } = makeClient({ profiles: { data: { avatar_url: null }, error: null } })
     h.state.client = client
@@ -3016,31 +3043,46 @@ describe('loadAvatarDataUrls', () => {
     expect(downloads).toEqual([pathOf('u1')])
   })
 
-  it('forgets the caller own photo the moment they change it', async () => {
+  /**
+   * THE CALLER'S OWN FACE IS KNOWN, NOT RE-FETCHED — and re-fetching is the bug.
+   *
+   * The object key is a constant, so nothing about the PATH says the bytes moved on,
+   * and the bucket is served through a CDN that purges asynchronously. Measured against
+   * production: for the first seconds after a save, a download of the path is answered
+   * with the PREVIOUS version. So going back to the network here does not merely cost a
+   * request — it loses a race, and caches the old face for the rest of the TTL, right
+   * after the user watched themselves upload a new one.
+   *
+   * There is nothing to fetch. `setAvatar` was handed the bytes, the server took them,
+   * and the assertion is on the VALUE rather than on a download count for that reason:
+   * what matters is that the roster shows the face that was just saved.
+   */
+  it('shows the caller the face they just saved, without asking the bucket', async () => {
     const { client, downloads } = makeAvatarClient({ [pathOf(UID)]: WEBP(1) })
     h.state.client = client
 
     const store = new CloudStore()
-    await store.loadAvatarDataUrls({ [UID]: pathOf(UID) })
+    await expect(store.loadAvatarDataUrls({ [UID]: pathOf(UID) })).resolves.toEqual({ [UID]: urlOf(1) })
     await store.setAvatar(urlOf(9))
-    await store.loadAvatarDataUrls({ [UID]: pathOf(UID) })
 
-    // The object key is a constant, so nothing about the PATH says the bytes moved on.
-    // Without this the user would keep seeing their previous face in the roster for
-    // the rest of the TTL, right after watching themselves upload a new one.
-    expect(downloads).toEqual([pathOf(UID), pathOf(UID)])
+    await expect(store.loadAvatarDataUrls({ [UID]: pathOf(UID) })).resolves.toEqual({ [UID]: urlOf(9) })
+    // One download, from before the save. The second read is answered from what the
+    // save already knew.
+    expect(downloads).toEqual([pathOf(UID)])
   })
 
-  it('forgets it on removal too', async () => {
+  it('stops showing a face the caller just removed, without asking the bucket', async () => {
     const { client, downloads } = makeAvatarClient({ [pathOf(UID)]: WEBP(1) })
     h.state.client = client
 
     const store = new CloudStore()
     await store.loadAvatarDataUrls({ [UID]: pathOf(UID) })
     await store.removeAvatar()
-    await store.loadAvatarDataUrls({ [UID]: pathOf(UID) })
 
-    expect(downloads).toEqual([pathOf(UID), pathOf(UID)])
+    // The same race wearing the other sign: a re-fetch here can still be handed the
+    // object that was just deleted, putting the removed face back on screen.
+    await expect(store.loadAvatarDataUrls({ [UID]: pathOf(UID) })).resolves.toEqual({})
+    expect(downloads).toEqual([pathOf(UID)])
   })
 
   it('asks for nothing when there is no session', async () => {
