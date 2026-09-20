@@ -27,6 +27,8 @@ import { BudgetMeterEntry } from './entries/BudgetMeterEntry'
 import { NoteCardEntry } from './entries/NoteCardEntry'
 import { SkillCardEntry } from './entries/SkillCardEntry'
 import { EmptyStateEntry } from './entries/EmptyStateEntry'
+import { FormFieldEntry } from './entries/FormFieldEntry'
+import { ImageFieldEntry } from './entries/ImageFieldEntry'
 import { SkillHeaderEntry } from './entries/SkillHeaderEntry'
 import { RateLimitBarEntry } from './entries/RateLimitBarEntry'
 import { UsageTableEntry } from './entries/UsageTableEntry'
@@ -167,6 +169,8 @@ const ENTRIES: Record<
   notecard: NoteCardEntry,
   skillcard: SkillCardEntry,
   emptystate: EmptyStateEntry,
+  formfield: FormFieldEntry,
+  imagefield: ImageFieldEntry,
   skillheader: SkillHeaderEntry,
   ratelimitbar: RateLimitBarEntry,
   usagetable: UsageTableEntry,

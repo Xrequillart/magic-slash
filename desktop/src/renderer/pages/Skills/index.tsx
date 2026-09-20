@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react'
-import { Plus, Trash2, Save, ImagePlus, X, ChevronRight, Share2, FolderInput, FolderGit2, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal } from '@ds/desktop/icons'
-import { Banner, BreakdownList, BudgetMeter, ButtonIcon, EmptyState, Icon, Input, Label, Loader, MenuSidebarItem, NoteCard, NoticeCard, SectionHeader, SkillCard, TabStrip, Text, type BannerAction, type MenuSidebarItemProps, type TabStripItem } from '@ds/desktop'
+import { Plus, Trash2, Save, ChevronRight, Share2, FolderInput, FolderGit2, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal } from '@ds/desktop/icons'
+import { Banner, BreakdownList, BudgetMeter, Button, ButtonIcon, EmptyState, FormField, Icon, ImageField, Label, Loader, MenuSidebarItem, NoteCard, NoticeCard, SectionHeader, SkillCard, TabStrip, Text, type BannerAction, type MenuSidebarItemProps, type TabStripItem } from '@ds/desktop'
 import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
 import SkillDocument from './SkillDocument'
 import { VSCode } from '@ds/desktop/icons'
@@ -8,7 +8,6 @@ import { SweepPane } from '../../components/SweepPane'
 import { useTerminals } from '../../hooks/useTerminals'
 import { useStore, type SkillsContextWindow, type SkillsContextWindowSetting } from '../../store'
 import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
-import { BTN, BTN_DANGER, BTN_PRIMARY } from '../../theme/controls'
 import { DEFAULT_CONTEXT_WINDOW, detectContextWindow, resolveContextWindow, formatWindow } from './contextWindow'
 
 /**
@@ -728,140 +727,93 @@ function SkillEditor({
     <div className="flex flex-col gap-6 w-full">
       {/* Header — no back arrow: the rail is always there to navigate from */}
       <div className="flex items-center gap-3">
-        <h2 className="text-xl font-semibold capitalize flex-1">
+        <Text size="xl" weight="bold" className="flex-1 capitalize">
           {headerTitle}
-        </h2>
+        </Text>
         {!isNew && onShare && (
-          <button
-            onClick={handleShare}
-            disabled={sharing}
-            className={`${BTN} disabled:opacity-50`}
-          >
-            <Share2 className="w-3.5 h-3.5" />
+          <Button size="sm" tone="neutral" icon={Share2} busy={sharing} onClick={handleShare}>
             {sharing ? t('skills.editor.sharing') : t('skills.editor.share')}
-          </button>
+          </Button>
         )}
       </div>
 
+      {/* A `Banner` and not a red box of its own: it states a fact about the form
+          under it, which is the whole of what a banner is for. */}
       {error && (
-        <div className="px-4 py-3 bg-red/10 border border-red/20 rounded-lg text-red text-sm">
+        <Banner variant="danger" bordered>
           {error}
-        </div>
+        </Banner>
       )}
 
       {/* Form */}
       <div className="flex flex-col gap-4">
-        {/* Name */}
-        <div>
-          <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.name')}</label>
-          <Input
-            value={name}
-            onChange={setName}
-            disabled={!isNew}
-            placeholder="my-skill"
-            className="w-full"
-          />
-          {isNew && (
-            <p className="mt-1 text-xs text-text-secondary/60">{t('skills.editor.nameHelp')}</p>
-          )}
-        </div>
+        <FormField
+          label={t('skills.editor.name')}
+          hint={isNew ? t('skills.editor.nameHelp') : undefined}
+          input={{ value: name, onChange: setName, disabled: !isNew, placeholder: 'my-skill' }}
+        />
 
-        {/* Description */}
-        <div>
-          <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.description')}</label>
-          <Input
-            multiline
-            value={description}
-            onChange={setDescription}
-            placeholder={t('skills.editor.descriptionPlaceholder')}
-            rows={3}
-            className="w-full"
-          />
-        </div>
+        <FormField
+          label={t('skills.editor.description')}
+          input={{
+            multiline: true,
+            value: description,
+            onChange: setDescription,
+            placeholder: t('skills.editor.descriptionPlaceholder'),
+            rows: 3,
+          }}
+        />
 
-        {/* Allowed Tools */}
-        <div>
-          <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.allowedTools')}</label>
-          <Input
-            value={allowedTools}
-            onChange={setAllowedTools}
-            placeholder="Bash(*), Read, Edit, Write, Glob, Grep"
-            className="w-full"
-          />
-        </div>
+        <FormField
+          label={t('skills.editor.allowedTools')}
+          input={{ value: allowedTools, onChange: setAllowedTools, placeholder: 'Bash(*), Read, Edit, Write, Glob, Grep' }}
+        />
 
-        {/* Image */}
+        {/* The one field whose control is not a box. `FormField` draws an `Input` from
+            data and nothing else, so the label here is its own — a field component that
+            also took arbitrary controls would be `SettingRow` with a different layout. */}
         <div>
-          <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.image')}</label>
-          <div className="flex items-center gap-3">
-            {imagePreview ? (
-              <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-line">
-                <img src={imagePreview} alt="Skill" className="w-full h-full object-cover" />
-                <button
-                  onClick={handleRemoveImage}
-                  className="absolute -top-1 -right-1 w-5 h-5 bg-red rounded-full flex items-center justify-center"
-                >
-                  <X className="w-3 h-3 text-ink" />
-                </button>
-              </div>
-            ) : imagePath ? (
-              <div className="flex items-center gap-2 px-3 py-2 bg-surface border border-line rounded-lg">
-                <ImagePlus className="w-4 h-4 text-accent" />
-                <span className="text-xs text-text-secondary truncate max-w-[200px]">{imagePath.split('/').pop()}</span>
-                <button onClick={handleRemoveImage} className="text-text-secondary hover:text-red">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : null}
-            <button
-              onClick={handlePickImage}
-              className={BTN}
-            >
-              <ImagePlus className="w-3.5 h-3.5" />
-              {imagePreview || imagePath ? t('skills.editor.change') : t('skills.editor.upload')}
-            </button>
-          </div>
-        </div>
-
-        {/* Content (markdown body) */}
-        <div>
-          <label className="block text-base font-medium text-text-secondary mb-1.5">
-            {t('skills.editor.content')}
-          </label>
-          {/* The one field that IS the page, so it is the one allowed to grow. */}
-          <Input
-            multiline
-            value={body}
-            onChange={setBody}
-            placeholder={t('skills.editor.contentPlaceholder')}
-            rows={16}
-            mono
-            resize="vertical"
-            className="w-full"
+          <Text size="sm" tone="secondary" className="mb-1.5 block">
+            {t('skills.editor.image')}
+          </Text>
+          <ImageField
+            src={imagePreview}
+            filename={imagePath?.split('/').pop() ?? null}
+            pickLabel={t('skills.editor.upload')}
+            changeLabel={t('skills.editor.change')}
+            removeLabel={t('common.remove')}
+            onPick={handlePickImage}
+            onRemove={handleRemoveImage}
           />
         </div>
+
+        <FormField
+          label={t('skills.editor.content')}
+          // The one field that IS the page, so it is the one allowed to grow.
+          input={{
+            multiline: true,
+            value: body,
+            onChange: setBody,
+            placeholder: t('skills.editor.contentPlaceholder'),
+            rows: 16,
+            mono: true,
+            resize: 'vertical',
+          }}
+        />
       </div>
 
-      {/* Actions */}
+      {/* Actions. `BTN_PRIMARY` and `BTN_DANGER` are gone with them: `Button`'s tones
+          say the same thing, and its `busy` spins the mark where the old constants only
+          dimmed the whole control. */}
       <div className="flex items-center gap-3 pb-6">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={`${BTN_PRIMARY} disabled:opacity-50`}
-        >
-          <Save className="w-3.5 h-3.5" />
+        <Button size="sm" tone="accent" icon={Save} busy={saving} onClick={handleSave}>
           {saving ? t('common.saving') : t('common.save')}
-        </button>
+        </Button>
 
         {!isNew && onDelete && (
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className={`${BTN_DANGER} disabled:opacity-50`}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
+          <Button size="sm" tone="danger" icon={Trash2} busy={deleting} onClick={handleDelete}>
             {deleting ? t('skills.editor.deleting') : t('common.remove')}
-          </button>
+          </Button>
         )}
       </div>
     </div>

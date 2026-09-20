@@ -55,6 +55,8 @@ export type EntryId =
   | 'notecard'
   | 'skillcard'
   | 'emptystate'
+  | 'formfield'
+  | 'imagefield'
   | 'skillheader'
   | 'ratelimitbar'
   | 'usagetable'
@@ -155,6 +157,8 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   notecard: 'NoteCard',
   skillcard: 'SkillCard',
   emptystate: 'EmptyState',
+  formfield: 'FormField',
+  imagefield: 'ImageField',
   skillheader: 'SkillHeader',
   ratelimitbar: 'RateLimitBar',
   usagetable: 'UsageTable',
@@ -296,6 +300,8 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   notecard: ['icon', 'text'],
   skillcard: ['icon', 'label', 'text'],
   emptystate: ['button', 'text'],
+  formfield: ['input', 'text'],
+  imagefield: ['button', 'buttonicon', 'icon', 'text'],
   skillheader: ['icon', 'label', 'text'],
   ratelimitbar: ['progress', 'text'],
   usagetable: ['text'],
@@ -459,6 +465,8 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   notecard: 'One thing worth knowing, on a quiet plate',
   skillcard: 'One skill as a tile you can open',
   emptystate: 'Nothing here yet, and the ways to change that',
+  formfield: 'One entry of a form you fill in',
+  imagefield: 'A picture a thing will wear',
   skillheader: 'What a skill is, read rather than edited',
   ratelimitbar: 'One plan limit, and when it turns over',
   usagetable: 'Figures over periods, in columns',
