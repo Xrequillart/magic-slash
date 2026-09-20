@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AccountSettings, Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, PlanSession, PlanSpecInput, PlanTicketsInput, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
 import {
   AVATAR_BUCKET,
+  AVATAR_CACHE_CONTROL,
   AVATAR_DATA_URL_PREFIX,
   AVATAR_MIME_TYPE,
   avatarObjectPath,
@@ -2240,7 +2241,15 @@ export class CloudStore implements Store {
     const path = avatarObjectPath(ctx.uid)
     const { error: uploadError } = await ctx.client.storage
       .from(AVATAR_BUCKET)
-      .upload(path, buffer, { upsert: true, contentType: AVATAR_MIME_TYPE })
+      // `cacheControl` is NOT a default worth taking: storage-js sends '3600' when it
+      // is absent, which stores the object with `max-age=3600` under a key that never
+      // changes. See AVATAR_CACHE_CONTROL — the same staleness the line below guards
+      // against in this process, one layer down and an hour long.
+      .upload(path, buffer, {
+        upsert: true,
+        contentType: AVATAR_MIME_TYPE,
+        cacheControl: AVATAR_CACHE_CONTROL,
+      })
     if (uploadError) throw new Error(`setAvatar failed: ${uploadError.message}`)
 
     const { error } = await ctx.client

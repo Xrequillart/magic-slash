@@ -63,6 +63,36 @@ export const AVATAR_BUCKET = 'avatars'
 export const AVATAR_MIME_TYPE = 'image/webp'
 
 /**
+ * How long a stored photo may be served without asking us again. Zero: never.
+ *
+ * THE KEY IS CONSTANT AND THE CONTENT IS NOT, which is the whole reason this has to
+ * be stated. `avatarObjectPath` gives every user ONE blessed object, overwritten in
+ * place on every change, and the write policies in SQL pin it to that name so it can
+ * never be versioned into `avatar-2.webp`. That is deliberate — it is what keeps the
+ * bucket bounded and the storage policies own-rows shaped — but it also means the URL
+ * carries no evidence that the bytes behind it changed. Anything caching on the path
+ * alone will happily keep serving the previous face.
+ *
+ * `storage-js` defaults `cacheControl` to '3600' (see its DEFAULT_FILE_OPTIONS), which
+ * it sends as `cache-control: max-age=3600` ON THE STORED OBJECT. So the default is
+ * the worst possible pairing with a fixed key: change your avatar and, for the next
+ * hour, every download — yours on the next launch, and your colleagues' in the members
+ * list — may answer with the photo you just replaced. It reads as a change that did
+ * not save, because the write succeeded and nothing anywhere reports an error.
+ *
+ * '0' rather than dropping the header: `max-age=0` still lets a cache STORE the object
+ * and revalidate it, which is the right trade for a picture of a few kilobytes that is
+ * read far more often than it is written. It is a string because that is what the
+ * option takes — it is interpolated into the header as-is, so a number of seconds is
+ * the only thing it may be ('no-cache' would be sent as `max-age=no-cache`).
+ *
+ * It lives here for this module's reason: the upload names it, and the only way to
+ * know what a stored object promises is to read the rule next to the path, the bucket
+ * and the mime type it was stored with.
+ */
+export const AVATAR_CACHE_CONTROL = '0'
+
+/**
  * The largest ORIGINAL file we will read, in bytes (5 MB).
  *
  * It is measured against the file the user PICKED, never against the encoded

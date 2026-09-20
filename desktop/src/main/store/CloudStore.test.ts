@@ -2686,7 +2686,41 @@ describe('avatar', () => {
     // replaces the photo in place instead of being refused as a duplicate key —
     // and the contentType is what a later download hands back as its data URL
     // prefix, so it has to be the stored format rather than whatever was picked.
-    expect(upload?.args).toEqual([PATH, BYTES, { upsert: true, contentType: 'image/webp' }])
+    expect(upload?.args).toEqual([
+      PATH,
+      BYTES,
+      { upsert: true, contentType: 'image/webp', cacheControl: '0' },
+    ])
+  })
+
+  /**
+   * The regression this locks: an avatar that saves and then comes back as the
+   * PREVIOUS one for an hour.
+   *
+   * `cacheControl` has to be passed EXPLICITLY, because the option storage-js picks
+   * when it is absent is '3600' and it is written onto the stored object. Paired with
+   * a key that never changes (one blessed object per user, pinned by the write
+   * policies) that default means a change is invisible to every later read until the
+   * hour is out — the user's own next launch, and the members list beside their name.
+   * Nothing reports an error, because nothing failed: the bytes really were stored.
+   *
+   * Asserted as its own test rather than only inside the options above, so that a
+   * future edit to that object literal has to answer for this specifically.
+   */
+  it('stores the object so that nothing may serve it from cache', async () => {
+    const { client, calls } = makeClient(
+      { profiles: { data: null, error: null } },
+      {},
+      {},
+      { upload: { data: { path: PATH }, error: null } },
+    )
+    h.state.client = client
+
+    await new CloudStore().setAvatar(DATA_URL)
+
+    const upload = calls.find((c) => c.table === 'storage:avatars' && c.method === 'upload')
+    const options = upload?.args[2] as { cacheControl?: string } | undefined
+    expect(options?.cacheControl).toBe('0')
   })
 
   it('writes the pointer as an upsert of the two avatar columns only', async () => {
