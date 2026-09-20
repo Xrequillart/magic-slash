@@ -1768,7 +1768,6 @@ export const fr: Record<keyof typeof en, string> = {
   'update.installFailed': 'La mise à jour a bien été téléchargée, mais le redémarrage a échoué. Quittez puis relancez l’application.',
   'update.debugMenu': 'Menu de débogage',
   'whatsNew.title': 'Nouveautés',
-  'whatsNew.gotIt': 'Compris',
   'whatsNew.added': 'Ajouts',
   'whatsNew.changed': 'Modifications',
   'whatsNew.fixed': 'Corrections',

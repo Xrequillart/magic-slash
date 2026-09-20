@@ -54,7 +54,7 @@ const PROPS: PropRow[] = [
     type: 'string',
     required: true,
     description:
-      'The cover’s one word — “What’s New”. Translated, and it is the dialog’s heading in the ordinary sense and in the accessible one: aria-labelledby points at it. The same every time, which is why it belongs on the cover — what changes is underneath.',
+      'The heading — “What’s New”. Translated, and it is the dialog’s heading in the ordinary sense and in the accessible one: aria-labelledby points at it. It sat on the band while the band was a coloured plate with nothing in it; the band is a drawing now, so it opens the page instead, over the version and the date it names.',
   },
   {
     name: 'version',
@@ -77,18 +77,18 @@ const PROPS: PropRow[] = [
       'The release, parsed. The same shape CHANGELOG.md has and the webapp’s own changelog reads — turning GitHub’s release HTML into it is the app’s job, not this component’s. The scope is split out of the sentence because the source splits it: every entry opens **Desktop**: …, and a column of bold scopes is what makes a release of twenty lines scannable.',
   },
   {
-    name: 'confirmLabel',
+    name: 'closeLabel',
     type: 'string',
     required: true,
     description:
-      'The word on the one button. Translated: this folder has no dictionary.',
+      'The name of the cross — the accessible name of the only control in the dialog, which ButtonIcon will not take a mark without. Translated: this folder has no dictionary.',
   },
   {
     name: 'onClose',
     type: '() => void',
     required: true,
     description:
-      'What the button, Escape and a click on the ground all call. There is no close button in the band: nothing here has to be decided, so a cross on a dialog whose only action is “Got it” was a second answer to a question with one.',
+      'What the cross, Escape and a click on the ground all call. The cross is the only control here, and that is the point: nothing in this dialog has to be decided, so an accent button at the foot reading “Got it” was an action where there is no action. It said “confirm” about a page you had merely finished reading.',
   },
   {
     name: 'backdropClassName · className · onAnimationEnd',
@@ -140,28 +140,48 @@ export function WhatsNewDialogEntry({
 
       <EntrySection
         title="What it replaced"
-        note="A 2.4MB illustration filling the top of the panel, a hand-rolled close button on a bg-black/30 square in its corner, a raw BTN_PRIMARY string at the bottom, and the release notes injected with dangerouslySetInnerHTML and dressed by nine .whats-new-content rules in the app’s stylesheet — a stylesheet reaching into markup nobody in this repo wrote."
+        note="A 2.4MB raster filling the top of the panel, a hand-rolled close button on a bg-black/30 square in its corner, a raw BTN_PRIMARY string at the bottom, and the release notes injected with dangerouslySetInnerHTML and dressed by nine .whats-new-content rules in the app’s stylesheet — a stylesheet reaching into markup nobody in this repo wrote."
       >
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
-          The band is the site’s <code>tone-sky</code>, the ground <code>/features</code>{' '}
-          sets the context card on, declared as <code>bg-release-mesh</code> in the
-          desktop’s own Tailwind config — the two halves of this folder share nothing, so it
-          is pasted rather than imported.
+          The band is <code>WhatsNewArt</code>, and it is two-tone line work: every one of
+          its 749 paths was <code>fill=&quot;black&quot;</code> over a white plate, the
+          plate is gone and the black is <code>currentColor</code>. So the drawing takes
+          the colour the band sets and the shapes it knocks out — the collar, the shirt
+          buttons, the paper — are the <em>ground</em> showing through. It is spelled out
+          as a component rather than imported as a file for <code>brand.tsx</code>’s
+          reason: a <code>.svg</code> needs a loader, a loader is per app, and the two
+          halves of this folder do not share a build.
         </p>
       </EntrySection>
 
       <EntrySection
-        title="It ignores the theme"
-        note="The single surface in the app that does. The band is fixed and the panel under it is release-paper with release-ink — a white page with near-black type, which is what /changelog is. A release read on midnight and the same release read on light are the same document, so they are printed the same way. Switch the theme above: everything moves except this."
+        title="The page follows the theme and the cover does not"
+        note="None of it used to. A raster baked against a pale ground can only be shown on a pale ground, so the panel under the old band had to be a fixed white page with fixed near-black ink — eight themes or not. Line work on currentColor unpicks that, and the choice it opens up is split: below the band is a document, and a document is read in the app’s own colours; the band is a picture, and a picture that restated whichever of the eight grounds the app happens to be wearing would be saying nothing. Switch the theme above — the page turns over underneath a cover that stays where it is."
       >
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
-          Two things inside it still follow the theme, deliberately: the category dots and
-          the one button. Those are where colour carries <em>meaning</em> rather than
-          surface — the app’s own green, accent and yellow — and all of them are saturated
-          enough to read on white under every theme. The button keeps its shadow because
-          the shadow is the <code>accent</code> tone’s and not this dialog’s: see{' '}
-          <code>Button</code>, whose header is explicit that it is what makes a filled
-          button read as an object on the page rather than a rectangle painted on it.
+          So the band keeps <code>release-paper</code> and <code>release-ink</code>, the
+          fixed pair the desktop’s sign-in card is mixed from, and the cross on it takes{' '}
+          <code>ButtonIcon</code>’s <code>paper</code> tone for the same reason: the
+          theme’s own <code>text-icon</code> is mixed against the theme’s ground, so on{' '}
+          <code>midnight</code> a neutral cross here would be a pale mark on white — the
+          one control in the dialog, invisible. Everything below moves: the ink, the
+          secondary text, the bullets. The category dots keep the app’s green, accent and
+          yellow, which are where colour carries <em>meaning</em> rather than surface.
+        </p>
+      </EntrySection>
+
+      <EntrySection
+        title="Nothing pins, and nothing scrolls inside it"
+        note="The dialog is the height of its content, which is what the missing footer makes possible. There was a Got it button holding the bottom, a capped panel, and a scroller between them — and a page that scrolls behind its own chrome stops reading like a page. The overflow moved out to the dimmed ground instead: Modal’s scrollableGround, so a release long enough to pass the window scrolls whole, behind the dim."
+      >
+        <p className="max-w-2xl text-xs leading-relaxed text-muted">
+          That ground centres the panel with <code>m-auto</code> rather than{' '}
+          <code>items-center</code>, which is the one piece of it that is not obvious: a
+          flex child centred by <code>align-items</code> and overflowing its scroll
+          container has its overflow clipped at the <em>start</em> edge in Chromium, so
+          the top of a tall panel becomes unreachable — precisely the failure the change
+          is meant to prevent. Auto margins absorb the free space when there is some and
+          collapse to nothing when there is not.
         </p>
       </EntrySection>
 
@@ -174,7 +194,7 @@ export function WhatsNewDialogEntry({
   version={\`v\${release.version}\`}
   date={formatReleaseDate(release.releaseDate, locale)}
   categories={parseRelease(release.releaseNotes, t)}
-  confirmLabel={t('whatsNew.gotIt')}
+  closeLabel={t('common.close')}
   onClose={dismiss}
 />`}</Snippet>
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
@@ -216,7 +236,7 @@ function Playback() {
           version="v0.96.2"
           date="16 September 2026"
           categories={CATEGORIES}
-          confirmLabel="Got it"
+          closeLabel="Close"
           onClose={() => setOpen(false)}
           portalTo={portal}
         />

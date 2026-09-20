@@ -6,11 +6,11 @@ import { useLocale, useT, type MessageKey, type Translate } from '../i18n'
 /**
  * THE WIRING BEHIND `WhatsNewDialog` — when it opens, and what the release actually said.
  *
- * The drawing is `@ds/desktop/WhatsNewDialog.tsx`: the band, the version and its date,
- * the categories typeset the way the public `/changelog` typesets them, the close button
- * and the one button at the foot. What is left here is everything a design system cannot
- * do — the IPC, the Escape key, the exit animation, the translator, the reader's locale,
- * and the parser below.
+ * The drawing is `@ds/desktop/WhatsNewDialog.tsx`: the band and its illustration, the
+ * title, the version and its date, the categories typeset the way the public
+ * `/changelog` typesets them, and the cross that is the only control in it. What is left
+ * here is everything a design system cannot do — the IPC, the Escape key, the exit
+ * animation, the translator, the reader's locale, and the parser below.
  *
  * WHY THERE IS A PARSER AT ALL. The notes arrive as GitHub's rendered HTML, because that
  * is what electron-updater carries in the feed and what the releases API hands back. The
@@ -234,7 +234,7 @@ export function WhatsNewModal() {
       version={`v${release.version}`}
       date={formatReleaseDate(release.releaseDate, locale)}
       categories={categories}
-      confirmLabel={t('whatsNew.gotIt')}
+      closeLabel={t('common.close')}
       onClose={handleClose}
       // The app's keyframes, which is the one thing the design system cannot supply: they
       // live in `index.css` and that folder cannot reach them. Ground and panel animate

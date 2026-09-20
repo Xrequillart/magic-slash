@@ -1,7 +1,9 @@
 import type { AnimationEvent } from 'react'
-import { Button } from './Button'
+import { ButtonIcon } from './ButtonIcon'
+import { X } from './icons'
 import { Modal } from './Modal'
 import { Text, TEXT_FACE, TEXT_WEIGHTS } from './Text'
+import { WhatsNewArt } from './WhatsNewArt'
 
 /**
  * WHAT THE VERSION YOU JUST INSTALLED BROUGHT — the dialog the app opens once, on the
@@ -16,13 +18,35 @@ import { Text, TEXT_FACE, TEXT_WEIGHTS } from './Text'
  * history, and a release that looked like two different things in two places is a release
  * you cannot recognise across them.
  *
- * WHAT IT REPLACED: a 2.4MB illustration filling the top of the panel, a hand-rolled
- * close button on a `bg-black/30` square in its corner, a raw `BTN_PRIMARY` string at the
- * bottom, and the release notes injected as HTML and dressed by nine
- * `.whats-new-content` rules in the app's stylesheet. Three of those four are components
- * now — `ButtonIcon`, `Button`, `Text` — and the fourth is this component's own markup,
- * because a dialog whose body is `dangerouslySetInnerHTML` cannot be in a design system:
- * there is nothing to type and nothing to compose.
+ * THE PAGE FOLLOWS THE THEME AND THE COVER DOES NOT, and that line is the one decision
+ * worth reading in this file.
+ *
+ * NONE OF IT USED TO. The band was a 2.4MB raster baked against a pale ground, and a
+ * raster baked against a pale ground can only be shown on one — so the panel under it had
+ * to be pale too, and a fixed white page with fixed near-black ink is what the WHOLE
+ * dialog became, eight themes or not. `WhatsNewArt` is what unpicks that: it is two-tone
+ * line work on `currentColor`, so what it is drawn on is now a choice rather than a
+ * constraint.
+ *
+ * AND THE CHOICE IS SPLIT, because the two halves are different kinds of thing. Below the
+ * band is a DOCUMENT — a release, typeset — and a document is read in the app's own
+ * colours like every other page in it. The band is a PICTURE, and a picture is the one
+ * part of a product that is allowed to be itself: it is `release-paper` with
+ * `release-ink`, the white it was drawn on, and it does not move. Switch from `light` to
+ * `midnight` and the page turns over underneath a cover that stays where it is.
+ *
+ * NOTHING PINS AND NOTHING SCROLLS INSIDE IT. The dialog is the height of its content,
+ * which is what the missing footer makes possible: there was a "Got it" button holding
+ * the bottom, a capped panel, and a scroller between them, and a page that scrolls behind
+ * its own chrome stops reading like a page. The overflow moved out to the ground instead
+ * — see `scrollableGround` on `Modal` — so a release long enough to pass the window
+ * scrolls whole, behind the dim.
+ *
+ * THE CROSS IS THE WAY OUT, and it is the only control here. That is the point: nothing
+ * in this dialog has to be DECIDED, so an accent button at the foot was an action where
+ * there is no action — it said "confirm" about a page you had merely finished reading.
+ * A cross says "close", which is the truth. Escape and a click on the ground still work,
+ * both through `Modal`.
  *
  * SO THE NOTES ARRIVE PARSED. `categories`, each with its entries, is exactly the shape
  * `CHANGELOG.md` has and the shape the webapp's own changelog reads. Turning GitHub's
@@ -32,24 +56,6 @@ import { Text, TEXT_FACE, TEXT_WEIGHTS } from './Text'
  * AND THE DATE ARRIVES FORMATTED, for the reason every date in this folder does: "16
  * September 2026" and "16 septembre 2026" are one `toLocaleDateString` call with a locale
  * this component has no way to know.
- *
- * IT IS THE ONE SURFACE IN THE APP THAT IGNORES THE THEME, and that is the whole reason
- * it has tokens of its own. The band is the site's `tone-sky` — the ground `/features`
- * sets the context card on, declared as `bg-release-mesh` — and the panel under it is
- * `release-paper` with `release-ink`: a white page with near-black type, which is what the
- * public `/changelog` is. A release read on `midnight` and the same release read on
- * `light` are the same document, so they are printed the same way. The three configs'
- * notes say the rest.
- *
- * TWO THINGS INSIDE IT STILL FOLLOW THE THEME, deliberately: the category dots and the
- * one button. Those are where colour carries MEANING rather than surface — they are the
- * app's own green, accent and yellow — and all of them are saturated enough to read on
- * white under every theme.
- *
- * ONE WAY OUT AND NOT TWO. There was a close button in the corner of the band, and it is
- * gone: nothing here has to be decided, nothing is lost by reading on, and a cross on a
- * dialog whose only action is "Got it" was a second answer to a question with one. Escape
- * and a click on the ground still work — both are the app's, through `Modal`.
  */
 
 /** A category's colour, and the four are the changelog's own three plus the fallback. */
@@ -96,16 +102,12 @@ export interface WhatsNewCategory {
 
 export interface WhatsNewDialogProps {
   /**
-   * THE COVER'S ONE WORD — "What's New". Translated.
+   * THE HEADING — "What's New". Translated.
    *
-   * It is the dialog's heading, in the ordinary sense and in the accessible one: the band
-   * was a picture with nothing in it, so the first thing a reader met was a version
-   * number with no sentence saying what it was doing on their screen. This is that
-   * sentence, and it is what `aria-labelledby` points at.
-   *
-   * IT IS THE SAME EVERY TIME, which is exactly why it belongs on the cover rather than
-   * in the body: what CHANGES — the version, the date, the notes — is underneath, and a
-   * cover is the one place a fixed word earns its space.
+   * It is the dialog's heading in the ordinary sense and in the accessible one: what
+   * `aria-labelledby` points at. It sat on the band while the band was a coloured plate
+   * with nothing in it; the band is a drawing now, so it opens the page instead, over the
+   * version and the date it names.
    */
   title: string
   /**
@@ -120,11 +122,14 @@ export interface WhatsNewDialogProps {
    * reading "Invalid Date" under the version is worse than no line.
    */
   date?: string
-  /** The release, parsed. Empty draws the dialog with nothing between the date and the button. */
+  /** The release, parsed. Empty draws the dialog as a band, a title and a version. */
   categories: WhatsNewCategory[]
-  /** The word on the one button. Translated. */
-  confirmLabel: string
-  /** What the button, Escape and a click on the ground all call. */
+  /**
+   * The name of the cross. REQUIRED, and it is the accessible name of the only control
+   * in the dialog — see `ButtonIcon`, which will not take a mark without one. Translated.
+   */
+  closeLabel: string
+  /** What the cross, Escape and a click on the ground all call. */
   onClose: () => void
   /** The caller's enter and exit animation — see `Modal`, which owns neither. */
   backdropClassName?: string
@@ -139,7 +144,7 @@ export function WhatsNewDialog({
   version,
   date,
   categories,
-  confirmLabel,
+  closeLabel,
   onClose,
   backdropClassName,
   className = '',
@@ -153,73 +158,91 @@ export function WhatsNewDialog({
       backdropClassName={backdropClassName}
       onAnimationEnd={onAnimationEnd}
       portalTo={portalTo}
-      // `overflow-hidden` is what makes the band meet the panel's own top corners: it is
-      // a full-bleed rectangle, and without it the mesh paints square over them.
-      // `max-h-[85vh]` with the scroll on the BODY and not here, so the band and the
-      // button stay put while a long release scrolls between them.
-      className={`mx-4 flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden ${className}`.trim()}
+      // THE GROUND TAKES THE OVERFLOW, not this panel — see `Modal`. Which is what lets
+      // the box be a plain `w-full max-w-xl` with no height in it at all: no `max-h`, no
+      // flex column, no `min-h-0` under a scroller. The dialog is as tall as the release.
+      //
+      // `overflow-hidden` STAYS, and it is the one measurement left: the band is a
+      // full-bleed plate and it paints square over the panel's own top corners without
+      // it.
+      scrollableGround
+      className={`w-full max-w-xl overflow-hidden ${className}`.trim()}
     >
-      {/* THE COVER. 160px, the height the illustration it replaces was capped at, so the
-          dialog opens at the proportion people already know. `shrink-0` because it is a
-          sibling of a scroller in a flex column, and a fixed height in that position is a
-          suggestion without it.
+      {/* THE COVER, AND IT IS THE ONE THING HERE THAT DOES NOT MOVE. `relative` for the
+          cross, which is the only thing in the dialog that floats rather than flows.
 
-          NOT A `Text`, AND THAT IS THE ONE DECISION WORTH READING HERE. `Text`'s ladder is
-          `ComponentSize` — the same seven rungs `Button`, `Label` and `Status` stand on —
-          and it tops out at `2xl`, which is 24px. That ladder is for type IN a row: a
-          label beside a button, a title in a card. This is DISPLAY type, the one line on a
-          cover with nothing beside it to be in step with, and 36px is simply not a rung
-          that ladder has any business growing for one call site.
-          
-          So the face and the weight come from the module and the SIZE is spelled here.
-          Passing `text-4xl` to `Text`'s `className` would have been the other way to get
-          it and it is the trap this folder warns about in five places: two utilities from
-          one group on one element are settled by the order Tailwind emitted them in, not
-          by the order they were written, so `text-2xl` and `text-4xl` would race and the
-          winner would be whichever the scanner happened to write first.
+          `release-paper` AND `release-ink` — the fixed white and the fixed near-black,
+          which is what the drawing was exported as and what it is kept on. It followed
+          the theme for one commit and the reason to stop is that a cover is a PICTURE: it
+          is the one part of this dialog that is not a document being typeset, and a
+          picture that restated whichever of the eight grounds the app happens to be
+          wearing is a picture saying nothing. The page under it still moves — that is the
+          whole point of the split, and it is why the pair has to be spelled on this
+          element rather than on the panel.
 
-          `black` is the heaviest of the four faces Cera Pro actually ships — see `Text`'s
-          note, which measured them: there are four names for four drawings, not eight for
-          four. `tracking-tight` because display type set at its natural tracking reads
-          loose; every headline on the public site carries the same.
+          `text-release-ink` IS THE DRAWING'S COLOUR, through `currentColor` — see
+          `WhatsNewArt`. Full strength and not a wash: it is line work at about a quarter
+          of a pixel per unit, and a 60% ink reads as a drawing that failed to load.
 
-          `release-ink` AND NOT THE THEME'S: the mesh is a fixed light ground, so the type
-          on it is the fixed dark one, exactly as the page below it is. */}
-      <div className="flex h-40 shrink-0 items-center justify-center bg-release-mesh px-5">
+          THE HEIGHT IS THE BAND'S AND THE WIDTH FOLLOWS. `h-60` with `py-5` leaves the
+          drawing 200px, a shade over the 160px the old raster was capped at — which it
+          earns by being line work rather than a photograph. The art is `h-full w-auto`,
+          so it is sized by what that padding leaves and centred in whatever width the
+          dialog has. The other way round, with the width leading, the band would be 440px
+          tall here, which is most of a window.
+
+          THE PADDING IS THE WHOLE REASON THE BAND IS TALLER THAN THE DRAWING. Sized to
+          fit exactly, the art's own box touches both edges — the sheet of paper at the
+          top and the desk at the bottom land ON the seams, which reads as a picture that
+          was cropped to fit rather than one that was placed. */}
+      <div className="relative flex h-60 items-center justify-center bg-release-paper px-5 py-5">
+        <WhatsNewArt aria-hidden className="h-full w-auto text-release-ink" />
+        {/* `paper`, which is the tone `ButtonIcon` has for exactly this: a control on one
+            of the app's fixed-light surfaces. The theme's own `text-icon` is mixed
+            against the theme's ground, so on `midnight` a `neutral` or `ghost` cross here
+            would be a pale mark on white — the one control in the dialog, invisible. This
+            tone is mixed from `release-ink` instead, the same fixed near-black the
+            drawing beside it is in. */}
+        <div className="absolute right-3 top-3">
+          <ButtonIcon icon={X} title={closeLabel} onClick={onClose} tone="paper" />
+        </div>
+      </div>
+
+      <div className="px-5 pb-6 pt-5">
+        {/* NOT A `Text`, AND THAT IS THE ONE DECISION WORTH READING HERE. `Text`'s ladder
+            is `ComponentSize` — the same seven rungs `Button`, `Label` and `Status` stand
+            on — and it tops out at `2xl`, which is 24px. That ladder is for type IN a
+            row: a label beside a button, a title in a card. This is the one line that
+            opens a page, and 30px is not a rung that ladder has any business growing for
+            one call site.
+
+            So the face and the weight come from the module and the SIZE is spelled here.
+            Passing `text-3xl` to `Text`'s `className` would have been the other way to
+            get it and it is the trap this folder warns about in five places: two
+            utilities from one group on one element are settled by the order Tailwind
+            emitted them in, not by the order they were written, so `text-2xl` and
+            `text-3xl` would race and the winner would be whichever the scanner happened
+            to write first.
+
+            `black` is the heaviest of the four faces Cera Pro actually ships — see
+            `Text`'s note, which measured them. `tracking-tight` because display type set
+            at its natural tracking reads loose; every headline on the public site carries
+            the same. */}
         <h2
           id="whats-new-title"
-          className={`${TEXT_FACE} ${TEXT_WEIGHTS.black} text-center text-4xl leading-tight tracking-tight text-release-ink`}
+          className={`${TEXT_FACE} ${TEXT_WEIGHTS.black} text-3xl leading-tight tracking-tight text-ink`}
         >
           {title}
         </h2>
-      </div>
 
-      {/* THE BODY, and it is the one thing here that scrolls. `min-h-0` is what makes
-          `overflow-y-auto` real in a flex column: a flex child defaults to its content's
-          minimum size, so without it a long release pushes the button off the bottom
-          instead of scrolling under it. */}
-      {/* THE PAPER IS ON THE BODY AND THE FOOT, not on `Modal`'s panel, and that is a
-          mechanical reason rather than a taste one: the panel already carries
-          `bg-bg-secondary`, and two background utilities on one element are settled by the
-          order Tailwind emitted them in — not by the order they were written. The band,
-          this and the foot tile the panel completely, so the theme's ground is never seen.
-
-          `text-release-ink` HERE AND `tone="inherit"` ON EVERY `Text` BELOW: one colour
-          declared once, and the four strengths spelled as opacity on the elements that
-          want them. `Text`'s own `ink` and `secondary` are theme tokens and would each be
-          a second answer to what colour this page is. */}
-      <div className="min-h-0 flex-1 overflow-y-auto bg-release-paper px-5 pb-5 pt-5 text-release-ink">
-        {/* WHICH RELEASE THIS IS — the number, then the day it shipped. The changelog
-            gives this pair a column of its own and pins it; a dialog is one screen, so
-            here it is simply the first two lines under the cover. */}
-        <Text size="lg" weight="bold" tone="inherit">
-          {version}
+        {/* WHICH RELEASE THIS IS, ON ONE LINE. The changelog gives the number and the day
+            a column of their own and pins it; a dialog is one screen, and under a heading
+            that already says what the page is, two stacked lines of metadata are two
+            lines of furniture. The separator is drawn here rather than folded into either
+            string so that a release with no date is a version and nothing else. */}
+        <Text size="xs" tone="secondary" className="mt-1.5 block">
+          {date ? `${version} · ${date}` : version}
         </Text>
-        {date && (
-          <Text size="xs" tone="inherit" className="mt-1 block opacity-60">
-            {date}
-          </Text>
-        )}
 
         {/* `gap-6` between categories against `gap-2` between entries: three groups of
             one-line items only read as three groups if the space between them is several
@@ -239,9 +262,9 @@ export function WhatsNewDialog({
                       reader already knows. */}
                   <Text
                     size="xs"
-                    tone="inherit"
+                    tone="secondary"
                     weight="bold"
-                    className="uppercase tracking-[0.08em] opacity-50"
+                    className="uppercase tracking-[0.08em]"
                   >
                     {category.label}
                   </Text>
@@ -262,19 +285,19 @@ export function WhatsNewDialog({
                           font size rather than a distance. */}
                       <span
                         aria-hidden
-                        className="mt-[0.6em] h-1 w-1 shrink-0 rounded-full bg-release-ink/30"
+                        className="mt-[0.6em] h-1 w-1 shrink-0 rounded-full bg-ink/30"
                       />
                       {/* TWO `Text`s AND NOT ONE WITH A SPAN IN IT, because `Text` takes
                           a STRING — its own rule, and the reason a scope had to be a prop
                           rather than markup the caller passes in. Both render a `<span>`,
                           so they flow as one line and the scope keeps its own weight and
-                          its own ink: full strength against the sentence's secondary, so
-                          a column of them can be scanned without reading the lines. */}
+                          its own ink: `ink` against the sentence's `secondary`, so a
+                          column of them can be scanned without reading the lines. */}
                       <span className="min-w-0 leading-relaxed">
                         {entry.scope && (
-                          <Text size="sm" weight="bold" tone="inherit">{`${entry.scope} : `}</Text>
+                          <Text size="sm" weight="bold" tone="ink">{`${entry.scope} : `}</Text>
                         )}
-                        <Text size="sm" tone="inherit" className="opacity-70">
+                        <Text size="sm" tone="secondary">
                           {entry.text}
                         </Text>
                       </span>
@@ -285,23 +308,6 @@ export function WhatsNewDialog({
             ))}
           </div>
         )}
-      </div>
-
-      {/* THE ONE ACTION, CENTRED AND AT THE TOP RUNG. It was `lg` at the right edge,
-          which is where a dialog puts the last of several buttons — and there are not
-          several. A single button aligned right reads as the survivor of a row; centred
-          at `2xl` it reads as the thing the dialog is asking you to do, which is the one
-          case `Button`'s own note says that rung is for.
-
-          `accent`, and it keeps its shadow. That shadow is the TONE's, not this dialog's
-          — `shadow-md shadow-accent/30`, tinted with the plate's own colour, and
-          `Button`'s header is explicit that it is what makes a filled button read as an
-          object sitting on the page rather than a rectangle painted on it. Stripping it
-          here would make this the one accent button in the app that is flat. */}
-      <div className="flex shrink-0 justify-center bg-release-paper px-5 pb-6">
-        <Button tone="accent" size="2xl" onClick={onClose}>
-          {confirmLabel}
-        </Button>
       </div>
     </Modal>
   )

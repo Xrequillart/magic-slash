@@ -30,28 +30,31 @@ module.exports = {
       // black over a light window needs more of it than white over a dark one.
       colors: {
         /**
-         * THE PAPER AND THE INK THIS ONE DIALOG IS PRINTED ON, and neither moves.
+         * THE FIXED PAPER AND THE FIXED INK — the two surfaces in the app that do not
+         * move when the theme does, and neither of them moves for the same reason.
          *
-         * `WhatsNewDialog` is the single surface in the app that ignores the theme. It
-         * opens on a fixed light band (`release-mesh` below) and it is typeset like the
-         * public `/changelog`, which is a white page with near-black ink — so the panel
-         * under that band is that page rather than whichever of the eight grounds the app
-         * happens to be wearing. A release read on `midnight` and the same release read on
-         * `light` are the same document, and this is what makes them look like it.
+         * `LoginScreen` CANNOT follow it. It is drawn before anyone has signed in, which
+         * is before the app knows whose theme to wear, so it opens on a fixed light
+         * ground (`release-mesh` below) with a glass card on it — and the card is this
+         * pair. `Input`'s `glass` variant and `ButtonIcon`'s `paper` tone are the two
+         * components mixed from it.
+         *
+         * `WhatsNewDialog`'s COVER does not follow it BY CHOICE. Everything under that
+         * band is a document and is typeset in the theme's own colours; the band itself
+         * is a picture, drawn in black on white, and a picture that restated whichever of
+         * the eight grounds the app happens to be wearing would be a picture saying
+         * nothing. So the band is `release-paper` and the drawing on it is
+         * `release-ink` — see the component, which states the split at length.
          *
          * THE INK IS CHANNELS AND THE PAPER IS A COLOUR, which is this table's own split:
-         * the ink is asked for at four strengths — the version at full, the date at 60%, a
-         * category label at 50%, a bullet at 30% — and only the `R G B` form keeps `/60`
-         * working. The paper is never modulated.
+         * the ink is asked for at several strengths — a placeholder at 40%, a field's
+         * ground at 45%, a border at 60%, the cover's cross at 60% — and only the `R G B`
+         * form keeps `/60` working. The paper is never modulated on the cover, and is at
+         * `/35` and `/45` on the glass card, so it carries a modifier too.
          *
          * `10 10 11` is the `dark` theme's own window colour, which is the site's `ink`
          * to within a point. Not a variable: a value that followed the theme would be the
          * opposite of what this pair is for.
-         *
-         * WHAT STILL FOLLOWS THE THEME inside that dialog, deliberately: the three category
-         * dots and the one button. Those are the two places colour carries MEANING rather
-         * than surface, they are the app's own green / accent / yellow, and all three are
-         * saturated enough to read on white under every theme.
          */
         'release-paper': '#FFFFFF',
         'release-ink': 'rgb(10 10 11 / <alpha-value>)',
@@ -138,8 +141,8 @@ module.exports = {
         'tada': 'tada 0.8s ease-in-out',
       },
       /**
-       * THE RELEASE MESH — the one picture in this config, and the ground the What's New
-       * dialog opens on.
+       * THE RELEASE MESH — the one picture in this config, and the ground the sign-in
+       * screen opens on.
        *
        * IT IS THE SITE'S `tone-sky`, VALUE FOR VALUE. That token is built in
        * `webapp/tailwind.config.ts` by a `mesh()` of six radial blooms over a flat wash,
@@ -151,14 +154,13 @@ module.exports = {
        * webapp's config if those stops ever move.
        *
        * A TOKEN AND NOT A CLASS IN THE COMPONENT, which is rule 2's other half: a shared
-       * component names a ROLE and never a value, so `WhatsNewDialog` asks for
+       * component names a ROLE and never a value, so `LoginScreen` asks for
        * `bg-release-mesh` and the seven colours live here.
        *
-       * IT DOES NOT FOLLOW THE THEME, and that is deliberate rather than an oversight: it
-       * is ARTWORK, the replacement for the 2.4MB illustration this dialog used to open
-       * with, and a picture that restated the app's own eight grounds would say nothing.
-       * Everything drawn ON it takes `on-brand`, which is the ink these stops were chosen
-       * to carry.
+       * IT DOES NOT FOLLOW THE THEME, and here that is not even a choice: this is the
+       * ground the app shows BEFORE anyone has signed in, which is before it knows whose
+       * theme to wear. Everything drawn on it takes `release-ink`, the fixed near-black
+       * these stops were chosen to carry.
        */
       boxShadow: {
         /**

@@ -1904,7 +1904,6 @@ export const en = {
   'update.installFailed': 'The update was downloaded, but the restart failed. Please quit and reopen the app.',
   'update.debugMenu': 'Debug menu',
   'whatsNew.title': 'What’s New',
-  'whatsNew.gotIt': 'Got it',
   // The three headings `CHANGELOG.md` uses, and the dialog prints whichever ones the
   // release has. A heading this build does not know is drawn under its own raw English
   // word and a neutral dot rather than dropped — a release note is worth more than a

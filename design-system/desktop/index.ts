@@ -182,6 +182,7 @@ export type { SwitchProps, SwitchSize, SwitchVariant } from './Switch'
 export type { StatusOption, StatusProps, StatusSize, StatusStrength, StatusTone } from './Status'
 export { UpdateDialog } from './UpdateDialog'
 export type { UpdateDialogProps, UpdateStage } from './UpdateDialog'
+export { WhatsNewArt } from './WhatsNewArt'
 export { WhatsNewDialog } from './WhatsNewDialog'
 export type {
   WhatsNewCategory,

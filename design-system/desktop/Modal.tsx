@@ -63,6 +63,32 @@ export interface ModalProps {
    * instead, and has to point this at it. See the note above.
    */
   portalTo?: HTMLElement | null
+  /**
+   * THE GROUND SCROLLS, AND THE PANEL DOES NOT — for a dialog that is the size of its
+   * own content.
+   *
+   * The default is a panel that has to fit: the ground is a centred flex box with no
+   * overflow, so a panel taller than the window simply hangs off both ends of it. Every
+   * dialog here avoids that by capping itself and scrolling INSIDE — a header and a
+   * footer that stay put with a scroller between them.
+   *
+   * `WhatsNewDialog` is the case that cannot. It has no footer to pin and it is sized by
+   * its content by design, so an inner scroller would be a scrollbar down the middle of
+   * a page that is trying to read like a page. This moves the overflow OUT to the dimmed
+   * ground: the panel grows to whatever it needs, and on the rare release long enough to
+   * pass the window the whole thing scrolls behind the dim.
+   *
+   * `m-auto` AND NOT `items-center`, which is the one piece of this that is not obvious.
+   * A flex child centred by `align-items` and overflowing its scroll container has its
+   * overflow clipped at the START edge in Chromium — the top of the panel becomes
+   * unreachable, which is precisely the failure this is meant to prevent. Auto margins
+   * absorb the free space when there is some and collapse to nothing when there is not,
+   * so the panel centres while it fits and scrolls from its top when it stops fitting.
+   *
+   * `overscroll-contain` so that reaching the end of a long release does not hand the
+   * wheel to whatever page is behind the dim.
+   */
+  scrollableGround?: boolean
 }
 
 export function Modal({
@@ -73,6 +99,7 @@ export function Modal({
   onAnimationEnd,
   labelledBy,
   portalTo,
+  scrollableGround = false,
 }: ModalProps) {
   /**
    * MOUNTED BEFORE PORTALLED, because `document` does not exist while the marketing site is
@@ -97,7 +124,9 @@ export function Modal({
     // stay above the modal they drop open inside. The order is app < sheet < modal <
     // select, and 56 is the only value that keeps all three relations.
     <div
-      className={`fixed inset-0 z-[56] flex items-center justify-center bg-black/70 ${backdropClassName}`.trim()}
+      className={`fixed inset-0 z-[56] flex bg-black/70 ${
+        scrollableGround ? 'overflow-y-auto overscroll-contain p-6' : 'items-center justify-center'
+      } ${backdropClassName}`.trim()}
       onClick={onClose}
     >
       <div
@@ -106,7 +135,9 @@ export function Modal({
         aria-labelledby={labelledBy}
         onAnimationEnd={onAnimationEnd}
         onClick={(event) => event.stopPropagation()}
-        className={`bg-bg-secondary rounded-2xl shadow-xl ${className}`.trim()}
+        className={`bg-bg-secondary rounded-2xl shadow-xl ${
+          scrollableGround ? 'm-auto' : ''
+        } ${className}`.trim()}
       >
         {children}
       </div>

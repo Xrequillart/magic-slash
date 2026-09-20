@@ -28,9 +28,10 @@ type ResetStep = 'request' | 'confirm'
  * cannot use anyway to put a small box in the middle of it was a dialog standing in for
  * a screen.
  *
- * THE GROUND IS `bg-release-mesh`, the same picture the What's New dialog opens on —
- * the site's `tone-sky`, `/features`' own ground. Two surfaces, one image: this is what
- * the product looks like when it is talking about ITSELF rather than about your code.
+ * THE GROUND IS `bg-release-mesh` — the site's `tone-sky`, `/features`' own ground.
+ * This is what the product looks like when it is talking about ITSELF rather than about
+ * your code, and it is also the one ground the app can honestly draw here: nobody has
+ * signed in yet, so it does not yet know whose theme to wear.
  *
  * ── THE CARD IS GLASS, AND THE BLUR IS AN INLINE STYLE ON PURPOSE ──────────────────
  *

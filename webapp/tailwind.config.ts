@@ -901,11 +901,12 @@ const config: Config = {
     extend: {
       colors: {
         /**
-         * `WhatsNewDialog`'s fixed paper and ink, declared here for the same reason
-         * `release-mesh` is: that component is a DESKTOP one, `/design-system` renders it
-         * live on this side, and the two halves of `design-system/` share no tokens. See
-         * the long note in `desktop/tailwind.config.cjs` for why the dialog ignores the
-         * theme at all.
+         * The desktop's fixed paper and ink — its sign-in card, and `WhatsNewDialog`'s
+         * cover. Declared here for the same reason `release-mesh` is: those are DESKTOP
+         * surfaces, `/design-system` renders them live on this side, and the two halves
+         * of `design-system/` share no tokens. See the long note in
+         * `desktop/tailwind.config.cjs` for why two surfaces in a themed app are printed
+         * on a fixed ground.
          */
         'release-paper': '#FFFFFF',
         'release-ink': 'rgb(10 10 11 / <alpha-value>)',
@@ -1330,14 +1331,14 @@ const config: Config = {
         ...PLATES,
         ...MARKS,
         /**
-         * `tone-sky` UNDER A SECOND NAME, for the design system's `WhatsNewDialog`.
+         * `tone-sky` UNDER A SECOND NAME, for the desktop's sign-in screen.
          *
-         * That dialog is a DESKTOP component: it asks for `bg-release-mesh`, and the
+         * That screen is a DESKTOP surface: it asks for `bg-release-mesh`, and the
          * desktop's own config declares it as the pasted output of `mesh(SKY_LIGHT,
          * SKY_DEEP)` — the two halves of `design-system/` share nothing, so neither can
-         * import the other's ground. `/design-system` renders that component here, so
-         * this side needs the name too, and on this side it can be the CALL rather than
-         * a copy of its output.
+         * import the other's ground. `/design-system` draws the card that sits on it
+         * here, so this side needs the name too, and on this side it can be the CALL
+         * rather than a copy of its output.
          *
          * OUTSIDE `TONES` on purpose. That object is the card palette — eight grounds a
          * `ToneCard` may be given, each held to an ink pairing by
