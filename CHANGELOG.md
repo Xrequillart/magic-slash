@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.96.7] - 2026-09-20
+
+### Added
+
+- **Desktop**: Redraw the what's new dialog, themed and sized to content
+- **Desktop**: Offer thirty drawn avatars, and default to one of them
+- **Landing**: Draw the plans window with the app's own components
+
+### Changed
+
+- **Landing**: Repaint the site from indigo to blue
+- **Landing**: Reopen the features page, the FAQ and the changelog on a white split band
+- **Landing**: Draw the eight skill cards instead of mocking them up
+- **Landing**: Flatten the colour cards and drop the dark grounds
+- **Landing**: Move the primary and the blue surfaces onto the ramp
+- **Landing**: Show the site's palette on the design-system page
+- **Landing**: Name the disabled button fill by its new colour
+- **Landing**: Point four arrows at the download button
+- **Landing**: Strip the invitation panel back to one drawing
+- **Landing**: Name the logo in one place
+
+### Fixed
+
+- **PR**: Leave a template's checkboxes unticked, configurable per repo, and pair them by section before label rather than by total
+- **Landing**: Put the Tasks plate back on its family's ground
+
 ## [0.96.6] - 2026-09-18
 
 ### Added
@@ -3127,6 +3153,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.96.7]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.7
 [0.96.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.6
 [0.96.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.5
 [0.96.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.4
