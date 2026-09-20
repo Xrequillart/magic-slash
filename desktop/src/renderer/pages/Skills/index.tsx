@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Plus, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal, type LucideIcon } from '@ds/desktop/icons'
-import { Input, Loader, ProgressBar, type ProgressTone } from '@ds/desktop'
+import { Input, Loader, NoticeCard, ProgressBar, SectionHeader, type BannerAction, type ProgressTone } from '@ds/desktop'
 import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
 import SkillDocument from './SkillDocument'
 import { VSCode } from '@ds/desktop/icons'
@@ -406,87 +406,77 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
   )
 }
 
+/**
+ * WHICH HUE EACH ORIGIN WEARS, as a value rather than a class.
+ *
+ * THE PAGE'S AND NOT THE DESIGN SYSTEM'S: that built-in is the accent, a repository
+ * is blue and a local skill is green is a fact about how this product talks about
+ * skills, and `NoticeCard` takes `Label`'s contract — a CSS value — precisely so the
+ * meaning stays here. The fallback triple is the one the Tailwind config carries, and
+ * it is not decoration: an undefined variable invalidates the whole `color-mix` and
+ * the plate disappears rather than coming out slightly wrong.
+ */
+const SOURCE_COLOR: Record<string, string> = {
+  'built-in': 'rgb(var(--c-accent, 99 102 241))',
+  repo: 'rgb(var(--c-blue, 59 130 246))',
+  local: 'rgb(var(--c-green, 34 197 94))',
+}
+
 function DuplicateSkillsAlert({ duplicates }: { duplicates: DuplicateSkillEntry[] }) {
   const t = useT()
   if (duplicates.length === 0) return null
 
   return (
-    <div className="rounded-lg bg-orange/10 border border-orange/20 px-3 py-2.5">
-      <div className="flex items-center gap-2 mb-2">
-        <AlertTriangle className="w-4 h-4 text-orange flex-shrink-0" />
-        <p className="text-xs text-orange">
-          {t(duplicates.length > 1 ? 'skills.duplicates.other' : 'skills.duplicates.one', { count: duplicates.length })}
-        </p>
-      </div>
-      <div className="flex flex-col gap-1.5 ml-6">
-        {duplicates.map((dup) => (
-          <div key={dup.name} className="flex items-center gap-2">
-            <span className="text-xs text-ink truncate min-w-0 flex-1 capitalize">{dup.name}</span>
-            <span className="text-[10px] text-orange/70 flex-shrink-0">{t('skills.duplicates.times', { count: dup.sources.length })}</span>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {dup.sources.map((s, i) => {
-                const sourceColor = s.source === 'built-in'
-                  ? 'bg-accent/10 text-accent'
-                  : s.source === 'repo'
-                    ? 'bg-blue/10 text-blue'
-                    : 'bg-green/10 text-green'
-                const label = s.source === 'repo' && s.repoName
-                  ? t('skills.source.repoNamed', { name: s.repoName })
-                  : sourceLabel(s.source, t)
-                return (
-                  <span
-                    key={`${s.source}-${s.repoName || ''}-${i}`}
-                    className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${sourceColor}`}
-                  >
-                    {label}
-                  </span>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    <NoticeCard
+      variant="warning"
+      rows={duplicates.map((dup) => ({
+        id: dup.name,
+        name: dup.name,
+        detail: t('skills.duplicates.times', { count: dup.sources.length }),
+        tags: dup.sources.map((s) => ({
+          label: s.source === 'repo' && s.repoName ? t('skills.source.repoNamed', { name: s.repoName }) : sourceLabel(s.source, t),
+          color: SOURCE_COLOR[s.source],
+        })),
+      }))}
+    >
+      {t(duplicates.length > 1 ? 'skills.duplicates.other' : 'skills.duplicates.one', { count: duplicates.length })}
+    </NoticeCard>
   )
 }
 
 function LongDescriptionsAlert({ longDescriptions, onFix }: { longDescriptions: { name: string; source: string; wordCount: number; filePath: string }[]; onFix: () => void }) {
   const t = useT()
+
+  /* The two buttons as DATA — the banner draws them, ranks them and paints them in the
+     warning's own orange, which is what the pair of hand-rolled `text-orange border
+     border-orange/20` buttons under the list were each spelling for themselves. Fixing
+     is the point of reading this; opening the files is the way round it. */
+  const actions = useMemo<BannerAction[]>(
+    () => [
+      {
+        label: t('skills.openInVSCode'),
+        icon: VSCode,
+        onClick: () => longDescriptions.forEach((e) => window.electronAPI.shell.openInVSCode(e.filePath)),
+      },
+      { label: t('skills.fixWithAgent'), icon: Wand2, onClick: onFix, primary: true },
+    ],
+    [t, longDescriptions, onFix],
+  )
+
   if (longDescriptions.length === 0) return null
 
   return (
-    <div className="rounded-lg bg-orange/10 border border-orange/20 px-3 py-2.5">
-      <div className="flex items-center gap-2 mb-2">
-        <AlertTriangle className="w-4 h-4 text-orange flex-shrink-0" />
-        <p className="text-xs text-orange">
-          {t(longDescriptions.length > 1 ? 'skills.longDesc.other' : 'skills.longDesc.one', { count: longDescriptions.length })}
-        </p>
-      </div>
-      <div className="flex flex-col gap-1.5 ml-6">
-        {longDescriptions.map((entry) => (
-          <div key={`${entry.source}-${entry.name}`} className="flex items-center gap-2">
-            <span className="text-xs text-ink truncate min-w-0 flex-1 capitalize">{entry.name}</span>
-            <span className="text-[10px] text-orange/70 flex-shrink-0">{t('skills.longDesc.words', { count: entry.wordCount })}</span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-2.5 ml-6 flex justify-end gap-2">
-        <button
-          onClick={() => longDescriptions.forEach((e) => window.electronAPI.shell.openInVSCode(e.filePath))}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-orange border border-orange/20 rounded-lg hover:bg-orange/10 transition-colors"
-        >
-          <VSCode className="w-3.5 h-3.5" />
-          {t('skills.openInVSCode')}
-        </button>
-        <button
-          onClick={onFix}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-orange border border-orange/20 rounded-lg hover:bg-orange/10 transition-colors"
-        >
-          <Wand2 className="w-3.5 h-3.5" />
-          {t('skills.fixWithAgent')}
-        </button>
-      </div>
-    </div>
+    <NoticeCard
+      variant="warning"
+      actions={actions}
+      rows={longDescriptions.map((entry) => ({
+        id: `${entry.source}-${entry.name}`,
+        name: entry.name,
+        detail: t('skills.longDesc.words', { count: entry.wordCount }),
+      }))}
+    >
+      {t(longDescriptions.length > 1 ? 'skills.longDesc.other' : 'skills.longDesc.one', { count: longDescriptions.length })}
+    </NoticeCard>
   )
 }
 
@@ -496,10 +486,9 @@ function SkillsWarnings({ duplicates, longDescriptions, onFixLongDescriptions }:
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2 text-sm text-text-secondary">
-        <AlertTriangle className="w-4 h-4" />
-        <span>{t('skills.warnings')}</span>
-      </div>
+      {/* `spacing="none"` — the column above already spaces its children with a `gap`,
+          and a heading that also carried a margin would be two places to adjust. */}
+      <SectionHeader icon={AlertTriangle} title={t('skills.warnings')} spacing="none" />
       <DuplicateSkillsAlert duplicates={duplicates} />
       <LongDescriptionsAlert longDescriptions={longDescriptions} onFix={onFixLongDescriptions} />
     </div>

@@ -21,6 +21,7 @@ import { SettingsCardEntry } from './entries/SettingsCardEntry'
 import { DisclosureCardEntry } from './entries/DisclosureCardEntry'
 import { HealthCardEntry } from './entries/HealthCardEntry'
 import { RepairListEntry } from './entries/RepairListEntry'
+import { NoticeCardEntry } from './entries/NoticeCardEntry'
 import { RateLimitBarEntry } from './entries/RateLimitBarEntry'
 import { UsageTableEntry } from './entries/UsageTableEntry'
 import { CommitCardEntry } from './entries/CommitCardEntry'
@@ -154,6 +155,7 @@ const ENTRIES: Record<
   disclosurecard: DisclosureCardEntry,
   healthcard: HealthCardEntry,
   repairlist: RepairListEntry,
+  noticecard: NoticeCardEntry,
   ratelimitbar: RateLimitBarEntry,
   usagetable: UsageTableEntry,
   label: LabelEntry,

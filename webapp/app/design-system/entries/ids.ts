@@ -49,6 +49,7 @@ export type EntryId =
   | 'disclosurecard'
   | 'healthcard'
   | 'repairlist'
+  | 'noticecard'
   | 'ratelimitbar'
   | 'usagetable'
   | 'sectionheader'
@@ -142,6 +143,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   disclosurecard: 'DisclosureCard',
   healthcard: 'HealthCard',
   repairlist: 'RepairList',
+  noticecard: 'NoticeCard',
   ratelimitbar: 'RateLimitBar',
   usagetable: 'UsageTable',
   sectionheader: 'SectionHeader',
@@ -276,6 +278,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   disclosurecard: ['card', 'icon', 'settingrow', 'text'],
   healthcard: ['banner', 'card', 'icon', 'loader', 'repairlist', 'settingrow', 'text'],
   repairlist: ['button', 'text'],
+  noticecard: ['banner', 'card', 'label', 'text'],
   ratelimitbar: ['progress', 'text'],
   usagetable: ['text'],
   sectionheader: ['button', 'icon', 'text'],
@@ -432,6 +435,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   disclosurecard: 'What a feature records, and what it never touches',
   healthcard: 'Is this working, and what is wrong if not',
   repairlist: 'What is broken, and the way to it not being',
+  noticecard: 'One fact, and the things it counts',
   ratelimitbar: 'One plan limit, and when it turns over',
   usagetable: 'Figures over periods, in columns',
   sectionheader: 'What the thing under it is',
