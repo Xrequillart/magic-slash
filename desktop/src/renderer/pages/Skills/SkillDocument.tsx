@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Copy, FileText, Image as ImageIcon, Lock } from '@ds/desktop/icons'
+import { Button, Card, SkillHeader, TabStrip, Text } from '@ds/desktop'
+import { Check, Copy } from '@ds/desktop/icons'
 import MarkdownView from '../../components/file-preview/MarkdownView'
 import type { SkillDetail } from '../../hooks/useSkills'
 import { useT } from '../../i18n'
@@ -10,10 +11,23 @@ import { useT } from '../../i18n'
  * said "you may not touch this" far louder than they said what the skill does,
  * and the instructions themselves sat in a greyed-out monospace textarea.
  *
- * So: a header card for the frontmatter, then the body rendered as markdown, in
+ * So: `SkillHeader` for the frontmatter, then the body rendered as markdown, in
  * the same reading style as the file preview drawer. Raw mode keeps the original
  * SKILL.md within reach for anyone copying it into a prompt or a repo of theirs.
+ *
+ * THIS FILE DRAWS NOTHING NOW. The masthead is a design-system component, the
+ * mode switch is the `TabStrip` every other pill rail in the app is, and the
+ * document stands on a `Card`. What is left here is what genuinely belongs to
+ * the app: splitting a SKILL.md, resolving where it lives on disk, and the
+ * markdown renderer — which is the desktop's own and has no business in a folder
+ * the marketing site compiles.
  */
+
+/** A skill's origin, as `Label` wants it: a value, never a class. */
+const SOURCE_COLOR = {
+  repo: 'rgb(var(--c-blue, 59 130 246))',
+  builtIn: 'rgb(var(--c-accent, 99 102 241))',
+}
 
 /** Split a SKILL.md into its YAML frontmatter and the markdown that follows. */
 function splitFrontmatter(content: string): { frontmatter: string | null; body: string } {
@@ -65,99 +79,53 @@ export default function SkillDocument({ skill }: { skill: SkillDetail }) {
     ? skill.filePath
     : `~/.claude/skills/${skill.dirName}/SKILL.md`
 
-  const badge = skill.isRepoSkill
-    ? { label: t('skills.source.repoNamed', { name: skill.repoName ?? '' }), className: 'bg-blue/10 text-blue' }
-    : { label: t('skills.source.builtIn'), className: 'bg-accent/10 text-accent' }
+  const source = skill.isRepoSkill
+    ? { label: t('skills.source.repoNamed', { name: skill.repoName ?? '' }), color: SOURCE_COLOR.repo }
+    : { label: t('skills.source.builtIn'), color: SOURCE_COLOR.builtIn }
 
   return (
     <div className="flex flex-col gap-4 w-full">
-      {/* Header — the frontmatter, read as a card rather than as dead inputs */}
-      <div className="px-5 py-4 rounded-2xl bg-surface-subtle border border-line-field">
-        <div className="flex items-start gap-3.5">
-          <div className="w-12 h-12 rounded-lg bg-surface flex items-center justify-center overflow-hidden shrink-0">
-            {imageUrl ? (
-              <img src={imageUrl} alt={skill.name} className="w-full h-full object-cover" />
-            ) : (
-              <ImageIcon className="w-5 h-5 text-text-secondary" />
-            )}
-          </div>
+      <SkillHeader
+        name={skill.name}
+        imageUrl={imageUrl}
+        source={source}
+        readOnlyLabel={t('skills.doc.readOnly')}
+        description={skill.description}
+        argumentLabel={t('skills.doc.argumentHint')}
+        argumentHint={skill.argumentHint}
+        toolsLabel={t('skills.editor.allowedTools')}
+        tools={tools}
+        sourcePath={sourcePath}
+      />
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-xl font-semibold text-ink capitalize">{skill.name}</h2>
-              <span className={`px-1.5 py-0.5 text-xs font-medium rounded ${badge.className}`}>
-                {badge.label}
-              </span>
-              <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded bg-surface text-icon border border-line-field">
-                <Lock className="w-3 h-3" />
-                {t('skills.doc.readOnly')}
-              </span>
-            </div>
-
-            {skill.description && (
-              <p className="mt-2 text-sm text-text-secondary leading-relaxed">{skill.description}</p>
-            )}
-
-            {skill.argumentHint && (
-              <p className="mt-2 text-xs text-text-secondary/60">
-                <span className="font-medium">{t('skills.doc.argumentHint')}</span>{' '}
-                <code className="font-mono text-text-secondary">{skill.argumentHint}</code>
-              </p>
-            )}
-          </div>
-        </div>
-
-        {tools.length > 0 && (
-          <div className="mt-3.5 pt-3.5 border-t border-line-field flex items-baseline gap-2 flex-wrap">
-            <span className="text-xs text-text-secondary/60 mr-1">{t('skills.editor.allowedTools')}</span>
-            {tools.map((tool) => (
-              <span
-                key={tool}
-                className="px-1.5 py-0.5 rounded bg-surface border border-line-field text-xs font-mono text-text-secondary"
-              >
-                {tool}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {sourcePath && (
-          <div className="mt-2.5 flex items-center gap-1.5 text-xs text-icon-muted min-w-0">
-            <FileText className="w-3.5 h-3.5 shrink-0" />
-            <span className="font-mono truncate" title={sourcePath}>{sourcePath}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Toolbar — rendered or raw, and a copy of the file as it is on disk */}
+      {/* Rendered or raw, and a copy of the file as it is on disk. The switch was a
+          hand-built pair of pills with its own `p-0.5` track; it is the app's one
+          `TabStrip` now, which measures its pill instead of assuming two equal halves. */}
       <div className="flex items-center justify-end gap-2">
-        <div className="flex items-center p-0.5 rounded-lg bg-surface-subtle border border-line-field">
-          {(['rendered', 'raw'] as const).map((option) => (
-            <button
-              key={option}
-              onClick={() => setMode(option)}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                mode === option
-                  ? 'bg-surface-strong text-ink'
-                  : 'text-text-secondary hover:text-ink'
-              }`}
-            >
-              {t(option === 'rendered' ? 'skills.doc.rendered' : 'skills.doc.raw')}
-            </button>
-          ))}
-        </div>
-
-        <button
+        <TabStrip
+          items={[
+            { key: 'rendered', label: t('skills.doc.rendered') },
+            { key: 'raw', label: t('skills.doc.raw') },
+          ]}
+          activeKey={mode}
+          onSelect={(key) => setMode(key as 'rendered' | 'raw')}
+          ariaLabel={t('skills.doc.rendered')}
+        />
+        {/* The tick is the tone and not an icon swap: `Button` has no `success`, so the
+            mark carries it — see `ButtonIcon.success`, which says the same thing about a
+            state a control wears for two seconds rather than a kind of control it is. */}
+        <Button
+          size="sm"
+          tone="neutral"
+          icon={copied ? Check : Copy}
           onClick={handleCopy}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface hover:text-ink transition-all"
         >
-          {copied ? <Check className="w-3.5 h-3.5 text-green" /> : <Copy className="w-3.5 h-3.5" />}
           {copied ? t('common.copied') : t('common.copy')}
-        </button>
+        </Button>
       </div>
 
-      {/* The document */}
-      <div className="px-8 py-7 mb-6 rounded-2xl bg-surface border border-line-field">
+      {/* `roomy` — the rung that exists for exactly this: a card you READ. */}
+      <Card padding="roomy" className="mb-6">
         {mode === 'raw' ? (
           <pre className="text-xs font-mono leading-relaxed text-ink/80 whitespace-pre-wrap break-words">
             {skill.content}
@@ -165,9 +133,11 @@ export default function SkillDocument({ skill }: { skill: SkillDetail }) {
         ) : body ? (
           <MarkdownView content={body} variant="document" />
         ) : (
-          <p className="text-sm text-text-secondary/50 italic">{t('skills.doc.empty')}</p>
+          <Text size="sm" tone="secondary" className="block italic opacity-50">
+            {t('skills.doc.empty')}
+          </Text>
         )}
-      </div>
+      </Card>
     </div>
   )
 }

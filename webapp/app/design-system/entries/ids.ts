@@ -55,6 +55,7 @@ export type EntryId =
   | 'notecard'
   | 'skillcard'
   | 'emptystate'
+  | 'skillheader'
   | 'ratelimitbar'
   | 'usagetable'
   | 'sectionheader'
@@ -154,6 +155,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   notecard: 'NoteCard',
   skillcard: 'SkillCard',
   emptystate: 'EmptyState',
+  skillheader: 'SkillHeader',
   ratelimitbar: 'RateLimitBar',
   usagetable: 'UsageTable',
   sectionheader: 'SectionHeader',
@@ -294,6 +296,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   notecard: ['icon', 'text'],
   skillcard: ['icon', 'label', 'text'],
   emptystate: ['button', 'text'],
+  skillheader: ['icon', 'label', 'text'],
   ratelimitbar: ['progress', 'text'],
   usagetable: ['text'],
   sectionheader: ['button', 'icon', 'text'],
@@ -456,6 +459,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   notecard: 'One thing worth knowing, on a quiet plate',
   skillcard: 'One skill as a tile you can open',
   emptystate: 'Nothing here yet, and the ways to change that',
+  skillheader: 'What a skill is, read rather than edited',
   ratelimitbar: 'One plan limit, and when it turns over',
   usagetable: 'Figures over periods, in columns',
   sectionheader: 'What the thing under it is',

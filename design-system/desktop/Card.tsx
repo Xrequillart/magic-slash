@@ -35,9 +35,13 @@ import { RAISED_PLATE } from './plate'
  * a rung and not a `className`, for the reason the note below gives: a second spelling
  * of the padding wins or loses on the order Tailwind emitted the two.
  */
-export type CardPadding = 'regular' | 'compact' | 'tight' | 'none'
+export type CardPadding = 'roomy' | 'regular' | 'compact' | 'tight' | 'none'
 
 const PADDING: Record<CardPadding, string> = {
+  // 32/28 — a card you READ rather than scan. A rendered document needs a measure and a
+  // margin around it; `regular`'s 16px puts prose hard against the plate's edge, which
+  // is the one thing every reading surface in every app agrees not to do.
+  roomy: 'px-8 py-7',
   regular: 'p-4',
   compact: 'px-4 py-2',
   tight: 'px-2 py-1.5',

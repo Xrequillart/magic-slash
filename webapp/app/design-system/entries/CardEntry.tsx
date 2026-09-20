@@ -9,7 +9,7 @@ const PROPS: PropRow[] = [
   { name: 'children', type: 'ReactNode', required: true, description: 'Whatever the card holds. The card has no opinion about it.' },
   {
     name: 'padding',
-    type: "'regular' | 'compact' | 'none'",
+    type: "'roomy' | 'regular' | 'compact' | 'tight' | 'none'",
     fallback: "'regular'",
     description:
       'regular is the one to use. compact is a card folded to one line, where p-4 would undo the point of folding it. none is for a panel whose body scrolls — padding on the outside puts the scrollbar inside it and clips the first row.',
@@ -48,7 +48,7 @@ export function CardEntry({ theme }: { theme: DesktopTheme }) {
 
       <EntrySection
         title="Padding"
-        note="Three, and the two exceptions are real: the agent sidebar folds a card to one line, and its spec panel scrolls its own body."
+        note="regular, and four exceptions that are all real: a skill read as a document wants a margin round its prose, the agent sidebar folds a card to one line, the left rail is a narrower column, and the spec panel scrolls its own body."
       >
         <div className="grid gap-4 md:grid-cols-3">
           <Specimen label="regular — p-4">
@@ -56,6 +56,13 @@ export function CardEntry({ theme }: { theme: DesktopTheme }) {
               <Card className="flex flex-col gap-2">
                 <Text weight="medium">Repository</Text>
                 <Label icon={Ticket}>3 tickets</Label>
+              </Card>
+            </Stage>
+          </Specimen>
+          <Specimen label="roomy — px-8 py-7">
+            <Stage theme={theme}>
+              <Card padding="roomy">
+                <Text tone="secondary">A document, with room to be read</Text>
               </Card>
             </Stage>
           </Specimen>
