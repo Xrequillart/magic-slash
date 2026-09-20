@@ -2309,11 +2309,20 @@ export class CloudStore implements Store {
       .select('avatar_url')
       .eq('user_id', ctx.uid)
       .maybeSingle()
+    // A missing row is the ordinary state of someone who never set a photo; a failed
+    // READ of it is not, and the two leave through the same return. Only the second is
+    // worth a line — every null below is drawn as the generic face, so without one a
+    // photo that exists and cannot be fetched is indistinguishable from no photo at
+    // all, in the logs as well as on screen.
+    if (error) console.error('[cloud] could not read the avatar pointer:', error.message)
     if (error || !data) return null
     const path = (data as Pick<ProfileRow, 'avatar_url'>).avatar_url
     if (!path) return null
 
     const { data: blob, error: downloadError } = await ctx.client.storage.from(AVATAR_BUCKET).download(path)
+    // The pointer says there ARE bytes, so failing to get them is always a fault:
+    // storage policies, connectivity, or an object the pointer outlived.
+    if (downloadError) console.error(`[cloud] could not download the avatar at ${path}:`, downloadError.message)
     if (downloadError || !blob) return null
     const buffer = Buffer.from(await blob.arrayBuffer())
     if (buffer.length === 0) return null
