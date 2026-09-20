@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Plus, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal, type LucideIcon } from '@ds/desktop/icons'
-import { Input, Loader, NoticeCard, ProgressBar, SectionHeader, type BannerAction, type ProgressTone } from '@ds/desktop'
+import { Plus, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal } from '@ds/desktop/icons'
+import { Banner, BreakdownList, BudgetMeter, Input, Loader, NoteCard, NoticeCard, SectionHeader, TabStrip, Text, type BannerAction, type TabStripItem } from '@ds/desktop'
 import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
 import SkillDocument from './SkillDocument'
 import { VSCode } from '@ds/desktop/icons'
@@ -45,47 +45,8 @@ const MAX_DESC_CHARS = 1536
 /** The two windows worth comparing. Order is the order of the switch, after Auto. */
 const CONTEXT_WINDOWS: readonly SkillsContextWindow[] = [200_000, 1_000_000]
 
-// One class per slot the switch's highlight can travel to, in the same order as
-// the segments below (Auto, then CONTEXT_WINDOWS). Indexed rather than derived
-// from a chain of `value === ...` checks, so a slot added or reordered here is
-// the only place that has to change. Written as literal classes, not a computed
-// `translate-x-[${...}%]`: Tailwind's build-time scan only picks up class names
-// that appear verbatim in the source.
-const HIGHLIGHT_OFFSETS = ['translate-x-0', 'translate-x-full', 'translate-x-[200%]'] as const
-
 function charBudgetFor(contextWindow: number): number {
   return Math.max(1, Math.floor(contextWindow * CHARS_PER_TOKEN * BUDGET_FRACTION))
-}
-
-function BudgetBar({ label, value, max, unit, tone }: { label: string; value: number; max: number; unit: string; tone: ProgressTone }) {
-  const percentage = Math.min(Math.round((value / max) * 100), 100)
-  // Over budget is not a shade of "nearly full": past the line Claude Code stops
-  // listing descriptions, so the bar changes colour rather than just filling up.
-  // A TONE and not a threshold — `percentage` is clamped at 100, so "over" is not a
-  // percentage the bar could ever read.
-  const shown: ProgressTone = value > max ? 'danger' : tone
-  // A bare toLocaleString() follows the OS locale, which is not the language the
-  // app is showing — a French UI on an English machine would group with commas.
-  const locale = useLocale()
-
-  return (
-    <div className="flex-1 px-4 py-3 rounded-xl bg-surface-subtle border border-line-field">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-text-secondary/60">{label}</span>
-        <span className="text-xs font-medium text-text-secondary">
-          {value.toLocaleString(locale)} / {max.toLocaleString(locale)} {unit}
-        </span>
-      </div>
-      {/* THE SHIMMER IS GONE with the hand-built fill it lived inside — a sweep
-          animated by `shimmer-sweep`, a keyframe declared in this app's stylesheet and
-          nowhere else. A shared component cannot reach for it: the webapp compiles the
-          same file and has no such keyframe, so the design-system page would document a
-          bar that shimmers in the app and sits still on the page. Restoring it means
-          declaring the keyframe in both stylesheets and giving `ProgressBar` a flag. */}
-      <ProgressBar value={percentage} tone={shown} size="md" label={label} />
-      <div className="mt-1.5 text-xs text-text-secondary/40 text-right">{percentage}%</div>
-    </div>
-  )
 }
 
 interface SkillTokenEntry {
@@ -112,10 +73,37 @@ function getWeight(chars: number): 'high' | 'medium' | 'low' {
   return 'low'
 }
 
-const weightStyles: Record<string, { className: string; labelKey: MessageKey }> = {
-  high: { className: 'bg-red/10 text-red', labelKey: 'skills.weight.high' },
-  medium: { className: 'bg-orange/10 text-orange', labelKey: 'skills.weight.medium' },
-  low: { className: 'bg-green/10 text-green', labelKey: 'skills.weight.low' },
+/**
+ * WHICH HUE EACH ORIGIN WEARS, as a value rather than a class.
+ *
+ * THE PAGE'S AND NOT THE DESIGN SYSTEM'S: that built-in is the accent, a repository
+ * is blue and a custom skill is green is a fact about how this product talks about
+ * skills, and the shared components take `Label`'s contract — a CSS value — precisely
+ * so the meaning stays here. The fallback triple is the one the Tailwind config
+ * carries, and it is not decoration: an undefined variable invalidates the whole
+ * `color-mix` and the plate disappears rather than coming out slightly wrong.
+ *
+ * THE THIRD KEY IS `custom` AND IT WAS `local`, which matched nothing: a skill's
+ * source is `built-in | custom | repo` throughout this file, so every green plate was
+ * asking for a colour that is not in the table and getting the neutral ground.
+ */
+const SOURCE_COLOR: Record<string, string> = {
+  'built-in': 'rgb(var(--c-accent, 99 102 241))',
+  repo: 'rgb(var(--c-blue, 59 130 246))',
+  custom: 'rgb(var(--c-green, 34 197 94))',
+}
+
+/** How loud a skill's share of the budget is. Same contract as `SOURCE_COLOR`. */
+const WEIGHT_COLOR: Record<string, string> = {
+  high: 'rgb(var(--c-red, 239 68 68))',
+  medium: 'rgb(var(--c-orange, 249 115 22))',
+  low: 'rgb(var(--c-green, 34 197 94))',
+}
+
+const WEIGHT_LABELS: Record<string, MessageKey> = {
+  high: 'skills.weight.high',
+  medium: 'skills.weight.medium',
+  low: 'skills.weight.low',
 }
 
 // A skill's origin, shown as a badge. Keys rather than the raw union member, so
@@ -140,6 +128,12 @@ function sourceLabel(source: string, t: Translate): string {
  * resolved to (`Auto · 1M`), and a line under the switch says where that number
  * came from. Without it, a gauge scaled to a window nobody typed is a surprise
  * with no explanation on screen.
+ *
+ * THE PILL IS `TabStrip`'s NOW, and with it went a rail built out of `grid-cols-3`
+ * and three hard-coded `translate-x` classes — a highlight that was correct only
+ * while there happened to be exactly three segments, and silently wrong the day a
+ * fourth window is worth comparing. `TabStrip` MEASURES the active tab instead, so
+ * the segments can be any width and any number.
  */
 function ContextWindowSwitch({
   value,
@@ -156,20 +150,19 @@ function ContextWindowSwitch({
 }) {
   const t = useT()
 
-  // One segment per switch position, in the order they are drawn: Auto, then
-  // the two forced presets. Auto's label is not a fixed string — it carries
-  // the window it resolved to (`Auto · 1M`) once `detected` is known.
-  const segments: { value: SkillsContextWindowSetting; label: string }[] = [
+  // One tab per switch position, in the order they are drawn: Auto, then the two
+  // forced presets. Auto's label is not a fixed string — it carries the window it
+  // resolved to (`Auto · 1M`) once `detected` is known.
+  const items: TabStripItem[] = [
     {
-      value: 'auto',
+      key: 'auto',
       label: detected !== undefined
         ? t('skills.budget.window.autoValue', { window: formatWindow(detected) })
         : t('skills.budget.window.auto'),
     },
-    { value: CONTEXT_WINDOWS[0], label: t('skills.budget.window.small') },
-    { value: CONTEXT_WINDOWS[1], label: t('skills.budget.window.large') },
+    { key: String(CONTEXT_WINDOWS[0]), label: t('skills.budget.window.small') },
+    { key: String(CONTEXT_WINDOWS[1]), label: t('skills.budget.window.large') },
   ]
-  const activeIndex = Math.max(0, segments.findIndex((segment) => segment.value === value))
 
   const hint = value === 'auto'
     ? detected !== undefined
@@ -180,38 +173,21 @@ function ContextWindowSwitch({
   return (
     <div className="flex flex-col items-end gap-1 flex-shrink-0">
       <div className="flex items-center gap-2">
-        <span className="text-[11px] text-text-secondary/50 whitespace-nowrap">{t('skills.budget.window.label')}</span>
-        <div className="relative grid grid-cols-3 bg-surface rounded-full p-px border border-line-subtle" role="group" aria-label={t('skills.budget.window.label')}>
-          <div
-            className={`absolute top-px bottom-px left-px w-[calc((100%_-_2px)/3)] bg-surface-strong rounded-full transition-transform duration-200 ${HIGHLIGHT_OFFSETS[activeIndex]}`}
-          />
-          {segments.map((segment) => (
-            <button
-              key={String(segment.value)}
-              onClick={() => onChange(segment.value)}
-              aria-pressed={value === segment.value}
-              className={`relative z-10 px-3 py-1 rounded-full text-[11px] font-medium transition-colors duration-200 text-center whitespace-nowrap ${
-                value === segment.value ? 'text-ink' : 'text-text-secondary/50 hover:text-text-secondary'
-              }`}
-            >
-              {segment.label}
-            </button>
-          ))}
-        </div>
+        <Text size="2xs" tone="secondary" className="whitespace-nowrap opacity-60">
+          {t('skills.budget.window.label')}
+        </Text>
+        <TabStrip
+          items={items}
+          activeKey={String(value)}
+          // The key comes back as a string because a tab's identity is a string.
+          // `auto` is the one non-numeric position, so it is the only branch.
+          onSelect={(key) => onChange(key === 'auto' ? 'auto' : (Number(key) as SkillsContextWindow))}
+          ariaLabel={t('skills.budget.window.label')}
+        />
       </div>
-      <p className="text-[10px] text-text-secondary/40 text-right">{hint}</p>
-    </div>
-  )
-}
-
-function InfoCard({ icon: Icon, title, body }: { icon: LucideIcon; title: string; body: string }) {
-  return (
-    <div className="flex flex-col gap-1.5 px-3 py-2.5 rounded-xl bg-surface-subtle border border-line-subtle">
-      <div className="flex items-center gap-1.5">
-        <Icon className="w-3.5 h-3.5 text-text-secondary/50 flex-shrink-0" />
-        <span className="text-[11px] font-medium text-text-secondary">{title}</span>
-      </div>
-      <p className="text-[11px] text-text-secondary/40 leading-relaxed">{body}</p>
+      <Text size="2xs" tone="secondary" className="block text-right opacity-50">
+        {hint}
+      </Text>
     </div>
   )
 }
@@ -272,13 +248,15 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <Gauge className="w-4 h-4" />
-            <span>{t('skills.budget.section')}</span>
-          </div>
-          <p className="text-xs text-text-secondary/30 mt-0.5">{t('skills.budget.help')}</p>
+      {/* `items-start`, not `items-center`: the left column is two lines and the
+          switch is two lines, and centring two blocks of unequal height against each
+          other leaves neither heading on the same baseline as anything. */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <SectionHeader icon={Gauge} title={t('skills.budget.section')} spacing="none" />
+          <Text size="xs" tone="secondary" className="mt-0.5 block opacity-40">
+            {t('skills.budget.help')}
+          </Text>
         </div>
         <ContextWindowSwitch
           value={contextWindow}
@@ -289,29 +267,28 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <BudgetBar label={t('skills.budget.chars')} value={totalChars} max={charBudget} unit={t('skills.budget.unitChars')} tone="accent" />
-        <BudgetBar label={t('skills.budget.tokens')} value={totalTokens} max={tokenBudget} unit={t('skills.budget.unitTokens')} tone="warning" />
+        <BudgetMeter label={t('skills.budget.chars')} value={totalChars} max={charBudget} unit={t('skills.budget.unitChars')} locale={locale} tone="accent" />
+        <BudgetMeter label={t('skills.budget.tokens')} value={totalTokens} max={tokenBudget} unit={t('skills.budget.unitTokens')} locale={locale} tone="warning" />
       </div>
 
+      {/* Both of these are a `Banner`: a fact about the surface above them, true for
+          as long as it is true and gone when it is not. `bordered` because they float
+          in a column rather than banding a card — see the prop's own note. */}
       {overBudget && (
-        <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-red/10 border border-red/20">
-          <AlertTriangle className="w-3.5 h-3.5 text-red flex-shrink-0 mt-0.5" />
-          <p className="text-[11px] text-red leading-relaxed">
-            {t('skills.budget.over', { over: n(totalChars - charBudget) })}
-          </p>
-        </div>
+        <Banner variant="danger" bordered>
+          {t('skills.budget.over', { over: n(totalChars - charBudget) })}
+        </Banner>
       )}
 
       {truncatedCount > 0 && (
-        <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-orange/10 border border-orange/20">
-          <Scissors className="w-3.5 h-3.5 text-orange flex-shrink-0 mt-0.5" />
-          <p className="text-[11px] text-orange leading-relaxed">
-            {t(truncatedCount > 1 ? 'skills.budget.truncated.other' : 'skills.budget.truncated.one', {
-              count: truncatedCount,
-              max: n(MAX_DESC_CHARS),
-            })}
-          </p>
-        </div>
+        // `Scissors` over the variant's own mark: the warning is about a specific
+        // thing that happened to the descriptions, not about severity in general.
+        <Banner variant="warning" icon={Scissors} bordered>
+          {t(truncatedCount > 1 ? 'skills.budget.truncated.other' : 'skills.budget.truncated.one', {
+            count: truncatedCount,
+            max: n(MAX_DESC_CHARS),
+          })}
+        </Banner>
       )}
 
       {/* How this is computed — collapsed by default, because it answers a
@@ -326,15 +303,11 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
         </button>
         {showHow && (
           <div className="mt-2 grid grid-cols-2 gap-2">
-            <InfoCard
-              icon={FileText}
-              title={t('skills.budget.card.scope.title')}
-              body={t('skills.budget.card.scope.body')}
-            />
-            <InfoCard
-              icon={Calculator}
-              title={t('skills.budget.card.formula.title')}
-              body={t('skills.budget.card.formula.body', {
+            <NoteCard icon={FileText} title={t('skills.budget.card.scope.title')}>
+              {t('skills.budget.card.scope.body')}
+            </NoteCard>
+            <NoteCard icon={Calculator} title={t('skills.budget.card.formula.title')}>
+              {t('skills.budget.card.formula.body', {
                 // Formatted, not grouped: the detected window is whatever the
                 // model reports, so "1M" reads where "1 048 576" would not.
                 context: formatWindow(effectiveWindow),
@@ -342,27 +315,19 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
                 chars: n(charBudget),
                 tokens: n(tokenBudget),
               })}
-            />
-            <InfoCard
-              icon={Scissors}
-              title={t('skills.budget.card.cap.title', { max: n(MAX_DESC_CHARS) })}
-              body={t('skills.budget.card.cap.body', { max: n(MAX_DESC_CHARS) })}
-            />
-            <InfoCard
-              icon={EyeOff}
-              title={t('skills.budget.card.overflow.title')}
-              body={t('skills.budget.card.overflow.body')}
-            />
-            <InfoCard
-              icon={SlidersHorizontal}
-              title={t('skills.budget.card.why.title')}
-              body={t('skills.budget.card.why.body')}
-            />
-            <InfoCard
-              icon={Info}
-              title={t('skills.budget.card.override.title')}
-              body={t('skills.budget.card.override.body')}
-            />
+            </NoteCard>
+            <NoteCard icon={Scissors} title={t('skills.budget.card.cap.title', { max: n(MAX_DESC_CHARS) })}>
+              {t('skills.budget.card.cap.body', { max: n(MAX_DESC_CHARS) })}
+            </NoteCard>
+            <NoteCard icon={EyeOff} title={t('skills.budget.card.overflow.title')}>
+              {t('skills.budget.card.overflow.body')}
+            </NoteCard>
+            <NoteCard icon={SlidersHorizontal} title={t('skills.budget.card.why.title')}>
+              {t('skills.budget.card.why.body')}
+            </NoteCard>
+            <NoteCard icon={Info} title={t('skills.budget.card.override.title')}>
+              {t('skills.budget.card.override.body')}
+            </NoteCard>
           </div>
         )}
       </div>
@@ -378,48 +343,23 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
             <span>{t('skills.budget.details')}</span>
           </button>
           {showBreakdown && (
-            <div className="mt-2 px-4 py-3 rounded-xl bg-surface-subtle border border-line-field">
-              <div className="flex flex-col gap-1.5">
-                {breakdown.map((entry) => {
-                  const sourceColor = entry.source === 'built-in' ? 'bg-accent/10 text-accent' : entry.source === 'repo' ? 'bg-blue/10 text-blue' : 'bg-green/10 text-green'
-                  const ws = weightStyles[entry.weight]
-                  return (
-                    <div key={`${entry.source}-${entry.name}`} className="flex items-center gap-2">
-                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 ${sourceColor}`}>{sourceLabel(entry.source, t)}</span>
-                      <span className="text-xs text-ink truncate min-w-0 flex-1 capitalize">{entry.name}</span>
-                      {entry.truncated && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 bg-orange/10 text-orange">
-                          {t('skills.budget.cut')}
-                        </span>
-                      )}
-                      <span className="text-[10px] text-text-secondary/50 w-14 text-right flex-shrink-0">{t('skills.budget.tok', { count: entry.tokens })}</span>
-                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 w-14 text-center ${ws.className}`}>{t(ws.labelKey)}</span>
-                    </div>
-                  )
-                })}
-              </div>
+            <div className="mt-2 px-4 py-3 rounded-xl bg-surface-subtle">
+              <BreakdownList
+                rows={breakdown.map((entry) => ({
+                  id: `${entry.source}-${entry.name}`,
+                  lead: { label: sourceLabel(entry.source, t), color: SOURCE_COLOR[entry.source] },
+                  name: entry.name,
+                  tags: entry.truncated ? [{ label: t('skills.budget.cut'), color: WEIGHT_COLOR.medium }] : undefined,
+                  detail: t('skills.budget.tok', { count: entry.tokens }),
+                  verdict: { label: t(WEIGHT_LABELS[entry.weight]), color: WEIGHT_COLOR[entry.weight] },
+                }))}
+              />
             </div>
           )}
         </div>
       )}
     </div>
   )
-}
-
-/**
- * WHICH HUE EACH ORIGIN WEARS, as a value rather than a class.
- *
- * THE PAGE'S AND NOT THE DESIGN SYSTEM'S: that built-in is the accent, a repository
- * is blue and a local skill is green is a fact about how this product talks about
- * skills, and `NoticeCard` takes `Label`'s contract — a CSS value — precisely so the
- * meaning stays here. The fallback triple is the one the Tailwind config carries, and
- * it is not decoration: an undefined variable invalidates the whole `color-mix` and
- * the plate disappears rather than coming out slightly wrong.
- */
-const SOURCE_COLOR: Record<string, string> = {
-  'built-in': 'rgb(var(--c-accent, 99 102 241))',
-  repo: 'rgb(var(--c-blue, 59 130 246))',
-  local: 'rgb(var(--c-green, 34 197 94))',
 }
 
 function DuplicateSkillsAlert({ duplicates }: { duplicates: DuplicateSkillEntry[] }) {

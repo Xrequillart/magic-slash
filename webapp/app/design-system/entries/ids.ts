@@ -50,6 +50,9 @@ export type EntryId =
   | 'healthcard'
   | 'repairlist'
   | 'noticecard'
+  | 'breakdownlist'
+  | 'budgetmeter'
+  | 'notecard'
   | 'ratelimitbar'
   | 'usagetable'
   | 'sectionheader'
@@ -144,6 +147,9 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   healthcard: 'HealthCard',
   repairlist: 'RepairList',
   noticecard: 'NoticeCard',
+  breakdownlist: 'BreakdownList',
+  budgetmeter: 'BudgetMeter',
+  notecard: 'NoteCard',
   ratelimitbar: 'RateLimitBar',
   usagetable: 'UsageTable',
   sectionheader: 'SectionHeader',
@@ -279,6 +285,9 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   healthcard: ['banner', 'card', 'icon', 'loader', 'repairlist', 'settingrow', 'text'],
   repairlist: ['button', 'text'],
   noticecard: ['banner', 'card', 'label', 'text'],
+  breakdownlist: ['label', 'text'],
+  budgetmeter: ['progress', 'text'],
+  notecard: ['icon', 'text'],
   ratelimitbar: ['progress', 'text'],
   usagetable: ['text'],
   sectionheader: ['button', 'icon', 'text'],
@@ -436,6 +445,9 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   healthcard: 'Is this working, and what is wrong if not',
   repairlist: 'What is broken, and the way to it not being',
   noticecard: 'One fact, and the things it counts',
+  breakdownlist: 'What a total is made of, ranked',
+  budgetmeter: 'A quantity against its allowance',
+  notecard: 'One thing worth knowing, on a quiet plate',
   ratelimitbar: 'One plan limit, and when it turns over',
   usagetable: 'Figures over periods, in columns',
   sectionheader: 'What the thing under it is',
