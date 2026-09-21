@@ -54,6 +54,14 @@ export type EntryId =
   | 'budgetmeter'
   | 'notecard'
   | 'skillcard'
+  | 'ticketcard'
+  | 'boardcolumn'
+  | 'trackerbadge'
+  | 'copybutton'
+  | 'commandchip'
+  | 'stickybar'
+  | 'metablock'
+  | 'commentcard'
   | 'emptystate'
   | 'formfield'
   | 'imagefield'
@@ -156,6 +164,14 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   budgetmeter: 'BudgetMeter',
   notecard: 'NoteCard',
   skillcard: 'SkillCard',
+  ticketcard: 'TicketCard',
+  boardcolumn: 'BoardColumn',
+  trackerbadge: 'TrackerBadge',
+  copybutton: 'CopyButton',
+  commandchip: 'CommandChip',
+  stickybar: 'StickyBar',
+  metablock: 'MetaBlock',
+  commentcard: 'CommentCard',
   emptystate: 'EmptyState',
   formfield: 'FormField',
   imagefield: 'ImageField',
@@ -299,7 +315,15 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   budgetmeter: ['progress', 'text'],
   notecard: ['icon', 'text'],
   skillcard: ['icon', 'label', 'text'],
-  emptystate: ['button', 'text'],
+  ticketcard: ['buttonicon', 'copybutton', 'icon', 'label', 'status', 'text', 'trackerbadge'],
+  boardcolumn: ['icon', 'text'],
+  trackerbadge: ['label'],
+  copybutton: ['buttonicon'],
+  commandchip: ['copybutton', 'icon'],
+  stickybar: [],
+  metablock: ['text'],
+  commentcard: ['card', 'text'],
+  emptystate: ['button', 'icon', 'text'],
   formfield: ['input', 'text'],
   imagefield: ['button', 'buttonicon', 'icon', 'text'],
   skillheader: ['icon', 'label', 'text'],
@@ -464,6 +488,14 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   budgetmeter: 'A quantity against its allowance',
   notecard: 'One thing worth knowing, on a quiet plate',
   skillcard: 'One skill as a tile you can open',
+  ticketcard: 'One ticket on a board, in three bands',
+  boardcolumn: 'One column of a board, heading and all',
+  trackerbadge: 'Which tracker a ticket came from',
+  copybutton: 'A string onto the clipboard, and the tick that says so',
+  commandchip: 'A command you are meant to type',
+  stickybar: 'An opaque band pinned to the top of a pane',
+  metablock: 'One field of a metadata column',
+  commentcard: 'One turn in a conversation',
   emptystate: 'Nothing here yet, and the ways to change that',
   formfield: 'One entry of a form you fill in',
   imagefield: 'A picture a thing will wear',

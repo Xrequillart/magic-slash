@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Download, RefreshCw, Terminal } from '@ds/desktop/icons'
-// lucide v1 dropped the brand glyphs, so the GitHub mark is the app's own.
-import { Github } from '@ds/desktop/icons'
+import { Button, Card, CommandChip, Text, TrackerTile } from '@ds/desktop'
 import type { PrerequisiteStatus, SetupStatus } from '../../../types'
 import { useT } from '../../i18n'
 
@@ -77,35 +76,61 @@ export function GitHubNotConnected({ onRetry, busy }: { onRetry: () => void; bus
 
   return (
     <div className="flex-1 flex items-center justify-center p-6">
-      <div className="max-w-md w-full flex flex-col items-center gap-4 py-10 px-6 bg-surface-subtle border border-line-subtle rounded-xl text-center">
-        <Github className="w-8 h-8 text-icon-muted" />
+      {/* `Card`, with the border gone like every other on this page. Its `surface` ground
+          is a step up from the `surface-subtle` this used to wear, which is what the panel
+          needs once it is a plate rather than an outline: at `subtle` on the modal's own
+          ground there was nothing but the border saying where it began.
+
+          `roomy` is the rung for a panel you READ rather than scan, which is what this is:
+          two sentences and two steps, not a row of figures. */}
+      <Card
+        ground="surface"
+        padding="roomy"
+        className="max-w-md w-full flex flex-col items-center gap-4 text-center"
+      >
+        {/* `TrackerTile`, not a bare glyph. It is the same 48px square the settings pages
+            draw GitHub with, so the thing that is missing is recognisable as the thing
+            that is configured somewhere else — a loose mark read as a smaller, flatter
+            kind of object on a page that shows both. */}
+        <TrackerTile tracker="github" size="lg" title="GitHub" />
 
         <div className="flex flex-col gap-1">
-          <p className="text-sm font-medium text-ink">{t('tasks.github.title')}</p>
-          <p className="text-xs text-text-secondary/70">{t('tasks.github.body')}</p>
+          <Text size="sm" weight="bold">{t('tasks.github.title')}</Text>
+          <Text tone="secondary" className="opacity-70">{t('tasks.github.body')}</Text>
         </div>
 
         {checking ? (
-          <p className="text-xs text-text-secondary/60">{t('tasks.github.checking')}</p>
+          <Text tone="secondary" className="opacity-60">{t('tasks.github.checking')}</Text>
         ) : (
           <div className="w-full flex flex-col gap-3">
             {/* Step 1 — the binary. Skipped entirely once it is there. */}
             {!installed && (
               <div className="flex flex-col gap-2 items-center">
-                <p className="text-xs text-text-secondary/70">{t('tasks.github.notInstalled')}</p>
+                <Text tone="secondary" className="opacity-70">{t('tasks.github.notInstalled')}</Text>
                 {gh?.installable ? (
-                  <button
+                  // `Button` rather than the accent-tinted pill this spelled by hand. It
+                  // is the one affirmative thing on the panel, so it takes the filled
+                  // accent rung — and `busy` is what makes a Homebrew install that can be
+                  // silent for a minute read as working rather than as a dead button.
+                  <Button
+                    size="xs"
+                    tone="accent"
+                    icon={Download}
+                    busy={installing}
                     onClick={install}
-                    disabled={installing}
-                    className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-50"
                   >
-                    <Download className="w-3 h-3" />
                     {installing ? t('tasks.github.installing') : t('tasks.github.install')}
-                  </button>
+                  </Button>
                 ) : (
-                  <code className="px-2 py-1 text-[11px] font-mono text-text-secondary border border-line rounded-md">
+                  // Nothing here can install it, so the command is the answer — and it
+                  // carries a copy button, because a command the reader has to move to
+                  // another window is exactly the case that earns one.
+                  <CommandChip
+                    icon={Terminal}
+                    copy={{ label: t('tasks.copyLink'), copiedLabel: t('tasks.copyLinkDone') }}
+                  >
                     {gh?.installCommand || 'brew install gh'}
-                  </code>
+                  </CommandChip>
                 )}
                 {installing && installLog && (
                   <pre className="w-full max-h-24 overflow-auto text-left text-[10px] font-mono text-text-secondary/60 whitespace-pre-wrap">
@@ -117,24 +142,33 @@ export function GitHubNotConnected({ onRetry, busy }: { onRetry: () => void; bus
 
             {/* Step 2 — the login, which is interactive and cannot be run from here. */}
             <div className="flex flex-col gap-2 items-center">
-              <p className="text-xs text-text-secondary/70">{t('tasks.github.loginStep')}</p>
-              <code className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-mono text-text-secondary border border-line rounded-md">
-                <Terminal className="w-3 h-3" />
+              <Text tone="secondary" className="opacity-70">{t('tasks.github.loginStep')}</Text>
+              <CommandChip
+                icon={Terminal}
+                copy={{ label: t('tasks.copyLink'), copiedLabel: t('tasks.copyLinkDone') }}
+              >
                 gh auth login
-              </code>
+              </CommandChip>
             </div>
 
-            <button
+            {/* `busy` is the read this panel started; `disabled` is the install that is
+                not this button's. The first spins the mark and keeps the control at full
+                strength, the second dims it — which is the honest pair, where one flag
+                for both said "unavailable" about a button that was working. */}
+            <Button
+              size="xs"
+              tone="neutral"
+              icon={RefreshCw}
+              busy={busy}
+              disabled={installing}
               onClick={onRetry}
-              disabled={busy || installing}
-              className="self-center flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-text-secondary border border-line rounded-md hover:bg-surface hover:text-ink transition-colors disabled:opacity-50"
+              className="self-center"
             >
-              <RefreshCw className={`w-3 h-3 ${busy ? 'animate-spin' : ''}`} />
               {t('tasks.reload')}
-            </button>
+            </Button>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   )
 }

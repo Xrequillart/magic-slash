@@ -4,6 +4,7 @@ import { Check, ChevronDown } from './icons'
 import { Icon, type IconSize } from './Icon'
 import { Text, type TextSize } from './Text'
 import type { ComponentSize } from './componentSizes'
+import type { IconComponent } from './types'
 
 /**
  * A state, on a tinted plate — and the picker that changes it.
@@ -147,14 +148,17 @@ const DOTS: Record<StatusTone, string> = {
  */
 export type StatusSize = ComponentSize
 
-const SIZES: Record<StatusSize, { box: string; text: TextSize; chevron: IconSize; row: string }> = {
-  '2xs': { box: 'h-4 gap-1 px-1.5', text: '2xs', chevron: '2xs', row: 'px-2 py-1' },
-  xs: { box: 'h-5 gap-1 px-2', text: 'xs', chevron: 'xs', row: 'px-2.5 py-1' },
-  sm: { box: 'h-6 gap-1.5 px-2.5', text: 'xs', chevron: 'xs', row: 'px-3 py-1.5' },
-  md: { box: 'h-7 gap-1.5 px-3', text: 'sm', chevron: 'sm', row: 'px-3 py-2' },
-  lg: { box: 'h-8 gap-2 px-3.5', text: 'sm', chevron: 'sm', row: 'px-3.5 py-2' },
-  xl: { box: 'h-9 gap-2 px-4', text: 'md', chevron: 'md', row: 'px-4 py-2.5' },
-  '2xl': { box: 'h-10 gap-2.5 px-5', text: 'lg', chevron: 'md', row: 'px-5 py-3' },
+const SIZES: Record<
+  StatusSize,
+  { box: string; markBox: string; text: TextSize; mark: IconSize; chevron: IconSize; row: string }
+> = {
+  '2xs': { box: 'h-4 gap-1 px-1.5', markBox: 'h-4 w-4 justify-center', text: '2xs', mark: '2xs', chevron: '2xs', row: 'px-2 py-1' },
+  xs: { box: 'h-5 gap-1 px-2', markBox: 'h-5 w-5 justify-center', text: 'xs', mark: 'xs', chevron: 'xs', row: 'px-2.5 py-1' },
+  sm: { box: 'h-6 gap-1.5 px-2.5', markBox: 'h-6 w-6 justify-center', text: 'xs', mark: 'sm', chevron: 'xs', row: 'px-3 py-1.5' },
+  md: { box: 'h-7 gap-1.5 px-3', markBox: 'h-7 w-7 justify-center', text: 'sm', mark: 'sm', chevron: 'sm', row: 'px-3 py-2' },
+  lg: { box: 'h-8 gap-2 px-3.5', markBox: 'h-8 w-8 justify-center', text: 'sm', mark: 'md', chevron: 'sm', row: 'px-3.5 py-2' },
+  xl: { box: 'h-9 gap-2 px-4', markBox: 'h-9 w-9 justify-center', text: 'md', mark: 'md', chevron: 'md', row: 'px-4 py-2.5' },
+  '2xl': { box: 'h-10 gap-2.5 px-5', markBox: 'h-10 w-10 justify-center', text: 'lg', mark: 'lg', chevron: 'md', row: 'px-5 py-3' },
 }
 
 export interface StatusOption {
@@ -178,6 +182,33 @@ export interface StatusProps {
   strength?: StatusStrength
   /** 24 / 28 / 32, the same three `Label` draws — see `StatusSize`. */
   size?: StatusSize
+  /**
+   * A MARK BEFORE THE WORD, in the plate's own colour.
+   *
+   * It is not decoration: a plate whose whole message is its hue says nothing to a
+   * reader who cannot tell the two greens apart, and nothing at all in a screenshot.
+   * A filled dot for something still open and a tick for something closed survive
+   * being read at a glance in a way a 20% tint does not — which is the argument the
+   * Tasks page's state chip made by hand before this prop existed.
+   *
+   * WHICH GLYPH IS THE CALLER'S, exactly as the tone is. A design system knows that a
+   * state may carry a mark; it does not know that `highest` is a double chevron up,
+   * because that is Jira's vocabulary and not a design language.
+   */
+  icon?: IconComponent
+  /**
+   * THE MARK ALONE, with the word moved into the tooltip.
+   *
+   * For a plate in a band too narrow to spend a word on — a board card's header is one
+   * line shared with a ticket id and two buttons, in a column a quarter of a modal
+   * wide, and a plate reading "Highest" there takes its width off the id beside it.
+   * The glyph is the half that survives being skimmed anyway; the word is one hover
+   * away, and `label` is still what a screen reader is given.
+   *
+   * Requires `icon` to mean anything — without one there is nothing left to draw, so
+   * the word stays.
+   */
+  markOnly?: boolean
   /**
    * The picker's contents, and the switch that makes the plate clickable at all.
    * Absent, this is an inert `<span>`.
@@ -231,6 +262,8 @@ export function Status({
   tone = 'neutral',
   strength = 'strong',
   size = 'sm',
+  icon,
+  markOnly = false,
   options,
   value,
   onSelect,
@@ -256,14 +289,37 @@ export function Status({
    * marketing site's scroll tour walk a reader through the eleven states without the
    * pill flashing at each step.
    */
-  const plate = `inline-flex items-center ${shape.box} rounded-full font-medium flex-shrink-0 transition-colors duration-300 ${TONES[tone][strength]}`
+  /**
+   * The mark comes FIRST and takes the plate's ink — `tone="inherit"`, so one class on
+   * the plate colours the glyph and the word together and they can never disagree.
+   */
+  const mark = icon && (
+    <Icon glyph={icon} size={shape.mark} tone="inherit" className="flex-shrink-0" />
+  )
+  /**
+   * A plate with nothing but a mark on it is SQUARE-ISH rather than wide: `markBox`
+   * drops the horizontal padding for a fixed width equal to the rung's height, so the
+   * pill becomes a circle and the glyph sits in the middle of it. Without the swap the
+   * plate would keep `px-2.5` around a 14px mark and read as a word that failed to load.
+   */
+  const bare = markOnly && !!icon
+  // A PICKER KEEPS THE WIDE BOX even when its word is hidden: the chevron is still
+  // drawn, and a fixed square built for one glyph cannot hold two.
+  const plate = `inline-flex items-center ${bare && !options ? shape.markBox : shape.box} rounded-full font-medium flex-shrink-0 transition-colors duration-300 ${TONES[tone][strength]}`
+
+  // The word still goes out loud and still goes to the pointer: a mark with no
+  // accessible name is a plate a screen reader reads as nothing at all.
+  const bareLabel = bare ? { title: label, 'aria-label': label, role: 'img' } : {}
 
   if (!options) {
     return (
-      <span className={`${plate} ${className}`.trim()}>
-        <Text size={shape.text} tone="inherit">
-          {label}
-        </Text>
+      <span className={`${plate} ${className}`.trim()} {...bareLabel}>
+        {mark}
+        {!bare && (
+          <Text size={shape.text} tone="inherit">
+            {label}
+          </Text>
+        )}
       </span>
     )
   }
@@ -293,11 +349,18 @@ export function Status({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-controls={isOpen ? menuId : undefined}
+        // The word is off the plate, so it has to be said somewhere: on a button that
+        // is an `aria-label`, where the inert span above takes `role="img"` as well.
+        aria-label={bare ? label : undefined}
+        title={bare ? label : undefined}
         className={`${plate} cursor-pointer border-none`}
       >
-        <Text size={shape.text} tone="inherit">
-          {label}
-        </Text>
+        {mark}
+        {!bare && (
+          <Text size={shape.text} tone="inherit">
+            {label}
+          </Text>
+        )}
         {/* Rotated rather than swapped for a second glyph: one element that turns says
             the menu is the same object in two states, where two glyphs say nothing. */}
         <Icon

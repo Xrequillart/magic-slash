@@ -1918,9 +1918,7 @@ export const fr: Record<keyof typeof en, string> = {
   'tasks.pick.hint': 'Cliquez sur une carte pour la rattacher. Rien n’est démarré.',
   'tasks.pick.cancel': 'Annuler',
   'tasks.pick.fallbackAgent': 'cet agent',
-  'tasks.startAgentHint': 'Ouvre un terminal dans ce dépôt et lance /magic:start sur ce ticket.',
   'tasks.discussAgent': 'Discuter avec un agent',
-  'tasks.discussAgentHint': 'Écrit le début du prompt dans un terminal — ajoutez ce dont vous voulez parler, puis Entrée.',
   'tasks.noLocalRepo': 'Aucun dossier local n’est associé à ce dépôt sur cette machine.',
   'tasks.noLocalRepoHint':
     'Indiquez son dossier dans Réglages → Dépôts, et un agent pourra être démarré sur ses tickets depuis ici.',

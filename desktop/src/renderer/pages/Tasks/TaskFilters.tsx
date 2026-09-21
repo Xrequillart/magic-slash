@@ -1,5 +1,5 @@
-import { Input, Select, type SelectOption } from '@ds/desktop'
-import { ArrowDownWideNarrow, BotMessageSquare, CalendarRange, LoaderCircle, Search, TriangleAlert, X } from '@ds/desktop/icons'
+import { ButtonIcon, Icon, Input, Label, Loader, Select, StickyBar, type SelectOption } from '@ds/desktop'
+import { ArrowDownWideNarrow, BotMessageSquare, CalendarRange, Search, TriangleAlert, X } from '@ds/desktop/icons'
 import { useT } from '../../i18n'
 import type { TaskAgentFilter, TaskFilter, TaskSort } from '../../utils/taskRows'
 
@@ -75,11 +75,15 @@ export interface TaskFilterEpic {
  * says what is being looked at. It used to trail the repository name on that card's
  * header and went out with the card.
  *
- * NO BORDER AND NO HOVER, which is the whole of what separates it from its neighbours:
- * every real control in this row is `bg-surface` inside `border-line-field`, so a
- * bordered chip here would be a fourth picker that does nothing when clicked. The
- * transparent border is what keeps it the same 30px tall as the controls it sits
- * between — they owe two of those pixels to their own border.
+ * `Label` AND NOT A FOURTH CONTROL, which is the whole of what separates it from its
+ * neighbours: every real control in this row is a `Select` or an `Input`, and the chip
+ * that stood here was spelled with a TRANSPARENT BORDER whose only job was to make it
+ * stand the same height as things that have one. Nothing in this bar has a border any
+ * more, so there is nothing left to match — a label at `md` is 28px, which is exactly
+ * what a `Select` at its own default stands.
+ *
+ * `Label` is also the right side of the line it and `Status` are drawn either side of: a
+ * sprint NAMES a thing and the name does not change while you look at it.
  *
  * Rendered only when the read actually named the sprint. There is no fallback text: a
  * chip reading "sprint inconnu" would take the search box's width to say nothing, and
@@ -87,13 +91,9 @@ export interface TaskFilterEpic {
  */
 function SprintChip({ name, hint }: { name: string; hint: string }) {
   return (
-    <span
-      title={hint}
-      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-transparent bg-surface-subtle text-xs text-text-secondary min-w-0 max-w-[11rem] flex-shrink"
-    >
-      <CalendarRange className="w-3.5 h-3.5 shrink-0 text-text-secondary/60" />
-      <span className="truncate">{name}</span>
-    </span>
+    <Label icon={CalendarRange} size="md" title={hint} truncate className="max-w-[11rem]">
+      {name}
+    </Label>
   )
 }
 
@@ -128,10 +128,13 @@ const AGENT_WIDTH = 160
  * hiding the other, so the second has to know exactly how tall the first is, and a
  * height that falls out of its padding is a height nobody else can read.
  *
- * 30px of controls — what every trigger and the search box stand — between 12px of
- * padding either side, plus the hairline along the bottom.
+ * 28px of controls — what a `Select` and an `Input` both stand at their own default —
+ * between 12px of padding either side. It was 55, which was 30px of controls plus a
+ * hairline along the bottom: the triggers stopped being hand-rolled when they became
+ * `Select`s and lost two pixels each, and the hairline is gone with every other border on
+ * this page. Three pixels of slack that nothing sat in.
  */
-export const FILTER_BAR_H = 55
+export const FILTER_BAR_H = 52
 
 /**
  * The filter row: a search box that takes the width, then the three pickers.
@@ -234,23 +237,24 @@ export function TaskFilters({
     // narrow it were a scroll away from anything below the fold — the search box most of
     // all, which is the one control people reach for while already looking at a card.
     //
-    // Full-bleed via `-mx-6 px-6`, the ticket page's own top bar's trick: what scrolls
-    // past has to go under an opaque band edge to edge, and a band inset by the page's
-    // 24px would let the cards slide past either side of it. `bg-bg-secondary` is
-    // `PageModal`'s own panel colour for the same reason it is there — anything else
-    // reads as a floating toolbar.
+    // `StickyBar` owns the band now: the opaque ground, the height, and the EDGE, which
+    // is a shadow it lifts once it has pinned rather than the hairline this used to draw
+    // across the whole page. What is left here is the two things the bar cannot know
+    // about itself — where it pins and whether it has — and the FULL BLEED, which is the
+    // page's own 24px inset spelled as `-mx-6 px-6`: an opaque band inset by it would let
+    // the cards slide past either side of it.
     //
-    // `py-3 -my-3` is padding the layout does not pay for: the negative margin gives the
-    // column's gap back, so the row sits exactly where it did, and the padding is what
-    // the band covers the page with above and below the controls once it is pinned.
-    //
-    // The bottom edge appears only once it is stuck. A hairline under a bar with the
-    // board flush beneath it is a rule across the page for no reason; without one, cards
-    // sliding underneath dissolve into it.
-    <div
-      className={`sticky z-20 -mx-6 px-6 py-3 -my-3 bg-bg-secondary border-b transition-colors
-        flex items-center gap-2 min-w-0 ${stuck ? 'border-line' : 'border-transparent'}`}
-      style={{ height: FILTER_BAR_H, top: topOffset }}
+    // The `py-3 -my-3` that used to hang here is gone. It was padding the layout did not
+    // pay for, giving the column's gap back so the row sat exactly where it did — and
+    // with the height set explicitly and `box-sizing: border-box` in force, the padding
+    // was inside the 55px anyway and covered nothing. All the negative margin did was
+    // pull the band flush against whatever sat above it, which is what cropped the
+    // heading's own button.
+    <StickyBar
+      height={FILTER_BAR_H}
+      top={topOffset}
+      stuck={stuck}
+      className="-mx-6 px-6"
     >
       {/* FIRST, and before the search box, because it is the only control here that
           decides what the page is about rather than how much of it is on screen. No
@@ -314,32 +318,44 @@ export function TaskFilters({
               // The in-memory filter has ALREADY narrowed the board by the time this
               // appears — it runs on the keystroke, undebounced — so this spinner is not
               // "the page is loading". It says a wider answer is on its way, which is why
-              // it is a 12px glyph in the corner of the box rather than anything that
+              // it is a 14px glyph in the corner of the box rather than anything that
               // covers the columns.
-              <LoaderCircle
-                className="w-3.5 h-3.5 text-text-secondary/50 animate-spin"
-                aria-label={t('tasks.filter.searchingSprint')}
-              />
+              //
+              // `Loader` and not a hand-spun `LoaderCircle`: it is the app's single answer
+              // for "something you are waiting on", and the reduced-motion rule it carries
+              // applies here for free.
+              <Loader variant="spin" size="sm" tone="muted" label={t('tasks.filter.searchingSprint')} />
             )}
             {!searching && searchFailed && (
               // The reach past the board failed; the board itself is fine and still
               // showing everything it loaded. A glyph and a sentence on hover, not a
               // banner: nothing is broken that the reader can act on, and the tickets
               // they can see are all real.
-              <span title={t('tasks.filter.searchFailed')} className="flex items-center">
-                <TriangleAlert className="w-3.5 h-3.5 text-orange" aria-label={t('tasks.filter.searchFailed')} />
+              // The NAME IS ON THE WRAPPER, not on the mark. `Icon` takes no `aria-label`
+              // and TypeScript does not check hyphenated JSX attributes, so one written
+              // there compiles and is then dropped on the floor — which is the quietest
+              // way to lose an accessible name there is.
+              <span
+                title={t('tasks.filter.searchFailed')}
+                role="img"
+                aria-label={t('tasks.filter.searchFailed')}
+                className="flex items-center"
+              >
+                <Icon glyph={TriangleAlert} size="sm" tone="inherit" className="text-orange" />
               </span>
             )}
             {value.query && (
-              <button
-                type="button"
-                onClick={() => onChange({ ...value, query: '' })}
+              // `ButtonIcon` at `xs` — 20px, the rung for a control that lives INSIDE
+              // something else, which is exactly what a clear button in a field is. Its
+              // `ghost` tone is the one written for that case: no plate at rest, so it is
+              // not a square sitting permanently inside the box.
+              <ButtonIcon
+                icon={X}
+                size="xs"
+                tone="ghost"
                 title={t('tasks.filter.clearSearch')}
-                aria-label={t('tasks.filter.clearSearch')}
-                className="p-0.5 rounded text-text-secondary/60 hover:text-ink hover:bg-surface-strong transition-colors"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+                onClick={() => onChange({ ...value, query: '' })}
+              />
             )}
           </span>
         )}
@@ -387,6 +403,6 @@ export function TaskFilters({
           active={!!value.agent}
         />
       )}
-    </div>
+    </StickyBar>
   )
 }

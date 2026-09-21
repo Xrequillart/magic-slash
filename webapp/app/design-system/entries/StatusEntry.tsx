@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Status, type StatusOption, type StatusSize, type StatusTone } from '@ds/desktop'
+import { ChevronDown, ChevronUp, ChevronsDown, ChevronsUp, CircleCheck, CircleDot, Equal } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
 import { usesOf } from './ids'
@@ -53,6 +54,19 @@ const PROPS: PropRow[] = [
     fallback: "'sm'",
     description:
       '24 / 28 / 32 — Label’s three, because a status and a label sit in the same rows and two badges of different heights on one line is what a shared scale exists to stop.',
+  },
+  {
+    name: 'icon',
+    type: 'IconComponent',
+    description:
+      'A mark before the word, in the plate’s own colour. Not decoration: a plate whose whole message is its hue says nothing to a reader who cannot tell the two greens apart, and nothing at all in a screenshot. Which glyph is the caller’s, exactly as the tone is.',
+  },
+  {
+    name: 'markOnly',
+    type: 'boolean',
+    fallback: 'false',
+    description:
+      'The mark alone, with the word moved into the tooltip and the accessible name. For a plate in a band too narrow to spend a word on. Requires icon to mean anything — without one there is nothing left to draw, so the word stays.',
   },
   {
     name: 'options',
@@ -127,6 +141,29 @@ export function StatusEntry({ theme, onOpen }: { theme: DesktopTheme; onOpen?: (
             <Status label="planned" tone="green" />
             <span className="font-mono text-[10px] text-text-secondary">
               a plan’s — derived, inert
+            </span>
+          </div>
+        </Stage>
+      </EntrySection>
+
+      <EntrySection
+        title="The mark, and the mark on its own"
+        note="A filled dot for something still open and a tick for something closed survive being read at a glance in a way a 20% tint does not — which is the argument the Tasks page's state chip made by hand before the prop existed. markOnly drops the word for a plate that has to fit in a band a quarter of a modal wide: the glyph is the half that survives being skimmed anyway, and the word is one hover away."
+      >
+        <Stage theme={theme} className="flex flex-col gap-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <Status label="Open" tone="green" icon={CircleDot} />
+            <Status label="Closed" tone="purple" icon={CircleCheck} />
+            <Status label="In review" tone="accent" />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Status label="Priority: Highest" tone="red" icon={ChevronsUp} markOnly />
+            <Status label="Priority: High" tone="orange" icon={ChevronUp} markOnly />
+            <Status label="Priority: Medium" tone="yellow" icon={Equal} markOnly />
+            <Status label="Priority: Low" tone="blue" icon={ChevronDown} markOnly />
+            <Status label="Priority: Lowest" tone="neutral" icon={ChevronsDown} markOnly />
+            <span className="font-mono text-[10px] text-text-secondary">
+              hover one — the word is the tooltip and the accessible name
             </span>
           </div>
         </Stage>

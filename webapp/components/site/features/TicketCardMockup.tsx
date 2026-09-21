@@ -56,7 +56,7 @@ const FIELD = (value: string) => ({
  * to nobody.
  */
 /**
- * The Jira mark — `TrackerIcons.tsx`'s three stacked chevrons in Atlassian's two blues,
+ * The Jira mark — `TrackerBadge.tsx`'s three stacked chevrons in Atlassian's two blues,
  * the same paths the Tasks drawing above uses. Kept as a vector rather than pointed at
  * `/img/jira-logo.png` so it takes `currentColor`-free exact fills at `w-3.5`.
  *

@@ -12,17 +12,30 @@ import type {
 } from '../../../types'
 import { isJiraStatusError, isPRStatusError } from '../../../types'
 import { useLocale, useT, type Translate } from '../../i18n'
-import { BTN, BTN_ICON, BTN_NEUTRAL_STACKED, BTN_PRIMARY_STACKED } from '../../theme/controls'
-import { Banner, Label, Loader, ProgressBar } from '@ds/desktop'
+import {
+  Banner,
+  Button,
+  Card,
+  CommentCard,
+  CopyButton,
+  Label,
+  Icon,
+  Loader,
+  MetaBlock,
+  ProgressBar,
+  SectionHeader,
+  StickyBar,
+  Text,
+  TEXT_FACE,
+  TrackerBadge,
+} from '@ds/desktop'
 import MarkdownView from '../../components/file-preview/MarkdownView'
 import { JiraEpicBadge, JiraErrorLines, JiraPriorityBadge, JiraStatusPill, StateChip, TaskErrorLines } from './parts'
-import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { useTaskAgent, type TaskAgentRepo } from '../../hooks/useTaskAgent'
 import { findAgentTerminalId, terminalAgentSignature } from '../../utils/taskAgents'
 import { useStore } from '../../store'
 import { discussAgentTitle, discussPrompt } from '../../utils/discussPrompt'
 import { planLabel } from '../../utils/planRows'
-import { TrackerBadge } from '../../components/icons/TrackerIcons'
 
 /**
  * One ticket, given the whole page — the Tasks page's second view, not a panel
@@ -112,20 +125,6 @@ function formatCommentDate(iso: string, locale: string): string {
 }
 
 /**
- * One block of the right-hand column: a small grey heading and whatever it
- * labels. The hairline between blocks is the divider GitHub uses there, and the
- * last one drops it so the card does not end on a line.
- */
-function SideBlock({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="px-4 py-3 border-b border-line-subtle last:border-b-0 flex flex-col gap-2">
-      <span className="text-xs font-medium text-text-secondary">{title}</span>
-      <div className="flex flex-wrap items-center gap-1.5 min-w-0">{children}</div>
-    </div>
-  )
-}
-
-/**
  * The parent issue, as a link when there is one to make.
  *
  * `url` rides along in the list query rather than being spelled out from this
@@ -139,9 +138,9 @@ function ParentLink({ parent }: { parent: NonNullable<TaskIssue['parent']> }) {
 
   if (!url) {
     return (
-      <span className="text-xs text-text-secondary min-w-0 break-words">
-        #{parent.number} — {parent.title}
-      </span>
+      <Text tone="secondary" className="min-w-0 break-words">
+        {`#${parent.number} — ${parent.title}`}
+      </Text>
     )
   }
 
@@ -149,17 +148,17 @@ function ParentLink({ parent }: { parent: NonNullable<TaskIssue['parent']> }) {
     <button
       onClick={() => window.electronAPI.shell.openExternal(url)}
       title={parent.title}
-      className="group text-left text-xs text-text-secondary hover:text-ink transition-colors min-w-0 break-words bg-transparent border-none p-0 cursor-pointer"
+      className="group text-left min-w-0 break-words bg-transparent border-none p-0 cursor-pointer"
     >
-      <span className="text-accent/80 group-hover:text-accent">#{parent.number}</span>{' '}
-      <span className="group-hover:underline">{parent.title}</span>
+      <Text tone="inherit" className="text-accent/80 group-hover:text-accent">{`#${parent.number}`}</Text>{' '}
+      <Text tone="secondary" className="group-hover:underline">{parent.title}</Text>
     </button>
   )
 }
 
 /** "there are none", said rather than left blank — an empty block reads as "not loaded yet". */
 function NoneYet({ t }: { t: Translate }) {
-  return <span className="text-xs text-text-secondary/40">{t('tasks.detail.none')}</span>
+  return <Text tone="secondary" className="opacity-40">{t('tasks.detail.none')}</Text>
 }
 
 /**
@@ -190,28 +189,20 @@ function DetailBody({
 }) {
   if (loading) {
     return (
-      <div className="px-5 py-4 flex items-center gap-2 text-text-secondary text-sm">
+      <div className="flex items-center gap-2">
         <Loader tone="accent" />
-        <span>{t('tasks.detail.loading')}</span>
+        <Text size="sm" tone="secondary">{t('tasks.detail.loading')}</Text>
       </div>
     )
   }
 
-  if (errorLines) {
-    return <div className="px-5 py-4">{errorLines}</div>
-  }
+  if (errorLines) return <>{errorLines}</>
 
   if (!content) {
-    return (
-      <div className="px-5 py-4 text-sm text-text-secondary/40">{t('tasks.detail.emptyBody')}</div>
-    )
+    return <Text size="sm" tone="secondary" className="opacity-40">{t('tasks.detail.emptyBody')}</Text>
   }
 
-  return (
-    <div className="px-5 py-4">
-      <MarkdownView content={content} variant="document" />
-    </div>
-  )
+  return <MarkdownView content={content} variant="document" />
 }
 
 /**
@@ -223,7 +214,7 @@ function DetailBody({
  * it is what this prints.
  */
 function PersonLine({ name }: { name: string }) {
-  return <span className="text-xs text-text-secondary min-w-0 break-words">{name}</span>
+  return <Text tone="secondary" className="min-w-0 break-words">{name}</Text>
 }
 
 /**
@@ -239,19 +230,16 @@ function PersonLine({ name }: { name: string }) {
 type TaskTracker = 'github' | 'jira'
 
 /**
- * One comment, in the description box's own shape: an author strip, then the body
- * under a hairline.
+ * One comment — `CommentCard` from `@ds/desktop`, with this page's words in it.
  *
- * The SAME box, deliberately. A ticket page is a description followed by a
- * conversation, and giving the replies a different card would say they are a
- * different kind of thing. What separates them is the strip: the description's says
- * "Description", a comment's says who wrote it and when.
+ * The card is the description's own, deliberately, and that decision now lives in the
+ * component: a ticket page is a description followed by a conversation, and giving the
+ * replies a different card would say they are a different kind of thing.
  *
- * `variant="document"` for the body, matching the description above it — a comment
- * on a Jira ticket routinely carries a code block or a list, and the panel variant
- * would set those in the narrow measure meant for a sidebar.
+ * What is left here is the half a design system may not hold: which tracker decorates a
+ * name with an `@`, and every string.
  */
-function CommentCard({
+function TicketComment({
   comment,
   tracker,
   locale,
@@ -266,51 +254,34 @@ function CommentCard({
   const editedOn = comment.updatedAt ? formatCommentDate(comment.updatedAt, locale) : ''
 
   return (
-    <div className="rounded-xl bg-surface border border-line-field overflow-hidden">
-      <div className="flex items-center gap-1.5 px-5 py-2.5 bg-surface-subtle border-b border-line-subtle">
-        {/* Both trackers report an author for every comment a person wrote; the ones
-            they do not are an app posting through Jira's API or a GitHub account
-            since deleted, and "commented" with nobody in front of it is not a
-            sentence.
-
-            The `@` on the GitHub half only, matching the issue's own byline directly
-            above the thread: a login is a handle and wears one everywhere in that
-            product, while "Ada Lovelace" is a name and `@Ada Lovelace` reads as a
-            mention of an account that does not exist. */}
-        {comment.author ? (
-          <>
-            <span className="text-xs font-medium text-ink">
-              {tracker === 'github' ? `@${comment.author}` : comment.author}
-            </span>
-            <span className="text-xs text-text-secondary">{t('tasks.detail.commented')}</span>
-          </>
-        ) : (
-          <span className="text-xs font-medium text-ink">{t('tasks.detail.comment')}</span>
-        )}
-        {/* Only when it says something the posting date does not — see
-            `TicketComment.updatedAt`. In the hover text rather than on the strip,
-            which has one line and a name already on it. */}
-        {editedOn && (
-          <span
-            title={t('tasks.detail.editedOn', { date: editedOn })}
-            className="text-xs text-text-secondary/50"
-          >
-            {t('tasks.detail.edited')}
-          </span>
-        )}
-        {postedOn && <span className="ml-auto text-xs text-text-secondary/50">{postedOn}</span>}
-      </div>
-      {/* A comment with no body at all is still a turn in the conversation — an
-          attachment, a reaction, or a transition Jira recorded as one — so it keeps
-          its card and says so, rather than rendering as an empty box. */}
-      {comment.body ? (
-        <div className="px-5 py-4">
-          <MarkdownView content={comment.body} variant="document" />
-        </div>
-      ) : (
-        <div className="px-5 py-4 text-sm text-text-secondary/40">{t('tasks.detail.emptyComment')}</div>
-      )}
-    </div>
+    <CommentCard
+      // Both trackers report an author for every comment a person wrote; the ones they do
+      // not are an app posting through Jira's API or a GitHub account since deleted, and
+      // "commented" with nobody in front of it is not a sentence — so the card falls back
+      // to naming the field instead.
+      //
+      // The `@` on the GitHub half only, matching the issue's own byline above the thread:
+      // a login is a handle and wears one everywhere in that product, while "Ada Lovelace"
+      // is a name and `@Ada Lovelace` reads as a mention of an account that does not exist.
+      // The decoration is the caller's for exactly that reason; see `CommentCard.author`.
+      {...(comment.author
+        ? {
+          author: tracker === 'github' ? `@${comment.author}` : comment.author,
+          verb: t('tasks.detail.commented'),
+        }
+        : { title: t('tasks.detail.comment') })}
+      {...(postedOn ? { date: postedOn } : {})}
+      // Only when it says something the posting date does not — see `TicketComment.updatedAt`.
+      {...(editedOn
+        ? { edited: { label: t('tasks.detail.edited'), title: t('tasks.detail.editedOn', { date: editedOn }) } }
+        : {})}
+      empty={t('tasks.detail.emptyComment')}
+    >
+      {/* `variant="document"`, matching the description above it — a comment on a Jira
+          ticket routinely carries a code block or a list, and the panel variant would set
+          those in the narrow measure meant for a sidebar. */}
+      {comment.body ? <MarkdownView content={comment.body} variant="document" /> : undefined}
+    </CommentCard>
   )
 }
 
@@ -357,24 +328,26 @@ function TicketComments({
 
   return (
     <>
-      <div className="flex items-center gap-2 px-1">
-        <MessageSquare className="w-3.5 h-3.5 text-text-secondary" />
-        <span className="text-xs font-medium text-text-secondary">
-          {t(count === 1 ? 'tasks.detail.commentCount.one' : 'tasks.detail.commentCount.other', { count })}
-        </span>
-        {/* The total is already in the heading, so this half only has to say how much
-            of it is on screen — and from which end. */}
-        {total !== undefined && (
-          <span className="text-xs text-text-secondary/50">
-            {t(
+      {/* `SectionHeader`, the app's one heading — the same object the board's own title
+          row is. `count` carries the SECOND number here rather than the first, which is
+          what that prop taking a string is for: the title says how big the conversation
+          is, and the count says how much of it is on screen and from which end. */}
+      <SectionHeader
+        icon={MessageSquare}
+        title={t(count === 1 ? 'tasks.detail.commentCount.one' : 'tasks.detail.commentCount.other', { count })}
+        {...(total !== undefined
+          ? {
+            count: t(
               tracker === 'github' ? 'tasks.detail.commentsShowingLast' : 'tasks.detail.commentsShowingFirst',
               { count: comments.length },
-            )}
-          </span>
-        )}
-      </div>
+            ),
+          }
+          : {})}
+        spacing="none"
+        className="px-1"
+      />
       {comments.map((comment) => (
-        <CommentCard key={comment.id} comment={comment} tracker={tracker} locale={locale} t={t} />
+        <TicketComment key={comment.id} comment={comment} tracker={tracker} locale={locale} t={t} />
       ))}
     </>
   )
@@ -889,8 +862,9 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
        one that showed was always the sum.
 
        Each block now owns the space around it, which is the only way the page can be
-       tuned block by block: the title keeps its `pb-5` and the rule under it, and every
-       card below has a ground or a border of its own to be separated by. */
+       tuned block by block: the title keeps its `pb-5`, and every card below has a
+       GROUND of its own to be separated by — which is the whole of it now that the rule
+       under the heading and the outline round each card have both gone. */
     <div className="flex flex-col">
       {/* The trail out, and the bar that takes over from the title.
 
@@ -906,20 +880,20 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
           enough to BE the page's top inset rather than to sit on one. `bg-bg-
           secondary` is PageModal's own panel colour: anything else would read as
           a floating toolbar. */}
-      <div
-        className={`sticky top-0 z-20 -mx-6 px-6 flex items-center gap-3 min-w-0 bg-bg-secondary transition-colors ${
-          condensed ? 'border-b border-line' : 'border-b border-transparent'
-        }`}
-        style={{ height: TOP_BAR_H }}
-      >
-        <button
+      <StickyBar height={TOP_BAR_H} stuck={condensed} className="-mx-6 px-6">
+        {/* `Button tone="ghost"` — no plate at rest, which is what a trail out of a page
+            should be: it is not an action the reader came here for. `-ml-2` pulls the
+            label's optical left edge back onto the page's own inset, which the button's
+            own horizontal padding would otherwise push in by twelve pixels. */}
+        <Button
+          tone="ghost"
+          icon={ArrowLeft}
           onClick={onBack}
           title={t('tasks.detail.back')}
-          className="flex items-center gap-1.5 p-1.5 -ml-1.5 text-text-secondary hover:text-ink hover:bg-surface-strong rounded-lg transition-colors flex-shrink-0"
+          className="-ml-2"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="text-xs font-medium">{t('tasks.detail.back')}</span>
-        </button>
+          {t('tasks.detail.back')}
+        </Button>
         {condensed ? (
           // Left-aligned next to the link it follows, and in the row's own type
           // size: this is the title standing in for itself, not a second heading.
@@ -938,12 +912,12 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
               ticketId={tracker === 'jira' ? issueKey : `#${issueNumber}`}
             />
             {statusChip}
-            <span className="text-xs text-ink truncate min-w-0" title={title}>
+            <Text className="truncate min-w-0" title={title}>
               {title}
-            </span>
+            </Text>
           </>
         ) : (
-          <span className="text-xs text-text-secondary/50 truncate">{repoName}</span>
+          <Text tone="secondary" className="truncate opacity-50">{repoName}</Text>
         )}
         {/* `ml-auto` moved onto the pair's leading element: it is what pushes both
             buttons to the right edge, and left on the second one it would have put
@@ -954,24 +928,25 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
             nothing to open. A GitHub issue always has one. */}
         {url && (
           <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-            {/* `BTN_ICON` rather than hand-rolled classes: it is the module's
-                icon-only tier and stands the same 30px as the `BTN` beside it. */}
-            <CopyLinkButton
-              url={url}
-              copyLabel={t('tasks.copyLink')}
+            {/* `CopyButton` at `md` — 28px, the same height `BTN` stands beside it.
+                The confirmation, the two seconds it holds and the tone it turns are the
+                design system's now; this only names the link and the words. */}
+            <CopyButton
+              value={url}
+              label={t('tasks.copyLink')}
               copiedLabel={t('tasks.copyLinkDone')}
-              className={BTN_ICON}
+              size="md"
             />
-            <button
+            <Button
+              tone="neutral"
+              icon={ExternalLink}
               onClick={() => window.electronAPI.shell.openExternal(url)}
-              className={`${BTN} flex-shrink-0`}
             >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>{t(tracker === 'jira' ? 'tasks.jira.openIssue' : 'tasks.openIssue')}</span>
-            </button>
+              {t(tracker === 'jira' ? 'tasks.jira.openIssue' : 'tasks.openIssue')}
+            </Button>
           </div>
         )}
-      </div>
+      </StickyBar>
 
       {/* Title and byline, GitHub's order: what it is, then its id, then the state
           and who opened it. BOTH trackers wear the id in the heading now — a Jira
@@ -1002,7 +977,12 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
             ticketId={tracker === 'jira' ? issueKey : `#${issueNumber}`}
             size="md"
           />
-          <h1 className="text-2xl font-semibold text-ink leading-snug min-w-0">{title}</h1>
+          {/* The one raw heading on the page, and it stays one: `Text` tops out at
+              `2xl` but renders a `<span>`, and a ticket's title is the document's `h1`.
+              The FACE is the design system's — `TEXT_FACE` names Cera Pro directly,
+              because `font-sans` resolves to a different family in the webapp and a
+              heading leaning on it would be set in two faces across the two builds. */}
+          <h1 className={`${TEXT_FACE} text-2xl font-bold text-ink leading-snug min-w-0`}>{title}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           {/* Nothing until the state is actually known: a chip reading "Open"
@@ -1024,20 +1004,22 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
               for on every open to catch a change nobody makes. */}
           {tracker === 'jira' && props.issue.epic && <JiraEpicBadge epic={props.issue.epic} t={t} />}
           {jiraPriority && <JiraPriorityBadge priority={jiraPriority} t={t} />}
-          <span className="text-xs text-text-secondary">
+          <Text tone="secondary">
             {tracker === 'github' && props.issue.author
               ? t('tasks.detail.openedBy', { login: props.issue.author, date: openedOn })
               : t('tasks.detail.openedOn', { date: openedOn })}
-          </span>
+          </Text>
           {/* One counter for both halves, off the number each read actually knows:
               GitHub reports a count and nothing else, Jira sends the comments
               themselves and `commentTotal` when it sent only a page of them. */}
           {commentCount > 0 && (
-            <span className="flex items-center gap-1.5 text-xs text-text-secondary">
-              <MessageSquare className="w-3.5 h-3.5" />
-              {t(commentCount === 1 ? 'tasks.detail.commentCount.one' : 'tasks.detail.commentCount.other', {
-                count: commentCount,
-              })}
+            <span className="flex items-center gap-1.5">
+              <Icon glyph={MessageSquare} size="sm" tone="inherit" className="text-text-secondary" />
+              <Text tone="secondary">
+                {t(commentCount === 1 ? 'tasks.detail.commentCount.one' : 'tasks.detail.commentCount.other', {
+                  count: commentCount,
+                })}
+              </Text>
             </span>
           )}
         </div>
@@ -1085,28 +1067,24 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
             in a conversation, not a thing beside one, so the thread stacks under it on
             the same gap the page uses everywhere else. */}
         <div className="flex-1 min-w-0 flex flex-col gap-3">
-          {/* The comment box: an author strip, then the body under a hairline. */}
-          <div className="rounded-xl bg-surface border border-line-field overflow-hidden">
-            <div className="flex items-center gap-1.5 px-5 py-2.5 bg-surface-subtle border-b border-line-subtle">
-              {tracker === 'github' && props.issue.author ? (
-                <>
-                  <span className="text-xs font-medium text-ink">@{props.issue.author}</span>
-                  <span className="text-xs text-text-secondary">{t('tasks.detail.commented')}</span>
-                </>
-              ) : (
-                <span className="text-xs font-medium text-ink">{t('tasks.detail.description')}</span>
-              )}
-              {openedOn && (
-                <span className="ml-auto text-xs text-text-secondary/50">{openedOn}</span>
-              )}
-            </div>
+          {/* THE DESCRIPTION IS THE FIRST TURN of the conversation, so it is the same
+              card as the replies under it — `CommentCard`, which is built on that. What
+              differs is the strip: this one names the field where a reply names a person,
+              and on the GitHub half it does both, because an issue's body IS its author's
+              first comment. */}
+          <CommentCard
+            {...(tracker === 'github' && props.issue.author
+              ? { author: `@${props.issue.author}`, verb: t('tasks.detail.commented') }
+              : { title: t('tasks.detail.description') })}
+            {...(openedOn ? { date: openedOn } : {})}
+          >
             <DetailBody
               content={tracker === 'jira' ? jiraDetail?.description ?? '' : detail?.body ?? ''}
               errorLines={errorLines}
               loading={loading}
               t={t}
             />
-          </div>
+          </CommentCard>
 
           {/* Both halves now, off whichever read landed — see `TicketComments`.
               Nothing is drawn while a read is out or after it failed: `thread` is
@@ -1169,81 +1147,84 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
               it is a card that reads as broken. The green banner above says what the state
               is and offers the move that belongs to it. */}
           {!hasAgent && (
-            <div className="rounded-xl bg-surface-subtle border border-line-field p-4 flex flex-col gap-2">
-              {/* The label alone said what the button was, never what it did. The
-                  second line does, in the button rather than under it: the sentence
-                  is part of the offer, and a hint floating below a filled button
-                  reads as a warning.
+            <Card className="flex flex-col gap-2">
+              {/* TWO `Button`s AND NOTHING ELSE. Each carried a second line explaining
+                  itself — "opens a terminal in this repository and runs /magic:start" —
+                  and the sentence was the reason this could not be the design system's
+                  own button at all. It went, and the buttons came back to the shared
+                  ladder: "Start an agent" beside a Play mark is not a proposition anybody
+                  needs glossed, and a card whose two controls are each three lines tall is
+                  a card that reads as a form.
 
-                  NOT OFFERED ON A FINISHED TICKET. A ticket whose board says Done, or whose
-                  issue is closed, is not work to pick up — starting an agent on one is the
-                  same mistake as starting a second on a ticket somebody has, and the board's
-                  own cards withhold the button for it too. Discuss stays: a finished ticket
-                  is very much a thing to ask about. */}
+                  NOT OFFERED ON A FINISHED TICKET. A ticket whose board says Done, or
+                  whose issue is closed, is not work to pick up — starting an agent on one
+                  is the same mistake as starting a second on a ticket somebody has, and
+                  the board's own cards withhold the button for it too. Discuss stays: a
+                  finished ticket is very much a thing to ask about. */}
+              {/* `ink` ON THE PRIMARY, which is the louder of the two plates and not the
+                  quieter one: it is the highest contrast the theme has — near-black on the
+                  four light themes, white on the four dark ones — where the accent is one
+                  hue among the ten the palette owns. The ranking is unchanged; only which
+                  colour carries it is. */}
               {!isDone && (
-                <button
+                <Button
+                  size="md"
+                  tone="ink"
+                  icon={Play}
                   onClick={startAgent}
                   disabled={!canStart}
-                  // `pointer-events-none` while disabled, not a `disabled:` colour per state:
-                  // hover lives in the shared `BTN_*_STACKED` tiers, and appending an override
-                  // for it here would depend on Tailwind's emit order (see theme/controls.ts).
-                  // Killing the pointer takes the hover, the cursor and the tooltip with it,
-                  // which is what a control that cannot be used should offer.
-                  className={`${BTN_PRIMARY_STACKED} w-full disabled:opacity-40 disabled:pointer-events-none`}
+                  className="w-full"
                 >
-                  <Play className="w-3.5 h-3.5 mt-px flex-shrink-0 fill-current" />
-                  <span className="flex flex-col gap-0.5 min-w-0">
-                    <span className="text-sm font-medium leading-snug">{t('tasks.startAgent')}</span>
-                    <span className="text-[11px] leading-snug text-on-brand/70">
-                      {t('tasks.startAgentHint')}
-                    </span>
-                  </span>
-                </button>
+                  {t('tasks.startAgent')}
+                </Button>
               )}
-              {/* Under the primary rather than beside it: they are alternatives on the same
-                  ticket, and side by side at this column's width both labels would wrap. */}
-              <button
+              {/* Under the primary rather than beside it: they are alternatives on the
+                  same ticket, and side by side at this column's width both labels would
+                  wrap. The accent reads as the second offer here rather than the first —
+                  a tint of the app's own hue under a plate of its own ink. */}
+              <Button
+                size="md"
+                tone="accent"
+                icon={MessagesSquare}
                 onClick={discussAgent}
                 disabled={!canStart}
-                className={`${BTN_NEUTRAL_STACKED} w-full disabled:opacity-40 disabled:pointer-events-none`}
+                className="w-full"
               >
-                <MessagesSquare className="w-3.5 h-3.5 mt-px flex-shrink-0" />
-                <span className="flex flex-col gap-0.5 min-w-0">
-                  <span className="text-sm font-medium leading-snug">{t('tasks.discussAgent')}</span>
-                  <span className="text-[11px] leading-snug text-bg/70">
-                    {t('tasks.discussAgentHint')}
-                  </span>
-                </span>
-              </button>
+                {t('tasks.discussAgent')}
+              </Button>
               {/* Said in place instead of failing on the click, and BEFORE any call is
                   made: a repository nobody has bound to a folder on this machine has no
                   directory to open a terminal in, and the fix is a setting. */}
               {!canStart && (
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-ink">{t('tasks.noLocalRepo')}</span>
-                  <span className="text-xs text-text-secondary/70">{t('tasks.noLocalRepoHint')}</span>
+                  <Text>{t('tasks.noLocalRepo')}</Text>
+                  <Text tone="secondary" className="opacity-70">{t('tasks.noLocalRepoHint')}</Text>
                 </div>
               )}
-              {startFailed && <span className="text-xs text-orange">{t('tasks.startFailed')}</span>}
-            </div>
+              {startFailed && <Text className="text-orange">{t('tasks.startFailed')}</Text>}
+            </Card>
           )}
 
-          <div className="rounded-xl bg-surface-subtle border border-line-field overflow-hidden">
+          {/* THE FIELDS ARE `MetaBlock`s IN ONE `Card` now, where they were bordered
+              boxes sharing hairlines. The separation is the `gap`: a column of five
+              fields is one card rather than five boxes with edges between them, and the
+              quiet of each label is what says a new field has started. */}
+          <Card className="flex flex-col gap-4">
             {tracker === 'jira' ? (
               <>
                 {/* The people and the labels only exist once the detail read lands,
                     so they say "none" rather than nothing while it is out. */}
-                <SideBlock title={t('tasks.detail.assignees')}>
+                <MetaBlock title={t('tasks.detail.assignees')}>
                   {jiraDetail?.assignee ? <PersonLine name={jiraDetail.assignee} /> : <NoneYet t={t} />}
-                </SideBlock>
-                <SideBlock title={t('tasks.jira.detail.reporter')}>
+                </MetaBlock>
+                <MetaBlock title={t('tasks.jira.detail.reporter')}>
                   {jiraDetail?.reporter ? <PersonLine name={jiraDetail.reporter} /> : <NoneYet t={t} />}
-                </SideBlock>
-                <SideBlock title={t('tasks.detail.labels')}>
+                </MetaBlock>
+                <MetaBlock title={t('tasks.detail.labels')}>
                   {jiraDetail && jiraDetail.labels.length > 0
                     ? jiraDetail.labels.map((label) => <Label key={label} title={label}>{label}</Label>)
                     : <NoneYet t={t} />}
-                </SideBlock>
+                </MetaBlock>
                 {/* THE BYLINE'S OWN TWO FIELDS, kept on screen once the byline itself has
                     gone behind the pinned bar — `condensed`, the same handoff the banner
                     above uses. They are the ticket's two planning facts, and "which epic
@@ -1259,14 +1240,14 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
                     that happen to be empty; a ticket with no epic has no such row to
                     leave blank, and the byline draws nothing for it either. */}
                 {condensed && props.issue.epic && (
-                  <SideBlock title={t('tasks.jira.detail.epic')}>
+                  <MetaBlock title={t('tasks.jira.detail.epic')}>
                     <JiraEpicBadge epic={props.issue.epic} t={t} />
-                  </SideBlock>
+                  </MetaBlock>
                 )}
                 {condensed && jiraPriority && (
-                  <SideBlock title={t('tasks.jira.detail.priority')}>
+                  <MetaBlock title={t('tasks.jira.detail.priority')}>
                     <JiraPriorityBadge priority={jiraPriority} t={t} />
-                  </SideBlock>
+                  </MetaBlock>
                 )}
               </>
             ) : (
@@ -1274,30 +1255,30 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
                 {/* Assignees only exist once the detail read lands, so they say
                     "none" rather than nothing while it is out. Labels came with the
                     row and are shown straight away. */}
-                <SideBlock title={t('tasks.detail.assignees')}>
+                <MetaBlock title={t('tasks.detail.assignees')}>
                   {detail && detail.assignees.length > 0
                     ? detail.assignees.map((login) => (
-                      <span key={login} className="text-xs text-text-secondary">@{login}</span>
+                      <Text key={login} tone="secondary">{`@${login}`}</Text>
                     ))
                     : <NoneYet t={t} />}
-                </SideBlock>
-                <SideBlock title={t('tasks.detail.labels')}>
+                </MetaBlock>
+                <MetaBlock title={t('tasks.detail.labels')}>
                   {props.issue.labels.length === 0
                     ? <NoneYet t={t} />
                     : props.issue.labels.map((label) => <Label key={label} title={label}>{label}</Label>)}
-                </SideBlock>
+                </MetaBlock>
                 {/* Both blocks below exist only when GitHub reported the hierarchy —
                     an empty "Sub-issues" on the vast majority of issues would be a
                     row of nothing on every page. */}
                 {props.issue.subIssues && (
-                  <SideBlock title={t('tasks.detail.subIssues')}>
+                  <MetaBlock title={t('tasks.detail.subIssues')}>
                     <div className="w-full flex flex-col gap-1.5">
-                      <span className="text-xs text-text-secondary">
+                      <Text tone="secondary">
                         {t('tasks.detail.subIssuesDone', {
                           completed: props.issue.subIssues.completed,
                           count: props.issue.subIssues.total,
                         })}
-                      </span>
+                      </Text>
                       {/* The progress GitHub draws there. Rounded to the pixel by the
                           browser, so the bar can read as full one issue early — the
                           count above it is the number of record. */}
@@ -1306,12 +1287,12 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
                         track="strong"
                       />
                     </div>
-                  </SideBlock>
+                  </MetaBlock>
                 )}
                 {props.issue.parent && (
-                  <SideBlock title={t('tasks.detail.parent')}>
+                  <MetaBlock title={t('tasks.detail.parent')}>
                     <ParentLink parent={props.issue.parent} />
-                  </SideBlock>
+                  </MetaBlock>
                 )}
               </>
             )}
@@ -1328,25 +1309,28 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
                 do — those are fields every ticket has and this one happens to be empty;
                 most tickets were filed by hand and have no plan to have a row about. */}
             {plan && (
-              <SideBlock title={t('tasks.detail.plannedIn')}>
+              <MetaBlock title={t('tasks.detail.plannedIn')}>
                 <button
                   type="button"
                   onClick={() => openPlansModal(plan.id)}
                   title={t('tasks.detail.openPlan')}
                   className="group w-full text-left flex items-start gap-2 min-w-0 bg-transparent border-none p-0 cursor-pointer"
                 >
-                  <NotebookPen className="w-3.5 h-3.5 mt-px flex-shrink-0 text-icon-muted" />
+                  <Icon glyph={NotebookPen} size="sm" tone="muted" className="mt-px flex-shrink-0" />
                   {/* `planLabel` and not `plan.title`: a plan is named by its title, then
                       its slug, then its spec key, and a session whose title has not been
                       written yet must not read as a blank link here when the Plans list
                       three clicks away is calling it something. */}
-                  <span className="min-w-0 text-xs text-text-secondary break-words group-hover:text-ink transition-colors group-hover:underline">
+                  <Text
+                    tone="secondary"
+                    className="min-w-0 break-words transition-colors group-hover:text-ink group-hover:underline"
+                  >
                     {planLabel(plan)}
-                  </span>
+                  </Text>
                 </button>
-              </SideBlock>
+              </MetaBlock>
             )}
-          </div>
+          </Card>
         </div>
       </div>
     </div>

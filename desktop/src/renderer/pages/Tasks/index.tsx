@@ -27,7 +27,7 @@ import type { TaskSelection } from '../../utils/taskSelection'
 import { seedFromTarget, shouldClearSeededQuery } from '../../utils/taskSelection'
 import { readsFrom } from '../../../tracker'
 import { useT, type MessageKey } from '../../i18n'
-import { Loader } from '@ds/desktop'
+import { EmptyState, Loader, NoticeCard, SectionHeader } from '@ds/desktop'
 import { SweepPane } from '../../components/SweepPane'
 import { GitHubNotConnected } from './GitHubNotConnected'
 import { TaskDetailPage } from './TaskDetailPage'
@@ -784,45 +784,66 @@ export function TasksPage() {
           />
         ) : (
           <div className="flex flex-col gap-3 pt-6">
-            <div className="flex items-center gap-2 text-sm text-text-secondary">
-              <ListTodo className="w-4 h-4" />
-              <span>{t('tasks.section')}</span>
-              <span className="ml-auto flex items-center gap-3">
-                {rows.length > 0 && (
-                  <span className="text-xs text-text-secondary/50">
-                    {/* "showing 50 of 214" wins when there IS a second number — it is
-                        strictly more than "showing the first 50", and only the GitHub
-                        half can ever supply it. The sprint form is the fallback for a
-                        board whose Jira half was cut short. */}
-                    {totalOpen > total
-                      ? openCountLabel(total, t, totalOpen)
-                      : sprintCountLabel(total, t, truncatedSprint)}
-                  </span>
-                )}
-                <button
-                  onClick={reload}
-                  disabled={loading}
-                  title={t('tasks.reload')}
-                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                  <span>{t('tasks.reload')}</span>
-                </button>
-              </span>
-            </div>
+            {/* `SectionHeader`, which is the app's one heading — a mark, a name, how many,
+                and what you can do to the lot. This row was the eighteenth hand-spelled
+                copy of it, down to a reload button wearing `border border-line` that no
+                other control on the page wears any more.
+
+                THE COUNT MOVED to just after the name, where the component puts every
+                count: "Tickets, showing 50 of 214" is one phrase, and reading it used to
+                mean crossing the width of the modal. It is a STRING rather than a number
+                because only this page knows whether its own figure is a total or a cap —
+                see `SectionHeader.count`.
+
+                "showing 50 of 214" wins when there IS a second number: it is strictly
+                more than "showing the first 50", and only the GitHub half can ever supply
+                it. The sprint form is the fallback for a board whose Jira half was cut
+                short.
+
+                `spacing="none"` because the column around it already spaces its children
+                with a `gap` — and that is true again now. It was not for one commit: the
+                filter bar carried `-my-3` to swallow the gap and started flush against
+                this heading, whose reload button hangs 4px below the row `SectionHeader`
+                pins to `h-5`. Those 4px were painted over in the page's own colour, which
+                reads as a button cropped along the bottom. The bar no longer swallows
+                anything, so the column's own 12px is the clearance. */}
+            <SectionHeader
+              icon={ListTodo}
+              title={t('tasks.section')}
+              {...(rows.length > 0
+                ? {
+                  count: totalOpen > total
+                    ? openCountLabel(total, t, totalOpen)
+                    : sprintCountLabel(total, t, truncatedSprint),
+                }
+                : {})}
+              // `busy` rather than `disabled` plus a hand-spun glyph: it spins the mark,
+              // blocks the second press and keeps the button at full strength — a dimmed
+              // spinner says "unavailable" about a control that is in fact working.
+              actions={[{
+                id: 'reload',
+                label: t('tasks.reload'),
+                icon: RefreshCw,
+                busy: loading,
+                onClick: reload,
+              }]}
+              spacing="none"
+            />
 
             {/* Past the early return above, `githubMissing` implies `hasJiraRepos`. */}
             {githubMissing && (
               // The GitHub half is unreadable and the Jira half is not, so the page
               // keeps rendering and says what is missing in one line rather than
               // covering the sprint with the full panel.
-              <div className="flex items-start gap-2 px-4 py-2.5 text-xs bg-surface-subtle border border-line-subtle rounded-lg">
-                <Github className="w-3.5 h-3.5 text-icon-muted flex-shrink-0 mt-0.5" />
-                <div className="flex flex-col gap-0.5 min-w-0">
-                  <span className="text-text-secondary">{t('tasks.github.title')}</span>
-                  <span className="text-text-secondary/60">{t('tasks.github.partialFix')}</span>
-                </div>
-              </div>
+              //
+              // `NoticeCard` WITH NO ROWS, which is the shape that component draws for
+              // "a fact with nothing to enumerate": the band alone, on its own plate. The
+              // bordered box this was is the same drawing minus the border and minus a
+              // second spelling of its two type sizes. `info` rather than `warning`: the
+              // sprint below is perfectly readable, and nothing here is broken.
+              <NoticeCard variant="info" icon={Github} hint={t('tasks.github.partialFix')}>
+                {t('tasks.github.title')}
+              </NoticeCard>
             )}
 
             {/* Only once there is something to work with. Four controls over a page
@@ -833,13 +854,19 @@ export function TasksPage() {
               <>
                 {/* Zero height, nothing to see: it marks where the top of the bar WOULD
                     be, which is the one thing a bar that has pinned itself there can no
-                    longer say about itself. `-mt-3` cancels the column's own gap before
-                    it, so inserting it moves nothing — see `FileReviewCard`, which does
-                    the same thing for the same reason.
+                    longer say about itself.
+
+                    `-mb-3` AND NOT `-mt-3`, which is the half that had to move when the
+                    bar stopped carrying negative margins of its own. The sentinel has to
+                    sit EXACTLY on the bar's top edge or the shadow lifts early — it
+                    cancelled the gap before itself while the bar cancelled the one after,
+                    and with the bar's gone it was marking a point 12px too high. Cancelling
+                    the gap after itself puts it back on the edge, and the gap before it is
+                    the air under the heading.
 
                     There is no CSS for "is this stuck" on the Chromium this app ships:
                     `:stuck` and scroll-state queries both landed after it. */}
-                <div ref={setFilterSentinel} className="h-0 -mt-3" aria-hidden />
+                <div ref={setFilterSentinel} className="h-0 -mb-3" aria-hidden />
                 <TaskFilters
                   value={filterValue}
                   repos={filterRepos}
@@ -865,30 +892,32 @@ export function TasksPage() {
                 that because they mistyped a ticket id would be the page blaming its
                 configuration for their search. */}
             {noMatch ? (
-              <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
-                <SearchX className="w-8 h-8 text-icon-muted" />
-                <p>{t('tasks.filter.noMatch')}</p>
-                <button
+              // BOTH EMPTY STATES ARE `EmptyState` NOW, and the mark is what keeps them
+              // apart: they are two plates one under the other in the same code, they read
+              // almost identically in words, and only this one is the reader's own doing.
+              // A magnifying glass with a line through it settles that before the sentence
+              // is read. The plate lost its border with everything else on this page.
+              <EmptyState
+                icon={SearchX}
+                actions={[{
+                  id: 'clear',
                   // The repository is NOT cleared — it has no cleared state, and this
                   // button is about undoing a search rather than leaving the board.
-                  onClick={() => setFilter(NO_FILTER)}
-                  className="mt-1 px-2.5 py-1 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-colors"
-                >
-                  {t('tasks.filter.clearAll')}
-                </button>
-              </div>
+                  label: t('tasks.filter.clearAll'),
+                  onClick: () => setFilter(NO_FILTER),
+                }]}
+              >
+                {t('tasks.filter.noMatch')}
+              </EmptyState>
             ) : rows.length === 0 ? (
-              <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
-                <ListTodo className="w-8 h-8 text-icon-muted" />
-                {/* Not "no tickets": nobody asked the question, or the ones who did
-                    have no readable coordinates — and with two trackers that is four
-                    situations, not two. Every fix is a per-repository setting, so
-                    each hint names the one that applies. */}
-                <p>{t(emptyState.title)}</p>
-                <p className="text-xs text-text-secondary/60 max-w-sm text-center">
-                  {t(emptyState.hint)}
-                </p>
-              </div>
+              // Not "no tickets": nobody asked the question, or the ones who did have no
+              // readable coordinates — and with two trackers that is four situations, not
+              // two. Every fix is a per-repository setting on another page, which is
+              // exactly the case `EmptyState.hint` exists for: there is no button to press,
+              // so the instruction has nowhere else to go.
+              <EmptyState icon={ListTodo} hint={t(emptyState.hint)}>
+                {t(emptyState.title)}
+              </EmptyState>
             ) : (
               // The board draws its four columns whatever is in them — an empty column
               // says so itself, and a repository with nothing open at all is four empty

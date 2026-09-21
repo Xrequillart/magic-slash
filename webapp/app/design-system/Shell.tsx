@@ -26,6 +26,14 @@ import { BreakdownListEntry } from './entries/BreakdownListEntry'
 import { BudgetMeterEntry } from './entries/BudgetMeterEntry'
 import { NoteCardEntry } from './entries/NoteCardEntry'
 import { SkillCardEntry } from './entries/SkillCardEntry'
+import { TicketCardEntry } from './entries/TicketCardEntry'
+import { BoardColumnEntry } from './entries/BoardColumnEntry'
+import { TrackerBadgeEntry } from './entries/TrackerBadgeEntry'
+import { CopyButtonEntry } from './entries/CopyButtonEntry'
+import { CommandChipEntry } from './entries/CommandChipEntry'
+import { StickyBarEntry } from './entries/StickyBarEntry'
+import { MetaBlockEntry } from './entries/MetaBlockEntry'
+import { CommentCardEntry } from './entries/CommentCardEntry'
 import { EmptyStateEntry } from './entries/EmptyStateEntry'
 import { FormFieldEntry } from './entries/FormFieldEntry'
 import { ImageFieldEntry } from './entries/ImageFieldEntry'
@@ -168,6 +176,14 @@ const ENTRIES: Record<
   budgetmeter: BudgetMeterEntry,
   notecard: NoteCardEntry,
   skillcard: SkillCardEntry,
+  ticketcard: TicketCardEntry,
+  boardcolumn: BoardColumnEntry,
+  trackerbadge: TrackerBadgeEntry,
+  copybutton: CopyButtonEntry,
+  commandchip: CommandChipEntry,
+  stickybar: StickyBarEntry,
+  metablock: MetaBlockEntry,
+  commentcard: CommentCardEntry,
   emptystate: EmptyStateEntry,
   formfield: FormFieldEntry,
   imagefield: ImageFieldEntry,

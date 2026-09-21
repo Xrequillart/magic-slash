@@ -35,6 +35,8 @@ export type {
   ButtonIconSize,
   ButtonIconTone,
 } from './ButtonIcon'
+export { BoardColumn } from './BoardColumn'
+export type { BoardColumnProps, BoardColumnTone } from './BoardColumn'
 export { BranchCard } from './BranchCard'
 export type { BranchCardProps } from './BranchCard'
 export { Card } from './Card'
@@ -44,6 +46,12 @@ export type { CommitCardCommit, CommitCardProps } from './CommitCard'
 // gutter, not a thing a page has any business drawing on its own.
 export { CommitLine } from './CommitLine'
 export type { CommitLineProps } from './CommitLine'
+export { CommentCard } from './CommentCard'
+export type { CommentCardProps } from './CommentCard'
+export { CommandChip } from './CommandChip'
+export type { CommandChipProps } from './CommandChip'
+export { CopyButton } from './CopyButton'
+export type { CopyButtonProps } from './CopyButton'
 export { ContextAgentCard, CONTEXT_THRESHOLDS } from './ContextAgentCard'
 export type { ContextAgentCardProps } from './ContextAgentCard'
 export { ChecklistCard, CHECKLIST_VERDICT_MARK } from './ChecklistCard'
@@ -152,6 +160,8 @@ export {
   PAGE_MODAL_WIDTH,
 } from './modalSizes'
 export type { PageModalSize } from './modalSizes'
+export { MetaBlock } from './MetaBlock'
+export type { MetaBlockProps } from './MetaBlock'
 export { Menu } from './Menu'
 export type { MenuGroup, MenuHeader, MenuItem, MenuProps } from './Menu'
 export { MenuSidebar } from './MenuSidebar'
@@ -194,6 +204,8 @@ export type { SelectMarker, SelectOption, SelectProps, SelectSize } from './Sele
 export { useAnchoredPanel } from './useAnchoredPanel'
 export { SelectIcon } from './SelectIcon'
 export type { SelectIconGroup, SelectIconItem, SelectIconProps, SelectIconTone } from './SelectIcon'
+export { StickyBar } from './StickyBar'
+export type { StickyBarProps } from './StickyBar'
 export { Status, STATUS_TONES } from './Status'
 export { Switch } from './Switch'
 export type { SwitchProps, SwitchSize, SwitchVariant } from './Switch'
@@ -212,6 +224,17 @@ export { UsageClaudeCodeCard } from './UsageClaudeCodeCard'
 export type { UsageClaudeCodeCardProps, UsageLimit } from './UsageClaudeCodeCard'
 export { TitleAgentCard } from './TitleAgentCard'
 export type { TitleAgentCardProps } from './TitleAgentCard'
+export { TicketCard } from './TicketCard'
+export type {
+  TicketCardAction,
+  TicketCardMark,
+  TicketCardNote,
+  TicketCardProps,
+  TicketCardStatus,
+  TicketCardTag,
+} from './TicketCard'
+export { TrackerBadge, TrackerTile } from './TrackerBadge'
+export type { Tracker, TrackerBadgeProps, TrackerTileProps, TrackerTileSize } from './TrackerBadge'
 export { TabStrip } from './TabStrip'
 export type { TabStripItem, TabStripProps } from './TabStrip'
 export { Tally } from './Tally'

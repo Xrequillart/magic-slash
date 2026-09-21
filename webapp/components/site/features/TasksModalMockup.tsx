@@ -83,7 +83,7 @@ import { FeatureLegend, LegendTile } from "./FeatureLegend";
  */
 
 /**
- * Jira's mark, traced from `desktop/src/renderer/components/icons/TrackerIcons.tsx`.
+ * Jira's mark, traced from `design-system/desktop/TrackerBadge.tsx`.
  *
  * KEPT AS A VECTOR AND IN ITS OWN TWO BLUES rather than pointed at `/img/jira-logo.png`,
  * for that file's own reason: this is a brand mark, so it does not take the surrounding

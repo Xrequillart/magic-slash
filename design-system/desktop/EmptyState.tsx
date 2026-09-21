@@ -1,4 +1,5 @@
 import { Button } from './Button'
+import { Icon } from './Icon'
 import { Text } from './Text'
 import type { IconComponent } from './types'
 
@@ -40,21 +41,58 @@ export interface EmptyStateProps {
    * is the same instruction twice, out of date the moment a third verb is added.
    */
   children: string
+  /**
+   * A mark above the sentence, saying what KIND of absence this is.
+   *
+   * It earns its place only where a page has more than one of these and they mean
+   * different things. The Tasks board is the case it was added for: a search that matched
+   * nothing and a repository nobody has configured are two states one under the other in
+   * the same code, they read almost identically in words, and only one of them is the
+   * reader's own doing. A magnifying glass with a line through it settles that before the
+   * sentence is read.
+   *
+   * `2xl` — 28px, the rung that sits past a line of text. An absence is scanned before it
+   * is read, and a 16px glyph over a centred sentence reads as a bullet.
+   */
+  icon?: IconComponent
+  /**
+   * ONE QUIET LINE UNDER THE SENTENCE, for the absence whose cure is NOT a button.
+   *
+   * It looks like it contradicts `children`'s rule and it is its complement: the rule
+   * says the sentence must not spell out an instruction the buttons already carry. Where
+   * there are no buttons — because the fix is a setting on another page, and a different
+   * one per repository — the instruction has nowhere else to go, and an absence that
+   * cannot say how to end it is an absence the reader can only stare at.
+   *
+   * A STRING, translated, and one sentence. Anything with structure is a `NoticeCard`.
+   */
+  hint?: string
   /** What ends the emptiness. Empty draws the sentence alone. */
   actions?: EmptyStateAction[]
   /** Margins and width. Not the plate, the padding or the radius. */
   className?: string
 }
 
-export function EmptyState({ children, actions = [], className = '' }: EmptyStateProps) {
+export function EmptyState({ children, icon, hint, actions = [], className = '' }: EmptyStateProps) {
   return (
     <div className={`w-full rounded-xl bg-surface-subtle px-4 py-8 ${className}`.trim()}>
       {/* CENTRED, which is the whole of how this reads as an absence rather than as the
           first row of a list that failed to load — `EmptyLine`'s rule, and the reason
           the buttons are centred under it rather than pushed to an edge. */}
+      {icon && (
+        <Icon glyph={icon} size="2xl" tone="muted" className="mx-auto mb-3 block" />
+      )}
       <Text size="sm" tone="secondary" className="block text-center opacity-50">
         {children}
       </Text>
+      {hint && (
+        // Narrower than the plate on purpose. A sentence explaining where a setting lives
+        // is the longest thing on this card, and set to the full width of a modal it
+        // becomes one line the eye has to travel rather than two it can read.
+        <Text tone="secondary" className="mx-auto mt-1.5 block max-w-sm text-center opacity-40">
+          {hint}
+        </Text>
+      )}
       {actions.length > 0 && (
         <div className="mt-3 flex items-center justify-center gap-3">
           {actions.map((action) => (

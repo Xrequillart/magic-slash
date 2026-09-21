@@ -20,6 +20,14 @@ import type { IconComponent } from './types'
  * stretches the row and pushes that tab's content about ten pixels lower than its
  * neighbours. The control simply overflows the line, centred.
  *
+ * THAT OVERFLOW IS THE ONE THING A CALLER HAS TO KNOW ABOUT. A `sm` button is 28px in a
+ * 20px row, so it hangs 4px below the heading's own box — which is invisible until
+ * something OPAQUE is laid directly under it. The Tasks board's filter bar did exactly
+ * that for one commit, with a negative margin that swallowed its column's gap: it began
+ * flush with the heading and repainted the bottom of the reload button in the page's own
+ * colour. A heading whose next sibling is an opaque band needs real space between them,
+ * and this component cannot know it has one.
+ *
  * A `hint` HANGS BELOW THAT PIN rather than growing it, which is the only arrangement
  * that keeps the promise above: the 20px row is still the 20px row, and a section that
  * explains itself still starts its title on the same y as one that does not.
@@ -77,8 +85,15 @@ export interface SectionHeaderProps {
   /**
    * How many things are under it, drawn quiet beside the title. Omit where the section
    * is not a list — a count of one setting is noise.
+   *
+   * A STRING TOO, for `BoardColumn.count`'s reason and no other: whether a count is
+   * EXACT is a fact about the read, not about the heading. A tracker paginated by cursor
+   * returns no total, so "showing the first 50" is the honest form and there is no second
+   * number to make it out of — and a heading printing a bare 50 over a backlog of four
+   * hundred is not a count, it is a cap wearing a count's clothes. The caller words it;
+   * this still owns where it sits and how quiet it is.
    */
-  count?: number
+  count?: string | number
   /**
    * ONE QUIET LINE UNDER THE TITLE, saying what the section is FOR where the name alone
    * does not — "the eight that ship with Magic Slash", "skills found in your repos".

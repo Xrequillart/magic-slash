@@ -2227,12 +2227,10 @@ export const en = {
   'tasks.pick.hint': 'Click a card to attach it. Nothing is started.',
   'tasks.pick.cancel': 'Cancel',
   'tasks.pick.fallbackAgent': 'this agent',
-  'tasks.startAgentHint': 'Opens a terminal in this repository and runs /magic:start on this ticket.',
   // The alternative to starting the work: an agent that reads the issue and talks about it.
   // "Discuss with", not "Start a discussion with" — it sits directly under "Start an agent",
   // and two labels both opening on the same verb read as two ways of doing one thing.
   'tasks.discussAgent': 'Discuss with an agent',
-  'tasks.discussAgentHint': 'Types the opening prompt into a terminal — add what you want to talk about, then press Return.',
   // Why the action is unavailable, said in place instead of failing on the click.
   // A team repository that nobody has bound to a folder on THIS machine has no
   // directory to open a terminal in, and the fix is a setting.

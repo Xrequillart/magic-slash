@@ -9,6 +9,7 @@ import {
   Minus,
   Settings,
 } from '@ds/desktop/icons'
+import { Button, Label, Status, Text, type IconComponent, type StatusTone } from '@ds/desktop'
 import type {
   JiraEpic,
   JiraPriority,
@@ -118,13 +119,36 @@ export const JIRA_NEUTRAL_BADGE: Partial<Record<JiraTaskError, MessageKey>> = {
   'not-connected': 'tasks.jira.notConnectedBadge',
 }
 
+/**
+ * WHAT WENT WRONG AND WHAT TO DO ABOUT IT, as two translated strings.
+ *
+ * Split out from the components below because the board's failed rows are a
+ * `NoticeCard` now, and a card takes its sentence and its second line as DATA — where
+ * the ticket page still wants the pair as a node it can drop into its body. One
+ * resolution, two shapes, and the tables stay private either way.
+ */
+export function taskErrorCopy(error: { error: PRWatchError }, t: Translate): { title: string; fix: string } {
+  const keys = ERROR_KEYS[error.error]
+  return { title: t(keys.title), fix: t(keys.fix) }
+}
+
+export function jiraErrorCopy(
+  error: JiraTaskStatusError,
+  t: Translate,
+  surface: 'card' | 'detail' = 'card',
+): { title: string; fix: string } {
+  const keys = (surface === 'detail' ? JIRA_DETAIL_ERROR_KEYS[error.error] : undefined)
+    ?? JIRA_ERROR_KEYS[error.error]
+  return { title: t(keys.title), fix: t(keys.fix) }
+}
+
 /** What went wrong, then what to do about it. The shape both tables render into. */
 function ErrorLines({ title, fix }: { title: MessageKey; fix: MessageKey }) {
   const t = useT()
   return (
     <div className="flex flex-col gap-0.5 min-w-0">
-      <span className="text-sm text-ink">{t(title)}</span>
-      <span className="text-xs text-text-secondary/70">{t(fix)}</span>
+      <Text size="sm">{t(title)}</Text>
+      <Text tone="secondary" className="opacity-70">{t(fix)}</Text>
     </div>
   )
 }
@@ -150,6 +174,11 @@ export function TaskErrorLines({ error }: { error: { error: PRWatchError } }) {
  * "this sprint has nothing in it"; with it, the card states the situation and hands
  * over the one screen that fixes it. Settings is a modal like this page, so opening
  * it replaces the Tasks overlay rather than stacking on top of it.
+ *
+ * `Button` rather than the accent-tinted pill this spelled by hand: it is the one
+ * affirmative thing on a panel that is otherwise a statement, so it takes the filled
+ * accent rung rather than an outline of it. The outline is gone with every other
+ * border on this page.
  */
 export function JiraErrorLines({
   error,
@@ -171,13 +200,15 @@ export function JiraErrorLines({
     <div className="flex flex-col gap-2 min-w-0">
       <ErrorLines {...keys} />
       {error.error === 'not-connected' && (
-        <button
+        <Button
+          size="xs"
+          tone="accent"
+          icon={Settings}
           onClick={() => useStore.getState().setAccountTab('connections')}
-          className="self-start flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-md hover:bg-accent/20 transition-colors"
+          className="self-start"
         >
-          <Settings className="w-3 h-3" />
           {t('tasks.jira.connect')}
-        </button>
+        </Button>
       )}
     </div>
   )
@@ -238,58 +269,70 @@ export function subIssuesLabel(subIssues: NonNullable<TaskIssue['subIssues']>, t
 }
 
 /**
- * The state chip: GitHub's two states, in our pill vocabulary.
+ * EVERY PILL BELOW IS `Status` NOW, and what is left in this file is the one half a
+ * design system may not hold: WHICH state wears which hue, and which glyph.
  *
- * The icon is half the message — a filled dot for something still open, a tick for
- * something closed — so the chip survives being read at a glance, and does not rely on
- * green-versus-purple alone.
+ * That split is the component's own — "this folder owns how a state LOOKS, the app owns
+ * which states there are" — and it is what these tables are. A GitHub issue's two
+ * states, a Jira status category's three, a priority's six: all of them are a tracker's
+ * vocabulary, and a table of them in `design-system/` would be Magic Slash stored in the
+ * shared folder.
+ *
+ * What went with the hand-built pills is the geometry. The plate, the radius, the height
+ * and the type rung were spelled out four times here — `text-xs px-2 py-0.5 rounded-full`
+ * and three near-misses of it — beside `Label`s drawn on the same line at a height none
+ * of them agreed with.
+ */
+
+/**
+ * GitHub's two states, in our pill vocabulary.
+ *
+ * THE MARK IS HALF THE MESSAGE — a filled dot for something still open, a tick for
+ * something closed — so the chip survives being read at a glance and does not rely on
+ * green-versus-purple alone. `Status.icon` is the prop that exists for it.
+ */
+const STATE_MARK: Record<TaskIssueDetail['state'], { icon: IconComponent; tone: StatusTone; label: MessageKey }> = {
+  OPEN: { icon: CircleDot, tone: 'green', label: 'tasks.detail.stateOpen' },
+  CLOSED: { icon: CircleCheck, tone: 'purple', label: 'tasks.detail.stateClosed' },
+}
+
+/**
+ * The state chip.
  *
  * `JiraStatusPill`'s counterpart, and it lives beside it for that reason: the two are
- * the app's one answer to "what state is this ticket in", and both are now drawn on two
- * pages — the ticket's own, and a plan's ticket tree. It was private to `TaskDetailPage`
- * while the ticket page was the only one asking; a second copy for the plan page would
- * have been the two surfaces free to drift on the one thing a reader compares across
- * them.
+ * the app's one answer to "what state is this ticket in", and both are drawn on two
+ * pages — the ticket's own, and a plan's ticket tree.
  *
  * Takes the STATE and not the issue, for the reason `JiraStatusPill` takes two values:
  * both callers re-read it live rather than trusting what their list captured, and a chip
  * typed on the row could only be handed the stale one back.
  */
 export function StateChip({ state, t }: { state: TaskIssueDetail['state']; t: Translate }) {
-  const open = state === 'OPEN'
-  const Icon = open ? CircleDot : CircleCheck
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
-        open ? 'bg-green/15 text-green' : 'bg-purple/15 text-purple'
-      }`}
-    >
-      <Icon className="w-3.5 h-3.5" />
-      {t(open ? 'tasks.detail.stateOpen' : 'tasks.detail.stateClosed')}
-    </span>
-  )
+  const { icon, tone, label } = STATE_MARK[state]
+  return <Status label={t(label)} tone={tone} icon={icon} />
 }
 
 /**
- * A Jira status category as a pill.
- *
- * Deliberately NOT the design system's `Label`, which is what a ticket's own labels
- * are drawn with a few lines up: a label NAMES a thing and never changes while you
- * look at it, where this reports a state the board moves between columns on. They
- * also differ in the one way that matters on screen — `Label` has a single neutral
- * ground, and In Progress has to be told apart from To Do at a glance.
+ * A Jira status category's hue.
  *
  * Coloured by CATEGORY and labelled by NAME, which is the split `JiraStatusCategory`
- * exists for: the category is fixed by Jira and can be branched on, the name is what
- * the reader knows their board by and is the only thing worth showing.
+ * exists for: the category is fixed by Jira and can be branched on, the name is what the
+ * reader knows their board by and is the only thing worth showing.
+ *
+ * Exported because the board's cards no longer draw the pill themselves — `TicketCard`
+ * takes a status as DATA, so the hue has to be pickable without rendering anything.
+ *
+ * Deliberately NOT `Label`, which is what a ticket's own labels are drawn with on the
+ * same line: a label NAMES a thing and never changes while you look at it, where this
+ * reports a state the board moves between columns on. `Status`'s own docblock draws the
+ * line, and the two components exist on either side of it.
  */
-const JIRA_STATUS_CLASS: Record<JiraStatusCategory, string> = {
-  new: 'bg-surface text-text-secondary',
-  indeterminate: 'bg-accent/15 text-accent',
+export const JIRA_STATUS_TONE: Record<JiraStatusCategory, StatusTone> = {
+  new: 'neutral',
+  indeterminate: 'accent',
   // Never reached today — the main process drops finished tickets — but a card that
   // silently mis-coloured one would be worse than a table with three rows in it.
-  done: 'bg-green/15 text-green',
+  done: 'green',
 }
 
 export function JiraStatusPill({ name, category }: { name: string; category: JiraStatusCategory }) {
@@ -298,24 +341,14 @@ export function JiraStatusPill({ name, category }: { name: string; category: Jir
   // precisely so a ticket transitioned since the list was drawn stops showing the
   // stale word, and a pill typed on `JiraTaskIssue` could only be handed the stale
   // one back.
-  //
-  // JUST THE PILL. It owned the whole second line of the row until that line grew a
-  // reporter and a set of labels to share with — so the flex wrapper moved out to the
-  // row, which is the side that knows what else is on it. `flex-shrink-0` is what
-  // keeps a bare span from stretching to the column it sits in, which is what the
-  // wrapper used to be for.
   if (!name) return null
-  return (
-    <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${JIRA_STATUS_CLASS[category]}`}>
-      {name}
-    </span>
-  )
+  return <Status label={name} tone={JIRA_STATUS_TONE[category]} />
 }
 
 /**
- * A Jira priority as an arrow and a word.
+ * A Jira priority as an arrow and a hue.
  *
- * `JiraStatusPill`'s twin, one field along and with the same split behind it: the
+ * `JIRA_STATUS_TONE`'s twin, one field along and with the same split behind it: the
  * LEVEL picks the arrow and the colour because Jira fixes it, the NAME is printed
  * because it is the word the reader's own board uses. What differs is that this one
  * leads with a glyph — a priority is read at a glance down a column of rows, and an
@@ -331,83 +364,69 @@ export function JiraStatusPill({ name, category }: { name: string; category: Jir
  * a flat bar that claims nothing about where on the scale it sits. See
  * `JiraPriorityLevel`.
  */
-const PRIORITY_STYLE: Record<JiraPriorityLevel, { icon: typeof ChevronUp; className: string }> = {
-  highest: { icon: ChevronsUp, className: 'bg-red/15 text-red' },
-  high: { icon: ChevronUp, className: 'bg-orange/15 text-orange' },
-  medium: { icon: Equal, className: 'bg-yellow/15 text-yellow' },
-  low: { icon: ChevronDown, className: 'bg-blue/15 text-blue' },
-  lowest: { icon: ChevronsDown, className: 'bg-surface text-text-secondary' },
-  unknown: { icon: Minus, className: 'bg-surface text-text-secondary' },
+export const JIRA_PRIORITY_MARK: Record<JiraPriorityLevel, { icon: IconComponent; tone: StatusTone }> = {
+  highest: { icon: ChevronsUp, tone: 'red' },
+  high: { icon: ChevronUp, tone: 'orange' },
+  medium: { icon: Equal, tone: 'yellow' },
+  low: { icon: ChevronDown, tone: 'blue' },
+  lowest: { icon: ChevronsDown, tone: 'neutral' },
+  unknown: { icon: Minus, tone: 'neutral' },
 }
 
-export function JiraPriorityBadge({
-  priority,
-  t,
-  compact = false,
-}: {
-  priority: JiraPriority
-  t: Translate
-  /**
-   * The arrow alone, without the site's word for the tier.
-   *
-   * What a board card's header uses. That band is one line shared with the ticket id
-   * and the card's actions, in a column a quarter of the modal wide — a badge reading
-   * "Highest" there takes its width off the id beside it, which is the half that
-   * cannot be recovered from anywhere else on the card. The arrow is the part that
-   * survives being skimmed anyway (see above), and the name is one hover away.
-   */
-  compact?: boolean
-}) {
-  const { icon: Icon, className } = PRIORITY_STYLE[priority.level]
+/**
+ * The hover text names the FIELD, because the badge itself only shows its value:
+ * "Urgent" beside a status pill and two labels is a word with no column header, and a
+ * site whose priorities are called "P1"…"P4" gives the reader nothing to recognise it
+ * by at all. Compact, it is the only place the value is written at all.
+ */
+export function jiraPriorityHint(priority: JiraPriority, t: Translate): string {
+  return t('tasks.jira.priorityHint', { name: priority.name })
+}
+
+export function JiraPriorityBadge({ priority, t }: { priority: JiraPriority; t: Translate }) {
+  const { icon, tone } = JIRA_PRIORITY_MARK[priority.level]
+  // `label` is the site's word and `title` names the field it is a value of — two
+  // different strings, which is why `Status.label` is not asked to carry both.
   return (
-    // The hover text names the FIELD, because the badge itself only shows its value:
-    // "Urgent" beside a status pill and two labels is a word with no column header,
-    // and a site whose priorities are called "P1"…"P4" gives the reader nothing to
-    // recognise it by at all. Compact, it is the only place the value is written.
-    <span
-      title={t('tasks.jira.priorityHint', { name: priority.name })}
-      className={`text-xs py-0.5 rounded-full flex-shrink-0 inline-flex items-center ${
-        compact ? 'px-0.5' : 'pl-1 pr-2 gap-0.5'
-      } ${className}`}
-    >
-      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-      {!compact && priority.name}
+    <span title={jiraPriorityHint(priority, t)} className="inline-flex">
+      <Status label={priority.name} tone={tone} icon={icon} />
     </span>
   )
 }
 
 /**
- * The epic a ticket hangs off, as a dot and its title.
+ * The epic a ticket hangs off, as a chip in the epic's own colour.
  *
- * `JiraStatusPill`'s neutral ground rather than a colour of its own, with the epic's
- * colour spent entirely on the DOT. The badge sits between the status and the
- * priority, both of which are coloured to be read as a scale — a third filled pill in
- * an unrelated colour would compete with them for the same glance, and an epic is not
- * a state or a degree. The dot is the same 8px circle the repository wears in its own
- * header and in the filter bar, so "coloured dot" means one thing on this page.
+ * `Label` AND NOT `Status`, and the reason is the line those two components are drawn
+ * on either side of: an epic NAMES a thing and the name does not change while you look
+ * at it, where a status reports a state the board moves a ticket between columns on.
  *
- * NO DOT AT ALL when the site records no colour, rather than a grey stand-in: a
- * neutral circle beside coloured ones reads as an epic whose colour is grey, which is
- * a colour Jira actually offers. See `JiraEpic.color`.
+ * IT WAS A NEUTRAL PILL WITH A COLOURED DOT and is now a plate in the epic's own hue,
+ * which is `Label.color`'s whole purpose — the same treatment a repository gets in the
+ * rail and in the filter bar, so "an epic" and "a repository" read as the same kind of
+ * thing wherever they appear. An epic with no colour recorded simply takes the neutral
+ * plate, where the dot version had to draw nothing at all rather than a grey stand-in.
  *
  * NOT A LINK, though the epic has a URL. Every row on this page opens its ticket, and
  * an anchor inside it would give one strip of the row a different destination from the
  * rest of it — the epic is reachable from the ticket page it leads to.
  */
+export function jiraEpicHint(epic: JiraEpic, t: Translate): string {
+  // Carries the KEY as well as the title, which is the half a truncated title loses
+  // first — and, like the priority's, it names the FIELD: a bare title between two
+  // coloured pills is a phrase with no column header.
+  return t('tasks.jira.epicHint', { key: epic.key, title: epic.title })
+}
+
 export function JiraEpicBadge({ epic, t }: { epic: JiraEpic; t: Translate }) {
   return (
-    // The hover text names the FIELD, for `JiraPriorityBadge`'s reason: a bare title
-    // between two coloured pills is a phrase with no column header, and an epic called
-    // "Data" or "Rebranding" gives the reader nothing to recognise it by. It carries
-    // the KEY as well, which is the half a truncated title loses first.
-    <span
-      title={t('tasks.jira.epicHint', { key: epic.key, title: epic.title })}
-      className="text-xs px-2 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-1.5 bg-surface text-text-secondary max-w-[14rem]"
+    <Label
+      color={epic.color}
+      title={jiraEpicHint(epic, t)}
+      truncate
+      className="max-w-[14rem]"
     >
-      {epic.color && (
-        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: epic.color }} />
-      )}
-      <span className="truncate">{epic.title}</span>
-    </span>
+      {epic.title}
+    </Label>
   )
 }
