@@ -9,6 +9,12 @@ import { usesOf } from './ids'
 
 const PROPS: PropRow[] = [
   {
+    name: 'title',
+    type: 'string',
+    description:
+      'What the rows under it have in common, above the plate — “Message”, “Branches”, “Where the tickets go”. It is not SectionHeader, which is a page’s heading with a mark and its own controls; this is one rung below that, set small and quiet so it does not compete with the tab it sits under. A prop and not a sibling because the heading and the plate are one object: the repository settings page draws twenty of them and every one had exactly one card under it.',
+  },
+  {
     name: 'rows',
     type: '(SettingsCardRow | false | null | undefined)[]',
     required: true,

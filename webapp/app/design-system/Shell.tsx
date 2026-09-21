@@ -31,6 +31,7 @@ import { BoardColumnEntry } from './entries/BoardColumnEntry'
 import { TrackerBadgeEntry } from './entries/TrackerBadgeEntry'
 import { CopyButtonEntry } from './entries/CopyButtonEntry'
 import { CommandChipEntry } from './entries/CommandChipEntry'
+import { ChipInputEntry } from './entries/ChipInputEntry'
 import { StickyBarEntry } from './entries/StickyBarEntry'
 import { MetaBlockEntry } from './entries/MetaBlockEntry'
 import { CommentCardEntry } from './entries/CommentCardEntry'
@@ -38,6 +39,8 @@ import { EmptyStateEntry } from './entries/EmptyStateEntry'
 import { FormFieldEntry } from './entries/FormFieldEntry'
 import { ImageFieldEntry } from './entries/ImageFieldEntry'
 import { SkillHeaderEntry } from './entries/SkillHeaderEntry'
+import { SkillIntroEntry } from './entries/SkillIntroEntry'
+import { OutputSampleEntry } from './entries/OutputSampleEntry'
 import { RateLimitBarEntry } from './entries/RateLimitBarEntry'
 import { UsageTableEntry } from './entries/UsageTableEntry'
 import { CommitCardEntry } from './entries/CommitCardEntry'
@@ -181,6 +184,7 @@ const ENTRIES: Record<
   trackerbadge: TrackerBadgeEntry,
   copybutton: CopyButtonEntry,
   commandchip: CommandChipEntry,
+  chipinput: ChipInputEntry,
   stickybar: StickyBarEntry,
   metablock: MetaBlockEntry,
   commentcard: CommentCardEntry,
@@ -188,6 +192,8 @@ const ENTRIES: Record<
   formfield: FormFieldEntry,
   imagefield: ImageFieldEntry,
   skillheader: SkillHeaderEntry,
+  skillintro: SkillIntroEntry,
+  outputsample: OutputSampleEntry,
   ratelimitbar: RateLimitBarEntry,
   usagetable: UsageTableEntry,
   label: LabelEntry,

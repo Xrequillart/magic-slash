@@ -29,7 +29,20 @@ const PROPS: PropRow[] = [
     name: 'control',
     type: 'SettingRowControl | SettingRowControl[]',
     description:
-      'A tagged union — { kind: "select" }, { kind: "switch" } or { kind: "stepper" }, each with that control’s own props — and never a node. A row that took children would let each call site decide the control’s size, and a settings page whose pickers are 28px on one tab and 32 on the next is exactly what this exists to stop. A list keeps a pair in one cluster at one gap, in reading order.',
+      'A tagged union — select, switch, stepper, input, button, buttonIcon or chips, each with that control’s own props — and never a node. A row that took children would let each call site decide the control’s size, and a settings page whose pickers are 28px on one tab and 32 on the next is exactly what this exists to stop. A list keeps a pair in one cluster at one gap, in reading order. A new kind is a new member of the union, deliberately: the day a row needs something else, that is one line in the design system and a compiler error at every call site that has to care.',
+  },
+  {
+    name: 'icon',
+    type: 'IconComponent',
+    description:
+      'A mark before the name, saying what KIND of setting this is before the name says which one. A padlock on “Commits on main branches” says the row is a safety, which neither its name nor its switch could say alone. Most rows have none — a mark on every row is decoration, and decoration everywhere stops meaning anything.',
+  },
+  {
+    name: 'layout',
+    type: "'inline' | 'stacked'",
+    fallback: "'inline'",
+    description:
+      'Where the control sits. stacked is for a control that has no business being squeezed into the right-hand column — a chip list, a textarea, a field with its own Save. It is a fact about the control’s shape rather than about the setting, which is why it is a rung and not a guess from the kind: a short input is happy inline, and the same kind stacked is a template editor.',
   },
   {
     name: 'hintKeys',

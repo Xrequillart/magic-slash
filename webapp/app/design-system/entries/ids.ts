@@ -59,6 +59,7 @@ export type EntryId =
   | 'trackerbadge'
   | 'copybutton'
   | 'commandchip'
+  | 'chipinput'
   | 'stickybar'
   | 'metablock'
   | 'commentcard'
@@ -66,6 +67,8 @@ export type EntryId =
   | 'formfield'
   | 'imagefield'
   | 'skillheader'
+  | 'skillintro'
+  | 'outputsample'
   | 'ratelimitbar'
   | 'usagetable'
   | 'sectionheader'
@@ -169,6 +172,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   trackerbadge: 'TrackerBadge',
   copybutton: 'CopyButton',
   commandchip: 'CommandChip',
+  chipinput: 'ChipInput',
   stickybar: 'StickyBar',
   metablock: 'MetaBlock',
   commentcard: 'CommentCard',
@@ -176,6 +180,8 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   formfield: 'FormField',
   imagefield: 'ImageField',
   skillheader: 'SkillHeader',
+  skillintro: 'SkillIntro',
+  outputsample: 'OutputSample',
   ratelimitbar: 'RateLimitBar',
   usagetable: 'UsageTable',
   sectionheader: 'SectionHeader',
@@ -305,7 +311,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   fieldtable: ['button', 'text'],
   factlist: ['status', 'text'],
   languagecard: ['card', 'settingrow', 'text'],
-  settingrow: ['select', 'switch', 'text'],
+  settingrow: ['button', 'buttonicon', 'chipinput', 'icon', 'input', 'select', 'stepper', 'switch', 'text'],
   settingscard: ['banner', 'card', 'settingrow', 'text'],
   disclosurecard: ['card', 'icon', 'settingrow', 'text'],
   healthcard: ['banner', 'card', 'icon', 'loader', 'repairlist', 'settingrow', 'text'],
@@ -320,6 +326,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   trackerbadge: ['label'],
   copybutton: ['buttonicon'],
   commandchip: ['copybutton', 'icon'],
+  chipinput: ['button', 'icon', 'input', 'text'],
   stickybar: [],
   metablock: ['text'],
   commentcard: ['card', 'text'],
@@ -327,6 +334,8 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   formfield: ['input', 'text'],
   imagefield: ['button', 'buttonicon', 'icon', 'text'],
   skillheader: ['icon', 'label', 'text'],
+  skillintro: ['card', 'commandchip', 'text'],
+  outputsample: ['text'],
   ratelimitbar: ['progress', 'text'],
   usagetable: ['text'],
   sectionheader: ['button', 'icon', 'text'],
@@ -493,6 +502,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   trackerbadge: 'Which tracker a ticket came from',
   copybutton: 'A string onto the clipboard, and the tick that says so',
   commandchip: 'A command you are meant to type',
+  chipinput: 'A set of words the reader builds',
   stickybar: 'An opaque band pinned to the top of a pane',
   metablock: 'One field of a metadata column',
   commentcard: 'One turn in a conversation',
@@ -500,6 +510,8 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   formfield: 'One entry of a form you fill in',
   imagefield: 'A picture a thing will wear',
   skillheader: 'What a skill is, read rather than edited',
+  skillintro: 'What a command does, above its settings',
+  outputsample: 'What the settings will actually produce',
   ratelimitbar: 'One plan limit, and when it turns over',
   usagetable: 'Figures over periods, in columns',
   sectionheader: 'What the thing under it is',

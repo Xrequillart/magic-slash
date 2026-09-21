@@ -79,6 +79,21 @@ export type SettingsCardRow = SettingRowProps & {
 
 export interface SettingsCardProps {
   /**
+   * WHAT THE ROWS UNDER IT HAVE IN COMMON, above the plate — "Message", "Branches",
+   * "Where the tickets go". Already translated; absent draws no heading at all.
+   *
+   * IT IS NOT `SectionHeader`, which is a page's own heading: a mark in the gutter, the
+   * name at the reading rung, and the controls for the whole section at the far edge.
+   * This is one rung below that — a group label inside a tab, set small and quiet
+   * precisely so it does not compete with the tab it sits under. The repository settings
+   * page draws twenty of them and spelled all twenty by hand.
+   *
+   * A PROP AND NOT A SIBLING, because the heading and the plate are one object: every
+   * one of those twenty was a heading with exactly one card under it, and the margin
+   * between them was the thing that had to be respelled each time.
+   */
+  title?: string
+  /**
    * The rows, top to bottom. `false` and `undefined` are dropped — see the header.
    *
    * Nothing left to draw means nothing is drawn: an empty plate is a card promising
@@ -106,7 +121,7 @@ export interface SettingsCardProps {
   className?: string
 }
 
-export function SettingsCard({ rows, alert, note, className = '' }: SettingsCardProps) {
+export function SettingsCard({ title, rows, alert, note, className = '' }: SettingsCardProps) {
   const shown = rows.filter((row): row is SettingsCardRow => Boolean(row))
   const notes = note === undefined ? [] : Array.isArray(note) ? note : [note]
   // A card with no rows but something to say is still a card: the caller dropped every
@@ -114,8 +129,8 @@ export function SettingsCard({ rows, alert, note, className = '' }: SettingsCard
   // nothing — an empty plate is a card promising settings it does not have.
   if (shown.length === 0 && !alert && notes.length === 0) return null
 
-  return (
-    <Card className={`flex flex-col gap-4 ${className}`.trim()}>
+  const card = (
+    <Card className="flex flex-col gap-4">
       {shown.map(({ id, ...row }, index) => (
         // The rule belongs to the row BELOW it, not to the one above: written that way
         // the last row cannot trail one, and a card of one row never draws one.
@@ -140,5 +155,21 @@ export function SettingsCard({ rows, alert, note, className = '' }: SettingsCard
         </Text>
       ))}
     </Card>
+  )
+
+  // Untitled, the card IS the component and a wrapper would be one more box for a caller
+  // to reason about when laying two of them out.
+  if (!title) return className ? <div className={className}>{card}</div> : card
+
+  return (
+    <div className={`flex flex-col gap-3 ${className}`.trim()}>
+      {/* `2xs` uppercase with tracking, at 50%: the quietest heading the type scale has.
+          A group label is read once, on the way past, and then never again — it is there
+          so the eye can find the card, not so it can be read. */}
+      <Text size="2xs" tone="secondary" className="block uppercase tracking-wider opacity-50">
+        {title}
+      </Text>
+      {card}
+    </div>
   )
 }
