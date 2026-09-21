@@ -201,6 +201,44 @@ export function PlansPage() {
   const paneRef = useRef<HTMLDivElement>(null)
   const listOffsetRef = useRef(0)
 
+  /**
+   * Whether the filter bar has pinned itself to the top of the pane, which is the one
+   * thing it needs to know about itself: `StickyBar` lifts a shadow once it has, and draws
+   * no edge at all before.
+   *
+   * A SENTINEL AND AN OBSERVER rather than a scroll handler, the arrangement the Tasks
+   * board settled on: this is one boolean that flips twice per visit, and a `scroll`
+   * listener would remeasure a rectangle on every frame of every scroll to answer it. The
+   * sentinel is rendered where the bar's top WOULD be — a pinned bar has moved, and can no
+   * longer report that position itself.
+   *
+   * The node is held in STATE rather than in a ref, which is what makes the observer
+   * re-attach on its own: the bar is unmounted with the list every time a plan is opened,
+   * and a fresh sentinel is mounted on the way back. A ref would leave the observer
+   * watching a detached node for the rest of the session, and could not be read on mount
+   * either — child refs are attached before their parent's, so `paneRef` is still null at
+   * the moment a ref callback here would fire.
+   */
+  const [filterSentinel, setFilterSentinel] = useState<HTMLDivElement | null>(null)
+  const [filtersStuck, setFiltersStuck] = useState(false)
+
+  useEffect(() => {
+    const pane = paneRef.current
+    // The sentinel is gone — the plan's page has replaced the list, or there is only one
+    // repository and no bar. Cleared rather than left latched on, or the bar would come
+    // back wearing a shadow it has no business keeping.
+    if (!filterSentinel || !pane) {
+      setFiltersStuck(false)
+      return
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setFiltersStuck(!entry.isIntersecting),
+      { root: pane, threshold: 0 },
+    )
+    observer.observe(filterSentinel)
+    return () => observer.disconnect()
+  }, [filterSentinel])
+
   // Frozen at mount, so every row's "3d ago" is measured against one instant and the
   // list cannot renumber itself mid-render. Handed to the detail page too: one clock for
   // the feature, so a row and the page opened from it cannot date the same plan
@@ -405,7 +443,24 @@ export function PlansPage() {
                 `TaskFilters` is: a bar that narrows a list nobody is looking at would pin
                 itself over the plan and offer to filter it. */}
             {repoOptions.length > 1 && (
-              <PlanFilters repoId={repoId} repos={repoOptions} count={visible.length} onChange={pick} />
+              <>
+                {/* Zero height, nothing to see: it marks where the top of the bar WOULD
+                    be, which is the one thing a bar that has pinned itself there can no
+                    longer say about itself. It is the list's first child, so there is no
+                    gap above it to cancel — see the Tasks board, whose column has one and
+                    has to.
+
+                    There is no CSS for "is this stuck" on the Chromium this app ships:
+                    `:stuck` and scroll-state queries both landed after it. */}
+                <div ref={setFilterSentinel} className="h-0" aria-hidden />
+                <PlanFilters
+                  repoId={repoId}
+                  repos={repoOptions}
+                  count={visible.length}
+                  stuck={filtersStuck}
+                  onChange={pick}
+                />
+              </>
             )}
 
             {/* `gap-3` between the heading and what it heads, as on the board. */}

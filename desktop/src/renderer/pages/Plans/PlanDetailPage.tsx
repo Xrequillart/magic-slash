@@ -12,7 +12,7 @@ import type { PlanCard, PlanTicketGroup } from '../../utils/planRows'
 import { groupPlanTickets, planLabel } from '../../utils/planRows'
 import { taskSelectionFor } from '../../utils/taskSelection'
 import { detectTicketProvider } from '../../components/agent-info-sidebar/utils'
-import { Label, Status, TrackerBadge } from '@ds/desktop'
+import { Button, Label, Status, StickyBar, Text, TrackerBadge } from '@ds/desktop'
 import { JiraStatusPill, StateChip } from '../Tasks/parts'
 import { STATUS_LOOK } from './PlanRow'
 import { PlanIdBadge } from './PlanIdBadge'
@@ -432,20 +432,21 @@ export function PlanDetailPage({
           duplicate. What fills the bar before that is the repository name, in grey: the
           one piece of the header worth keeping at a glance and the only thing here that
           does not repeat something visible. */}
-      <div
-        className={`sticky top-0 z-20 -mx-6 px-6 flex items-center gap-3 min-w-0 bg-bg-secondary transition-colors ${
-          condensed ? 'border-b border-line' : 'border-b border-transparent'
-        }`}
-        style={{ height: TOP_BAR_H }}
-      >
-        <button
+      <StickyBar height={TOP_BAR_H} stuck={condensed} className="-mx-6 px-6">
+        {/* `Button tone="ghost"` — no plate at rest, which is what a trail out of a page
+            should be: it is not an action the reader came here for. `-ml-2` pulls the
+            label's optical left edge back onto the page's own inset, which the button's
+            own horizontal padding would otherwise push in by twelve pixels. The ticket
+            page's bar is drawn the same way, and they are the same object. */}
+        <Button
+          tone="ghost"
+          icon={ArrowLeft}
           onClick={onBack}
           title={t('plans.detail.back')}
-          className="flex items-center gap-1.5 p-1.5 -ml-1.5 text-text-secondary hover:text-ink hover:bg-surface-strong rounded-lg transition-colors flex-shrink-0"
+          className="-ml-2"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="text-xs font-medium">{t('plans.detail.back')}</span>
-        </button>
+          {t('plans.detail.back')}
+        </Button>
         {condensed ? (
           <>
             {/* THE BADGE COMES WITH THE TITLE, the way a task's key does in its own
@@ -457,19 +458,19 @@ export function PlanDetailPage({
                 for itself in a 56px band, not a second `h1`. `title` on the element so
                 a name the bar has to truncate is still readable on hover. */}
             <PlanIdBadge number={card.number} />
-            <span className="min-w-0 flex-1 text-xs text-ink truncate" title={planLabel(card)}>
+            <Text className="min-w-0 flex-1 truncate" title={planLabel(card)}>
               {planLabel(card)}
-            </span>
+            </Text>
             {/* Pinned to the right edge, where the heading's own pill sits: the bar is
                 the heading, so the two must not swap sides as one replaces the other. */}
             {statusChip}
           </>
         ) : (
-          <span className="min-w-0 flex-1 text-xs text-text-secondary/50 truncate">
+          <Text tone="secondary" className="min-w-0 flex-1 truncate opacity-50">
             {card.repoName ?? t('plans.noRepo')}
-          </span>
+          </Text>
         )}
-      </div>
+      </StickyBar>
 
       {/* The heading is the CARD's, drawn before the read comes back and unchanged by it:
           the reader clicked this row and must see its title straight away, not a spinner

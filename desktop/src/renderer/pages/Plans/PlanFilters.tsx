@@ -1,4 +1,4 @@
-import { Select } from '@ds/desktop'
+import { Select, StickyBar, Text } from '@ds/desktop'
 import { FolderGit2 } from '@ds/desktop/icons'
 import type { PlanRepoRef } from '../../../types'
 import { useT } from '../../i18n'
@@ -24,6 +24,17 @@ import { useT } from '../../i18n'
 const REPO_WIDTH = 224
 
 /**
+ * The bar's height in pixels — 28px of control between 12px of padding either side.
+ *
+ * Stated as a number because `StickyBar` takes one, and it takes one for a reason this
+ * bar does not need yet: whatever pins UNDER a band has to know exactly how tall it is.
+ * Nothing pins under this one today. The number is the board's `FILTER_BAR_H` to the
+ * pixel all the same, because two pinned bars in one app standing at different heights is
+ * the drift a shared component exists to stop.
+ */
+export const PLAN_FILTER_BAR_H = 52
+
+/**
  * What the page holds when nothing is narrowed. A page-local sentinel and not a value
  * `filterPlanCards` knows about: that function takes `null` for "every repository".
  *
@@ -39,6 +50,7 @@ export function PlanFilters({
   repos,
   count,
   onChange,
+  stuck,
 }: {
   /** `ALL_REPOS`, or the id of a repository that has at least one plan. */
   repoId: string
@@ -47,20 +59,31 @@ export function PlanFilters({
   /** How many plans are showing under it — the answer to "is this all of them". */
   count: number
   onChange: (repoId: string) => void
+  /**
+   * Whether the bar has pinned itself to the top of the pane, which is the one thing that
+   * changes about it: `StickyBar` lifts its shadow.
+   *
+   * The PAGE owns the question, because the sentinel that answers it has to sit where
+   * this bar STARTS and a band that has moved cannot report the position it came from.
+   * See `filtersStuck` in `index.tsx`.
+   */
+  stuck?: boolean
 }) {
   const t = useT()
   const narrowed = repoId !== ALL_REPOS && repos.some((repo) => repo.id === repoId)
 
   return (
-    // PINNED, and full-bleed via `-mx-6 px-6`, for `TaskFilters`' reasons: what scrolls
-    // past has to go under an opaque band edge to edge, and a band inset by the page's
-    // 24px would let the rows slide past either side of it. `bg-bg-secondary` is
-    // `PageModal`'s own panel colour — anything else reads as a floating toolbar.
+    // `StickyBar` owns the band: the opaque ground, the height, and the edge. What is left
+    // here is the FULL BLEED — `-mx-6 px-6`, the page's own 24px inset — because a band
+    // inset by it would let the rows slide past either side of it.
     //
-    // The bottom hairline is always drawn here, where the board's appears only once it
-    // has pinned. The list below opens on a rule of its own on every row, so a bar with
-    // no edge would read as the first row of it.
-    <div className="sticky top-0 z-20 -mx-6 px-6 py-3 bg-bg-secondary border-b border-line-subtle flex items-center gap-3 min-w-0">
+    // THE HAIRLINE IS GONE, and with it the note that argued for drawing it always. That
+    // note said the list below "opens on a rule of its own on every row, so a bar with no
+    // edge would read as the first row of it" — which stopped being true when `PlanRow`
+    // became a `PlanItem`: the rows are plates on the page's ground now, and there is no
+    // rule left for this bar to be mistaken for. At rest it draws no edge, and once it has
+    // pinned it lifts a shadow, which is what the board's does.
+    <StickyBar height={PLAN_FILTER_BAR_H} stuck={stuck} className="-mx-6 px-6">
       <Select
         // The sentinel does not cross into the design system: nothing picked is `''`
         // there, and a repository that has left the list falls back to the same state —
@@ -78,10 +101,10 @@ export function PlanFilters({
       />
 
       {count > 0 && (
-        <span className="text-xs text-text-secondary/50 ml-auto flex-shrink-0">
+        <Text tone="secondary" className="ml-auto flex-shrink-0 opacity-50">
           {t(count === 1 ? 'plans.count.one' : 'plans.count.other', { count })}
-        </span>
+        </Text>
       )}
-    </div>
+    </StickyBar>
   )
 }
