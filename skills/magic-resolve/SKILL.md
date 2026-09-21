@@ -81,7 +81,7 @@ Read the live config fetched in Step 0 (kept in memory — `$CONFIG_FILE` does n
 - `replyToComments: true` (default) → reply in-thread on each resolved comment (Step 7)
 - `replyToComments: false` → skip Step 7 entirely
 - `replyLanguage` (default `"en"`) → language of the in-thread reply bodies in Step 7 (independent of the discussion language)
-- `replyVerbosity` (default `"minimal"`) → how much each in-thread reply says in Step 7: `minimal` one line, `normal` one line plus why when the fix departs from the comment, `detailed` a conversational reply that keeps the reasoning. Any other value is read as `minimal`.
+- `replyVerbosity` (default `"minimal"`) → how much each in-thread reply says in Step 7, *after* the two parts every level shares (the commit reference, then a plain sentence describing the change): `minimal` stops there, `normal` adds why when the fix departs from the comment, `detailed` keeps the reasoning in a conversational reply. Any other value is read as `minimal`.
 - `autoReRequestReview: true` (default) → automatically re-request review from original reviewers (Step 7.5)
 - `autoReRequestReview: false` → skip Step 7.5, suggest manual re-request in summary
 - `templateCheckboxes` (default `"never"`) → read from the `pullRequest` block, not `resolve`, the way `useCommitConfig` reads the `commit` one. Listed here **defensively**: this skill writes no PR body today, so nothing reads it yet; do not go looking for the code path. It is a **hard invariant**, not a soft default: should this skill ever write a PR body, a project template's checkbox state must come out byte-for-byte as this setting allows, exactly as in `/magic:pr` Step 6.1
@@ -365,7 +365,7 @@ Gather all unresolved review comments:
    - **Author acknowledgements**: If the PR author already replied with a fix description, check if the fix was actually applied before re-applying
 4. Filter to keep only unresolved/pending comments that request changes (excluding withdrawn comments)
 
-> **Important**: Store the `id`, `path`, `line`, `original_commit_id`, `body`, and `fix_summary` (a short description of what was changed) fields of each comment. These will be needed in Steps 4.1, 5, 5.5, and 7. The `original_commit_id` is particularly important because it allows detecting whether a file has changed since the comment was posted (stale comment detection in Step 4.1).
+> **Important**: Store the `id`, `path`, `line`, `original_commit_id`, `body`, and `fix_summary` (one plain sentence saying what was changed and what it means — see Step 7, which is what it is written for) fields of each comment. These will be needed in Steps 4.1, 5, 5.5, and 7. The `original_commit_id` is particularly important because it allows detecting whether a file has changed since the comment was posted (stale comment detection in Step 4.1).
 
 ### If no unresolved comments are found
 
@@ -663,6 +663,8 @@ Replying in-thread on each resolved comment creates a clear audit trail for revi
 
 That is what keeps these replies short by default. You arrive at this step holding the full reasoning behind every fix you just applied, and writing it out here is the path of least resistance — but it lands as an essay in a thread the reviewer wanted to close, and it says nothing the diff does not already say better.
 
+SHORT IS NOT THE SAME AS TERSE, and this is the half that is easy to get wrong in the other direction. A reply compressed to `timer in a ref, cleared on unmount` has no subject and no verb: it is a note to somebody who already has the file open, which the reviewer does not. Every reply carries a plain sentence saying what changed — see the rules below. Cutting words is right; cutting the sentence is not.
+
 For each resolved comment, reply in-thread on GitHub to indicate the fix has been applied.
 
 ### Why `gh api`
@@ -688,15 +690,29 @@ For each `gh api` call, if it fails with a transient error (HTTP 5xx, network ti
 
 Pick the template from `$RESOLVE_REPLY_VERBOSITY`. Substitute `{COMMIT_SHA}` (short SHA, first 7 characters from `git rev-parse --short HEAD`) and `{fix_summary}`. Render the template and every substitution in `$RESOLVE_REPLY_LANG`.
 
+EVERY LEVEL HAS THE SAME FIRST LINE AND THE SAME BLANK LINE AFTER IT. The commit reference is a pointer, read by somebody checking the thread is closed; the description is what a human reads. They sat on one line separated by a dash, and the description was the half that got skimmed past. What the levels change is what comes *after* the description, never the two lines above it.
+
 | `$RESOLVE_REPLY_VERBOSITY` | Template | Hard cap |
 | -------------------------- | -------- | -------- |
-| `minimal` (default) | **`MSG_REPLY_MINIMAL`** | One line, ≤ 200 characters. No blank line, no code block, no list. |
-| `normal` | **`MSG_REPLY_NORMAL`** | ≤ 400 characters total. The one-line form, plus a `why` sentence **only** when the fix departs from what the comment asked for. When it does not depart, this level renders exactly like `minimal`. |
+| `minimal` (default) | **`MSG_REPLY_MINIMAL`** | The reference line, a blank line, then one or two plain sentences. ≤ 300 characters total. No code block, no list. |
+| `normal` | **`MSG_REPLY_NORMAL`** | ≤ 550 characters total. The `minimal` form, plus a `why` paragraph **only** when the fix departs from what the comment asked for. When it does not depart, this level renders exactly like `minimal`. |
 | `detailed` | **`MSG_REPLY_DETAILED`** | ≤ 1200 characters, at most 3 short paragraphs. |
 
 Any other value — including an empty one — is read as `minimal`.
 
-Count the characters before posting. If the body is over its cap, cut it rather than posting it: the cap is the contract, not a target to approach.
+Count the characters before posting. If the body is over its cap, cut it rather than posting it: the cap is the contract, not a target to approach. Cut a clause, a qualifier or a whole second sentence — never the verb, and never down to a fragment. A description that no longer parses as a sentence is over budget in the only way that matters.
+
+##### The description has to read like a sentence a person wrote
+
+`{fix_summary}` is the only part of the reply anybody actually reads, and it is on a line of its own for exactly that reason. It is not a changelog entry and not a commit subject. It answers one question — *what did you change, and what does that mean?* — for a reviewer who has not opened the diff yet and may not open it at all.
+
+- **A WHOLE SENTENCE**, with a subject and a verb, ending in a full stop. Not a fragment (`keyed by repo + path`), not a telegram of symbols (`` `arm()` no-ops after `stop()` ``). If it cannot be read out loud, it is not finished.
+- **NAME THE EFFECT, NOT ONLY THE MECHANISM.** "The board now keeps the repository you left it on, even after a restart" says what changed for somebody using it; "moved `tasksRepo` onto the account" says where you typed. When both fit, the effect comes first and the mechanism trails it.
+- **SPELL THINGS OUT.** An identifier earns its place when it is the thing the reviewer asked about, or when naming it in words would be longer and vaguer. Otherwise prefer the words: a reply made of three backticked symbols is addressed to the compiler.
+- **ONE IDEA.** Two changes in one description are two sentences at most, and usually mean the thread deserved two replies.
+- **NO JARGON THE COMMENT DID NOT USE.** The reviewer set the register. Matching it is how the reply reads as an answer rather than as a status line.
+
+This is the rule the caps bend around, not the other way up. A description one clause over `minimal` that a person can read beats one under it that they cannot.
 
 ##### What never goes in a reply, at any level
 

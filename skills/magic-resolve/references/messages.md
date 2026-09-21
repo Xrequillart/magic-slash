@@ -372,61 +372,87 @@ Correction automatique en cours...
 
 ## MSG_REPLY_MINIMAL
 
-The default. One line: the commit, and what changed. Nothing about how, nothing about why.
+The default. Two parts, and the line break between them is the whole shape: the commit on
+its own line, then what changed in plain words on the next.
+
+They are separated because they answer to different readers. The SHA is a pointer, read by
+somebody checking the thread is closed. The description is the only part a human actually
+reads, and buried behind a dash at the end of a reference line it was skimmed past. On its
+own line it is the reply.
 
 ### en
 
 ```text
-Addressed in {COMMIT_SHA} — {fix_summary}
+Resolved in {COMMIT_SHA}
+
+{fix_summary}
 ```
 
 ### fr
 
 ```text
-Traité dans {COMMIT_SHA} — {fix_summary}
+Résolu dans {COMMIT_SHA}
+
+{fix_summary}
 ```
 
 ### Rendered
 
-What this level looks like when it is respected — real replies, 149 to 382 characters:
+What this level looks like when it is respected. Every description is a sentence somebody
+could read out loud, with a subject, a verb and a full stop:
 
 ```text
-Addressed in a406102 — folder name is now split on `/[\\/]/` so Windows paths keep their last segment.
-Addressed in f3f5a2c — added a `stopped` flag; `arm()` now no-ops after `stop()`.
-Addressed in 26bb1b4 — dropped the always-`undefined` `archivedAt` push.
+Résolu dans a406102
+
+Le nom du dossier est maintenant découpé sur les deux sortes de séparateurs, donc un
+chemin Windows garde bien son dernier segment.
 ```
 
-And the failure mode this level exists to prevent — the same fix, written the way it comes out when nothing caps it:
-
 ```text
-Fixed in ff0f40c. The timer now lives in a ref and is cleared on unmount.
+Resolved in f3f5a2c
 
-Worth recording why the earlier reasoning for skipping this — not a leak in React 18,
-and the five other hand-rolled copy buttons here have no cleanup either — does not
-hold at this call site. Unmount inside the two-second window is not an edge case
-here, it is ordinary use: the panel closes itself when the count reaches zero, Send
-closes the drawer, and deleting the last comment unmounts the bar entirely. [...]
+The watcher now remembers that it was stopped, so re-arming it after `stop()` does
+nothing instead of starting a second timer.
 ```
 
-Every sentence after the first is either the diff restated, an alternative that was
-rejected, or an argument with a decision nobody asked about. At this level the first
-sentence *is* the reply:
+```text
+Resolved in 26bb1b4
+
+The archive date is no longer sent: it was always empty, and the API was rejecting the
+whole payload because of it.
+```
+
+And the failure mode this level exists to prevent. Not length this time but SHAPE: a
+description written for whoever already has the diff open.
 
 ```text
-Fixed in ff0f40c — the timer lives in a ref and is cleared on unmount.
+Fixed in ff0f40c — timer in a ref, cleared on unmount.
+```
+
+There is no sentence there. No subject, no verb, three nouns and a comma, and a reader who
+has not opened the file learns nothing except that something moved. The same fix, written
+for a person:
+
+```text
+Résolu dans ff0f40c
+
+Le minuteur de confirmation est maintenant annulé quand le bouton disparaît de l'écran,
+ce qui évite une mise à jour d'état sur un composant démonté.
 ```
 
 ## MSG_REPLY_NORMAL
 
-The `minimal` line, plus one sentence of `why` — **only** when the fix departs from what
-the comment asked for. A departure is the one thing the reviewer cannot get from the
-diff: they will read the change and wonder why it is not the change they suggested.
-When the fix does what was asked, drop the second line and render `minimal`.
+`minimal`, plus one paragraph of `why` — **only** when the fix departs from what the
+comment asked for. A departure is the one thing the reviewer cannot get from the diff:
+they will read the change and wonder why it is not the change they suggested. When the fix
+does what was asked, drop the third part and render `minimal`.
 
 ### en
 
 ```text
-Addressed in {COMMIT_SHA} — {fix_summary}
+Resolved in {COMMIT_SHA}
+
+{fix_summary}
 
 {why_departed}
 ```
@@ -434,7 +460,9 @@ Addressed in {COMMIT_SHA} — {fix_summary}
 ### fr
 
 ```text
-Traité dans {COMMIT_SHA} — {fix_summary}
+Résolu dans {COMMIT_SHA}
+
+{fix_summary}
 
 {why_departed}
 ```
@@ -442,24 +470,29 @@ Traité dans {COMMIT_SHA} — {fix_summary}
 ### Rendered
 
 ```text
-Addressed in 8be1a36 — the map is now keyed by repository + path.
+Résolu dans 8be1a36
 
-Not the reset you suggested: the reset was itself the bug, since it emptied the map
-on every sidebar click. Keying it makes the collision impossible instead.
+La table est maintenant indexée par dépôt et par chemin, au lieu du chemin seul. Deux
+fichiers du même nom dans deux dépôts ne s'écrasent donc plus l'un l'autre.
+
+Ce n'est pas la remise à zéro que vous proposiez : cette remise à zéro était elle-même
+le bug, puisqu'elle vidait la table à chaque clic dans la barre latérale. Indexer rend
+la collision impossible, ce qui enlève la raison de remettre à zéro.
 ```
 
 ## MSG_REPLY_DETAILED
 
 A reply that reads like a person talking: the fix, why it took that shape, and what the
-reviewer should know that the diff will not tell them. It may open with an
-acknowledgement. It is still capped — 3 short paragraphs, 1200 characters — and the
-exclusions in Step 7 still apply: no diff walkthrough, no codebase archaeology, no test
-counts.
+reviewer should know that the diff will not tell them. The description paragraph may open
+with an acknowledgement. It is still capped, and the exclusions in Step 7 still apply: no
+diff walkthrough, no codebase archaeology, no test counts.
 
 ### en
 
 ```text
-{acknowledgement (optional, one clause)} Addressed in {COMMIT_SHA} — {fix_summary}
+Resolved in {COMMIT_SHA}
+
+{acknowledgement (optional, one clause)} {fix_summary}
 
 {why it took this shape, and anything the diff will not tell them}
 ```
@@ -467,7 +500,9 @@ counts.
 ### fr
 
 ```text
-{remerciement (optionnel, une clause)} Traité dans {COMMIT_SHA} — {fix_summary}
+Résolu dans {COMMIT_SHA}
+
+{remerciement (optionnel, une clause)} {fix_summary}
 
 {pourquoi cette forme, et ce que le diff ne dira pas}
 ```
@@ -475,16 +510,20 @@ counts.
 ### Rendered
 
 ```text
-Good catch — addressed in 8be1a36 by keying the map on repository + path.
+Résolu dans 8be1a36
 
-The reset you pointed at was the actual cause rather than the cure: it emptied the map
-on every sidebar click, so every file then read as unknown and the filter quietly
-stopped filtering. Keying the map removes the name collision that the reset was there
-to paper over, which removes the reason to reset at all.
+Bien vu. La table est maintenant indexée par dépôt et par chemin, donc deux fichiers
+du même nom dans deux dépôts ne s'écrasent plus.
 
-One thing worth knowing: the filter stays deliberately non-strict. A path with no known
-fingerprint keeps its comments, because a card reports only once its read lands —
-treating unknown as superseded would empty the list of everything not yet scrolled past.
+La remise à zéro que vous pointiez était la cause plutôt que le remède : elle vidait la
+table à chaque clic dans la barre latérale, donc tous les fichiers passaient ensuite pour
+inconnus et le filtre cessait silencieusement de filtrer. Indexer la table supprime la
+collision de noms que cette remise à zéro essayait de masquer.
+
+Un point à savoir : le filtre reste volontairement permissif. Un chemin dont l'empreinte
+est inconnue garde ses commentaires, parce qu'une carte ne se signale qu'une fois sa
+lecture arrivée. Traiter l'inconnu comme périmé viderait la liste de tout ce qui n'a pas
+encore été affiché.
 ```
 
 ## MSG_REPLY_FALLBACK
@@ -492,23 +531,19 @@ treating unknown as superseded would empty the list of everything not yet scroll
 ### en
 
 ```markdown
-### Review comments addressed in {COMMIT_SHA}
-
-The following review comments have been resolved:
+### Review comments resolved in {COMMIT_SHA}
 
 {For each resolved comment:}
-- **{file}:{line}** — {fix_summary}
+- **{file}:{line}** : {fix_summary}
 ```
 
 ### fr
 
 ```markdown
-### Commentaires de review traités dans {COMMIT_SHA}
-
-Les commentaires de review suivants ont été résolus :
+### Commentaires de review résolus dans {COMMIT_SHA}
 
 {Pour chaque commentaire résolu :}
-- **{file}:{line}** — {fix_summary}
+- **{file}:{line}** : {fix_summary}
 ```
 
 ## MSG_RE_REQUEST_REVIEW
