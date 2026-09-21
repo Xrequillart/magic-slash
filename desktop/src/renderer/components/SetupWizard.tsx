@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Wand2, ChevronRight, X, Check, AlertTriangle, Download, ExternalLink, Copy, Loader2 } from '@ds/desktop/icons'
+import { Wand2, ChevronRight, X, Check, AlertTriangle, Download, ExternalLink, Loader2 } from '@ds/desktop/icons'
+import { Button, CopyButton } from '@ds/desktop'
 import type { PrerequisiteId, PrerequisiteStatus, SetupStatus } from '../../types'
 import { useT } from '../i18n'
 
@@ -31,7 +32,6 @@ export function SetupWizard({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   const [saving, setSaving] = useState(false)
   const [installing, setInstalling] = useState<PrerequisiteId | null>(null)
   const [installLog, setInstallLog] = useState('')
-  const [copied, setCopied] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -97,12 +97,6 @@ export function SetupWizard({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       setInstalling(null)
       void refresh()
     }
-  }
-
-  const copy = (text: string) => {
-    void navigator.clipboard.writeText(text)
-    setCopied(text)
-    setTimeout(() => setCopied(null), 1500)
   }
 
   if (!isOpen) return null
@@ -187,9 +181,7 @@ export function SetupWizard({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                       prerequisite={prerequisite}
                       installing={installing === prerequisite.id}
                       disabled={installing !== null}
-                      copied={copied}
                       onInstall={() => install(prerequisite.id)}
-                      onCopy={copy}
                     />
                   ))}
                   {installing && installLog && (
@@ -274,13 +266,11 @@ function ReadyRow({ done, label }: { done: boolean; label: string }) {
  * SetupHealthCard because the two differ in layout and wording — merging them would
  * mean a props object describing which of the two it is pretending to be.
  */
-function WizardPrerequisiteRow({ prerequisite, installing, disabled, copied, onInstall, onCopy }: {
+function WizardPrerequisiteRow({ prerequisite, installing, disabled, onInstall }: {
   prerequisite: PrerequisiteStatus
   installing: boolean
   disabled: boolean
-  copied: string | null
   onInstall: () => void
-  onCopy: (text: string) => void
 }) {
   const t = useT()
 
@@ -288,6 +278,9 @@ function WizardPrerequisiteRow({ prerequisite, installing, disabled, copied, onI
     <div className="flex items-center justify-between gap-2">
       <div className="text-xs text-text-secondary/70 min-w-0 flex items-center gap-1.5">
         <span aria-hidden className={prerequisite.required ? 'text-red' : 'text-text-secondary/40'}>•</span>
+        {/* The package's own name, as its manager spells it — `gh`, `node`. Left in the
+            monospace face rather than made a `CommandChip`: a chip is a thing you TYPE,
+            and this is the subject of the sentence it opens. */}
         <span className="font-mono">{prerequisite.id}</span>
         <span className="truncate">
           {prerequisite.outdated
@@ -298,33 +291,43 @@ function WizardPrerequisiteRow({ prerequisite, installing, disabled, copied, onI
         </span>
       </div>
 
+      {/* THREE OUTCOMES, ONE SLOT, and which of them a row gets is a fact about the tool
+          rather than about the wizard: some can be installed from here, some can only hand
+          you the command to run yourself, and some only have a page to read. */}
       {prerequisite.installable ? (
-        <button
-          onClick={onInstall}
+        <Button
+          size="xs"
+          tone="accent"
+          icon={Download}
+          busy={installing}
           disabled={disabled}
-          className="shrink-0 flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-50"
+          onClick={onInstall}
         >
-          {installing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
           {installing ? t('settings.application.setup.installing') : t('settings.application.setup.install')}
-        </button>
+        </Button>
       ) : prerequisite.installCommand ? (
-        <button
-          onClick={() => onCopy(prerequisite.installCommand!)}
-          className="shrink-0 flex items-center gap-1 px-2 py-1 text-[11px] font-mono text-text-secondary border border-line rounded-md hover:bg-surface hover:text-ink transition-colors"
-        >
-          <Copy className="w-3 h-3" />
-          {copied === prerequisite.installCommand ? t('common.copied') : t('settings.application.setup.install')}
-        </button>
+        // `CopyButton`, which owns the confirmation — see below for what that removed.
+        //
+        // IT SAYS "COPY" NOW, where it said "Install". The button never installed
+        // anything: this branch is the one for a tool the app CANNOT install, and all it
+        // can do is put the command on the clipboard for you to run yourself. A label
+        // promising the other thing is the row contradicting the branch it is in.
+        <CopyButton
+          value={prerequisite.installCommand}
+          label={t('common.copy')}
+          copiedLabel={t('common.copied')}
+          size="sm"
+          className="shrink-0"
+        />
       ) : prerequisite.docsUrl ? (
-        <a
-          href={prerequisite.docsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="shrink-0 flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-text-secondary border border-line rounded-md hover:bg-surface hover:text-ink transition-colors"
+        <Button
+          size="xs"
+          tone="neutral"
+          icon={ExternalLink}
+          onClick={() => window.electronAPI.shell.openExternal(prerequisite.docsUrl!)}
         >
-          <ExternalLink className="w-3 h-3" />
           {t('settings.application.setup.getIt')}
-        </a>
+        </Button>
       ) : null}
     </div>
   )
