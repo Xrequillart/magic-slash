@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { AlertTriangle, ArrowLeft, CloudOff, FileWarning, RotateCcw } from '@ds/desktop/icons'
-import type { PlanComment, PlanDetail, PlanTicketRead, PlanTicketStates } from '../../../types'
+import { AlertTriangle, ArrowLeft, CloudOff, FileWarning, Pencil, RotateCcw, Save, X } from '@ds/desktop/icons'
+import type { PlanComment, PlanDetail, PlanSpecUpdateResult, PlanTicketRead, PlanTicketStates } from '../../../types'
 import { useT } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
 import MarkdownView from '../../components/file-preview/MarkdownView'
@@ -23,7 +23,7 @@ import {
 } from '../../utils/planComments'
 import { taskSelectionFor } from '../../utils/taskSelection'
 import { detectTicketProvider } from '../../components/agent-info-sidebar/utils'
-import { Button, CommentCard as TurnCard, Label, Status, StickyBar, Text, TrackerBadge } from '@ds/desktop'
+import { Banner, Button, CommentCard as TurnCard, FormField, Label, Status, StickyBar, Text, TrackerBadge } from '@ds/desktop'
 import { JiraStatusPill, StateChip } from '../Tasks/parts'
 import { STATUS_LOOK } from './PlanRow'
 import { PlanIdBadge } from './PlanIdBadge'
@@ -52,8 +52,10 @@ import { PlanIdBadge } from './PlanIdBadge'
  * answers the second question, "why was it cut this way", and reads better once you know
  * what the tickets are.
  *
- * NOTHING HERE WRITES. Status changes, comments and editing are the webapp's, or a later
- * story's; this is a reader.
+ * TWO THINGS HERE WRITE: comments on the spec, and the spec itself. Any member of the
+ * plan's organization may edit it (issue #302), the author's own plan and a colleague's
+ * alike; the database decides, and this page only offers. See `draft` below.
+ * Status changes are still the webapp's.
  *
  * No scroll container of its own: the Plans page's pane is the one scrolling element,
  * which is what lets the sweep animate a page taller than the frame.
@@ -406,6 +408,46 @@ export function PlanDetailPage({
   const retry = useCallback(() => setAttempt((n) => n + 1), [])
 
   /**
+   * THE SPEC EDITOR, when it is open. `null` is reading.
+   *
+   * `updatedAt` is the session's `updatedAt` as the detail read returned it, captured the
+   * moment the editor opens and sent back UNCHANGED on save: it is the conflict guard, and
+   * the raw string is the only form of it that can match. Never through a `Date` — the row
+   * keeps microseconds, a `Date` keeps milliseconds, and a truncated value would report a
+   * conflict on every save.
+   *
+   * `base` is the spec the editor opened on, so a Save that changed nothing can close the
+   * editor without a write — a no-op save would still bump `updated_at` and hand every
+   * colleague with the editor open a conflict for nothing.
+   *
+   * LOCAL STATE AND NOTHING ELSE. Leaving — Cancel, Back, Escape, closing the modal — drops
+   * it, and no call is made: an edit exists only once Save has answered `saved`.
+   */
+  const [draft, setDraft] = useState<{ base: string; updatedAt: string; text: string } | null>(null)
+  const editing = draft !== null
+  const [saving, setSaving] = useState(false)
+  /** Why the last Save did not land. The draft is kept under every one of them. */
+  const [editError, setEditError] = useState<'conflict' | 'denied' | 'failed' | null>(null)
+  /**
+   * A save that reached the cloud and NOT this machine's spec file, for the two reasons
+   * worth telling the reader. `not_owner` and `no_file` are the ordinary case for most
+   * plans and say nothing the reader needs to act on.
+   */
+  const [fileNotice, setFileNotice] = useState<'diverged' | 'error' | null>(null)
+
+  /**
+   * The card this page is on NOW, for a save answering after the reader moved on: its
+   * result belongs to the plan it was made on, and must not land on the next one.
+   */
+  const cardIdRef = useRef(card.id)
+  cardIdRef.current = card.id
+
+  const closeEditor = useCallback(() => {
+    setDraft(null)
+    setEditError(null)
+  }, [])
+
+  /**
    * Whether the title has gone up behind the pinned bar, which is the one thing the bar
    * needs to know to draw its own bottom edge: a hairline under a band with the page
    * flush beneath it would be a rule across the page for no reason, and no hairline once
@@ -451,6 +493,14 @@ export function PlanDetailPage({
       })
     return () => { cancelled = true }
   }, [card.id, attempt])
+
+  // Another plan is another editor: a draft never follows the reader to the next page.
+  useEffect(() => {
+    setDraft(null)
+    setSaving(false)
+    setEditError(null)
+    setFileNotice(null)
+  }, [card.id])
 
   /**
    * This repository's key IN THE LOCAL CONFIG, resolved the way `PlanRow` resolves it:
@@ -663,17 +713,22 @@ export function PlanDetailPage({
    * `stopImmediatePropagation` does. Plain `stopPropagation` would not help: both
    * listeners are on the same target, and only the "immediate" form stops the others
    * there. Mounted with this page, so Escape goes on closing the modal from the list.
+   *
+   * WHILE EDITING, Escape closes the editor rather than the page — one level at a time,
+   * the way it already goes from the page to the list and not out of the modal. The draft
+   * is dropped either way; this just leaves the reader on the plan they were editing.
    */
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       e.preventDefault()
       e.stopImmediatePropagation()
-      onBack()
+      if (editing) closeEditor()
+      else onBack()
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [onBack])
+  }, [onBack, editing, closeEditor])
 
   const { tone, labelKey } = STATUS_LOOK[card.status]
   /**
@@ -697,6 +752,91 @@ export function PlanDetailPage({
    * the two fall out of step.
    */
   const spec = session?.spec?.trim() ? session.spec : undefined
+
+  /**
+   * Whether this spec can be opened in the editor at all.
+   *
+   * A SPEC TO EDIT: there is markdown on the row. A spec not written yet is the agent's
+   * to write, and it will be uploading over the top of anything typed here in a moment.
+   *
+   * NOT OVERSIZE: the row's copy is then stale by definition — the real document grew past
+   * the ceiling on its author's disk — and an edit of a stale copy is an edit of the wrong
+   * document.
+   *
+   * AN `updatedAt` TO GUARD WITH: without one there is no way to know whether the save
+   * would overwrite somebody, so the page does not offer it.
+   *
+   * WHO is reading is deliberately not a test: the author and any member of the plan's
+   * organization may edit, and the database is the one that knows who that is. A reader it
+   * refuses sees `denied`, with their draft intact.
+   */
+  const canEdit = !!session && !!spec && !session.specOversize && !!session.updatedAt
+
+  const openEditor = useCallback(() => {
+    if (!session?.updatedAt) return
+    const base = session.spec ?? ''
+    setDraft({ base, updatedAt: session.updatedAt, text: base })
+    setEditError(null)
+    setFileNotice(null)
+  }, [session])
+
+  const saveDraft = useCallback(async () => {
+    if (!draft || saving || draft.text.trim() === '') return
+    // Nothing changed: close without writing. See `draft`.
+    if (draft.text === draft.base) {
+      closeEditor()
+      return
+    }
+    const id = card.id
+    setSaving(true)
+    setEditError(null)
+    let result: PlanSpecUpdateResult
+    try {
+      result = await window.electronAPI.plans.updateSpec({
+        id, spec: draft.text, expectedUpdatedAt: draft.updatedAt,
+      })
+    } catch {
+      // The BRIDGE failed: nothing is known to have been written, and the draft stays.
+      result = { status: 'failed' }
+    }
+    if (cardIdRef.current !== id) return
+    setSaving(false)
+
+    if (result.status !== 'saved') {
+      setEditError(result.status)
+      return
+    }
+
+    // The row now holds the draft, under a new `updated_at`. Drawn straight away, so the
+    // page shows what was saved without a loading pass, and then read again quietly —
+    // `idea` may have changed with the spec, and the read is the only source of truth
+    // about what the row holds.
+    const text = draft.text
+    const updatedAt = result.updatedAt
+    setDetail((prev) => prev?.session
+      ? { ...prev, session: { ...prev.session, spec: text, updatedAt } }
+      : prev)
+    setDraft(null)
+    setFileNotice(
+      result.fileSkipReason === 'diverged' || result.fileSkipReason === 'error' ? result.fileSkipReason : null,
+    )
+    window.electronAPI.plans.detail(id)
+      .then((next) => {
+        // A failed quiet read keeps what is on screen, which is what was just saved.
+        if (cardIdRef.current === id && !next.failed) setDetail(next)
+      })
+      .catch(() => {})
+  }, [draft, saving, card.id, closeEditor])
+
+  /**
+   * The conflict's way out: drop the draft and read the plan as it now is. The ONLY path
+   * that discards a draft the reader did not choose to cancel — and it is still their
+   * click, after a sentence telling them to copy what they want to keep.
+   */
+  const reloadAfterConflict = useCallback(() => {
+    closeEditor()
+    retry()
+  }, [closeEditor, retry])
 
   return (
     <div className="flex flex-col">
@@ -840,7 +980,24 @@ export function PlanDetailPage({
             />
           )}
 
-          <SectionHeading>{t('plans.detail.spec')}</SectionHeading>
+          {/* The heading, with the way into the editor on its right: the action is about this
+              section and nothing else on the page. Hidden while editing — the editor has its
+              own Save and Cancel, and a second way in would open nothing. */}
+          <div className="flex items-end justify-between gap-3">
+            <SectionHeading>{t('plans.detail.spec')}</SectionHeading>
+            {canEdit && !editing && (
+              <div className="mb-2">
+                <Button size="sm" tone="ghost" icon={Pencil} onClick={openEditor} title={t('plans.edit.start')}>
+                  {t('common.edit')}
+                </Button>
+              </div>
+            )}
+          </div>
+          {fileNotice && !editing && (
+            <Banner variant="warning" bordered className="mb-3">
+              {t(fileNotice === 'diverged' ? 'plans.edit.fileDiverged' : 'plans.edit.fileError')}
+            </Banner>
+          )}
           {/* FOUR STATES, each said out loud, because a blank panel is what this page
               was built to stop being:
                 · the markdown, rendered;
@@ -860,7 +1017,49 @@ export function PlanDetailPage({
               to a stale copy instead of suppressing it; only a row with no markdown at all
               gets the "never uploaded" wording, which is the one place it is true. */}
           <div className="px-6 py-5 rounded-xl bg-surface">
-            {spec ? (
+            {draft ? (
+              <div className="flex flex-col gap-4">
+                {/* Above the box, where the eye is when Save comes back: each is a fact
+                    about the save just attempted, and the draft is still below it. */}
+                {editError === 'conflict' && (
+                  <Banner
+                    variant="danger"
+                    bordered
+                    hint={t('plans.edit.conflictHint')}
+                    actions={[{ label: t('plans.edit.reload'), icon: RotateCcw, onClick: reloadAfterConflict, primary: true }]}
+                  >
+                    {t('plans.edit.conflict')}
+                  </Banner>
+                )}
+                {(editError === 'denied' || editError === 'failed') && (
+                  <Banner variant="danger" bordered>
+                    {t(editError === 'denied' ? 'plans.edit.denied' : 'plans.edit.failed')}
+                  </Banner>
+                )}
+                <FormField
+                  label={t('plans.edit.label')}
+                  hint={t('plans.edit.hint')}
+                  input={{
+                    multiline: true,
+                    value: draft.text,
+                    onChange: (text) => setDraft((prev) => (prev ? { ...prev, text } : prev)),
+                    rows: 20,
+                    mono: true,
+                    resize: 'vertical',
+                    autoFocus: true,
+                    disabled: saving,
+                  }}
+                />
+                <div className="flex items-center gap-3">
+                  <Button size="sm" tone="accent" icon={Save} busy={saving} disabled={draft.text.trim() === ''} onClick={() => { void saveDraft() }}>
+                    {saving ? t('common.saving') : t('common.save')}
+                  </Button>
+                  <Button size="sm" tone="ghost" icon={X} onClick={closeEditor} disabled={saving}>
+                    {t('common.cancel')}
+                  </Button>
+                </div>
+              </div>
+            ) : spec ? (
               <>
                 {session.specOversize && (
                   /* ABOVE the markdown, not below it: a caveat placed after a long

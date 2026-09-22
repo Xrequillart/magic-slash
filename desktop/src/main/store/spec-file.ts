@@ -134,3 +134,110 @@ export function specFields(read: SpecRead): Pick<PlanSpecInput, 'spec' | 'specOv
   if (read.kind === 'oversize') return { specOversize: true }
   return {}
 }
+
+/**
+ * When an existing spec file may be REPLACED by an edit made in the app.
+ *
+ * The file is the author's working copy and it can hold work the cloud has never seen —
+ * a section the agent wrote a second ago whose debounced upload has not fired yet, or a
+ * whole afternoon written offline. Overwriting that with the cloud copy plus an edit
+ * would destroy it silently. So a replacement is allowed only when the file provably holds
+ * nothing the cloud lacks, which one of two facts establishes:
+ *
+ *  * `expectedContent` — the file holds, byte for byte, the spec the editor was opened
+ *    on. The ordinary case: the author's own last upload, edited in the app.
+ *  * `unchangedSince` — the file has not been modified since this instant (epoch ms), the
+ *    row's `spec_synced_at`. The file is then the last thing uploaded, even if the cloud
+ *    has moved on since (a colleague's edit), so it holds no local work either. The same
+ *    comparison `reconcilePlanSpecs` uses to decide there is nothing to upload.
+ */
+export interface SpecReplaceGuard {
+  expectedContent: string
+  unchangedSince?: number
+}
+
+/**
+ * Why an existing spec file was NOT rewritten.
+ *
+ *  * `missing`  — not there. An edit never CREATES a spec file: a path this machine has
+ *                 no file at is another machine's plan, or a cleaned worktree, and a file
+ *                 conjured into it would be a spec nobody's agent is writing.
+ *  * `not_spec` — the path, or what it resolves to, is not shaped like a spec.
+ *  * `diverged` — the file holds local work the cloud has not seen. See the guard.
+ *  * `error`    — the filesystem refused.
+ */
+export type SpecWriteSkip = 'missing' | 'not_spec' | 'diverged' | 'error'
+
+export type SpecWrite =
+  | { written: true; path: string }
+  | { written: false; reason: SpecWriteSkip }
+
+/**
+ * Whether `specPath` may be replaced right now, and the REAL path to replace if so.
+ *
+ * `readSpecFile`'s discipline, for the write direction: the lexical test, then the
+ * symlinks resolved and the test applied again to the result, and every filesystem call
+ * after that made against the real path. A symlink from `.magic/spec-x.md` to
+ * `~/.zshrc` would otherwise let an edit in the app — possibly a COLLEAGUE'S edit, since
+ * this runs for the author's own plan whoever last wrote the cloud copy — rewrite a file
+ * that is not a spec at all.
+ *
+ * Exported separately from the write because the caller needs the answer BEFORE saving to
+ * the cloud: whether the file will follow decides whether the cloud write may stamp
+ * `spec_synced_at`. See `main/store/plan-edit.ts`.
+ *
+ * Never throws.
+ */
+export function checkSpecReplaceable(
+  specPath: string,
+  guard: SpecReplaceGuard,
+): { ok: true; real: string } | { ok: false; reason: SpecWriteSkip } {
+  if (!isSpecPath(specPath)) return { ok: false, reason: 'not_spec' }
+  let real: string
+  try {
+    real = fs.realpathSync(specPath)
+  } catch {
+    // ENOENT is the ordinary answer; anything else that stops a realpath is also a file
+    // this edit cannot reach, and "not here" is all the caller can do anything with.
+    return { ok: false, reason: 'missing' }
+  }
+  if (!isSpecPath(real)) return { ok: false, reason: 'not_spec' }
+  try {
+    const stat = fs.statSync(real)
+    if (!stat.isFile()) return { ok: false, reason: 'not_spec' }
+    if (guard.unchangedSince !== undefined && stat.mtimeMs <= guard.unchangedSince) {
+      return { ok: true, real }
+    }
+    // The size first, for `readSpecFile`'s reason: a file past the ceiling cannot equal
+    // any spec the cloud holds, and there is no point pulling its bytes in to learn it.
+    if (stat.size > MAX_SPEC_BYTES) return { ok: false, reason: 'diverged' }
+    const current = fs.readFileSync(real, 'utf-8')
+    return current === guard.expectedContent ? { ok: true, real } : { ok: false, reason: 'diverged' }
+  } catch {
+    return { ok: false, reason: 'error' }
+  }
+}
+
+/**
+ * Replace an EXISTING spec file with `content`, if the guard allows it.
+ *
+ * The guard is re-checked here even when the caller has just run `checkSpecReplaceable`:
+ * the cloud round trip sits between the two, and an agent writing the spec in the
+ * meantime is exactly the local work the check exists to protect. The window left is the
+ * few microseconds between this read and this write, which nothing here can close without
+ * a lock the agent does not take.
+ *
+ * Never throws — the save it follows has already succeeded, and a failure here must come
+ * back as a reason the page can print rather than as a rejected IPC call that would make
+ * a saved edit look lost.
+ */
+export function writeSpecFile(specPath: string, content: string, guard: SpecReplaceGuard): SpecWrite {
+  const check = checkSpecReplaceable(specPath, guard)
+  if (!check.ok) return { written: false, reason: check.reason }
+  try {
+    fs.writeFileSync(check.real, content, 'utf-8')
+    return { written: true, path: check.real }
+  } catch {
+    return { written: false, reason: 'error' }
+  }
+}

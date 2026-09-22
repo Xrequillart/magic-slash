@@ -20,8 +20,10 @@ import { getStore } from '../store/Store'
  * organizations. A filter on this side could only ever hide a row the database chose to
  * show, and would do it differently from the webapp's identical read.
  *
- * Nothing here writes. The status of a session is settable from the webapp; the desktop
- * is a reader of what it itself uploaded.
+ * ONE WRITE, and only one: `updatePlanSpec`, the in-app editor's save (issue #302). Every
+ * other write onto `plan_sessions` is the author's own upload, from `store/plan-sync.ts`
+ * through the store. This one can come from ANY member of the plan's organization, which
+ * is what 20260922110000 opened up — and what its guard trigger narrows to the text.
  *
  * EVERY READ SAYS WHETHER IT WORKED. `Read<T>` below is the shape each fetch answers in,
  * and it exists because the three interesting states are not two: rows, no rows, and NO
@@ -612,4 +614,101 @@ export async function findPlanForTicket(
     slug: row.slug ?? '',
     specKey: row.spec_key,
   }
+}
+
+/**
+ * One session, spec included, for the EDITOR — `fetchPlanSession` with its own client.
+ *
+ * What the save path reads BEFORE it writes: whose plan this is and which spec file it
+ * came from are decided off the row, in the main process, and never taken from the
+ * renderer. See `store/plan-edit.ts`.
+ */
+export async function readPlanSessionForEdit(
+  id: string,
+): Promise<{ session: PlanSession | null; failed: boolean }> {
+  const client = await getAuthedClient()
+  // No client is no answer here, unlike on the reads above: this is the first half of a
+  // write, and "signed out" must not read as "there is no such plan".
+  if (!client) return { session: null, failed: true }
+  const read = await fetchPlanSession(client, id)
+  return { session: read.rows[0] ?? null, failed: !read.ok }
+}
+
+/** What the database made of one spec save. The file half is `store/plan-edit.ts`'s. */
+export type PlanSpecCloudWrite =
+  | { status: 'saved'; updatedAt: string }
+  | { status: 'conflict' }
+  | { status: 'denied' }
+  | { status: 'failed' }
+
+/**
+ * Save an edited spec onto its row, UNLESS the row changed since the editor opened.
+ *
+ * THE CONFLICT GUARD IS A FILTER, `.eq('updated_at', expectedUpdatedAt)`. Every write
+ * bumps `updated_at` (`set_updated_at`), so a row somebody else saved in the meantime —
+ * a colleague's edit, the author's agent uploading a new section — no longer matches, the
+ * UPDATE touches nothing, and nothing is overwritten. Last write wins, but only a write
+ * that knew what it was replacing.
+ *
+ * `expectedUpdatedAt` IS A RAW STRING, END TO END, AND MUST STAY ONE. It is the value
+ * PostgREST serialised on the detail read, carried through the renderer and the bridge
+ * untouched, and handed back to PostgREST as a bound value. Postgres keeps MICROSECONDS;
+ * a JS `Date` keeps milliseconds. One `new Date(…).toISOString()` anywhere on that path
+ * truncates the value, the filter matches no row ever again, and every save reports a
+ * conflict that did not happen. The value handed back as `updatedAt` is raw for the same
+ * reason — it is the next save's guard.
+ *
+ * THE PATCH IS THE TEXT, and `spec_synced_at` only when the caller says so:
+ *
+ *  * `spec`, always; `idea` only when the new spec has an Idea section — omitted rather
+ *    than nulled, the rule `CloudStore.planSessionRow` follows, so a spec that lost its
+ *    heading keeps the summary the list prints.
+ *  * `syncedAt` is passed by the AUTHOR'S path alone, and only when their spec file is
+ *    about to be rewritten with this very content: the stamp is what tells
+ *    `reconcilePlanSpecs` the file and the row agree. A member's save must never carry
+ *    it — the guard trigger refuses it (42501) — and the author's app would otherwise
+ *    take a colleague's edit as proof its own file was uploaded.
+ *
+ * NOTHING IS QUEUED. Unlike the upload path, a failed save does not go to the outbox:
+ * the conflict guard is only meaningful against the row the editor was opened on, and a
+ * save replayed an hour later would either conflict for no visible reason or — worse —
+ * land over whatever was written in between. Offline is `failed`, and the draft stays in
+ * the editor.
+ *
+ * WHAT ZERO ROWS MEANS is read back rather than guessed. The UPDATE policy FILTERS
+ * (USING), it does not raise, so "the row changed" and "you may not write this row" both
+ * come back as an empty result. The row is then read again: still visible means somebody
+ * wrote first (`conflict`); gone means it is not the reader's to write any more — deleted,
+ * unshared, the reader removed from the org (`denied`). An error that DID come back is
+ * 42501 for a refusal (the WITH CHECK, or the guard trigger) and anything else is no
+ * answer at all.
+ */
+export async function updatePlanSpec(input: {
+  id: string
+  spec: string
+  idea?: string
+  expectedUpdatedAt: string
+  syncedAt?: string
+}): Promise<PlanSpecCloudWrite> {
+  const client = await getAuthedClient()
+  if (!client) return { status: 'failed' }
+
+  const patch: Record<string, unknown> = { spec: input.spec }
+  if (input.idea) patch.idea = input.idea
+  if (input.syncedAt) patch.spec_synced_at = input.syncedAt
+
+  const { data, error } = await client
+    .from('plan_sessions')
+    .update(patch)
+    .eq('id', input.id)
+    .eq('updated_at', input.expectedUpdatedAt)
+    .select('updated_at')
+  if (error) return { status: error.code === '42501' ? 'denied' : 'failed' }
+
+  const row = ((data ?? []) as { updated_at: string | null }[])[0]
+  if (row?.updated_at) return { status: 'saved', updatedAt: row.updated_at }
+
+  const reread = await fetchPlanSession(client, input.id)
+  if (!reread.ok) return { status: 'failed' }
+  return { status: reread.rows.length > 0 ? 'conflict' : 'denied' }
 }

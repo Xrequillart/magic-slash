@@ -48,6 +48,11 @@ vi.mock('../cloud/planComments', () => ({
   deletePlanComment: (...args: unknown[]) => mockDeleteComment(...args),
 }))
 
+const mockSaveSpec = vi.fn()
+vi.mock('../store/plan-edit', () => ({
+  saveEditedPlanSpec: (...args: unknown[]) => mockSaveSpec(...args),
+}))
+
 import { setupPlansHandlers } from './plans-handlers'
 
 /** A well-formed uuid, so a rejection can only ever be about the field under test. */
@@ -75,6 +80,7 @@ beforeEach(() => {
   mockCreateComment.mockResolvedValue(true)
   mockUpdateComment.mockResolvedValue(true)
   mockDeleteComment.mockResolvedValue(true)
+  mockSaveSpec.mockResolvedValue({ status: 'saved', updatedAt: 'x', fileWritten: false, fileSkipReason: 'not_owner' })
   setupPlansHandlers()
 })
 
@@ -179,6 +185,46 @@ describe('plans:comments:delete', () => {
   ])('refuses %s, and deletes nothing', async (_label, id) => {
     expect(await invoke('plans:comments:delete', id)).toBe(false)
     expect(mockDeleteComment).not.toHaveBeenCalled()
+  })
+})
+
+describe('plans:updateSpec', () => {
+  /** Microseconds included: the handler must hand it on exactly as it came. */
+  const UPDATED_AT = '2026-09-22T10:00:00.123456+00:00'
+
+  it('passes a well-formed save through, the timestamp untouched', async () => {
+    await invoke('plans:updateSpec', { id: SESSION_ID, spec: '# Spec', expectedUpdatedAt: UPDATED_AT })
+    expect(mockSaveSpec).toHaveBeenCalledWith({ id: SESSION_ID, spec: '# Spec', expectedUpdatedAt: UPDATED_AT })
+  })
+
+  it('drops anything but the three fields: no owner or path reaches the save', async () => {
+    await invoke('plans:updateSpec', {
+      id: SESSION_ID, spec: '# Spec', expectedUpdatedAt: UPDATED_AT, ownerId: 'me', specPath: '/etc/passwd',
+    })
+    expect(mockSaveSpec).toHaveBeenCalledWith({ id: SESSION_ID, spec: '# Spec', expectedUpdatedAt: UPDATED_AT })
+  })
+
+  it.each([
+    ['saved', { status: 'saved', updatedAt: UPDATED_AT, fileWritten: true }],
+    ['conflict', { status: 'conflict' }],
+    ['denied', { status: 'denied' }],
+  ])('hands a %s answer back unchanged', async (_label, answer) => {
+    mockSaveSpec.mockResolvedValue(answer)
+    expect(await invoke('plans:updateSpec', { id: SESSION_ID, spec: 's', expectedUpdatedAt: UPDATED_AT })).toEqual(answer)
+  })
+
+  it.each([
+    ['no payload at all', undefined],
+    ['a string instead of a payload', 'nope'],
+    ['an id that is not a uuid', { id: 'nope', spec: 's', expectedUpdatedAt: UPDATED_AT }],
+    ['a spec that is not a string', { id: SESSION_ID, spec: null, expectedUpdatedAt: UPDATED_AT }],
+    ['a blank spec, which would wipe the plan', { id: SESSION_ID, spec: '  \n', expectedUpdatedAt: UPDATED_AT }],
+    ['a missing timestamp',{ id: SESSION_ID, spec: 's' }],
+    ['an empty timestamp', { id: SESSION_ID, spec: 's', expectedUpdatedAt: '' }],
+    ['a timestamp that is not a string', { id: SESSION_ID, spec: 's', expectedUpdatedAt: 1726999200000 }],
+  ])('answers failed for %s, and saves nothing', async (_label, args) => {
+    expect(await invoke('plans:updateSpec', args)).toEqual({ status: 'failed' })
+    expect(mockSaveSpec).not.toHaveBeenCalled()
   })
 })
 

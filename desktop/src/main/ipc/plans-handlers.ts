@@ -1,9 +1,10 @@
 import { ipcMain } from 'electron'
-import { isPlanCommentAnchor, type NewPlanComment, type PlanCommentsRead, type PlanDetail, type PlanOverview, type PlanTicketOrigin } from '../../types'
+import { isPlanCommentAnchor, type NewPlanComment, type PlanCommentsRead, type PlanDetail, type PlanOverview, type PlanSpecUpdateResult, type PlanTicketOrigin } from '../../types'
 import { findPlanForTicket, listPlanDetail, listPlanSessions } from '../cloud/plans'
 import {
   createPlanComment, deletePlanComment, listPlanComments, updatePlanComment,
 } from '../cloud/planComments'
+import { saveEditedPlanSpec } from '../store/plan-edit'
 
 /**
  * The renderer is expected to send back a uuid it got from `plans:list`, and RLS would
@@ -29,8 +30,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * already draw from the answer itself.
  *
  * The renderer never talks to Supabase. This is the whole of its access to
- * `plan_sessions` and to `plan_comments`; the first is read-only, and the second is not —
- * see the comment channels at the bottom of this file.
+ * `plan_sessions` and to `plan_comments`. Both are written through here: the first by
+ * `plans:updateSpec` alone (the in-app editor), the second by the comment channels at
+ * the bottom of this file.
  */
 
 /**
@@ -162,5 +164,36 @@ export function setupPlansHandlers(): void {
   ipcMain.handle('plans:comments:delete', async (_e, id: unknown): Promise<boolean> => {
     if (typeof id !== 'string' || !UUID_RE.test(id)) return false
     return deletePlanComment(id)
+  })
+
+  /**
+   * Save a spec edited in the app — the one channel that writes `plan_sessions`.
+   *
+   * SHAPE ONLY, like the comment channels, and for their reason: who may edit whose plan
+   * is `plan_sessions_update`'s question and its guard trigger's (20260922110000), and a
+   * copy of that rule here would drift from it. What the handler does NOT take is as
+   * much of the contract as what it does: no owner, no spec key, no path. Whether this
+   * machine's spec file follows the save is decided off the row, in `store/plan-edit.ts`.
+   *
+   * `expectedUpdatedAt` is checked for being a non-empty string and NOTHING ELSE — not
+   * parsed, not normalised. It goes back to PostgREST byte for byte as the conflict
+   * guard, and any reformatting would drop its microseconds and turn every save into a
+   * conflict. See `updatePlanSpec`.
+   *
+   * The spec's size is not checked here: the ceiling is `MAX_SPEC_BYTES`, in bytes, and
+   * `saveEditedPlanSpec` applies it where the uploader's own copy of that rule lives. A
+   * blank spec is REFUSED: it would wipe the cloud copy and the author's file, and a plan
+   * with no spec offers no editor to put it back. The renderer disables Save on it too.
+   *
+   * A malformed argument is `failed`, the same answer a dropped connection gets: the
+   * editor keeps the draft either way, and there is nothing else for it to do.
+   */
+  ipcMain.handle('plans:updateSpec', async (_e, args: unknown): Promise<PlanSpecUpdateResult> => {
+    if (typeof args !== 'object' || args === null) return { status: 'failed' }
+    const { id, spec, expectedUpdatedAt } = args as Record<string, unknown>
+    if (typeof id !== 'string' || !UUID_RE.test(id)) return { status: 'failed' }
+    if (typeof spec !== 'string' || spec.trim() === '') return { status: 'failed' }
+    if (typeof expectedUpdatedAt !== 'string' || expectedUpdatedAt === '') return { status: 'failed' }
+    return saveEditedPlanSpec({ id, spec, expectedUpdatedAt })
   })
 }
