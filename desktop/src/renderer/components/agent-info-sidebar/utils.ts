@@ -210,20 +210,6 @@ export function canCloseAgent(status: string | undefined, type: string | undefin
 }
 
 /**
- * May the agent's kind still be changed?
- *
- * Only before it has done anything. Once a status is set the agent has committed to a
- * workflow — a coder mid-`in progress` has a branch and a diff, a planner at `planned`
- * has a ticket — and switching its kind would strand that status outside the list its
- * new kind offers. Rather than clearing the status or tolerating an orphan, the switch
- * simply stops being available, which is also why the caller HIDES the control instead
- * of disabling it: there is nothing the user could do to re-enable it.
- */
-export function canChangeAgentType(status: string | undefined): boolean {
-  return !status
-}
-
-/**
  * Split an ABSOLUTE spec path into the `(repoPath, filePath)` pair `config:readFile`
  * takes.
  *

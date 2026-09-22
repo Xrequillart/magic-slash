@@ -28,9 +28,8 @@ import { useConfig } from '../hooks/useConfig'
  * settings sheet, which turns it on outright rather than only allowing it.
  *
  * THE CODER/PLANNER SWITCH IS GONE from the bar — the product's call, it earned nothing
- * there. `canChangeAgentType` in `agent-info-sidebar/utils.ts` was its gate and no
- * surface calls it any more; it and its tests are left standing rather than deleted on
- * a drawing's behalf.
+ * there. What a new agent is now answers in Settings → Application, and `canChangeAgentType`,
+ * the gate the bar's switch read, went with the last surface that called it.
  */
 
 export function TitleBar() {

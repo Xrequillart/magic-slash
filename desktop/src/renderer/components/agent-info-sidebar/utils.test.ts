@@ -12,7 +12,6 @@ import {
   SPEC_SCROLL_TOLERANCE_PX,
   STATUSES_BY_TYPE,
   resolveAgentType,
-  canChangeAgentType,
 } from './utils'
 import { t as translate, type MessageKey } from '../../../i18n'
 
@@ -337,20 +336,5 @@ describe('canCloseAgent', () => {
   it('treats a missing kind as a coder', () => {
     expect(canCloseAgent('PR merged', undefined)).toBe(true)
     expect(canCloseAgent('planned', undefined)).toBe(false)
-  })
-})
-
-describe('canChangeAgentType', () => {
-  it('allows the switch only before the agent has done anything', () => {
-    expect(canChangeAgentType(undefined)).toBe(true)
-    expect(canChangeAgentType('')).toBe(true)
-  })
-
-  it('refuses once any status has been reported', () => {
-    // Once a workflow has started the status would be stranded outside the list the
-    // new kind offers, so the control is hidden rather than made to strand it.
-    for (const status of ['planning', 'planned', 'in progress', 'PR merged']) {
-      expect(canChangeAgentType(status), status).toBe(false)
-    }
   })
 })
