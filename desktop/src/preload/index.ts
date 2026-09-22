@@ -82,6 +82,8 @@ const configApi = {
     ipcRenderer.invoke('config:setUsageLogsEnabled', { enabled }),
   setPlanSyncEnabled: (enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setPlanSyncEnabled', { enabled }),
+  setInfoSidebarOnCreate: (open: boolean): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setInfoSidebarOnCreate', { open }),
   setDailyDigestEnabled: (enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setDailyDigestEnabled', { enabled }),
 
@@ -235,6 +237,9 @@ const terminalApi = {
 
   updateSplitPane: (id: string, pane: 'left' | 'right') =>
     ipcRenderer.invoke('terminal:updateSplitPane', { id, pane }),
+
+  updateInfoSidebar: (id: string, open: boolean) =>
+    ipcRenderer.invoke('terminal:updateInfoSidebar', { id, open }),
 
   relaunchInCwd: (id: string): Promise<string | null> =>
     ipcRenderer.invoke('terminal:relaunchInCwd', { id }),

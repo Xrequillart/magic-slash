@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { SidebarAgentCoderInfo, SidebarAgentPlannerInfo, type CoderRepository } from '@ds/desktop'
-import { useStore } from '../store'
+import { useStore, selectInfoSidebarOpen, selectInspectedTerminalId } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useTicketCard } from './agent-info-sidebar/ticketCard'
 import { useSpecCard } from './agent-info-sidebar/specCard'
@@ -45,7 +45,8 @@ function sidebarWidth(viewportWidth: number, planning: boolean) {
 }
 
 export function AgentInfoSidebar() {
-  const { rightSidebar, terminals, activeTerminalId, config, setConfig, isSplitMode, focusedPane, splitTerminalId } = useStore()
+  const { terminals, config, setConfig } = useStore()
+  const isOpen = useStore(selectInfoSidebarOpen)
   const { updateTerminalMetadata, updateTerminalRepositories } = useTerminals()
   const t = useT()
 
@@ -53,9 +54,7 @@ export function AgentInfoSidebar() {
   // on whether the inspected agent is a planning one.
   // Named `inspected` rather than `focused` because it is what the panel DESCRIBES, which
   // is the same thing now that a script terminal is never selected.
-  const inspectedTerminalId = isSplitMode && focusedPane === 'secondary'
-    ? splitTerminalId
-    : activeTerminalId
+  const inspectedTerminalId = useStore(selectInspectedTerminalId)
   const activeTerminal = terminals.find(t => t.id === inspectedTerminalId)
   const metadata = activeTerminal?.metadata
   const specMode = getSpecPanelMode(metadata?.type)
@@ -87,7 +86,7 @@ export function AgentInfoSidebar() {
   // The live `/magic:plan` spec for the agent being inspected. The panel only
   // exists for a planning agent, and only while the sidebar it lives in is open —
   // `usePlanSpec` subscribes to nothing and refreshes nothing when that is false.
-  const isOpen = rightSidebar === 'info'
+  // `isOpen` is read at the top of the component, off the inspected agent.
   const { specPath, refreshToken: specRefreshToken } = usePlanSpec(
     inspectedTerminalId ?? undefined,
     metadata?.specPath,

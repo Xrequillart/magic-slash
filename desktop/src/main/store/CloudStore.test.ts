@@ -1038,7 +1038,41 @@ describe('agents', () => {
     expect(meta).not.toHaveProperty('baseBranch')
     // What has no column of its own still travels in the jsonb.
     expect(meta.title).toBe('kept in the jsonb')
-    expect(meta.__app).toEqual({ id: 'claude-1', tsCreate: undefined, splitPane: undefined })
+    expect(meta.__app).toEqual({
+      id: 'claude-1', tsCreate: undefined, splitPane: undefined, infoSidebarOpen: undefined,
+    })
+  })
+
+  // The info panel is per agent, and `agents` is where an agent lives. It rides in the
+  // jsonb beside splitPane rather than in a column of its own, so the round trip is
+  // the only thing standing between "closed on this agent" and a panel that reopens on
+  // the next launch.
+  it('carries the info panel state through the __app jsonb, false included', async () => {
+    const { client, upserts } = makeClient({ memberships: membershipsOk })
+    h.state.client = client
+
+    await new CloudStore().saveAgents([
+      { id: 'claude-1', name: 'A', repositories: [], infoSidebarOpen: false },
+    ])
+
+    const row = (upserts.agents[0] as Array<Record<string, unknown>>)[0]
+    const meta = row.metadata as Record<string, unknown>
+    expect((meta.__app as Record<string, unknown>).infoSidebarOpen).toBe(false)
+  })
+
+  it('reads the info panel state back, and leaves an undecided agent undecided', async () => {
+    const rows = [
+      { ...agentRow('uuid-1', 'claude-1', UID), metadata: { __app: { id: 'claude-1', infoSidebarOpen: false } } },
+      { ...agentRow('uuid-2', 'claude-2', UID), metadata: { __app: { id: 'claude-2' } } },
+    ]
+    const { client } = makeClient({ memberships: membershipsOk, agents: { data: rows, error: null } })
+    h.state.client = client
+
+    const agents = await new CloudStore().loadAgents()
+    expect(agents[0].infoSidebarOpen).toBe(false)
+    // Undefined, NOT false: an agent nobody has toggled has to keep following the app
+    // setting, and a default stamped here would take that away for good.
+    expect(agents[1].infoSidebarOpen).toBeUndefined()
   })
 
   it('loadAgents reads the columns, not the jsonb', async () => {
@@ -2267,6 +2301,7 @@ describe('user settings', () => {
       agent_context_enabled: null,
       agent_context_minimized: null,
       usage_logs_enabled: null,
+      info_sidebar_on_create: null,
       plan_sync_enabled: null,
       daily_digest_enabled: true,
       notifications_enabled: null,

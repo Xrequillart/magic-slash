@@ -7,6 +7,7 @@ import {
   type CommentTarget, type LineRange,
 } from '../utils/commentAnchors'
 import { migrateSkillsContextWindow } from '../pages/Skills/contextWindow'
+import { selectInfoSidebarOpen, selectInspectedTerminalId } from './infoSidebar'
 import type { TasksTarget } from '../utils/taskSelection'
 import type { AccountModalTab } from '../components/AccountModal'
 import type { AppSettingsTab } from '../components/SettingsModal'
@@ -294,7 +295,6 @@ interface AppState {
   settingsOrgId: string | null
   // The overlay currently on screen, if any. Only one can be open at a time.
   activeModal: ModalId | null
-  rightSidebar: 'info' | null
   /**
    * Whether the page modal fills the window rather than sitting in its 85vh panel.
    *
@@ -479,8 +479,14 @@ interface AppState {
   /** Take an agent off the ticket it is on, leaving the agent itself alone. */
   detachTicketFromAgent: (agentId: string) => void
   openPlansModal: (planId: string) => void
-  setRightSidebar: (sidebar: 'info' | null) => void
-  toggleRightSidebar: (sidebar: 'info') => void
+  /**
+   * Remember whether the info panel is open for ONE agent, and write it through to
+   * that agent's row. There is no window-wide flag any more — see
+   * `Agent.infoSidebarOpen`.
+   */
+  setInfoSidebarOpen: (terminalId: string, open: boolean) => void
+  /** Flip the panel for the agent currently being inspected. */
+  toggleInfoSidebar: () => void
   toggleLeftSidebar: () => void
   togglePageModalFullScreen: () => void
   setSkillsContextWindow: (contextWindow: SkillsContextWindowSetting) => void
@@ -594,6 +600,10 @@ const DRAWER_CLOSED = {
   focusedComment: null,
 } as const satisfies Partial<AppState>
 
+// Re-exported so every caller keeps importing the store's public surface from one
+// place, while the rule itself stays testable without a window. See ./infoSidebar.
+export { selectInspectedTerminalId, selectInfoSidebarOpen } from './infoSidebar'
+
 export const useStore = create<AppState>()(
   persist(
     persist(
@@ -625,7 +635,6 @@ export const useStore = create<AppState>()(
         plansInitialPlanId: null,
         settingsOrgId: null,
         activeModal: null,
-        rightSidebar: null,
         // Small by default: the panel is what every existing user knows, and a
         // preference nobody has expressed yet must not change what the app looks like.
         pageModalFullScreen: false,
@@ -664,10 +673,14 @@ export const useStore = create<AppState>()(
             if (state.terminals.some((t) => t.id === terminal.id)) {
               return { activeTerminalId: terminal.id }
             }
+            // The panel is NOT forced open here any more. A new agent carries no
+            // decision of its own, and an undecided agent reads as
+            // `config.infoSidebarOnCreate` — which is what makes that setting mean
+            // anything, and what stops a restored agent coming back open after the
+            // user closed it.
             return {
               terminals: [...state.terminals, terminal],
               activeTerminalId: terminal.id,
-              rightSidebar: 'info',
             }
           }),
 
@@ -714,10 +727,6 @@ export const useStore = create<AppState>()(
               focusedPane:
                 state.splitTerminalId === id ? 'primary' : state.focusedPane,
               rightPaneTerminalIds: newRightIds,
-              // The info sidebar describes an agent, so it has nothing to show
-              // once the last one is gone: leaving it open would slide an empty
-              // panel back in on the next launch's blank slate.
-              rightSidebar: newTerminals.length === 0 ? null : state.rightSidebar,
             }
           }),
 
@@ -748,7 +757,6 @@ export const useStore = create<AppState>()(
             // someone else's diff.
             collapsedFiles: {},
             fileComments: {},
-            rightSidebar: null,
           }),
 
         setActiveTerminal: (activeTerminalId) =>
@@ -957,10 +965,23 @@ export const useStore = create<AppState>()(
           set({ plansInitialPlanId: planId })
           get().openModal('plans')
         },
-        setRightSidebar: (rightSidebar) => set({ rightSidebar }),
-        toggleRightSidebar: (sidebar) => set((state) => ({
-          rightSidebar: state.rightSidebar === sidebar ? null : sidebar
-        })),
+        setInfoSidebarOpen: (terminalId, open) => {
+          // Written through on every flip, the way `moveTerminalToPane` writes the
+          // pane: the agent's row is where this lives, and a decision that only
+          // reached the store would not survive the next launch.
+          window.electronAPI?.terminal.updateInfoSidebar(terminalId, open).catch(() => {})
+          set((state) => ({
+            terminals: state.terminals.map((t) =>
+              t.id === terminalId ? { ...t, infoSidebarOpen: open } : t
+            ),
+          }))
+        },
+        toggleInfoSidebar: () => {
+          const state = get()
+          const terminalId = selectInspectedTerminalId(state)
+          if (!terminalId) return
+          state.setInfoSidebarOpen(terminalId, !selectInfoSidebarOpen(state))
+        },
         toggleLeftSidebar: () => set((state) => ({ leftSidebarVisible: !state.leftSidebarVisible })),
         togglePageModalFullScreen: () => set((state) => ({ pageModalFullScreen: !state.pageModalFullScreen })),
         setSkillsContextWindow: (skillsContextWindow) => set({ skillsContextWindow }),

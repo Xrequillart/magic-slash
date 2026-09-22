@@ -30,6 +30,7 @@ export interface UserSettingsRow {
   agent_context_enabled: boolean | null
   agent_context_minimized: boolean | null
   usage_logs_enabled: boolean | null
+  info_sidebar_on_create: boolean | null
   plan_sync_enabled: boolean | null
   daily_digest_enabled: boolean | null
   split_enabled: boolean | null
@@ -59,7 +60,8 @@ export interface UserSettingsRow {
 
 export const USER_SETTINGS_COLUMNS =
   'usage_card_enabled, usage_card_minimized, agent_context_enabled, ' +
-  'agent_context_minimized, usage_logs_enabled, plan_sync_enabled, ' +
+  'agent_context_minimized, usage_logs_enabled, info_sidebar_on_create, ' +
+  'plan_sync_enabled, ' +
   'daily_digest_enabled, notifications_enabled, notification_agent_waiting, ' +
   'notification_agent_completed, notification_pr_review, ' +
   'notification_pr_changes_requested, split_enabled, split_active, pr_reviews_enabled, ' +
@@ -84,6 +86,7 @@ export const SETTINGS_KEYS = [
   'agentContextEnabled',
   'agentContextMinimized',
   'usageLogsEnabled',
+  'infoSidebarOnCreate',
   'planSyncEnabled',
   'dailyDigest',
   'notifications',
@@ -122,6 +125,7 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     agent_context_enabled: orNull(config.agentContextEnabled),
     agent_context_minimized: orNull(config.agentContextMinimized),
     usage_logs_enabled: orNull(config.usageLogsEnabled),
+    info_sidebar_on_create: orNull(config.infoSidebarOnCreate),
     plan_sync_enabled: orNull(config.planSyncEnabled),
     daily_digest_enabled: orNull(config.dailyDigest?.enabled),
     split_enabled: orNull(config.splitEnabled),
@@ -166,6 +170,7 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   if (isSet(row.agent_context_enabled)) config.agentContextEnabled = row.agent_context_enabled
   if (isSet(row.agent_context_minimized)) config.agentContextMinimized = row.agent_context_minimized
   if (isSet(row.usage_logs_enabled)) config.usageLogsEnabled = row.usage_logs_enabled
+  if (isSet(row.info_sidebar_on_create)) config.infoSidebarOnCreate = row.info_sidebar_on_create
   if (isSet(row.plan_sync_enabled)) config.planSyncEnabled = row.plan_sync_enabled
   if (isSet(row.daily_digest_enabled)) config.dailyDigest = { enabled: row.daily_digest_enabled }
   if (isSet(row.split_enabled)) config.splitEnabled = row.split_enabled

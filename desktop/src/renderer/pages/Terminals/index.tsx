@@ -43,7 +43,7 @@ export interface NewTerminalDetail {
 export function TerminalsPage() {
   const { terminals, activeTerminalId, launchClaudeTerminal, setActiveTerminal, duplicateAgent } = useTerminals()
   const { flatVisualOrder } = useOrderedTerminals()
-  const { toggleRightSidebar, closeModal, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, rightPaneTerminalIds, moveTerminalToPane, openSettingsModal } = useStore()
+  const { toggleInfoSidebar, closeModal, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, rightPaneTerminalIds, moveTerminalToPane, openSettingsModal } = useStore()
   const t = useT()
   const [isCreating, setIsCreating] = useState(false)
   // Dev only: the debug menu pins the "no agents" screen while sessions are
@@ -202,14 +202,14 @@ export function TerminalsPage() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
         e.preventDefault()
         if (terminals.length > 0) {
-          toggleRightSidebar('info')
+          toggleInfoSidebar()
         }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [terminals.length, toggleRightSidebar])
+  }, [terminals.length, toggleInfoSidebar])
 
   // Listen for Command+D to duplicate the active agent
   useEffect(() => {

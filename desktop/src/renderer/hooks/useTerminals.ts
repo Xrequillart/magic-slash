@@ -101,6 +101,9 @@ export function useTerminals() {
               branchName: term.branchName,
               tsCreate: term.tsCreate,
               metadata: term.metadata,
+              // Undefined where the agent was never toggled, which is the point: it
+              // then follows `config.infoSidebarOnCreate` rather than a stored false.
+              infoSidebarOpen: term.infoSidebarOpen,
             }
             addTerminal(terminalInfo)
           }

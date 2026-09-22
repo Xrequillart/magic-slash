@@ -68,14 +68,14 @@ export const DEFAULTS = {
 } as const
 
 /**
- * All 26 `user_settings` columns, as the desktop app stores them. Every one is
+ * All 27 `user_settings` columns, as the desktop app stores them. Every one is
  * nullable and NULL is a third state distinct from false — it means the user
  * never chose, and the app applies its own default. Nothing here normalises a
  * null away: "never chose" is exactly what a support question needs to see.
  *
  * Extends the 21 fields `lib/settings.ts` already names (the ones the webapp lets
  * a user edit) rather than restating them, so a column rename is one edit and not
- * two camelCase lists that must silently agree. The 5 added below are the ones
+ * two camelCase lists that must silently agree. The 6 added below are the ones
  * `UserSettings` deliberately omits: per-machine properties, transient view state,
  * and one desktop-window preference with no web control — all of which the
  * back-office reports precisely because it cannot edit them.
@@ -86,6 +86,7 @@ export interface AdminUserSettings extends UserSettings {
   autoStartAtLogin: boolean | null
   atlassianIntegrationEnabled: boolean | null
   agentSort: string | null
+  infoSidebarOnCreate: boolean | null
 }
 
 /**
@@ -95,7 +96,7 @@ export interface AdminUserSettings extends UserSettings {
  *
  * Extends `DEFAULTS` (lib/settings.ts) rather than restating it: those twenty-one are
  * the ones the webapp itself can edit, and their defaults are already documented
- * there. The five below are the admin-only columns, each verified against the line in
+ * there. The six below are the admin-only columns, each verified against the line in
  * the desktop app that resolves the unset value — cited, because a default invented
  * here would be a confident lie in the one tool used to answer "why is it behaving
  * like that":
@@ -113,6 +114,8 @@ export interface AdminUserSettings extends UserSettings {
  *    Stated as false on that basis and not on a `??` somewhere.
  *  * agentSort — DEFAULT_AGENT_SORT, the value the sidebar's sort control and its
  *    ordering hook both read an absent column as. desktop/src/types.ts
+ *  * infoSidebarOnCreate — the `!== false` that `selectInfoSidebarOpen` resolves an
+ *    undecided agent with, i.e. the panel opens. desktop/src/renderer/store/index.ts
  */
 export const SETTING_DEFAULTS: Record<keyof AdminUserSettings, string | number | boolean> = {
   ...DEFAULTS,
@@ -121,6 +124,7 @@ export const SETTING_DEFAULTS: Record<keyof AdminUserSettings, string | number |
   autoStartAtLogin: false,
   atlassianIntegrationEnabled: false,
   agentSort: 'recent',
+  infoSidebarOnCreate: true,
 }
 
 export interface SettingGroup {
@@ -130,7 +134,7 @@ export interface SettingGroup {
 }
 
 /**
- * The twenty-six settings, grouped by FEATURE, in reading order. Also the field
+ * The twenty-seven settings, grouped by FEATURE, in reading order. Also the field
  * allowlist — a column absent from here is a column the console does not show.
  *
  * The groups and their titles are the desktop app's own sections, verbatim and in its
@@ -164,14 +168,20 @@ export const SETTING_GROUPS: SettingGroup[] = [
     fields: [{ field: 'launchMode', label: 'Claude Code launch' }],
   },
   {
-    title: 'Default agent type',
-    fields: [{ field: 'defaultAgentType', label: 'New agent is a' }],
-  },
-  {
     // The sidebar's own control, not a settings section — there is no box in the app
     // to borrow a title from, so this one is named after what it orders.
     title: 'Agent list',
     fields: [{ field: 'agentSort', label: 'Sorted by' }],
+  },
+  {
+    // "New agents" is the desktop's own section header, and it now holds both halves:
+    // the type used to sit on the Claude Code tab, which is about the CLI itself, and
+    // moved here beside the panel a new agent opens with.
+    title: 'New agents',
+    fields: [
+      { field: 'defaultAgentType', label: 'New agent is a' },
+      { field: 'infoSidebarOnCreate', label: 'Info panel open' },
+    ],
   },
   {
     title: 'Usage card',

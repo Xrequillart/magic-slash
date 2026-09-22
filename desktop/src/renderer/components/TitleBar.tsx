@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { AppTitleBar, type TitleBarTitle } from '@ds/desktop'
-import { useStore } from '../store'
+import { useStore, selectInfoSidebarOpen } from '../store'
 import { canCloseAgent } from './agent-info-sidebar/utils'
 import { useIsFullScreen } from '../hooks/useIsFullScreen'
 import { useT } from '../i18n'
@@ -35,7 +35,10 @@ import { useConfig } from '../hooks/useConfig'
 
 export function TitleBar() {
   const t = useT()
-  const { terminals, activeTerminalId, rightSidebar, leftSidebarVisible, toggleRightSidebar, toggleLeftSidebar, openCloseAgentModal, isSplitMode, splitTerminalId, focusedPane } = useStore()
+  const { terminals, activeTerminalId, leftSidebarVisible, toggleInfoSidebar, toggleLeftSidebar, openCloseAgentModal, isSplitMode, splitTerminalId, focusedPane } = useStore()
+  // Per AGENT, not per window: the toggle reports the inspected agent's own state,
+  // so switching agents moves this button with them.
+  const infoSidebarOpen = useStore(selectInfoSidebarOpen)
   const isFullScreen = useIsFullScreen()
   // Absent means never chosen, which is on — the reading the main process makes.
   const { config } = useConfig()
@@ -134,9 +137,9 @@ export function TitleBar() {
       // The info panel's toggle is the one control here that depends on there being an
       // agent at all: with an empty window there is nothing for it to show.
       right={terminals.length > 0 ? {
-        open: rightSidebar === 'info',
+        open: infoSidebarOpen,
         title: t('titlebar.info'),
-        onToggle: () => toggleRightSidebar('info'),
+        onToggle: () => toggleInfoSidebar(),
       } : undefined}
       // Last in the bar, where the platform keeps its Control Center. The sheet it
       // pulls down is `ControlCenterMenu`, portalled to the body so the bar's own

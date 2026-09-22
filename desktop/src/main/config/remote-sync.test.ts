@@ -29,6 +29,7 @@ const emptyRow = (): UserSettingsRow => ({
   agent_context_enabled: null,
   agent_context_minimized: null,
   usage_logs_enabled: null,
+  info_sidebar_on_create: null,
   plan_sync_enabled: null,
   daily_digest_enabled: null,
   notifications_enabled: null,

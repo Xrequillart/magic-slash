@@ -24,6 +24,7 @@ const EVERY_FIELD: (keyof AdminUserSettings)[] = [
   'launchMode',
   'defaultAgentType',
   'agentSort',
+  'infoSidebarOnCreate',
   'usageCardEnabled',
   'usageCardMinimized',
   'agentContextEnabled',

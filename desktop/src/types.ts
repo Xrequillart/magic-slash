@@ -977,6 +977,8 @@ export interface TerminalInfo {
   createdAt?: Date
   tsCreate?: number
   metadata?: TerminalMetadata
+  /** See `Agent.infoSidebarOpen`. Absent = never decided, resolved at read time. */
+  infoSidebarOpen?: boolean
 }
 
 /**
@@ -1299,6 +1301,19 @@ export interface Agent {
   tsCreate?: number
   metadata?: TerminalMetadata
   splitPane?: 'left' | 'right'
+  /**
+   * Whether the right-hand info panel is open while THIS agent is inspected.
+   *
+   * Per agent, not per window: closing the panel on the agent you are reading a diff
+   * in said nothing about the one you opened next, and a single flag made every
+   * switch overwrite the last decision. Absent means never decided, and reads as
+   * `Config.infoSidebarOnCreate` — so a brand-new agent follows the app setting, and
+   * so does every agent created before this field existed.
+   *
+   * Rides in the `agents.metadata.__app` jsonb beside `splitPane`, which is the same
+   * kind of per-agent layout state and has no column either.
+   */
+  infoSidebarOpen?: boolean
 }
 
 export type SpotlightShortcut =
@@ -1597,6 +1612,15 @@ export interface Config {
   // aggregate is open to any member regardless of this flag, and the `agents`
   // table syncs regardless too (that is what powers the live Team view).
   usageLogsEnabled?: boolean
+  /**
+   * Whether a NEWLY created agent shows the right-hand info panel.
+   *
+   * ON by default, so absent = never touched = open, and every gate tests
+   * `=== false`. It is the fallback the renderer resolves `Agent.infoSidebarOpen`
+   * against, which means it also governs every agent created before that field
+   * existed — and stops governing an agent the moment its own panel is toggled.
+   */
+  infoSidebarOnCreate?: boolean
   /**
    * Whether `/magic:plan` sessions (the spec and the tickets it produced) are
    * uploaded to the cloud. ON by default, like usageLogsEnabled above, so only an

@@ -147,6 +147,11 @@ export function saveAgent(id: string, name: string, repositories: string[], meta
       ...metadata
     },
     ...(existingAgent?.splitPane ? { splitPane: existingAgent.splitPane } : {}),
+    // Carried over for the same reason as the pane above: this is the agent's own
+    // layout state, and saveAgent is called on every rename and repository change.
+    ...(existingAgent?.infoSidebarOpen !== undefined
+      ? { infoSidebarOpen: existingAgent.infoSidebarOpen }
+      : {}),
   }
   filtered.push(agent)
 
@@ -200,6 +205,22 @@ export function updateAgentSplitPane(id: string, pane: 'left' | 'right'): void {
   const agent = agents.find(a => a.id === id)
   if (agent) {
     agent.splitPane = pane
+    writeAgents(agents)
+  }
+}
+
+/**
+ * Remember whether the info panel is open for this agent.
+ *
+ * Always writes a boolean, never clears back to undefined: once the user has opened
+ * or closed the panel on an agent, that is a decision, and it has to keep winning
+ * over the app-wide default the renderer falls back to.
+ */
+export function updateAgentInfoSidebar(id: string, open: boolean): void {
+  const agents = readAgents()
+  const agent = agents.find(a => a.id === id)
+  if (agent) {
+    agent.infoSidebarOpen = open
     writeAgents(agents)
   }
 }

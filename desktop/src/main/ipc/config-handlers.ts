@@ -21,6 +21,7 @@ import {
   updateRepositoryBranchSettings,
   updateRepositoryWorktreeFilesSettings,
   updateSplitEnabled,
+  updateInfoSidebarOnCreate,
   updateSplitActive,
   updateLaunchMode,
   updateDefaultAgentType,
@@ -431,6 +432,13 @@ export function setupConfigHandlers() {
   // Update split active setting (single/dual view mode)
   ipcMain.handle('config:updateSplitActive', async (_event, { active }) => {
     const config = updateSplitActive(active)
+    return { config }
+  })
+
+  // Whether a new agent opens with its info panel showing
+  ipcMain.handle('config:setInfoSidebarOnCreate', async (_event, { open }) => {
+    if (typeof open !== 'boolean') throw new Error('Invalid infoSidebarOnCreate value: must be a boolean')
+    const config = updateInfoSidebarOnCreate(open)
     return { config }
   })
 

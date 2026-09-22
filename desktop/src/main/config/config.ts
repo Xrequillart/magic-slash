@@ -992,6 +992,18 @@ export function updateUsageLogsEnabled(enabled: boolean): Config {
 }
 
 /**
+ * Whether a new agent opens with its info panel showing. ON by default, like the
+ * flag above, so only an explicit false closes it. Per-agent decisions outlive
+ * this: it is only ever the fallback for an agent nobody has toggled.
+ */
+export function updateInfoSidebarOnCreate(open: boolean): Config {
+  const config = readConfig()
+  config.infoSidebarOnCreate = open
+  writeConfig(config)
+  return config
+}
+
+/**
  * Toggle the upload of `/magic:plan` sessions. ON by default, like the flag above,
  * so only an explicit false stops it. Nothing LOCAL changes when it is off: the spec
  * file is still written, and the app is still told when it changes.

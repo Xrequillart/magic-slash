@@ -27,6 +27,7 @@ import {
   saveAgent,
   archiveAgent,
   readAgents,
+  updateAgentInfoSidebar,
   updateAgentSplitPane,
 } from '../config/agents'
 import { addHistoryEntry } from '../config/activity-history'
@@ -689,6 +690,9 @@ export function setupTerminalHandlers(
       tsCreate: agentMap.get(t.id)?.tsCreate,
       metadata: t.metadata,
       splitPane: agentMap.get(t.id)?.splitPane,
+      // Undefined is meaningful here — see Agent.infoSidebarOpen — so it is passed
+      // through rather than defaulted on the way out.
+      infoSidebarOpen: agentMap.get(t.id)?.infoSidebarOpen,
     }))
   })
 
@@ -708,6 +712,12 @@ export function setupTerminalHandlers(
   // Update agent split pane assignment
   ipcMain.handle('terminal:updateSplitPane', async (_event, { id, pane }) => {
     return updateAgentSplitPane(id, pane)
+  })
+
+  // Remember whether this agent shows the info panel
+  ipcMain.handle('terminal:updateInfoSidebar', async (_event, { id, open }) => {
+    if (typeof id !== 'string' || typeof open !== 'boolean') return
+    return updateAgentInfoSidebar(id, open)
   })
 
   // Get terminal display buffer (for reconnection after refresh)

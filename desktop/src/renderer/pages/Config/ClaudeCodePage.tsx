@@ -10,7 +10,7 @@ import {
   UsageTable,
   type FactListRow,
 } from '@ds/desktop'
-import { AlertTriangle, Bot, Coins, Gauge, Shield, User } from '@ds/desktop/icons'
+import { AlertTriangle, Coins, Gauge, Shield, User } from '@ds/desktop/icons'
 import { formatReset } from '../../components/agent-info-sidebar/LimitGauge'
 import { showToast } from '../../components/Toast'
 import { useConfig } from '../../hooks/useConfig'
@@ -18,7 +18,7 @@ import { useStore } from '../../store'
 import { formatUsd } from '../../utils/usageStats'
 import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
 import { SELECT_WIDTH } from '../../theme/controls'
-import type { AgentType, ClaudeAccount, LaunchMode, SpendSummary } from '../../../types'
+import type { ClaudeAccount, LaunchMode, SpendSummary } from '../../../types'
 
 /**
  * EVERYTHING ABOUT THE CLI ITSELF: the account it runs as, how it launches, and how
@@ -57,11 +57,6 @@ const LAUNCH_MODE_OPTIONS: { value: LaunchMode; labelKey: MessageKey; descriptio
   { value: 'bypassPermissions', labelKey: 'settings.launchMode.bypass', descriptionKey: 'settings.launchMode.bypass.help' },
 ]
 
-const AGENT_TYPE_OPTIONS: { value: AgentType; labelKey: MessageKey; descriptionKey: MessageKey }[] = [
-  { value: 'coder', labelKey: 'agentType.coder', descriptionKey: 'agentType.coderHint' },
-  { value: 'planner', labelKey: 'agentType.planner', descriptionKey: 'agentType.plannerHint' },
-]
-
 // Human-readable label for a Claude seat tier / billing type. Not translated: these are
 // Anthropic's own plan names, identical in every language.
 const SEAT_TIER_LABELS: Record<string, string> = {
@@ -89,10 +84,9 @@ export function ClaudeCodePage() {
   const locale = useLocale()
   const config = useStore((s) => s.config)
   const terminals = useStore((s) => s.terminals)
-  const { updateLaunchMode, updateDefaultAgentType } = useConfig()
+  const { updateLaunchMode } = useConfig()
 
   const [launchMode, setLaunchMode] = useState<LaunchMode>(config?.launchMode ?? 'default')
-  const [defaultAgentType, setDefaultAgentType] = useState<AgentType>(config?.defaultAgentType ?? 'coder')
   const [showBypassWarning, setShowBypassWarning] = useState(false)
 
   const configLaunchMode = config?.launchMode
@@ -109,19 +103,6 @@ export function ClaudeCodePage() {
       showToast(t('toast.launchModeUpdated'), 'success')
     } catch {
       setLaunchMode(previous)
-    }
-  }
-
-  // Optimistic, then reverted on failure — the same shape as applyLaunchMode above and
-  // as ToggleRow, so every control in this page fails the same way.
-  const applyDefaultAgentType = async (type: AgentType) => {
-    const previous = defaultAgentType
-    setDefaultAgentType(type)
-    try {
-      await updateDefaultAgentType(type)
-      showToast(t('toast.defaultAgentTypeUpdated'), 'success')
-    } catch {
-      setDefaultAgentType(previous)
     }
   }
 
@@ -200,7 +181,6 @@ export function ClaudeCodePage() {
       ].flatMap((fact) => (fact.value ? [{ ...fact, value: fact.value }] : []))
     : []
 
-  const activeAgentType = AGENT_TYPE_OPTIONS.find((option) => option.value === defaultAgentType)
   const activeLaunchMode = LAUNCH_MODE_OPTIONS.find((option) => option.value === launchMode)
 
   return (
@@ -210,25 +190,6 @@ export function ClaudeCodePage() {
         <SectionHeader icon={User} title={t('settings.claude.account')} />
         <Card>
           <FactList rows={accountFacts} empty={t('settings.claude.noAccount')} />
-        </Card>
-      </div>
-
-      <div>
-        <SectionHeader icon={Bot} title={t('settings.defaultAgentType.title')} />
-        <Card>
-          <SettingRow
-            label={t('settings.defaultAgentType.title')}
-            hint={t('settings.defaultAgentType.description')}
-            note={activeAgentType ? t(activeAgentType.descriptionKey) : undefined}
-            control={{
-              kind: 'select',
-              value: defaultAgentType,
-              options: AGENT_TYPE_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.labelKey) })),
-              onChange: (next) => applyDefaultAgentType(next as AgentType),
-              ariaLabel: t('settings.defaultAgentType.title'),
-              width: SELECT_WIDTH,
-            }}
-          />
         </Card>
       </div>
 

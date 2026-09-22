@@ -302,6 +302,10 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.application.split.section': 'Vue divisée',
   'settings.application.split.label': 'Activer la vue divisée',
   'settings.application.split.help': 'Affiche deux agents côte à côte sur les écrans larges',
+  'settings.application.agentDefaults.section': 'Nouveaux agents',
+  'settings.application.infoSidebar.label': 'Ouvrir le panneau d’informations sur un nouvel agent',
+  'settings.application.infoSidebar.help':
+    'Chaque agent retient ensuite si vous avez laissé son panneau ouvert ou fermé',
   'settings.application.prWatcher.section': 'Surveillance des revues de PR',
   'settings.application.prWatcher.label': 'Surveiller les revues de PR',
   'settings.application.prWatcher.help':

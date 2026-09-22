@@ -338,6 +338,12 @@ export const en = {
   'settings.application.split.section': 'Split View',
   'settings.application.split.label': 'Enable split view',
   'settings.application.split.help': 'Display two agents side by side on wide screens',
+  // The section is about what a NEW agent looks like; the switch itself is only a
+  // fallback, since each agent remembers its own panel from the moment it is toggled.
+  'settings.application.agentDefaults.section': 'New agents',
+  'settings.application.infoSidebar.label': 'Open the info panel on a new agent',
+  'settings.application.infoSidebar.help':
+    'Each agent then remembers whether you left its panel open or closed',
   'settings.application.prWatcher.section': 'PR Review Watcher',
   'settings.application.prWatcher.label': 'Watch PR reviews',
   'settings.application.prWatcher.help': 'Poll GitHub to track review status on agents’ pull requests',

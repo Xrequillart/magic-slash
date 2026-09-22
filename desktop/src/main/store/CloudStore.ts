@@ -55,7 +55,9 @@ interface AgentRow {
   // build wrote — `coder` is what those were, and fromAgentRow does not guess.
   type: string | null
   repositories: string[]
-  metadata: TerminalMetadata & { __app?: { id: string; tsCreate?: number; splitPane?: 'left' | 'right' } }
+  metadata: TerminalMetadata & {
+    __app?: { id: string; tsCreate?: number; splitPane?: 'left' | 'right'; infoSidebarOpen?: boolean }
+  }
 }
 
 /**
@@ -976,7 +978,15 @@ export class CloudStore implements Store {
       // tsCreate and splitPane, neither of which has anywhere else to live. Its
       // `id` is the one field now duplicated, and only for compatibility: a build
       // older than 20260814090000 reads the app id from here and nowhere else.
-      metadata: { ...rest, __app: { id: agent.id, tsCreate: agent.tsCreate, splitPane: agent.splitPane } },
+      metadata: {
+        ...rest,
+        __app: {
+          id: agent.id,
+          tsCreate: agent.tsCreate,
+          splitPane: agent.splitPane,
+          infoSidebarOpen: agent.infoSidebarOpen,
+        },
+      },
     }
   }
 
@@ -1016,6 +1026,9 @@ export class CloudStore implements Store {
         type: (row.type || rest.type) as TerminalMetadata['type'],
       } as TerminalMetadata,
       splitPane: app?.splitPane,
+      // Left undefined when the agent has never been decided about, which is not the
+      // same as closed: the renderer resolves undefined to the app setting.
+      infoSidebarOpen: app?.infoSidebarOpen,
     }
   }
 
