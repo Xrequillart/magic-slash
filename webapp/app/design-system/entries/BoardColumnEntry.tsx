@@ -89,7 +89,9 @@ export function BoardColumnEntry({ theme, onOpen }: { theme: DesktopTheme; onOpe
 
       <EntrySection title="Props">
         <PropsTable rows={PROPS} />
-        <Snippet>{`import { BoardColumn } from '@ds/desktop'
+        <Snippet>{`// Usually through TaskBoard, which draws four of these and owns
+// the sentinel that tells them whether they have pinned.
+import { BoardColumn } from '@ds/desktop'
 
 <BoardColumn
   title={t(title)}
@@ -100,7 +102,7 @@ export function BoardColumnEntry({ theme, onOpen }: { theme: DesktopTheme; onOpe
   headingTop={headingTop}
   pinned={pinned}
 >
-  {cards.map((card) => <TaskCard key={card.key} card={card} onSelect={onSelect} />)}
+  {cards.map((card) => <TicketCard key={card.id} {...card} />)}
 </BoardColumn>`}</Snippet>
       </EntrySection>
     </article>

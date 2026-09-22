@@ -28,6 +28,8 @@ import { NoteCardEntry } from './entries/NoteCardEntry'
 import { SkillCardEntry } from './entries/SkillCardEntry'
 import { TicketCardEntry } from './entries/TicketCardEntry'
 import { BoardColumnEntry } from './entries/BoardColumnEntry'
+import { TaskBoardEntry } from './entries/TaskBoardEntry'
+import { FilterBarEntry } from './entries/FilterBarEntry'
 import { TrackerBadgeEntry } from './entries/TrackerBadgeEntry'
 import { CopyButtonEntry } from './entries/CopyButtonEntry'
 import { CommandChipEntry } from './entries/CommandChipEntry'
@@ -181,6 +183,8 @@ const ENTRIES: Record<
   skillcard: SkillCardEntry,
   ticketcard: TicketCardEntry,
   boardcolumn: BoardColumnEntry,
+  taskboard: TaskBoardEntry,
+  filterbar: FilterBarEntry,
   trackerbadge: TrackerBadgeEntry,
   copybutton: CopyButtonEntry,
   commandchip: CommandChipEntry,

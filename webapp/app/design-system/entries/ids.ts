@@ -56,6 +56,8 @@ export type EntryId =
   | 'skillcard'
   | 'ticketcard'
   | 'boardcolumn'
+  | 'taskboard'
+  | 'filterbar'
   | 'trackerbadge'
   | 'copybutton'
   | 'commandchip'
@@ -169,6 +171,8 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   skillcard: 'SkillCard',
   ticketcard: 'TicketCard',
   boardcolumn: 'BoardColumn',
+  taskboard: 'TaskBoard',
+  filterbar: 'FilterBar',
   trackerbadge: 'TrackerBadge',
   copybutton: 'CopyButton',
   commandchip: 'CommandChip',
@@ -323,6 +327,8 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   skillcard: ['icon', 'label', 'text'],
   ticketcard: ['buttonicon', 'copybutton', 'icon', 'label', 'status', 'text', 'trackerbadge'],
   boardcolumn: ['icon', 'text'],
+  taskboard: ['boardcolumn', 'emptystate', 'filterbar', 'noticecard', 'sectionheader', 'ticketcard'],
+  filterbar: ['buttonicon', 'icon', 'input', 'label', 'loader', 'select', 'stickybar'],
   trackerbadge: ['label'],
   copybutton: ['buttonicon'],
   commandchip: ['copybutton', 'icon'],
@@ -499,6 +505,8 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   skillcard: 'One skill as a tile you can open',
   ticketcard: 'One ticket on a board, in three bands',
   boardcolumn: 'One column of a board, heading and all',
+  taskboard: 'A board of tickets, and the page around it',
+  filterbar: 'The pinned row of controls over a list',
   trackerbadge: 'Which tracker a ticket came from',
   copybutton: 'A string onto the clipboard, and the tick that says so',
   commandchip: 'A command you are meant to type',

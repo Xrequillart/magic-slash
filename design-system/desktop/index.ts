@@ -37,6 +37,15 @@ export type {
 } from './ButtonIcon'
 export { BoardColumn } from './BoardColumn'
 export type { BoardColumnProps, BoardColumnTone } from './BoardColumn'
+export { TaskBoard } from './TaskBoard'
+export type {
+  TaskBoardCard,
+  TaskBoardColumn,
+  TaskBoardNotice,
+  TaskBoardProps,
+} from './TaskBoard'
+export { FilterBar, FILTER_BAR_HEIGHT } from './FilterBar'
+export type { FilterBarControl, FilterBarProps, FilterBarSearch } from './FilterBar'
 export { BranchCard } from './BranchCard'
 export type { BranchCardProps } from './BranchCard'
 export { Card } from './Card'

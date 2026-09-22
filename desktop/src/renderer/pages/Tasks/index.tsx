@@ -27,14 +27,15 @@ import type { TaskSelection } from '../../utils/taskSelection'
 import { seedFromTarget, shouldClearSeededQuery } from '../../utils/taskSelection'
 import { readsFrom } from '../../../tracker'
 import { useT, type MessageKey } from '../../i18n'
-import { EmptyState, Loader, NoticeCard, SectionHeader } from '@ds/desktop'
+import { Loader, TaskBoard, type TaskBoardNotice } from '@ds/desktop'
 import { SweepPane } from '../../components/SweepPane'
 import { GitHubNotConnected } from './GitHubNotConnected'
 import { TaskDetailPage } from './TaskDetailPage'
-import { TaskBoard } from './TaskBoard'
+import { buildTaskColumns, taskFailureNotices } from './boardColumns'
 import { openCountLabel, sprintCountLabel } from './parts'
-import { FILTER_BAR_H, TaskFilters, type TaskFilterValue } from './TaskFilters'
+import { buildTaskFilters, type TaskFilterValue } from './TaskFilters'
 import { PICK_BAR_H, PickTicketBanner } from './PickTicketBanner'
+import { useTaskAgents } from '../../hooks/useTaskAgent'
 
 /**
  * The two views this page swaps between, ranked. `SweepPane` reads the sign of
@@ -232,47 +233,13 @@ export function TasksPage() {
   const listOffsetRef = useRef(0)
 
   /**
-   * Whether the filter bar has pinned itself to the top of the pane, which is the one
-   * thing it needs to know to draw its own bottom edge: a hairline under a bar with the
-   * board flush beneath it would be a rule across the page for no reason, and no
-   * hairline once the cards slide underneath would leave them dissolving into it.
+   * THE FILTER BAR'S OWN STUCK TEST IS GONE FROM HERE, and so is the board's.
    *
-   * A sentinel and an observer rather than a scroll handler, for `TaskDetailPage`'s
-   * reason and `FileReviewCard`'s: this is one boolean that flips twice per visit, and a
-   * `scroll` listener would remeasure a rectangle on every frame of every scroll to
-   * answer it. The sentinel is rendered where the bar's top WOULD be (see its call site
-   * below) — a stuck bar has moved, and can no longer report that position itself.
-   *
-   * The node is held in STATE rather than in a ref, which is what makes the observer
-   * re-attach on its own: the bar is unmounted with the list every time a ticket is
-   * opened and a fresh sentinel is mounted on the way back, and a ref would leave the
-   * observer watching a detached node for the rest of the session. A ref could not be
-   * read on mount either — child refs are attached before their parent's, so `paneRef`
-   * is still null at the moment a ref callback here would fire.
+   * Both were a sentinel in state, an `IntersectionObserver` and a `rootMargin` computed
+   * from whatever was pinned above — thirty lines saying twice that a band which has moved
+   * cannot report where it started. `FilterBar` and `TaskBoard` own that now; this page
+   * owes them one number, `top`, which is what is pinned above the WHOLE pane.
    */
-  const [filterSentinel, setFilterSentinel] = useState<HTMLDivElement | null>(null)
-  const [filtersStuck, setFiltersStuck] = useState(false)
-
-  useEffect(() => {
-    const pane = paneRef.current
-    // The sentinel is gone — the ticket page has replaced the list, or there is nothing
-    // to narrow. Cleared rather than left latched on, or the bar would come back wearing
-    // a border it has no business keeping.
-    if (!filterSentinel || !pane) {
-      setFiltersStuck(false)
-      return
-    }
-    // `rootMargin` shrinks the root by whatever is pinned above the bar, so the
-    // sentinel counts as gone the moment it slides under the banner rather than when it
-    // leaves the pane — without it the hairline appears `PICK_BAR_H` px late, with the
-    // first row of cards already cut in half by an edgeless band.
-    const observer = new IntersectionObserver(
-      ([entry]) => setFiltersStuck(!entry.isIntersecting),
-      { root: pane, threshold: 0, rootMargin: `-${pickAgentId ? PICK_BAR_H : 0}px 0px 0px 0px` },
-    )
-    observer.observe(filterSentinel)
-    return () => observer.disconnect()
-  }, [filterSentinel, pickAgentId])
 
   /**
    * Which tickets already have an agent, per repository, built once for the page.
@@ -646,6 +613,16 @@ export function TasksPage() {
 
   const back = useCallback(() => setSelected(null), [])
 
+  /**
+   * The board's launcher, one hook over every card on it.
+   *
+   * Here rather than in `boardColumns.ts` because that file holds no components any more
+   * and nothing to hang a hook on — and here rather than per card because a card is data
+   * now. `useTaskAgents` keeps which launches failed as a set of card ids; the ticket page
+   * next door uses the single-subject twin. See `useTaskAgent`.
+   */
+  const { startFailed, startAgent } = useTaskAgents()
+
   if (loading && !snapshot) {
     return (
       <div className="h-full flex flex-col">
@@ -718,6 +695,75 @@ export function TasksPage() {
    */
   const noMatch = narrowable && countBoard(board) === 0 && rows.every((row) => !row.error)
 
+  /**
+   * THE BANDS BETWEEN THE CONTROLS AND THE COLUMNS, in the order they are read: what is
+   * missing from the page as a whole, then what each unreadable repository has to say.
+   *
+   * The GitHub one used to sit ABOVE the filter bar and now sits under it with the rest,
+   * which is where a fact about the CONTENTS belongs: the heading names the section and
+   * the bar narrows it, and both are true whatever the read did. Past the early return
+   * above, `githubMissing` implies `hasJiraRepos` — the GitHub half is unreadable and the
+   * Jira half is not, so the page keeps rendering and says what is missing in one line
+   * rather than covering the sprint with the full panel. `info` rather than `warning`: the
+   * sprint below is perfectly readable, and nothing here is broken.
+   */
+  const notices: TaskBoardNotice[] = [
+    ...(githubMissing
+      ? [{
+        id: 'github',
+        variant: 'info' as const,
+        icon: Github,
+        children: t('tasks.github.title'),
+        hint: t('tasks.github.partialFix'),
+      }]
+      : []),
+    ...taskFailureNotices(rows, t),
+  ]
+
+  /**
+   * The sentence that stands in for the columns, when there are none to draw.
+   *
+   * TWO STATES AND NOT ONE, in the order of how much they blame. The search matching
+   * nothing is a DIFFERENT state from the four configuration hints, and the distinction
+   * matters: those send the reader to a settings field, and doing that because they
+   * mistyped a ticket id would be the page blaming its configuration for their search. The
+   * MARK is what keeps them apart — they read almost identically in words, and only one of
+   * them is the reader's own doing.
+   *
+   * A board with rows and nothing in them is NEITHER: four empty columns rather than a
+   * message, because that IS the state of its board.
+   */
+  const emptyBoard = noMatch
+    ? {
+      icon: SearchX,
+      children: t('tasks.filter.noMatch'),
+      actions: [{
+        id: 'clear',
+        // The repository is NOT cleared — it has no cleared state, and this button is
+        // about undoing a search rather than leaving the board.
+        label: t('tasks.filter.clearAll'),
+        onClick: () => setFilter(NO_FILTER),
+      }],
+    }
+    : rows.length === 0
+      // Not "no tickets": nobody asked the question, or the ones who did have no readable
+      // coordinates. Every fix is a per-repository setting on another page, which is
+      // exactly the case `EmptyState.hint` exists for: there is no button to press, so the
+      // instruction has nowhere else to go.
+      ? { icon: ListTodo, children: t(emptyState.title), hint: t(emptyState.hint) }
+      : undefined
+
+  const columns = buildTaskColumns({
+    board,
+    repoConfigs,
+    truncatedColumns,
+    picking: pickAgentId !== null,
+    startFailed,
+    onStart: startAgent,
+    onSelect: select,
+    t,
+  })
+
   return (
     // One scrolling pane holding two pages: the backlog, and the issue that
     // replaces it. The detail was a 500px column beside this list until the
@@ -783,161 +829,75 @@ export function TasksPage() {
             onBack={back}
           />
         ) : (
-          <div className="flex flex-col gap-3 pt-6">
-            {/* `SectionHeader`, which is the app's one heading — a mark, a name, how many,
-                and what you can do to the lot. This row was the eighteenth hand-spelled
-                copy of it, down to a reload button wearing `border border-line` that no
-                other control on the page wears any more.
-
-                THE COUNT MOVED to just after the name, where the component puts every
-                count: "Tickets, showing 50 of 214" is one phrase, and reading it used to
-                mean crossing the width of the modal. It is a STRING rather than a number
-                because only this page knows whether its own figure is a total or a cap —
-                see `SectionHeader.count`.
-
-                "showing 50 of 214" wins when there IS a second number: it is strictly
-                more than "showing the first 50", and only the GitHub half can ever supply
-                it. The sprint form is the fallback for a board whose Jira half was cut
-                short.
-
-                `spacing="none"` because the column around it already spaces its children
-                with a `gap` — and that is true again now. It was not for one commit: the
-                filter bar carried `-my-3` to swallow the gap and started flush against
-                this heading, whose reload button hangs 4px below the row `SectionHeader`
-                pins to `h-5`. Those 4px were painted over in the page's own colour, which
-                reads as a button cropped along the bottom. The bar no longer swallows
-                anything, so the column's own 12px is the clearance. */}
-            <SectionHeader
-              icon={ListTodo}
-              title={t('tasks.section')}
-              {...(rows.length > 0
+          // THE WHOLE PAGE IS ONE COMPONENT: `TaskBoard` in `@ds/desktop` draws the
+          // heading, the pinned bar, the bands and the columns, and the public site draws
+          // the very same file. What is left here is data — see `boardColumns.ts` for the
+          // vocabulary and `TaskFilters.ts` for which controls the bar carries.
+          //
+          // The TOP inset is the page's own: `SweepPane` carries the sides, and the layer
+          // on its way out keeps the same one as the layer arriving.
+          <div className="pt-6">
+            <TaskBoard
+              heading={{
+                icon: ListTodo,
+                title: t('tasks.section'),
+                // A STRING rather than a number because only this page knows whether its
+                // own figure is a total or a cap — see `SectionHeader.count`. "showing 50
+                // of 214" wins when there IS a second number: it is strictly more than
+                // "showing the first 50", and only the GitHub half can ever supply it. The
+                // sprint form is the fallback for a board whose Jira half was cut short.
+                ...(rows.length > 0
+                  ? {
+                    count: totalOpen > total
+                      ? openCountLabel(total, t, totalOpen)
+                      : sprintCountLabel(total, t, truncatedSprint),
+                  }
+                  : {}),
+                // `busy` rather than `disabled` plus a hand-spun glyph: it spins the mark,
+                // blocks the second press and keeps the button at full strength — a dimmed
+                // spinner says "unavailable" about a control that is in fact working.
+                actions: [{
+                  id: 'reload',
+                  label: t('tasks.reload'),
+                  icon: RefreshCw,
+                  busy: loading,
+                  onClick: reload,
+                }],
+              }}
+              // Only once there is something to work with. Four controls over a page that
+              // read nothing are four things to read before finding out there is nothing
+              // there — and the repository picker would have nothing to offer. See
+              // `narrowable` for why an empty board can still qualify.
+              {...(narrowable
                 ? {
-                  count: totalOpen > total
-                    ? openCountLabel(total, t, totalOpen)
-                    : sprintCountLabel(total, t, truncatedSprint),
+                  filters: buildTaskFilters({
+                    value: filterValue,
+                    repos: filterRepos,
+                    epics: filterEpics,
+                    hasAgents,
+                    ...(sprintName ? { sprintName } : {}),
+                    // What the box is doing beyond narrowing what is on screen. Only ever
+                    // true on a board that reported itself short — see `useSprintSearch` —
+                    // so an ordinary board's box looks exactly as it always has.
+                    searching: sprintSearch.loading,
+                    searchFailed: sprintSearch.failed,
+                    searchesSprint: truncatedColumns.size > 0,
+                    // The page's own 24px inset, spelled as a full bleed: an opaque band
+                    // inset by it would let the cards slide past either side of it.
+                    bleed: '-mx-6 px-6',
+                    t,
+                    onChange: changeFilter,
+                  }),
                 }
                 : {})}
-              // `busy` rather than `disabled` plus a hand-spun glyph: it spins the mark,
-              // blocks the second press and keeps the button at full strength — a dimmed
-              // spinner says "unavailable" about a control that is in fact working.
-              actions={[{
-                id: 'reload',
-                label: t('tasks.reload'),
-                icon: RefreshCw,
-                busy: loading,
-                onClick: reload,
-              }]}
-              spacing="none"
+              notices={notices}
+              {...(emptyBoard ? { empty: emptyBoard } : {})}
+              columns={columns}
+              // What is pinned above the whole pane. The board works the rest out: the bar
+              // pins here, the column headings at this plus the bar's own height.
+              top={pickAgentId ? PICK_BAR_H : 0}
+              paneRef={paneRef}
             />
-
-            {/* Past the early return above, `githubMissing` implies `hasJiraRepos`. */}
-            {githubMissing && (
-              // The GitHub half is unreadable and the Jira half is not, so the page
-              // keeps rendering and says what is missing in one line rather than
-              // covering the sprint with the full panel.
-              //
-              // `NoticeCard` WITH NO ROWS, which is the shape that component draws for
-              // "a fact with nothing to enumerate": the band alone, on its own plate. The
-              // bordered box this was is the same drawing minus the border and minus a
-              // second spelling of its two type sizes. `info` rather than `warning`: the
-              // sprint below is perfectly readable, and nothing here is broken.
-              <NoticeCard variant="info" icon={Github} hint={t('tasks.github.partialFix')}>
-                {t('tasks.github.title')}
-              </NoticeCard>
-            )}
-
-            {/* Only once there is something to work with. Four controls over a page
-                that read nothing are four things to read before finding out there is
-                nothing there — and the repository picker would have nothing to offer.
-                See `narrowable` for why an empty board can still qualify. */}
-            {narrowable && (
-              <>
-                {/* Zero height, nothing to see: it marks where the top of the bar WOULD
-                    be, which is the one thing a bar that has pinned itself there can no
-                    longer say about itself.
-
-                    `-mb-3` AND NOT `-mt-3`, which is the half that had to move when the
-                    bar stopped carrying negative margins of its own. The sentinel has to
-                    sit EXACTLY on the bar's top edge or the shadow lifts early — it
-                    cancelled the gap before itself while the bar cancelled the one after,
-                    and with the bar's gone it was marking a point 12px too high. Cancelling
-                    the gap after itself puts it back on the edge, and the gap before it is
-                    the air under the heading.
-
-                    There is no CSS for "is this stuck" on the Chromium this app ships:
-                    `:stuck` and scroll-state queries both landed after it. */}
-                <div ref={setFilterSentinel} className="h-0 -mb-3" aria-hidden />
-                <TaskFilters
-                  value={filterValue}
-                  repos={filterRepos}
-                  epics={filterEpics}
-                  hasAgents={hasAgents}
-                  stuck={filtersStuck}
-                  topOffset={pickAgentId ? PICK_BAR_H : 0}
-                  {...(sprintName ? { sprintName } : {})}
-                  // What the box is doing beyond narrowing what is on screen. Only ever
-                  // true on a board that reported itself short — see `useSprintSearch` —
-                  // so an ordinary board's box looks exactly as it always has.
-                  searching={sprintSearch.loading}
-                  searchFailed={sprintSearch.failed}
-                  searchesSprint={truncatedColumns.size > 0}
-                  onChange={changeFilter}
-                />
-              </>
-            )}
-
-            {/* Three outcomes, in the order of how much they blame. The search matching
-                nothing is a DIFFERENT state from the four configuration hints, and the
-                distinction matters: those send the reader to a settings field, and doing
-                that because they mistyped a ticket id would be the page blaming its
-                configuration for their search. */}
-            {noMatch ? (
-              // BOTH EMPTY STATES ARE `EmptyState` NOW, and the mark is what keeps them
-              // apart: they are two plates one under the other in the same code, they read
-              // almost identically in words, and only this one is the reader's own doing.
-              // A magnifying glass with a line through it settles that before the sentence
-              // is read. The plate lost its border with everything else on this page.
-              <EmptyState
-                icon={SearchX}
-                actions={[{
-                  id: 'clear',
-                  // The repository is NOT cleared — it has no cleared state, and this
-                  // button is about undoing a search rather than leaving the board.
-                  label: t('tasks.filter.clearAll'),
-                  onClick: () => setFilter(NO_FILTER),
-                }]}
-              >
-                {t('tasks.filter.noMatch')}
-              </EmptyState>
-            ) : rows.length === 0 ? (
-              // Not "no tickets": nobody asked the question, or the ones who did have no
-              // readable coordinates — and with two trackers that is four situations, not
-              // two. Every fix is a per-repository setting on another page, which is
-              // exactly the case `EmptyState.hint` exists for: there is no button to press,
-              // so the instruction has nowhere else to go.
-              <EmptyState icon={ListTodo} hint={t(emptyState.hint)}>
-                {t(emptyState.title)}
-              </EmptyState>
-            ) : (
-              // The board draws its four columns whatever is in them — an empty column
-              // says so itself, and a repository with nothing open at all is four empty
-              // columns rather than a message, because that IS the state of its board.
-              <TaskBoard
-                board={board}
-                rows={rows}
-                repoConfigs={repoConfigs}
-                truncatedColumns={truncatedColumns}
-                // Where the column headings pin: under the filter bar when there is one,
-                // at the top of the pane when there is not. Both are sticky and both are
-                // opaque, so the second has to be told how tall the first is.
-                headingTop={(pickAgentId ? PICK_BAR_H : 0) + (narrowable ? FILTER_BAR_H : 0)}
-                // For the headings' own stuck test, which decides their top corners —
-                // the same question the filter bar asks one level up, and the same
-                // answer: nothing can report a position it has already moved from.
-                paneRef={paneRef}
-                onSelect={select}
-              />
-            )}
           </div>
         )}
       </SweepPane>
