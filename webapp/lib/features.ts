@@ -977,11 +977,10 @@ export const FEATURE_FAMILIES: readonly FeatureFamily[] = [
         icon: 'Plug',
         title: 'site.features.machineSetupTitle',
         description: 'site.features.machineSetupDesc',
-        // `app-icon-desktop.png` — the icon that actually ships on the dock today, and
-        // the one file in `public/img/` that is it. `app-icon.png` is the OLD mascot on
-        // a white field (the `/admin` device panel still draws it, and still calls it
-        // "the REAL icon", which it has not been for some time), and `mascot.png` is the
-        // bare rabbit with no ground.
+        // `app-icon-desktop.png` — the icon that actually ships on the dock, and now
+        // the only one in `public/img/`. It used to share the directory with
+        // `app-icon.png` (the old mascot on a white field) and `mascot.png` (the bare
+        // rabbit); both are gone, so there is nothing left to pick wrong.
         //
         // It brings its own square, so it bleeds to the tile's edge like Jira's.
         picto: '/img/app-icon-desktop.png',

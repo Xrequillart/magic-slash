@@ -28,15 +28,12 @@ import { BAND_TITLE, HomeSection } from './Shell'
  * hero above is type only. It is requested twice and downloaded once: the glow behind it
  * is the same file blurred, so the browser serves the second `img` from cache.
  *
- * It is `app-icon-desktop.png`, a NEW file, and the reason is worth recording: the tree
- * already had `public/img/app-icon.png`, whose call site in the `/admin` device panel
- * describes it as "the desktop app's REAL icon, resized" — and it is not, any more. That
- * one is the old ninja mascot on a square white field, which on this dark sheet reads as
- * a white box rather than as an app icon. `desktop/resources/icon.png` is what actually
- * ships on the dock today: the leaping hare on a pale blue field. Resized to 256px and
- * added beside the old one rather than over it, because overwriting `app-icon.png` would
- * change what `/admin` renders and that surface is out of this story's scope. The stale
- * asset is worth its own ticket.
+ * It is `app-icon-desktop.png`, resized to 256px from `desktop/resources/icon.png`, the
+ * file electron-builder ships: the leaping hare on a pale blue field. It landed beside a
+ * then-existing `public/img/app-icon.png` rather than over it, because that one was the
+ * old ninja mascot on a square white field and the `/admin` device panel was still
+ * drawing it. Both have since gone, `/admin` reads this file too, and `public/img/` now
+ * holds one app icon rather than two of which only one was true.
  *
  * The corners are rounded HERE, not in the artwork — the source is a hard square, and a
  * hard square on a dark sheet reads as a cropped screenshot rather than as an app icon.

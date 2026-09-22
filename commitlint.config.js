@@ -36,7 +36,6 @@ module.exports = {
         'ci',
         'readme',
         'landing',
-        'slides',
         'community',
         'desktop',
       ],

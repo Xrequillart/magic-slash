@@ -494,20 +494,19 @@ export default function AdminUserRecord() {
                   single setting. */}
               <Panel label="Application">
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-4 border-b border-regie-rule-soft px-6 py-7">
-                  {/* The desktop app's REAL icon — `public/img/app-icon.png`, resized
-                      from `desktop/resources/icon.png`, the file electron-builder ships
-                      as the app icon. Not the webapp's favicon, which is a different
-                      drawing: this is the icon the person is looking at in their dock,
-                      and the version beside it is that app's build.
-                      A copy because the webapp cannot read outside its own public dir —
-                      at 256px, enough for a 44px slot on a 3x screen and 46 kB instead
-                      of the 434 kB original.
+                  {/* The desktop app's icon — `public/img/app-icon-desktop.png`, the
+                      one file in `public/img/` that is what ships on the dock today.
+                      This panel used to draw `app-icon.png` and call it "the REAL
+                      icon", which it had not been since the mascot was dropped: it was
+                      the old rabbit on a white field, so an operator checking a support
+                      ticket saw an app their user has never seen. That file is gone.
+                      Not the webapp's favicon either, which is a different drawing.
                       Decorative alt: the panel is captioned "Application" and the
                       version is right there, so a screen reader gains nothing from
                       "logo Magic Slash" between them. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/img/app-icon.png"
+                    src="/img/app-icon-desktop.png"
                     alt=""
                     className="h-11 w-11 shrink-0 rounded-xl border border-regie-rule-soft shadow-sm shadow-brand/[0.06]"
                   />

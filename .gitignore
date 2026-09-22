@@ -65,8 +65,6 @@ temp/
 # Claude Code
 .claude/settings.local.json
 
-# Slides (local only)
-slides/
 
 # Misc
 *.bak
