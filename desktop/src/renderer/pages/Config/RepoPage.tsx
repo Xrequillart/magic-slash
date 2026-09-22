@@ -249,6 +249,13 @@ const TEMPLATE_CHECKBOX_LABEL: Record<(typeof TEMPLATE_CHECKBOX_MODES)[number], 
   all: 'repo.pr.templateCheckboxesAll',
 }
 
+const BODY_VERBOSITY_MODES = ['concise', 'normal', 'detailed'] as const
+const BODY_VERBOSITY_LABEL: Record<(typeof BODY_VERBOSITY_MODES)[number], MessageKey> = {
+  concise: 'repo.pr.bodyVerbosityConcise',
+  normal: 'repo.pr.bodyVerbosityNormal',
+  detailed: 'repo.pr.bodyVerbosityDetailed',
+}
+
 const RESOLVE_COMMIT_MODES = ['new', 'amend', 'ask'] as const
 const RESOLVE_COMMIT_MODE_LABEL: Record<(typeof RESOLVE_COMMIT_MODES)[number], MessageKey> = {
   new: 'repo.resolve.modeNew',
@@ -772,6 +779,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
   // that is not a mode does reach here, and it reads as `never` like everywhere else.
   const templateCheckboxesVal =
     TEMPLATE_CHECKBOX_MODES.find((mode) => mode === prSettings.templateCheckboxes) ?? 'never'
+  // Matched the same way, and for the same reasons, as the line above.
+  const bodyVerbosityVal =
+    BODY_VERBOSITY_MODES.find((mode) => mode === prSettings.bodyVerbosity) ?? 'concise'
   const commentOnPRVal = issuesSettings.commentOnPR !== undefined ? issuesSettings.commentOnPR : true
   const planTrackerVal = planSettings.tracker || 'ask'
   // Resolved, not read: both keys fall back to the legacy `issues.jiraUrl` /
@@ -1653,6 +1663,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             commentOnPR: commentOnPRVal,
             watchCI: watchCIVal,
             templateCheckboxes: templateCheckboxesVal,
+            bodyVerbosity: bodyVerbosityVal,
           })}
         />
         {/* Pull request — what goes INTO it, then what happens once it is open. Those
@@ -1661,6 +1672,16 @@ export function RepoPage({ repoName }: RepoPageProps) {
         <SettingsCard
           title={t('repo.pr.groupDescription')}
           rows={[
+            // First row of the card because it governs the body itself, where the rows
+            // under it only add things to that body.
+            {
+              id: 'bodyVerbosity',
+              label: t('repo.pr.bodyVerbosity'),
+              hint: t('repo.pr.bodyVerbosityHelp'),
+              disabled: readOnly,
+              control: enumControl(t, bodyVerbosityVal, BODY_VERBOSITY_MODES, BODY_VERBOSITY_LABEL,
+                (next) => handlePRSettingChange('bodyVerbosity', next), t('repo.pr.bodyVerbosity')),
+            },
             switchRow('autoLink', t('repo.pr.autoLink'), t('repo.pr.autoLinkHelp'),
               autoLinkTicketsVal, (next) => handlePRSettingChange('autoLinkTickets', next)),
             {

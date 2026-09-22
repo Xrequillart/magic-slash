@@ -691,6 +691,10 @@ export const en = {
   // line saying so would be noise on every repository that never touched the setting.
   'repo.pr.tail.checkboxesType': 'ticks the type of change in the PR template',
   'repo.pr.tail.checkboxesAll': 'ticks the PR template boxes it considers verified',
+  // Same rule as the two above: 'concise' is the default, and a line saying so would
+  // be noise on every repository that never opened the setting.
+  'repo.pr.tail.bodyNormal': 'writes a longer description, with the reasoning on each bullet',
+  'repo.pr.tail.bodyDetailed': 'writes a full description, with no length cap',
   'repo.pr.languageHelp': 'Language used for pull request titles and descriptions',
   'repo.pr.autoLink': 'Auto-link Tickets',
   'repo.pr.autoLinkHelp': 'Add Jira/GitHub ticket links in PR description',
@@ -717,6 +721,13 @@ export const en = {
   'repo.pr.templateCheckboxesNever': 'Never tick',
   'repo.pr.templateCheckboxesType': 'Type of change only',
   'repo.pr.templateCheckboxesAll': 'Tick what is verified',
+  // How much goes INTO the body, as opposed to which skeleton it follows. It applies
+  // to the repository's own template just as much as to the built-in one.
+  'repo.pr.bodyVerbosity': 'PR description length',
+  'repo.pr.bodyVerbosityHelp': 'How much /magic:pr writes in the pull request body. Concise keeps it to one screen of bullets a reviewer reads in a minute',
+  'repo.pr.bodyVerbosityConcise': 'Concise',
+  'repo.pr.bodyVerbosityNormal': 'Normal',
+  'repo.pr.bodyVerbosityDetailed': 'Detailed',
 
   'repo.issues.commentLang': 'Ticket Comment Language',
   'repo.issues.commentLangHelp': 'Language of the comments /magic:pr and /magic:done post on the ticket',

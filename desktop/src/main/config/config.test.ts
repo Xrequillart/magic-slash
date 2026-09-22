@@ -443,6 +443,43 @@ describe('updateRepositoryPullRequestSettings — templateCheckboxes', () => {
   })
 })
 
+describe('updateRepositoryPullRequestSettings — bodyVerbosity', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  it('persists each of the three levels', () => {
+    expect(updateRepositoryPullRequestSettings('api', { bodyVerbosity: 'detailed' })
+      .repositories.api.pullRequest?.bodyVerbosity).toBe('detailed')
+    expect(readConfig().repositories.api.pullRequest?.bodyVerbosity).toBe('detailed')
+
+    updateRepositoryPullRequestSettings('api', { bodyVerbosity: 'normal' })
+    expect(readConfig().repositories.api.pullRequest?.bodyVerbosity).toBe('normal')
+
+    updateRepositoryPullRequestSettings('api', { bodyVerbosity: 'concise' })
+    expect(readConfig().repositories.api.pullRequest?.bodyVerbosity).toBe('concise')
+  })
+
+  it('ignores a value outside the enum, rather than storing it', () => {
+    updateRepositoryPullRequestSettings('api', { bodyVerbosity: 'verbose' })
+    expect(readConfig().repositories.api.pullRequest?.bodyVerbosity).toBeUndefined()
+  })
+
+  // Same rule as templateCheckboxes: the absent key IS the default, so that an
+  // org-shared value can still reach a repo that never opened the setting.
+  it('never materialises the default on a repo that saved another setting', () => {
+    updateRepositoryPullRequestSettings('api', { templateCheckboxes: 'type' })
+    const pullRequest = readConfig().repositories.api.pullRequest
+    expect(pullRequest).toEqual({ templateCheckboxes: 'type' })
+    expect('bodyVerbosity' in (pullRequest ?? {})).toBe(false)
+  })
+})
+
 describe('updateRepositoryLanguages — ticket', () => {
   beforeEach(async () => {
     resetConfigCache()

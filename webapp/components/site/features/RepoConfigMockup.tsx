@@ -437,8 +437,8 @@ export function CommitConfigMockup() {
 /**
  * What the PR tab configures, as the list under the drawing names it — five of them, each
  * a row in the drawing above. A curated subset, not an inventory: the tab carries more
- * settings than a legend can hold, so `testAccountsSource` and `templateCheckboxes` are
- * deliberately absent. Every entry that IS here is checked against `RepoPage.tsx`'s `pr`
+ * settings than a legend can hold, so `testAccountsSource`, `templateCheckboxes` and
+ * `bodyVerbosity` are deliberately absent. Every entry that IS here is checked against `RepoPage.tsx`'s `pr`
  * tab and against `skills/magic-pr/SKILL.md`, which is what reads these settings.
  */
 const PR_FEATURES: readonly {

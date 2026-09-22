@@ -658,6 +658,8 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.tail.accountsSource': 'comptes lus depuis {source}',
   'repo.pr.tail.checkboxesType': 'coche le type de changement dans le modèle de PR',
   'repo.pr.tail.checkboxesAll': 'coche les cases du modèle de PR qu’il estime vérifiées',
+  'repo.pr.tail.bodyNormal': 'écrit une description plus longue, avec le raisonnement sur chaque puce',
+  'repo.pr.tail.bodyDetailed': 'écrit une description complète, sans limite de longueur',
   'repo.pr.languageHelp': 'Langue des titres et descriptions de pull request',
   'repo.pr.autoLink': 'Lier automatiquement les tickets',
   'repo.pr.autoLinkHelp': 'Ajouter les liens des tickets Jira/GitHub dans la description de la PR',
@@ -686,6 +688,12 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.templateCheckboxesNever': 'Ne jamais cocher',
   'repo.pr.templateCheckboxesType': 'Type de changement uniquement',
   'repo.pr.templateCheckboxesAll': 'Cocher ce qui est vérifié',
+  'repo.pr.bodyVerbosity': 'Longueur de la description de PR',
+  'repo.pr.bodyVerbosityHelp':
+    'Ce que /magic:pr écrit dans le corps de la pull request. « Concise » tient sur un écran de puces, lu en une minute',
+  'repo.pr.bodyVerbosityConcise': 'Concise',
+  'repo.pr.bodyVerbosityNormal': 'Normale',
+  'repo.pr.bodyVerbosityDetailed': 'Détaillée',
 
   'repo.issues.commentLang': 'Langue des commentaires de ticket',
   'repo.issues.commentLangHelp': 'Langue des commentaires que /magic:pr et /magic:done publient sur le ticket',

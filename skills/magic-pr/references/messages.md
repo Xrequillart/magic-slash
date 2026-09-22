@@ -309,59 +309,51 @@ Créer cette PR ? (O/n/edit)
 ## MSG_PR_TEMPLATE_EN
 
 > Used only if no project template exists. Language: `pullRequest: "en"` or absent.
+> Every bracketed block is an instruction to you, never text to ship. The section caps
+> live in Step 6.1 and apply to this template and to a project one alike.
 
 ```markdown
 ## Summary
 
-[Concise summary of changes in 2-3 sentences]
+[1-2 sentences: what this changes, and why it was worth doing. Not a retelling of the diff.]
 
 ## Changes
 
-[List of commits with their messages]
+[3-7 bullets, one line each, grouped by intent — NOT one bullet per commit, since the commits are already a tab on this PR. Each bullet is a bold two-or-three-word lead-in, then one sentence, plus a short "why" clause only where the change does not explain itself. No sub-bullets, no paragraph under a bullet. Shape:
+- **The setting.** `pullRequest.bodyVerbosity` takes `concise`, `normal` or `detailed`, because one length never fits every team.]
 
 ## How to test
 
-[Write concrete MANUAL test scenarios from the user's point of view, grounded in the actual diff from Step 4.1 (the user-visible surfaces and test environment identified there):
-- If setup is needed, start with a single prerequisites line (env vars, seed data, a service to run).
-  - Test account — write a line about accounts ONLY if `pullRequest.testAccounts` is `reference` or `inline`. If the mode is `off` (the default), write NOTHING about accounts here: no line, no mention, no placeholder, no "TBD".
-    - `reference` shape: point at the documented source and name the role, never a secret — e.g. "Test account: documented in `TESTING.md` ("Test accounts") — role: admin".
-    - `inline` shape: the identifier and password exactly as the source documents them, keeping the source path — e.g. "Test account: `admin@acme.test` / `Passw0rd!` (role: admin, source: `TESTING.md`)".
-    - Nothing resolved, mode still `reference` or `inline`: say so in exactly one line — "No test account documented for this project" — and write no credential of any kind.
-    - Never invent, complete or guess a credential. See `references/test-accounts.md`.
-- Then list 2-5 numbered actions. Each step pairs a concrete action (open a URL/page, click a UI element, run a CLI command, call an endpoint) with its observable expected result — action → expected result.
-- Write every **web route or API path** a step asks the reviewer to open as inline code with a leading slash — `/admin/dashboard`, `/api/users` — never as a bare word, never as a full URL. Step 7.4.2.5 turns exactly those into clickable links against this PR's preview deployment once one is found (`[/admin/dashboard](https://<preview-host>/admin/dashboard)`); a route written any other way stays a plain path forever. Never write a **file** path this way (`SKILL.md`, `desktop/src/main/`, `/Users/…`) — those are not routes and are never linked.
-- Do NOT write "run the automated tests" (npm test, etc.) as the only instruction. A single automated-test line is allowed ONLY as an optional last line AFTER the manual steps.
-- If the PR has no manually testable surface (docs-only, CI, pure refactor), do NOT invent a scenario: state it plainly instead, e.g. "No manual test surface — docs-only change; verify rendering / links".
-Every step must be specific to the actual changes — no generic placeholders, and no invented test account.]
+[A single prerequisites line when setup is needed (env vars, seed data, a service to run), then 2-5 numbered steps grounded in the diff read at Step 4.1. One line each, pairing a concrete action with its observable result — action → expected result.
+- Write every **web route or API path** as inline code with a leading slash — `/admin/dashboard`, `/api/users` — never as a bare word, never as a full URL: Step 7.4.2.5 turns exactly those into clickable links against this PR's preview deployment. Never write a **file** path that way (`SKILL.md`, `desktop/src/main/`); those are not routes and are never linked.
+- Test account: write a line about accounts ONLY if `pullRequest.testAccounts` is `reference` or `inline`, in the shape Step 6.1.1 and `references/test-accounts.md` define. At `off`, the default, write nothing about accounts: no line, no placeholder, no "TBD". Never invent, complete or guess a credential.
+- Never "run the automated tests" as the only instruction. One automated-test line is allowed as an optional last line, after the manual steps.
+- No manually testable surface (docs-only, CI, pure refactor)? Say so in one line instead of inventing a scenario, e.g. "No manual test surface — docs-only change; verify rendering / links".]
 ```
 
 ## MSG_PR_TEMPLATE_FR
 
 > Used only if no project template exists. Language: `pullRequest: "fr"`.
+> Same contract as the EN template: the bracketed blocks are instructions, and the
+> section caps live in Step 6.1.
 
 ```markdown
 ## Résumé
 
-[Résumé concis des changements en 2-3 phrases]
+[1 à 2 phrases : ce que ça change, et pourquoi ça valait le coup. Pas une reformulation du diff.]
 
 ## Changements
 
-[Liste des commits avec leurs messages]
+[3 à 7 bullets, une ligne chacun, regroupés par intention — PAS un bullet par commit, la liste des commits est déjà un onglet de cette PR. Chaque bullet : une amorce en gras de deux ou trois mots, puis une phrase, plus une courte incise « pourquoi » uniquement là où le changement ne se comprend pas seul. Pas de sous-bullets, pas de paragraphe sous un bullet. Forme :
+- **Le réglage.** `pullRequest.bodyVerbosity` accepte `concise`, `normal` ou `detailed`, parce qu'une seule longueur ne convient jamais à toutes les équipes.]
 
 ## Comment tester
 
-[Rédiger des scénarios de test MANUELS concrets du point de vue de l'utilisateur, ancrés dans le diff réel du Step 4.1 (les surfaces visibles par l'utilisateur et l'environnement de test identifiés à cette étape) :
-- Si une préparation est nécessaire, commencer par une seule ligne de prérequis (variables d'environnement, données de départ, un service à lancer).
-  - Compte de test — n'écrire une ligne au sujet des comptes QUE si `pullRequest.testAccounts` vaut `reference` ou `inline`. Si le mode est `off` (la valeur par défaut), n'écrire RIEN au sujet des comptes ici : aucune ligne, aucune mention, aucun placeholder, aucun « à définir ».
-    - Forme `reference` : pointer vers la source documentée et nommer le rôle, jamais un secret — ex. « Compte de test : documenté dans `TESTING.md` (« Comptes de test ») — rôle : admin ».
-    - Forme `inline` : l'identifiant et le mot de passe exactement tels que la source les documente, en conservant le chemin de la source — ex. « Compte de test : `admin@acme.test` / `Passw0rd!` (rôle : admin, source : `TESTING.md`) ».
-    - Rien de résolu, alors que le mode vaut `reference` ou `inline` : le dire en une seule ligne — « Aucun compte de test documenté pour ce projet » — et n'écrire aucun identifiant.
-    - Ne jamais inventer, compléter ni deviner un identifiant. Voir `references/test-accounts.md`.
-- Puis lister 2 à 5 actions numérotées. Chaque étape associe une action concrète (ouvrir une URL/page, cliquer sur un élément d'UI, lancer une commande CLI, appeler un endpoint) à son résultat attendu observable — action → résultat attendu.
-- Écrire chaque **route web ou chemin d'API** qu'une étape demande d'ouvrir en code inline avec un slash initial — `/admin/dashboard`, `/api/users` — jamais en toutes lettres, jamais en URL complète. Le Step 7.4.2.5 transforme exactement celles-là en liens cliquables vers le déploiement de preview de cette PR dès qu'il en trouve un (`[/admin/dashboard](https://<hôte-de-preview>/admin/dashboard)`) ; une route écrite autrement restera un chemin nu pour toujours. Ne jamais écrire un chemin de **fichier** sous cette forme (`SKILL.md`, `desktop/src/main/`, `/Users/…`) — ce ne sont pas des routes et ils ne sont jamais transformés en liens.
-- Ne PAS écrire « lancer les tests automatisés » (npm test, etc.) comme seule instruction. Une unique ligne de tests automatisés n'est autorisée QU'EN dernière ligne optionnelle, APRÈS les étapes manuelles.
-- Si la PR n'a aucune surface testable manuellement (docs uniquement, CI, refactoring pur), ne PAS inventer de scénario : le dire clairement à la place, ex. « Aucune surface de test manuel — changement docs uniquement ; vérifier le rendu / les liens ».
-Chaque étape doit être spécifique aux changements réels — pas de placeholders génériques, et aucun compte de test inventé.]
+[Une seule ligne de prérequis si une préparation est nécessaire (variables d'environnement, données de départ, un service à lancer), puis 2 à 5 étapes numérotées ancrées dans le diff lu au Step 4.1. Une ligne chacune, associant une action concrète à son résultat observable — action → résultat attendu.
+- Écrire chaque **route web ou chemin d'API** en code inline avec un slash initial — `/admin/dashboard`, `/api/users` — jamais en toutes lettres, jamais en URL complète : le Step 7.4.2.5 transforme exactement celles-là en liens cliquables vers le déploiement de preview de cette PR. Ne jamais écrire un chemin de **fichier** sous cette forme (`SKILL.md`, `desktop/src/main/`) ; ce ne sont pas des routes et ils ne sont jamais transformés en liens.
+- Compte de test : n'écrire une ligne au sujet des comptes QUE si `pullRequest.testAccounts` vaut `reference` ou `inline`, dans la forme définie par le Step 6.1.1 et `references/test-accounts.md`. Si le mode vaut `off`, la valeur par défaut, n'écrire RIEN au sujet des comptes : aucune ligne, aucun placeholder, aucun « à définir ». Ne jamais inventer, compléter ni deviner un identifiant.
+- Ne PAS écrire « lancer les tests automatisés » comme seule instruction. Une unique ligne de tests automatisés est autorisée en dernière ligne optionnelle, après les étapes manuelles.
+- Aucune surface testable manuellement (docs uniquement, CI, refactoring pur) ? Le dire en une ligne au lieu d'inventer un scénario, ex. « Aucune surface de test manuel — changement docs uniquement ; vérifier le rendu / les liens ».]
 ```
 
 ## MSG_TEST_ACCOUNTS_NOT_FOUND

@@ -221,6 +221,10 @@
             "templateCheckboxes": {
               "type": "string",
               "enum": ["never", "type", "all"]
+            },
+            "bodyVerbosity": {
+              "type": "string",
+              "enum": ["concise", "normal", "detailed"]
             }
           },
           "additionalProperties": false,

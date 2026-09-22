@@ -761,6 +761,8 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.tail.accountsSource': 'comptes lus depuis {source}',
   'repo.pr.tail.checkboxesType': 'coche le type de changement dans le modèle de PR',
   'repo.pr.tail.checkboxesAll': 'coche les cases du modèle de PR qu’il estime vérifiées',
+  'repo.pr.tail.bodyNormal': 'écrit une description plus longue, avec le raisonnement sur chaque puce',
+  'repo.pr.tail.bodyDetailed': 'écrit une description complète, sans limite de longueur',
   'repo.pr.languageHelp': 'Langue des titres et descriptions de pull request',
   'repo.pr.autoLink': 'Lier automatiquement les tickets',
   'repo.pr.autoLinkHelp':
@@ -791,6 +793,15 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.templateCheckboxesTypeHelp': 'Une seule case, dans le groupe de catégorisation',
   'repo.pr.templateCheckboxesAll': 'Cocher ce qui est vérifié',
   'repo.pr.templateCheckboxesAllHelp': 'Toutes les cases que l’agent estime avoir vérifiées',
+  'repo.pr.bodyVerbosity': 'Longueur de la description de PR',
+  'repo.pr.bodyVerbosityHelp':
+    'Ce que /magic:pr écrit dans le corps de la pull request. « Concise » tient sur un écran de puces, lu en une minute.',
+  'repo.pr.bodyVerbosityConcise': 'Concise',
+  'repo.pr.bodyVerbosityConciseHelp': 'Un écran de puces courtes, plafonné',
+  'repo.pr.bodyVerbosityNormal': 'Normale',
+  'repo.pr.bodyVerbosityNormalHelp': 'Les puces, plus le raisonnement derrière',
+  'repo.pr.bodyVerbosityDetailed': 'Détaillée',
+  'repo.pr.bodyVerbosityDetailedHelp': 'Le compte rendu complet, sans limite de longueur',
   'repo.pr.template': 'Modèle de PR',
   'repo.pr.templateHelp':
     'Modifié dans l’application desktop — le modèle est un fichier du dépôt (.github/pull_request_template.md), pas un réglage.',

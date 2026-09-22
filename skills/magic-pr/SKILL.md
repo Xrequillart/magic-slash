@@ -100,6 +100,7 @@ Use `AskUserQuestion` with the text from **`MSG_BRANCH_ASK`**.
 | Test accounts        | `.repositories.<name>.pullRequest.testAccounts`       | `'off'` | Test-account mode: `off` / `reference` / `inline` |
 | Test accounts source | `.repositories.<name>.pullRequest.testAccountsSource` | `''`    | Explicit source file path or project-skill name   |
 | Template checkboxes  | `.repositories.<name>.pullRequest.templateCheckboxes` | `'never'` | Which boxes of a project PR template may be ticked: `never` / `type` / `all` (Step 6.1) |
+| Body verbosity       | `.repositories.<name>.pullRequest.bodyVerbosity`      | `'concise'` | How long the PR body may be: `concise` / `normal` / `detailed` (Step 6.1) |
 
 ### Issues parameters
 
@@ -372,7 +373,7 @@ Check if a PR template exists in the project:
 cat .github/PULL_REQUEST_TEMPLATE.md 2>/dev/null || cat .github/pull_request_template.md 2>/dev/null || cat docs/pull_request_template.md 2>/dev/null || echo ""
 ```
 
-If a template exists, you must **strictly follow it** and fill in its sections. For any section related to testing (e.g., "Testing", "How to test", "Test Steps", "Comment tester", "Vérification"), you must **analyze the diff from Step 4.1** to fill it with concrete, specific testing steps based on the actual code changes. Do NOT use generic placeholders. The same rules as the default template apply: write numbered manual scenarios from the user's point of view (each pairing an action with its observable expected result), never "run the automated tests" as the sole content, and — if the PR has no manually testable surface (docs-only, CI, pure refactor) — state that plainly instead of inventing a scenario.
+If a template exists, you must **strictly follow it** and fill in its sections — at the length Step 6.1 allows, which governs a project template exactly as it governs the built-in one: the template decides which sections exist, never how many paragraphs each one gets. For any section related to testing (e.g., "Testing", "How to test", "Test Steps", "Comment tester", "Vérification"), you must **analyze the diff from Step 4.1** to fill it with concrete, specific testing steps based on the actual code changes. Do NOT use generic placeholders. The same rules as the default template apply: write numbered manual scenarios from the user's point of view (each pairing an action with its observable expected result), never "run the automated tests" as the sole content, and — if the PR has no manually testable surface (docs-only, CI, pure refactor) — state that plainly instead of inventing a scenario.
 
 **Write every web route or API path as inline code with a leading slash** (`/admin/dashboard`, `/api/users`) — never as a bare word, never as a full URL. This applies to a project template exactly as it does to the default one: Step 7.4.2.5 turns those spans, and only those, into clickable links against this PR's preview deployment once one is found, so a route written any other way stays a plain path for the life of the PR. File paths (`SKILL.md`, `desktop/src/main/`) are not routes and are never linked.
 
@@ -429,6 +430,39 @@ Prepare the PR content:
     - Every mode wins over the template's own instruction comments (`<!-- Mark the appropriate option with an "x" -->` and the like), and is inert on a repo with no template of its own: **`MSG_PR_TEMPLATE_EN`** / **`MSG_PR_TEMPLATE_FR`** carry no checkboxes, and no mode invents one to have something to tick
   - **Otherwise**: Use the default template matching `.languages.pullRequest` (see **`MSG_PR_TEMPLATE_EN`** / **`MSG_PR_TEMPLATE_FR`**)
   - **Add a "Linked Issues" section** with the ticket link (unless `autoLinkTickets` is `false`)
+
+Whichever skeleton you end up with, **how much goes into it is decided below, not by the template.**
+
+#### The body is read by a human, not by an indexer
+
+A reviewer opens a pull request to answer three questions — *what changed*, *why*, *how do I check it*. They answer them in under a minute or they scroll past. Everything else about the change is already on the PR: the commits are a tab, the diff is a tab, the files are a tab. A body that restates any of it asks the reviewer to read the same change twice, and the second telling is always the worse one.
+
+This is the failure mode to design against, because it is the one that arrives on its own. You reach this step holding the whole reasoning behind the branch, and writing it out is the path of least resistance: each paragraph feels earned as you type it, and what lands is a wall of prose whose first reader is also its last. **Length is not thoroughness.** A body the reviewer actually reads beats a complete one they skim.
+
+So the body is **bullets, not paragraphs**, and it is capped. Read `pullRequest.bodyVerbosity` from the config already loaded in Step 0 as `$PR_BODY_VERBOSITY` — default `concise`, and any other value, including an empty one, is read as `concise`.
+
+| `$PR_BODY_VERBOSITY` | Summary | Changes | Testing section | Cap on what you wrote |
+| -------------------- | ------- | ------- | --------------- | --------------------- |
+| `concise` (default) | 1–2 sentences, ≤ 250 characters | 3–7 bullets, ≤ 200 characters each | prerequisites line + 2–5 numbered steps, ≤ 160 characters each | ≤ 1800 characters |
+| `normal` | ≤ 4 sentences, ≤ 500 characters | 3–9 bullets, ≤ 400 characters each | prerequisites line + 2–6 numbered steps, ≤ 250 characters each | ≤ 3500 characters |
+| `detailed` | no cap beyond the rules below | no cap beyond the rules below | no cap beyond the rules below | ≤ 8000 characters |
+
+**On a project template, read the rows by role, not by heading.** Its overview section (`## Description`, `## Contexte`, `## What`) takes the Summary row; its list-of-changes section (`## Changes Made`, `## Modifications`) takes the Changes row; its testing section takes the Testing row. Every other section it ships — screenshots, notes, risks — gets one or two lines at most, and the total cap is what binds a template with a dozen headings.
+
+**The cap counts only the text you wrote.** A project template's own boilerplate — its headings, its HTML comments, the checkbox lines it ships — and the Linked Issues section are outside it, so a repo with a twelve-section template is not punished for having one.
+
+These rules hold at every level, `detailed` included:
+
+- **One bullet, one idea, one line.** A bullet may carry a short *why* clause when the change does not explain itself — `**Guard.** Step 6.2.1 rejects a body over the caps, because a rule nothing enforces drifts back` — and that stays a clause. Never a second sentence bolted on, never a paragraph nested under it, never sub-bullets.
+- **Lead with what it is.** A bold two-or-three-word lead-in (`**The setting.**`, `**Both front ends.**`) lets a reviewer find the bullet that concerns them without reading the others.
+- **`## Changes` is grouped by intent, never a commit dump.** Seven commits that build one thing are one bullet. The commit list is already a tab on this PR, and pasting it here says nothing that tab does not say better.
+- **No section restates another.** A summary, then bullets re-explaining the summary, then notes re-explaining the bullets, is one idea billed three times.
+- **No process narration.** What you tried first, what you rejected, what took the afternoon — none of it is the change. Reasoning that genuinely matters is one clause on the bullet it belongs to.
+- **Short is not terse.** Cutting words is right; cutting the sentence is not. `keyed by repo + path` has no subject and no verb: it is a note to somebody who already has the diff open, which the reviewer does not. Every bullet has to read out loud as a sentence.
+- **Every claim is one the diff shows.** No benefits, no adjectives, no "significantly improves".
+- **An optional section with nothing to say gets one line, or nothing.** `Not applicable: no visual change` is an answer. Three paragraphs explaining why there is no screenshot is not.
+
+When a body comes out over its cap, drop a bullet or a clause. Never compress a sentence into a fragment to fit — a bullet that no longer parses is over budget in the only way that matters. Step 6.2.1 checks the caps before the PR is created.
 
 > **CRITICAL — Markdown formatting**: The `body` parameter MUST contain actual line break characters, NOT the two-character literal sequence `\n`. This is verified automatically in Step 6.2.1.
 
@@ -506,6 +540,12 @@ After the user confirms, verify the PR body before passing it to the MCP tool. I
    - At `type`, that identity holds everywhere outside the categorisation group. Inside it, at most one pair may differ, and only by having become ticked. A tick that appears in any other group fails, whatever the total says.
    - At `all` the check does not apply: letting the agent decide is the whole point of that mode.
    - A checkbox line that pairs with nothing counts as the agent's own — a task list it wrote in the summary, say — and is outside this check, but **only when its label matches no checkbox anywhere in the template**. A label the template does carry, found under a heading that does not pair, is a box that moved rather than a box that was written: it is judged as a pair against the template line of that label, so renaming a section never launders a tick out of this check.
+
+7. **The body is within the Step 6.1 caps**, measured on the text you wrote — the template's own headings, HTML comments and checkbox lines do not count, and neither does the Linked Issues section. Count, do not estimate: a body that feels short and measures 3000 characters is exactly the case this check exists for.
+   - **Per section**: the summary, the `## Changes` bullets and the testing steps each within the row of the table for `$PR_BODY_VERBOSITY`. A single over-long bullet fails the check on its own — the average is not the contract.
+   - **Shape**: no paragraph in `## Changes` (a bullet that runs past its cap is a paragraph wearing a dash), no sub-bullets, no section that restates another, no process narration.
+   - **Fragments fail too.** A bullet with no verb is not a pass just because it is short. Rewriting one over-long bullet as two short ones is right; shrinking it to `timer in a ref` is not.
+   - Over the cap, rebuild by **cutting bullets and clauses**, never by trimming sentences into fragments. If two rebuilds still come out over, post the shortest correct body you have and say in one line in the chat that it is over the cap — a PR that exists beats a self-check loop.
 
 **If any check fails:**
 - Log which check(s) failed

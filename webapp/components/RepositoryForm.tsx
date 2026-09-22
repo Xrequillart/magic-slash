@@ -116,6 +116,24 @@ function buildOptions(t: Translate) {
     { value: 'inline', label: t('repo.pr.testAccountsInline'), description: t('repo.pr.testAccountsInlineHelp') },
   ]
 
+  const bodyVerbosity: DropdownOption<string>[] = [
+    {
+      value: 'concise',
+      label: t('repo.pr.bodyVerbosityConcise'),
+      description: t('repo.pr.bodyVerbosityConciseHelp'),
+    },
+    {
+      value: 'normal',
+      label: t('repo.pr.bodyVerbosityNormal'),
+      description: t('repo.pr.bodyVerbosityNormalHelp'),
+    },
+    {
+      value: 'detailed',
+      label: t('repo.pr.bodyVerbosityDetailed'),
+      description: t('repo.pr.bodyVerbosityDetailedHelp'),
+    },
+  ]
+
   const templateCheckboxes: DropdownOption<string>[] = [
     {
       value: 'never',
@@ -179,6 +197,7 @@ function buildOptions(t: Translate) {
     formatSource,
     testAccounts,
     templateCheckboxes,
+    bodyVerbosity,
     trackerMode,
     splitting,
     acceptance,
@@ -410,6 +429,11 @@ export function RepositoryForm({
   const templateCheckboxes = options.templateCheckboxes.some((o) => o.value === storedTemplateCheckboxes)
     ? storedTemplateCheckboxes
     : DEFAULTS.templateCheckboxes
+  // Matched the same way, and for the same reasons, as the block above.
+  const storedBodyVerbosity = repo.pullRequest.bodyVerbosity ?? DEFAULTS.bodyVerbosity
+  const bodyVerbosity = options.bodyVerbosity.some((o) => o.value === storedBodyVerbosity)
+    ? storedBodyVerbosity
+    : DEFAULTS.bodyVerbosity
   const commentOnPR = repo.issues.commentOnPR ?? DEFAULTS.commentOnPR
   // The language tickets are WRITTEN IN falls back to the comment language before
   // English: with only `?? DEFAULTS.language` this row would claim English while
@@ -1170,6 +1194,7 @@ export function RepositoryForm({
             testAccounts,
             testAccountsSource: repo.pullRequest.testAccountsSource ?? '',
             templateCheckboxes,
+            bodyVerbosity,
             commentOnPR,
             watchCI,
           })}
@@ -1179,6 +1204,18 @@ export function RepositoryForm({
             and watching the checks was sitting second in a list whose other rows all
             described the body of the PR. */}
         <SettingsCard icon={GitPullRequest} title={t('repo.pr.groupDescription')}>
+          {/* First row of the card because it governs the body itself, where the rows
+              under it only add things to that body. */}
+          <SettingRow label={t('repo.pr.bodyVerbosity')} description={t('repo.pr.bodyVerbosityHelp')}>
+            <Dropdown
+              value={bodyVerbosity}
+              options={options.bodyVerbosity}
+              onChange={(bodyVerbosity) => onPatch({ pullRequest: { bodyVerbosity } })}
+              width={240}
+              className="w-52"
+            />
+          </SettingRow>
+
           <SettingRow label={t('repo.pr.autoLink')} description={t('repo.pr.autoLinkHelp')}>
             <Toggle
               label={t('repo.pr.autoLink')}

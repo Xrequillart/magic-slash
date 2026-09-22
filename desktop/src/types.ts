@@ -1126,6 +1126,13 @@ export interface RepositoryConfig {
      * never set one (see mergeOrgSharedConfig).
      */
     templateCheckboxes?: string  // 'never' | 'type' | 'all'
+    /**
+     * How long the PR body /magic:pr writes may be. Absent means 'concise', resolved
+     * at read time for the same reason as `templateCheckboxes` above: the key stays
+     * OUT of DEFAULT_REPOSITORY_FIELDS so an org-shared value can still reach a repo
+     * that never set one (see mergeOrgSharedConfig).
+     */
+    bodyVerbosity?: string       // 'concise' | 'normal' | 'detailed'
   }
   issues?: {
     commentOnPR?: boolean
@@ -2365,6 +2372,7 @@ export interface OrgSharedConfig {
     testAccounts?: string        // 'off' | 'reference' | 'inline'
     testAccountsSource?: string
     templateCheckboxes?: string  // 'never' | 'type' | 'all'
+    bodyVerbosity?: string       // 'concise' | 'normal' | 'detailed'
   }
   repoKeywords?: Record<string, string[]>
 }

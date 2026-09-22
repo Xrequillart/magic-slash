@@ -202,6 +202,9 @@ describe('message catalogues', () => {
       'repo.resolve.section',
       'repo.resolve.askNoticeAmend',
       'repo.pr.section',
+      // "Concise" is the same word in both languages; "Normale" and "Détaillée" are
+      // not, which is why only this one of the three levels is listed.
+      'repo.pr.bodyVerbosityConcise',
       // Two duration units. "{count}h" is the form the banner was specified with in
       // both languages, and "min" is the same abbreviation in French.
       'skillHours.hours',

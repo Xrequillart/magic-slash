@@ -634,6 +634,7 @@ export function updateRepositoryPullRequestSettings(name: string, settings: Sett
   applySetting(pullRequest, 'testAccounts', settings.testAccounts, isOneOf(['off', 'reference', 'inline']))
   applySetting(pullRequest, 'testAccountsSource', settings.testAccountsSource, isString, ['', null])
   applySetting(pullRequest, 'templateCheckboxes', settings.templateCheckboxes, isOneOf(['never', 'type', 'all']))
+  applySetting(pullRequest, 'bodyVerbosity', settings.bodyVerbosity, isOneOf(['concise', 'normal', 'detailed']))
 
   if (Object.keys(pullRequest).length === 0) {
     delete config.repositories[name].pullRequest

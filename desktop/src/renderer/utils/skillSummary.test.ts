@@ -177,6 +177,7 @@ describe('prSummary', () => {
     commentOnPR: true,
     watchCI: true,
     templateCheckboxes: 'never',
+    bodyVerbosity: 'concise',
   }
 
   it('names the tracker the ticket lives in', () => {
@@ -222,6 +223,20 @@ describe('prSummary', () => {
     // as 'never', which is no line at all — never a line naming the unknown value.
     expect(prSummary({ ...PR, templateCheckboxes: 'everything' }).tail).toEqual([])
     expect(prSummary({ ...PR, templateCheckboxes: '' }).tail).toEqual([])
+  })
+
+  it('mentions the body length only when the setting departs from concise', () => {
+    expect(prSummary(PR).tail).toEqual([])
+    expect(prSummary({ ...PR, bodyVerbosity: 'normal' }).tail).toEqual([
+      { key: 'repo.pr.tail.bodyNormal' },
+    ])
+    expect(prSummary({ ...PR, bodyVerbosity: 'detailed' }).tail).toEqual([
+      { key: 'repo.pr.tail.bodyDetailed' },
+    ])
+    // Same reasoning as the checkbox modes above: an unknown value reaches here and
+    // reads as the default, which is no line rather than a line naming it.
+    expect(prSummary({ ...PR, bodyVerbosity: 'verbose' }).tail).toEqual([])
+    expect(prSummary({ ...PR, bodyVerbosity: '' }).tail).toEqual([])
   })
 })
 
@@ -320,16 +335,19 @@ describe('every line a setting can produce', () => {
     ...['off', 'reference', 'inline'].flatMap((testAccounts) =>
       ['jira', 'github'].flatMap((trackerMode) =>
         ['never', 'type', 'all'].flatMap((templateCheckboxes) =>
-          [true, false].map((watchCI) =>
-            prSummary({
-              trackerMode,
-              autoLinkTickets: watchCI,
-              testAccounts,
-              testAccountsSource: 'docs/accounts.md',
-              commentOnPR: watchCI,
-              watchCI,
-              templateCheckboxes,
-            }),
+          ['concise', 'normal', 'detailed'].flatMap((bodyVerbosity) =>
+            [true, false].map((watchCI) =>
+              prSummary({
+                trackerMode,
+                autoLinkTickets: watchCI,
+                testAccounts,
+                testAccountsSource: 'docs/accounts.md',
+                commentOnPR: watchCI,
+                watchCI,
+                templateCheckboxes,
+                bodyVerbosity,
+              }),
+            ),
           ),
         ),
       ),

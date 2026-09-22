@@ -89,6 +89,12 @@ const TEMPLATE_CHECKBOX_TAILS: Record<string, MessageKey | undefined> = {
   all: 'repo.pr.tail.checkboxesAll',
 }
 
+/** No entry for 'concise': same rule, the default says nothing. */
+const BODY_VERBOSITY_TAILS: Record<string, MessageKey | undefined> = {
+  normal: 'repo.pr.tail.bodyNormal',
+  detailed: 'repo.pr.tail.bodyDetailed',
+}
+
 const RESOLVE_COMMIT_STEPS: Record<string, MessageKey> = {
   new: 'repo.resolve.step.commitNew',
   amend: 'repo.resolve.step.commitAmend',
@@ -235,6 +241,8 @@ export interface PrSummaryInput {
   watchCI: boolean
   /** 'never' | 'type' | 'all'. 'never' is the default, and says nothing. */
   templateCheckboxes: string
+  /** 'concise' | 'normal' | 'detailed'. 'concise' is the default, and says nothing. */
+  bodyVerbosity: string
 }
 
 export function prSummary(input: PrSummaryInput): SkillSummary {
@@ -265,6 +273,8 @@ export function prSummary(input: PrSummaryInput): SkillSummary {
   // only the two modes that depart from it are worth a line.
   const checkboxes = TEMPLATE_CHECKBOX_TAILS[input.templateCheckboxes]
   if (checkboxes) tail.push({ key: checkboxes })
+  const verbosity = BODY_VERBOSITY_TAILS[input.bodyVerbosity]
+  if (verbosity) tail.push({ key: verbosity })
 
   return { steps, tail }
 }

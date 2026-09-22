@@ -114,6 +114,22 @@ describe('mergeOrgSharedConfig', () => {
     expect(result.repositories.web.pullRequest?.templateCheckboxes).toBe('type')
   })
 
+  // Same contract as the template-checkbox mode above.
+  it('delivers the shared PR body length to a repo that never set one', async () => {
+    const config = baseConfig()
+    config.repositories = {
+      api: repo('api', { keywords: ['api'], pullRequest: { bodyVerbosity: 'detailed' } }),
+      web: repo('web', { keywords: ['web'] }),
+    }
+    await seed(config)
+
+    const shared: OrgSharedConfig = { pullRequest: { bodyVerbosity: 'normal' } }
+    const result = mergeOrgSharedConfig(shared, ORG)
+
+    expect(result.repositories.api.pullRequest?.bodyVerbosity).toBe('detailed') // local wins
+    expect(result.repositories.web.pullRequest?.bodyVerbosity).toBe('normal')
+  })
+
   it('applies shared keywords only to repos with defaulted keywords', async () => {
     const config = baseConfig()
     config.repositories = {
