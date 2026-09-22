@@ -1413,6 +1413,22 @@ export const en = {
     'This copy is out of date. The spec has since grown too large to sync, so newer changes stay on the machine it was written on.',
   'plans.detail.syncedAt': 'Spec updated {when}',
 
+  // ── Comments on a plan's spec ───────────────────────────────────────────────
+  // The verb after the author's name in a comment's strip, exactly as a ticket's comments
+  // carry one: "ada@example.com commented" is a sentence, where a bare address over a
+  // paragraph is a header.
+  'plans.comments.commented': 'commented',
+  // The comments did not load. Said out loud, because a page that silently drew none over
+  // a failed read would be telling the reader their colleagues said nothing. The spec
+  // itself is still readable, so this is a line under it rather than a block over it.
+  'plans.comments.failed': 'The comments on this plan could not be loaded.',
+  // The read worked and brought back only part of the thread. A separate line from the
+  // failure above, because nothing here went wrong: every comment on screen is real. The
+  // list is ordered oldest first, so what is missing is the most recent end, which is the
+  // part a reader who has just written something would go looking for.
+  'plans.comments.truncated':
+    'This plan has more comments than the page can show. The most recent ones are not listed here.',
+
   // ── Hours spent inside the skills ───────────────────────────────────────────
   'skillHours.hours': '{count}h',
   'skillHours.minutes': '{count} min',
@@ -2013,6 +2029,24 @@ export const en = {
     'A comment’s quoted passage is no longer in this document — the comment is kept, its anchor is lost.',
   'filePreview.commentQuoteLost.other':
     '{count} comments’ quoted passages are no longer in this document — the comments are kept, their anchors are lost.',
+  // What the disclosure's summary offers, beside the sentence above. The comments
+  // themselves are the only place an orphan can be drawn at all — it has no passage to be
+  // drawn beside — so this is the way into them.
+  'filePreview.commentQuoteLostShow': 'Show them',
+  // The thread. `Reply` is the button that opens a box under a comment; the placeholder is
+  // what that box asks for. Separate from `commentPlaceholder` above because a reply is not
+  // asked about a passage — the passage is the comment it is answering.
+  'filePreview.commentReply': 'Reply',
+  'filePreview.commentReplyPlaceholder': 'Reply to this comment…',
+  // A write that did not land, on the card it was attempted from. Said out loud for
+  // `plans.comments.failed`'s reason read the other way round: a page that closed the box
+  // over a refused write would be telling the reader they had said something they have
+  // not. Two keys and not one, because "could not be saved" over a comment that is still
+  // there after a refused Delete names the wrong action.
+  // No button on the strip: the text is still in the box, so pressing Save again IS the
+  // retry, and a second way to do it would be a control the reader has to choose between.
+  'filePreview.commentSaveFailed': 'This comment could not be saved. It stays here until it is.',
+  'filePreview.commentDeleteFailed': 'This comment could not be deleted. It is still stored.',
   // What the bar's trigger reads. Spelled out rather than left as a bare digit beside the
   // icon: a speech bubble and a number make the reader infer what is being counted, and the
   // one control that hands a whole review to the agent is worth naming. Two keys rather

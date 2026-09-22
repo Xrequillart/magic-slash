@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { MessageSquare } from '@ds/desktop/icons'
 import MarkdownView from './MarkdownView'
-import CommentCard, { CommentAnchorNotice } from './CommentCard'
+import CommentCard, { CommentAnchorNotice, type CommentThread } from './CommentCard'
 import { scrollCardIntoView, useInlineCommentHosts } from '../../hooks/useInlineCommentHosts'
 import {
   clampQuote, commentAnchorKind, commentFileKey, type CommentTarget,
 } from '../../utils/commentAnchors'
 import { locateQuote } from '../../utils/quoteAnchors'
-import { useStore, NO_COMMENTS } from '../../store'
+import { useStore, NO_COMMENTS, type FileComment, type NewFileComment } from '../../store'
 import { useT } from '../../i18n'
 
 /**
@@ -64,6 +64,112 @@ interface Props {
    * boolean, which `memo` above still holds across.
    */
   spec?: boolean
+  /**
+   * The type scale `MarkdownView` renders at. Passed straight through, exactly as
+   * `content` is.
+   *
+   * It exists because this layer has a SECOND caller now: a plan's detail page, which
+   * renders the spec as a document rather than in a 70%-wide drawer. Before, that page
+   * mounted `MarkdownView` itself and picked `document`; wrapping it in this layer without
+   * the prop would have retyped the whole spec one size down, which is not a change
+   * anybody asked for on the way to being able to comment on it.
+   */
+  variant?: 'panel' | 'document'
+  /**
+   * WHERE THE COMMENTS LIVE, and what writing one does — injected, or the renderer's own
+   * store by default.
+   *
+   * READS AND WRITES TOGETHER, and the second half is the load-bearing one. A read-only
+   * override would have left `saveComposer` writing straight into zustand, so a comment
+   * left on a colleague's plan would have gone into this machine's memory and nowhere
+   * else — the exact behaviour this story exists to end, dressed up as a fix.
+   *
+   * Absent for `CodeView`, `FilePreviewPanel`, `specCard` and `ReviewCommentsButton`,
+   * which are annotating a LOCAL review and have no business talking to the cloud: their
+   * comments are this machine's notes, they are handed to an agent running on this
+   * machine, and giving them a backend would mean uploading every note anybody takes on
+   * every diff. The default IS the store, so those four call sites did not change.
+   */
+  source?: CommentSource
+  /**
+   * Draw the comments whose passage this layer could not find — asked, in render, with
+   * the ones it could not place.
+   *
+   * See `CommentAnchorNotice`'s `children` for why they can only be drawn there: an
+   * orphaned comment gets no range, therefore no host, therefore no card. WHICH of them
+   * those are is this file's answer — locating a quote needs the text the document
+   * currently renders as, and that comes out of a DOM walk in here — and HOW to draw one
+   * is the caller's, because only it knows the author, the date and the thread.
+   *
+   * A CALLBACK CALLED DURING RENDER, and not a pair of props handing the ids out and the
+   * nodes back. The layer already knows which comments it placed — `markers` is one pill
+   * per located passage — so the set is derivable where it is needed. Reporting it to a
+   * caller that stored it in state and answered with new nodes made a cycle: render, pass,
+   * report, state, render, with the caller's `comments` array new each time and the
+   * relocation pass re-run on every turn of it.
+   *
+   * Absent for every store-backed caller, which draws the bare sentence it always drew.
+   */
+  renderOrphans?: (lost: readonly FileComment[]) => ReactNode
+  /**
+   * Comments the CALLER already knows are orphaned — counted in the notice above, and
+   * handed to `renderOrphans` with the ones the relocation pass could not find.
+   *
+   * There is a kind of orphan this layer cannot recognise on its own: a comment carrying no
+   * quote at all. `commentAnchorKind` reads that as a note on the whole file, which is
+   * exactly what it is for every store-backed caller, so this file cannot treat it as a lost
+   * anchor without breaking the four views that rely on the other reading. But on a plan
+   * there is no file to comment on, and an empty quote means the thread lost the head that
+   * carried its passage — see `isOrphanedPlanCommentThread`. Whoever knows which world they
+   * are in names them here.
+   *
+   * They are NOT in the relocation pass, which would have nothing to search for, and NOT in
+   * `quoted`, which is what gets a pill and a card. Being in the lost set is their whole
+   * presence in this view, and it is the difference between a comment shown under the
+   * notice and a comment shown nowhere.
+   *
+   * Absent for every store-backed caller, whose whole-file comments are not orphans.
+   */
+  anchorless?: readonly FileComment[]
+}
+
+/**
+ * A place to keep comments, and the three things a reader does to them.
+ *
+ * ONE OBJECT rather than four props, because they are one decision: a layer reading from
+ * the cloud and writing to the store would be a bug with no reason to exist, and a partial
+ * override is a state the callers cannot produce. Either all of it is injected or none of
+ * it is.
+ */
+export interface CommentSource {
+  /**
+   * THE THREE WRITES ANSWER WHETHER THEY LANDED, and the answer is not optional.
+   *
+   * A source exists because the comments are somewhere this app does not control: behind a
+   * table, a policy and a network. Every one of these can be refused — by RLS, by a
+   * connection that dropped, by a row a colleague deleted from the webapp a second ago —
+   * and a `void` here made a refusal indistinguishable from success: the card closed over
+   * a comment that was never stored. `false` is what keeps it open with the text still in
+   * it, which is the whole of the retry.
+   *
+   * THE STORE-BACKED BRANCH ANSWERS `true`, always, and is none of this source's business:
+   * see the layer's own `saveComposer` below. Writing into this machine's zustand store
+   * cannot fail, so the four callers that use it pass nothing at all and get the behaviour
+   * they had.
+   */
+  comments: readonly FileComment[]
+  /** File a new comment. The layer supplies `anchor: null` and the quote it captured. */
+  add: (comment: NewFileComment) => Promise<boolean>
+  update: (id: string, body: string) => Promise<boolean>
+  remove: (id: string) => Promise<boolean>
+  /**
+   * Who wrote one comment and what has been said under it, when the source knows — which
+   * turns its card into an attributed, answerable one. See `CommentThread`.
+   *
+   * A LOOKUP rather than a field on the comment, so `FileComment` stays the shape the
+   * store defines and the four store-backed callers keep passing exactly what they passed.
+   */
+  thread?: (id: string) => CommentThread | undefined
 }
 
 /**
@@ -113,6 +219,9 @@ const PILL_STEP_PX = PILL_PX + 2
 
 /** No markers, as ONE array — so a pass that found none does not re-render on identity. */
 const NO_MARKERS: Marker[] = []
+
+/** No caller-named orphans, as ONE array — `NO_MARKERS`' reason, for `anchorless`' default. */
+const NO_ANCHORLESS: readonly FileComment[] = []
 
 /**
  * The comment being written, if there is one — the passage it quotes, which is its whole
@@ -450,7 +559,10 @@ function captureQuote(root: HTMLElement): Capture | null {
  * with no DOM mutation at all, so it cannot, and it follows a reflow without being
  * re-measured. The absolutely positioned overlay is left carrying only the clickable pill.
  */
-export default function MarkdownCommentLayer({ content, repoPath, filePath, fingerprint, spec }: Props) {
+export default function MarkdownCommentLayer({
+  content, repoPath, filePath, fingerprint, spec, variant, source, renderOrphans,
+  anchorless = NO_ANCHORLESS,
+}: Props) {
   const t = useT()
   const proseRef = useRef<HTMLDivElement>(null)
 
@@ -459,10 +571,16 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
   // `NO_COMMENTS` rather than `?? []`, for the reason it exists: zustand compares a
   // selector's result by identity, and a fresh array per call would re-render every mounted
   // layer on every unrelated store mutation.
-  const comments = useStore(s => s.fileComments[commentKey] ?? NO_COMMENTS)
+  //
+  // READ UNCONDITIONALLY, even when a `source` is going to win: a hook cannot be skipped,
+  // and the selector is a map lookup. A layer with an injected source simply never has an
+  // entry under its key, because nothing writes one.
+  const storedComments = useStore(s => s.fileComments[commentKey] ?? NO_COMMENTS)
   const addFileComment = useStore(s => s.addFileComment)
   const updateFileComment = useStore(s => s.updateFileComment)
   const removeFileComment = useStore(s => s.removeFileComment)
+
+  const comments = source?.comments ?? storedComments
 
   /**
    * The review's request to take the reader to a comment, when the comment is one of THIS
@@ -555,14 +673,43 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
   )
 
   /**
-   * How many of those quotations are no longer in the document — DERIVED, not counted.
+   * WHICH of those quotations are no longer in the document — DERIVED, not counted, and not
+   * reported to anybody.
    *
-   * A quotation that is not found is one that got no marker, so this is exactly the shortfall,
-   * and a `missing++` in the relocation loop would only be recounting what the loop already
-   * says. Nothing tears: the pass below is a layout effect, so the frame in which `quoted` is
+   * A quotation that is not found is one that got no marker, and `placeMarkers` emits exactly
+   * one pill per passage it placed, so the ids on `markers` ARE the located set. Naming the
+   * comments rather than the shortfall is what lets a caller draw the orphans themselves: a
+   * number says how many notes lost their anchor and cannot say which, so one could be
+   * counted in a sentence and never drawn anywhere.
+   *
+   * Nothing tears: the relocation pass is a layout effect, so the frame in which `quoted` is
    * new and `markers` is still the previous document's never reaches the screen.
+   *
+   * `anchorless` FIRST, and it is not derived at all: those are the comments the caller
+   * already knows have no passage to look for, so no pass over the document could ever have
+   * found them. They cannot be double-counted — `quoted` holds only the comments that DO
+   * carry a quote, which is precisely what they do not.
    */
-  const lost = quoted.length - markers.length
+  const lostComments = useMemo(() => {
+    const placed = new Set(markers.map(marker => marker.id))
+    return [...anchorless, ...quoted.filter(comment => !placed.has(comment.id))]
+  }, [anchorless, quoted, markers])
+
+  /**
+   * The rendered document, held across this component's OWN re-renders.
+   *
+   * `MarkdownView` is not memoised, and it lives in here now rather than beside this layer:
+   * every pill placement, every reflow tick, every opening of a composer re-renders this
+   * component, and each of those would otherwise re-run remark, rehype and the sanitiser
+   * over the whole file. The ResizeObserver below bumps `reflow` on every frame of a drag,
+   * so this is the difference between measuring a few rects per frame and re-parsing a
+   * document per frame — which is the very cost `SpecBody`'s own `memo` was written to
+   * avoid, one level up.
+   */
+  const prose = useMemo(
+    () => <MarkdownView content={content} variant={variant} />,
+    [content, variant],
+  )
 
   /**
    * Take a placement, keeping the previous array when it says the same thing.
@@ -720,8 +867,8 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
    * parent chain per comment rather than a search of the whole document.
    *
    * A comment whose passage is no longer findable has no entry, so no card — `rangesRef` only
-   * holds what the relocation pass could locate. That is the same shortfall `lost` counts and
-   * `CommentAnchorNotice` reports, so a comment with nowhere to go still says so.
+   * holds what the relocation pass could locate. Those are exactly the comments `lostComments`
+   * names and `CommentAnchorNotice` reports, so a comment with nowhere to go still says so.
    *
    * `markers` and `quoted` are in the dependencies as PROXIES for `rangesRef` having been
    * rebuilt: the ranges live in a ref, which cannot be depended on, and the relocation pass that
@@ -808,19 +955,43 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
    * luck: that pass is a layout effect declared above `useInlineCommentHosts`, so in the commit
    * that adds the comment it has already run. Moving either one across the other would leave
    * the comment with no card the instant it was saved.
+   *
+   * THE COMPOSER CLOSES ONLY ON A WRITE THAT LANDED, and the two branches reach that moment
+   * differently. The store's is unchanged: `addFileComment` and `setComposer(null)` still run
+   * in one synchronous pass, so the comment and the closing happen in the same commit and the
+   * layout effect above is still what put the range there first. The source's returns a
+   * promise, so the close lands a tick later, with the refetched comment arriving in a commit
+   * of its own — which is the order it already had, since the write went to the network
+   * either way. What is new is only that a REFUSED write never gets to that line: the card
+   * stays open, holding the one copy of what was typed.
    */
-  const saveComposer = (body: string) => {
-    if (!composer) return
-    addFileComment(target, { anchor: null, quote: composer.quote, body })
-    setComposer(null)
+  const saveComposer = async (body: string) => {
+    if (!composer) return false
+    const comment: NewFileComment = { anchor: null, quote: composer.quote, body }
+    const ok = source ? await source.add(comment) : (addFileComment(target, comment), true)
+    if (ok) setComposer(null)
+    return ok
   }
 
   /**
    * Rewrite or drop one stored comment, named rather than inferred — there are as many cards as
    * comments now, so "the card" is not a thing either of these can ask about.
+   *
+   * Routed through the `source` when there is one, and to the store otherwise. The branch is
+   * here rather than at the four call sites for the reason the prop's own docblock gives:
+   * the writes have to follow the reads, or a comment on a colleague's plan is filed into
+   * this machine's memory.
+   *
+   * Both answer whether the write landed, and the store's answers `true` without asking:
+   * a zustand write is done by the time the call returns, so the card that awaits this gets
+   * the behaviour it always had and only a source can ever say no. See `CommentSource`.
    */
-  const saveComment = (id: string, body: string) => updateFileComment(target, id, body)
-  const deleteComment = (id: string) => removeFileComment(target, id)
+  const saveComment = async (id: string, body: string) => (
+    source ? await source.update(id, body) : (updateFileComment(target, id, body), true)
+  )
+  const deleteComment = async (id: string) => (
+    source ? await source.remove(id) : (removeFileComment(target, id), true)
+  )
 
   /**
    * This file's QUOTED comments by id — the only ones this view can show — so the render can go
@@ -840,17 +1011,22 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
           reader wrote. `px-5` is `MarkdownView`'s own `SCALE.panel` padding, so the notice
           lines up with the prose below it. */}
       <CommentAnchorNotice
-        count={lost}
+        count={lostComments.length}
         one="filePreview.commentQuoteLost.one"
         other="filePreview.commentQuoteLost.other"
         className="px-5"
-      />
+      >
+        {/* The orphans themselves, when the caller can draw them — the ONLY place they can
+            exist, since a comment with no range gets no host and a card portals into one.
+            Absent for the store-backed callers, which keep the bare sentence. */}
+        {renderOrphans?.(lostComments)}
+      </CommentAnchorNotice>
 
       {/* `relative` so the overlay below can be positioned against the document, and the
           mouseup handler so a selection anywhere in it is heard. `MarkdownView` itself is
           passed nothing it did not already take. */}
       <div ref={proseRef} className="relative" onMouseUp={handleMouseUp}>
-        <MarkdownView content={content} />
+        {prose}
 
         {/* `pointer-events-none` on the container and `auto` on each pill, and that pairing is
             load-bearing rather than tidy: a transparent box over an already-commented passage
@@ -930,6 +1106,9 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
             onSave={body => saveComment(key, body)}
             onDelete={() => deleteComment(key)}
             spec={spec}
+            /* Who wrote it and what has been said under it, when the source knows —
+               `undefined` for a store-backed comment, which draws the card it always drew. */
+            thread={source?.thread?.(key)}
             /* No `onClose`: a stored comment's card is never closed. See the prop. */
           />
         )

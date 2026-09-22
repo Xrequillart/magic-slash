@@ -1349,6 +1349,12 @@ export const fr: Record<keyof typeof en, string> = {
     'Cette copie n’est plus à jour. La spec est depuis devenue trop volumineuse pour être synchronisée : les modifications plus récentes restent sur la machine où elle a été écrite.',
   'plans.detail.syncedAt': 'Spec mise à jour {when}',
 
+  // ── Commentaires sur la spec d'un plan ──────────────────────────────────────
+  'plans.comments.commented': 'a commenté',
+  'plans.comments.failed': 'Les commentaires de ce plan n’ont pas pu être chargés.',
+  'plans.comments.truncated':
+    'Ce plan a plus de commentaires que la page ne peut en afficher. Les plus récents ne figurent pas ici.',
+
   // ── Heures passées sur les skills ───────────────────────────────────────────
   'skillHours.hours': '{count}h',
   'skillHours.minutes': '{count} min',
@@ -1830,6 +1836,13 @@ export const fr: Record<keyof typeof en, string> = {
     'Le passage cité par un commentaire n’est plus dans ce document — le commentaire est conservé, son ancrage est perdu.',
   'filePreview.commentQuoteLost.other':
     'Les passages cités par {count} commentaires ne sont plus dans ce document — les commentaires sont conservés, leurs ancrages sont perdus.',
+  'filePreview.commentQuoteLostShow': 'Les afficher',
+  'filePreview.commentReply': 'Répondre',
+  'filePreview.commentReplyPlaceholder': 'Répondre à ce commentaire…',
+  'filePreview.commentSaveFailed':
+    'Ce commentaire n’a pas pu être enregistré. Il reste ici tant qu’il ne l’est pas.',
+  'filePreview.commentDeleteFailed':
+    'Ce commentaire n’a pas pu être supprimé. Il est toujours enregistré.',
   'filePreview.commentCount.none': 'Aucun commentaire',
   'filePreview.commentCount.one': '1 commentaire',
   'filePreview.commentCount.other': '{count} commentaires',

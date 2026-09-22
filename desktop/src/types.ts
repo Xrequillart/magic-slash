@@ -2164,6 +2164,132 @@ export interface PlanDetail {
   failed: boolean
 }
 
+/**
+ * Where a comment is attached, in line numbers — the shape `plan_comments.anchor`
+ * stores as jsonb.
+ *
+ * A STRUCTURAL MIRROR of `renderer/utils/commentAnchors.ts`'s `LineRange`, declared
+ * here rather than imported from it, and the duplication is the lesser of the two
+ * evils: `commentAnchors` is a RENDERER module and this file is read by the main
+ * process, which must not reach across that line for a three-field record. The two
+ * are structurally identical, so the renderer assigns one to the other without a
+ * cast; a field added to one and not the other is a compile error at the first call
+ * site that does.
+ *
+ * Null for every comment the app writes today. Markdown comments are anchored to a
+ * QUOTE — the prose react-markdown paints carries no mapping back to the file's
+ * lines — so `anchor: null` plus a quote is what a plan comment is. The column exists
+ * because a diff-anchored plan comment is the obvious next thing to want, and adding
+ * the field later would mean a migration on a table that already holds rows.
+ */
+export interface PlanCommentAnchor {
+  side: 'new' | 'old'
+  startLine: number
+  endLine: number
+}
+
+/**
+ * Whether a value is exactly one of those — the ONE test, for every side of the bridge.
+ *
+ * BESIDE THE TYPE AND NOT IN EITHER CALLER, because there are two of them and they want
+ * the same answer for opposite reasons: `ipc/plans-handlers.ts` refuses a create whose
+ * anchor is not one of these, and `cloud/planComments.ts` narrows what came back out of a
+ * jsonb column. Two spellings stood in those two files for a revision and had already
+ * disagreed about `1.5` — the handler rejected it and the reader passed it through — which
+ * is exactly the drift a shared predicate exists to stop. Integers, because the fields are
+ * LINE NUMBERS.
+ *
+ * Checked field by field rather than cast: `anchor` is jsonb, so what comes back is
+ * `unknown` and could be anything a future writer put there, and a malformed anchor read
+ * as a `LineRange` would send `rangeCovers` arithmetic on `undefined`. Refusing it leaves
+ * the comment quote-anchored, which is what every comment the app writes today already is.
+ *
+ * This file is the right home for the reason it is the right home for the type: it is the
+ * one module the main process, the preload bridge and the renderer all read, and it
+ * imports nothing — so a test may load it without pulling in `@supabase/supabase-js`.
+ */
+export function isPlanCommentAnchor(value: unknown): value is PlanCommentAnchor {
+  if (typeof value !== 'object' || value === null) return false
+  const { side, startLine, endLine } = value as Record<string, unknown>
+  return (side === 'new' || side === 'old')
+    && Number.isInteger(startLine) && Number.isInteger(endLine)
+}
+
+/**
+ * One comment on a plan's spec, as `public.plan_comments` holds it.
+ *
+ * camelCase from snake_case, the way `PlanSession` is, and mapped in exactly one
+ * place (`main/cloud/planComments.ts`). The renderer never sees a row.
+ *
+ * `quote` IS THE ANCHOR. `locateQuote` looks for it in whatever text the spec
+ * currently renders as, and answering `null` is what makes the comment ORPHANED —
+ * which is a state the page draws, never a reason to drop the row. See
+ * `renderer/utils/planComments.ts`.
+ */
+export interface PlanComment {
+  id: string
+  sessionId: string
+  authorId: string
+  /**
+   * The comment this one replies to, or undefined for the head of a thread.
+   *
+   * `on delete set null` in the table rather than a cascade, deliberately: deleting
+   * your own comment must not silently take a colleague's replies with it. A reply
+   * whose parent has gone is promoted to a thread of its own — see `buildPlanCommentThreads`.
+   */
+  parentId?: string
+  anchor: PlanCommentAnchor | null
+  quote: string
+  body: string
+  /** Set by nothing yet; the column is there so resolving a thread needs no migration. */
+  resolvedAt?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+/**
+ * Every comment on ONE plan, with just enough about their authors to draw them.
+ *
+ * THE AUTHORS TRAVEL WITH THE COMMENTS, unlike the plan detail read — which
+ * deliberately carries neither, because the header is drawn from the row the reader
+ * clicked. There is no row behind a comment: the reader has never seen these people
+ * on this page, and a uuid is not an attribution. The two maps are the same pair
+ * `PlanOverview` carries and are built by the same `fetchAuthors`, so a colleague is
+ * named and pictured identically in the list and in the thread.
+ *
+ * `failed` for the reason every other cloud read here carries one: a read that
+ * errored has no comments, and so does a plan nobody has commented on. Drawing "no
+ * comments yet" over a dropped connection is a claim about a colleague's silence
+ * that nothing here has evidence for.
+ */
+export interface PlanCommentsRead {
+  comments: PlanComment[]
+  /** author id → email, so a comment shows a readable author. See `planAuthor`. */
+  emailByAuthor: Record<string, string>
+  /** author id → `data:` URL of their photo. Absent for anyone who has none. */
+  avatarByAuthor: Record<string, string>
+  /**
+   * The plan has MORE comments than this read brought back, and the ones missing are the
+   * most recent. The list is capped and ordered oldest-first — a thread whose head was
+   * dropped would have every reply promoted to a thread of its own — so what falls off is
+   * the end of the conversation, which is exactly the part a reader would otherwise assume
+   * was never written. Drawn as a line under the spec; never a reason to hide the comments
+   * that did come back.
+   */
+  truncated: boolean
+  failed: boolean
+}
+
+/** What a view hands over to create a comment: everything the database does not mint. */
+export interface NewPlanComment {
+  sessionId: string
+  /** Undefined for the head of a thread, the parent's id for a reply. */
+  parentId?: string
+  anchor: PlanCommentAnchor | null
+  quote: string
+  body: string
+}
+
 // ---------------------------------------------------------------------------
 // Cloud: usage logs & org stats. One aggregated snapshot is written per session at
 // session end (never per statusLine event). Writing is gated by

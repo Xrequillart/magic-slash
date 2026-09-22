@@ -1,18 +1,29 @@
-import { memo, useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { AlertTriangle, ArrowLeft, CloudOff, FileWarning, RotateCcw } from '@ds/desktop/icons'
-import type { PlanDetail, PlanTicketRead, PlanTicketStates } from '../../../types'
+import type { PlanComment, PlanDetail, PlanTicketRead, PlanTicketStates } from '../../../types'
 import { useT } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
 import MarkdownView from '../../components/file-preview/MarkdownView'
+import MarkdownCommentLayer, { type CommentSource } from '../../components/file-preview/MarkdownCommentLayer'
+import {
+  CommentBody, Quote,
+  type CommentThread, type CommentTurn,
+} from '../../components/file-preview/CommentCard'
 import { RepoColorChip } from '../../components/agent-info-sidebar/RepoMark'
 import { formatTimestamp } from '../../components/agent-info-sidebar/utils'
-import { useStore } from '../../store'
+import { useStore, type FileComment } from '../../store'
+import { useAuth } from '../../hooks/useAuth'
+import { usePlanComments } from '../../hooks/usePlanComments'
 import { configKeyForRepoId } from '../../utils/projectColors'
 import type { PlanCard, PlanTicketGroup } from '../../utils/planRows'
-import { groupPlanTickets, planLabel } from '../../utils/planRows'
+import { groupPlanTickets, planAuthor, planLabel } from '../../utils/planRows'
+import type { PlanCommentThread } from '../../utils/planComments'
+import {
+  buildPlanCommentThreads, canEditPlanComment, isOrphanedPlanCommentThread,
+} from '../../utils/planComments'
 import { taskSelectionFor } from '../../utils/taskSelection'
 import { detectTicketProvider } from '../../components/agent-info-sidebar/utils'
-import { Button, Label, Status, StickyBar, Text, TrackerBadge } from '@ds/desktop'
+import { Button, CommentCard as TurnCard, Label, Status, StickyBar, Text, TrackerBadge } from '@ds/desktop'
 import { JiraStatusPill, StateChip } from '../Tasks/parts'
 import { STATUS_LOOK } from './PlanRow'
 import { PlanIdBadge } from './PlanIdBadge'
@@ -85,9 +96,125 @@ function SectionHeading({ children }: { children: string }) {
  * `content` is a string, so the default shallow compare is exact and the scroll stops
  * here.
  */
-const SpecBody = memo(function SpecBody({ content }: { content: string }) {
-  return <MarkdownView content={content} variant="document" />
+/**
+ * Everything the spec needs in order to be COMMENTABLE, as one object.
+ *
+ * Bundled rather than passed as four props for the memo boundary's sake: `SpecBody` is
+ * memoised precisely because this page re-renders while the reader scrolls, and a prop
+ * rebuilt every render would defeat that as thoroughly as not memoising at all. One object,
+ * built in one `useMemo`, is one identity to keep stable.
+ *
+ * `null` while the comments have not come back, when the read failed, and when there is no
+ * session to write against: the spec then renders exactly as it did before this story, with
+ * no selection affordance. That is deliberate — offering to comment before the existing
+ * comments have arrived invites writing a second note about a passage somebody has already
+ * covered.
+ */
+interface SpecComments {
+  source: CommentSource
+  renderOrphans: (lost: readonly FileComment[]) => ReactNode
+  /**
+   * The threads that have no passage to look for at all — the layer cannot tell, so the
+   * page names them. See `isOrphanedPlanCommentThread`.
+   */
+  anchorless: readonly FileComment[]
+}
+
+const SpecBody = memo(function SpecBody({
+  content,
+  comments,
+}: {
+  content: string
+  comments: SpecComments | null
+}) {
+  /**
+   * The spec as it was before this story: rendered, and not selectable for comment.
+   *
+   * Drawn for the three cases `specComments` answers `null` for — the read still in flight,
+   * the read failed, no session to write against. WHO is reading is not one of them:
+   * `specComments` never consults the viewer's id, so a reader with no account lands here
+   * only by way of a read that could not be made, and never by a test on them.
+   *
+   * It is `MarkdownView` rather than the layer with an inert source, which would be the same
+   * pixels and a different promise: selecting a passage would open a composer whose Save
+   * went nowhere. Offering an affordance that cannot work is worse than not offering it.
+   */
+  if (!comments) return <MarkdownView content={content} variant="document" />
+  return (
+    <MarkdownCommentLayer
+      content={content}
+      /**
+       * A plan's spec has NO LOCAL FILE, which is what these three empty strings are
+       * saying. They key the renderer's zustand comment map, and this layer does not use
+       * it — `source` overrides the reads and the writes both — so what they key is an
+       * entry nothing ever writes to. Empty rather than an invented `plan:<uuid>` path,
+       * which would look like a location and be none.
+       */
+      repoPath=""
+      filePath=""
+      fingerprint=""
+      /* Prose on a page of its own, not in a 70%-wide drawer: the same scale the spec was
+         rendered at before it gained a comment layer. */
+      variant="document"
+      /* Prose, so the card gets its radius back and drops the echoed quote — the passage is
+         highlighted a few lines above it. See `CommentCard`'s own `spec`. */
+      spec
+      source={comments.source}
+      renderOrphans={comments.renderOrphans}
+      anchorless={comments.anchorless}
+    />
+  )
 })
+
+/**
+ * One comment whose passage the spec no longer contains, drawn OUTSIDE the document.
+ *
+ * THE ONLY PLACE IT CAN BE. A comment on prose is drawn by portalling its card into a node
+ * spliced in after the block its passage ends in; a comment whose passage has gone gets no
+ * range, therefore no host, therefore nowhere in the flow to exist. So the orphans are
+ * listed under the notice at the top, which is what `CommentAnchorNotice`'s disclosure is
+ * for — and they are listed WHOLE, with their author, the passage they were left on and
+ * what was said, because a comment reduced to a number in a sentence is a comment deleted
+ * with extra steps.
+ *
+ * The passage is missing on one kind of orphan, and `Quote` already draws nothing for an
+ * empty one: a reply promoted by its head being deleted never had a quote of its own — it
+ * inherited the head's. What is left is still the author, the date and the words, which is
+ * the whole of what there is to keep. See `isOrphanedPlanCommentThread`.
+ *
+ * Read-only, and that is not a shortcut. The actions a card offers are about a passage —
+ * reply to this, rewrite what I said about this — and there is no this. What the reader
+ * needs here is to be able to READ what was written and go and find where it went; editing
+ * it in place would be the surest way to lose the context that makes it meaningful.
+ */
+function OrphanedThread({
+  thread,
+  turnOf,
+}: {
+  thread: PlanCommentThread
+  turnOf: (comment: PlanComment) => CommentTurn
+}) {
+  return (
+    <div className="rounded-lg bg-surface-subtle p-3 flex flex-col gap-2">
+      {/* The passage it WAS left on, drawn by the same `Quote` the inline card uses. Printed
+          here where that card deliberately does not print it (`spec` hides the echo, because
+          the highlight is right there) — the whole point of an orphan is that there is no
+          highlight to look at. */}
+      <Quote quote={thread.head.quote} />
+      {[thread.head, ...thread.replies].map(turnOf).map((turn) => (
+        <TurnCard
+          key={turn.id}
+          ground="bare"
+          avatar={{ src: turn.author.avatarUrl ?? null, alt: '', size: 'sm' }}
+          author={turn.author.name}
+          date={turn.date}
+        >
+          <CommentBody body={turn.body} />
+        </TurnCard>
+      ))}
+    </div>
+  )
+}
 
 /**
  * One ticket, as a row of the tree, and as ONE click target.
@@ -359,6 +486,159 @@ export function PlanDetailPage({
    */
   const [ticketStates, setTicketStates] = useState<PlanTicketStates>({})
 
+  /**
+   * THE COMMENTS ON THIS PLAN, and everything the spec needs to draw them.
+   *
+   * Keyed on the SESSION the read came back with, not on `card.id`: a plan that turned out
+   * not to be visible has no session, and asking for its comments would be one more query
+   * answering nothing. The hook treats `undefined` as "no plan", which is an answer rather
+   * than a pending read.
+   */
+  const comments = usePlanComments(detail?.session?.id)
+  const { status } = useAuth()
+  const viewerId = status.user?.id
+
+  /**
+   * The threads, built once per read — MEMOISED BECAUSE THE LAYER DEPENDS ON THE IDENTITY.
+   *
+   * The relocation pass keys on the comments array it was handed: a fresh array per render
+   * would re-walk the whole rendered document and re-search every quotation on every
+   * render, including the ones this page does while the reader merely scrolls.
+   */
+  const threads = useMemo(
+    () => buildPlanCommentThreads(comments.read?.comments ?? []),
+    [comments.read],
+  )
+
+  /**
+   * One turn, decorated: who, when, and whether this reader may touch it.
+   *
+   * THE ONE PLACE A COMMENT BECOMES SOMETHING DRAWABLE, which is why the orphan list takes
+   * turns rather than comments: a second spelling of "whose photo, and how the timestamp
+   * reads" would be two answers to keep in step for the same person on the same page.
+   *
+   * The author is resolved the way the plans list resolves the author of a plan, so a
+   * colleague is one person across the two surfaces. `canEditPlanComment` is the
+   * interface's half of AC4 and is deliberately the weaker half — `plan_comments`' policies
+   * are what actually refuse a write on somebody else's comment. What this buys is that the
+   * ordinary case looks ordinary.
+   */
+  const turnOf = useCallback((comment: PlanComment): CommentTurn => {
+    const at = comment.createdAt ? new Date(comment.createdAt).getTime() : NaN
+    return {
+      id: comment.id,
+      author: {
+        name: planAuthor(comment.authorId, comments.read?.emailByAuthor ?? {}),
+        avatarUrl: comments.read?.avatarByAuthor[comment.authorId],
+      },
+      date: Number.isFinite(at) ? formatTimestamp(at, now, t) : undefined,
+      body: comment.body,
+      canEdit: canEditPlanComment(comment, viewerId),
+    }
+  }, [comments.read, now, t, viewerId])
+
+  /**
+   * Everything the spec's comment layer runs on, or `null` for "not yet, or nowhere to
+   * write".
+   *
+   * `null` COVERS THREE CASES AND THEY ARE ONE ANSWER: the read has not come back, the read
+   * failed, or there is no session. In all three the page has no comments it can trust and
+   * no id to write against, so it renders the spec as plain prose — see `SpecBody`.
+   */
+  const specComments: SpecComments | null = useMemo(() => {
+    const sessionId = detail?.session?.id
+    const read = comments.read
+    if (!sessionId || !read || read.failed) return null
+
+    const byId = new Map<string, PlanCommentThread>(threads.map((thread) => [thread.head.id, thread]))
+
+    /**
+     * The thread heads, in the shape the layer speaks — `FileComment`, which is the store's
+     * type and the one the four other callers pass.
+     *
+     * ONLY THE HEADS are anchored. A reply carries no passage of its own: it belongs to the
+     * conversation, and the conversation is anchored where its first comment was left. The
+     * replies travel to the card through `thread` below.
+     */
+    const asFileComment = (thread: PlanCommentThread): FileComment => ({
+      id: thread.head.id,
+      anchor: null,
+      quote: thread.head.quote,
+      body: thread.head.body,
+      createdAt: thread.head.createdAt ? new Date(thread.head.createdAt).getTime() : 0,
+    })
+
+    const heads: FileComment[] = threads.map(asFileComment)
+
+    /**
+     * The threads with no passage at all, named for the layer — which cannot work it out,
+     * since an empty quote means a note on the whole file everywhere else in the app.
+     *
+     * A head gets here by being a reply whose own head was deleted: `on delete set null`
+     * promotes it rather than taking it down with its parent, and a reply carries no quote
+     * of its own. Left unsaid, it would be a comment in the database and on no screen —
+     * see `isOrphanedPlanCommentThread`. It stays in `heads` above as well, where it is
+     * inert: the layer marks only what carries a quote.
+     */
+    const anchorless: FileComment[] = threads.filter(isOrphanedPlanCommentThread).map(asFileComment)
+
+    const thread = (id: string): CommentThread | undefined => {
+      const found = byId.get(id)
+      if (!found) return undefined
+      const head = turnOf(found.head)
+      return {
+        author: head.author,
+        date: head.date,
+        canEdit: head.canEdit,
+        replies: found.replies.map(turnOf),
+        // A reply carries no quote: its anchor is the head's, and storing a second copy of
+        // the passage would give the layer two comments to relocate onto one place.
+        onReply: (body) => comments.create({ sessionId, parentId: id, anchor: null, quote: '', body }),
+        onSaveReply: (replyId, body) => comments.update(replyId, body),
+        onDeleteReply: (replyId) => comments.remove(replyId),
+      }
+    }
+
+    /**
+     * EVERY WRITE'S ANSWER IS HANDED ON, where each of these used to `void` it.
+     *
+     * The hook has always resolved to whether the row was written — it is the only thing
+     * that knows, since the refusals happen in Postgres — and six `void`s threw that away
+     * on the way to the card. What the reader saw was the card closing on a comment RLS
+     * had refused, or a Delete quietly restoring its comment on the next refetch. The card
+     * is what draws the failure; this only has to stop swallowing it.
+     */
+    const source: CommentSource = {
+      comments: heads,
+      add: (comment) => comments.create({
+        sessionId, anchor: null, quote: comment.quote, body: comment.body,
+      }),
+      update: (id, body) => comments.update(id, body),
+      remove: (id) => comments.remove(id),
+      thread,
+    }
+
+    /**
+     * The threads the layer could not place — AC5.
+     *
+     * Asked for by the layer, in its own render, with the heads it could not find: only it
+     * knows which passages are still in the document, and only this page knows how to draw
+     * a comment. The heads come back in the shape they were handed over in, so `byId` is
+     * what turns each one back into its conversation.
+     *
+     * Both kinds arrive here — the quotations the rewritten spec no longer contains, and
+     * the `anchorless` ones above, which never had a passage to look for. They are the same
+     * thing to a reader, and `OrphanedThread` draws either: `Quote` renders nothing for an
+     * empty passage, so a promoted reply comes out as its author, its date and its words.
+     */
+    const renderOrphans = (lost: readonly FileComment[]): ReactNode => lost.map((head) => {
+      const found = byId.get(head.id)
+      return found && <OrphanedThread key={head.id} thread={found} turnOf={turnOf} />
+    })
+
+    return { source, renderOrphans, anchorless }
+  }, [detail?.session?.id, comments, threads, turnOf])
+
   useEffect(() => {
     setTicketStates({})
     const keys = detail?.tickets.map((ticket) => ticket.key) ?? []
@@ -591,7 +871,28 @@ export function PlanDetailPage({
                     {t('plans.detail.specOversizeStale')}
                   </p>
                 )}
-                <SpecBody content={spec} />
+                <SpecBody content={spec} comments={specComments} />
+                {/* The comments did not load. Said out loud rather than swallowed: the spec
+                    is readable either way, but a page that silently drew no comments over a
+                    failed read would be telling the reader their colleagues said nothing. */}
+                {comments.read?.failed && (
+                  <p className="mt-4 flex items-start gap-2 text-sm text-text-secondary">
+                    <CloudOff className="w-4 h-4 shrink-0 mt-0.5" />
+                    {t('plans.comments.failed')}
+                  </p>
+                )}
+                {/* The read succeeded and is INCOMPLETE, which is a different sentence and
+                    therefore a different line: the comments above are all real, there are
+                    simply more of them than the cap brings back. Said for the reason the
+                    failure above is said — a reader who has just written a comment on a
+                    very long thread would otherwise watch it not appear, and conclude the
+                    write was lost rather than that the list is capped. */}
+                {comments.read?.truncated && (
+                  <p className="mt-4 flex items-start gap-2 text-sm text-text-secondary">
+                    <FileWarning className="w-4 h-4 shrink-0 mt-0.5" />
+                    {t('plans.comments.truncated')}
+                  </p>
+                )}
               </>
             ) : session.specOversize ? (
               <p className="flex items-start gap-2 text-sm text-text-secondary">
