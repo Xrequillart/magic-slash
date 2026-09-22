@@ -37,6 +37,25 @@ import type { IconComponent } from './types'
 export const TITLE_BAR_HEIGHT = 40
 
 /**
+ * The gutter macOS's traffic lights sit in, in pixels — and a second number anybody can
+ * import, for `TITLE_BAR_HEIGHT`'s reason exactly.
+ *
+ * It was `w-16` spelled here and nowhere else, which was true for as long as this bar was
+ * the only thing that ever sat beside those lights. `ModalHeader` sits beside them too
+ * now: a full-screen page overlay reaches the top of the window, and macOS keeps drawing
+ * its lights OVER whatever is up there — a dialog covering the bar does not cover them.
+ * So the overlay's own title has to step around the same 64px this bar steps around, and
+ * two places holding it is how one of them ends up holding 76.
+ *
+ * 64 AND NOT 68, which is where the lights actually end. `trafficLightPosition` puts the
+ * close button's left edge at x=16 and the three are 20px apart, so the last one ends at
+ * about x=68 — but the gutter is measured from the CONTENT box, inside the bar's own
+ * `px-3`, so 12 + 64 clears it with a dozen pixels to spare. A header at `px-4` lands two
+ * pixels tighter and still clear.
+ */
+export const TRAFFIC_LIGHT_GUTTER = 64
+
+/**
  * One of the two panel toggles.
  *
  * `open` IS THE PANEL'S STATE, not the button's, and it decides both halves of what the
@@ -258,7 +277,7 @@ export function AppTitleBar({
       style={{ height: TITLE_BAR_HEIGHT, WebkitAppRegion: 'drag' } as CSSProperties}
     >
       <div className="flex items-center gap-2">
-        {trafficLightGutter && <div className="w-16 flex-shrink-0" />}
+        {trafficLightGutter && <div className="flex-shrink-0" style={{ width: TRAFFIC_LIGHT_GUTTER }} />}
 
         <Controls>
           {left && (

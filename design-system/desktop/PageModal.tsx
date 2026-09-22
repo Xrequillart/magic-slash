@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type AnimationEvent, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { ModalHeader, type ModalHeaderProps } from './ModalHeader'
-import { TITLE_BAR_HEIGHT } from './AppTitleBar'
 import { PAGE_MODAL_WIDTH, type PageModalSize } from './modalSizes'
 
 /**
@@ -24,15 +23,31 @@ import { PAGE_MODAL_WIDTH, type PageModalSize } from './modalSizes'
  * the window found nothing there. See `onBackdropClick` for the one thing that makes it
  * safe.
  *
- * FULL SCREEN STOPS UNDER THE APP'S TITLE BAR. It is the window minus
- * `TITLE_BAR_HEIGHT`, never the whole window, and that one decision retires a pile of
- * geometry this used to carry: the window stays draggable by its bar, the sidebar button
- * stays reachable, and macOS's traffic lights stay exactly where macOS drew them, with
- * nothing of ours over them. What used to be here instead was a 76px gutter in the
- * header to get the title out from under those lights, plus a probe to drop that gutter
- * again in native fullscreen where they are gone. Neither is needed once the overlay
- * simply does not reach them. It is also the honest shape: an overlay is over the app,
- * not instead of it.
+ * FULL SCREEN IS THE WHOLE WINDOW, TITLE BAR INCLUDED.
+ *
+ * It stopped at `TITLE_BAR_HEIGHT` for a while, on the argument that an overlay is over
+ * the app and not instead of it. The argument is tidy and the result was not: expanding
+ * a page left a 40px band of app across the top that the page could not use and the
+ * reader had not asked to keep, so the biggest the window got was never quite the window.
+ * Reaching the top is what the control says it does.
+ *
+ * TWO THINGS THAT BAND WAS DOING HAVE TO BE PICKED UP HERE, and neither is optional:
+ *
+ *  1. THE WINDOW WAS DRAGGED BY IT. Cover it and the window is immovable for as long as
+ *     the overlay is open. `ModalHeader`'s `draggable` puts the drag region on the
+ *     overlay's own band instead, which is the same gesture in the same place.
+ *  2. THE TRAFFIC LIGHTS ARE STILL THERE. macOS draws them over the web content, so
+ *     covering the bar does not cover them — the overlay is painted UNDER three buttons
+ *     that land exactly on its mark and title. `ModalHeader`'s `trafficLightGutter`
+ *     steps around the same 64px `AppTitleBar` steps around.
+ *
+ * Both are passed only while full screen, because inset there is a real title bar above
+ * doing both jobs already.
+ *
+ * WHAT DOES NOT COME BACK is the probe this component used to need. Whether the lights
+ * are there at all is the WINDOW's fact — they are gone in native fullscreen — and this
+ * component has no way to ask and no business knowing. The app passes
+ * `trafficLightGutter`, the same way it passes it to `AppTitleBar`.
  *
  * NO BORDER ON THE FRAME. There was a `border border-line`, and it is gone with the rule
  * under the header: a hairline around a panel that is already lifted off a dimmed
@@ -64,6 +79,18 @@ export interface PageModalProps {
    * the one shape that decision must not have.
    */
   fullScreen?: boolean
+  /**
+   * Whether macOS's traffic lights are on screen, so a FULL-SCREEN panel can keep their
+   * corner clear — see the note above, and `ModalHeader`'s prop of the same name.
+   *
+   * TRUE BY DEFAULT and ignored while the panel is inset, where the app's own title bar
+   * is above it holding that corner. The app turns it off in NATIVE fullscreen, which is
+   * the one state where the lights do not exist and a gutter kept for them would be a
+   * hole nothing fills. A browser has no lights either, and a drawing of the app that
+   * says nothing gets the gutter only in the full-screen specimen, which is the honest
+   * picture of the app.
+   */
+  trafficLightGutter?: boolean
   /**
    * How wide the panel is at rest — see `modalSizes.ts`. `page` unless stated, which is
    * the four overlays that were here first.
@@ -125,6 +152,7 @@ export interface PageModalProps {
 export function PageModal({
   header,
   fullScreen = false,
+  trafficLightGutter = true,
   size = 'page',
   children,
   bodyKey,
@@ -169,30 +197,28 @@ export function PageModal({
     // rather than fight it with a wider `max-w`: padding left in place would show 24px
     // of dimmed desktop around a panel asked to fill the window.
     //
-    // `top` IS WHAT KEEPS THE APP'S TITLE BAR ON SCREEN, and it moves with the padding so
-    // the two read as one gesture: the dim itself stops under that bar in full screen,
-    // which is what makes the bar usable rather than merely visible through a veil.
-    // Inset, the overlay still covers it — there is a 24px margin of dimmed app all round
-    // by design, and carving the top out of it would look like a misplaced panel.
+    // THE GROUND IS THE WHOLE WINDOW IN BOTH STATES, which it did not used to be: it
+    // started at `TITLE_BAR_HEIGHT` in full screen so the app's bar stayed uncovered.
+    // Now that the panel reaches the top, the dim has to as well — a scrim that stopped
+    // 40px short would be a strip of undimmed app above a panel that ends flush with the
+    // window, which reads as the overlay having failed to finish opening. One fewer
+    // property to transition, too: only the padding moves.
     //
     // `no-drag` ON THE BACKDROP, AND IT IS NOT COSMETIC. Electron hands macOS a set of
     // RECTANGLES computed from the DOM, not a hit-test: an element painted over a
     // `-webkit-app-region: drag` region does not reclaim those pixels, only a `no-drag`
-    // one does. The app drags its window by a full-width band at the top, and INSET this
-    // backdrop lies across that band with the panel's own header — which is at y=24 —
-    // partly inside it, so without this the close and full-screen buttons stop responding
-    // and the window drags instead. Nothing is drawn over them, which is what makes the
-    // obstacle invisible. In full screen the backdrop starts below the band and this
-    // changes nothing; it is the inset case that needs it. A browser ignores the property
-    // entirely, so a drawing of the app pays nothing for it.
+    // one does. The app drags its window by a full-width band at the top, and this
+    // backdrop lies across that band in both states — with the panel's own header partly
+    // inside it when inset, which is where the close and full-screen buttons would stop
+    // responding and the window would drag instead. Nothing is drawn over them, which is
+    // what makes the obstacle invisible. The panel's header opts back INTO dragging on
+    // top of this when it is full screen; regions nest, and the innermost one wins. A
+    // browser ignores the property entirely, so a drawing of the app pays nothing for it.
     <div
-      className={`fixed inset-x-0 bottom-0 z-50 flex items-center justify-center bg-black/70
-        transition-[padding,top] duration-300 ease-out motion-reduce:transition-none
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70
+        transition-[padding] duration-300 ease-out motion-reduce:transition-none
         ${fullScreen ? 'p-0' : 'p-6'} ${backdropClassName}`}
-      style={{
-        top: fullScreen ? TITLE_BAR_HEIGHT : 0,
-        WebkitAppRegion: 'no-drag',
-      } as CSSProperties}
+      style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
       onMouseDown={onGroundMouseDown}
       onClick={onGroundClick}
     >
@@ -233,12 +259,19 @@ export function PageModal({
         // so the padded box IS the viewport.
         style={{
           maxWidth: fullScreen ? '100vw' : PAGE_MODAL_WIDTH[size],
-          height: fullScreen ? `calc(100vh - ${TITLE_BAR_HEIGHT}px)` : '85vh',
+          height: fullScreen ? '100vh' : '85vh',
           borderRadius: fullScreen ? 0 : '1rem',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <ModalHeader {...header} />
+        {/* The two the panel owns rather than the caller — see the note at the top. Both
+            are false while inset, where the app's real title bar is above doing both
+            jobs, and a gutter or a drag region down here would be a second one. */}
+        <ModalHeader
+          {...header}
+          trafficLightGutter={fullScreen && trafficLightGutter}
+          draggable={fullScreen}
+        />
         <div className="flex-1 overflow-hidden">
           {size === 'column' ? (
             // NO PADDING ON EITHER OF THESE, and it is load-bearing rather than tidy: a

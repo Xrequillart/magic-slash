@@ -12,7 +12,7 @@ export type {
   AccountCardRow,
 } from './AccountCard'
 export { Agent, AGENT_STATES } from './Agent'
-export { AppTitleBar, TITLE_BAR_HEIGHT } from './AppTitleBar'
+export { AppTitleBar, TITLE_BAR_HEIGHT, TRAFFIC_LIGHT_GUTTER } from './AppTitleBar'
 export type {
   AppTitleBarProps,
   TitleBarAccount,

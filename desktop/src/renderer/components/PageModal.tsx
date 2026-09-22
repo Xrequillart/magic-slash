@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { PageModal as PageModalGround, type ModalHeaderProps, type PageModalSize } from '@ds/desktop'
 import type { IconComponent } from '@ds/desktop/types'
+import { useIsFullScreen } from '../hooks/useIsFullScreen'
 import { useModalExit } from '../hooks/useModalExit'
 import { useStore } from '../store'
 import { useT } from '../i18n'
@@ -120,6 +121,18 @@ export function PageModal({ title, titleIcon, onClose, tabs, headerRight, size, 
   const toggleFullScreen = useStore((s) => s.togglePageModalFullScreen)
 
   /**
+   * THE OVERLAY'S FULL SCREEN AND THE WINDOW'S ARE TWO DIFFERENT THINGS, and this is the
+   * one place they touch.
+   *
+   * Expanded, the overlay now covers the app's title bar — so it inherits that bar's one
+   * piece of platform knowledge: whether macOS's traffic lights are on screen to step
+   * around. They are, except in the window's OWN fullscreen, where the lights are gone
+   * and a gutter kept for them would be 64px of nothing. `TitleBar` asks the same
+   * question for the same reason.
+   */
+  const windowFullScreen = useIsFullScreen()
+
+  /**
    * The parent renders this conditionally, so calling onClose straight away would
    * unmount it mid-animation. Closing is requested here instead: the overlay plays its
    * exit, and only then does onClose let the parent drop it.
@@ -180,6 +193,7 @@ export function PageModal({ title, titleIcon, onClose, tabs, headerRight, size, 
   return (
     <PageModalGround
       fullScreen={fullScreen}
+      trafficLightGutter={!windowFullScreen}
       size={size}
       bodyKey={bodyKey}
       header={{

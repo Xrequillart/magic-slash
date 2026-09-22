@@ -53,6 +53,18 @@ const PROPS: PropRow[] = [
     description:
       'The one slot, for chrome a PAGE owns rather than the dialog — the plans list hangs a live indicator there. It sits before the buttons, because those two are the last thing in the row in every window in this app.',
   },
+  {
+    name: 'trafficLightGutter',
+    type: 'boolean',
+    description:
+      'Keeps macOS’s 64px corner clear, for a dialog that reaches the top of the window. A full-screen page overlay covers the app’s title bar but NOT the traffic lights: the window is `titleBarStyle: "hidden"`, so the platform draws them over the web content and the overlay is painted under three buttons that land exactly on its mark and title. Applied as a margin on the title rather than a spacer in the row — a spacer would bring the row’s gap with it and indent the inset case by 8px it never asked for — and it is a length at both ends, so it travels with the panel instead of popping in. `PageModal` passes it only while full screen, and only while the window is not in its own native fullscreen, where the lights are gone.',
+  },
+  {
+    name: 'draggable',
+    type: 'boolean',
+    description:
+      'Lets the window be dragged by this band, for the one case where this header is the only chrome left on screen: a full-screen page overlay covers the bar the window was dragged by, and without this the window is immovable for as long as the overlay is open. The tab strip and the right-hand group opt back out — Electron hands macOS rectangles computed from the DOM rather than a hit-test, so a button merely painted over a drag region does not reclaim its pixels. The title does not opt out, deliberately: dragging a window by the name of what is in it is what every window on the platform does.',
+  },
 ]
 
 export function ModalHeaderEntry({ theme, onOpen }: { theme: DesktopTheme; onOpen?: (id: string) => void }) {
@@ -107,6 +119,61 @@ export function ModalHeaderEntry({ theme, onOpen }: { theme: DesktopTheme; onOpe
                 A dialog is one surface. A line drawn across it says the header is a
                 separate panel sitting on the body.
               </div>
+            </Panel>
+          </Specimen>
+        </Stage>
+      </EntrySection>
+
+      <EntrySection
+        title="Full screen, where the band is the top of the window"
+        note="Expanded, a page overlay reaches the top — so it inherits the two jobs the app’s title bar was doing. macOS keeps drawing its traffic lights over the web content, so the title steps around the same 64px the bar steps around; and the band becomes what the window is dragged by, since the bar it covered is gone. The dots below are where the platform draws its own, to scale."
+      >
+        <Stage theme={theme}>
+          <Specimen label="trafficLightGutter — the title clears the lights">
+            <Panel>
+              {/* A DRAWING OF THE PLATFORM'S BUTTONS, and the only reason they are here:
+                  the lights are macOS's and a browser has none, so the one thing this
+                  specimen has to show — that the title clears them — would otherwise be
+                  invisible on the site. Positioned from `trafficLightPosition` in the
+                  app's main process: x=16 for the first, 20px apart, 12px in diameter. */}
+              <div className="relative">
+                <div className="pointer-events-none absolute left-4 top-[18px] flex gap-2">
+                  <span className="size-3 rounded-full bg-[#ff5f57]" />
+                  <span className="size-3 rounded-full bg-[#febc2e]" />
+                  <span className="size-3 rounded-full bg-[#28c840]" />
+                </div>
+                <ModalHeader
+                  title="Plans"
+                  icon={NotebookPen}
+                  tabs={{ items: TABS, activeKey: 'plans', onSelect: noop, ariaLabel: 'Pages' }}
+                  fullScreen={{
+                    expanded: true,
+                    onToggle: noop,
+                    expandTitle: 'Full screen  ⌘⇧F',
+                    collapseTitle: 'Exit full screen  ⌘⇧F',
+                  }}
+                  onClose={noop}
+                  closeTitle="Close  Esc"
+                  trafficLightGutter
+                />
+              </div>
+            </Panel>
+          </Specimen>
+          <Specimen label="without it — the same band inset, where a real title bar is above">
+            <Panel>
+              <ModalHeader
+                title="Plans"
+                icon={NotebookPen}
+                tabs={{ items: TABS, activeKey: 'plans', onSelect: noop, ariaLabel: 'Pages' }}
+                fullScreen={{
+                  expanded: false,
+                  onToggle: noop,
+                  expandTitle: 'Full screen  ⌘⇧F',
+                  collapseTitle: 'Exit full screen  ⌘⇧F',
+                }}
+                onClose={noop}
+                closeTitle="Close  Esc"
+              />
             </Panel>
           </Specimen>
         </Stage>

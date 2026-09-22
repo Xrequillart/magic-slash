@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import { TRAFFIC_LIGHT_GUTTER } from './AppTitleBar'
 import { ButtonIcon } from './ButtonIcon'
 import { Icon } from './Icon'
 import { Maximize2, Minimize2, X } from './icons'
@@ -96,6 +97,45 @@ export interface ModalHeaderProps {
   onClose?: () => void
   /** The close button's tooltip — where the Escape hint goes. Translated. */
   closeTitle?: string
+  /**
+   * KEEP THE TRAFFIC LIGHTS' 64px CLEAR, because a dialog that reaches the top of the
+   * window does not get them out of the way.
+   *
+   * macOS draws its three buttons OVER the web content when the window is
+   * `titleBarStyle: 'hidden'`, so a full-screen page overlay is painted UNDER them, not
+   * instead of them. Without this the overlay's mark and title sit exactly where the
+   * lights are — `px-4` is 16px and the close button starts at 16px.
+   *
+   * A MARGIN ON THE TITLE AND NOT A SPACER IN THE ROW, which is the one thing here worth
+   * explaining. A spacer would be a flex child and would bring the row's `gap-2` with it,
+   * so an overlay that is NOT full screen would carry 8px of indent it never asked for.
+   * A margin that is zero when the prop is off costs the other case nothing, and it is a
+   * length at both ends, so it travels with the panel over the same 300ms rather than
+   * popping in on the first frame.
+   *
+   * THE CALLER'S, and in the app it is the window's: `PageModal` passes it only while
+   * full screen, and only while the window is not in NATIVE fullscreen — the lights are
+   * gone there, and a gutter kept for them would be a hole nothing fills.
+   */
+  trafficLightGutter?: boolean
+  /**
+   * LET THE WINDOW BE DRAGGED BY THIS BAND.
+   *
+   * For the one case where this header is the only chrome left on screen: a full-screen
+   * page overlay covers the app's own title bar, and that bar is what the window was
+   * dragged by. Without this the window becomes immovable for as long as the overlay is
+   * open, which is a dialog that has quietly taken the window hostage.
+   *
+   * THE CONTROLS OPT BACK OUT, and they have to — Electron hands macOS a set of
+   * RECTANGLES computed from the DOM rather than a hit-test, so a button merely painted
+   * over a drag region does not reclaim its pixels; only `no-drag` does. The tab strip
+   * and the right-hand group carry it. The title does not, deliberately: dragging a
+   * window by the name of what is in it is what every window on the platform does.
+   *
+   * A browser ignores `-webkit-app-region` entirely, so a drawing of the app pays
+   * nothing for this.
+   */
+  draggable?: boolean
 }
 
 /**
@@ -114,7 +154,12 @@ export function ModalHeader({
   onClose,
   closeTitle,
   gutter = 'default',
+  trafficLightGutter = false,
+  draggable = false,
 }: ModalHeaderProps) {
+  /** See `draggable` — the controls have to opt out of the region the band opts into. */
+  const noDrag = (draggable ? { WebkitAppRegion: 'no-drag' } : {}) as CSSProperties
+
   return (
     // THREE TRACKS AND NOT AN ABSOLUTE STRIP — `minmax(0,1fr) auto minmax(0,1fr)`.
     //
@@ -133,32 +178,48 @@ export function ModalHeader({
     // instead of an overlap. The strip cannot be reached at all.
     <div
       className={`grid shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 ${gutter === 'wide' ? 'px-6' : 'px-4'}`}
-      style={{ height: MODAL_HEADER_HEIGHT }}
+      style={{
+        height: MODAL_HEADER_HEIGHT,
+        ...(draggable ? { WebkitAppRegion: 'drag' } : {}),
+      } as CSSProperties}
     >
       {/* The name keeps the left, where every window in the app puts it.
           `truncate` is on the WORD and not on the row, now that a mark shares it: on the
           row it would apply to a flex container, which ellipses nothing and would let
-          the icon be the thing that got cut. */}
-      <span className="flex min-w-0 items-center gap-2">
+          the icon be the thing that got cut.
+
+          The margin is the traffic lights' gutter — see `trafficLightGutter` for why it
+          is a margin here rather than a spacer in the row, and why it is animated. */}
+      <span
+        className="flex min-w-0 items-center gap-2 transition-[margin] duration-300 ease-out motion-reduce:transition-none"
+        style={{ marginInlineStart: trafficLightGutter ? TRAFFIC_LIGHT_GUTTER : 0 }}
+      >
         {icon && <Icon glyph={icon} size="sm" tone="muted" className="flex-shrink-0" />}
         <Text size="xs" weight="bold" className="truncate">{title}</Text>
       </span>
 
       {/* The middle track, which is the strip's when there is one and empty when there is
           not — an empty cell rather than no cell, so the buttons stay in the THIRD track
-          and keep the right edge whatever the header holds. */}
+          and keep the right edge whatever the header holds.
+
+          The strip is WRAPPED rather than given the property itself, because `TabStrip`
+          takes a `className` and not a `style`, and `-webkit-app-region` has no Tailwind
+          utility. The wrapper is a bare grid item at the same `auto` width the strip was,
+          so it changes nothing about where the strip sits. */}
       {tabs ? (
-        <TabStrip
-          ariaLabel={tabs.ariaLabel}
-          items={tabs.items}
-          activeKey={tabs.activeKey}
-          onSelect={tabs.onSelect}
-        />
+        <div style={noDrag}>
+          <TabStrip
+            ariaLabel={tabs.ariaLabel}
+            items={tabs.items}
+            activeKey={tabs.activeKey}
+            onSelect={tabs.onSelect}
+          />
+        </div>
       ) : (
         <span />
       )}
 
-      <div className="flex flex-shrink-0 items-center justify-self-end gap-1">
+      <div className="flex flex-shrink-0 items-center justify-self-end gap-1" style={noDrag}>
         {right}
         {/* Expanding comes BEFORE closing: it acts on the overlay rather than on what is
             inside it, and closing stays the last thing in the row, where every window in

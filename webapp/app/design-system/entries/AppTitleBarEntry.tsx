@@ -295,10 +295,12 @@ account={{ label, title, avatar, onClick }}`}</Snippet>
   right={{ open: rightSidebar === 'info', title: t('titlebar.info'), onToggle: toggleInfo }}
 />`}</Snippet>
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
-          <code>TITLE_BAR_HEIGHT</code> travels with it, because the app’s full-screen
-          overlay stops below the bar rather than covering it — the window stays
-          draggable and keeps its own chrome. Two places holding the same 40 is how one
-          of them ends up holding 48.
+          <code>TITLE_BAR_HEIGHT</code> and <code>TRAFFIC_LIGHT_GUTTER</code> travel with
+          it, because this is no longer the only thing laid out around those lights: the
+          app’s full-screen overlay covers this bar, and macOS keeps drawing its three
+          buttons over whatever is up there — so <code>ModalHeader</code> steps around the
+          same 64px. Two places holding the same number is how one of them ends up holding
+          a different one.
         </p>
       </EntrySection>
     </article>
