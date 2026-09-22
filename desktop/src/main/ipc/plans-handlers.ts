@@ -1,6 +1,9 @@
 import { ipcMain } from 'electron'
-import type { PlanDetail, PlanOverview, PlanTicketOrigin } from '../../types'
+import { isPlanCommentAnchor, type NewPlanComment, type PlanCommentsRead, type PlanDetail, type PlanOverview, type PlanTicketOrigin } from '../../types'
 import { findPlanForTicket, listPlanDetail, listPlanSessions } from '../cloud/plans'
+import {
+  createPlanComment, deletePlanComment, listPlanComments, updatePlanComment,
+} from '../cloud/planComments'
 
 /**
  * The renderer is expected to send back a uuid it got from `plans:list`, and RLS would
@@ -26,8 +29,34 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * already draw from the answer itself.
  *
  * The renderer never talks to Supabase. This is the whole of its access to
- * `plan_sessions`, and it is read-only.
+ * `plan_sessions` and to `plan_comments`; the first is read-only, and the second is not —
+ * see the comment channels at the bottom of this file.
  */
+
+/**
+ * The longest body a comment may carry across the bridge.
+ *
+ * A SHAPE CHECK LIKE THE OTHERS, and the one place a length belongs at all: `body` is `text`
+ * with no constraint on it, so without a ceiling a renderer bug — a paste loop, a component
+ * re-submitting on every keystroke — would push megabytes into a row every member of the org
+ * then downloads on opening the plan. Generous on purpose: a review comment is a paragraph,
+ * and 16k is far past anything a person types into a card three rows tall.
+ */
+const MAX_COMMENT_BODY = 16_000
+
+/**
+ * The longest quote a comment may carry across the bridge — `MAX_COMMENT_BODY`'s reason,
+ * for the other free-text column.
+ *
+ * A CEILING AND NOT THE CLAMP. The renderer cuts a selection to `MAX_QUOTE_CHARS` — 2000 —
+ * plus an ellipsis, in `utils/commentAnchors.ts`, so nothing the app sends comes anywhere
+ * near this. This is what stands between `plan_comments.quote` and a renderer that is not
+ * doing that: a bug, a future view, anything reaching the channel with a megabyte of
+ * selected document. Deliberately generous, and deliberately not a second spelling of the
+ * clamp — the two do not have to be kept in step, as long as this one stays the larger.
+ */
+const MAX_COMMENT_QUOTE = 4_000
+
 export function setupPlansHandlers(): void {
   ipcMain.handle('plans:list', async (): Promise<PlanOverview> => listPlanSessions())
   ipcMain.handle('plans:detail', async (_e, id: unknown): Promise<PlanDetail> => {
@@ -59,5 +88,79 @@ export function setupPlansHandlers(): void {
     }
     if (!Array.isArray(keys) || !keys.every((key) => typeof key === 'string')) return null
     return findPlanForTicket(repoIds, keys)
+  })
+
+  /**
+   * THE FOUR COMMENT CHANNELS — the first WRITES this file has ever carried.
+   *
+   * Nothing below authorizes anything, and that is not an omission: `plan_comments`'
+   * policies decide who may write on whose plan, and they are the only thing that can.
+   * A renderer asking to delete a comment is not evidence that the comment is theirs,
+   * and a check here would be a second, weaker copy of a rule the database already
+   * holds — one that would drift the first time an admin's moderation path changed.
+   *
+   * So these guards are SHAPE ONLY, like `plans:detail`'s above, and they exist for the
+   * same reason: the arguments are uuids and strings that reach PostgREST as bound
+   * values, and a channel that iterates whatever arrived is the one that throws where
+   * this promises an answer. A malformed argument gets the same answer a well-formed
+   * unauthorized one does — the write reports `false` and the read reports nothing —
+   * rather than a distinguishable rejection the renderer could probe with.
+   *
+   * The three writes answer `boolean` rather than the row they wrote, because the
+   * renderer's next move is a refetch either way. See `cloud/planComments.ts`.
+   */
+  ipcMain.handle('plans:comments:list', async (_e, id: unknown): Promise<PlanCommentsRead> => {
+    // An unfailed nothing, exactly as `plans:detail` answers a malformed id with an
+    // unfailed absence: the page draws "no comment yet", which is what an unknown plan
+    // genuinely has.
+    if (typeof id !== 'string' || !UUID_RE.test(id)) {
+      return { comments: [], emailByAuthor: {}, avatarByAuthor: {}, truncated: false, failed: false }
+    }
+    return listPlanComments(id)
+  })
+
+  ipcMain.handle('plans:comments:create', async (_e, args: unknown): Promise<boolean> => {
+    if (typeof args !== 'object' || args === null) return false
+    const { sessionId, parentId, anchor, quote, body } = args as Record<string, unknown>
+    if (typeof sessionId !== 'string' || !UUID_RE.test(sessionId)) return false
+    // Absent is a thread head; present has to be a uuid. `null` is accepted alongside
+    // `undefined` because that is what a JSON round trip makes of an optional field.
+    if (parentId !== undefined && parentId !== null
+      && (typeof parentId !== 'string' || !UUID_RE.test(parentId))) return false
+    // Null is the ordinary answer — every comment the app writes today is anchored to a
+    // quote — and anything that is not exactly a `PlanCommentAnchor` is refused rather than
+    // coerced, because jsonb will happily store whatever arrives and the next reader of the
+    // column would have to defend against it forever. The test is shared with the read that
+    // narrows the column, so what this refuses and what that accepts cannot come apart.
+    if (anchor !== null && anchor !== undefined && !isPlanCommentAnchor(anchor)) return false
+    if (typeof quote !== 'string' || quote.length > MAX_COMMENT_QUOTE) return false
+    // An empty body is not a comment — it is a marker on a passage that says nothing, and
+    // the only way back out of one is to delete it. The card disables Save on it; this is
+    // what makes that true of the channel as well.
+    if (typeof body !== 'string' || body.trim() === '' || body.length > MAX_COMMENT_BODY) return false
+
+    // No second guard on the way in: the checks above have already narrowed both, and
+    // re-testing here would read as though they might not have held.
+    const input: NewPlanComment = {
+      sessionId,
+      parentId: parentId ?? undefined,
+      anchor: anchor ?? null,
+      quote,
+      body,
+    }
+    return createPlanComment(input)
+  })
+
+  ipcMain.handle('plans:comments:update', async (_e, args: unknown): Promise<boolean> => {
+    if (typeof args !== 'object' || args === null) return false
+    const { id, body } = args as Record<string, unknown>
+    if (typeof id !== 'string' || !UUID_RE.test(id)) return false
+    if (typeof body !== 'string' || body.trim() === '' || body.length > MAX_COMMENT_BODY) return false
+    return updatePlanComment(id, body)
+  })
+
+  ipcMain.handle('plans:comments:delete', async (_e, id: unknown): Promise<boolean> => {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) return false
+    return deletePlanComment(id)
   })
 }

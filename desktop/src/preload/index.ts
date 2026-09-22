@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AvatarSourceResult, AvatarWriteResult } from '../avatar'
 import type { UsernameCheckResult, UsernameSaveResult } from '../username'
-import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, PlanDetail, PlanOverview, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
+import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, PlanCommentsRead, PlanDetail, PlanOverview, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -807,6 +807,40 @@ const plansApi = {
   // see skills/magic-plan §7.2 against the table's own comment).
   forTicket: (repoIds: string[], keys: string[]): Promise<PlanTicketOrigin | null> =>
     ipcRenderer.invoke('plans:forTicket', { repoIds, keys }),
+  // The comments on one plan's spec, and the three ways of changing them. The FIRST
+  // WRITES in this API, which is otherwise a reader of what the main process uploaded.
+  //
+  // Nothing here says who may do what: `plan_comments`' RLS policies decide, and the
+  // handlers behind these channels check the SHAPE of their arguments and nothing more.
+  // A write that the policies refuse comes back `false`, which is also what a dropped
+  // connection answers — the two are one state to the caller, whose next move is the
+  // same either way.
+  //
+  // EVERY WRITE IS FOLLOWED BY A REFETCH, on the renderer's side (`usePlanComments`).
+  // The table is deliberately not published to realtime — that is issue #298 — so a
+  // reply a colleague posted while this plan was open arrives on the next read, not on
+  // its own.
+  comments: {
+    // `sessionId` is the uuid the detail read handed over. Answers an unfailed empty
+    // set for a plan that does not exist or is not visible, exactly as `detail` answers
+    // a null session: RLS spells both the same way.
+    list: (sessionId: string): Promise<PlanCommentsRead> =>
+      ipcRenderer.invoke('plans:comments:list', sessionId),
+    // The author is NOT a parameter: the main process signs the row off the stored
+    // session, because the insert policy tests `author_id = auth.uid()` and a value
+    // chosen by the renderer could only ever be right by accident.
+    create: (input: NewPlanComment): Promise<boolean> =>
+      ipcRenderer.invoke('plans:comments:create', input),
+    // The body alone. A comment cannot be moved to another passage or another thread —
+    // there is no interface for either, and the patch that reaches PostgREST lists one
+    // column.
+    update: (id: string, body: string): Promise<boolean> =>
+      ipcRenderer.invoke('plans:comments:update', { id, body }),
+    // The replies under it survive: `parent_id` is `on delete set null`, so deleting
+    // your own comment never takes a colleague's answer with it.
+    remove: (id: string): Promise<boolean> =>
+      ipcRenderer.invoke('plans:comments:delete', id),
+  },
 }
 
 // Org API (organization membership + invitations + multi-org management)

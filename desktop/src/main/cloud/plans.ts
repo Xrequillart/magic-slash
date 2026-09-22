@@ -349,8 +349,15 @@ async function fetchPlanRepos(): Promise<Read<PlanRepoRef>> {
  *
  * Takes the organizations rather than listing them itself, so the caller can issue that
  * list alongside the sessions instead of behind them. See `listPlanSessions`.
+ *
+ * EXPORTED, for `cloud/planComments.ts` and for nothing else. A comment on a plan needs
+ * exactly this pair — an address and a photo per user id — and writing a second resolver
+ * for it would be the surest way to have a colleague named one thing in the plans list and
+ * another in the thread on their own plan. The keys it answers under are named for THIS
+ * file's caller (`…ByOwner`); the comment read renames them to `…ByAuthor` on the way out,
+ * because `plan_comments` has an `author_id` and no owner.
  */
-async function fetchAuthors(
+export async function fetchAuthors(
   orgs: Org[],
   ownerIds: Set<string>,
 ): Promise<Pick<PlanOverview, 'emailByOwner' | 'avatarByOwner'>> {
