@@ -1,598 +1,556 @@
-"use client";
+'use client'
 
-import { useId } from "react";
+import type { CSSProperties } from 'react'
 import {
-  ChevronDown,
+  ModalHeader,
+  TaskBoard,
+  type BoardColumnTone,
+  type StatusTone,
+  type TicketCardNote,
+  type TicketCardTag,
+  type Tracker,
+} from '@ds/desktop'
+import {
+  ArrowDownWideNarrow,
+  BotMessageSquare,
+  CalendarRange,
   ChevronsUp,
-  ExternalLink,
-  Hand,
+  ChevronUp,
+  CircleCheck,
+  CircleDashed,
+  Columns3,
+  FolderGit2,
   Layers,
-  Link2,
   ListTodo,
+  LoaderCircle,
+  NotebookPen,
+  OctagonAlert,
+  Play,
   RefreshCw,
-  Search,
-  SlidersHorizontal,
-  X,
-} from "lucide-react";
-import type { MessageKey } from "@/lib/i18n";
-import { useT } from "@/lib/i18n/useLanguage";
-import { FeatureLegend, LegendTile } from "./FeatureLegend";
+  Sparkles,
+} from '@ds/desktop/icons'
+import { PROJECT_COLORS } from '@ds/desktop/palette'
+import { DESKTOP_THEMES } from '@/lib/desktopTheme'
+import type { MessageKey } from '@/lib/i18n'
+import { useT } from '@/lib/i18n/useLanguage'
+import type { IconComponent } from '@ds/desktop/types'
+import { FeatureLegend, LegendTile } from './FeatureLegend'
 
 /**
- * The visual under the `Tasks` row: the app's own Tasks modal, redrawn IN DARK and
- * cropped at the bottom.
+ * The visual under the `Tasks` row: the app's Tasks window, DRAWN WITH THE APP'S OWN
+ * COMPONENTS rather than redrawn in the site's.
  *
- * DRAWN FROM THE REAL SCREEN, band for band — `desktop/src/renderer/components/
- * PageModal.tsx` for the chrome, `pages/Tasks/index.tsx` for the body, and
- * `pages/Tasks/TasksRepoSection.tsx` for the cards and their rows. Every measurement
- * below is that source's, not an approximation of it:
+ * IT WAS A TRACING, band for band, and the tracing is what went stale. The page it
+ * copied was a list of repository cards with a row per ticket; the app deals one
+ * repository's tickets into FOUR COLUMNS now.
  *
- *   1. THE MODAL. `rounded-2xl` on `bg-bg-secondary` inside `border border-line`, and a
- *      header that is exactly `px-4 h-12 border-b border-line` with the title at
- *      `text-sm font-semibold` on the left and the close button on the right.
- *   2. THE SECTION LINE. `flex items-center gap-2 text-sm text-text-secondary` — a `w-4`
- *      `ListTodo`, the word "To do", then `ml-auto` carrying the page total at
- *      `text-xs text-text-secondary/50` and the Reload button in the row-button recipe
- *      (`px-2 py-1 text-xs font-medium border border-line rounded-lg`).
- *   3. THE FILTER BAR. `TaskFilters`: a search box that takes the width — `INPUT` plus
- *      `pl-9`, with a `w-3.5` `Search` absolutely placed at `left-3` — then the pickers
- *      at their declared widths, 176px for the repository and 152px for the sort.
- *   4. THE CARDS. `rounded-lg bg-surface-subtle border border-line-field overflow-hidden`,
- *      a header at `px-4 py-3` carrying the chevron, the repository's own colour as a
- *      `w-2 h-2` dot, its name at `text-sm font-medium`, and the count on the right.
- *   5. THE ROWS. `rowActivation`'s geometry verbatim —
- *      `flex items-center gap-3 pl-4 pr-4 py-2.5 border-t border-line-subtle` — with the
- *      `TrackerTile` at `sm` (`w-8 h-8 rounded-lg`), a `TicketBadge`, the title at
- *      `text-sm`, and a second line of what is known about the ticket.
+ * THE BOARD IS ONE COMPONENT, and that is the whole reason this file is short.
+ * `TaskBoard` in `design-system/desktop/` owns the grid, the columns, the cards and the
+ * sticky wiring, and `desktop/src/renderer/pages/Tasks/TaskBoard.tsx` renders the very
+ * same file — it is an ADAPTER now, turning a `BoardCard` into the props below. So the
+ * window here is not a drawing of the app's board: it IS the app's board, given invented
+ * tickets. `PlanModalMockup` next door made the same move first and its header is the
+ * long version of the argument.
  *
- * THE TWO TRACKERS ARE THE POINT, which is why both cards are here. A GitHub row carries
- * `#number`, an `@login` and its labels; a Jira row carries a `PROJ-123` key, a status
- * pill coloured by CATEGORY and labelled by NAME, the epic it hangs off and its priority
- * as an arrow. Those are two different second lines, and a drawing that showed one of
- * them would be a drawing of half the screen.
+ * WHAT MAKES THAT WORK IS THE GROUND: `/design-system`'s own `Stage` writes a theme's
+ * `--c-*` variables onto one element and paints the app's window colour under them, and
+ * this does the same with `DESKTOP_THEMES.dark` — the app's DEFAULT theme
+ * (`DEFAULT_THEME` in `desktop/src/types.ts`), so what is on the page is what an
+ * untouched install looks like. Everything nested inside then resolves `bg-bg-secondary`,
+ * `text-ink` and `bg-surface` exactly as it would in Electron.
  *
- * IN DARK, WHICH IS THE ONE THING THAT IS NOT A REPRODUCTION, and it is the same trade
- * `PRWatchCardMockup` makes next door: the app runs its theme off CSS variables and every
- * theme it ships is dark, while this webapp has one light palette. So the dark is built
- * from `bg-ink` and the declared white-alpha ramp — `onink-body`, `onink-dim`,
- * `onink-faint`, `onink-rule`, `onink-tint` — and the app's own `surface`/`surface-subtle`
- * white alphas map onto `onink-tint` and `onink-selected`. `accent` is shared, and Jira's
- * blue stays Jira's.
+ * WHAT IS STILL THIS FILE'S OWN, because a design system holds none of it:
  *
- * WHAT IS TRANSLATED AND WHAT IS NOT, which is not a style question here but a fidelity
- * one. The app translates its own chrome — "To do", "Reload", "Open on GitHub" — so those
- * go through the catalogue with the app's own sentences. It does NOT translate what a
- * tracker sends it: a Jira status is the word a site's own board column is called, a
- * priority is the site's own tier, a GitHub label is a string the repository chose. Those
- * are printed as they arrive, so they are literals here too, and a French reader sees
- * exactly what the French app would show them.
+ *   1. THE PANEL. `PageModal` portals to `document.body` and covers the viewport, which
+ *      is right for a dialog and useless for a picture of one. Its panel is three
+ *      classes — `bg-bg-secondary`, `rounded-2xl`, a shadow — and those are spelled
+ *      below. The HEADER inside it is the real component.
+ *   2. THE FOUR COLUMNS' TABLE. `TaskBoard`'s `COLUMNS` — a heading, a glyph and a tone
+ *      each, with `alert` on Blocked alone — copied rather than imported: it lives in
+ *      `pages/Tasks/` because what a column MEANS is the app's vocabulary.
+ *   3. WHICH CONTROLS THE BAR CARRIES. `FilterBar` draws the band and knows what a
+ *      control in one looks like; WHAT they narrow — a repository, a sprint, an epic, an
+ *      agent — is vocabulary, so the app builds that list in `TaskFilters.ts` and this
+ *      file builds its own, four controls long.
+ *   4. THE BRANCH ON THE TRACKER. A Jira ticket has a status, an epic and a reporter
+ *      where a GitHub issue has a parent, an author and a count of children, and only the
+ *      labels line up. `pages/Tasks/TaskBoard.tsx` holds that branch in the app; it is the
+ *      app's vocabulary, which is exactly the half a design system may not hold, so the
+ *      invented tickets below carry it as data.
  *
- * Ticket titles ARE prose, so they are catalogue entries — invented ones, on an invented
- * project, which is why the numbers and keys below belong to no real repository.
+ * THE WORDS ARE THE APP'S, key for key — `tasks.*` in `desktop/src/i18n/` — because a
+ * mockup of a screen that reworded it is a mockup of a different screen. What a TRACKER
+ * sends is not translated at all: a Jira status is the word a site's own board column is
+ * called, a priority is that site's own tier, an epic has a title somebody typed, a label
+ * is a string the repository chose, and a login is an account. The app prints all five as
+ * they arrive, so all five are literals here, and a French reader sees exactly what the
+ * French app would show them. Only the ticket TITLES are prose, so only they are keys.
  *
- * ON A GRADIENT PLATE, AND CROPPED AT THE BOTTOM BY IT. The window sits on `tone-sky`
- * rather than on the white page — a near-black panel dropped straight onto white reads as
- * a hole cut in the section — and it runs off the bottom of that plate rather than ending
- * inside it. A backlog runs down the page and the meaning of a row runs across it, so
- * cutting a side would take words while cutting the bottom takes the sixth ticket, which
- * is exactly the right thing to lose: the list is longer than the frame, and saying so
- * costs no frame.
+ * ONE REPOSITORY AND BOTH TRACKERS, which is the board's own shape: the picker at the top
+ * chooses which repository, and that repository's GitHub issues and its Jira sprint are
+ * dealt into the SAME four columns. The old drawing put each tracker on a card of its
+ * own; there are no cards any more, and the trackers are told apart by the badge on every
+ * ticket instead.
  *
- * `aria-hidden`, and the whole panel: it is a drawing, and a chevron that cannot fold or a
- * search box that cannot be typed in should be announced to nobody.
+ * `aria-hidden` AND `inert`, where the old tracing needed only the first. Its rows were
+ * spans; these are real components, so `TicketCard` is a `role="button"` with a
+ * `tabIndex` and `Select` is a real `<button>` that would open a real panel. `inert` takes
+ * the whole drawing out of the tab order and out of reach of the pointer, which is what
+ * makes a picture of a window a picture rather than a window that lies about what it does.
  */
 
 /**
- * Jira's mark, traced from `design-system/desktop/TrackerBadge.tsx`.
+ * GitHub's mark, re-exported under the name eight of this site's drawings already import
+ * it by.
  *
- * KEPT AS A VECTOR AND IN ITS OWN TWO BLUES rather than pointed at `/img/jira-logo.png`,
- * for that file's own reason: this is a brand mark, so it does not take the surrounding
- * ink, and the tile it sits on is Jira's blue at 14%. The PNG carries its own pale square
- * and would have drawn a tile inside a tile.
- *
- * `useId` for the gradient, and it is load-bearing rather than tidy: `url(#id)` resolves
- * against the WHOLE document, so a fixed id breaks the moment the mark is drawn twice and
- * the first copy unmounts.
+ * IT WAS A COPY OF THE PATH, drawn here because this was the first file on the site that
+ * needed one and lucide dropped every brand glyph in v1. The design system carries it now
+ * — `design-system/desktop/brand.tsx`, on the 24-unit grid Lucide's own icons use — and
+ * the desktop app draws that one. A second octocat on this site would be the same mark
+ * maintained twice, so the name stays and the drawing moves.
  */
-function JiraMark({ className }: { className?: string }) {
-  const gradientId = useId();
-
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <defs>
-        <linearGradient
-          id={gradientId}
-          x1="16.53"
-          y1="7.95"
-          x2="12.78"
-          y2="11.7"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset=".18" stopColor="#0052CC" />
-          <stop offset="1" stopColor="#2684FF" />
-        </linearGradient>
-      </defs>
-      <path
-        fill="#2684FF"
-        d="M11.53 2c0 2.4 1.97 4.35 4.35 4.35h1.78v1.7c0 2.4 1.94 4.34 4.34 4.35V2.84a.84.84 0 0 0-.84-.84z"
-      />
-      <path
-        fill={`url(#${gradientId})`}
-        d="M6.77 6.8a4.362 4.362 0 0 0 4.34 4.34h1.8v1.72a4.362 4.362 0 0 0 4.34 4.34V7.63a.84.84 0 0 0-.83-.83z"
-      />
-      <path
-        fill="#0052CC"
-        d="M2 11.6c0 2.4 1.94 4.34 4.34 4.34h1.8v1.7c.003 2.4 1.95 4.342 4.35 4.35V12.43a.84.84 0 0 0-.84-.83z"
-      />
-    </svg>
-  );
-}
-
-/** GitHub's mark, the knocked-out disc the app paints with `currentColor`. */
-export function GithubMark({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M12 .3a12 12 0 0 0-3.79 23.4c.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.01 0c2.29-1.55 3.3-1.23 3.3-1.23.65 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.62-2.8 5.64-5.48 5.94.43.37.82 1.1.82 2.22v3.29c0 .32.21.7.83.58A12 12 0 0 0 12 .3z" />
-    </svg>
-  );
-}
+export { Github as GithubMark } from '@ds/desktop/icons'
 
 /**
- * The tracker's mark on a tile of its own, at the app's `sm` size — `w-8 h-8 rounded-lg`
- * with a `w-4 h-4` mark inside it. Jira's ground is its brand blue at 14%, spelled as an
- * inline style there and here for the same reason: it is the BRAND's blue, not a token.
- * GitHub's mark is `currentColor`, so it takes the white this panel is drawn in.
+ * The app's default theme, as the variables every component under it resolves against.
+ * `dark` and not `midnight`: this is what the app looks like before anybody has been to
+ * Settings.
  */
-function TrackerTile({ tracker }: { tracker: "github" | "jira" }) {
-  const jira = tracker === "jira";
-
-  return (
-    <span
-      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-        jira ? "" : "bg-onink-selected text-white"
-      }`}
-      style={jira ? { backgroundColor: "rgba(38, 132, 255, 0.14)" } : undefined}
-    >
-      {jira ? (
-        <JiraMark className="h-4 w-4" />
-      ) : (
-        <GithubMark className="h-4 w-4" />
-      )}
-    </span>
-  );
-}
-
-/** The ticket's id, in `TicketBadge`'s accent tokens. */
-function TicketBadge({ id }: { id: string }) {
-  return (
-    <span className="shrink-0 rounded bg-accent/20 px-2 py-0.5 text-xs text-accent-hover">
-      {id}
-    </span>
-  );
-}
+const THEME = DESKTOP_THEMES.dark
 
 /**
- * A label as the app draws one: `StatusPill`'s NEUTRAL branch.
+ * `inert`, as a spread and as the EMPTY STRING, which is a pair of facts about React 18
+ * rather than a preference.
  *
- * That component looks a label up in `STATUS_CONFIG` — the `/magic:*` workflow's own
- * statuses — and a repository's labels miss it, so every one of them renders in the
- * neutral tokens. Faithful, and worth the note: a "bug" label drawn in red here would be
- * a colour the app never gives it.
+ * `@types/react@18` declares the prop as a boolean, and `react-dom@18.3.1` has never
+ * heard of it — the string does not appear anywhere in its bundle. So `inert` written as
+ * a boolean type-checks and is then DROPPED at render as "a non-boolean attribute given
+ * true", while the empty string goes through the unknown-attribute path and lands in the
+ * DOM as `inert=""`, which is what the browser reads.
  */
-function LabelPill({ label }: { label: string }) {
-  return (
-    <span className="shrink-0 rounded-full bg-onink-tint px-2 py-0.5 text-xs text-onink-dim">
-      {label}
-    </span>
-  );
-}
+const INERT = { inert: '' } as unknown as { inert?: boolean }
 
-/** The marker that says somebody is already on this ticket: a 8px accent dot and a word. */
-function AgentMarker({ label }: { label: string }) {
-  return (
-    <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs text-onink-dim">
-      <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />
-      {label}
-    </span>
-  );
-}
-
-/** The row's two controls, in `RowLinks`' shared geometry — one height, one border. */
-function RowLinks({ openLabel }: { openLabel: string }) {
-  return (
-    <>
-      <span className="flex shrink-0 items-center rounded-lg border border-onink-rule px-2 py-1 text-onink-dim">
-        <Link2 className="h-3.5 w-3.5" />
-      </span>
-      <span className="flex shrink-0 items-center gap-1 rounded-lg border border-onink-rule px-2 py-1 text-xs font-medium text-onink-dim">
-        <ExternalLink className="h-3.5 w-3.5" />
-        {openLabel}
-      </span>
-    </>
-  );
-}
+/** Nothing is wired. Every control below is a drawing of a control. */
+const noop = () => undefined
 
 /**
- * The three GitHub issues. An invented repository on an invented project, so the numbers
- * belong to nothing real.
+ * The repository the board is showing, wearing the colour the app hands out FIRST —
+ * `PROJECT_COLORS[0]`, the fallback an unconfigured repository gets by index. Imported
+ * rather than spelled, so a repaint of the palette repaints this drawing with it.
  *
- * The numbers, the logins and the labels are LITERALS: a label is a string the repository
- * chose and a login is an account, and the app prints both exactly as GitHub sends them.
- * Only the titles are prose, so only the titles are catalogue keys.
+ * ONE, and that is the page's own rule rather than a simplification: the picker has no
+ * "all repositories" entry, because four columns holding six repositories' tickets are
+ * four columns nobody can read down. The second repository the Plans drawing invents is
+ * in the picker's list and not on the board.
  */
-const GITHUB_ISSUES: readonly {
-  number: string;
-  title: MessageKey;
-  author: string;
-  labels: readonly string[];
-  agent?: boolean;
+const CHECKOUT = { key: 'checkout', label: 'acme/checkout-api', color: PROJECT_COLORS[0] }
+const BILLING = { key: 'billing', label: 'acme/billing-web', color: PROJECT_COLORS[1] }
+
+/**
+ * The two epics, in the colours Jira records for them. CSS values and not tokens: an
+ * epic's hue comes off the site, so Tailwind has never seen it — `TicketCardTag.color`'s
+ * whole contract.
+ */
+const CHECKOUT_EPIC = { id: 'epic:checkout', label: 'Checkout', color: '#a855f7', truncate: true }
+const INVOICING_EPIC = { id: 'epic:invoicing', label: 'Invoicing', color: '#22c55e', truncate: true }
+
+/**
+ * `TaskBoard`'s own table, copied — the four columns, and the whole of what distinguishes
+ * one from another.
+ *
+ * BLOCKED LEADS, which is the argument rather than the workflow: it is the only column
+ * that asks something of the reader, and a column nobody scrolls to is a column that says
+ * nothing. It is also the only one tinted, for the same reason — the other three are
+ * states work passes through, and colouring them would make the board a traffic light.
+ */
+const COLUMNS: readonly {
+  key: string
+  title: MessageKey
+  icon: IconComponent
+  tone: BoardColumnTone
 }[] = [
-  {
-    number: "#412",
-    title: "site.tasksCard.gh1",
-    author: "lmartel",
-    labels: ["bug", "payments"],
-  },
-  {
-    number: "#409",
-    title: "site.tasksCard.gh2",
-    author: "nadia-b",
-    labels: ["enhancement"],
-    agent: true,
-  },
-  {
-    number: "#404",
-    title: "site.tasksCard.gh3",
-    author: "lmartel",
-    labels: ["bug"],
-  },
-];
+  { key: 'blocked', title: 'site.tasksCard.columnBlocked', icon: OctagonAlert, tone: 'alert' },
+  { key: 'backlog', title: 'site.tasksCard.columnBacklog', icon: CircleDashed, tone: 'neutral' },
+  { key: 'progress', title: 'site.tasksCard.columnProgress', icon: LoaderCircle, tone: 'neutral' },
+  { key: 'done', title: 'site.tasksCard.columnDone', icon: CircleCheck, tone: 'neutral' },
+]
 
 /**
- * The three sprint tickets, with Jira's own three facts on each second line: where it is
- * up to, what it is part of, and how urgent it is — in the order a sprint row is scanned.
+ * ONE INVENTED TICKET, in the two halves a real one is split into: the fields
+ * the tracker fixes, and the words the site chose.
  *
- * `status`, `epic`, `priority` and `reporter` are LITERALS, and that is the faithful
- * choice rather than a shortcut. A Jira status is the word a site's own board column is
- * called, a priority is that site's own tier, an epic has a title somebody typed, and a
- * reporter is a person — the app prints all four as they arrive and translates none of
- * them, so a French reader sees exactly what the French app would show them.
+ * `status`, `priority`, the epic titles, the labels, the logins and the names are all
+ * LITERALS — see the file header. Only `title` is a key.
  */
-const JIRA_ISSUES: readonly {
-  key: string;
-  title: MessageKey;
-  status: string;
-  statusTone: string;
-  epic: string;
-  epicColor: string;
-  priority?: string;
-  reporter: string;
-  agent?: boolean;
-}[] = [
-  {
-    key: "PAY-318",
-    title: "site.tasksCard.jira1",
-    status: "In Progress",
-    statusTone: "bg-accent/20 text-accent-hover",
-    epic: "Checkout",
-    epicColor: "#a855f7",
-    priority: "Highest",
-    reporter: "Camille Roux",
-    agent: true,
-  },
-  {
-    key: "PAY-311",
-    title: "site.tasksCard.jira2",
-    status: "To Do",
-    statusTone: "bg-onink-tint text-onink-dim",
-    epic: "Checkout",
-    epicColor: "#a855f7",
-    reporter: "Théo Vasseur",
-  },
-  {
-    key: "PAY-307",
-    title: "site.tasksCard.jira3",
-    status: "To Do",
-    statusTone: "bg-onink-tint text-onink-dim",
-    epic: "Invoicing",
-    epicColor: "#22c55e",
-    priority: "Highest",
-    reporter: "Camille Roux",
-  },
-];
+interface Card {
+  tracker: Tracker
+  ticketId: string
+  title: MessageKey
+  /** Jira only: the site's own word for the column the ticket sits in on ITS board. */
+  status?: { label: string; tone: StatusTone }
+  /**
+   * Jira only, and beside the id rather than down with the metadata: priority is the
+   * field that decides which of two tickets you pick up. The LEVEL picks the arrow and
+   * the hue (Jira fixes the five tiers), the NAME is the site's.
+   */
+  priority?: { icon: IconComponent; tone: StatusTone; name: string }
+  tags?: readonly TicketCardTag[]
+  notes?: readonly TicketCardNote[]
+  /** Somebody is already on it: the plate goes green and the button becomes a mark. */
+  agent?: boolean
+}
 
-/** `rowActivation`'s geometry, verbatim, minus the parts a drawing cannot have. */
-const ROW =
-  "flex items-center gap-3 border-t border-onink-rule py-2.5 pl-4 pr-4";
+/**
+ * The board, column by column — one repository's GitHub issues and its Jira sprint,
+ * dealt by `taskBoard.ts`' own rules:
+ *
+ *   BLOCKED   a Jira status the app reads as blocked, or a GitHub `blocked` label.
+ *   BACKLOG   Jira To Do, and an open GitHub issue nobody has an agent on.
+ *   PROGRESS  a Jira status in flight — "In Review" here — and, on the GitHub side, an
+ *             issue an AGENT is on: an issue has no status, so a running agent is the
+ *             only evidence this app has that the work has started.
+ *   DONE      a finished Jira ticket, and a recently closed issue.
+ *
+ * Neither Done card offers a Start button, which is the app's own rule and not a gap in
+ * the drawing: there is nothing to start on work that is over, and a dead control would
+ * invite the press it then refuses.
+ */
+const BOARD: Record<string, readonly Card[]> = {
+  blocked: [
+    {
+      tracker: 'jira',
+      ticketId: 'PAY-318',
+      title: 'site.tasksCard.jira1',
+      status: { label: 'Blocked', tone: 'accent' },
+      priority: { icon: ChevronsUp, tone: 'red', name: 'Highest' },
+      tags: [INVOICING_EPIC],
+      notes: [{ id: 'reporter', text: 'Camille Roux' }],
+    },
+  ],
+  backlog: [
+    {
+      tracker: 'github',
+      ticketId: '#412',
+      title: 'site.tasksCard.gh3',
+      tags: [
+        { id: 'label:bug', label: 'bug' },
+        { id: 'label:payments', label: 'payments' },
+      ],
+      notes: [{ id: 'author', text: '@lmartel' }],
+    },
+    {
+      tracker: 'jira',
+      ticketId: 'PAY-311',
+      title: 'site.tasksCard.jira2',
+      status: { label: 'To Do', tone: 'neutral' },
+      tags: [CHECKOUT_EPIC],
+      notes: [{ id: 'reporter', text: 'Théo Vasseur' }],
+    },
+    {
+      tracker: 'jira',
+      ticketId: 'PAY-307',
+      title: 'site.tasksCard.jira4',
+      status: { label: 'To Do', tone: 'neutral' },
+      priority: { icon: ChevronUp, tone: 'orange', name: 'High' },
+      tags: [INVOICING_EPIC],
+      notes: [{ id: 'reporter', text: 'Camille Roux' }],
+    },
+    {
+      tracker: 'github',
+      ticketId: '#404',
+      title: 'site.tasksCard.gh1',
+      tags: [{ id: 'label:bug', label: 'bug' }],
+      notes: [{ id: 'author', text: '@lmartel' }],
+    },
+  ],
+  progress: [
+    {
+      tracker: 'github',
+      ticketId: '#398',
+      title: 'site.tasksCard.gh4',
+      tags: [{ id: 'label:payments', label: 'payments' }],
+      notes: [{ id: 'author', text: '@nadia-b' }],
+      agent: true,
+    },
+    {
+      tracker: 'jira',
+      ticketId: 'PAY-302',
+      title: 'site.tasksCard.jira3',
+      status: { label: 'In Review', tone: 'accent' },
+      tags: [INVOICING_EPIC],
+      notes: [{ id: 'reporter', text: 'Nadia Bahri' }],
+      agent: true,
+    },
+  ],
+  done: [
+    {
+      tracker: 'jira',
+      ticketId: 'PAY-296',
+      title: 'site.tasksCard.jira5',
+      status: { label: 'Done', tone: 'green' },
+      tags: [CHECKOUT_EPIC],
+      notes: [{ id: 'reporter', text: 'Théo Vasseur' }],
+    },
+    {
+      tracker: 'github',
+      ticketId: '#391',
+      title: 'site.tasksCard.gh2',
+      tags: [{ id: 'label:enhancement', label: 'enhancement' }],
+      notes: [{ id: 'author', text: '@lmartel' }],
+    },
+  ],
+}
 
-/** The card a tracker target's rows sit in. */
-const CARD =
-  "overflow-hidden rounded-lg border border-onink-rule bg-onink-tint";
-
-/** The card header, and the two row buttons, share this box. */
-const PILL =
-  "rounded-lg border border-onink-rule px-2 py-1 text-xs font-medium";
+/** Where a ticket's own tracker would send you. Printed nowhere; the copy button holds it. */
+function ticketUrl(card: Card): string {
+  return card.tracker === 'jira'
+    ? `https://acme.atlassian.net/browse/${card.ticketId}`
+    : `https://github.com/acme/checkout-api/issues/${card.ticketId.slice(1)}`
+}
 
 /**
  * The four things this screen does that a still image of it cannot show.
  *
  * A LEGEND AND NOT A FEATURE LIST: every one of them annotates something visible in the
- * drawing above. The filter bar is drawn but its pickers cannot be opened; the priority
- * and the epic are on the rows but nothing says whose words they are; the list looks
- * complete and is in fact filtered; and the two cards look like one screen when they are
- * two different reads.
+ * drawing above. Every claim is checked against the source rather than written from the
+ * feature's reputation — `utils/taskBoard.ts` for what puts a ticket in a column,
+ * `pages/Tasks/TaskBoard.tsx` for when Start is offered at all, and `TaskFilters.tsx` for
+ * what the bar
+ * narrows.
  *
- * Every claim is checked against the source rather than written from the feature's
- * reputation — `TaskFilters.tsx` for the four controls, `TasksRepoSection.tsx` for what a
- * row carries, and `renderer/utils/taskRows.ts` for the rule about what is listed at all.
+ * THE TWO IT REPLACED went with the page they described. "Only what is free to take" was
+ * true of a list that hid work in flight; the board shows it, in a column of its own, so
+ * the claim is now the opposite of what is on screen. "Filter it down, then order it" is
+ * folded into the first entry, where the repository picker belongs anyway: it is what
+ * chooses the board rather than what narrows it.
  */
 const LEGEND: readonly {
-  id: string;
-  icon: typeof Search;
-  name: MessageKey;
-  description: MessageKey;
+  id: string
+  icon: IconComponent
+  name: MessageKey
+  description: MessageKey
 }[] = [
   {
-    id: "filters",
-    icon: SlidersHorizontal,
-    name: "site.tasksCard.legendFiltersTitle",
-    description: "site.tasksCard.legendFiltersDesc",
+    id: 'columns',
+    icon: Columns3,
+    name: 'site.tasksCard.legendColumnsTitle',
+    description: 'site.tasksCard.legendColumnsDesc',
   },
   {
-    id: "fields",
-    icon: ChevronsUp,
-    name: "site.tasksCard.legendFieldsTitle",
-    description: "site.tasksCard.legendFieldsDesc",
+    id: 'start',
+    icon: Play,
+    name: 'site.tasksCard.legendStartTitle',
+    description: 'site.tasksCard.legendStartDesc',
   },
   {
-    // THE ONE WORTH READING TWICE, and the reason it is here at all: the list is not the
-    // sprint. `taskRows.ts` says it outright — "listing all of it on a page whose one
-    // affirmative action is start an agent would offer to duplicate work already under
-    // way" — so an In Progress ticket appears only when an agent is on it, marked.
-    id: "available",
-    icon: Hand,
-    name: "site.tasksCard.legendAvailableTitle",
-    description: "site.tasksCard.legendAvailableDesc",
-  },
-  {
-    id: "trackers",
+    id: 'trackers',
     icon: Layers,
-    name: "site.tasksCard.legendTrackersTitle",
-    description: "site.tasksCard.legendTrackersDesc",
+    name: 'site.tasksCard.legendTrackersTitle',
+    description: 'site.tasksCard.legendTrackersDesc',
   },
-];
+  {
+    id: 'fields',
+    icon: ChevronsUp,
+    name: 'site.tasksCard.legendFieldsTitle',
+    description: 'site.tasksCard.legendFieldsDesc',
+  },
+]
 
 /**
  * `legend` — the box of definitions under the drawing. On by default, which is what
- * `/features` wants; `/desktop` shows the same drawing beside its own paragraph and
- * turns it off, because that paragraph is the legend there.
+ * `/features` wants; a caller that already has a paragraph beside the picture can turn
+ * it off.
  */
 export function TasksModalMockup({ legend = true }: { legend?: boolean } = {}) {
-  const { t } = useT();
+  const { t } = useT()
 
   return (
     <div className="flex flex-col">
-      {/* THE PLATE THE WINDOW SITS ON. A declared tone rather than the white page,
-          because a near-black window dropped straight onto white reads as a hole cut in
-          the section; on a coloured ground it reads as a screen photographed on a desk,
-          which is what it is.
+      {/* THE PLATE THE WINDOW SITS ON, and the crop at the bottom of it.
 
-          `tone-sky`, WHICH IS WHAT THIS FILE'S OWN HEADER ALREADY SAID. The markup had
-          drifted to `tone-indigo` — the family's one saturated ground — and the drift
-          only became loud when the site's palette moved to blue: `tone-indigo`'s stops
-          are `BLUE[50]` into `BLUE[70]` now, so a deep periwinkle became an electric
-          block in a column of pale plates. `SkillsModalMockup` and `AgentsSidebarMockup`,
-          the next two rows down, are both on `tone-sky`; this one is again.
+          `tone-sky`, the ground this family of drawings stands on: a near-black window
+          dropped straight onto white reads as a hole cut in the section, and on a coloured
+          plate it reads as a screen photographed on a desk.
 
           `pb-0` AND A NEGATIVE MARGIN BELOW: the window runs 48px past the bottom of the
-          plate and the plate's `overflow-hidden` cuts it. That is the same bottom crop
-          the panels in the skills grid take, moved out to the frame — a list that ends
-          inside its own picture is a list you have seen all of, and a backlog is never
-          that. */}
+          plate and `overflow-hidden` cuts it. A backlog is never something you have seen
+          all of, so the frame says so and the longest column pays for it. */}
       <div
         aria-hidden
+        {...INERT}
         className="overflow-hidden rounded-2xl bg-tone-sky p-5 pb-0 sm:p-12 sm:pb-0"
       >
-        {/* The modal. `bg-ink` is this site's stand-in for the app's darkest ground, and
-          `shadow-lift` — the scale's loudest rung — is what lifts it off the plate. */}
-        <div className="-mb-12 overflow-hidden rounded-2xl border border-onink-rule bg-ink shadow-lift">
-          {/* THE CHROME: `px-4 h-12 border-b`, title left, close right. */}
-          <div className="flex h-12 items-center justify-between border-b border-onink-rule px-4">
-            <span className="text-sm font-semibold text-white">
-              {t("site.tasksCard.title")}
-            </span>
-            <span className="p-1.5 text-onink-dim">
-              <X className="h-4 w-4" />
-            </span>
-          </div>
+        {/* THE THEME GROUND. Everything below this element resolves the app's colour
+            roles against these variables — see the file header. `text-ink` is on it and
+            not only inside it, because anything drawn in `currentColor` would otherwise
+            climb past it to the site's own near-black ink and come out invisible.
 
-          <div className="flex flex-col gap-3 px-6 pb-6 pt-6">
-            {/* THE SECTION LINE. */}
-            <div className="flex items-center gap-2 text-sm text-onink-body">
-              <ListTodo className="h-4 w-4" />
-              <span>{t("site.tasksCard.section")}</span>
-              <span className="ml-auto flex items-center gap-3">
-                <span className="text-xs text-onink-faint">
-                  {t("site.tasksCard.total")}
-                </span>
-                <span
-                  className={`flex items-center gap-1 text-onink-dim ${PILL}`}
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  {t("site.tasksCard.reload")}
-                </span>
-              </span>
-            </div>
+            `colorScheme` so a scrollbar or a form control inside the window is drawn
+            dark, which is what the app's own `Stage` does on `/design-system`. */}
+        <div
+          style={{ ...THEME.vars, colorScheme: THEME.appearance } as CSSProperties}
+          /* `min-w-[880px]` IS THE BOARD'S OWN FLOOR, and it is measured rather than
+             chosen: four columns in a 24px-inset panel with 12px gutters give ~199px
+             each at this width, which is what a `TicketCard`'s top line needs to hold a
+             `PER-1234` badge, a priority mark and its two buttons without one of them
+             wrapping. `PlanModalMockup`'s 720 is the page's own measure; a board cannot
+             have it, because a board that shrinks honestly squeezes its cards rather
+             than its columns.
 
-            {/* THE FILTER BAR: the box takes the width, the pickers keep their declared
-              176px and 152px. */}
-            <div className="flex min-w-0 items-center gap-2">
-              <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-onink-faint" />
-                <div className="w-full rounded-lg border border-onink-rule bg-onink-tint py-1.5 pl-9 pr-3 text-xs text-onink-faint">
-                  {t("site.tasksCard.search")}
-                </div>
-              </div>
-              <div className="flex w-[176px] shrink-0 items-center gap-2 rounded-lg border border-onink-rule bg-onink-tint px-3 py-1.5 text-xs text-white">
-                <span className="truncate">{t("site.tasksCard.allRepos")}</span>
-                <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-onink-dim" />
-              </div>
-              <div className="flex w-[152px] shrink-0 items-center gap-2 rounded-lg border border-onink-rule bg-onink-tint px-3 py-1.5 text-xs text-white">
-                <span className="truncate">
-                  {t("site.tasksCard.sortRecent")}
-                </span>
-                <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-onink-dim" />
-              </div>
-            </div>
+             SO THE PLATE CROPS THE RIGHT EDGE at `/features`, where the column is 816px
+             wide: the three columns that hold work you can pick up are whole and Done is
+             cut, which is the same thing the bottom crop says and the right column to
+             lose it on. `/desktop` gives the same drawing the band's full 1100px and
+             nothing is cut at all. */
+          className="-mb-12 min-w-[880px] overflow-hidden rounded-2xl bg-bg-secondary text-ink shadow-lift"
+        >
+          {/* THE REAL HEADER. `PageModal` renders this exact element with this exact
+              prop shape; what is not here is the portal, the backdrop and the two sizes
+              it travels between, none of which a picture has any use for.
 
-            <div className="flex flex-col gap-2">
-              {/* ── The GitHub card ─────────────────────────────────────────────── */}
-              <div className={CARD}>
-                <div className="flex w-full items-center gap-3 px-4 py-3">
-                  <ChevronDown className="h-4 w-4 shrink-0 text-onink-dim" />
-                  <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: "#6366f1" }}
-                      />
-                      <span className="truncate text-sm font-medium text-white">
-                        acme/checkout-api
-                      </span>
-                    </span>
-                    {/* The tracker's name, only ever printed when a repository has a card
-                      for each — untranslated in the app on purpose, because "GitHub" and
-                      "Jira" are product names. */}
-                    <span className="shrink-0 text-xs text-onink-faint">
-                      · GitHub
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-xs text-onink-dim">
-                    {t("site.tasksCard.countGithub")}
-                  </span>
-                </div>
+              THE FOUR TABS OF THE ONE PAGE OVERLAY, in the sidebar's own order —
+              `PAGE_TABS` in `desktop/src/renderer/App.tsx`, glyphs included. "Plans" and
+              "Skills" are printed rather than translated, the call `lib/features.ts`
+              makes for the same two words: the app's own French catalogue spells both
+              exactly the same way. */}
+          <ModalHeader
+            title={t('site.tasksCard.title')}
+            icon={ListTodo}
+            tabs={{
+              ariaLabel: t('site.tasksCard.title'),
+              activeKey: 'tasks',
+              items: [
+                { key: 'plans', label: 'Plans', icon: NotebookPen },
+                { key: 'tasks', label: t('site.tasksCard.title'), icon: ListTodo },
+                { key: 'skills', label: 'Skills', icon: Sparkles },
+                { key: 'settings', label: t('site.tasksCard.tabRepositories'), icon: FolderGit2 },
+              ],
+              onSelect: noop,
+            }}
+            fullScreen={{ expanded: false, onToggle: noop, expandTitle: '', collapseTitle: '' }}
+            onClose={noop}
+            closeTitle=""
+          />
 
-                {GITHUB_ISSUES.map((issue) => (
-                  <div key={issue.number} className={ROW}>
-                    <TrackerTile tracker="github" />
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <TicketBadge id={issue.number} />
-                        <span className="truncate text-sm text-white">
-                          {t(issue.title)}
-                        </span>
-                      </div>
-                      <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <span className="text-xs text-onink-dim">
-                          @{issue.author}
-                        </span>
-                        {issue.labels.map((label) => (
-                          <LabelPill key={label} label={label} />
-                        ))}
-                      </div>
-                    </div>
-                    {issue.agent && (
-                      <AgentMarker label={t("site.tasksCard.agent")} />
-                    )}
-                    <RowLinks openLabel={t("site.tasksCard.openGithub")} />
-                  </div>
-                ))}
-              </div>
+          {/* `px-6` is the page's own gutter, and the number the filter bar's full bleed
+              below is spelled from. */}
+          {/* `px-6` is the page's own gutter, and the number the filter bar's full bleed
+              is spelled from. */}
+          <div className="px-6 pb-6">
+            <div className="pt-6">
+              {/* THE WHOLE PAGE IS ONE COMPONENT, and it is the app's: `TaskBoard` draws
+                  the heading, the pinned bar of controls and the board, and the desktop
+                  renders this same file from `pages/Tasks/index.tsx`. Nothing below is a
+                  drawing of the app — it IS the app, given invented tickets.
 
-              {/* ── The Jira card ───────────────────────────────────────────────── */}
-              <div className={CARD}>
-                <div className="flex w-full items-center gap-3 px-4 py-3">
-                  <ChevronDown className="h-4 w-4 shrink-0 text-onink-dim" />
-                  <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: "#22c55e" }}
-                      />
-                      <span className="truncate text-sm font-medium text-white">
-                        acme/billing-web
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-xs text-onink-faint">
-                      · Jira
-                    </span>
-                    {/* WHICH sprint these rows are — the other half of a Jira card's
-                      title, and only ever the name Jira itself gave the sprint. */}
-                    <span className="truncate text-xs text-onink-faint">
-                      · PAY Sprint 24
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-xs text-onink-dim">
-                    {t("site.tasksCard.countJira")}
-                  </span>
-                </div>
+                  No `paneRef`, because nothing here scrolls: the bands sit at rest, which
+                  is the honest state for a picture of a page.
 
-                {JIRA_ISSUES.map((issue) => (
-                  <div key={issue.key} className={ROW}>
-                    <TrackerTile tracker="jira" />
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <TicketBadge id={issue.key} />
-                        <span className="truncate text-sm text-white">
-                          {t(issue.title)}
-                        </span>
-                      </div>
-                      <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <span
-                          className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${issue.statusTone}`}
-                        >
-                          {issue.status}
-                        </span>
-                        {/* The epic: a neutral pill with the colour spent entirely on the
-                          dot, because the status and the priority either side of it are
-                          coloured to be read as a scale and an epic is neither a state
-                          nor a degree. */}
-                        <span className="inline-flex max-w-[14rem] shrink-0 items-center gap-1.5 rounded-full bg-onink-tint px-2 py-0.5 text-xs text-onink-dim">
-                          <span
-                            className="h-2 w-2 shrink-0 rounded-full"
-                            style={{ backgroundColor: issue.epicColor }}
-                          />
-                          <span className="truncate">{issue.epic}</span>
-                        </span>
-                        {/* The priority leads with an ARROW, which is Jira's own vocabulary
-                          and not an invention: a direction survives being skimmed down a
-                          column in a way a word never does. */}
-                        {issue.priority && (
-                          <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-red/20 py-0.5 pl-1 pr-2 text-xs text-red">
-                            <ChevronsUp className="h-3.5 w-3.5 shrink-0" />
-                            {issue.priority}
-                          </span>
-                        )}
-                        {/* The display name bare, where the GitHub row prefixes a login
-                          with `@`: "Camille Roux" is a name and not a handle. */}
-                        <span className="max-w-[16rem] truncate text-xs text-onink-dim">
-                          {issue.reporter}
-                        </span>
-                      </div>
-                    </div>
-                    {issue.agent && (
-                      <AgentMarker label={t("site.tasksCard.agent")} />
-                    )}
-                    <RowLinks openLabel={t("site.tasksCard.openJira")} />
-                  </div>
-                ))}
-              </div>
+                  FOUR CONTROLS AND NOT SIX. The repository picker leads, because it is
+                  the only one that decides what the page is ABOUT rather than how much of
+                  it is on screen, and the sprint chip follows it: the two answer one
+                  question between them. The epic and agent pickers are the two the app
+                  itself draws conditionally — only once a visible ticket hangs off an
+                  epic, only once one has an agent — and they are left out here for the
+                  room, which is the one liberty this drawing takes with the bar. */}
+              <TaskBoard
+                heading={{
+                  icon: ListTodo,
+                  title: t('site.tasksCard.section'),
+                  count: t('site.tasksCard.total'),
+                  actions: [{
+                    id: 'reload',
+                    label: t('site.tasksCard.reload'),
+                    icon: RefreshCw,
+                    onClick: noop,
+                  }],
+                }}
+                filters={{
+                  // `-mx-6 px-6` is the page's own inset spelled as a full bleed: what
+                  // scrolls past has to go under an opaque band edge to edge.
+                  className: '-mx-6 px-6',
+                  before: [
+                    {
+                      kind: 'select',
+                      id: 'repo',
+                      value: CHECKOUT.key,
+                      options: [
+                        { value: CHECKOUT.key, label: CHECKOUT.label, color: CHECKOUT.color },
+                        { value: BILLING.key, label: BILLING.label, color: BILLING.color },
+                      ],
+                      onChange: noop,
+                      placeholder: t('site.tasksCard.pickRepo'),
+                      width: 208,
+                      // The repository tile the sidebar and the webapp draw a repository
+                      // with, rather than the bare dot a filter keeps: the picker names
+                      // the page's subject now. Never tinted — it has no default to be
+                      // away from, so a rule guessed here would leave it permanently lit.
+                      marker: 'repo',
+                    },
+                    // WHICH sprint the board is showing. A chip and not a fifth control: a
+                    // sprint NAMES a thing and the name does not change while you look at
+                    // it. Jira's own name for it, so a literal.
+                    { kind: 'chip', id: 'sprint', label: 'PAY Sprint 24', icon: CalendarRange },
+                  ],
+                  search: { value: '', onChange: noop, placeholder: t('site.tasksCard.search') },
+                  after: [{
+                    // A glyph here and on neither of its neighbours, because it is the one
+                    // picker whose values do not name their own subject: "Newest" beside a
+                    // repository name reads as a second thing to filter by until the arrow
+                    // says it is an order.
+                    kind: 'select',
+                    id: 'sort',
+                    value: 'recent',
+                    options: [
+                      { value: 'recent', label: t('site.tasksCard.sortRecent') },
+                      { value: 'priority', label: t('site.tasksCard.sortPriority') },
+                    ],
+                    onChange: noop,
+                    width: 152,
+                    icon: ArrowDownWideNarrow,
+                  }],
+                }}
+                columns={COLUMNS.map((column) => ({
+                id: column.key,
+                title: t(column.title),
+                icon: column.icon,
+                tone: column.tone,
+                // The count, always, zero included: a column that showed nothing and said
+                // nothing would be indistinguishable from one that failed to render.
+                count: BOARD[column.key].length,
+                empty: t('site.tasksCard.columnEmpty'),
+                cards: BOARD[column.key].map((card) => ({
+                  id: card.ticketId,
+                  tracker: card.tracker,
+                  ticketId: card.ticketId,
+                  title: t(card.title),
+                  ...(card.priority
+                    ? { mark: { icon: card.priority.icon, tone: card.priority.tone, label: card.priority.name } }
+                    : {}),
+                  ...(card.status ? { status: card.status } : {}),
+                  tags: [...(card.tags ?? [])],
+                  notes: [...(card.notes ?? [])],
+                  copy: {
+                    value: ticketUrl(card),
+                    label: t('site.tasksCard.copyLink'),
+                    copiedLabel: t('site.tasksCard.copyLinkDone'),
+                  },
+                  // THE SAME SLOT, THREE OUTCOMES, which is what keeps the cards of a
+                  // column aligned whatever state they are in: an agent's mark, a Start
+                  // button, or nothing at all on the two that are finished.
+                  ...(card.agent
+                    ? { agent: { icon: BotMessageSquare, label: t('site.tasksCard.agentHint') } }
+                    : column.key === 'done'
+                      ? {}
+                      : { action: { icon: Play, title: t('site.tasksCard.startAgent'), onClick: noop } }),
+                  onOpen: noop,
+                })),
+              }))} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── THE LEGEND, UNDER THE DRAWING ──────────────────────────────────────
-          Four things this screen does that a still image of it cannot: the pickers open,
-          the fields on a row belong to your board rather than to us, the list is filtered
-          before you see it, and the two cards are two different reads. `FeatureLegend` is
-          the same one the Agents drawing uses further down — one closed box, no gutters,
-          because these annotate the picture rather than standing on their own. */}
       {legend ? (
         <FeatureLegend
           items={LEGEND.map((entry) => ({
@@ -608,5 +566,5 @@ export function TasksModalMockup({ legend = true }: { legend?: boolean } = {}) {
         />
       ) : null}
     </div>
-  );
+  )
 }

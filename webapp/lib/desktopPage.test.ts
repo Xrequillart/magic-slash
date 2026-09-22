@@ -77,10 +77,10 @@ describe('the /desktop bands', () => {
     // every key the page reaches, the rows borrowed from `/features` included, and the
     // legend the Tasks window carries under itself.
     const legend = [
-      'site.tasksCard.legendFiltersDesc',
-      'site.tasksCard.legendFieldsDesc',
-      'site.tasksCard.legendAvailableDesc',
+      'site.tasksCard.legendColumnsDesc',
+      'site.tasksCard.legendStartDesc',
       'site.tasksCard.legendTrackersDesc',
+      'site.tasksCard.legendFieldsDesc',
     ]
     for (const key of [...everyKey(), ...legend]) {
       expect(site(key), `en.${key}`).not.toContain('—')

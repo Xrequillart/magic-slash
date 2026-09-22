@@ -1580,51 +1580,77 @@ export const marketingEn = {
   'site.agentsCard.errorDesc':
     'A command failed, or the session ended badly. The transcript is kept, so you can see what happened before it stopped.',
   // ── The /features Tasks modal ──────────────────────────────────────────────
-  // The app's Tasks screen, redrawn. Its CHROME is translated because the app
-  // translates it, and these are the app's own sentences from `desktop/src/i18n/` rather
-  // than paraphrases — a mockup of a screen that reworded it is a mockup of a different
-  // screen. What a TRACKER sends is not here at all: statuses, priorities, labels, repo
-  // names and logins are printed as they arrive, so they are literals in the component.
+  // The app's Tasks window, drawn with the app's OWN components rather than redrawn in
+  // the site's — see `TasksModalMockup`. The chrome is therefore the app's own sentences
+  // from `desktop/src/i18n/`, key for key (`tasks.*`): a mockup of a screen that reworded
+  // it is a mockup of a different screen. What a TRACKER sends is not here at all —
+  // statuses, priorities, epics, labels, repository names and logins are printed as they
+  // arrive, so they are literals in the component.
   'site.tasksCard.title': 'Tasks',
+  // ── THREE KEYS THE HOMEPAGE STILL OWNS ─────────────────────────────────────
+  // `BuiltForArt` and `OrgArt` draw their own small Tasks panels — a list of repository
+  // cards with a row per ticket, at a size an argument beside a paragraph wants — and
+  // they read from this family rather than minting one of their own. The window above no
+  // longer has a repository filter, a per-tracker count or a word beside its agent dot;
+  // those drawings do, so the three keys stay here and are theirs alone.
+  'site.tasksCard.allRepos': 'All repositories',
+  'site.tasksCard.countGithub': '9 to do',
+  // The same in both languages, which is why `i18n.test.ts` lists it: it is the app's own
+  // word, not a translation of it.
+  'site.tasksCard.agent': 'agent',
+  'site.tasksCard.tabRepositories': 'Repositories',
   'site.tasksCard.section': 'To do',
   'site.tasksCard.reload': 'Reload',
-  'site.tasksCard.total': '17 to do',
-  'site.tasksCard.countGithub': '9 to do',
-  'site.tasksCard.countJira': '8 to do',
+  // The heading's count: the seven OPEN tickets on the board below. The two in Done are
+  // not among them, which is the app's own arithmetic.
+  'site.tasksCard.total': '7 to do',
+  'site.tasksCard.pickRepo': 'Pick a repository',
   'site.tasksCard.search': 'Search by ticket ID or title…',
-  'site.tasksCard.allRepos': 'All repositories',
   'site.tasksCard.sortRecent': 'Newest',
-  'site.tasksCard.openGithub': 'Open on GitHub',
-  'site.tasksCard.openJira': 'Open in Jira',
-  // "agent", the word the row wears beside its dot — the same in both languages, which
-  // is why `i18n.test.ts` lists it.
-  'site.tasksCard.agent': 'agent',
-  // Six invented tickets on an invented project. Prose, so they are copy; the numbers,
-  // the keys and the logins beside them are not.
-  //
-  // SHORT ON PURPOSE, and shorter than a real backlog's would be. The app truncates a
-  // title that outruns its row and so does the drawing — faithfully — but a marketing
-  // page that shows six tickets and cuts three of them mid-word has spent the drawing on
-  // nothing. The two rows carrying an agent marker have the least room of all, which is
-  // why their titles are the shortest here.
-  // The legend under the Tasks drawing. Four things the screen does that a still image
-  // cannot show — each checked against `TaskFilters.tsx`, `TasksRepoSection.tsx` and
-  // `renderer/utils/taskRows.ts` rather than written from the feature's reputation.
-  'site.tasksCard.legendFiltersTitle': 'Filter it down, then order it',
-  'site.tasksCard.legendFiltersDesc':
-    'Search on a ticket id or a title, narrow to one repository or one Jira epic, and read the result newest first or by priority.',
+  'site.tasksCard.sortPriority': 'Priority',
+  // The four columns, in the order they are read. Blocked leads because it is the only
+  // one that asks something of the reader.
+  'site.tasksCard.columnBlocked': 'Blocked',
+  'site.tasksCard.columnBacklog': 'Backlog',
+  'site.tasksCard.columnProgress': 'In progress',
+  'site.tasksCard.columnDone': 'Done',
+  'site.tasksCard.columnEmpty': 'Nothing here',
+  // The two controls on a card, and the mark that takes the button's place once somebody
+  // is on the ticket.
+  'site.tasksCard.copyLink': 'Copy the link',
+  'site.tasksCard.copyLinkDone': 'Link copied',
+  'site.tasksCard.startAgent': 'Start an agent',
+  'site.tasksCard.agentHint': 'An agent is already working on this ticket.',
+  // The legend under the drawing. Four things the screen does that a still image cannot
+  // show, each checked against `utils/taskBoard.ts`, `TaskBoard.tsx` and `TaskFilters.tsx`
+  // rather than written from the feature's reputation.
+  'site.tasksCard.legendColumnsTitle': 'One repository, four columns',
+  'site.tasksCard.legendColumnsDesc':
+    'The picker at the top chooses which board you are looking at. What is blocked comes first, because it is the only column that needs a person; the other three read left to right as the work moves.',
+  'site.tasksCard.legendStartTitle': 'An agent, one click away',
+  'site.tasksCard.legendStartDesc':
+    'Play runs /magic:start on that ticket: worktree, branch, context, all of it. A ticket somebody is already on wears a bot instead, so nobody opens a second agent on the same work.',
+  'site.tasksCard.legendTrackersTitle': 'Both trackers, one board',
+  'site.tasksCard.legendTrackersDesc':
+    'A repository’s open GitHub issues and its active Jira sprint land in the same four columns, and every card is badged with where it came from.',
   'site.tasksCard.legendFieldsTitle': 'Your board’s own words',
   'site.tasksCard.legendFieldsDesc':
-    'A Jira row carries its status, its priority and the epic it hangs off, printed as your site sends them, never translated or re-tiered.',
-  'site.tasksCard.legendAvailableTitle': 'Only what is free to take',
-  'site.tasksCard.legendAvailableDesc':
-    'The sprint’s To Do column, plus the tickets an agent is already on, marked as taken. Work in flight elsewhere is not offered: the page will not propose to duplicate it.',
-  'site.tasksCard.legendTrackersTitle': 'Both trackers, by repository',
-  'site.tasksCard.legendTrackersDesc':
-    'A GitHub repository’s open issues and a Jira project’s active sprint, each a card of its own, and one card for two services that share a project.',
+    'A Jira card carries its status, its priority and the epic it hangs off, printed as your site sends them, never translated or re-tiered.',
+  // Nine invented tickets on an invented project. Prose, so they are copy; the numbers,
+  // the keys, the logins and the labels beside them are not.
+  //
+  // SHORT ON PURPOSE. A card is a quarter of the window wide and clamps its title at two
+  // lines, faithfully; but a page that shows nine tickets and cuts half of them mid-word
+  // has spent the drawing on nothing.
   'site.tasksCard.gh1': 'Webhook retries drop the idempotency key',
   'site.tasksCard.gh2': 'Rate-limit the public search',
   'site.tasksCard.gh3': 'Checkout returns a 500 when the basket is empty',
+  'site.tasksCard.gh4': 'Retry the failed payouts',
+  'site.tasksCard.jira1': 'VAT is rounded twice on the invoice PDF',
+  'site.tasksCard.jira2': 'Change the card on a live subscription',
+  'site.tasksCard.jira3': 'Credit notes are missing from the monthly export',
+  'site.tasksCard.jira4': 'Split the VAT lines per country',
+  'site.tasksCard.jira5': 'Dunning emails in the right locale',
   // ── The /features Plans modal ──────────────────────────────────────────────
   // The app's Plans window, drawn with the app's OWN components rather than redrawn in
   // the site's — see `PlanModalMockup`. The chrome is therefore the app's sentences from
@@ -1824,9 +1850,6 @@ export const marketingEn = {
   'site.launchModes.autoHelp': 'Auto-approves most actions based on configured allowlists',
   'site.launchModes.bypass': 'Bypass',
   'site.launchModes.bypassHelp': 'No permission checks — for sandboxed environments only',
-  'site.tasksCard.jira1': 'VAT is rounded twice on the invoice PDF',
-  'site.tasksCard.jira2': 'Change the card on a live subscription',
-  'site.tasksCard.jira3': 'Credit notes are missing from the monthly export',
   'site.startCard.ticket': 'Ticket read, repository resolved',
   'site.startCard.worktree': 'Worktree created on a new branch',
   'site.startCard.deps': 'Dependencies installed',

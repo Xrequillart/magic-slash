@@ -793,33 +793,50 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Une commande a échoué, ou la session s’est mal terminée. Le transcript est conservé : vous pouvez voir ce qui s’est passé avant l’arrêt.',
   // Voir la note du catalogue anglais.
   'site.tasksCard.title': 'Tâches',
+  // Voir la note du catalogue anglais.
+  'site.tasksCard.allRepos': 'Tous les dépôts',
+  'site.tasksCard.countGithub': '9 à faire',
+  'site.tasksCard.agent': 'agent',
+  'site.tasksCard.tabRepositories': 'Dépôts',
   'site.tasksCard.section': 'À faire',
   'site.tasksCard.reload': 'Recharger',
-  'site.tasksCard.total': '17 à faire',
-  'site.tasksCard.countGithub': '9 à faire',
-  'site.tasksCard.countJira': '8 à faire',
+  'site.tasksCard.total': '7 à faire',
+  'site.tasksCard.pickRepo': 'Choisir un dépôt',
   'site.tasksCard.search': 'Rechercher par ID de ticket ou titre…',
-  'site.tasksCard.allRepos': 'Tous les dépôts',
   'site.tasksCard.sortRecent': 'Plus récents',
-  'site.tasksCard.openGithub': 'Ouvrir sur GitHub',
-  'site.tasksCard.openJira': 'Ouvrir dans Jira',
-  'site.tasksCard.agent': 'agent',
+  'site.tasksCard.sortPriority': 'Priorité',
+  'site.tasksCard.columnBlocked': 'Bloqué',
+  'site.tasksCard.columnBacklog': 'À faire',
+  'site.tasksCard.columnProgress': 'En cours',
+  'site.tasksCard.columnDone': 'Terminé',
+  'site.tasksCard.columnEmpty': 'Rien ici',
+  'site.tasksCard.copyLink': 'Copier le lien',
+  'site.tasksCard.copyLinkDone': 'Lien copié',
+  'site.tasksCard.startAgent': 'Démarrer un agent',
+  'site.tasksCard.agentHint': 'Un agent travaille déjà sur ce ticket.',
   // Voir la note du catalogue anglais.
-  'site.tasksCard.legendFiltersTitle': 'Filtrez, puis ordonnez',
-  'site.tasksCard.legendFiltersDesc':
-    'Cherchez sur un ID de ticket ou un titre, restreignez à un dépôt ou à un epic Jira, et lisez le résultat par ordre d’arrivée ou par priorité.',
+  'site.tasksCard.legendColumnsTitle': 'Un dépôt, quatre colonnes',
+  'site.tasksCard.legendColumnsDesc':
+    'Le sélecteur en haut choisit le board que vous regardez. Ce qui est bloqué vient en premier, parce que c’est la seule colonne qui réclame quelqu’un ; les trois autres se lisent de gauche à droite, au rythme du travail.',
+  'site.tasksCard.legendStartTitle': 'Un agent à un clic',
+  'site.tasksCard.legendStartDesc':
+    'Play lance /magic:start sur ce ticket : worktree, branche, contexte, tout. Un ticket déjà pris porte un bot à la place, pour que personne n’ouvre un second agent sur le même travail.',
+  'site.tasksCard.legendTrackersTitle': 'Les deux trackers, un seul board',
+  'site.tasksCard.legendTrackersDesc':
+    'Les issues GitHub ouvertes d’un dépôt et le sprint Jira actif du même dépôt tombent dans les quatre mêmes colonnes, et chaque carte porte le badge de sa provenance.',
   'site.tasksCard.legendFieldsTitle': 'Les mots de votre board',
   'site.tasksCard.legendFieldsDesc':
-    'Une ligne Jira porte son statut, sa priorité et l’epic auquel elle est rattachée, affichés tels que votre site les envoie, jamais traduits ni reclassés.',
-  'site.tasksCard.legendAvailableTitle': 'Seulement ce qui est libre',
-  'site.tasksCard.legendAvailableDesc':
-    'La colonne To Do du sprint, plus les tickets qu’un agent a déjà pris, marqués comme tels. Le travail en cours ailleurs n’est pas proposé : la page ne vous offrira pas de le dupliquer.',
-  'site.tasksCard.legendTrackersTitle': 'Les deux trackers, par dépôt',
-  'site.tasksCard.legendTrackersDesc':
-    'Les issues ouvertes d’un dépôt GitHub et le sprint actif d’un projet Jira, chacun sur sa carte, et une seule carte pour deux services qui partagent un projet.',
+    'Une carte Jira porte son statut, sa priorité et l’epic auquel elle est rattachée, affichés tels que votre site les envoie, jamais traduits ni reclassés.',
+  // Voir la note du catalogue anglais.
   'site.tasksCard.gh1': 'Les relances de webhook perdent la clé d’idempotence',
   'site.tasksCard.gh2': 'Limiter le débit de la recherche publique',
   'site.tasksCard.gh3': 'Le paiement renvoie une 500 quand le panier est vide',
+  'site.tasksCard.gh4': 'Rejouer les virements échoués',
+  'site.tasksCard.jira1': 'TVA arrondie deux fois sur la facture PDF',
+  'site.tasksCard.jira2': 'Changer la carte d’un abonnement en cours',
+  'site.tasksCard.jira3': 'Les avoirs manquent dans l’export mensuel',
+  'site.tasksCard.jira4': 'Séparer les lignes de TVA par pays',
+  'site.tasksCard.jira5': 'Relances dans la langue du client',
   // Voir la note du catalogue anglais.
   'site.planCard.tabTasks': 'Tâches',
   'site.planCard.tabRepositories': 'Dépôts',
@@ -984,9 +1001,6 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.launchModes.bypass': 'Bypass',
   'site.launchModes.bypassHelp':
     'Aucune vérification de permission — réservé aux environnements isolés',
-  'site.tasksCard.jira1': 'TVA arrondie deux fois sur la facture PDF',
-  'site.tasksCard.jira2': 'Changer la carte d’un abonnement en cours',
-  'site.tasksCard.jira3': 'Les avoirs manquent dans l’export mensuel',
   'site.startCard.ticket': 'Ticket lu, dépôt identifié',
   'site.startCard.worktree': 'Worktree créé sur une nouvelle branche',
   'site.startCard.deps': 'Dépendances installées',

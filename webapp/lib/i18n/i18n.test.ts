@@ -321,13 +321,12 @@ describe('message catalogues', () => {
         'site.planCard.tickets1',
         'site.planCard.tickets3',
         'site.planCard.tickets4',
-        // The Tasks mockup's agent marker. It is the app's own word beside the dot, and
-        // the app's French catalogue spells it "agent" too — this string is the app's,
-        // not a translation of it.
-        'site.tasksCard.agent',
         // The Settings drawing prints the app's own tab labels, and three of the eleven
         // are the same word in French — as the app's own `settings.tab.*` keys are. The
         // agent counts are the app's too: "1 agent" and "2 agents" spell identically.
+        // The homepage's small Tasks panels print the app's own word beside their agent
+        // dot, and the app's French catalogue spells it "agent" too.
+        'site.tasksCard.agent',
         'site.reposCard.tabApplication',
         'site.reposCard.tabClaudeCode',
         'site.reposCard.tabNotifications',
