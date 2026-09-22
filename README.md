@@ -2,9 +2,9 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo-readme-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset=".github/assets/logo-readme-light.svg">
-    <img src=".github/assets/logo-readme-light.svg" alt="Magic Slash" height="80">
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset=".github/assets/logo-light.svg">
+    <img src=".github/assets/logo-light.svg" alt="Magic Slash" height="128">
   </picture>
 </p>
 

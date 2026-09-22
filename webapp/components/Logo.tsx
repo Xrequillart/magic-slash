@@ -9,8 +9,8 @@
  * Two consequences, and the second is the reason this file exists:
  *
  *   * the artwork had already SPLIT. The header and the footer carried the current
- *     mark; four other surfaces were still on `logo-readme-light.svg`, the wordmark it
- *     replaced. Nobody decided that — it is what happens when the new file lands at the
+ *     mark; four other surfaces were still on the wordmark it replaced (693×130, since
+ *     deleted). Nobody decided that — it is what happens when the new file lands at the
  *     two call sites somebody happened to be looking at;
  *   * changing the logo meant finding seven call sites, and finding all seven is the
  *     kind of thing you get right until the eighth is added.
