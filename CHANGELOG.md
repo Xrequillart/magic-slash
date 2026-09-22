@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.97.1] - 2026-09-22
+
+### Added
+
+- **Desktop**: Grow the expanded overlay into the title bar
+- **Desktop**: Stagger the tab pill's two edges
+- **Desktop**: Remember the info panel per agent
+- **Pr**: Keep the PR description short and bulleted, per repo
+
+### Changed
+
+- **Desktop**: Drop canChangeAgentType with its last caller
+- **Desktop**: Let CopyButton own the setup wizard's copy state
+- **Readme**: Show the current wordmark
+- **Deps**: Bump vitest from 5.0.0 to 5.0.1
+- Delete the assets and folders nothing references any more
+
 ## [0.97.0] - 2026-09-21
 
 ### Added
@@ -3187,6 +3204,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.97.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.97.1
 [0.97.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.97.0
 [0.96.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.9
 [0.96.8]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.8
