@@ -234,10 +234,18 @@ export function checkSpecReplaceable(
 export function writeSpecFile(specPath: string, content: string, guard: SpecReplaceGuard): SpecWrite {
   const check = checkSpecReplaceable(specPath, guard)
   if (!check.ok) return { written: false, reason: check.reason }
+  // Written to a sibling, then RENAMED over the spec: a rename within one directory is
+  // atomic, so the spec is either the old text or the new one, never a truncated half.
+  // A half-written spec is the worst outcome here: its mtime is newer than the row's
+  // `spec_synced_at`, so the next reconcile would upload the damage over the cloud copy
+  // this save just wrote. The temp name is dot-prefixed so `isSpecPath` never matches it.
+  const tmp = path.join(path.dirname(check.real), `.${path.basename(check.real)}.${process.pid}.tmp`)
   try {
-    fs.writeFileSync(check.real, content, 'utf-8')
+    fs.writeFileSync(tmp, content, { encoding: 'utf-8', mode: fs.statSync(check.real).mode })
+    fs.renameSync(tmp, check.real)
     return { written: true, path: check.real }
   } catch {
+    try { fs.rmSync(tmp, { force: true }) } catch { /* nothing left to clean */ }
     return { written: false, reason: 'error' }
   }
 }

@@ -35,6 +35,26 @@ describe('writeSpecFile', () => {
     expect(fs.readFileSync(SPEC, 'utf-8')).toBe(EDITED)
   })
 
+  it('replaces the spec by rename, leaving no temp file and keeping its mode', () => {
+    fs.writeFileSync(SPEC, LOADED, { mode: 0o640 })
+    fs.chmodSync(SPEC, 0o640)
+    writeSpecFile(SPEC, EDITED, { expectedContent: LOADED })
+    expect(fs.readdirSync(MAGIC)).toEqual([path.basename(SPEC)])
+    expect(fs.statSync(SPEC).mode & 0o777).toBe(0o640)
+  })
+
+  it('leaves the old spec whole when the new text cannot be written', () => {
+    fs.writeFileSync(SPEC, LOADED)
+    // A read-only directory refuses the temp file, the way a full disk would refuse its bytes.
+    fs.chmodSync(MAGIC, 0o555)
+    try {
+      expect(writeSpecFile(SPEC, EDITED, { expectedContent: LOADED })).toEqual({ written: false, reason: 'error' })
+      expect(fs.readFileSync(SPEC, 'utf-8')).toBe(LOADED)
+    } finally {
+      fs.chmodSync(MAGIC, 0o755)
+    }
+  })
+
   it('keeps a spec that holds local work the cloud has not seen', () => {
     fs.writeFileSync(SPEC, `${LOADED}\n## A section the agent just wrote\n`)
     expect(writeSpecFile(SPEC, EDITED, { expectedContent: LOADED })).toEqual({ written: false, reason: 'diverged' })

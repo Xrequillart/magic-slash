@@ -13,7 +13,7 @@
 -- repo_id would let a stranger stamp their session onto an org they do not
 -- belong to.
 --
--- Assertions 19-33 cover 20260922110000_plan_sessions_member_edit.sql: a member of the
+-- Assertions 19-37 cover 20260922110000_plan_sessions_member_edit.sql: a member of the
 -- org may now edit a colleague's plan, but only its TEXT (spec, title, idea) — never whose
 -- it is, which repository it belongs to, or the author's sync bookkeeping — and never a
 -- session on a personal repository. The last six pin that the system's own writes on
@@ -27,7 +27,7 @@
 -- auth.uid() reads "sub". `reset role;` returns to the owner to seed/read.
 
 begin;
-select plan(33);
+select plan(37);
 
 -- ---------------------------------------------------------------------------
 -- Seed as the table owner (RLS bypassed). u1 = admin of Org A and the author of
@@ -378,21 +378,57 @@ select throws_ok(
   'a member cannot stamp spec_synced_at on a colleague''s session'
 );
 
--- 25. A personal session stays owner-only for writes as for reads: the USING clause
+-- 25. The three columns the guard leaves to other triggers (org_id, number, updated_at)
+--     are left out of its comparison because those triggers overwrite them. Pin that
+--     they really do, so a trigger renamed out of that alphabetical order cannot turn the
+--     allow-list into a hole: a member sending all three must change none of them.
+select lives_ok(
+  $sql$ update public.plan_sessions
+           set org_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', number = 9999, updated_at = '2000-01-01 00:00:00+00'
+         where id = 'e0000000-0000-0000-0000-000000000004' $sql$,
+  'a member sending org_id, number and updated_at is not refused: other triggers own them'
+);
+
+reset role;
+-- 26. derive_org put the organization back from the repository.
+select is(
+  (select org_id from public.plan_sessions where id = 'e0000000-0000-0000-0000-000000000004'),
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid,
+  'a member cannot move a colleague''s session to another organization through org_id'
+);
+
+-- 27. set_plan_number kept the number, the scope being unchanged.
+select isnt(
+  (select number from public.plan_sessions where id = 'e0000000-0000-0000-0000-000000000004'),
+  9999,
+  'a member cannot renumber a colleague''s session'
+);
+
+-- 28. set_updated_at stamped the write itself, whatever the client sent.
+select isnt(
+  (select updated_at from public.plan_sessions where id = 'e0000000-0000-0000-0000-000000000004'),
+  '2000-01-01 00:00:00+00'::timestamptz,
+  'a member cannot choose the updated_at a colleague''s conflict guard compares against'
+);
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222"}';
+
+-- 29. A personal session stays owner-only for writes as for reads: the USING clause
 --     filters it out, so the update matches nothing rather than raising.
 with u as (
   update public.plan_sessions set spec = 'leaked' where id = 'e0000000-0000-0000-0000-000000000005' returning 1
 )
 select is(count(*), 0::bigint, 'a member cannot edit a colleague''s session on a PERSONAL repository') from u;
 
--- 26. And someone outside the org reaches nothing at all.
+-- 30. And someone outside the org reaches nothing at all.
 set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333"}';
 with u as (
   update public.plan_sessions set spec = 'stranger' where id = 'e0000000-0000-0000-0000-000000000004' returning 1
 )
 select is(count(*), 0::bigint, 'a user outside the org cannot edit a team session') from u;
 
--- 27. The author is not narrowed: every column the app writes is still theirs.
+-- 31. The author is not narrowed: every column the app writes is still theirs.
 set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
 with u as (
   update public.plan_sessions
@@ -409,7 +445,7 @@ select is(count(*), 1::bigint, 'the author may still update every column of thei
 -- include e6, which is u2's. None of these writes is a member's edit, and none may be
 -- refused as one.
 
--- 28. Un-sharing the repository re-derives org_id on every session on it, u2's included.
+-- 32. Un-sharing the repository re-derives org_id on every session on it, u2's included.
 --     The derivation is SECURITY DEFINER, so it does not run as `authenticated`.
 select lives_ok(
   $sql$ update public.repositories set org_id = null where id = 'd0000000-0000-0000-0000-000000000004' $sql$,
@@ -417,14 +453,14 @@ select lives_ok(
 );
 
 reset role;
--- 29.
+-- 33.
 select is(
   (select org_id from public.plan_sessions where id = 'e0000000-0000-0000-0000-000000000006'),
   null::uuid,
   'the re-derivation reached the session owned by somebody else'
 );
 
--- 30. Deleting the agent sets agent_id null on u2's session: a referential action, run as
+-- 34. Deleting the agent sets agent_id null on u2's session: a referential action, run as
 --     the table owner.
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
@@ -434,14 +470,14 @@ select lives_ok(
 );
 
 reset role;
--- 31.
+-- 35.
 select is(
   (select agent_id from public.plan_sessions where id = 'e0000000-0000-0000-0000-000000000006'),
   null::uuid,
   'agent_id was set null on the session owned by somebody else'
 );
 
--- 32. Deleting the repository sets repo_id null the same way.
+-- 36. Deleting the repository sets repo_id null the same way.
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
 select lives_ok(
@@ -450,7 +486,7 @@ select lives_ok(
 );
 
 reset role;
--- 33.
+-- 37.
 select is(
   (select repo_id from public.plan_sessions where id = 'e0000000-0000-0000-0000-000000000006'),
   null::uuid,

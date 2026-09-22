@@ -717,18 +717,23 @@ export function PlanDetailPage({
    * WHILE EDITING, Escape closes the editor rather than the page — one level at a time,
    * the way it already goes from the page to the list and not out of the modal. The draft
    * is dropped either way; this just leaves the reader on the plan they were editing.
+   *
+   * WHILE SAVING, Escape does nothing — the same rule as the disabled Cancel button. The
+   * save is already on its way: closing the editor under it would hide a failure's banner
+   * along with the draft it was meant to keep. It is still swallowed, so the modal stays.
    */
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       e.preventDefault()
       e.stopImmediatePropagation()
+      if (saving) return
       if (editing) closeEditor()
       else onBack()
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [onBack, editing, closeEditor])
+  }, [onBack, editing, saving, closeEditor])
 
   const { tone, labelKey } = STATUS_LOOK[card.status]
   /**
