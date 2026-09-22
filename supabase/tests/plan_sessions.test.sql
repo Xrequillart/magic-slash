@@ -13,6 +13,13 @@
 -- repo_id would let a stranger stamp their session onto an org they do not
 -- belong to.
 --
+-- Assertions 19-33 cover 20260922110000_plan_sessions_member_edit.sql: a member of the
+-- org may now edit a colleague's plan, but only its TEXT (spec, title, idea) — never whose
+-- it is, which repository it belongs to, or the author's sync bookkeeping — and never a
+-- session on a personal repository. The last six pin that the system's own writes on
+-- somebody else's session (org re-derivation, referential set-null) still go through the
+-- guard trigger untouched: it judges `authenticated` writes only.
+--
 -- Harness (same as repositories.test.sql): pgTAP runs as the DB OWNER, which
 -- BYPASSES RLS. To exercise the policies we impersonate an authenticated user:
 --   set local role authenticated;
@@ -20,7 +27,7 @@
 -- auth.uid() reads "sub". `reset role;` returns to the owner to seed/read.
 
 begin;
-select plan(18);
+select plan(33);
 
 -- ---------------------------------------------------------------------------
 -- Seed as the table owner (RLS bypassed). u1 = admin of Org A and the author of
@@ -281,6 +288,173 @@ select throws_ok(
   '42501',
   'new row violates row-level security policy for table "plan_sessions"',
   'a user cannot reach a foreign org''s repository by updating repo_id after the fact'
+);
+
+-- ---------------------------------------------------------------------------
+-- Member edits (20260922110000): the text is shared, the row is not
+-- ---------------------------------------------------------------------------
+-- Fresh fixtures, because the ones above have been through a repository deletion and a
+-- re-share by now. u3 belongs to no org at all: the stranger. d4 is a team repository of
+-- u1 in Org A, d5 a personal one. e4 is u1's team session, e5 u1's personal one, and e6 is
+-- u2's session on u1's team repository — the row the system-path assertions at the end
+-- change without u1 owning it.
+reset role;
+
+insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
+values ('00000000-0000-0000-0000-000000000000', '33333333-3333-3333-3333-333333333333', 'authenticated', 'authenticated', 'u3@example.com', now(), now());
+
+insert into public.repositories (id, owner_id, org_id, name)
+values
+  ('d0000000-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'team-edit'),
+  ('d0000000-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', null,                                   'perso-edit');
+
+insert into public.agents (id, org_id, owner_id, name)
+values ('a0000000-0000-0000-0000-000000000001', null, '11111111-1111-1111-1111-111111111111', 'Planner');
+
+insert into public.plan_sessions (id, owner_id, repo_id, agent_id, slug, spec_key, title, spec, spec_synced_at)
+values
+  ('e0000000-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000004', null,
+   'team-edit', 'team-edit-key', 'Team edit', 'v1', '2026-09-01 10:00:00+00'),
+  ('e0000000-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000005', null,
+   'perso-edit', 'perso-edit-key', 'Personal edit', 'mine', '2026-09-01 10:00:00+00'),
+  ('e0000000-0000-0000-0000-000000000006', '22222222-2222-2222-2222-222222222222', 'd0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001',
+   'theirs', 'theirs-key', 'Theirs', 'theirs', null);
+
+-- From the teammate's seat: u2 is a plain member of Org A and does not own e4.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222"}';
+
+-- 19. The point of the migration: a member rewrites a colleague's plan text.
+select lives_ok(
+  $sql$ update public.plan_sessions set spec = 'edited by u2', title = 'Retitled', idea = 'New idea' where id = 'e0000000-0000-0000-0000-000000000004' $sql$,
+  'a member of the org may edit the spec, title and idea of a colleague''s team session'
+);
+
+-- 20. …and it really landed, without touching the author's sync bookkeeping.
+reset role;
+select is(
+  (select spec || '|' || title || '|' || idea || '|' || spec_synced_at::text
+     from public.plan_sessions where id = 'e0000000-0000-0000-0000-000000000004'),
+  'edited by u2|Retitled|New idea|' || '2026-09-01 10:00:00+00'::timestamptz::text,
+  'the member''s edit is stored, and spec_synced_at is left as the author''s app wrote it'
+);
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222"}';
+
+-- 21. Not whose it is. RLS alone would let this through — the new owner is the writer —
+--     which is exactly why the guard trigger exists.
+select throws_ok(
+  $sql$ update public.plan_sessions set owner_id = '22222222-2222-2222-2222-222222222222' where id = 'e0000000-0000-0000-0000-000000000004' $sql$,
+  '42501',
+  NULL,
+  'a member cannot take ownership of a colleague''s session'
+);
+
+-- 22. Not which repository, and therefore not which organization. d2 is visible to u2
+--     (shared with Org A above), so the policy's repository clause passes: the refusal
+--     has to come from the guard.
+select throws_ok(
+  $sql$ update public.plan_sessions set repo_id = 'd0000000-0000-0000-0000-000000000002' where id = 'e0000000-0000-0000-0000-000000000004' $sql$,
+  '42501',
+  NULL,
+  'a member cannot move a colleague''s session to another repository'
+);
+
+-- 23. Not the identity the author's app upserts on.
+select throws_ok(
+  $sql$ update public.plan_sessions set spec_key = 'hijacked' where id = 'e0000000-0000-0000-0000-000000000004' $sql$,
+  '42501',
+  NULL,
+  'a member cannot change a colleague''s spec_key'
+);
+
+-- 24. Not the reconcile comparator: a member stamping spec_synced_at would make the
+--     author's app believe the cloud copy is newer than their file.
+select throws_ok(
+  $sql$ update public.plan_sessions set spec_synced_at = now() where id = 'e0000000-0000-0000-0000-000000000004' $sql$,
+  '42501',
+  NULL,
+  'a member cannot stamp spec_synced_at on a colleague''s session'
+);
+
+-- 25. A personal session stays owner-only for writes as for reads: the USING clause
+--     filters it out, so the update matches nothing rather than raising.
+with u as (
+  update public.plan_sessions set spec = 'leaked' where id = 'e0000000-0000-0000-0000-000000000005' returning 1
+)
+select is(count(*), 0::bigint, 'a member cannot edit a colleague''s session on a PERSONAL repository') from u;
+
+-- 26. And someone outside the org reaches nothing at all.
+set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333"}';
+with u as (
+  update public.plan_sessions set spec = 'stranger' where id = 'e0000000-0000-0000-0000-000000000004' returning 1
+)
+select is(count(*), 0::bigint, 'a user outside the org cannot edit a team session') from u;
+
+-- 27. The author is not narrowed: every column the app writes is still theirs.
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+with u as (
+  update public.plan_sessions
+     set spec = 'v2', spec_synced_at = now(), status = 'done', spec_key = 'team-edit-key-2', spec_oversize = false
+   where id = 'e0000000-0000-0000-0000-000000000004'
+  returning 1
+)
+select is(count(*), 1::bigint, 'the author may still update every column of their own session') from u;
+
+-- ---------------------------------------------------------------------------
+-- System paths on somebody else's session still go through the guard
+-- ---------------------------------------------------------------------------
+-- u1 acts on their OWN repository and agent; the rows that change as a consequence
+-- include e6, which is u2's. None of these writes is a member's edit, and none may be
+-- refused as one.
+
+-- 28. Un-sharing the repository re-derives org_id on every session on it, u2's included.
+--     The derivation is SECURITY DEFINER, so it does not run as `authenticated`.
+select lives_ok(
+  $sql$ update public.repositories set org_id = null where id = 'd0000000-0000-0000-0000-000000000004' $sql$,
+  'un-sharing a repository still re-derives the org of a colleague''s session on it'
+);
+
+reset role;
+-- 29.
+select is(
+  (select org_id from public.plan_sessions where id = 'e0000000-0000-0000-0000-000000000006'),
+  null::uuid,
+  'the re-derivation reached the session owned by somebody else'
+);
+
+-- 30. Deleting the agent sets agent_id null on u2's session: a referential action, run as
+--     the table owner.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+select lives_ok(
+  $sql$ delete from public.agents where id = 'a0000000-0000-0000-0000-000000000001' $sql$,
+  'deleting an agent still clears agent_id on a colleague''s session'
+);
+
+reset role;
+-- 31.
+select is(
+  (select agent_id from public.plan_sessions where id = 'e0000000-0000-0000-0000-000000000006'),
+  null::uuid,
+  'agent_id was set null on the session owned by somebody else'
+);
+
+-- 32. Deleting the repository sets repo_id null the same way.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+select lives_ok(
+  $sql$ delete from public.repositories where id = 'd0000000-0000-0000-0000-000000000004' $sql$,
+  'deleting a repository still clears repo_id on a colleague''s session'
+);
+
+reset role;
+-- 33.
+select is(
+  (select repo_id from public.plan_sessions where id = 'e0000000-0000-0000-0000-000000000006'),
+  null::uuid,
+  'repo_id was set null on the session owned by somebody else'
 );
 
 reset role;
