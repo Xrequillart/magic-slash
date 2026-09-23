@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.98.0] - 2026-09-23
+
+### Added
+
+- **Desktop**: Move a plan's tabs under its heading and add an Idea tab
+- **Plan**: Add an in-progress status for a plan being implemented
+- **Plan**: Let anyone on a plan set its status by hand, and record each change in its history
+- **Desktop**: Show a plan's history in its own tab, one revision selected at a time
+- **Desktop**: Show a plan's edit history, by hand or with claude, on its page
+- **Desktop**: Add a timeline row to the design system
+- **Desktop**: Record plan spec revisions and link events in the database
+- **Desktop**: Rework a plan from its page with /magic:plan-change
+- **Plan**: Add /magic:plan-change and declare it in every skill list
+- **Desktop**: Pin external links to a plan, with the tool detected from the address
+- **Desktop**: Edit a plan's spec in place, with formatting, shortcuts and undo
+- **Desktop**: Count the comments on a plan in the list
+- **Desktop**: Comment a plan line by line in the margin
+- **Desktop**: Edit a plan in place, as a member of the organization
+- **Desktop**: Let organization members write a plan's content columns
+- **Desktop**: Comment on a plan, anchored in the text, with its author
+- **Landing**: Draw the tasks window with the app's own components
+
+### Changed
+
+- **Desktop**: Share the diff annotation between the file preview and other callers
+- **Readme**: Count nine skills and document /magic:plan-change
+- **Desktop**: Draw a pinned claude artifact with claude's own mark
+- **Desktop**: Give a plan's idea its own section heading and a caption
+- **Desktop**: Draw the tasks page from one design system component
+
+### Fixed
+
+- **Plan**: Record every spec save as its own revision, diffed from the prior text
+- **Pr**: Address review feedback for 304
+- **Pr**: Address review feedback for 303
+- **Desktop**: Focus a plan comment box without scrolling the page
+- **Desktop**: Order the member-edit migration after the plan comments check
+- **Desktop**: Let a plan comment be written and read back
+- **Pr**: Address review feedback for 302
+
 ## [0.97.1] - 2026-09-22
 
 ### Added
@@ -3204,6 +3244,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.98.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.0
 [0.97.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.97.1
 [0.97.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.97.0
 [0.96.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.96.9
