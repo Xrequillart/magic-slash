@@ -185,6 +185,11 @@ regenerated from the rest of the file. List what exists; the failures are report
 This append is what turns the spec from a working document into a record: months later it is the
 only place holding why the epic was cut this way, next to the tickets it produced.
 
+`/magic:plan-change` is the one sanctioned rewriter of `## Created tickets` once it exists: it keeps
+the four columns, appends the stories it adds, marks the ones it closes with a ` (closed)` /
+` (fermé)` suffix on the title, and appends a `## Change log` section after the table. Nothing else
+edits the table.
+
 ## Usage
 
 Step 2 of `SKILL.md` reads this file, creates the spec per §1 and writes the header and `## Idea`.

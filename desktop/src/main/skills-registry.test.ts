@@ -3,8 +3,8 @@ import { readdirSync, readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 
 // The shipped skill list is duplicated in eight places, and nothing used to hold them
-// together. Adding the eighth skill meant editing all eight by hand; the ninth is how
-// one of them gets forgotten, and the failure is quiet on every side — a skill absent
+// together. Adding a skill meant editing all eight by hand, and that is how one of them
+// gets forgotten, and the failure is quiet on every side — a skill absent
 // from skills-updater is never downloaded, absent from setup/status never reported as
 // missing, absent from skills-handlers renders as a user skill rather than a built-in,
 // absent from either TRACKED_SKILLS array simply has no tile on a dashboard that looks
@@ -39,6 +39,19 @@ const WEBAPP_TILES = 'webapp/lib/skills.ts'
 // pulling React in. That is why the path is a named constant.
 const LAUNCHER_COMMANDS = 'desktop/src/renderer/pages/QuickLaunch/index.tsx'
 const LANDING_COMMANDS = 'webapp/lib/commands.ts'
+
+// The one sanctioned hole in the eight lists, and only in the landing row. The landing
+// page tells the development cycle as a story, one command per step, and its copy says
+// so in words ("eight commands"). `/magic:plan-change` is not a step of that cycle: it
+// reworks a plan that `/magic:plan` already filed, so it is a side door off the first
+// step rather than a ninth one. Every other list, the launcher included, still carries
+// it, because a skill missing from those is a skill that is not installed, not counted
+// or not typeable.
+//
+// Named rather than filtered inline so the exception is a decision someone can read and
+// revisit, and scoped to LANDING_COMMANDS alone so it cannot quietly widen: a skill that
+// should be on the landing but is not still fails below.
+const OFF_CYCLE_SKILLS = ['magic-plan-change']
 
 // The tile rows that spell their own column count out as a Tailwind literal. The number
 // is the length of an array the row already maps over, so nothing connects the two: add a
@@ -137,12 +150,16 @@ function uninstallLoop(source: string): string[] {
 function commandSkills(relativePath: string): string[] {
   const match = read(relativePath).match(/COMMANDS[^=]*=\s*\[([\s\S]*?)\n\]/)
   if (!match) return []
-  return [...match[1].matchAll(/(?:name|command):\s*'\/magic:([a-z]+)'/g)].map(
+  return [...match[1].matchAll(/(?:name|command):\s*'\/magic:([a-z-]+)'/g)].map(
     (m) => `magic-${m[1]}`,
   )
 }
 
-const LISTS: { where: string; read: () => string[] }[] = [
+/**
+ * What a list is expected to hold: every shipped skill, minus the ones it is allowed to
+ * leave out. Only the landing row sets `omits`, see OFF_CYCLE_SKILLS.
+ */
+const LISTS: { where: string; read: () => string[]; omits?: string[] }[] = [
   {
     where: 'desktop/src/main/skills-updater.ts SKILLS',
     read: () => flatArray(read('desktop/src/main/skills-updater.ts'), 'SKILLS'),
@@ -174,6 +191,7 @@ const LISTS: { where: string; read: () => string[] }[] = [
   {
     where: `${LANDING_COMMANDS} COMMANDS`,
     read: () => commandSkills(LANDING_COMMANDS),
+    omits: OFF_CYCLE_SKILLS,
   },
 ]
 
@@ -190,8 +208,14 @@ describe('the shipped skill list, in the eight places that duplicate it', () => 
     expect(read().length).toBeGreaterThan(5)
   })
 
-  it.each(LISTS)('$where lists exactly the skills that ship', ({ read }) => {
-    expect([...read()].sort()).toEqual(shippedSkills())
+  it.each(LISTS)('$where lists exactly the skills that ship', ({ read, omits = [] }) => {
+    expect([...read()].sort()).toEqual(shippedSkills().filter((skill) => !omits.includes(skill)))
+  })
+
+  it('keeps the landing exception to skills that actually ship', () => {
+    // An exception naming a skill that was renamed or removed would excuse nothing and
+    // mislead whoever reads it next, so it has to stay pointed at a real folder.
+    for (const skill of OFF_CYCLE_SKILLS) expect(shippedSkills()).toContain(skill)
   })
 
   it('excludes the evals folder, which is not a skill', () => {
