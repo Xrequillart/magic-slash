@@ -53,6 +53,8 @@ export interface PlanCard extends Omit<PlanSession, 'status'> {
   /** The owner's photo as a `data:` URL, absent when they have none or are unknown. */
   avatarUrl?: string
   ticketCount: number
+  /** How much has been said about this plan, replies included. See `PlanOverview`. */
+  commentCount: number
 }
 
 /**
@@ -159,7 +161,7 @@ export function planLabel(session: Pick<PlanSession, 'title' | 'slug' | 'specKey
 
 /**
  * The list, ready to render: one row per session, newest first, with its repository
- * name, its author and their photo, and its ticket count resolved.
+ * name, its author and their photo, and its two counts resolved.
  *
  * Sessions are NOT filtered by organization here, and must not be: RLS returned exactly
  * the rows the reader may see — their own plus every plan on a repository shared with
@@ -169,16 +171,21 @@ export function planLabel(session: Pick<PlanSession, 'title' | 'slug' | 'specKey
 export function buildPlanCards(
   sessions: PlanSession[],
   ticketSessionIds: string[],
+  commentSessionIds: string[],
   repos: PlanRepoRef[],
   emailByOwner: Record<string, string>,
   avatarByOwner: Record<string, string>,
 ): PlanCard[] {
   const repoNameById = new Map(repos.map((r) => [r.id, r.name]))
 
-  const counts = new Map<string, number>()
-  for (const sessionId of ticketSessionIds) {
-    counts.set(sessionId, (counts.get(sessionId) ?? 0) + 1)
+  /** One id per row of the table it came from, tallied. Both lists arrive that shape. */
+  const tally = (ids: string[]): Map<string, number> => {
+    const counts = new Map<string, number>()
+    for (const sessionId of ids) counts.set(sessionId, (counts.get(sessionId) ?? 0) + 1)
+    return counts
   }
+  const counts = tally(ticketSessionIds)
+  const comments = tally(commentSessionIds)
 
   return sortPlanSessions(sessions).map((session) => ({
     ...session,
@@ -189,6 +196,7 @@ export function buildPlanCards(
     // the same thing to a row, which draws the generic icon either way.
     avatarUrl: avatarByOwner[session.ownerId],
     ticketCount: counts.get(session.id) ?? 0,
+    commentCount: comments.get(session.id) ?? 0,
   }))
 }
 

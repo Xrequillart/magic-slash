@@ -2,10 +2,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { MessageSquare, MessageSquarePlus, Pencil, Reply, Trash2 } from '@ds/desktop/icons'
 import { commentAnchorKind, commentLabel, type LineRange } from '../../utils/commentAnchors'
-import { BTN_DANGER, BTN_GHOST, BTN_PRIMARY } from '../../theme/controls'
 import type { FileComment } from '../../store'
 import { useT, type MessageKey } from '../../i18n'
-import { Banner, ButtonIcon, CommentCard as TurnCard, Input } from '@ds/desktop'
+import { Avatar, Banner, Button, ButtonIcon, CommentCard as TurnCard, Input } from '@ds/desktop'
 
 /**
  * The card's own box: a block in the code column, not a panel sitting on the file.
@@ -423,18 +422,19 @@ function Composer({
           }
         }}
       />
+      {/* THE DESIGN SYSTEM'S BUTTONS, where these were three hand-spelled class constants.
+          `xs` is the rung for a control under a row rather than in one, which is what a
+          card's footer is, and `accent` against `ghost` is the app's standing pairing for
+          "the action, and the way out of it". The disabled state comes with the component
+          now: `disabled:opacity-40` was a class this file appended and the ladder already
+          owns. */}
       <div className="flex items-center justify-end gap-1.5">
-        <button type="button" onClick={onCancel} className={BTN_GHOST}>
+        <Button tone="ghost" size="xs" onClick={onCancel}>
           {t('common.cancel')}
-        </button>
-        <button
-          type="button"
-          disabled={!saved}
-          onClick={onSave}
-          className={`${BTN_PRIMARY} disabled:opacity-40 disabled:cursor-not-allowed`}
-        >
+        </Button>
+        <Button tone="accent" size="xs" disabled={!saved} onClick={onSave}>
           {t('common.save')}
-        </button>
+        </Button>
       </div>
     </>
   )
@@ -521,7 +521,9 @@ function ReplyTurn({
   return (
     <TurnCard
       ground="bare"
-      avatar={{ src: turn.author.avatarUrl ?? null, alt: '', size: 'sm' }}
+      /* NO AVATAR AND NO INDENT: both belong to the row this is drawn in — see `ThreadRow`.
+         The face is in the column the head's face is in, and a reply is the full width of
+         the card, where it used to be inset by its own rule. */
       author={turn.author.name}
       date={turn.date}
       actions={!editing && turn.canEdit ? (
@@ -533,7 +535,6 @@ function ReplyTurn({
       /* Under the body, which is where the design system's own card puts it — so a refused
          write on a reply reads exactly like a refused write on the comment above it. */
       alert={error ? { message: t(error) } : undefined}
-      className="pl-2 border-l-2 border-line"
     >
       {editing ? (
         <Composer
@@ -552,6 +553,68 @@ function ReplyTurn({
         <CommentBody body={turn.body} />
       )}
     </TurnCard>
+  )
+}
+
+/**
+ * ONE TURN OF A CONVERSATION, AS A ROW: a face in a fixed column, and everything that was
+ * said beside it.
+ *
+ * ── WHY THE REPLIES CAME OUT OF THE HEAD'S COLUMN ─────────────────────────────────────
+ *
+ * They used to be drawn inside it, inset by a rule of their own — a card within a card. It
+ * said "this is subordinate" twice and cost the reply a couple of centimetres of measure, in
+ * a margin three hundred pixels wide where a couple of centimetres is a word per line. A
+ * reply is not a smaller kind of comment; it is the next one. So every turn is the same
+ * width, and what says they belong together is the COLUMN: one face under another, joined.
+ *
+ * ── THE TRAIL ────────────────────────────────────────────────────────────────────────
+ *
+ * A hairline from under this row's face to the bottom of the row, and the rows have no gap
+ * between them — they carry their own padding instead. So the segments meet, and the line
+ * runs unbroken from the head's face to the last reply's, ending exactly where the last
+ * face begins. That is why the caller says whether to draw one rather than this deriving it:
+ * the last turn of a thread draws none, and the row that holds the Reply button draws
+ * neither a face nor a line.
+ */
+function ThreadRow({
+  avatar,
+  trail = false,
+  children,
+}: {
+  avatar?: CommentAuthor
+  trail?: boolean
+  children: ReactNode
+}) {
+  return (
+    <div className="flex gap-2.5 pb-3 last:pb-0">
+      {/* `w-6` is the avatar's own 24px, so the column is the face and nothing else. */}
+      <div className="relative w-6 shrink-0">
+        {trail && (
+          /* `-bottom-3` and not `bottom-0`, which is the one measurement this had to be
+             told. The column is a flex ITEM: it stretches to the row's content and stops
+             there, INSIDE the `pb-3` the row carries — so a line ending at the column's
+             bottom stopped twelve pixels short of the next face and the trail came out
+             dotted. The negative offset is exactly that padding, so the segment reaches the
+             top of the row below and the line is continuous. */
+          <span
+            aria-hidden="true"
+            className="absolute left-1/2 top-6 -bottom-3 w-px -translate-x-1/2 bg-line"
+          />
+        )}
+        {avatar && (
+          <Avatar
+            src={avatar.avatarUrl ?? null}
+            alt=""
+            size="md"
+            fallback="portrait"
+            name={avatar.name}
+            className="mt-px"
+          />
+        )}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-2">{children}</div>
+    </div>
   )
 }
 
@@ -575,8 +638,28 @@ interface Props {
    *
    * Taken as a prop rather than made here, because only the caller knows what "the last line"
    * means: a row of shiki's HTML for the diff, the block element a passage ends in for prose.
+   *
+   * ABSENT IN A BUBBLE, which has no node in the flow to go into: see `bubble` below.
    */
-  host: HTMLElement
+  host?: HTMLElement
+  /**
+   * Draw the card BARE, for a caller that has already provided the surface.
+   *
+   * What it drops is the whole of `InlinePanel`: the plate, the padding, the border, the
+   * focus trap, the Escape binding and the portal. A bubble supplies every one of those
+   * itself — it is a floating panel rather than a block spliced into a document, so it owns
+   * its own dismissal and its own edge — and a card that drew a second plate inside it would
+   * be a box in a box, which is the one thing `CommentCard`'s own `ground="bare"` exists to
+   * avoid one level down.
+   *
+   * It also drops the LABEL naming the anchor. In the flow the card can be a screen away
+   * from the passage it is about and has to say what it is attached to; a bubble is hanging
+   * off that passage, with the line lit under it, so the label would be a sentence about
+   * something the reader is looking at.
+   *
+   * `host` goes unread when this is set, and is why that prop became optional.
+   */
+  bubble?: boolean
   /** How wide the box should be, for the code slab. See `InlinePanel`'s own prop. */
   width?: number
   /**
@@ -638,6 +721,34 @@ interface Props {
    * `author_id` and a conversation. See `CommentThread`.
    */
   thread?: CommentThread
+  /**
+   * WHO IS WRITING, for a comment that does not exist yet — the signed-in reader, with
+   * their photo.
+   *
+   * It is what the card puts in its leading slot while the box is empty, in place of the
+   * mark that used to sit there. A comment being written has an author already; drawing a
+   * generic glyph beside the box said only "this is a comment", which the box says by
+   * being a box, where a face says whose name will be on it once it is filed.
+   *
+   * Absent for the store-backed callers, and rightly: a note on a review is this machine's
+   * own, it is never attributed, and a photo beside it would promise a byline that no
+   * reader will ever see.
+   */
+  viewer?: CommentAuthor
+  /**
+   * SHOW THE PASSAGE, even on a surface that normally hides it.
+   *
+   * `spec` drops the quotation because a comment on a spec sits beside the line it is about
+   * and echoing it would print the same sentence twice. That reasoning holds for a comment
+   * on a LINE and fails for a comment on a few words INSIDE one: the line is right there,
+   * but which three words were picked is not — the wash says where they are, and says
+   * nothing once the reader is looking at the card rather than at the document.
+   *
+   * So the caller, which is the only thing that knows whether the quotation turned out to be
+   * the whole line, asks for it back. Absent everywhere else: a review already draws it, and
+   * a line comment still does not want it.
+   */
+  quoted?: boolean
 }
 
 /**
@@ -660,7 +771,7 @@ interface Props {
  * always on screen — being read, or being rewritten. `onClose` is what tells the two callers
  * apart; see its own comment.
  */
-export default function CommentCard({ comment, range, quote, host, width, spec, onSave, onDelete, onClose, thread }: Props) {
+export default function CommentCard({ comment, range, quote, host, width, spec, bubble, quoted, onSave, onDelete, onClose, thread, viewer }: Props) {
   const t = useT()
   /**
    * The quote, read ONCE: a stored comment's own, else the prop, which is the new-comment
@@ -831,8 +942,132 @@ export default function CommentCard({ comment, range, quote, host, width, spec, 
   // a second handler at the panel level is what made the composer's own stop the keystroke
   // on its way up, to keep a reply from filing the head comment's draft.
 
-  return createPortal(
-    <InlinePanel panelRef={panelRef} onEscape={dismiss} width={width} spec={spec}>
+  /**
+   * WHOSE FACE GOES IN THE LEADING SLOT, or nobody's.
+   *
+   * The author for a comment that has one, the reader for a comment being written, and
+   * NEITHER for a note on a review — those are this machine's own annotations, they carry
+   * no `author_id` and are shown to no one else, so they keep the mark they always had.
+   *
+   * One expression rather than a test at each of the two places that draw a face, so the
+   * card cannot end up showing a photo in the slot and a different one in the strip.
+   */
+  const face = thread?.author ?? (comment === null ? viewer : undefined)
+
+
+  /**
+   * THE THREAD, AS A COLUMN OF ROWS — one face under another, joined by a hairline.
+   *
+   * A SECOND SHAPE FOR THE SAME CARD, and not a branch inside the first: the plain card is a
+   * face beside a body, and a conversation is several of those stacked, sharing one column.
+   * Trying to be both at once is what produced the version this replaces, where the replies
+   * lived INSIDE the head's body column and were inset again by a rule of their own.
+   *
+   * The label and the quotation belong to the head's row, because they are about the comment
+   * the thread hangs off. The Reply box gets a row of its own with no face, which lines it up
+   * with everything that has been said rather than with the margin.
+   */
+  const threadContent = thread && (
+    <div className="flex min-w-0 flex-1 flex-col">
+      <ThreadRow avatar={thread.author} trail={thread.replies.length > 0}>
+        {!bubble && (
+          <span className="text-[11px] font-medium text-text-secondary">{t(label.key, label.vars)}</span>
+        )}
+        {(!spec || quoted) && <Quote quote={shownQuote} />}
+        <TurnCard
+          ground="bare"
+          /* NO AVATAR HERE: the face is the ROW's, in the column it shares with every
+             reply under it — see `ThreadRow`. Two of them would be the same person drawn
+             twice a centimetre apart. */
+          author={thread.author.name}
+          /* NO VERB. "ada@… commented" reads as a sentence on a ticket page, where a comment
+             arrives among transitions and field changes and has to say which of those it is.
+             In a margin beside a line, everything in the column is a comment: the word was
+             the same on every turn and told a reader nothing they were not looking at. */
+          date={thread.date}
+          actions={!editing && canEdit ? (
+            <TurnActions
+              onEdit={() => { setError(null); setEditing(true) }}
+              onDelete={() => { void remove() }}
+            />
+          ) : undefined}
+          /* A refused write on THIS turn, under its body — which for a comment being
+             rewritten puts the strip directly beneath the box it is about, and for a
+             refused Delete beneath the words that are still there because of it. The
+             design system's card decides the shape; this only says what happened. */
+          alert={error ? { message: t(error) } : undefined}
+        >
+          {editing ? (
+            <Composer
+              value={body}
+              onChange={editBody}
+              onSave={() => { void save() }}
+              onCancel={dismiss}
+              placeholder={t(kind === 'quote'
+                ? 'filePreview.commentQuotePlaceholder'
+                : 'filePreview.commentPlaceholder')}
+              /* The box asks for the focus itself, as every composer in this card does. */
+              autoFocus
+            />
+          ) : (
+            <CommentBody body={comment?.body ?? ''} />
+          )}
+        </TurnCard>
+      </ThreadRow>
+
+      {thread.replies.map((turn, index) => (
+        <ThreadRow
+          key={turn.id}
+          avatar={turn.author}
+          /* The last turn ends the line: there is no face below it to join. */
+          trail={index < thread.replies.length - 1}
+        >
+          <ReplyTurn
+            turn={turn}
+            onSave={(next) => thread.onSaveReply(turn.id, next)}
+            onDelete={() => thread.onDeleteReply(turn.id)}
+          />
+        </ThreadRow>
+      ))}
+
+      <ThreadRow>
+        {reply === null ? (
+          <div className="flex items-center justify-end">
+            <Button tone="ghost" size="xs" icon={Reply} onClick={() => setReply('')}>
+              {t('filePreview.commentReply')}
+            </Button>
+          </div>
+        ) : (
+          <>
+            <Composer
+              value={reply}
+              onChange={(next) => { setReply(next); setReplyError(null) }}
+              /* Cleared once it is stored, and not before — see `sendReply`. */
+              onSave={() => { void sendReply() }}
+              onCancel={() => { setReply(null); setReplyError(null) }}
+              placeholder={t('filePreview.commentReplyPlaceholder')}
+              rows={2}
+              autoFocus
+            />
+            {/* THE ONE STRIP IN THIS FILE THAT IS NOT A CARD'S `alert`, and the reason
+                is that a reply being written has no card: it is a box at the foot of a
+                thread, under the turns that already exist. `Banner` is what the design
+                system's `CommentCard` draws an alert WITH, in the shape it draws it —
+                same variant, same layout, same outline — so the two read as one thing
+                even though only one of them has a turn to belong to. */}
+            {replyError && (
+              <Banner variant="danger" layout="stacked" bordered>
+                {t(replyError)}
+              </Banner>
+            )}
+          </>
+        )}
+      </ThreadRow>
+    </div>
+  )
+
+  const content = (
+    <>
       {/* The marker, repeated inside the thing it marks.
           The SAME icon the gutter pill draws — lucide's `message-square`, which CodeView has to
           reproduce as a CSS mask because a pseudo-element cannot hold a React element — and the
@@ -847,7 +1082,21 @@ export default function CommentCard({ comment, range, quote, host, width, spec, 
           button that used to stand in front of the composer, and it goes on meaning the same
           thing — a comment about to exist. `aria-hidden` because the label under it already
           names the card, in words, to anything reading the tree. */}
-      {comment
+      {face ? (
+        /* A FACE WHERE THE MARK WAS. `alt=""` because the name is printed in the very next
+           breath — in the strip for a stored comment, on the button that files it for one
+           being written — and an alt repeating it makes a screen reader say the same person
+           twice per card. `portrait` is the fallback for somebody who has an account and no
+           photo, which is the same one the design system's own comment card picks. */
+        <Avatar
+          src={face.avatarUrl ?? null}
+          alt=""
+          size="md"
+          fallback="portrait"
+          name={face.name}
+          className="mt-px shrink-0"
+        />
+      ) : comment
         ? <MessageSquare className="w-3.5 h-3.5 mt-px shrink-0 text-orange" aria-hidden="true" />
         : <MessageSquarePlus className="w-3.5 h-3.5 mt-px shrink-0 text-orange" aria-hidden="true" />}
 
@@ -855,11 +1104,17 @@ export default function CommentCard({ comment, range, quote, host, width, spec, 
           against: a flex child defaults to its content's width and would push the card wider
           than the row it is spliced into. */}
       <div className="flex flex-col gap-2 min-w-0 flex-1">
-        <span className="text-[11px] font-medium text-text-secondary">{t(label.key, label.vars)}</span>
+        {/* Not in a bubble, which hangs off the passage it is about — see the prop. */}
+        {!bubble && (
+          <span className="text-[11px] font-medium text-text-secondary">{t(label.key, label.vars)}</span>
+        )}
         {/* Drawn for a review, not for the spec — `spec` on the props carries the whole of why.
             The quote itself is still READ above it: it is what names the card and what shapes
-            the composer's prompt, so this is the one of its three uses that goes. */}
-        {!spec && <Quote quote={shownQuote} />}
+            the composer's prompt, so this is the one of its three uses that goes.
+
+            `quoted` is the exception a spec asks for: a comment on a FRAGMENT of a line shows
+            what was picked, because nothing else in the card says which words. */}
+        {(!spec || quoted) && <Quote quote={shownQuote} />}
 
         {/* THE AUTHORED, THREADED VARIANT. Everything above this line is identical in both:
             the icon, the label naming the anchor, and the quote when a review wants it. What
@@ -870,90 +1125,8 @@ export default function CommentCard({ comment, range, quote, host, width, spec, 
             the two footers have nothing in common — one ends in Delete and Edit, the other in
             a thread and a reply box — and interleaving them would leave every line of both
             guarded by the same question. */}
-        {thread ? (
-          <>
-            {/* The design system's own comment card, bare: this one is already inside the
-                plate `InlinePanel` draws, so a second one would be a box in a box. The verb
-                is beside the name for the same reason a ticket's comments carry one — "ada@…
-                commented" is a sentence, where a bare address over a paragraph is a header. */}
-            <TurnCard
-              ground="bare"
-              avatar={{ src: thread.author.avatarUrl ?? null, alt: '', size: 'md' }}
-              author={thread.author.name}
-              verb={t('plans.comments.commented')}
-              date={thread.date}
-              actions={!editing && canEdit ? (
-                <TurnActions
-                  onEdit={() => { setError(null); setEditing(true) }}
-                  onDelete={() => { void remove() }}
-                />
-              ) : undefined}
-              /* A refused write on THIS turn, under its body — which for a comment being
-                 rewritten puts the strip directly beneath the box it is about, and for a
-                 refused Delete beneath the words that are still there because of it. The
-                 design system's card decides the shape; this only says what happened. */
-              alert={error ? { message: t(error) } : undefined}
-            >
-              {editing ? (
-                <Composer
-                  value={body}
-                  onChange={editBody}
-                  onSave={() => { void save() }}
-                  onCancel={dismiss}
-                  placeholder={t(kind === 'quote'
-                    ? 'filePreview.commentQuotePlaceholder'
-                    : 'filePreview.commentPlaceholder')}
-                  /* The box asks for the focus itself, as every composer in this card does. */
-                  autoFocus
-                />
-              ) : (
-                <CommentBody body={comment?.body ?? ''} />
-              )}
-            </TurnCard>
+        {editing ? (
 
-            {thread.replies.map((turn) => (
-              <ReplyTurn
-                key={turn.id}
-                turn={turn}
-                onSave={(next) => thread.onSaveReply(turn.id, next)}
-                onDelete={() => thread.onDeleteReply(turn.id)}
-              />
-            ))}
-
-            {reply === null ? (
-              <div className="flex items-center justify-end">
-                <button type="button" onClick={() => setReply('')} className={BTN_GHOST}>
-                  <Reply className="w-3.5 h-3.5" />
-                  {t('filePreview.commentReply')}
-                </button>
-              </div>
-            ) : (
-              <>
-                <Composer
-                  value={reply}
-                  onChange={(next) => { setReply(next); setReplyError(null) }}
-                  /* Cleared once it is stored, and not before — see `sendReply`. */
-                  onSave={() => { void sendReply() }}
-                  onCancel={() => { setReply(null); setReplyError(null) }}
-                  placeholder={t('filePreview.commentReplyPlaceholder')}
-                  rows={2}
-                  autoFocus
-                />
-                {/* THE ONE STRIP IN THIS FILE THAT IS NOT A CARD'S `alert`, and the reason
-                    is that a reply being written has no card: it is a box at the foot of a
-                    thread, under the turns that already exist. `Banner` is what the design
-                    system's `CommentCard` draws an alert WITH, in the shape it draws it —
-                    same variant, same layout, same outline — so the two read as one thing
-                    even though only one of them has a turn to belong to. */}
-                {replyError && (
-                  <Banner variant="danger" layout="stacked" bordered>
-                    {t(replyError)}
-                  </Banner>
-                )}
-              </>
-            )}
-          </>
-        ) : editing ? (
           <Composer
             value={body}
             onChange={editBody}
@@ -971,14 +1144,12 @@ export default function CommentCard({ comment, range, quote, host, width, spec, 
           <>
             <CommentBody body={comment?.body ?? ''} />
             <div className="flex items-center justify-end gap-1.5">
-              <button type="button" onClick={() => { void remove() }} className={BTN_DANGER}>
-                <Trash2 className="w-3.5 h-3.5" />
+              <Button tone="danger" size="xs" icon={Trash2} onClick={() => { void remove() }}>
                 {t('filePreview.commentDelete')}
-              </button>
-              <button type="button" onClick={() => { setError(null); setEditing(true) }} className={BTN_GHOST}>
-                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+              <Button tone="ghost" size="xs" icon={Pencil} onClick={() => { setError(null); setEditing(true) }}>
                 {t('common.edit')}
-              </button>
+              </Button>
               {/* No Close beside them, and it was here for one revision.
                   It answered a real problem — saving left the card open with only Escape to get
                   out of it — that stopped existing when every stored comment became permanently
@@ -1006,6 +1177,65 @@ export default function CommentCard({ comment, range, quote, host, width, spec, 
           </Banner>
         )}
       </div>
+    </>
+  )
+
+  /**
+   * IN A BUBBLE, the card is just its contents: the panel around it belongs to the bubble,
+   * and so does the portal — a floating panel is placed against the window, not spliced into
+   * a document, so there is nothing here to portal INTO. `font-sans` survives the move
+   * because it was never about this card's own surface: see the `CARD` docblock.
+   */
+  const drawn = threadContent ?? content
+
+  if (bubble) {
+    /**
+     * `data-comment-composer` TRAVELS WITH THE CARD, and it is not decoration.
+     *
+     * Three things in this app ask whether a keystroke, a click or a draft belongs to a
+     * comment, and all three ask it of the DOM with `closest('[data-comment-composer]')`:
+     * the plans page stands aside from Escape for it, the review drawer stands aside from
+     * Escape and Alt+↑/↓, and `holdsCommentDraft` refuses to replace a box holding text.
+     * `InlinePanel` carries it, so a card in the flow was covered; a card drawn bare had
+     * nothing, and every one of those guards silently stopped applying to it — Escape left
+     * the plan, and a half-written comment could be replaced by opening another line.
+     */
+    /* A conversation stacks its own rows; a lone comment is a face beside a body. The two
+       axes are the two shapes — see `threadContent`. */
+    return (
+      <div
+        data-comment-composer
+        /**
+         * ESCAPE BACKS OUT OF WHAT IS BEING WRITTEN, and it has to be bound here.
+         *
+         * `InlinePanel` binds it for a card in the flow; a bare card has no panel around it,
+         * so for one revision Escape did NOTHING AT ALL in the margin — and worse than
+         * nothing, because the page behind it deliberately stands aside for anything inside
+         * a `[data-comment-composer]`, which this is. The key went nowhere.
+         *
+         * STOPPED on its way up for that same reason: the plans page leaves the plan on
+         * Escape, and backing out of a box is not a request to leave the document.
+         */
+        onKeyDown={(e) => {
+          if (e.key !== 'Escape') return
+          e.stopPropagation()
+          dismiss()
+        }}
+        className={`flex font-sans ${thread ? 'flex-col' : 'gap-2.5'}`}
+      >
+        {drawn}
+      </div>
+    )
+  }
+
+  // `host` is what the non-bubble card portals into and it is required in that branch: a
+  // card in the flow with nowhere to go is a card nobody would see, and returning null for
+  // it would hide a comment rather than report a caller's mistake.
+  if (!host) return null
+
+  return createPortal(
+    <InlinePanel panelRef={panelRef} onEscape={dismiss} width={width} spec={spec}>
+      {drawn}
     </InlinePanel>,
     host,
   )

@@ -1,7 +1,34 @@
+import { useMemo, type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
+
+/**
+ * One block of the rendered document, handed to a caller that wants to draw something
+ * around it — a hover ground, a mark in a gutter, a place to hang a comment off.
+ *
+ * `tag` is the element the markdown asked for and MUST be what the caller renders: the
+ * typography below is a sheet of descendant selectors, so a `<div>` standing in for an
+ * `<li>` loses its marker, its indent and its margins in one go.
+ */
+export interface MarkdownLineProps {
+  tag: string
+  /**
+   * A name for this block that is the same on every render of the same document, or
+   * `undefined` when the parser could not give one.
+   *
+   * It is the block's OFFSET IN THE MARKDOWN SOURCE, which is the one identifier available
+   * here that survives a re-render: the DOM is rebuilt from scratch on every pass, and a
+   * counter incremented during render is a side effect that StrictMode's double invoke
+   * makes a liar of. `rehype-raw` reparses embedded HTML and does not always carry a
+   * position through it, hence `undefined` — a block with no key gets drawn plainly, which
+   * is a block that cannot be commented on rather than a crash.
+   */
+  lineKey: string | undefined
+  className?: string
+  children?: ReactNode
+}
 
 interface Props {
   content: string
@@ -11,6 +38,16 @@ interface Props {
    * air, and no padding of its own (the page frame supplies it).
    */
   variant?: 'panel' | 'document'
+  /**
+   * Draw each block through this instead of as a bare tag — absent for every caller that
+   * only wants the document read.
+   *
+   * WHAT IT DOES NOT DO is as much the point as what it does: the typography, the
+   * sanitiser, the plugins and the two Tailwind strings are untouched, and a caller that
+   * passes nothing gets exactly the component it had. The one thing that changes for a
+   * caller that passes something is which function builds the element for a paragraph.
+   */
+  line?: (props: MarkdownLineProps) => ReactNode
 }
 
 // Everything that does not change with the size: colours, borders, list markers.
@@ -119,13 +156,102 @@ const COMPONENTS = {
  */
 const SANITIZE_SCHEMA = { ...defaultSchema, clobberPrefix: '' }
 
-export default function MarkdownView({ content, variant = 'panel' }: Props) {
+/**
+ * The blocks a caller may draw for itself — the LEAVES of the document, which is what a
+ * reader calls a line.
+ *
+ * `ul`, `ol` and `table` are pointedly not here. They contain the blocks above rather than
+ * text of their own, so a ground on one of them would light up a whole list under a cursor
+ * that is on a single bullet, and a mark beside it would be a mark on eight lines at once.
+ */
+const LINE_TAGS = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote', 'pre'] as const
+
+/** What react-markdown hands a component override, as much of it as this file reads. */
+type NodeProps = {
+  node?: {
+    position?: { start?: { offset?: number } }
+    children?: { type?: string; tagName?: string; value?: string }[]
+  }
+}
+
+/**
+ * Everything that holds other blocks rather than words of its own.
+ *
+ * Used by `isContainer` below and NOT the same list as `LINE_TAGS`: this one is about what a
+ * node may CONTAIN, so it includes the wrappers that are never lines themselves.
+ */
+const BLOCK_CHILDREN = new Set([
+  'p', 'div', 'pre', 'blockquote', 'hr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'ul', 'ol', 'li', 'dl', 'dt', 'dd', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th',
+  'section', 'article', 'aside', 'header', 'footer', 'figure', 'figcaption', 'details',
+])
+
+/**
+ * Whether this block holds only other blocks — which makes it a CONTAINER and not a line.
+ *
+ * IT EXISTS BECAUSE MARKDOWN HAS TWO KINDS OF LIST. A tight item is `<li>text</li>`; a loose
+ * one — an item with a blank line after it, which is most of the items anyone writes — is
+ * `<li><p>text</p></li>`. Both are one line to a reader, and without this test both the `li`
+ * and the `p` were drawn as lines: two marks, at the same height, in the same 56px box, one
+ * of them lying on top of the other. The one underneath could not be clicked.
+ *
+ * So a block with no words of its own is not offered as a line: it gets no mark, no
+ * attribute, and the blocks INSIDE it are the lines. An item that mixes text and a sublist —
+ * `<li>text<ul>…</ul></li>` — keeps its own line, because it does have words of its own, and
+ * its mark sits beside them rather than beside its sublist.
+ *
+ * Whitespace-only text is not content: the parser leaves newlines between block children,
+ * and counting them would make every loose item a line again.
+ */
+function isContainer(node: NodeProps['node']): boolean {
+  const children = node?.children
+  if (!children || children.length === 0) return false
+  return children.every((child) => (
+    child.type === 'element'
+      ? BLOCK_CHILDREN.has(child.tagName ?? '')
+      : (child.value ?? '').trim() === ''
+  ))
+}
+
+export default function MarkdownView({ content, variant = 'panel', line }: Props) {
+  /**
+   * The overrides, built once per `line` — which is once, since its callers hold it in a
+   * `useCallback`.
+   *
+   * It matters: `components` is read by react-markdown on every pass, and a fresh object
+   * of ten fresh function components would make every block a NEW COMPONENT TYPE on every
+   * render, so React would unmount and remount the entire document rather than update it.
+   * A textarea inside a comment bubble anchored to one of those blocks would lose its
+   * focus on every keystroke.
+   */
+  const components = useMemo(() => {
+    if (!line) return COMPONENTS
+    const overrides: Record<string, unknown> = { ...COMPONENTS }
+    for (const tag of LINE_TAGS) {
+      overrides[tag] = ({ node, children, className }: NodeProps & {
+        children?: ReactNode
+        className?: string
+      }) => {
+        const offset = node?.position?.start?.offset
+        return line({
+          tag,
+          // A container is drawn plainly: no key means no mark and no anchor — see
+          // `isContainer`, and `CommentLine`, which draws the bare tag for a keyless block.
+          lineKey: typeof offset === 'number' && !isContainer(node) ? `${tag}@${offset}` : undefined,
+          className,
+          children,
+        })
+      }
+    }
+    return overrides
+  }, [line])
+
   return (
     <div className={`${STRUCTURE} ${SCALE[variant]}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA]]}
-        components={COMPONENTS}
+        components={components}
       >
         {content}
       </ReactMarkdown>

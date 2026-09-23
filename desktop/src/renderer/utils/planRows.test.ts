@@ -155,6 +155,7 @@ describe('planRepoOptions', () => {
     const cards = buildPlanCards(
       [session({ id: 's1', repoId: 'r1' }), session({ id: 's2', repoId: 'r2' })],
       [],
+      [],
       REPOS,
       {},
       {},
@@ -163,7 +164,7 @@ describe('planRepoOptions', () => {
   })
 
   it('ignores sessions whose repository is gone', () => {
-    const cards = buildPlanCards([session({ repoId: undefined })], [], REPOS, {}, {})
+    const cards = buildPlanCards([session({ repoId: undefined })], [], [], REPOS, {}, {})
     expect(planRepoOptions(cards, REPOS)).toEqual([])
   })
 })
@@ -185,6 +186,7 @@ describe('buildPlanCards', () => {
     const [card] = buildPlanCards(
       [session({ id: 's1', repoId: 'r1', ownerId: 'u1' })],
       ['s1', 's1'],
+      ['s1'],
       REPOS,
       { u1: 'me@acme.io' },
       { u1: 'data:image/webp;base64,AAA' },
@@ -193,18 +195,19 @@ describe('buildPlanCards', () => {
     expect(card.author).toBe('me@acme.io')
     expect(card.avatarUrl).toBe('data:image/webp;base64,AAA')
     expect(card.ticketCount).toBe(2)
+    expect(card.commentCount).toBe(1)
   })
 
   it('leaves the photo undefined for an owner who has none', () => {
     // The main process ships only the photos that exist, and only for the owners on
     // screen; every other owner falls through to the row's generic icon.
-    const [card] = buildPlanCards([session({ ownerId: 'u2' })], [], REPOS, { u2: 'them@acme.io' }, {})
+    const [card] = buildPlanCards([session({ ownerId: 'u2' })], [], [], REPOS, { u2: 'them@acme.io' }, {})
     expect(card.avatarUrl).toBeUndefined()
     expect(card.author).toBe('them@acme.io')
   })
 
   it('narrows a status the list cannot draw down to one it can', () => {
-    const [card] = buildPlanCards([session({ status: 'whatever' })], [], REPOS, {}, {})
+    const [card] = buildPlanCards([session({ status: 'whatever' })], [], [], REPOS, {}, {})
     expect(card.status).toBe('planning')
   })
 
@@ -212,6 +215,7 @@ describe('buildPlanCards', () => {
     const cards = buildPlanCards(
       [session({ id: 's1' }), session({ id: 's2' })],
       ['s1', 's2', 's2'],
+      ['s2'],
       REPOS,
       {},
       {},
@@ -220,10 +224,25 @@ describe('buildPlanCards', () => {
     expect(cards.find((c) => c.id === 's2')?.ticketCount).toBe(2)
   })
 
+  it('counts the comments of its own session, replies included, and zero for the rest', () => {
+    // The same tally as the tickets and pointedly a SEPARATE one: a plan can be filed and
+    // never discussed, or discussed at length and never filed.
+    const cards = buildPlanCards(
+      [session({ id: 's1' }), session({ id: 's2' })],
+      [],
+      ['s2', 's2', 's2'],
+      REPOS,
+      {},
+      {},
+    )
+    expect(cards.find((c) => c.id === 's1')?.commentCount).toBe(0)
+    expect(cards.find((c) => c.id === 's2')?.commentCount).toBe(3)
+  })
+
   it('keeps a session whose repository is invisible or deleted', () => {
     // RLS decides what a reader sees; a missing repo row means the name is unknown, not
     // that the plan should vanish from their own list.
-    const [card] = buildPlanCards([session({ repoId: 'r-unknown' })], [], REPOS, {}, {})
+    const [card] = buildPlanCards([session({ repoId: 'r-unknown' })], [], [], REPOS, {}, {})
     expect(card.repoName).toBeUndefined()
     expect(card.ticketCount).toBe(0)
   })
@@ -234,6 +253,7 @@ describe('buildPlanCards', () => {
         session({ id: 'old', updatedAt: '2026-08-01T00:00:00Z' }),
         session({ id: 'new', updatedAt: '2026-08-20T00:00:00Z' }),
       ],
+      [],
       [],
       REPOS,
       {},

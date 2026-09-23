@@ -261,6 +261,21 @@ export interface ButtonIconProps {
   round?: boolean
   /** Margins and placement — `ml-auto`, a gap. Not the size, the ground or the hover. */
   className?: string
+  /**
+   * TAKE THIS CONTROL OFF THE KEYBOARD'S PATH — `-1`, and there is no other value worth
+   * passing.
+   *
+   * For a button that is present for the pointer and would be noise for anything else: a
+   * mark that appears under the cursor on each of a document's three hundred lines is three
+   * hundred tab stops and three hundred announcements of the same offer, in front of a
+   * reader trying to reach the next real control. What such a caller owes in return is
+   * another way in — the keyboard reaching the same panel by some other route — and if it
+   * has none, it should not be passing this.
+   *
+   * NOT a way to hide a control that merely looks unavailable: `disabled` says that, and
+   * says it to everyone.
+   */
+  tabIndex?: number
 }
 
 /**
@@ -284,6 +299,7 @@ export const ButtonIcon = forwardRef<HTMLButtonElement, ButtonIconProps>(functio
     active,
     activeTone = 'accent',
     disabled = false,
+    tabIndex,
     busy = false,
     round = false,
     className = '',
@@ -305,6 +321,7 @@ export const ButtonIcon = forwardRef<HTMLButtonElement, ButtonIconProps>(functio
       title={title}
       aria-label={title}
       disabled={blocked}
+      tabIndex={tabIndex}
       aria-pressed={active}
       aria-busy={busy || undefined}
       className={`${shape.h} ${shape.w} ${radius} inline-flex items-center justify-center

@@ -1311,6 +1311,8 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.tickets.none': 'aucun ticket',
   'plans.tickets.one': '1 ticket',
   'plans.tickets.other': '{count} tickets',
+  'plans.comments.one': '1 commentaire',
+  'plans.comments.other': '{count} commentaires',
   'plans.noRepo': 'Dépôt inconnu',
   'plans.truncated': 'Seuls les plans les plus récents sont listés. Les sessions plus anciennes ne sont pas affichées ici.',
   'plans.empty.title': 'Aucun plan pour l’instant',
@@ -1350,7 +1352,6 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.detail.syncedAt': 'Spec mise à jour {when}',
 
   // ── Commentaires sur la spec d'un plan ──────────────────────────────────────
-  'plans.comments.commented': 'a commenté',
   'plans.comments.failed': 'Les commentaires de ce plan n’ont pas pu être chargés.',
   'plans.comments.truncated':
     'Ce plan a plus de commentaires que la page ne peut en afficher. Les plus récents ne figurent pas ici.',
@@ -1840,6 +1841,9 @@ export const fr: Record<keyof typeof en, string> = {
   'filePreview.commentDelete': 'Supprimer',
   'filePreview.commentMarker': 'Lire ce commentaire',
   'filePreview.commentMarkers': '{count} commentaires sur ces lignes',
+  'filePreview.commentOnLine': 'Commenter cette ligne',
+  'filePreview.commentsOnLine.one': 'Lire ce commentaire',
+  'filePreview.commentsOnLine.other': '{count} commentaires sur cette ligne',
   'filePreview.commentLine': 'Ligne {start}',
   'filePreview.commentLines': 'Lignes {start} à {end}',
   'filePreview.commentQuoted': 'Passage cité',

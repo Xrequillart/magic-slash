@@ -2091,6 +2091,14 @@ export interface PlanOverview {
    * thirty of them would be paying for a column nothing shows.
    */
   ticketSessionIds: string[]
+  /**
+   * The session each COMMENT belongs to, one id per comment — the same shape and the same
+   * reason as the tickets above, for the second count a row carries.
+   *
+   * REPLIES ARE IN IT. What the row says is how much has been said about the plan, and an
+   * answer to a comment is something that was said; threading it is the detail page's job.
+   */
+  commentSessionIds: string[]
   repos: PlanRepoRef[]
   /** owner id → email, so a session shows a readable author. */
   emailByOwner: Record<string, string>

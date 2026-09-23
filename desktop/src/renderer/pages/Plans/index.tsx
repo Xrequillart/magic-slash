@@ -53,7 +53,7 @@ function alwaysSideways(): boolean {
 
 /** An overview that says nothing, for the one case the bridge itself fails. */
 const NOTHING_READ: PlanOverview = {
-  sessions: [], ticketSessionIds: [], repos: [], emailByOwner: {}, avatarByOwner: {},
+  sessions: [], ticketSessionIds: [], commentSessionIds: [], repos: [], emailByOwner: {}, avatarByOwner: {},
   hasOrg: false, truncated: false, failed: true,
 }
 
@@ -270,6 +270,7 @@ export function PlansPage() {
         ? buildPlanCards(
             overview.sessions,
             overview.ticketSessionIds,
+            overview.commentSessionIds,
             overview.repos,
             overview.emailByOwner,
             overview.avatarByOwner,

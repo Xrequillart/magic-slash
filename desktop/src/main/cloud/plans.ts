@@ -270,6 +270,65 @@ async function fetchTicketBatch(
 }
 
 /**
+ * The comments of ONE batch of sessions, drained page by page — `fetchTicketBatch`'s twin,
+ * and its reasoning applies word for word: a short read is a count silently too low, and a
+ * row that carries a conversation would show none.
+ *
+ * Ordered by `(session_id, id)`, which is this table's equivalent of the pair that makes the
+ * tickets' paging total: `plan_comments.id` is its primary key, so no comment can be seen
+ * twice or skipped between two pages.
+ */
+async function fetchCommentBatch(
+  client: SupabaseClient,
+  sessionIds: string[],
+): Promise<Read<string>> {
+  const rows: string[] = []
+  for (let from = 0; ; from += POSTGREST_PAGE) {
+    const { data, error } = await client
+      .from('plan_comments')
+      .select('session_id')
+      .in('session_id', sessionIds)
+      .order('session_id', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, from + POSTGREST_PAGE - 1)
+    if (error || !data) return { rows, ok: false }
+
+    for (const row of data as PlanTicketSessionRow[]) rows.push(row.session_id)
+    if (data.length < POSTGREST_PAGE) return { rows, ok: true }
+  }
+}
+
+/**
+ * Just the session id of every COMMENT of the given sessions — the second count on the rows.
+ *
+ * `fetchTicketSessionIds` with one table swapped, and deliberately not folded into it with a
+ * table name for an argument: the two differ in their paging key, and a helper that took
+ * that as a parameter too would be three arguments of configuration standing in for four
+ * lines of duplication.
+ *
+ * REPLIES INCLUDED, which is what makes the number the right one: a plan's row says how much
+ * has been said about it, and an answer to a comment is something that was said. The detail
+ * page threads them; a count does not have to.
+ */
+async function fetchCommentSessionIds(sessionIds: string[]): Promise<Read<string>> {
+  if (sessionIds.length === 0) return { rows: [], ok: true }
+
+  const client = await getAuthedClient()
+  if (!client) return { rows: [], ok: true }
+
+  const batches: string[][] = []
+  for (let i = 0; i < sessionIds.length; i += TICKET_ID_BATCH) {
+    batches.push(sessionIds.slice(i, i + TICKET_ID_BATCH))
+  }
+
+  const results = await Promise.all(batches.map((batch) => fetchCommentBatch(client, batch)))
+  return {
+    rows: results.flatMap((result) => result.rows),
+    ok: results.every((result) => result.ok),
+  }
+}
+
+/**
  * Just the session id of every ticket of the given sessions — the counts on the rows.
  *
  * Scoped by `in(...)` rather than left to RLS alone: the policy would return the same
@@ -418,19 +477,24 @@ export async function listPlanSessions(): Promise<PlanOverview> {
   // the faces that get drawn. It can only be built once the sessions are in, which is
   // why the rosters sit in the second wave with the tickets rather than beside the orgs.
   const ownerIds = new Set(sessions.rows.map((session) => session.ownerId))
-  const [tickets, authors] = await Promise.all([
-    fetchTicketSessionIds(sessions.rows.map((session) => session.id)),
+  const sessionIds = sessions.rows.map((session) => session.id)
+  const [tickets, comments, authors] = await Promise.all([
+    fetchTicketSessionIds(sessionIds),
+    fetchCommentSessionIds(sessionIds),
     fetchAuthors(orgs.orgs, ownerIds),
   ])
 
   return {
     sessions: sessions.rows,
     ticketSessionIds: tickets.rows,
+    commentSessionIds: comments.rows,
     repos: repos.rows,
     ...authors,
     hasOrg: orgs.orgs.length > 0,
     truncated: sessions.truncated,
-    failed: !sessions.ok || !repos.ok || !orgs.ok || !tickets.ok,
+    // The comments join the same verdict as the tickets: a count missing from some rows and
+    // not others is a page that cannot be read, and saying so is better than showing zeros.
+    failed: !sessions.ok || !repos.ok || !orgs.ok || !tickets.ok || !comments.ok,
   }
 }
 

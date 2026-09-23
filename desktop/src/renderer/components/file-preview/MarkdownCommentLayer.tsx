@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { MessageSquare } from '@ds/desktop/icons'
+import {
+  CommentRail, CommentRailNote, holdsCommentDraft,
+  COMMENT_GUTTER_PX, COMMENT_RAIL_PX, COMMENT_RAIL_GAP_PX,
+  type CommentNoteState,
+} from '@ds/desktop'
 import MarkdownView from './MarkdownView'
-import CommentCard, { CommentAnchorNotice, type CommentThread } from './CommentCard'
+import CommentCard, { CommentAnchorNotice, type CommentAuthor, type CommentThread } from './CommentCard'
+import { CommentLine, CommentLinesProvider, lineElementOf, lineIdOf } from './CommentLines'
 import { scrollCardIntoView, useInlineCommentHosts } from '../../hooks/useInlineCommentHosts'
 import {
   clampQuote, commentAnchorKind, commentFileKey, type CommentTarget,
@@ -75,6 +81,38 @@ interface Props {
    * anybody asked for on the way to being able to comment on it.
    */
   variant?: 'panel' | 'document'
+  /**
+   * DRAW THE DOCUMENT AS LINES: a mark at the end of every block, in a margin reserved for
+   * it, a ground on the one whose thread is open, and a bubble hanging off it rather than a
+   * card spliced into the prose.
+   *
+   * ONE FLAG FOR THE WHOLE INTERACTION, because the halves do not come apart. A gutter with
+   * no bubble would be a mark that opens a card two paragraphs down; a bubble with no gutter
+   * would be a thread reachable only by selecting the text it is about again. Either half
+   * alone is worse than neither.
+   *
+   * THE PROSE ITSELF STAYS INERT. Nothing here binds a click on a line: the mark is the
+   * control, and a paragraph that opened a panel when you clicked it could not be
+   * double-clicked for a word or clicked for a link.
+   *
+   * WHAT IT REPLACES, on the surfaces that ask for it:
+   *
+   *  * the pills in the overlay. A comment's presence is said by the mark in the column,
+   *    which is in one place down the page instead of wherever the passage happened to
+   *    start, and which carries the count.
+   *  * the cards in the flow. Nothing is spliced into the document at all — see
+   *    `anchorBlocks`, which answers an empty map here — so a spec with a dozen comments on
+   *    it is still the spec, at the length it was written.
+   *  * the highlight on every located passage. A line comment quotes its whole line, so
+   *    painting them all would wash half the document orange and fight the ground under the
+   *    cursor. The mark is what says a line has been written about; the highlight is kept
+   *    for the one case where the anchor is NOT a line, which is a passage somebody has just
+   *    dragged across.
+   *
+   * Absent for the review's own views and for the agent sidebar's spec, which keep the card
+   * in the flow: a review is read once, top to bottom, and the notes ARE the document.
+   */
+  lines?: boolean
   /**
    * WHERE THE COMMENTS LIVE, and what writing one does — injected, or the renderer's own
    * store by default.
@@ -170,6 +208,16 @@ export interface CommentSource {
    * store defines and the four store-backed callers keep passing exactly what they passed.
    */
   thread?: (id: string) => CommentThread | undefined
+  /**
+   * WHO IS READING, when the comments are attributed — their name and their photo, for the
+   * card of a comment that does not exist yet. See `CommentCard`'s own `viewer`.
+   *
+   * On the source rather than as a prop of the layer, because it belongs to the same
+   * decision every other field here belongs to: a place where comments have authors is a
+   * place where the person writing one has a name, and a layer backed by this machine's
+   * store has neither. Either the whole object is injected or none of it is.
+   */
+  viewer?: CommentAuthor
 }
 
 /**
@@ -234,6 +282,69 @@ const NO_ANCHORLESS: readonly FileComment[] = []
  */
 interface Composer {
   quote: string
+}
+
+/**
+ * What the reader is writing on, in `lines` mode — the one thing in the rail that is not
+ * simply a thread that exists.
+ *
+ * ONE STATE FOR BOTH WAYS IN, and that is the point of its shape. A reader reaches it by
+ * pressing a line's mark or by dragging across a passage, and those differ in exactly one
+ * field: which line it belongs to, a passage belonging to none until it has been placed.
+ * Everything downstream — the composer, the save, the note's position — reads the same
+ * object.
+ *
+ * It carries no coordinates. The rail is measured against the lines on every pass, so a
+ * position kept here would be a second, staler answer to a question the measuring already
+ * asks — see `placeNotes`.
+ */
+interface Composing {
+  /** The line it was opened on, or `null` for a passage somebody selected. */
+  lineId: string | null
+  /** What a comment written here would be anchored to. */
+  quote: string
+}
+
+/** The composer's note, in the same keyspace as the line ids. See `CodeView`'s own. */
+const COMPOSER_NOTE = '#composer'
+
+/** One note in the rail: which thread it draws, and where it ended up. */
+interface Note {
+  key: string
+  top: number
+}
+
+/** No notes, as ONE array — `NO_MARKERS`' reason. */
+const NO_NOTES: Note[] = []
+
+/** No fragment comments, as ONE set. `NO_MARKERS`' reason, for the quoted ones. */
+const NO_FRAGMENTS: ReadonlySet<string> = new Set()
+
+/** Whether two sets hold the same ids, so an unchanged one keeps its identity. */
+function sameIds(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+  if (a.size !== b.size) return false
+  for (const id of a) if (!b.has(id)) return false
+  return true
+}
+
+
+
+/** No comments on any line, as ONE map — `NO_MARKERS`' reason, for the line index. */
+const NO_LINE_COMMENTS: ReadonlyMap<string, string[]> = new Map()
+
+/** No passages to paint, as ONE array. `NO_MARKERS`' reason again. */
+const NO_RANGES: Range[] = []
+
+/**
+ * Every run of whitespace as one space, the ends dropped.
+ *
+ * Used for ONE comparison — is this passage the whole of its line — and it has to collapse,
+ * because the two sides of that comparison are produced differently: `Range.toString()` runs
+ * two blocks together where the document's own walk puts a break between them. Neither
+ * difference says anything about which words were picked.
+ */
+function squash(text: string): string {
+  return text.replace(/\s+/g, ' ').trim()
 }
 
 /** The composer's host key, in the same keyspace as the comment ids. See CodeView's own. */
@@ -417,10 +528,33 @@ function offsetsOf(rendered: RenderedText, range: Range): { start: number; end: 
  * cannot happen on a match found by `locateQuote` — a match never begins or ends on
  * whitespace — and it is handled anyway, because the alternative is a negative offset handed
  * to `Range.setStart`, which throws.
+ *
+ * ── THE TWO EDGES ARE NOT THE SAME QUESTION, AND THAT IS THE WHOLE OF THIS FUNCTION ──
+ *
+ * An offset that falls exactly ON a boundary between two text nodes can be expressed twice:
+ * as the END of the node before it, or as the START of the node after it. They describe the
+ * same point and the same characters, and a `Range` built from either covers exactly the
+ * same text — which is why this was invisible for as long as the range was only ever
+ * PAINTED.
+ *
+ * It stopped being invisible the moment something asked the range WHERE IT IS. A comment is
+ * attached to the line its range starts in, and that is read off `range.startContainer`; if
+ * the start was expressed as the tail of the previous node, the answer is the previous
+ * node's line — or no line at all, which is what actually happened. react-markdown puts a
+ * whitespace text node between two blocks (`</h2>\n<p>`), and that node belongs to the
+ * container rather than to any line, so EVERY comment whose passage began at the start of a
+ * block was attributed to the container and silently dropped: no mark, no count, no thread.
+ * Only the very first block of a document escaped it, having no node before it.
+ *
+ * So the START takes the first span that actually CONTAINS the character at the offset
+ * (`offset < span.end`), and the END keeps taking the first span the offset touches
+ * (`offset <= span.end`), which is the node the last covered character lives in. Two
+ * questions, two comparisons.
  */
-function positionAt(spans: TextSpan[], offset: number): TextPosition | null {
+function positionAt(spans: TextSpan[], offset: number, edge: 'start' | 'end'): TextPosition | null {
   for (const span of spans) {
-    if (offset <= span.end) return { node: span.node, offset: Math.max(0, offset - span.start) }
+    const holds = edge === 'end' ? offset <= span.end : offset < span.end
+    if (holds) return { node: span.node, offset: Math.max(0, offset - span.start) }
   }
   const last = spans[spans.length - 1]
   return last ? { node: last.node, offset: last.node.data.length } : null
@@ -428,8 +562,8 @@ function positionAt(spans: TextSpan[], offset: number): TextPosition | null {
 
 /** A live DOM range over a span of the rendered text. Free, the index being built alongside it. */
 function rangeOf(rendered: RenderedText, start: number, end: number): Range | null {
-  const from = positionAt(rendered.spans, start)
-  const to = positionAt(rendered.spans, end)
+  const from = positionAt(rendered.spans, start, 'start')
+  const to = positionAt(rendered.spans, end, 'end')
   if (!from || !to) return null
   const range = document.createRange()
   range.setStart(from.node, from.offset)
@@ -483,6 +617,27 @@ function placeMarkers(root: HTMLElement, ranges: Map<string, Range>): Marker[] {
 function sameMarkers(a: Marker[], b: Marker[]): boolean {
   return a.length === b.length
     && a.every((marker, i) => marker.id === b[i].id && marker.top === b[i].top && marker.left === b[i].left)
+}
+
+/**
+ * Whether two line indexes say the same thing, so an unchanged one can keep its identity.
+ *
+ * `sameMarkers`' reason exactly, and it bites harder here: this map is handed to every line
+ * of the document through a context, so a fresh one per relocation pass would re-render
+ * three hundred wrappers every time the spec is re-read — including the one the reader is
+ * typing a comment into.
+ */
+function sameLineComments(
+  a: ReadonlyMap<string, string[]>,
+  b: ReadonlyMap<string, string[]>,
+): boolean {
+  if (a.size !== b.size) return false
+  for (const [line, ids] of a) {
+    const other = b.get(line)
+    if (!other || other.length !== ids.length) return false
+    if (ids.some((id, i) => other[i] !== id)) return false
+  }
+  return true
 }
 
 /** A passage the reader has just selected: the text to store, and a live range over it. */
@@ -560,7 +715,7 @@ function captureQuote(root: HTMLElement): Capture | null {
  * re-measured. The absolutely positioned overlay is left carrying only the clickable pill.
  */
 export default function MarkdownCommentLayer({
-  content, repoPath, filePath, fingerprint, spec, variant, source, renderOrphans,
+  content, repoPath, filePath, fingerprint, spec, variant, lines, source, renderOrphans,
   anchorless = NO_ANCHORLESS,
 }: Props) {
   const t = useT()
@@ -596,6 +751,45 @@ export default function MarkdownCommentLayer({
   const [composer, setComposer] = useState<Composer | null>(null)
   const [markers, setMarkers] = useState<Marker[]>(NO_MARKERS)
 
+  /** `lines` mode only, all of them. Nothing sets these on the surfaces that keep the cards. */
+  const [composing, setComposing] = useState<Composing | null>(null)
+  /**
+   * Where each note sits, measured and then stacked. See `placeNotes`, which is the whole of
+   * how this is arrived at.
+   */
+  const [notes, setNotes] = useState<Note[]>(NO_NOTES)
+  /**
+   * The comments whose passage is a FRAGMENT of its line rather than the line itself.
+   *
+   * Two things read it and they are the two halves of the same answer: the passage is washed
+   * in the document, and the note echoes it. Both exist because such a comment is the one
+   * kind whose subject the reader cannot otherwise see — a line comment's subject is the
+   * line, which is lit, and beside the note.
+   */
+  const [fragments, setFragments] = useState<ReadonlySet<string>>(NO_FRAGMENTS)
+  /** The box the notes are measured against — the document and the margin together. */
+  const frameRef = useRef<HTMLDivElement>(null)
+  /**
+   * The note under the pointer, and the note singled out by a press — both by line id.
+   *
+   * TWO STATES AND NOT ONE, because they answer to different things and can disagree: a
+   * reader hovering a second note while a first is singled out is pointing at one and
+   * reading the other, and both lines should say so in their turn. What they share is the
+   * line they light; what differs is that only the press REARRANGES the margin.
+   */
+  const [hoveredNote, setHoveredNote] = useState<string | null>(null)
+  const [focusedNote, setFocusedNote] = useState<string | null>(null)
+  /**
+   * Which comments have been relocated onto which line — the counts the marks draw, and the
+   * threads a bubble opens.
+   *
+   * DERIVED FROM THE RANGES, in the same pass that finds them, and never stored on a comment:
+   * the anchor is the quotation and nothing else, so which line a comment sits on is a fact
+   * about the document as it is currently rendered. A spec rewritten under the reader moves
+   * its comments to different lines, and nothing has to be migrated for that to be true.
+   */
+  const [lineComments, setLineComments] = useState<ReadonlyMap<string, string[]>>(NO_LINE_COMMENTS)
+
   /**
    * The live range the open card is anchored to.
    *
@@ -624,6 +818,26 @@ export default function MarkdownCommentLayer({
 
   /** Which `focusedComment.seq` this document has already acted on. */
   const focusRef = useRef<number | null>(null)
+
+  /**
+   * The passages painted in `lines` mode: the comments that are about a FEW WORDS of a line
+   * rather than about the line.
+   *
+   * A ref because two effects register the highlight and neither can depend on the other's
+   * state: the relocation pass finds these, and the bubble opening and closing repaints
+   * around them without searching for anything. See `paintHighlight`.
+   */
+  const partialRef = useRef<Range[]>(NO_RANGES)
+
+  /**
+   * The open bubble, readable from an effect that must not RUN when it changes.
+   *
+   * The relocation pass paints the highlight, and what it paints depends on whether a
+   * passage is currently selected — but putting `bubble` in that effect's dependencies would
+   * re-walk and re-search the whole document every time a bubble opened.
+   */
+  const composingRef = useRef<Composing | null>(null)
+  composingRef.current = composing
 
   /**
    * A reflow counter, bumped by the observer below.
@@ -660,7 +874,8 @@ export default function MarkdownCommentLayer({
    * code — and `::highlight()` may set only a handful of properties, so the passage keeps its
    * own colour and takes a wash behind it.
    */
-  const highlightStyle = `::highlight(${highlightName}) { background-color: rgb(var(--c-orange) / 0.22); }`
+  const highlightStyle = `::highlight(${highlightName}) { `
+    + `color: rgb(var(--c-orange)); background-color: rgb(var(--c-orange) / 0.18); }`
 
   /**
    * This file's comments that are anchored to a passage, which are the only ones this view
@@ -707,8 +922,18 @@ export default function MarkdownCommentLayer({
    * avoid, one level up.
    */
   const prose = useMemo(
-    () => <MarkdownView content={content} variant={variant} />,
-    [content, variant],
+    () => (
+      <MarkdownView
+        content={content}
+        variant={variant}
+        /* A module-level function, so the identity is stable and this memo holds. What the
+           lines READ changes whenever a bubble opens or a comment is filed; what BUILDS
+           them does not, which is what keeps either of those from re-running remark over
+           the whole spec. */
+        line={lines ? CommentLine : undefined}
+      />
+    ),
+    [content, variant, lines],
   )
 
   /**
@@ -720,6 +945,168 @@ export default function MarkdownCommentLayer({
   const commitMarkers = useCallback((placed: Marker[]) => {
     setMarkers(previous => (sameMarkers(previous, placed) ? previous : placed))
   }, [])
+
+  /**
+   * Paint what is worth painting, in `lines` mode: every commented FRAGMENT, plus the
+   * passage being commented on right now if there is one.
+   *
+   * WHOLE-LINE COMMENTS ARE NOT IN IT, and that is the whole reason this is a choice rather
+   * than "paint the ranges". A line comment quotes its entire line, so painting them all
+   * would wash half a spec orange and leave the open one indistinguishable. Those lines are
+   * coloured instead — the line's own text takes the annotation colour, which is text and
+   * not ground — and the wash is kept for the case it is the only available answer: three
+   * words inside a sentence, which nothing else on screen could point at.
+   *
+   * One function, called from both effects, so the registration cannot end up with only
+   * half of what belongs in it.
+   */
+  const paintHighlight = useCallback(() => {
+    if (!hasHighlights()) return
+    const painted = [...partialRef.current]
+    // The composer's own passage, while it is a passage and not a line.
+    const selection = composingRef.current?.lineId === null ? captureRef.current : null
+    if (selection) painted.push(selection)
+    if (painted.length === 0) CSS.highlights.delete(highlightName)
+    else CSS.highlights.set(highlightName, new Highlight(...painted))
+  }, [highlightName])
+
+  /**
+   * WHERE EVERY NOTE GOES: level with its own line, and never on top of the one above it.
+   *
+   * TWO RULES, AND THE SECOND ONLY APPLIES WHEN THE FIRST CANNOT. A note wants the top of
+   * the line it is about — that is the whole point of a margin, and it is what makes a
+   * comment findable without reading it. Two comments on consecutive lines want two tops
+   * eleven pixels apart and the cards are eighty tall, so the second is pushed down to clear
+   * the first. Which means the notes are placed in ORDER, and the order is the document's.
+   *
+   * THE HEIGHTS ARE READ FROM THE DOM, not guessed from the content: a card with a reply
+   * open is twice the height of one without, and the arithmetic has to know. That is also
+   * why a `ResizeObserver` watches the notes below — a thread that grows pushes its
+   * neighbours down on the spot rather than at the next scroll.
+   *
+   * A NOTE WHOSE LINE HAS GONE gets no position and is not drawn. That is not a comment
+   * lost: `lineComments` is rebuilt from the relocation pass, so a line that is no longer in
+   * the document has no entry here either, and the comment is in the notice at the top with
+   * the other orphans.
+   */
+  const placeNotes = useCallback(() => {
+    const frame = frameRef.current
+    const root = proseRef.current
+    if (!frame || !root || !lines) return
+
+    const box = frame.getBoundingClientRect()
+    const wanted: Note[] = []
+    const seen = new Set<string>()
+
+    const lineTop = (key: string): number | null => {
+      const line = root.querySelector(`[data-comment-line="${key}"]`)
+      return line instanceof HTMLElement ? line.getBoundingClientRect().top - box.top : null
+    }
+
+    for (const key of lineComments.keys()) {
+      const top = lineTop(key)
+      if (top !== null) {
+        wanted.push({ key, top })
+        seen.add(key)
+      }
+    }
+
+    /**
+     * The composer, when it is not already standing where a thread is.
+     *
+     * A line that HAS comments shows them and offers Reply — one line is one discussion — so
+     * a composer on such a line has nothing to add and is not drawn. What is left is the two
+     * cases it exists for: the first comment on a line, and a passage somebody dragged
+     * across, which hangs off the line the passage starts in.
+     */
+    if (composing && !(composing.lineId && seen.has(composing.lineId))) {
+      const captured = captureRef.current
+      const anchorLine = composing.lineId
+        ?? (captured ? lineIdOf(lineElementOf(captured.startContainer, root) ?? document.body) : null)
+      const top = anchorLine ? lineTop(anchorLine) : null
+      if (top !== null) wanted.push({ key: COMPOSER_NOTE, top })
+      else if (captured) wanted.push({ key: COMPOSER_NOTE, top: captured.getBoundingClientRect().top - box.top })
+    }
+
+    wanted.sort((a, b) => a.top - b.top)
+
+    /**
+     * The push-down pass. `floor` is the lowest point the previous note reached; a note that
+     * wants to start above it starts there instead.
+     *
+     * THE SINGLED-OUT NOTE IS EXEMPT, and it is the only thing in this file that is. The
+     * stacking is what keeps two notes off each other, and its price is that a note whose
+     * neighbours are long sits well below the sentence it is about. Pressing it sends it to
+     * the exact height of its own line — over its neighbours, which dim behind it rather
+     * than disappearing. That is the answer to "which line is this about": the note goes and
+     * stands next to it.
+     *
+     * It still advances the floor from the position it WOULD have had, so the notes under it
+     * do not shuffle up while it is away. Singling one out rearranges one note, not the
+     * column.
+     */
+    let floor = -Infinity
+    const placed = wanted.map(({ key, top }) => {
+      const at = Math.max(top, floor)
+      const height = frame.querySelector(`[data-comment-note="${key}"]`)
+      floor = at + (height instanceof HTMLElement ? height.offsetHeight : 0) + COMMENT_RAIL_GAP_PX
+      return { key, top: key === focusedNote ? top : at }
+    })
+
+    setNotes(previous => (
+      previous.length === placed.length
+        && previous.every((note, i) => note.key === placed[i].key && note.top === placed[i].top)
+        ? previous
+        : placed
+    ))
+  }, [lines, lineComments, composing, focusedNote])
+
+  /**
+   * A PRESS ANYWHERE ELSE PUTS THE MARGIN BACK.
+   *
+   * Singling a note out hides the others, which is a state a reader can end up in and then
+   * want out of. Pressing the note again is one way and it asks them to remember which note
+   * they pressed; pressing past it is the way anything that covers something else is
+   * dismissed in this app, and it needs no memory at all.
+   *
+   * `mousedown` rather than `click`, so the margin is back before the press completes — a
+   * click would restore the notes AFTER whatever that click did, and on a line's mark that
+   * would mean rearranging the column under a box that had just opened in it.
+   *
+   * Only while something IS singled out: no listener sits on the document the rest of the
+   * time.
+   */
+  useEffect(() => {
+    if (!focusedNote) return
+    const onPointerDown = (e: MouseEvent) => {
+      if (e.target instanceof Element && e.target.closest('[data-comment-note]')) return
+      setFocusedNote(null)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    return () => document.removeEventListener('mousedown', onPointerDown)
+  }, [focusedNote])
+
+  /**
+   * Place them, and keep placing them while anything moves.
+   *
+   * A LAYOUT effect so a note is never painted at the position it had before the document
+   * re-wrapped. The observer watches the notes themselves, which is what catches a card
+   * growing a reply box — the document has not changed, the lines have not moved, and every
+   * note below that one is nonetheless in the wrong place until this runs.
+   *
+   * `ResizeObserver` fires once per element the moment it is observed. That first round
+   * computes the same answer as the call above it and the guarded setter drops it, so there
+   * is no loop — the effect only re-runs when `placeNotes` itself changes, which is when a
+   * note is added or removed.
+   */
+  useLayoutEffect(() => {
+    placeNotes()
+    const frame = frameRef.current
+    if (!frame || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => placeNotes())
+    for (const note of frame.querySelectorAll('[data-comment-note]')) observer.observe(note)
+    return () => observer.disconnect()
+  }, [placeNotes, reflow, content])
 
   useEffect(() => {
     const root = proseRef.current
@@ -763,8 +1150,17 @@ export default function MarkdownCommentLayer({
     rangesRef.current = ranges
 
     if (quoted.length === 0) {
+      // Comments that came back and carry no passage at all: every one of them is invisible
+      // on the line it was written about. See the fuller report below.
+      if (comments.length > 0) {
+        console.warn(`[plan comments] ${comments.length} read, none carries a passage`)
+      }
       setMarkers(NO_MARKERS)
-      if (hasHighlights()) CSS.highlights.delete(highlightName)
+      setLineComments(previous => (previous.size === 0 ? previous : NO_LINE_COMMENTS))
+      setFragments(previous => (previous.size === 0 ? previous : NO_FRAGMENTS))
+      partialRef.current = NO_RANGES
+      if (lines) paintHighlight()
+      else if (hasHighlights()) CSS.highlights.delete(highlightName)
       return
     }
 
@@ -776,8 +1172,95 @@ export default function MarkdownCommentLayer({
     }
 
     commitMarkers(placeMarkers(root, ranges))
+
+    /**
+     * A comment that exists and could not be put anywhere, said out loud.
+     *
+     * The interface already reports this — that is what `CommentAnchorNotice` above the
+     * document is — but it reports it as a sentence at the top of a long page, behind a
+     * disclosure, which a reader halfway down a spec will never see. The console line is for
+     * whoever is asked "I wrote a comment and nothing appeared": it says, in one place, how
+     * many came back, how many carried a passage, how many were placed, and which passages
+     * were not found. Silent in the ordinary case, which is every comment placed.
+     */
+    if (ranges.size < quoted.length) {
+      const missing = quoted.filter(comment => !ranges.has(comment.id))
+      console.warn(
+        `[plan comments] ${comments.length} read, ${quoted.length} anchored, ${ranges.size} placed`,
+        missing.map(comment => comment.quote),
+      )
+    }
+
+    /**
+     * WHICH LINE EACH ONE LANDED ON, read off the same ranges the pills were placed from.
+     *
+     * The range's START, where the card in the flow is anchored off its END — and the two
+     * differ for the same reason each is right where it is. A card goes UNDER everything its
+     * passage covers, so it is placed by where the passage stops; a mark in the gutter says
+     * "this is written about from here", so it belongs beside the line the passage begins on.
+     * A quotation spanning three paragraphs gets one mark, on the first of them.
+     *
+     * A comment whose passage is in no line at all — text directly under the prose container,
+     * which markdown does not produce but raw HTML can — is simply not counted. It keeps its
+     * comment and loses its mark, which is the same bargain a lost anchor already strikes.
+     */
+    if (lines) {
+      const byLine = new Map<string, string[]>()
+      const partial: Range[] = []
+      const fragmentIds = new Set<string>()
+      for (const [id, range] of ranges) {
+        const line = lineElementOf(range.startContainer, root)
+        const key = line && lineIdOf(line)
+        // A passage in no line at all — raw HTML dropped straight into the prose — keeps
+        // its wash, which is the only mark it can have.
+        if (!line || !key) {
+          partial.push(range)
+          fragmentIds.add(id)
+          continue
+        }
+        /**
+         * IS THIS COMMENT ABOUT THE LINE, OR ABOUT SOME WORDS IN IT?
+         *
+         * Asked of the text and not of the record, because the record cannot answer it: both
+         * kinds are stored as a quotation and nothing else, and what tells them apart is
+         * whether the quotation turned out to BE the line. That also makes the answer follow
+         * the document — a fragment that grows to cover its whole line after a rewrite is,
+         * from then on, a comment on that line, which is what a reader would say too.
+         *
+         * It decides ONE thing: whether the passage is washed. The line takes the annotation
+         * colour either way, because it carries a discussion either way; the wash is what
+         * says WHICH words, and on a whole-line comment there are no particular words to
+         * point at.
+         */
+        const found = byLine.get(key)
+        if (found) found.push(id)
+        else byLine.set(key, [id])
+        if (squash(range.toString()) !== squash(readRendered(line).text)) {
+          partial.push(range)
+          fragmentIds.add(id)
+        }
+      }
+      setLineComments(previous => (sameLineComments(previous, byLine) ? previous : byLine))
+      setFragments(previous => (sameIds(previous, fragmentIds) ? previous : fragmentIds))
+      partialRef.current = partial.length === 0 ? NO_RANGES : partial
+      paintHighlight()
+      return
+    }
+
     if (hasHighlights()) CSS.highlights.set(highlightName, new Highlight(...ranges.values()))
-  }, [quoted, content, highlightName, commitMarkers])
+  }, [comments.length, quoted, content, highlightName, commitMarkers, paintHighlight, lines])
+
+  /**
+   * The ONE passage `lines` mode does paint: the one somebody has just dragged across, for
+   * as long as its bubble is open.
+   *
+   * It is the only anchor in that mode the document does not already show by itself. A line
+   * says which line it is by being lit under the bubble; a passage inside a line is three
+   * words of a paragraph, and without the wash there is nothing to say which three.
+   */
+  useEffect(() => {
+    if (lines) paintHighlight()
+  }, [lines, composing, paintHighlight])
 
   /**
    * Put the pills back where the text now is, without looking for the text again.
@@ -878,6 +1361,10 @@ export default function MarkdownCommentLayer({
    * does not change when a re-read moves a passage the comment list did not touch.
    */
   const anchorBlocks = useCallback((): ReadonlyMap<string, HTMLElement> => {
+    // NOTHING IS SPLICED INTO A DOCUMENT DRAWN AS LINES. Every card it would have hosted is
+    // in the bubble instead, so an empty map here is not a degraded state: it is the whole
+    // of what `lines` promises about the document's length.
+    if (lines) return NO_ANCHORS
     const root = proseRef.current
     const prose = root?.firstElementChild
     if (!root || !prose) return NO_ANCHORS
@@ -891,7 +1378,7 @@ export default function MarkdownCommentLayer({
       if (block) anchors.set(COMPOSER_KEY, block)
     }
     return anchors
-  }, [composer, composerBlock, content, markers, quoted])
+  }, [composer, composerBlock, content, lines, markers, quoted])
 
   const hosts = useInlineCommentHosts(anchorBlocks)
 
@@ -932,8 +1419,73 @@ export default function MarkdownCommentLayer({
     if (!root || e.button !== 0) return
     const capture = captureQuote(root)
     captureRef.current = capture?.range ?? null
-    if (capture) setComposer({ quote: capture.quote })
+    if (!capture) return
+    // The same gesture on either kind of document, opening whichever box that document
+    // writes comments in. `lines` mode has no card in the flow to open, and the captured
+    // range is what the bubble hangs off — a passage is not an element, and its `Range` is
+    // the only thing that knows where on screen it currently is.
+    if (!lines) {
+      setComposer({ quote: capture.quote })
+      return
+    }
+    // The draft guard `openLine` states, for the other way in: a drag across a passage while
+    // a comment is being written must not replace the box it is being written in either.
+    if (holdsCommentDraft()) return
+    setFocusedNote(null)
+    setComposing({ lineId: null, quote: capture.quote })
   }
+
+  /**
+   * Open a line: its thread if it has one, an empty box if it has not.
+   *
+   * THE QUOTE IS READ HERE AND NOT AT SAVE TIME, off the line's own rendered text, through
+   * the very walk that will later be used to search for it again. That is what makes the
+   * anchor findable: `readRendered` puts a break between two blocks where `textContent` puts
+   * nothing, and a quote captured by one and searched for by the other is an anchor reported
+   * lost the moment it is stored. The gutter mark and the count inside it are rejected by the
+   * same walk, so a line already carrying two comments does not quote the digit `2`.
+   *
+   * Reading it even for a line that already HAS comments costs one walk of one block and
+   * buys the case that follows: a reader opens a thread, answers it, and writes a second,
+   * separate comment on the same line without the bubble having to be re-opened.
+   */
+  const openLine = useCallback((id: string) => {
+    const root = proseRef.current
+    // FOUND IN THE DOM RATHER THAN HANDED OVER, because what the mark can pass up is its
+    // line's NAME and not its node: the button is drawn by a component in the design system,
+    // which has no business holding a ref to the block it decorates. The name is on that
+    // block as `data-comment-line`, which is the same attribute the relocation pass reads.
+    const line = root?.querySelector(`[data-comment-line="${id}"]`)
+    if (!(line instanceof HTMLElement)) return
+    // THE OPEN BUBBLE'S DRAFT OUTRANKS THIS. It already refuses to close on a click outside
+    // while it holds text — `holdsCommentDraft` is its own rule, imported rather than
+    // restated — and opening another line would take that text away by replacing the card
+    // that holds it, which is the same loss by another route. The reader still has Escape
+    // and Cancel, both of which say they are done with it.
+    if (holdsCommentDraft()) return
+    const quote = clampQuote(readRendered(line).text.trim())
+    if (!quote) return
+    // A selection-anchored range left over from a previous bubble is not this one's: the
+    // highlight effect reads it, and a stale range would paint a passage nobody picked.
+    captureRef.current = null
+    // The margin cannot be both rearranged around one note and opening a box on another.
+    setFocusedNote(null)
+    setComposing({ lineId: id, quote })
+  }, [])
+
+  /*
+   * THERE IS NO CLICK HANDLER ON THE DOCUMENT, and its absence is a decision rather than an
+   * omission.
+   *
+   * A click anywhere in a line used to open its bubble. It had to go the moment the mark
+   * became a real button: two targets for one action, one of them the entire paragraph,
+   * meant a reader could not put the caret in a sentence, could not double-click a word,
+   * and could not click a link without the layer having an opinion about it first. The
+   * mark in the gutter is the affordance now, and the prose is prose.
+   *
+   * What is left of the pointer here is `handleMouseUp` above — selecting a passage, which
+   * is a different anchor and a different intent.
+   */
 
   /**
    * Plain functions, the convention `CodeView` states: `useCallback` in a file like this MEANS
@@ -986,6 +1538,75 @@ export default function MarkdownCommentLayer({
    * a zustand write is done by the time the call returns, so the card that awaits this gets
    * the behaviour it always had and only a source can ever say no. See `CommentSource`.
    */
+  /**
+   * The rail's own save — `saveComposer`'s twin, and separate from it on purpose.
+   *
+   * The two differ in what they close, which is the one thing neither can get wrong: one
+   * closes the card spliced into the flow, the other the note in the margin. Folding them
+   * into one function with a branch inside would put that decision behind a flag at the
+   * exact moment there is one copy of what somebody typed.
+   *
+   * THE COMPOSER CLOSES ON A WRITE THAT LANDED, and only then — and what replaces it is the
+   * thread itself, in the same place in the rail, since the line now has one.
+   *
+   * A refused write changes nothing at all: the box is exactly as it was, holding the only
+   * copy of the text, with the failure written under it.
+   */
+  const saveRailComment = async (body: string) => {
+    if (!composing) return false
+    const comment: NewFileComment = { anchor: null, quote: composing.quote, body }
+    const ok = source ? await source.add(comment) : (addFileComment(target, comment), true)
+    if (ok) setComposing(null)
+    return ok
+  }
+
+  const closeRailComposer = useCallback(() => setComposing(null), [])
+
+  /**
+   * How each note is drawn, in one place: singled out, dimmed behind the one that is, under
+   * the pointer, or at rest.
+   *
+   * The order is the order of deliberateness, and `faded` sits second because it is the only
+   * one that is about ANOTHER note: once something has been singled out, everything else is
+   * behind it whether the pointer is on it or not. A note that lit up under the cursor while
+   * a different one was being read would be two answers to "which am I looking at".
+   */
+  const noteState = (key: string): CommentNoteState => {
+    if (focusedNote === key) return 'singled'
+    if (focusedNote) return 'faded'
+    return hoveredNote === key ? 'pointed' : 'rest'
+  }
+
+  /**
+   * What every line of the document reads: its own state, and the one way back in.
+   *
+   * MEMOISED because it is a context value handed to a few hundred consumers — a fresh
+   * object per render would re-render every line of the spec on every keystroke in the
+   * bubble.
+   */
+  const lineState = useMemo(() => ({
+    /**
+     * WHICH LINE IS LIT. Three things can ask for it and they are one answer, in order of
+     * how deliberate they are: a note singled out, a note under the pointer, a comment being
+     * written. Pointing at a note lights the sentence it is about, which is the only way a
+     * reader can see that the two belong together across a column of margin.
+     */
+    open: focusedNote ?? hoveredNote ?? composing?.lineId ?? null,
+    /**
+     * HOW MUCH HAS BEEN SAID ABOUT THIS LINE, replies included.
+     *
+     * Not `ids.length`, which counts CONVERSATIONS: one line is one discussion, so that
+     * number was almost always 1 whatever had been said, and a mark reading "1" beside a
+     * thread eight turns long is a mark that answered the wrong question. What a reader
+     * wants before looking is how much there is to read.
+     */
+    countOf: (id: string) => (lineComments.get(id) ?? []).reduce(
+      (total, commentId) => total + 1 + (source?.thread?.(commentId)?.replies.length ?? 0),
+      0,
+    ),
+    onOpen: openLine,
+  }), [composing, focusedNote, hoveredNote, lineComments, source, openLine])
+
   const saveComment = async (id: string, body: string) => (
     source ? await source.update(id, body) : (updateFileComment(target, id, body), true)
   )
@@ -1024,11 +1645,48 @@ export default function MarkdownCommentLayer({
 
       {/* `relative` so the overlay below can be positioned against the document, and the
           mouseup handler so a selection anywhere in it is heard. `MarkdownView` itself is
-          passed nothing it did not already take. */}
-      <div ref={proseRef} className="relative" onMouseUp={handleMouseUp}>
-        {prose}
+          passed nothing it did not already take.
 
-        {/* `pointer-events-none` on the container and `auto` on each pill, and that pairing is
+          THE PADDING IS THE MARGIN THE MARKS STAND IN, in `lines` mode and only there.
+          Every mark is `absolute right-0` against THIS box, so the strip they line up in is
+          the one this padding holds open: without it they would be drawn over the last
+          words of every full line. See `COMMENT_GUTTER_PX`, which is the one place the
+          width is written down.
+
+          ONE POINTER HANDLER, and it is the one that was here before any of this: a
+          selection anywhere in the document is a quotation. Opening a line goes through the
+          button in its gutter and nothing else — see the note above `handleMouseUp`. */}
+      {/* THE FRAME: the document and the margin beside it, in one box.
+          It exists so the two can be measured against the same origin — a note's `top` is
+          where its line is, and both are read from this element's rect. */}
+      <div ref={frameRef} className="relative">
+      <div
+        ref={proseRef}
+        className="relative transition-[margin] duration-150 ease-out"
+        /* THE DOCUMENT GIVES UP ITS RIGHT MARGIN TWICE OVER: once for the marks, which sit
+           inside this box, and once for the rail beside it, which does not. `marginRight`
+           and not a second padding, because the rail is positioned against the FRAME and has
+           to be outside this element — see the frame's own note below.
+
+           IT IS GIVEN UP ONLY ONCE THERE IS SOMETHING TO PUT THERE, and taken back when the
+           last note goes. A document nobody has written on keeps its full width. The
+           transition is what makes the first comment slide the text over rather than jerk
+           it, which matters because that first comment is being composed as it happens. */
+        style={lines
+          ? { paddingRight: COMMENT_GUTTER_PX, marginRight: notes.length > 0 ? COMMENT_RAIL_PX : 0 }
+          : undefined}
+        onMouseUp={handleMouseUp}
+      >
+        {/* The provider wraps the document rather than the whole layer: what is inside it is
+            exactly the set of components that read the line state, and the notice and the
+            bubble above and below are not among them. */}
+        {lines ? <CommentLinesProvider value={lineState}>{prose}</CommentLinesProvider> : prose}
+
+        {/* THE PILLS, on every view but a document drawn as lines: there, the mark in the
+            gutter says the same thing in one column down the page instead of wherever each
+            passage happened to start, and it carries the count besides.
+
+            `pointer-events-none` on the container and `auto` on each pill, and that pairing is
             load-bearing rather than tidy: a transparent box over an already-commented passage
             would otherwise swallow the mousedown and mouseup on it, making that text
             unselectable — which would kill the very gesture this feature is made of.
@@ -1040,31 +1698,105 @@ export default function MarkdownCommentLayer({
             panel's jump finds a pill with the selector it already had — widened from
             `.line[…]` to match either. One id per pill: a pill IS a comment here, where a row
             of a diff can be covered by several. */}
-        <div data-comment-overlay className="absolute inset-0 pointer-events-none">
-          {markers.map(marker => (
-            <button
-              key={marker.id}
-              type="button"
-              data-comment-ids={marker.id}
-              /* Scrolls to the card rather than opening it: every comment's card is already
-                 mounted. Kept clickable where the diff's row markers were made inert, and the
-                 two views differ for a real reason — a card goes after the whole BLOCK its
-                 passage ends in, so a long list or table can put it well below the pill, where
-                 a diff's card is always the next row down. */
-              onClick={() => {
-                const host = hosts.get(marker.id)
-                if (host) scrollCardIntoView(host)
-              }}
-              aria-label={markerLabel}
-              title={markerLabel}
-              style={{ top: marker.top, left: marker.left, width: PILL_PX, height: PILL_PX }}
-              className="absolute pointer-events-auto flex items-center justify-center p-0 rounded bg-transparent border-none text-orange cursor-pointer"
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-            </button>
-          ))}
-        </div>
+        {!lines && (
+          <div data-comment-overlay className="absolute inset-0 pointer-events-none">
+            {markers.map(marker => (
+              <button
+                key={marker.id}
+                type="button"
+                data-comment-ids={marker.id}
+                /* Scrolls to the card rather than opening it: every comment's card is already
+                   mounted. Kept clickable where the diff's row markers were made inert, and
+                   the two views differ for a real reason — a card goes after the whole BLOCK
+                   its passage ends in, so a long list or table can put it well below the
+                   pill, where a diff's card is always the next row down. */
+                onClick={() => {
+                  const host = hosts.get(marker.id)
+                  if (host) scrollCardIntoView(host)
+                }}
+                aria-label={markerLabel}
+                title={markerLabel}
+                style={{ top: marker.top, left: marker.left, width: PILL_PX, height: PILL_PX }}
+                className="absolute pointer-events-auto flex items-center justify-center p-0 rounded bg-transparent border-none text-orange cursor-pointer"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* THE MARGIN, and the button that folds it away.
+          Outside `proseRef` on purpose: everything inside that element is walked as the
+          document's own text — for capturing a quotation and for finding one again — and a
+          column of comment cards in there would put their words into the document's. A
+          sibling shares the frame's coordinates and none of its meaning. */}
+      {lines && (
+        <>
+          <CommentRail open={notes.length > 0}>
+            {notes.map(note => (note.key === COMPOSER_NOTE
+              ? composing && (
+                <CommentRailNote key={note.key} noteId={note.key} top={note.top} state="pointed">
+                  <CommentCard
+                    /* Keyed on the anchor: opening a composer on another line while this one
+                       holds a draft must not carry the draft over to a passage it was not
+                       written about. */
+                    key={composing.lineId ?? composing.quote}
+                    comment={null}
+                    range={null}
+                    quote={composing.quote}
+                    bubble
+                    spec={spec}
+                    /* A passage shows what was picked; a whole line does not — the line is
+                       right there, lit, beside the note. */
+                    quoted={composing.lineId === null}
+                    viewer={source?.viewer}
+                    onSave={saveRailComment}
+                    onDelete={closeRailComposer}
+                    onClose={closeRailComposer}
+                  />
+                </CommentRailNote>
+              )
+              : (
+                <CommentRailNote
+                  key={note.key}
+                  noteId={note.key}
+                  top={note.top}
+                  state={noteState(note.key)}
+                  onHover={over => setHoveredNote(over ? note.key : null)}
+                  /* A second press puts the others back: singling one out is a look, not a
+                     mode, and the way out of it has to be the way in. */
+                  onSelect={() => setFocusedNote(open => (open === note.key ? null : note.key))}
+                >
+                  <div className="flex flex-col gap-4">
+                    {(lineComments.get(note.key) ?? [])
+                      .map(id => commentsById.get(id))
+                      .filter((comment): comment is FileComment => comment !== undefined)
+                      .map(comment => (
+                        <CommentCard
+                          key={comment.id}
+                          comment={comment}
+                          range={null}
+                          quote=""
+                          bubble
+                          spec={spec}
+                          /* Drawn for a comment on a FRAGMENT of the line, where nothing else
+                             says which words were picked. */
+                          quoted={fragments.has(comment.id)}
+                          onSave={body => saveComment(comment.id, body)}
+                          onDelete={() => deleteComment(comment.id)}
+                          thread={source?.thread?.(comment.id)}
+                        />
+                      ))}
+                  </div>
+                </CommentRailNote>
+              )
+            ))}
+          </CommentRail>
+        </>
+      )}
+      </div>
+
 
       {/* One card per host, and the hosts are the truth about which cards exist: a card
           portals INTO its node, so there is nowhere to draw before `useInlineCommentHosts` has
@@ -1085,6 +1817,9 @@ export default function MarkdownCommentLayer({
             range={null}
             quote={composer.quote}
             host={host}
+            /* The reader's own face, as in the bubble — `undefined` for every store-backed
+               caller, which keeps the mark it had. */
+            viewer={source?.viewer}
             onSave={saveComposer}
             /* Nothing to delete: this comment does not exist yet. Discarding it is what Cancel
                does, which is `onClose`. */
