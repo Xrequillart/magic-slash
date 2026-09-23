@@ -380,6 +380,14 @@ interface ButtonBase {
    * settled by the order Tailwind emitted them in, not by the order it was written in.
    */
   className?: string
+  /**
+   * TAKE THIS CONTROL OFF THE KEYBOARD'S PATH — `-1`, and there is no other value worth
+   * passing. `ButtonIcon` carries the same escape hatch and its docblock holds the
+   * reasoning; the short of it is a control that is present for the pointer and would be
+   * three hundred announcements of the same offer for anything else, and which owes the
+   * keyboard another way to the same place.
+   */
+  tabIndex?: number
 }
 
 /**
@@ -433,6 +441,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     type = 'button',
     title,
     className = '',
+    tabIndex,
   },
   ref,
 ) {
@@ -452,6 +461,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       onClick={onClick}
       title={title}
       disabled={blocked}
+      tabIndex={tabIndex}
       aria-busy={busy || undefined}
       style={style}
       className={`${shape.box} ${TONES[tone]} ${CHROME} ${busy ? '' : 'disabled:opacity-50'} ${className}`}

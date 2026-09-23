@@ -1417,7 +1417,6 @@ export const en = {
   // The verb after the author's name in a comment's strip, exactly as a ticket's comments
   // carry one: "ada@example.com commented" is a sentence, where a bare address over a
   // paragraph is a header.
-  'plans.comments.commented': 'commented',
   // The comments did not load. Said out loud, because a page that silently drew none over
   // a failed read would be telling the reader their colleagues said nothing. The spec
   // itself is still readable, so this is a line under it rather than a block over it.
@@ -2006,6 +2005,14 @@ export const en = {
   // marker again is how they reach the next.
   'filePreview.commentMarker': 'Read this comment',
   'filePreview.commentMarkers': '{count} comments on these lines',
+  // The gutter mark on a document drawn as lines, in its three states. The first is the one
+  // that appears under the cursor on a line nobody has written about: it names the gesture,
+  // because there is nothing there to read yet. The other two name what is already there,
+  // and the plural carries the count for the same reason the markers above do: the mark
+  // draws a number only from two upwards, so this is where a reader learns there is one.
+  'filePreview.commentOnLine': 'Comment on this line',
+  'filePreview.commentsOnLine.one': 'Read this comment',
+  'filePreview.commentsOnLine.other': '{count} comments on this line',
   'filePreview.commentLine': 'Line {start}',
   'filePreview.commentLines': 'Lines {start}–{end}',
   // The third form of the same label, for a comment on the rendered markdown. It names the

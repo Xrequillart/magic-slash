@@ -13,6 +13,7 @@ import { RepoColorChip } from '../../components/agent-info-sidebar/RepoMark'
 import { formatTimestamp } from '../../components/agent-info-sidebar/utils'
 import { useStore, type FileComment } from '../../store'
 import { useAuth } from '../../hooks/useAuth'
+import { useAvatar } from '../../hooks/useAvatar'
 import { usePlanComments } from '../../hooks/usePlanComments'
 import { configKeyForRepoId } from '../../utils/projectColors'
 import type { PlanCard, PlanTicketGroup } from '../../utils/planRows'
@@ -159,6 +160,14 @@ const SpecBody = memo(function SpecBody({
       /* Prose, so the card gets its radius back and drops the echoed quote — the passage is
          highlighted a few lines above it. See `CommentCard`'s own `spec`. */
       spec
+      /* A DOCUMENT DRAWN AS LINES, which is this page and no other. A spec is read from top
+         to bottom by people deciding whether it is right, and every note left on it used to
+         push the sentences it was about a screen further apart — the page grew by the size
+         of its own conversation. Here the comments live in the gutter and open over the
+         margin, so the plan reads at the length it was written whatever has been said about
+         it. The review's own views keep their cards: a diff is read once, and there the
+         notes are the point. */
+      lines
       source={comments.source}
       renderOrphans={comments.renderOrphans}
       anchorless={comments.anchorless}
@@ -497,6 +506,26 @@ export function PlanDetailPage({
   const comments = usePlanComments(detail?.session?.id)
   const { status } = useAuth()
   const viewerId = status.user?.id
+  /**
+   * The reader themselves, for the box they write a comment in — their address and their
+   * photo.
+   *
+   * THE PHOTO COMES FROM THE ACCOUNT STORE AND NOT FROM `avatarByAuthor`, which is the only
+   * subtle thing here. That map is built by `fetchAuthors` from the authors of the comments
+   * that EXIST, so on a plan the reader has never written on it does not contain them —
+   * their own composer would be the one card on the page drawing a generic glyph. `useAvatar`
+   * is the same photo the sidebar and the settings rail draw, already in hand, with no read.
+   *
+   * MEMOISED because it goes into `specComments`, which is memoised precisely so that the
+   * spec is not re-parsed while the reader scrolls.
+   */
+  const viewerAvatar = useAvatar()
+  const viewer = useMemo(
+    () => (viewerId
+      ? { name: status.user?.email ?? viewerId.slice(0, 8), avatarUrl: viewerAvatar ?? undefined }
+      : undefined),
+    [viewerId, status.user?.email, viewerAvatar],
+  )
 
   /**
    * The threads, built once per read — MEMOISED BECAUSE THE LAYER DEPENDS ON THE IDENTITY.
@@ -610,6 +639,7 @@ export function PlanDetailPage({
      */
     const source: CommentSource = {
       comments: heads,
+      viewer,
       add: (comment) => comments.create({
         sessionId, anchor: null, quote: comment.quote, body: comment.body,
       }),
@@ -637,7 +667,7 @@ export function PlanDetailPage({
     })
 
     return { source, renderOrphans, anchorless }
-  }, [detail?.session?.id, comments, threads, turnOf])
+  }, [detail?.session?.id, comments, threads, turnOf, viewer])
 
   useEffect(() => {
     setTicketStates({})
@@ -663,10 +693,18 @@ export function PlanDetailPage({
    * `stopImmediatePropagation` does. Plain `stopPropagation` would not help: both
    * listeners are on the same target, and only the "immediate" form stops the others
    * there. Mounted with this page, so Escape goes on closing the modal from the list.
+   *
+   * A COMMENT BUBBLE OWNS ITS OWN ESCAPE, and this has to stand aside for it. Capture on
+   * `window` runs before anything the bubble could bind, so without the test below the key
+   * that closes a half-written comment would close the plan instead — and take the comment
+   * with it. `[data-comment-composer]` is the marker every box in this app that owns its
+   * keystrokes carries, and the drawer's own listeners bail on exactly the same selector;
+   * see `KEY_OWNING_SURFACES` in `FilePreviewPanel`.
    */
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
+      if (e.target instanceof Element && e.target.closest('[data-comment-composer]')) return
       e.preventDefault()
       e.stopImmediatePropagation()
       onBack()

@@ -45,8 +45,10 @@ import { useSyncExternalStore } from 'react'
  * identical everywhere. It is that `i18n/index.ts` reads at MODULE SCOPE and is
  * imported by all three entry points, which makes it run in whatever state each window
  * happens to be in. This module also reads at module scope, but is reachable only from
- * `SidebarAccount`, `pages/Config/index.tsx` and `CloudAccountSection` — none of which
- * is in the import graph of `popover-main.tsx` or `quick-launch-main.tsx`. So it only
+ * `SidebarAccount`, `pages/Config/index.tsx`, `CloudAccountSection` and
+ * `pages/Plans/PlanDetailPage` (the face beside the box a comment is written in) — none of
+ * which is in the import graph of `popover-main.tsx` or `quick-launch-main.tsx`. THAT IS
+ * THE CONSTRAINT A NEW CALLER HAS TO CHECK, and it is the whole of it. So it only
  * ever runs in the main window, where the bridge is there or nothing works at all, and
  * an optional call would turn a missing bridge into a photo that silently never loads.
  */
