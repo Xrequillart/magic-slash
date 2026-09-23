@@ -64,6 +64,24 @@ vi.mock('../store/plan-edit', () => ({
   resolveLocalSpecPath: (...args: unknown[]) => mockLocalSpec(...args),
 }))
 
+const mockListHistory = vi.fn()
+const mockReadTexts = vi.fn()
+vi.mock('../cloud/planHistory', () => ({
+  listPlanHistory: (...args: unknown[]) => mockListHistory(...args),
+  readRevisionTexts: (...args: unknown[]) => mockReadTexts(...args),
+}))
+
+// The preview machinery, which pulls shiki and the whole config layer. The diff channel's
+// own job is the guard and the wiring; `specDiff.test.ts` covers the line diff, and the
+// file preview's suite the annotation. The highlighter answers the text wrapped, so a test
+// can tell which side of the pair it was given.
+const mockHighlight = vi.fn()
+vi.mock('./config-handlers', () => ({
+  highlightNumbered: (...args: unknown[]) => mockHighlight(...args),
+  previewShikiTheme: () => 'github-dark',
+  annotateAgainstDiff: (numbered: string, diff: string) => ({ highlightedHtml: `${numbered}|${diff.split('\n').length}`, changedLines: { added: [], removedBefore: [] } }),
+}))
+
 import { setupPlansHandlers } from './plans-handlers'
 
 /** A well-formed uuid, so a rejection can only ever be about the field under test. */
@@ -95,6 +113,9 @@ beforeEach(() => {
   mockDeleteLink.mockResolvedValue(true)
   mockListLinks.mockResolvedValue({ links: [], emailByAuthor: {}, failed: false })
   mockSaveSpec.mockResolvedValue({ status: 'saved', updatedAt: 'x', fileWritten: false, fileSkipReason: 'not_owner' })
+  mockListHistory.mockResolvedValue({ revisions: [], linkEvents: [], emailByAuthor: {}, avatarByAuthor: {}, truncated: false, olderRevisions: false, failed: false })
+  mockReadTexts.mockResolvedValue({ older: 'a\nb', newer: 'a\nB\nc' })
+  mockHighlight.mockImplementation(async (text: string) => `<pre>${text}</pre>`)
   setupPlansHandlers()
 })
 
@@ -292,5 +313,46 @@ describe('plans:links', () => {
     expect(await invoke('plans:links:delete', 'nope')).toBe(false)
     expect(mockDeleteLink).not.toHaveBeenCalled()
     expect(await invoke('plans:links:delete', COMMENT_ID)).toBe(true)
+  })
+})
+
+describe('plans:history', () => {
+  const FROM = '44444444-4444-4444-8444-444444444444'
+  const TO = '55555555-5555-4555-8555-555555555555'
+
+  it('reads the history of a well-formed session id, and nothing for anything else', async () => {
+    await invoke('plans:history:list', SESSION_ID)
+    expect(mockListHistory).toHaveBeenCalledWith(SESSION_ID)
+    mockListHistory.mockClear()
+    expect(await invoke('plans:history:list', 'nope')).toMatchObject({ failed: false, revisions: [] })
+    expect(mockListHistory).not.toHaveBeenCalled()
+  })
+
+  it('diffs two revisions: the NEWER text, highlighted, with the counts', async () => {
+    const diff = await invoke('plans:history:diff', { fromRevisionId: FROM, toRevisionId: TO })
+    expect(mockReadTexts).toHaveBeenCalledWith(FROM, TO)
+    expect(mockHighlight).toHaveBeenCalledWith('a\nB\nc', 'md', 'github-dark')
+    expect(diff).toMatchObject({ failed: false, content: 'a\nB\nc', additions: 2, deletions: 1 })
+    expect((diff as { highlightedHtml: string }).highlightedHtml).toContain('<pre>a\nB\nc</pre>')
+  })
+
+  it('compares the first revision against nothing when no older one is named', async () => {
+    await invoke('plans:history:diff', { fromRevisionId: null, toRevisionId: TO })
+    expect(mockReadTexts).toHaveBeenCalledWith(null, TO)
+  })
+
+  it('answers failed when the texts cannot be read', async () => {
+    mockReadTexts.mockResolvedValue(null)
+    expect(await invoke('plans:history:diff', { fromRevisionId: FROM, toRevisionId: TO })).toEqual({ failed: true })
+  })
+
+  it.each([
+    ['no arguments', undefined],
+    ['a malformed newer id', { fromRevisionId: FROM, toRevisionId: 'nope' }],
+    ['a malformed older id', { fromRevisionId: 7, toRevisionId: TO }],
+    ['the same revision twice', { fromRevisionId: TO, toRevisionId: TO }],
+  ])('refuses %s without reading anything', async (_label, args) => {
+    expect(await invoke('plans:history:diff', args)).toEqual({ failed: true })
+    expect(mockReadTexts).not.toHaveBeenCalled()
   })
 })

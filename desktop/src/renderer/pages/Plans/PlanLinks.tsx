@@ -1,30 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Button, ExternalLinkCard, type ExternalLinkRow, type SelectOption } from '@ds/desktop'
-import {
-  Claude, Figma, Github, GoogleDocs, GoogleSheets, GoogleSlides, Link2, Loom, Miro, Notion, Plus,
-} from '@ds/desktop/icons'
-import type { IconComponent } from '@ds/desktop'
+import { Plus } from '@ds/desktop/icons'
 import { useT } from '../../i18n'
 import { usePlanLinks } from '../../hooks/usePlanLinks'
 import {
   LINK_KINDS, LINK_KIND_NAMES, detectLinkKind, linkDisplayName, parseLinkUrl, toLinkKind, type LinkKind,
 } from '../../utils/externalLinks'
 import { planAuthor } from '../../utils/planRows'
-
-/** The mark each tool is drawn with. Brand marks where the design system has one. */
-const ICONS: Record<LinkKind, { icon: IconComponent; color?: string }> = {
-  figma: { icon: Figma },
-  figjam: { icon: Figma },
-  notion: { icon: Notion },
-  claude_artifact: { icon: Claude },
-  google_docs: { icon: GoogleDocs },
-  google_sheets: { icon: GoogleSheets },
-  google_slides: { icon: GoogleSlides },
-  miro: { icon: Miro },
-  loom: { icon: Loom },
-  github: { icon: Github },
-  other: { icon: Link2 },
-}
+import { LINK_ICONS } from './linkIcons'
 
 /** "Automatic": the tool read off the address. See `detectLinkKind`. */
 const AUTO = 'auto'
@@ -45,12 +28,18 @@ export function PlanLinks({
   ownerId,
   viewerId,
   heading,
+  onChange,
 }: {
   sessionId: string
   ownerId: string
   viewerId?: string
   /** The section heading, drawn by the page so every section shares one. */
   heading: (title: string) => JSX.Element
+  /**
+   * A link was added or removed — or the attempt was, since a refusal is usually the page
+   * being out of date. The page's history re-reads on it: the database logged the change.
+   */
+  onChange?: () => void
 }) {
   const t = useT()
   const links = usePlanLinks(sessionId)
@@ -64,15 +53,14 @@ export function PlanLinks({
     const mayRemove = !!viewerId && (link.authorId === viewerId || ownerId === viewerId)
     return {
       id: link.id,
-      icon: ICONS[kind].icon,
-      iconColor: ICONS[kind].color,
+      icon: LINK_ICONS[kind],
       title: link.title ?? linkDisplayName(link.url),
       subtitle: t('plans.links.addedBy', { kind: kindName(kind), author }),
       href: link.url,
       onOpen: () => { void window.electronAPI.shell.openExternal(link.url) },
-      remove: mayRemove ? { label: t('plans.links.remove'), onRemove: () => { void links.remove(link.id) } } : undefined,
+      remove: mayRemove ? { label: t('plans.links.remove'), onRemove: () => { void links.remove(link.id).then(() => onChange?.()) } } : undefined,
     }
-  }), [links.read, links.remove, viewerId, ownerId, t])
+  }), [links.read, links.remove, viewerId, ownerId, t, onChange])
 
   const detected = form ? detectLinkKind(form.url) : 'other'
   const kinds: SelectOption[] = [
@@ -82,7 +70,7 @@ export function PlanLinks({
         ? t('plans.links.autoDetected', { kind: kindName(detected) })
         : t('plans.links.auto'),
     },
-    ...LINK_KINDS.map((kind) => ({ value: kind, label: kindName(kind), icon: ICONS[kind].icon })),
+    ...LINK_KINDS.map((kind) => ({ value: kind, label: kindName(kind), icon: LINK_ICONS[kind] })),
   ]
 
   const submit = async () => {
@@ -96,6 +84,7 @@ export function PlanLinks({
       kind: form.kind === AUTO ? detectLinkKind(url.href) : form.kind,
       title: form.title.trim() || undefined,
     })
+    onChange?.()
     setForm(ok ? null : { ...form, busy: false, failed: true })
   }
 

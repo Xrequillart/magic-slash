@@ -144,6 +144,9 @@ function makeClient(
       order: (...args: unknown[]) => { record('order', args); return b },
       limit: (...args: unknown[]) => { record('limit', args); return b },
       maybeSingle: (...args: unknown[]) => { record('maybeSingle', args); return b },
+      // A request header, not a filter — recorded all the same so a test can say which
+      // query carried it (the plan history's source, 20260923120000).
+      setHeader: (...args: unknown[]) => { record('setHeader', args); return b },
       insert: (payload: unknown) => {
         record('insert', [payload])
         ;(inserts[table] ??= []).push(payload)
@@ -3167,5 +3170,21 @@ describe('saveConfig', () => {
     // Shared projection derived from the in-memory repos is still mirrored top-level.
     expect(savedBlob.repoKeywords).toEqual({ demo: ['kw'] })
     expect(savedBlob.commit).toEqual({ format: 'angular' })
+  })
+})
+
+describe('savePlanSpec — the plan history', () => {
+  // The revision itself is the database's (the record_revision trigger, covered by
+  // supabase/tests/plan_revisions.test.sql). What the app owes it is one header, on the
+  // agent's upload and nowhere else: without it the planner's rewrites read as hand edits.
+  it('marks the spec upload as the agent\'s with x-magic-plan-source', async () => {
+    const { client, calls } = makeClient({}, {}, { plan_sessions: { data: [{ id: 'session-1' }], error: null } })
+    h.state.client = client
+
+    await new CloudStore().savePlanSpec({ agentId: 'claude-1', specPath: '/r/.magic/spec-x.md', spec: '# Spec', specOversize: false })
+
+    const planCalls = calls.filter((c) => c.table === 'plan_sessions')
+    expect(planCalls.map((c) => c.method)).toEqual(['upsert', 'select', 'setHeader'])
+    expect(planCalls[2].args).toEqual(['x-magic-plan-source', 'agent'])
   })
 })

@@ -2401,6 +2401,100 @@ export interface PlanLinksRead {
   failed: boolean
 }
 
+/**
+ * Who changed a plan's spec: by hand in the app, or through a Claude agent. The table says
+ * `human` and `agent`, and a hand edit never names an agent. See 20260923120000.
+ */
+export type PlanRevisionSource = 'human' | 'agent'
+
+/**
+ * One revision of a plan's spec, WITHOUT its text: the history lists dozens of them and
+ * each carries a full copy of a spec of up to 1 MiB. The text is only read to diff two of
+ * them (`PlanRevisionDiff`).
+ *
+ * A run of saves by one author is ONE revision (the database folds them together), which is
+ * why there are two dates: `createdAt` is when the run began, `updatedAt` its latest save —
+ * and the one the timeline is ordered by.
+ */
+export interface PlanRevision {
+  id: string
+  /** Absent once the author's account is deleted: the change stays, the name goes. */
+  authorId?: string
+  source: PlanRevisionSource
+  /**
+   * The agent's name when the revision was recorded — a snapshot, since the agent may be
+   * archived since or unreadable to this reader. Absent for a hand edit, and for an agent
+   * revision on a session whose agent was already gone.
+   */
+  agentName?: string
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * A link pinned to a plan or taken off it, with the link as it was — a removed link has no
+ * row in `plan_links` any more, so the event is all that is left of it. See 20260923130000.
+ */
+export interface PlanLinkEvent {
+  id: string
+  linkId: string
+  action: 'added' | 'removed'
+  url: string
+  kind: string
+  title?: string
+  /** Absent once the actor's account is deleted. */
+  actorId?: string
+  createdAt: string
+}
+
+/**
+ * One plan's history: its spec revisions and its link events, with their people resolved
+ * the way the comments' are. Two lists rather than one merged timeline, because they are two
+ * tables with two caps; the page interleaves them by date.
+ *
+ * `truncated` is either list reaching its cap — the OLDEST entries are the ones missing.
+ * `failed` is a read that did not happen, not a plan with no history.
+ */
+export interface PlanHistoryRead {
+  revisions: PlanRevision[]
+  linkEvents: PlanLinkEvent[]
+  emailByAuthor: Record<string, string>
+  avatarByAuthor: Record<string, string>
+  truncated: boolean
+  /**
+   * Revisions older than the last one in `revisions` exist but were not read. The oldest
+   * revision shown is then NOT the first one there is, and must not be diffed against nothing.
+   */
+  olderRevisions: boolean
+  failed: boolean
+}
+
+/** A plan with no history, or no plan at all. Spread with `failed: true` for a read that failed. */
+export const EMPTY_PLAN_HISTORY: PlanHistoryRead = {
+  revisions: [], linkEvents: [], emailByAuthor: {}, avatarByAuthor: {}, truncated: false, olderRevisions: false, failed: false,
+}
+
+/**
+ * The difference between two revisions of a spec, ready for `CodeView`: the NEWER text,
+ * highlighted, with the lines the older one had and it does not injected as removed rows —
+ * the shape a changed file's preview has. See `plans:history:diff`.
+ *
+ * `failed` covers everything that is not a diff: a revision not visible or gone, the read
+ * refused, the highlighter unavailable. The page says one thing for all of them.
+ */
+export type PlanRevisionDiff =
+  | {
+      failed: false
+      /** The newer revision's text. */
+      content: string
+      highlightedHtml: string | null
+      /** The changed regions alone, when there is something to collapse. As `FilePreviewResult`'s. */
+      changesOnlyHtml?: string
+      additions: number
+      deletions: number
+    }
+  | { failed: true }
+
 // ---------------------------------------------------------------------------
 // Cloud: usage logs & org stats. One aggregated snapshot is written per session at
 // session end (never per statusLine event). Writing is gated by

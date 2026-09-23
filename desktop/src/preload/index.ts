@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AvatarSourceResult, AvatarWriteResult } from '../avatar'
 import type { UsernameCheckResult, UsernameSaveResult } from '../username'
-import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCommentsRead, PlanLinksRead, PlanDetail, PlanOverview, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
+import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanOverview, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -853,6 +853,18 @@ const plansApi = {
       ipcRenderer.invoke('plans:links:create', input),
     remove: (id: string): Promise<boolean> =>
       ipcRenderer.invoke('plans:links:delete', id),
+  },
+  // The plan's history: who changed its spec, when, by hand or through which Claude agent,
+  // and every link pinned or removed. READ ONLY — revisions are recorded by the main process
+  // after each save, link events by the database — so there is nothing here to write with.
+  history: {
+    list: (sessionId: string): Promise<PlanHistoryRead> =>
+      ipcRenderer.invoke('plans:history:list', sessionId),
+    // Two revision ids, never two texts: main reads both under the reader's own access and
+    // answers the newer one highlighted, the older one's lines injected as removed rows.
+    // `fromRevisionId` null diffs the plan's first revision against nothing.
+    diff: (fromRevisionId: string | null, toRevisionId: string): Promise<PlanRevisionDiff> =>
+      ipcRenderer.invoke('plans:history:diff', { fromRevisionId, toRevisionId }),
   },
   // Save a spec edited in the app — mine or a colleague's, when the plan is on a
   // repository our organization shares. The cloud row is written first, and this
