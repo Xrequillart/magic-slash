@@ -142,7 +142,7 @@ export function DecisionList({ items, labels, className = '' }: DecisionListProp
     /* `overflow-hidden` rounds a lit first or last row with the list. It clips nothing
        else: the comment marks are placed against the document, which contains this box. */
     <div
-      className={`my-4 overflow-hidden rounded-lg border border-line
+      className={`my-4 overflow-hidden rounded-lg bg-surface
         [&>*+*]:border-t [&>*+*]:border-line-subtle ${className}`.trim()}
     >
       {items.map((item) => <DecisionRow key={item.key} item={item} labels={labels} />)}

@@ -58,7 +58,7 @@ export function SpecHeaderCard({ repository, tracker, created, status, labels, c
   return (
     <div
       data-comment-exempt=""
-      className={`my-4 grid select-none grid-cols-2 overflow-hidden rounded-lg border border-line bg-ink/[0.03]
+      className={`my-4 grid select-none grid-cols-2 overflow-hidden rounded-lg bg-surface
         [&>*]:border-line-subtle [&>*:nth-child(odd)]:border-r [&>*:nth-child(n+3)]:border-t ${className}`.trim()}
     >
       {repository && (

@@ -115,7 +115,7 @@ export function SizingCard({ facts, labels, className = '' }: SizingCardProps) {
     /* `overflow-hidden` rounds a lit first or last row with the card, and clips nothing
        else: the comment marks are placed against the document, which contains this box. */
     <div
-      className={`my-4 overflow-hidden rounded-lg border border-line bg-ink/[0.03]
+      className={`my-4 overflow-hidden rounded-lg bg-surface
         [&>*+*]:border-t [&>*+*]:border-line-subtle ${className}`.trim()}
     >
       {facts.map((fact) => <SizingRow key={fact.kind} fact={fact} label={labels[fact.kind]} />)}
