@@ -44,6 +44,7 @@ import { JiraStatusPill, StateChip } from '../Tasks/parts'
 import { STATUS_LOOK } from './PlanRow'
 import { PlanIdBadge } from './PlanIdBadge'
 import { PlanLinks } from './PlanLinks'
+import { PlanHistory } from './PlanHistory'
 
 /**
  * One plan, given the whole page — the Plans page's second view, not a panel beside its
@@ -195,6 +196,9 @@ function SectionHeading({ children, hint }: { children: string; hint?: string })
     </div>
   )
 }
+
+/** The history's heading, at module level so the memoised section is not re-drawn on every keystroke. */
+const historyHeading = (title: string, hint?: string) => <SectionHeading hint={hint}>{title}</SectionHeading>
 
 /**
  * The spec itself, behind a memo boundary — the same one `pr-comments/PRThread` puts
@@ -794,6 +798,14 @@ export function PlanDetailPage({
    * than a pending read.
    */
   const comments = usePlanComments(detail?.session?.id)
+  /**
+   * Bumped whenever a link is added or removed, so the history below reads itself again —
+   * the database logged the change, and nothing else would tell the history it happened.
+   * A spec save needs no counter of its own: it moves the session's `updatedAt`, which is
+   * the other half of the history's `version`.
+   */
+  const [linksVersion, setLinksVersion] = useState(0)
+  const bumpLinks = useCallback(() => setLinksVersion((n) => n + 1), [])
   const { status } = useAuth()
   const viewerId = status.user?.id
   /**
@@ -1612,6 +1624,7 @@ export function PlanDetailPage({
             ownerId={session.ownerId}
             viewerId={viewerId}
             heading={(title) => <SectionHeading>{title}</SectionHeading>}
+            onChange={bumpLinks}
           />
 
           {/* The heading, with the autosave's state on its right: the one sign that the text
@@ -1721,6 +1734,15 @@ export function PlanDetailPage({
               <p className="text-sm text-text-secondary">{t('plans.detail.specPending')}</p>
             )}
           </div>
+
+          {/* Who changed the spec and the links, and how — by hand or with Claude — with the
+              diff between two revisions. Under the spec it is the history of. */}
+          <PlanHistory
+            sessionId={session.id}
+            version={`${session.updatedAt ?? ''}:${linksVersion}`}
+            now={now}
+            heading={historyHeading}
+          />
         </>
       )}
     </div>

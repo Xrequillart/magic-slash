@@ -1574,7 +1574,18 @@ export class CloudStore implements Store {
     return row
   }
 
-  /** Upsert one session and hand back its uuid (server-generated on first write). */
+  /**
+   * Upsert one session and hand back its uuid (server-generated on first write).
+   *
+   * `x-magic-plan-source: agent` is what makes a spec written here the AGENT's revision in
+   * the plan's history: the `record_revision` trigger (20260923120000) reads it off the
+   * request, and believes it only from the plan's owner — which this app always is, since
+   * it upserts on its own `owner_id`. An edit made in the app goes through
+   * `cloud/plans.updatePlanSpec` instead and sends no header, so it is recorded by hand.
+   * The tickets' upsert passes through here too and carries the header harmlessly: it
+   * sends no `spec`, so the trigger does not even fire. Nor does a re-upload of an
+   * unchanged spec record anything — the trigger compares the text itself.
+   */
   private async upsertPlanSession(
     ctx: { client: SupabaseClient; uid: string },
     input: PlanSpecInput,
@@ -1583,6 +1594,7 @@ export class CloudStore implements Store {
       .from('plan_sessions')
       .upsert(this.planSessionRow(input, ctx.uid), { onConflict: 'owner_id,spec_key' })
       .select('id')
+      .setHeader('x-magic-plan-source', 'agent')
     if (error) throw new Error(`plan_sessions upsert failed: ${error.message}`)
     return ((data ?? []) as { id: string }[])[0]?.id ?? null
   }

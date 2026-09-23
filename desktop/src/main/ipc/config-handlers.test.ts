@@ -76,6 +76,7 @@ vi.mock('child_process', () => ({
 
 import { codeToHtml } from 'shiki'
 import { annotateShikiHtml, parseDiff, readFileForPreview } from './config-handlers'
+import { unifiedSpecDiff } from '../store/specDiff'
 import { numberShikiLines } from './hunkView'
 
 const mockCodeToHtml = vi.mocked(codeToHtml)
@@ -332,6 +333,14 @@ describe('readFileForPreview', () => {
 // numbering spaces are kept apart. A regression here is silent: the highlighting
 // still works, the wrong numbers just appear beside it.
 describe('parseDiff', () => {
+  it('reads the diff the plan history computes between two revisions', () => {
+    // `store/specDiff.ts` writes one hunk over the whole text; the rows it marks have to be
+    // the NEW text's, and a removed line has to keep its number in the old one.
+    const diff = parseDiff(unifiedSpecDiff('a\nb\nc', 'a\nB\nc\nd').diff)
+    expect([...diff.addedNewLines].sort()).toEqual([2, 4])
+    expect(diff.removedBeforeLines.get(2)).toEqual([{ text: 'b', oldLine: 2 }])
+  })
+
   it('numbers a removed line in the OLD file, which is the only number it ever had', () => {
     const diff = parseDiff(['@@ -10,4 +10,3 @@', ' a', '-gone', '-also gone', ' b'].join('\n'))
     expect(diff.removedBeforeLines.get(11)).toEqual([

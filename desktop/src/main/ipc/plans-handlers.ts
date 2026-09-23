@@ -1,11 +1,14 @@
 import { ipcMain } from 'electron'
-import { isPlanCommentAnchor, type NewPlanComment, type PlanCommentsRead, type PlanDetail, type PlanLinksRead, type PlanLocalSpec, type PlanOverview, type PlanSpecUpdateResult, type PlanTicketOrigin } from '../../types'
+import { EMPTY_PLAN_HISTORY, isPlanCommentAnchor, type NewPlanComment, type PlanCommentsRead, type PlanDetail, type PlanHistoryRead, type PlanLinksRead, type PlanLocalSpec, type PlanOverview, type PlanRevisionDiff, type PlanSpecUpdateResult, type PlanTicketOrigin } from '../../types'
 import { findPlanForTicket, listPlanDetail, listPlanSessions } from '../cloud/plans'
 import {
   createPlanComment, deletePlanComment, listPlanComments, updatePlanComment,
 } from '../cloud/planComments'
 import { resolveLocalSpecPath, saveEditedPlanSpec } from '../store/plan-edit'
 import { createPlanLink, deletePlanLink, listPlanLinks } from '../cloud/planLinks'
+import { listPlanHistory, readRevisionTexts } from '../cloud/planHistory'
+import { unifiedSpecDiff } from '../store/specDiff'
+import { annotateAgainstDiff, highlightNumbered, previewShikiTheme } from './config-handlers'
 
 /**
  * The renderer is expected to send back a uuid it got from `plans:list`, and RLS would
@@ -207,6 +210,53 @@ export function setupPlansHandlers(): void {
   ipcMain.handle('plans:links:delete', async (_e, id: unknown): Promise<boolean> => {
     if (typeof id !== 'string' || !UUID_RE.test(id)) return false
     return deletePlanLink(id)
+  })
+
+  /**
+   * The plan's history: its spec revisions and its link events. READ ONLY — there is no
+   * channel that writes either table, because nothing in the app does: both are written by
+   * triggers, revisions by the save to `plan_sessions` itself, link events by the change to
+   * `plan_links`. A malformed id is an unfailed nothing, as for the comments.
+   */
+  ipcMain.handle('plans:history:list', async (_e, id: unknown): Promise<PlanHistoryRead> => {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) return EMPTY_PLAN_HISTORY
+    return listPlanHistory(id)
+  })
+
+  /**
+   * What changed between two revisions, drawn the way a changed file is: the newer text,
+   * highlighted, with the older one's missing lines injected as removed rows. `fromRevisionId`
+   * null is the plan's first revision, compared against nothing.
+   *
+   * The texts are read HERE, under the reader's own RLS, from the two ids — the renderer
+   * never sends a spec to be diffed, so it cannot be made to draw a diff of a text the plan
+   * never held. Two ids of two different plans are refused by `readRevisionTexts`.
+   *
+   * Highlighted in main, like every other preview, with the theme the file preview uses —
+   * `CodeView` draws its rails in that same palette.
+   */
+  ipcMain.handle('plans:history:diff', async (_e, args: unknown): Promise<PlanRevisionDiff> => {
+    if (typeof args !== 'object' || args === null) return { failed: true }
+    const { fromRevisionId, toRevisionId } = args as Record<string, unknown>
+    if (typeof toRevisionId !== 'string' || !UUID_RE.test(toRevisionId)) return { failed: true }
+    if (fromRevisionId !== undefined && fromRevisionId !== null
+      && (typeof fromRevisionId !== 'string' || !UUID_RE.test(fromRevisionId) || fromRevisionId === toRevisionId)) {
+      return { failed: true }
+    }
+    const texts = await readRevisionTexts(typeof fromRevisionId === 'string' ? fromRevisionId : null, toRevisionId)
+    if (!texts) return { failed: true }
+
+    const { diff, additions, deletions } = unifiedSpecDiff(texts.older, texts.newer)
+    const numbered = await highlightNumbered(texts.newer, 'md', previewShikiTheme())
+    const view = numbered ? annotateAgainstDiff(numbered, diff) : null
+    return {
+      failed: false,
+      content: texts.newer,
+      highlightedHtml: view?.highlightedHtml ?? null,
+      changesOnlyHtml: view?.changesOnlyHtml,
+      additions,
+      deletions,
+    }
   })
 
   /**
