@@ -199,10 +199,57 @@ const KNOWN_LANGS = new Set([
  * invariant with that failure mode should not be held by a comment at each call site.
  * Un-numbered shiki output has no name in this module as a result.
  */
-async function highlightNumbered(text: string, mimeHint: string, shikiTheme: string): Promise<string | null> {
+export async function highlightNumbered(text: string, mimeHint: string, shikiTheme: string): Promise<string | null> {
   const lang = KNOWN_LANGS.has(mimeHint) ? mimeHint : 'text'
   const raw = await codeToHtml(text, { lang, theme: shikiTheme }).catch(() => null)
   return raw ? numberShikiLines(raw) : null
+}
+
+/**
+ * A numbered document with a unified diff laid over it: the removed lines injected as rows,
+ * the added ones marked, and — when there is something to collapse — the changed regions
+ * alone as a second rendering.
+ *
+ * Shared by the file preview (against `git diff HEAD`) and the plan history (against the
+ * line diff `store/specDiff.ts` computes between two revisions), so the two draw one diff
+ * the one way `CodeView` reads.
+ *
+ * The collapse is attempted in its own `try`: a throw there can only cost the changes-only
+ * view, never the full one the panel falls back to.
+ */
+export function annotateAgainstDiff(
+  numbered: string,
+  diffOut: string,
+): { highlightedHtml: string; changesOnlyHtml?: string; changedLines: ChangedLines } {
+  const diff = parseDiff(diffOut)
+  // Read the positions out BEFORE annotating. `annotateShikiHtml` drains
+  // `removedBeforeLines` as it walks the document — it deletes each entry once it
+  // has emitted the row — so afterwards there is nothing left to report.
+  const changedLines: ChangedLines = {
+    added: [...diff.addedNewLines].sort((a, b) => a - b),
+    removedBefore: [...diff.removedBeforeLines.keys()].sort((a, b) => a - b),
+  }
+  // The file's own length, taken from the row count rather than from
+  // `content.split('\n')`: a file ending in a newline gives shiki one extra
+  // empty row, and the two numbers then disagree by one for the rest of the
+  // computation — which is enough to lose the last line of the last region.
+  const totalLines = countShikiRows(numbered)
+  const annotated = annotateShikiHtml(numbered, diff, 'normal')
+
+  let changesOnlyHtml: string | undefined
+  try {
+    const ranges = computeVisibleRanges(
+      [...changedLines.added, ...changedLines.removedBefore],
+      totalLines,
+      DIFF_CONTEXT_LINES,
+    )
+    // `null` means the regions already cover the file — a change on every line,
+    // or a file short enough that the context reaches both ends. Emitting a
+    // second copy of the same document would be pure IPC weight, and the absence
+    // is also what tells the header there is no toggle to offer.
+    if (ranges) changesOnlyHtml = renderRows(splitShikiLines(annotated), ranges, totalLines)
+  } catch { /* the full rendering stands on its own */ }
+  return { highlightedHtml: annotated, changesOnlyHtml, changedLines }
 }
 
 const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico'])
@@ -641,7 +688,7 @@ const SHIKI_THEMES = { light: 'github-light', dark: 'github-dark' } as const
  * and reading process-wide state from it would mean stubbing the config and the
  * native theme to read a file off disk.
  */
-function previewShikiTheme(): string {
+export function previewShikiTheme(): string {
   return SHIKI_THEMES[codeAppearance(currentTheme(), readConfig().codeTheme)]
 }
 
@@ -803,34 +850,10 @@ export async function readFileForPreview(
     } else if (status === 'modified' || status === 'renamed') {
       try {
         const diffOut = execFileSync('git', ['diff', 'HEAD', '--', filePath], { cwd: repoPath }).toString()
-        const diff = parseDiff(diffOut)
-        // Read the positions out BEFORE annotating. `annotateShikiHtml` drains
-        // `removedBeforeLines` as it walks the document — it deletes each entry once it
-        // has emitted the row — so afterwards there is nothing left to report.
-        changedLines = {
-          added: [...diff.addedNewLines].sort((a, b) => a - b),
-          removedBefore: [...diff.removedBeforeLines.keys()].sort((a, b) => a - b),
-        }
-        // The file's own length, taken from the row count rather than from
-        // `content.split('\n')`: a file ending in a newline gives shiki one extra
-        // empty row, and the two numbers then disagree by one for the rest of the
-        // computation — which is enough to lose the last line of the last region.
-        const totalLines = countShikiRows(numbered)
-        const annotated = annotateShikiHtml(numbered, diff, 'normal')
-        // Assigned before the collapse is attempted, so a throw below can only cost
-        // the changes-only view, never the full one the panel falls back to.
-        highlightedHtml = annotated
-
-        const ranges = computeVisibleRanges(
-          [...changedLines.added, ...changedLines.removedBefore],
-          totalLines,
-          DIFF_CONTEXT_LINES,
-        )
-        // `null` means the regions already cover the file — a change on every line,
-        // or a file short enough that the context reaches both ends. Emitting a
-        // second copy of the same document would be pure IPC weight, and the absence
-        // is also what tells the header there is no toggle to offer.
-        if (ranges) changesOnlyHtml = renderRows(splitShikiLines(annotated), ranges, totalLines)
+        const view = annotateAgainstDiff(numbered, diffOut)
+        highlightedHtml = view.highlightedHtml
+        changedLines = view.changedLines
+        changesOnlyHtml = view.changesOnlyHtml
       } catch { /* leave unhighlighted on error */ }
     }
   }
