@@ -2350,6 +2350,42 @@ export interface NewPlanComment {
   body: string
 }
 
+/**
+ * An external link pinned to a plan — the Figma file, the Notion page, the Claude artifact
+ * the plan is about. A ROW OF ITS OWN in `plan_links`, never a line of the spec: the spec is
+ * the agent's document and is rewritten by the next upload. See 20260923110000.
+ *
+ * `kind` is FREE TEXT, the way `plan_sessions.status` is: the tools the app knows are listed
+ * in `renderer/utils/externalLinks.ts`, and a kind a newer build wrote draws as a plain link.
+ */
+export interface PlanLink {
+  id: string
+  sessionId: string
+  authorId: string
+  url: string
+  kind: string
+  title?: string
+  createdAt?: string
+}
+
+/** What adding a link sends. The author is not in it: the main process signs the row. */
+export interface NewPlanLink {
+  sessionId: string
+  url: string
+  kind: string
+  title?: string
+}
+
+/**
+ * One plan's links, with their authors resolved the way the comments' are. `failed` is a
+ * read that did not happen, not a plan with no links — the page says one and not the other.
+ */
+export interface PlanLinksRead {
+  links: PlanLink[]
+  emailByAuthor: Record<string, string>
+  failed: boolean
+}
+
 // ---------------------------------------------------------------------------
 // Cloud: usage logs & org stats. One aggregated snapshot is written per session at
 // session end (never per statusLine event). Writing is gated by

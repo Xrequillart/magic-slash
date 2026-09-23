@@ -48,6 +48,15 @@ vi.mock('../cloud/planComments', () => ({
   deletePlanComment: (...args: unknown[]) => mockDeleteComment(...args),
 }))
 
+const mockListLinks = vi.fn()
+const mockCreateLink = vi.fn()
+const mockDeleteLink = vi.fn()
+vi.mock('../cloud/planLinks', () => ({
+  listPlanLinks: (...args: unknown[]) => mockListLinks(...args),
+  createPlanLink: (...args: unknown[]) => mockCreateLink(...args),
+  deletePlanLink: (...args: unknown[]) => mockDeleteLink(...args),
+}))
+
 const mockSaveSpec = vi.fn()
 vi.mock('../store/plan-edit', () => ({
   saveEditedPlanSpec: (...args: unknown[]) => mockSaveSpec(...args),
@@ -80,6 +89,9 @@ beforeEach(() => {
   mockCreateComment.mockResolvedValue(true)
   mockUpdateComment.mockResolvedValue(true)
   mockDeleteComment.mockResolvedValue(true)
+  mockCreateLink.mockResolvedValue(true)
+  mockDeleteLink.mockResolvedValue(true)
+  mockListLinks.mockResolvedValue({ links: [], emailByAuthor: {}, failed: false })
   mockSaveSpec.mockResolvedValue({ status: 'saved', updatedAt: 'x', fileWritten: false, fileSkipReason: 'not_owner' })
   setupPlansHandlers()
 })
@@ -232,5 +244,43 @@ describe('the read channels this file already had', () => {
   it('still guards plans:detail on the shape of its id', async () => {
     expect(await invoke('plans:detail', 'nope')).toEqual({ session: null, tickets: [], failed: false })
     expect(mockListDetail).not.toHaveBeenCalled()
+  })
+})
+
+describe('plans:links', () => {
+  const link = (overrides: Record<string, unknown> = {}) => ({
+    sessionId: SESSION_ID, url: 'https://www.figma.com/design/abc', kind: 'figma', ...overrides,
+  })
+
+  it('passes a well-formed link through, the title trimmed and an empty one dropped', async () => {
+    expect(await invoke('plans:links:create', link({ title: '  Maquette  ' }))).toBe(true)
+    expect(mockCreateLink).toHaveBeenCalledWith({
+      sessionId: SESSION_ID, url: 'https://www.figma.com/design/abc', kind: 'figma', title: 'Maquette',
+    })
+    await invoke('plans:links:create', link({ title: '   ' }))
+    expect(mockCreateLink).toHaveBeenLastCalledWith(expect.objectContaining({ title: undefined }))
+  })
+
+  it.each([
+    ['a javascript: address', { url: 'javascript:alert(1)' }],
+    ['a file: address', { url: 'file:///etc/passwd' }],
+    ['an address with a space', { url: 'https://e.com/a b' }],
+    ['no address', { url: '' }],
+    ['an address past the cap', { url: `https://e.com/${'a'.repeat(2048)}` }],
+    ['a kind that is not a slug', { kind: 'Figma!' }],
+    ['a title past the cap', { title: 'x'.repeat(201) }],
+    ['a session that is not a uuid', { sessionId: 'nope' }],
+  ])('refuses %s, and writes nothing', async (_label, overrides) => {
+    expect(await invoke('plans:links:create', link(overrides))).toBe(false)
+    expect(mockCreateLink).not.toHaveBeenCalled()
+  })
+
+  it('reads and removes by uuid only', async () => {
+    await invoke('plans:links:list', SESSION_ID)
+    expect(mockListLinks).toHaveBeenCalledWith(SESSION_ID)
+    expect(await invoke('plans:links:list', 'nope')).toEqual({ links: [], emailByAuthor: {}, failed: false })
+    expect(await invoke('plans:links:delete', 'nope')).toBe(false)
+    expect(mockDeleteLink).not.toHaveBeenCalled()
+    expect(await invoke('plans:links:delete', COMMENT_ID)).toBe(true)
   })
 })

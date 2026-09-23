@@ -36,7 +36,9 @@ export * from 'lucide-react'
  * export wins over a star export by rule, so `Github` here is this folder's mark
  * whatever a future lucide version decides to call its own.
  */
-export { ClaudeCode, Github, Jira, MagicSlash, VSCode } from './brand'
+export {
+  ClaudeCode, Figma, Github, GoogleDocs, GoogleSheets, GoogleSlides, Jira, Loom, MagicSlash, Miro, Notion, VSCode,
+} from './brand'
 // The brand COLOURS travel with the marks: a call site painting Claude Code's robot
 // coral and one painting its chip's ground read the same two values.
 export { CLAUDE_CHIP_GROUND, CLAUDE_CORAL, JIRA_BLUE, JIRA_CHIP_GROUND } from './brand'

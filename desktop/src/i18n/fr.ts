@@ -1372,6 +1372,20 @@ export const fr: Record<keyof typeof en, string> = {
     'Enregistré. Le fichier de spec de cette machine n’a pas été mis à jour, car il contient des modifications pas encore synchronisées.',
   'plans.edit.fileError': 'Enregistré. Le fichier de spec de cette machine n’a pas pu être mis à jour.',
 
+  // ── Liens externes d'un plan ────────────────────────────────────────────────
+  'plans.links.title': 'Liens externes',
+  'plans.links.add': 'Ajouter un lien',
+  'plans.links.empty': 'Aucun lien externe. Ajoutez un prototype Figma, une page Notion, un artefact Claude…',
+  'plans.links.readFailed': 'Les liens de ce plan n’ont pas pu être chargés.',
+  'plans.links.other': 'Lien',
+  'plans.links.auto': 'Automatique',
+  'plans.links.autoDetected': 'Automatique · {kind}',
+  'plans.links.urlPlaceholder': 'Collez un lien (Figma, Notion, artefact Claude…)',
+  'plans.links.titlePlaceholder': 'Nom (facultatif)',
+  'plans.links.submit': 'Ajouter',
+  'plans.links.failed': 'Le lien n’a pas pu être ajouté.',
+  'plans.links.remove': 'Retirer ce lien',
+  'plans.links.addedBy': '{kind} · ajouté par {author}',
 
   // ── Barre de mise en forme d'une spec ───────────────────────────────────────
   'plans.format.text': 'Texte',

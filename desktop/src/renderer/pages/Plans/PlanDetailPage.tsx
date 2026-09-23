@@ -41,6 +41,7 @@ import {
 import { JiraStatusPill, StateChip } from '../Tasks/parts'
 import { STATUS_LOOK } from './PlanRow'
 import { PlanIdBadge } from './PlanIdBadge'
+import { PlanLinks } from './PlanLinks'
 
 /**
  * One plan, given the whole page — the Plans page's second view, not a panel beside its
@@ -1523,6 +1524,15 @@ export function PlanDetailPage({
               states={ticketStates}
             />
           )}
+
+          {/* The plan's external links — Figma, Notion, a Claude artifact — under its tickets
+              and in their shape. Rows of their own, never part of the spec below. */}
+          <PlanLinks
+            sessionId={session.id}
+            ownerId={session.ownerId}
+            viewerId={viewerId}
+            heading={(title) => <SectionHeading>{title}</SectionHeading>}
+          />
 
           {/* The heading, with the autosave's state on its right: the one sign that the text
               takes a caret, and then where the writing is. Quiet on purpose — the document

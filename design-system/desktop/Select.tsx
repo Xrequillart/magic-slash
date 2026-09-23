@@ -126,6 +126,14 @@ export interface SelectProps {
   marker?: SelectMarker
   size?: SelectSize
   /**
+   * Every option at once, no scroll — for a short, closed list the reader should see whole.
+   * The panel is then only as tall as the window allows, and flips above the trigger when
+   * there is no room below, as it always does. Off, a long list scrolls at `max-h-80`: a
+   * list of repositories can be any length, and a panel the height of the screen for it
+   * would be a sheet, not a dropdown.
+   */
+  fit?: boolean
+  /**
    * The control is away from its default — narrowing, reordering, set to something other
    * than what the page opens on. Tinted, so a page showing a fraction of its rows says so
    * from the control rather than only from the gap where the other rows were.
@@ -200,6 +208,7 @@ export function Select({
   disabled = false,
   ariaLabel,
   className = '',
+  fit = false,
 }: SelectProps) {
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
@@ -253,7 +262,7 @@ export function Select({
              wheel at either end of a scrolling panel chains outwards into a scroll the
              hook correctly reads as "outside", and dismisses the list at the moment the
              reader reaches the bottom of it. */
-          className="bg-bg-secondary border border-line rounded-xl shadow-2xl z-[60] p-1 max-h-80 overflow-y-auto overscroll-contain flex flex-col gap-0.5"
+          className={`bg-bg-secondary border border-line rounded-xl shadow-2xl z-[60] p-1 ${fit ? 'max-h-[calc(100vh-24px)]' : 'max-h-80'} overflow-y-auto overscroll-contain flex flex-col gap-0.5`}
         >
           {clearLabel && (
             <button

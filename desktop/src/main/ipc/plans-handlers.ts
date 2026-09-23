@@ -1,10 +1,11 @@
 import { ipcMain } from 'electron'
-import { isPlanCommentAnchor, type NewPlanComment, type PlanCommentsRead, type PlanDetail, type PlanOverview, type PlanSpecUpdateResult, type PlanTicketOrigin } from '../../types'
+import { isPlanCommentAnchor, type NewPlanComment, type PlanCommentsRead, type PlanDetail, type PlanLinksRead, type PlanOverview, type PlanSpecUpdateResult, type PlanTicketOrigin } from '../../types'
 import { findPlanForTicket, listPlanDetail, listPlanSessions } from '../cloud/plans'
 import {
   createPlanComment, deletePlanComment, listPlanComments, updatePlanComment,
 } from '../cloud/planComments'
 import { saveEditedPlanSpec } from '../store/plan-edit'
+import { createPlanLink, deletePlanLink, listPlanLinks } from '../cloud/planLinks'
 
 /**
  * The renderer is expected to send back a uuid it got from `plans:list`, and RLS would
@@ -19,6 +20,21 @@ import { saveEditedPlanSpec } from '../store/plan-edit'
  * the renderer draws one "this plan is not available" state either way.
  */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** `plan_links`' own caps: `plan_links_url_http` and `plan_links_title_length`. */
+const MAX_LINK_URL = 2048
+const MAX_LINK_TITLE = 200
+
+/** An http(s) address with a host and no whitespace — the table's CHECK, said in TypeScript. */
+export function isHttpUrl(value: string): boolean {
+  if (value.length > MAX_LINK_URL || /\s/.test(value)) return false
+  try {
+    const url = new URL(value)
+    return (url.protocol === 'http:' || url.protocol === 'https:') && url.hostname !== ''
+  } catch {
+    return false
+  }
+}
 
 /**
  * The Plans page's two channels: the list, and one plan.
@@ -164,6 +180,33 @@ export function setupPlansHandlers(): void {
   ipcMain.handle('plans:comments:delete', async (_e, id: unknown): Promise<boolean> => {
     if (typeof id !== 'string' || !UUID_RE.test(id)) return false
     return deletePlanComment(id)
+  })
+
+  /**
+   * The external links pinned to a plan. SHAPE ONLY, like the comment channels: who may add
+   * or remove one is `plan_links`' policies' question. The address is checked here as well as
+   * by the table's CHECK — http(s), no whitespace, a length cap — because it is drawn as an
+   * anchor, and a `javascript:` URL is the one value this channel must never carry.
+   */
+  ipcMain.handle('plans:links:list', async (_e, id: unknown): Promise<PlanLinksRead> => {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) return { links: [], emailByAuthor: {}, failed: false }
+    return listPlanLinks(id)
+  })
+
+  ipcMain.handle('plans:links:create', async (_e, args: unknown): Promise<boolean> => {
+    if (typeof args !== 'object' || args === null) return false
+    const { sessionId, url, kind, title } = args as Record<string, unknown>
+    if (typeof sessionId !== 'string' || !UUID_RE.test(sessionId)) return false
+    if (typeof url !== 'string' || !isHttpUrl(url)) return false
+    if (typeof kind !== 'string' || !/^[a-z0-9_]{1,32}$/.test(kind)) return false
+    if (title !== undefined && title !== null && (typeof title !== 'string' || title.length > MAX_LINK_TITLE)) return false
+    const label = typeof title === 'string' && title.trim() !== '' ? title.trim() : undefined
+    return createPlanLink({ sessionId, url, kind, title: label })
+  })
+
+  ipcMain.handle('plans:links:delete', async (_e, id: unknown): Promise<boolean> => {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) return false
+    return deletePlanLink(id)
   })
 
   /**

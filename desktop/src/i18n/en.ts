@@ -1457,6 +1457,21 @@ export const en = {
     'Saved. The spec file on this machine was not updated, because it holds changes that have not been synced yet.',
   'plans.edit.fileError': 'Saved. The spec file on this machine could not be updated.',
 
+  // A plan's external links: prototypes, mock-ups, notes kept in another tool. Stored
+  // apart from the spec, drawn under the tickets.
+  'plans.links.title': 'External links',
+  'plans.links.add': 'Add a link',
+  'plans.links.empty': 'No external link yet. Add a Figma prototype, a Notion page, a Claude artifact…',
+  'plans.links.readFailed': 'The links of this plan could not be loaded.',
+  'plans.links.other': 'Link',
+  'plans.links.auto': 'Automatic',
+  'plans.links.autoDetected': 'Automatic · {kind}',
+  'plans.links.urlPlaceholder': 'Paste a link (Figma, Notion, Claude artifact…)',
+  'plans.links.titlePlaceholder': 'Name (optional)',
+  'plans.links.submit': 'Add',
+  'plans.links.failed': 'The link could not be added.',
+  'plans.links.remove': 'Remove this link',
+  'plans.links.addedBy': '{kind} · added by {author}',
 
   // The toolbar over a selection in a plan's spec: the kind of block, the marks, a link,
   // and the one way to comment on a passage.

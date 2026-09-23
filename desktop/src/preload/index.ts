@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AvatarSourceResult, AvatarWriteResult } from '../avatar'
 import type { UsernameCheckResult, UsernameSaveResult } from '../username'
-import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, PlanCommentsRead, PlanDetail, PlanOverview, PlanSpecUpdate, PlanSpecUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
+import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCommentsRead, PlanLinksRead, PlanDetail, PlanOverview, PlanSpecUpdate, PlanSpecUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -840,6 +840,19 @@ const plansApi = {
     // your own comment never takes a colleague's answer with it.
     remove: (id: string): Promise<boolean> =>
       ipcRenderer.invoke('plans:comments:delete', id),
+  },
+  // The external links pinned to a plan — Figma, Notion, a Claude artifact. Rows of their
+  // own in `plan_links`, never part of the spec. The same contract as `comments`: the
+  // policies decide who may do what, a refused write answers `false`, and every write is
+  // followed by a refetch (`usePlanLinks`).
+  links: {
+    list: (sessionId: string): Promise<PlanLinksRead> =>
+      ipcRenderer.invoke('plans:links:list', sessionId),
+    // http(s) only; the handler and the table both refuse anything else.
+    create: (input: NewPlanLink): Promise<boolean> =>
+      ipcRenderer.invoke('plans:links:create', input),
+    remove: (id: string): Promise<boolean> =>
+      ipcRenderer.invoke('plans:links:delete', id),
   },
   // Save a spec edited in the app — mine or a colleague's, when the plan is on a
   // repository our organization shares. The cloud row is written first, and this

@@ -175,3 +175,150 @@ export const VSCode: IconComponent = ({ className, style }) => {
   )
 }
 
+
+/**
+ * Figma's mark, in its own five colours — the brand IS the colours, the way Jira's blue is.
+ * On its own 200 × 300 grid, which is the logo's proportion: a caller sizing it square gets
+ * it centred with room either side, as `preserveAspectRatio`'s default does.
+ */
+export const Figma: IconComponent = ({ className, style }) => (
+  <svg viewBox="0 0 200 300" className={className} style={style} aria-hidden="true">
+      <path fill="#0acf83" d="M50 300c27.6 0 50-22.4 50-50v-50H50c-27.6 0-50 22.4-50 50s22.4 50 50 50z" />
+      <path fill="#a259ff" d="M0 150c0-27.6 22.4-50 50-50h50v100H50c-27.6 0-50-22.4-50-50z" />
+      <path fill="#f24e1e" d="M0 50C0 22.4 22.4 0 50 0h50v100H50C22.4 100 0 77.6 0 50z" />
+      <path fill="#ff7262" d="M100 0h50c27.6 0 50 22.4 50 50s-22.4 50-50 50h-50V0z" />
+      <path fill="#1abcfe" d="M200 150c0 27.6-22.4 50-50 50s-50-22.4-50-50 22.4-50 50-50 50 22.4 50 50z" />
+  </svg>
+)
+
+/**
+ * Notion's mark: the black N on its white page, both halves drawn — on the app's dark
+ * ground the page is what makes it read as Notion rather than as a black square.
+ */
+export const Notion: IconComponent = ({ className, style }) => (
+  <svg viewBox="0 0 100 100" fill="none" className={className} style={style} aria-hidden="true">
+      <path d="M6.017 4.313l55.333 -4.087c6.797 -0.583 8.543 -0.19 12.817 2.917l17.663 12.443c2.913 2.14 3.883 2.723 3.883 5.053v68.243c0 4.277 -1.553 6.807 -6.99 7.193L24.467 99.967c-4.08 0.193 -6.023 -0.39 -8.16 -3.113L3.3 79.94c-2.333 -3.113 -3.3 -5.443 -3.3 -8.167V11.113c0 -3.497 1.553 -6.413 6.017 -6.8z" fill="#fff" />
+      <path fillRule="evenodd" clipRule="evenodd" d="M61.35 0.227l-55.333 4.087C1.553 4.7 0 7.617 0 11.113v60.66c0 2.723 0.967 5.053 3.3 8.167l13.007 16.913c2.137 2.723 4.08 3.307 8.16 3.113l64.257 -3.89c5.433 -0.387 6.99 -2.917 6.99 -7.193V20.64c0 -2.21 -0.873 -2.847 -3.443 -4.733L74.167 3.143c-4.273 -3.107 -6.02 -3.5 -12.817 -2.917zM25.92 19.523c-5.247 0.353 -6.437 0.433 -9.417 -1.99L8.927 11.507c-0.77 -0.78 -0.383 -1.753 1.557 -1.947l53.193 -3.887c4.467 -0.39 6.793 1.167 8.54 2.527l9.123 6.61c0.39 0.197 1.36 1.36 0.193 1.36l-54.933 3.307 -0.68 0.047zM19.803 88.3V30.367c0 -2.53 0.777 -3.697 3.103 -3.893L86 22.78c2.14 -0.193 3.107 1.167 3.107 3.693v57.547c0 2.53 -0.39 4.67 -3.883 4.863l-60.377 3.5c-3.493 0.193 -5.043 -0.97 -5.043 -4.083zm59.6 -54.827c0.387 1.75 0 3.5 -1.75 3.7l-2.91 0.577v42.773c-2.527 1.36 -4.853 2.137 -6.797 2.137 -3.107 0 -3.883 -0.973 -6.21 -3.887l-19.03 -29.94v28.967l6.02 1.363s0 3.5 -4.857 3.5l-13.39 0.777c-0.39 -0.78 0 -2.723 1.357 -3.11l3.497 -0.97v-38.3L30.48 40.667c-0.39 -1.75 0.58 -4.277 3.3 -4.473l14.367 -0.967 19.8 30.327v-26.83l-5.047 -0.58c-0.39 -2.143 1.163 -3.7 3.103 -3.89l13.4 -0.78z" fill="#000" />
+  </svg>
+)
+
+/** Google Docs's mark, in its own colours, from the product's own 2026 icon. */
+export const GoogleDocs: IconComponent = ({ className, style }) => {
+  const uid = useId()
+  return (
+    <svg viewBox="0 0 800 1100.04" fill="none" className={className} style={style} aria-hidden="true">
+      <mask id={`${uid}-a`} maskUnits="userSpaceOnUse" x="32" y="8" width="128" height="176">
+        <path d="M130.334 184H61.6c-8.9435 0-13.4152 0-16.9625-1.404a20 20 0 0 1-11.233-11.234C32 167.815 32 163.343 32 154.4V37.6c0-8.9435 0-13.4152 1.4045-16.9625a20 20 0 0 1 11.233-11.233C48.1848 8 52.6565 8 61.6 8H100l54.793 54.7933v.0001c1.661 1.6609 2.492 2.4914 3.13 3.4305a11.99 11.99 0 0 1 1.862 4.5011c.212 1.1154.212 2.3014.21 4.6735-.035 48.9185-.057 49.4005-.058 78.9675 0 8.966 0 13.45-1.405 16.997a20 20 0 0 1-11.233 11.233C143.752 184 139.279 184 130.334 184" fill="#fff" />
+      </mask>
+      <g mask={`url(#${uid}-a)`} transform="matrix(6.2502276,0,0,6.2502276,-200.00728,-50.001821)">
+        <path d="M159.94 184H31.9999V8h68l59.9991 60z" fill="#3186ff" />
+        <g filter={`url(#${uid}-b)`}>
+          <path d="M43 192h106V20H43Z" fill={`url(#${uid}-c)`} />
+        </g>
+      </g>
+      <path d="M768.7468 343.7319c-15.6631-11.7554-35.1263-18.72-56.2208-18.72H505.0183c-44.1829 0-80.003-35.8189-80.003-80.0017V0Z" fill="#76bbff" />
+      <rect x="200.0135" y="662.5241" width="400.0146" height="75.0027" rx="37.5014" fill="#ffffff" />
+      <rect x="200.0135" y="843.7807" width="300.0109" height="75.0027" rx="37.5014" fill="#ffffff" />
+      <defs>
+        <linearGradient id={`${uid}-c`} x1="96" y1="59.2839" x2="54.6124" y2="171.338" gradientUnits="userSpaceOnUse">
+          <stop offset=".33" stopColor="#3186FF" />
+          <stop offset="1" stopColor="#A9A8FF" />
+        </linearGradient>
+        <filter id={`${uid}-b`} x="31" y="8" width="130" height="196" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
+          <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
+          <feGaussianBlur stdDeviation="6" result="effect1_foregroundBlur_37242_8762" />
+        </filter>
+      </defs>
+    </svg>
+  )
+}
+
+/** Google Slides's mark, in its own colours, from the product's own 2026 icon. */
+export const GoogleSlides: IconComponent = ({ className, style }) => {
+  const uid = useId()
+  return (
+    <svg viewBox="0 0 800 771.41786" fill="none" className={className} style={style} aria-hidden="true">
+      <path d="M 2.8142856,230.08686 C -9.0571427,157.41067 40.233331,88.872583 112.90952,77.001154 L 573.49996,1.763064 C 646.17618,-10.103602 714.71423,39.186872 726.5857,111.8583 l 70.15238,429.47139 C 808.6095,614.00586 759.31902,682.54396 686.64284,694.41538 L 226.05237,769.65349 C 153.37618,781.52491 84.838092,732.23444 72.966664,659.55826 Z" fill={`url(#${uid}-a)`} />
+      <path d="M 0,221.90591 C 0,179.3202 0,158.02496 6.690476,141.13448 A 95.23809,95.23809 0 0 1 60.180949,87.644012 c 16.890476,-6.690477 38.18095,-6.690477 80.771431,-6.690477 H 659.0476 c 42.5857,0 63.88093,0 80.77142,6.685715 a 95.23809,95.23809 0 0 1 53.49522,53.49523 c 6.68573,16.89048 6.68573,38.18572 6.68573,80.77143 v 327.61902 c 0,42.5857 0,63.88093 -6.68573,80.77142 a 95.23809,95.23809 0 0 1 -53.49522,53.49522 c -16.89049,6.68573 -38.18572,6.68573 -80.77142,6.68573 H 140.95238 c -42.585719,0 -63.880955,0 -80.776193,-6.68573 A 95.23809,95.23809 0 0 1 6.690476,630.29635 C 0,613.40586 0,592.11063 0,549.52493 Z" fill={`url(#${uid}-b)`} />
+      <mask id={`${uid}-e`} width="168" height="128" x="12" y="32" maskUnits="userSpaceOnUse">
+        <path fill="#fec700" d="m 12,61.6 c 0,-8.943 0,-13.415 1.405,-16.962 A 20,20 0 0 1 24.638,33.405 C 28.185,32 32.656,32 41.6,32 h 108.8 c 8.943,0 13.415,0 16.962,1.404 a 20,20 0 0 1 11.234,11.234 C 180,48.185 180,52.657 180,61.6 v 68.8 c 0,8.943 0,13.415 -1.404,16.962 a 20,20 0 0 1 -11.234,11.234 C 163.815,160 159.343,160 150.4,160 H 41.6 c -8.943,0 -13.415,0 -16.963,-1.404 A 20,20 0 0 1 13.405,147.362 C 12,143.815 12,139.343 12,130.4 Z" />
+      </mask>
+      <g filter={`url(#${uid}-c)`} mask={`url(#${uid}-e)`} transform="matrix(4.7619047,0,0,4.7619047,-57.142854,-71.427409)">
+        <path fill="#ffbe00" d="M 33.74,191.516 178.136,169.936 153.304,3.781 8.907,25.361 Z" />
+        <path d="M 33.74,191.516 178.136,169.936 153.304,3.781 8.907,25.361 Z" fill={`url(#${uid}-f)`} />
+      </g>
+      <path fill="#ffffff" fillRule="evenodd" d="m 647.61903,204.76305 a 28.571428,28.571428 0 0 1 28.57144,28.57143 V 538.09637 A 28.571428,28.571428 0 0 1 647.61903,566.6678 H 152.38094 l -1.47142,-0.0381 a 28.571428,28.571428 0 0 1 -27.1,-28.53334 V 233.33448 a 28.571428,28.571428 0 0 1 27.1,-28.53333 l 1.47142,-0.0381 z M 180.95237,509.52493 H 619.0476 V 261.90591 H 180.95237 Z" clipRule="evenodd" />
+      <defs>
+        <linearGradient id={`${uid}-a`} x1="84.07" x2="157.2" y1="23.27" y2="160.82001" gradientUnits="userSpaceOnUse" gradientTransform="matrix(4.7619048,0,0,4.7619048,-57.142859,-71.427414)">
+          <stop offset=".2" stopColor="#ffdb0f" />
+          <stop offset=".67" stopColor="#ffbe00" />
+          <stop offset=".91" stopColor="#ffa8e3" />
+        </linearGradient>
+        <linearGradient id={`${uid}-b`} x1="96" x2="96" y1="32" y2="160" gradientUnits="userSpaceOnUse" gradientTransform="matrix(4.7619048,0,0,4.7619048,-57.142859,-71.427414)">
+          <stop stopColor="#ffbe00" />
+          <stop offset="1" stopColor="#fec700" />
+        </linearGradient>
+        <linearGradient id={`${uid}-f`} x1="108.52" x2="83.959999" y1="168.16" y2="25.27" gradientUnits="userSpaceOnUse">
+          <stop offset=".07" stopColor="#fff549" />
+          <stop offset=".78" stopColor="#ffbe00" stopOpacity="0" />
+        </linearGradient>
+        <filter id={`${uid}-c`} width="193.23" height="211.73" x="-3.0899999" y="-8.2200003" colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse">
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
+          <feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape" mode="normal" />
+          <feGaussianBlur result="effect1_foregroundBlur_37552_9023" stdDeviation="6" />
+        </filter>
+      </defs>
+    </svg>
+  )
+}
+
+/** Google Sheets' mark, in its own colours, from the product's own 2026 icon. */
+export const GoogleSheets: IconComponent = ({ className, style }) => {
+  const uid = useId()
+  return (
+    <svg viewBox="0 0 800 581.8182" fill="none" className={className} style={style} aria-hidden="true">
+      <path fill="#009954" d="M0 193.6364c0-40.65 0-60.9773 6.3818-77.1a90.91 90.91 0 0 1 51.0637-51.0591c16.1227-6.3864 36.4454-6.3864 77.1-6.3864H410.909c40.65 0 60.9773 0 77.1 6.3818a90.91 90.91 0 0 1 51.0636 51.0637c6.3818 16.1227 6.3818 36.4454 6.3818 77.1v194.5454c0 40.65 0 60.9773-6.3818 77.1a90.91 90.91 0 0 1-51.0636 51.0637c-16.1227 6.3818-36.45 6.3818-77.1 6.3818H134.5454c-40.65 0-60.9772 0-77.1045-6.3818a90.91 90.91 0 0 1-51.059-51.0637C0 449.1591 0 428.8318 0 388.1818Z" />
+      <mask id={`${uid}-a`} width="160" height="128" x="24" y="32" maskUnits="userSpaceOnUse">
+        <rect width="160" height="128" x="24" y="32" fill="#fff" rx="20" />
+      </mask>
+      <g mask={`url(#${uid}-a)`} transform="matrix(4.5454545,0,0,4.5454545,-36.363636,-145.45454)">
+        <path fill="#0ebc5f" d="M24 32h160v128H24Z" />
+        <g filter={`url(#${uid}-b)`}>
+          <rect width="144" height="102" fill={`url(#${uid}-c)`} rx="25.6" transform="matrix(1,0,0,-1,8,147)" x="0" y="0" />
+        </g>
+      </g>
+      <path stroke="#ffffff" strokeLinecap="round" strokeWidth="54.5455" d="M327.2727 404.5455H709.091m-90.909 86.3636v-290.909" />
+      <defs>
+        <linearGradient id={`${uid}-c`} x1="122.24" x2="20.76" y1="43.31" y2="43.31" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#0ebc5f" />
+          <stop offset=".95" stopColor="#78c9ff" />
+        </linearGradient>
+        <filter id={`${uid}-b`} width="168" height="126" x="-4" y="33" colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse">
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
+          <feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape" mode="normal" />
+          <feGaussianBlur result="effect1_foregroundBlur_37435_8174" stdDeviation="6" />
+        </filter>
+      </defs>
+    </svg>
+  )
+}
+
+/** Miro's mark, in its own colours, from the product's own 2026 icon. */
+export const Miro: IconComponent = ({ className, style }) => {
+  return (
+    <svg viewBox="0 0 512 512" className={className} style={style} aria-hidden="true">
+      <g fillRule="nonzero">
+        <path d="M6 131C6 61.965 61.965 6 131 6h249.998c69.035 0 125 55.965 125 125v249.998c0 69.035-55.965 125-125 125H131c-69.035 0-125-55.965-125-125V131z" fill="#fd3" />
+        <path d="M338.41 101.312h-45.388l37.824 66.457-83.212-66.457h-45.389l41.607 81.226-86.995-81.226h-45.389l45.389 103.392-45.389 206.763h45.389l86.995-221.534-41.607 221.534h45.389l83.212-236.304-37.824 236.304h45.389l83.212-258.47-83.212-51.685z" />
+      </g>
+    </svg>
+  )
+}
+
+/** Loom's mark: its violet starburst, in its own colour. One path — nothing to scope. */
+export const Loom: IconComponent = ({ className, style }) => (
+  <svg viewBox="0 0 16 16" fill="none" className={className} style={style} aria-hidden="true">
+    <path fill="#625DF5" d="M15 7.222h-4.094l3.546-2.047-.779-1.35-3.545 2.048 2.046-3.546-1.349-.779L8.78 5.093V1H7.22v4.094L5.174 1.548l-1.348.779 2.046 3.545-3.545-2.046-.779 1.348 3.546 2.047H1v1.557h4.093l-3.545 2.047.779 1.35 3.545-2.047-2.047 3.545 1.35.779 2.046-3.546V15h1.557v-4.094l2.047 3.546 1.349-.779-2.047-3.546 3.545 2.047.779-1.349-3.545-2.046h4.093L15 7.222zm-7 2.896a2.126 2.126 0 110-4.252 2.126 2.126 0 010 4.252z" />
+  </svg>
+)
