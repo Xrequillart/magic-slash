@@ -337,15 +337,18 @@ const NO_LINE_COMMENTS: ReadonlyMap<string, string[]> = new Map()
 const NO_RANGES: Range[] = []
 
 /**
- * Every run of whitespace as one space, the ends dropped.
+ * The text with no whitespace at all.
  *
- * Used for ONE comparison — is this passage the whole of its line — and it has to collapse,
- * because the two sides of that comparison are produced differently: `Range.toString()` runs
- * two blocks together where the document's own walk puts a break between them. Neither
- * difference says anything about which words were picked.
+ * Used for ONE comparison — is this passage the whole of its line — and it has to drop the
+ * whitespace rather than collapse it, because the two sides of that comparison are produced
+ * differently: `Range.toString()` runs two blocks together with NOTHING between them where
+ * the document's own walk puts a break. Collapsed to one space, a line made of several
+ * blocks — a framing decision's question, decision and reason — read `a?b` against `a? b`,
+ * and every comment on the whole of it was taken for a fragment: its quote echoed, its words
+ * washed. Neither difference says anything about which words were picked.
  */
 function squash(text: string): string {
-  return text.replace(/\s+/g, ' ').trim()
+  return text.replace(/\s+/g, '')
 }
 
 /** The composer's host key, in the same keyspace as the comment ids. See CodeView's own. */
