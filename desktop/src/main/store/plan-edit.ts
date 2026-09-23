@@ -1,10 +1,13 @@
 import * as fs from 'fs'
-import type { PlanSpecFileSkip, PlanSpecUpdate, PlanSpecUpdateResult } from '../../types'
+import * as path from 'path'
+import type { PlanLocalSpec, PlanSpecFileSkip, PlanSpecUpdate, PlanSpecUpdateResult } from '../../types'
 import { readAgents } from '../config/agents'
+import { readConfig } from '../config/config'
+import { expandPath } from '../config/validation'
 import { loadSession } from '../cloud/session-store'
 import { readPlanSessionForEdit, updatePlanSpec } from '../cloud/plans'
 import { ideaFrom, specKeyFor } from './plan-sync'
-import { checkSpecReplaceable, MAX_SPEC_BYTES, writeSpecFile, type SpecReplaceGuard, type SpecWriteSkip } from './spec-file'
+import { checkSpecReplaceable, isSpecPath, MAX_SPEC_BYTES, writeSpecFile, type SpecReplaceGuard, type SpecWriteSkip } from './spec-file'
 
 /**
  * Saving a spec edited in the app — the cloud row first, then this machine's file.
@@ -128,4 +131,51 @@ export async function saveEditedPlanSpec(input: PlanSpecUpdate): Promise<PlanSpe
   // `syncedAt` is set whenever the precheck passed, which it did to get here.
   if (syncedAt) stampFile(written.path, syncedAt)
   return { ...done, fileWritten: true }
+}
+
+/**
+ * The spec file behind a plan, on this machine, for launching `/magic:plan-change` on it.
+ *
+ * THE SAME TWO QUESTIONS AS THE EDITOR'S SAVE, asked off the row and never off the
+ * renderer: whose plan it is, and which file its key hashes back to. The renderer sends an
+ * id; the path it gets back is one this side found on disk.
+ *
+ * TWO PLACES TO LOOK, in order. The agents first, as `localSpecPathFor` does for the save:
+ * the path the planner reported is the exact string the key was hashed from. Then, because
+ * a planner is archived as soon as its plan is filed and its metadata goes with it, the
+ * path `/magic:plan` would have written in the plan's own repository — its configured
+ * folder, `.magic/spec-<slug>.md`. That second path is a GUESS until it hashes to the
+ * row's key, which is what makes it the same file rather than a namesake: a key match is
+ * the only proof the cloud holds, since it never stores the path itself.
+ *
+ * `repoPath` IS THE CONFIGURED ROOT, the folder the new agent opens in: the skill checks
+ * the spec lives under one of the app's repositories, and the agent's own repositories are
+ * derived from where it opens. A spec whose folder is no longer a configured repository has
+ * nowhere to be reworked from, and reads as `no_file`.
+ */
+export async function resolveLocalSpecPath(id: string): Promise<PlanLocalSpec> {
+  const read = await readPlanSessionForEdit(id)
+  if (read.failed) return { ok: false, reason: 'failed' }
+  // Not visible any more: nothing on this machine can be proven to be its file.
+  if (!read.session) return { ok: false, reason: 'no_file' }
+  const session = read.session
+  if (session.ownerId !== loadSession()?.user?.id) return { ok: false, reason: 'not_owner' }
+
+  const roots = Object.values(readConfig().repositories ?? {})
+    .filter((repo) => !repo.needsLocalPath && !!repo.path)
+    .map((repo) => ({ id: repo.id, root: path.resolve(expandPath(repo.path)) }))
+  const planRoot = roots.find((repo) => repo.id && repo.id === session.repoId)?.root
+
+  // The agent's path already hashes to the key, but its repository is only known from where
+  // it sits; the guessed path is the other way round.
+  const candidates: { path: string; repoPath: string }[] = []
+  const agentPath = localSpecPathFor(session.specKey)
+  if (agentPath && isSpecPath(agentPath)) {
+    const repoPath = path.dirname(path.dirname(path.resolve(agentPath)))
+    if (roots.some((repo) => repo.root === repoPath)) candidates.push({ path: agentPath, repoPath })
+  }
+  if (planRoot) candidates.push({ path: path.join(planRoot, '.magic', `spec-${session.slug}.md`), repoPath: planRoot })
+
+  const found = candidates.find((c) => specKeyFor(c.path) === session.specKey && fs.existsSync(c.path))
+  return found ? { ok: true, ...found } : { ok: false, reason: 'no_file' }
 }

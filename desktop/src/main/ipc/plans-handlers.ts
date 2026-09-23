@@ -1,10 +1,10 @@
 import { ipcMain } from 'electron'
-import { isPlanCommentAnchor, type NewPlanComment, type PlanCommentsRead, type PlanDetail, type PlanLinksRead, type PlanOverview, type PlanSpecUpdateResult, type PlanTicketOrigin } from '../../types'
+import { isPlanCommentAnchor, type NewPlanComment, type PlanCommentsRead, type PlanDetail, type PlanLinksRead, type PlanLocalSpec, type PlanOverview, type PlanSpecUpdateResult, type PlanTicketOrigin } from '../../types'
 import { findPlanForTicket, listPlanDetail, listPlanSessions } from '../cloud/plans'
 import {
   createPlanComment, deletePlanComment, listPlanComments, updatePlanComment,
 } from '../cloud/planComments'
-import { saveEditedPlanSpec } from '../store/plan-edit'
+import { resolveLocalSpecPath, saveEditedPlanSpec } from '../store/plan-edit'
 import { createPlanLink, deletePlanLink, listPlanLinks } from '../cloud/planLinks'
 
 /**
@@ -238,5 +238,16 @@ export function setupPlansHandlers(): void {
     if (typeof spec !== 'string' || spec.trim() === '') return { status: 'failed' }
     if (typeof expectedUpdatedAt !== 'string' || expectedUpdatedAt === '') return { status: 'failed' }
     return saveEditedPlanSpec({ id, spec, expectedUpdatedAt })
+  })
+
+  /**
+   * Where this plan's spec file is on this machine, for the page's "Rework the plan"
+   * button. A READ, and the only one here that answers with a path: the renderer never
+   * gets to name one, it sends the id and main finds the file (`resolveLocalSpecPath`).
+   * A malformed id is `no_file`, the answer a plan with nothing on this disk gets.
+   */
+  ipcMain.handle('plans:localSpec', async (_e, id: unknown): Promise<PlanLocalSpec> => {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) return { ok: false, reason: 'no_file' }
+    return resolveLocalSpecPath(id)
   })
 }

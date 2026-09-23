@@ -13,8 +13,9 @@ import type { Agent, PlanSession } from '../../types'
  * matters is what ends up on disk. Who may write the ROW is RLS's to prove, in
  * `supabase/tests/plan_sessions.test.sql`.
  */
+const config = vi.hoisted(() => ({ repositories: {} as Record<string, unknown> }))
 vi.mock('../config/config', () => ({
-  readConfig: () => ({}),
+  readConfig: () => config,
   CONFIG_DIR: `${process.env.TMPDIR ?? '/tmp'}/magic-slash-plan-edit-test-config`,
 }))
 const agents = vi.hoisted(() => ({ list: [] as Agent[] }))
@@ -32,13 +33,14 @@ vi.mock('../cloud/plans', () => ({
   updatePlanSpec: (...args: unknown[]) => cloud.update(...args),
 }))
 
-import { saveEditedPlanSpec } from './plan-edit'
+import { resolveLocalSpecPath, saveEditedPlanSpec } from './plan-edit'
 import { specKeyFor } from './plan-sync'
 import { MAX_SPEC_BYTES } from './spec-file'
 
 const TMP = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'magic-slash-plan-edit-')))
 const SPEC = path.join(TMP, '.magic', 'spec-edit-20260922-101500.md')
 const ID = '11111111-1111-4111-8111-111111111111'
+const REPO_ID = '22222222-2222-4222-8222-222222222222'
 /** Microseconds, as PostgREST serialises them: the value must survive untouched. */
 const UPDATED_AT = '2026-09-22T10:00:00.123456+00:00'
 const LOADED = '# Spec\n\n## Idea\n\nBefore.\n'
@@ -53,6 +55,7 @@ function session(overrides: Partial<PlanSession> = {}): PlanSession {
     spec: LOADED,
     specOversize: false,
     status: 'planning',
+    repoId: REPO_ID,
     specSyncedAt: '2026-09-22T09:00:00.000000+00:00',
     updatedAt: UPDATED_AT,
     ...overrides,
@@ -68,6 +71,7 @@ beforeEach(() => {
   const later = new Date('2026-09-22T09:30:00Z')
   fs.utimesSync(SPEC, later, later)
   agents.list = [{ id: 'agent-1', metadata: { specPath: SPEC } } as unknown as Agent]
+  config.repositories = { repo: { id: REPO_ID, path: TMP, keywords: [] } }
   who.uid = 'owner-uid'
   cloud.read.mockReset().mockResolvedValue({ session: session(), failed: false })
   cloud.update.mockReset().mockResolvedValue({ status: 'saved', updatedAt: '2026-09-22T10:05:00.654321+00:00' })
@@ -169,5 +173,48 @@ describe('saveEditedPlanSpec — nothing is overwritten', () => {
   it('refuses a spec past the uploader ceiling before reaching the cloud', async () => {
     expect(await save('x'.repeat(MAX_SPEC_BYTES + 1))).toEqual({ status: 'failed' })
     expect(cloud.read).not.toHaveBeenCalled()
+  })
+})
+
+describe('resolveLocalSpecPath: where /magic:plan-change can be launched on this plan', () => {
+  it('finds the file through the agent that planned it, with its repository root', async () => {
+    expect(await resolveLocalSpecPath(ID)).toEqual({ ok: true, path: SPEC, repoPath: TMP })
+  })
+
+  it('finds it in the plan repository once the planner is archived', async () => {
+    agents.list = []
+    expect(await resolveLocalSpecPath(ID)).toEqual({ ok: true, path: SPEC, repoPath: TMP })
+  })
+
+  it('refuses a namesake whose path does not hash to the plan key', async () => {
+    agents.list = []
+    // Same slug, another folder: the file exists, but it is not the one that was uploaded.
+    const other = path.join(TMP, 'other')
+    fs.mkdirSync(path.join(other, '.magic'), { recursive: true })
+    fs.writeFileSync(path.join(other, '.magic', 'spec-edit-20260922-101500.md'), LOADED)
+    config.repositories = { repo: { id: REPO_ID, path: other, keywords: [] } }
+    expect(await resolveLocalSpecPath(ID)).toEqual({ ok: false, reason: 'no_file' })
+  })
+
+  it('answers no_file when the file is gone from disk', async () => {
+    fs.rmSync(SPEC)
+    expect(await resolveLocalSpecPath(ID)).toEqual({ ok: false, reason: 'no_file' })
+  })
+
+  it('answers no_file when the repository is no longer bound to a folder here', async () => {
+    config.repositories = { repo: { id: REPO_ID, path: '', needsLocalPath: true, keywords: [] } }
+    expect(await resolveLocalSpecPath(ID)).toEqual({ ok: false, reason: 'no_file' })
+  })
+
+  it('answers not_owner on a colleague plan, without looking for a file', async () => {
+    who.uid = 'colleague-uid'
+    expect(await resolveLocalSpecPath(ID)).toEqual({ ok: false, reason: 'not_owner' })
+  })
+
+  it('answers failed when the row could not be read, and no_file when it is not visible', async () => {
+    cloud.read.mockResolvedValueOnce({ session: null, failed: true })
+    expect(await resolveLocalSpecPath(ID)).toEqual({ ok: false, reason: 'failed' })
+    cloud.read.mockResolvedValueOnce({ session: null, failed: false })
+    expect(await resolveLocalSpecPath(ID)).toEqual({ ok: false, reason: 'no_file' })
   })
 })

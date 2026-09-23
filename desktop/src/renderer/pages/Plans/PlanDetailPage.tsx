@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { AlertTriangle, ArrowLeft, CloudOff, FileWarning, RotateCcw } from '@ds/desktop/icons'
-import type { PlanComment, PlanDetail, PlanSpecUpdateResult, PlanTicketRead, PlanTicketStates } from '../../../types'
-import { useT } from '../../i18n'
+import { AlertTriangle, ArrowLeft, CloudOff, FileWarning, NotebookPen, RotateCcw } from '@ds/desktop/icons'
+import type { PlanComment, PlanDetail, PlanLocalSpec, PlanSpecUpdateResult, PlanTicketRead, PlanTicketStates } from '../../../types'
+import { useT, type MessageKey } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
 import MarkdownView from '../../components/file-preview/MarkdownView'
 import MarkdownCommentLayer, { type CommentSource } from '../../components/file-preview/MarkdownCommentLayer'
@@ -27,6 +27,8 @@ import {
   buildPlanCommentThreads, canEditPlanComment, isOrphanedPlanCommentThread,
 } from '../../utils/planComments'
 import { taskSelectionFor } from '../../utils/taskSelection'
+import { planChangePrompt } from '../../utils/planChangePrompt'
+import type { NewTerminalDetail } from '../Terminals'
 import {
   EMPTY_BLOCK, applySpecBlock, caretAfterChange, mergeSpecBlocks, openSpecBlock, retypeSpecBlock, specBlockTypeOf, splitSpecBlock,
   type SpecBlock, type SpecBlockType,
@@ -106,6 +108,13 @@ const AUTOSAVE_MS = 5000
 /** The pause that ends one step of typing for Cmd+Z, and how many steps are kept. */
 const HISTORY_GROUP_MS = 1000
 const HISTORY_LIMIT = 200
+
+/** The sentence a disabled "Rework the plan" button owes the reader, per reason. */
+const CHANGE_BLOCKED_KEY: Record<Extract<PlanLocalSpec, { ok: false }>['reason'], MessageKey> = {
+  not_owner: 'plans.detail.changeNotOwner',
+  no_file: 'plans.detail.changeNoFile',
+  failed: 'plans.detail.changeFailed',
+}
 
 /** The block holding the caret: its place in the source, and the markdown written in it. */
 type OpenBlock = SpecBlock & {
@@ -1024,6 +1033,46 @@ export function PlanDetailPage({
   const spec = session?.spec?.trim() ? session.spec : undefined
 
   /**
+   * Where `/magic:plan-change` could be run on this plan: the spec file on THIS machine and
+   * the repository it lives in, or why there is none. `null` while it is being asked.
+   *
+   * ASKED OF MAIN, BY ID. The row carries a hash of the spec's path and never the path
+   * itself (it is org-readable, and a path carries a home directory), so only the side
+   * that can hash the files on this disk can answer. Keyed on the session the read came
+   * back with, like the comments: no session is no plan to rework.
+   */
+  const [localSpec, setLocalSpec] = useState<PlanLocalSpec | null>(null)
+  const sessionId = session?.id
+  useEffect(() => {
+    setLocalSpec(null)
+    if (!sessionId) return
+    let cancelled = false
+    window.electronAPI.plans.localSpec(sessionId)
+      .then((next) => { if (!cancelled) setLocalSpec(next) })
+      .catch(() => { if (!cancelled) setLocalSpec({ ok: false, reason: 'failed' }) })
+    return () => { cancelled = true }
+  }, [sessionId])
+  /** The sentence a disabled button owes the reader, once the answer is in. */
+  const changeBlocked = localSpec && !localSpec.ok ? t(CHANGE_BLOCKED_KEY[localSpec.reason]) : undefined
+  /**
+   * Open a new agent on the spec, the command typed and NOT sent: the change request is
+   * the reader's to write, so the draft stops at the path and leaves them the caret. Asked
+   * for through `new-terminal`, as every surface does, so the agents page keeps every guard
+   * on creating one. It opens in the repository root main resolved, which is what the
+   * skill checks the spec against.
+   */
+  const reworkPlan = () => {
+    if (!localSpec?.ok) return
+    const detail: NewTerminalDetail = {
+      cwd: localSpec.repoPath,
+      initialPrompt: planChangePrompt(localSpec.path),
+      promptMode: 'draft',
+      metadata: { title: planLabel(card) },
+    }
+    window.dispatchEvent(new CustomEvent<NewTerminalDetail>('new-terminal', { detail }))
+  }
+
+  /**
    * Whether this spec can be opened in the editor at all.
    *
    * A SPEC TO EDIT: there is markdown on the row. A spec not written yet is the agent's
@@ -1461,7 +1510,23 @@ export function PlanDetailPage({
           <PlanIdBadge number={card.number} size="lg" />
           <h1 className="min-w-0 text-xl font-semibold text-ink break-words">{planLabel(card)}</h1>
         </div>
-        {statusChip}
+        {/* The one action on the plan AS A WHOLE, beside its status: reworking it opens an
+            agent, it edits nothing here. Only once the read has a session, since there is
+            no plan to rework before that. Disabled for a reason the reader cannot see, so
+            the reason is the tooltip, and said again under the heading. */}
+        <div className="flex shrink-0 items-center gap-3">
+          {session && (
+            <Button
+              icon={NotebookPen}
+              onClick={reworkPlan}
+              disabled={!localSpec?.ok}
+              title={changeBlocked ?? t('plans.detail.changeHint')}
+            >
+              {t('plans.detail.change')}
+            </Button>
+          )}
+          {statusChip}
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-text-secondary">
@@ -1486,6 +1551,11 @@ export function PlanDetailPage({
           })}</span>
         )}
       </div>
+      {/* Said in place, as the ticket page says a repository with no local folder: the
+          tooltip alone is invisible until someone hovers a button that does nothing. */}
+      {changeBlocked && (
+        <Text tone="secondary" className="mt-2 block opacity-70">{changeBlocked}</Text>
+      )}
 
       {detail === null ? (
         <p className="py-10 text-center text-sm text-text-secondary">{t('common.loading')}</p>
