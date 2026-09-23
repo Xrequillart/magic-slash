@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { AlertTriangle, ArrowLeft, CloudOff, FileText, FileWarning, History, NotebookPen, RotateCcw } from '@ds/desktop/icons'
+import { AlertTriangle, ArrowLeft, CloudOff, FileText, FileWarning, History, Lightbulb, NotebookPen, RotateCcw } from '@ds/desktop/icons'
 import { PLAN_STATUSES, type PlanComment, type PlanDetail, type PlanLocalSpec, type PlanSpecUpdateResult, type PlanStatus, type PlanStatusUpdateResult, type PlanTicketRead, type PlanTicketStates } from '../../../types'
 import { useT, type MessageKey } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
@@ -198,8 +198,8 @@ function SectionHeading({ children, hint }: { children: string; hint?: string })
 }
 
 /** The history's heading, at module level so the memoised section is not re-drawn on every keystroke. */
-/** The spec and its history share one place on the page, behind two tabs. */
-type PlanTab = 'spec' | 'history'
+/** The idea, the plan and its history share one place on the page, behind three tabs. */
+type PlanTab = 'idea' | 'spec' | 'history'
 
 /**
  * The spec itself, behind a memo boundary — the same one `pr-comments/PRThread` puts
@@ -555,8 +555,8 @@ export function PlanDetailPage({
   const [attempt, setAttempt] = useState(0)
   const retry = useCallback(() => setAttempt((n) => n + 1), [])
   /**
-   * Which of the spec and its history is on screen. The spec stays MOUNTED behind the
-   * History tab, only hidden: a block being edited and its pending autosave must survive a
+   * Which of the idea, the plan and its history is on screen. The spec stays MOUNTED behind
+   * the other tabs, only hidden: a block being edited and its pending autosave must survive a
    * look at the history, where unmounting would drop both.
    */
   const [tab, setTab] = useState<PlanTab>('spec')
@@ -1657,17 +1657,38 @@ export function PlanDetailPage({
         />
       ) : (
         <>
-          {/* The idea, as a section like the others: its heading above the card, the card in
-              the tickets' and the links' own ground. */}
-          {session.idea && (
+          {/* THE PAGE'S TABS, between the heading and everything under it: the idea the plan
+              came from, the plan itself (its tickets, its links, its spec), and its history.
+              The spec is where a reader lands. */}
+          <TabStrip
+            ariaLabel={t('plans.detail.tabs')}
+            className="mt-6"
+            items={[
+              { key: 'idea', label: t('plans.detail.idea'), icon: Lightbulb },
+              { key: 'spec', label: t('plans.detail.spec'), icon: FileText },
+              { key: 'history', label: t('plans.history.title'), icon: History },
+            ]}
+            activeKey={tab}
+            onSelect={(key) => setTab(key as PlanTab)}
+          />
+
+          {/* The idea: the prompt /magic:plan was started with, as it was given. */}
+          {tab === 'idea' && (
             <>
               <SectionHeading hint={t('plans.detail.ideaHint')}>{t('plans.detail.idea')}</SectionHeading>
-              <div className="px-4 py-3 rounded-xl bg-surface-subtle">
-                <p className="text-sm text-ink/80 whitespace-pre-line">{session.idea}</p>
-              </div>
+              {session.idea ? (
+                <div className="px-4 py-3 rounded-xl bg-surface-subtle">
+                  <p className="text-sm text-ink/80 whitespace-pre-line">{session.idea}</p>
+                </div>
+              ) : (
+                <p className="py-6 text-center text-sm text-text-secondary bg-surface-subtle rounded-xl">
+                  {t('plans.detail.noIdea')}
+                </p>
+              )}
             </>
           )}
 
+          <div hidden={tab !== 'spec'}>
           <SectionHeading>{t('plans.detail.tickets')}</SectionHeading>
           {detail.tickets.length === 0 ? (
             <p className="py-6 text-center text-sm text-text-secondary bg-surface-subtle rounded-xl">
@@ -1694,21 +1715,12 @@ export function PlanDetailPage({
           {/* The heading, with the autosave's state on its right: the one sign that the text
               takes a caret, and then where the writing is. Quiet on purpose — the document
               is the editor, and a status louder than a caption would read as a toolbar. */}
-          <div className="mt-8 mb-3 flex items-center justify-between gap-3">
-            <TabStrip
-              ariaLabel={t('plans.detail.tabs')}
-              items={[
-                { key: 'spec', label: t('plans.detail.spec'), icon: FileText },
-                { key: 'history', label: t('plans.history.title'), icon: History },
-              ]}
-              activeKey={tab}
-              onSelect={(key) => setTab(key as PlanTab)}
-            />
-            {tab === 'spec' && editStatus && (
-              <Text size="xs" tone="secondary" className="opacity-60">{editStatus}</Text>
+          <div className="flex items-end justify-between gap-3">
+            <SectionHeading>{t('plans.detail.spec')}</SectionHeading>
+            {editStatus && (
+              <Text size="xs" tone="secondary" className="mb-3 opacity-60">{editStatus}</Text>
             )}
           </div>
-          <div hidden={tab !== 'spec'}>
           {/* Above the document, where the eye is when a save comes back: each is a fact about
               the save just attempted, and the text is still below it. */}
           {editError === 'conflict' && (
@@ -1819,11 +1831,13 @@ export function PlanDetailPage({
               diff of the revision selected. Mounted only while its tab is open, so it reads
               itself fresh each time it is opened. */}
           {tab === 'history' && (
-            <PlanHistory
-              sessionId={session.id}
-              version={`${session.updatedAt ?? ''}:${linksVersion}`}
-              now={now}
-            />
+            <div className="mt-6">
+              <PlanHistory
+                sessionId={session.id}
+                version={`${session.updatedAt ?? ''}:${linksVersion}`}
+                now={now}
+              />
+            </div>
           )}
         </>
       )}

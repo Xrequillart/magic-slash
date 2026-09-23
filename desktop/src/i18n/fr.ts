@@ -1346,6 +1346,7 @@ export const fr: Record<keyof typeof en, string> = {
     'Il n’existe pas, ou il appartient à un dépôt qu’aucune de vos organisations ne partage.',
   'plans.detail.idea': 'Idée',
   'plans.detail.ideaHint': 'Le prompt initial donné à /magic:plan',
+  'plans.detail.noIdea': 'Aucune idée n’a été enregistrée pour ce plan.',
   'plans.detail.tickets': 'Tickets créés',
   'plans.detail.noTickets': 'Aucun ticket n’a encore été créé depuis ce plan.',
   'plans.detail.noEpic': 'Sans epic',

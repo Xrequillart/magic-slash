@@ -1406,6 +1406,7 @@ export const en = {
   'plans.detail.idea': 'Idea',
   // Beside the Idea heading: what the section is.
   'plans.detail.ideaHint': 'The initial prompt given to /magic:plan',
+  'plans.detail.noIdea': 'No idea was recorded for this plan.',
   'plans.detail.tickets': 'Created tickets',
   'plans.detail.noTickets': 'No ticket has been created from this plan yet.',
   'plans.detail.noEpic': 'No epic',
