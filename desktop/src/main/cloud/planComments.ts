@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { isPlanCommentAnchor, type NewPlanComment, type PlanComment, type PlanCommentAnchor, type PlanCommentsRead } from '../../types'
 import { getAuthedClient } from './auth'
 import { loadSession } from './session-store'
@@ -17,8 +18,8 @@ import { fetchAuthors } from './plans'
  *
  * WHICH IS WHY `author_id` IS SENT AND NOT ASSUMED. `plan_comments_insert` tests
  * `author_id = auth.uid()`, so the column cannot be left to a default and cannot be taken
- * from the renderer either. It comes off the stored session here, which is the same place
- * `listOrgsRead` reads the caller's identity from.
+ * from the renderer either. It comes off the LIVE session, falling back to the stored one
+ * — see `authorOf`, which is where the difference between those two turned out to matter.
  *
  * NO REALTIME. The table is deliberately not published (see the migration's closing note,
  * and issue #298). Every write below is followed by a refetch on the renderer's side —
@@ -149,7 +150,13 @@ export async function listPlanComments(sessionId: string): Promise<PlanCommentsR
     listOrgsRead(),
   ])
 
-  if (read.error || !read.data) return { ...NOTHING, failed: true }
+  if (read.error || !read.data) {
+    // Said out loud, like the three writes below it. A read that comes back refused takes
+    // the whole comment layer off the plan page — the affordance to comment goes with it —
+    // and that is far too large a consequence to arrive with nothing in any log.
+    console.error('[cloud] plan comments read refused:', read.error)
+    return { ...NOTHING, failed: true }
+  }
 
   const rows = read.data as unknown as PlanCommentRow[]
   const truncated = rows.length > COMMENT_LIMIT
@@ -161,12 +168,34 @@ export async function listPlanComments(sessionId: string): Promise<PlanCommentsR
   if (comments.length === 0) return NOTHING
 
   const authorIds = new Set(comments.map((comment) => comment.authorId))
-  const { emailByOwner, avatarByOwner } = await fetchAuthors(orgs.orgs, authorIds)
+  /**
+   * THE NAMES ARE OPTIONAL; THE COMMENTS ARE NOT.
+   *
+   * The closing note below has always said that resolving the authors failing must not be
+   * reported as a failed read — and until this `catch`, the code did not keep that promise.
+   * `fetchAuthors` reaches an RPC per organization and the avatar store after it, and a
+   * rejection from any of them took the whole read down with it: `failed: true`, the plan
+   * page dropping back to plain prose, and no way left to comment on it.
+   *
+   * WORSE, IT COULD ONLY EVER HAPPEN ONCE THERE WAS SOMETHING TO SHOW. The early return
+   * above means this call is not made at all while a plan has no comments — so a plan read
+   * perfectly for as long as it was empty, and broke on the first comment somebody left on
+   * it. A failure mode that appears the moment a feature starts being used is one that will
+   * be reported as "the feature does not work", which is exactly how it was reported.
+   *
+   * Degrading is what the page is already built for: `planAuthor` falls back to a short
+   * form of the uuid, and the avatar to its glyph. A thread with unnamed authors reads; an
+   * error block in place of the spec does not.
+   */
+  const authors = await fetchAuthors(orgs.orgs, authorIds).catch((error) => {
+    console.error('[cloud] plan comment authors unresolved:', error)
+    return { emailByOwner: {}, avatarByOwner: {} }
+  })
 
   return {
     comments,
-    emailByAuthor: emailByOwner,
-    avatarByAuthor: avatarByOwner,
+    emailByAuthor: authors.emailByOwner,
+    avatarByAuthor: authors.avatarByOwner,
     truncated,
     // The org list failing costs every comment its author's name, which `planAuthor`
     // degrades to a short uuid — a page that still reads. It is not a failed READ, and
@@ -218,10 +247,16 @@ type WriteResult = boolean
  */
 export async function createPlanComment(input: NewPlanComment): Promise<WriteResult> {
   const client = await getAuthedClient()
-  if (!client) return false
+  if (!client) {
+    console.error('[cloud] plan comment not written: no authenticated client')
+    return false
+  }
 
-  const authorId = loadSession()?.user?.id
-  if (!authorId) return false
+  const authorId = await authorOf(client)
+  if (!authorId) {
+    console.error('[cloud] plan comment not written: no user id on the session')
+    return false
+  }
 
   const { error } = await client.from('plan_comments').insert({
     session_id: input.sessionId,
@@ -231,7 +266,33 @@ export async function createPlanComment(input: NewPlanComment): Promise<WriteRes
     quote: input.quote,
     body: input.body,
   })
+  if (error) console.error('[cloud] plan comment insert refused:', error)
   return !error
+}
+
+/**
+ * Whose comment this is — THE LIVE SESSION FIRST, the stored one only as a fallback.
+ *
+ * IT WAS THE STORED ONE ALONE, and that was a comment nobody could write. `StoredSession.user`
+ * is OPTIONAL and legitimately absent: `getAuthedClient` explicitly accepts a stored session
+ * with no user on it (`!stored.user || live.session.user?.id === stored.user.id`), so a
+ * machine whose session file was written without one had a perfectly working client, a
+ * perfectly working read, and an insert that returned `false` every single time — reported to
+ * the reader as "this comment could not be saved", forever, with nothing in any log to say
+ * why.
+ *
+ * The live session is the right source besides, and not merely the more reliable one: the
+ * policy tests `author_id = auth.uid()`, which is read off the JWT the client is about to
+ * send. Taking the id from that same session is asking the question the database will ask;
+ * taking it off disk was asking a different one that usually had the same answer.
+ *
+ * NO ROUND TRIP. `auth.getSession()` reads what the SDK already holds — `getAuthedClient`
+ * has just called it — and refreshes only an access token that has aged out. `getUser()`
+ * would be a request to GoTrue per comment.
+ */
+async function authorOf(client: SupabaseClient): Promise<string | undefined> {
+  const { data } = await client.auth.getSession()
+  return data.session?.user?.id ?? loadSession()?.user?.id
 }
 
 /**
@@ -250,6 +311,7 @@ export async function updatePlanComment(id: string, body: string): Promise<Write
   if (!client) return false
 
   const { error } = await client.from('plan_comments').update({ body }).eq('id', id)
+  if (error) console.error('[cloud] plan comment update refused:', error)
   return !error
 }
 
@@ -266,5 +328,6 @@ export async function deletePlanComment(id: string): Promise<WriteResult> {
   if (!client) return false
 
   const { error } = await client.from('plan_comments').delete().eq('id', id)
+  if (error) console.error('[cloud] plan comment delete refused:', error)
   return !error
 }
