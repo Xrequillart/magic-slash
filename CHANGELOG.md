@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.98.1] - 2026-09-23
+
+### Added
+
+- **Plan**: Show each revision's diff inline in the plan history, folded past 30 lines
+- **Plan**: Draw a spec's header, framing decisions and sizing as cards
+- **Plan**: Give /magic:plan-change its own image
+
+### Fixed
+
+- **Desktop**: Recognise a comment on a whole line made of several blocks
+
 ## [0.98.0] - 2026-09-23
 
 ### Added
@@ -3244,6 +3256,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.98.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.1
 [0.98.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.0
 [0.97.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.97.1
 [0.97.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.97.0
