@@ -37,7 +37,7 @@ export * from 'lucide-react'
  * whatever a future lucide version decides to call its own.
  */
 export {
-  ClaudeCode, Figma, Github, GoogleDocs, GoogleSheets, GoogleSlides, Jira, Loom, MagicSlash, Miro, Notion, VSCode,
+  Claude, ClaudeCode, Figma, Github, GoogleDocs, GoogleSheets, GoogleSlides, Jira, Loom, MagicSlash, Miro, Notion, VSCode,
 } from './brand'
 // The brand COLOURS travel with the marks: a call site painting Claude Code's robot
 // coral and one painting its chip's ground read the same two values.

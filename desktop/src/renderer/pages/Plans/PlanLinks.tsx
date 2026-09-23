@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Button, ExternalLinkCard, type ExternalLinkRow, type SelectOption } from '@ds/desktop'
 import {
-  CLAUDE_CORAL, ClaudeCode, Figma, Github, GoogleDocs, GoogleSheets, GoogleSlides, Link2, Loom, Miro, Notion, Plus,
+  Claude, Figma, Github, GoogleDocs, GoogleSheets, GoogleSlides, Link2, Loom, Miro, Notion, Plus,
 } from '@ds/desktop/icons'
 import type { IconComponent } from '@ds/desktop'
 import { useT } from '../../i18n'
@@ -16,7 +16,7 @@ const ICONS: Record<LinkKind, { icon: IconComponent; color?: string }> = {
   figma: { icon: Figma },
   figjam: { icon: Figma },
   notion: { icon: Notion },
-  claude_artifact: { icon: ClaudeCode, color: CLAUDE_CORAL },
+  claude_artifact: { icon: Claude },
   google_docs: { icon: GoogleDocs },
   google_sheets: { icon: GoogleSheets },
   google_slides: { icon: GoogleSlides },
