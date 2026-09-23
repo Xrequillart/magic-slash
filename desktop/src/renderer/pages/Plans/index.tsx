@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { CloudOff, NotebookPen, RotateCcw, Users } from '@ds/desktop/icons'
 import { ItemGroup, ItemNote, SectionHeader } from '@ds/desktop'
-import type { PlanOverview } from '../../../types'
+import type { PlanOverview, PlanStatus } from '../../../types'
 import { useConfig } from '../../hooks/useConfig'
 import { useT, type MessageKey } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
@@ -375,6 +375,11 @@ export function PlansPage() {
   }, [])
 
   const back = useCallback(() => setSelected(null), [])
+  // A status set on the plan's page, carried back to the row it was opened from.
+  const statusChanged = useCallback((id: string, status: PlanStatus) => {
+    setOverview((prev) => prev && { ...prev, sessions: prev.sessions.map((s) => (s.id === id ? { ...s, status } : s)) })
+    setSelected((prev) => (prev && prev.id === id ? { ...prev, status } : prev))
+  }, [])
 
   /** Which of the two views is on screen. A change is what plays the sweep. */
   const pageKey = selected?.id ?? 'list'
@@ -432,7 +437,7 @@ export function PlansPage() {
         className="mx-auto w-full max-w-6xl px-6 pb-6"
       >
         {selected ? (
-          <PlanDetailPage card={selected} now={now} paneRef={paneRef} onBack={back} />
+          <PlanDetailPage card={selected} now={now} paneRef={paneRef} onBack={back} onStatusChange={statusChanged} />
         ) : (
           <>
             {/* Offered only when there is a choice to make: one repository means the

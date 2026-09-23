@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
-import { EMPTY_PLAN_HISTORY, isPlanCommentAnchor, type NewPlanComment, type PlanCommentsRead, type PlanDetail, type PlanHistoryRead, type PlanLinksRead, type PlanLocalSpec, type PlanOverview, type PlanRevisionDiff, type PlanSpecUpdateResult, type PlanTicketOrigin } from '../../types'
-import { findPlanForTicket, listPlanDetail, listPlanSessions } from '../cloud/plans'
+import { EMPTY_PLAN_HISTORY, isPlanCommentAnchor, type NewPlanComment, type PlanCommentsRead, type PlanDetail, type PlanHistoryRead, type PlanLinksRead, type PlanLocalSpec, type PlanOverview, type PlanRevisionDiff, type PlanSpecUpdateResult, type PlanStatus, type PlanStatusUpdateResult, type PlanTicketOrigin, PLAN_STATUSES } from '../../types'
+import { findPlanForTicket, listPlanDetail, listPlanSessions, updatePlanStatus } from '../cloud/plans'
 import {
   createPlanComment, deletePlanComment, listPlanComments, updatePlanComment,
 } from '../cloud/planComments'
@@ -288,6 +288,18 @@ export function setupPlansHandlers(): void {
     if (typeof spec !== 'string' || spec.trim() === '') return { status: 'failed' }
     if (typeof expectedUpdatedAt !== 'string' || expectedUpdatedAt === '') return { status: 'failed' }
     return saveEditedPlanSpec({ id, spec, expectedUpdatedAt })
+  })
+
+  /**
+   * Set a plan's status by hand. Only the four the app draws are accepted here, and the
+   * database holds a hand to the same list; anything else is `failed` without a write.
+   */
+  ipcMain.handle('plans:updateStatus', async (_e, args: unknown): Promise<PlanStatusUpdateResult> => {
+    if (typeof args !== 'object' || args === null) return { status: 'failed' }
+    const { id, status } = args as Record<string, unknown>
+    if (typeof id !== 'string' || !UUID_RE.test(id)) return { status: 'failed' }
+    if (typeof status !== 'string' || !(PLAN_STATUSES as readonly string[]).includes(status)) return { status: 'failed' }
+    return updatePlanStatus(id, status as PlanStatus)
   })
 
   /**

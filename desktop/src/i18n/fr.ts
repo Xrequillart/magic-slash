@@ -1308,6 +1308,8 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.filter.all': 'Tous les dépôts',
   'plans.status.planning': 'En cours d’écriture',
   'plans.status.planned': 'Tickets créés',
+  'plans.status.done': 'Terminé',
+  'plans.status.abandoned': 'Abandonné',
   'plans.tickets.none': 'aucun ticket',
   'plans.tickets.one': '1 ticket',
   'plans.tickets.other': '{count} tickets',
@@ -1350,6 +1352,8 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.detail.openInTasks': 'Ouvrir ce ticket dans Tâches',
   'plans.detail.spec': 'Spécification',
   'plans.detail.tabs': 'Sections du plan',
+  'plans.detail.statusFailed': 'Le statut n’a pas pu être changé.',
+  'plans.detail.statusDenied': 'Vous ne pouvez pas changer le statut de ce plan.',
   'plans.detail.specPending':
     'La spec n’a pas encore été envoyée. Elle apparaît ici à mesure que la session l’écrit.',
   'plans.detail.specOversize':
@@ -1398,6 +1402,7 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.history.failed': 'L’historique de ce plan n’a pas pu être chargé.',
   'plans.history.truncated': 'Seules les modifications les plus récentes sont affichées.',
   'plans.history.edited': 'a modifié la spécification',
+  'plans.history.statusChanged': 'a changé le statut',
   'plans.history.byHand': 'À la main',
   'plans.history.withClaude': 'Avec Claude',
   'plans.history.withClaudeAgent': 'Avec Claude · {agent}',

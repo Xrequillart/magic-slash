@@ -1,4 +1,4 @@
-import type { PlanRepoRef, PlanSession, PlanTicketRead } from '../../types'
+import { PLAN_STATUSES, type PlanRepoRef, type PlanSession, type PlanStatus, type PlanTicketRead } from '../../types'
 
 /**
  * The Plans page's data, shaped: the `plan_sessions` rows the main process read turned
@@ -35,8 +35,11 @@ import type { PlanRepoRef, PlanSession, PlanTicketRead } from '../../types'
  * and `.detail(id)`.
  */
 
-/** `planning` while the spec is being written, `planned` once tickets exist. */
-export type PlanStatus = 'planning' | 'planned'
+/**
+ * `planning` while the spec is being written, `planned` once tickets exist — both the
+ * agent's — and `done` / `abandoned`, which only a person sets. See `PLAN_STATUSES`.
+ */
+export type { PlanStatus }
 
 /**
  * A session with everything one row of the list prints, resolved.
@@ -65,7 +68,7 @@ export interface PlanCard extends Omit<PlanSession, 'status'> {
  * also what an unfinished row actually is.
  */
 export function toStatus(value: string | undefined): PlanStatus {
-  return value === 'planned' ? 'planned' : 'planning'
+  return (PLAN_STATUSES as readonly string[]).includes(value ?? '') ? (value as PlanStatus) : 'planning'
 }
 
 /**

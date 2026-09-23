@@ -1350,6 +1350,8 @@ export const en = {
   'plans.filter.all': 'All repositories',
   'plans.status.planning': 'Being written',
   'plans.status.planned': 'Tickets filed',
+  'plans.status.done': 'Done',
+  'plans.status.abandoned': 'Abandoned',
   'plans.tickets.none': 'no ticket',
   'plans.tickets.one': '1 ticket',
   'plans.tickets.other': '{count} tickets',
@@ -1412,6 +1414,8 @@ export const en = {
   'plans.detail.openInTasks': 'Open this ticket in Tasks',
   'plans.detail.spec': 'Spec',
   'plans.detail.tabs': 'Plan sections',
+  'plans.detail.statusFailed': 'The status could not be changed.',
+  'plans.detail.statusDenied': 'You cannot change the status of this plan.',
   'plans.detail.specPending':
     'The spec has not been uploaded yet. It appears here as the session writes it.',
   // NEVER "truncated": the uploader stats the file before reading it, so nothing is ever
@@ -1488,6 +1492,7 @@ export const en = {
   'plans.history.failed': 'The history of this plan could not be loaded.',
   'plans.history.truncated': 'Only the most recent changes are shown.',
   'plans.history.edited': 'edited the spec',
+  'plans.history.statusChanged': 'changed the status',
   'plans.history.byHand': 'By hand',
   'plans.history.withClaude': 'With Claude',
   'plans.history.withClaudeAgent': 'With Claude · {agent}',

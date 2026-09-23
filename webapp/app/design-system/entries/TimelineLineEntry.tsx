@@ -49,6 +49,12 @@ const PROPS: PropRow[] = [
       'How it was done, drawn as a Label. Data and not a slot: the same answer has to look the same on every row, which a caller-drawn chip would not guarantee.',
   },
   {
+    name: 'statusChange',
+    type: '{ from?: { label; tone? }; to: { label; tone? }; title?: string }',
+    description:
+      'A status that changed, drawn as the two Status plates it went between with an arrow. Takes the place of detail. Data and not a slot, so a status looks like itself on every row.',
+  },
+  {
     name: 'date / dateTitle',
     type: 'string',
     required: true,
@@ -64,7 +70,7 @@ const PROPS: PropRow[] = [
     name: 'selected / onSelect / selectLabel',
     type: 'boolean / () => void / string',
     description:
-      'A row that can be picked, to compare two revisions. With onSelect the row is a toggle button; without it, plain text with no hover and nothing in the tab order.',
+      'A row that can be picked, to see what a revision changed. With onSelect the row is a toggle button; without it, plain text with no hover and nothing in the tab order.',
   },
   {
     name: 'className',
@@ -75,6 +81,7 @@ const PROPS: PropRow[] = [
 ]
 
 const ROWS = [
+  { id: 's1', actor: 'camille@example.com', action: 'changed the status', statusChange: { from: { label: 'Tickets filed', tone: 'green' as const }, to: { label: 'Done', tone: 'blue' as const } }, badge: { label: 'By hand' }, date: '2m' },
   { id: 'r3', actor: 'camille@example.com', action: 'edited the spec', badge: { label: 'By hand' }, date: '5m' },
   { id: 'l2', actor: 'camille@example.com', action: 'removed', detail: 'Onboarding notes', detailNote: 'notion.so/acme/onboarding', icon: Notion, date: '1h' },
   { id: 'r2', actor: 'xavier@example.com', action: 'edited the spec', badge: { label: 'With Claude · Planner', tone: 'claude-code' as const }, date: '3h' },
@@ -82,11 +89,10 @@ const ROWS = [
   { id: 'r1', actor: 'xavier@example.com', action: 'wrote the spec', badge: { label: 'With Claude · Planner', tone: 'claude-code' as const }, date: '2d' },
 ]
 
-/** Revisions pick, link events do not: the two kinds share the rail and one shape. */
+/** Revisions pick, one at a time; link events and status changes do not. One rail, one shape. */
 function Live({ theme }: { theme: DesktopTheme }) {
-  const [picked, setPicked] = useState<string[]>(['r3'])
-  const toggle = (id: string) =>
-    setPicked((now) => (now.includes(id) ? now.filter((p) => p !== id) : [...now.slice(-1), id]))
+  const [picked, setPicked] = useState<string | null>('r3')
+  const toggle = (id: string) => setPicked((now) => (now === id ? null : id))
   return (
     <Stage theme={theme}>
       <div className="max-w-xl">
@@ -99,13 +105,14 @@ function Live({ theme }: { theme: DesktopTheme }) {
             detail={row.detail}
             detailNote={row.detailNote}
             icon={row.icon}
+            statusChange={row.statusChange}
             badge={row.badge}
             date={row.date}
             first={i === 0}
             last={i === ROWS.length - 1}
-            selected={picked.includes(row.id)}
+            selected={picked === row.id}
             onSelect={row.id.startsWith('r') ? () => toggle(row.id) : undefined}
-            selectLabel={row.id.startsWith('r') ? 'Compare this revision' : undefined}
+            selectLabel={row.id.startsWith('r') ? 'See what this revision changed' : undefined}
           />
         ))}
       </div>
@@ -124,13 +131,13 @@ export function TimelineLineEntry({
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader title="TimelineLine" uses={usesOf('timelineline')} onOpen={onOpen}>
         One event in a history: who did it, what they did, how, and when, on a rail that says
-        the events are a sequence. A plan’s page draws its edit history with it, spec revisions
-        and pinned links interleaved by date.
+        the events are a sequence. A plan’s page draws its edit history with it, spec revisions,
+        pinned links and status changes interleaved by date.
       </EntryHeader>
 
       <EntrySection
-        title="Two kinds of event, one row"
-        note="A revision of the spec and a link pinned or removed are both “somebody did something to this plan at some moment”. Revisions can be picked, two at a time, to compare them; link events cannot, and without onSelect a row is plain text. Press the revisions."
+        title="Three kinds of event, one row"
+        note="A revision of the spec, a link pinned or removed and a change of status are all “somebody did something to this plan at some moment”. A revision can be picked, one at a time, to see what it changed; the others cannot, and without onSelect a row is plain text. Press the revisions."
       >
         <Live theme={theme} />
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
@@ -172,7 +179,7 @@ export function TimelineLineEntry({
   date={formatTimestamp(at, now, t)}
   first={index === 0}
   last={index === rows.length - 1}
-  selected={picked.includes(revision.id)}
+  selected={picked === revision.id}
   onSelect={() => toggle(revision.id)}
 />`}</Snippet>
       </EntrySection>

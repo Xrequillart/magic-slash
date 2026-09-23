@@ -2449,16 +2449,46 @@ export interface PlanLinkEvent {
 }
 
 /**
- * One plan's history: its spec revisions and its link events, with their people resolved
+ * The statuses a plan can be given. The planner agent sets the first two on its own; the
+ * last two only a person sets, from the plan's page. A status set by hand is held against
+ * the agent's later uploads, and every change is recorded — see 20260923150000.
+ */
+export const PLAN_STATUSES = ['planning', 'planned', 'done', 'abandoned'] as const
+export type PlanStatus = (typeof PLAN_STATUSES)[number]
+
+/** What the database made of a status change. */
+export type PlanStatusUpdateResult =
+  | { status: 'saved'; updatedAt: string }
+  | { status: 'denied' }
+  | { status: 'failed' }
+
+/**
+ * A plan's status changed: from what, to what, by whom, and whether by hand or by the
+ * planner agent. Written by a trigger on `plan_sessions` (20260923150000). `from`/`to` are
+ * the column's free text, so a word this build does not know can arrive here.
+ */
+export interface PlanStatusEvent {
+  id: string
+  from?: string
+  to: string
+  source: PlanRevisionSource
+  /** Absent once the actor's account is deleted. */
+  actorId?: string
+  createdAt: string
+}
+
+/**
+ * One plan's history: its spec revisions, its link events and its status changes, with their people resolved
  * the way the comments' are. Two lists rather than one merged timeline, because they are two
  * tables with two caps; the page interleaves them by date.
  *
- * `truncated` is either list reaching its cap — the OLDEST entries are the ones missing.
+ * `truncated` is any list reaching its cap — the OLDEST entries are the ones missing.
  * `failed` is a read that did not happen, not a plan with no history.
  */
 export interface PlanHistoryRead {
   revisions: PlanRevision[]
   linkEvents: PlanLinkEvent[]
+  statusEvents: PlanStatusEvent[]
   emailByAuthor: Record<string, string>
   avatarByAuthor: Record<string, string>
   truncated: boolean
@@ -2472,7 +2502,7 @@ export interface PlanHistoryRead {
 
 /** A plan with no history, or no plan at all. Spread with `failed: true` for a read that failed. */
 export const EMPTY_PLAN_HISTORY: PlanHistoryRead = {
-  revisions: [], linkEvents: [], emailByAuthor: {}, avatarByAuthor: {}, truncated: false, olderRevisions: false, failed: false,
+  revisions: [], linkEvents: [], statusEvents: [], emailByAuthor: {}, avatarByAuthor: {}, truncated: false, olderRevisions: false, failed: false,
 }
 
 /**

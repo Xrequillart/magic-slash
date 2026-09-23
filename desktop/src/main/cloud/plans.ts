@@ -1,4 +1,4 @@
-import type { Org, PlanDetail, PlanOverview, PlanRepoRef, PlanSession, PlanTicketOrigin, PlanTicketRead } from '../../types'
+import type { Org, PlanDetail, PlanOverview, PlanRepoRef, PlanSession, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketRead } from '../../types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getAuthedClient } from './auth'
 import { listMembers, listOrgsRead } from './org'
@@ -775,4 +775,31 @@ export async function updatePlanSpec(input: {
   const reread = await fetchPlanSession(client, input.id)
   if (!reread.ok) return { status: 'failed' }
   return { status: reread.rows.length > 0 ? 'conflict' : 'denied' }
+}
+
+/**
+ * Set a plan's status by hand, from its page. The author, or any member of its
+ * organization (20260923150000 put `status` on the columns a member may write).
+ *
+ * NO CONFLICT GUARD, unlike the spec: a status is one word the reader has just picked, and
+ * last write wins is what they asked for. The database marks it `status_by_hand`, so the
+ * planner agent's next upload leaves it alone, and records the change in the history.
+ *
+ * The new `updated_at` is handed back RAW, for the spec editor's conflict guard: this write
+ * moved it, and the next spec save must be guarded against this row, not the one before.
+ *
+ * Zero rows back is `denied`: the UPDATE policy filters, and without a guard on
+ * `updated_at` there is no other reason for the write to match nothing.
+ */
+export async function updatePlanStatus(id: string, status: PlanStatus): Promise<PlanStatusUpdateResult> {
+  const client = await getAuthedClient()
+  if (!client) return { status: 'failed' }
+  const { data, error } = await client
+    .from('plan_sessions')
+    .update({ status })
+    .eq('id', id)
+    .select('updated_at')
+  if (error) return { status: error.code === '42501' ? 'denied' : 'failed' }
+  const row = ((data ?? []) as { updated_at: string | null }[])[0]
+  return row?.updated_at ? { status: 'saved', updatedAt: row.updated_at } : { status: 'denied' }
 }

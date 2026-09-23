@@ -55,6 +55,8 @@ function commentCountLabel(count: number, t: Translate): string | undefined {
 export const STATUS_LOOK = {
   planned: { tone: 'green', labelKey: 'plans.status.planned' },
   planning: { tone: 'yellow', labelKey: 'plans.status.planning' },
+  done: { tone: 'blue', labelKey: 'plans.status.done' },
+  abandoned: { tone: 'red', labelKey: 'plans.status.abandoned' },
 } as const satisfies Record<PlanCard['status'], { tone: StatusTone; labelKey: MessageKey }>
 
 export function PlanRow({ card, now, onSelect }: { card: PlanCard; now: number; onSelect: (card: PlanCard) => void }) {

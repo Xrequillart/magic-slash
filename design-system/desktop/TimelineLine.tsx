@@ -1,6 +1,7 @@
 import { Avatar } from './Avatar'
 import { Icon } from './Icon'
 import { Label, type LabelTone } from './Label'
+import { Status, type StatusTone } from './Status'
 import { Text } from './Text'
 import type { IconComponent } from './types'
 
@@ -8,10 +9,10 @@ import type { IconComponent } from './types'
  * One event in a history, on the rail that says the events are a sequence — who did it,
  * what they did, how, and when.
  *
- * It came in with a plan's edit history, where two kinds of event share one timeline: a
- * revision of the spec (by hand, or through a Claude agent) and a link pinned or taken off.
- * Both are "somebody did something to this plan at some moment", so they are one row with
- * one shape, and the page interleaves them by date.
+ * It came in with a plan's edit history, where three kinds of event share one timeline: a
+ * revision of the spec (by hand, or through a Claude agent), a link pinned or taken off,
+ * and a change of status. All are "somebody did something to this plan at some moment", so
+ * they are one row with one shape, and the page interleaves them by date.
  *
  * `CommitLine`'s SPLIT, NOT ITS RAIL. The rail is drawn per row in two halves meeting at a
  * tick, exactly as a branch's commits are, so a row knows only whether it is the first or
@@ -19,8 +20,8 @@ import type { IconComponent } from './types'
  * nobody's pending anything. The rail is a hairline and the tick hollow, until the row is
  * SELECTED — the one state this row has that a commit does not.
  *
- * SELECTABLE, OPTIONALLY. A revision can be picked to be compared with another; a link
- * event cannot. Given `onSelect` the row is a button that says whether it is pressed;
+ * SELECTABLE, OPTIONALLY. A revision can be picked to see what it changed; a link event
+ * or a status change cannot. Given `onSelect` the row is a button that says whether it is pressed;
  * without it the row is a plain line with no hover and nothing in the tab order — the
  * rule `Label` follows, and for its reason.
  *
@@ -41,7 +42,7 @@ function TimelineRail({ first, last, selected }: { first: boolean; last: boolean
       {!first && <span className="absolute left-1/2 -translate-x-1/2 top-0 bottom-1/2 w-px bg-ink/15" />}
       {!last && <span className="absolute left-1/2 -translate-x-1/2 top-1/2 bottom-0 w-px bg-ink/15" />}
       {/* Filled when selected, hollow otherwise: the rail says where the row is, the fill
-          says it is one of the two being compared. `bg-bg` for the hollow centre, for the
+          says it is the one being looked at. `bg-bg` for the hollow centre, for the
           reason `CommitRail` gives — never a literal white. */}
       <span
         className={`relative w-2.5 h-2.5 rounded-full border-2 ${selected ? 'border-accent bg-accent' : 'border-ink/25 bg-bg'}`}
@@ -85,6 +86,20 @@ export interface TimelineLineProps {
    * every row.
    */
   badge?: { label: string; tone?: LabelTone; icon?: IconComponent }
+  /**
+   * A STATUS THAT CHANGED, drawn as the two `Status` plates it went between — the same
+   * plates the plan wears in its heading and in the list — with an arrow from one to the
+   * other. `from` is absent for a first status. Takes the place of `detail`.
+   *
+   * Data and not a slot, for `badge`'s reason: a status has to look like itself on every
+   * row, and the plates are this component's to draw. `title` is the tooltip over both,
+   * for a raw value the words above had to round off.
+   */
+  statusChange?: {
+    from?: { label: string; tone?: StatusTone }
+    to: { label: string; tone?: StatusTone }
+    title?: string
+  }
   /** When, already formatted and translated — "2h ago". */
   date: string
   /** The full date, for the tooltip. The relative one above loses the day after a week. */
@@ -93,7 +108,7 @@ export interface TimelineLineProps {
   first?: boolean
   /** Last in the list: no rail below it. */
   last?: boolean
-  /** One of the rows being compared: the tick filled, the row on a tinted ground. */
+  /** The row being looked at: the tick filled, the row on a tinted ground. */
   selected?: boolean
   /**
    * Makes the row a toggle button. Absent, the row is plain text — see the header.
@@ -114,6 +129,7 @@ export function TimelineLine({
   detailTitle,
   icon,
   badge,
+  statusChange,
   date,
   dateTitle,
   first = false,
@@ -139,7 +155,17 @@ export function TimelineLine({
         <Text size="sm" tone="secondary" className="flex-shrink-0">
           {action}
         </Text>
-        {detail && (
+        {statusChange ? (
+          <span className="flex items-center gap-1.5 min-w-0" title={statusChange.title}>
+            {statusChange.from && (
+              <>
+                <Status size="xs" label={statusChange.from.label} tone={statusChange.from.tone} />
+                <Text size="sm" tone="secondary" aria-hidden className="flex-shrink-0">→</Text>
+              </>
+            )}
+            <Status size="xs" label={statusChange.to.label} tone={statusChange.to.tone} />
+          </span>
+        ) : detail && (
           <span className="flex items-center gap-1 min-w-0">
             {icon && <Icon glyph={icon} size="xs" tone="muted" className="flex-shrink-0" />}
             <Text size="sm" className="truncate" title={detailTitle ?? detail}>

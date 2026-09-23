@@ -7,7 +7,8 @@ import { useCodeAppearance } from '../../hooks/useCodeAppearance'
 import CodeView from '../../components/file-preview/CodeView'
 import { formatTimestamp } from '../../components/agent-info-sidebar/utils'
 import { LINK_KIND_NAMES, linkDisplayName, toLinkKind } from '../../utils/externalLinks'
-import { planAuthor } from '../../utils/planRows'
+import { planAuthor, toStatus } from '../../utils/planRows'
+import { STATUS_LOOK } from './PlanRow'
 import { buildPlanTimeline, revisionPair, toggleRevision, type PlanTimelineEntry } from '../../utils/planHistory'
 import { LINK_ICONS } from './linkIcons'
 
@@ -88,6 +89,29 @@ export const PlanHistory = memo(function PlanHistory({
           setWholeSpec(false)
         },
         selectLabel: t('plans.history.select'),
+      }
+    }
+    if (entry.kind === 'status') {
+      const { event } = entry
+      // A word this build does not know reads as the default, as on the list; the raw
+      // values stay in the tooltip, so nothing is hidden.
+      const plate = (value: string) => {
+        const look = STATUS_LOOK[toStatus(value)]
+        return { label: t(look.labelKey), tone: look.tone }
+      }
+      return {
+        ...person(event.actorId),
+        action: t('plans.history.statusChanged'),
+        statusChange: {
+          from: event.from ? plate(event.from) : undefined,
+          to: plate(event.to),
+          title: event.from ? `${event.from} → ${event.to}` : event.to,
+        },
+        badge: event.source === 'agent'
+          ? { label: t('plans.history.withClaude'), tone: 'claude-code' }
+          : { label: t('plans.history.byHand') },
+        date,
+        dateTitle,
       }
     }
     const { event } = entry

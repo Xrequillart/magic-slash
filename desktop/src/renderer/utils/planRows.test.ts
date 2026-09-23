@@ -52,16 +52,18 @@ const REPOS: PlanRepoRef[] = [
 ]
 
 describe('toStatus', () => {
-  it('keeps the two words the app writes', () => {
+  it('keeps the four words the app writes', () => {
     expect(toStatus('planned')).toBe('planned')
     expect(toStatus('planning')).toBe('planning')
+    expect(toStatus('done')).toBe('done')
+    expect(toStatus('abandoned')).toBe('abandoned')
   })
 
   it('reads an unknown or missing status as planning', () => {
     // The column declines a CHECK, so a newer build can store a word this one has
     // never heard of. "Not confirmed yet" is the honest reading of it.
     expect(toStatus(undefined)).toBe('planning')
-    expect(toStatus('abandoned')).toBe('planning')
+    expect(toStatus('archived')).toBe('planning')
   })
 })
 

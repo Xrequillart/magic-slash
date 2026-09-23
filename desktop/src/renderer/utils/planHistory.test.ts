@@ -19,6 +19,15 @@ describe('buildPlanTimeline', () => {
     expect(timeline.map((entry) => entry.id)).toEqual(['r2', 'e1', 'r1', 'e0'])
   })
 
+  it('interleaves the status changes too', () => {
+    const timeline = buildPlanTimeline({
+      revisions: [revision('r1', '2026-09-23T10:00:00Z')],
+      linkEvents: [],
+      statusEvents: [{ id: 's1', from: 'planned', to: 'done', source: 'human', createdAt: '2026-09-23T11:00:00Z' }],
+    })
+    expect(timeline.map((entry) => entry.id)).toEqual(['s1', 'r1'])
+  })
+
   it('puts the revision first on a tie, so the order holds between two reads', () => {
     const timeline = buildPlanTimeline({
       revisions: [revision('r1', '2026-09-23T10:00:00Z')],

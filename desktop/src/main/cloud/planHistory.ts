@@ -1,13 +1,14 @@
-import { EMPTY_PLAN_HISTORY, type PlanHistoryRead, type PlanLinkEvent, type PlanRevision } from '../../types'
+import { EMPTY_PLAN_HISTORY, type PlanHistoryRead, type PlanLinkEvent, type PlanRevision, type PlanStatusEvent } from '../../types'
 import { getAuthedClient } from './auth'
 import { listOrgsRead } from './org'
 import { fetchAuthors } from './plans'
 
 /**
- * A plan's history: the revisions of its spec (`plan_revisions`, 20260923120000) and the
- * links pinned to it or taken off it (`plan_link_events`, 20260923130000).
+ * A plan's history: the revisions of its spec (`plan_revisions`, 20260923120000), the
+ * links pinned to it or taken off it (`plan_link_events`, 20260923130000), and the changes
+ * of its status (`plan_status_events`, 20260923150000).
  *
- * NEITHER TABLE IS WRITTEN FROM HERE, nor from anywhere in the app: both are triggers'.
+ * NONE OF THE TABLES IS WRITTEN FROM HERE, nor from anywhere in the app: all are triggers'.
  * Link events are written by a trigger on `plan_links`, revisions by one on
  * `plan_sessions`, in the same statement as the save they record, so the text, the author
  * and whether anything changed are all read off that write. The one thing the app says is
@@ -36,12 +37,22 @@ export interface PlanLinkEventRow {
   created_at: string
 }
 
+export interface PlanStatusEventRow {
+  id: string
+  from_status: string | null
+  to_status: string
+  source: string
+  actor_id: string | null
+  created_at: string
+}
+
 /**
  * Every column the timeline draws — and not `content`, which is a full copy of a spec per
  * row. The text is read only for the two revisions being compared (`readRevisionTexts`).
  */
 const REVISION_COLUMNS = 'id, author_id, source, agent_name, created_at, updated_at'
 const EVENT_COLUMNS = 'id, link_id, action, url, kind, title, actor_id, created_at'
+const STATUS_COLUMNS = 'id, from_status, to_status, source, actor_id, created_at'
 
 /**
  * How many of each one opening brings back, NEWEST first — the end a reader looks at — and
@@ -51,32 +62,38 @@ const EVENT_COLUMNS = 'id, link_id, action, url, kind, title, actor_id, created_
  */
 const REVISION_LIMIT = 200
 const EVENT_LIMIT = 200
+const STATUS_LIMIT = 200
 
 /**
- * The two lists cut to ONE period, the one both cover completely. Each is read newest first
- * with its own cap, so when one list stops short its oldest row is where its knowledge ends:
- * rows of the other list older than that would sit in the merged timeline with events
- * missing between them. They are dropped, and the timeline ends where both are whole.
+ * The lists cut to ONE period, the one all of them cover completely. Each is read newest
+ * first with its own cap, so when one list stops short its oldest row is where its
+ * knowledge ends: rows of the others older than that would sit in the merged timeline with
+ * entries missing between them. They are dropped, and the timeline ends where all are whole.
  */
 export function alignHistory(
   revisionRows: PlanRevisionRow[],
   eventRows: PlanLinkEventRow[],
-): { revisionRows: PlanRevisionRow[]; eventRows: PlanLinkEventRow[]; truncated: boolean } {
+  statusRows: PlanStatusEventRow[] = [],
+): { revisionRows: PlanRevisionRow[]; eventRows: PlanLinkEventRow[]; statusRows: PlanStatusEventRow[]; truncated: boolean } {
   const revisionsCut = revisionRows.length > REVISION_LIMIT
   const eventsCut = eventRows.length > EVENT_LIMIT
+  const statusCut = statusRows.length > STATUS_LIMIT
   let revisions = revisionRows.slice(0, REVISION_LIMIT)
   let events = eventRows.slice(0, EVENT_LIMIT)
-  // The oldest instant each cut list still vouches for. The later of the two is the horizon.
+  let statuses = statusRows.slice(0, STATUS_LIMIT)
+  // The oldest instant each cut list still vouches for. The latest of them is the horizon.
   const horizons = [
     revisionsCut && revisions.length ? Date.parse(revisions[revisions.length - 1].updated_at) : -Infinity,
     eventsCut && events.length ? Date.parse(events[events.length - 1].created_at) : -Infinity,
+    statusCut && statuses.length ? Date.parse(statuses[statuses.length - 1].created_at) : -Infinity,
   ]
   const horizon = Math.max(...horizons)
   if (Number.isFinite(horizon)) {
     revisions = revisions.filter((row) => Date.parse(row.updated_at) >= horizon)
     events = events.filter((row) => Date.parse(row.created_at) >= horizon)
+    statuses = statuses.filter((row) => Date.parse(row.created_at) >= horizon)
   }
-  return { revisionRows: revisions, eventRows: events, truncated: revisionsCut || eventsCut }
+  return { revisionRows: revisions, eventRows: events, statusRows: statuses, truncated: revisionsCut || eventsCut || statusCut }
 }
 
 function toRevision(row: PlanRevisionRow): PlanRevision {
@@ -104,14 +121,25 @@ function toLinkEvent(row: PlanLinkEventRow): PlanLinkEvent {
   }
 }
 
+function toStatusEvent(row: PlanStatusEventRow): PlanStatusEvent {
+  return {
+    id: row.id,
+    from: row.from_status ?? undefined,
+    to: row.to_status,
+    source: row.source === 'agent' ? 'agent' : 'human',
+    actorId: row.actor_id ?? undefined,
+    createdAt: row.created_at,
+  }
+}
+
 /**
  * One plan's history, with the people in it resolved the way the comments' are.
  *
- * THREE READS IN THE FIRST WAVE — revisions, events, organizations — and the rosters in the
+ * FOUR READS IN THE FIRST WAVE — revisions, link events, status events, organizations — and the rosters in the
  * second, narrowed to the people actually in the history (`fetchAuthors`' discipline). Not
  * scoped by anything but the session: the policies return exactly what this reader may see.
  *
- * A FAILED HALF FAILS THE WHOLE. A timeline with its revisions and without its link events
+ * A FAILED PART FAILS THE WHOLE. A timeline with its revisions and without its link events
  * would read as a plan whose links never changed; the page says the history could not be
  * loaded instead.
  */
@@ -119,7 +147,7 @@ export async function listPlanHistory(sessionId: string): Promise<PlanHistoryRea
   const client = await getAuthedClient()
   if (!client) return EMPTY_PLAN_HISTORY
 
-  const [revisionsRead, eventsRead, orgs] = await Promise.all([
+  const [revisionsRead, eventsRead, statusRead, orgs] = await Promise.all([
     client
       .from('plan_revisions')
       .select(REVISION_COLUMNS)
@@ -132,24 +160,34 @@ export async function listPlanHistory(sessionId: string): Promise<PlanHistoryRea
       .eq('session_id', sessionId)
       .order('created_at', { ascending: false })
       .limit(EVENT_LIMIT + 1),
+    client
+      .from('plan_status_events')
+      .select(STATUS_COLUMNS)
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: false })
+      .limit(STATUS_LIMIT + 1),
     listOrgsRead(),
   ])
-  if (revisionsRead.error || !revisionsRead.data || eventsRead.error || !eventsRead.data) {
-    console.error('[cloud] plan history read refused:', revisionsRead.error ?? eventsRead.error)
+  if (revisionsRead.error || !revisionsRead.data || eventsRead.error || !eventsRead.data || statusRead.error || !statusRead.data) {
+    console.error('[cloud] plan history read refused:', revisionsRead.error ?? eventsRead.error ?? statusRead.error)
     return { ...EMPTY_PLAN_HISTORY, failed: true }
   }
 
   const revisionRows = revisionsRead.data as unknown as PlanRevisionRow[]
   const eventRows = eventsRead.data as unknown as PlanLinkEventRow[]
-  const { revisionRows: keptRevisions, eventRows: keptEvents, truncated } = alignHistory(revisionRows, eventRows)
+  const statusRows = statusRead.data as unknown as PlanStatusEventRow[]
+  const { revisionRows: keptRevisions, eventRows: keptEvents, statusRows: keptStatuses, truncated } =
+    alignHistory(revisionRows, eventRows, statusRows)
   const olderRevisions = keptRevisions.length < revisionRows.length
   const revisions = keptRevisions.map(toRevision)
   const linkEvents = keptEvents.map(toLinkEvent)
-  if (revisions.length === 0 && linkEvents.length === 0) return EMPTY_PLAN_HISTORY
+  const statusEvents = keptStatuses.map(toStatusEvent)
+  if (revisions.length === 0 && linkEvents.length === 0 && statusEvents.length === 0) return EMPTY_PLAN_HISTORY
 
   const people = new Set<string>()
   for (const revision of revisions) if (revision.authorId) people.add(revision.authorId)
   for (const event of linkEvents) if (event.actorId) people.add(event.actorId)
+  for (const event of statusEvents) if (event.actorId) people.add(event.actorId)
   const authors = await fetchAuthors(orgs.orgs, people).catch((error) => {
     console.error('[cloud] plan history authors unresolved:', error)
     return { emailByOwner: {}, avatarByOwner: {} }
@@ -157,6 +195,7 @@ export async function listPlanHistory(sessionId: string): Promise<PlanHistoryRea
   return {
     revisions,
     linkEvents,
+    statusEvents,
     emailByAuthor: authors.emailByOwner,
     avatarByAuthor: authors.avatarByOwner,
     truncated,

@@ -46,14 +46,30 @@ describe('listPlanHistory', () => {
   const revision = { id: 'r1', author_id: 'u1', source: 'agent', agent_name: 'Planner', created_at: '2026-09-23T10:00:00Z', updated_at: '2026-09-23T10:05:00Z' }
   const event = { id: 'e1', link_id: 'l1', action: 'removed', url: 'https://www.figma.com/design/x', kind: 'figma', title: null, actor_id: null, created_at: '2026-09-23T11:00:00Z' }
 
-  it('maps both tables, and resolves the people in them', async () => {
-    h.client = makeClient({ plan_revisions: { data: [revision], error: null }, plan_link_events: { data: [event], error: null } }).client
+  const statusEvent = { id: 's1', from_status: 'planned', to_status: 'done', source: 'human', actor_id: 'u1', created_at: '2026-09-23T12:00:00Z' }
+
+  it('maps the three tables, and resolves the people in them', async () => {
+    h.client = makeClient({
+      plan_revisions: { data: [revision], error: null },
+      plan_link_events: { data: [event], error: null },
+      plan_status_events: { data: [statusEvent], error: null },
+    }).client
     const read = await listPlanHistory('s1')
     expect(read).toMatchObject({ failed: false, truncated: false, emailByAuthor: { u1: 'u1@example.com' } })
     expect(read.revisions).toEqual([{ id: 'r1', authorId: 'u1', source: 'agent', agentName: 'Planner', createdAt: revision.created_at, updatedAt: revision.updated_at }])
     // A removed link keeps its address and kind; a deleted account leaves no actor.
     expect(read.linkEvents).toEqual([{ id: 'e1', linkId: 'l1', action: 'removed', url: event.url, kind: 'figma', title: undefined, actorId: undefined, createdAt: event.created_at }])
+    expect(read.statusEvents).toEqual([{ id: 's1', from: 'planned', to: 'done', source: 'human', actorId: 'u1', createdAt: statusEvent.created_at }])
     expect([...authors.fetch.mock.calls[0][1] as Set<string>]).toEqual(['u1'])
+  })
+
+  it('fails as a whole when the status events are refused', async () => {
+    h.client = makeClient({
+      plan_revisions: { data: [revision], error: null },
+      plan_link_events: { data: [event], error: null },
+      plan_status_events: { data: null, error: { message: 'no' } },
+    }).client
+    expect(await listPlanHistory('s1')).toMatchObject({ failed: true, statusEvents: [] })
   })
 
   it('never asks for the revisions\' text', async () => {

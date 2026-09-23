@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { AlertTriangle, ArrowLeft, CloudOff, FileText, FileWarning, History, NotebookPen, RotateCcw } from '@ds/desktop/icons'
-import type { PlanComment, PlanDetail, PlanLocalSpec, PlanSpecUpdateResult, PlanTicketRead, PlanTicketStates } from '../../../types'
+import { PLAN_STATUSES, type PlanComment, type PlanDetail, type PlanLocalSpec, type PlanSpecUpdateResult, type PlanStatus, type PlanStatusUpdateResult, type PlanTicketRead, type PlanTicketStates } from '../../../types'
 import { useT, type MessageKey } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
 import MarkdownView from '../../components/file-preview/MarkdownView'
@@ -21,7 +21,7 @@ import { useAvatar } from '../../hooks/useAvatar'
 import { usePlanComments } from '../../hooks/usePlanComments'
 import { configKeyForRepoId } from '../../utils/projectColors'
 import type { PlanCard, PlanTicketGroup } from '../../utils/planRows'
-import { groupPlanTickets, planAuthor, planLabel } from '../../utils/planRows'
+import { groupPlanTickets, planAuthor, planLabel, toStatus } from '../../utils/planRows'
 import type { PlanCommentThread } from '../../utils/planComments'
 import {
   buildPlanCommentThreads, canEditPlanComment, isOrphanedPlanCommentThread,
@@ -535,12 +535,15 @@ export function PlanDetailPage({
   now,
   paneRef,
   onBack,
+  onStatusChange,
 }: {
   card: PlanCard
   /** The list's instant, not one of this page's own: see `Plans/index.tsx`. */
   now: number
   paneRef: RefObject<HTMLElement>
   onBack: () => void
+  /** A status set on this page, so the list behind it says the same. */
+  onStatusChange?: (id: string, status: PlanStatus) => void
 }) {
   const t = useT()
   const repositories = useStore((s) => s.config?.repositories)
@@ -1028,14 +1031,68 @@ export function PlanDetailPage({
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [onBack])
 
-  const { tone, labelKey } = STATUS_LOOK[card.status]
+  /**
+   * The status as the ROW says it once the read is in — it may have been changed here, or
+   * by somebody else since the list was drawn — and the card's until then.
+   */
+  const planStatus = toStatus(detail?.session?.status ?? card.status)
+  const { tone, labelKey } = STATUS_LOOK[planStatus]
+  const statusOptions = useMemo(
+    () => PLAN_STATUSES.map((value) => ({ value, label: t(STATUS_LOOK[value].labelKey), tone: STATUS_LOOK[value].tone })),
+    [t],
+  )
+  const [statusError, setStatusError] = useState<'denied' | 'failed' | null>(null)
+
+  /**
+   * Set the status by hand. The database holds it against the agent's later uploads and
+   * records the change in the history (20260923150000). The write moves the row's
+   * `updated_at`, so the spec editor's conflict guard moves with it — or the next spec save
+   * would be refused over a change this very page made.
+   */
+  const changeStatus = useCallback(async (value: string) => {
+    const id = card.id
+    if (!(PLAN_STATUSES as readonly string[]).includes(value) || value === planStatus) return
+    const next = value as PlanStatus
+    let result: PlanStatusUpdateResult
+    try {
+      result = await window.electronAPI.plans.updateStatus({ id, status: next })
+    } catch {
+      result = { status: 'failed' }
+    }
+    if (cardIdRef.current !== id) return
+    if (result.status !== 'saved') {
+      setStatusError(result.status)
+      return
+    }
+    setStatusError(null)
+    const updatedAt = result.updatedAt
+    updatedAtRef.current = updatedAt
+    setDetail((prev) => prev?.session
+      ? { ...prev, session: { ...prev.session, status: next, updatedAt } }
+      : prev)
+    onStatusChange?.(id, next)
+  }, [card.id, planStatus, onStatusChange])
+
   /**
    * The status, drawn ONCE and rendered in two places — the pinned bar while the reader
    * has scrolled past the heading, the heading itself before that. One expression rather
    * than two copies, because the two are the same fact and a pill that changed shape on
    * scroll would read as a second, different status.
+   *
+   * A picker once the read has a session, since there is no row to write before that.
    */
-  const statusChip = <Status label={t(labelKey)} tone={tone} />
+  const statusChip = detail?.session
+    ? (
+      <Status
+        label={t(labelKey)}
+        tone={tone}
+        options={statusOptions}
+        value={planStatus}
+        onSelect={(value) => { void changeStatus(value) }}
+        align="right"
+      />
+    )
+    : <Status label={t(labelKey)} tone={tone} />
   const session = detail?.session
   // Zero for "no such timestamp", the sentinel `planRecency` and `PlanRow` already use
   // for one — an unparseable stamp lands there too, since `NaN > 0` is false.
@@ -1663,6 +1720,11 @@ export function PlanDetailPage({
               actions={[{ label: t('plans.edit.reload'), icon: RotateCcw, onClick: reloadAfterConflict, primary: true }]}
             >
               {t('plans.edit.conflict')}
+            </Banner>
+          )}
+          {statusError && (
+            <Banner variant="danger" bordered className="mb-3">
+              {t(statusError === 'denied' ? 'plans.detail.statusDenied' : 'plans.detail.statusFailed')}
             </Banner>
           )}
           {editError === 'denied' && (
