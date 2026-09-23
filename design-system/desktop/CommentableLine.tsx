@@ -1,6 +1,6 @@
 import type { ElementType, MouseEvent, ReactNode } from 'react'
+import { Button } from './Button'
 import { ButtonIcon } from './ButtonIcon'
-import { Label } from './Label'
 import { MessageSquare, MessageSquarePlus } from './icons'
 
 /**
@@ -46,17 +46,12 @@ import { MessageSquare, MessageSquarePlus } from './icons'
  * to a click that did nothing. What is left says exactly one thing: this is the line the
  * open bubble is about.
  *
- * ── ONE OF THEM IS A CONTROL AND THE OTHER IS A FACT ──────────────────────────────────
+ * ── TWO CONTROLS, ONE FOR EACH THING THERE IS TO DO ───────────────────────────────────
  *
  * An empty line OFFERS something: a button, plus-signed, that opens a box to write in. A
- * line that already carries a discussion has nothing to offer — the discussion is on screen,
- * in the margin, beside it — so its mark is a chip and not a button. It counts, and it is
- * read, and pressing it would be pressing a label.
- *
- * That corrects a shape this had for a revision, where both states were buttons of the same
- * width: the count OPENED something, back when the notes lived in a bubble that had to be
- * opened one at a time. Once every note is visible at once, a control to reveal what is
- * already revealed is a control that does nothing.
+ * line that already carries a discussion is a button too, orange and counted, and pressing
+ * it opens that discussion in a bubble under the pointer. The discussions are not on screen
+ * until somebody asks for one, so the count is the way in to what it counts.
  *
  * THE COUNT INCLUDES THE REPLIES, which is the app's arithmetic and not this file's — the
  * number arrives counted. "3" beside a line means three things were said about it, not three
@@ -153,8 +148,7 @@ export interface CommentableLineProps {
   lineId?: string
   /**
    * How many comments are already on this line. Zero is the offer that appears under the
-   * pointer; anything else is a mark that stands there permanently, with the number beside
-   * it.
+   * pointer; anything else is a mark that stands there permanently, with the number in it.
    *
    * THE NUMBER IS DRAWN FROM ONE, not from two. A mark on its own says a line has been
    * written about; it cannot say whether that is one note or a conversation, and which of
@@ -172,12 +166,8 @@ export interface CommentableLineProps {
    */
   label: string
   /**
-   * Start the first comment on this line.
-   *
-   * ONLY EVER THE FIRST. A line that already carries a discussion draws a chip rather than a
-   * button — see the docblock — so this is not reached for one: a second note on a sentence
-   * somebody has already written about is an answer to them, and Reply is where that is
-   * offered.
+   * Open this line: an empty box on a line nobody has written about, its discussion on one
+   * somebody has. Where it opens is the caller's — under the pointer that pressed it.
    *
    * THE ONLY WAY IN from this component. The line itself is inert — no click handler, no
    * cursor change — because prose is for reading and selecting, and a paragraph that
@@ -230,7 +220,7 @@ export function CommentableLine({
           subtree, so nothing the mark ever draws can land in the middle of a stored
           quotation and shift every offset after it.
 
-          THE POSITIONING IS THE WRAPPER'S, not the mark's: `ButtonIcon` and `Label` both
+          THE POSITIONING IS THE WRAPPER'S, not the mark's: `ButtonIcon` and `Button` both
           own their size, their ground and their hover, and neither takes an `absolute`. A
           span around them is where one belongs — and having one means the two states of the
           mark are placed by the same box rather than by two sets of classes that could
@@ -265,10 +255,18 @@ export function CommentableLine({
             offer nobody has taken up is for the pointer — see the docblock. The ones
             carrying a discussion stay on the keyboard's path, because a comment is content. */}
         {commented ? (
-          /* A CHIP AND NOT A BUTTON: the discussion is already on screen beside it. */
-          <Label icon={MessageSquare} color="rgb(var(--c-orange))" title={label}>
+          /* The count opens what it counts. `tint` in the annotation orange is the chip it
+             used to be, with a hover and a press. */
+          <Button
+            icon={MessageSquare}
+            tone="tint"
+            color="rgb(var(--c-orange))"
+            size="xs"
+            title={label}
+            onClick={onOpen}
+          >
             {String(count)}
-          </Label>
+          </Button>
         ) : (
           /* Plus-signed: the same glyph the composer wears, saying the same thing — a
              comment about to exist rather than one to read. `md` is 28px, a target sized for
