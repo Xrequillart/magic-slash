@@ -1456,6 +1456,22 @@ export const en = {
   'plans.edit.clickToEdit': 'Click the text to edit it',
   // The block being written in, for a screen reader: the field has no visible label.
   'plans.edit.field': 'Edit this passage (Markdown)',
+  'plans.decisions.decision': 'Decision made',
+  'plans.decisions.reason': 'Why',
+  'plans.decisions.expand': 'Show the decision and why',
+  'plans.decisions.collapse': 'Fold this question',
+  'plans.sizing.verdict': 'Verdict',
+  'plans.sizing.deliverables': 'Deliverables counted',
+  'plans.sizing.splitting': 'Splitting mode',
+  'plans.sizing.justification': 'Justification',
+  'plans.specHeader.repository': 'Repository',
+  'plans.specHeader.tracker': 'Tracker',
+  'plans.specHeader.created': 'Created',
+  'plans.specHeader.status': 'Status',
+  'plans.specHeader.statuses.drafting': 'Drafting',
+  'plans.specHeader.statuses.awaiting': 'Awaiting approval',
+  'plans.specHeader.statuses.created': 'Tickets created',
+  'plans.specHeader.statuses.abandoned': 'Abandoned',
   // Where the autosave is, beside the heading. It saves a few seconds after the last
   // keystroke, for everyone in the organization.
   'plans.edit.unsaved': 'Not saved yet',

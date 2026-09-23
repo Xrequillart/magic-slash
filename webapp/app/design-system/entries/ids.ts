@@ -37,6 +37,9 @@ export type EntryId =
   | 'uncommittedchangescard'
   | 'checklist'
   | 'collapsibleline'
+  | 'decisionlist'
+  | 'sizingcard'
+  | 'specheadercard'
   | 'reviewthreadline'
   | 'tabstrip'
   | 'tally'
@@ -153,6 +156,9 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   uncommittedchangescard: 'UnCommittedChangesCard',
   checklist: 'CheckList',
   collapsibleline: 'CollapsibleLine',
+  decisionlist: 'DecisionList',
+  sizingcard: 'SizingCard',
+  specheadercard: 'SpecHeaderCard',
   reviewthreadline: 'ReviewThreadLine',
   tabstrip: 'TabStrip',
   tally: 'Tally',
@@ -311,6 +317,9 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   uncommittedchangescard: ['filemodifiedline', 'diffstat', 'text'],
   checklist: ['icon', 'text'],
   collapsibleline: ['icon', 'text'],
+  decisionlist: ['buttonicon'],
+  sizingcard: ['icon'],
+  specheadercard: ['icon', 'label'],
   reviewthreadline: ['icon', 'label', 'text'],
   tally: ['text'],
   pullrequestcard: ['buttonicon', 'collapsibleline', 'icon', 'text'],
@@ -489,6 +498,9 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   uncommittedchangescard: 'The files you are in the middle of',
   checklist: 'Every check the run is made of, named',
   collapsibleline: 'One box to tick, and what is behind it',
+  decisionlist: 'The questions a plan was framed by, and what was decided',
+  sizingcard: 'How big a plan was judged to be, and why',
+  specheadercard: 'Where a spec lives, and where it stands',
   reviewthreadline: 'One review thread, scanned rather than read',
   tabstrip: 'A pill rail that slides to the tab you pick',
   tally: 'A total, broken into the parts it is made of',

@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { MessageSquare } from '@ds/desktop/icons'
 import {
   CommentRail, CommentRailNote, holdsCommentDraft,
   COMMENT_GUTTER_PX, COMMENT_RAIL_PX, COMMENT_RAIL_GAP_PX,
   type CommentNoteState,
 } from '@ds/desktop'
-import MarkdownView from './MarkdownView'
+import MarkdownView, { type MarkdownListProps, type MarkdownTableProps } from './MarkdownView'
 import CommentCard, { CommentAnchorNotice, type CommentAuthor, type CommentThread } from './CommentCard'
 import { CommentLine, CommentLinesProvider, lineElementOf, lineIdOf } from './CommentLines'
 import { SpecSelectionToolbar } from './SpecSelectionToolbar'
@@ -170,6 +170,10 @@ interface Props {
    * Absent for every store-backed caller, whose whole-file comments are not orphans.
    */
   anchorless?: readonly FileComment[]
+  /** Passed straight through to `MarkdownView`, exactly as `variant` is. */
+  table?: ComponentType<MarkdownTableProps>
+  /** Passed straight through to `MarkdownView`, exactly as `table` is. */
+  list?: ComponentType<MarkdownListProps>
 }
 
 /**
@@ -452,7 +456,9 @@ function readRendered(root: HTMLElement): RenderedText {
     acceptNode(node) {
       if (node.nodeType !== Node.ELEMENT_NODE) return NodeFilter.FILTER_ACCEPT
       const element = node as Element
-      if (element.hasAttribute('data-comment-overlay')) return NodeFilter.FILTER_REJECT
+      if (element.hasAttribute('data-comment-overlay') || element.hasAttribute('data-comment-exempt')) {
+        return NodeFilter.FILTER_REJECT
+      }
       // SKIP, not REJECT: the element itself is nothing to us, its text is everything.
       return element.tagName === 'BR' ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP
     },
@@ -671,10 +677,23 @@ interface Capture {
  * The offsets are narrowed past the selection's own whitespace rather than the string being
  * trimmed afterwards, so the range kept for the panel covers exactly the characters stored.
  */
+/**
+ * Whether a node sits in a block marked `data-comment-exempt`: part of the document, and
+ * not something anybody comments on — a spec's header, its coordinates rather than a claim.
+ * The walk leaves its text out, so it can neither be quoted nor searched for.
+ */
+function isExempt(node: Node | null): boolean {
+  const element = node instanceof Element ? node : node?.parentElement
+  return !!element?.closest('[data-comment-exempt]')
+}
+
 function captureQuote(root: HTMLElement): Capture | null {
   const selection = window.getSelection()
   if (!selection || selection.isCollapsed || selection.rangeCount === 0) return null
   if (!root.contains(selection.anchorNode) || !root.contains(selection.focusNode)) return null
+  // A block the document says is not for commenting: a drag that starts or ends in it offers
+  // nothing. Its text is out of the walk as well, so a drag across it quotes around it.
+  if (isExempt(selection.anchorNode) || isExempt(selection.focusNode)) return null
 
   const rendered = readRendered(root)
   const at = offsetsOf(rendered, selection.getRangeAt(0))
@@ -735,7 +754,7 @@ function scrollerOf(node: HTMLElement): HTMLElement | null {
 
 export default function MarkdownCommentLayer({
   content, repoPath, filePath, fingerprint, spec, variant, lines, source, renderOrphans,
-  anchorless = NO_ANCHORLESS,
+  anchorless = NO_ANCHORLESS, table, list,
 }: Props) {
   const t = useT()
   const proseRef = useRef<HTMLDivElement>(null)
@@ -950,9 +969,11 @@ export default function MarkdownCommentLayer({
            them does not, which is what keeps either of those from re-running remark over
            the whole spec. */
         line={lines ? CommentLine : undefined}
+        table={table}
+        list={list}
       />
     ),
-    [content, variant, lines],
+    [content, variant, lines, table, list],
   )
 
   /**

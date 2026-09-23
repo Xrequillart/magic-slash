@@ -53,6 +53,9 @@ import { FileModifiedLineEntry } from './entries/FileModifiedLineEntry'
 import { UnCommittedChangesCardEntry } from './entries/UnCommittedChangesCardEntry'
 import { CheckListEntry } from './entries/CheckListEntry'
 import { CollapsibleLineEntry } from './entries/CollapsibleLineEntry'
+import { DecisionListEntry } from './entries/DecisionListEntry'
+import { SizingCardEntry } from './entries/SizingCardEntry'
+import { SpecHeaderCardEntry } from './entries/SpecHeaderCardEntry'
 import { TabStripEntry } from './entries/TabStripEntry'
 import { TallyEntry } from './entries/TallyEntry'
 import { ReviewThreadLineEntry } from './entries/ReviewThreadLineEntry'
@@ -213,6 +216,9 @@ const ENTRIES: Record<
   uncommittedchangescard: UnCommittedChangesCardEntry,
   checklist: CheckListEntry,
   collapsibleline: CollapsibleLineEntry,
+  decisionlist: DecisionListEntry,
+  sizingcard: SizingCardEntry,
+  specheadercard: SpecHeaderCardEntry,
   tally: TallyEntry,
   reviewthreadline: ReviewThreadLineEntry,
   pullrequestcard: PullRequestCardEntry,

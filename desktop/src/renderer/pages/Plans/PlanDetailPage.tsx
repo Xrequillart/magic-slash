@@ -9,6 +9,7 @@ import {
   CommentLine, EditableLinesProvider, type EditableLine, type EditableLinesState,
 } from '../../components/file-preview/CommentLines'
 import { SpecSelectionToolbar } from '../../components/file-preview/SpecSelectionToolbar'
+import { SpecList, SpecTable } from './SpecBlocks'
 import {
   CommentBody, Quote,
   type CommentThread, type CommentTurn,
@@ -246,7 +247,7 @@ function PlainSpec({ content, editable }: { content: string; editable: boolean }
   const rootRef = useRef<HTMLDivElement>(null)
   return (
     <div ref={rootRef}>
-      <MarkdownView content={content} variant="document" line={editable ? CommentLine : undefined} />
+      <MarkdownView content={content} variant="document" line={editable ? CommentLine : undefined} table={SpecTable} list={SpecList} />
       {editable && <SpecSelectionToolbar rootRef={rootRef} />}
     </div>
   )
@@ -309,6 +310,9 @@ const SpecBody = memo(function SpecBody({
       source={comments.source}
       renderOrphans={comments.renderOrphans}
       anchorless={comments.anchorless}
+      /* The framing decisions and the sizing, drawn as what they hold: see `SpecBlocks`. */
+      table={SpecTable}
+      list={SpecList}
     />
   )
 })

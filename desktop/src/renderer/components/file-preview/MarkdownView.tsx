@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react'
+import { Children, isValidElement, useMemo, type ComponentType, type ReactElement, type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
@@ -40,6 +40,33 @@ export interface MarkdownLineProps {
   children?: ReactNode
 }
 
+/**
+ * A table, handed over row by row: each row with a key a caller can hang a comment off —
+ * the row's offset in the source, `MarkdownLineProps`' reason — and its cells as drawn.
+ *
+ * `fallback` is the table as it would have been drawn: a caller that does not recognise
+ * this one returns it, and the document is unchanged.
+ */
+export interface MarkdownTableProps {
+  /** The header's words, one per column. */
+  head: string[]
+  rows: { lineKey: string | undefined; cells: ReactNode[] }[]
+  fallback: ReactNode
+}
+
+/**
+ * A bulleted list, handed over item by item: each with the key a `MarkdownLineProps` block
+ * carries, its plain words (to recognise it by) and its words as drawn. Only a FLAT list of
+ * tight items is handed over — an item holding paragraphs or a sublist holds blocks, which
+ * are lines of their own, and is drawn as it always was.
+ *
+ * `fallback` is the list as it would have been drawn, `MarkdownTableProps`' reason.
+ */
+export interface MarkdownListProps {
+  items: { lineKey: string | undefined; text: string; children: ReactNode }[]
+  fallback: ReactNode
+}
+
 interface Props {
   content: string
   /**
@@ -58,6 +85,14 @@ interface Props {
    * caller that passes something is which function builds the element for a paragraph.
    */
   line?: (props: MarkdownLineProps) => ReactNode
+  /**
+   * Draw a table through this instead — absent, and every table is drawn as one. A
+   * COMPONENT and not a function, so a table that holds state (a row unfolded) keeps it
+   * across the re-renders an edit makes. Held stable by its callers, `line`'s reason.
+   */
+  table?: ComponentType<MarkdownTableProps>
+  /** Draw a bulleted list through this instead. `table`'s terms, for `MarkdownListProps`. */
+  list?: ComponentType<MarkdownListProps>
 }
 
 // Everything that does not change with the size: colours, borders, list markers.
@@ -238,7 +273,77 @@ function isContainer(node: NodeProps['node']): boolean {
   ))
 }
 
-export default function MarkdownView({ content, variant = 'panel', line }: Props) {
+/** A hast node's words, markup dropped: a header cell's name. */
+type HastNode = NonNullable<NodeProps['node']> & { tagName?: string; type?: string; value?: string }
+function textOf(node: HastNode | undefined): string {
+  if (!node) return ''
+  if (node.type === 'text') return node.value ?? ''
+  return (node.children ?? []).map((child) => textOf(child as HastNode)).join('')
+}
+
+/** The element children of a hast node with the given tag. */
+function hastChildren(node: HastNode | undefined, tag: string): HastNode[] {
+  return ((node?.children ?? []) as HastNode[]).filter((child) => child.type === 'element' && child.tagName === tag)
+}
+
+/** The element children of a rendered node with the given tag, in the same order as hast's. */
+function reactChildren(children: ReactNode, tag: string): ReactElement<{ children?: ReactNode }>[] {
+  return Children.toArray(children).filter(
+    (child): child is ReactElement<{ children?: ReactNode }> => isValidElement(child) && child.type === tag,
+  )
+}
+
+/** A `table` override that hands the table to `Table`, cut into rows and cells. */
+function tableOverride(Table: ComponentType<MarkdownTableProps>) {
+  return function TableLines({ node, children, ...props }: NodeProps & JSX.IntrinsicElements['table']) {
+    const fallback = COMPONENTS.table({ ...props, children })
+    const hast = node as HastNode | undefined
+    const head = hastChildren(hastChildren(hastChildren(hast, 'thead')[0], 'tr')[0], 'th').map((th) => textOf(th).trim())
+    const hastRows = hastChildren(hastChildren(hast, 'tbody')[0], 'tr')
+    const rendered = reactChildren(reactChildren(children, 'tbody')[0]?.props.children, 'tr')
+    if (hastRows.length !== rendered.length) return fallback
+    const rows = hastRows.map((tr, i) => {
+      const start = tr.position?.start?.offset
+      return {
+        lineKey: typeof start === 'number' ? `tr@${start}` : undefined,
+        cells: reactChildren(rendered[i].props.children, 'td').map((td) => td.props.children),
+      }
+    })
+    return <Table head={head} rows={rows} fallback={fallback} />
+  }
+}
+
+/**
+ * A `ul` override that hands a flat list to `List`, item by item.
+ *
+ * THE ITEMS ARE READ OFF WHAT WAS RENDERED, and matched to the tree by position: with a `line`
+ * renderer each `<li>` has already been built by it, and what this needs of it is the words
+ * inside, which are that element's own `children` either way.
+ */
+function listOverride(List: ComponentType<MarkdownListProps>) {
+  return function ListLines({ node, children, ...props }: NodeProps & JSX.IntrinsicElements['ul']) {
+    const fallback = <ul {...props}>{children}</ul>
+    const hastItems = hastChildren(node as HastNode | undefined, 'li')
+    const rendered = Children.toArray(children).filter(
+      (child): child is ReactElement<{ children?: ReactNode }> => isValidElement(child),
+    )
+    const flat = hastItems.every((li) => !(li.children ?? []).some((child) => (
+      child.type === 'element' && BLOCK_CHILDREN.has(child.tagName ?? '')
+    )))
+    if (!flat || hastItems.length === 0 || hastItems.length !== rendered.length) return fallback
+    const items = hastItems.map((li, i) => {
+      const source = sourceOf(li)
+      return {
+        lineKey: source ? `li@${source.start}` : undefined,
+        text: textOf(li).trim(),
+        children: rendered[i].props.children,
+      }
+    })
+    return <List items={items} fallback={fallback} />
+  }
+}
+
+export default function MarkdownView({ content, variant = 'panel', line, table, list }: Props) {
   /**
    * The overrides, built once per `line` — which is once, since its callers hold it in a
    * `useCallback`.
@@ -250,9 +355,12 @@ export default function MarkdownView({ content, variant = 'panel', line }: Props
    * focus on every keystroke.
    */
   const components = useMemo(() => {
-    if (!line) return COMPONENTS
+    if (!line && !table && !list) return COMPONENTS
     const overrides: Record<string, unknown> = { ...COMPONENTS }
-    for (const tag of LINE_TAGS) {
+    if (table) overrides.table = tableOverride(table)
+    if (list) overrides.ul = listOverride(list)
+    const draw = line
+    if (draw) for (const tag of LINE_TAGS) {
       overrides[tag] = ({ node, children, className }: NodeProps & {
         children?: ReactNode
         className?: string
@@ -260,7 +368,7 @@ export default function MarkdownView({ content, variant = 'panel', line }: Props
         // A container is drawn plainly: no key means no mark and no anchor — see
         // `isContainer`, and `CommentLine`, which draws the bare tag for a keyless block.
         const source = isContainer(node) ? undefined : sourceOf(node)
-        return line({
+        return draw({
           tag,
           lineKey: source ? `${tag}@${source.start}` : undefined,
           source,
@@ -270,7 +378,7 @@ export default function MarkdownView({ content, variant = 'panel', line }: Props
       }
     }
     return overrides
-  }, [line])
+  }, [line, table, list])
 
   return (
     <div className={`${STRUCTURE} ${SCALE[variant]}`}>

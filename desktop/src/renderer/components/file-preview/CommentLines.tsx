@@ -235,11 +235,7 @@ export function CommentLine({ tag, lineKey, source, className, children }: Markd
          than by the catalogue for the reason every plural in this app is: `t` resolves a key
          and does not count, so "1 comment" never gets written in a language that would not
          say it that way. */
-      label={count === 0
-        ? t('filePreview.commentOnLine')
-        : count === 1
-          ? t('filePreview.commentsOnLine.one')
-          : t('filePreview.commentsOnLine.other', { count })}
+      label={commentLabel(t, count)}
       onOpen={() => state.onOpen(lineKey)}
       onClick={onClick}
       className={className}
@@ -247,6 +243,20 @@ export function CommentLine({ tag, lineKey, source, className, children }: Markd
       {body}
     </CommentableLine>
   )
+}
+
+/** What a line's mark says, already counted. See `CommentLine`'s three states. */
+export function commentLabel(t: ReturnType<typeof useT>, count: number): string {
+  return count === 0
+    ? t('filePreview.commentOnLine')
+    : count === 1
+      ? t('filePreview.commentsOnLine.one')
+      : t('filePreview.commentsOnLine.other', { count })
+}
+
+/** The comment wiring of the document this is rendered in, or `null` when it has none. */
+export function useCommentLines(): CommentLinesState | null {
+  return useContext(CommentLinesContext)
 }
 
 /**
