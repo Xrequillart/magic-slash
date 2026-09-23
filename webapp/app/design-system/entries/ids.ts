@@ -31,6 +31,7 @@ export type EntryId =
   | 'branchcard'
   | 'commitline'
   | 'commitcard'
+  | 'timelineline'
   | 'diffstat'
   | 'filemodifiedline'
   | 'uncommittedchangescard'
@@ -146,6 +147,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   branchcard: 'BranchCard',
   commitline: 'CommitLine',
   commitcard: 'CommitCard',
+  timelineline: 'TimelineLine',
   diffstat: 'DiffStat',
   filemodifiedline: 'FileModifiedLine',
   uncommittedchangescard: 'UnCommittedChangesCard',
@@ -303,6 +305,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   branchcard: ['buttonicon', 'icon', 'text'],
   commitline: ['buttonicon', 'icon', 'text'],
   commitcard: ['commitline', 'text'],
+  timelineline: ['avatar', 'icon', 'label', 'text'],
   diffstat: ['text'],
   filemodifiedline: ['diffstat', 'text'],
   uncommittedchangescard: ['filemodifiedline', 'diffstat', 'text'],
@@ -480,6 +483,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   branchcard: 'Where the work is, and where it goes',
   commitline: 'One commit, on the branch’s rail',
   commitcard: 'What this branch has that its base does not',
+  timelineline: 'Who did what, and how, on a history’s rail',
   diffstat: 'How much was added, how much was taken away',
   filemodifiedline: 'One file that has changed, and by how much',
   uncommittedchangescard: 'The files you are in the middle of',

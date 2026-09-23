@@ -55,6 +55,8 @@ export type { CommitCardCommit, CommitCardProps } from './CommitCard'
 // gutter, not a thing a page has any business drawing on its own.
 export { CommitLine } from './CommitLine'
 export type { CommitLineProps } from './CommitLine'
+export { TimelineLine } from './TimelineLine'
+export type { TimelineLineProps } from './TimelineLine'
 export { ChipInput } from './ChipInput'
 export type { ChipInputProps } from './ChipInput'
 export { CommentCard } from './CommentCard'

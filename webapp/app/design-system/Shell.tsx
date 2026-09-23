@@ -47,6 +47,7 @@ import { RateLimitBarEntry } from './entries/RateLimitBarEntry'
 import { UsageTableEntry } from './entries/UsageTableEntry'
 import { CommitCardEntry } from './entries/CommitCardEntry'
 import { CommitLineEntry } from './entries/CommitLineEntry'
+import { TimelineLineEntry } from './entries/TimelineLineEntry'
 import { DiffStatEntry } from './entries/DiffStatEntry'
 import { FileModifiedLineEntry } from './entries/FileModifiedLineEntry'
 import { UnCommittedChangesCardEntry } from './entries/UnCommittedChangesCardEntry'
@@ -206,6 +207,7 @@ const ENTRIES: Record<
   branchcard: BranchCardEntry,
   commitline: CommitLineEntry,
   commitcard: CommitCardEntry,
+  timelineline: TimelineLineEntry,
   diffstat: DiffStatEntry,
   filemodifiedline: FileModifiedLineEntry,
   uncommittedchangescard: UnCommittedChangesCardEntry,
