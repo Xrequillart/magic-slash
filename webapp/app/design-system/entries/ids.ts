@@ -319,7 +319,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   collapsibleline: ['icon', 'text'],
   decisionlist: ['buttonicon'],
   sizingcard: ['icon'],
-  specheadercard: ['icon', 'label'],
+  specheadercard: ['icon', 'label', 'text'],
   reviewthreadline: ['icon', 'label', 'text'],
   tally: ['text'],
   pullrequestcard: ['buttonicon', 'collapsibleline', 'icon', 'text'],

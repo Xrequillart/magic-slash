@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Icon } from './Icon'
 import { Label } from './Label'
+import { Text } from './Text'
 import { CalendarDays, CircleCheck, CircleDashed, CircleDot, CircleSlash, FolderGit2 } from './icons'
 import type { IconComponent } from './types'
 
@@ -47,7 +48,7 @@ const STATUS: Record<SpecStatusTone, { color?: string; icon: IconComponent }> = 
 function Cell({ caption, children }: { caption: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5 px-4 py-3">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary/70">{caption}</span>
+      <Text size="2xs" weight="bold" tone="secondary" className="uppercase tracking-wide opacity-70">{caption}</Text>
       <div className="flex min-w-0 items-center gap-2">{children}</div>
     </div>
   )
@@ -65,9 +66,9 @@ export function SpecHeaderCard({ repository, tracker, created, status, labels, c
         <Cell caption={labels.repository}>
           <Label icon={FolderGit2}>{repository.name}</Label>
           {repository.path && (
-            <span className="min-w-0 truncate font-mono text-xs text-text-secondary/70" title={repository.path}>
+            <Text size="xs" tone="secondary" className="min-w-0 truncate font-mono opacity-70" title={repository.path}>
               {repository.path}
-            </span>
+            </Text>
           )}
         </Cell>
       )}
@@ -79,7 +80,7 @@ export function SpecHeaderCard({ repository, tracker, created, status, labels, c
       {created && (
         <Cell caption={labels.created}>
           <Icon glyph={CalendarDays} tone="muted" />
-          <span className="text-sm font-medium text-ink">{created}</span>
+          <Text size="sm">{created}</Text>
         </Cell>
       )}
       {status && tone && (
