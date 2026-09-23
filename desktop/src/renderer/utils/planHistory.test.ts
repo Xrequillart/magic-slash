@@ -31,38 +31,32 @@ describe('buildPlanTimeline', () => {
 describe('revisionPair', () => {
   const revisions = [revision('r3', '3'), revision('r2', '2'), revision('r1', '1')]
 
-  it('is nothing without a selection', () => {
-    expect(revisionPair(revisions, [])).toBeNull()
+  it('is nothing with nothing selected', () => {
+    expect(revisionPair(revisions, null)).toBeNull()
   })
 
-  it('compares one revision with the one before it', () => {
-    expect(revisionPair(revisions, ['r2'])).toEqual({ from: 'r1', to: 'r2' })
+  it('compares the selected revision with the one before it', () => {
+    expect(revisionPair(revisions, 'r2')).toEqual({ from: 'r1', to: 'r2' })
   })
 
   it('compares the first revision with nothing', () => {
-    expect(revisionPair(revisions, ['r1'])).toEqual({ from: null, to: 'r1' })
+    expect(revisionPair(revisions, 'r1')).toEqual({ from: null, to: 'r1' })
   })
 
   it('does not call the oldest shown the first when older revisions were not read', () => {
-    expect(revisionPair(revisions, ['r1'], true)).toEqual({ from: null, to: 'r1', olderHidden: true })
-    expect(revisionPair(revisions, ['r2'], true)).toEqual({ from: 'r1', to: 'r2' })
-  })
-
-  it('orders two revisions by when they happened, not by the clicks', () => {
-    expect(revisionPair(revisions, ['r3', 'r1'])).toEqual({ from: 'r1', to: 'r3' })
-    expect(revisionPair(revisions, ['r1', 'r3'])).toEqual({ from: 'r1', to: 'r3' })
+    expect(revisionPair(revisions, 'r1', true)).toEqual({ from: null, to: 'r1', olderHidden: true })
+    expect(revisionPair(revisions, 'r2', true)).toEqual({ from: 'r1', to: 'r2' })
   })
 
   it('ignores an id the history no longer holds', () => {
-    expect(revisionPair(revisions, ['gone', 'r2'])).toEqual({ from: 'r1', to: 'r2' })
+    expect(revisionPair(revisions, 'gone')).toBeNull()
   })
 })
 
 describe('toggleRevision', () => {
-  it('adds, removes, and keeps the last two clicks', () => {
-    expect(toggleRevision([], 'a')).toEqual(['a'])
-    expect(toggleRevision(['a'], 'b')).toEqual(['a', 'b'])
-    expect(toggleRevision(['a', 'b'], 'c')).toEqual(['b', 'c'])
-    expect(toggleRevision(['a', 'b'], 'a')).toEqual(['b'])
+  it('selects one revision at a time, and a second click drops it', () => {
+    expect(toggleRevision(null, 'a')).toBe('a')
+    expect(toggleRevision('a', 'b')).toBe('b')
+    expect(toggleRevision('a', 'a')).toBeNull()
   })
 })

@@ -26,15 +26,17 @@ import { LINK_ICONS } from './linkIcons'
  * READ-ONLY. There is no restore: a revision can be looked at and compared, and putting an
  * old text back is an edit like any other, made in the spec above.
  *
- * SELECTING. A click on a revision shows what it changed (against the one before it); a
- * second click on another compares the two. Link events are not selectable — there is no
- * text to diff.
+ * SELECTING. One revision at a time: a click on a revision shows what it changed (against
+ * the one before it), a click on another switches to it, a second click on the same one
+ * closes the diff. Link events are not selectable — there is no text to diff.
+ *
+ * NO HEADING OF ITS OWN: the page draws it under a "History" tab beside the spec, and the
+ * tab is its title.
  */
 export const PlanHistory = memo(function PlanHistory({
   sessionId,
   version,
   now,
-  heading,
 }: {
   sessionId: string
   /**
@@ -44,12 +46,10 @@ export const PlanHistory = memo(function PlanHistory({
   version: string | number
   /** The list's instant, as everywhere on this page. */
   now: number
-  /** The section heading, drawn by the page so every section shares one. */
-  heading: (title: string, hint?: string) => JSX.Element
 }) {
   const t = useT()
   const history = usePlanHistory(sessionId, version)
-  const [selected, setSelected] = useState<string[]>([])
+  const [selected, setSelected] = useState<string | null>(null)
   const [wholeSpec, setWholeSpec] = useState(false)
 
   const read = history.read
@@ -82,7 +82,7 @@ export const PlanHistory = memo(function PlanHistory({
           : { label: t('plans.history.byHand') },
         date,
         dateTitle,
-        selected: selected.includes(revision.id),
+        selected: selected === revision.id,
         onSelect: () => {
           setSelected((picked) => toggleRevision(picked, revision.id))
           setWholeSpec(false)
@@ -107,9 +107,7 @@ export const PlanHistory = memo(function PlanHistory({
     }
   }
 
-  const diffTitle = selected.length >= 2
-    ? t('plans.history.diffBetween')
-    : pair?.olderHidden
+  const diffTitle = pair?.olderHidden
       ? t('plans.history.diffOldestShown')
       : pair?.from
         ? t('plans.history.diffPrevious')
@@ -127,7 +125,6 @@ export const PlanHistory = memo(function PlanHistory({
 
   return (
     <>
-      {heading(t('plans.history.title'), t('plans.history.hint'))}
       {read === null ? (
         <p className="py-6 text-center text-sm text-text-secondary bg-surface-subtle rounded-xl">{t('common.loading')}</p>
       ) : read.failed ? (
@@ -164,7 +161,7 @@ export const PlanHistory = memo(function PlanHistory({
                       {wholeSpec ? t('plans.history.changesOnly') : t('plans.history.wholeSpec')}
                     </Button>
                   )}
-                  <Button size="sm" tone="ghost" onClick={() => setSelected([])}>{t('plans.history.clear')}</Button>
+                  <Button size="sm" tone="ghost" onClick={() => setSelected(null)}>{t('plans.history.clear')}</Button>
                 </div>
               </div>
               {diff === null || diff.failed || diffMessage ? (

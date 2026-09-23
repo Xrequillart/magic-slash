@@ -32,43 +32,34 @@ export function buildPlanTimeline(read: Pick<PlanHistoryRead, 'revisions' | 'lin
 }
 
 /**
- * The two revisions a selection compares, older first — or null when nothing is selected.
+ * The two revisions the selected one is compared across, older first — or null when nothing
+ * is selected. ONE revision at a time: the selected one against the one before it — "what
+ * did this change?" — or against what the plan held before its history began
+ * (`from: null`) when it is the first revision there is.
  *
- *  * TWO selected: those two, in the order they happened, whichever was clicked first.
- *  * ONE selected: that revision against the one before it — "what did this change?" — or
- *    against nothing (`from: null`) when it is the first revision there is.
- *  * ONE selected, the oldest shown, while `olderRevisions` says the read stopped short:
- *    the one before it exists but was not read, so `olderHidden` is set and there is
- *    nothing to diff. Comparing it with nothing would show it as the plan's first text.
+ * When it is the oldest shown and `olderRevisions` says the read stopped short, the one
+ * before it exists but was not read, so `olderHidden` is set and there is nothing to diff.
+ * Comparing it with nothing would show it as the plan's first text.
  *
  * `revisions` is the list as read, newest first. An id no longer in it (the history was
  * re-read and pruned) is ignored rather than asked for.
  */
 export function revisionPair(
   revisions: readonly PlanRevision[],
-  selected: readonly string[],
+  selected: string | null,
   olderRevisions = false,
 ): { from: string | null; to: string; olderHidden?: boolean } | null {
-  const indexes = selected
-    .map((id) => revisions.findIndex((revision) => revision.id === id))
-    .filter((index) => index >= 0)
-    .sort((a, b) => a - b)
-  if (indexes.length === 0) return null
-  if (indexes.length >= 2) {
-    // Newest first: the smaller index is the newer revision.
-    return { from: revisions[indexes[indexes.length - 1]].id, to: revisions[indexes[0]].id }
-  }
-  const previous = revisions[indexes[0] + 1]
-  if (!previous && olderRevisions) return { from: null, to: revisions[indexes[0]].id, olderHidden: true }
-  return { from: previous?.id ?? null, to: revisions[indexes[0]].id }
+  const index = selected ? revisions.findIndex((revision) => revision.id === selected) : -1
+  if (index < 0) return null
+  const previous = revisions[index + 1]
+  if (!previous && olderRevisions) return { from: null, to: revisions[index].id, olderHidden: true }
+  return { from: previous?.id ?? null, to: revisions[index].id }
 }
 
 /**
- * The selection after a click: a click on a selected revision drops it; on another, adds it,
- * dropping the OLDEST pick when two are already held — the comparison follows the reader's
- * last two clicks.
+ * The selection after a click: a click on the selected revision drops it, a click on
+ * another replaces it. One revision is selected at a time.
  */
-export function toggleRevision(selected: readonly string[], id: string): string[] {
-  if (selected.includes(id)) return selected.filter((picked) => picked !== id)
-  return [...selected.slice(-1), id]
+export function toggleRevision(selected: string | null, id: string): string | null {
+  return selected === id ? null : id
 }

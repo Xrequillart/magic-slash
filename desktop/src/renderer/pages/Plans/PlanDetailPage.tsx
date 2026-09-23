@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { AlertTriangle, ArrowLeft, CloudOff, FileWarning, NotebookPen, RotateCcw } from '@ds/desktop/icons'
+import { AlertTriangle, ArrowLeft, CloudOff, FileText, FileWarning, History, NotebookPen, RotateCcw } from '@ds/desktop/icons'
 import type { PlanComment, PlanDetail, PlanLocalSpec, PlanSpecUpdateResult, PlanTicketRead, PlanTicketStates } from '../../../types'
 import { useT, type MessageKey } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
@@ -37,7 +37,7 @@ import { codeToMarkdown, richTextToMarkdown, type RichNode } from '../../utils/r
 import { blockShortcut, inlineShortcut } from '../../utils/markdownShortcuts'
 import { detectTicketProvider } from '../../components/agent-info-sidebar/utils'
 import {
-  Banner, Button, CommentCard as TurnCard, Label, Status, StickyBar, Text, TrackerBadge, caretOffsetIn,
+  Banner, Button, CommentCard as TurnCard, Label, Status, StickyBar, TabStrip, Text, TrackerBadge, caretOffsetIn,
   type RichTextBlockProps,
 } from '@ds/desktop'
 import { JiraStatusPill, StateChip } from '../Tasks/parts'
@@ -198,7 +198,8 @@ function SectionHeading({ children, hint }: { children: string; hint?: string })
 }
 
 /** The history's heading, at module level so the memoised section is not re-drawn on every keystroke. */
-const historyHeading = (title: string, hint?: string) => <SectionHeading hint={hint}>{title}</SectionHeading>
+/** The spec and its history share one place on the page, behind two tabs. */
+type PlanTab = 'spec' | 'history'
 
 /**
  * The spec itself, behind a memo boundary — the same one `pr-comments/PRThread` puts
@@ -550,6 +551,12 @@ export function PlanDetailPage({
   /** Bumped by Retry, for the reason `Plans/index.tsx` gives: one effect owns `detail`. */
   const [attempt, setAttempt] = useState(0)
   const retry = useCallback(() => setAttempt((n) => n + 1), [])
+  /**
+   * Which of the spec and its history is on screen. The spec stays MOUNTED behind the
+   * History tab, only hidden: a block being edited and its pending autosave must survive a
+   * look at the history, where unmounting would drop both.
+   */
+  const [tab, setTab] = useState<PlanTab>('spec')
 
   /**
    * THE SPEC, AS THIS PAGE HOLDS IT: the row's markdown, plus whatever the reader has written
@@ -1630,12 +1637,21 @@ export function PlanDetailPage({
           {/* The heading, with the autosave's state on its right: the one sign that the text
               takes a caret, and then where the writing is. Quiet on purpose — the document
               is the editor, and a status louder than a caption would read as a toolbar. */}
-          <div className="flex items-end justify-between gap-3">
-            <SectionHeading>{t('plans.detail.spec')}</SectionHeading>
-            {editStatus && (
-              <Text size="xs" tone="secondary" className="mb-3 opacity-60">{editStatus}</Text>
+          <div className="mt-8 mb-3 flex items-center justify-between gap-3">
+            <TabStrip
+              ariaLabel={t('plans.detail.tabs')}
+              items={[
+                { key: 'spec', label: t('plans.detail.spec'), icon: FileText },
+                { key: 'history', label: t('plans.history.title'), icon: History },
+              ]}
+              activeKey={tab}
+              onSelect={(key) => setTab(key as PlanTab)}
+            />
+            {tab === 'spec' && editStatus && (
+              <Text size="xs" tone="secondary" className="opacity-60">{editStatus}</Text>
             )}
           </div>
+          <div hidden={tab !== 'spec'}>
           {/* Above the document, where the eye is when a save comes back: each is a fact about
               the save just attempted, and the text is still below it. */}
           {editError === 'conflict' && (
@@ -1735,14 +1751,18 @@ export function PlanDetailPage({
             )}
           </div>
 
+          </div>
+
           {/* Who changed the spec and the links, and how — by hand or with Claude — with the
-              diff between two revisions. Under the spec it is the history of. */}
-          <PlanHistory
-            sessionId={session.id}
-            version={`${session.updatedAt ?? ''}:${linksVersion}`}
-            now={now}
-            heading={historyHeading}
-          />
+              diff of the revision selected. Mounted only while its tab is open, so it reads
+              itself fresh each time it is opened. */}
+          {tab === 'history' && (
+            <PlanHistory
+              sessionId={session.id}
+              version={`${session.updatedAt ?? ''}:${linksVersion}`}
+              now={now}
+            />
+          )}
         </>
       )}
     </div>

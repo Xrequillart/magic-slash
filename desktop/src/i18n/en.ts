@@ -1411,6 +1411,7 @@ export const en = {
   // the app, and nothing on this page goes out to the tracker any more.
   'plans.detail.openInTasks': 'Open this ticket in Tasks',
   'plans.detail.spec': 'Spec',
+  'plans.detail.tabs': 'Plan sections',
   'plans.detail.specPending':
     'The spec has not been uploaded yet. It appears here as the session writes it.',
   // NEVER "truncated": the uploader stats the file before reading it, so nothing is ever
@@ -1483,7 +1484,6 @@ export const en = {
   'plans.links.remove': 'Remove this link',
   'plans.links.addedBy': '{kind} · added by {author}',
   'plans.history.title': 'History',
-  'plans.history.hint': 'Who changed the spec and the links, and how',
   'plans.history.empty': 'No change recorded yet.',
   'plans.history.failed': 'The history of this plan could not be loaded.',
   'plans.history.truncated': 'Only the most recent changes are shown.',
@@ -1494,13 +1494,12 @@ export const en = {
   'plans.history.pinned': 'pinned',
   'plans.history.removed': 'removed',
   'plans.history.formerMember': 'A former member',
-  'plans.history.select': 'Select to compare',
-  'plans.history.pickHint': 'Select a revision to see what it changed, or two to compare them.',
+  'plans.history.select': 'Select to see what it changed',
+  'plans.history.pickHint': 'Select a revision to see what it changed.',
   'plans.history.diffPrevious': 'What this revision changed',
   'plans.history.diffFirst': 'The first recorded revision, in full',
   'plans.history.diffOldestShown': 'The oldest revision shown',
   'plans.history.olderHidden': 'Older revisions exist but are not shown, so this one cannot be compared with the one before it.',
-  'plans.history.diffBetween': 'Between the two selected revisions',
   'plans.history.diffFailed': 'This comparison could not be computed.',
   'plans.history.noChange': 'No difference between these revisions.',
   'plans.history.wholeSpec': 'Show the whole spec',
