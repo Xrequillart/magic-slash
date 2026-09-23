@@ -13,7 +13,7 @@
 -- repo_id would let a stranger stamp their session onto an org they do not
 -- belong to.
 --
--- Assertions 19-37 cover 20260922110000_plan_sessions_member_edit.sql: a member of the
+-- Assertions 19-37 cover 20260923100000_plan_sessions_member_edit.sql: a member of the
 -- org may now edit a colleague's plan, but only its TEXT (spec, title, idea) — never whose
 -- it is, which repository it belongs to, or the author's sync bookkeeping — and never a
 -- session on a personal repository. The last six pin that the system's own writes on
@@ -291,7 +291,7 @@ select throws_ok(
 );
 
 -- ---------------------------------------------------------------------------
--- Member edits (20260922110000): the text is shared, the row is not
+-- Member edits (20260923100000): the text is shared, the row is not
 -- ---------------------------------------------------------------------------
 -- Fresh fixtures, because the ones above have been through a repository deletion and a
 -- re-share by now. u3 belongs to no org at all: the stranger. d4 is a team repository of

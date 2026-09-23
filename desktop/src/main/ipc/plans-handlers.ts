@@ -170,7 +170,7 @@ export function setupPlansHandlers(): void {
    * Save a spec edited in the app — the one channel that writes `plan_sessions`.
    *
    * SHAPE ONLY, like the comment channels, and for their reason: who may edit whose plan
-   * is `plan_sessions_update`'s question and its guard trigger's (20260922110000), and a
+   * is `plan_sessions_update`'s question and its guard trigger's (20260923100000), and a
    * copy of that rule here would drift from it. What the handler does NOT take is as
    * much of the contract as what it does: no owner, no spec key, no path. Whether this
    * machine's spec file follows the save is decided off the row, in `store/plan-edit.ts`.

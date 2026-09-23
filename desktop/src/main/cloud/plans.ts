@@ -23,7 +23,7 @@ import { getStore } from '../store/Store'
  * ONE WRITE, and only one: `updatePlanSpec`, the in-app editor's save (issue #302). Every
  * other write onto `plan_sessions` is the author's own upload, from `store/plan-sync.ts`
  * through the store. This one can come from ANY member of the plan's organization, which
- * is what 20260922110000 opened up — and what its guard trigger narrows to the text.
+ * is what 20260923100000 opened up — and what its guard trigger narrows to the text.
  *
  * EVERY READ SAYS WHETHER IT WORKED. `Read<T>` below is the shape each fetch answers in,
  * and it exists because the three interesting states are not two: rows, no rows, and NO
