@@ -1427,8 +1427,6 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.history.pinned': 'a épinglé',
   'plans.history.removed': 'a retiré',
   'plans.history.formerMember': 'Un ancien membre',
-  'plans.history.select': 'Sélectionner pour voir ce qu’elle a changé',
-  'plans.history.pickHint': 'Sélectionnez une révision pour voir ce qu’elle a changé.',
   'plans.history.diffPrevious': 'Ce que cette révision a changé',
   'plans.history.diffFirst': 'La première révision enregistrée, en entier',
   'plans.history.diffOldestShown': 'La plus ancienne révision affichée',
@@ -1437,7 +1435,8 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.history.noChange': 'Aucune différence entre ces révisions.',
   'plans.history.wholeSpec': 'Afficher toute la spécification',
   'plans.history.changesOnly': 'N’afficher que les modifications',
-  'plans.history.clear': 'Effacer la sélection',
+  'plans.history.unfoldDiff': 'Voir toutes les modifications ({count} lignes)',
+  'plans.history.foldDiff': 'Replier les modifications',
 
   // ── Barre de mise en forme d'une spec ───────────────────────────────────────
   'plans.format.text': 'Texte',

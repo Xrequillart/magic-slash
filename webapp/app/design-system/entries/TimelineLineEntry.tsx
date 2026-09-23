@@ -78,6 +78,12 @@ const PROPS: PropRow[] = [
     fallback: "''",
     description: 'Margins and placement. Not the rail, the ground or the type.',
   },
+  {
+    name: 'children',
+    type: 'ReactNode',
+    description:
+      'What the entry carries, drawn under its row from the avatar’s edge: a revision’s diff, in a history that shows each change where it happened. The rail runs on beside it to the next entry.',
+  },
 ]
 
 const ROWS = [

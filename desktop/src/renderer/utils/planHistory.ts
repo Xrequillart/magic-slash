@@ -59,11 +59,3 @@ export function revisionPair(
   if (!previous && olderRevisions) return { from: null, to: revisions[index].id, olderHidden: true }
   return { from: previous?.id ?? null, to: revisions[index].id }
 }
-
-/**
- * The selection after a click: a click on the selected revision drops it, a click on
- * another replaces it. One revision is selected at a time.
- */
-export function toggleRevision(selected: string | null, id: string): string | null {
-  return selected === id ? null : id
-}

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Avatar } from './Avatar'
 import { Icon } from './Icon'
 import { Label, type LabelTone } from './Label'
@@ -118,6 +119,16 @@ export interface TimelineLineProps {
   selectLabel?: string
   /** Margins and placement. Not the rail, the ground or the type. */
   className?: string
+  /**
+   * What the entry CARRIES, drawn under its row: a revision's diff, in a history that shows
+   * each change where it happened rather than behind a click.
+   *
+   * A SLOT, because what goes there is the app's — a highlighted diff it fetched — and it
+   * lines up with the avatar, under the words of the row it belongs to. The rail runs on
+   * beside it to the next entry, so the timeline stays one line down the page however tall
+   * the thing under an entry grows.
+   */
+  children?: ReactNode
 }
 
 export function TimelineLine({
@@ -138,6 +149,7 @@ export function TimelineLine({
   onSelect,
   selectLabel,
   className = '',
+  children,
 }: TimelineLineProps) {
   // ONE background class per state, never two on one element: which of two wins is Tailwind's
   // emit order, not the order they were written in.
@@ -189,7 +201,35 @@ export function TimelineLine({
   // `py-2` on the row and not a `space-y` on the list: the rail is drawn per row, and any
   // gap between rows would break it. See `TimelineRail`.
   const row = `flex items-center gap-2.5 py-2 px-2 rounded-lg text-left w-full ${ground} ${className}`.trim()
-  if (!onSelect) return <div className={row}>{inner}</div>
+  const carried = children != null && children !== false && (
+    /* The rail's own column, a hairline all the way down unless this is the last entry, then
+       the content from the avatar's left edge: `w-3` and `gap-2.5` are the row's. */
+    <div className="flex gap-2.5 px-2">
+      <span className="relative w-3 flex-shrink-0">
+        {!last && <span className="absolute left-1/2 -translate-x-1/2 inset-y-0 w-px bg-ink/15" />}
+      </span>
+      <div className="min-w-0 flex-1 pb-3">{children}</div>
+    </div>
+  )
+  if (!onSelect) {
+    return carried ? <div><div className={row}>{inner}</div>{carried}</div> : <div className={row}>{inner}</div>
+  }
+  if (carried) {
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={onSelect}
+          aria-pressed={selected}
+          title={selectLabel}
+          className={`${row} border-none cursor-pointer transition-colors`}
+        >
+          {inner}
+        </button>
+        {carried}
+      </div>
+    )
+  }
   return (
     <button
       type="button"

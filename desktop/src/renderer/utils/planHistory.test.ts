@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { PlanLinkEvent, PlanRevision } from '../../types'
-import { buildPlanTimeline, revisionPair, toggleRevision } from './planHistory'
+import { buildPlanTimeline, revisionPair } from './planHistory'
 
 function revision(id: string, updatedAt: string): PlanRevision {
   return { id, source: 'human', createdAt: updatedAt, updatedAt }
@@ -59,13 +59,5 @@ describe('revisionPair', () => {
 
   it('ignores an id the history no longer holds', () => {
     expect(revisionPair(revisions, 'gone')).toBeNull()
-  })
-})
-
-describe('toggleRevision', () => {
-  it('selects one revision at a time, and a second click drops it', () => {
-    expect(toggleRevision(null, 'a')).toBe('a')
-    expect(toggleRevision('a', 'b')).toBe('b')
-    expect(toggleRevision('a', 'a')).toBeNull()
   })
 })

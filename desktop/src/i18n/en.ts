@@ -1517,8 +1517,6 @@ export const en = {
   'plans.history.pinned': 'pinned',
   'plans.history.removed': 'removed',
   'plans.history.formerMember': 'A former member',
-  'plans.history.select': 'Select to see what it changed',
-  'plans.history.pickHint': 'Select a revision to see what it changed.',
   'plans.history.diffPrevious': 'What this revision changed',
   'plans.history.diffFirst': 'The first recorded revision, in full',
   'plans.history.diffOldestShown': 'The oldest revision shown',
@@ -1527,7 +1525,8 @@ export const en = {
   'plans.history.noChange': 'No difference between these revisions.',
   'plans.history.wholeSpec': 'Show the whole spec',
   'plans.history.changesOnly': 'Show the changes only',
-  'plans.history.clear': 'Clear the selection',
+  'plans.history.unfoldDiff': 'Show all changes ({count} lines)',
+  'plans.history.foldDiff': 'Fold the changes',
 
   // The toolbar over a selection in a plan's spec: the kind of block, the marks, a link,
   // and the one way to comment on a passage.
