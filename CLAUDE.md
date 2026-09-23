@@ -1,13 +1,14 @@
 # Magic Slash
 
-8 skills for Claude Code that automate the entire development cycle with Jira and GitHub: `/magic:plan`, `/magic:start`, `/magic:continue`, `/magic:commit`, `/magic:pr`, `/magic:review`, `/magic:resolve`, `/magic:done`.
+9 skills for Claude Code that automate the entire development cycle with Jira and GitHub: `/magic:plan`, `/magic:plan-change`, `/magic:start`, `/magic:continue`, `/magic:commit`, `/magic:pr`, `/magic:review`, `/magic:resolve`, `/magic:done`.
 
 ## Project Structure
 
 ```text
 magic-slash/
-├── skills/            # Claude Code skills (8 skills) - SKILL.md files
+├── skills/            # Claude Code skills (9 skills) - SKILL.md files
 │   ├── magic-plan/    #   Turn an idea into a spec, then an epic and its stories
+│   ├── magic-plan-change/#   Rework a plan's spec and update the tickets it filed
 │   ├── magic-start/   #   Start a task from a Jira ticket or GitHub issue
 │   ├── magic-continue/#   Resume work on an existing ticket
 │   ├── magic-commit/  #   Create atomic commits with conventional messages

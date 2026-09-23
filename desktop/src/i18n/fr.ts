@@ -379,7 +379,7 @@ export const fr: Record<keyof typeof en, string> = {
   'setup.wizard.integrations.githubOnly': 'GitHub uniquement',
   'setup.wizard.integrations.githubOnlyHelp': 'Issues, pull requests et revues. Aucun accès à Jira n’est demandé.',
   'setup.wizard.integrations.changeable': 'Vous pourrez changer d’avis dans les réglages.',
-  'setup.wizard.done.skills': 'Les huit skills /magic: sont installés',
+  'setup.wizard.done.skills': 'Les neuf skills /magic: sont installés',
   'setup.wizard.done.mcp': 'Les accès Jira et GitHub sont configurés',
   'setup.wizard.done.permissions': 'Les permissions et les hooks sont configurés',
   'setup.wizard.allSet': 'Rien d’autre à faire — la connexion à Jira et GitHub se fera dans votre navigateur la première fois qu’un skill en aura besoin.',
@@ -1333,6 +1333,11 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Plans · un plan ─────────────────────────────────────────────────────────
   'plans.detail.back': 'Tous les plans',
+  'plans.detail.change': 'Retravailler le plan',
+  'plans.detail.changeHint': 'Ouvre un nouvel agent avec /magic:plan-change sur cette spec. Ajoutez ce qui doit changer, puis envoyez.',
+  'plans.detail.changeNotOwner': 'Seul l’auteur peut retravailler ce plan : son fichier de spec est sur sa machine.',
+  'plans.detail.changeNoFile': 'Le fichier de spec de ce plan n’est pas sur cette machine.',
+  'plans.detail.changeFailed': 'Impossible de vérifier où se trouve le fichier de spec de ce plan.',
   'plans.detail.notFound': 'Ce plan n’est pas accessible',
   'plans.detail.notFoundHint':
     'Il n’existe pas, ou il appartient à un dépôt qu’aucune de vos organisations ne partage.',
@@ -1564,6 +1569,7 @@ export const fr: Record<keyof typeof en, string> = {
   // ── Lancement rapide ─────────────────────────────────────────────────────
   'quickLaunch.placeholder': 'PROJ-123 /start',
   'quickLaunch.cmd.plan': 'Transformer une idée en tickets',
+  'quickLaunch.cmd.planChange': 'Retravailler un plan et ses tickets',
   'quickLaunch.cmd.start': 'Démarrer une nouvelle tâche',
   'quickLaunch.cmd.continue': 'Reprendre une tâche',
   'quickLaunch.cmd.commit': 'Créer un commit',

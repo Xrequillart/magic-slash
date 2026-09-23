@@ -1,6 +1,6 @@
 ---
 name: magic:plan
-description: Turns an idea into tickets — brainstorm, a reviewable spec, then an epic and its stories. Use when nothing exists yet and the user is floating an idea rather than resuming tracked work. Triggers on "I have an idea", "j'ai une idée", "we should add", "on devrait ajouter", "brainstorm", "réfléchir à", "plan a feature", "planifier une feature", "create the tickets for", "créer les tickets pour", "write the spec", "écrire la spec", or any proposal with no ticket behind it. Do NOT use it when the work already exists in a tracker — "PROJ-123", "#456", "work on X", "start", "commencer" all mean the ticket is there, so use /magic:start instead.
+description: Turns an idea into tickets — brainstorm, a reviewable spec, then an epic and its stories. Use when nothing exists yet and the user is floating an idea rather than resuming tracked work. Triggers on "I have an idea", "j'ai une idée", "we should add", "on devrait ajouter", "brainstorm", "réfléchir à", "plan a feature", "planifier une feature", "create the tickets for", "créer les tickets pour", "write the spec", "écrire la spec", or any proposal with no ticket behind it. Do NOT use it when the work already exists in a tracker — "PROJ-123", "#456", "work on X", "start", "commencer" all mean the ticket is there, so use /magic:start instead. To rework a plan whose tickets already exist, use /magic:plan-change.
 argument-hint: <idea or feature description>
 allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Agent, AskUserQuestion, mcp__github__*, mcp__atlassian__*
 ---

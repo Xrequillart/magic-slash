@@ -413,7 +413,7 @@ export const en = {
   'setup.wizard.integrations.githubOnly': 'GitHub only',
   'setup.wizard.integrations.githubOnlyHelp': 'Issues, pull requests and reviews. No Jira access is requested.',
   'setup.wizard.integrations.changeable': 'You can change this later in Settings.',
-  'setup.wizard.done.skills': 'The eight /magic: skills are installed',
+  'setup.wizard.done.skills': 'The nine /magic: skills are installed',
   'setup.wizard.done.mcp': 'Jira and GitHub access is configured',
   'setup.wizard.done.permissions': 'Permissions and hooks are configured',
   'setup.wizard.allSet': 'Nothing else to do — sign in to Jira and GitHub happens in your browser the first time a skill needs it.',
@@ -1389,6 +1389,14 @@ export const en = {
   // surfaces show the same session to the same people, so a reader moving between them
   // must not have to re-learn what "no epic" or "spec pending" means here.
   'plans.detail.back': 'All plans',
+  // The heading's button that opens a new agent on `/magic:plan-change <spec path>`. Not
+  // the webapp's wording: the webapp has no agent to open. The three reasons are what the
+  // button's tooltip and the line under the heading say when it is disabled.
+  'plans.detail.change': 'Rework the plan',
+  'plans.detail.changeHint': 'Opens a new agent with /magic:plan-change on this spec. Add what should change, then send.',
+  'plans.detail.changeNotOwner': 'Only the author can rework this plan: its spec file is on their machine.',
+  'plans.detail.changeNoFile': 'The spec file of this plan is not on this machine.',
+  'plans.detail.changeFailed': 'Could not check where the spec file of this plan is.',
   'plans.detail.notFound': 'This plan is not available',
   'plans.detail.notFoundHint':
     'It does not exist, or it belongs to a repository none of your organizations share.',
@@ -1651,6 +1659,7 @@ export const en = {
   // ── Quick launch ─────────────────────────────────────────────────────────
   'quickLaunch.placeholder': 'PROJ-123 /start',
   'quickLaunch.cmd.plan': 'Turn an idea into tickets',
+  'quickLaunch.cmd.planChange': 'Rework a plan and its tickets',
   'quickLaunch.cmd.start': 'Start a new task',
   'quickLaunch.cmd.continue': 'Resume work on a task',
   'quickLaunch.cmd.commit': 'Create a commit',

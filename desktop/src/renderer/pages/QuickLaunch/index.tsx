@@ -6,6 +6,7 @@ import { useT, type MessageKey } from '../../i18n'
 // would be resolved once at import and pin the palette to the boot language.
 const COMMANDS: { name: string; descriptionKey: MessageKey }[] = [
   { name: '/magic:plan', descriptionKey: 'quickLaunch.cmd.plan' },
+  { name: '/magic:plan-change', descriptionKey: 'quickLaunch.cmd.planChange' },
   { name: '/magic:start', descriptionKey: 'quickLaunch.cmd.start' },
   { name: '/magic:continue', descriptionKey: 'quickLaunch.cmd.continue' },
   { name: '/magic:commit', descriptionKey: 'quickLaunch.cmd.commit' },
@@ -21,8 +22,9 @@ export function QuickLaunch() {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Find the slash portion to filter suggestions
-  const slashMatch = input.match(/(\/[\w:]*)$/)
+  // Find the slash portion to filter suggestions. The hyphen is part of the class so
+  // `/magic:plan-` still narrows to `/magic:plan-change` instead of closing the list.
+  const slashMatch = input.match(/(\/[\w:-]*)$/)
   const showSuggestions = slashMatch !== null
   const slashText = slashMatch ? slashMatch[1].toLowerCase() : ''
   const suggestions = showSuggestions

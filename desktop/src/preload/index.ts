@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AvatarSourceResult, AvatarWriteResult } from '../avatar'
 import type { UsernameCheckResult, UsernameSaveResult } from '../username'
-import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCommentsRead, PlanLinksRead, PlanDetail, PlanOverview, PlanSpecUpdate, PlanSpecUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
+import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCommentsRead, PlanLinksRead, PlanDetail, PlanOverview, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -865,6 +865,11 @@ const plansApi = {
   // queued either: offline is `failed`, and the draft is the caller's to keep.
   updateSpec: (input: PlanSpecUpdate): Promise<PlanSpecUpdateResult> =>
     ipcRenderer.invoke('plans:updateSpec', input),
+  // Where this plan's `.magic/spec-*.md` is on THIS machine, and the repository root it
+  // lives in, so the page can open `/magic:plan-change` on it. Only the author's plan can
+  // answer `ok`: a colleague's file is on their disk (`not_owner`), and one of mine made
+  // on another laptop or since deleted is `no_file`.
+  localSpec: (id: string): Promise<PlanLocalSpec> => ipcRenderer.invoke('plans:localSpec', id),
 }
 
 // Org API (organization membership + invitations + multi-org management)

@@ -202,6 +202,10 @@ const MAGIC_SLASH_BASE_PERMISSIONS = [
   'mcp__github__issue_write',
   'mcp__github__sub_issue_write',
   'mcp__github__get_me',
+  // /magic:plan-change reads whether a filed story is already being worked on before it
+  // proposes to rework or close it, and an open PR naming the issue is one of the signals.
+  // Read-only, and it runs while the user waits for the diff.
+  'mcp__github__search_pull_requests',
   // ── git ────────────────────────────────────────────────────────────────────
   // The subcommands the skills run, and only those. `git config` is deliberately
   // absent: an alias is a stored shell command, so granting it grants everything.
@@ -299,6 +303,11 @@ const MAGIC_SLASH_ATLASSIAN_PERMISSIONS = [
   'mcp__atlassian__getTransitionsForJiraIssue',
   'mcp__atlassian__transitionJiraIssue',
   'mcp__atlassian__addCommentToJiraIssue',
+  // /magic:plan-change edits the summary and description of stories already filed. Safe to
+  // pre-approve for the same reason issue_write is on the GitHub side: the skill reaches it
+  // only after the user has approved the exact list of ticket changes, and a prompt there
+  // would interrupt the run right after that approval.
+  'mcp__atlassian__editJiraIssue',
 ]
 
 /**

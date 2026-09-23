@@ -1,6 +1,6 @@
 /**
  * The skills the desktop declares as the development cycle, in the order they run —
- * plan, start, pick back up, commit, ship, review, fix the review, close.
+ * plan, rework the plan, start, pick back up, commit, ship, review, fix the review, close.
  *
  * A FIXED list, though the RPCs that count runs return every skill that has ever run:
  * the point is that the cycle has a known shape, so a hole in it ("plenty of commits,
@@ -11,7 +11,7 @@
  *
  * WHY THIS FILE HAS NO IMPORTER TODAY. It was the private constant of the Team page's
  * skill-tiles row, which went out with that page. It survives on its own because it is
- * one of the eight copies of the shipped skill list that `main/skills-registry.test.ts`
+ * one of the copies of the shipped skill list that `main/skills-registry.test.ts`
  * holds together — the webapp keeps the same list in `webapp/lib/skills.ts`, and the
  * two builds have no code path between them, so the only thing stopping them drifting
  * is that test reading both as text. Deleting this would take the desktop side of that
@@ -20,6 +20,7 @@
  */
 export const TRACKED_SKILLS: { skill: string; label: string }[] = [
   { skill: 'magic-plan', label: 'plan' },
+  { skill: 'magic-plan-change', label: 'plan-change' },
   { skill: 'magic-start', label: 'start' },
   { skill: 'magic-continue', label: 'continue' },
   { skill: 'magic-commit', label: 'commit' },

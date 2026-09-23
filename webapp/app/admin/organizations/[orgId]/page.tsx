@@ -399,7 +399,7 @@ export default function AdminOrgRecord() {
                     simply panel background.
                     Same box as the feature groups on the user record — the console's
                     established "section inside a card" shape. */}
-                <dl className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-4 lg:grid-cols-8">
+                <dl className="grid grid-cols-3 gap-2 p-4 lg:grid-cols-9">
                   {TRACKED_SKILLS.map(({ skill, label }) => {
                     // Absent from the map means never run. `?? 0` is where absence
                     // becomes the number to print — the RPC returns no row at all

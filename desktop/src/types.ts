@@ -2225,6 +2225,21 @@ export type PlanSpecUpdateResult =
   | { status: 'failed' }
 
 /**
+ * Where a plan's spec file is on THIS machine, for the one thing that needs a path the
+ * cloud does not carry: launching `/magic:plan-change` on it.
+ *
+ *  * `ok`         — `path` is the spec file, on disk right now; `repoPath` is the root of
+ *                   the configured repository it lives in, where the new agent opens.
+ *  * `not_owner`  — somebody else's plan: their file is on their disk, not here.
+ *  * `no_file`    — mine, but no spec file with this plan's key exists here (another
+ *                   laptop, a deleted file, a repository no longer bound to a folder).
+ *  * `failed`     — the plan could not be read, so nothing is known either way.
+ */
+export type PlanLocalSpec =
+  | { ok: true; path: string; repoPath: string }
+  | { ok: false; reason: 'not_owner' | 'no_file' | 'failed' }
+
+/**
  * Where a comment is attached, in line numbers — the shape `plan_comments.anchor`
  * stores as jsonb.
  *

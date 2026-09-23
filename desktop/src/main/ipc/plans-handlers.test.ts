@@ -58,8 +58,10 @@ vi.mock('../cloud/planLinks', () => ({
 }))
 
 const mockSaveSpec = vi.fn()
+const mockLocalSpec = vi.fn()
 vi.mock('../store/plan-edit', () => ({
   saveEditedPlanSpec: (...args: unknown[]) => mockSaveSpec(...args),
+  resolveLocalSpecPath: (...args: unknown[]) => mockLocalSpec(...args),
 }))
 
 import { setupPlansHandlers } from './plans-handlers'
@@ -244,6 +246,14 @@ describe('the read channels this file already had', () => {
   it('still guards plans:detail on the shape of its id', async () => {
     expect(await invoke('plans:detail', 'nope')).toEqual({ session: null, tickets: [], failed: false })
     expect(mockListDetail).not.toHaveBeenCalled()
+  })
+
+  it('guards plans:localSpec on the shape of its id, and passes a uuid through', async () => {
+    expect(await invoke('plans:localSpec', '../../etc')).toEqual({ ok: false, reason: 'no_file' })
+    expect(mockLocalSpec).not.toHaveBeenCalled()
+    mockLocalSpec.mockResolvedValueOnce({ ok: false, reason: 'not_owner' })
+    expect(await invoke('plans:localSpec', SESSION_ID)).toEqual({ ok: false, reason: 'not_owner' })
+    expect(mockLocalSpec).toHaveBeenCalledWith(SESSION_ID)
   })
 })
 
