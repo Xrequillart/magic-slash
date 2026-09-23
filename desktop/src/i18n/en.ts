@@ -1393,6 +1393,8 @@ export const en = {
   'plans.detail.notFoundHint':
     'It does not exist, or it belongs to a repository none of your organizations share.',
   'plans.detail.idea': 'Idea',
+  // Beside the Idea heading: what the section is.
+  'plans.detail.ideaHint': 'The initial prompt given to /magic:plan',
   'plans.detail.tickets': 'Created tickets',
   'plans.detail.noTickets': 'No ticket has been created from this plan yet.',
   'plans.detail.noEpic': 'No epic',

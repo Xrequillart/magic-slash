@@ -175,8 +175,16 @@ function serializeBlock(tag: string, host: RichNode): string {
 }
 
 /** One heading over one block, in the type the webapp's detail page uses for the same. */
-function SectionHeading({ children }: { children: string }) {
-  return <h2 className="text-sm font-semibold text-ink mt-8 mb-3">{children}</h2>
+function SectionHeading({ children, hint }: { children: string; hint?: string }) {
+  if (!hint) return <h2 className="text-sm font-semibold text-ink mt-8 mb-3">{children}</h2>
+  // A caption beside the heading, a step quieter than the heading's own grey: it says where
+  // the section comes from, and is not a second title.
+  return (
+    <div className="mt-8 mb-3 flex items-baseline gap-2 min-w-0">
+      <h2 className="shrink-0 text-sm font-semibold text-ink">{children}</h2>
+      <span className="truncate text-xs text-text-secondary/60">{hint}</span>
+    </div>
+  )
 }
 
 /**
@@ -1503,13 +1511,15 @@ export function PlanDetailPage({
         />
       ) : (
         <>
+          {/* The idea, as a section like the others: its heading above the card, the card in
+              the tickets' and the links' own ground. */}
           {session.idea && (
-            <div className="mt-6 p-4 rounded-xl bg-surface-subtle">
-              <p className="mb-1.5 text-[10px] uppercase tracking-wider text-text-secondary/60">
-                {t('plans.detail.idea')}
-              </p>
-              <p className="text-sm text-ink/80 whitespace-pre-line">{session.idea}</p>
-            </div>
+            <>
+              <SectionHeading hint={t('plans.detail.ideaHint')}>{t('plans.detail.idea')}</SectionHeading>
+              <div className="px-4 py-3 rounded-xl bg-surface-subtle">
+                <p className="text-sm text-ink/80 whitespace-pre-line">{session.idea}</p>
+              </div>
+            </>
           )}
 
           <SectionHeading>{t('plans.detail.tickets')}</SectionHeading>
