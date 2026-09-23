@@ -2412,9 +2412,10 @@ export type PlanRevisionSource = 'human' | 'agent'
  * each carries a full copy of a spec of up to 1 MiB. The text is only read to diff two of
  * them (`PlanRevisionDiff`).
  *
- * A run of saves by one author is ONE revision (the database folds them together), which is
- * why there are two dates: `createdAt` is when the run began, `updatedAt` its latest save —
- * and the one the timeline is ordered by.
+ * Every save that changes the spec is its own revision since 20260923140000. Revisions
+ * written before it may hold a run of saves folded together, which is why there are two
+ * dates: `createdAt` is when the run began, `updatedAt` its latest save — and the one the
+ * timeline is ordered by.
  */
 export interface PlanRevision {
   id: string

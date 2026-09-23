@@ -18,8 +18,8 @@ function when(value: string): number {
 /**
  * Revisions and link events interleaved, NEWEST FIRST.
  *
- * A revision is dated by its `updatedAt` — its latest save, since a run of saves by one
- * author is one revision — and an event by when it happened. On a tie the revision comes
+ * A revision is dated by its `updatedAt` — its latest save, since a revision written before
+ * 20260923140000 may fold several — and an event by when it happened. On a tie the revision comes
  * first: a spec save and a link pinned in the same instant are rare, and a stable order
  * is what keeps the rows from swapping places between two reads.
  */

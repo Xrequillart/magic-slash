@@ -93,9 +93,18 @@ describe('readRevisionTexts', () => {
     expect(await readRevisionTexts('new', 'old')).toEqual({ older: 'v1', newer: 'v2' })
   })
 
-  it('compares the first revision against an empty document', async () => {
-    h.client = makeClient({ plan_revisions: { data: [{ id: 'r1', session_id: 's1', content: 'v1', updated_at: 'x' }], error: null } }).client
+  it('compares the first revision against an empty document when it created the plan', async () => {
+    h.client = makeClient({
+      plan_revisions: { data: [{ id: 'r1', session_id: 's1', content: 'v1', base_content: null, updated_at: 'x' }], error: null },
+    }).client
     expect(await readRevisionTexts(null, 'r1')).toEqual({ older: '', newer: 'v1' })
+  })
+
+  it('compares the first revision against the text the plan held before its history began', async () => {
+    h.client = makeClient({
+      plan_revisions: { data: [{ id: 'r1', session_id: 's1', content: 'v0 and five words', base_content: 'v0', updated_at: 'x' }], error: null },
+    }).client
+    expect(await readRevisionTexts(null, 'r1')).toEqual({ older: 'v0', newer: 'v0 and five words' })
   })
 
   it('refuses two revisions of two different plans, or one it cannot see', async () => {

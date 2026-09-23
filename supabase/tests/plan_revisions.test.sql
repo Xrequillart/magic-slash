@@ -1,7 +1,8 @@
 -- pgTAP: what a write to a plan's spec records in its history, under whose name, and who
 -- may read it.
 --
--- Covers 20260923120000_plan_revisions.sql. Nothing here calls a function: every revision
+-- Covers 20260923120000_plan_revisions.sql and 20260923140000_plan_revisions_every_save.sql
+-- (one revision per save, and `base_content` on a session's first). Nothing here calls a function: every revision
 -- below is the side effect of an ordinary write to `plan_sessions`, made as the user whose
 -- app would make it, which is the whole point of the trigger. Three things are worth
 -- pinning, in order of what breaks if they go:
@@ -15,18 +16,18 @@
 --     could not close;
 --   * an unchanged spec records nothing (#5, #6). The app re-uploads the spec file after
 --     every in-app save and at every launch, on the agent path, and this is what keeps
---     each of those from reading as the agent rewriting the plan.
+--     each of those from reading as the agent rewriting the plan;
+--   * every save is a revision (#7, #15): two hand saves in a row by the same person were
+--     once folded into one, and the second vanished from the history.
 --
 -- The source header is simulated the way PostgREST sets it, as a transaction setting:
 --   set local request.headers = '{"x-magic-plan-source":"agent"}';   -- the agent's upload
 --   set local request.headers = '{}';                                  -- a hand edit
 --
--- One transaction, so `now()` does not move: every save here is "within ten minutes" of
--- the last one, and two revisions written in a row would tie on every timestamp. The
--- history is therefore AGED by a second (as the owner of the table) after each write that
--- adds a revision, which keeps "the latest revision" and the orderings below
--- deterministic without leaving the window. The case that must leave it (#15) backdates
--- a revision by eleven minutes instead.
+-- One transaction, so `now()` does not move, and two revisions written in a row would tie
+-- on every timestamp. The history is therefore AGED by a second (as the owner of the table)
+-- after each write that adds a revision, which keeps "the latest revision" and the
+-- orderings below deterministic.
 --
 -- Harness: see plan_comments.test.sql.
 
@@ -87,10 +88,10 @@ values ('e0000000-0000-0000-0000-000000000004', '11111111-1111-1111-1111-1111111
         'a0000000-0000-0000-0000-000000000001', 'new-feature', 'new-key', 'New feature', 'n1');
 reset role;
 select results_eq(
-  $sql$ select author_id, source, agent_id, agent_name, content from public.plan_revisions
+  $sql$ select author_id, source, agent_id, agent_name, content, base_content from public.plan_revisions
         where session_id = 'e0000000-0000-0000-0000-000000000004' $sql$,
-  $sql$ values ('11111111-1111-1111-1111-111111111111'::uuid, 'agent'::text, 'a0000000-0000-0000-0000-000000000001'::uuid, 'U1 Planner'::text, 'n1'::text) $sql$,
-  'the author''s upload that creates a session is its first revision, by the session''s agent'
+  $sql$ values ('11111111-1111-1111-1111-111111111111'::uuid, 'agent'::text, 'a0000000-0000-0000-0000-000000000001'::uuid, 'U1 Planner'::text, 'n1'::text, null::text) $sql$,
+  'the author''s upload that creates a session is its first revision, by the session''s agent, starting from nothing'
 );
 
 -- 3. A session created without its text (the tickets arrived first) is not.
@@ -105,15 +106,16 @@ select is(
   'a session created with no spec records no revision'
 );
 
--- 4. The agent rewrites the team plan: a revision under the session's agent, by name.
+-- 4. The agent rewrites the team plan: a revision under the session's agent, by name —
+-- and, the plan's first, starting from the text it held before its history began.
 set local role authenticated;
 update public.plan_sessions set spec = 'v1' where id = 'e0000000-0000-0000-0000-000000000001';
 reset role;
 select results_eq(
-  $sql$ select author_id, source, agent_id, agent_name, content from public.plan_revisions
+  $sql$ select author_id, source, agent_id, agent_name, content, base_content from public.plan_revisions
         where session_id = 'e0000000-0000-0000-0000-000000000001' $sql$,
-  $sql$ values ('11111111-1111-1111-1111-111111111111'::uuid, 'agent'::text, 'a0000000-0000-0000-0000-000000000001'::uuid, 'U1 Planner'::text, 'v1'::text) $sql$,
-  'the owner''s upload with the agent header is an agent revision, naming the session''s agent'
+  $sql$ values ('11111111-1111-1111-1111-111111111111'::uuid, 'agent'::text, 'a0000000-0000-0000-0000-000000000001'::uuid, 'U1 Planner'::text, 'v1'::text, 'v0'::text) $sql$,
+  'the owner''s upload with the agent header is an agent revision, naming the session''s agent, based on the prior spec'
 );
 update public.plan_revisions set updated_at = updated_at - interval '1 second', created_at = created_at - interval '1 second';
 
@@ -124,7 +126,7 @@ reset role;
 select results_eq(
   $sql$ select content, updated_at < now() from public.plan_revisions where session_id = 'e0000000-0000-0000-0000-000000000001' $sql$,
   $sql$ values ('v1'::text, true) $sql$,
-  'an unchanged spec re-uploaded records nothing, not even a coalesce'
+  'an unchanged spec re-uploaded records nothing, and leaves the last revision alone'
 );
 
 -- 6. A write that leaves the spec alone is not a revision.
@@ -137,14 +139,16 @@ select is(
   'a title edit records no revision'
 );
 
--- 7. A second upload a moment later is the same run: folded into the revision, not added.
+-- 7. A second upload a moment later is a revision of its own, and only the first has a base.
 set local role authenticated;
 update public.plan_sessions set spec = 'v2' where id = 'e0000000-0000-0000-0000-000000000001';
 reset role;
 select results_eq(
-  $sql$ select content, source, agent_name from public.plan_revisions where session_id = 'e0000000-0000-0000-0000-000000000001' $sql$,
-  $sql$ values ('v2'::text, 'agent'::text, 'U1 Planner'::text) $sql$,
-  'a save in the same run by the same author and agent is coalesced into the last revision'
+  $sql$ select content, source, agent_name, base_content from public.plan_revisions
+        where session_id = 'e0000000-0000-0000-0000-000000000001' order by created_at $sql$,
+  $sql$ values ('v1'::text, 'agent'::text, 'U1 Planner'::text, 'v0'::text),
+               ('v2'::text, 'agent'::text, 'U1 Planner'::text, null::text) $sql$,
+  'a second save by the same author and agent a moment later is a second revision'
 );
 update public.plan_revisions set updated_at = updated_at - interval '1 second', created_at = created_at - interval '1 second';
 
@@ -156,7 +160,8 @@ reset role;
 select results_eq(
   $sql$ select source, agent_id, agent_name, content from public.plan_revisions
         where session_id = 'e0000000-0000-0000-0000-000000000001' order by created_at $sql$,
-  $sql$ values ('agent'::text, 'a0000000-0000-0000-0000-000000000001'::uuid, 'U1 Planner'::text, 'v2'::text),
+  $sql$ values ('agent'::text, 'a0000000-0000-0000-0000-000000000001'::uuid, 'U1 Planner'::text, 'v1'::text),
+               ('agent'::text, 'a0000000-0000-0000-0000-000000000001'::uuid, 'U1 Planner'::text, 'v2'::text),
                ('human'::text, null::uuid, null::text, 'v3'::text) $sql$,
   'the owner''s write without the header is a hand revision, naming no agent'
 );
@@ -171,7 +176,7 @@ reset role;
 select results_eq(
   $sql$ select source, content from public.plan_revisions
         where session_id = 'e0000000-0000-0000-0000-000000000001' order by created_at $sql$,
-  $sql$ values ('agent'::text, 'v2'::text), ('human'::text, 'v3'::text), ('agent'::text, 'v4'::text) $sql$,
+  $sql$ values ('agent'::text, 'v1'::text), ('agent'::text, 'v2'::text), ('human'::text, 'v3'::text), ('agent'::text, 'v4'::text) $sql$,
   'a hand save then an agent upload are two revisions, each under its own source'
 );
 update public.plan_revisions set updated_at = updated_at - interval '1 second', created_at = created_at - interval '1 second';
@@ -222,18 +227,18 @@ select is(
   'an oversize spec records no revision'
 );
 
--- 15. Past ten minutes, the same author's next save starts a new revision.
+-- 15. *** The lost edit. *** The owner's hand save right after their last one (v6, by hand)
+-- is a revision of its own, not folded into it.
 update public.plan_sessions set spec_oversize = false where id = 'e0000000-0000-0000-0000-000000000001';
-update public.plan_revisions set updated_at = now() - interval '11 minutes'
- where session_id = 'e0000000-0000-0000-0000-000000000001' and content = 'v6';
 set local role authenticated;
 set local request.headers = '{}';
 update public.plan_sessions set spec = 'v8' where id = 'e0000000-0000-0000-0000-000000000001';
 reset role;
-select is(
-  (select count(*) from public.plan_revisions where session_id = 'e0000000-0000-0000-0000-000000000001'),
-  6::bigint,
-  'a save more than ten minutes after the last revision is a revision of its own'
+select results_eq(
+  $sql$ select content from public.plan_revisions where session_id = 'e0000000-0000-0000-0000-000000000001'
+        and source = 'human' and author_id = '11111111-1111-1111-1111-111111111111' order by created_at $sql$,
+  $sql$ values ('v3'::text), ('v6'::text), ('v8'::text) $sql$,
+  'two hand saves in a row by the same person are two revisions'
 );
 
 -- 16. A write with no user in the request records nothing, even on a changed spec.
@@ -275,7 +280,7 @@ update public.plan_sessions set spec = 'p1' where id = 'e0000000-0000-0000-0000-
 set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222"}';
 select is(
   (select count(*) from public.plan_revisions where session_id = 'e0000000-0000-0000-0000-000000000001'),
-  6::bigint,
+  7::bigint,
   'a member of the org reads the history of a colleague''s team plan'
 );
 
@@ -296,9 +301,9 @@ select is(
 
 -- 22. The owner does read their personal plan's history.
 set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
-select is(
-  (select content from public.plan_revisions where session_id = 'e0000000-0000-0000-0000-000000000002'),
-  'p1',
+select results_eq(
+  $sql$ select content, base_content from public.plan_revisions where session_id = 'e0000000-0000-0000-0000-000000000002' $sql$,
+  $sql$ values ('p1'::text, 'p0'::text) $sql$,
   'the owner reads the history of their personal plan'
 );
 

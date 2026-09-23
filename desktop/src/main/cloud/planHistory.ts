@@ -167,8 +167,9 @@ export async function listPlanHistory(sessionId: string): Promise<PlanHistoryRea
 
 /**
  * The texts of two revisions of ONE plan, older first — or null when either is not visible,
- * they belong to two plans, or the read failed. `fromId` null compares against an empty
- * document: the plan's first revision, which has nothing before it.
+ * they belong to two plans, or the read failed. `fromId` null compares against what the
+ * revision replaced (`base_content`, 20260923140000): the text a plan held before its
+ * history began, or an empty document for a plan whose first revision created it.
  *
  * The order is the table's (`updated_at`), not the caller's: a diff read backwards would
  * draw every addition as a removal.
@@ -183,15 +184,21 @@ export async function readRevisionTexts(
   const ids = fromId ? [fromId, toId] : [toId]
   const { data, error } = await client
     .from('plan_revisions')
-    .select('id, session_id, content, updated_at')
+    .select(fromId ? 'id, session_id, content, updated_at' : 'id, session_id, content, base_content, updated_at')
     .in('id', ids)
   if (error || !data) {
     console.error('[cloud] plan revision read refused:', error)
     return null
   }
-  const rows = data as unknown as { id: string; session_id: string; content: string | null; updated_at: string }[]
+  const rows = data as unknown as {
+    id: string
+    session_id: string
+    content: string | null
+    base_content?: string | null
+    updated_at: string
+  }[]
   if (rows.length !== ids.length) return null
-  if (!fromId) return { older: '', newer: rows[0].content ?? '' }
+  if (!fromId) return { older: rows[0].base_content ?? '', newer: rows[0].content ?? '' }
   if (rows[0].session_id !== rows[1].session_id) return null
   const [older, newer] = [...rows].sort((a, b) => Date.parse(a.updated_at) - Date.parse(b.updated_at))
   return { older: older.content ?? '', newer: newer.content ?? '' }

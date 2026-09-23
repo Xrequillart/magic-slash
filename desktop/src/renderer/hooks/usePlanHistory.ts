@@ -67,8 +67,9 @@ export function usePlanHistory(sessionId: string | undefined, version: string | 
  * Keyed on the pair, and an answer for a pair the reader has since changed is dropped — two
  * clicks in quick succession must not end on the first click's diff.
  *
- * `stamp` is the pair's latest write (their `updatedAt`s). A run of saves folds into one
- * revision, so its text can move while its id stays: the stamp is what asks again.
+ * `stamp` is the pair's latest write (their `updatedAt`s). A revision is written once
+ * since 20260923140000, but the stamp keeps the answer honest should its text ever move
+ * while its id stays.
  */
 export function usePlanRevisionDiff(from: string | null | undefined, to: string | undefined, stamp = '') {
   const [diff, setDiff] = useState<PlanRevisionDiff | null>(null)
