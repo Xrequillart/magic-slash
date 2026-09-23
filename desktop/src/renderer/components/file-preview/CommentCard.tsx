@@ -397,7 +397,7 @@ function Composer({
   const saved = value.trim()
 
   useEffect(() => {
-    if (autoFocus) ref.current?.focus()
+    if (autoFocus) ref.current?.focus({ preventScroll: true })
   }, [autoFocus])
 
   return (
@@ -842,7 +842,7 @@ export default function CommentCard({ comment, range, quote, host, width, spec, 
    * panel's Escape and Alt+↑/↓ guards only see keystrokes that arrive inside it.
    */
   useEffect(() => {
-    if (!editing) panelRef.current?.focus()
+    if (!editing) panelRef.current?.focus({ preventScroll: true })
   }, [editing])
 
   const saved = body.trim()
