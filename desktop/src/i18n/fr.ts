@@ -1357,19 +1357,40 @@ export const fr: Record<keyof typeof en, string> = {
     'Ce plan a plus de commentaires que la page ne peut en afficher. Les plus récents ne figurent pas ici.',
 
   // ── Modification de la spec d'un plan ───────────────────────────────────────
-  'plans.edit.start': 'Modifier cette spec',
-  'plans.edit.label': 'Spec (Markdown)',
-  'plans.edit.hint':
-    'L’enregistrement met le plan à jour pour toute l’organisation. Sur la machine de son auteur, le fichier de spec est aussi mis à jour.',
-  'plans.edit.conflict': 'Ce plan a été modifié depuis que vous l’avez ouvert. Rien n’a été enregistré.',
+  'plans.edit.clickToEdit': 'Cliquez sur le texte pour le modifier',
+  'plans.edit.field': 'Modifier ce passage (Markdown)',
+  'plans.edit.unsaved': 'Pas encore enregistré',
+  'plans.edit.saved': 'Enregistré',
+  'plans.edit.conflict':
+    'Quelqu’un d’autre a modifié ce plan pendant que vous écriviez. Vos dernières modifications n’ont pas été enregistrées.',
   'plans.edit.conflictHint':
     'Copiez vos modifications si vous voulez les garder, puis rechargez pour voir la dernière version.',
   'plans.edit.reload': 'Recharger',
   'plans.edit.denied': 'Vous ne pouvez plus modifier ce plan. Rien n’a été enregistré.',
-  'plans.edit.failed': 'Le plan n’a pas pu être enregistré. Vos modifications sont toujours là, réessayez.',
+  'plans.edit.failed': 'Le plan n’a pas pu être enregistré. Vos modifications sont toujours là.',
   'plans.edit.fileDiverged':
     'Enregistré. Le fichier de spec de cette machine n’a pas été mis à jour, car il contient des modifications pas encore synchronisées.',
   'plans.edit.fileError': 'Enregistré. Le fichier de spec de cette machine n’a pas pu être mis à jour.',
+
+
+  // ── Barre de mise en forme d'une spec ───────────────────────────────────────
+  'plans.format.text': 'Texte',
+  'plans.format.h1': 'Titre 1',
+  'plans.format.h2': 'Titre 2',
+  'plans.format.h3': 'Titre 3',
+  'plans.format.bullets': 'Liste à puces',
+  'plans.format.numbers': 'Liste numérotée',
+  'plans.format.todo': 'Liste de tâches',
+  'plans.format.quote': 'Citation',
+  'plans.format.bold': 'Gras',
+  'plans.format.italic': 'Italique',
+  'plans.format.underline': 'Souligné',
+  'plans.format.strike': 'Barré',
+  'plans.format.code': 'Code',
+  'plans.format.link': 'Lien',
+  'plans.format.comment': 'Commenter',
+  'plans.format.linkPlaceholder': 'Collez ou tapez un lien',
+  'plans.format.linkApply': 'Appliquer',
 
   // ── Heures passées sur les skills ───────────────────────────────────────────
   'skillHours.hours': '{count}h',

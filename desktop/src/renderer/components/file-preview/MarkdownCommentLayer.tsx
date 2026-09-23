@@ -8,6 +8,7 @@ import {
 import MarkdownView from './MarkdownView'
 import CommentCard, { CommentAnchorNotice, type CommentAuthor, type CommentThread } from './CommentCard'
 import { CommentLine, CommentLinesProvider, lineElementOf, lineIdOf } from './CommentLines'
+import { SpecSelectionToolbar } from './SpecSelectionToolbar'
 import { scrollCardIntoView, useInlineCommentHosts } from '../../hooks/useInlineCommentHosts'
 import {
   clampQuote, commentAnchorKind, commentFileKey, type CommentTarget,
@@ -714,6 +715,21 @@ function captureQuote(root: HTMLElement): Capture | null {
  * with no DOM mutation at all, so it cannot, and it follows a reflow without being
  * re-measured. The absolutely positioned overlay is left carrying only the clickable pill.
  */
+/**
+ * How long the scroll follows the line the margin's opening moved: the margin's own 150ms
+ * transition, and a margin of frames for the notes placed after it.
+ */
+const RAIL_FOLLOW_MS = 300
+
+/** The nearest ancestor that scrolls vertically — the page, for a plan. */
+function scrollerOf(node: HTMLElement): HTMLElement | null {
+  for (let el = node.parentElement; el; el = el.parentElement) {
+    const { overflowY } = getComputedStyle(el)
+    if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight) return el
+  }
+  return null
+}
+
 export default function MarkdownCommentLayer({
   content, repoPath, filePath, fingerprint, spec, variant, lines, source, renderOrphans,
   anchorless = NO_ANCHORLESS,
@@ -1417,20 +1433,32 @@ export default function MarkdownCommentLayer({
   const handleMouseUp = (e: React.MouseEvent) => {
     const root = proseRef.current
     if (!root || e.button !== 0) return
+    /**
+     * A DOCUMENT DRAWN AS LINES DOES NOT COMMENT ON A SELECTION BY ITSELF any more: the
+     * selection raises the format toolbar, and "Comment" is one of the things on it. A drag
+     * across words is as often the start of making them bold as of writing about them, and a
+     * composer opening on every one of them was a comment box in the way of the other.
+     */
+    if (lines) return
     const capture = captureQuote(root)
     captureRef.current = capture?.range ?? null
     if (!capture) return
-    // The same gesture on either kind of document, opening whichever box that document
-    // writes comments in. `lines` mode has no card in the flow to open, and the captured
-    // range is what the bubble hangs off — a passage is not an element, and its `Range` is
-    // the only thing that knows where on screen it currently is.
-    if (!lines) {
-      setComposer({ quote: capture.quote })
-      return
-    }
-    // The draft guard `openLine` states, for the other way in: a drag across a passage while
-    // a comment is being written must not replace the box it is being written in either.
+    setComposer({ quote: capture.quote })
+  }
+
+  /**
+   * Comment on the passage selected — the toolbar's "Comment". The range captured is what
+   * the bubble hangs off: a passage is not an element, and its `Range` is the only thing that
+   * knows where on screen it currently is.
+   */
+  const commentOnSelection = () => {
+    const root = proseRef.current
+    if (!root) return
+    const capture = captureQuote(root)
+    if (!capture) return
+    // The draft guard `openLine` states: a comment being written must not be replaced.
     if (holdsCommentDraft()) return
+    captureRef.current = capture.range
     setFocusedNote(null)
     setComposing({ lineId: null, quote: capture.quote })
   }
@@ -1622,6 +1650,73 @@ export default function MarkdownCommentLayer({
 
   const markerLabel = t('filePreview.commentMarker')
 
+  /**
+   * THE LINE BEING TALKED ABOUT STAYS WHERE THE READER LEFT IT when the margin opens or
+   * folds away.
+   *
+   * Opening the first note gives up `COMMENT_RAIL_PX` of the document's width, so every
+   * paragraph re-wraps longer and everything below the top of the viewport slides down —
+   * the line the reader just pressed the mark on among it, often off screen, while they are
+   * about to write about it. Folding the margin away is the same slide upwards.
+   *
+   * So the page's scroller is moved by however far the line moved, frame by frame for as
+   * long as the margin's transition runs. Measured rather than predicted: the re-wrap
+   * depends on every word above the line, and the only thing that knows where it landed is
+   * its rect. The browser's own scroll anchoring is turned off on the document (see
+   * `[overflow-anchor:none]` below) because it picks its own anchor — the first visible
+   * block, not the one being commented — and the two corrections would fight.
+   *
+   * THE SUBJECT IS REMEMBERED past its own closing: when the last note goes the composer has
+   * already gone with it, and the line to hold still is the one it was about.
+   */
+  const railOpen = !!lines && notes.length > 0
+  const subjectRef = useRef<{ lineId: string | null; range: Range | null } | null>(null)
+  if (composing || focusedNote) {
+    subjectRef.current = { lineId: composing?.lineId ?? focusedNote, range: captureRef.current }
+  }
+  const railWasOpen = useRef(railOpen)
+  useLayoutEffect(() => {
+    if (railWasOpen.current === railOpen) return
+    railWasOpen.current = railOpen
+    const root = proseRef.current
+    const subject = subjectRef.current
+    if (!root || !subject) return
+    /**
+     * THE LINE, NOT THE PASSAGE, even for a comment on a selection. The passage's range can
+     * go stale under the loop: pressing "Comment" takes the focus out of a block being
+     * written in, the block is written back and remounted, and the range is left pointing at
+     * nodes no longer in the document — whose rect is all zeros. Followed, that zero read as
+     * the line having jumped to the top of the window, and the loop scrolled the page up to
+     * meet it. The line element survives the remount, so it is found once, by its id, and
+     * looked up again on every frame.
+     */
+    const range = subject.range
+    const lineId = subject.lineId
+      ?? (range && range.startContainer.isConnected ? lineElementOf(range.startContainer, root) : null)?.getAttribute('data-comment-line')
+      ?? null
+    const topOf = (): number | null => {
+      if (lineId) {
+        const line = root.querySelector(`[data-comment-line="${CSS.escape(lineId)}"]`)
+        if (line) return line.getBoundingClientRect().top
+      }
+      return range && range.startContainer.isConnected && root.contains(range.startContainer)
+        ? range.getBoundingClientRect().top
+        : null
+    }
+    const scroller = scrollerOf(root)
+    const held = topOf()
+    if (!scroller || held === null) return
+    const until = performance.now() + RAIL_FOLLOW_MS
+    let frame = 0
+    const follow = () => {
+      const now = topOf()
+      if (now !== null && Math.abs(now - held) >= 0.5) scroller.scrollTop += now - held
+      if (performance.now() < until) frame = requestAnimationFrame(follow)
+    }
+    frame = requestAnimationFrame(follow)
+    return () => cancelAnimationFrame(frame)
+  }, [railOpen])
+
   return (
     <>
       <style>{highlightStyle}</style>
@@ -1662,7 +1757,7 @@ export default function MarkdownCommentLayer({
       <div ref={frameRef} className="relative">
       <div
         ref={proseRef}
-        className="relative transition-[margin] duration-150 ease-out"
+        className="relative transition-[margin] duration-150 ease-out [overflow-anchor:none]"
         /* THE DOCUMENT GIVES UP ITS RIGHT MARGIN TWICE OVER: once for the marks, which sit
            inside this box, and once for the rail beside it, which does not. `marginRight`
            and not a second padding, because the rail is positioned against the FRAME and has
@@ -1681,6 +1776,7 @@ export default function MarkdownCommentLayer({
             exactly the set of components that read the line state, and the notice and the
             bubble above and below are not among them. */}
         {lines ? <CommentLinesProvider value={lineState}>{prose}</CommentLinesProvider> : prose}
+        {lines && <SpecSelectionToolbar rootRef={proseRef} onComment={commentOnSelection} />}
 
         {/* THE PILLS, on every view but a document drawn as lines: there, the mark in the
             gutter says the same thing in one column down the page instead of wherever each

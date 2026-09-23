@@ -26,6 +26,16 @@ export interface MarkdownLineProps {
    * is a block that cannot be commented on rather than a crash.
    */
   lineKey: string | undefined
+  /**
+   * Where this block's markdown sits in the source, `[start, end)` — present exactly when
+   * `lineKey` is. What a caller editing the document in place replaces when the block is
+   * rewritten: the rendered text has lost its markup, the source has not.
+   *
+   * A list item that carries a sublist ENDS WHERE THE SUBLIST STARTS: the sublist's items
+   * are lines of their own, and handing them over with their parent would have them edited
+   * twice, once in each.
+   */
+  source?: { start: number; end: number }
   className?: string
   children?: ReactNode
 }
@@ -167,11 +177,23 @@ const SANITIZE_SCHEMA = { ...defaultSchema, clobberPrefix: '' }
 const LINE_TAGS = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote', 'pre'] as const
 
 /** What react-markdown hands a component override, as much of it as this file reads. */
+type Position = { start?: { offset?: number }; end?: { offset?: number } }
 type NodeProps = {
   node?: {
-    position?: { start?: { offset?: number } }
-    children?: { type?: string; tagName?: string; value?: string }[]
+    position?: Position
+    children?: { type?: string; tagName?: string; value?: string; position?: Position }[]
   }
+}
+
+/** The block's `[start, end)` in the source, cut short at a nested list. See `source`. */
+function sourceOf(node: NodeProps['node']): { start: number; end: number } | undefined {
+  const start = node?.position?.start?.offset
+  let end = node?.position?.end?.offset
+  if (typeof start !== 'number' || typeof end !== 'number') return undefined
+  const sublist = node?.children?.find((child) => child.tagName === 'ul' || child.tagName === 'ol')
+  const cut = sublist?.position?.start?.offset
+  if (typeof cut === 'number' && cut > start) end = cut
+  return { start, end }
 }
 
 /**
@@ -206,10 +228,13 @@ const BLOCK_CHILDREN = new Set([
 function isContainer(node: NodeProps['node']): boolean {
   const children = node?.children
   if (!children || children.length === 0) return false
+  // A block holding NO block is not a container, whatever its text: an item or a paragraph
+  // holding only a non-breaking space is the empty line Enter just made, and it is a line.
+  if (!children.some((child) => child.type === 'element' && BLOCK_CHILDREN.has(child.tagName ?? ''))) return false
   return children.every((child) => (
     child.type === 'element'
       ? BLOCK_CHILDREN.has(child.tagName ?? '')
-      : (child.value ?? '').trim() === ''
+      : /^[ \t\r\n]*$/.test(child.value ?? '')
   ))
 }
 
@@ -232,12 +257,13 @@ export default function MarkdownView({ content, variant = 'panel', line }: Props
         children?: ReactNode
         className?: string
       }) => {
-        const offset = node?.position?.start?.offset
+        // A container is drawn plainly: no key means no mark and no anchor — see
+        // `isContainer`, and `CommentLine`, which draws the bare tag for a keyless block.
+        const source = isContainer(node) ? undefined : sourceOf(node)
         return line({
           tag,
-          // A container is drawn plainly: no key means no mark and no anchor — see
-          // `isContainer`, and `CommentLine`, which draws the bare tag for a keyless block.
-          lineKey: typeof offset === 'number' && !isContainer(node) ? `${tag}@${offset}` : undefined,
+          lineKey: source ? `${tag}@${source.start}` : undefined,
+          source,
           className,
           children,
         })

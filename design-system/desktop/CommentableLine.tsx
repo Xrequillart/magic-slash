@@ -1,4 +1,4 @@
-import type { ElementType, ReactNode } from 'react'
+import type { ElementType, MouseEvent, ReactNode } from 'react'
 import { ButtonIcon } from './ButtonIcon'
 import { Label } from './Label'
 import { MessageSquare, MessageSquarePlus } from './icons'
@@ -184,6 +184,14 @@ export interface CommentableLineProps {
    * swallowed a click would take the double-click that selects a word with it.
    */
   onOpen: () => void
+  /**
+   * A click on the line's own text, for a document that is edited in place — absent, and
+   * the line is exactly as inert as `onOpen` describes, for every document that is only read.
+   *
+   * The caller decides what a click MEANS: this only carries it, with the text cursor that
+   * says the words can take a caret. A click on the mark never reaches it.
+   */
+  onClick?: (e: MouseEvent<HTMLElement>) => void
   children?: ReactNode
   /** Passed straight through, so the document's own classes on this block survive. */
   className?: string
@@ -196,6 +204,7 @@ export function CommentableLine({
   active = false,
   label,
   onOpen,
+  onClick,
   children,
   className = '',
 }: CommentableLineProps) {
@@ -204,6 +213,7 @@ export function CommentableLine({
   return (
     <Tag
       data-comment-line={lineId}
+      onClick={onClick}
       /* NO RADIUS on the ground. A rounded band reads as a chip laid over the prose; a
          square one reads as the line itself being lit, which is what it is. */
       /* THE WHOLE LINE TAKES THE ANNOTATION COLOUR the moment it carries a discussion.
@@ -212,7 +222,7 @@ export function CommentableLine({
          single class on the element loses to them. Two classes win on specificity, without
          `!important` winning against things it has no business winning against. */
       className={`transition-colors ${REVEAL} ${commented ? '[&&]:text-orange' : ''}
-        ${active ? 'bg-surface-strong' : ''} ${className}`.trim()}
+        ${active ? 'bg-surface-strong' : ''} ${onClick ? 'cursor-text' : ''} ${className}`.trim()}
     >
       {/* `data-comment-overlay` does two jobs and both are load-bearing. It is what `REVEAL`
           targets, and it is what the document's own text walk REJECTS — the walk that
@@ -227,6 +237,7 @@ export function CommentableLine({
           drift apart. */}
       <span
         data-comment-overlay
+        onClick={onClick ? (e) => e.stopPropagation() : undefined}
         /* THE WIDTH IS THE MARGIN'S, and it is load-bearing rather than tidy: this box has
            to meet the end of the line, or the pointer on its way out to the mark crosses
            ground that belongs to neither. See `COMMENT_GUTTER_PX`.

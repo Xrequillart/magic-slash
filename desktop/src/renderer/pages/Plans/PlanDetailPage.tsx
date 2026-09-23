@@ -1,10 +1,14 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { AlertTriangle, ArrowLeft, CloudOff, FileWarning, Pencil, RotateCcw, Save, X } from '@ds/desktop/icons'
+import { AlertTriangle, ArrowLeft, CloudOff, FileWarning, RotateCcw } from '@ds/desktop/icons'
 import type { PlanComment, PlanDetail, PlanSpecUpdateResult, PlanTicketRead, PlanTicketStates } from '../../../types'
 import { useT } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
 import MarkdownView from '../../components/file-preview/MarkdownView'
 import MarkdownCommentLayer, { type CommentSource } from '../../components/file-preview/MarkdownCommentLayer'
+import {
+  CommentLine, EditableLinesProvider, type EditableLine, type EditableLinesState,
+} from '../../components/file-preview/CommentLines'
+import { SpecSelectionToolbar } from '../../components/file-preview/SpecSelectionToolbar'
 import {
   CommentBody, Quote,
   type CommentThread, type CommentTurn,
@@ -23,8 +27,17 @@ import {
   buildPlanCommentThreads, canEditPlanComment, isOrphanedPlanCommentThread,
 } from '../../utils/planComments'
 import { taskSelectionFor } from '../../utils/taskSelection'
+import {
+  EMPTY_BLOCK, applySpecBlock, caretAfterChange, mergeSpecBlocks, openSpecBlock, retypeSpecBlock, specBlockTypeOf, splitSpecBlock,
+  type SpecBlock, type SpecBlockType,
+} from '../../utils/specEditing'
+import { codeToMarkdown, richTextToMarkdown, type RichNode } from '../../utils/richText'
+import { blockShortcut, inlineShortcut } from '../../utils/markdownShortcuts'
 import { detectTicketProvider } from '../../components/agent-info-sidebar/utils'
-import { Banner, Button, CommentCard as TurnCard, FormField, Label, Status, StickyBar, Text, TrackerBadge } from '@ds/desktop'
+import {
+  Banner, Button, CommentCard as TurnCard, Label, Status, StickyBar, Text, TrackerBadge, caretOffsetIn,
+  type RichTextBlockProps,
+} from '@ds/desktop'
 import { JiraStatusPill, StateChip } from '../Tasks/parts'
 import { STATUS_LOOK } from './PlanRow'
 import { PlanIdBadge } from './PlanIdBadge'
@@ -81,6 +94,85 @@ import { PlanIdBadge } from './PlanIdBadge'
  */
 const TOP_BAR_H = 48
 
+/**
+ * How long the spec waits after the last keystroke before it saves itself. Long enough that
+ * a reader writing a sentence saves it once rather than word by word — each save bumps the
+ * row's `updated_at`, which is every colleague's conflict guard — and short enough that
+ * closing the laptop a moment after stopping loses nothing.
+ */
+const AUTOSAVE_MS = 5000
+
+/** The pause that ends one step of typing for Cmd+Z, and how many steps are kept. */
+const HISTORY_GROUP_MS = 1000
+const HISTORY_LIMIT = 200
+
+/** The block holding the caret: its place in the source, and the markdown written in it. */
+type OpenBlock = SpecBlock & {
+  key: string
+  tag: string
+  caret: RichTextBlockProps['caret']
+  draft: string
+  dirty: boolean
+}
+
+/** The text of `host` from its start to the caret. */
+function textBeforeCaret(host: HTMLElement): string {
+  const selection = window.getSelection()
+  if (!selection || selection.rangeCount === 0) return ''
+  const range = document.createRange()
+  range.selectNodeContents(host)
+  range.setEnd(selection.getRangeAt(0).startContainer, selection.getRangeAt(0).startOffset)
+  return range.toString()
+}
+
+/** Delete everything between the start of `host` and the caret — a block shortcut's marker. */
+function deleteBeforeCaret(host: HTMLElement) {
+  const selection = window.getSelection()
+  if (!selection || selection.rangeCount === 0) return
+  const range = document.createRange()
+  range.selectNodeContents(host)
+  range.setEnd(selection.getRangeAt(0).startContainer, selection.getRangeAt(0).startOffset)
+  selection.removeAllRanges()
+  selection.addRange(range)
+  document.execCommand('delete')
+}
+
+const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+/**
+ * Turn the markdown just closed before the caret into the mark it spells, in place. Inside a
+ * single text node, and never inside code, where a backtick is a backtick.
+ *
+ * The mark is followed by a zero-width space for the caret to stand on: placed right after an
+ * inline element, the next character typed would otherwise land INSIDE it, and a reader who
+ * closed a code span would find everything after it in code too. `richTextToMarkdown` drops it.
+ */
+function applyInlineShortcut() {
+  const selection = window.getSelection()
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return
+  const { startContainer, startOffset: offset } = selection.getRangeAt(0)
+  // `globalThis.Text`: this file's `Text` is the design system's typography component.
+  if (!(startContainer instanceof globalThis.Text) || startContainer.parentElement?.closest('code')) return
+  const node = startContainer
+  const shortcut = inlineShortcut(node.data.slice(0, offset).replace(/\u00a0/g, ' '))
+  if (!shortcut) return
+  const range = document.createRange()
+  range.setStart(node, shortcut.start)
+  range.setEnd(node, offset)
+  selection.removeAllRanges()
+  selection.addRange(range)
+  const inner = escapeHtml(shortcut.inner)
+  const html = shortcut.tag === 'a'
+    ? `<a href="${escapeHtml(shortcut.href ?? '')}">${inner}</a>`
+    : `<${shortcut.tag}>${inner}</${shortcut.tag}>`
+  document.execCommand('insertHTML', false, `${html}\u200b`)
+}
+
+/** A block's markdown, read back off what the reader typed: a code block keeps its text as is. */
+function serializeBlock(tag: string, host: RichNode): string {
+  return tag === 'pre' ? codeToMarkdown(host) : richTextToMarkdown(host)
+}
+
 /** One heading over one block, in the type the webapp's detail page uses for the same. */
 function SectionHeading({ children }: { children: string }) {
   return <h2 className="text-sm font-semibold text-ink mt-8 mb-3">{children}</h2>
@@ -123,12 +215,33 @@ interface SpecComments {
   anchorless: readonly FileComment[]
 }
 
+/**
+ * The spec with no comment layer — comments not loaded, or unreadable. Still edited in
+ * place, and still formatted from the toolbar over a selection; only "Comment" is missing.
+ */
+function PlainSpec({ content, editable }: { content: string; editable: boolean }) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  return (
+    <div ref={rootRef}>
+      <MarkdownView content={content} variant="document" line={editable ? CommentLine : undefined} />
+      {editable && <SpecSelectionToolbar rootRef={rootRef} />}
+    </div>
+  )
+}
+
 const SpecBody = memo(function SpecBody({
   content,
   comments,
+  editable,
 }: {
   content: string
   comments: SpecComments | null
+  /**
+   * Whether the blocks take a caret. The layer draws its lines through `CommentLine`
+   * already; the plain rendering needs one only to be edited, and gets the same one, which
+   * without a `CommentLinesProvider` above it draws no mark and offers no comment.
+   */
+  editable: boolean
 }) {
   /**
    * The spec as it was before this story: rendered, and not selectable for comment.
@@ -142,7 +255,7 @@ const SpecBody = memo(function SpecBody({
    * pixels and a different promise: selecting a passage would open a composer whose Save
    * went nowhere. Offering an affordance that cannot work is worse than not offering it.
    */
-  if (!comments) return <MarkdownView content={content} variant="document" />
+  if (!comments) return <PlainSpec content={content} editable={editable} />
   return (
     <MarkdownCommentLayer
       content={content}
@@ -417,25 +530,89 @@ export function PlanDetailPage({
   const retry = useCallback(() => setAttempt((n) => n + 1), [])
 
   /**
-   * THE SPEC EDITOR, when it is open. `null` is reading.
+   * THE SPEC, AS THIS PAGE HOLDS IT: the row's markdown, plus whatever the reader has written
+   * into it since. `null` until a read has brought one.
    *
-   * `updatedAt` is the session's `updatedAt` as the detail read returned it, captured the
-   * moment the editor opens and sent back UNCHANGED on save: it is the conflict guard, and
-   * the raw string is the only form of it that can match. Never through a `Date` — the row
-   * keeps microseconds, a `Date` keeps milliseconds, and a truncated value would report a
-   * conflict on every save.
-   *
-   * `base` is the spec the editor opened on, so a Save that changed nothing can close the
-   * editor without a write — a no-op save would still bump `updated_at` and hand every
-   * colleague with the editor open a conflict for nothing.
-   *
-   * LOCAL STATE AND NOTHING ELSE. Leaving — Cancel, Back, Escape, closing the modal — drops
-   * it, and no call is made: an edit exists only once Save has answered `saved`.
+   * Edited the way Notion edits a page — a click on a block puts a caret in it, and leaving
+   * the block puts its text back into the document — and SAVED ON ITS OWN, `AUTOSAVE_MS`
+   * after the last keystroke. There is no Edit button, no Save and no Cancel: the document is
+   * the editor.
    */
-  const [draft, setDraft] = useState<{ base: string; updatedAt: string; text: string } | null>(null)
-  const editing = draft !== null
-  const [saving, setSaving] = useState(false)
-  /** Why the last Save did not land. The draft is kept under every one of them. */
+  const [doc, setDoc] = useState<string | null>(null)
+  const docRef = useRef(doc)
+  docRef.current = doc
+  /**
+   * The block holding the caret, cut out of `doc` by `openSpecBlock`, and its markdown as
+   * the reader has made it — read back off the formatted text by `richTextToMarkdown` on
+   * every input. `dirty` until then: a block opened and left untouched is written back
+   * exactly as it was, not as the serializer would have spelled it.
+   *
+   * `doc` is NOT rewritten on every keystroke, and that is what keeps the rest of the
+   * document still: the markdown is parsed once per block edited rather than once per
+   * character, and the DOM the reader is typing into is never re-rendered under them.
+   */
+  const [block, setBlock] = useState<OpenBlock | null>(null)
+  const blockRef = useRef(block)
+  blockRef.current = block
+  /** The block Enter, Backspace or a change of kind produced, to open once it renders. */
+  const [pending, setPending] = useState<{ keys: string[]; offset: number; was?: string } | null>(null)
+  /** Set while the toolbar's link field has the focus, so the block it will link stays open. */
+  const holdRef = useRef(false)
+  /** Set while a markdown shortcut is being applied. See `onInput`. */
+  const shortcutting = useRef(false)
+  /**
+   * THE SPEC'S OWN UNDO HISTORY: the document as it was before each change, and the ones
+   * undone since.
+   *
+   * The browser's own undo cannot do this job. It knows the DOM of the one block being written
+   * in, and forgets it the moment that block is re-rendered — which is what turning a line
+   * into a quote, pressing Enter or merging with Backspace all do, and what leaving the block
+   * does too. So Cmd+Z is taken over on the spec, and steps back through whole documents.
+   *
+   * Typing is GROUPED: a run of keystrokes with no pause longer than `HISTORY_GROUP_MS` is one
+   * step, as in every editor — undoing a sentence one letter at a time is not undoing.
+   * Everything else — a mark, a change of kind, Enter, Backspace across blocks — is a step
+   * of its own.
+   */
+  const pastRef = useRef<string[]>([])
+  const futureRef = useRef<string[]>([])
+  const lastTypedAt = useRef(0)
+  /** Keep the document as it is now, as the step Cmd+Z will go back to. */
+  const remember = () => {
+    const now = latestRef.current
+    if (now === null || pastRef.current.at(-1) === now) return
+    pastRef.current.push(now)
+    if (pastRef.current.length > HISTORY_LIMIT) pastRef.current.shift()
+    futureRef.current = []
+  }
+  /**
+   * The document as it would be saved NOW — `doc` with the open block's draft written in.
+   * What the autosave sends, and the one spelling of it: two would be how the page saves
+   * something other than what is on screen.
+   */
+  const composed = doc === null ? null : block?.dirty ? applySpecBlock(doc, block, block.draft) : doc
+  /**
+   * The three things a save reads at the moment it runs rather than when it was scheduled:
+   * the text, the spec the row is known to hold, and the `updated_at` to guard with.
+   *
+   * `updatedAt` is the session's own raw string, as the read or the last save returned it,
+   * and is sent back UNCHANGED: it is the conflict guard, and the raw string is the only form
+   * of it that can match. Never through a `Date` — the row keeps microseconds, a `Date` keeps
+   * milliseconds, and a truncated value would report a conflict on every save.
+   */
+  const latestRef = useRef<string | null>(null)
+  latestRef.current = composed
+  const savedRef = useRef<string | null>(null)
+  const updatedAtRef = useRef<string | null>(null)
+  const savingRef = useRef(false)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  /** Bumped when a save lands behind newer text, so the autosave arms again for it. */
+  const [saveAgain, setSaveAgain] = useState(0)
+  /**
+   * Why the last save did not land. The text is kept under every one of them. `conflict`
+   * and `denied` stop the autosave — writing again would be refused again — and `failed`
+   * does not: the next keystroke tries again, and the banner offers to without one.
+   */
   const [editError, setEditError] = useState<'conflict' | 'denied' | 'failed' | null>(null)
   /**
    * A save that reached the cloud and NOT this machine's spec file, for the two reasons
@@ -450,11 +627,6 @@ export function PlanDetailPage({
    */
   const cardIdRef = useRef(card.id)
   cardIdRef.current = card.id
-
-  const closeEditor = useCallback(() => {
-    setDraft(null)
-    setEditError(null)
-  }, [])
 
   /**
    * Whether the title has gone up behind the pinned bar, which is the one thing the bar
@@ -503,13 +675,63 @@ export function PlanDetailPage({
     return () => { cancelled = true }
   }, [card.id, attempt])
 
-  // Another plan is another editor: a draft never follows the reader to the next page.
+  /**
+   * ANOTHER PLAN IS ANOTHER DOCUMENT, and leaving this one must not lose what was typed in
+   * the last few seconds. Leaving is Back, Escape, a click on another plan, closing the
+   * modal — every one of them unmounts or re-keys this page before the autosave's timer
+   * fires, so the cleanup sends what is still unsaved itself.
+   *
+   * Fire and forget, and deliberately so: the page it would report to is gone. A conflict
+   * refused here is refused by the database exactly as it would have been a second later,
+   * and nothing is overwritten.
+   */
   useEffect(() => {
-    setDraft(null)
-    setSaving(false)
-    setEditError(null)
-    setFileNotice(null)
+    const id = card.id
+    return () => {
+      const text = latestRef.current
+      const expected = updatedAtRef.current
+      if (text !== null && expected && text !== savedRef.current && text.trim() !== '' && !savingRef.current) {
+        window.electronAPI.plans.updateSpec({ id, spec: text, expectedUpdatedAt: expected }).catch(() => {})
+      }
+      latestRef.current = null
+      savedRef.current = null
+      updatedAtRef.current = null
+      savingRef.current = false
+      pastRef.current = []
+      futureRef.current = []
+      setDoc(null)
+      setBlock(null)
+      setSaveState('idle')
+      setEditError(null)
+      setFileNotice(null)
+    }
   }, [card.id])
+
+  /**
+   * Take the row's spec whenever a read brings one — UNLESS the reader has written something
+   * that is not saved yet. A quiet re-read landing over unsaved text would take it back from
+   * them mid-sentence; the text is the reader's until it is saved, and the conflict guard is
+   * what tells them somebody else wrote in the meantime.
+   */
+  useEffect(() => {
+    const session = detail?.session
+    if (!session) return
+    if (latestRef.current !== null && latestRef.current !== savedRef.current) return
+    savedRef.current = session.spec ?? null
+    updatedAtRef.current = session.updatedAt ?? null
+    // A block holding the caret was cut out of `doc` by its offsets, and a `doc` swapped
+    // under it would put its text back in the wrong place. Nothing is lost by waiting: the
+    // read agreed with what is on screen, or it would have been refused above.
+    if (!blockRef.current) {
+      // A document that is not the one on screen — the first read, a reload after a
+      // conflict — has no past on this page: undoing into the old one would resurrect it.
+      if ((session.spec ?? null) !== docRef.current) {
+        pastRef.current = []
+        futureRef.current = []
+      }
+      setDoc(session.spec ?? null)
+    }
+  }, [detail])
 
   /**
    * This repository's key IN THE LOCAL CONFIG, resolved the way `PlanRow` resolves it:
@@ -751,27 +973,23 @@ export function PlanDetailPage({
    * keystrokes carries, and the drawer's own listeners bail on exactly the same selector;
    * see `KEY_OWNING_SURFACES` in `FilePreviewPanel`.
    *
-   * WHILE EDITING, Escape closes the editor rather than the page — one level at a time,
-   * the way it already goes from the page to the list and not out of the modal. The draft
-   * is dropped either way; this just leaves the reader on the plan they were editing.
-   *
-   * WHILE SAVING, Escape does nothing — the same rule as the disabled Cancel button. The
-   * save is already on its way: closing the editor under it would hide a failure's banner
-   * along with the draft it was meant to keep. It is still swallowed, so the modal stays.
+   * A BLOCK BEING WRITTEN IN OWNS ITS ESCAPE TOO, for the same reason and with the same
+   * test: the key leaves the block — one level at a time, the way it already goes from the
+   * page to the list and not out of the modal — and `RichTextBlock` stops it there, so
+   * the modal behind never hears it. The text is kept: it is in the document, and the
+   * autosave has it.
    */
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
-      if (e.target instanceof Element && e.target.closest('[data-comment-composer]')) return
+      if (e.target instanceof Element && e.target.closest('[data-comment-composer], [data-inline-editor]')) return
       e.preventDefault()
       e.stopImmediatePropagation()
-      if (saving) return
-      if (editing) closeEditor()
-      else onBack()
+      onBack()
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [onBack, editing, saving, closeEditor])
+  }, [onBack])
 
   const { tone, labelKey } = STATUS_LOOK[card.status]
   /**
@@ -815,71 +1033,354 @@ export function PlanDetailPage({
    */
   const canEdit = !!session && !!spec && !session.specOversize && !!session.updatedAt
 
-  const openEditor = useCallback(() => {
-    if (!session?.updatedAt) return
-    const base = session.spec ?? ''
-    setDraft({ base, updatedAt: session.updatedAt, text: base })
-    setEditError(null)
-    setFileNotice(null)
-  }, [session])
+  /** Whether a click on the spec puts a caret in it. Refused saves stop offering it. */
+  const editable = canEdit && editError !== 'conflict' && editError !== 'denied'
 
-  const saveDraft = useCallback(async () => {
-    if (!draft || saving || draft.text.trim() === '') return
-    // Nothing changed: close without writing. See `draft`.
-    if (draft.text === draft.base) {
-      closeEditor()
-      return
-    }
+  /**
+   * Send the document as it is NOW. Called by the autosave's timer, by the failure banner's
+   * Retry, and by nothing else — leaving the page flushes through its own cleanup.
+   *
+   * One save at a time: a second call while one is on its way returns, and the first,
+   * landing behind text written since, arms the autosave again for it.
+   */
+  const save = useCallback(async () => {
     const id = card.id
-    setSaving(true)
-    setEditError(null)
+    const text = latestRef.current
+    const expected = updatedAtRef.current
+    if (savingRef.current || text === null || !expected || text === savedRef.current || text.trim() === '') return
+    savingRef.current = true
+    setSaveState('saving')
     let result: PlanSpecUpdateResult
     try {
-      result = await window.electronAPI.plans.updateSpec({
-        id, spec: draft.text, expectedUpdatedAt: draft.updatedAt,
-      })
+      result = await window.electronAPI.plans.updateSpec({ id, spec: text, expectedUpdatedAt: expected })
     } catch {
-      // The BRIDGE failed: nothing is known to have been written, and the draft stays.
+      // The BRIDGE failed: nothing is known to have been written, and the text stays.
       result = { status: 'failed' }
     }
     if (cardIdRef.current !== id) return
-    setSaving(false)
+    savingRef.current = false
 
     if (result.status !== 'saved') {
       setEditError(result.status)
+      setSaveState('idle')
       return
     }
 
-    // The row now holds the draft, under a new `updated_at`. Drawn straight away, so the
-    // page shows what was saved without a loading pass, and then read again quietly —
-    // `idea` may have changed with the spec, and the read is the only source of truth
-    // about what the row holds.
-    const text = draft.text
+    savedRef.current = text
+    updatedAtRef.current = result.updatedAt
+    setEditError(null)
+    setFileNotice(
+      result.fileSkipReason === 'diverged' || result.fileSkipReason === 'error' ? result.fileSkipReason : null,
+    )
+    if (latestRef.current === text) setSaveState('saved')
+    else setSaveAgain((n) => n + 1)
+
+    // The row now holds the text, under a new `updated_at`, and is read again quietly —
+    // `idea` may have changed with the spec, and the read is the only source of truth about
+    // what the row holds. It cannot take back what the reader typed since: see the effect
+    // that adopts a read.
     const updatedAt = result.updatedAt
     setDetail((prev) => prev?.session
       ? { ...prev, session: { ...prev.session, spec: text, updatedAt } }
       : prev)
-    setDraft(null)
-    setFileNotice(
-      result.fileSkipReason === 'diverged' || result.fileSkipReason === 'error' ? result.fileSkipReason : null,
-    )
     window.electronAPI.plans.detail(id)
       .then((next) => {
         // A failed quiet read keeps what is on screen, which is what was just saved.
         if (cardIdRef.current === id && !next.failed) setDetail(next)
       })
       .catch(() => {})
-  }, [draft, saving, card.id, closeEditor])
+  }, [card.id])
 
   /**
-   * The conflict's way out: drop the draft and read the plan as it now is. The ONLY path
-   * that discards a draft the reader did not choose to cancel — and it is still their
+   * THE AUTOSAVE: `AUTOSAVE_MS` after the document last changed, and not before. Every
+   * keystroke re-arms it, so a reader writing a paragraph saves once, when they stop.
+   *
+   * Not while a refused save stands: a conflict would be refused again, a denial too, and
+   * each attempt would bump nothing but the reader's doubt.
+   */
+  useEffect(() => {
+    if (composed === null || composed === savedRef.current) return
+    if (editError === 'conflict' || editError === 'denied') return
+    const timer = window.setTimeout(() => { void save() }, AUTOSAVE_MS)
+    return () => window.clearTimeout(timer)
+  }, [composed, editError, save, saveAgain])
+
+  /**
+   * THE DOCUMENT BEING WRITTEN IN, as `CommentLine` and the toolbar read it.
+   *
+   * Every callback reads the refs rather than the render's values, so the object is rebuilt
+   * only when a block opens or closes or the document changes — never per keystroke. See
+   * `EditableLinesState`.
+   *
+   * THE STRUCTURAL EDITS — Enter, Backspace at the start, a change of kind — rewrite `doc`
+   * straight away and close the block, naming the block they produced in `pending`: its key
+   * exists only in the new document, and the line that renders under it opens itself.
+   */
+  const lines = useMemo(() => new Map<string, EditableLine>(), [doc])
+  const editing: EditableLinesState | null = useMemo(() => {
+    if (!editable || doc === null) return null
+
+    /** Write the open block back into the document, and close it. The document it leaves. */
+    const closeBlock = (): string | null => {
+      const open = blockRef.current
+      const current = docRef.current
+      if (!open || current === null) return current
+      blockRef.current = null
+      const next = applySpecBlock(current, open, open.dirty ? open.draft : open.text)
+      // The last words of the spec deleted: a save would refuse it, so the block stays.
+      const kept = next.trim() !== '' ? next : current
+      docRef.current = kept
+      setDoc(kept)
+      setBlock(null)
+      return kept
+    }
+
+    /**
+     * Close whatever other block is open before acting on `line`, and say where `line` is
+     * now: writing the open block back moves every block after it by however much it grew.
+     */
+    const settle = (line: EditableLine): EditableLine | null => {
+      const open = blockRef.current
+      const before = docRef.current
+      if (!open || open.key === line.key) return line
+      const after = closeBlock()
+      if (before === null || after === null || line.source.start < open.end) return line
+      const delta = after.length - before.length
+      return { ...line, source: { start: line.source.start + delta, end: line.source.end + delta } }
+    }
+
+    /** A structural edit: the new document, and the block to open in it. */
+    const restructure = (next: string, open: { keys: string[]; offset: number }) => {
+      remember()
+      lastTypedAt.current = 0
+      blockRef.current = null
+      docRef.current = next
+      setDoc(next)
+      setBlock(null)
+      setPending(open)
+    }
+
+    const retype = (key: string, type: SpecBlockType, host: HTMLElement | null, offset: number) => {
+      const found = lines.get(key)
+      if (!found || found.tag === 'pre') return
+      const line = settle(found)
+      const current = docRef.current
+      if (!line || current === null) return
+      const open = blockRef.current?.key === key ? blockRef.current : null
+      const target = open ?? openSpecBlock(current, line.tag, line.source)
+      const text = host && open ? serializeBlock(line.tag, host) : target.text
+      const next = retypeSpecBlock(current, target, text, type)
+      restructure(next.doc, { keys: next.keys, offset })
+    }
+
+    return {
+      editing: block?.key ?? null,
+      caret: block?.caret,
+      pending,
+      lines,
+      label: t('plans.edit.field'),
+      onStart: (asked, caret) => {
+        if (blockRef.current?.key === asked.key) return
+        // Another block still open — the link field was left without a blur.
+        const line = settle(asked)
+        const before = docRef.current
+        if (!line || before === null) return
+        const opened = openSpecBlock(before, line.tag, line.source)
+        // Reopened after an undo: at the end of what it changed, rather than where it was.
+        const now = pending?.was !== undefined && pending.keys.includes(line.key)
+          ? document.querySelector(`[data-rich-block="${CSS.escape(line.key)}"]`)?.textContent
+          : undefined
+        const at = now != null && pending?.was !== undefined ? { offset: caretAfterChange(pending.was, now) } : caret
+        const next: OpenBlock = { ...opened, key: line.key, tag: line.tag, caret: at, draft: opened.text, dirty: false }
+        blockRef.current = next
+        setBlock(next)
+        setPending(null)
+        setSaveState((prev) => (prev === 'saved' ? 'idle' : prev))
+      },
+      onInput: (host, input) => {
+        const open = blockRef.current
+        if (!open) return
+        // One step per run of typing, one per anything else: see `pastRef`.
+        const typing = /^(insertText|insertCompositionText|deleteContent)/.test(input?.inputType ?? '')
+        const at = Date.now()
+        if (!typing || at - lastTypedAt.current > HISTORY_GROUP_MS) remember()
+        lastTypedAt.current = typing ? at : 0
+        // Markdown typed as markdown: see `markdownShortcuts`. Each applies through an editing
+        // command whose own input event comes back here — `shortcutting` keeps it from being
+        // read for a shortcut a second time.
+        if (input?.inputType === 'insertText' && open.tag !== 'pre' && !shortcutting.current) {
+          shortcutting.current = true
+          try {
+            const marker = input.data === ' ' ? blockShortcut(textBeforeCaret(host)) : null
+            const current = docRef.current
+            if (marker && current !== null && marker !== specBlockTypeOf(current, open.tag, open)) {
+              deleteBeforeCaret(host)
+              retype(open.key, marker, host, 0)
+              return
+            }
+            if (input.data && /[`*_~)]/.test(input.data)) applyInlineShortcut()
+          } finally {
+            shortcutting.current = false
+          }
+        }
+        const next = { ...open, draft: serializeBlock(open.tag, host), dirty: true }
+        blockRef.current = next
+        setBlock(next)
+      },
+      onDone: () => {
+        if (!holdRef.current) closeBlock()
+      },
+      onEnter: (host) => {
+        const open = blockRef.current
+        const current = docRef.current
+        const selection = window.getSelection()
+        if (!open || current === null || !selection || selection.rangeCount === 0) return
+        const range = selection.getRangeAt(0)
+        const head = document.createRange()
+        head.selectNodeContents(host)
+        head.setEnd(range.startContainer, range.startOffset)
+        const tail = document.createRange()
+        tail.selectNodeContents(host)
+        tail.setStart(range.endContainer, range.endOffset)
+        const before = serializeBlock(open.tag, head.cloneContents())
+        const after = serializeBlock(open.tag, tail.cloneContents())
+        // Enter on an empty item leaves the list, the way every editor does.
+        if (open.item && before === '' && after === '') {
+          retype(open.key, 'p', host, 0)
+          return
+        }
+        const next = splitSpecBlock(current, open, before, after)
+        restructure(next.doc, { keys: next.keys, offset: 0 })
+      },
+      onBackspaceAtStart: (host) => {
+        const open = blockRef.current
+        const current = docRef.current
+        if (!open || current === null || open.tag === 'pre') return
+        // A heading, an item or a quote first becomes a paragraph; only a paragraph merges.
+        if (specBlockTypeOf(current, open.tag, open) !== 'p') {
+          retype(open.key, 'p', host, 0)
+          return
+        }
+        const hosts = Array.from(document.querySelectorAll<HTMLElement>('[data-rich-block]'))
+        const previousHost = hosts[hosts.indexOf(host) - 1]
+        const previous = previousHost ? lines.get(previousHost.getAttribute('data-rich-block') ?? '') : undefined
+        if (!previous || previous.tag === 'pre') return
+        const target = openSpecBlock(current, previous.tag, previous.source)
+        const joinAt = target.text === EMPTY_BLOCK ? 0 : (previousHost.textContent ?? '').length
+        const next = mergeSpecBlocks(current, target, open, serializeBlock(open.tag, host))
+        restructure(next, { keys: [previous.key], offset: joinAt })
+      },
+      onRetype: (key, type) => {
+        const host = document.querySelector<HTMLElement>(`[data-rich-block="${CSS.escape(key)}"]`)
+        retype(key, type, host, host ? (caretOffsetIn(host) ?? (host.textContent ?? '').length) : 0)
+      },
+      hold: (on) => { holdRef.current = on },
+    }
+  }, [editable, doc, block?.key, block?.caret, pending, lines, t])
+
+  /**
+   * One step back through the history, or forward again. The block that held the caret is
+   * reopened where it was, when the step left it in the same place — the ordinary case, a
+   * change inside the line being written in.
+   */
+  const stepHistory = (direction: 'undo' | 'redo'): boolean => {
+    const from = direction === 'undo' ? pastRef : futureRef
+    const to = direction === 'undo' ? futureRef : pastRef
+    const now = latestRef.current
+    let target = from.current.pop()
+    while (target !== undefined && target === now) target = from.current.pop()
+    if (target === undefined || now === null) return false
+    to.current.push(now)
+    const open = blockRef.current
+    const host = open ? document.querySelector<HTMLElement>(`[data-rich-block="${CSS.escape(open.key)}"]`) : null
+    const offset = host ? caretOffsetIn(host) ?? 0 : 0
+    blockRef.current = null
+    docRef.current = target
+    lastTypedAt.current = 0
+    setDoc(target)
+    setBlock(null)
+    // `was`: the block's text before the step, so the caret lands where the step changed it.
+    if (open) setPending({ keys: [open.key], offset, was: host?.textContent ?? undefined })
+    return true
+  }
+  const stepRef = useRef(stepHistory)
+  stepRef.current = stepHistory
+
+  /**
+   * CMD+Z AND CMD+SHIFT+Z ON THE SPEC, taken from the browser. Two ways in, one step:
+   *
+   *  * the keystroke, in the capture phase, before the block's own undo and before the app
+   *    menu's Edit › Undo — Chromium offers a Cmd shortcut to the page first, and one the
+   *    page prevents never reaches the menu;
+   *  * `beforeinput` with `historyUndo`, which is what that menu item sends when it is
+   *    clicked rather than typed.
+   *
+   * Only in the spec, or with the focus on nothing — a reader who has just left a block with
+   * Escape is still "in" the document. Never in a field: a comment being written and the
+   * link's address each keep their own undo.
+   */
+  useEffect(() => {
+    if (!editable) return
+    const inSpec = (target: EventTarget | null) => {
+      if (!(target instanceof Element)) return false
+      if (target.closest('input, textarea, select, [data-comment-composer]')) return false
+      return target === document.body || !!target.closest('[data-rich-block]')
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      const letter = e.key.toLowerCase()
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || (letter !== 'z' && letter !== 'y')) return
+      if (!inSpec(e.target)) return
+      const inBlock = e.target instanceof Element && !!e.target.closest('[data-rich-block]')
+      const stepped = stepRef.current(letter === 'y' || e.shiftKey ? 'redo' : 'undo')
+      // Inside a block, the browser's own undo is never let through, stepped or not: it would
+      // undo into a DOM this history has already replaced.
+      if (stepped || inBlock) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+    const onBeforeInput = (e: InputEvent) => {
+      if (e.inputType !== 'historyUndo' && e.inputType !== 'historyRedo') return
+      if (!inSpec(e.target)) return
+      e.preventDefault()
+      stepRef.current(e.inputType === 'historyRedo' ? 'redo' : 'undo')
+    }
+    window.addEventListener('keydown', onKeyDown, true)
+    window.addEventListener('beforeinput', onBeforeInput, true)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true)
+      window.removeEventListener('beforeinput', onBeforeInput, true)
+    }
+  }, [editable])
+
+  /**
+   * The conflict's way out: drop the reader's text and read the plan as it now is. The ONLY
+   * path that discards writing the reader did not choose to delete — and it is still their
    * click, after a sentence telling them to copy what they want to keep.
    */
   const reloadAfterConflict = useCallback(() => {
-    closeEditor()
+    pastRef.current = []
+    futureRef.current = []
+    blockRef.current = null
+    setBlock(null)
+    setPending(null)
+    latestRef.current = null
+    savedRef.current = null
+    setEditError(null)
+    setSaveState('idle')
     retry()
-  }, [closeEditor, retry])
+  }, [retry])
+
+  /** Beside the heading: where the autosave is, or how to start writing. */
+  const editStatus = !editable
+    ? null
+    : saveState === 'saving'
+      ? t('common.saving')
+      : composed !== savedRef.current
+        ? t('plans.edit.unsaved')
+        : saveState === 'saved'
+          ? t('plans.edit.saved')
+          : block ? null : t('plans.edit.clickToEdit')
 
   return (
     <div className="flex flex-col">
@@ -1023,20 +1524,42 @@ export function PlanDetailPage({
             />
           )}
 
-          {/* The heading, with the way into the editor on its right: the action is about this
-              section and nothing else on the page. Hidden while editing — the editor has its
-              own Save and Cancel, and a second way in would open nothing. */}
+          {/* The heading, with the autosave's state on its right: the one sign that the text
+              takes a caret, and then where the writing is. Quiet on purpose — the document
+              is the editor, and a status louder than a caption would read as a toolbar. */}
           <div className="flex items-end justify-between gap-3">
             <SectionHeading>{t('plans.detail.spec')}</SectionHeading>
-            {canEdit && !editing && (
-              <div className="mb-2">
-                <Button size="sm" tone="ghost" icon={Pencil} onClick={openEditor} title={t('plans.edit.start')}>
-                  {t('common.edit')}
-                </Button>
-              </div>
+            {editStatus && (
+              <Text size="xs" tone="secondary" className="mb-3 opacity-60">{editStatus}</Text>
             )}
           </div>
-          {fileNotice && !editing && (
+          {/* Above the document, where the eye is when a save comes back: each is a fact about
+              the save just attempted, and the text is still below it. */}
+          {editError === 'conflict' && (
+            <Banner
+              variant="danger"
+              bordered
+              className="mb-3"
+              hint={t('plans.edit.conflictHint')}
+              actions={[{ label: t('plans.edit.reload'), icon: RotateCcw, onClick: reloadAfterConflict, primary: true }]}
+            >
+              {t('plans.edit.conflict')}
+            </Banner>
+          )}
+          {editError === 'denied' && (
+            <Banner variant="danger" bordered className="mb-3">{t('plans.edit.denied')}</Banner>
+          )}
+          {editError === 'failed' && (
+            <Banner
+              variant="danger"
+              bordered
+              className="mb-3"
+              actions={[{ label: t('common.retry'), icon: RotateCcw, onClick: () => { void save() }, primary: true }]}
+            >
+              {t('plans.edit.failed')}
+            </Banner>
+          )}
+          {fileNotice && (
             <Banner variant="warning" bordered className="mb-3">
               {t(fileNotice === 'diverged' ? 'plans.edit.fileDiverged' : 'plans.edit.fileError')}
             </Banner>
@@ -1060,49 +1583,7 @@ export function PlanDetailPage({
               to a stale copy instead of suppressing it; only a row with no markdown at all
               gets the "never uploaded" wording, which is the one place it is true. */}
           <div className="px-6 py-5 rounded-xl bg-surface">
-            {draft ? (
-              <div className="flex flex-col gap-4">
-                {/* Above the box, where the eye is when Save comes back: each is a fact
-                    about the save just attempted, and the draft is still below it. */}
-                {editError === 'conflict' && (
-                  <Banner
-                    variant="danger"
-                    bordered
-                    hint={t('plans.edit.conflictHint')}
-                    actions={[{ label: t('plans.edit.reload'), icon: RotateCcw, onClick: reloadAfterConflict, primary: true }]}
-                  >
-                    {t('plans.edit.conflict')}
-                  </Banner>
-                )}
-                {(editError === 'denied' || editError === 'failed') && (
-                  <Banner variant="danger" bordered>
-                    {t(editError === 'denied' ? 'plans.edit.denied' : 'plans.edit.failed')}
-                  </Banner>
-                )}
-                <FormField
-                  label={t('plans.edit.label')}
-                  hint={t('plans.edit.hint')}
-                  input={{
-                    multiline: true,
-                    value: draft.text,
-                    onChange: (text) => setDraft((prev) => (prev ? { ...prev, text } : prev)),
-                    rows: 20,
-                    mono: true,
-                    resize: 'vertical',
-                    autoFocus: true,
-                    disabled: saving,
-                  }}
-                />
-                <div className="flex items-center gap-3">
-                  <Button size="sm" tone="accent" icon={Save} busy={saving} disabled={draft.text.trim() === ''} onClick={() => { void saveDraft() }}>
-                    {saving ? t('common.saving') : t('common.save')}
-                  </Button>
-                  <Button size="sm" tone="ghost" icon={X} onClick={closeEditor} disabled={saving}>
-                    {t('common.cancel')}
-                  </Button>
-                </div>
-              </div>
-            ) : spec ? (
+            {spec ? (
               <>
                 {session.specOversize && (
                   /* ABOVE the markdown, not below it: a caveat placed after a long
@@ -1113,7 +1594,12 @@ export function PlanDetailPage({
                     {t('plans.detail.specOversizeStale')}
                   </p>
                 )}
-                <SpecBody content={spec} comments={specComments} />
+                {/* THE DOCUMENT IS THE EDITOR: a click on a block puts a caret in it. `doc` is
+                    what is on screen whenever the page holds one — the row's markdown plus
+                    what has been written since — and the row's own until it does. */}
+                <EditableLinesProvider value={editing}>
+                  <SpecBody content={doc?.trim() ? doc : spec} comments={specComments} editable={editable} />
+                </EditableLinesProvider>
                 {/* The comments did not load. Said out loud rather than swallowed: the spec
                     is readable either way, but a page that silently drew no comments over a
                     failed read would be telling the reader their colleagues said nothing. */}
