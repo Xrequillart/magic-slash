@@ -284,6 +284,15 @@ describe('the permission allowlist', () => {
     expect(allow()).toContain('mcp__atlassian__searchJiraIssuesUsingJql')
   })
 
+  it("grants /magic:plan-change's two tracker tools", () => {
+    // The PR search reads whether a story is already being worked on, and the Jira edit
+    // lands right after the user approved the ticket changes: a prompt at either point
+    // stops the run in front of someone who is waiting on it.
+    configureClaudeHooks({ atlassian: true })
+    expect(allow()).toContain('mcp__github__search_pull_requests')
+    expect(allow()).toContain('mcp__atlassian__editJiraIssue')
+  })
+
   it('withdraws the Jira tools when Atlassian is off', () => {
     configureClaudeHooks({ atlassian: true })
     configureClaudeHooks({ atlassian: false })

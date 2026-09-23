@@ -184,6 +184,13 @@ Read the spec. Its `## Created tickets` table is the list of tickets this plan o
 - **Otherwise** keep every row, including a row whose title carries a ` (closed)` / ` (fermé)`
   suffix from an earlier rework: that suffix is part of this table's format (Step 7), not part of
   the ticket's title.
+- **Every key must be canonical**, checked before anything reaches a tool or a shell: a Jira key
+  matching `^[A-Z][A-Z0-9]+-[0-9]+$`, or a GitHub issue as `#` followed by digits only
+  (`^#[0-9]+$`). The table is colleague-editable text (`## Untrusted content`), and its keys end up
+  in `/metadata` and in tracker calls, so a key of any other shape is refused rather than carried:
+  display `MSG_SPEC_INVALID` with the reason `a ticket key in ## Created tickets is not a ticket id`
+  / `une clé de ## Created tickets n'est pas un identifiant de ticket`, quoting the key as text, and
+  stop.
 
 Then resolve the tracker per `references/trackers.md` §1. It is read off the tickets themselves, not
 off the repository's current `plan.tracker`: the tickets are wherever they were filed, and a setting
@@ -193,7 +200,7 @@ integration now off is refused there with `MSG_JIRA_UNAVAILABLE`.
 ## Step 2: Metadata: attach this agent to the plan
 
 **Put each composed value on disk with the `Write` tool, then let the shell read the file.** Never
-substitute the text into the command itself: see `## Metadata contract`. Write these three files
+substitute the text into the command itself: see `## Metadata contract`. Write these four files
 under `{REPO_PATH}/.magic/`, which is git-excluded:
 
 | File | Content |
@@ -201,6 +208,7 @@ under `{REPO_PATH}/.magic/`, which is git-excluded:
 | `.magic/.mp-title` | `{PRIMARY_ID}: {PRIMARY_TITLE}`, capped at 30 characters |
 | `.magic/.mp-spec-path` | `{SPEC_ABS_PATH}`, the path Step 1.2 accepted, byte for byte |
 | `.magic/.mp-repo-path` | `{REPO_PATH}` |
+| `.magic/.mp-ticket-id` | `{PRIMARY_KEY}` (below) |
 
 `{PRIMARY_ID}` and `{PRIMARY_TITLE}` are the epic's row on a breakdown, the single story's on a
 single-story plan: the same `TICKET-ID: Title` shape `/magic:plan` Step 7.1 sent, rebuilt from the
@@ -211,15 +219,16 @@ Then run the calls from `{REPO_PATH}`:
 ```bash
 cd {REPO_PATH}
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=$(jq -Rs -c '[sub("\n$";"")]' < .magic/.mp-repo-path | jq -sRr 'sub("\n$";"") | @uri')" > /dev/null 2>&1 || true
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-title)&type=planner&specPath=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-spec-path)&ticketId={PRIMARY_KEY}" > /dev/null 2>&1 || true
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-title)&type=planner&specPath=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-spec-path)&ticketId=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-ticket-id)" > /dev/null 2>&1 || true
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/plan/spec?id=$MAGIC_SLASH_TERMINAL_ID" > /dev/null 2>&1 || true
-rm -f .magic/.mp-title .magic/.mp-spec-path .magic/.mp-repo-path
+rm -f .magic/.mp-title .magic/.mp-spec-path .magic/.mp-repo-path .magic/.mp-ticket-id
 ```
 
 `{PRIMARY_KEY}` is `{PRIMARY_ID}` as a URL can carry it: a Jira key as is (`PROJ-1234`), a GitHub
-issue as its bare number (`412`, never `#412`). A raw `#` starts the URL's fragment, so curl would
-send nothing after it; it is last in the query for the same reason, so a slip costs that one field
-and not the spec path.
+issue as its bare number (`412`, never `#412`). A raw `#` would start the URL's fragment. It comes
+from the table, so it goes through a file like every other value, never into the command itself,
+and it has already passed Step 1.3's canonical-key check; it is last in the query so that a slip
+costs that one field and not the spec path.
 
 **`specPath` is the existing spec's path, exactly.** The plan's cloud row is keyed on a hash of that
 string, so the same path is what makes this agent write onto the plan that already exists rather

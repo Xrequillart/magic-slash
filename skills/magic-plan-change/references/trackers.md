@@ -83,6 +83,22 @@ criterion) survives the update. The spec says what changes; the live body is wha
 the ticket body still matches what `/magic:plan` wrote, the two are the same thing and the section
 structure of `../magic-plan/references/trackers.md` §2.3 is kept as it was.
 
+**Re-read the ticket immediately before writing it.** Step 3's read is a snapshot taken before the
+diff and its approval, which can sit on a question for as long as the user takes, and both calls
+above replace the whole body. Re-run the §2 read for that one ticket and compare its title and body
+with the Step 3 snapshot:
+
+- **Unchanged** → write the reworked body.
+- **Changed** → do not write it. Rework the fresh body instead, applying the same approved change,
+  and write that only when the change still applies cleanly and nothing the other person added
+  would be removed. Otherwise leave the ticket as it is, report it in `MSG_CHANGE_PARTIAL`'s failed
+  list with the reason `edited on the tracker during this run` / `modifié sur le tracker pendant
+  cette exécution`, and carry on with the rest of the diff.
+
+The same re-read comes before a close (§5): a ticket that became in progress since Step 3 is not
+closed on the strength of an approval given while it was open. Leave it open and report it in the
+failed list with the reason `picked up during this run` / `pris en charge pendant cette exécution`.
+
 Never touch labels, assignees, milestones, the status or the parent on an update: those belong to
 whoever is running the ticket now. The one exception is re-parenting a story under an epic filed on
 `MSG_SHAPE_CHANGE`'s option 1, per §4.
