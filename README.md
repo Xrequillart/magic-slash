@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  Desktop app with 8 Claude Code skills to automate your entire dev cycle — from an idea to a merged PR.
+  Desktop app with 9 Claude Code skills to automate your entire dev cycle — from an idea to a merged PR.
 </p>
 
 <p align="center">
@@ -29,22 +29,24 @@
 
 ## Skills
 
-| Skill             | Description                                       |
-| ----------------- | ------------------------------------------------- |
-| `/magic:plan`     | Turn an idea into a spec and tracker tickets      |
-| `/magic:start`    | Start a task from a Jira ticket or GitHub issue   |
-| `/magic:continue` | Resume work on an existing ticket                 |
-| `/magic:commit`   | Create an atomic commit with conventional message |
-| `/magic:pr`       | Push, create PR and update Jira                   |
-| `/magic:review`   | Review a Pull Request (self or external)          |
-| `/magic:resolve`  | Address review comments and force-push fixes      |
-| `/magic:done`     | Finalize after PR merge (transition Jira to Done) |
+| Skill                | Description                                        |
+| -------------------- | -------------------------------------------------- |
+| `/magic:plan`        | Turn an idea into a spec and tracker tickets       |
+| `/magic:plan-change` | Rework a plan and update the tickets it filed      |
+| `/magic:start`       | Start a task from a Jira ticket or GitHub issue    |
+| `/magic:continue`    | Resume work on an existing ticket                  |
+| `/magic:commit`      | Create an atomic commit with conventional message  |
+| `/magic:pr`          | Push, create PR and update Jira                    |
+| `/magic:review`      | Review a Pull Request (self or external)           |
+| `/magic:resolve`     | Address review comments and force-push fixes       |
+| `/magic:done`        | Finalize after PR merge (transition Jira to Done)  |
 
 > Type `/magic:` to quickly find all commands.
 
 You can also invoke skills using natural language:
 
 - "j'ai une idée" or "I have an idea" → `/magic:plan`
+- "modifier le plan" or "change the plan" → `/magic:plan-change`
 - "démarre PROJ-123" or "work on PROJ-123" → `/magic:start`
 - "je reprends PROJ-123" or "continue PROJ-123" → `/magic:continue`
 - "je suis prêt à committer" or "ready to commit" → `/magic:commit`
@@ -79,7 +81,7 @@ provide. Settings → Application → Machine setup reports the same thing at an
 2. Asks where your tickets live (Jira + GitHub, or GitHub only)
 3. Configures the MCP servers for that choice — both over OAuth, so there is no token to
    paste or store
-4. Installs the 8 skills into `~/.claude/skills/`
+4. Installs the 9 skills into `~/.claude/skills/`
 5. Configures Claude Code's hooks, statusline and permission allowlist — the statusline wrapper is what feeds the usage card, and it relays your own statusline if you have one
 6. Checks your prerequisites and reports what is missing
 
@@ -164,6 +166,22 @@ One Next.js deployment on Vercel answers on three hosts:
 
 > **Note:** Use this when the ticket does not exist yet. Once it does, `/magic:start` is what picks
 > it up — `/magic:plan` runs before it in the cycle, never instead of it.
+
+### /magic:plan-change - Rework a plan and its tickets
+
+```bash
+/magic:plan-change /path/to/repo/.magic/spec-sso-login-20260922-101500.md "split the SSO story per provider"
+```
+
+1. Reads the spec `/magic:plan` wrote and the tickets it filed, as they are in the tracker now
+2. Reworks the spec in place, and records why in a `## Change log` section
+3. Proposes a diff: tickets to update, stories to add under the epic, tickets to close
+4. Waits for your approval, and flags any ticket someone is already working on
+5. Applies it: edits the tickets, files the new stories under the existing epic, closes the dropped ones as not planned
+
+> **Note:** It never files the plan again. A plan with no ticket yet is `/magic:plan`'s. In the
+> desktop app, the plan's page has a **Rework the plan** button that opens an agent with the command
+> and the spec path typed in, for you to add the change and send.
 
 ### /magic:start - Start a task
 
@@ -571,8 +589,11 @@ magic-slash/
 │   │   └── renderer/      # React UI (pages, components, hooks)
 │   ├── resources/         # App icons & logo
 │   └── package.json
-├── skills/                        # Claude Code skills (8 skills)
+├── skills/                        # Claude Code skills (9 skills)
 │   ├── magic-plan/               # Turn an idea into an epic and its stories
+│   │   ├── SKILL.md
+│   │   └── references/
+│   ├── magic-plan-change/        # Rework a plan and update its tickets
 │   │   ├── SKILL.md
 │   │   └── references/
 │   ├── magic-start/              # Start a task
