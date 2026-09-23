@@ -2450,10 +2450,11 @@ export interface PlanLinkEvent {
 
 /**
  * The statuses a plan can be given. The planner agent sets the first two on its own; the
- * last two only a person sets, from the plan's page. A status set by hand is held against
+ * last three only a person sets, from the plan's page: `in_progress` while the plan is
+ * being implemented, then `done` or `abandoned`. A status set by hand is held against
  * the agent's later uploads, and every change is recorded — see 20260923150000.
  */
-export const PLAN_STATUSES = ['planning', 'planned', 'done', 'abandoned'] as const
+export const PLAN_STATUSES = ['planning', 'planned', 'in_progress', 'done', 'abandoned'] as const
 export type PlanStatus = (typeof PLAN_STATUSES)[number]
 
 /** What the database made of a status change. */

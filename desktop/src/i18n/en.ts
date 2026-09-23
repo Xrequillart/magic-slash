@@ -1350,6 +1350,7 @@ export const en = {
   'plans.filter.all': 'All repositories',
   'plans.status.planning': 'Being written',
   'plans.status.planned': 'Tickets filed',
+  'plans.status.inProgress': 'In progress',
   'plans.status.done': 'Done',
   'plans.status.abandoned': 'Abandoned',
   'plans.tickets.none': 'no ticket',

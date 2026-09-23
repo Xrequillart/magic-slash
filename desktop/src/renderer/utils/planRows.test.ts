@@ -52,9 +52,10 @@ const REPOS: PlanRepoRef[] = [
 ]
 
 describe('toStatus', () => {
-  it('keeps the four words the app writes', () => {
+  it('keeps the five words the app writes', () => {
     expect(toStatus('planned')).toBe('planned')
     expect(toStatus('planning')).toBe('planning')
+    expect(toStatus('in_progress')).toBe('in_progress')
     expect(toStatus('done')).toBe('done')
     expect(toStatus('abandoned')).toBe('abandoned')
   })

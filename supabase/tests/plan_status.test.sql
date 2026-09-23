@@ -1,14 +1,14 @@
 -- pgTAP: a plan's status set by hand — who may, what the agent's uploads do to it, and what
 -- the history records.
 --
--- Covers 20260923150000_plan_status_by_hand.sql. As in plan_revisions.test.sql, every
+-- Covers 20260923150000_plan_status_by_hand.sql and 20260923160000_plan_status_in_progress.sql. As in plan_revisions.test.sql, every
 -- event below is the side effect of an ordinary write to `plan_sessions`, made as the user
 -- whose app would make it, with the source header simulated as PostgREST sets it.
 --
 -- Harness: see plan_comments.test.sql.
 
 begin;
-select plan(15);
+select plan(16);
 
 insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
 values
@@ -92,14 +92,20 @@ select is(
   'a held agent write records no status change'
 );
 
--- 8. A hand may only say the four words the app draws.
+-- 8. A hand may only say the five words the app draws.
 set local role authenticated;
 set local request.headers = '{}';
 select throws_ok(
   $sql$ update public.plan_sessions set status = 'shipped' where id = 'e0000000-0000-0000-0000-000000000001' $sql$,
   '22023',
   NULL,
-  'a status set by hand outside the four the app draws is refused'
+  'a status set by hand outside the five the app draws is refused'
+);
+
+-- 8b. `in_progress` is one of them: a plan being implemented.
+select lives_ok(
+  $sql$ update public.plan_sessions set status = 'in_progress' where id = 'e0000000-0000-0000-0000-000000000001' $sql$,
+  'a hand may mark a plan as being implemented'
 );
 
 -- 9. `status_by_hand` is the trigger's: a client cannot clear it to let the agent back in.
@@ -145,7 +151,7 @@ set local role authenticated;
 set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222"}';
 select is(
   (select count(*) from public.plan_status_events),
-  3::bigint,
+  4::bigint,
   'a member of the org reads the status history of a team plan'
 );
 set local request.jwt.claims = '{"sub":"44444444-4444-4444-4444-444444444444"}';

@@ -37,7 +37,7 @@ import { PLAN_STATUSES, type PlanRepoRef, type PlanSession, type PlanStatus, typ
 
 /**
  * `planning` while the spec is being written, `planned` once tickets exist — both the
- * agent's — and `done` / `abandoned`, which only a person sets. See `PLAN_STATUSES`.
+ * agent's — and `in_progress` / `done` / `abandoned`, which only a person sets. See `PLAN_STATUSES`.
  */
 export type { PlanStatus }
 

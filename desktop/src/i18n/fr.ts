@@ -1308,6 +1308,7 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.filter.all': 'Tous les dépôts',
   'plans.status.planning': 'En cours d’écriture',
   'plans.status.planned': 'Tickets créés',
+  'plans.status.inProgress': 'En cours d’implémentation',
   'plans.status.done': 'Terminé',
   'plans.status.abandoned': 'Abandonné',
   'plans.tickets.none': 'aucun ticket',
