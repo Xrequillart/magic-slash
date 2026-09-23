@@ -1353,6 +1353,10 @@ export const en = {
   'plans.tickets.none': 'no ticket',
   'plans.tickets.one': '1 ticket',
   'plans.tickets.other': '{count} tickets',
+  // Beside the ticket count on a row of the list, and ONLY when there is at least one:
+  // "no comment" on every plan nobody has written on would be a column of nothing.
+  'plans.comments.one': '1 comment',
+  'plans.comments.other': '{count} comments',
   'plans.noRepo': 'Unknown repository',
   // The last line of a list that came back at its cap. The read is newest-first, so what
   // is missing is always the old end of it.

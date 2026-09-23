@@ -1,4 +1,4 @@
-import { FolderGit2, Ticket } from './icons'
+import { FolderGit2, MessageSquare, Ticket } from './icons'
 import { Item } from './Item'
 import { Label } from './Label'
 import { Status, type StatusTone } from './Status'
@@ -25,10 +25,11 @@ import { Text } from './Text'
  * are the same object with different contents, and that was not true before: one was a
  * flush list on a framed ground, the other eight separate plates.
  *
- * THREE CHIPS ON THE LAST LINE, not three phrases separated by spaces. Each is a fact
- * with a mark and a value — the repository and its colour, the author and their face, the
- * count and its glyph — which is what `Label` is for. Loose text ran them together into
- * one grey sentence whose parts had to be picked apart by reading.
+ * CHIPS ON THE LAST LINE, not phrases separated by spaces. Each is a fact with a mark and a
+ * value — the repository and its colour, the author and their face, the counts and their
+ * glyphs — which is what `Label` is for. Loose text ran them together into one grey sentence
+ * whose parts had to be picked apart by reading. The last of them, the discussion, is the
+ * only one in a colour: it is the only one that is not true of every plan.
  */
 
 export interface PlanItemProps {
@@ -90,6 +91,20 @@ export interface PlanItemProps {
    * count the same way and for the same reason: the plural rule is the app's.
    */
   tickets: string
+  /**
+   * How much has been said about it, ALREADY COUNTED AND ALREADY WORDED — "3 comments".
+   *
+   * ABSENT IS A PLAN NOBODY HAS WRITTEN ON, and it draws nothing at all, where the ticket
+   * count beside it always draws something. The two are not the same kind of fact: a plan
+   * with no tickets was never broken down, which is worth stating on the row, and a plan
+   * with no comments is simply the ordinary one — a column of "no comment" would be a column
+   * of nothing, in the annotation colour, down a list where most rows have never been
+   * discussed.
+   *
+   * In the orange every comment in this app wears, so a reader scanning the list for the
+   * plans that are under discussion finds them without reading a word.
+   */
+  comments?: string
   /** Opens the plan. The whole row is the target. */
   onSelect: () => void
   /**
@@ -108,6 +123,7 @@ export function PlanItem({
   repository,
   author,
   tickets,
+  comments,
   onSelect,
   className = '',
 }: PlanItemProps) {
@@ -155,6 +171,7 @@ export function PlanItem({
             {author.name}
           </Label>
           <Label icon={Ticket}>{tickets}</Label>
+          {comments && <Label icon={MessageSquare} color="rgb(var(--c-orange))">{comments}</Label>}
         </div>
       </div>
     </Item>

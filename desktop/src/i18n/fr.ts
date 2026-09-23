@@ -1311,6 +1311,8 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.tickets.none': 'aucun ticket',
   'plans.tickets.one': '1 ticket',
   'plans.tickets.other': '{count} tickets',
+  'plans.comments.one': '1 commentaire',
+  'plans.comments.other': '{count} commentaires',
   'plans.noRepo': 'Dépôt inconnu',
   'plans.truncated': 'Seuls les plans les plus récents sont listés. Les sessions plus anciennes ne sont pas affichées ici.',
   'plans.empty.title': 'Aucun plan pour l’instant',

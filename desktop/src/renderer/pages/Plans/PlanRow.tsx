@@ -30,6 +30,19 @@ function ticketCountLabel(count: number, t: Translate): string {
 }
 
 /**
+ * "1 comment" / "7 comments", and NOTHING for a plan nobody has written on.
+ *
+ * The asymmetry with the tickets beside it is deliberate. "No ticket" is a fact about the
+ * plan — it was never broken down — and a row states it. A plan with no comments is the
+ * ordinary case, and a chip saying so on every row of the list would be a column of
+ * "0 comment" that no reader is served by.
+ */
+function commentCountLabel(count: number, t: Translate): string | undefined {
+  if (count === 0) return undefined
+  return t(count === 1 ? 'plans.comments.one' : 'plans.comments.other', { count })
+}
+
+/**
  * How the two statuses read: a plate and a word.
  *
  * Exported because the DETAIL page draws the same status at the top of the plan it was
@@ -83,6 +96,7 @@ export function PlanRow({ card, now, onSelect }: { card: PlanCard; now: number; 
       repository={{ label: card.repoName ?? t('plans.noRepo'), color: repoColor }}
       author={{ name: card.author, avatarUrl: card.avatarUrl }}
       tickets={ticketCountLabel(card.ticketCount, t)}
+      comments={commentCountLabel(card.commentCount, t)}
       onSelect={() => onSelect(card)}
     />
   )
