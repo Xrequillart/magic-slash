@@ -1432,6 +1432,29 @@ export const en = {
   'plans.comments.truncated':
     'This plan has more comments than the page can show. The most recent ones are not listed here.',
 
+  // ── Editing a plan's spec ───────────────────────────────────────────────────
+  // The button's tooltip. Any member of the plan's organization may edit it, so the
+  // sentence does not say whose plan it is.
+  'plans.edit.start': 'Edit this spec',
+  'plans.edit.label': 'Spec (Markdown)',
+  // Under the box: what saving does, said before it is done. Colleagues read the cloud
+  // copy, and the author's own file follows only on the author's machine.
+  'plans.edit.hint':
+    'Saving updates the plan for everyone in the organization. On the author’s machine, the spec file is updated too.',
+  // Somebody saved between opening the editor and saving. Nothing was written: the draft is
+  // still in the box, and Reload is the one action that throws it away.
+  'plans.edit.conflict': 'This plan was changed since you opened it. Nothing was saved.',
+  'plans.edit.conflictHint':
+    'Copy your changes if you want to keep them, then reload to see the latest version.',
+  'plans.edit.reload': 'Reload',
+  'plans.edit.denied': 'You can no longer edit this plan. Nothing was saved.',
+  'plans.edit.failed': 'The plan could not be saved. Your changes are still here, try again.',
+  // After a save that reached the cloud and not the file. `diverged` is the case worth
+  // explaining: the file held work that was never synced, and it was kept on purpose.
+  'plans.edit.fileDiverged':
+    'Saved. The spec file on this machine was not updated, because it holds changes that have not been synced yet.',
+  'plans.edit.fileError': 'Saved. The spec file on this machine could not be updated.',
+
   // ── Hours spent inside the skills ───────────────────────────────────────────
   'skillHours.hours': '{count}h',
   'skillHours.minutes': '{count} min',

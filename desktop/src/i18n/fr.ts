@@ -1356,6 +1356,21 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.comments.truncated':
     'Ce plan a plus de commentaires que la page ne peut en afficher. Les plus récents ne figurent pas ici.',
 
+  // ── Modification de la spec d'un plan ───────────────────────────────────────
+  'plans.edit.start': 'Modifier cette spec',
+  'plans.edit.label': 'Spec (Markdown)',
+  'plans.edit.hint':
+    'L’enregistrement met le plan à jour pour toute l’organisation. Sur la machine de son auteur, le fichier de spec est aussi mis à jour.',
+  'plans.edit.conflict': 'Ce plan a été modifié depuis que vous l’avez ouvert. Rien n’a été enregistré.',
+  'plans.edit.conflictHint':
+    'Copiez vos modifications si vous voulez les garder, puis rechargez pour voir la dernière version.',
+  'plans.edit.reload': 'Recharger',
+  'plans.edit.denied': 'Vous ne pouvez plus modifier ce plan. Rien n’a été enregistré.',
+  'plans.edit.failed': 'Le plan n’a pas pu être enregistré. Vos modifications sont toujours là, réessayez.',
+  'plans.edit.fileDiverged':
+    'Enregistré. Le fichier de spec de cette machine n’a pas été mis à jour, car il contient des modifications pas encore synchronisées.',
+  'plans.edit.fileError': 'Enregistré. Le fichier de spec de cette machine n’a pas pu être mis à jour.',
+
   // ── Heures passées sur les skills ───────────────────────────────────────────
   'skillHours.hours': '{count}h',
   'skillHours.minutes': '{count} min',

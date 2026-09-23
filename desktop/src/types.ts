@@ -2173,6 +2173,58 @@ export interface PlanDetail {
 }
 
 /**
+ * What the renderer sends to save an edited spec — `plans:updateSpec`.
+ *
+ * `expectedUpdatedAt` IS THE ROW'S `updated_at` EXACTLY AS THE DETAIL READ RETURNED IT: the
+ * raw string, never parsed. It is the conflict guard — the save only matches a row still
+ * carrying that value — and Postgres stores microseconds where a JS `Date` keeps
+ * milliseconds, so a value that went through `new Date(…)` on the way back would never
+ * match and every save would report a conflict.
+ *
+ * No owner and no spec key: the main process reads both off the row itself. Which file on
+ * this machine gets rewritten is not something the renderer may choose.
+ */
+export interface PlanSpecUpdate {
+  id: string
+  spec: string
+  expectedUpdatedAt: string
+}
+
+/**
+ * Why a saved spec did NOT also rewrite the `.magic/spec-*.md` on this machine.
+ *
+ *  * `not_owner`  — somebody else's plan: their file is on their disk, not here.
+ *  * `no_file`    — mine, but no agent on this machine points at it (another laptop, an
+ *                   archived agent, a cleaned worktree). The cloud copy is the edit.
+ *  * `diverged`   — the local file no longer holds the spec the editor was opened on:
+ *                   there is local work the cloud has not seen, and it is kept.
+ *  * `error`      — the write itself failed (permissions, a disk error).
+ *
+ * Only `diverged` and `error` are worth telling the reader about; the first two are the
+ * ordinary answer for most plans.
+ */
+export type PlanSpecFileSkip = 'not_owner' | 'no_file' | 'diverged' | 'error'
+
+/**
+ * What came of saving an edited spec.
+ *
+ *  * `saved`    — the cloud row holds the new spec. `updatedAt` is the row's new raw
+ *                 value, and `fileWritten` says whether this machine's spec file followed.
+ *  * `conflict` — the row changed between opening the editor and saving. NOTHING was
+ *                 written, cloud or file; the draft is the reader's to keep or drop.
+ *  * `denied`   — the database refused (not a member any more, the plan went personal,
+ *                 the plan is gone).
+ *  * `failed`   — no answer: offline, signed out, a spec past `MAX_SPEC_BYTES`, a bad
+ *                 argument. Never queued for later — an edit replayed behind the reader's
+ *                 back could not be checked against the row it was written for.
+ */
+export type PlanSpecUpdateResult =
+  | { status: 'saved'; updatedAt: string; fileWritten: boolean; fileSkipReason?: PlanSpecFileSkip }
+  | { status: 'conflict' }
+  | { status: 'denied' }
+  | { status: 'failed' }
+
+/**
  * Where a comment is attached, in line numbers — the shape `plan_comments.anchor`
  * stores as jsonb.
  *
