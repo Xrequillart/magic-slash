@@ -91,10 +91,18 @@ function walkBack(a: readonly string[], b: readonly string[], trace: Int32Array[
   return ops.reverse()
 }
 
+/**
+ * A text's lines. An empty text has none: `''.split('\n')` is `['']`, and that phantom blank
+ * line would show the plan's first revision as deleting a line nobody wrote.
+ */
+function linesOf(text: string): string[] {
+  return text === '' ? [] : text.split('\n')
+}
+
 /** The line-by-line edit script from `oldText` to `newText`. */
 export function diffSpecLines(oldText: string, newText: string, maxD = MAX_EDIT_DISTANCE): SpecDiffOp[] {
-  const a = oldText.split('\n')
-  const b = newText.split('\n')
+  const a = linesOf(oldText)
+  const b = linesOf(newText)
 
   let start = 0
   while (start < a.length && start < b.length && a[start] === b[start]) start++
@@ -119,8 +127,8 @@ export function diffSpecLines(oldText: string, newText: string, maxD = MAX_EDIT_
 /**
  * The unified diff `parseDiff` reads, and the two counts `DiffStat` draws.
  *
- * Both texts are at least one line — `''.split('\n')` is `['']` — so the hunk header never
- * names an empty side, and `parseDiff`'s counters start at line 1 on both.
+ * An empty old side starts at line 0, as git writes a new file's hunk. The new side always
+ * starts at 1: `parseDiff` ignores every row until its new-line counter is set.
  */
 export function unifiedSpecDiff(oldText: string, newText: string): { diff: string; additions: number; deletions: number } {
   const ops = diffSpecLines(oldText, newText)
@@ -133,7 +141,8 @@ export function unifiedSpecDiff(oldText: string, newText: string): { diff: strin
     equal++
     return ` ${op.text}`
   })
-  const header = `@@ -1,${equal + deletions} +1,${equal + additions} @@`
+  const oldCount = equal + deletions
+  const header = `@@ -${oldCount ? 1 : 0},${oldCount} +1,${equal + additions} @@`
   const diff = ['--- a/spec.md', '+++ b/spec.md', header, ...body].join('\n')
   return { diff, additions, deletions }
 }

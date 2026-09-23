@@ -18,7 +18,7 @@ vi.mock('./org', () => ({ listOrgsRead: vi.fn(async () => ({ orgs: [{ id: 'org-1
 const authors = vi.hoisted(() => ({ fetch: vi.fn() }))
 vi.mock('./plans', () => ({ fetchAuthors: (...args: unknown[]) => authors.fetch(...args) }))
 
-import { listPlanHistory, readRevisionTexts } from './planHistory'
+import { alignHistory, listPlanHistory, readRevisionTexts, type PlanLinkEventRow, type PlanRevisionRow } from './planHistory'
 
 type Result = { data?: unknown; error?: unknown }
 
@@ -111,5 +111,27 @@ describe('readRevisionTexts', () => {
     expect(await readRevisionTexts('a', 'b')).toBeNull()
     h.client = makeClient({ plan_revisions: { data: [{ id: 'a', session_id: 's1', content: 'v1', updated_at: 'x' }], error: null } }).client
     expect(await readRevisionTexts('a', 'b')).toBeNull()
+  })
+})
+
+describe('alignHistory', () => {
+  const at = (minute: number) => new Date(Date.UTC(2026, 8, 23, 0, minute)).toISOString()
+  const rev = (minute: number) => ({ id: `r${minute}`, author_id: 'u1', source: 'human', agent_name: null, created_at: at(minute), updated_at: at(minute) }) as PlanRevisionRow
+  const evt = (minute: number) => ({ id: `e${minute}`, link_id: 'l', action: 'added', url: 'https://x.dev', kind: 'other', title: null, actor_id: 'u1', created_at: at(minute) }) as PlanLinkEventRow
+
+  it('keeps both lists whole when neither was cut', () => {
+    const out = alignHistory([rev(3), rev(1)], [evt(2), evt(0)])
+    expect(out.revisionRows).toHaveLength(2)
+    expect(out.eventRows).toHaveLength(2)
+    expect(out.truncated).toBe(false)
+  })
+
+  it('drops revisions older than the oldest event a cut event list still covers', () => {
+    // 201 events from minute 1000 down: the kept 200 reach back to minute 801 only.
+    const events = Array.from({ length: 201 }, (_, i) => evt(1000 - i))
+    const out = alignHistory([rev(900), rev(500)], events)
+    expect(out.revisionRows.map((row) => row.id)).toEqual(['r900'])
+    expect(out.eventRows).toHaveLength(200)
+    expect(out.truncated).toBe(true)
   })
 })

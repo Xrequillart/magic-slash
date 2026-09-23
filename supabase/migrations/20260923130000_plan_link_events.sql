@@ -147,3 +147,13 @@ insert into public.plan_link_events (session_id, link_id, action, url, kind, tit
 select l.session_id, l.id, 'added', l.url, l.kind, l.title, l.author_id, l.created_at
   from public.plan_links l
  where not exists (select 1 from public.plan_link_events e where e.link_id = l.id);
+
+-- The backfill writes directly, so the trigger's cap never ran on it: apply the same bound
+-- here, or a plan pinned with more than 500 links would stay over it until its next change.
+delete from public.plan_link_events e
+ using (
+   select id, row_number() over (partition by session_id order by created_at desc, id desc) as rank
+     from public.plan_link_events
+ ) ranked
+ where ranked.id = e.id
+   and ranked.rank > 500;

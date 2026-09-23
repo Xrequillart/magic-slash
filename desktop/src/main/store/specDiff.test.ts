@@ -49,6 +49,13 @@ describe('diffSpecLines', () => {
 })
 
 describe('unifiedSpecDiff', () => {
+  it('shows a first revision as additions only, with no phantom blank line removed', () => {
+    const { diff, additions, deletions } = unifiedSpecDiff('', 'a\nb')
+    expect(additions).toBe(2)
+    expect(deletions).toBe(0)
+    expect(diff.split('\n').slice(2)).toEqual(['@@ -0,0 +1,2 @@', '+a', '+b'])
+  })
+
   it('counts the lines added and removed', () => {
     const { additions, deletions } = unifiedSpecDiff('a\nb\nc', 'a\nB\nc\nd')
     expect(additions).toBe(2)

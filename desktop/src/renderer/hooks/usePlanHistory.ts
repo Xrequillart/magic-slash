@@ -20,10 +20,15 @@ export function usePlanHistory(sessionId: string | undefined, version: string | 
   const [read, setRead] = useState<PlanHistoryRead | null>(null)
   const sessionRef = useRef(sessionId)
   sessionRef.current = sessionId
+  // Autosaves start reads faster than they finish, so two can be in flight for the SAME
+  // plan: only the latest one started may land, or a slow older answer would put stale
+  // history back on screen.
+  const latestRef = useRef(0)
 
   const load = useCallback(async (id: string) => {
+    const request = ++latestRef.current
     const next = await window.electronAPI.plans.history.list(id).catch(() => BRIDGE_FAILED)
-    if (sessionRef.current === id) setRead(next)
+    if (sessionRef.current === id && latestRef.current === request) setRead(next)
   }, [])
 
   // A new plan: start from nothing, loudly.

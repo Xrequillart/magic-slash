@@ -16,7 +16,7 @@ import { fetchAuthors } from './plans'
  * alone. Everything else — an edit in the app, anybody else's write — is recorded by hand.
  */
 
-interface PlanRevisionRow {
+export interface PlanRevisionRow {
   id: string
   author_id: string | null
   source: string
@@ -25,7 +25,7 @@ interface PlanRevisionRow {
   updated_at: string
 }
 
-interface PlanLinkEventRow {
+export interface PlanLinkEventRow {
   id: string
   link_id: string
   action: string
@@ -51,6 +51,33 @@ const EVENT_COLUMNS = 'id, link_id, action, url, kind, title, actor_id, created_
  */
 const REVISION_LIMIT = 200
 const EVENT_LIMIT = 200
+
+/**
+ * The two lists cut to ONE period, the one both cover completely. Each is read newest first
+ * with its own cap, so when one list stops short its oldest row is where its knowledge ends:
+ * rows of the other list older than that would sit in the merged timeline with events
+ * missing between them. They are dropped, and the timeline ends where both are whole.
+ */
+export function alignHistory(
+  revisionRows: PlanRevisionRow[],
+  eventRows: PlanLinkEventRow[],
+): { revisionRows: PlanRevisionRow[]; eventRows: PlanLinkEventRow[]; truncated: boolean } {
+  const revisionsCut = revisionRows.length > REVISION_LIMIT
+  const eventsCut = eventRows.length > EVENT_LIMIT
+  let revisions = revisionRows.slice(0, REVISION_LIMIT)
+  let events = eventRows.slice(0, EVENT_LIMIT)
+  // The oldest instant each cut list still vouches for. The later of the two is the horizon.
+  const horizons = [
+    revisionsCut && revisions.length ? Date.parse(revisions[revisions.length - 1].updated_at) : -Infinity,
+    eventsCut && events.length ? Date.parse(events[events.length - 1].created_at) : -Infinity,
+  ]
+  const horizon = Math.max(...horizons)
+  if (Number.isFinite(horizon)) {
+    revisions = revisions.filter((row) => Date.parse(row.updated_at) >= horizon)
+    events = events.filter((row) => Date.parse(row.created_at) >= horizon)
+  }
+  return { revisionRows: revisions, eventRows: events, truncated: revisionsCut || eventsCut }
+}
 
 function toRevision(row: PlanRevisionRow): PlanRevision {
   return {
@@ -114,10 +141,10 @@ export async function listPlanHistory(sessionId: string): Promise<PlanHistoryRea
 
   const revisionRows = revisionsRead.data as unknown as PlanRevisionRow[]
   const eventRows = eventsRead.data as unknown as PlanLinkEventRow[]
-  const olderRevisions = revisionRows.length > REVISION_LIMIT
-  const truncated = olderRevisions || eventRows.length > EVENT_LIMIT
-  const revisions = revisionRows.slice(0, REVISION_LIMIT).map(toRevision)
-  const linkEvents = eventRows.slice(0, EVENT_LIMIT).map(toLinkEvent)
+  const { revisionRows: keptRevisions, eventRows: keptEvents, truncated } = alignHistory(revisionRows, eventRows)
+  const olderRevisions = keptRevisions.length < revisionRows.length
+  const revisions = keptRevisions.map(toRevision)
+  const linkEvents = keptEvents.map(toLinkEvent)
   if (revisions.length === 0 && linkEvents.length === 0) return EMPTY_PLAN_HISTORY
 
   const people = new Set<string>()
