@@ -11,6 +11,7 @@ import type {
   TaskBoardColumn,
   TaskIssueDetail,
   TaskRepoGroup,
+  TaskRepoOption,
   TasksSnapshot,
 } from '../../types'
 import { isPRStatusError } from '../../types'
@@ -792,6 +793,55 @@ function createSprintReader() {
   return { readGroups: jiraGroups, searchSprint }
 }
 
+/**
+ * The repositories the Tasks page's picker offers: every one that would produce a card,
+ * once each and in config order, whichever tracker it is read from.
+ *
+ * Built from the same two lists the read is, so the picker cannot offer a repository
+ * the read would then have nothing to say about.
+ */
+export function tasksRepoOptions(
+  repositories: Record<string, RepositoryConfig>,
+  github: GitHubRepo[],
+  jira: JiraRepo[],
+): TaskRepoOption[] {
+  const readable = new Map<string, string>()
+  for (const repo of [...github, ...jira]) readable.set(repo.configKey, repo.name)
+  return Object.keys(repositories)
+    .filter((configKey) => readable.has(configKey))
+    .map((configKey) => ({ configKey, name: readable.get(configKey) ?? configKey }))
+}
+
+/**
+ * Which repository one read is for: the one asked for, then the one the account left
+ * the page on (`Config.tasksRepo`), then the first on offer — each only while it is
+ * still on offer, so a repository deleted or untracked since simply falls through.
+ */
+export function resolveTasksRepo(
+  repos: TaskRepoOption[],
+  requested: string | null,
+  saved: string | undefined,
+): string {
+  const offered = (key: string | null | undefined): key is string =>
+    !!key && repos.some((repo) => repo.configKey === key)
+  if (offered(requested)) return requested
+  if (offered(saved)) return saved
+  return repos[0]?.configKey ?? ''
+}
+
+/** The `configKey` of a `tasks:listOpenIssues` payload, or null for "you choose". */
+function requestedConfigKey(args: unknown): string | null {
+  if (typeof args !== 'object' || args === null) return null
+  const { configKey } = args as { configKey?: unknown }
+  return typeof configKey === 'string' && configKey !== '' ? configKey : null
+}
+
+/** `jiraGroups`' own test of the credential, for a read that sends nothing to Jira. */
+function isJiraConnected(): boolean {
+  const status = jiraStatus()
+  return status.connected && !status.unverified
+}
+
 export function setupTasksHandlers(): void {
   const { readGroups: readJiraGroups, searchSprint } = createSprintReader()
 
@@ -799,15 +849,36 @@ export function setupTasksHandlers(): void {
   // reported as failed and the others still render. The try/catch is not redundant
   // with fetchOpenIssues' error return — it covers the unexpected throw, which a
   // Promise.all would otherwise turn into a blank page.
-  ipcMain.handle('tasks:listOpenIssues', async (): Promise<TasksSnapshot> => {
-    const repositories = readConfig().repositories ?? {}
+  ipcMain.handle('tasks:listOpenIssues', async (_event, args: unknown): Promise<TasksSnapshot> => {
+    const config = readConfig()
+    const repositories = config.repositories ?? {}
 
     // Asked once, for the GitHub half as a whole: with no token every GitHub group
     // would carry the same `no-token` error, which is a connection state and
     // deserves saying once. What it no longer does is short-circuit the PAGE — the
     // Jira half below has its own credential and its own answer.
     const githubConnected = !!getGitHubToken()
-    const github = githubConnected ? githubRepos(repositories) : []
+    const allGithub = githubConnected ? githubRepos(repositories) : []
+    const allJira = jiraRepos(repositories)
+
+    // ONE REPOSITORY PER READ. The page is a board of a single repository, and reading
+    // every one of them on open spent a GraphQL query and four JQL searches per repo
+    // for a board that shows one. The rest are only NAMED, for the picker — which costs
+    // nothing, since both lists above come out of the in-memory config.
+    const repos = tasksRepoOptions(repositories, allGithub, allJira)
+    const configKey = resolveTasksRepo(repos, requestedConfigKey(args), config.tasksRepo)
+
+    // The picked repository AND every sibling on its tracker target, so two services
+    // planned in one Jira project still fold into one card naming both (see
+    // `TaskRow.repos`) — at no extra cost, since the read is shared per target.
+    const pickedGithub = allGithub.find((repo) => repo.configKey === configKey)
+    const github = pickedGithub ? allGithub.filter((repo) => repo.sourceKey === pickedGithub.sourceKey) : []
+    const pickedJira = allJira.find((repo) => repo.configKey === configKey)
+    // The credential is consulted only when the picked repository is read from Jira:
+    // `getStatus()` touches the keychain on its first call.
+    const credentialSite = pickedJira ? (jiraStatus().siteUrl ?? '') : ''
+    const jiraTarget = (repo: JiraRepo) => jiraSourceKey(repo.siteUrl, repo.projectKey, credentialSite)
+    const jiraToRead = pickedJira ? allJira.filter((repo) => jiraTarget(repo) === jiraTarget(pickedJira)) : []
 
     // Both halves at once. A slow Jira site must not hold the GitHub cards back, and
     // vice versa; each repository's failure is already confined to its own group.
@@ -844,11 +915,16 @@ export function setupTasksHandlers(): void {
           }
         }
       })),
-      readJiraGroups(jiraRepos(repositories)),
+      // Skipped outright when nothing Jira is picked, so a GitHub board never asks the
+      // keychain for a credential it will not use. `connected` then reports the
+      // credential as it stands without reading anything with it.
+      jiraToRead.length > 0
+        ? readJiraGroups(jiraToRead)
+        : Promise.resolve({ connected: allJira.length > 0 && isJiraConnected(), groups: [] }),
     ])
 
     const groups: TaskRepoGroup[] = [...githubGroupList, ...jira.groups]
-    return { connected: { github: githubConnected, jira: jira.connected }, groups }
+    return { connected: { github: githubConnected, jira: jira.connected }, groups, repos, configKey }
   })
 
   /**

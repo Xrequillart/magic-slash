@@ -128,8 +128,8 @@ function githubGroupOf(snapshot: TasksSnapshot, configKey: string): GitHubTaskRe
   return group?.tracker === 'github' ? group : undefined
 }
 
-function withRepos(repositories: Record<string, RepositoryConfig>): void {
-  mockReadConfig.mockReturnValue({ repositories } as unknown as Config)
+function withRepos(repositories: Record<string, RepositoryConfig>, tasksRepo?: string): void {
+  mockReadConfig.mockReturnValue({ repositories, ...(tasksRepo ? { tasksRepo } : {}) } as unknown as Config)
 }
 
 /**
@@ -147,8 +147,8 @@ function handlerFor<T>(channel: string): (args?: unknown) => Promise<T> {
   return (args) => handler(null, args) as Promise<T>
 }
 
-/** The one the Tasks page calls on open. */
-function listOpenIssues(): () => Promise<TasksSnapshot> {
+/** The one the Tasks page calls on open, and on every repository picked. */
+function listOpenIssues(): (args?: unknown) => Promise<TasksSnapshot> {
   return handlerFor<TasksSnapshot>('tasks:listOpenIssues')
 }
 
@@ -219,22 +219,55 @@ describe('tasks:listOpenIssues', () => {
     mockFetchIssueDetail.mockResolvedValue({ body: '', state: 'OPEN', assignees: [], commentCount: 0 })
   })
 
-  it('reads the open issues of every GitHub-tracked repository', async () => {
-    withRepos({ api: githubRepo('api'), web: githubRepo('web') })
+  it('reads the picked repository only, and names every other one for the picker', async () => {
+    withRepos({ api: githubRepo('api'), web: githubRepo('web'), billing: jiraRepo('billing') })
     mockFetchOpenIssues.mockResolvedValue({
-      issues: [{ number: 1, title: 'x', url: 'https://github.com/acme/api/issues/1', createdAt: '', labels: [] }],
+      issues: [{ number: 1, title: 'x', url: 'https://github.com/acme/web/issues/1', createdAt: '', labels: [] }],
       totalOpen: 214,
     })
 
-    const snapshot = await listOpenIssues()()
+    const snapshot = await listOpenIssues()({ configKey: 'web' })
 
     expect(snapshot.connected.github).toBe(true)
-    expect(snapshot.groups.map((g) => g.configKey).sort()).toEqual(['api', 'web'])
+    expect(snapshot.configKey).toBe('web')
+    expect(snapshot.groups.map((g) => g.configKey)).toEqual(['web'])
     // The owner and the repo are parsed here, not by the query.
-    expect(mockFetchOpenIssues).toHaveBeenCalledWith('acme', 'api')
+    expect(mockFetchOpenIssues).toHaveBeenCalledTimes(1)
+    expect(mockFetchOpenIssues).toHaveBeenCalledWith('acme', 'web')
+    // Nothing Jira was picked, so nothing is asked of Jira.
+    expect(mockFetchSprintIssues).not.toHaveBeenCalled()
+    // In config order, whichever tracker each is read from.
+    expect(snapshot.repos.map((r) => r.configKey)).toEqual(['api', 'web', 'billing'])
     // The page cap is a cap: the total the repository reported has to survive the trip.
     const group = snapshot.groups[0]
     expect(group.tracker === 'github' && group.totalOpen).toBe(214)
+  })
+
+  it('falls back to the saved repository, then to the first on offer', async () => {
+    withRepos({ api: githubRepo('api'), web: githubRepo('web') }, 'web')
+    expect((await listOpenIssues()({ configKey: null })).configKey).toBe('web')
+
+    // A saved repository deleted since, and a pick that names nothing: both fall through.
+    withRepos({ api: githubRepo('api'), web: githubRepo('web') }, 'gone')
+    const snapshot = await listOpenIssues()({ configKey: 'also-gone' })
+    expect(snapshot.configKey).toBe('api')
+    expect(snapshot.groups.map((g) => g.configKey)).toEqual(['api'])
+  })
+
+  it('reads every repository sharing the picked one’s target, so their cards still fold', async () => {
+    withRepos({
+      api: githubRepo('api'),
+      front: githubRepo('front', { issues: { githubIssuesUrl: 'https://github.com/acme/api/issues' } }),
+      web: githubRepo('web'),
+    })
+    mockFetchOpenIssues.mockResolvedValue({ issues: [], totalOpen: 0 })
+
+    const snapshot = await listOpenIssues()({ configKey: 'front' })
+
+    expect(snapshot.groups.map((g) => g.configKey)).toEqual(['api', 'front'])
+    // One target, one read.
+    expect(mockFetchOpenIssues).toHaveBeenCalledTimes(1)
+    expect(mockFetchOpenIssues).toHaveBeenCalledWith('acme', 'api')
   })
 
   // A Jira repository no longer sits this page out — it gets a group of its own,
@@ -242,11 +275,10 @@ describe('tasks:listOpenIssues', () => {
   it('does not send a Jira-tracked repository to GitHub', async () => {
     withRepos({ api: githubRepo('api'), billing: jiraRepo('billing') })
 
-    const snapshot = await listOpenIssues()()
+    const snapshot = await listOpenIssues()({ configKey: 'billing' })
 
-    expect(snapshot.groups.map((g) => g.tracker).sort()).toEqual(['github', 'jira'])
-    expect(mockFetchOpenIssues).toHaveBeenCalledTimes(1)
-    expect(mockFetchOpenIssues).toHaveBeenCalledWith('acme', 'api')
+    expect(snapshot.groups.map((g) => g.tracker)).toEqual(['jira'])
+    expect(mockFetchOpenIssues).not.toHaveBeenCalled()
   })
 
   // `ask` means both sides are configured, and this page cannot put the question to
@@ -258,7 +290,7 @@ describe('tasks:listOpenIssues', () => {
       both: githubRepo('both', { plan: { tracker: 'ask' }, jira: { projectKey: 'PROJ' } }),
     })
 
-    const snapshot = await listOpenIssues()()
+    const snapshot = await listOpenIssues()({ configKey: 'both' })
 
     expect(snapshot.groups.filter((g) => g.configKey === 'both').map((g) => g.tracker).sort())
       .toEqual(['github', 'jira'])
@@ -347,22 +379,29 @@ describe('tasks:listOpenIssues', () => {
     mockGetGitHubToken.mockReturnValue(null)
     withRepos({ api: githubRepo('api') })
 
-    expect(await listOpenIssues()()).toEqual({ connected: { github: false, jira: false }, groups: [] })
+    expect(await listOpenIssues()()).toEqual({
+      connected: { github: false, jira: false },
+      groups: [],
+      repos: [],
+      configKey: '',
+    })
     expect(mockFetchOpenIssues).not.toHaveBeenCalled()
   })
 
-  it('keeps a failing repository from taking the others down with it', async () => {
+  it('reports a failing repository in its own group, and still names the others', async () => {
     withRepos({ api: githubRepo('api'), web: githubRepo('web') })
     mockFetchOpenIssues.mockImplementation(async (_owner: string, name: string) => {
       if (name === 'web') return { error: 'forbidden', message: 'nope' }
       return { issues: [], totalOpen: 0 }
     })
 
-    const snapshot = await listOpenIssues()()
-
-    expect(snapshot.groups.find((g) => g.configKey === 'web')?.error)
+    const failed = await listOpenIssues()({ configKey: 'web' })
+    expect(failed.groups.find((g) => g.configKey === 'web')?.error)
       .toEqual({ error: 'forbidden', message: 'nope' })
-    expect(snapshot.groups.find((g) => g.configKey === 'api')?.error).toBeUndefined()
+    expect(failed.repos.map((r) => r.configKey)).toEqual(['api', 'web'])
+
+    const fine = await listOpenIssues()({ configKey: 'api' })
+    expect(fine.groups.find((g) => g.configKey === 'api')?.error).toBeUndefined()
   })
 
   // resolveTracker's row 1 returns `github` from an explicit plan.tracker alone,
@@ -404,12 +443,11 @@ describe('tasks:listOpenIssues', () => {
       return { issues: [], totalOpen: 0 }
     })
 
-    const snapshot = await listOpenIssues()()
+    const snapshot = await listOpenIssues()({ configKey: 'web' })
 
     expect(snapshot.connected.github).toBe(true)
     expect(snapshot.groups.find((g) => g.configKey === 'web')?.error)
       .toEqual({ error: 'network', message: 'boom' })
-    expect(snapshot.groups.find((g) => g.configKey === 'api')?.issues).toEqual([])
   })
 })
 
@@ -465,18 +503,17 @@ describe('tasks:listOpenIssues — the Jira half', () => {
   })
 
   // Acceptance criterion 1.
-  it('lists the active sprint of every Jira-tracked repository', async () => {
+  it('lists the active sprint of the picked Jira-tracked repository, and of no other', async () => {
     withRepos({ billing: jiraRepo('billing'), infra: jiraRepo('infra', { jira: { projectKey: 'INFRA' } }) })
 
-    const snapshot = await listOpenIssues()()
+    const snapshot = await listOpenIssues()({ configKey: 'billing' })
 
-    expect(snapshot.groups.map((g) => g.configKey).sort()).toEqual(['billing', 'infra'])
-    // One query per column per project, resolving the board through `openSprints()` —
-    // no board id, and nothing on the `/rest/agile` surface the OAuth scope does not
-    // cover.
-    expect(backlogReads()).toHaveLength(2)
-    expect(progressReads()).toHaveLength(2)
-    expect(doneReads()).toHaveLength(2)
+    expect(snapshot.groups.map((g) => g.configKey)).toEqual(['billing'])
+    // One query per column, resolving the board through `openSprints()` — no board id,
+    // and nothing on the `/rest/agile` surface the OAuth scope does not cover.
+    expect(backlogReads()).toHaveLength(1)
+    expect(progressReads()).toHaveLength(1)
+    expect(doneReads()).toHaveLength(1)
     expect(backlogReads()[0][1]).toMatchObject({
       accessToken: 'atl-access',
       cloudId: 'cloud-1',
@@ -831,13 +868,13 @@ describe('tasks:listOpenIssues — the Jira half', () => {
       if (args.jql.includes('INFRA')) throw new AtlassianApiError('Jira sprint search', 400)
       return { issues: [sprintIssue('PROJ-1')], nextPageToken: null }
     })
-
-    const snapshot = await listOpenIssues()()
+    const handler = listOpenIssues()
 
     // 400 is the likeliest Jira failure here: a project key that does not exist, or
     // one with no Jira Software in it, where `sprint` is not a field.
-    expect(jiraGroupOf(snapshot, 'infra')?.error?.error).toBe('invalid-query')
-    expect(jiraGroupOf(snapshot, 'billing')?.issues.map((i) => i.key)).toEqual(['PROJ-1'])
+    expect(jiraGroupOf(await handler({ configKey: 'infra' }), 'infra')?.error?.error).toBe('invalid-query')
+    expect(jiraGroupOf(await handler({ configKey: 'billing' }), 'billing')?.issues.map((i) => i.key))
+      .toEqual(['PROJ-1'])
   })
 
   it('captures a throw that is not an Atlassian failure at all', async () => {
@@ -899,12 +936,14 @@ describe('tasks:listOpenIssues — the Jira half', () => {
       billing: jiraRepo('billing', { jira: { projectKey: 'PROJ', siteUrl: 'https://own.atlassian.net/browse/' } }),
       infra: jiraRepo('infra'),
     })
-    const snapshot = await listOpenIssues()()
+    const handler = listOpenIssues()
 
-    expect(jiraGroupOf(snapshot, 'billing')?.issues[0].url).toBe('https://own.atlassian.net/browse/PROJ-1')
+    expect(jiraGroupOf(await handler({ configKey: 'billing' }), 'billing')?.issues[0].url)
+      .toBe('https://own.atlassian.net/browse/PROJ-1')
     // No site on the repository: the connected account's own site is the fallback,
     // because `url` drives the row's Open and Copy buttons.
-    expect(jiraGroupOf(snapshot, 'infra')?.issues[0].url).toBe('https://acme.atlassian.net/browse/PROJ-1')
+    expect(jiraGroupOf(await handler({ configKey: 'infra' }), 'infra')?.issues[0].url)
+      .toBe('https://acme.atlassian.net/browse/PROJ-1')
   })
 
   // Acceptance criterion 3: the page no longer short-circuits on the GitHub token.

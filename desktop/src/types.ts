@@ -864,6 +864,22 @@ export interface TasksSnapshot {
     jira: boolean
   }
   groups: TaskRepoGroup[]
+  /**
+   * EVERY repository the page could show, in config order — what the repository picker
+   * offers. Named without being read: the groups above cover `configKey` alone.
+   */
+  repos: TaskRepoOption[]
+  /**
+   * The repository `groups` were read for, resolved from the one asked for, then the
+   * saved `Config.tasksRepo`, then the first of `repos`. `''` when `repos` is empty.
+   */
+  configKey: string
+}
+
+/** One entry of the Tasks page's repository picker. See `TasksSnapshot.repos`. */
+export interface TaskRepoOption {
+  configKey: string
+  name: string
 }
 
 export interface TerminalUsage {

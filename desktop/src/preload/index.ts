@@ -756,7 +756,8 @@ const jiraApi = {
 // Tasks API — the open GitHub issues of every GitHub-tracked repository.
 // One call, no subscription: the page reads on open and on an explicit reload.
 const tasksApi = {
-  listOpenIssues: (): Promise<TasksSnapshot> => ipcRenderer.invoke('tasks:listOpenIssues'),
+  listOpenIssues: (configKey: string | null): Promise<TasksSnapshot> =>
+    ipcRenderer.invoke('tasks:listOpenIssues', { configKey }),
   // The other half of ONE issue, read when the detail panel opens on it. Keyed by
   // the repository's config key rather than by owner/repo or a URL: the main
   // process owns the parsing, and the renderer has no business naming a host.

@@ -476,7 +476,7 @@ describe('buildTaskRows — two repositories on one tracker target', () => {
   it('offers both repositories to the filter and keeps the card for either', () => {
     const rows = build([shared('magic-slash'), shared('poppins-pex')])
 
-    expect(taskFilterRepos(rows).map((repo) => repo.configKey)).toEqual(['magic-slash', 'poppins-pex'])
+    expect(filterTaskRows(rows, { ...NO_FILTER, configKey: 'magic-slash' })).toHaveLength(1)
     expect(filterTaskRows(rows, { ...NO_FILTER, configKey: 'poppins-pex' })).toHaveLength(1)
     expect(filterTaskRows(rows, { ...NO_FILTER, configKey: 'jira-only' })).toHaveLength(0)
   })
@@ -664,22 +664,22 @@ describe('filterTaskRows', () => {
 })
 
 describe('taskFilterRepos', () => {
-  it('offers each repository once, whatever its card count', () => {
-    const rows = build([
-      group({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [issue()] }),
-      jiraGroup({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [jiraIssue()] }),
-      group({ configKey: 'magic-slash', name: 'magic-slash', issues: [issue({ number: 9 })] }),
-    ])
+  it('offers what the read named, in its order', () => {
+    const options = [{ configKey: 'poppins-pex', name: 'PEX' }, { configKey: 'magic-slash', name: 'magic-slash' }]
 
-    // In the order the CARDS are in, which is `buildTaskRows`' sort and not the order
-    // they were declared here: equal backlogs, so alphabetical decides.
-    expect(taskFilterRepos(rows).map((repo) => repo.configKey)).toEqual(['magic-slash', 'poppins-pex'])
+    expect(taskFilterRepos(options, {}).map((repo) => repo.configKey)).toEqual(['poppins-pex', 'magic-slash'])
   })
 
   it('carries the dot colour the cards are drawn with', () => {
-    const rows = build([group({ configKey: 'my-side-project', name: 'my-side-project', issues: [issue()] })])
+    const repositories = { 'my-side-project': repo({ name: 'my-side-project' }), other: repo({ name: 'other' }) }
+    const rows = buildTaskRows(
+      [group({ configKey: 'my-side-project', name: 'my-side-project', issues: [issue()] })],
+      repositories,
+      {},
+    )
 
-    expect(taskFilterRepos(rows)[0].color).toBe(rows[0].color)
+    expect(taskFilterRepos([{ configKey: 'my-side-project', name: 'my-side-project' }], repositories)[0].color)
+      .toBe(rows[0].color)
   })
 })
 

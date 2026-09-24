@@ -94,7 +94,6 @@ function alwaysSideways(): boolean {
  * credential ever crosses the bridge.
  */
 export function TasksPage() {
-  const { snapshot, loading, reload } = useTasks()
   const { config, updateTasksRepo } = useConfig()
   // Mounting this here fires an `org:listAgents` IPC every time the modal opens.
   // Deliberate, and affordable: it is the only way to know a TEAMMATE has an agent
@@ -160,7 +159,7 @@ export function TasksPage() {
    * have not.
    *
    * Null is not "no repository": it is "this page has not been told, so fall back" —
-   * which `repo` below resolves against the saved choice and then against the first
+   * which the main process resolves against the saved choice and then against the first
    * repository on offer. Three states rather than two, and the third is what lets a
    * saved repository that has since been deleted resolve to something without the page
    * having to detect it.
@@ -171,6 +170,14 @@ export function TasksPage() {
    * writing it would quietly move the board every time somebody clicked a ticket.
    */
   const [repoKey, setRepoKey] = useState<string | null>(seed.selection?.configKey ?? null)
+
+  /**
+   * The read, of THAT repository and no other. See `useTasks`: the main process reads
+   * the picked repository (and whatever shares its tracker target) and only names the
+   * rest, so opening the page costs one repository's queries rather than every one's.
+   * With nothing picked yet it falls back to the saved choice, then the first.
+   */
+  const { snapshot, loading, reload } = useTasks(repoKey)
 
   /**
    * The selected ticket as a (repository, identity) PAIR, not as the ticket object.
@@ -233,6 +240,24 @@ export function TasksPage() {
   const listOffsetRef = useRef(0)
 
   /**
+   * The repository the board is showing, and whether its read is still on its way.
+   *
+   * The PICK wins the moment it is made, so the picker moves as soon as it is used
+   * rather than when the read lands — provided it names a repository on offer, which
+   * is what lets a deep link to a repository since deleted settle on whatever the main
+   * process fell back to. Anything else is the snapshot's own answer: the saved choice,
+   * then the first repository, resolved on the other side of the bridge.
+   *
+   * `switching` is the gap between the two: a snapshot of the repository just left,
+   * whose tickets must not be drawn under the name of the one just picked.
+   */
+  const repo = repoKey && snapshot?.repos.some((entry) => entry.configKey === repoKey)
+    ? repoKey
+    : snapshot?.configKey ?? ''
+  const switching = !!snapshot && repo !== snapshot.configKey
+  const groups = useMemo(() => (switching ? [] : snapshot?.groups ?? []), [switching, snapshot?.groups])
+
+  /**
    * THE FILTER BAR'S OWN STUCK TEST IS GONE FROM HERE, and so is the board's.
    *
    * Both were a sentinel in state, an `IntersectionObserver` and a `rootMargin` computed
@@ -259,54 +284,32 @@ export function TasksPage() {
       // index is keyed by repository, not by card: the two share one answer to "which
       // of this repo's tickets has an agent", and asking twice would walk the whole
       // roster a second time for a `Set` that must come out identical.
-      [...new Set((snapshot?.groups ?? []).map((group) => group.configKey))],
+      [...new Set(groups.map((group) => group.configKey))],
       config?.repositories ?? {},
       // Read non-reactively: `terminalsKey` above is this page's subscription to
       // the terminals, and it is in the dependency list in this read's stead.
       taskAgentRefs(agents, useStore.getState().terminals),
     ),
-    [snapshot?.groups, config?.repositories, agents, terminalsKey],
+    [groups, config?.repositories, agents, terminalsKey],
   )
 
   /**
    * Every row the read produced, before either control has had a say.
    *
-   * Kept apart from `rows` below because three things need the UNFILTERED set: the
-   * repository picker's own list of options, the "nothing matched" state (which has
-   * to know there WAS something to match), and the counter's "of N" form.
+   * Kept apart from `rows` below because two things need the UNFILTERED set: the
+   * "nothing matched" state (which has to know there WAS something to match), and the
+   * counter's "of N" form.
    */
   const allRows = useMemo(
-    () => buildTaskRows(snapshot?.groups ?? [], config?.repositories ?? {}, agentedIssues),
-    [snapshot?.groups, config?.repositories, agentedIssues],
+    () => buildTaskRows(groups, config?.repositories ?? {}, agentedIssues),
+    [groups, config?.repositories, agentedIssues],
   )
 
-  const filterRepos = useMemo(() => taskFilterRepos(allRows), [allRows])
-
-  /**
-   * The repository the board is actually showing, resolved from three places in order
-   * of how much they know about what the reader wants.
-   *
-   * 1. What they have PICKED since the page opened, or the ticket they arrived on.
-   * 2. What they LEFT IT ON, read back off the account (`Config.tasksRepo`). This is
-   *    the whole point of storing it in the cloud: the app keeps no config file, so
-   *    without this the picker would have to be re-picked after every quit.
-   * 3. The FIRST repository on offer, for an account that has never picked one — and
-   *    for one whose saved repository has since been deleted, renamed or stopped being
-   *    tracked. That fallback is why the saved value needs no validation on the way in
-   *    (see `updateTasksRepo`): a key that no longer names anything simply fails to
-   *    match here.
-   *
-   * `''` only when there is nothing to offer at all, which is the empty-state path
-   * below rather than a board with no repository in it.
-   */
-  const repo = useMemo(() => {
-    const offered = filterRepos.map((entry) => entry.configKey)
-    if (repoKey && offered.includes(repoKey)) return repoKey
-    // Skipped once the reader has picked: their choice outranks the saved one even
-    // while the write of it is still in flight.
-    if (!repoKey && config?.tasksRepo && offered.includes(config.tasksRepo)) return config.tasksRepo
-    return offered[0] ?? ''
-  }, [repoKey, config?.tasksRepo, filterRepos])
+  /** Every repository the picker offers — named by the read, not read. */
+  const filterRepos = useMemo(
+    () => taskFilterRepos(snapshot?.repos ?? [], config?.repositories ?? {}),
+    [snapshot?.repos, config?.repositories],
+  )
 
   /**
    * What the controls are set to, with the resolved repository in it.
@@ -682,7 +685,7 @@ export function TasksPage() {
    * the bar holding an invisible query, and blame the configuration for a ticket the
    * reader had just clicked.
    */
-  const narrowable = allRows.length > 0 || !!filter.query.trim()
+  const narrowable = filterRepos.length > 0 || !!filter.query.trim()
 
   /**
    * Whether the SEARCH is what emptied the board, as opposed to the repository simply
@@ -693,7 +696,7 @@ export function TasksPage() {
    * "nothing matched your search" — with the failure's own explanation rendered directly
    * underneath it.
    */
-  const noMatch = narrowable && countBoard(board) === 0 && rows.every((row) => !row.error)
+  const noMatch = !switching && narrowable && countBoard(board) === 0 && rows.every((row) => !row.error)
 
   /**
    * THE BANDS BETWEEN THE CONTROLS AND THE COLUMNS, in the order they are read: what is
@@ -733,25 +736,30 @@ export function TasksPage() {
    * A board with rows and nothing in them is NEITHER: four empty columns rather than a
    * message, because that IS the state of its board.
    */
-  const emptyBoard = noMatch
-    ? {
-      icon: SearchX,
-      children: t('tasks.filter.noMatch'),
-      actions: [{
-        id: 'clear',
-        // The repository is NOT cleared — it has no cleared state, and this button is
-        // about undoing a search rather than leaving the board.
-        label: t('tasks.filter.clearAll'),
-        onClick: () => setFilter(NO_FILTER),
-      }],
-    }
-    : rows.length === 0
-      // Not "no tickets": nobody asked the question, or the ones who did have no readable
-      // coordinates. Every fix is a per-repository setting on another page, which is
-      // exactly the case `EmptyState.hint` exists for: there is no button to press, so the
-      // instruction has nowhere else to go.
-      ? { icon: ListTodo, children: t(emptyState.title), hint: t(emptyState.hint) }
-      : undefined
+  const emptyBoard = switching
+    // The picked repository's read is still out. Said in the columns' place, under a
+    // picker that already names it, rather than by taking the whole page down to the
+    // opening loader and the picker with it.
+    ? { icon: ListTodo, children: t('tasks.loading') }
+    : noMatch
+      ? {
+        icon: SearchX,
+        children: t('tasks.filter.noMatch'),
+        actions: [{
+          id: 'clear',
+          // The repository is NOT cleared — it has no cleared state, and this button is
+          // about undoing a search rather than leaving the board.
+          label: t('tasks.filter.clearAll'),
+          onClick: () => setFilter(NO_FILTER),
+        }],
+      }
+      : rows.length === 0
+        // Not "no tickets": nobody asked the question, or the ones who did have no readable
+        // coordinates. Every fix is a per-repository setting on another page, which is
+        // exactly the case `EmptyState.hint` exists for: there is no button to press, so the
+        // instruction has nowhere else to go.
+        ? { icon: ListTodo, children: t(emptyState.title), hint: t(emptyState.hint) }
+        : undefined
 
   const columns = buildTaskColumns({
     board,

@@ -1,4 +1,4 @@
-import type { JiraPriorityLevel, JiraTaskIssue, RepositoryConfig, TaskRepoGroup } from '../../types'
+import type { JiraPriorityLevel, JiraTaskIssue, RepositoryConfig, TaskRepoGroup, TaskRepoOption } from '../../types'
 import { fold } from '../../text'
 import { getProjectColorMap } from './projectColors'
 import { normalizeTicketId, NO_AGENTS } from './taskAgents'
@@ -552,38 +552,30 @@ export function sortTaskRows(rows: TaskRow[], sort: TaskSort): TaskRow[] {
 }
 
 /**
- * The repositories the control can offer, in the order the cards are in.
+ * The repositories the control can offer, in config order, each with its dot.
  *
- * Built from the ROWS and not from the config: the control filters what is on
- * screen, and offering a repository whose card is not there — one tracked nowhere,
- * or whose group never arrived — is an entry that can only ever empty the page.
+ * From the snapshot's `repos` and NOT from the rows: the page reads one repository at
+ * a time, so the rows only ever hold the one on screen (and any sibling sharing its
+ * tracker target). The main process names every repository that would produce a card,
+ * which is the same set the rows used to be deduplicated down to.
  *
- * Deduplicated, because an undecided repository contributes two rows and is still
- * one repository to choose.
- *
- * Every repository of a row and not just its first: a card shared by two of them is
- * still two entries in the picker, and offering only the one the card is named after
- * would leave the other unselectable while its tickets are on screen.
+ * The colour comes off the map `buildTaskRows` draws the cards with, built from the
+ * same full config, so an entry and its card cannot disagree.
  */
-export function taskFilterRepos(rows: TaskRow[]): TaskRowRepo[] {
-  const seen = new Set<string>()
-  const repos: TaskRowRepo[] = []
-  for (const row of rows) {
-    for (const repo of row.repos) {
-      if (seen.has(repo.configKey)) continue
-      seen.add(repo.configKey)
-      repos.push(repo)
-    }
-  }
-  return repos
+export function taskFilterRepos(
+  options: TaskRepoOption[],
+  repositories: Record<string, RepositoryConfig>,
+): TaskRowRepo[] {
+  const colorMap = getProjectColorMap(Object.keys(repositories), repositories)
+  return options.map((option) => ({ ...option, color: colorMap[option.configKey] }))
 }
 
 /**
  * The epics the control can offer, in the order the cards are in.
  *
- * `taskFilterRepos`' twin one relationship down, and built from the ROWS for its
- * reason: the control filters what is on screen, so an epic that no visible ticket
- * hangs off is an entry that can only ever empty the page. That is also what keeps
+ * Built from the ROWS, unlike `taskFilterRepos`: the control filters what is on
+ * screen, so an epic that no visible ticket hangs off is an entry that can only ever
+ * empty the page. That is also what keeps
  * the list short — a project has hundreds of epics and a sprint touches four.
  *
  * Deduplicated by KEY and not by title. Two epics can legitimately share a summary
