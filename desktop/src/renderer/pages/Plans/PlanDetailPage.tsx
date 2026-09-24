@@ -1569,8 +1569,8 @@ export function PlanDetailPage({
    * tooltip, and said again under the heading.
    *
    * Then who may see and edit the plan: for its author and an org admin (who is never
-   * offered `personal`), nothing for anyone else. On a plan of a personal repository, it
-   * tells the author to share the repository instead. `detail` rather than `session` for
+   * offered `personal`), nothing for anyone else. On a plan of a personal repository, the
+   * author invites people from their organizations. `detail` rather than `session` for
    * the invitation list, which only the detail read carries.
    */
   const planActions = session && (
@@ -1588,7 +1588,6 @@ export function PlanDetailPage({
           session={session}
           viewerId={viewerId}
           collaborators={detail.collaborators}
-          repoConfigKey={repoConfigKey}
           onEditPolicySaved={editPolicySaved}
           onChange={refreshDetail}
         />

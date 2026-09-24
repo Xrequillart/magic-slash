@@ -877,7 +877,8 @@ export async function updatePlanEditPolicy(id: string, policy: PlanEditPolicy): 
 }
 
 /**
- * Invite a member of the plan's organization to edit it. `invited_by` is left to its
+ * Invite a member of the plan's organization to edit it — on a personal repository, someone
+ * sharing an organization with the author (20260925090000). `invited_by` is left to its
  * default, `auth.uid()`, which the insert policy also requires: nothing here names the
  * inviter, so nothing here can name the wrong one.
  *

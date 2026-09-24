@@ -894,7 +894,8 @@ const plansApi = {
   // refuses anyone else); `updatedAt` is the row's new one, as for a status change.
   setEditPolicy: (input: { id: string; policy: PlanEditPolicy }): Promise<PlanEditPolicyUpdateResult> =>
     ipcRenderer.invoke('plans:setEditPolicy', input),
-  // Invite a member of the plan's organization to edit it, or take the invitation back (the
+  // Invite a member of the plan's organization (or, on a personal repository, of one of the
+  // author's organizations) to edit it, or take the invitation back (the
   // member may also remove their own). Followed by a detail refetch on the renderer's side.
   addCollaborator: (input: { sessionId: string; userId: string }): Promise<PlanCollaboratorWriteResult> =>
     ipcRenderer.invoke('plans:addCollaborator', input),
