@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageMetadata } from '@/lib/pageMetadata'
 import { DesktopContent } from '@/components/site/desktop/DesktopContent'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 
@@ -35,11 +36,11 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * are on their own grounds, so the page ends on one dark sheet.
  */
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: 'Application — magic-slash',
   description:
     'The native macOS app: several Claude Code agents at once, in one window that knows who is working on what.',
-}
+})
 
 export default function DesktopPage() {
   return (

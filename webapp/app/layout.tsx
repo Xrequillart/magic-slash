@@ -1,11 +1,28 @@
 import type { Metadata } from 'next'
+import { pageMetadata, SITE_URL } from '@/lib/pageMetadata'
 import { LANGUAGE_IDS, LANGUAGE_STORAGE_KEY, DEFAULT_LANGUAGE } from '@/lib/i18n/languages'
 import { EmailConfirmed } from '@/components/EmailConfirmed'
 import './globals.css'
 
+const DESCRIPTION = 'Magic Slash — the desktop agent for your Jira + GitHub development cycle.'
+
+/**
+ * The fallback card for every route that sets no metadata of its own: the product app
+ * under `/dashboard`, `/login`, `/plans`, `/organization` and `/admin/*`, where a generic
+ * site-level card is the right one. Every PUBLIC marketing page builds its own through
+ * the same helper and inherits none of this — see `lib/pageMetadata.ts` for why that
+ * distinction is load-bearing rather than tidy.
+ *
+ * `metadataBase` lives here and only here. It is what resolves the card's relative image
+ * path to an absolute URL, and crawlers for X, Slack and iMessage do not resolve relative
+ * URLs — without it the image is dropped and the card renders bare.
+ *
+ * No `og:url` at this level, deliberately: it would be inherited by every route that does
+ * not override it, making each one advertise the homepage as the page being shared.
+ */
 export const metadata: Metadata = {
-  title: 'Magic Slash',
-  description: 'Magic Slash — the desktop agent for your Jira + GitHub development cycle.',
+  metadataBase: new URL(SITE_URL),
+  ...pageMetadata({ title: 'Magic Slash', description: DESCRIPTION }),
 }
 
 /**

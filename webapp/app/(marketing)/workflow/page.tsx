@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageMetadata } from '@/lib/pageMetadata'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 import { WorkflowContent } from '@/components/site/workflow/WorkflowContent'
 
@@ -34,11 +35,11 @@ import { WorkflowContent } from '@/components/site/workflow/WorkflowContent'
  * the page ends on one dark sheet.
  */
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: 'Workflow — magic-slash',
   description:
     'From idea to merged PR in five commands. Plan the work, start it with Claude Code, commit and open the PR, resolve the review, merge and clean up. Every decision that matters stays yours.',
-}
+})
 
 export default function WorkflowPage() {
   return (
