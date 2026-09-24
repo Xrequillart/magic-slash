@@ -1631,7 +1631,7 @@ export function PlanDetailPage({
           <PlanIdBadge number={card.number} size="lg" />
           <h1 className="min-w-0 text-xl font-semibold text-ink break-words">{planLabel(card)}</h1>
         </div>
-        {/* The one action on the plan AS A WHOLE, beside its status: reworking it opens an
+        {/* The actions on the plan AS A WHOLE, beside its status: reworking it opens an
             agent, it edits nothing here. Only once the read has a session, since there is
             no plan to rework before that. Disabled for a reason the reader cannot see, so
             the reason is the tooltip, and said again under the heading. */}
@@ -1645,6 +1645,21 @@ export function PlanDetailPage({
             >
               {t('plans.detail.change')}
             </Button>
+          )}
+          {/* Who may see and edit the plan, between the rework and the status: for its
+              author and an org admin (who is never offered `personal`), nothing for anyone
+              else. On a plan of a personal repository, it tells the author to share the
+              repository instead. `detail` rather than `session` for the invitation list,
+              which only the detail read carries. */}
+          {session && detail && (
+            <PlanAccess
+              session={session}
+              viewerId={viewerId}
+              collaborators={detail.collaborators}
+              repoConfigKey={repoConfigKey}
+              onEditPolicySaved={editPolicySaved}
+              onChange={refreshDetail}
+            />
           )}
           {statusChip}
         </div>
@@ -1755,18 +1770,6 @@ export function PlanDetailPage({
             viewerId={viewerId}
             heading={(title) => <SectionHeading>{title}</SectionHeading>}
             onChange={bumpLinks}
-          />
-
-          {/* Who may see and edit the plan, for the two who may say: its author and an org
-              admin (who is never offered `personal`). Draws nothing for anyone else, and
-              nothing on a plan of a personal repository. */}
-          <PlanAccess
-            session={session}
-            viewerId={viewerId}
-            collaborators={detail.collaborators}
-            heading={(title) => <SectionHeading>{title}</SectionHeading>}
-            onEditPolicySaved={editPolicySaved}
-            onChange={refreshDetail}
           />
 
           {/* The heading, with the autosave's state on its right: the one sign that the text

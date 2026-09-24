@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Banner, Button, ButtonIcon, Card, Label, Menu, Select, Text, type MenuItem, type SelectOption } from '@ds/desktop'
-import { Lock, ShieldCheck, UserLock, UserPlus, Users, X } from '@ds/desktop/icons'
+import { useEffect, useMemo, useState } from 'react'
+import { ShareButton, type ShareOption, type SharePerson } from '@ds/desktop'
+import { FolderGit2, Lock, ShieldCheck, UserLock, Users } from '@ds/desktop/icons'
 import { PLAN_EDIT_POLICIES, isPlanEditPolicy, type Member, type PlanCollaboratorWriteResult, type PlanEditPolicy, type PlanSession } from '../../../types'
 import { useT, type MessageKey } from '../../i18n'
 import { useMemberAvatars } from '../../hooks/useMemberAvatars'
+import { useStore } from '../../store'
 import { planAuthor } from '../../utils/planRows'
 
 /** What each policy is called in the picker, and the sentence under it. */
@@ -16,10 +17,20 @@ const POLICY_LOOK: Record<PlanEditPolicy, { labelKey: MessageKey; hintKey: Messa
 
 /**
  * WHO MAY SEE AND EDIT THIS PLAN, for the two people who may say (#305): its author, and an
- * admin of its organization. Drawn under the plan's links, in their shape, and only for a TEAM plan a
- * manager is reading — a personal plan has nobody to open it to, and a member who may not
- * manage it is told what they may do by the page's notice above the spec, not by a picker
- * they cannot use.
+ * admin of its organization. A "Share" button in the plan's header, between the rework
+ * action and the status, and only for a TEAM plan a manager is reading — a member who may
+ * not manage it is told what they may do by the page's notice above the spec, not by a
+ * button whose every choice would be refused.
+ *
+ * THE DRAWING IS `ShareButton`'s. What is left here is the plan's side of it: which levels
+ * this reader is offered, who is invited, who could be, and the writes.
+ *
+ * A PLAN ON A PERSONAL REPOSITORY has nobody to open it to: its `org_id` follows its
+ * repository's, and the database grants nothing on a null one. The author is told so
+ * instead of being shown nothing — an empty place is where they went looking for sharing —
+ * with the way out: share the repository, and its plans follow. The panel's action opens
+ * that repository's settings, and only when this machine has it configured
+ * (`repoConfigKey`); the sentence stands alone otherwise.
  *
  * THE DATABASE DECIDES, AS EVERYWHERE ON THIS PAGE. `viewerCanManage` is the server's own
  * answer (a computed column on the row), the policy change is refused by the guard trigger
@@ -37,7 +48,7 @@ const POLICY_LOOK: Record<PlanEditPolicy, { labelKey: MessageKey; hintKey: Messa
  * `personal` IS THE AUTHOR'S ALONE, as the guard trigger has it: only the author is offered
  * it, and only the author can leave it. An admin managing a colleague's shared plan picks
  * among the other three; a personal plan never reaches them (the organization does not see
- * it), and if one ever did this draws nothing rather than a picker whose every choice would
+ * it), and if one ever did this draws nothing rather than a panel whose every choice would
  * be refused. `viewerId` is the signed-in user, for that one test: whether the reader is the
  * author is the only thing here the page works out itself, and the database still decides.
  */
@@ -45,7 +56,7 @@ export function PlanAccess({
   session,
   viewerId,
   collaborators,
-  heading,
+  repoConfigKey,
   onEditPolicySaved,
   onChange,
 }: {
@@ -54,8 +65,8 @@ export function PlanAccess({
   viewerId?: string
   /** User ids, from the detail read. Null when that read failed: the list is unknown, not empty. */
   collaborators: string[] | null
-  /** The section heading, drawn by the page so every section shares one. */
-  heading: (title: string) => JSX.Element
+  /** The plan's repository's key in the local config. Undefined when not cloned here. */
+  repoConfigKey?: string
   /** The policy write moved the row's `updated_at`: the spec editor's guard must follow. */
   onEditPolicySaved: (updatedAt: string, policy: PlanEditPolicy) => void
   /** Something changed (or was refused): the page reads the plan again. */
@@ -67,12 +78,12 @@ export function PlanAccess({
   const [membersFailed, setMembersFailed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<'denied' | 'failed' | null>(null)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const inviteRef = useRef<HTMLButtonElement>(null)
+  const openRepoSettings = useStore((s) => s.openRepoSettings)
 
-  // The roster names the people on the list and in the menu. One read per plan opened by a
-  // manager; nobody else mounts this. `membersRead`, not `members`: the latter answers [] on
-  // a failed RPC, which the menu would draw as "everyone eligible is already invited".
+  // The roster names the people on the list and the ones who could join it. One read per
+  // plan opened by a manager; nobody else mounts this. `membersRead`, not `members`: the
+  // latter answers [] on a failed RPC, which the panel would draw as "everyone eligible is
+  // already invited".
   useEffect(() => {
     setMembers(null)
     setMembersFailed(false)
@@ -93,20 +104,52 @@ export function PlanAccess({
 
   const isAuthor = !!viewerId && viewerId === session.ownerId
 
-  const policyOptions: SelectOption[] = useMemo(
+  const options: ShareOption[] = useMemo(
     () => PLAN_EDIT_POLICIES
       .filter((value) => isAuthor || value !== 'personal')
-      .map((value) => ({ value, label: t(POLICY_LOOK[value].labelKey), icon: POLICY_LOOK[value].icon })),
+      .map((value) => ({
+        value,
+        label: t(POLICY_LOOK[value].labelKey),
+        hint: t(POLICY_LOOK[value].hintKey),
+        icon: POLICY_LOOK[value].icon,
+      })),
     [t, isAuthor],
   )
 
-  const invitable: MenuItem[] = useMemo(() => {
+  const invited: SharePerson[] = useMemo(
+    () => (collaborators ?? []).map((userId) => ({
+      id: userId,
+      name: planAuthor(userId, emailById),
+      avatar: avatars[userId] ?? null,
+    })),
+    [collaborators, emailById, avatars],
+  )
+
+  const invitable: SharePerson[] = useMemo(() => {
     const taken = new Set(collaborators ?? [])
     return (members ?? [])
       .filter((member) => member.userId !== session.ownerId && member.role !== 'admin' && !taken.has(member.userId))
-      .map((member) => ({ id: member.userId, label: member.email ?? member.userId.slice(0, 8) }))
-  }, [members, collaborators, session.ownerId])
+      .map((member) => ({
+        id: member.userId,
+        name: member.email ?? member.userId.slice(0, 8),
+        avatar: avatars[member.userId] ?? null,
+      }))
+  }, [members, collaborators, session.ownerId, avatars])
 
+  if (!orgId && isAuthor) {
+    return (
+      <ShareButton
+        label={t('plans.access.share')}
+        title={t('plans.access.title')}
+        notice={{
+          text: t('plans.access.personalRepo'),
+          action: repoConfigKey
+            ? { label: t('plans.access.shareRepo'), icon: FolderGit2, onPress: () => openRepoSettings(repoConfigKey) }
+            : undefined,
+        }}
+      />
+    )
+  }
   if (!orgId || !session.viewerCanManage) return null
   // Not the author's, and personal: nothing here that reader could change. See above.
   if (!isAuthor && session.editPolicy === 'personal') return null
@@ -145,86 +188,34 @@ export function PlanAccess({
     void run(() => window.electronAPI.plans.removeCollaborator({ sessionId: session.id, userId }))
   }
 
-  const policy = session.editPolicy
+  // THE INVITATION LIST IS DRAWN ONLY UNDER `invited`, the one policy where it grants
+  // anything. When it could not be read, it is said so and nothing is offered that assumes
+  // it is known: no removal, and no candidates that might already be on it.
+  const underInvited = session.editPolicy === 'invited'
 
   return (
-    <>
-      {heading(t('plans.access.title'))}
-      <Card className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <Select
-            value={policy}
-            options={policyOptions}
-            onChange={changePolicy}
-            disabled={busy}
-            ariaLabel={t('plans.access.policyLabel')}
-            icon={POLICY_LOOK[policy].icon}
-            fit
-          />
-          <Text size="xs" tone="secondary" className="min-w-0 flex-1">{t(POLICY_LOOK[policy].hintKey)}</Text>
-        </div>
-
-        {/* The list could not be read: say so, and offer nothing that assumes it is known
-            (no removal to draw, and no menu that would offer the people already invited). */}
-        {policy === 'invited' && collaborators === null && (
-          <Text size="xs" tone="secondary">{t('plans.access.collaboratorsFailed')}</Text>
-        )}
-
-        {policy === 'invited' && collaborators !== null && (
-          <div className="flex flex-wrap items-center gap-2">
-            {collaborators.length === 0 && (
-              <Text size="xs" tone="secondary">{t('plans.access.noneInvited')}</Text>
-            )}
-            {collaborators.map((userId) => {
-              const name = planAuthor(userId, emailById)
-              return (
-                <span key={userId} className="inline-flex min-w-0 items-center gap-1">
-                  <Label avatar={{ src: avatars[userId] ?? null, alt: '' }} truncate>{name}</Label>
-                  <ButtonIcon
-                    icon={X}
-                    size="xs"
-                    tone="ghost"
-                    title={t('plans.access.remove', { name })}
-                    onClick={() => remove(userId)}
-                    disabled={busy}
-                  />
-                </span>
-              )
-            })}
-            <Button
-              ref={inviteRef}
-              size="xs"
-              tone="ghost"
-              icon={UserPlus}
-              onClick={() => setMenuOpen((open) => !open)}
-              disabled={busy || members === null}
-            >
-              {t('plans.access.invite')}
-            </Button>
-            <Menu
-              open={menuOpen}
-              onClose={() => setMenuOpen(false)}
-              anchor={inviteRef.current}
-              label={t('plans.access.inviteMenu')}
-              groups={[{
-                label: t('plans.access.inviteMenu'),
-                items: membersFailed
-                  ? [{ id: '', label: t('plans.access.membersFailed'), disabled: true }]
-                  : invitable.length > 0
-                    ? invitable
-                    : [{ id: '', label: t('plans.access.noOneToInvite'), disabled: true }],
-              }]}
-              onSelect={(item) => { if (item.id) invite(item.id) }}
-            />
-          </div>
-        )}
-
-        {error && (
-          <Banner variant="danger" bordered>
-            {t(error === 'denied' ? 'plans.access.denied' : 'plans.access.failed')}
-          </Banner>
-        )}
-      </Card>
-    </>
+    <ShareButton
+      label={t('plans.access.share')}
+      title={t('plans.access.title')}
+      options={options}
+      value={session.editPolicy}
+      onChange={changePolicy}
+      members={underInvited ? {
+        heading: t('plans.access.invitedHeading'),
+        people: collaborators === null ? [] : invited,
+        empty: t(collaborators === null ? 'plans.access.collaboratorsFailed' : 'plans.access.noneInvited'),
+        removeLabel: (name) => t('plans.access.remove', { name }),
+        onRemove: remove,
+      } : undefined}
+      candidates={underInvited && collaborators !== null && members !== null ? {
+        heading: t('plans.access.inviteMenu'),
+        people: membersFailed ? [] : invitable,
+        empty: t(membersFailed ? 'plans.access.membersFailed' : 'plans.access.noOneToInvite'),
+        addLabel: (name) => t('plans.access.inviteNamed', { name }),
+        onAdd: invite,
+      } : undefined}
+      error={error ? t(error === 'denied' ? 'plans.access.denied' : 'plans.access.failed') : undefined}
+      busy={busy}
+    />
   )
 }
