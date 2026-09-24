@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.98.3] - 2026-09-24
+
+### Added
+
+- **Plan**: Share a plan from a button in its header
+- **Desktop**: Add a share button to the design system
+- **Desktop**: Pick who may edit a plan and tell readers when they cannot
+- **Desktop**: Read and write a plan's edit policy and its collaborators
+- **Plan**: Let a plan's author choose who may see and edit it, with invitations
+
+### Changed
+
+- **Desktop**: Read only the selected repository on the tasks page
+
+### Fixed
+
+- **Pr**: Address review feedback for 305
+- **Plan**: Report a refused status change in the webapp instead of the raw error
+
 ## [0.98.2] - 2026-09-23
 
 ### Added
@@ -3267,6 +3286,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.98.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.3
 [0.98.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.2
 [0.98.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.1
 [0.98.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.0
