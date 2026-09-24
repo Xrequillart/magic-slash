@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { AlertTriangle, ArrowLeft, CloudOff, FileText, FileWarning, History, Lightbulb, NotebookPen, RotateCcw } from '@ds/desktop/icons'
-import { PLAN_STATUSES, type PlanComment, type PlanDetail, type PlanLocalSpec, type PlanSpecUpdateResult, type PlanStatus, type PlanStatusUpdateResult, type PlanTicketRead, type PlanTicketStates } from '../../../types'
+import { AlertTriangle, ArrowLeft, CloudOff, FileText, FileWarning, History, Lightbulb, Lock, NotebookPen, RotateCcw } from '@ds/desktop/icons'
+import { PLAN_STATUSES, type PlanComment, type PlanDetail, type PlanEditPolicy, type PlanLocalSpec, type PlanSpecUpdateResult, type PlanStatus, type PlanStatusUpdateResult, type PlanTicketRead, type PlanTicketStates } from '../../../types'
 import { useT, type MessageKey } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
 import MarkdownView from '../../components/file-preview/MarkdownView'
@@ -45,6 +45,7 @@ import { JiraStatusPill, StateChip } from '../Tasks/parts'
 import { STATUS_LOOK } from './PlanRow'
 import { PlanIdBadge } from './PlanIdBadge'
 import { PlanLinks } from './PlanLinks'
+import { PlanAccess } from './PlanAccess'
 import { PlanHistory } from './PlanHistory'
 
 /**
@@ -71,10 +72,12 @@ import { PlanHistory } from './PlanHistory'
  * answers the second question, "why was it cut this way", and reads better once you know
  * what the tickets are.
  *
- * TWO THINGS HERE WRITE: comments on the spec, and the spec itself. Any member of the
- * plan's organization may edit it (issue #302), the author's own plan and a colleague's
- * alike; the database decides, and this page only offers. See `draft` below.
- * Status changes are still the webapp's.
+ * WHAT HERE WRITES: comments on the spec, the spec itself, the status, and — for its author
+ * or an org admin — who else may edit it (`PlanAccess`, #305). Whoever the plan's edit
+ * policy names may edit it (issue #302 opened it to every member; the author may now keep it
+ * to the admins, or to members they invite). The database decides, through the row's
+ * `viewerCanEdit`, and this page only offers what that says. A reader without the pen still
+ * reads and comments, and is told so before they try. See `draft` below.
  *
  * No scroll container of its own: the Plans page's pane is the one scrolling element,
  * which is what lets the sweep animate a page taller than the frame.
@@ -198,7 +201,17 @@ function SectionHeading({ children, hint }: { children: string; hint?: string })
   )
 }
 
-/** The history's heading, at module level so the memoised section is not re-drawn on every keystroke. */
+/**
+ * Why a reader without the pen has none, by the plan's edit policy. Nothing under `org`: a
+ * member of the organization edits there, so a reader left out of it is not one to explain.
+ * Nothing under `personal` either: nobody but its author sees such a plan, and the author
+ * always holds the pen.
+ */
+const READ_ONLY_HINT_KEY: Partial<Record<PlanEditPolicy, MessageKey>> = {
+  admins: 'plans.access.readOnlyAdmins',
+  invited: 'plans.access.readOnlyInvited',
+}
+
 /** The idea, the plan and its history share one place on the page, behind three tabs. */
 type PlanTab = 'idea' | 'spec' | 'history'
 
@@ -706,7 +719,7 @@ export function PlanDetailPage({
         // The BRIDGE failed, not the query: `listPlanDetail` answers whatever the
         // database does. Either way nothing was read, so it is reported as a failed
         // read rather than as a plan that does not exist.
-        if (!cancelled) setDetail({ session: null, tickets: [], failed: true })
+        if (!cancelled) setDetail({ session: null, tickets: [], collaborators: [], failed: true })
       })
     return () => { cancelled = true }
   }, [card.id, attempt])
@@ -1083,9 +1096,11 @@ export function PlanDetailPage({
    * than two copies, because the two are the same fact and a pill that changed shape on
    * scroll would read as a second, different status.
    *
-   * A picker once the read has a session, since there is no row to write before that.
+   * A picker once the read has a session, since there is no row to write before that — and
+   * only for a reader the database lets edit it. Anyone else gets the plain pill: a picker
+   * whose every choice comes back refused is an offer the page knows it cannot keep.
    */
-  const statusChip = detail?.session
+  const statusChip = detail?.session?.viewerCanEdit
     ? (
       <Status
         label={t(labelKey)}
@@ -1165,14 +1180,41 @@ export function PlanDetailPage({
    * AN `updatedAt` TO GUARD WITH: without one there is no way to know whether the save
    * would overwrite somebody, so the page does not offer it.
    *
-   * WHO is reading is deliberately not a test: the author and any member of the plan's
-   * organization may edit, and the database is the one that knows who that is. A reader it
-   * refuses sees `denied`, with their draft intact.
+   * THE DATABASE SAYS THE READER MAY: `viewerCanEdit` is the row's own answer, computed by
+   * the same rule the UPDATE policy applies (20260924090000), so a reader the plan's edit
+   * policy leaves out is never handed a caret. The page does not work the rule out from the
+   * roster itself. A policy changed while the plan is open still refuses the save, and the
+   * reader sees `denied`, with their draft intact.
    */
-  const canEdit = !!session && !!spec && !session.specOversize && !!session.updatedAt
+  const canEdit = !!session && !!spec && !session.specOversize && !!session.updatedAt && session.viewerCanEdit
 
   /** Whether a click on the spec puts a caret in it. Refused saves stop offering it. */
   const editable = canEdit && editError !== 'conflict' && editError !== 'denied'
+
+  /**
+   * Read the plan again QUIETLY — no loading state, and a failed read keeps what is on
+   * screen. After a change of who may edit, and after a save the database refused: both
+   * change what `viewerCanEdit` and the invitation list say.
+   */
+  const refreshDetail = useCallback(() => {
+    const id = card.id
+    window.electronAPI.plans.detail(id)
+      .then((next) => {
+        if (cardIdRef.current === id && !next.failed) setDetail(next)
+      })
+      .catch(() => {})
+  }, [card.id])
+
+  /**
+   * The edit policy was changed from `PlanAccess`: the write moved the row's `updated_at`,
+   * and the spec editor's conflict guard moves with it, as after a status change.
+   */
+  const editPolicySaved = useCallback((updatedAt: string, editPolicy: PlanEditPolicy) => {
+    updatedAtRef.current = updatedAt
+    setDetail((prev) => prev?.session
+      ? { ...prev, session: { ...prev.session, editPolicy, updatedAt } }
+      : prev)
+  }, [])
 
   /**
    * Send the document as it is NOW. Called by the autosave's timer, by the failure banner's
@@ -1201,6 +1243,9 @@ export function PlanDetailPage({
     if (result.status !== 'saved') {
       setEditError(result.status)
       setSaveState('idle')
+      // Refused: the plan's edit policy may have changed under the reader. Read it again so
+      // the page stops offering what the database now withholds.
+      if (result.status === 'denied') refreshDetail()
       return
     }
 
@@ -1221,13 +1266,9 @@ export function PlanDetailPage({
     setDetail((prev) => prev?.session
       ? { ...prev, session: { ...prev.session, spec: text, updatedAt } }
       : prev)
-    window.electronAPI.plans.detail(id)
-      .then((next) => {
-        // A failed quiet read keeps what is on screen, which is what was just saved.
-        if (cardIdRef.current === id && !next.failed) setDetail(next)
-      })
-      .catch(() => {})
-  }, [card.id])
+    // A failed quiet read keeps what is on screen, which is what was just saved.
+    refreshDetail()
+  }, [card.id, refreshDetail])
 
   /**
    * THE AUTOSAVE: `AUTOSAVE_MS` after the document last changed, and not before. Every
@@ -1716,6 +1757,18 @@ export function PlanDetailPage({
             onChange={bumpLinks}
           />
 
+          {/* Who may see and edit the plan, for the two who may say: its author and an org
+              admin (who is never offered `personal`). Draws nothing for anyone else, and
+              nothing on a plan of a personal repository. */}
+          <PlanAccess
+            session={session}
+            viewerId={viewerId}
+            collaborators={detail.collaborators}
+            heading={(title) => <SectionHeading>{title}</SectionHeading>}
+            onEditPolicySaved={editPolicySaved}
+            onChange={refreshDetail}
+          />
+
           {/* The heading, with the autosave's state on its right: the one sign that the text
               takes a caret, and then where the writing is. Quiet on purpose — the document
               is the editor, and a status louder than a caption would read as a toolbar. */}
@@ -1725,6 +1778,21 @@ export function PlanDetailPage({
               <Text size="xs" tone="secondary" className="mb-3 opacity-60">{editStatus}</Text>
             )}
           </div>
+          {/* BEFORE THE READER TRIES: the plan's edit policy leaves them out, so the text
+              takes no caret and the status is a plain pill. Said up front rather than on a
+              refused save, and with what they still can do. Not beside `denied`, which says
+              the same thing about a save that has just been refused. */}
+          {!session.viewerCanEdit && editError !== 'denied' && (
+            <Banner
+              variant="info"
+              bordered
+              icon={Lock}
+              className="mb-3"
+              hint={READ_ONLY_HINT_KEY[session.editPolicy] ? t(READ_ONLY_HINT_KEY[session.editPolicy]!) : undefined}
+            >
+              {t('plans.access.readOnly')}
+            </Banner>
+          )}
           {/* Above the document, where the eye is when a save comes back: each is a fact about
               the save just attempted, and the text is still below it. */}
           {editError === 'conflict' && (

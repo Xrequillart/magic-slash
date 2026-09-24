@@ -1,4 +1,4 @@
-import { FolderGit2, MessageSquare, Ticket } from './icons'
+import { FolderGit2, MessageSquare, Ticket, UserLock } from './icons'
 import { Item } from './Item'
 import { Label } from './Label'
 import { Status, type StatusTone } from './Status'
@@ -105,6 +105,15 @@ export interface PlanItemProps {
    * plans that are under discussion finds them without reading a word.
    */
   comments?: string
+  /**
+   * That the plan is its author's alone, ALREADY WORDED — "Personal". Drawn as one more
+   * chip, with a lock on a person, after the counts.
+   *
+   * ABSENT ON A SHARED PLAN, which is the ordinary case on a team repository, and the only
+   * one anybody else ever sees: a personal plan is shown to its author and nobody else, so
+   * the chip tells the one reader who can see it that their colleagues cannot.
+   */
+  personal?: string
   /** Opens the plan. The whole row is the target. */
   onSelect: () => void
   /**
@@ -124,6 +133,7 @@ export function PlanItem({
   author,
   tickets,
   comments,
+  personal,
   onSelect,
   className = '',
 }: PlanItemProps) {
@@ -172,6 +182,7 @@ export function PlanItem({
           </Label>
           <Label icon={Ticket}>{tickets}</Label>
           {comments && <Label icon={MessageSquare} color="rgb(var(--c-orange))">{comments}</Label>}
+          {personal && <Label icon={UserLock}>{personal}</Label>}
         </div>
       </div>
     </Item>

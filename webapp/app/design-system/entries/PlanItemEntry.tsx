@@ -65,6 +65,12 @@ const PROPS: PropRow[] = [
       'How many tickets it produced, already counted and already worded — “7 tickets”, not 7, and “no ticket” rather than a hidden chip.',
   },
   {
+    name: 'personal',
+    type: 'string',
+    description:
+      'That the plan is its author’s alone, already worded — “Personal”. One more chip after the counts. Absent on a shared plan, the ordinary case: a personal plan is only ever shown to its author, and the chip tells them their colleagues cannot see it.',
+  },
+  {
     name: 'onSelect',
     type: '() => void',
     required: true,
@@ -125,6 +131,7 @@ export function PlanItemEntry({ theme, onOpen }: { theme: DesktopTheme; onOpen?:
               repository={{ label: 'acme-checkout-api', color: CYAN }}
               author={{ name: 'Camille', avatarUrl: null }}
               tickets="1 ticket"
+              personal="Personal"
               onSelect={noop}
             />
             <ItemNote>Showing the 50 most recent plans.</ItemNote>
