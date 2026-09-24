@@ -1561,6 +1561,41 @@ export function PlanDetailPage({
           ? t('plans.edit.saved')
           : block ? null : t('plans.edit.clickToEdit')
 
+  /**
+   * The actions on the plan AS A WHOLE, carried by the sticky bar so they stay in reach
+   * however far down the spec the reader is: reworking it opens an agent, it edits
+   * nothing here. Only once the read has a session, since there is no plan to rework
+   * before that. Disabled for a reason the reader cannot see, so the reason is the
+   * tooltip, and said again under the heading.
+   *
+   * Then who may see and edit the plan: for its author and an org admin (who is never
+   * offered `personal`), nothing for anyone else. On a plan of a personal repository, it
+   * tells the author to share the repository instead. `detail` rather than `session` for
+   * the invitation list, which only the detail read carries.
+   */
+  const planActions = session && (
+    <div className="flex shrink-0 items-center gap-2">
+      <Button
+        icon={NotebookPen}
+        onClick={reworkPlan}
+        disabled={!localSpec?.ok}
+        title={changeBlocked ?? t('plans.detail.changeHint')}
+      >
+        {t('plans.detail.change')}
+      </Button>
+      {detail && (
+        <PlanAccess
+          session={session}
+          viewerId={viewerId}
+          collaborators={detail.collaborators}
+          repoConfigKey={repoConfigKey}
+          onEditPolicySaved={editPolicySaved}
+          onChange={refreshDetail}
+        />
+      )}
+    </div>
+  )
+
   return (
     <div className="flex flex-col">
       {/* The trail out, and the band the page scrolls under. Full-bleed via the negative
@@ -1604,6 +1639,7 @@ export function PlanDetailPage({
             <Text className="min-w-0 flex-1 truncate" title={planLabel(card)}>
               {planLabel(card)}
             </Text>
+            {planActions}
             {/* Pinned to the right edge, where the heading's own pill sits: the bar is
                 the heading, so the two must not swap sides as one replaces the other. */}
             {statusChip}
@@ -1613,6 +1649,7 @@ export function PlanDetailPage({
             {card.repoName ?? t('plans.noRepo')}
           </Text>
         )}
+        {!condensed && planActions}
       </StickyBar>
 
       {/* The heading is the CARD's, drawn before the read comes back and unchanged by it:
@@ -1631,36 +1668,10 @@ export function PlanDetailPage({
           <PlanIdBadge number={card.number} size="lg" />
           <h1 className="min-w-0 text-xl font-semibold text-ink break-words">{planLabel(card)}</h1>
         </div>
-        {/* The actions on the plan AS A WHOLE, beside its status: reworking it opens an
-            agent, it edits nothing here. Only once the read has a session, since there is
-            no plan to rework before that. Disabled for a reason the reader cannot see, so
-            the reason is the tooltip, and said again under the heading. */}
+        {/* The status stays with the heading it qualifies. The actions on the plan went
+            up into the sticky bar, where they stay within reach however far down the
+            spec the reader has scrolled. */}
         <div className="flex shrink-0 items-center gap-3">
-          {session && (
-            <Button
-              icon={NotebookPen}
-              onClick={reworkPlan}
-              disabled={!localSpec?.ok}
-              title={changeBlocked ?? t('plans.detail.changeHint')}
-            >
-              {t('plans.detail.change')}
-            </Button>
-          )}
-          {/* Who may see and edit the plan, between the rework and the status: for its
-              author and an org admin (who is never offered `personal`), nothing for anyone
-              else. On a plan of a personal repository, it tells the author to share the
-              repository instead. `detail` rather than `session` for the invitation list,
-              which only the detail read carries. */}
-          {session && detail && (
-            <PlanAccess
-              session={session}
-              viewerId={viewerId}
-              collaborators={detail.collaborators}
-              repoConfigKey={repoConfigKey}
-              onEditPolicySaved={editPolicySaved}
-              onChange={refreshDetail}
-            />
-          )}
           {statusChip}
         </div>
       </div>
