@@ -41,6 +41,9 @@ function session(overrides: Partial<PlanSession> = {}): PlanSession {
     specSyncedAt: '2026-08-20T10:00:00Z',
     createdAt: '2026-08-20T09:00:00Z',
     updatedAt: '2026-08-20T10:00:00Z',
+    editPolicy: 'org',
+    viewerCanEdit: true,
+    viewerCanManage: false,
     ...overrides,
   }
 }

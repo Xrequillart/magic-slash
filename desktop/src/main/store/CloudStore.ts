@@ -1524,6 +1524,10 @@ export class CloudStore implements Store {
    *
    * `org_id` is never sent at all: a BEFORE trigger derives it from `repo_id`, and
    * the client is not allowed an opinion on who may read this.
+   *
+   * `edit_policy` is never sent either (20260924090000): the first insert takes the
+   * column's default, `personal`, and from then on it is the author's choice on the plan's
+   * page. Sent here, it would land in the `DO UPDATE SET` and undo that choice on every save.
    */
   private planSessionRow(input: PlanSpecInput, uid: string): Record<string, unknown> {
     const agent = readAgents().find((a) => a.id === input.agentId)

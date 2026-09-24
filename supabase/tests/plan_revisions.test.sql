@@ -64,11 +64,14 @@ values
   ('d0000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', null,                                   'perso');
 
 -- Seeded as the table owner, with no user in the request: a write the history must ignore.
-insert into public.plan_sessions (id, owner_id, repo_id, agent_id, slug, spec_key, title, spec)
+-- `edit_policy => 'org'` on the seeds (20260924090000): a new plan is `personal` by default,
+-- and these rows stand for plans shared with their organization, as every plan older than
+-- the column is.
+insert into public.plan_sessions (id, owner_id, repo_id, agent_id, slug, spec_key, title, spec, edit_policy)
 values
-  ('e0000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'team-feature',  'team-key',  'Team feature',     'v0'),
-  ('e0000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000002', null,                                   'perso-feature', 'perso-key', 'Personal feature', 'p0'),
-  ('e0000000-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000001', null,                                   'big-feature',   'big-key',   'Big feature',      null);
+  ('e0000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'team-feature',  'team-key',  'Team feature',     'v0', 'org'),
+  ('e0000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000002', null,                                   'perso-feature', 'perso-key', 'Personal feature', 'p0', 'org'),
+  ('e0000000-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000001', null,                                   'big-feature',   'big-key',   'Big feature',      null, 'org');
 
 -- 1. No user, no revision: a migration or the SQL console writing a spec records nothing.
 select is(
@@ -83,9 +86,9 @@ set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
 set local request.headers = '{"x-magic-plan-source":"agent"}';
 
 -- 2. A session created WITH its text is a revision from the start.
-insert into public.plan_sessions (id, owner_id, repo_id, agent_id, slug, spec_key, title, spec)
+insert into public.plan_sessions (id, owner_id, repo_id, agent_id, slug, spec_key, title, spec, edit_policy)
 values ('e0000000-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000001',
-        'a0000000-0000-0000-0000-000000000001', 'new-feature', 'new-key', 'New feature', 'n1');
+        'a0000000-0000-0000-0000-000000000001', 'new-feature', 'new-key', 'New feature', 'n1', 'org');
 reset role;
 select results_eq(
   $sql$ select author_id, source, agent_id, agent_name, content, base_content from public.plan_revisions
@@ -96,9 +99,9 @@ select results_eq(
 
 -- 3. A session created without its text (the tickets arrived first) is not.
 set local role authenticated;
-insert into public.plan_sessions (id, owner_id, repo_id, slug, spec_key, title)
+insert into public.plan_sessions (id, owner_id, repo_id, slug, spec_key, title, edit_policy)
 values ('e0000000-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000001',
-        'empty-feature', 'empty-key', 'Empty feature');
+        'empty-feature', 'empty-key', 'Empty feature', 'org');
 reset role;
 select is(
   (select count(*) from public.plan_revisions where session_id = 'e0000000-0000-0000-0000-000000000005'),

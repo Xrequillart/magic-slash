@@ -100,6 +100,9 @@ export function PlanRow({ card, now, onSelect }: { card: PlanCard; now: number; 
       author={{ name: card.author, avatarUrl: card.avatarUrl }}
       tickets={ticketCountLabel(card.ticketCount, t)}
       comments={commentCountLabel(card.commentCount, t)}
+      // Only on a TEAM repository: on a personal one every plan is its author's alone, and
+      // a chip on every row would say nothing. Only the author ever sees such a row.
+      personal={card.orgId && card.editPolicy === 'personal' ? t('plans.access.personal') : undefined}
       onSelect={() => onSelect(card)}
     />
   )

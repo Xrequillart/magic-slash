@@ -64,10 +64,13 @@ values
 
 -- The two plans. `org_id` is not sent: the derivation trigger on plan_sessions supplies
 -- it, which is the very thing that makes the personal one null.
-insert into public.plan_sessions (id, owner_id, repo_id, slug, spec_key, title)
+-- `edit_policy => 'org'` on the seeds (20260924090000): a new plan is `personal` by default,
+-- and these rows stand for plans shared with their organization, as every plan older than
+-- the column is.
+insert into public.plan_sessions (id, owner_id, repo_id, slug, spec_key, title, edit_policy)
 values
-  ('e0000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000001', 'team-feature',  'team-key',  'Team feature'),
-  ('e0000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000002', 'perso-feature', 'perso-key', 'Personal feature');
+  ('e0000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000001', 'team-feature',  'team-key',  'Team feature',     'org'),
+  ('e0000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000002', 'perso-feature', 'perso-key', 'Personal feature', 'org');
 
 -- u1's own comment on their team plan, and one on their personal plan. Seeded past-dated
 -- so the updated_at assertion can tell a real bump from the insert's own value (now() is

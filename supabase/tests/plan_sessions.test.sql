@@ -67,26 +67,29 @@ set local role authenticated;
 set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
 
 -- The team session sends no org at all — the trigger must supply it.
-insert into public.plan_sessions (id, owner_id, repo_id, slug, spec_key, title)
+-- `edit_policy => 'org'` on the seeds (20260924090000): a new plan is `personal` by default,
+-- and these rows stand for plans shared with their organization, as every plan older than
+-- the column is.
+insert into public.plan_sessions (id, owner_id, repo_id, slug, spec_key, title, edit_policy)
 values (
   'e0000000-0000-0000-0000-000000000001',
   '11111111-1111-1111-1111-111111111111',
   'd0000000-0000-0000-0000-000000000001',
-  'team-feature', 'team-key', 'Team feature'
+  'team-feature', 'team-key', 'Team feature', 'org'
 );
 
 -- The personal session LIES: it claims Org A. The trigger must discard it.
 -- updated_at and spec_synced_at are seeded in the past so the re-derivation
 -- assertions further down can tell a real bump from the insert's own value
 -- (now() is frozen for the whole transaction, so they could not otherwise).
-insert into public.plan_sessions (id, owner_id, repo_id, org_id, slug, spec_key, title, updated_at, spec_synced_at)
+insert into public.plan_sessions (id, owner_id, repo_id, org_id, slug, spec_key, title, updated_at, spec_synced_at, edit_policy)
 values (
   'e0000000-0000-0000-0000-000000000002',
   '11111111-1111-1111-1111-111111111111',
   'd0000000-0000-0000-0000-000000000002',
   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
   'perso-feature', 'perso-key', 'Personal feature',
-  '2026-08-20 10:00:00+00', '2026-08-20 10:00:00+00'
+  '2026-08-20 10:00:00+00', '2026-08-20 10:00:00+00', 'org'
 );
 
 reset role;
@@ -311,14 +314,15 @@ values
 insert into public.agents (id, org_id, owner_id, name)
 values ('a0000000-0000-0000-0000-000000000001', null, '11111111-1111-1111-1111-111111111111', 'Planner');
 
-insert into public.plan_sessions (id, owner_id, repo_id, agent_id, slug, spec_key, title, spec, spec_synced_at)
+-- `'org'` for the reason given on the first seed.
+insert into public.plan_sessions (id, owner_id, repo_id, agent_id, slug, spec_key, title, spec, spec_synced_at, edit_policy)
 values
   ('e0000000-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000004', null,
-   'team-edit', 'team-edit-key', 'Team edit', 'v1', '2026-09-01 10:00:00+00'),
+   'team-edit', 'team-edit-key', 'Team edit', 'v1', '2026-09-01 10:00:00+00', 'org'),
   ('e0000000-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000005', null,
-   'perso-edit', 'perso-edit-key', 'Personal edit', 'mine', '2026-09-01 10:00:00+00'),
+   'perso-edit', 'perso-edit-key', 'Personal edit', 'mine', '2026-09-01 10:00:00+00', 'org'),
   ('e0000000-0000-0000-0000-000000000006', '22222222-2222-2222-2222-222222222222', 'd0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001',
-   'theirs', 'theirs-key', 'Theirs', 'theirs', null);
+   'theirs', 'theirs-key', 'Theirs', 'theirs', null, 'org');
 
 -- From the teammate's seat: u2 is a plain member of Org A and does not own e4.
 set local role authenticated;

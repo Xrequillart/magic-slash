@@ -28,7 +28,9 @@ import {
  *
  * NO ORG FILTER, anywhere below. RLS on `plan_sessions` already returns exactly
  * what the reader may see — their own sessions, plus every session on a repository
- * shared with one of their organizations — so a filter on this side could only hide
+ * shared with one of their organizations that its author has not kept `personal`
+ * (20260924090000; a colleague's personal plan never arrives here, nor anything on it)
+ * — so a filter on this side could only hide
  * rows the database chose to show, and would do it differently per page.
  */
 
@@ -258,11 +260,14 @@ export async function fetchPlanSession(id: string): Promise<PlanDetail | null> {
  * still planning" was the alternative and it is not available here: the answer lives
  * in the app's local agent list, not in a column this page can read.
  *
- * Throws when the write touched no row, exactly as `updateRepository` does: RLS
- * turns a forbidden UPDATE into a success with zero rows affected, so selecting the
- * affected rows back is the only thing that tells the two apart. `plan_sessions` is
- * owner-writable only, so that is the case of a reader who sees a teammate's plan
- * through their organization.
+ * Throws the same `statusForbidden` sentence for BOTH ways a write can be refused.
+ * `plan_sessions_update` (20260924090000) keeps visibility in its USING and puts the
+ * edit rule in its WITH CHECK, so a reader who can see the plan but is not among the
+ * editors its `edit_policy` names — the author, and the whole organization, its admins,
+ * or its invited members — gets a 42501 raised rather than zero rows. Zero rows is still
+ * possible (the plan vanished, was unshared, or was made personal by its author since
+ * the page was drawn), and is read
+ * back by selecting the affected rows, exactly as `updateRepository` does.
  *
  * Returns the stored status, read back through `toStatus`, so the caller displays
  * what the row holds rather than what it asked for.
@@ -277,6 +282,8 @@ export async function setPlanSessionStatus(
     .update({ status })
     .eq('id', id)
     .select('status')
+  // 42501, insufficient_privilege: the policy's WITH CHECK, or the guard trigger.
+  if (error?.code === '42501') throw new Error(t('plans.detail.statusForbidden', lang))
   if (error) throw new Error(error.message)
   if (!data || data.length === 0) throw new Error(t('plans.detail.statusForbidden', lang))
   return toStatus((data[0] as { status: string | null }).status)

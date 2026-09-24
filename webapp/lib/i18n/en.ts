@@ -181,7 +181,7 @@ export const en = {
   'plans.detail.specPending':
     'The spec has not been uploaded yet. It appears here as the session writes it.',
   'plans.detail.syncedAt': 'Spec updated {when}',
-  'plans.detail.statusForbidden': 'Only the author of a plan can change its status.',
+  'plans.detail.statusForbidden': 'You cannot change the status of this plan.',
 
   // ── Skill stats ────────────────────────────────────────────────────────────
   'skills.title': 'Skills run',

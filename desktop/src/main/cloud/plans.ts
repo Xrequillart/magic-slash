@@ -1,4 +1,5 @@
-import type { Org, PlanDetail, PlanOverview, PlanRepoRef, PlanSession, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketRead } from '../../types'
+import { isPlanEditPolicy } from '../../types'
+import type { Org, PlanCollaboratorWriteResult, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanOverview, PlanRepoRef, PlanSession, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketRead } from '../../types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getAuthedClient } from './auth'
 import { listMembers, listOrgsRead } from './org'
@@ -20,10 +21,12 @@ import { getStore } from '../store/Store'
  * organizations. A filter on this side could only ever hide a row the database chose to
  * show, and would do it differently from the webapp's identical read.
  *
- * ONE WRITE, and only one: `updatePlanSpec`, the in-app editor's save (issue #302). Every
- * other write onto `plan_sessions` is the author's own upload, from `store/plan-sync.ts`
- * through the store. This one can come from ANY member of the plan's organization, which
- * is what 20260923100000 opened up — and what its guard trigger narrows to the text.
+ * THE WRITES FROM A PLAN'S PAGE: `updatePlanSpec`, the in-app editor's save (issue #302),
+ * `updatePlanStatus`, and who may edit (#305) — `updatePlanEditPolicy` and the two
+ * invitation writes onto `plan_collaborators`. Every other write onto `plan_sessions` is
+ * the author's own upload, from `store/plan-sync.ts` through the store. These can come
+ * from any member the plan's `edit_policy` names, which is what 20260924090000 narrowed
+ * 20260923100000's "any member" to; the database decides, nothing here does.
  *
  * EVERY READ SAYS WHETHER IT WORKED. `Read<T>` below is the shape each fetch answers in,
  * and it exists because the three interesting states are not two: rows, no rows, and NO
@@ -44,8 +47,14 @@ import { getStore } from '../store/Store'
  * would mean fabricating a `false` for every listed session — an invented answer, in the
  * one field that exists to stop the app inventing answers about a missing spec.
  */
+/*
+ * `viewer_can_edit` and `viewer_can_manage` are not columns of the table: they are functions
+ * of its row type (20260924090000), which PostgREST selects by name like any column. They
+ * are here and not on the detail read alone for `spec_oversize`'s reason — `toPlanSession`
+ * is the one mapper, and a list row would otherwise carry an invented `false`.
+ */
 const LIST_COLUMNS =
-  'id, number, owner_id, repo_id, org_id, agent_id, slug, spec_key, title, idea, status, spec_oversize, spec_synced_at, created_at, updated_at'
+  'id, number, owner_id, repo_id, org_id, agent_id, slug, spec_key, title, idea, status, spec_oversize, spec_synced_at, created_at, updated_at, edit_policy, viewer_can_edit, viewer_can_manage'
 
 /**
  * What ONE plan is read with. The list's columns plus the document itself.
@@ -121,6 +130,14 @@ interface PlanSessionRow {
   updated_at: string | null
   /** DETAIL_COLUMNS only — absent, not null, on a row that came back from the list. */
   spec?: string | null
+  /**
+   * `not null default 'personal'` (existing rows backfilled to 'org'). Selected by name, so a server that has not run 20260924090000
+   * refuses the whole read: the migration ships before the desktop build that reads it.
+   */
+  edit_policy?: string | null
+  /** Computed columns, answered about the reader. See LIST_COLUMNS. */
+  viewer_can_edit?: boolean | null
+  viewer_can_manage?: boolean | null
 }
 
 interface PlanTicketRow {
@@ -169,7 +186,21 @@ function toPlanSession(row: PlanSessionRow): PlanSession {
     specSyncedAt: row.spec_synced_at ?? undefined,
     createdAt: row.created_at ?? undefined,
     updatedAt: row.updated_at ?? undefined,
+    editPolicy: toEditPolicy(row.edit_policy),
+    // `=== true`, not `?? false`: only the database saying yes is a yes.
+    viewerCanEdit: row.viewer_can_edit === true,
+    viewerCanManage: row.viewer_can_manage === true,
   }
+}
+
+/**
+ * The column's text narrowed to the four the page draws. The CHECK holds the table to the
+ * same four, so anything else is a row from a schema this build does not know — read as
+ * `org`, which is what every row was before the column existed. (A row this reader can see
+ * but whose word it does not know is, by construction, not the reader's personal plan.)
+ */
+function toEditPolicy(value: string | null | undefined): PlanEditPolicy {
+  return isPlanEditPolicy(value) ? value : 'org'
 }
 
 /**
@@ -556,6 +587,25 @@ async function fetchPlanTickets(
 }
 
 /**
+ * Who is invited to edit ONE plan — the user ids in `plan_collaborators`.
+ *
+ * NOT PART OF THE DETAIL'S VERDICT: a refused or failed read is `null`, never a failed page.
+ * The list only feeds the managers' panel; whether the reader may write is
+ * `viewer_can_edit`, on the session row itself, and the database decides it either way.
+ * But null and not `[]`: "nobody is invited yet" is a claim about the plan, and a panel
+ * that drew it over a failed read would hide the invitees and the controls to remove them.
+ */
+async function fetchPlanCollaborators(client: SupabaseClient, sessionId: string): Promise<string[] | null> {
+  const { data, error } = await client
+    .from('plan_collaborators')
+    .select('user_id')
+    .eq('session_id', sessionId)
+    .order('created_at', { ascending: true })
+  if (error || !data) return null
+  return (data as { user_id: string }[]).map((row) => row.user_id)
+}
+
+/**
  * Everything the plan detail sub-page renders, in one round trip's worth of waiting.
  *
  * THE TWO READS GO OUT TOGETHER. The tickets are keyed by the session's own id, which
@@ -583,16 +633,18 @@ export async function listPlanDetail(id: string): Promise<PlanDetail> {
   // Nowhere to read from is an unfailed nothing, exactly as on the list: an app that is
   // signed out has no plan to show and no error to report about it.
   const client = await getAuthedClient()
-  if (!client) return { session: null, tickets: [], failed: false }
+  if (!client) return { session: null, tickets: [], collaborators: [], failed: false }
 
-  const [session, tickets] = await Promise.all([
+  const [session, tickets, collaborators] = await Promise.all([
     fetchPlanSession(client, id),
     fetchPlanTickets(client, id),
+    fetchPlanCollaborators(client, id),
   ])
 
   return {
     session: session.rows[0] ?? null,
     tickets: tickets.rows,
+    collaborators,
     failed: !session.ok || !tickets.ok,
   }
 }
@@ -792,14 +844,71 @@ export async function updatePlanSpec(input: {
  * `updated_at` there is no other reason for the write to match nothing.
  */
 export async function updatePlanStatus(id: string, status: PlanStatus): Promise<PlanStatusUpdateResult> {
+  return updateSessionUnguarded(id, { status })
+}
+
+/**
+ * One unguarded write onto a plan's row, answered as `updatePlanStatus` documents: the new
+ * `updated_at` raw, a 42501 or zero rows back as `denied`.
+ */
+async function updateSessionUnguarded(id: string, patch: Record<string, unknown>): Promise<PlanStatusUpdateResult> {
   const client = await getAuthedClient()
   if (!client) return { status: 'failed' }
   const { data, error } = await client
     .from('plan_sessions')
-    .update({ status })
+    .update(patch)
     .eq('id', id)
     .select('updated_at')
   if (error) return { status: error.code === '42501' ? 'denied' : 'failed' }
   const row = ((data ?? []) as { updated_at: string | null }[])[0]
   return row?.updated_at ? { status: 'saved', updatedAt: row.updated_at } : { status: 'denied' }
+}
+
+/**
+ * Change who besides the author may edit a plan. The author, or an admin of its
+ * organization: anyone else is refused by the guard trigger (42501), and the page does not
+ * offer it to them in the first place (`viewerCanManage`).
+ *
+ * No conflict guard, for `updatePlanStatus`'s reason: one word the reader has just picked.
+ * The new `updated_at` is handed back raw for the spec editor's guard, as there.
+ */
+export async function updatePlanEditPolicy(id: string, policy: PlanEditPolicy): Promise<PlanEditPolicyUpdateResult> {
+  return updateSessionUnguarded(id, { edit_policy: policy })
+}
+
+/**
+ * Invite a member of the plan's organization to edit it. `invited_by` is left to its
+ * default, `auth.uid()`, which the insert policy also requires: nothing here names the
+ * inviter, so nothing here can name the wrong one.
+ *
+ * Inviting someone already invited is `saved`: the primary key refuses the second row
+ * (23505), and the state the reader asked for is the state the table is in.
+ */
+export async function addPlanCollaborator(sessionId: string, userId: string): Promise<PlanCollaboratorWriteResult> {
+  const client = await getAuthedClient()
+  if (!client) return { status: 'failed' }
+  const { error } = await client
+    .from('plan_collaborators')
+    .insert({ session_id: sessionId, user_id: userId })
+  if (!error || error.code === '23505') return { status: 'saved' }
+  console.error('[cloud] plan collaborator insert refused:', error)
+  return { status: error.code === '42501' ? 'denied' : 'failed' }
+}
+
+/**
+ * Take a member's invitation away — or, as that member, put it down. The DELETE policy
+ * FILTERS, it does not raise, so zero rows back is `denied`: the invitation was not the
+ * reader's to remove, or was already gone.
+ */
+export async function removePlanCollaborator(sessionId: string, userId: string): Promise<PlanCollaboratorWriteResult> {
+  const client = await getAuthedClient()
+  if (!client) return { status: 'failed' }
+  const { data, error } = await client
+    .from('plan_collaborators')
+    .delete()
+    .eq('session_id', sessionId)
+    .eq('user_id', userId)
+    .select('user_id')
+  if (error) return { status: error.code === '42501' ? 'denied' : 'failed' }
+  return (data ?? []).length > 0 ? { status: 'saved' } : { status: 'denied' }
 }
