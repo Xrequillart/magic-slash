@@ -87,6 +87,7 @@ import { MenuSidebarEntry } from './entries/MenuSidebarEntry'
 import { MenuSidebarItemEntry } from './entries/MenuSidebarItemEntry'
 import { ProgressBarEntry } from './entries/ProgressBarEntry'
 import { MenuEntry } from './entries/MenuEntry'
+import { ShareButtonEntry } from './entries/ShareButtonEntry'
 import { ModalHeaderEntry } from './entries/ModalHeaderEntry'
 import { SelectIconEntry } from './entries/SelectIconEntry'
 import { AppTitleBarEntry } from './entries/AppTitleBarEntry'
@@ -146,6 +147,7 @@ const ENTRIES: Record<
   button: ButtonEntry,
   buttonicon: ButtonIconEntry,
   menu: MenuEntry,
+  sharebutton: ShareButtonEntry,
   modalheader: ModalHeaderEntry,
   selecticon: SelectIconEntry,
   editabletext: EditableTextEntry,

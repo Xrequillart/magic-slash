@@ -24,6 +24,7 @@ export type EntryId =
   | 'menu'
   | 'modalheader'
   | 'select'
+  | 'sharebutton'
   | 'selecticon'
   | 'label'
   | 'status'
@@ -123,6 +124,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   menu: 'Menu',
   modalheader: 'ModalHeader',
   select: 'Select',
+  sharebutton: 'ShareButton',
   selecticon: 'SelectIcon',
   contextagentcard: 'ContextAgentCard',
   headerrepocard: 'HeaderRepoCard',
@@ -282,6 +284,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   menu: ['avatar', 'icon', 'text'],
   modalheader: ['buttonicon', 'icon', 'tabstrip', 'text'],
   select: ['icon', 'text'],
+  sharebutton: ['avatar', 'button', 'buttonicon', 'icon', 'text'],
   selecticon: ['buttonicon', 'icon', 'text'],
   contextagentcard: ['card', 'label', 'progress', 'buttonicon'],
   headerrepocard: ['label', 'selecticon', 'buttonicon'],
@@ -457,6 +460,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   menu: 'Rows under something you drew',
   modalheader: 'The top of every dialog, once',
   select: 'The app’s one picker, and the list under it',
+  sharebutton: 'Who may see and edit, behind one button',
   selecticon: 'That control, opening a menu',
   contextagentcard: 'What an agent is spending',
   headerrepocard: 'A repository, and what you can do to it',
