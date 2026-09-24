@@ -37,10 +37,13 @@ values
   ('d0000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'team-a'),
   ('d0000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', null,                                   'perso');
 
-insert into public.plan_sessions (id, owner_id, repo_id, slug, spec_key, title)
+-- `edit_policy => 'org'` on the seeds (20260924090000): a new plan is `personal` by default,
+-- and these rows stand for plans shared with their organization, as every plan older than
+-- the column is.
+insert into public.plan_sessions (id, owner_id, repo_id, slug, spec_key, title, edit_policy)
 values
-  ('e0000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000001', 'team-feature',  'team-key',  'Team feature'),
-  ('e0000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000002', 'perso-feature', 'perso-key', 'Personal feature');
+  ('e0000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000001', 'team-feature',  'team-key',  'Team feature',     'org'),
+  ('e0000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000002', 'perso-feature', 'perso-key', 'Personal feature', 'org');
 
 insert into public.plan_links (id, session_id, author_id, url, kind)
 values

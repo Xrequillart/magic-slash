@@ -33,9 +33,12 @@ values ('a0000000-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaa
 insert into public.repositories (id, owner_id, org_id, name)
 values ('d0000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'team-a');
 
-insert into public.plan_sessions (id, owner_id, repo_id, agent_id, slug, spec_key, title, spec, status)
+-- `edit_policy => 'org'` on the seeds (20260924090000): a new plan is `personal` by default,
+-- and these rows stand for plans shared with their organization, as every plan older than
+-- the column is.
+insert into public.plan_sessions (id, owner_id, repo_id, agent_id, slug, spec_key, title, spec, status, edit_policy)
 values ('e0000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000001',
-        'a0000000-0000-0000-0000-000000000001', 'team-feature', 'team-key', 'Team feature', 'v0', 'planning');
+        'a0000000-0000-0000-0000-000000000001', 'team-feature', 'team-key', 'Team feature', 'v0', 'planning', 'org');
 
 -- 1-2. The agent moves its own plan along: the status changes, recorded as the agent's.
 set local role authenticated;
