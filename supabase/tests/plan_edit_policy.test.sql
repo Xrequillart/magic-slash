@@ -20,7 +20,7 @@
 -- Harness: see plan_comments.test.sql.
 
 begin;
-select plan(49);
+select plan(52);
 
 -- 1: the author, a plain member. 2 (B) and 5 (A): members. 3 and 6: admins.
 -- 4: an admin of another organization, the outsider.
@@ -521,6 +521,51 @@ select is(
   'personal',
   'an admin cannot share a plan its author has kept personal'
 );
+
+-- ---------------------------------------------------------------------------
+-- A plan changing organization loses its invitations
+-- ---------------------------------------------------------------------------
+-- e1 is `invited`, with A (5) invited back in #29. A joins Org B as a plain member, and the
+-- repository moves to Org B, as the system (the path `repositories_derive_plan_session_orgs`
+-- re-derives org_id on). Nobody in Org B invited A.
+reset role;
+insert into public.memberships (org_id, user_id, role)
+values ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '55555555-5555-5555-5555-555555555555', 'user');
+update public.repositories set org_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+ where id = 'd0000000-0000-0000-0000-000000000001';
+
+-- 50. The move reached the plan, and took every invitation on the repository's plans with it
+-- (e3's inert one included).
+select results_eq(
+  $sql$
+    select (select org_id from public.plan_sessions where id = 'e0000000-0000-0000-0000-000000000001'),
+           (select count(*) from public.plan_collaborators
+             where session_id in ('e0000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000003'))
+  $sql$,
+  $sql$ values ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'::uuid, 0::bigint) $sql$,
+  'a plan moved to another organization loses its invitations'
+);
+
+-- 51. *** A, a member of the new organization invited only in the old one, cannot edit. ***
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"55555555-5555-5555-5555-555555555555"}';
+select throws_ok(
+  $sql$ update public.plan_sessions set spec = 'by A in B' where id = 'e0000000-0000-0000-0000-000000000001' $sql$,
+  '42501',
+  NULL,
+  'an invitation from the old organization grants nothing in the new one'
+);
+
+-- 52. ...and the page is told the same.
+select results_eq(
+  $sql$
+    select s.viewer_can_edit, s.viewer_can_manage
+      from public.plan_sessions s where s.id = 'e0000000-0000-0000-0000-000000000001'
+  $sql$,
+  $sql$ values (false, false) $sql$,
+  'after the move, the formerly invited member can neither edit nor manage'
+);
+reset role;
 
 select * from finish();
 rollback;

@@ -17,7 +17,7 @@ vi.mock('./auth', () => ({ getAuthedClient: vi.fn(async () => h.client) }))
 vi.mock('./org', () => ({ listMembers: vi.fn(), listOrgsRead: vi.fn() }))
 vi.mock('../store/Store', () => ({ getStore: vi.fn() }))
 
-import { addPlanCollaborator, removePlanCollaborator, updatePlanEditPolicy, updatePlanSpec } from './plans'
+import { addPlanCollaborator, listPlanDetail, removePlanCollaborator, updatePlanEditPolicy, updatePlanSpec } from './plans'
 
 interface Answer { data: unknown; error: { code?: string; message?: string } | null }
 
@@ -180,5 +180,41 @@ describe('removePlanCollaborator', () => {
   it('answers denied when the policy filtered every row out', async () => {
     h.client = collaboratorClient({ data: [], error: null }).client
     expect(await removePlanCollaborator(ID, 'user-b')).toEqual({ status: 'denied' })
+  })
+})
+
+/**
+ * The detail read's three queries, each table answering its own `Answer`: the session's
+ * chain ends in `maybeSingle`, the tickets' and the collaborators' in an awaited `order`.
+ */
+function detailClient(answers: Record<'plan_sessions' | 'plan_tickets' | 'plan_collaborators', Answer>) {
+  return {
+    from: (table: keyof typeof answers) => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => answers[table],
+          order: async () => answers[table],
+        }),
+      }),
+    }),
+  }
+}
+
+describe('listPlanDetail', () => {
+  const none: Answer = { data: null, error: null }
+  const empty: Answer = { data: [], error: null }
+
+  it('lists the invited user ids, and an empty list as empty', async () => {
+    h.client = detailClient({ plan_sessions: none, plan_tickets: empty, plan_collaborators: { data: [{ user_id: 'user-b' }], error: null } })
+    expect((await listPlanDetail(ID)).collaborators).toEqual(['user-b'])
+    h.client = detailClient({ plan_sessions: none, plan_tickets: empty, plan_collaborators: empty })
+    expect((await listPlanDetail(ID)).collaborators).toEqual([])
+  })
+
+  it('answers null collaborators on a failed read, without failing the page', async () => {
+    h.client = detailClient({ plan_sessions: none, plan_tickets: empty, plan_collaborators: { data: null, error: { message: 'down' } } })
+    const detail = await listPlanDetail(ID)
+    expect(detail.collaborators).toBeNull()
+    expect(detail.failed).toBe(false)
   })
 })

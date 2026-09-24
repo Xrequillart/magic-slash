@@ -5,6 +5,7 @@ import { getRealtimeStatus } from '../cloud/realtime'
 import {
   getCurrentOrg,
   listMembers,
+  listMembersRead,
   listMemberAvatars,
   listInvitations,
   createInvitation,
@@ -44,6 +45,13 @@ export function setupOrgHandlers(): void {
   // it can render every org the user belongs to, not just the active one.
   ipcMain.handle('org:members', async (_event, args?: OptionalOrgIdArgs): Promise<Member[]> =>
     listMembers(args?.orgId),
+  )
+
+  // The same roster with whether the read happened (`ok: false` when the RPC failed), for
+  // the plan access panel, which must not draw a refused read as an empty organization.
+  // orgId REQUIRED: the panel always names the plan's organization.
+  ipcMain.handle('org:membersRead', async (_event, args?: OptionalOrgIdArgs): Promise<{ members: Member[]; ok: boolean }> =>
+    args?.orgId ? listMembersRead(args.orgId) : { members: [], ok: false },
   )
 
   // The faces for that list, keyed by user id — a channel of its own, and see

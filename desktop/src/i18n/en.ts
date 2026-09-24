@@ -1516,6 +1516,7 @@ export const en = {
   'plans.access.adminsHint': 'The organization can read and comment. Only its author and the admins can edit.',
   'plans.access.invitedHint': 'The organization can read and comment. Only its author, the admins and the people invited here can edit.',
   'plans.access.noneInvited': 'Nobody is invited yet.',
+  'plans.access.collaboratorsFailed': 'The people invited to this plan could not be loaded. Reopen the plan to try again.',
   'plans.access.invite': 'Invite',
   'plans.access.inviteMenu': 'Invite a member',
   'plans.access.noOneToInvite': 'Every member who can be invited already is.',

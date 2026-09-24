@@ -27,7 +27,8 @@ vi.mock('./session-store', () => ({ loadSession: vi.fn() }))
 vi.mock('./realtime', () => ({ startOrgAgentsRealtime: vi.fn() }))
 vi.mock('../store/Store', () => ({ getStore: vi.fn() }))
 
-import { pickUpTask } from './org'
+import { getAuthedClient } from './auth'
+import { listMembers, listMembersRead, pickUpTask } from './org'
 
 // Build a repositories map keyed by name from a list of paths.
 const repos = (...paths: string[]) =>
@@ -101,5 +102,37 @@ describe('pickUpTask', () => {
     h.repositories = repos('/Users/xavier/dev/first', '/Users/xavier/dev/second')
     const result = pickUpTask('T-13', ['/remote/first', '/remote/second'])
     expect(result.cwd).toBe('/Users/xavier/dev/first')
+  })
+})
+
+/**
+ * The roster's two readings: `listMembers` degrades to [] whatever happened (its callers
+ * want that), `listMembersRead` says whether the RPC answered, so the plan access panel
+ * can tell "nobody to invite" from "the roster could not be read".
+ */
+describe('listMembersRead', () => {
+  const rpcClient = (answer: { data: unknown; error: unknown }) =>
+    ({ rpc: vi.fn(async () => answer) }) as unknown as Awaited<ReturnType<typeof getAuthedClient>>
+
+  it('maps the rows and answers ok', async () => {
+    vi.mocked(getAuthedClient).mockResolvedValue(rpcClient({
+      data: [{ user_id: 'u1', email: 'a@b.c', role: 'user', created_at: '2026-09-01', avatar_url: null }],
+      error: null,
+    }))
+    expect(await listMembersRead('org-1')).toEqual({
+      members: [{ userId: 'u1', role: 'user', createdAt: '2026-09-01', email: 'a@b.c', avatarPath: undefined }],
+      ok: true,
+    })
+  })
+
+  it('answers ok: false when the RPC fails, where listMembers still answers []', async () => {
+    vi.mocked(getAuthedClient).mockResolvedValue(rpcClient({ data: null, error: { message: 'down' } }))
+    expect(await listMembersRead('org-1')).toEqual({ members: [], ok: false })
+    expect(await listMembers('org-1')).toEqual([])
+  })
+
+  it('answers ok with nobody when signed out: nowhere to read from is not a failure', async () => {
+    vi.mocked(getAuthedClient).mockResolvedValue(null)
+    expect(await listMembersRead('org-1')).toEqual({ members: [], ok: true })
   })
 })

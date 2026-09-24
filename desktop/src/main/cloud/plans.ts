@@ -589,17 +589,19 @@ async function fetchPlanTickets(
 /**
  * Who is invited to edit ONE plan — the user ids in `plan_collaborators`.
  *
- * NOT PART OF THE DETAIL'S VERDICT: a refused or failed read is an empty list, never a
- * failed page. The list only feeds the managers' panel; whether the reader may write is
+ * NOT PART OF THE DETAIL'S VERDICT: a refused or failed read is `null`, never a failed page.
+ * The list only feeds the managers' panel; whether the reader may write is
  * `viewer_can_edit`, on the session row itself, and the database decides it either way.
+ * But null and not `[]`: "nobody is invited yet" is a claim about the plan, and a panel
+ * that drew it over a failed read would hide the invitees and the controls to remove them.
  */
-async function fetchPlanCollaborators(client: SupabaseClient, sessionId: string): Promise<string[]> {
+async function fetchPlanCollaborators(client: SupabaseClient, sessionId: string): Promise<string[] | null> {
   const { data, error } = await client
     .from('plan_collaborators')
     .select('user_id')
     .eq('session_id', sessionId)
     .order('created_at', { ascending: true })
-  if (error || !data) return []
+  if (error || !data) return null
   return (data as { user_id: string }[]).map((row) => row.user_id)
 }
 

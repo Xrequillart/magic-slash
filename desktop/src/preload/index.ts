@@ -906,6 +906,10 @@ const orgApi = {
   current: (): Promise<Org | null> => ipcRenderer.invoke('org:current'),
   // orgId omitted → the active org.
   members: (orgId?: string): Promise<Member[]> => ipcRenderer.invoke('org:members', { orgId }),
+  // One org's roster AND whether the read happened: `ok: false` is a failed read, never
+  // "nobody here". The plan access panel's invite menu reads it.
+  membersRead: (orgId: string): Promise<{ members: Member[]; ok: boolean }> =>
+    ipcRenderer.invoke('org:membersRead', { orgId }),
   // The members' photos, keyed by user id, as `data:image/webp;base64,…` strings —
   // the bucket is private and its only web-facing form is a signed URL that expires, so
   // bytes travel rather than URLs. `OrgPage` is the one surface that draws them.

@@ -52,8 +52,8 @@ export function PlanAccess({
   session: PlanSession
   /** The signed-in user's id, undefined while it is not known. */
   viewerId?: string
-  /** User ids, from the detail read. */
-  collaborators: string[]
+  /** User ids, from the detail read. Null when that read failed: the list is unknown, not empty. */
+  collaborators: string[] | null
   /** The section heading, drawn by the page so every section shares one. */
   heading: (title: string) => JSX.Element
   /** The policy write moved the row's `updated_at`: the spec editor's guard must follow. */
@@ -71,14 +71,15 @@ export function PlanAccess({
   const inviteRef = useRef<HTMLButtonElement>(null)
 
   // The roster names the people on the list and in the menu. One read per plan opened by a
-  // manager; nobody else mounts this.
+  // manager; nobody else mounts this. `membersRead`, not `members`: the latter answers [] on
+  // a failed RPC, which the menu would draw as "everyone eligible is already invited".
   useEffect(() => {
     setMembers(null)
     setMembersFailed(false)
     if (!orgId) return
     let cancelled = false
-    window.electronAPI.org.members(orgId)
-      .then((next) => { if (!cancelled) setMembers(next) })
+    window.electronAPI.org.membersRead(orgId)
+      .then((next) => { if (!cancelled) { setMembers(next.members); setMembersFailed(!next.ok) } })
       .catch(() => { if (!cancelled) { setMembers([]); setMembersFailed(true) } })
     return () => { cancelled = true }
   }, [orgId])
@@ -100,7 +101,7 @@ export function PlanAccess({
   )
 
   const invitable: MenuItem[] = useMemo(() => {
-    const taken = new Set(collaborators)
+    const taken = new Set(collaborators ?? [])
     return (members ?? [])
       .filter((member) => member.userId !== session.ownerId && member.role !== 'admin' && !taken.has(member.userId))
       .map((member) => ({ id: member.userId, label: member.email ?? member.userId.slice(0, 8) }))
@@ -163,7 +164,13 @@ export function PlanAccess({
           <Text size="xs" tone="secondary" className="min-w-0 flex-1">{t(POLICY_LOOK[policy].hintKey)}</Text>
         </div>
 
-        {policy === 'invited' && (
+        {/* The list could not be read: say so, and offer nothing that assumes it is known
+            (no removal to draw, and no menu that would offer the people already invited). */}
+        {policy === 'invited' && collaborators === null && (
+          <Text size="xs" tone="secondary">{t('plans.access.collaboratorsFailed')}</Text>
+        )}
+
+        {policy === 'invited' && collaborators !== null && (
           <div className="flex flex-wrap items-center gap-2">
             {collaborators.length === 0 && (
               <Text size="xs" tone="secondary">{t('plans.access.noneInvited')}</Text>
@@ -201,9 +208,11 @@ export function PlanAccess({
               label={t('plans.access.inviteMenu')}
               groups={[{
                 label: t('plans.access.inviteMenu'),
-                items: invitable.length > 0
-                  ? invitable
-                  : [{ id: '', label: t(membersFailed ? 'plans.access.membersFailed' : 'plans.access.noOneToInvite'), disabled: true }],
+                items: membersFailed
+                  ? [{ id: '', label: t('plans.access.membersFailed'), disabled: true }]
+                  : invitable.length > 0
+                    ? invitable
+                    : [{ id: '', label: t('plans.access.noOneToInvite'), disabled: true }],
               }]}
               onSelect={(item) => { if (item.id) invite(item.id) }}
             />

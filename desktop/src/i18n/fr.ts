@@ -1426,6 +1426,7 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.access.adminsHint': 'L’organisation peut le lire et le commenter. Seuls son auteur et les admins peuvent le modifier.',
   'plans.access.invitedHint': 'L’organisation peut le lire et le commenter. Seuls son auteur, les admins et les personnes invitées ici peuvent le modifier.',
   'plans.access.noneInvited': 'Personne n’est invité pour l’instant.',
+  'plans.access.collaboratorsFailed': 'Les personnes invitées sur ce plan n’ont pas pu être chargées. Rouvrez le plan pour réessayer.',
   'plans.access.invite': 'Inviter',
   'plans.access.inviteMenu': 'Inviter un membre',
   'plans.access.noOneToInvite': 'Tous les membres qui peuvent être invités le sont déjà.',

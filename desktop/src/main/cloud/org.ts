@@ -59,16 +59,26 @@ interface MemberRow {
  * shape; without it, `listMemberAvatars` would restate both and could drift from
  * what the list it decorates actually asked for.
  */
-async function fetchMemberRows(orgId?: string): Promise<MemberRow[]> {
+async function fetchMemberRows(orgId?: string): Promise<{ rows: MemberRow[]; ok: boolean }> {
   const client = await getAuthedClient()
-  if (!client) return []
+  if (!client) return { rows: [], ok: true }
 
   const targetOrgId = orgId ?? (await getCurrentOrg())?.id
-  if (!targetOrgId) return []
+  if (!targetOrgId) return { rows: [], ok: true }
 
   const { data, error } = await client.rpc('list_org_members', { p_org_id: targetOrgId })
-  if (error || !data) return []
-  return data as MemberRow[]
+  if (error || !data) return { rows: [], ok: false }
+  return { rows: data as MemberRow[], ok: true }
+}
+
+function toMember(row: MemberRow): Member {
+  return {
+    userId: row.user_id,
+    role: row.role,
+    createdAt: row.created_at ?? undefined,
+    email: row.email ?? undefined,
+    avatarPath: row.avatar_url ?? undefined,
+  }
 }
 
 /**
@@ -84,13 +94,21 @@ async function fetchMemberRows(orgId?: string): Promise<MemberRow[]> {
  * few photos it needs without asking for the roster again (`cloud/plans.ts`).
  */
 export async function listMembers(orgId?: string): Promise<Member[]> {
-  return (await fetchMemberRows(orgId)).map((row) => ({
-    userId: row.user_id,
-    role: row.role,
-    createdAt: row.created_at ?? undefined,
-    email: row.email ?? undefined,
-    avatarPath: row.avatar_url ?? undefined,
-  }))
+  return (await listMembersRead(orgId)).members
+}
+
+/**
+ * The same roster, AND whether the read actually happened — `listOrgsRead`'s split, for
+ * the one caller that says something different about each: the plan access panel, whose
+ * invite menu would otherwise draw "everyone eligible is already invited" over a refused
+ * RPC. Cloud off or signed out is `ok: true` with no members, a failed RPC `ok: false`.
+ *
+ * A function and channel of its own rather than a new shape for `listMembers`: that one
+ * feeds `useOrg()` and the Plans list's authors, which degrade to [] on purpose.
+ */
+export async function listMembersRead(orgId?: string): Promise<{ members: Member[]; ok: boolean }> {
+  const { rows, ok } = await fetchMemberRows(orgId)
+  return { members: rows.map(toMember), ok }
 }
 
 /**
@@ -112,7 +130,7 @@ export async function listMembers(orgId?: string): Promise<Member[]> {
  */
 export async function listMemberAvatars(orgId?: string): Promise<Record<string, string>> {
   const paths: Record<string, string> = {}
-  for (const row of await fetchMemberRows(orgId)) {
+  for (const row of (await fetchMemberRows(orgId)).rows) {
     if (row.avatar_url) paths[row.user_id] = row.avatar_url
   }
   if (Object.keys(paths).length === 0) return {}

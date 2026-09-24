@@ -719,7 +719,7 @@ export function PlanDetailPage({
         // The BRIDGE failed, not the query: `listPlanDetail` answers whatever the
         // database does. Either way nothing was read, so it is reported as a failed
         // read rather than as a plan that does not exist.
-        if (!cancelled) setDetail({ session: null, tickets: [], collaborators: [], failed: true })
+        if (!cancelled) setDetail({ session: null, tickets: [], collaborators: null, failed: true })
       })
     return () => { cancelled = true }
   }, [card.id, attempt])

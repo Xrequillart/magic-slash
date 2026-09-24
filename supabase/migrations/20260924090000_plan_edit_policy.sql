@@ -144,7 +144,8 @@ comment on table public.plan_collaborators is
   'The members invited to edit one /magic:plan session, read when its edit_policy is '
   '''invited''. Readable by whoever can read the session; added by its author or an org '
   'admin, for a member of the plan''s organization only; removed by the same two, or by the '
-  'collaborator themselves. A member leaving the organization loses their rows.';
+  'collaborator themselves. A member leaving the organization loses their rows, and a '
+  'plan changing organization loses all of them.';
 
 -- The primary key serves "who is on this plan"; this one serves "is this user on it" from
 -- the membership trigger below, which starts from the user.
@@ -261,6 +262,50 @@ drop trigger if exists drop_plan_collaborators on public.memberships;
 create trigger drop_plan_collaborators
   after delete on public.memberships
   for each row execute function public.memberships_drop_plan_collaborators();
+
+-- ---------------------------------------------------------------------------
+-- Changing organization takes the invitations with it
+-- ---------------------------------------------------------------------------
+-- A plan's org_id follows its repository (20260821090000): the repository moved to another
+-- organization, reverted to personal, deleted, or the author pointing the plan at a
+-- repository elsewhere. Every invitation on it was made in, and for, the OLD organization.
+-- Kept, a row naming someone who is also a member of the new one would hand them the pen
+-- there, under `invited`, without anybody in that organization having invited them. So the
+-- plan's rows all go, whoever they name: the new organization invites for itself.
+--
+-- No column list on the trigger, for the reason `derive_org` has none: `after update of
+-- org_id` fires only when org_id is in the statement's SET list, and none of the paths above
+-- name it. `repositories_derive_plan_session_orgs` does; a PATCH of repo_id and the `on
+-- delete set null` of the repository do not, and reach org_id only through `derive_org`.
+-- The WHEN clause reads the row as written, after that BEFORE trigger, so it catches all.
+--
+-- SECURITY DEFINER for `memberships_drop_plan_collaborators`' reason: the write that moves
+-- the plan is rarely by someone who may delete its invitations (an admin sharing a
+-- repository is not the author of a teammate's plan). It touches that one plan's rows only.
+create or replace function public.plan_sessions_drop_collaborators_on_org_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  delete from public.plan_collaborators c
+   where c.session_id = new.id;
+  return null;
+end;
+$$;
+
+comment on function public.plan_sessions_drop_collaborators_on_org_change() is
+  'Delete every plan_collaborators row of a plan session whose organization changed, so an '
+  'invitation made in one organization never grants edit rights in another. Trigger-only.';
+
+revoke execute on function public.plan_sessions_drop_collaborators_on_org_change() from public;
+
+drop trigger if exists drop_collaborators_on_org_change on public.plan_sessions;
+create trigger drop_collaborators_on_org_change
+  after update on public.plan_sessions
+  for each row when (old.org_id is distinct from new.org_id)
+  execute function public.plan_sessions_drop_collaborators_on_org_change();
 
 -- ---------------------------------------------------------------------------
 -- plan_may_edit: may the caller edit a plan with these values?

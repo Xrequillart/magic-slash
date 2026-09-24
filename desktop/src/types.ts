@@ -2200,10 +2200,11 @@ export interface PlanDetail {
   /**
    * The user ids invited to edit the plan (`plan_collaborators`), whatever its policy: the
    * rows only grant anything under `invited`, but they are kept across a switch away and
-   * back. Empty on a plan with none, and on a read that could not list them — the list is
-   * decoration for the managers' panel, never what decides who may write.
+   * back. Empty on a plan with none; NULL on a read that could not list them, which the
+   * managers' panel says rather than drawing "nobody is invited". Either way the list is
+   * decoration for that panel, never what decides who may write.
    */
-  collaborators: string[]
+  collaborators: string[] | null
   failed: boolean
 }
 
