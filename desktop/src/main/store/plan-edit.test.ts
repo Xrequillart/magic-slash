@@ -58,6 +58,9 @@ function session(overrides: Partial<PlanSession> = {}): PlanSession {
     repoId: REPO_ID,
     specSyncedAt: '2026-09-22T09:00:00.000000+00:00',
     updatedAt: UPDATED_AT,
+    editPolicy: 'org',
+    viewerCanEdit: true,
+    viewerCanManage: true,
     ...overrides,
   }
 }

@@ -1926,6 +1926,34 @@ export interface PlanSession {
   specSyncedAt?: string
   createdAt?: string
   updatedAt?: string
+  /**
+   * Who besides the author may see and edit the plan (20260924090000). `personal` for every
+   * plan created since that migration (the column's default); `org` on every row written
+   * before it, which the migration backfilled.
+   */
+  editPolicy: PlanEditPolicy
+  /**
+   * Whether THE READER may edit this plan, and may change who else can — asked of the
+   * database (`viewer_can_edit` / `viewer_can_manage`, computed columns) rather than worked
+   * out here from the roster, so the page offers exactly what the UPDATE policy would let
+   * through. False when the read predates the columns: offering nothing is the safe miss.
+   */
+  viewerCanEdit: boolean
+  viewerCanManage: boolean
+}
+
+/**
+ * Who besides its author may see and edit a plan. `personal`: nobody, the organization does
+ * not even see it (the default for a new plan, and only the author may set or leave it).
+ * Otherwise the whole organization reads it, and edits it as the word says: every member,
+ * its admins only, or its admins and the members invited one by one (`plan_collaborators`).
+ * See 20260924090000. In the order the picker lists them.
+ */
+export const PLAN_EDIT_POLICIES = ['personal', 'org', 'admins', 'invited'] as const
+export type PlanEditPolicy = (typeof PLAN_EDIT_POLICIES)[number]
+
+export function isPlanEditPolicy(value: unknown): value is PlanEditPolicy {
+  return typeof value === 'string' && (PLAN_EDIT_POLICIES as readonly string[]).includes(value)
 }
 
 /**
@@ -2169,6 +2197,13 @@ export interface PlanOverview {
 export interface PlanDetail {
   session: PlanSession | null
   tickets: PlanTicketRead[]
+  /**
+   * The user ids invited to edit the plan (`plan_collaborators`), whatever its policy: the
+   * rows only grant anything under `invited`, but they are kept across a switch away and
+   * back. Empty on a plan with none, and on a read that could not list them — the list is
+   * decoration for the managers' panel, never what decides who may write.
+   */
+  collaborators: string[]
   failed: boolean
 }
 
@@ -2460,6 +2495,19 @@ export type PlanStatus = (typeof PLAN_STATUSES)[number]
 /** What the database made of a status change. */
 export type PlanStatusUpdateResult =
   | { status: 'saved'; updatedAt: string }
+  | { status: 'denied' }
+  | { status: 'failed' }
+
+/**
+ * What the database made of a change of edit policy. The write moves the row's
+ * `updated_at`, like a status change, so the new value comes back for the spec editor's
+ * conflict guard. `denied` is a reader who may not manage the plan (42501, or no row).
+ */
+export type PlanEditPolicyUpdateResult = PlanStatusUpdateResult
+
+/** What the database made of inviting a member to edit a plan, or of removing them. */
+export type PlanCollaboratorWriteResult =
+  | { status: 'saved' }
   | { status: 'denied' }
   | { status: 'failed' }
 

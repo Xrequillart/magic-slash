@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AvatarSourceResult, AvatarWriteResult } from '../avatar'
 import type { UsernameCheckResult, UsernameSaveResult } from '../username'
-import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanOverview, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
+import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanOverview, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -887,6 +887,18 @@ const plansApi = {
   // history. `updatedAt` is the row's new one, for the spec editor's conflict guard.
   updateStatus: (input: { id: string; status: PlanStatus }): Promise<PlanStatusUpdateResult> =>
     ipcRenderer.invoke('plans:updateStatus', input),
+  // Who besides the author may see and edit the plan: nobody (personal), the whole
+  // organization, its admins, or the members invited to. Only the author or an org admin may
+  // change it, and only the author may make it personal or share it again (the database
+  // refuses anyone else); `updatedAt` is the row's new one, as for a status change.
+  setEditPolicy: (input: { id: string; policy: PlanEditPolicy }): Promise<PlanEditPolicyUpdateResult> =>
+    ipcRenderer.invoke('plans:setEditPolicy', input),
+  // Invite a member of the plan's organization to edit it, or take the invitation back (the
+  // member may also remove their own). Followed by a detail refetch on the renderer's side.
+  addCollaborator: (input: { sessionId: string; userId: string }): Promise<PlanCollaboratorWriteResult> =>
+    ipcRenderer.invoke('plans:addCollaborator', input),
+  removeCollaborator: (input: { sessionId: string; userId: string }): Promise<PlanCollaboratorWriteResult> =>
+    ipcRenderer.invoke('plans:removeCollaborator', input),
 }
 
 // Org API (organization membership + invitations + multi-org management)

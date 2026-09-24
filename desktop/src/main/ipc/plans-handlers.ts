@@ -1,6 +1,8 @@
 import { ipcMain } from 'electron'
-import { EMPTY_PLAN_HISTORY, isPlanCommentAnchor, type NewPlanComment, type PlanCommentsRead, type PlanDetail, type PlanHistoryRead, type PlanLinksRead, type PlanLocalSpec, type PlanOverview, type PlanRevisionDiff, type PlanSpecUpdateResult, type PlanStatus, type PlanStatusUpdateResult, type PlanTicketOrigin, PLAN_STATUSES } from '../../types'
-import { findPlanForTicket, listPlanDetail, listPlanSessions, updatePlanStatus } from '../cloud/plans'
+import { EMPTY_PLAN_HISTORY, isPlanCommentAnchor, type NewPlanComment, type PlanCollaboratorWriteResult, type PlanCommentsRead, type PlanDetail, type PlanEditPolicyUpdateResult, type PlanHistoryRead, type PlanLinksRead, type PlanLocalSpec, type PlanOverview, type PlanRevisionDiff, type PlanSpecUpdateResult, type PlanStatus, type PlanStatusUpdateResult, type PlanTicketOrigin, isPlanEditPolicy, PLAN_STATUSES } from '../../types'
+import {
+  addPlanCollaborator, findPlanForTicket, listPlanDetail, listPlanSessions, removePlanCollaborator, updatePlanEditPolicy, updatePlanStatus,
+} from '../cloud/plans'
 import {
   createPlanComment, deletePlanComment, listPlanComments, updatePlanComment,
 } from '../cloud/planComments'
@@ -78,10 +80,19 @@ const MAX_COMMENT_BODY = 16_000
  */
 const MAX_COMMENT_QUOTE = 4_000
 
+/** `{ sessionId, userId }`, both uuids, or null: the shape both invitation writes take. */
+function collaboratorArgs(args: unknown): { sessionId: string; userId: string } | null {
+  if (typeof args !== 'object' || args === null) return null
+  const { sessionId, userId } = args as Record<string, unknown>
+  if (typeof sessionId !== 'string' || !UUID_RE.test(sessionId)) return null
+  if (typeof userId !== 'string' || !UUID_RE.test(userId)) return null
+  return { sessionId, userId }
+}
+
 export function setupPlansHandlers(): void {
   ipcMain.handle('plans:list', async (): Promise<PlanOverview> => listPlanSessions())
   ipcMain.handle('plans:detail', async (_e, id: unknown): Promise<PlanDetail> => {
-    if (typeof id !== 'string' || !UUID_RE.test(id)) return { session: null, tickets: [], failed: false }
+    if (typeof id !== 'string' || !UUID_RE.test(id)) return { session: null, tickets: [], collaborators: [], failed: false }
     return listPlanDetail(id)
   })
   /**
@@ -300,6 +311,31 @@ export function setupPlansHandlers(): void {
     if (typeof id !== 'string' || !UUID_RE.test(id)) return { status: 'failed' }
     if (typeof status !== 'string' || !(PLAN_STATUSES as readonly string[]).includes(status)) return { status: 'failed' }
     return updatePlanStatus(id, status as PlanStatus)
+  })
+
+  /**
+   * Who besides the author may edit the plan, and the members invited to (#305). SHAPE ONLY,
+   * like every write here: whether the reader may manage the plan is the guard trigger's and
+   * `plan_collaborators`' policies' question (20260924090000), and the page only offers these
+   * to a reader the database already called a manager. A policy outside the four, or an id
+   * that is not a uuid, is `failed` without a write.
+   */
+  ipcMain.handle('plans:setEditPolicy', async (_e, args: unknown): Promise<PlanEditPolicyUpdateResult> => {
+    if (typeof args !== 'object' || args === null) return { status: 'failed' }
+    const { id, policy } = args as Record<string, unknown>
+    if (typeof id !== 'string' || !UUID_RE.test(id)) return { status: 'failed' }
+    if (!isPlanEditPolicy(policy)) return { status: 'failed' }
+    return updatePlanEditPolicy(id, policy)
+  })
+
+  ipcMain.handle('plans:addCollaborator', async (_e, args: unknown): Promise<PlanCollaboratorWriteResult> => {
+    const ids = collaboratorArgs(args)
+    return ids ? addPlanCollaborator(ids.sessionId, ids.userId) : { status: 'failed' }
+  })
+
+  ipcMain.handle('plans:removeCollaborator', async (_e, args: unknown): Promise<PlanCollaboratorWriteResult> => {
+    const ids = collaboratorArgs(args)
+    return ids ? removePlanCollaborator(ids.sessionId, ids.userId) : { status: 'failed' }
   })
 
   /**

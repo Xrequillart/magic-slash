@@ -17,7 +17,7 @@ vi.mock('./auth', () => ({ getAuthedClient: vi.fn(async () => h.client) }))
 vi.mock('./org', () => ({ listMembers: vi.fn(), listOrgsRead: vi.fn() }))
 vi.mock('../store/Store', () => ({ getStore: vi.fn() }))
 
-import { updatePlanSpec } from './plans'
+import { addPlanCollaborator, removePlanCollaborator, updatePlanEditPolicy, updatePlanSpec } from './plans'
 
 interface Answer { data: unknown; error: { code?: string; message?: string } | null }
 
@@ -104,5 +104,81 @@ describe('updatePlanSpec', () => {
   it('answers failed with no client to write with', async () => {
     h.client = null
     expect(await updatePlanSpec(input)).toEqual({ status: 'failed' })
+  })
+})
+
+/**
+ * Who may edit a plan (#305): the policy write and the two invitation writes. Each fake
+ * answers the one chain the function builds; what is pinned is how a refusal reads.
+ */
+describe('updatePlanEditPolicy', () => {
+  it('answers saved with the new updated_at, sending the policy alone', async () => {
+    const fake = fakeClient({ data: [{ updated_at: EXPECTED }], error: null })
+    h.client = fake.client
+    expect(await updatePlanEditPolicy(ID, 'admins')).toEqual({ status: 'saved', updatedAt: EXPECTED })
+    expect(fake.calls.patch).toEqual({ edit_policy: 'admins' })
+  })
+
+  it('answers denied on a 42501 (the guard trigger) and on no row', async () => {
+    h.client = fakeClient({ data: null, error: { code: '42501' } }).client
+    expect(await updatePlanEditPolicy(ID, 'org')).toEqual({ status: 'denied' })
+    h.client = fakeClient({ data: [], error: null }).client
+    expect(await updatePlanEditPolicy(ID, 'org')).toEqual({ status: 'denied' })
+  })
+})
+
+function collaboratorClient(answer: Answer) {
+  const calls = { inserted: undefined as unknown, filters: [] as [string, unknown][] }
+  const chain = {
+    eq: (column: string, value: unknown) => {
+      calls.filters.push([column, value])
+      return chain
+    },
+    select: async () => answer,
+  }
+  const client = {
+    from: () => ({
+      insert: async (row: unknown) => {
+        calls.inserted = row
+        return answer
+      },
+      delete: () => chain,
+    }),
+  }
+  return { client, calls }
+}
+
+describe('addPlanCollaborator', () => {
+  it('inserts the pair and leaves the inviter to the database', async () => {
+    const fake = collaboratorClient({ data: null, error: null })
+    h.client = fake.client
+    expect(await addPlanCollaborator(ID, 'user-b')).toEqual({ status: 'saved' })
+    expect(fake.calls.inserted).toEqual({ session_id: ID, user_id: 'user-b' })
+  })
+
+  it('reads an invitation already there as saved', async () => {
+    h.client = collaboratorClient({ data: null, error: { code: '23505' } }).client
+    expect(await addPlanCollaborator(ID, 'user-b')).toEqual({ status: 'saved' })
+  })
+
+  it('answers denied on a 42501, failed on anything else', async () => {
+    h.client = collaboratorClient({ data: null, error: { code: '42501' } }).client
+    expect(await addPlanCollaborator(ID, 'user-b')).toEqual({ status: 'denied' })
+    h.client = collaboratorClient({ data: null, error: { code: '08006' } }).client
+    expect(await addPlanCollaborator(ID, 'user-b')).toEqual({ status: 'failed' })
+  })
+})
+
+describe('removePlanCollaborator', () => {
+  it('answers saved when a row was removed, filtered on the pair', async () => {
+    const fake = collaboratorClient({ data: [{ user_id: 'user-b' }], error: null })
+    h.client = fake.client
+    expect(await removePlanCollaborator(ID, 'user-b')).toEqual({ status: 'saved' })
+    expect(fake.calls.filters).toEqual([['session_id', ID], ['user_id', 'user-b']])
+  })
+
+  it('answers denied when the policy filtered every row out', async () => {
+    h.client = collaboratorClient({ data: [], error: null }).client
+    expect(await removePlanCollaborator(ID, 'user-b')).toEqual({ status: 'denied' })
   })
 })

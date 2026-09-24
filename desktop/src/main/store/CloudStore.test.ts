@@ -3187,4 +3187,18 @@ describe('savePlanSpec — the plan history', () => {
     expect(planCalls.map((c) => c.method)).toEqual(['upsert', 'select', 'setHeader'])
     expect(planCalls[2].args).toEqual(['x-magic-plan-source', 'agent'])
   })
+
+  // Who may see and edit the plan is the column's default on the first insert ('personal',
+  // 20260924090000) and the author's choice after that. The upload must never carry it: an
+  // `edit_policy` in the upsert would land in its `DO UPDATE SET` and overwrite that choice
+  // on every save.
+  it('never sends edit_policy, so the default applies and a later choice is kept', async () => {
+    const { client, calls } = makeClient({}, {}, { plan_sessions: { data: [{ id: 'session-1' }], error: null } })
+    h.state.client = client
+
+    await new CloudStore().savePlanSpec({ agentId: 'claude-1', specPath: '/r/.magic/spec-x.md', spec: '# Spec', specOversize: false })
+
+    const upsert = calls.find((c) => c.table === 'plan_sessions' && c.method === 'upsert')
+    expect(upsert?.args[0]).not.toHaveProperty('edit_policy')
+  })
 })

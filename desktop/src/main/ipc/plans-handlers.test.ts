@@ -31,10 +31,16 @@ vi.mock('electron', () => ({
 const mockListSessions = vi.fn()
 const mockListDetail = vi.fn()
 const mockFindForTicket = vi.fn()
+const mockSetEditPolicy = vi.fn()
+const mockAddCollaborator = vi.fn()
+const mockRemoveCollaborator = vi.fn()
 vi.mock('../cloud/plans', () => ({
   listPlanSessions: (...args: unknown[]) => mockListSessions(...args),
   listPlanDetail: (...args: unknown[]) => mockListDetail(...args),
   findPlanForTicket: (...args: unknown[]) => mockFindForTicket(...args),
+  updatePlanEditPolicy: (...args: unknown[]) => mockSetEditPolicy(...args),
+  addPlanCollaborator: (...args: unknown[]) => mockAddCollaborator(...args),
+  removePlanCollaborator: (...args: unknown[]) => mockRemoveCollaborator(...args),
 }))
 
 const mockListComments = vi.fn()
@@ -265,7 +271,7 @@ describe('plans:updateSpec', () => {
 
 describe('the read channels this file already had', () => {
   it('still guards plans:detail on the shape of its id', async () => {
-    expect(await invoke('plans:detail', 'nope')).toEqual({ session: null, tickets: [], failed: false })
+    expect(await invoke('plans:detail', 'nope')).toEqual({ session: null, tickets: [], collaborators: [], failed: false })
     expect(mockListDetail).not.toHaveBeenCalled()
   })
 
@@ -354,5 +360,45 @@ describe('plans:history', () => {
   ])('refuses %s without reading anything', async (_label, args) => {
     expect(await invoke('plans:history:diff', args)).toEqual({ failed: true })
     expect(mockReadTexts).not.toHaveBeenCalled()
+  })
+})
+
+describe('who may edit a plan', () => {
+  const USER_ID = '44444444-4444-4444-8444-444444444444'
+
+  it.each(['personal', 'org', 'admins', 'invited'])('passes the %s policy through', async (policy) => {
+    mockSetEditPolicy.mockResolvedValue({ status: 'saved', updatedAt: 'x' })
+    expect(await invoke('plans:setEditPolicy', { id: SESSION_ID, policy })).toEqual({ status: 'saved', updatedAt: 'x' })
+    expect(mockSetEditPolicy).toHaveBeenCalledWith(SESSION_ID, policy)
+  })
+
+  it.each([
+    ['no arguments', undefined],
+    ['a malformed id', { id: 'nope', policy: 'org' }],
+    ['a policy the table does not know', { id: SESSION_ID, policy: 'everyone' }],
+    ['a policy that is not a string', { id: SESSION_ID, policy: 1 }],
+  ])('refuses a policy change with %s, and writes nothing', async (_label, args) => {
+    expect(await invoke('plans:setEditPolicy', args)).toEqual({ status: 'failed' })
+    expect(mockSetEditPolicy).not.toHaveBeenCalled()
+  })
+
+  it('passes an invitation and its removal through', async () => {
+    mockAddCollaborator.mockResolvedValue({ status: 'saved' })
+    mockRemoveCollaborator.mockResolvedValue({ status: 'denied' })
+    expect(await invoke('plans:addCollaborator', { sessionId: SESSION_ID, userId: USER_ID })).toEqual({ status: 'saved' })
+    expect(mockAddCollaborator).toHaveBeenCalledWith(SESSION_ID, USER_ID)
+    expect(await invoke('plans:removeCollaborator', { sessionId: SESSION_ID, userId: USER_ID })).toEqual({ status: 'denied' })
+    expect(mockRemoveCollaborator).toHaveBeenCalledWith(SESSION_ID, USER_ID)
+  })
+
+  it.each([
+    ['no arguments', undefined],
+    ['a malformed session', { sessionId: 'nope', userId: USER_ID }],
+    ['a malformed user', { sessionId: SESSION_ID, userId: 'someone@example.com' }],
+  ])('refuses an invitation with %s, and writes nothing', async (_label, args) => {
+    expect(await invoke('plans:addCollaborator', args)).toEqual({ status: 'failed' })
+    expect(await invoke('plans:removeCollaborator', args)).toEqual({ status: 'failed' })
+    expect(mockAddCollaborator).not.toHaveBeenCalled()
+    expect(mockRemoveCollaborator).not.toHaveBeenCalled()
   })
 })
