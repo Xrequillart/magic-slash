@@ -26,6 +26,9 @@ import { BreakdownListEntry } from './entries/BreakdownListEntry'
 import { BudgetMeterEntry } from './entries/BudgetMeterEntry'
 import { NoteCardEntry } from './entries/NoteCardEntry'
 import { SkillCardEntry } from './entries/SkillCardEntry'
+import { SkillsRailEntry } from './entries/SkillsRailEntry'
+import { SkillBudgetEntry } from './entries/SkillBudgetEntry'
+import { SkillsOverviewEntry } from './entries/SkillsOverviewEntry'
 import { TicketCardEntry } from './entries/TicketCardEntry'
 import { BoardColumnEntry } from './entries/BoardColumnEntry'
 import { TaskBoardEntry } from './entries/TaskBoardEntry'
@@ -187,6 +190,9 @@ const ENTRIES: Record<
   budgetmeter: BudgetMeterEntry,
   notecard: NoteCardEntry,
   skillcard: SkillCardEntry,
+  skillsrail: SkillsRailEntry,
+  skillbudget: SkillBudgetEntry,
+  skillsoverview: SkillsOverviewEntry,
   ticketcard: TicketCardEntry,
   boardcolumn: BoardColumnEntry,
   taskboard: TaskBoardEntry,

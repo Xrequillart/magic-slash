@@ -59,6 +59,9 @@ export type EntryId =
   | 'budgetmeter'
   | 'notecard'
   | 'skillcard'
+  | 'skillsrail'
+  | 'skillbudget'
+  | 'skillsoverview'
   | 'ticketcard'
   | 'boardcolumn'
   | 'taskboard'
@@ -179,6 +182,9 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   budgetmeter: 'BudgetMeter',
   notecard: 'NoteCard',
   skillcard: 'SkillCard',
+  skillsrail: 'SkillsRail',
+  skillbudget: 'SkillBudget',
+  skillsoverview: 'SkillsOverview',
   ticketcard: 'TicketCard',
   boardcolumn: 'BoardColumn',
   taskboard: 'TaskBoard',
@@ -340,6 +346,9 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   budgetmeter: ['progress', 'text'],
   notecard: ['icon', 'text'],
   skillcard: ['icon', 'label', 'text'],
+  skillsrail: ['buttonicon', 'icon', 'label', 'menusidebaritem', 'text'],
+  skillbudget: ['banner', 'breakdownlist', 'budgetmeter', 'notecard', 'sectionheader', 'tabstrip', 'text'],
+  skillsoverview: ['emptystate', 'label', 'loader', 'noticecard', 'sectionheader', 'skillbudget', 'skillcard', 'text'],
   ticketcard: ['buttonicon', 'copybutton', 'icon', 'label', 'status', 'text', 'trackerbadge'],
   boardcolumn: ['icon', 'text'],
   taskboard: ['boardcolumn', 'emptystate', 'filterbar', 'noticecard', 'sectionheader', 'ticketcard'],
@@ -523,6 +532,9 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   budgetmeter: 'A quantity against its allowance',
   notecard: 'One thing worth knowing, on a quiet plate',
   skillcard: 'One skill as a tile you can open',
+  skillsrail: 'Every skill on the machine, down the left',
+  skillbudget: 'What the skill listing costs, against the model’s window',
+  skillsoverview: 'The Skills page’s overview: warnings, budget, cards',
   ticketcard: 'One ticket on a board, in three bands',
   boardcolumn: 'One column of a board, heading and all',
   taskboard: 'A board of tickets, and the page around it',

@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react'
-import { Plus, Trash2, Save, ChevronRight, Share2, FolderInput, FolderGit2, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal } from '@ds/desktop/icons'
-import { Banner, BreakdownList, BudgetMeter, Button, ButtonIcon, EmptyState, FormField, Icon, ImageField, Label, Loader, MenuSidebarItem, NoteCard, NoticeCard, SectionHeader, SkillCard, TabStrip, Text, type BannerAction, type MenuSidebarItemProps, type TabStripItem } from '@ds/desktop'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { Plus, Trash2, Save, Share2, FolderInput, Info, Sparkles, PenTool, GitFork, Wand2, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal } from '@ds/desktop/icons'
+import { Banner, Button, FormField, ImageField, Loader, SkillsOverview, SkillsRail, Text, type BannerAction, type NoticeCardProps, type SkillBudgetBanner, type SkillBudgetProps, type SkillsOverviewCard, type SkillsRailGroup } from '@ds/desktop'
 import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
 import SkillDocument from './SkillDocument'
 import { VSCode } from '@ds/desktop/icons'
 import { SweepPane } from '../../components/SweepPane'
 import { useTerminals } from '../../hooks/useTerminals'
-import { useStore, type SkillsContextWindow, type SkillsContextWindowSetting } from '../../store'
+import { useStore, type SkillsContextWindow } from '../../store'
 import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
 import { DEFAULT_CONTEXT_WINDOW, detectContextWindow, resolveContextWindow, formatWindow } from './contextWindow'
 
@@ -126,92 +126,25 @@ function sourceLabel(source: string, t: Translate): string {
 }
 
 /**
- * Auto / 200K / 1M. Drawn as a segmented control rather than a select: the
- * reading of every gauge below depends on which one is active, so all three
- * stay visible.
+ * THE GAUGE, AS `SkillBudget` WANTS IT. The drawing is the design system's now; what stays
+ * here is the arithmetic above and which window it runs against.
  *
- * `Auto` is not a value, it is a source — so its label carries the window it
- * resolved to (`Auto · 1M`), and a line under the switch says where that number
- * came from. Without it, a gauge scaled to a window nobody typed is a surprise
- * with no explanation on screen.
- *
- * THE PILL IS `TabStrip`'s NOW, and with it went a rail built out of `grid-cols-3`
- * and three hard-coded `translate-x` classes — a highlight that was correct only
- * while there happened to be exactly three segments, and silently wrong the day a
- * fourth window is worth comparing. `TabStrip` MEASURES the active tab instead, so
- * the segments can be any width and any number.
+ * Auto / 200K / 1M is a segmented control, and `Auto` is not a value but a source — so its
+ * label carries the window it resolved to (`Auto · 1M`), and the hint under the switch
+ * says where that number came from.
  */
-function ContextWindowSwitch({
-  value,
-  detected,
-  effectiveWindow,
-  onChange,
-}: {
-  value: SkillsContextWindowSetting
-  /** The window the running agents report, or undefined when none does. */
-  detected: number | undefined
-  /** What the gauges are actually scaled to, once auto and the fallback resolve. */
-  effectiveWindow: number
-  onChange: (next: SkillsContextWindowSetting) => void
-}) {
-  const t = useT()
-
-  // One tab per switch position, in the order they are drawn: Auto, then the two
-  // forced presets. Auto's label is not a fixed string — it carries the window it
-  // resolved to (`Auto · 1M`) once `detected` is known.
-  const items: TabStripItem[] = [
-    {
-      key: 'auto',
-      label: detected !== undefined
-        ? t('skills.budget.window.autoValue', { window: formatWindow(detected) })
-        : t('skills.budget.window.auto'),
-    },
-    { key: String(CONTEXT_WINDOWS[0]), label: t('skills.budget.window.small') },
-    { key: String(CONTEXT_WINDOWS[1]), label: t('skills.budget.window.large') },
-  ]
-
-  const hint = value === 'auto'
-    ? detected !== undefined
-      ? t('skills.budget.window.autoDetected')
-      : t('skills.budget.window.autoNoAgent', { window: formatWindow(DEFAULT_CONTEXT_WINDOW) })
-    : t('skills.budget.window.forced', { window: formatWindow(effectiveWindow) })
-
-  return (
-    <div className="flex flex-col items-end gap-1 flex-shrink-0">
-      <div className="flex items-center gap-2">
-        <Text size="2xs" tone="secondary" className="whitespace-nowrap opacity-60">
-          {t('skills.budget.window.label')}
-        </Text>
-        <TabStrip
-          items={items}
-          activeKey={String(value)}
-          // The key comes back as a string because a tab's identity is a string.
-          // `auto` is the one non-numeric position, so it is the only branch.
-          onSelect={(key) => onChange(key === 'auto' ? 'auto' : (Number(key) as SkillsContextWindow))}
-          ariaLabel={t('skills.budget.window.label')}
-        />
-      </div>
-      <Text size="2xs" tone="secondary" className="block text-right opacity-50">
-        {hint}
-      </Text>
-    </div>
-  )
-}
-
-function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSkills: RepoSkillInfo[] }) {
-  const [showBreakdown, setShowBreakdown] = useState(false)
-  const [showHow, setShowHow] = useState(false)
+function useSkillBudget(skills: SkillInfo[], repoSkills: RepoSkillInfo[]): SkillBudgetProps {
   const t = useT()
   const locale = useLocale()
   const contextWindow = useStore((s) => s.skillsContextWindow)
   const setContextWindow = useStore((s) => s.setSkillsContextWindow)
 
-  // One selector, resolved to a primitive inside the store rather than in a
-  // useMemo over `terminals`: the terminal array is replaced on every statusline
-  // tick (several times a second, per agent), so selecting it would re-render the
-  // whole gauge continuously. Selecting the number means a re-render only when
-  // the detected window itself moves. The inspected agent is resolved the way the
-  // info sidebar does it, so both panels talk about the same agent.
+  // One selector, resolved to a primitive inside the store rather than in a useMemo over
+  // `terminals`: the terminal array is replaced on every statusline tick (several times a
+  // second, per agent), so selecting it would re-render the whole gauge continuously.
+  // Selecting the number means a re-render only when the detected window itself moves.
+  // The inspected agent is resolved the way the info sidebar does it, so both panels talk
+  // about the same agent.
   const detected = useStore((s) => detectContextWindow(
     s.terminals,
     s.isSplitMode && s.focusedPane === 'secondary' ? s.splitTerminalId : s.activeTerminalId,
@@ -225,8 +158,7 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
     const entries: SkillTokenEntry[] = []
     const add = (name: string, description: string, source: SkillTokenEntry['source']) => {
       const raw = (description || '').length
-      // Only what survives the per-skill cap reaches the model, so only that is
-      // billed here.
+      // Only what survives the per-skill cap reaches the model, so only that is billed.
       const chars = Math.min(raw, MAX_DESC_CHARS)
       entries.push({
         name,
@@ -249,133 +181,112 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
     return { totalTokens: tc, totalChars: cc, truncatedCount: cut, breakdown: entries }
   }, [skills, repoSkills])
 
-  const overBudget = totalChars > charBudget
   const n = (value: number) => value.toLocaleString(locale)
 
-  return (
-    <div className="flex flex-col gap-3">
-      {/* `items-start`, not `items-center`: the left column is two lines and the
-          switch is two lines, and centring two blocks of unequal height against each
-          other leaves neither heading on the same baseline as anything. */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <SectionHeader icon={Gauge} title={t('skills.budget.section')} spacing="none" />
-          <Text size="xs" tone="secondary" className="mt-0.5 block opacity-40">
-            {t('skills.budget.help')}
-          </Text>
-        </div>
-        <ContextWindowSwitch
-          value={contextWindow}
-          detected={detected}
-          effectiveWindow={effectiveWindow}
-          onChange={setContextWindow}
-        />
-      </div>
+  const banners: SkillBudgetBanner[] = []
+  if (totalChars > charBudget) {
+    banners.push({ id: 'over', variant: 'danger', text: t('skills.budget.over', { over: n(totalChars - charBudget) }) })
+  }
+  if (truncatedCount > 0) {
+    // `Scissors` over the variant's own mark: the warning is about a specific thing that
+    // happened to the descriptions, not about severity in general.
+    banners.push({
+      id: 'truncated',
+      variant: 'warning',
+      icon: Scissors,
+      text: t(truncatedCount > 1 ? 'skills.budget.truncated.other' : 'skills.budget.truncated.one', {
+        count: truncatedCount,
+        max: n(MAX_DESC_CHARS),
+      }),
+    })
+  }
 
-      <div className="grid grid-cols-2 gap-3">
-        <BudgetMeter label={t('skills.budget.chars')} value={totalChars} max={charBudget} unit={t('skills.budget.unitChars')} locale={locale} tone="accent" />
-        <BudgetMeter label={t('skills.budget.tokens')} value={totalTokens} max={tokenBudget} unit={t('skills.budget.unitTokens')} locale={locale} tone="warning" />
-      </div>
-
-      {/* Both of these are a `Banner`: a fact about the surface above them, true for
-          as long as it is true and gone when it is not. `bordered` because they float
-          in a column rather than banding a card — see the prop's own note. */}
-      {overBudget && (
-        <Banner variant="danger" bordered>
-          {t('skills.budget.over', { over: n(totalChars - charBudget) })}
-        </Banner>
-      )}
-
-      {truncatedCount > 0 && (
-        // `Scissors` over the variant's own mark: the warning is about a specific
-        // thing that happened to the descriptions, not about severity in general.
-        <Banner variant="warning" icon={Scissors} bordered>
-          {t(truncatedCount > 1 ? 'skills.budget.truncated.other' : 'skills.budget.truncated.one', {
-            count: truncatedCount,
-            max: n(MAX_DESC_CHARS),
-          })}
-        </Banner>
-      )}
-
-      {/* How this is computed — collapsed by default, because it answers a
-          question you only ask once, but it has to be answerable in place. */}
-      <div>
-        <button
-          onClick={() => setShowHow((v) => !v)}
-          className="flex items-center gap-1.5 text-xs text-icon hover:text-text-secondary transition-colors"
-        >
-          <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showHow ? 'rotate-90' : ''}`} />
-          <span>{t('skills.budget.how')}</span>
-        </button>
-        {showHow && (
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <NoteCard icon={FileText} title={t('skills.budget.card.scope.title')}>
-              {t('skills.budget.card.scope.body')}
-            </NoteCard>
-            <NoteCard icon={Calculator} title={t('skills.budget.card.formula.title')}>
-              {t('skills.budget.card.formula.body', {
-                // Formatted, not grouped: the detected window is whatever the
-                // model reports, so "1M" reads where "1 048 576" would not.
-                context: formatWindow(effectiveWindow),
-                percent: `${BUDGET_FRACTION * 100}`,
-                chars: n(charBudget),
-                tokens: n(tokenBudget),
-              })}
-            </NoteCard>
-            <NoteCard icon={Scissors} title={t('skills.budget.card.cap.title', { max: n(MAX_DESC_CHARS) })}>
-              {t('skills.budget.card.cap.body', { max: n(MAX_DESC_CHARS) })}
-            </NoteCard>
-            <NoteCard icon={EyeOff} title={t('skills.budget.card.overflow.title')}>
-              {t('skills.budget.card.overflow.body')}
-            </NoteCard>
-            <NoteCard icon={SlidersHorizontal} title={t('skills.budget.card.why.title')}>
-              {t('skills.budget.card.why.body')}
-            </NoteCard>
-            <NoteCard icon={Info} title={t('skills.budget.card.override.title')}>
-              {t('skills.budget.card.override.body')}
-            </NoteCard>
-          </div>
-        )}
-      </div>
-
-      {/* Breakdown toggle */}
-      {breakdown.length > 0 && (
-        <div>
-          <button
-            onClick={() => setShowBreakdown((v) => !v)}
-            className="flex items-center gap-1.5 text-xs text-icon hover:text-text-secondary transition-colors"
-          >
-            <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showBreakdown ? 'rotate-90' : ''}`} />
-            <span>{t('skills.budget.details')}</span>
-          </button>
-          {showBreakdown && (
-            <div className="mt-2 px-4 py-3 rounded-xl bg-surface-subtle">
-              <BreakdownList
-                rows={breakdown.map((entry) => ({
-                  id: `${entry.source}-${entry.name}`,
-                  lead: { label: sourceLabel(entry.source, t), color: SOURCE_COLOR[entry.source] },
-                  name: entry.name,
-                  tags: entry.truncated ? [{ label: t('skills.budget.cut'), color: WEIGHT_COLOR.medium }] : undefined,
-                  detail: t('skills.budget.tok', { count: entry.tokens }),
-                  verdict: { label: t(WEIGHT_LABELS[entry.weight]), color: WEIGHT_COLOR[entry.weight] },
-                }))}
-              />
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
+  return {
+    title: t('skills.budget.section'),
+    help: t('skills.budget.help'),
+    window: {
+      label: t('skills.budget.window.label'),
+      items: [
+        {
+          key: 'auto',
+          label: detected !== undefined
+            ? t('skills.budget.window.autoValue', { window: formatWindow(detected) })
+            : t('skills.budget.window.auto'),
+        },
+        { key: String(CONTEXT_WINDOWS[0]), label: t('skills.budget.window.small') },
+        { key: String(CONTEXT_WINDOWS[1]), label: t('skills.budget.window.large') },
+      ],
+      activeKey: String(contextWindow),
+      // The key comes back as a string because a tab's identity is a string. `auto` is the
+      // one non-numeric position, so it is the only branch.
+      onSelect: (key) => setContextWindow(key === 'auto' ? 'auto' : (Number(key) as SkillsContextWindow)),
+      hint: contextWindow === 'auto'
+        ? detected !== undefined
+          ? t('skills.budget.window.autoDetected')
+          : t('skills.budget.window.autoNoAgent', { window: formatWindow(DEFAULT_CONTEXT_WINDOW) })
+        : t('skills.budget.window.forced', { window: formatWindow(effectiveWindow) }),
+    },
+    meters: [
+      { label: t('skills.budget.chars'), value: totalChars, max: charBudget, unit: t('skills.budget.unitChars'), locale, tone: 'accent' },
+      { label: t('skills.budget.tokens'), value: totalTokens, max: tokenBudget, unit: t('skills.budget.unitTokens'), locale, tone: 'warning' },
+    ],
+    banners,
+    how: {
+      label: t('skills.budget.how'),
+      notes: [
+        { id: 'scope', icon: FileText, title: t('skills.budget.card.scope.title'), body: t('skills.budget.card.scope.body') },
+        {
+          id: 'formula',
+          icon: Calculator,
+          title: t('skills.budget.card.formula.title'),
+          body: t('skills.budget.card.formula.body', {
+            // Formatted, not grouped: the detected window is whatever the model reports,
+            // so "1M" reads where "1 048 576" would not.
+            context: formatWindow(effectiveWindow),
+            percent: `${BUDGET_FRACTION * 100}`,
+            chars: n(charBudget),
+            tokens: n(tokenBudget),
+          }),
+        },
+        { id: 'cap', icon: Scissors, title: t('skills.budget.card.cap.title', { max: n(MAX_DESC_CHARS) }), body: t('skills.budget.card.cap.body', { max: n(MAX_DESC_CHARS) }) },
+        { id: 'overflow', icon: EyeOff, title: t('skills.budget.card.overflow.title'), body: t('skills.budget.card.overflow.body') },
+        { id: 'why', icon: SlidersHorizontal, title: t('skills.budget.card.why.title'), body: t('skills.budget.card.why.body') },
+        { id: 'override', icon: Info, title: t('skills.budget.card.override.title'), body: t('skills.budget.card.override.body') },
+      ],
+    },
+    breakdown: {
+      label: t('skills.budget.details'),
+      rows: breakdown.map((entry) => ({
+        id: `${entry.source}-${entry.name}`,
+        lead: { label: sourceLabel(entry.source, t), color: SOURCE_COLOR[entry.source] },
+        name: entry.name,
+        ...(entry.truncated ? { tags: [{ label: t('skills.budget.cut'), color: WEIGHT_COLOR.medium }] } : {}),
+        detail: t('skills.budget.tok', { count: entry.tokens }),
+        verdict: { label: t(WEIGHT_LABELS[entry.weight]), color: WEIGHT_COLOR[entry.weight] },
+      })),
+    },
+  }
 }
 
-function DuplicateSkillsAlert({ duplicates }: { duplicates: DuplicateSkillEntry[] }) {
-  const t = useT()
-  if (duplicates.length === 0) return null
+type LongDescription = { name: string; source: string; wordCount: number; filePath: string }
 
-  return (
-    <NoticeCard
-      variant="warning"
-      rows={duplicates.map((dup) => ({
+/**
+ * The two warnings, as `NoticeCard`s. Their buttons are DATA — the card draws them, ranks
+ * them and paints them in the warning's own orange. Fixing is the point of reading this;
+ * opening the files is the way round it.
+ */
+function buildWarnings(
+  duplicates: DuplicateSkillEntry[],
+  longDescriptions: LongDescription[],
+  onFix: () => void,
+  t: Translate,
+): (NoticeCardProps & { id: string })[] {
+  const notices: (NoticeCardProps & { id: string })[] = []
+  if (duplicates.length > 0) {
+    notices.push({
+      id: 'duplicates',
+      variant: 'warning',
+      rows: duplicates.map((dup) => ({
         id: dup.name,
         name: dup.name,
         detail: t('skills.duplicates.times', { count: dup.sources.length }),
@@ -383,234 +294,42 @@ function DuplicateSkillsAlert({ duplicates }: { duplicates: DuplicateSkillEntry[
           label: s.source === 'repo' && s.repoName ? t('skills.source.repoNamed', { name: s.repoName }) : sourceLabel(s.source, t),
           color: SOURCE_COLOR[s.source],
         })),
-      }))}
-    >
-      {t(duplicates.length > 1 ? 'skills.duplicates.other' : 'skills.duplicates.one', { count: duplicates.length })}
-    </NoticeCard>
-  )
-}
-
-function LongDescriptionsAlert({ longDescriptions, onFix }: { longDescriptions: { name: string; source: string; wordCount: number; filePath: string }[]; onFix: () => void }) {
-  const t = useT()
-
-  /* The two buttons as DATA — the banner draws them, ranks them and paints them in the
-     warning's own orange, which is what the pair of hand-rolled `text-orange border
-     border-orange/20` buttons under the list were each spelling for themselves. Fixing
-     is the point of reading this; opening the files is the way round it. */
-  const actions = useMemo<BannerAction[]>(
-    () => [
+      })),
+      children: t(duplicates.length > 1 ? 'skills.duplicates.other' : 'skills.duplicates.one', { count: duplicates.length }),
+    })
+  }
+  if (longDescriptions.length > 0) {
+    const actions: BannerAction[] = [
       {
         label: t('skills.openInVSCode'),
         icon: VSCode,
         onClick: () => longDescriptions.forEach((e) => window.electronAPI.shell.openInVSCode(e.filePath)),
       },
       { label: t('skills.fixWithAgent'), icon: Wand2, onClick: onFix, primary: true },
-    ],
-    [t, longDescriptions, onFix],
-  )
-
-  if (longDescriptions.length === 0) return null
-
-  return (
-    <NoticeCard
-      variant="warning"
-      actions={actions}
-      rows={longDescriptions.map((entry) => ({
+    ]
+    notices.push({
+      id: 'long',
+      variant: 'warning',
+      actions,
+      rows: longDescriptions.map((entry) => ({
         id: `${entry.source}-${entry.name}`,
         name: entry.name,
         detail: t('skills.longDesc.words', { count: entry.wordCount }),
-      }))}
-    >
-      {t(longDescriptions.length > 1 ? 'skills.longDesc.other' : 'skills.longDesc.one', { count: longDescriptions.length })}
-    </NoticeCard>
-  )
-}
-
-function SkillsWarnings({ duplicates, longDescriptions, onFixLongDescriptions }: { duplicates: DuplicateSkillEntry[]; longDescriptions: { name: string; source: string; wordCount: number; filePath: string }[]; onFixLongDescriptions: () => void }) {
-  const t = useT()
-  if (duplicates.length === 0 && longDescriptions.length === 0) return null
-
-  return (
-    <div className="flex flex-col gap-3">
-      {/* `spacing="none"` — the column above already spaces its children with a `gap`,
-          and a heading that also carried a margin would be two places to adjust. */}
-      <SectionHeader icon={AlertTriangle} title={t('skills.warnings')} spacing="none" />
-      <DuplicateSkillsAlert duplicates={duplicates} />
-      <LongDescriptionsAlert longDescriptions={longDescriptions} onFix={onFixLongDescriptions} />
-    </div>
-  )
+      })),
+      children: t(longDescriptions.length > 1 ? 'skills.longDesc.other' : 'skills.longDesc.one', { count: longDescriptions.length }),
+    })
+  }
+  return notices
 }
 
 /**
- * Permanent left rail: every skill, grouped by origin, so you can move from one
- * to the next without going back to the list first. "All skills" at the top is
- * a destination of its own — the overview with the gauges and the warnings.
- *
- * EVERY ROW IS A `MenuSidebarItem` NOW, which is the component the app's own sidebar
- * is built from — and the one whose notes said it would grow an active state "the day
- * the sidebar navigates rather than overlays". This rail is that day, so the pill that
- * was spelled here by hand is the component's.
- *
- * A REPOSITORY IS A `Label`. It was a bare 8px disc beside a word, which is a colour
- * with nothing to say it is a name; `Label` in the repo's own hue IS that object, and
- * the listing on the right now draws the same one.
+ * Where a rail key sends the page. The rail hands back KEYS and knows nothing of routes;
+ * this is the one place the two are paired.
  */
-function SkillsRail({
-  builtInSkills,
-  customSkills,
-  repoSkillsByRepo,
-  imageCache,
-  activeKey,
-  onSelect,
-  onNew,
-}: {
-  builtInSkills: SkillInfo[]
-  customSkills: SkillInfo[]
-  repoSkillsByRepo: Record<string, { color?: string; skills: RepoSkillInfo[] }>
-  imageCache: Record<string, string | null>
-  activeKey: string
-  onSelect: (hash: string) => void
-  onNew: () => void
-}) {
-  const t = useT()
-  // The active row can sit far down a long rail — a skill opened from the list
-  // would otherwise be selected off-screen.
-  const activeRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    activeRef.current?.scrollIntoView({ block: 'nearest' })
-  }, [activeKey])
-
-  /**
-   * One row. Wrapped in a `div` ONLY to carry the scroll ref: `MenuSidebarItem`
-   * forwards no ref, and a component that did would be a component whose caller can
-   * reach into its DOM. The wrapper costs nothing — it is `display: block` around a
-   * full-width button.
-   */
-  const row = (key: string, label: string, hash: string, mark: Partial<MenuSidebarItemProps>) => {
-    const isActive = activeKey === key
-    return (
-      <div key={key} ref={isActive ? activeRef : undefined}>
-        <MenuSidebarItem
-          label={label}
-          active={isActive}
-          onClick={() => onSelect(hash)}
-          className="capitalize"
-          {...mark}
-        />
-      </div>
-    )
-  }
-
-  /**
-   * A group heading. `first` rather than a `first:` variant: the repository groups each
-   * sit in their own wrapper, so a CSS first-child rule would fire on every one of them
-   * and eat the separation instead of only skipping it at the top of the rail.
-   *
-   * NOT A `SectionHeader`. That heading is 14px beside a 16px glyph, which is the scale
-   * of a heading over a PAGE's section; this is the quiet 11px caps of a rail, under
-   * which the rows are the content. Two different rungs, and the rail's is the one that
-   * keeps 40 rows readable in 224px.
-   */
-  const groupHeader = (
-    mark: ReactNode,
-    label: string,
-    count: number,
-    { action, first }: { action?: ReactNode; first?: boolean } = {}
-  ) => (
-    <div className={`flex items-center gap-1.5 px-2.5 mb-1.5 ${first ? 'mt-3' : 'mt-7'} text-text-secondary/50`}>
-      {mark}
-      <Text size="2xs" tone="inherit" className="truncate uppercase tracking-wider">
-        {label}
-      </Text>
-      <Text size="2xs" tone="inherit" className="flex-shrink-0 opacity-60">
-        {String(count)}
-      </Text>
-      {action && <span className="ml-auto flex items-center">{action}</span>}
-    </div>
-  )
-
-  const thumb = (dirName: string, name: string) => ({
-    thumb: { src: imageCache[dirName] ?? null, alt: name },
-  })
-
-  return (
-    <div className="w-56 shrink-0 flex flex-col border-r border-line-field bg-surface-sunken-soft">
-      <div className="px-2 pt-3 pb-1 border-b border-line-field">
-        <MenuSidebarItem
-          label={t('skills.allSkills')}
-          icon={LayoutGrid}
-          active={activeKey === 'all'}
-          onClick={() => onSelect('#/')}
-          className="mb-2"
-        />
-      </div>
-
-      {/* No `space-y` here: its `> * + *` rule outranks a plain `mt-*` class, so
-          it would flatten every group header's separation back to 2px. */}
-      <nav className="flex-1 overflow-y-auto px-2 pb-3" aria-label={t('skills.allSkills')}>
-        {builtInSkills.length > 0 && (
-          <>
-            {groupHeader(<Icon glyph={Sparkles} size="2xs" tone="inherit" />, t('skills.builtIn'), builtInSkills.length, { first: true })}
-            {builtInSkills.map((s) =>
-              row(`skill:${s.dirName}`, s.name, `#/skill/${encodeURIComponent(s.dirName)}`, thumb(s.dirName, s.name))
-            )}
-          </>
-        )}
-
-        {groupHeader(<Icon glyph={PenTool} size="2xs" tone="inherit" />, t('skills.custom'), customSkills.length, {
-          first: builtInSkills.length === 0,
-          /* `neutral` and not `ghost`: `ghost` has NO PLATE AT REST and is for a button
-             nested inside something that already has one — see its note. A group header
-             is bare ground, where a plateless control is a control with nothing to say
-             it is one until the pointer arrives.
-
-             `sm` — 24px. The rung note calls the three above `2xs` "what a control
-             standing in a row should be", and this one stands in a row: it is the only
-             thing in the rail somebody comes looking for rather than reads past. It is
-             taller than the 10px caps beside it, which is what `items-center` on the
-             header is for — the word sits against the middle of the button rather than
-             the button hanging off the text's baseline. */
-          action: <ButtonIcon icon={Plus} title={t('skills.new')} size="sm" tone="neutral" onClick={onNew} />,
-        })}
-        {customSkills.length === 0 ? (
-          <Text size="xs" tone="secondary" className="block px-2.5 py-1 opacity-40">
-            {t('skills.customEmpty')}
-          </Text>
-        ) : (
-          customSkills.map((s) =>
-            row(`skill:${s.dirName}`, s.name, `#/skill/${encodeURIComponent(s.dirName)}`, thumb(s.dirName, s.name))
-          )
-        )}
-        {/* The skill being written has no route to go to yet, so it is a row that
-            reports rather than navigates — `MenuSidebarItem` with a no-op click would
-            be a control that lies about being one. */}
-        {activeKey === 'new' && (
-          <div className="w-full flex items-center gap-2 px-2 py-2 rounded-lg bg-accent/15 text-ink text-xs font-medium">
-            <Icon glyph={Plus} tone="inherit" className="flex-shrink-0" />
-            <Text tone="inherit" className="truncate">{t('skills.editor.newTitle')}</Text>
-          </div>
-        )}
-
-        {Object.entries(repoSkillsByRepo).map(([repoName, { color, skills: rSkills }]) => (
-          <div key={repoName}>
-            {/* The repository IS the heading here: a `Label` in its own hue carries the
-                name, so the row needs no separate word beside it. */}
-            <div className="flex items-center gap-1.5 px-2.5 mb-1.5 mt-7 text-text-secondary/50">
-              <Label size="xs" icon={FolderGit2} color={color || REPO_FALLBACK_COLOR} truncate title={repoName}>
-                {repoName}
-              </Label>
-              <Text size="2xs" tone="inherit" className="flex-shrink-0 opacity-60">
-                {String(rSkills.length)}
-              </Text>
-            </div>
-            {rSkills.map((rs) =>
-              row(`repo-skill:${rs.filePath}`, rs.name, `#/repo-skill/${encodeURIComponent(rs.filePath)}`, { icon: GitFork })
-            )}
-          </div>
-        ))}
-      </nav>
-    </div>
-  )
+function hashForKey(key: string): string {
+  if (key.startsWith('skill:')) return `#/skill/${encodeURIComponent(key.slice('skill:'.length))}`
+  if (key.startsWith('repo-skill:')) return `#/repo-skill/${encodeURIComponent(key.slice('repo-skill:'.length))}`
+  return '#/'
 }
 
 function SkillEditor({
@@ -1086,141 +805,106 @@ export function SkillsPage() {
     [newAction, importAction, t],
   )
 
+  const budget = useSkillBudget(skills, repoSkills)
+  const warnings = useMemo(
+    () => buildWarnings(duplicateSkills, longDescriptions, handleFixLongDescriptions, t),
+    [duplicateSkills, longDescriptions, handleFixLongDescriptions, t],
+  )
+
+  const cardFor = (skill: SkillInfo, badge?: boolean): SkillsOverviewCard => ({
+    key: skill.dirName,
+    name: skill.name,
+    description: skill.description,
+    imageUrl: imageCache[skill.dirName] ?? null,
+    ...(badge ? { badge: { label: t('skills.source.builtIn'), color: SOURCE_COLOR['built-in'] } } : {}),
+    onClick: () => { window.location.hash = `#/skill/${encodeURIComponent(skill.dirName)}` },
+  })
+
   // Overview — the "All skills" destination: warnings, budget, and the cards.
   const overview = (
-    <div className="flex flex-col gap-10 w-full">
-      {/* Warnings */}
-      {!loading && (
-        <SkillsWarnings duplicates={duplicateSkills} longDescriptions={longDescriptions} onFixLongDescriptions={handleFixLongDescriptions} />
-      )}
-
-      {/* Token Budget Gauge */}
-      {!loading && (skills.length > 0 || repoSkills.length > 0) && (
-        <TokenBudgetGauge skills={skills} repoSkills={repoSkills} />
-      )}
-
-      {loading && (
-        <div className="flex items-center justify-center py-12">
-          <Loader variant="spin" size="xl" tone="accent" />
-        </div>
-      )}
-
-      {!loading && (
-        <>
-          {/* Built-in section */}
-          {builtInSkills.length > 0 && (
-            <div>
-              <SectionHeader
-                icon={Sparkles}
-                title={t('skills.builtIn')}
-                hint={t('skills.builtInHelp')}
-                className="mb-3"
-                spacing="none"
-              />
-              <div className="grid grid-cols-3 gap-2">
-                {builtInSkills.map((skill) => (
-                  <SkillCard
-                    key={skill.dirName}
-                    name={skill.name}
-                    description={skill.description}
-                    imageUrl={imageCache[skill.dirName] ?? null}
-                    badge={{ label: t('skills.source.builtIn'), color: SOURCE_COLOR['built-in'] }}
-                    onClick={() => { window.location.hash = `#/skill/${encodeURIComponent(skill.dirName)}` }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Custom section */}
-          <div>
-            {/* The two controls only exist once there is a list to act on: with no
-                custom skills the same two verbs are the `EmptyState`'s, and offering
-                them twice on one screen is two answers to one question. */}
-            <SectionHeader
-              icon={PenTool}
-              title={t('skills.custom')}
-              hint={t('skills.customHelp')}
-              actions={customSkills.length > 0 ? customActions : []}
-              className="mb-3"
-              spacing="none"
-            />
-            {customSkills.length === 0 ? (
-              <EmptyState actions={emptyActions}>{t('skills.customEmpty')}</EmptyState>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {customSkills.map((skill) => (
-                  <SkillCard
-                    key={skill.dirName}
-                    name={skill.name}
-                    description={skill.description}
-                    imageUrl={imageCache[skill.dirName] ?? null}
-                    onClick={() => { window.location.hash = `#/skill/${encodeURIComponent(skill.dirName)}` }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Repository Skills section */}
-          <div>
-            <SectionHeader
-              icon={GitFork}
-              title={t('skills.repos')}
-              hint={t('skills.reposHelp')}
-              className="mb-3"
-              spacing="none"
-            />
-            {repoSkillsLoading && (
-              <div className="flex items-center justify-center py-6">
-                <Loader variant="spin" size="lg" tone="accent" />
-              </div>
-            )}
-            {!repoSkillsLoading && Object.keys(repoSkillsByRepo).length === 0 && (
-              <EmptyState>{t('skills.reposEmpty')}</EmptyState>
-            )}
-            {!repoSkillsLoading && Object.entries(repoSkillsByRepo).map(([repoName, { color, skills: rSkills }]) => (
-              <div key={repoName} className="mb-4">
-                {/* THE REPOSITORY IS A `Label` — a name on a plate in its own hue, which
-                    is what a repo has instead of a glyph. It was a bare disc beside a
-                    word: a colour with nothing to say it was a name. The rail draws the
-                    same object one rung smaller. */}
-                <div className="mb-2 flex items-center gap-2">
-                  <Label size="sm" icon={FolderGit2} color={color || REPO_FALLBACK_COLOR} truncate title={repoName}>
-                    {repoName}
-                  </Label>
-                  <Text size="xs" tone="secondary" className="flex-shrink-0 opacity-40">
-                    {String(rSkills.length)}
-                  </Text>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {rSkills.map((rs) => (
-                    <SkillCard
-                      key={rs.filePath}
-                      name={rs.name}
-                      description={rs.description}
-                      onClick={() => { window.location.hash = `#/repo-skill/${encodeURIComponent(rs.filePath)}` }}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+    <SkillsOverview
+      loading={loading}
+      warnings={{ title: t('skills.warnings'), notices: warnings }}
+      {...(skills.length > 0 || repoSkills.length > 0 ? { budget } : {})}
+      sections={[
+        ...(builtInSkills.length > 0
+          ? [{
+            id: 'built-in',
+            icon: Sparkles,
+            title: t('skills.builtIn'),
+            hint: t('skills.builtInHelp'),
+            cards: builtInSkills.map((skill) => cardFor(skill, true)),
+          }]
+          : []),
+        {
+          id: 'custom',
+          icon: PenTool,
+          title: t('skills.custom'),
+          hint: t('skills.customHelp'),
+          // The two controls only exist once there is a list to act on: with no custom
+          // skills the same two verbs are the empty state's, and offering them twice on
+          // one screen is two answers to one question.
+          actions: customSkills.length > 0 ? customActions : [],
+          cards: customSkills.map((skill) => cardFor(skill)),
+          empty: { text: t('skills.customEmpty'), actions: emptyActions },
+        },
+        {
+          id: 'repos',
+          icon: GitFork,
+          title: t('skills.repos'),
+          hint: t('skills.reposHelp'),
+          loading: repoSkillsLoading,
+          repos: Object.entries(repoSkillsByRepo).map(([repoName, { color, skills: rSkills }]) => ({
+            id: repoName,
+            name: repoName,
+            color: color || REPO_FALLBACK_COLOR,
+            cards: rSkills.map((rs) => ({
+              key: rs.filePath,
+              name: rs.name,
+              description: rs.description,
+              onClick: () => { window.location.hash = `#/repo-skill/${encodeURIComponent(rs.filePath)}` },
+            })),
+          })),
+          empty: { text: t('skills.reposEmpty') },
+        },
+      ]}
+    />
   )
+
+  const railGroups: SkillsRailGroup[] = [
+    ...(builtInSkills.length > 0
+      ? [{
+        id: 'built-in',
+        label: t('skills.builtIn'),
+        icon: Sparkles,
+        rows: builtInSkills.map((s) => ({ key: `skill:${s.dirName}`, label: s.name, thumb: { src: imageCache[s.dirName] ?? null, alt: s.name } })),
+      }]
+      : []),
+    {
+      id: 'custom',
+      label: t('skills.custom'),
+      icon: PenTool,
+      rows: customSkills.map((s) => ({ key: `skill:${s.dirName}`, label: s.name, thumb: { src: imageCache[s.dirName] ?? null, alt: s.name } })),
+      empty: t('skills.customEmpty'),
+      action: { icon: Plus, title: t('skills.new'), onClick: () => { window.location.hash = '#/new' } },
+      ...(activeKey === 'new' ? { draft: t('skills.editor.newTitle') } : {}),
+    },
+    ...Object.entries(repoSkillsByRepo).map(([repoName, { color, skills: rSkills }]) => ({
+      id: `repo:${repoName}`,
+      label: repoName,
+      repoColor: color || REPO_FALLBACK_COLOR,
+      rows: rSkills.map((rs) => ({ key: `repo-skill:${rs.filePath}`, label: rs.name, icon: GitFork })),
+    })),
+  ]
 
   return (
     <div className="h-full flex animate-fade-in">
       <SkillsRail
-        builtInSkills={builtInSkills}
-        customSkills={customSkills}
-        repoSkillsByRepo={repoSkillsByRepo}
-        imageCache={imageCache}
+        overviewLabel={t('skills.allSkills')}
+        groups={railGroups}
         activeKey={activeKey}
-        onSelect={(hash) => { window.location.hash = hash }}
-        onNew={() => { window.location.hash = '#/new' }}
+        onSelect={(key) => { window.location.hash = hashForKey(key) }}
+        ariaLabel={t('skills.allSkills')}
       />
       <div ref={contentScrollRef} className="flex-1 overflow-y-auto p-6">
         <SweepPane pageKey={activeKey} order={railPosition} scrollRef={contentScrollRef}>
