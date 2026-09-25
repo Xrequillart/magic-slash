@@ -648,7 +648,9 @@ export const marketingEn = {
    * goes. It is also the word the header's own row uses for that page, which is what lets
    * somebody be told "it's under Product → Application" and find the same thing.
    */
-  'site.appBand.title': 'Your tasks, your agents, in a single app.',
+  // PLANS FIRST since the app grew a Plans page: the spec is read and commented there, and
+  // it is the cycle's first step, before the tasks.
+  'site.appBand.title': 'Your plans, your tasks, your agents, in a single app.',
   'site.appBand.subtitle':
     'Every agent gets its own worktree and its own terminal, and the app keeps the context of each session. It reads your tickets from Jira or GitHub, follows the pull requests it opened, and tells you when something needs you.',
   'site.appBand.cta': 'See the application',
@@ -695,6 +697,11 @@ export const marketingEn = {
    * name that lives in a translation file is a product name somebody eventually
    * translates. The placeholder says WHERE the chip goes; the chip says what it is.
    */
+  /**
+   * THE ROW ADDED ON TOP: the app's Plans page. "Reviewed as a team" because that is
+   * what happens there, as a team: the spec is read, annotated, and its status lives there.
+   */
+  'site.appBand.pointPlans': 'Your plans and specs, reviewed as a team',
   'site.appBand.pointTasks': 'Your tasks {jira} and issues {github}',
   /**
    * THE SECOND ROW NAMES WHAT IS ACTUALLY RUNNING — `{claude}` becomes the Claude Code

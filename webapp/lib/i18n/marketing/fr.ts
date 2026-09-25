@@ -290,7 +290,9 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // dans une seule app. »
   // « Vos » : le site vouvoie partout ailleurs, et ce titre était le seul tutoiement du
   // catalogue — voir l'en-tête de ce fichier.
-  'site.appBand.title': 'Vos tâches, vos agents en une seule app.',
+  // Les PLANS en tête depuis que l’app a sa page Plans : la spec s’y relit et s’y commente,
+  // c’est le premier temps du cycle, avant les tâches.
+  'site.appBand.title': 'Vos plans, vos tâches, vos agents en une seule app.',
   'site.appBand.subtitle':
     'Chaque agent a son worktree et son terminal, et l’app garde le contexte de chaque session. Elle lit vos tickets depuis Jira ou GitHub, suit les pull requests qu’elle a ouvertes, et vous prévient quand quelque chose vous attend.',
   'site.appBand.cta': 'Voir l’application',
@@ -312,6 +314,9 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // sur ce site : c’est le mot que GitHub affiche dans son interface française, et
   // « tickets » désignerait les deux trackers à la fois — or la phrase en distingue
   // justement deux.
+  // LIGNE ZÉRO, ajoutée en tête : la page Plans de l’app. « relus en équipe » parce
+  // que c’est ce qu’on y fait, en équipe — la spec s’y lit, s’y annote, et son statut y vit.
+  'site.appBand.pointPlans': 'Vos plans et specs, relus en équipe',
   'site.appBand.pointTasks': 'Vos tâches {jira} et issues {github}',
   //
   // DEUXIÈME LIGNE : `{claude}` devient la pastille Claude Code, sur le corail
