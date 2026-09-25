@@ -137,13 +137,13 @@ describe('the site header nav', () => {
   })
 
   it('reads the link in the bar as reference, in the reference colour', () => {
-    // PURPLE IS NOT A FAMILY INVENTED FOR THE ROW THAT IS NOT IN THE MENU — it is the
+    // INK IS NOT A FAMILY INVENTED FOR THE ROW THAT IS NOT IN THE MENU — it is the
     // same one the Product menu's middle group carries: things you go to READ. A colour
     // that meant "reference" inside the menu and "outside the menu" beside it would mean
     // nothing in either place, which is why this is asserted across the two rather than
     // inside one.
-    expect(FAQ_NAV_ROW.tone).toBe('purple')
-    expect(PRODUCT_MENU_GROUPS[1]?.map((row) => row.tone)).toEqual(['purple', 'purple'])
+    expect(FAQ_NAV_ROW.tone).toBe('ink')
+    expect(PRODUCT_MENU_GROUPS[1]?.map((row) => row.tone)).toEqual(['ink', 'ink'])
 
     // And no tile: a tile says "this is a thing you can open" (see `tile` in
     // `siteNav.ts`), and a page you read is not one.
@@ -202,7 +202,7 @@ describe('the site header nav', () => {
     })
 
     expect(new Set(tones).size, tones.join(', ')).toBe(tones.length)
-    expect(tones).toEqual(['accent', 'purple', 'green'])
+    expect(tones).toEqual(['accent', 'ink', 'green'])
   })
 
   it('tiles the first family and only the first', () => {

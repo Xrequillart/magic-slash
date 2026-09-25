@@ -239,7 +239,7 @@ export const POPOVER_ROW_WITH_TILE = `flex items-center gap-3 px-2 py-1.5 ${POPO
  */
 export const POPOVER_ICON_TONES: Record<SiteNavTone, string> = {
   accent: 'text-accent',
-  purple: 'text-purple',
+  ink: 'text-ink',
   green: 'text-green',
 }
 
