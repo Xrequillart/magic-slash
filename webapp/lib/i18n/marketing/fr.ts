@@ -875,20 +875,6 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.planCard.legendFilterDesc':
     'Le sélecteur garde la liste complète à un clic, et le dépôt où vous l’avez laissée est mémorisé sur votre compte, pas sur cette machine.',
   // Voir la note du catalogue anglais.
-  'site.reposCard.title': 'Réglages',
-  'site.reposCard.tabAccount': 'Compte',
-  'site.reposCard.tabConnections': 'Connexions',
-  'site.reposCard.tabOrganization': 'Organisation',
-  'site.reposCard.tabRepositories': 'Dépôts',
-  'site.reposCard.tabApplication': 'Application',
-  'site.reposCard.tabClaudeCode': 'Claude Code',
-  'site.reposCard.tabNotifications': 'Notifications',
-  'site.reposCard.tabAppearance': 'Apparence',
-  'site.reposCard.tabLanguage': 'Langue et région',
-  'site.reposCard.tabShortcuts': 'Raccourcis',
-  'site.reposCard.tabAbout': 'À propos',
-  'site.reposCard.signOut': 'Se déconnecter',
-  'site.reposCard.section': 'Dépôts',
   'site.reposCard.add': 'Ajouter un dépôt',
   'site.reposCard.personal': 'Personnels',
   'site.reposCard.connected': 'Connecté',
@@ -961,9 +947,16 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.prCfg.testAccountsSource': 'Source des comptes de test',
   'site.prCfg.testAccountsSourceHelp':
     'Chemin de fichier ou nom de skill projet contenant les comptes (détection automatique si vide)',
+  'site.prCfg.bodyVerbosity': 'Longueur de la description de PR',
+  'site.prCfg.bodyVerbosityHelp':
+    'Ce que /magic:pr écrit dans le corps de la pull request. « Concise » tient sur un écran de puces, lu en une minute',
+  'site.prCfg.bodyVerbosityConcise': 'Concise',
+  'site.prCfg.templateCheckboxes': 'Cases du modèle de PR',
+  'site.prCfg.templateCheckboxesHelp':
+    'Si /magic:pr a le droit de cocher les cases du modèle de PR de votre dépôt. Les laisser vides, c’est en laisser la responsabilité au relecteur',
+  'site.prCfg.templateCheckboxesNever': 'Ne jamais cocher',
   'site.prCfg.template': 'Modèle de PR',
   'site.prCfg.templateHelp': 'Modèle utilisé à la création des pull requests',
-  'site.prCfg.templateFound': 'Modèle trouvé',
   'site.prCfg.groupAfter': 'Une fois ouverte',
   'site.prCfg.commentOnPR': 'Commenter le ticket',
   'site.prCfg.commentOnPRHelp':

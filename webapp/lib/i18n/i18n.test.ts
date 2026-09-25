@@ -327,9 +327,9 @@ describe('message catalogues', () => {
         // The homepage's small Tasks panels print the app's own word beside their agent
         // dot, and the app's French catalogue spells it "agent" too.
         'site.tasksCard.agent',
-        'site.reposCard.tabApplication',
-        'site.reposCard.tabClaudeCode',
-        'site.reposCard.tabNotifications',
+        // The PR tab's description-length picker, set to its default: "Concise" in both
+        // catalogues, as the app's own `repo.pr.bodyVerbosityConcise`.
+        'site.prCfg.bodyVerbosityConcise',
         'site.reposCard.agents.one',
         'site.reposCard.agents.other',
         // The launch modes grid: four of the five mode names are the app's own single

@@ -1711,26 +1711,11 @@ export const marketingEn = {
   'site.planCard.legendFilterDesc':
     'The picker keeps the whole list one click away, and where you left it is remembered on your account rather than on this machine.',
   // ── The /features Repositories settings ────────────────────────────────────
-  // The app's Settings modal open on Repositories, redrawn (`ReposSettingsMockup`). Same
-  // rule as the Tasks drawing above: the chrome is the app's own sentences from
+  // The app's Repositories window, drawn with its own components (`ReposSettingsMockup`).
+  // Same rule as the Tasks drawing above: the chrome is the app's own sentences from
   // `desktop/src/i18n/`, and what the app reads from its config — repo names, an
-  // organization's name, a path — is a literal in the component. Three of the eleven tab
-  // labels and the agent count are the same string in French, hence their lines in
-  // `i18n.test.ts`.
-  'site.reposCard.title': 'Settings',
-  'site.reposCard.tabAccount': 'Account',
-  'site.reposCard.tabConnections': 'Connections',
-  'site.reposCard.tabOrganization': 'Organization',
-  'site.reposCard.tabRepositories': 'Repositories',
-  'site.reposCard.tabApplication': 'Application',
-  'site.reposCard.tabClaudeCode': 'Claude Code',
-  'site.reposCard.tabNotifications': 'Notifications',
-  'site.reposCard.tabAppearance': 'Appearance',
-  'site.reposCard.tabLanguage': 'Language & Region',
-  'site.reposCard.tabShortcuts': 'Shortcuts',
-  'site.reposCard.tabAbout': 'About',
-  'site.reposCard.signOut': 'Sign out',
-  'site.reposCard.section': 'Repositories',
+  // organization's name, a path — is a literal in the component. The agent counts are the
+  // same string in French, hence their lines in `i18n.test.ts`.
   'site.reposCard.add': 'Add repository',
   'site.reposCard.personal': 'Personal',
   'site.reposCard.connected': 'Connected',
@@ -1810,9 +1795,16 @@ export const marketingEn = {
   'site.prCfg.testAccountsSource': 'Test Accounts Source',
   'site.prCfg.testAccountsSourceHelp':
     'Optional file path or project skill name holding the accounts (auto-detected when empty)',
+  'site.prCfg.bodyVerbosity': 'PR description length',
+  'site.prCfg.bodyVerbosityHelp':
+    'How much /magic:pr writes in the pull request body. Concise keeps it to one screen of bullets a reviewer reads in a minute',
+  'site.prCfg.bodyVerbosityConcise': 'Concise',
+  'site.prCfg.templateCheckboxes': 'PR template checkboxes',
+  'site.prCfg.templateCheckboxesHelp':
+    'Whether /magic:pr may tick the checkboxes your repository’s PR template ships. Leaving them empty hands the ticking back to the reviewer',
+  'site.prCfg.templateCheckboxesNever': 'Never tick',
   'site.prCfg.template': 'PR Template',
   'site.prCfg.templateHelp': 'Template used when creating pull requests',
-  'site.prCfg.templateFound': 'Template found',
   'site.prCfg.groupAfter': 'Once open',
   'site.prCfg.commentOnPR': 'Comment the Ticket',
   'site.prCfg.commentOnPRHelp':
