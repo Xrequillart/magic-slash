@@ -269,6 +269,8 @@ describe('fetchPRStatusGraphQL', () => {
     const [url, init] = mockFetch.mock.calls[0]
     expect(url).toBe('https://api.github.com/graphql')
     expect(init.method).toBe('POST')
+    // The thread's newest comment is what dates a reply, next to its first one.
+    expect(JSON.parse(init.body).query).toContain('latestComment: comments(last:1)')
     expect(JSON.parse(init.body).variables).toEqual({ owner: 'acme', repo: 'web', number: 42 })
   })
 
@@ -329,6 +331,58 @@ describe('fetchPRStatusGraphQL', () => {
 
     expect(snapshot.status).toBe('pending')
     expect(snapshot.reviewers).toEqual([])
+  })
+
+  it('dates the newest feedback by someone other than the author, across reviews, threads and comments', async () => {
+    mockFetch.mockResolvedValue(
+      graphQLResponse(
+        payload({
+          reviews: {
+            nodes: [
+              { author: { login: 'alice' }, state: 'COMMENTED', submittedAt: '2025-01-01T09:00:00Z', body: '' },
+              // A PENDING review has no timestamp yet.
+              { author: { login: 'bob' }, state: 'PENDING', submittedAt: null, body: '' },
+            ],
+          },
+          reviewThreads: {
+            nodes: [
+              {
+                comments: { totalCount: 2, nodes: [{ author: { login: 'alice' } }] },
+                latestComment: { nodes: [{ author: { login: 'bob' }, createdAt: '2025-01-01T11:00:00Z' }] },
+              },
+            ],
+          },
+          comments: {
+            totalCount: 2,
+            nodes: [
+              { author: { login: 'alice' }, createdAt: '2025-01-01T10:00:00Z' },
+              // The author's own reply is newer, and is not news to them.
+              { author: { login: 'xavier' }, createdAt: '2025-01-01T12:00:00Z' },
+            ],
+          },
+        }),
+      ),
+    )
+
+    const snapshot = snapshotOf(await fetchPRStatusGraphQL('acme', 'web', 42))
+
+    expect(snapshot.latestFeedback).toEqual({ at: Date.parse('2025-01-01T11:00:00Z'), author: 'bob' })
+  })
+
+  it('reports no feedback when only the author has spoken', async () => {
+    mockFetch.mockResolvedValue(
+      graphQLResponse(
+        payload({
+          reviews: { nodes: [] },
+          reviewThreads: { nodes: [] },
+          comments: { totalCount: 1, nodes: [{ author: { login: 'xavier' }, createdAt: '2025-01-01T12:00:00Z' }] },
+        }),
+      ),
+    )
+
+    const snapshot = snapshotOf(await fetchPRStatusGraphQL('acme', 'web', 42))
+
+    expect(snapshot.latestFeedback).toBeUndefined()
   })
 
   it('tolerates a head commit with no checks at all', async () => {

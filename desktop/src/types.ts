@@ -227,6 +227,14 @@ export interface RepositoryMetadata {
   prMergeable?: boolean
   prWatchError?: PRWatchError
   prLastCheckedAt?: number
+  /**
+   * Epoch ms of the newest review or comment by someone other than the author, as
+   * of the last persisted read; 0 when there was none. The watcher's durable
+   * baseline for "is this feedback new", so a review that landed while the app
+   * was closed is still announced at the next launch. Absent means never
+   * recorded (a row from an older version), which announces nothing.
+   */
+  prLastFeedbackAt?: number
 }
 
 /** One CI check or commit status attached to the PR head commit. */
@@ -256,6 +264,11 @@ export interface PRStatusSnapshot extends AggregatedPRStatus {
   checksSummary: PRChecksSummary
   commentCounts: PRCommentCounts
   commentAuthors: string[]
+  /**
+   * The newest review or comment by someone other than the PR author, epoch ms and
+   * login. Absent when nobody else has said anything yet.
+   */
+  latestFeedback?: { at: number; author: string }
   headSha: string
   /** Rollup state, part of the cache key: a check flipping green need not move updatedAt. */
   rollupState?: string

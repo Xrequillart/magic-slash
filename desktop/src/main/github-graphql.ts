@@ -72,8 +72,11 @@ export const PR_STATUS_QUERY = `query($owner:String!,$repo:String!,$number:Int!)
         ... on StatusContext { context state targetUrl }
       } } } } } }
       reviews(last:100){ pageInfo { hasPreviousPage startCursor } nodes { author{login} state submittedAt body } }
-      reviewThreads(last:50){ nodes { comments(first:1){ totalCount nodes { author{login} } } } }
-      comments(last:20){ totalCount nodes { author{login} } }
+      reviewThreads(last:50){ nodes {
+        comments(first:1){ totalCount nodes { author{login} } }
+        latestComment: comments(last:1){ nodes { author{login} createdAt } }
+      } }
+      comments(last:20){ totalCount nodes { author{login} createdAt } }
     }
   }
 }`
@@ -231,6 +234,12 @@ export interface GQLPullRequest {
       /** Comments query only — `RIGHT` (the file after the change) or `LEFT` (before it). */
       diffSide?: string | null
       comments?: { totalCount?: number; nodes?: (GQLCommentNode | null)[] | null } | null
+      /**
+       * Status query only: the thread's NEWEST comment, aliased beside `comments`, which
+       * asks for the first one (its author is "who spoke first" on the card). This one
+       * is what dates a reply, for `latestFeedback`.
+       */
+      latestComment?: { nodes?: (GQLCommentNode | null)[] | null } | null
     } | null)[] | null
   } | null
   comments?: {
@@ -441,6 +450,29 @@ function mapMergeable(mergeable: string | null | undefined): boolean | undefined
   return undefined
 }
 
+/**
+ * The newest review or comment written by somebody other than the PR author.
+ *
+ * What the watcher notifies on: a verdict-level status cannot say "somebody spoke
+ * again", since a second comment on a `commented` PR leaves it `commented`. The
+ * author is excluded because their own replies — typed, or posted by
+ * `/magic:resolve` under their `gh` login — are not news to them. Nodes without a
+ * timestamp (a PENDING review has no `submittedAt`) are skipped.
+ */
+function findLatestFeedback(
+  entries: { login?: string | null; at?: string | null }[],
+  authorLogin: string | undefined,
+): { at: number; author: string } | undefined {
+  let latest: { at: number; author: string } | undefined
+  for (const { login, at } of entries) {
+    if (!login || !at || login === authorLogin) continue
+    const ms = new Date(at).getTime()
+    if (!Number.isFinite(ms)) continue
+    if (!latest || ms > latest.at) latest = { at: ms, author: login }
+  }
+  return latest
+}
+
 /** Maps a successful payload onto the shared snapshot shape. */
 export function mapPullRequestToSnapshot(
   pr: GQLPullRequest,
@@ -492,6 +524,15 @@ export function mapPullRequestToSnapshot(
     ...conversationNodes.map(c => ({ user: { login: c.author?.login || undefined } })),
   ]
 
+  const latestFeedback = findLatestFeedback(
+    [
+      ...reviewNodes.map(r => ({ login: r.author?.login, at: r.submittedAt })),
+      ...threadNodes.flatMap(t => (t.latestComment?.nodes ?? []).map(c => ({ login: c?.author?.login, at: c?.createdAt }))),
+      ...conversationNodes.map(c => ({ login: c.author?.login, at: c.createdAt })),
+    ],
+    authorLogin,
+  )
+
   const state = mapState(pr.state, pr.isDraft === true)
   const aggregated = aggregatePRStatus(
     {
@@ -518,6 +559,7 @@ export function mapPullRequestToSnapshot(
     checksSummary: summarise(checks),
     commentCounts,
     commentAuthors: Array.from(authors),
+    ...(latestFeedback ? { latestFeedback } : {}),
     headSha: pr.headRefOid || '',
     ...(rollup?.state ? { rollupState: rollup.state } : {}),
   }
