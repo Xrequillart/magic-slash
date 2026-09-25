@@ -13,11 +13,13 @@ import { HomeSection } from '../home/Shell'
  * THE OPENING OF `/workflow`: the promise, and the two ways on.
  *
  * `/desktop`'S HERO SHAPE. Centred axis, a pill above the headline, one paragraph, a
- * primary and a secondary button side by side, the reassurance line under them, an aura
- * of blurred discs behind: that is `DesktopHero`, and a reader who has seen one product
- * page on this site should recognise the next one's opening. The pill is the homepage
- * hero's, with the Claude Code mark on its tile, because the eight skills are the thing
- * the page is about; the aura is that page's in this page's hues (see `Aura`).
+ * primary and a secondary button side by side, the reassurance line under them: that is
+ * `DesktopHero`, and a reader who has seen one product page on this site should recognise
+ * the next one's opening. The pill is the homepage hero's, with the Claude Code mark on
+ * its tile, because the eight skills are the thing the page is about.
+ *
+ * NO AURA. It opened on four blurred discs of blue and pale green fading into white, and
+ * the owner asked for the gradient to go: the band is plain white, like `/download`'s.
  *
  * THE SECONDARY BUTTON SCROLLS, it does not leave: the ask on this page is the page. The
  * primary is the download, the same call as the homepage's and `/desktop`'s.
@@ -32,7 +34,7 @@ export function WorkflowHero() {
   const { t } = useT()
 
   return (
-    <HomeSection padding="hero" backdrop={<Aura />}>
+    <HomeSection padding="hero">
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
         <Reveal order={1}>
           {/* The homepage hero's pill, with one mark instead of three: the skills are
@@ -84,25 +86,4 @@ export function WorkflowHero() {
 
 function Dot() {
   return <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/50" />
-}
-
-/**
- * THE BACKDROP: `/desktop`'s aura, the four blurred discs fading into white, in this
- * page's own hues. That page throws violet, pink and amber across its field; this one is
- * asked to be "un mélange de bleu et de vert clair", so the wide core is the brand blue,
- * the two sides are the pale mint (`softgreen`, the light stop of `tone-mint`) and the
- * status green at a wash, and the accent blue sits under the middle. The fade starts
- * half-way down for the reason that page gives: the last of the colour should be gone
- * well before the band's edge rather than at it.
- */
-function Aura() {
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0">
-      <div className="absolute left-1/2 top-1/4 h-2/3 w-[80%] -translate-x-1/2 rounded-full bg-brand/25 blur-3xl" />
-      <div className="absolute -left-[10%] top-1/3 h-1/2 w-3/5 rounded-full bg-softgreen blur-3xl" />
-      <div className="absolute -right-[10%] top-1/3 h-1/2 w-3/5 rounded-full bg-green/20 blur-3xl" />
-      <div className="absolute left-1/2 top-[45%] h-1/2 w-2/5 -translate-x-1/2 rounded-full bg-accent/25 blur-3xl" />
-      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-b from-transparent to-white" />
-    </div>
-  )
 }
