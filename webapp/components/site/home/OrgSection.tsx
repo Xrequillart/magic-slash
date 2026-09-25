@@ -135,7 +135,8 @@ const CARDS: readonly {
   },
   {
     id: 'plan',
-    tone: 'rose',
+    // `amber`, the homepage start card's tone, at the owner's request.
+    tone: 'amber',
     title: 'site.orgBand.planTitle',
     description: 'site.orgBand.planDesc',
     visual: 'center',

@@ -165,7 +165,8 @@ const CARDS: readonly {
   },
   {
     id: 'shortcuts',
-    tone: 'lemon',
+    // `amber`, the homepage start card's tone, at the owner's request.
+    tone: 'amber',
     title: 'site.builtFor.shortcutsTitle',
     description: 'site.builtFor.shortcutsDesc',
     Art: ShortcutsArt,
