@@ -540,10 +540,11 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.builtFor.shortcutAgents': 'Liste des agents',
   'site.builtFor.shortcutInfo': 'Infos de l’agent',
   'site.builtFor.shortcutClose': 'Archiver l’agent',
-  // « natif » est le mot du métier et il n’a pas d’équivalent : on dit une app native.
-  'site.builtFor.macTitle': 'Vraiment natif sur Mac',
-  'site.builtFor.macDesc':
-    'Conçu spécifiquement pour le Mac, pensé pour la vitesse, la mémoire et l’autonomie. Pas une page web dans une fenêtre.',
+  // « Taillé sur mesure » remplace « Vraiment natif sur Mac » : le profil que chaque skill
+  // lit avant de répondre. Voir la note côté anglais.
+  'site.builtFor.tailoredTitle': 'Taillé sur mesure',
+  'site.builtFor.tailoredDesc':
+    'Dites qui vous êtes : votre rôle, votre niveau technique, le ton que vous préférez. Chaque skill s’y ajuste, un résumé produit pour un PM, le détail du code pour un dev.',
   // Le thème d'abord, et « pliez-la » pour finir : c'est la demande du propriétaire —
   // le thème ajouté, « réglé une fois, par dépôt » supprimé, et l'idée que l'app se
   // façonne vraiment à vos besoins mise à la place. Voir la note côté anglais.

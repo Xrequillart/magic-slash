@@ -8,7 +8,7 @@ import { useT } from '@/lib/i18n/useLanguage'
 import { Reveal } from '../Reveal'
 import { HomeHeading, HomeSection } from './Shell'
 import {
-  MacNativeArt,
+  TailoredArt,
   MakeItYoursArt,
   ShortcutsArt,
   SpotlightArt,
@@ -171,11 +171,13 @@ const CARDS: readonly {
     Art: ShortcutsArt,
   },
   {
-    id: 'mac',
+    // MADE TO MEASURE, where "truly Mac-native" was: the profile every skill reads before
+    // answering. The one card in the band that is about the PERSON rather than the window.
+    id: 'tailored',
     tone: 'lemon',
-    title: 'site.builtFor.macTitle',
-    description: 'site.builtFor.macDesc',
-    Art: MacNativeArt,
+    title: 'site.builtFor.tailoredTitle',
+    description: 'site.builtFor.tailoredDesc',
+    Art: TailoredArt,
   },
   {
     id: 'yours',

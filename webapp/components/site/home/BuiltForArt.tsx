@@ -189,110 +189,23 @@ export function ShortcutsArt() {
   )
 }
 
-/* ── ③ Truly Mac-native ─────────────────────────────────────────────────────────── */
+/* ── ③ Tailored ───────────────────────────────────────────────────────────────────── */
 
 /**
- * Apple's mark, filled with a gradient, glowing on the card's own dark ground.
+ * THE TAILORED CARD'S ILLUSTRATION: a measuring tape, from the site's own set
+ * (`illustration-measure.svg`), because the card says "made to measure" and the tape says
+ * it before the title is read. It replaced the "truly Mac-native" card and its Apple mark,
+ * on the owner's call: this band is titled for product builders, and the profile the skills
+ * read (role, technical level, tone) is the one feature that proves the claim.
  *
- * ── HOW THIS CARD GOT HERE, in three rounds, because each one was a real correction ──
- *
- * It shipped as a dark tile with a gradient LIGHTNING BOLT in it, drawn to a reference the
- * product owner supplied. They asked for the style to be revisited — "je ne suis pas fan
- * de l'éclair" — and a bolt is indeed a stock glyph for "fast", which is one third of what
- * this card claims. It was replaced with the real macOS menu-bar capture, on the argument
- * that "truly Mac-native" is the one claim here a DRAWING cannot make.
- *
- * The owner then settled it: keep the composition of the first reference — the glow, the
- * gradient — and put APPLE'S OWN MARK in it. That is the right answer and it beats both
- * previous ones, because it says the whole claim in one glyph. The bolt said "fast" and
- * invented a symbol the product does not own; the menu-bar photograph said "it runs on a
- * Mac" but buried it in a 376px capture where the app's icon is 20px across. This says
- * "Mac" at the size of the card, instantly, from across the room.
- *
- * THE MARK IS NOMINATIVE, which is worth stating once. It appears here to name the
- * PLATFORM the app is built for — the same use every Mac app's download page makes of it —
- * and nowhere near this site's own branding, our logo, or anything that could read as
- * Apple having made or endorsed this. It is not in the header, the footer or the favicon.
- *
- * IT IS A BITMAP UNDER A MASK, not an SVG path, and that is deliberate. The mark has an
- * exact silhouette that a hand-traced path gets subtly wrong, and the owner supplied the
- * file; `public/img/apple-mark.png` is it, 512px and 5.6KB, black on transparent. The
- * transparency is what makes the mask work: an alpha mask over a div wearing the gradient,
- * so the COLOUR is ours and only the shape is the file's. `mask-*` goes through `style`
- * rather than through arbitrary Tailwind — it needs the `-webkit-` twin, and a four-line
- * arbitrary-value class list is exactly the hardcoded value the design brief rules out.
- *
- * THE GRADIENT IS `mark-apple` in `tailwind.config.ts`, declared beside the card tones
- * rather than spelled here: three cool stops, the first reference's own sweep. See the
- * note there for why it is neither a tone nor a plate.
- *
- * THE AURA IS FOUR BLURRED DISCS, `desktop/DesktopHero`'s own `Aura` in miniature and for its
- * reason: one colour at two strengths reads as a glow somebody applied, four hues laid
- * across each other read as light. They are `purple`, `red`, `accent` and `blue` — palette
- * tokens, not arbitrary hexes — and they sit BEHIND the tile in the stacking order, so the
- * tile stays solid rather than being tinted by its own halo.
+ * ON THE CARD'S BOTTOM EDGE, with no gutter under it: the two arms are cut off at the
+ * drawing's own bottom, so they have to come in from the card's edge or they read as
+ * stumps floating mid-card. `ToneCard`'s default `end` slot pins it there. The file's
+ * `viewBox` is cropped to the drawing's measured box (`25 208 950 584` out of a 1000²
+ * canvas), a landscape strip, so it is sized by WIDTH. `alt=""`: the title says it.
  */
-export function MacNativeArt() {
-  return (
-    // `h-52 pb-8`: 208px for the tile and its glow, then 32px of nothing under it. The
-    // padding is the owner's second ask on this card — "qu'il y ait plus d'espace en bas de
-    // la card" — and a stacked visual is `mt-auto`, flush with the card's bottom edge, so
-    // the air has to be asked for. It is not a crop: the tile is a complete object and an
-    // object touching the frame reads as having slipped down rather than as being placed.
-    <div aria-hidden className="relative flex h-52 items-center justify-center pb-8">
-      {/* THE WASH. `inset-0` and a blur, so the colour ends inside the card rather than at
-          its edge — the reference's light falls off well before the corners, which is what
-          stops it reading as a second background.
-
-          CENTRED ON 42% AND NOT ON 50%, because `inset-0` spans the padding too: the tile
-          sits in the 208px above the `pb-8`, so a halo centred on the wrapper would hang
-          32px below the thing it is supposed to be coming from. */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-1/2 top-[42%] h-40 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple/40 blur-2xl" />
-        <div className="absolute left-1/2 top-[52%] h-32 w-44 -translate-x-1/2 rounded-full bg-red/30 blur-2xl" />
-        <div className="absolute left-1/2 top-[20%] h-32 w-44 -translate-x-1/2 rounded-full bg-accent/40 blur-2xl" />
-        <div className="absolute left-[36%] top-[42%] h-24 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue/30 blur-2xl" />
-      </div>
-
-      {/* THE TILE, at 128px and it was 96. The product owner asked for both it and the
-          mark to take more of the card — "augmente la taille du logo Apple et de la puce
-          Apple, j'aimerais qu'elle prenne plus de place" — and the two numbers had to move
-          together: a bigger mark inside the old square would have filled it corner to
-          corner and stopped reading as an icon.
-
-          `rounded-[28px]` rather than `rounded-3xl`, and it is the one arbitrary radius in
-          this file. macOS icons round at ~22% of their box; at 96px `rounded-3xl` (24px)
-          was that number, at 128px it is 19% and the tile starts to look like a square
-          with the corners knocked off. 28px puts it back on the curve. The alternative was
-          a declared radius used exactly once, which is a token nobody would ever reach for
-          again.
-
-          `bg-appbg` is the app's own near-black, so the square reads as a product tile
-          rather than as a hole in the card. The filet is `onink-rule`, the inverse
-          hairline: `border-hairline` is 8% INK and would disappear on this ground. */}
-      <div className="relative flex h-32 w-32 items-center justify-center rounded-[28px] border border-onink-rule bg-appbg shadow-lift">
-        {/* THE MARK, at 64px in a 128px tile — half the box, where it was 46% before, so it
-            grew by rather more than the tile did. `contain` and `center` so the glyph keeps
-            its proportions inside the box whatever the box becomes, and `no-repeat` because
-            a mask that tiles fills the tile with apples.
-
-            The div carries the gradient; the PNG is only its alpha. */}
-        <div
-          className="h-16 w-16 bg-mark-apple"
-          style={{
-            WebkitMaskImage: 'url(/img/apple-mark.png)',
-            maskImage: 'url(/img/apple-mark.png)',
-            WebkitMaskSize: 'contain',
-            maskSize: 'contain',
-            WebkitMaskRepeat: 'no-repeat',
-            maskRepeat: 'no-repeat',
-            WebkitMaskPosition: 'center',
-            maskPosition: 'center',
-          }}
-        />
-      </div>
-    </div>
-  )
+export function TailoredArt() {
+  return <img src="/img/illustration-measure.svg" alt="" className="mx-auto w-full max-w-sm px-7" />
 }
 
 /* ── ④ Make it yours ────────────────────────────────────────────────────────────── */

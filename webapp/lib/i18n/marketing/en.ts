@@ -1118,19 +1118,14 @@ export const marketingEn = {
   'site.builtFor.shortcutInfo': 'Agent info',
   'site.builtFor.shortcutClose': 'Archive agent',
   /**
-   * The Mac card. The product owner supplied this one nearly word for word with the
-   * reference — speed, memory, battery — and the three of them together are what "native"
-   * means to somebody who has been handed a browser in a frame before and noticed.
+   * MADE TO MEASURE, where the Mac card was — the owner's call, for a band titled for
+   * product builders: the profile filled in at onboarding (role, technical level, tone,
+   * languages) is read by every skill before it answers, so the same tool talks product to
+   * a PM and code to a developer. `/features` states it at length (`site.features.profile*`).
    */
-  'site.builtFor.macTitle': 'Truly Mac-native',
-  // "Not a web page in a window" IS THE LINE THIS CARD NEEDS, and it went away for a round.
-  // While the drawing was a capture of the macOS menu bar, the sentence named the menu bar
-  // too — picture and copy agreeing. The drawing is Apple's own mark now, which says the
-  // platform in one glyph and leaves the sentence free to say the thing the glyph cannot:
-  // that this is not Electron chrome wearing a Mac's clothes. The menu bar has its own row
-  // on `/features` (`site.features.menuBar*`), which is where that fact belongs.
-  'site.builtFor.macDesc':
-    'Built specifically for Mac, with speed, low memory use and battery life in mind. Not a web page in a window.',
+  'site.builtFor.tailoredTitle': 'Made to measure',
+  'site.builtFor.tailoredDesc':
+    'Tell it who you are: your role, your technical level, the tone you prefer. Every skill adjusts to it, a product summary for a PM, code-level detail for a developer.',
   /**
    * The settings card. The reference was a screenshot from another product; the wording is
    * ours, and every item named is something the app really exposes.
