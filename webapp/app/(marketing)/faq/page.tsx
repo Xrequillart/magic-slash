@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageTitle } from '@/lib/pageTitles'
 import { FaqContent } from '@/components/site/faq/FaqContent'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 
@@ -40,7 +41,7 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  */
 
 export const metadata: Metadata = {
-  title: 'FAQ — magic-slash',
+  title: pageTitle('/faq'),
   description:
     'Installing Magic Slash, configuring it, and living with it — the questions people actually ask.',
 }

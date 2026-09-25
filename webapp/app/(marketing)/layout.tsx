@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
+import { pageTitle } from '@/lib/pageTitles'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { SiteFooter } from '@/components/site/SiteFooter'
+import { DocumentTitle } from '@/components/site/DocumentTitle'
 
 /**
  * The public site's shell — the header and footer every public page shares: `/`,
@@ -30,7 +32,7 @@ import { SiteFooter } from '@/components/site/SiteFooter'
  */
 
 export const metadata: Metadata = {
-  title: 'magic-slash',
+  title: pageTitle('/'),
   description: 'From ticket to merge — without the busywork.',
 }
 
@@ -40,6 +42,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
     // public site below `lg` — see `lib/stillness.ts` for the JavaScript half of that
     // rule. A `div` and not a fragment for that one attribute; it carries no styles.
     <div data-site>
+      <DocumentTitle />
       <SiteHeader />
       {children}
       {/* The year is read on the server so the first paint has one, then corrected in

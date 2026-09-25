@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageTitle } from '@/lib/pageTitles'
 import { DesktopContent } from '@/components/site/desktop/DesktopContent'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 
@@ -36,7 +37,7 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  */
 
 export const metadata: Metadata = {
-  title: 'Application — magic-slash',
+  title: pageTitle('/desktop'),
   description:
     'The native macOS app: several Claude Code agents at once, in one window that knows who is working on what.',
 }

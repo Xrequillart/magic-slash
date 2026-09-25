@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageTitle } from '@/lib/pageTitles'
 import { TermsContent } from '@/components/site/terms/TermsContent'
 
 /**
@@ -32,7 +33,7 @@ import { TermsContent } from '@/components/site/terms/TermsContent'
  */
 
 export const metadata: Metadata = {
-  title: 'Terms — magic-slash',
+  title: pageTitle('/terms'),
   description:
     'The terms the Magic Slash app and the hosted account are provided under, and what they do not promise.',
 }

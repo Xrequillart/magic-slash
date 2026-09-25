@@ -1587,6 +1587,17 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
 
   // ── Footer ─────────────────────────────────────────────────────────────────
   'site.footer.tagline': 'De l’idée à la PR mergée, Magic Slash fait tourner le cycle. C’est vous qui tranchez.',
+
+  // ── Titres d’onglet ────────────────────────────────────────────────────────
+  'site.meta.homeTitle': 'Magic Slash · De l’idée à la PR mergée avec Claude Code',
+  'site.meta.workflowTitle': 'Le workflow : de l’idée à la PR mergée · Magic Slash',
+  'site.meta.desktopTitle': 'L’app desktop pour piloter vos agents · Magic Slash',
+  'site.meta.featuresTitle': 'Toutes les fonctionnalités · Magic Slash',
+  'site.meta.downloadTitle': 'Télécharger pour Mac · Magic Slash',
+  'site.meta.changelogTitle': 'Nouveautés · Magic Slash',
+  'site.meta.faqTitle': 'Questions fréquentes · Magic Slash',
+  'site.meta.privacyTitle': 'Confidentialité · Magic Slash',
+  'site.meta.termsTitle': 'Conditions d’utilisation · Magic Slash',
   'site.footer.product': 'Produit',
   'site.footer.features': 'Fonctionnalités',
   'site.footer.commands': 'Les commandes',

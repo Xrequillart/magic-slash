@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageTitle } from '@/lib/pageTitles'
 import { PrivacyContent } from '@/components/site/privacy/PrivacyContent'
 
 /**
@@ -40,7 +41,7 @@ import { PrivacyContent } from '@/components/site/privacy/PrivacyContent'
  */
 
 export const metadata: Metadata = {
-  title: 'Privacy — magic-slash',
+  title: pageTitle('/privacy'),
   description:
     'What Magic Slash stores, what stays on your machine, and how to get rid of all of it.',
 }

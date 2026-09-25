@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageTitle } from '@/lib/pageTitles'
 import { ChangelogContent } from '@/components/site/changelog/ChangelogContent'
 import { loadChangelog } from '@/lib/changelog'
 
@@ -41,7 +42,7 @@ import { loadChangelog } from '@/lib/changelog'
  */
 
 export const metadata: Metadata = {
-  title: 'Changelog — magic-slash',
+  title: pageTitle('/changelog'),
   description: 'Every release of magic-slash — what was added, what changed, what was fixed.',
 }
 

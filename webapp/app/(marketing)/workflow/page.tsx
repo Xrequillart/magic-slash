@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageTitle } from '@/lib/pageTitles'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 import { WorkflowContent } from '@/components/site/workflow/WorkflowContent'
 
@@ -35,7 +36,7 @@ import { WorkflowContent } from '@/components/site/workflow/WorkflowContent'
  */
 
 export const metadata: Metadata = {
-  title: 'Workflow — magic-slash',
+  title: pageTitle('/workflow'),
   description:
     'From idea to merged PR in five commands. Plan the work, start it with Claude Code, commit and open the PR, resolve the review, merge and clean up. Every decision that matters stays yours.',
 }

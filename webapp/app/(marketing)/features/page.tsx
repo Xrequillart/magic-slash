@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageTitle } from '@/lib/pageTitles'
 import { FeaturesContent } from '@/components/site/features/FeaturesContent'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 
@@ -33,7 +34,7 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  */
 
 export const metadata: Metadata = {
-  title: 'Features — magic-slash',
+  title: pageTitle('/features'),
   description: 'Every command, every panel, every switch — grouped the way the app groups them.',
 }
 

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageTitle } from '@/lib/pageTitles'
 import { DownloadContent } from '@/components/site/download/DownloadContent'
 import { loadChangelog } from '@/lib/changelog'
 import { LATEST_DESKTOP_VERSION } from '@/lib/desktopRelease'
@@ -31,7 +32,7 @@ import { LATEST_DESKTOP_VERSION } from '@/lib/desktopRelease'
  */
 
 export const metadata: Metadata = {
-  title: 'Download — magic-slash',
+  title: pageTitle('/download'),
   description:
     'Download Magic Slash for macOS: the installer, what it needs, and what the first launch sets up.',
 }

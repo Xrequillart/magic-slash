@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageTitle } from '@/lib/pageTitles'
 import { HeroSection } from '@/components/site/home/HeroSection'
 import { PillarsSection } from '@/components/site/home/PillarsSection'
 import { WorkflowSection } from '@/components/site/home/WorkflowSection'
@@ -209,7 +210,7 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  */
 
 export const metadata: Metadata = {
-  title: 'magic-slash',
+  title: pageTitle('/'),
   description:
     'From idea to merged PR. Eight Claude Code skills write the spec, create the tickets, open and review the PR. All you do is make the calls.',
 }

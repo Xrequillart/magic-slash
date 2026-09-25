@@ -2708,6 +2708,20 @@ export const marketingEn = {
 
   // ── Footer ─────────────────────────────────────────────────────────────────
   'site.footer.tagline': 'From idea to merged PR, Magic Slash runs the cycle. You make the calls.',
+
+  // ── Browser tab titles ───────────────────────────────────────────────────────
+  // One per marketing page, read by `lib/pageTitles.ts`: the English one is the page's
+  // `metadata.title` (what the server sends and a crawler indexes), and `DocumentTitle`
+  // swaps in the reader's language once the browser knows it. "·" and not a dash.
+  'site.meta.homeTitle': 'Magic Slash · From idea to merged PR with Claude Code',
+  'site.meta.workflowTitle': 'The workflow: from idea to merged PR · Magic Slash',
+  'site.meta.desktopTitle': 'The desktop app to run your agents · Magic Slash',
+  'site.meta.featuresTitle': 'All features · Magic Slash',
+  'site.meta.downloadTitle': 'Download for Mac · Magic Slash',
+  'site.meta.changelogTitle': 'What’s new · Magic Slash',
+  'site.meta.faqTitle': 'Frequently asked questions · Magic Slash',
+  'site.meta.privacyTitle': 'Privacy · Magic Slash',
+  'site.meta.termsTitle': 'Terms of use · Magic Slash',
   'site.footer.product': 'Product',
   'site.footer.features': 'Features',
   'site.footer.commands': 'The commands',
