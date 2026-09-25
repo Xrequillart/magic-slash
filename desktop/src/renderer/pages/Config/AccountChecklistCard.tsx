@@ -196,7 +196,10 @@ export function AccountChecklistCard() {
         // on a card whose own mark says otherwise.
         badge={{ label: `${done}/${steps.length}`, tone: ready ? 'green' : 'yellow' }}
       >
-        {steps.map((step) => (
+        {/* ALL TICKED, THE HEADER ALONE. Five green rows under a band that already says
+            "ready" in words and 5/5 in a badge are the same news six times over, on a
+            card that opens the tab every visit for the rest of the install's life. */}
+        {!ready && steps.map((step) => (
           <CollapsibleLine
             key={step.key}
             // The mark keeps its colour when ticked while the LABEL steps back to grey
