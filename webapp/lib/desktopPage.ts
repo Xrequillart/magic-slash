@@ -35,6 +35,10 @@ export type BandChrome = {
 }
 
 export const DESKTOP_BANDS = {
+  plans: {
+    title: 'site.desktopPage.plansTitle',
+    subtitle: 'site.desktopPage.plansSubtitle',
+  },
   tasks: {
     title: 'site.desktopPage.tasksTitle',
     subtitle: 'site.desktopPage.tasksSubtitle',
@@ -113,8 +117,22 @@ export type DesktopIcon =
   | 'Bot'
   | 'Tags'
   | 'BadgeCheck'
+  // The plans band's first claim: the spec, as a document.
+  | 'FileText'
 
 export type DesktopPoint = { icon: DesktopIcon; label: MessageKey }
+
+/**
+ * The three claims under the plans band: the spec comes first, you approve it, and the
+ * plan keeps its tickets. Checked against `skills/magic-plan/SKILL.md` (nothing is created
+ * before an explicit approval, Step 6) and the app's Plans page (a row counts its tickets
+ * and a plan's page lists them).
+ */
+export const PLANS_POINTS: readonly DesktopPoint[] = [
+  { icon: 'FileText', label: 'site.desktopPage.plansPointSpec' },
+  { icon: 'MessagesSquare', label: 'site.desktopPage.plansPointApprove' },
+  { icon: 'Ticket', label: 'site.desktopPage.plansPointTickets' },
+]
 
 /** The three claims under the backlog band. */
 export const TASKS_POINTS: readonly DesktopPoint[] = [

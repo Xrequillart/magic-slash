@@ -9,10 +9,10 @@ import { Reveal } from '../Reveal'
 import { DESKTOP_ICONS } from './icons'
 
 /**
- * THE FIRST BAND UNDER THE HERO: the backlog, and what a ticket in it is one click from.
+ * THE SECOND BAND UNDER THE HERO: the backlog, and what a ticket in it is one click from.
  *
- * The hero has just said the app remembers what your agents are doing; the first thing to
- * show is where an agent COMES FROM, and in this app that is the Tasks window. The
+ * The plans band above has just shown where the tickets come from; the next thing to show
+ * is where an agent COMES FROM, and in this app that is the Tasks window. The
  * drawing is `/features`' own — the modal with the two trackers' tickets grouped by
  * repository, cropped at the plate's floor because a backlog never ends inside its own
  * picture.
@@ -24,14 +24,14 @@ import { DESKTOP_ICONS } from './icons'
  * headline and paragraph on the left, the three claims beside them on the right — and the
  * window takes the whole row under it.
  *
- * `padding="follow"`: the hero above is its own band with a band's bottom, so this one
- * owes it only the remainder — the same rung `/features` and `/download` put under theirs.
+ * A band's own padding. It took `follow` while it sat right under the hero; `PlansBand`
+ * holds that seat now and takes the rung instead.
  */
 export function TasksBand() {
   const { t } = useT()
 
   return (
-    <HomeSection padding="follow">
+    <HomeSection>
       {/* THE COPY IN TWO COLUMNS: headline and paragraph on the left, the three claims on
           the right, level with each other (`md:items-center`) — the product owner's
           placement ("le point clé à droite du titre et de la description"). Below `md`

@@ -1,8 +1,8 @@
 'use client'
 
 import type { CSSProperties } from 'react'
-import { ItemGroup, ModalHeader, PlanItem, SectionHeader, Select, type StatusTone } from '@ds/desktop'
-import { FolderGit2, ListTodo, NotebookPen, Sparkles } from '@ds/desktop/icons'
+import { FilterBar, ItemGroup, ModalHeader, PlanItem, SectionHeader, type StatusTone } from '@ds/desktop'
+import { CircleDot, FolderGit2, ListTodo, NotebookPen, Sparkles } from '@ds/desktop/icons'
 import { PROJECT_COLORS } from '@ds/desktop/palette'
 import { DESKTOP_THEMES } from '@/lib/desktopTheme'
 import type { MessageKey } from '@/lib/i18n'
@@ -23,8 +23,8 @@ import { FeatureLegend, LegendTile } from './FeatureLegend'
  * It does not have to be paid any more. `design-system/desktop/` is compiled into THIS
  * bundle by Next and into the renderer by Vite (see `design-system/README.md`), and
  * `/design-system` has been rendering those components live on this site for as long as
- * the folder has existed. So the window below is `ModalHeader`, `Select`,
- * `SectionHeader`, `ItemGroup` and four `PlanItem`s — the same files Electron ships.
+ * the folder has existed. So the window below is `ModalHeader`, `SectionHeader`,
+ * `FilterBar`, `ItemGroup` and five `PlanItem`s — the same files Electron ships.
  * A row that changes shape in the app changes shape here, with nobody to remember it.
  *
  * WHAT MAKES THAT WORK IS THE GROUND, and it is the only piece of stagecraft in the
@@ -41,9 +41,10 @@ import { FeatureLegend, LegendTile } from './FeatureLegend'
  *      is right for a dialog and useless for a picture of one. Its panel is three
  *      classes — `bg-bg-secondary`, `rounded-2xl`, a shadow — and those are spelled
  *      below. The HEADER inside it is the real component.
- *   2. THE FILTER BAR'S BOX. `PlanFilters` lives in the app (it reads the store and the
- *      catalogue); what it draws is a `Select` and a count in a bordered band, so the
- *      band is here and the control is the app's.
+ *   2. WHICH CONTROLS THE BAR CARRIES. `FilterBar` is the design system's and draws the
+ *      band; `buildPlanFilters` in `pages/Plans/PlanFilters.tsx` decides what goes in it
+ *      (a status picker, the search box, a repository picker) and reads the catalogue to
+ *      do it, so that list is rebuilt here, control for control, in the same order.
  *   3. THE LIVE PILL. `LiveIndicator` is the app's too, and it reports a connection this
  *      page has no opinion about. Ten classes, drawn from the same tokens.
  *
@@ -84,14 +85,17 @@ const INERT = { inert: '' } as unknown as { inert?: boolean }
 const noop = () => undefined
 
 /**
- * `PlanRow`'s own table, copied — the two statuses, the plate each is drawn on and the
- * word that goes on it. `green` once the tickets exist, `yellow` while the spec is still
- * being written, which is what `STATUS_LOOK` in `pages/Plans/PlanRow.tsx` says and what
- * the webapp's `/plans` list says too.
+ * `PlanRow`'s own table, copied — the five statuses, the plate each is drawn on and the
+ * word that goes on it, in `PLAN_STATUSES`' order (`desktop/src/types.ts`), which is also
+ * the order the status picker lists them in. `yellow` while the spec is being written,
+ * `green` once the tickets exist; after that the plan's own page sets it by hand.
  */
 const STATUS_LOOK = {
-  planned: { tone: 'green', labelKey: 'site.planCard.statusPlanned' },
   planning: { tone: 'yellow', labelKey: 'site.planCard.statusPlanning' },
+  planned: { tone: 'green', labelKey: 'site.planCard.statusPlanned' },
+  in_progress: { tone: 'purple', labelKey: 'site.planCard.statusInProgress' },
+  done: { tone: 'blue', labelKey: 'site.planCard.statusDone' },
+  abandoned: { tone: 'red', labelKey: 'site.planCard.statusAbandoned' },
 } as const satisfies Record<string, { tone: StatusTone; labelKey: MessageKey }>
 
 /**
@@ -104,7 +108,8 @@ const CHECKOUT = { label: 'acme/checkout-api', color: PROJECT_COLORS[0] }
 const BILLING = { label: 'acme/billing-web', color: PROJECT_COLORS[1] }
 
 /**
- * Four invented planning sessions on those two repositories.
+ * Five invented planning sessions on those two repositories, one per status the list can
+ * hold but `abandoned`, so the column of plates shows what the picker offers.
  *
  * The TITLES and the IDEAS are prose, so they are catalogue keys. The numbers are the
  * database's own sequence within an organization (`PlanIdBadge`), the names are people,
@@ -112,8 +117,10 @@ const BILLING = { label: 'acme/billing-web', color: PROJECT_COLORS[1] }
  * they arrive, so all three are literals here.
  *
  * The dates are keys because they are PHRASED — `relative.ago` wrapped around
- * `relative.days` — and the two languages phrase them differently. So is the ticket
- * count, which the app words and pluralises before the component ever sees it.
+ * `relative.hours` or `relative.days` — and the two languages phrase them differently. So
+ * are the ticket and comment counts, which the app words and pluralises before the
+ * component ever sees them. A plan nobody has commented on has no comment chip at all,
+ * which is `commentCountLabel`'s rule in `PlanRow.tsx`.
  *
  * NEWEST FIRST, which is the order the list is read in: `planRecency` sorts on when the
  * session was STARTED, so the dates run down the column instead of contradicting it.
@@ -127,22 +134,35 @@ const PLANS: readonly {
   repository: { label: string; color: string }
   author: string
   tickets: MessageKey
+  comments?: MessageKey
 }[] = [
+  {
+    number: 16,
+    title: 'site.planCard.plan5',
+    idea: 'site.planCard.idea5',
+    status: 'planning',
+    when: 'site.planCard.when5',
+    repository: BILLING,
+    author: 'Lucas Martel',
+    tickets: 'site.planCard.tickets5',
+    comments: 'site.planCard.comments5',
+  },
   {
     number: 14,
     title: 'site.planCard.plan1',
     idea: 'site.planCard.idea1',
-    status: 'planned',
+    status: 'in_progress',
     when: 'site.planCard.when1',
     repository: CHECKOUT,
     author: 'Camille Roux',
     tickets: 'site.planCard.tickets1',
+    comments: 'site.planCard.comments1',
   },
   {
     number: 13,
     title: 'site.planCard.plan2',
     idea: 'site.planCard.idea2',
-    status: 'planning',
+    status: 'planned',
     when: 'site.planCard.when2',
     repository: BILLING,
     author: 'Théo Vasseur',
@@ -152,17 +172,18 @@ const PLANS: readonly {
     number: 11,
     title: 'site.planCard.plan3',
     idea: 'site.planCard.idea3',
-    status: 'planned',
+    status: 'done',
     when: 'site.planCard.when3',
     repository: CHECKOUT,
     author: 'Nadia Bahri',
     tickets: 'site.planCard.tickets3',
+    comments: 'site.planCard.comments3',
   },
   {
     number: 9,
     title: 'site.planCard.plan4',
     idea: 'site.planCard.idea4',
-    status: 'planned',
+    status: 'done',
     when: 'site.planCard.when4',
     repository: BILLING,
     author: 'Camille Roux',
@@ -231,6 +252,139 @@ const LEGEND: readonly {
 ]
 
 /**
+ * THE WINDOW ALONE — the themed panel, the real `ModalHeader` and the page under it —
+ * without the plate or the legend around it.
+ *
+ * EXPORTED FOR `/desktop`'s Plans band, which puts the same window on a plate of its own
+ * at the band's full width, the way `TasksWindow` serves two pages.
+ *
+ * `className` is the crop's: margins and a minimum width, never the ground or the radius.
+ */
+export function PlansWindow({ className = '' }: { className?: string }) {
+  const { t } = useT()
+
+  return (
+    <div
+      style={{ ...THEME.vars, colorScheme: THEME.appearance } as CSSProperties}
+      className={`overflow-hidden rounded-2xl bg-bg-secondary text-ink shadow-lift ${className}`}
+    >
+      {/* THE REAL HEADER. `PageModal` renders this exact element with this exact prop
+          shape; what is not here is the portal, the backdrop and the two sizes it
+          travels between, none of which a picture has any use for.
+
+          THE FOUR TABS OF THE ONE PAGE OVERLAY, in the sidebar's own order — `PAGE_TABS`
+          in `desktop/src/renderer/App.tsx`, glyphs included. "Plans" and "Skills" are
+          printed rather than translated, the call `lib/features.ts` makes for the same
+          two words: the app's own French catalogue spells both exactly the same way.
+
+          The live pill on the right is `headerRight`, which the app passes on the Plans
+          tab and on no other. */}
+      <ModalHeader
+        title="Plans"
+        icon={NotebookPen}
+        tabs={{
+          ariaLabel: 'Plans',
+          activeKey: 'plans',
+          items: [
+            { key: 'plans', label: 'Plans', icon: NotebookPen },
+            { key: 'tasks', label: t('site.planCard.tabTasks'), icon: ListTodo },
+            { key: 'skills', label: 'Skills', icon: Sparkles },
+            { key: 'settings', label: t('site.planCard.tabRepositories'), icon: FolderGit2 },
+          ],
+          onSelect: noop,
+        }}
+        right={<LivePill label={t('site.planCard.live')} />}
+        fullScreen={{ expanded: false, onToggle: noop, expandTitle: '', collapseTitle: '' }}
+        onClose={noop}
+        closeTitle=""
+      />
+
+      {/* `px-6 pb-6` is what `PlansPage` hands its sweep layers, and the `max-w-6xl` cap
+          beside it is wider than this drawing at every width, so only the gutter is
+          spelled. The page's own column is `flex flex-col gap-3 pt-6`: the heading, the
+          bar, then the list. */}
+      <div className="px-6 pb-6">
+        <div className="flex flex-col gap-3 pt-6">
+          {/* The count is what is SHOWING, worded by the app (`plans.count.*`). */}
+          <SectionHeader
+            icon={NotebookPen}
+            title={t('site.planCard.section')}
+            count={t('site.planCard.count')}
+            spacing="none"
+          />
+
+          {/* `buildPlanFilters`, control for control: the status picker BEFORE the search
+              box, the repository picker after it, both at the app's 208px and both at
+              rest on "everything", which is what the page opens on. No `paneRef`,
+              because nothing here scrolls: the bar sits unpinned, the honest state for a
+              picture of a page. */}
+          <FilterBar
+            className="-mx-6 px-6"
+            before={[
+              {
+                kind: 'select',
+                id: 'status',
+                value: '',
+                options: (Object.keys(STATUS_LOOK) as (keyof typeof STATUS_LOOK)[]).map((status) => ({
+                  value: status,
+                  label: t(STATUS_LOOK[status].labelKey),
+                  color: `rgb(var(--c-${STATUS_LOOK[status].tone}))`,
+                })),
+                onChange: noop,
+                placeholder: t('site.planCard.allStatuses'),
+                clearLabel: t('site.planCard.allStatuses'),
+                width: 208,
+                icon: CircleDot,
+                active: false,
+              },
+            ]}
+            search={{ value: '', onChange: noop, placeholder: t('site.planCard.search') }}
+            after={[
+              {
+                kind: 'select',
+                id: 'repo',
+                value: '',
+                options: [
+                  { value: 'checkout', label: CHECKOUT.label },
+                  { value: 'billing', label: BILLING.label },
+                ],
+                onChange: noop,
+                placeholder: t('site.planCard.allRepos'),
+                clearLabel: t('site.planCard.allRepos'),
+                width: 208,
+                icon: FolderGit2,
+                active: false,
+              },
+            ]}
+          />
+
+          <ItemGroup>
+            {PLANS.map((plan) => (
+              <PlanItem
+                key={plan.number}
+                number={plan.number}
+                title={t(plan.title)}
+                status={{
+                  label: t(STATUS_LOOK[plan.status].labelKey),
+                  tone: STATUS_LOOK[plan.status].tone,
+                }}
+                when={t(plan.when)}
+                idea={t(plan.idea)}
+                repository={plan.repository}
+                author={{ name: plan.author, avatarUrl: null }}
+                tickets={t(plan.tickets)}
+                comments={plan.comments ? t(plan.comments) : undefined}
+                onSelect={noop}
+              />
+            ))}
+          </ItemGroup>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
  * `legend` — the box of definitions under the drawing, on by default the way the Tasks
  * and Agents drawings have it. `/features` wants it; a caller that already has a
  * paragraph beside the picture can turn it off.
@@ -248,125 +402,23 @@ export function PlanModalMockup({ legend = true }: { legend?: boolean } = {}) {
 
           `pb-0` AND A NEGATIVE MARGIN BELOW: the window runs 48px past the bottom of the
           plate and `overflow-hidden` cuts it. A chronology is never something you have
-          seen all of, so the frame says so and the fourth row pays for it. */}
+          seen all of, so the frame says so and the last row pays for it. */}
       <div
         aria-hidden
         {...INERT}
         className="overflow-hidden rounded-2xl bg-tone-sky p-5 pb-0 sm:p-12 sm:pb-0"
       >
-        {/* THE THEME GROUND. Everything below this element resolves the app's colour
-            roles against these variables — see the file header. `text-ink` is on it and
-            not only inside it, because anything drawn in `currentColor` would otherwise
-            climb past it to the site's own near-black ink and come out invisible.
+        {/* `min-w-[720px]` IS WHAT MAKES THIS A WINDOW RATHER THAN A RESPONSIVE PANEL,
+            and 720 is not a taste: it is the width the window has at `/features`' own
+            measure (816px of column, less the plate's 48px gutters), so nothing moves on a
+            desktop and the whole rule is about what happens below it.
 
-            `colorScheme` so a scrollbar or a form control inside the window is drawn
-            dark, which is what the app's own `Stage` does on `/design-system`. */}
-        <div
-          style={{ ...THEME.vars, colorScheme: THEME.appearance } as CSSProperties}
-          /* `min-w-[720px]` IS WHAT MAKES THIS A WINDOW RATHER THAN A RESPONSIVE PANEL,
-             and 720 is not a taste: it is the width the window has at the page's own
-             measure (816px of column, less the plate's 48px gutters), so nothing moves
-             on a desktop and the whole rule is about what happens below it.
-
-             Without it the window SHRANK to the phone, and a real component shrinks
-             honestly — `PlanItem` gives its title `min-w-0 flex-1`, so at 390px the
-             status plate and the date kept their sizes and the title was squeezed to a
-             single letter. The neighbouring drawings are drawn wider than a phone on
-             purpose for exactly this reason (see the `min-w-0` note in
-             `FeaturesContent`); they simply have literals stiff enough to stay that way
-             on their own, and this one does not. The plate's `overflow-hidden` crops the
-             right edge, which is the same crop the bottom already takes. */
-          className="-mb-12 min-w-[720px] overflow-hidden rounded-2xl bg-bg-secondary text-ink shadow-lift"
-        >
-          {/* THE REAL HEADER. `PageModal` renders this exact element with this exact
-              prop shape; what is not here is the portal, the backdrop and the two sizes
-              it travels between, none of which a picture has any use for. */}
-          <ModalHeader
-            title="Plans"
-            icon={NotebookPen}
-            /* THE FOUR TABS OF THE ONE PAGE OVERLAY, in the sidebar's own order —
-               `PAGE_TABS` in `desktop/src/renderer/App.tsx`, glyphs included. They are
-               in the drawing because the window really does host all four: a plan's
-               ticket rows open the board, a ticket's page names the plan it came out
-               of, and no overlay closes in between.
-
-               "Plans" and "Skills" are printed rather than translated, the call
-               `lib/features.ts` makes for the same two words: the app's own French
-               catalogue spells both exactly the same way. */
-            tabs={{
-              ariaLabel: 'Plans',
-              activeKey: 'plans',
-              items: [
-                { key: 'plans', label: 'Plans', icon: NotebookPen },
-                { key: 'tasks', label: t('site.planCard.tabTasks'), icon: ListTodo },
-                { key: 'skills', label: 'Skills', icon: Sparkles },
-                { key: 'settings', label: t('site.planCard.tabRepositories'), icon: FolderGit2 },
-              ],
-              onSelect: noop,
-            }}
-            right={<LivePill label={t('site.planCard.live')} />}
-            fullScreen={{ expanded: false, onToggle: noop, expandTitle: '', collapseTitle: '' }}
-            onClose={noop}
-            closeTitle=""
-          />
-
-          {/* `px-6` and a `max-w-6xl` centred column are what `PlansPage` hands its
-              sweep layers; the drawing is narrower than that cap at every width, so only
-              the gutter is spelled. */}
-          <div className="px-6 pb-6">
-            {/* THE FILTER BAR. Full-bleed via `-mx-6 px-6`, as `PlanFilters` is: what
-                scrolls past has to go under an opaque band edge to edge. The hairline
-                under it is always drawn there, because the list below opens on a rule of
-                its own and a band with no edge would read as its first row. */}
-            <div className="-mx-6 flex items-center gap-3 border-b border-line-subtle px-6 py-3">
-              <Select
-                value=""
-                options={[
-                  { value: 'checkout', label: CHECKOUT.label, color: CHECKOUT.color },
-                  { value: 'billing', label: BILLING.label, color: BILLING.color },
-                ]}
-                onChange={noop}
-                placeholder={t('site.planCard.allRepos')}
-                clearLabel={t('site.planCard.allRepos')}
-                width={224}
-                icon={FolderGit2}
-              />
-              <span className="ml-auto flex-shrink-0 text-xs text-text-secondary/50">
-                {t('site.planCard.count')}
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-3 pt-4">
-              {/* `spacing="none"`, because the wrapper's `gap-3` already spaces the
-                  heading from what it heads — the arrangement the real page uses. */}
-              <SectionHeader
-                icon={NotebookPen}
-                title={t('site.planCard.section')}
-                spacing="none"
-              />
-
-              <ItemGroup>
-                {PLANS.map((plan) => (
-                  <PlanItem
-                    key={plan.number}
-                    number={plan.number}
-                    title={t(plan.title)}
-                    status={{
-                      label: t(STATUS_LOOK[plan.status].labelKey),
-                      tone: STATUS_LOOK[plan.status].tone,
-                    }}
-                    when={t(plan.when)}
-                    idea={t(plan.idea)}
-                    repository={plan.repository}
-                    author={{ name: plan.author, avatarUrl: null }}
-                    tickets={t(plan.tickets)}
-                    onSelect={noop}
-                  />
-                ))}
-              </ItemGroup>
-            </div>
-          </div>
-        </div>
+            Without it the window SHRANK to the phone, and a real component shrinks
+            honestly — `PlanItem` gives its title `min-w-0 flex-1`, so at 390px the status
+            plate and the date kept their sizes and the title was squeezed to a single
+            letter. The plate's `overflow-hidden` crops the right edge, which is the same
+            crop the bottom already takes. */}
+        <PlansWindow className="-mb-12 min-w-[720px]" />
       </div>
 
       {legend ? (

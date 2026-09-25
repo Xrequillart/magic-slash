@@ -498,6 +498,15 @@ export const marketingEn = {
    * claims under each of the two split bands. NO EM DASH anywhere in it, by the product
    * owner's standing rule for new site copy.
    */
+  // The plans band, first under the hero: an idea becomes a spec you review, and only then
+  // an epic and its stories (`skills/magic-plan/SKILL.md`, Steps 6 and 7). The Plans
+  // window under it is `PlanModalMockup`'s.
+  'site.desktopPage.plansTitle': 'The idea first, the tickets after.',
+  'site.desktopPage.plansSubtitle':
+    'Describe an idea to /magic:plan: it becomes a spec you read, comment on and approve, then an epic and its stories on Jira or GitHub. Nothing is filed before you say yes. Every plan stays listed here, yours and your team’s, with the tickets that came out of it.',
+  'site.desktopPage.plansPointSpec': 'A spec to review before a single ticket exists',
+  'site.desktopPage.plansPointApprove': 'Commented on, then approved, by you',
+  'site.desktopPage.plansPointTickets': 'Every plan keeps its link to its tickets',
   // The backlog band: the Tasks window under the claim. "Launch pad" because the sentence
   // has to say what the list is FOR, not that the list exists: a ticket in it is one click
   // from an agent.
@@ -1625,13 +1634,18 @@ export const marketingEn = {
   'site.planCard.tabRepositories': 'Repositories',
   'site.planCard.live': 'Live',
   'site.planCard.allRepos': 'All repositories',
-  'site.planCard.count': '4 plans',
+  'site.planCard.allStatuses': 'All statuses',
+  'site.planCard.search': 'Search by title or idea…',
+  'site.planCard.count': '5 plans',
   'site.planCard.section': 'Planning sessions',
-  // The two states, and neither is typed by anybody: the app derives them from whether
-  // the tickets exist. `plans.status.*`.
+  // The five states, `plans.status.*`. The first two follow the skill (the spec is being
+  // written, the tickets are filed); the last three are set by hand on the plan's page.
   'site.planCard.statusPlanned': 'Tickets filed',
   'site.planCard.statusPlanning': 'Being written',
-  // Four invented planning sessions on the two repositories the Tasks drawing above
+  'site.planCard.statusInProgress': 'In progress',
+  'site.planCard.statusDone': 'Done',
+  'site.planCard.statusAbandoned': 'Abandoned',
+  // Five invented planning sessions on the two repositories the Tasks drawing above
   // already invented. The titles and the ideas are prose, so they are copy; the numbers,
   // the repositories and the authors are not.
   'site.planCard.plan1': 'Rewrite the checkout funnel',
@@ -1642,34 +1656,42 @@ export const marketingEn = {
   'site.planCard.idea3': 'a retry that arrives twice must never charge twice',
   'site.planCard.plan4': 'Payment reminders in the customer’s language',
   'site.planCard.idea4': 'the locale on the account, not the one the browser happened to send',
+  'site.planCard.plan5': 'Refunds from the order page',
+  'site.planCard.idea5': 'a partial refund in two clicks, without opening the payment provider’s dashboard',
   // `relative.ago` wrapped around `relative.days` and `relative.weeks`, which is what the
   // rows really print. Newest first, the order `planRecency` sorts them in.
   'site.planCard.when1': '2d ago',
   'site.planCard.when2': '4d ago',
   'site.planCard.when3': '1w ago',
   'site.planCard.when4': '3w ago',
+  'site.planCard.when5': '3h ago',
   // Already counted and already worded by the app, `plans.tickets.*` — "no ticket"
   // rather than a hidden chip. Three of the four spell identically in French, hence
   // their lines in `i18n.test.ts`.
   'site.planCard.tickets1': '9 tickets',
-  'site.planCard.tickets2': 'no ticket',
+  'site.planCard.tickets2': '6 tickets',
   'site.planCard.tickets3': '5 tickets',
   'site.planCard.tickets4': '12 tickets',
+  'site.planCard.tickets5': 'no ticket',
+  // `plans.comments.*`, and a plan nobody has written on carries no chip at all.
+  'site.planCard.comments1': '4 comments',
+  'site.planCard.comments3': '1 comment',
+  'site.planCard.comments5': '2 comments',
   // The legend under the drawing. Four things the screen does that a still image cannot
   // show, each checked against `pages/Plans/index.tsx`, `PlanRow.tsx` and
   // `PlanDetailPage.tsx` rather than written from the feature's reputation.
   'site.planCard.legendSharedTitle': 'Yours and your team’s, in one list',
   'site.planCard.legendSharedDesc':
     'One chronology rather than a personal tab and a shared one. A plan is read for what it says, so the author is a column on the row instead of a place you have to go.',
-  'site.planCard.legendStatusTitle': 'Two states, neither set by hand',
+  'site.planCard.legendStatusTitle': 'Where each plan stands',
   'site.planCard.legendStatusDesc':
-    'Being written while the spec is still open, Tickets filed once the epic and its stories exist. The colour follows the tickets, not a status somebody remembered to change.',
+    'Being written while the spec is still open, Tickets filed once the epic and its stories exist: those two follow the skill. After that you move it to In progress, Done or Abandoned from the plan’s own page.',
   'site.planCard.legendSpecTitle': 'The spec opens in full',
   'site.planCard.legendSpecDesc':
     'A row opens the plan itself as a page of its own: a long markdown document with its headings, its tables and its code, and the tickets that came out of it.',
-  'site.planCard.legendFilterTitle': 'Narrowed to one repository',
+  'site.planCard.legendFilterTitle': 'Narrowed by status, words or repository',
   'site.planCard.legendFilterDesc':
-    'The picker keeps the whole list one click away, and where you left it is remembered on your account rather than on this machine.',
+    'A status, a word from the title or the idea, a repository: each one narrows the list and one click undoes it. The repository you left it on is remembered on your account rather than on this machine.',
   // ── The /features Repositories settings ────────────────────────────────────
   // The app's Repositories window, drawn with its own components (`ReposSettingsMockup`).
   // Same rule as the Tasks drawing above: the chrome is the app's own sentences from

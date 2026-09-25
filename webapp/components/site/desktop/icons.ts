@@ -15,6 +15,7 @@ import {
   Eye,
   EyeOff,
   FileDiff,
+  FileText,
   FolderGit2,
   Gauge,
   GitBranch,
@@ -103,4 +104,5 @@ export const DESKTOP_ICONS: Record<DesktopIcon, LucideIcon> = {
   Bot,
   Tags,
   BadgeCheck,
+  FileText,
 }

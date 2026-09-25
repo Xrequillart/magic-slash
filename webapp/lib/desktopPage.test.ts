@@ -10,6 +10,7 @@ import {
   SIDEBAR_TOUR,
   STATUS_STEP_TITLE,
   TASKS_POINTS,
+  PLANS_POINTS,
   pick,
 } from './desktopPage'
 import { FEATURE_FAMILIES, isLiteralTitle } from './features'
@@ -31,7 +32,7 @@ const webapp = (relative: string) => fileURLToPath(new URL(relative, import.meta
 function everyKey(): string[] {
   const keys: string[] = [STATUS_STEP_TITLE]
   for (const band of Object.values(DESKTOP_BANDS)) keys.push(band.title, band.subtitle)
-  for (const point of [...TASKS_POINTS, ...AGENTS_POINTS]) keys.push(point.label)
+  for (const point of [...PLANS_POINTS, ...TASKS_POINTS, ...AGENTS_POINTS]) keys.push(point.label)
   for (const fact of AROUND_FACTS) {
     if (!isLiteralTitle(fact.title)) keys.push(fact.title)
     keys.push(fact.description)
@@ -81,6 +82,10 @@ describe('the /desktop bands', () => {
       'site.tasksCard.legendStartDesc',
       'site.tasksCard.legendTrackersDesc',
       'site.tasksCard.legendFieldsDesc',
+      'site.planCard.legendSharedDesc',
+      'site.planCard.legendStatusDesc',
+      'site.planCard.legendSpecDesc',
+      'site.planCard.legendFilterDesc',
     ]
     for (const key of [...everyKey(), ...legend]) {
       expect(site(key), `en.${key}`).not.toContain('—')
@@ -89,6 +94,7 @@ describe('the /desktop bands', () => {
   })
 
   it('makes three claims under each split band', () => {
+    expect(PLANS_POINTS).toHaveLength(3)
     expect(TASKS_POINTS).toHaveLength(3)
     expect(AGENTS_POINTS).toHaveLength(3)
   })

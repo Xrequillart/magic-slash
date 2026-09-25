@@ -302,12 +302,13 @@ describe('message catalogues', () => {
         // word in both languages, and the app's own French catalogue leaves it alone
         // too. Its neighbour does not ("semaine"), which is why only this half is here.
         'site.usageCard.sessionShort',
-        // The Plans mockup. Three of its four ticket counts are the app's own wording
+        // The Plans mockup. Four of its five ticket counts are the app's own wording
         // and spell identically in French ("aucun ticket" does not, which is why the
-        // fourth is absent), and so does the count of plans under the filter bar — the
+        // fifth is absent), and so does the count of plans beside the heading — the
         // app's `plans.count.other` is "{count} plans" in both catalogues.
         'site.planCard.count',
         'site.planCard.tickets1',
+        'site.planCard.tickets2',
         'site.planCard.tickets3',
         'site.planCard.tickets4',
         // The Settings drawing prints the app's own tab labels, and three of the eleven

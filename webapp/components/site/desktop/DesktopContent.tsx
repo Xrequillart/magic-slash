@@ -1,6 +1,7 @@
 'use client'
 
 import { DesktopHero } from './DesktopHero'
+import { PlansBand } from './PlansBand'
 import { TasksBand } from './TasksBand'
 import { AgentsBand } from './AgentsBand'
 import { SidebarScrollBand } from './SidebarScrollBand'
@@ -8,14 +9,17 @@ import { AroundBand } from './AroundBand'
 import { GuardrailsBand } from './GuardrailsBand'
 
 /**
- * magic-slash.io/desktop — the app, in six bands.
+ * magic-slash.io/desktop — the app, in seven bands.
  *
  * THIS FILE WAS THE HERO, and the hero is now `DesktopHero.tsx`, unchanged: the pain in
  * a struck-through headline, the grey pile against the app's window, four highlights. It
  * shipped alone for a few rounds, and its own note said what it still owed — what the
  * split view is for, how the app keeps several agents apart, the info sidebar, the checks
- * the first launch makes. The five bands under it are those debts, paid in this order:
+ * the first launch makes. The bands under it are those debts, paid in this order:
  *
+ *   • `PlansBand` — WHERE THE TICKETS COME FROM: an idea turned into a spec you approve,
+ *     then an epic and its stories, and the Plans window that keeps every plan listed.
+ *     Added in front of the backlog by the product owner, in `TasksBand`'s shape.
  *   • `TasksBand` — WHERE AN AGENT COMES FROM: the backlog window, a ticket one click
  *     from an agent. Copy first, the window full width under it.
  *   • `AgentsBand` — HOW SEVERAL ARE KEPT APART: the agent list magnified, one worktree
@@ -53,6 +57,7 @@ export function DesktopContent() {
   return (
     <>
       <DesktopHero />
+      <PlansBand />
       <TasksBand />
       <AgentsBand />
       <SidebarScrollBand />
