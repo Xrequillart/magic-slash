@@ -228,18 +228,6 @@ const MAGIC_SLASH_BASE_PERMISSIONS = [
   'Bash(git worktree:*)',
   'Bash(git rebase:*)',
   'Bash(git reset:*)',
-  // The multi-repo flows address a sibling worktree as `git -C <path> <subcommand>`,
-  // always read-only (branch, check-ignore, log, ls-files, status). A rule with the
-  // path in the MIDDLE is a glob rather than a prefix, and whether the matcher honours
-  // one is a Claude Code detail this file cannot verify. Included because the failure
-  // is safe in the direction that matters: a rule that never matches costs a prompt,
-  // never a wider grant. If these turn out to be dead weight, the durable fix is for
-  // the skills to `cd` into the worktree instead of reaching into it with `-C`.
-  'Bash(git -C * status:*)',
-  'Bash(git -C * branch:*)',
-  'Bash(git -C * log:*)',
-  'Bash(git -C * ls-files:*)',
-  'Bash(git -C * check-ignore:*)',
   // ── package managers ───────────────────────────────────────────────────────
   // Bare `install` — restoring the dependencies a freshly created worktree is missing,
   // from the repository's own lockfile. NOT `install <package>`, which fetches and runs
@@ -332,6 +320,17 @@ const LEGACY_MAGIC_SLASH_PERMISSIONS = [
   'Bash(bun *)',
   'Bash(jq *)',
   'Bash(gh *)',
+  // The multi-repo flows' `git -C <path> <subcommand>`, granted until Claude Code began
+  // warning about them in yellow on every launch. As written, `*` then `:*`, the `*` is
+  // matched literally, so they never approved anything. Spelled as a glob they would,
+  // and too much: a wildcard before the subcommand also swallows `-c core.pager=…`,
+  // which runs any command without a prompt. No safe spelling exists; the multi-repo
+  // steps take the prompt, which is all they ever had.
+  'Bash(git -C * status:*)',
+  'Bash(git -C * branch:*)',
+  'Bash(git -C * log:*)',
+  'Bash(git -C * ls-files:*)',
+  'Bash(git -C * check-ignore:*)',
   `Read(${path.join(os.homedir(), '.config', 'magic-slash', '*')})`,
 ]
 
