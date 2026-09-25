@@ -12,7 +12,6 @@ import {
 import { Reveal } from '../Reveal'
 import { ResolveRunTerminal } from './ResolveRunTerminal'
 import { HomeHeading, HomeSection } from './Shell'
-import { CommitPrArt, MergeCleanArt, PlanSpecArt, StartAgentArt } from './WorkflowArt'
 
 /**
  * The band between the two pillars and the app's own window: WHAT WORKING WITH IT IS
@@ -159,14 +158,71 @@ import { CommitPrArt, MergeCleanArt, PlanSpecArt, StartAgentArt } from './Workfl
  */
 const VISUAL: Partial<Record<WorkflowStepId, ToneCardVisual>> = {
   commit: 'center',
+  // The illustration is cropped by the card's bottom-right corner — see `PlanIdeaArt`.
+  plan: 'corner',
+  // A whole figure, complete in itself: centred in the height the copy leaves.
+  start: 'center',
+  // The done card's figure is cropped by the card's bottom edge instead — `end`, the
+  // default, pins it there; see `DoneIdeaArt`.
+}
+
+/**
+ * THE PLAN CARD'S ILLUSTRATION, from the site's own set (`illustration-lightbulb.svg`), in
+ * place of the spec panel the card drew before — the owner's call. `PlanSpecArt` stays in
+ * `WorkflowArt.tsx`: `/workflow`'s control band still draws it.
+ *
+ * BIG AND CROPPED: `h-[32rem]`, and pushed past the card's bottom and right edges by the
+ * negative margins, so the card's `overflow-hidden` and its radius cut the corner. The
+ * card's `corner` slot is what puts it there. The file's `viewBox` is cropped to the
+ * drawing's measured box (`114 25 772 950` out of a 1000² canvas), so the overhang is the
+ * drawing's and not dead margin. `alt=""`: the title beside it says what it says.
+ */
+function PlanIdeaArt() {
+  return (
+    <img
+      src="/img/illustration-lightbulb.svg"
+      alt=""
+      className="-mb-24 -mr-14 h-[32rem] w-auto max-w-none shrink-0 pt-2"
+    />
+  )
+}
+
+/**
+ * THE START CARD'S ILLUSTRATION, from the same set (`illustration-message.svg`), in place of
+ * the ticket-and-agent panel the card drew before — the owner's call, beside the plan card's.
+ * A whole figure rather than a crop, so it is centred and complete; its `viewBox` is cropped
+ * to the drawing's measured box (`105 25 790 950`).
+ */
+function StartIdeaArt() {
+  return <img src="/img/illustration-message.svg" alt="" className="mx-auto h-60 w-auto px-7 pb-7" />
+}
+
+/**
+ * THE COMMIT CARD'S AND THE DONE CARD'S, from the same set, where the git graph and the
+ * clean-up panel were — the owner's call, so the four cards around the review terminal are
+ * all illustrations now. Same treatment as the start card's: whole, centred, and each file
+ * cropped to its measured box (`115 25 770 950` for the vault, `176 25 648 950` for the
+ * crowned figure).
+ */
+function CommitIdeaArt() {
+  return <img src="/img/illustration-vault.svg" alt="" className="mx-auto h-60 w-auto px-7 pb-7" />
+}
+
+/**
+ * BIGGER AND CROPPED AT THE BOTTOM, at the owner's ask: `h-[22rem]` pushed 80px past the
+ * card's bottom edge, so the card's `overflow-hidden` cuts the feet and the figure reads as
+ * rising into the card rather than standing in it.
+ */
+function DoneIdeaArt() {
+  return <img src="/img/illustration-king.svg" alt="" className="mx-auto -mb-20 h-[22rem] w-auto max-w-none" />
 }
 
 const ART: Record<WorkflowStepId, () => React.ReactElement> = {
-  plan: PlanSpecArt,
-  start: StartAgentArt,
-  commit: CommitPrArt,
+  plan: PlanIdeaArt,
+  start: StartIdeaArt,
+  commit: CommitIdeaArt,
   review: ResolveRunTerminal,
-  done: MergeCleanArt,
+  done: DoneIdeaArt,
 }
 
 /**

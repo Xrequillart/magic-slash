@@ -597,10 +597,15 @@ export type ToneCardLayout = 'stacked' | 'beside'
  * object leaves a pool of empty ground above it that reads as a mistake rather than as
  * air; centred, the card reads as a thing with something in the middle of it.
  *
- * IGNORED IN A `beside` ROW, where the visual is already centred on the row's cross axis
- * and there is no leftover height to place it in.
+ * `corner` is for an illustration CROPPED BY THE CARD'S BOTTOM-RIGHT CORNER: pinned to the
+ * bottom and to the right, in either layout, so a drawing that runs past both edges is cut
+ * by the card's own radius there. The visual supplies the overhang (negative margins); the
+ * card only puts it in the corner.
+ *
+ * `end` and `center` are IGNORED IN A `beside` ROW, where the visual is already centred on
+ * the row's cross axis and there is no leftover height to place it in. `corner` is not.
  */
-export type ToneCardVisual = 'end' | 'center'
+export type ToneCardVisual = 'end' | 'center' | 'corner'
 
 export function ToneCard({
   tone = 'mist',
@@ -684,7 +689,9 @@ export function ToneCard({
         // these visuals are deliberately wider than their box.
         <div
           className={
-            beside ? 'min-w-0 flex-1 md:self-center' : visual === 'center' ? 'my-auto' : 'mt-auto'
+            visual === 'corner'
+              ? cx('mt-auto flex min-w-0 justify-end', beside ? 'md:flex-1 md:self-end' : undefined)
+              : beside ? 'min-w-0 flex-1 md:self-center' : visual === 'center' ? 'my-auto' : 'mt-auto'
           }
         >
           {children}
