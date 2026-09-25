@@ -2685,7 +2685,7 @@ export const marketingEn = {
   'site.terms.askLink': 'Ask a question on GitHub',
 
   // ── Footer ─────────────────────────────────────────────────────────────────
-  'site.footer.tagline': 'Your product, built.',
+  'site.footer.tagline': 'From idea to merged PR, Magic Slash runs the cycle. You make the calls.',
   'site.footer.product': 'Product',
   'site.footer.features': 'Features',
   'site.footer.commands': 'The commands',

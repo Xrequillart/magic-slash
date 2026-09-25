@@ -1568,7 +1568,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.terms.askLink': 'Poser une question sur GitHub',
 
   // ── Footer ─────────────────────────────────────────────────────────────────
-  'site.footer.tagline': 'Votre produit, construit.',
+  'site.footer.tagline': 'De l’idée à la PR mergée, Magic Slash fait tourner le cycle. C’est vous qui tranchez.',
   'site.footer.product': 'Produit',
   'site.footer.features': 'Fonctionnalités',
   'site.footer.commands': 'Les commandes',
