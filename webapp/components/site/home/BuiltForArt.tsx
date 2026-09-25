@@ -1,14 +1,12 @@
 'use client'
 
 import { type HTMLAttributes, useEffect, useState } from 'react'
-import { ChevronDown, ChevronsUp, ListTodo, RefreshCw, Search, X } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { Switch } from '@ds/desktop'
-import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
 import { isStill } from '@/lib/stillness'
 import { AppGround } from '../AppGround'
-import { GithubMark } from '../features/TasksModalMockup'
-import { JiraMark } from '../features/TicketCardMockup'
+import { TasksWindow } from '../features/TasksModalMockup'
 import { Pointer } from '../Pointer'
 
 /**
@@ -66,289 +64,29 @@ const PANEL_GROUND = 'bg-canvas'
 /* ── ① Tasks ────────────────────────────────────────────────────────────────────── */
 
 /**
- * The Tasks window, IN DARK, cropped by the card's bottom edge.
+ * The Tasks window, DRAWN WITH THE APP'S OWN COMPONENTS, cropped by the card's bottom and
+ * right edges.
  *
- * IT IS `/features`'s OWN MOCKUP, ADAPTED, which the product owner asked for outright —
- * "reprendre la mockup tasks présente dans all features et tu l'adaptes pour la même dans
- * la card tasks, mets-la en dark mode comme dans la page all features". What replaced the
- * light three-row list that shipped first: the app's real screen, band for band, at the
- * size a card can hold.
+ * IT IS `/features`'s WINDOW, NOT A COPY OF IT: `TasksWindow` in `TasksModalMockup.tsx` is
+ * the themed panel with the real `ModalHeader` and the real `TaskBoard` — the file the
+ * desktop's Tasks page renders — given invented tickets. It replaces a card-scale tracing
+ * of a screen the app no longer has (a list of repository cards with a row per ticket);
+ * the app deals one repository's tickets into four columns now, and so does this.
  *
- * WHY DARK IS THE RIGHT CALL and not merely the one asked for. Every theme the app ships
- * is dark (`desktop/src/themes.ts`), so a light Tasks list was a screen the product does
- * not have — the one drawing in this band that was inventing rather than reproducing. It
- * now uses the same stand-in `TasksModalMockup` uses: `bg-ink` with the declared
- * white-alpha ramp (`onink-body`, `onink-dim`, `onink-faint`, `onink-rule`, `onink-tint`),
- * because this webapp has one light palette and the app runs its themes off CSS variables.
+ * AT THE APP'S OWN PIXELS, NOT SHRUNK. `min-w-[880px]` is the board's floor (see
+ * `TasksWindow`'s note), wider than this card, so the card's right edge cuts through the
+ * last column — Done, the one a reader can least act on — exactly as the plate on
+ * `/features` does. The HEIGHT is this wrapper's: a backlog is never something you have
+ * seen all of, so the frame stops partway down the columns and the card's bottom edge is
+ * the cut.
  *
- * ADAPTED AND NOT IMPORTED, and the difference is what the two surfaces are for.
- * `TasksModalMockup` is a full-width block on a page whose promise is completeness: it
- * draws the whole modal at the app's own pixel values, both repository cards with three
- * rows each, the four-control filter bar, and a legend under it. Dropped into a card two
- * columns wide it would be a 40% crop of a screenshot. So the same screen is drawn again
- * at card scale — the chrome, the section line, the filter bar, one GitHub card and one
- * Jira card — and everything that survived kept the source's geometry rather than being
- * re-eyeballed.
- *
- * BOTH TRACKERS, AND THAT IS WHY THE SECOND CARD IS HERE AT ALL. The card's description
- * claims GitHub and Jira in one list; a drawing with three GitHub rows would leave the
- * reader to take half of it on trust. A GitHub row carries `#number`, an `@login` and its
- * labels; a Jira row carries a `PROJ-123` key, a status pill and the epic it hangs off.
- * Two different second lines, and showing one of them is showing half the screen.
- *
- * THE COPY IS `site.tasksCard.*`, reused entirely — the chrome the app translates, and the
- * six invented ticket titles `/features` already had. Not one new catalogue entry, which
- * is the point of the family existing: two drawings of one screen, one set of words.
- *
- * CROPPED AT THE BOTTOM, and that took the card's whole layout with it. It shipped
- * `beside` — copy in a 24rem column, the window in the space left over, cut by the card's
- * right edge — and the product owner moved it: "pour les tâches tu peux mettre
- * l'illustration en bas ? et faire un crop en bas de l'illustration ? mets la description
- * en 100% en haut."
- *
- * IT IS THE BETTER SHAPE FOR THIS PARTICULAR DRAWING, and the reason is what a side crop
- * was costing. `beside` gave the window about 330px, which is less than half the modal —
- * so the cut fell through the middle of every ROW, taking the row links, the per-card
- * counts and the tail of each title. Stacked, the window gets the card's full width and
- * the crop moves to the bottom, where what it takes is the LAST ROW: a list that runs off
- * the frame rather than a screenshot sliced down its spine. That is `TasksModalMockup`'s
- * own crop, arrived at from the same direction — "a list that ends inside its own picture
- * is a list you have seen all of, and a backlog is never that".
- *
- * SO THERE IS NO `min-w-` LEFT. The panel is as wide as the card, and the negative bottom
- * margin is the only crop; the earlier `min-w-[28rem]` existed solely to give a horizontal
- * cut something to bite on and would now do nothing but re-introduce one.
+ * THE LEFT GUTTER STAYS, `pl-7`, so the window starts under the copy above it; there is no
+ * right gutter because there is nothing to its right but the crop.
  */
-const GITHUB_ROWS: readonly {
-  number: string
-  title: MessageKey
-  author: string
-  labels: readonly string[]
-  agent?: true
-}[] = [
-  { number: '#412', title: 'site.tasksCard.gh1', author: 'lmartel', labels: ['bug', 'payments'] },
-  { number: '#409', title: 'site.tasksCard.gh2', author: 'nadia-b', labels: ['enhancement'], agent: true },
-  { number: '#404', title: 'site.tasksCard.gh3', author: 'lmartel', labels: ['bug'] },
-]
-
-const JIRA_ROWS: readonly {
-  key: string
-  title: MessageKey
-  status: string
-  statusTone: string
-  epic: string
-  epicColor: string
-  priority?: string
-}[] = [
-  {
-    key: 'PAY-318',
-    title: 'site.tasksCard.jira1',
-    status: 'In Progress',
-    statusTone: 'bg-accent/20 text-accent-hover',
-    epic: 'Checkout',
-    epicColor: '#a855f7',
-    priority: 'Highest',
-  },
-  {
-    key: 'PAY-311',
-    title: 'site.tasksCard.jira2',
-    status: 'To Do',
-    statusTone: 'bg-onink-tint text-onink-dim',
-    epic: 'Checkout',
-    epicColor: '#a855f7',
-  },
-]
-
-/** `rowActivation`'s geometry, tightened one step for a card: the source's `py-2.5 px-4`. */
-const TASK_ROW = 'flex items-center gap-2.5 border-t border-onink-rule px-3 py-2'
-
-/** The card a tracker's rows sit in — `TasksModalMockup`'s `CARD`, on the same tokens. */
-const TASK_CARD = 'overflow-hidden rounded-lg border border-onink-rule bg-onink-tint'
-
-/**
- * The tracker's mark on a tile of its own. The app's `sm` tile is `w-8 h-8`; this is one
- * step down for a card. Jira's ground is its brand blue at 14%, spelled as an inline style
- * here as it is in the app and in `TasksModalMockup`: it is the BRAND's blue, not a token.
- */
-function TrackerTile({ tracker }: { tracker: 'github' | 'jira' }) {
-  const jira = tracker === 'jira'
-
-  return (
-    <span
-      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${
-        jira ? '' : 'bg-onink-selected text-white'
-      }`}
-      style={jira ? { backgroundColor: 'rgba(38, 132, 255, 0.14)' } : undefined}
-    >
-      {jira ? <JiraMark className="h-3.5 w-3.5" /> : <GithubMark className="h-3.5 w-3.5" />}
-    </span>
-  )
-}
-
-/** The ticket's id, in `TicketBadge`'s accent tokens. */
-function TicketBadge({ id }: { id: string }) {
-  return (
-    <span className="shrink-0 rounded bg-accent/20 px-1.5 py-0.5 text-[11px] text-accent-hover">
-      {id}
-    </span>
-  )
-}
-
-/** A repository card's own header: the chevron, its colour, its name and its tracker. */
-function RepoHeader({ color, name, tracker }: { color: string; name: string; tracker: string }) {
-  return (
-    <div className="flex w-full items-center gap-2 px-3 py-2">
-      <ChevronDown className="h-3.5 w-3.5 shrink-0 text-onink-dim" />
-      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-      <span className="truncate text-xs font-medium text-white">{name}</span>
-      {/* Untranslated in the app on purpose: "GitHub" and "Jira" are product names. */}
-      <span className="shrink-0 text-[11px] text-onink-faint">· {tracker}</span>
-    </div>
-  )
-}
-
 export function TasksArt() {
-  const { t } = useT()
-
   return (
-    // `-mb-10` runs the window 40px past the card's bottom edge, where `ToneCard`'s
-    // `overflow-hidden` cuts it. The side gutters stay, so the crop reads as ONE edge:
-    // a window seen from the top down, not a panel trimmed on three sides.
-    <div aria-hidden className="-mb-10 px-7">
-      {/* `bg-ink` is this site's stand-in for the app's darkest ground and `shadow-lift`
-          — the scale's loudest rung — is what lifts the window off the card. The border is
-          `onink-rule`, the inverse filet: `border-hairline` is 8% INK and would vanish
-          here. Exactly `TasksModalMockup`'s three choices. */}
-      <div className="overflow-hidden rounded-xl border border-onink-rule bg-ink shadow-lift">
-        {/* THE CHROME. `PageModal.tsx`: a fixed-height bar, title left, close right. */}
-        <div className="flex h-10 items-center justify-between border-b border-onink-rule px-3">
-          <span className="text-xs font-semibold text-white">{t('site.tasksCard.title')}</span>
-          <X className="h-3.5 w-3.5 text-onink-dim" />
-        </div>
-
-        <div className="flex flex-col gap-2.5 p-3">
-          {/* THE SECTION LINE: the list's icon, its name, then the page total and Reload
-              pushed to the far end. All of it survives now that the crop is at the bottom
-              rather than at the right — which is the second thing the layout change
-              bought, after the rows. */}
-          <div className="flex items-center gap-2 text-xs text-onink-body">
-            <ListTodo className="h-3.5 w-3.5 shrink-0" />
-            <span>{t('site.tasksCard.section')}</span>
-            <span className="ml-auto flex items-center gap-2">
-              <span className="whitespace-nowrap text-[11px] text-onink-faint">
-                {t('site.tasksCard.total')}
-              </span>
-              <span className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border border-onink-rule px-1.5 py-0.5 text-[11px] font-medium text-onink-dim">
-                <RefreshCw className="h-3 w-3" />
-                {t('site.tasksCard.reload')}
-              </span>
-            </span>
-          </div>
-
-          {/* THE FILTER BAR, at three controls rather than the source's four: the search
-              box takes the width, then the repository picker and the sort at their
-              declared 176px and 152px, scaled for a card. The fourth — the tracker filter
-              — is the one this width genuinely cannot hold. */}
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-onink-faint" />
-              <div className="w-full truncate rounded-lg border border-onink-rule bg-onink-tint py-1 pl-7 pr-2 text-[11px] text-onink-faint">
-                {t('site.tasksCard.search')}
-              </div>
-            </div>
-            <div className="flex w-32 shrink-0 items-center gap-1 rounded-lg border border-onink-rule bg-onink-tint px-2 py-1 text-[11px] text-white">
-              <span className="truncate">{t('site.tasksCard.allRepos')}</span>
-              <ChevronDown className="ml-auto h-3 w-3 shrink-0 text-onink-dim" />
-            </div>
-            <div className="hidden w-28 shrink-0 items-center gap-1 rounded-lg border border-onink-rule bg-onink-tint px-2 py-1 text-[11px] text-white sm:flex">
-              <span className="truncate">{t('site.tasksCard.sortRecent')}</span>
-              <ChevronDown className="ml-auto h-3 w-3 shrink-0 text-onink-dim" />
-            </div>
-          </div>
-
-          {/* ── The GitHub card ──────────────────────────────────────────────────── */}
-          <div className={TASK_CARD}>
-            <RepoHeader color="#6366f1" name="acme/checkout-api" tracker="GitHub" />
-            {GITHUB_ROWS.map((row) => (
-              <div key={row.number} className={TASK_ROW}>
-                <TrackerTile tracker="github" />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <TicketBadge id={row.number} />
-                    <span className="truncate text-xs text-white">{t(row.title)}</span>
-                  </div>
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="shrink-0 text-[11px] text-onink-dim">@{row.author}</span>
-                    {/* A label always renders in the NEUTRAL tokens, which is faithful
-                        rather than lazy: `StatusPill` only colours the `/magic:*`
-                        workflow's own statuses, and a repository's own labels miss that
-                        table. A red "bug" here would be a colour the app never gives it. */}
-                    {row.labels.map((label) => (
-                      <span
-                        key={label}
-                        className="shrink-0 rounded-full bg-onink-tint px-1.5 py-0.5 text-[11px] text-onink-dim"
-                      >
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                {/* THE ROW THAT IS ALREADY TAKEN, and it is the one thing in this drawing
-                    a reader could not infer: the list is not the sprint. `taskRows.ts`
-                    only lists an In Progress ticket when an agent is on it, marked. */}
-                {row.agent && (
-                  <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[11px] text-onink-dim">
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />
-                    {t('site.tasksCard.agent')}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* ── The Jira card ────────────────────────────────────────────────────── */}
-          <div className={TASK_CARD}>
-            <RepoHeader color="#22c55e" name="acme/billing-web" tracker="Jira" />
-            {JIRA_ROWS.map((row) => (
-              <div key={row.key} className={TASK_ROW}>
-                <TrackerTile tracker="jira" />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <TicketBadge id={row.key} />
-                    <span className="truncate text-xs text-white">{t(row.title)}</span>
-                  </div>
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <span
-                      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] ${row.statusTone}`}
-                    >
-                      {row.status}
-                    </span>
-                    {/* The epic: a neutral pill with the colour spent entirely on the dot,
-                        because the status and the priority either side of it are coloured
-                        to be read as a scale and an epic is neither a state nor a degree. */}
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-onink-tint px-1.5 py-0.5 text-[11px] text-onink-dim">
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: row.epicColor }}
-                      />
-                      {row.epic}
-                    </span>
-                    {/* The priority leads with an ARROW, which is Jira's own vocabulary
-                        and not an invention: a direction survives being skimmed down a
-                        column in a way a word never does. */}
-                    {row.priority && (
-                      <span className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full bg-red/20 py-0.5 pl-0.5 pr-1.5 text-[11px] text-red">
-                        <ChevronsUp className="h-3 w-3 shrink-0" />
-                        {row.priority}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+    <div className="h-[380px] overflow-hidden pl-7">
+      <TasksWindow className="min-w-[880px]" />
     </div>
   )
 }

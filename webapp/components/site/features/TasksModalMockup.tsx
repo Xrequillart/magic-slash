@@ -357,6 +357,185 @@ const LEGEND: readonly {
 ]
 
 /**
+ * THE WINDOW ALONE — the themed panel, the real `ModalHeader` and the real `TaskBoard` —
+ * without the plate or the legend around it.
+ *
+ * EXPORTED FOR THE HOMEPAGE'S "Tâches" CARD, which draws the same screen: one window, two
+ * crops. `/features` gives it a plate and cuts its bottom; the card gives it its own
+ * bottom-and-right crop. Neither redraws a band of it.
+ *
+ * `className` is the crop's: margins and a minimum width, never the ground or the radius.
+ */
+export function TasksWindow({ className = '' }: { className?: string }) {
+  const { t } = useT()
+
+  return (
+    <div
+      style={{ ...THEME.vars, colorScheme: THEME.appearance } as CSSProperties}
+      /* `min-w-[880px]` IS THE BOARD'S OWN FLOOR, and it is measured rather than
+         chosen: four columns in a 24px-inset panel with 12px gutters give ~199px
+         each at this width, which is what a `TicketCard`'s top line needs to hold a
+         `PER-1234` badge, a priority mark and its two buttons without one of them
+         wrapping. `PlanModalMockup`'s 720 is the page's own measure; a board cannot
+         have it, because a board that shrinks honestly squeezes its cards rather
+         than its columns.
+
+         SO THE PLATE CROPS THE RIGHT EDGE at `/features`, where the column is 816px
+         wide: the three columns that hold work you can pick up are whole and Done is
+         cut, which is the same thing the bottom crop says and the right column to
+         lose it on. `/desktop` gives the same drawing the band's full 1100px and
+         nothing is cut at all. */
+      className={`overflow-hidden rounded-2xl bg-bg-secondary text-ink shadow-lift ${className}`}
+    >
+      {/* THE REAL HEADER. `PageModal` renders this exact element with this exact
+          prop shape; what is not here is the portal, the backdrop and the two sizes
+          it travels between, none of which a picture has any use for.
+
+          THE FOUR TABS OF THE ONE PAGE OVERLAY, in the sidebar's own order —
+          `PAGE_TABS` in `desktop/src/renderer/App.tsx`, glyphs included. "Plans" and
+          "Skills" are printed rather than translated, the call `lib/features.ts`
+          makes for the same two words: the app's own French catalogue spells both
+          exactly the same way. */}
+      <ModalHeader
+        title={t('site.tasksCard.title')}
+        icon={ListTodo}
+        tabs={{
+          ariaLabel: t('site.tasksCard.title'),
+          activeKey: 'tasks',
+          items: [
+            { key: 'plans', label: 'Plans', icon: NotebookPen },
+            { key: 'tasks', label: t('site.tasksCard.title'), icon: ListTodo },
+            { key: 'skills', label: 'Skills', icon: Sparkles },
+            { key: 'settings', label: t('site.tasksCard.tabRepositories'), icon: FolderGit2 },
+          ],
+          onSelect: noop,
+        }}
+        fullScreen={{ expanded: false, onToggle: noop, expandTitle: '', collapseTitle: '' }}
+        onClose={noop}
+        closeTitle=""
+      />
+
+      {/* `px-6` is the page's own gutter, and the number the filter bar's full bleed
+          below is spelled from. */}
+      {/* `px-6` is the page's own gutter, and the number the filter bar's full bleed
+          is spelled from. */}
+      <div className="px-6 pb-6">
+        <div className="pt-6">
+          {/* THE WHOLE PAGE IS ONE COMPONENT, and it is the app's: `TaskBoard` draws
+              the heading, the pinned bar of controls and the board, and the desktop
+              renders this same file from `pages/Tasks/index.tsx`. Nothing below is a
+              drawing of the app — it IS the app, given invented tickets.
+
+              No `paneRef`, because nothing here scrolls: the bands sit at rest, which
+              is the honest state for a picture of a page.
+
+              FOUR CONTROLS AND NOT SIX. The repository picker leads, because it is
+              the only one that decides what the page is ABOUT rather than how much of
+              it is on screen, and the sprint chip follows it: the two answer one
+              question between them. The epic and agent pickers are the two the app
+              itself draws conditionally — only once a visible ticket hangs off an
+              epic, only once one has an agent — and they are left out here for the
+              room, which is the one liberty this drawing takes with the bar. */}
+          <TaskBoard
+            heading={{
+              icon: ListTodo,
+              title: t('site.tasksCard.section'),
+              count: t('site.tasksCard.total'),
+              actions: [{
+                id: 'reload',
+                label: t('site.tasksCard.reload'),
+                icon: RefreshCw,
+                onClick: noop,
+              }],
+            }}
+            filters={{
+              // `-mx-6 px-6` is the page's own inset spelled as a full bleed: what
+              // scrolls past has to go under an opaque band edge to edge.
+              className: '-mx-6 px-6',
+              before: [
+                {
+                  kind: 'select',
+                  id: 'repo',
+                  value: CHECKOUT.key,
+                  options: [
+                    { value: CHECKOUT.key, label: CHECKOUT.label, color: CHECKOUT.color },
+                    { value: BILLING.key, label: BILLING.label, color: BILLING.color },
+                  ],
+                  onChange: noop,
+                  placeholder: t('site.tasksCard.pickRepo'),
+                  width: 208,
+                  // The repository tile the sidebar and the webapp draw a repository
+                  // with, rather than the bare dot a filter keeps: the picker names
+                  // the page's subject now. Never tinted — it has no default to be
+                  // away from, so a rule guessed here would leave it permanently lit.
+                  marker: 'repo',
+                },
+                // WHICH sprint the board is showing. A chip and not a fifth control: a
+                // sprint NAMES a thing and the name does not change while you look at
+                // it. Jira's own name for it, so a literal.
+                { kind: 'chip', id: 'sprint', label: 'PAY Sprint 24', icon: CalendarRange },
+              ],
+              search: { value: '', onChange: noop, placeholder: t('site.tasksCard.search') },
+              after: [{
+                // A glyph here and on neither of its neighbours, because it is the one
+                // picker whose values do not name their own subject: "Newest" beside a
+                // repository name reads as a second thing to filter by until the arrow
+                // says it is an order.
+                kind: 'select',
+                id: 'sort',
+                value: 'recent',
+                options: [
+                  { value: 'recent', label: t('site.tasksCard.sortRecent') },
+                  { value: 'priority', label: t('site.tasksCard.sortPriority') },
+                ],
+                onChange: noop,
+                width: 152,
+                icon: ArrowDownWideNarrow,
+              }],
+            }}
+            columns={COLUMNS.map((column) => ({
+            id: column.key,
+            title: t(column.title),
+            icon: column.icon,
+            tone: column.tone,
+            // The count, always, zero included: a column that showed nothing and said
+            // nothing would be indistinguishable from one that failed to render.
+            count: BOARD[column.key].length,
+            empty: t('site.tasksCard.columnEmpty'),
+            cards: BOARD[column.key].map((card) => ({
+              id: card.ticketId,
+              tracker: card.tracker,
+              ticketId: card.ticketId,
+              title: t(card.title),
+              ...(card.priority
+                ? { mark: { icon: card.priority.icon, tone: card.priority.tone, label: card.priority.name } }
+                : {}),
+              ...(card.status ? { status: card.status } : {}),
+              tags: [...(card.tags ?? [])],
+              notes: [...(card.notes ?? [])],
+              copy: {
+                value: ticketUrl(card),
+                label: t('site.tasksCard.copyLink'),
+                copiedLabel: t('site.tasksCard.copyLinkDone'),
+              },
+              // THE SAME SLOT, THREE OUTCOMES, which is what keeps the cards of a
+              // column aligned whatever state they are in: an agent's mark, a Start
+              // button, or nothing at all on the two that are finished.
+              ...(card.agent
+                ? { agent: { icon: BotMessageSquare, label: t('site.tasksCard.agentHint') } }
+                : column.key === 'done'
+                  ? {}
+                  : { action: { icon: Play, title: t('site.tasksCard.startAgent'), onClick: noop } }),
+              onOpen: noop,
+            })),
+          }))} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
  * `legend` — the box of definitions under the drawing. On by default, which is what
  * `/features` wants; a caller that already has a paragraph beside the picture can turn
  * it off.
@@ -387,168 +566,7 @@ export function TasksModalMockup({ legend = true }: { legend?: boolean } = {}) {
 
             `colorScheme` so a scrollbar or a form control inside the window is drawn
             dark, which is what the app's own `Stage` does on `/design-system`. */}
-        <div
-          style={{ ...THEME.vars, colorScheme: THEME.appearance } as CSSProperties}
-          /* `min-w-[880px]` IS THE BOARD'S OWN FLOOR, and it is measured rather than
-             chosen: four columns in a 24px-inset panel with 12px gutters give ~199px
-             each at this width, which is what a `TicketCard`'s top line needs to hold a
-             `PER-1234` badge, a priority mark and its two buttons without one of them
-             wrapping. `PlanModalMockup`'s 720 is the page's own measure; a board cannot
-             have it, because a board that shrinks honestly squeezes its cards rather
-             than its columns.
-
-             SO THE PLATE CROPS THE RIGHT EDGE at `/features`, where the column is 816px
-             wide: the three columns that hold work you can pick up are whole and Done is
-             cut, which is the same thing the bottom crop says and the right column to
-             lose it on. `/desktop` gives the same drawing the band's full 1100px and
-             nothing is cut at all. */
-          className="-mb-12 min-w-[880px] overflow-hidden rounded-2xl bg-bg-secondary text-ink shadow-lift"
-        >
-          {/* THE REAL HEADER. `PageModal` renders this exact element with this exact
-              prop shape; what is not here is the portal, the backdrop and the two sizes
-              it travels between, none of which a picture has any use for.
-
-              THE FOUR TABS OF THE ONE PAGE OVERLAY, in the sidebar's own order —
-              `PAGE_TABS` in `desktop/src/renderer/App.tsx`, glyphs included. "Plans" and
-              "Skills" are printed rather than translated, the call `lib/features.ts`
-              makes for the same two words: the app's own French catalogue spells both
-              exactly the same way. */}
-          <ModalHeader
-            title={t('site.tasksCard.title')}
-            icon={ListTodo}
-            tabs={{
-              ariaLabel: t('site.tasksCard.title'),
-              activeKey: 'tasks',
-              items: [
-                { key: 'plans', label: 'Plans', icon: NotebookPen },
-                { key: 'tasks', label: t('site.tasksCard.title'), icon: ListTodo },
-                { key: 'skills', label: 'Skills', icon: Sparkles },
-                { key: 'settings', label: t('site.tasksCard.tabRepositories'), icon: FolderGit2 },
-              ],
-              onSelect: noop,
-            }}
-            fullScreen={{ expanded: false, onToggle: noop, expandTitle: '', collapseTitle: '' }}
-            onClose={noop}
-            closeTitle=""
-          />
-
-          {/* `px-6` is the page's own gutter, and the number the filter bar's full bleed
-              below is spelled from. */}
-          {/* `px-6` is the page's own gutter, and the number the filter bar's full bleed
-              is spelled from. */}
-          <div className="px-6 pb-6">
-            <div className="pt-6">
-              {/* THE WHOLE PAGE IS ONE COMPONENT, and it is the app's: `TaskBoard` draws
-                  the heading, the pinned bar of controls and the board, and the desktop
-                  renders this same file from `pages/Tasks/index.tsx`. Nothing below is a
-                  drawing of the app — it IS the app, given invented tickets.
-
-                  No `paneRef`, because nothing here scrolls: the bands sit at rest, which
-                  is the honest state for a picture of a page.
-
-                  FOUR CONTROLS AND NOT SIX. The repository picker leads, because it is
-                  the only one that decides what the page is ABOUT rather than how much of
-                  it is on screen, and the sprint chip follows it: the two answer one
-                  question between them. The epic and agent pickers are the two the app
-                  itself draws conditionally — only once a visible ticket hangs off an
-                  epic, only once one has an agent — and they are left out here for the
-                  room, which is the one liberty this drawing takes with the bar. */}
-              <TaskBoard
-                heading={{
-                  icon: ListTodo,
-                  title: t('site.tasksCard.section'),
-                  count: t('site.tasksCard.total'),
-                  actions: [{
-                    id: 'reload',
-                    label: t('site.tasksCard.reload'),
-                    icon: RefreshCw,
-                    onClick: noop,
-                  }],
-                }}
-                filters={{
-                  // `-mx-6 px-6` is the page's own inset spelled as a full bleed: what
-                  // scrolls past has to go under an opaque band edge to edge.
-                  className: '-mx-6 px-6',
-                  before: [
-                    {
-                      kind: 'select',
-                      id: 'repo',
-                      value: CHECKOUT.key,
-                      options: [
-                        { value: CHECKOUT.key, label: CHECKOUT.label, color: CHECKOUT.color },
-                        { value: BILLING.key, label: BILLING.label, color: BILLING.color },
-                      ],
-                      onChange: noop,
-                      placeholder: t('site.tasksCard.pickRepo'),
-                      width: 208,
-                      // The repository tile the sidebar and the webapp draw a repository
-                      // with, rather than the bare dot a filter keeps: the picker names
-                      // the page's subject now. Never tinted — it has no default to be
-                      // away from, so a rule guessed here would leave it permanently lit.
-                      marker: 'repo',
-                    },
-                    // WHICH sprint the board is showing. A chip and not a fifth control: a
-                    // sprint NAMES a thing and the name does not change while you look at
-                    // it. Jira's own name for it, so a literal.
-                    { kind: 'chip', id: 'sprint', label: 'PAY Sprint 24', icon: CalendarRange },
-                  ],
-                  search: { value: '', onChange: noop, placeholder: t('site.tasksCard.search') },
-                  after: [{
-                    // A glyph here and on neither of its neighbours, because it is the one
-                    // picker whose values do not name their own subject: "Newest" beside a
-                    // repository name reads as a second thing to filter by until the arrow
-                    // says it is an order.
-                    kind: 'select',
-                    id: 'sort',
-                    value: 'recent',
-                    options: [
-                      { value: 'recent', label: t('site.tasksCard.sortRecent') },
-                      { value: 'priority', label: t('site.tasksCard.sortPriority') },
-                    ],
-                    onChange: noop,
-                    width: 152,
-                    icon: ArrowDownWideNarrow,
-                  }],
-                }}
-                columns={COLUMNS.map((column) => ({
-                id: column.key,
-                title: t(column.title),
-                icon: column.icon,
-                tone: column.tone,
-                // The count, always, zero included: a column that showed nothing and said
-                // nothing would be indistinguishable from one that failed to render.
-                count: BOARD[column.key].length,
-                empty: t('site.tasksCard.columnEmpty'),
-                cards: BOARD[column.key].map((card) => ({
-                  id: card.ticketId,
-                  tracker: card.tracker,
-                  ticketId: card.ticketId,
-                  title: t(card.title),
-                  ...(card.priority
-                    ? { mark: { icon: card.priority.icon, tone: card.priority.tone, label: card.priority.name } }
-                    : {}),
-                  ...(card.status ? { status: card.status } : {}),
-                  tags: [...(card.tags ?? [])],
-                  notes: [...(card.notes ?? [])],
-                  copy: {
-                    value: ticketUrl(card),
-                    label: t('site.tasksCard.copyLink'),
-                    copiedLabel: t('site.tasksCard.copyLinkDone'),
-                  },
-                  // THE SAME SLOT, THREE OUTCOMES, which is what keeps the cards of a
-                  // column aligned whatever state they are in: an agent's mark, a Start
-                  // button, or nothing at all on the two that are finished.
-                  ...(card.agent
-                    ? { agent: { icon: BotMessageSquare, label: t('site.tasksCard.agentHint') } }
-                    : column.key === 'done'
-                      ? {}
-                      : { action: { icon: Play, title: t('site.tasksCard.startAgent'), onClick: noop } }),
-                  onOpen: noop,
-                })),
-              }))} />
-            </div>
-          </div>
-        </div>
+        <TasksWindow className="-mb-12 min-w-[880px]" />
       </div>
 
       {legend ? (

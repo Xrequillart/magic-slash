@@ -1075,8 +1075,11 @@ export const marketingEn = {
    * is one click from an agent running on it.
    */
   'site.builtFor.tasksTitle': 'Tasks',
+  // Rewritten when the drawing became the real board: ONE repository at a time (the picker
+  // at its head chooses it) dealt into four columns, where the old line said "grouped by
+  // repository". No em dash, at the owner's ask.
   'site.builtFor.tasksDesc':
-    'Every open issue and every backlog ticket, from GitHub and from Jira, grouped by repository in one window. Click one and an agent starts on it — no id to copy, no tab to go and find.',
+    'A repository’s GitHub issues and Jira sprint, dealt into four columns: blocked, to do, in progress, done. Click a ticket and an agent starts on it, no id to copy.',
   /**
    * The keyboard card. "Your hands never leave it" is the promise; the drawing beside
    * this prints three real chords, so the sentence is free to make the claim rather than

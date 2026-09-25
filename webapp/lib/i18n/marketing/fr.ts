@@ -513,8 +513,11 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.builtFor.subtitle':
     'La fenêtre où vivent vos tickets, vos agents et vos terminaux : sur votre Mac, sous vos doigts, à un raccourci de là où vous étiez déjà, et réglée comme vous travaillez.',
   'site.builtFor.tasksTitle': 'Tâches',
+  // Réécrite quand le dessin est devenu le vrai tableau : UN dépôt à la fois (le sélecteur
+  // en tête le choisit) et quatre colonnes, là où l'ancienne phrase disait « regroupés par
+  // dépôt ». Plus de tiret cadratin, à la demande du propriétaire.
   'site.builtFor.tasksDesc':
-    'Chaque issue ouverte et chaque ticket du backlog, GitHub comme Jira, regroupés par dépôt dans une seule fenêtre. Un clic et un agent démarre dessus — aucun identifiant à copier, aucun onglet à retrouver.',
+    'Les issues GitHub et le sprint Jira d’un dépôt, rangés en quatre colonnes : bloqué, à faire, en cours, terminé. Un clic sur un ticket et un agent démarre dessus, sans identifiant à copier.',
   // « Navigation par clavier » et non « Raccourcis clavier », que le propriétaire a
   // renommé : c'est le mot juste pour ce que l'antisèche montre — se déplacer — et il
   // évite de calquer le nom de la section Réglages de l'app, qui, elle, s'appelle bien

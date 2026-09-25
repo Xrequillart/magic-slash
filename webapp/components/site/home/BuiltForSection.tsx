@@ -213,10 +213,10 @@ export function BuiltForSection() {
       </Reveal>
 
       {/* `grid-cols-1` AND `min-w-0` ARE BOTH LOAD-BEARING, and neither is decoration.
-          The Tasks panel is `min-w-[28rem]` on purpose — that is what gives the card's
+          The Tasks window is `min-w-[880px]` on purpose — the board’s own floor, and what gives the card’s
           right edge something to crop — and a grid track sized `auto` grows to its
           content's MINIMUM, so on a phone a bare `grid` would have widened this column to
-          448px and taken the document with it. `grid-cols-1` makes the track
+          880px and taken the document with it. `grid-cols-1` makes the track
           `minmax(0, 1fr)`, which is capped by the container; `min-w-0` does the same for
           the item inside it, whose automatic minimum in a grid is otherwise its
           min-content. With both, the panel is clipped by `ToneCard`'s `overflow-hidden`
