@@ -1379,7 +1379,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.repoCfg.name': 'Nom',
   'site.repoCfg.nameHelp': 'Nom affiché du dépôt',
   'site.repoCfg.keywords': 'Mots-clés',
-  'site.repoCfg.keywordsHelp': 'Mots-clés de détection automatique (séparés par des virgules)',
+  'site.repoCfg.keywordsHelp': 'Mots-clés de détection automatique, un par tag',
   'site.repoCfg.discussionLang': 'Langue de discussion',
   'site.repoCfg.discussionLangHelp': 'Langue utilisée par Claude quand il échange avec vous',
   'site.repoCfg.color': 'Couleur',

@@ -2264,7 +2264,7 @@ export const marketingEn = {
   'site.repoCfg.name': 'Name',
   'site.repoCfg.nameHelp': 'Repository display name',
   'site.repoCfg.keywords': 'Keywords',
-  'site.repoCfg.keywordsHelp': 'Auto-detection keywords (comma-separated)',
+  'site.repoCfg.keywordsHelp': 'Auto-detection keywords, one per tag',
   'site.repoCfg.discussionLang': 'Discussion Language',
   'site.repoCfg.discussionLangHelp': 'Language used by Claude when discussing with you',
   'site.repoCfg.color': 'Color',
