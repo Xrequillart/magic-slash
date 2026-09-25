@@ -1,5 +1,6 @@
 import { Button } from './Button'
 import { Icon } from './Icon'
+import { Loader } from './Loader'
 import { Text } from './Text'
 import type { IconComponent } from './types'
 
@@ -56,6 +57,12 @@ export interface EmptyStateProps {
    */
   icon?: IconComponent
   /**
+   * The content is on its way: a spinner takes the mark's place, and the sentence says
+   * what is being read. For a section that stays on screen while its content is swapped —
+   * the Tasks board between two repositories — rather than a page's first paint.
+   */
+  busy?: boolean
+  /**
    * ONE QUIET LINE UNDER THE SENTENCE, for the absence whose cure is NOT a button.
    *
    * It looks like it contradicts `children`'s rule and it is its complement: the rule
@@ -73,13 +80,15 @@ export interface EmptyStateProps {
   className?: string
 }
 
-export function EmptyState({ children, icon, hint, actions = [], className = '' }: EmptyStateProps) {
+export function EmptyState({ children, icon, busy = false, hint, actions = [], className = '' }: EmptyStateProps) {
   return (
     <div className={`w-full rounded-xl bg-surface-subtle px-4 py-8 ${className}`.trim()}>
       {/* CENTRED, which is the whole of how this reads as an absence rather than as the
           first row of a list that failed to load — `EmptyLine`'s rule, and the reason
           the buttons are centred under it rather than pushed to an edge. */}
-      {icon && (
+      {busy ? (
+        <Loader variant="spin" size="2xl" tone="accent" className="mx-auto mb-3 block" />
+      ) : icon && (
         <Icon glyph={icon} size="2xl" tone="muted" className="mx-auto mb-3 block" />
       )}
       <Text size="sm" tone="secondary" className="block text-center opacity-50">

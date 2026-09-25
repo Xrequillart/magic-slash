@@ -740,7 +740,7 @@ export function TasksPage() {
     // The picked repository's read is still out. Said in the columns' place, under a
     // picker that already names it, rather than by taking the whole page down to the
     // opening loader and the picker with it.
-    ? { icon: ListTodo, children: t('tasks.loading') }
+    ? { busy: true, children: t('tasks.loading') }
     : noMatch
       ? {
         icon: SearchX,
