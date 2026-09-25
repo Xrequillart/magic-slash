@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { CloudOff, NotebookPen, RotateCcw, Users } from '@ds/desktop/icons'
-import { ItemGroup, ItemNote, SectionHeader } from '@ds/desktop'
+import { ItemGroup, ItemNote, Loader, SectionHeader } from '@ds/desktop'
 import type { PlanOverview, PlanStatus } from '../../../types'
 import { useConfig } from '../../hooks/useConfig'
 import { useT, type MessageKey } from '../../i18n'
@@ -495,7 +495,10 @@ export function PlansPage() {
                   otherwise match and state something about the account that nothing here
                   knows. */}
               {overview === null ? (
-                <p className="py-10 text-center text-sm text-text-secondary">{t('common.loading')}</p>
+                <div className="py-10 flex items-center justify-center gap-2 text-sm text-text-secondary">
+                  <Loader tone="accent" />
+                  <span>{t('common.loading')}</span>
+                </div>
               ) : overview.failed ? (
                 <ErrorState onRetry={retry} />
               ) : empty ? (
