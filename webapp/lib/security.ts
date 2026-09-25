@@ -180,6 +180,12 @@ export type SecurityCard = {
    * is the crop.
    */
   crop?: true
+  /**
+   * The copy on the left and the drawing on the right — `ToneCard`'s `beside` row — where
+   * every other card stacks them. For a WIDE card whose drawing is a tall illustration: a
+   * portrait picture under two lines of copy would leave the long slot mostly empty ground.
+   */
+  beside?: true
 }
 
 export const SECURITY_CARDS: readonly SecurityCard[] = [
@@ -199,6 +205,7 @@ export const SECURITY_CARDS: readonly SecurityCard[] = [
     title: 'site.security.guardTitle',
     description: 'site.security.guardDesc',
     wide: true,
+    beside: true,
   },
   /**
    * ② The repository, SHORT. VERIFIED: the skills operate on the local clone through git in

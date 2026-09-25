@@ -4,7 +4,7 @@ import { ToneCard } from '@/components/ui'
 import { SECURITY_CARDS, SECURITY_CHROME, type SecurityArt } from '@/lib/security'
 import { useT } from '@/lib/i18n/useLanguage'
 import { Reveal } from '../Reveal'
-import { CommitGuardArt, GdprArt, PrivateRepoArt, SecretsArt } from './SecurityArt'
+import { GdprArt, PrivateRepoArt, SecretsArt } from './SecurityArt'
 import { HomeHeading, HomeSection } from './Shell'
 
 /**
@@ -102,7 +102,15 @@ function art(id: SecurityArt, mark: string) {
   const DRAWING: Record<SecurityArt, React.ReactNode> = {
     privateRepo: <PrivateRepoArt />,
     gdpr: <GdprArt label={mark} />,
-    commitGuard: <CommitGuardArt />,
+    // AN ILLUSTRATION FROM THE SITE'S OWN SET, not a drawing of the mechanism: the branch
+    // graph that was here went on the owner's call. The file's `viewBox` is cropped to the
+    // drawing's measured box (`87 25 826 950` out of a 1000² canvas), so nothing here has
+    // to correct for dead margin. Beside the copy — see `SecurityCard.beside` — and sized
+    // by HEIGHT, because it is a portrait picture in a landscape row. `alt=""`: the title
+    // beside it already says what it says.
+    commitGuard: (
+      <img src="/img/illustration-shield.svg" alt="" className="mx-auto h-[22rem] w-auto px-3 pb-3 md:py-3 md:pl-0" />
+    ),
     secrets: <SecretsArt />,
   }
   return DRAWING[id]
@@ -139,6 +147,7 @@ export function SecuritySection() {
           >
             <ToneCard
               tone={card.tone}
+              layout={card.beside ? 'beside' : 'stacked'}
               visual={card.crop ? 'end' : 'center'}
               title={t(card.title)}
               description={t(card.description)}
