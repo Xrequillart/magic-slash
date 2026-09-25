@@ -226,6 +226,17 @@ export function TabStrip({ items, activeKey, onSelect, ariaLabel, className = ''
     // strip whose items were reordered can move the pill left while the index rises.
     if (from && moved) setLeading(target.left > from.left ? 'right' : 'left')
     setPill(target)
+
+    // THE ACTIVE TAB IS KEPT IN VIEW when the row is wider than its box — a narrow window,
+    // eight repository tabs, the seventh one lit — or the strip would highlight a tab the
+    // reader cannot see. The TRACK is scrolled, never `scrollIntoView`, which would also
+    // scroll every ancestor, the page included. Centred, so the neighbours either side
+    // say there is more.
+    if (track.scrollWidth > track.clientWidth) {
+      const outside = el.offsetLeft < track.scrollLeft
+        || el.offsetLeft + el.offsetWidth > track.scrollLeft + track.clientWidth
+      if (outside) track.scrollLeft = el.offsetLeft - (track.clientWidth - el.offsetWidth) / 2
+    }
   }, [activeIndex, labels])
 
   /**
