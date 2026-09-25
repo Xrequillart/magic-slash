@@ -54,17 +54,6 @@ export const SECURITY_CHROME = {
   title: 'site.security.title',
   /** The two lines under it: what the cloud actually holds, itemised. */
   subtitle: 'site.security.subtitle',
-  /**
-   * The acronym inside the European emblem on the GDPR card — RGPD in French, GDPR in
-   * English.
-   *
-   * IN THIS TABLE AND NOT SPELLED IN THE DRAWING, for the reason `WORKFLOW_CHROME`'s
-   * `planIssuesCreated` is: a key typed inline in a component is a key nothing pins, so
-   * renaming it on both sides passes `i18n.test.ts` and leaves the badge rendering an empty
-   * `<text>` — and `t()` has no per-key fallback to catch it. Named here, it goes through
-   * `security.test.ts`'s catalogue loop with the rest.
-   */
-  gdprMark: 'site.security.gdprMark',
 } as const satisfies Record<string, MessageKey>
 
 /**

@@ -1237,12 +1237,6 @@ export const marketingEn = {
    */
   'site.security.subtitle':
     'The skills run in your own terminal, on your own clone. What the cloud holds is your configuration: your repositories, your languages, your commit format. And the name of the skill you ran. Not a prompt, not an argument, not a line of code.',
-  /**
-   * The acronym inside the European emblem on the GDPR card. The regulation has a French
-   * name, and a French reader does not recognise the English one — which is why this is a
-   * catalogue key and not a literal in the drawing. See `SECURITY_CHROME.gdprMark`.
-   */
-  'site.security.gdprMark': 'GDPR',
   /** ① The repository. "The machine you are sitting at" rather than "locally", because the
    * abstraction is the thing a reader is trying to see through. */
   'site.security.repoTitle': 'Your repository stays yours',

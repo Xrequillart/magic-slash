@@ -4,7 +4,7 @@ import { ToneCard } from '@/components/ui'
 import { SECURITY_CARDS, SECURITY_CHROME, type SecurityArt } from '@/lib/security'
 import { useT } from '@/lib/i18n/useLanguage'
 import { Reveal } from '../Reveal'
-import { GdprArt, PrivateRepoArt, SecretsArt } from './SecurityArt'
+import { SecretsArt } from './SecurityArt'
 import { HomeHeading, HomeSection } from './Shell'
 
 /**
@@ -98,10 +98,16 @@ import { HomeHeading, HomeSection } from './Shell'
  * than components: the badge sets the regulation's acronym inside the European emblem, and
  * that acronym is the one string in the drawing that is not English in both languages.
  */
-function art(id: SecurityArt, mark: string) {
+function art(id: SecurityArt) {
   const DRAWING: Record<SecurityArt, React.ReactNode> = {
-    privateRepo: <PrivateRepoArt />,
-    gdpr: <GdprArt label={mark} />,
+    // FROM THE SITE'S OWN SET TOO, replacing the padlock on the owner's call. Same crop
+    // treatment as the shield below: the `viewBox` is the drawing's measured box
+    // (`23 49 954 902` out of 1000²). Sized by HEIGHT, like the other short-card pictures.
+    privateRepo: <img src="/img/illustration-files.svg" alt="" className="mx-auto h-60 w-auto px-7" />,
+    // Same set, same treatment: the European seal went on the owner's call. The file's
+    // white ground was deleted and its `viewBox` cropped to the drawing (`163 63 954 730`
+    // out of 1280×856), so the card's tone shows through like it does on the others.
+    gdpr: <img src="/img/illustration-database.svg" alt="" className="mx-auto h-48 w-auto px-7" />,
     // AN ILLUSTRATION FROM THE SITE'S OWN SET, not a drawing of the mechanism: the branch
     // graph that was here went on the owner's call. The file's `viewBox` is cropped to the
     // drawing's measured box (`87 25 826 950` out of a 1000² canvas), so nothing here has
@@ -153,7 +159,7 @@ export function SecuritySection() {
               description={t(card.description)}
               className="h-full"
             >
-              {art(card.id, t(SECURITY_CHROME.gdprMark))}
+              {art(card.id)}
             </ToneCard>
           </Reveal>
         ))}

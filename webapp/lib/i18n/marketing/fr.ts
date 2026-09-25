@@ -583,8 +583,6 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.security.title': 'Magic Slash ne voit jamais vos secrets.',
   'site.security.subtitle':
     'Les skills tournent dans votre terminal, sur votre clone. Ce que le cloud garde, c’est votre configuration : vos dépôts, vos langues, votre format de commit. Et le nom du skill que vous avez lancé. Pas un prompt, pas un argument, pas une ligne de code.',
-  /** Le sigle au centre de l’emblème européen : la version française du nom du règlement. */
-  'site.security.gdprMark': 'RGPD',
   'site.security.repoTitle': 'Votre dépôt reste le vôtre',
   'site.security.repoDesc':
     'Rien n’est cloné sur un serveur. L’agent travaille dans un worktree sur la machine devant vous, et la seule chose qui nous parvienne de votre code, ce sont les dépôts que vous avez déclarés dans l’app.',
