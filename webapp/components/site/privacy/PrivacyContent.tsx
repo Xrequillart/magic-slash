@@ -2,7 +2,6 @@
 
 import { useT } from '@/lib/i18n/useLanguage'
 import { PAGE_CHROME, SECTIONS } from '@/lib/privacyPage'
-import { Bloom } from '../home/HeroSection'
 import { HomeSection } from '../home/Shell'
 import { RichText } from '../RichText'
 import { NEW_ISSUE_URL } from '../links'
@@ -35,8 +34,8 @@ import { NEW_ISSUE_URL } from '../links'
  * ── THE SHAPE ───────────────────────────────────────────────────────────────────────
  *
  * `/faq`'s page frame, unchanged: `padding="hero"` because the bar is `fixed` at `h-16`
- * and a page's first line owes it that, the `softblue → white` wash, `Bloom` fading
- * `to-white` so the band lands on the ground below, then a `max-w-3xl` column. A legal
+ * and a page's first line owes it that, on white like every page, then a `max-w-3xl`
+ * column. A legal
  * page that invented a dress of its own would be a second reading experience to
  * maintain, and this one is the same thing those pages are: prose in a column.
  *
@@ -84,11 +83,7 @@ export function PrivacyContent() {
 
   return (
     <div className="bg-white">
-      <HomeSection
-        padding="hero"
-        backdrop={<Bloom fadeTo="to-white" />}
-        className="bg-gradient-to-b from-softblue to-white"
-      >
+      <HomeSection padding="hero">
         <div className="mx-auto max-w-3xl text-center">
           <h1 className="font-display text-4xl font-black leading-[1.1] text-ink md:text-6xl">
             {t(PAGE_CHROME.title)}

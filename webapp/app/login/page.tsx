@@ -36,7 +36,7 @@ export default function Login() {
   if (pending) return <FullPageLoader tone="login" />
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-softblue px-6 py-12">
+    <main className="flex min-h-screen items-center justify-center bg-white px-6 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
           {/* `lg` — this page OPENS on the mark, with no navigation above it to share the

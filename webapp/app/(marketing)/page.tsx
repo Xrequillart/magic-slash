@@ -198,9 +198,10 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * `components/ui.tsx`. What that replaces: eight sections dressed by ~5,000 lines of
  * ported stylesheet, eleven rival button definitions among them.
  *
- * `bg-canvas` IS HERE AND NOT IN THE LAYOUT, on purpose: that layout wraps every public
- * page, and they do not agree on what colour the page is — `/features` and `/faq` are on
- * white. Painting `#F4F7FE` one level up would cover both.
+ * WHITE, like every other page on the site, at the owner's call ("le background de la
+ * home page et de toutes les pages en blanc"). It was `bg-canvas`, the #F4F7FE blue tint,
+ * and the homepage was the one public page that opened on it. `canvas` itself stays — as
+ * the tinted surface INSIDE a white page (hovers, code blocks, panels), not as a ground.
  *
  * The `page-wrapper` / `content-sections` wrappers are gone with the stylesheet that
  * gave them meaning: `page-wrapper` existed for an `overflow: clip` that kept the old
@@ -215,7 +216,7 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <div className="bg-canvas">
+    <div className="bg-white">
       <HeroSection />
       <PillarsSection />
       <WorkflowSection />

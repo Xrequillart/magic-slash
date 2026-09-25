@@ -1389,7 +1389,7 @@ export function FullPageLoader({ tone = 'app' }: { tone?: 'app' | 'login' }) {
     <div
       className={cx(
         'flex min-h-screen items-center justify-center text-muted',
-        tone === 'login' ? 'bg-softblue' : 'bg-canvas',
+        'bg-white',
       )}
     >
       {t('common.loading')}
