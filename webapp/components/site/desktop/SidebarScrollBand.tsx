@@ -59,13 +59,15 @@ import { DESKTOP_ICONS } from './icons'
  * frame. `transition-transform` on the scaled element is the "animation de déplacement":
  * one property, one curve, and the browser draws the pan.
  *
- * THE SCRIPTS STEP PLAYS A SCENE. When its paragraph becomes the active one, the panel's
- * `scripts` phase runs on a clock: the dropdown opens under its trigger, the `dev` row is
- * hovered, `dev` starts (the purple bar appears in the card) and then serves (the address
- * row hangs under it) — what a reader would do in the app, done for them as they arrive.
- * The server stays up for the rest of the tour, as it would; scrolling back above the
- * step stops it, so the scene plays again on the way down. `prefers-reduced-motion` skips
- * the clock and shows the served state at once.
+ * THE SCRIPTS STEP PLAYS A SCENE, AND THE READER'S SCROLL IS ITS CLOCK. As the reader
+ * scrolls through its paragraph, the panel's `scripts` phase follows how far they are
+ * into it: the dropdown opens under its trigger, the `dev` row is hovered, `dev` starts
+ * (the purple bar appears in the card) and then serves (the address row hangs under it).
+ * It ran on timers once the paragraph became active, and the owner asked for the scroll
+ * to drive it instead ("que lorsqu'on scroll ça lance le serveur et pas
+ * automatiquement"): a reader who stops mid-paragraph sees the scene stop with them, and
+ * scrolling back up plays it backwards. The server stays up for the rest of the tour, as
+ * it would. `prefers-reduced-motion` skips the scene and shows the served state at once.
  *
  * WHICH PARAGRAPH IS ACTIVE is the one straddling the middle of the viewport, found on
  * every scroll frame from the paragraphs' own boxes. Above the first, nothing is active
@@ -97,6 +99,8 @@ const FOCUS_PAD_Y = 28
 const FOCUS_PAD_X = 8
 /** The furthest the panel is ever magnified. */
 const MAX_ZOOM = 1.9
+/** The scripts menu's own ceiling. See where it is used. */
+const MENU_ZOOM = 1.45
 /**
  * HOW FAR THE PANEL MAY TRAVEL WHILE A PART IS MAGNIFIED, as plate showing at the edge
  * it pulls away from.
@@ -128,13 +132,27 @@ const MAX_ZOOM = 1.9
  */
 const FOCUS_EDGE_PAD = 140
 
-/** The scripts scene, in milliseconds after the step becomes active. */
-const SCRIPTS_SCENE: readonly { at: number; phase: ScriptsPhase }[] = [
-  { at: 600, phase: 'open' },
-  { at: 1400, phase: 'hover' },
-  { at: 2100, phase: 'running' },
-  { at: 3300, phase: 'serving' },
+/**
+ * The scripts scene, as how far the reader is through the step's paragraph: 0 the moment
+ * it becomes active (its top at the line in `measure`), 1 when its bottom reaches it.
+ * The first beat holds `closed` so the zoom onto the trigger lands before anything opens;
+ * then a beat every fifth of the paragraph. The paragraph is also TALLER than the others
+ * (`min-h-[160vh]`, see the list below): at the 70vh every step gets, the four beats
+ * went by in about 300px of scroll and flashed ("ça fait mal aux yeux"). At 160vh each
+ * beat has ~290px to itself, so each state is on screen long enough to be read.
+ */
+const SCRIPTS_SCENE: readonly { from: number; phase: ScriptsPhase }[] = [
+  { from: 0.12, phase: 'open' },
+  { from: 0.32, phase: 'hover' },
+  { from: 0.52, phase: 'running' },
+  { from: 0.72, phase: 'serving' },
 ]
+
+function scenePhase(progress: number): ScriptsPhase {
+  let phase: ScriptsPhase = 'closed'
+  for (const beat of SCRIPTS_SCENE) if (progress >= beat.from) phase = beat.phase
+  return phase
+}
 const SCRIPTS_STEP = SIDEBAR_TOUR.findIndex((step) => step.id === 'scripts')
 
 /** A part's box in the coordinates of the panel it sits in — offsets summed up the tree. */
@@ -155,6 +173,8 @@ const clamp = (value: number, min: number, max: number) => Math.min(max, Math.ma
 export function SidebarScrollBand() {
   const { t } = useT()
   const [active, setActive] = useState(-1)
+  // How far through the scripts paragraph the reader is, 0 → 1. See `SCRIPTS_SCENE`.
+  const [scriptsProgress, setScriptsProgress] = useState(0)
   const [transform, setTransform] = useState<string>()
   const stepRefs = useRef<(HTMLElement | null)[]>([])
   const frameRef = useRef<HTMLDivElement>(null)
@@ -189,6 +209,11 @@ export function SidebarScrollBand() {
         })
       }
       setActive(found)
+      const scriptsEl = stepRefs.current[SCRIPTS_STEP]
+      if (scriptsEl) {
+        const rect = scriptsEl.getBoundingClientRect()
+        setScriptsProgress(clamp((middle - rect.top) / rect.height, 0, 1))
+      }
     }
     const onScroll = () => {
       if (!frame) frame = window.requestAnimationFrame(measure)
@@ -213,24 +238,10 @@ export function SidebarScrollBand() {
   const focus: SidebarPart | null = step?.part ?? null
 
   // ── The scripts scene ───────────────────────────────────────────────────────────
-  const [scripts, setScripts] = useState<ScriptsPhase>('closed')
-  useEffect(() => {
-    if (active < SCRIPTS_STEP) {
-      setScripts('closed')
-      return
-    }
-    if (active > SCRIPTS_STEP) {
-      setScripts('serving')
-      return
-    }
-    if (isStill()) {
-      setScripts('serving')
-      return
-    }
-    setScripts('closed')
-    const timers = SCRIPTS_SCENE.map(({ at, phase }) => window.setTimeout(() => setScripts(phase), at))
-    return () => timers.forEach((id) => window.clearTimeout(id))
-  }, [active])
+  // Derived, not stored: the phase is a function of where the reader is, so there is no
+  // clock to start or clear. `isStill()` is read at render, as the old timer read it.
+  const scripts: ScriptsPhase =
+    active < SCRIPTS_STEP ? 'closed' : active > SCRIPTS_STEP || isStill() ? 'serving' : scenePhase(scriptsProgress)
 
   /**
    * WHAT THE PANEL FRAMES — and the scripts step is the only one that changes its mind
@@ -240,17 +251,26 @@ export function SidebarScrollBand() {
    * is about that one button, and framing the whole repository card to point at a 24px
    * control is pointing at everything.
    *
-   * IT PULLS BACK THE MOMENT THE MENU OPENS, and not later. The dropdown hangs BELOW the
-   * trigger and is four times its height — held tight on the button, the list of scripts
-   * would open mostly outside the frame, which is the one thing this step exists to show.
-   * So the wide frame arrives with the menu and stays for the rest of the scene: the
-   * pointer walking down to `dev`, the purple bar, the address row.
+   * THEN IT PULLS BACK TO THE MENU, AND ONLY TO THE MENU. The dropdown hangs below the
+   * trigger and is four times its height, so held tight on the button the list would
+   * open mostly outside the frame. It used to pull all the way back to the repository
+   * card; the owner asked for a partial pull-back ("juste un dezoom pour voir le contenu
+   * de la card dropdown"), so the frame fits the menu itself (`scriptsMenu`) while it is
+   * open and hovered, and then the running server (`server`, ringed in purple) once `dev`
+   * has started.
    *
-   * Every state but `closed` is therefore wide, which includes reduced motion, where the
-   * scene is set straight to `serving` and never animates.
+   * Reduced motion is set straight to `serving`, so it frames the server.
    */
-  const tightOnTrigger = active === SCRIPTS_STEP && scripts === 'closed'
-  const zoomPart: SidebarPart | null = tightOnTrigger ? 'scripts' : step?.zoom ?? focus
+  const scriptsZoom: SidebarPart | null =
+    active !== SCRIPTS_STEP
+      ? null
+      : scripts === 'closed'
+        ? 'scripts'
+        : scripts === 'open' || scripts === 'hover'
+          ? 'scriptsMenu'
+          : 'server'
+  const scriptsDetail = scriptsZoom !== null
+  const zoomPart: SidebarPart | null = scriptsZoom ?? step?.zoom ?? focus
 
   // ── Where the panel goes for that paragraph ─────────────────────────────────────
   useLayoutEffect(() => {
@@ -278,13 +298,16 @@ export function SidebarScrollBand() {
 
     const box = boxWithin(target, panel)
     // A `card` step frames its whole card at the base scale; a `detail` step magnifies
-    // its part. The scripts step is a card step that spends its first beat being a detail
-    // — it is about one button — so it takes the detail's arithmetic until the menu opens.
-    const zoomed = step ? step.kind !== 'card' || tightOnTrigger : false
+    // its part. The scripts step is a card step played as a detail throughout: the
+    // button, then the menu, then the server, each fitted to the frame.
+    const zoomed = step ? step.kind !== 'card' || scriptsDetail : false
     let scale = base
     if (zoomed) {
       const fitBox = Math.min((fw - FRAME_PAD * 2) / (box.w + FOCUS_PAD_X * 2), (fh - FRAME_PAD * 2) / (box.h + FOCUS_PAD_Y * 2))
-      scale = clamp(fitBox, base, Math.max(base, MAX_ZOOM))
+      // The menu is 280px wide: at `MAX_ZOOM` it overran the frame's right edge, so it
+      // stops at `MENU_ZOOM`, which leaves the whole menu and a margin of plate in view.
+      const cap = zoomPart === 'scriptsMenu' ? MENU_ZOOM : MAX_ZOOM
+      scale = clamp(fitBox, base, Math.max(base, cap))
     }
 
     // Centre the part; then keep at most `pad` of plate at whichever edge the panel
@@ -298,7 +321,7 @@ export function SidebarScrollBand() {
     setTransform(`translate(${tx}px, ${ty}px) scale(${scale})`)
     // `pr` and `scripts` change the panel's height (the PR card appears, the server row
     // appears), so they are dependencies even though the arithmetic never reads them.
-  }, [zoomPart, tightOnTrigger, step, pr, scripts, layoutTick])
+  }, [zoomPart, scriptsDetail, step, pr, scripts, layoutTick])
 
   return (
     <HomeSection>
@@ -318,7 +341,12 @@ export function SidebarScrollBand() {
               because the pan is the one thing on the page that animates a large raster. */}
           <div
             ref={panelRef}
-            className="absolute left-0 top-0 origin-top-left will-change-transform transition-transform duration-[900ms] ease-[cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:transition-none"
+            className={`absolute left-0 top-0 origin-top-left will-change-transform transition-transform ease-[cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:transition-none ${
+              // SLOWER INSIDE THE SCRIPTS SCENE: its moves are short hops between three
+              // framings of one card, and at 900ms the hop from the button to the menu
+              // read as a jolt (the owner: "moins rapide").
+              active === SCRIPTS_STEP ? 'duration-[1600ms]' : 'duration-[900ms]'
+            }`}
             style={{ transform, width: PANEL_WIDTH }}
           >
             {/* `bg-appbg` is the window's ground the panel's `bg-black/30` sits on in the
@@ -345,7 +373,11 @@ export function SidebarScrollBand() {
               // centre their copy in that height, so the text is at the middle of the
               // screen when the paragraph is the active one.
               className={`flex flex-col justify-center py-6 transition-opacity duration-500 ${
-                tourStep.kind === 'status' ? 'min-h-[55vh]' : 'min-h-[70vh]'
+                tourStep.id === 'scripts'
+                  ? 'min-h-[160vh]'
+                  : tourStep.kind === 'status'
+                    ? 'min-h-[55vh]'
+                    : 'min-h-[70vh]'
               } ${active === index || active === -1 ? 'opacity-100' : 'opacity-40'}`}
             >
               <StepCopy step={tourStep} />

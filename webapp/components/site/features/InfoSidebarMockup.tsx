@@ -79,6 +79,8 @@ export type SidebarPart =
   | 'status'
   | 'repository'
   | 'scripts'
+  | 'scriptsMenu'
+  | 'server'
   | 'branches'
   | 'files'
   | 'commits'
@@ -92,6 +94,8 @@ const PART_PARENT: Record<SidebarPart, SidebarPart | null> = {
   status: 'ticket',
   repository: null,
   scripts: 'repository',
+  scriptsMenu: 'repository',
+  server: 'repository',
   branches: 'repository',
   files: 'repository',
   commits: 'repository',
@@ -357,7 +361,10 @@ export function InfoSidebarPanel({
               title: t('site.infoSidebar.scripts'),
               groups: SCRIPT_GROUPS(t),
               onSelect: noop,
-              className: `${part('scripts')} ${focus === 'scripts' ? RING : ''}`,
+              // Off the trigger once the server runs: the ring moves onto the server card.
+              className: `${part('scripts')} ${
+                focus === 'scripts' && scripts !== 'running' && scripts !== 'serving' ? RING : ''
+              }`,
               /* THE REAL PANEL IS NOT USED HERE, and this is the one place in the four
                  drawings where it could not be. `SelectIcon` positions its panel `fixed`,
                  from the trigger's VIEWPORT rect — and `/desktop` draws this sidebar at
@@ -385,7 +392,12 @@ export function InfoSidebarPanel({
               {/* `ScriptCard` from `design-system/desktop/`: the purple bar, its loader, the
                   stop chip and the address row hanging off it are all its own. */}
               {scripts === 'running' || scripts === 'serving' ? (
-                <div data-part="server">
+                /* THE RING MOVES HERE once `dev` is up: the same `RING` every other step
+                   draws, off the trigger and onto what it started, and only while the
+                   scripts step is the one in focus, so it goes with the next paragraph.
+                   `rounded-lg` for `ScriptCard`'s own radius, so the ring follows it
+                   rather than squaring its corners (the fix `branches` needed too). */
+                <div data-part="server" className={focus === 'scripts' ? `rounded-lg ${RING}` : ''}>
                   <ScriptCard
                     name="dev"
                     state="running"
@@ -403,7 +415,9 @@ export function InfoSidebarPanel({
                   `right-[3.25rem]` puts it under the icon-only trigger, which sits three
                   `ButtonIcon`s in from the card's right edge. */}
               {scripts === 'open' || scripts === 'hover' ? (
-                <div className="absolute right-[3.25rem] top-[calc(0.75rem+1.5rem+8px)] z-20 w-[280px] overflow-hidden rounded-lg border border-appline/50 bg-appbg-secondary shadow-lift">
+                <div
+                  data-part="scriptsMenu"
+                  className="absolute right-[3.25rem] top-[calc(0.75rem+1.5rem+8px)] z-20 w-[280px] overflow-hidden rounded-lg border border-appline/50 bg-appbg-secondary shadow-lift">
                   {SCRIPT_GROUPS(t).map((group) => (
                     <div key={group.label}>
                       <div className="truncate bg-appbg-tertiary/30 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-appink/40">
