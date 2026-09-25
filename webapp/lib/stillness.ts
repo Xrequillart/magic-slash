@@ -1,6 +1,6 @@
 /**
  * WHEN THE SITE HOLDS STILL. Two audiences get the resting state of every animation on
- * the public site — the entrance reveals, the looping mockups, the hero's figure:
+ * the public site — the entrance reveals, the looping mockups:
  *
  *   • readers who asked the OS for less motion (`prefers-reduced-motion: reduce`), and
  *   • every phone and tablet, which here means any viewport under Tailwind's `lg`

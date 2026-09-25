@@ -230,8 +230,7 @@ export const marketingEn = {
    * pas des specs créées") — that line started at a ticket that already existed, and the
    * idea-to-spec-to-tickets step, the product's most distinctive one, was nowhere in it.
    * The command token that closed it went with it: the hero no longer spells a command
-   * anywhere, and the orbit beside it is drawn as ARTEFACTS, not as the commands that
-   * produce them.
+   * anywhere.
    *
    * Two keys, and a `<br>` inside the first: the owner wants "à la PR mergée." on a line
    * of its own, and where a sentence breaks is copy in a language and not layout — the
@@ -259,55 +258,17 @@ export const marketingEn = {
    * the .dmg, so the reader meets the prerequisites before the file lands. It is also
    * read by `/workflow` and `/desktop` (`lib/workflowPage.test.ts` pins it), so it
    * stays under this key. `workflowCta` is `secondary` and opens `/workflow`, where the
-   * six artefacts the orbit draws are set out at length.
+   * six artefacts of a ticket are set out at length.
    */
   'site.hero.downloadCta': 'Download for Mac',
   'site.hero.workflowCta': 'See the workflow',
-  /**
-   * THE ORBIT — six artefacts around the Claude Code mark, each a card with a title and
-   * one line under it. They are the six nouns of the subtitle, drawn, in the order a
-   * ticket meets them. The six titles are the product's vocabulary and spelled the same
-   * in both languages, so all six are listed in `i18n.test.ts`; the six description
-   * lines are translated. "PAY-142" and "#318" are the same invented ticket and PR the rest of
-   * the site's mockups use, so a reader who scrolls meets the same feature twice.
-   */
-  'site.hero.orbitSpecTitle': 'Spec',
-  'site.hero.orbitSpecDesc': 'written and reviewed',
-  'site.hero.orbitEpicTitle': 'Epic + 3 stories',
-  'site.hero.orbitEpicDesc': 'PAY-142, created in Jira',
-  'site.hero.orbitWorktreeTitle': 'Worktree + commits',
-  'site.hero.orbitWorktreeDesc': 'feature/pay-142, atomic',
-  'site.hero.orbitPrTitle': 'PR #318',
-  'site.hero.orbitPrDesc': 'opened, ticket updated',
-  'site.hero.orbitReviewTitle': 'Review',
-  'site.hero.orbitReviewDesc': '3 threads resolved and pushed',
-  'site.hero.orbitDoneTitle': 'Done',
-  'site.hero.orbitDoneDesc': 'merged, ticket closed',
-  /**
-   * What the mark says when it is clicked — a pixel speech bubble, gone again a second
-   * later. It is the one joke on the page and the owner's ("une bulle style pixel qui
-   * dit Aïe !!"); the English keeps the double exclamation mark because that is the
-   * joke's punctuation, not the sentence's.
-   */
-  'site.hero.ouch': 'Ouch!!',
-  /**
-   * AND WHAT IT SAYS WHEN THE CLICKS KEEP COMING. Four moods by click count, and
-   * `ClaudeFigure` says which count earns which: the flinch above for the first two,
-   * then a head-shake and "Stop it", then it turns its back and says so, then it gives
-   * up and dances. The count resets after a couple of quiet seconds, so the joke can be
-   * told again. The French lines are the owner's ("Arrêtez !!!", "Ça suffit maintenant
-   * !"); the English keeps their punctuation.
-   */
-  'site.hero.stop': 'Stop it!!!',
-  'site.hero.enough': 'That’s enough now!',
-  'site.hero.dance': 'Fine, fine. I’ll dance.',
   /**
    * RETIRED, all of the below, and kept like every other family this page has shed —
    * nothing tests for an unused key, and pruning one means editing `i18n.test.ts`'s
    * exact allow-list in lockstep. `eyebrow` was the pill above the headline; `cta` the
    * login button before the download replaced it; `howCta` scrolled to a `#how` band
-   * that was cut; the `ladder*` and `skill*` keys were the seven command cards the
-   * orbit replaced.
+   * that was cut; the `ladder*` and `skill*` keys were the seven command cards an
+   * animated orbit replaced, itself since replaced by an illustration.
    */
   'site.hero.eyebrow': '8 Claude Code skills + a desktop app',
   'site.hero.cta': 'Start free',
