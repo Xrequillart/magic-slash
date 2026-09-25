@@ -575,11 +575,15 @@ const TONE_HEIGHT = 'min-h-80'
  * bottom edge reads as an afterthought rather than as the point. Side by side, the copy
  * gets a column it can be read in and the visual gets the rest.
  *
- * IT STAYS STACKED BELOW `md` in either case. A 24rem copy column and a panel beside it
+ * `halves` is `beside` for a HALF-width card: the copy takes a little over half the
+ * card (55%) and the visual the rest. `beside`'s 24rem copy column would leave a
+ * half-width card's drawing a sliver; here the two shares grow together.
+ *
+ * IT STAYS STACKED BELOW `md` in every case. A 24rem copy column and a panel beside it
  * do not both fit on a phone, and the thing that gives way is the copy — so the row only
  * exists where there is width for it.
  */
-export type ToneCardLayout = 'stacked' | 'beside'
+export type ToneCardLayout = 'stacked' | 'beside' | 'halves'
 
 /**
  * WHERE A STACKED VISUAL SITS in the height the card has left, and it is a slot for the
@@ -639,7 +643,7 @@ export function ToneCard({
   className?: string
 }) {
   const { surface, title: titleInk, body } = CARD_TONES[tone]
-  const beside = layout === 'beside'
+  const beside = layout === 'beside' || layout === 'halves'
 
   return (
     <div
@@ -659,7 +663,12 @@ export function ToneCard({
           ground needs more margin before its own edge, or the type looks pinned to the
           corner. In a row the copy is capped so it stays a readable measure — a
           full-width card would otherwise set its description across 1000px. */}
-      <div className={cx('p-7', beside ? 'md:max-w-sm md:shrink-0' : undefined)}>
+      <div
+        className={cx(
+          'p-7',
+          layout === 'beside' ? 'md:max-w-sm md:shrink-0' : layout === 'halves' ? 'md:w-[55%] md:shrink-0' : undefined,
+        )}
+      >
         <h3 className={cx('font-display text-xl font-bold leading-tight', titleInk)}>{title}</h3>
         {/* `text-base` at `font-medium` — 16px, 500.
             
