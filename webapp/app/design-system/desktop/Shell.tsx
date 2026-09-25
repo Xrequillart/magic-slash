@@ -116,7 +116,7 @@ import { ENTRY_LABELS, FAMILIES, FOUNDATION_PAGES, type EntryId } from './entrie
  * The desktop app's design system: a rail of components on the left, one of them
  * on the right.
  *
- * A rail rather than the single scrolling page `/design-system-web` uses, and the
+ * A rail rather than the single scrolling page `/design-system/webapp` uses, and the
  * difference is not taste. That page documents a SCALE — shadows, radii, edges —
  * where the whole point is seeing twenty cards at once and catching the rung that
  * sags. This one documents COMPONENTS, extracted one at a time into

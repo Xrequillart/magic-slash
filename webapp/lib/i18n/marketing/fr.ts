@@ -380,6 +380,46 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.workflowPage.subtitle':
     'Magic Slash est une surcouche à Claude Code. Chaque étape du cycle est une commande dans votre terminal : l’agent lit le ticket, fait le travail, et s’arrête exactement là où vous voulez décider.',
   'site.workflowPage.stepsCta': 'Parcourir les cinq étapes',
+  'site.designSystem.eyebrow': 'Le design system de Magic Slash',
+  'site.designSystem.title': 'Les composants livrés, montrés tels qu’ils sont livrés.',
+  'site.designSystem.subtitle':
+    'Prestige est le design system de Magic Slash. Chaque composant présenté ici est celui qui est compilé dans l’application, depuis le même fichier source : rien n’est redessiné pour l’occasion, ce que vous lisez ici est ce qui tourne.',
+  'site.designSystem.cta': 'Explorer les composants desktop',
+  'site.designSystem.playgroundEyebrow': 'À essayer',
+  'site.designSystem.playgroundTitle': 'Huit thèmes. Un clic, et tout suit.',
+  'site.designSystem.playgroundSubtitle':
+    'Choisissez un thème. Ce ne sont pas des captures : ce sont les composants de l’application, rendus ici, et ils se repeignent exactement comme dans l’app.',
+  'site.designSystem.playgroundThemes': 'Thème',
+  'site.designSystem.desktopEyebrow': 'Pour l’app desktop',
+  'site.designSystem.desktopTitle': 'Pensé pour une fenêtre, pas pour une page web.',
+  'site.designSystem.desktopSubtitle':
+    'La galerie desktop réunit chaque composant de l’app Magic Slash, avec ses variantes, ses props et les raisons de chaque choix.',
+  'site.designSystem.tailoredTitle': 'Des composants sur mesure pour une expérience desktop',
+  'site.designSystem.tailoredDesc':
+    'Listes denses, barres latérales, vues scindées et raccourcis clavier : des composants dessinés pour une fenêtre qu’on garde ouverte toute la journée, pas pour une page qu’on fait défiler une fois.',
+  'site.designSystem.everyoneTitle': 'Qui s’adapte aux besoins de chacun',
+  'site.designSystem.everyoneDesc':
+    'Développeur, product builder, product designer ou PM : les mêmes composants portent une spec, un ticket, un diff ou une review, et huit thèmes laissent chacun travailler dans sa lumière.',
+  'site.designSystem.whyTitle': 'Chaque choix expliqué',
+  'site.designSystem.whyDesc':
+    'Chaque composant arrive avec son pourquoi : ce qu’il remplace, ce qui a été essayé puis abandonné. La personne suivante part de la décision, pas d’une supposition.',
+  'site.designSystem.webappEyebrow': 'Pour l’app web',
+  'site.designSystem.webappTitle': 'Pensé pour une page, du téléphone au grand écran.',
+  'site.designSystem.webappSubtitle':
+    'La galerie web réunira les primitives de magic-slash.io et du dashboard : boutons, cartes, couleurs, et les règles qui les tiennent ensemble.',
+  'site.designSystem.webappSoon': 'Bientôt',
+  'site.designSystem.browserTitle': 'Pensé pour le navigateur',
+  'site.designSystem.browserDesc':
+    'Chaque primitive tient en 390 pixels comme en 1440 : rien ne défile de côté, rien n’est coupé au bord.',
+  'site.designSystem.coloursTitle': 'Des couleurs qui ont un sens',
+  'site.designSystem.coloursDesc':
+    'Six fonds, chacun avec son rôle : le bleu du produit, l’ambre qui ouvre la boucle, le vert qui la ferme. Une couleur se choisit, elle ne se distribue pas.',
+  'site.designSystem.readableTitle': 'Lisible par tous',
+  'site.designSystem.readableDesc':
+    'Des contrastes réglés pour la lecture, des animations coupées quand le système demande moins de mouvement, et chaque contrôle accessible au clavier.',
+  'site.designSystem.drawingsTitle': 'Un même trait pour toutes les illustrations',
+  'site.designSystem.drawingsDesc':
+    'Toutes les illustrations viennent d’un même jeu, à l’encre noire sur fond clair : recadrées sur ce qu’elles dessinent, passées en blanc sur les bandes sombres, jamais recolorées.',
   'site.workflowPage.planClaimSpec': 'Une spec complète rédigée à partir d’une phrase, critères d’acceptation compris',
   'site.workflowPage.planClaimApprove': 'Rien ne part sur le tracker avant votre validation',
   'site.workflowPage.planClaimTickets': 'L’epic et ses stories créées sur {jira} ou {github}, et liées',
@@ -1598,6 +1638,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.meta.faqTitle': 'Questions fréquentes · Magic Slash',
   'site.meta.privacyTitle': 'Confidentialité · Magic Slash',
   'site.meta.termsTitle': 'Conditions d’utilisation · Magic Slash',
+  'site.meta.designSystemTitle': 'Prestige · Le design system de Magic Slash',
   'site.footer.product': 'Produit',
   'site.footer.features': 'Fonctionnalités',
   'site.footer.commands': 'Les commandes',

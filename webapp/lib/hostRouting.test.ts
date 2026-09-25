@@ -62,10 +62,9 @@ describe('canonicalHost', () => {
       // `app.magic-slash.io`, which reads as "you are not allowed to see this" rather
       // than as a routing mistake.
       //
-      // Its sibling is deliberately absent: `/design-system-web` still 404s in
-      // production from its own page, and is not public here either.
+      // Production sends it to `design.magic-slash.io` before this rule is asked (see
+      // `movedPage` below); this is what still answers if that rule ever lets it through.
       expect(canonicalHost('magic-slash.io', '/design-system')).toBeNull()
-      expect(canonicalHost('magic-slash.io', '/design-system-web')).toBe(APP_HOST)
       // AND `/application` IS NOT ONE OF THEM, though the menu row that opens `/desktop`
       // is labelled "Application": that path is the app's own settings section, and it
       // goes where the rest of the product goes.
@@ -190,29 +189,42 @@ describe('canonicalHost', () => {
  * `/documentation`'s. A redirect to the front door still keeps the link working.
  */
 describe('design. — the design system, on a host of its own', () => {
-  it('sends the old apex path to the new host', () => {
+  it('sends the old apex paths to the new host, prefix dropped', () => {
     expect(movedPage('magic-slash.io', '/design-system')).toBe(`https://${DESIGN_HOST}/`)
     expect(movedPage('magic-slash.io', '/design-system/')).toBe(`https://${DESIGN_HOST}/`)
-    // Typed on the new host itself: one hop to its root, not a loop through the apex.
-    expect(movedPage(DESIGN_HOST, '/design-system')).toBe(`https://${DESIGN_HOST}/`)
+    expect(movedPage('magic-slash.io', '/design-system/desktop')).toBe(`https://${DESIGN_HOST}/desktop`)
+    expect(movedPage('magic-slash.io', '/design-system/webapp')).toBe(`https://${DESIGN_HOST}/webapp`)
   })
 
-  it('leaves the path alone off production, where there is no other host', () => {
+  it('shortens a route spelled out on the new host itself', () => {
+    // The home page's button links to the route, which is what it is off production.
+    expect(movedPage(DESIGN_HOST, '/design-system/desktop')).toBe(`https://${DESIGN_HOST}/desktop`)
+    expect(movedPage(DESIGN_HOST, '/desktop')).toBeNull()
+    expect(movedPage(DESIGN_HOST, '/')).toBeNull()
+  })
+
+  it('leaves the routes alone off production, where there is no other host', () => {
     expect(movedPage('localhost:3000', '/design-system')).toBeNull()
+    expect(movedPage('localhost:3000', '/design-system/desktop')).toBeNull()
     expect(movedPage('magic-slash-git-feat.vercel.app', '/design-system')).toBeNull()
   })
 
-  it('does not touch its sibling or an invitation token', () => {
-    expect(movedPage('magic-slash.io', '/design-system-web')).toBeNull()
+  it('does not mistake a path that merely starts with the same letters, or a token', () => {
+    expect(movedPage('magic-slash.io', '/design-systems')).toBeNull()
     expect(movedPage('invite.magic-slash.io', '/design-system')).toBeNull()
   })
 
-  it('serves the page at its root', () => {
-    expect(canonicalHost(DESIGN_HOST, '/')).toBeNull()
+  it('serves each of its pages without the prefix', () => {
+    for (const path of ['/', '/desktop', '/webapp']) {
+      expect(canonicalHost(DESIGN_HOST, path), path).toBeNull()
+    }
     expect(resolveRewrite(DESIGN_HOST, '/')).toBe('/design-system')
+    expect(resolveRewrite(DESIGN_HOST, '/desktop')).toBe('/design-system/desktop')
+    expect(resolveRewrite(DESIGN_HOST, '/webapp/')).toBe('/design-system/webapp')
   })
 
   it('sends every other path to the host that owns it', () => {
+    // The shared header's links are relative, so they arrive here first.
     expect(canonicalHost(DESIGN_HOST, '/faq')).toBe('magic-slash.io')
     expect(canonicalHost(DESIGN_HOST, '/dashboard')).toBe(APP_HOST)
   })

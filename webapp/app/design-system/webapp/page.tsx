@@ -6,7 +6,7 @@ import { Gallery } from './Gallery'
  * `components/ui.tsx`, on one scrollable page, so a change to the scale can be
  * judged by looking instead of by reading a diff.
  *
- * `/design-system-web`, because `/design-system` is now the DESKTOP app's own
+ * `/design-system/webapp`, beside `/design-system/desktop`, the DESKTOP app's own
  * scale — a different product with a different palette, a dark ground and seven
  * themes. Two pages rather than two tabs of one: nothing is shared between the
  * two scales, and a single page would invite borrowing a token across a border
@@ -19,7 +19,7 @@ import { Gallery } from './Gallery'
  * at all there — `lib/hostRouting.ts` decides which HOST serves a path, not
  * whether it should be served, and this is the second question.
  *
- * Reachable at `localhost:3000/design-system-web` on any host, since
+ * Reachable at `localhost:3000/design-system/webapp` on any host, since
  * `isProductionHost()` scopes the host rules to the real domains and there is
  * only one host in development.
  */

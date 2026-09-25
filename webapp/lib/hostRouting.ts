@@ -14,7 +14,7 @@
  * | `magic-slash.io`        | the public site — `app/(marketing)`        |
  * | `app.magic-slash.io`    | the product — `/dashboard`, and `/admin`   |
  * | `invite.magic-slash.io` | the invitation funnel — `/invite/<token>`  |
- * | `design.magic-slash.io` | the desktop design system — `/design-system` |
+ * | `design.magic-slash.io` | the design system — `/design-system/*`     |
  *
  * The back-office had a host of its own for a while. It does not need one: it is a
  * section of the product reached by the handful of people who already work in the
@@ -39,10 +39,21 @@
 export const APP_HOST = 'app.magic-slash.io'
 
 /**
- * The design system's own host. Its root is `/design-system`, and it serves nothing
- * else: every other path is sent back to the host that owns it.
+ * The design system's own host, Prestige. It serves `/design-system` and the pages under
+ * it WITHOUT that prefix — `design.magic-slash.io/desktop` is `/design-system/desktop` —
+ * and nothing else: every other path is sent back to the host that owns it.
  */
 export const DESIGN_HOST = 'design.magic-slash.io'
+
+/** The route behind each path of the design host. */
+const DESIGN_PAGES: Record<string, string> = {
+  '/': '/design-system',
+  '/desktop': '/design-system/desktop',
+  '/webapp': '/design-system/webapp',
+}
+
+/** The design system's route prefix, which its own host leaves out of the URL. */
+const DESIGN_PREFIX = '/design-system'
 
 /** The domain every host of the product shares. */
 const SHARED_DOMAIN = 'magic-slash.io'
@@ -112,15 +123,15 @@ const PUBLIC_PATHS = new Set([
   // other side.
   '/privacy',
   '/terms',
-  // THE DESKTOP APP'S DESIGN SYSTEM, published on purpose, and MOVED to a host of its
-  // own: `movedPage` sends `magic-slash.io/design-system` to `design.magic-slash.io`
-  // before this list is asked. It stays listed so the page keeps answering on hosts
-  // that rule does not cover — localhost and the Vercel previews. It was a workbench that
+  // THE DESIGN SYSTEM'S HOME PAGE, published on purpose, and MOVED to a host of its
+  // own: `movedPage` sends `magic-slash.io/design-system/*` to `design.magic-slash.io`
+  // before this list is asked. Off production that rule does not apply and this one
+  // does not either — `canonicalHost` answers null there — so nothing else is listed. It was a workbench that
   // 404'd in production, and it is now a page: the components on it are the real ones
   // this repo compiles into Electron, and the repo itself is public, so the page tells a
   // visitor nothing its own source does not already say out loud.
   //
-  // `/design-system-web` IS NOT HERE and is still development-only. The two pages were
+  // `/design-system/webapp` IS NOT PUBLIC and is still development-only. The two pages were
   // built as a pair and are being separated on purpose: this one documents a shared
   // folder that exists to be read, the other documents `components/ui.tsx` — the site's
   // own internals, which nobody outside the repo has a reason to see.
@@ -253,18 +264,22 @@ export function retiredPath(host: string, pathname: string): string | null {
 /**
  * The absolute URL of a public page that moved to a host of its own, or null.
  *
- * `/design-system` is the one: it is `design.magic-slash.io` now, a front door rather
- * than a path under the apex. A 308, because the page moved for good and the ranking
- * the old URL earned should follow it — same reasoning as `RETIRED_PATHS`.
+ * `/design-system` and everything under it: they are `design.magic-slash.io` now, with
+ * the prefix dropped — `/design-system/desktop` is `design.magic-slash.io/desktop`. A
+ * 308, because the pages moved for good and the ranking the old URLs earned should
+ * follow them — same reasoning as `RETIRED_PATHS`.
  *
- * SCOPED TO PRODUCTION, unlike `retiredPath`: the page still exists at its path, and on
- * localhost or a preview there is no other host to send anybody to. The design host is
- * covered too, so `design.magic-slash.io/design-system` lands on its root in one hop.
+ * SCOPED TO PRODUCTION, unlike `retiredPath`: the pages still exist at their paths, and
+ * on localhost or a preview there is no other host to send anybody to. The design host
+ * is covered too: a link that spells the route out — the home page's own button does —
+ * lands on the short URL in one hop.
  */
 export function movedPage(host: string, pathname: string): string | null {
   if (!isProductionHost(host)) return null
   if (host.startsWith('invite.')) return null
-  return normalise(pathname) === '/design-system' ? `https://${DESIGN_HOST}/` : null
+  const path = normalise(pathname)
+  if (path !== DESIGN_PREFIX && !path.startsWith(`${DESIGN_PREFIX}/`)) return null
+  return `https://${DESIGN_HOST}${path.slice(DESIGN_PREFIX.length) || '/'}`
 }
 
 /**
@@ -283,11 +298,11 @@ export function movedPage(host: string, pathname: string): string | null {
 export function canonicalHost(host: string, pathname: string): string | null {
   if (!isProductionHost(host)) return null
   if (host.startsWith('invite.')) return null
-  // The design host serves its root and nothing else. Any other path is a page of the
-  // site or of the product, typed on the wrong host: sent straight to its owner, so a
-  // public page is not duplicated under a second domain.
+  // The design host serves its own pages and nothing else. Any other path is a page of
+  // the site or of the product, typed on the wrong host — the shared header's links
+  // are relative — and is sent straight to its owner rather than duplicated here.
   if (host.toLowerCase().split(':')[0] === DESIGN_HOST) {
-    if (pathname === '/') return null
+    if (normalise(pathname) in DESIGN_PAGES) return null
     return isPublicPath(pathname) ? SHARED_DOMAIN : APP_HOST
   }
   if (isPublicPath(pathname)) return null
@@ -297,7 +312,6 @@ export function canonicalHost(host: string, pathname: string): string | null {
 /** Host prefix → the route its ROOT serves. Deeper paths are left untouched. */
 const ROOT_REWRITES: Record<string, string> = {
   'app.': '/dashboard',
-  'design.': '/design-system',
 }
 
 /**
@@ -325,6 +339,13 @@ const PATH_PREFIXES: Record<string, string> = {
  * redirect would rewrite that URL in the address bar of everyone who saved it.
  */
 export function resolveRewrite(host: string, pathname: string): string | null {
+  // The design host drops the route's prefix from every URL it serves, so each of its
+  // paths is rewritten, not only the root. Anything else never reaches this: see
+  // `canonicalHost`.
+  if (host.toLowerCase().split(':')[0] === DESIGN_HOST) {
+    return DESIGN_PAGES[normalise(pathname)] ?? null
+  }
+
   for (const [prefix, target] of Object.entries(PATH_PREFIXES)) {
     if (!host.startsWith(prefix)) continue
     // Already under the target — a link that hardcoded the real path, or an internal

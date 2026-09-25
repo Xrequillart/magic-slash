@@ -843,6 +843,47 @@ export const marketingEn = {
   'site.workflowPage.subtitle':
     'Magic Slash is a layer on top of Claude Code. Every step of the cycle is one command in your terminal: the agent reads the ticket, does the work, and stops exactly where you want to decide.',
   'site.workflowPage.stepsCta': 'Walk through the five steps',
+  // THE DESIGN SYSTEM'S HOME PAGE, `/design-system` (`design.magic-slash.io` in production).
+  'site.designSystem.eyebrow': 'The Magic Slash design system',
+  'site.designSystem.title': 'The components that ship, shown as they ship.',
+  'site.designSystem.subtitle':
+    'Prestige is the design system behind Magic Slash. Every component on these pages is the one compiled into the app, from the same source file: nothing is redrawn for the occasion, so what you read here is what runs.',
+  'site.designSystem.cta': 'Explore the desktop components',
+  'site.designSystem.playgroundEyebrow': 'Try it',
+  'site.designSystem.playgroundTitle': 'Eight themes. One click, and everything follows.',
+  'site.designSystem.playgroundSubtitle':
+    'Pick a theme. These are not screenshots: they are the app’s own components, rendered here, and they repaint themselves exactly as they do in the app.',
+  'site.designSystem.playgroundThemes': 'Theme',
+  'site.designSystem.desktopEyebrow': 'For the desktop app',
+  'site.designSystem.desktopTitle': 'Built for a window, not a web page.',
+  'site.designSystem.desktopSubtitle':
+    'The desktop gallery gathers every component of the Magic Slash app, with its variants, its props and the reasons behind each choice.',
+  'site.designSystem.tailoredTitle': 'Components made to measure for the desktop',
+  'site.designSystem.tailoredDesc':
+    'Dense lists, sidebars, split views and keyboard shortcuts: components drawn for a window you keep open all day, not for a page you scroll once.',
+  'site.designSystem.everyoneTitle': 'Adapts to whoever uses it',
+  'site.designSystem.everyoneDesc':
+    'Developer, product builder, product designer or PM: the same components carry a spec, a ticket, a diff or a review, and eight themes let everyone work in their own light.',
+  'site.designSystem.whyTitle': 'Every choice explained',
+  'site.designSystem.whyDesc':
+    'Each component comes with its why: what it replaced, what was tried and dropped. Whoever touches it next starts from the decision, not from a guess.',
+  'site.designSystem.webappEyebrow': 'For the web app',
+  'site.designSystem.webappTitle': 'Built for a page, from phone to wide screen.',
+  'site.designSystem.webappSubtitle':
+    'The web gallery will gather the primitives behind magic-slash.io and the dashboard: buttons, cards, colours, and the rules that hold them together.',
+  'site.designSystem.webappSoon': 'Coming soon',
+  'site.designSystem.browserTitle': 'Made for the browser',
+  'site.designSystem.browserDesc':
+    'Every primitive holds at 390 pixels as well as at 1440: nothing scrolls sideways, nothing is cut at the edge.',
+  'site.designSystem.coloursTitle': 'Colours that mean something',
+  'site.designSystem.coloursDesc':
+    'Six grounds, each with a job: the blue of the product, the amber that opens the loop, the green that closes it. A colour is chosen, never dealt.',
+  'site.designSystem.readableTitle': 'Readable by everyone',
+  'site.designSystem.readableDesc':
+    'Contrast set for reading, animations cut when the system asks for less motion, and every control reachable from the keyboard.',
+  'site.designSystem.drawingsTitle': 'One line for every drawing',
+  'site.designSystem.drawingsDesc':
+    'Every illustration comes from one set, in black ink on a light ground: cropped to what it draws, turned white on the dark bands, never recoloured.',
   // The claims. Three per step, each something the skill does and nothing it promises.
   'site.workflowPage.planClaimSpec': 'A full spec written from one sentence, acceptance criteria included',
   'site.workflowPage.planClaimApprove': 'Nothing reaches the tracker until you have approved it',
@@ -2722,6 +2763,7 @@ export const marketingEn = {
   'site.meta.faqTitle': 'Frequently asked questions · Magic Slash',
   'site.meta.privacyTitle': 'Privacy · Magic Slash',
   'site.meta.termsTitle': 'Terms of use · Magic Slash',
+  'site.meta.designSystemTitle': 'Prestige · The Magic Slash design system',
   'site.footer.product': 'Product',
   'site.footer.features': 'Features',
   'site.footer.commands': 'The commands',
