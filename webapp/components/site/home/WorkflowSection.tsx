@@ -168,8 +168,7 @@ const VISUAL: Partial<Record<WorkflowStepId, ToneCardVisual>> = {
 
 /**
  * THE PLAN CARD'S ILLUSTRATION, from the site's own set (`illustration-lightbulb.svg`), in
- * place of the spec panel the card drew before — the owner's call. `PlanSpecArt` stays in
- * `WorkflowArt.tsx`: `/workflow`'s control band still draws it.
+ * place of the spec panel the card drew before — the owner's call.
  *
  * BIG AND CROPPED: `h-[32rem]`, and pushed past the card's bottom and right edges by the
  * negative margins, so the card's `overflow-hidden` and its radius cut the corner. The

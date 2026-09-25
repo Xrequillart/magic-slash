@@ -8,28 +8,24 @@ import { useLoopStep } from '../features/useLoopStep'
 import { Pointer } from '../Pointer'
 
 /**
- * THE THREE DRAWINGS OF `/workflow`'S CONTROL BAND THAT ARE ITS OWN, each asked for by the
+ * THE TWO DRAWINGS OF `/workflow`'S CONTROL BAND THAT ARE ITS OWN, each asked for by the
  * product owner in place of a homepage drawing that stood there first:
  *
  *   • `PlanTerminalArt` — a terminal running the start command up to the moment it asks:
  *     the plan on screen, and the choice between building it and reworking it. The
  *     homepage's start card shows the agent AFTER the command; this card is about the stop
  *     before the code, so it has to show the stop.
- *   • `CommitListArt` — a white card listing commits, the branch drawn in yellow down
- *     their left, cropped bottom and right. Only commits: the graph the homepage draws ends
- *     on a pull request, and this card's claim is about the history itself.
  *   • `MergeButtonArt` — GitHub's green button, a cursor that arrives and presses it, a
  *     loader, then the merged state. The claim beside it is that nothing in the loop
  *     presses this; the drawing shows the reader's own hand doing it.
  *
  * EVERY STORYBOARD RUNS ON `useLoopStep`, the clock `/features`' PR card uses: one state
  * change per beat, and under `prefers-reduced-motion` the story rests on its LAST step,
- * which for all three is the state with the most in it.
+ * which for both is the state with the most in it.
  *
  * WHAT IS LANGUAGE AND WHAT IS NOT. A terminal prints what the tool prints, and Claude
  * Code prints English, so the transcript is literal in both languages, exactly as
- * `StartTerminal` and `SkillsRunTerminal` argue. Commit subjects are in the repository's
- * commit language, which here is English. GitHub's button says what GitHub's button says.
+ * `StartTerminal` and `SkillsRunTerminal` argue. GitHub's button says what GitHub's button says.
  * The one word that is ours is the caption on the merged state, and it is a key.
  *
  * `aria-hidden` on every panel: drawings, whose words paraphrase the card's own copy.
@@ -120,50 +116,6 @@ function Line({ on, children }: { on: boolean; children: React.ReactNode }) {
 
 function Tick() {
   return <Check className="h-3.5 w-3.5 shrink-0 text-green" strokeWidth={2.5} />
-}
-
-/**
- * ── The history ───────────────────────────────────────────────────────────────────
- *
- * Six commits on one branch, the branch drawn as a yellow rail down the left with a dot per
- * commit, the subject beside each and its short hash pushed right. The subjects are this
- * repository's own conventional-commit shape, with scopes CLAUDE.md actually lists, the way
- * `CommitsCardMockup` reasons: an invented subject is the one thing a reader could catch.
- *
- * `yellow` is the status token, and it is asked for here because the reference the owner
- * brought is a git client's graph, where a branch's colour is a branch's colour and means
- * nothing else. A white card on the `midnight` ground, `-mb-6 -mr-8` off the bottom and
- * the right edge: the list runs past the frame, which is what a history does.
- */
-const COMMITS: readonly { hash: string; subject: string }[] = [
-  { hash: 'a3f1c92', subject: 'feat(desktop): queue offline edits in IndexedDB' },
-  { hash: '7b40e18', subject: 'feat(desktop): replay the queue on reconnect' },
-  { hash: 'c1d8a05', subject: 'refactor(desktop): lift the editor state out of the view' },
-  { hash: '5e2f7b3', subject: 'test(desktop): cover the reconcile path' },
-  { hash: 'd9c4160', subject: 'fix(desktop): keep the caret through a reload' },
-  { hash: '2f8b6ae', subject: 'docs(readme): describe the offline mode' },
-]
-
-export function CommitListArt() {
-  return (
-    <div aria-hidden className="-mb-6 -mr-8 pl-7 pt-6">
-      <div className="min-w-96 rounded-tl-xl border border-hairline bg-white p-4 shadow-lift">
-        <ul className="relative">
-          {/* THE BRANCH: one rail behind the dots, from the first to past the last. */}
-          <span className="absolute bottom-0 left-[7px] top-2 w-0.5 rounded-full bg-yellow" />
-          {COMMITS.map((commit) => (
-            <li key={commit.hash} className="relative flex items-center gap-3 py-1.5 text-xs">
-              <span className="relative z-10 h-4 w-4 shrink-0 rounded-full border-[3px] border-yellow bg-white" />
-              <span className="min-w-0 flex-1 truncate text-ink/80">{commit.subject}</span>
-              <span className="shrink-0 rounded border border-hairline px-1.5 py-0.5 font-mono text-[11px] text-ink/50">
-                {commit.hash}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  )
 }
 
 /**

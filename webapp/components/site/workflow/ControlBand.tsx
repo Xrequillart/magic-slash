@@ -5,9 +5,8 @@ import { titleOf } from '@/lib/features'
 import { useT } from '@/lib/i18n/useLanguage'
 import { CONTROL_FACTS, WORKFLOW_BANDS } from '@/lib/workflowPage'
 import { HomeHeading, HomeSection } from '../home/Shell'
-import { PlanSpecArt } from '../home/WorkflowArt'
 import { Reveal } from '../Reveal'
-import { CommitListArt, MergeButtonArt, PlanTerminalArt } from './ControlArt'
+import { MergeButtonArt, PlanTerminalArt } from './ControlArt'
 
 /**
  * THE LAST BAND BEFORE THE ASK: what stays in the reader's hands.
@@ -24,8 +23,9 @@ import { CommitListArt, MergeButtonArt, PlanTerminalArt } from './ControlArt'
  * move under a heading (`BuiltForSection`), and after five plates and a dark sheet they
  * read as the page raising its voice once more before the ask.
  *
- * THE DRAWINGS. The spec card borrows the homepage workflow band's `PlanSpecArt`: the spec
- * with its approval and the tickets it became, which is exactly the fact. The other three
+ * THE DRAWINGS. The spec card is an illustration from the site's set, a team on a call
+ * with an approved sheet held up, in place of the homepage's `PlanSpecArt` panel: the
+ * owner's call. The other three
  * are this page's own (`ControlArt.tsx`), each asked for by the owner in place of the
  * homepage drawing that stood there first: a terminal stopped on the plan and the choice
  * it offers, a commit list on a white card with the branch in yellow, and GitHub's merge
@@ -35,12 +35,29 @@ import { CommitListArt, MergeButtonArt, PlanTerminalArt } from './ControlArt'
  * and where it leaves.
  */
 const CARD: Record<string, { tone: CardTone; visual: ToneCardVisual; Art: () => React.ReactElement }> = {
-  spec: { tone: 'sky', visual: 'end', Art: PlanSpecArt },
+  // An illustration from the site's set, so it is centred like the merge button below.
+  spec: { tone: 'sky', visual: 'center', Art: SpecIllustration },
   plan: { tone: 'amber', visual: 'end', Art: PlanTerminalArt },
-  commits: { tone: 'lemon', visual: 'end', Art: CommitListArt },
+  commits: { tone: 'lemon', visual: 'center', Art: CommitsIllustration },
   // An object rather than a crop, so it is centred in the height the copy leaves: see
   // `ToneCardVisual`.
   merge: { tone: 'mint', visual: 'center', Art: MergeButtonArt },
+}
+
+/**
+ * The spec card's picture. Its `viewBox` is cropped to the drawing's measured box
+ * (`23 84 954 832` out of 1000²). `alt=""`: the card's title says what it shows.
+ */
+function SpecIllustration() {
+  return <img src="/img/illustration-video-call.svg" alt="" className="mx-auto w-full max-w-sm px-7 pb-7" />
+}
+
+/**
+ * The commits card's picture, from the same set: a checkmark with someone at work on it.
+ * `viewBox` cropped to the drawing (`23 108 954 784` out of 1000²).
+ */
+function CommitsIllustration() {
+  return <img src="/img/illustration-checkmark.svg" alt="" className="mx-auto w-full max-w-sm px-7 pb-7" />
 }
 
 export function ControlBand() {

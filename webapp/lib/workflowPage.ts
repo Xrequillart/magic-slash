@@ -156,8 +156,9 @@ export const DAY_FACTS: readonly DesktopFact[] = [
 /**
  * WHAT STAYS YOURS, IN FOUR FACTS, and each one answers the objection a developer has
  * before letting an agent near their repository: the spec waits for a yes, the plan comes
- * before the code, the commits can be read one by one, and nothing in the loop presses
- * the merge button. The last one is the claim this page could most easily get wrong, and
+ * before the code, nothing in the loop presses the merge button, and the commits can be
+ * read one by one. The merge fact sits THIRD, left of the commits on the second row, by
+ * the owner's call. It is the claim this page could most easily get wrong, and
  * it is checked against `skills/magic-done/SKILL.md`: the skill verifies a merge, it does
  * not perform one.
  */
@@ -175,15 +176,15 @@ export const CONTROL_FACTS: readonly DesktopFact[] = [
     description: 'site.workflowPage.controlPlanDesc',
   },
   {
-    id: 'commits',
-    icon: 'GitCommitHorizontal',
-    title: 'site.workflowPage.controlCommitsTitle',
-    description: 'site.workflowPage.controlCommitsDesc',
-  },
-  {
     id: 'merge',
     icon: 'GitMerge',
     title: 'site.workflowPage.controlMergeTitle',
     description: 'site.workflowPage.controlMergeDesc',
+  },
+  {
+    id: 'commits',
+    icon: 'GitCommitHorizontal',
+    title: 'site.workflowPage.controlCommitsTitle',
+    description: 'site.workflowPage.controlCommitsDesc',
   },
 ]
