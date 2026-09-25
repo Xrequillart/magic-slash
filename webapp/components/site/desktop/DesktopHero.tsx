@@ -44,9 +44,28 @@ export function DesktopHero() {
   const { t } = useT()
 
   return (
-    <HomeSection padding="hero" backdrop={<Aura />}>
+    <HomeSection padding="hero">
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
+        {/* THE PAIN, DRAWN, above the pill: a hand dropping more tickets on a desk someone
+            is already buried at. From the site's illustration set, in place of the aura
+            of blurred discs this band used to sit on (the owner's call: plain white, and
+            the picture on top). `viewBox` cropped to the drawing (`72 120 856 680` of
+            1000², cut through the cuff at the top and at the chair's seat, and faded at BOTH ends so the cuff dissolves into the top of the page the way the desk dissolves at the foot), and the foot faded as `/download` fades its jetpack, so the desk's legs
+            dissolve into the band rather than stopping on a line. Same stacking fix as
+            there: the pill is `relative z-10` so it paints over the faded foot.
+
+            33rem TALL, THE WIDTH IT HAD AT 38rem before the top was cut, AND PULLED UP INTO THE BAND'S TOP PADDING (`md:-mt-20`), at the
+            owner's request: wider, and the hand arriving from the top of the page, as if
+            from the sky, rather than sitting in a margin under the header. */}
         <Reveal order={1}>
+          <img
+            src="/img/illustration-overload.svg"
+            alt=""
+            className="mx-auto h-auto w-auto max-w-full [mask-image:linear-gradient(to_bottom,transparent,black_15%,black_70%,transparent)] md:-mb-16 md:-mt-20 md:h-[33rem]"
+          />
+        </Reveal>
+
+        <Reveal order={1} className="relative z-10">
           <span className="inline-flex items-center rounded-full border border-hairline bg-white px-3.5 py-1.5 text-xs font-bold text-muted">
             {t('site.desktop.eyebrow')}
           </span>
@@ -346,26 +365,5 @@ function Highlights() {
         </li>
       ))}
     </ul>
-  )
-}
-
-function Aura() {
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0">
-      {/* The violet core, widest and centred on the window's own axis. */}
-      <div className="absolute left-1/2 top-1/4 h-2/3 w-[80%] -translate-x-1/2 rounded-full bg-purple/30 blur-3xl" />
-      {/* The pink and the amber, thrown out to either side so the field has a hue
-          gradient across it rather than one colour at two strengths. */}
-      <div className="absolute -left-[10%] top-1/3 h-1/2 w-3/5 rounded-full bg-red/25 blur-3xl" />
-      <div className="absolute -right-[10%] top-1/3 h-1/2 w-3/5 rounded-full bg-orange/25 blur-3xl" />
-      {/* The page's own blue, under the middle of the window. */}
-      <div className="absolute left-1/2 top-[45%] h-1/2 w-2/5 -translate-x-1/2 rounded-full bg-accent/25 blur-3xl" />
-      {/* Gone before the band ends — into WHITE, which is the ground of the band under it.
-          It faded to `canvas` while the page under the hero was the homepage's blue tint;
-          `/desktop`'s bands are on white, and the product owner saw the seam ("une vraie
-          diff entre le dégradé et le fond blanc"). The fade also starts higher (`h-1/2`)
-          so the last of the colour is gone well before the edge rather than at it. */}
-      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-b from-transparent to-white" />
-    </div>
   )
 }
