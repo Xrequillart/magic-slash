@@ -433,7 +433,11 @@ export function InfoSidebarPanel({
             branch: BRANCH,
             base: BASE_BRANCH,
             copy: { label: BRANCH, onCopy: noop },
-            className: `${part('branches')} ${focus === 'branches' ? RING : ''}`,
+            /* `rounded-lg` WITH THE RING: `BranchCard`'s root is a bare flex row, the two
+               chips inside it carry the radius, so a ring on the row alone drew a square
+               corner around two round ones. The chips' own radius, on the element the ring
+               is a shadow of. */
+            className: `${part('branches')} ${focus === 'branches' ? `rounded-lg ${RING}` : ''}`,
           },
           changes: {
             label: t('site.infoSidebar.uncommitted'),
