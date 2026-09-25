@@ -6,15 +6,20 @@ import { DESKTOP_DOWNLOAD_URL } from '@/lib/desktopRelease'
 import { BAND_TITLE, HomeSection } from './Shell'
 
 /**
- * The closing ask, and the one band on the page that is a dark sheet: the app's icon,
- * one headline, one line, one button, centred on a wash of colour bleeding out of black.
+ * The closing ask, and the one band on the page that is a dark sheet: a white line
+ * illustration, one headline, one line, one button, centred on plain black.
+ *
+ * NO WASH, AND NO GLOW. The band used to sit on three blurred discs of `red`, `brand` and
+ * `purple` bleeding out of the ink, with the app icon haloed by a blurred copy of itself.
+ * The owner asked for both to go ("laisse juste un fond noir"), then for the icon itself to
+ * give way to an illustration drawn in white: white on `bg-ink` is the whole band now.
  *
  * ONE BUTTON, NOT TWO. The section used to close on the hero's pair — `primary` to the
  * app, `secondary` to the .dmg — on the argument that a reader who scrolled the whole
  * page should meet the same choice they were offered at the top. It now closes on the
  * download alone. The end of a landing page is the one place where a second option is a
- * question rather than a convenience, and the icon above it has already said what is
- * being offered. `DESKTOP_DOWNLOAD_URL` is the .dmg itself, not a releases page.
+ * question rather than a convenience, and the headline has already said what is being
+ * offered. `DESKTOP_DOWNLOAD_URL` is the .dmg itself, not a releases page.
  *
  * ITS OWN COPY, and that was a fix rather than a preference: `site.cta.*` was ALSO what
  * `/story` rendered in its own closing block, so retuning this band through those keys
@@ -22,108 +27,77 @@ import { BAND_TITLE, HomeSection } from './Shell'
  * homepage's closing copy has been `site.finalCta.*` ever since, and it keeps that name
  * now `/story` and `site.cta.*` are both deleted: this band is the homepage's closing
  * sheet, which is what the family says.
- *
- * THE ICON IS THE ONLY BITMAP ON THE PAGE, at 256px and 46KB — everything else in
- * `public/img/` bar the integration logos is between 1.7MB and 4MB, which is why the
- * hero above is type only. It is requested twice and downloaded once: the glow behind it
- * is the same file blurred, so the browser serves the second `img` from cache.
- *
- * It is `app-icon-desktop.png`, resized to 256px from `desktop/resources/icon.png`, the
- * file electron-builder ships: the leaping hare on a pale blue field. It landed beside a
- * then-existing `public/img/app-icon.png` rather than over it, because that one was the
- * old ninja mascot on a square white field and the `/admin` device panel was still
- * drawing it. Both have since gone, `/admin` reads this file too, and `public/img/` now
- * holds one app icon rather than two of which only one was true.
- *
- * The corners are rounded HERE, not in the artwork — the source is a hard square, and a
- * hard square on a dark sheet reads as a cropped screenshot rather than as an app icon.
- * `rounded-3xl` is 24px against the 128px box, which is close to the ~22% macOS icons
- * actually use, and it is a declared radius rather than an arbitrary one. `rounded-button`
- * would be wrong: 12px is the corner of a control you press, not of an icon.
  */
 
 /**
- * The wash, and it is built out of declared tokens rather than a hand-mixed gradient.
- *
- * Three blurred discs over `bg-ink`: `red` on the left, `brand` on the right, `purple`
- * between them, each at low alpha under `blur-3xl`. That is where the wine-into-blue
- * bleed comes from, and none of it is a new colour — the alternative was a
- * `bg-[radial-gradient(...)]` with hex stops in it, which is precisely the hardcoded
- * value the design brief rules out.
- *
- * SIZED IN FRACTIONS, not in `h-[36rem]`. Tailwind's spacing scale stops at `h-96`, so
- * a disc big enough to read as a wash would have needed an arbitrary value at every
- * corner. Fractions of the band answer the same question and scale with it.
- *
- * The last layer is the fade to black at the bottom edge, which is what keeps the wash
- * in the upper half and lets the footer below start from the same ink.
+ * The four arrows around the button, positioned exactly as `DownloadContent` places them.
+ * LITERAL CLASS LISTS, because Tailwind only emits classes it can see in the source.
  */
-function Wash() {
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0">
-      <div className="absolute -left-1/4 -top-1/2 h-full w-2/3 rounded-full bg-red/20 blur-3xl" />
-      <div className="absolute -right-1/4 -top-1/2 h-full w-2/3 rounded-full bg-brand/25 blur-3xl" />
-      <div className="absolute left-1/4 -top-1/3 h-2/3 w-1/2 rounded-full bg-purple/15 blur-3xl" />
-      <div className="absolute inset-0 bg-gradient-to-t from-ink via-transparent to-transparent" />
-    </div>
-  )
-}
+const ARROWS = [
+  { src: '/img/arrow-swirl.svg', className: 'left-[17%] top-0 w-[100px] rotate-[28deg]' },
+  { src: '/img/arrow-wave.svg', className: 'left-[2%] top-8 w-[88px] rotate-[14deg]' },
+  { src: '/img/arrow-zigzag.svg', className: 'right-[17%] top-0 w-[100px] -rotate-[28deg] scale-x-[-1]' },
+  { src: '/img/arrow-bolt.svg', className: 'right-[2%] top-8 w-[88px] -rotate-[14deg] scale-x-[-1]' },
+] as const
 
 export function FinalCtaSection() {
   const { t } = useT()
 
   return (
-    <HomeSection padding="tall" backdrop={<Wash />} className="bg-ink">
+    <HomeSection padding="tall" className="bg-ink">
       <div className="mx-auto max-w-2xl text-center">
-        {/* THE GLOW IS THE ICON ITSELF, blurred, sitting behind the icon. Not a disc of
-            some chosen colour: the halo is then whatever the artwork is — the pale blue
-            of this icon — and it stays correct if the icon is ever redrawn, with no
-            second value to keep in sync. `scale-110` so the bloom reads past the edges
-            rather than only through the corners, and `blur-2xl` because `blur-3xl` at
-            this size dissolves it into the wash behind.
+        {/* AN ILLUSTRATION FROM THE SITE'S SET IN PLACE OF THE APP ICON, on the owner's
+            call: a jetpack launch, which is the headline's "vitesse supérieure" drawn.
+            `invert` turns its black ink white on the ink band, as with the arrows below;
+            its `viewBox` is cropped to the drawing (`23 71 954 790` out of 1000²).
 
-            It is NOT an elevation. The scale has four rungs and a glow is not one of
-            them, and an arbitrary shadow value would fail `designTokens.test.ts` — which
-            scans this file as TEXT, comments included, so the class cannot even be named
-            here to say it is unwanted.
-
-            96px rather than 128px. At 128 the icon was competing with the headline for
-            the eye instead of introducing it — and the blur now adds visual size the box
-            does not, so it reads bigger than the number suggests.
-
-            `alt` is empty on both: the headline underneath names the product, and the
-            copy is decoration of decoration. */}
-        <div className="relative mx-auto h-24 w-24">
-          <img
-            src="/img/app-icon-desktop.png"
-            alt=""
-            aria-hidden
-            className="absolute inset-0 h-full w-full scale-110 rounded-3xl opacity-70 blur-2xl"
-          />
-          <img
-            src="/img/app-icon-desktop.png"
-            alt=""
-            width={96}
-            height={96}
-            className="relative h-full w-full rounded-3xl"
-          />
-        </div>
+            CROPPED AT THE BOTTOM AND FADED, because the owner found it too small at 16rem.
+            The viewBox stops at y=861, through the flames and the lower boot, so the
+            drawing's weight (the figure and the pack) fills the 26rem instead of its
+            exhaust. A hard cut through white strokes on black reads as a mistake; the mask
+            dissolves the last 30% into the band instead, and `mt-2` under it because the
+            faded foot is already the gap. `max-w-full` so a phone scales it down rather
+            than overflowing. */}
+        <img
+          src="/img/illustration-jetpack.svg"
+          alt=""
+          className="mx-auto h-auto w-auto max-w-full invert [mask-image:linear-gradient(to_bottom,black_70%,transparent)] md:h-[26rem]"
+        />
 
         {/* `BAND_TITLE.onDark` — the same type as every band above, on the rung that
             carries `text-white` instead of `text-ink`. See the note on the constant in
             `Shell.tsx` for why the colour is a rung and not a `className`. */}
-        <h2 className={`mt-10 ${BAND_TITLE.onDark}`}>{t('site.finalCta.title')}</h2>
+        <h2 className={`mt-2 ${BAND_TITLE.onDark}`}>{t('site.finalCta.title')}</h2>
 
         <p className="mx-auto mt-5 max-w-md text-base text-onink-body">
           {t('site.finalCta.subtitle')}
         </p>
 
         {/* `secondary` — the white face — because on `ink` it IS the loud one: the blue
-            `primary` would be the quieter of the two against this wash, which inverts
+            `primary` would be the quieter of the two against black, which inverts
             the ladder. The radius stays `rounded-button`; the reference this band is
             drawn from uses a full pill, and a `rounded-full` appended here would fight
             the recipe on stylesheet order rather than replace it. */}
-        <div className="mt-10">
+        {/* THE DOWNLOAD PAGE'S FOUR ARROWS, in white, converging on the button. Same files,
+            same angles and the same mirroring as `DownloadContent` — its note explains the
+            aim — with `invert` turning the art's #010101 ink to white rather than a second
+            copy of each file drawn in another colour.
+
+            `lg:-mx-12` IS WHAT LETS THE SAME PERCENTAGES WORK. This column is `max-w-2xl`
+            and the download page's is `max-w-3xl`, 96px wider; widening the arrows' box by
+            48px a side makes it that same 768px, so every offset lands where it does
+            there. Only from `lg`, which is also the only width the arrows draw at: on a
+            phone a negative margin would push the page sideways for nothing. */}
+        <div className="relative mt-10 flex justify-center lg:-mx-12">
+          {ARROWS.map((arrow) => (
+            <img
+              key={arrow.src}
+              src={arrow.src}
+              alt=""
+              aria-hidden
+              className={`pointer-events-none absolute hidden invert lg:block ${arrow.className}`}
+            />
+          ))}
           <ButtonLink href={DESKTOP_DOWNLOAD_URL} variant="secondary" size="lg">
             {t('site.finalCta.button')}
           </ButtonLink>
