@@ -120,6 +120,30 @@ export function DownloadContent({ release }: { release: ChangelogVersion | null 
       <HomeSection padding="hero">
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
           <Reveal order={1}>
+            {/* THE HOMEPAGE'S CLOSING ILLUSTRATION, same file and same crop: the jetpack
+                launch `FinalCtaSection` sits over its headline, so the band that asks for
+                the download and the page that serves it open on one picture. In its own
+                black ink here, on white — the homepage inverts it for its dark sheet.
+
+                THE SAME FADE AS THERE, and it works on this ground for the same reason: the
+                mask fades the drawing to TRANSPARENT, not to a colour, so it dissolves into
+                whatever the band is. See `FinalCtaSection` for why the foot is cut at all.
+                32rem, WIDER THAN THE HOMEPAGE'S 26rem, at the owner's request, and pulled
+                up under the version pill by `md:-mb-24`: the pill is `bg-white` and sits
+                over the faded foot, which the owner accepted ("c'est pas grave si le banner
+                passe un peu au dessus"). The overlap is what keeps the button in the first
+                screen at this size. */}
+            <img
+              src="/img/illustration-jetpack.svg"
+              alt=""
+              className="mx-auto h-auto w-auto max-w-full [mask-image:linear-gradient(to_bottom,black_70%,transparent)] md:-mb-24 md:h-[32rem]"
+            />
+          </Reveal>
+
+          {/* `relative z-10`: once its reveal has finished this item is no longer a
+              stacking context, and a plain block paints UNDER the illustration's (still
+              transformed) one — so without it the jetpack's strokes cross the pill. */}
+          <Reveal order={2} className="relative z-10">
             {/* WHICH BUILD, said before the title. The pill is `/desktop`'s eyebrow
                 recipe with a green dot in front: the one place on the site `green` is
                 spent on decoration is the Download row in the header, and this is the
@@ -137,19 +161,19 @@ export function DownloadContent({ release }: { release: ChangelogVersion | null 
             </span>
           </Reveal>
 
-          <Reveal order={2}>
+          <Reveal order={3}>
             <h1 className="font-display text-4xl font-black leading-[1.05] tracking-tight text-ink md:text-[3.6rem] [text-wrap:balance]">
               {t(PAGE_CHROME.title)}
             </h1>
           </Reveal>
 
-          <Reveal order={3}>
+          <Reveal order={4}>
             <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted">
               {t(PAGE_CHROME.lead)}
             </p>
           </Reveal>
 
-          <Reveal order={4} className="relative flex w-full flex-col items-center gap-3">
+          <Reveal order={5} className="relative flex w-full flex-col items-center gap-3">
             {/* FOUR ARROWS, TWO A SIDE, ALL POINTING AT THE BUTTON — what replaced the
                 green wash, and the reason the band does not need one.
 
@@ -221,7 +245,7 @@ export function DownloadContent({ release }: { release: ChangelogVersion | null 
             </p>
           </Reveal>
 
-          <Reveal order={5}>
+          <Reveal order={6}>
             {/* Three facts, no verb — `/desktop`'s own line under its buttons, with the
                 platform said precisely (Apple Silicon, not macOS) because this is the page
                 where that precision matters: it is the one thing that decides whether the
