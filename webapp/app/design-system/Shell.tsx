@@ -71,6 +71,8 @@ import { RepositoryCardEntry } from './entries/RepositoryCardEntry'
 import { ItemEntry } from './entries/ItemEntry'
 import { PlanItemEntry } from './entries/PlanItemEntry'
 import { RepositoryItemEntry } from './entries/RepositoryItemEntry'
+import { RepositoryListEntry } from './entries/RepositoryListEntry'
+import { RepoPageHeaderEntry } from './entries/RepoPageHeaderEntry'
 import { ScriptCardEntry } from './entries/ScriptCardEntry'
 import { SidebarAgentCoderInfoEntry } from './entries/SidebarAgentCoderInfoEntry'
 import { SidebarAgentPlannerInfoEntry } from './entries/SidebarAgentPlannerInfoEntry'
@@ -237,6 +239,8 @@ const ENTRIES: Record<
   repositorycard: RepositoryCardEntry,
   item: ItemEntry,
   repositoryitem: RepositoryItemEntry,
+  repositorylist: RepositoryListEntry,
+  repopageheader: RepoPageHeaderEntry,
   planitem: PlanItemEntry,
   scriptcard: ScriptCardEntry,
   sidebaragentcoderinfo: SidebarAgentCoderInfoEntry,

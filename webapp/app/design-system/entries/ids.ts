@@ -88,6 +88,8 @@ export type EntryId =
   | 'repositorycard'
   | 'item'
   | 'repositoryitem'
+  | 'repositorylist'
+  | 'repopageheader'
   | 'planitem'
   | 'sidebaragentcoderinfo'
   | 'sidebaragentplannerinfo'
@@ -211,6 +213,8 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   repositorycard: 'RepositoryCard',
   item: 'Item',
   repositoryitem: 'RepositoryItem',
+  repositorylist: 'RepositoryList',
+  repopageheader: 'RepoPageHeader',
   planitem: 'PlanItem',
   sidebaragentcoderinfo: 'SidebarAgentCoderInfo',
   sidebaragentplannerinfo: 'SidebarAgentPlannerInfo',
@@ -377,6 +381,8 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   // caller's, the same way `Card`'s children are.
   item: [],
   repositoryitem: ['item', 'icon', 'label', 'text'],
+  repositorylist: ['button', 'icon', 'repositoryitem', 'sectionheader'],
+  repopageheader: ['buttonicon', 'text'],
   planitem: ['item', 'label', 'status', 'text'],
   sidebaragentcoderinfo: ['contextagentcard', 'titleagentcard', 'repositorycard', 'repositoryselector'],
   sidebaragentplannerinfo: ['contextagentcard', 'speccard'],
@@ -486,6 +492,8 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   repositoryselector: 'Which repositories an agent works in',
   item: 'One row of a list, and the stack it belongs to',
   repositoryitem: 'A repository, as a list scans it',
+  repositorylist: 'Every repository, a section per owner',
+  repopageheader: 'The top of one repository’s settings',
   planitem: 'One plan, as one dense line',
   sidebaragentplannerinfo: 'The right column of a planner',
   apptitlebar: 'The bar across the top, and it knows nothing either',

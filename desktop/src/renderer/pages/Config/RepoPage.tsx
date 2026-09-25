@@ -15,15 +15,14 @@ import { useT, type MessageKey, type Translate } from '../../i18n'
 import {
   Banner,
   Button,
-  ButtonIcon,
   Card,
   EmptyState,
   OutputSample,
+  RepoPageHeader,
   SettingsCard,
   SkillIntro as DsSkillIntro,
   TabStrip,
   Text,
-  TEXT_FACE,
   type SettingsCardRow,
 } from '@ds/desktop'
 import { LANGUAGES } from '../../languages'
@@ -929,33 +928,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
   // every page switch, and two nested slides would compound.
   return (
     <div>
-      <div className="mb-8 flex flex-col gap-2">
-        <div className="flex items-center gap-3">
-          <ButtonIcon
-            icon={ArrowLeft}
-            tone="ghost"
-            title={t('repo.back')}
-            onClick={() => { window.location.hash = '#/' }}
-          />
-          {/* Same repository tile as the rail, the list it was opened from and the agent
-              sidebar's cards — at page-title scale. */}
-          <span
-            className="flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0"
-            style={{ backgroundColor: `${repoColor}1f`, color: repoColor }}
-          >
-            <FolderGit2 className="w-5 h-5" />
-          </span>
-          {/* The one raw heading on the page, and it stays one: `Text` tops out at `2xl`
-              but renders a `<span>`, and a repository's name is this document's `h1`. The
-              FACE is the design system's — `font-sans` resolves to a different family in
-              the webapp, so a heading leaning on it would be set in two faces across the
-              two builds. */}
-          <h1 className={`${TEXT_FACE} text-2xl font-bold text-ink`}>{repoName}</h1>
-        </div>
-        <Text size="sm" tone="secondary">
-          {readOnly ? t('repo.subtitleReadOnly') : t('repo.subtitle')}
-        </Text>
-      </div>
+      <RepoPageHeader
+        name={repoName}
+        color={repoColor}
+        subtitle={readOnly ? t('repo.subtitleReadOnly') : t('repo.subtitle')}
+        backLabel={t('repo.back')}
+        onBack={() => { window.location.hash = '#/' }}
+      />
 
       {/* THREE THINGS CAN BE WRONG BEFORE ANY SETTING IS, and all three are `Banner` now
           — one component, three variants, where they were three hand-built boxes that

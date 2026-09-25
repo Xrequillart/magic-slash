@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { FolderPlus, Folder, Building2, Lock } from '@ds/desktop/icons'
-import { Button, ItemGroup, RepositoryItem, SectionHeader } from '@ds/desktop'
+import { Building2, Lock } from '@ds/desktop/icons'
+import { RepositoryList } from '@ds/desktop'
 import { RepoPage } from './RepoPage'
 import { SweepPane } from '../../components/SweepPane'
 import { useStore } from '../../store'
@@ -153,39 +153,32 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
     return counts
   }, [terminals, repos])
 
-  // One row of the repositories list. Shared by the Personal and Team sections —
-  // a plain render function, not a component, so React keeps the same elements
-  // across renders instead of remounting a freshly-declared type.
-  const renderRepoRow = ([name, repo]: [string, RepositoryConfig]) => {
+  // One row of the repositories list, as `RepositoryItem`'s props. Shared by the Personal
+  // and Team sections.
+  const repoRow = ([name, repo]: [string, RepositoryConfig]) => {
     const agentCount = agentCountByRepo[name] || 0
-
-    return (
-      <RepositoryItem
-        key={name}
-        name={name}
-        color={colorMap[name]}
-        href={`#/repo/${encodeURIComponent(name)}`}
-        // Only meaningful once a local folder is bound: until then there is nothing
-        // to read a remote off, so the chip stays away rather than reporting none.
-        remote={
-          repo.needsLocalPath
-            ? undefined
-            : {
-                connected: !!githubStatus[name],
-                label: githubStatus[name] ? t('settings.repos.connected') : t('settings.repos.noRemote'),
-              }
-        }
-        path={repo.needsLocalPath ? undefined : repo.path}
-        missingPath={repo.needsLocalPath ? t('settings.repos.noLocalFolder') : undefined}
-        // Worded here, where the catalogue is. The row takes the sentence, not the
-        // number — the plural rule is the app's and not the design system's.
-        agents={
-          agentCount > 0
-            ? t(agentCount > 1 ? 'settings.repos.agents.other' : 'settings.repos.agents.one', { count: agentCount })
-            : undefined
-        }
-      />
-    )
+    return {
+      key: name,
+      name,
+      ...(colorMap[name] ? { color: colorMap[name] } : {}),
+      href: `#/repo/${encodeURIComponent(name)}`,
+      // Only meaningful once a local folder is bound: until then there is nothing to read
+      // a remote off, so the chip stays away rather than reporting none.
+      ...(repo.needsLocalPath
+        ? { missingPath: t('settings.repos.noLocalFolder') }
+        : {
+          remote: {
+            connected: !!githubStatus[name],
+            label: githubStatus[name] ? t('settings.repos.connected') : t('settings.repos.noRemote'),
+          },
+          path: repo.path,
+        }),
+      // Worded here, where the catalogue is. The row takes the sentence, not the number —
+      // the plural rule is the app's and not the design system's.
+      ...(agentCount > 0
+        ? { agents: t(agentCount > 1 ? 'settings.repos.agents.other' : 'settings.repos.agents.one', { count: agentCount }) }
+        : {}),
+    }
   }
 
   // Check GitHub remote status for all repos
@@ -289,114 +282,35 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {/* One repository, under `#/repo/<name>` — the window's only sub-page. */}
       {isRepoRoute && <RepoPage repoName={route.params.name || ''} />}
 
-      {/* The repository list — the whole of this window, the detail above excepted. */}
-      {!isRepoRoute && <div>
-        {/* NO HEADING, AND NOT A `SectionHeader` ANY MORE. This window has one page and
-            the page is the repositories — a heading saying so names the thing a reader
-            is already looking at, which is what a section header is for when there are
-            several sections and dead weight when there is one. What is left is the
-            action, so the row exists only to put it at the right edge.
-
-            `justify-end` and `mb-4`, the two things `SectionHeader` was still supplying.
-            Its `h-5` is deliberately NOT kept: that height pins a row to the natural
-            height of a bare title so sections with and without a button line up, and
-            with no title there is nothing to line up with — the button would simply
-            overflow a 20px box for no one's benefit. The row is the button's height now.
-
-            `SectionHeader` itself stays: ten other settings surfaces draw one. */}
-        <div className="mb-4 flex items-center justify-end">
-          {/* `neutral` and not `accent`, which is the weight this button already had:
-              it is an affordance in the corner rather than the step the page is asking
-              for. The border went with the migration — a plate a shade off the ground
-              and a hairline around it are the same statement made twice, which is the
-              whole of what `Button` refuses to draw.
-
-              `md` — 32px, one rung up from a list row, and the mark goes up with it to
-              16px because `Button` sizes its glyph from the rung and will not let a call
-              site pick the two apart.
-
-              `busy` RATHER THAN `disabled`. Picking a folder opens a native dialog and
-              the wait is the reader's own, but adding what comes back is not — it hits
-              the cloud — and a button that only dims says "unavailable" about a control
-              that is working. The mark becomes a spinner and the word already says
-              `adding`. */}
-          <Button
-            size="md"
-            icon={FolderPlus}
-            busy={isAdding}
-            onClick={handleOpenProject}
-          >
-            {isAdding ? t('settings.repos.adding') : t('settings.repos.add')}
-          </Button>
-        </div>
-
-        {repos.length === 0 ? (
-          <button
-            onClick={handleOpenProject}
-            disabled={isAdding}
-            className="w-full py-8 text-center border border-dashed border-border/50 rounded-xl hover:border-text-secondary/50 hover:bg-surface transition-colors"
-          >
-            <Folder className="w-8 h-8 text-icon-muted mx-auto mb-3" />
-            <div className="text-sm text-text-secondary/50 mb-1">{t('settings.repos.emptyTitle')}</div>
-            <div className="text-xs text-text-secondary/30">{t('settings.repos.emptyHint')}</div>
-          </button>
-        ) : (
-          <div className="flex flex-col gap-6">
-            {/* Personal.
-
-                `SectionHeader` AND NOT THE 11px UPPERCASE ROW this used to draw. That
-                treatment was this list's own, and nothing else in the app wore it: the
-                Plans page, the Tasks board and every settings section head their lists
-                with a 14px secondary line and a 16px glyph, which is exactly what this
-                component is. A heading that says "Personal" and a heading that says
-                "Planning sessions" are the same kind of statement about the list under
-                it, so they are now the same object rather than two spellings that
-                happened to agree on nothing.
-
-                `gap-3` from the wrapper with `spacing="none"`, which is the Plans page's
-                own arrangement — the heading spaces itself from its list with the
-                parent's gap rather than with a margin only one of the two knows about. */}
-            <div className="flex flex-col gap-3">
-              <SectionHeader
-                icon={Lock}
-                title={t('settings.repos.personal')}
-                count={personalRepos.length}
-                spacing="none"
-              />
-              {personalRepos.length === 0 ? (
-                <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-line-field rounded-xl">
-                  {t('settings.repos.noPersonal')}
-                </div>
-              ) : (
-                /* `ItemGroup` AND NOT `space-y-2`: the rows are flush now, on the
-                   ground and the hover the Plans list uses, so a section reads as one
-                   panel divided into its repositories rather than as a stack of separate
-                   plates. The radius is on the first and the last row — see `Item`. */
-                <ItemGroup>{personalRepos.map(renderRepoRow)}</ItemGroup>
-              )}
-            </div>
-
-            {/* One section per organization, in the order useOrgList lists them */}
-            {orgSections.map((section) => (
-              <div key={section.id} className="flex flex-col gap-3">
-                <SectionHeader
-                  icon={Building2}
-                  title={section.name}
-                  count={section.repos.length}
-                  spacing="none"
-                />
-                {section.repos.length === 0 ? (
-                  <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-line-field rounded-xl">
-                    {t('settings.repos.noTeam')}
-                  </div>
-                ) : (
-                  <ItemGroup>{section.repos.map(renderRepoRow)}</ItemGroup>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>}
+      {/* The repository list — the whole of this window, the detail above excepted. The
+          drawing is `RepositoryList`'s; what each row says is worked out here. */}
+      {!isRepoRoute && (
+        <RepositoryList
+          add={{
+            label: isAdding ? t('settings.repos.adding') : t('settings.repos.add'),
+            busy: isAdding,
+            onClick: handleOpenProject,
+          }}
+          empty={{ title: t('settings.repos.emptyTitle'), hint: t('settings.repos.emptyHint') }}
+          sections={[
+            {
+              id: 'personal',
+              icon: Lock,
+              title: t('settings.repos.personal'),
+              rows: personalRepos.map(repoRow),
+              empty: t('settings.repos.noPersonal'),
+            },
+            // One section per organization, in the order useOrgList lists them.
+            ...orgSections.map((section) => ({
+              id: section.id,
+              icon: Building2,
+              title: section.name,
+              rows: section.repos.map(repoRow),
+              empty: t('settings.repos.noTeam'),
+            })),
+          ]}
+        />
+      )}
 
         </SweepPane>
       </div>
