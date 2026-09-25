@@ -7,21 +7,24 @@
  * test that reached `next/server` would fail to RESOLVE rather than fail honestly
  * (see vitest.config.ts). The middleware keeps the framework; this keeps the rules.
  *
- * One Next.js deployment, three sites:
+ * One Next.js deployment, four sites:
  *
  * | Host                    | Serves                                     |
  * | ----------------------- | ------------------------------------------ |
  * | `magic-slash.io`        | the public site — `app/(marketing)`        |
  * | `app.magic-slash.io`    | the product — `/dashboard`, and `/admin`   |
  * | `invite.magic-slash.io` | the invitation funnel — `/invite/<token>`  |
+ * | `design.magic-slash.io` | the desktop design system — `/design-system` |
  *
  * The back-office had a host of its own for a while. It does not need one: it is a
  * section of the product reached by the handful of people who already work in the
  * product, and `app.magic-slash.io/admin/users` says so more plainly than a fourth
  * domain to provision, certify and remember.
  *
- * Three rules, asked in this order, because they answer different questions:
+ * Four rules, asked in this order, because they answer different questions:
  *
+ *  - `movedPage` — is this a public page that now has a HOST of its own? Asked first,
+ *    because the answer is a whole URL rather than a host or a path.
  *  - `canonicalHost` — does this path belong on ANOTHER host? A single deployment
  *    answers on every host, so every page was reachable on every one of them:
  *    `magic-slash.io/dashboard` served the product from the public site's domain. That
@@ -34,6 +37,12 @@
 
 /** The product's own host. Its root is the dashboard; the back-office is under /admin. */
 export const APP_HOST = 'app.magic-slash.io'
+
+/**
+ * The design system's own host. Its root is `/design-system`, and it serves nothing
+ * else: every other path is sent back to the host that owns it.
+ */
+export const DESIGN_HOST = 'design.magic-slash.io'
 
 /** The domain every host of the product shares. */
 const SHARED_DOMAIN = 'magic-slash.io'
@@ -103,7 +112,10 @@ const PUBLIC_PATHS = new Set([
   // other side.
   '/privacy',
   '/terms',
-  // THE DESKTOP APP'S DESIGN SYSTEM, published on purpose. It was a workbench that
+  // THE DESKTOP APP'S DESIGN SYSTEM, published on purpose, and MOVED to a host of its
+  // own: `movedPage` sends `magic-slash.io/design-system` to `design.magic-slash.io`
+  // before this list is asked. It stays listed so the page keeps answering on hosts
+  // that rule does not cover — localhost and the Vercel previews. It was a workbench that
   // 404'd in production, and it is now a page: the components on it are the real ones
   // this repo compiles into Electron, and the repo itself is public, so the page tells a
   // visitor nothing its own source does not already say out loud.
@@ -239,6 +251,23 @@ export function retiredPath(host: string, pathname: string): string | null {
 }
 
 /**
+ * The absolute URL of a public page that moved to a host of its own, or null.
+ *
+ * `/design-system` is the one: it is `design.magic-slash.io` now, a front door rather
+ * than a path under the apex. A 308, because the page moved for good and the ranking
+ * the old URL earned should follow it — same reasoning as `RETIRED_PATHS`.
+ *
+ * SCOPED TO PRODUCTION, unlike `retiredPath`: the page still exists at its path, and on
+ * localhost or a preview there is no other host to send anybody to. The design host is
+ * covered too, so `design.magic-slash.io/design-system` lands on its root in one hop.
+ */
+export function movedPage(host: string, pathname: string): string | null {
+  if (!isProductionHost(host)) return null
+  if (host.startsWith('invite.')) return null
+  return normalise(pathname) === '/design-system' ? `https://${DESIGN_HOST}/` : null
+}
+
+/**
  * The host this path belongs on, or null to serve it where it was asked for.
  *
  * The product used to answer on every host at once — `magic-slash.io/account` and
@@ -254,6 +283,13 @@ export function retiredPath(host: string, pathname: string): string | null {
 export function canonicalHost(host: string, pathname: string): string | null {
   if (!isProductionHost(host)) return null
   if (host.startsWith('invite.')) return null
+  // The design host serves its root and nothing else. Any other path is a page of the
+  // site or of the product, typed on the wrong host: sent straight to its owner, so a
+  // public page is not duplicated under a second domain.
+  if (host.toLowerCase().split(':')[0] === DESIGN_HOST) {
+    if (pathname === '/') return null
+    return isPublicPath(pathname) ? SHARED_DOMAIN : APP_HOST
+  }
   if (isPublicPath(pathname)) return null
   return host.toLowerCase().split(':')[0] === APP_HOST ? null : APP_HOST
 }
@@ -261,6 +297,7 @@ export function canonicalHost(host: string, pathname: string): string | null {
 /** Host prefix → the route its ROOT serves. Deeper paths are left untouched. */
 const ROOT_REWRITES: Record<string, string> = {
   'app.': '/dashboard',
+  'design.': '/design-system',
 }
 
 /**

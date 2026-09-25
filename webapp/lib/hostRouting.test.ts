@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
-import { APP_HOST, canonicalHost, resolveRewrite, retiredPath } from './hostRouting'
+import { APP_HOST, DESIGN_HOST, canonicalHost, movedPage, resolveRewrite, retiredPath } from './hostRouting'
 import { APP_URL } from './inviteLink'
 import { PRIVACY_PATH } from './privacyPage'
 import { TERMS_PATH } from './termsPage'
@@ -189,6 +189,35 @@ describe('canonicalHost', () => {
  * nothing took over what it said, which is the difference between its entry and
  * `/documentation`'s. A redirect to the front door still keeps the link working.
  */
+describe('design. — the design system, on a host of its own', () => {
+  it('sends the old apex path to the new host', () => {
+    expect(movedPage('magic-slash.io', '/design-system')).toBe(`https://${DESIGN_HOST}/`)
+    expect(movedPage('magic-slash.io', '/design-system/')).toBe(`https://${DESIGN_HOST}/`)
+    // Typed on the new host itself: one hop to its root, not a loop through the apex.
+    expect(movedPage(DESIGN_HOST, '/design-system')).toBe(`https://${DESIGN_HOST}/`)
+  })
+
+  it('leaves the path alone off production, where there is no other host', () => {
+    expect(movedPage('localhost:3000', '/design-system')).toBeNull()
+    expect(movedPage('magic-slash-git-feat.vercel.app', '/design-system')).toBeNull()
+  })
+
+  it('does not touch its sibling or an invitation token', () => {
+    expect(movedPage('magic-slash.io', '/design-system-web')).toBeNull()
+    expect(movedPage('invite.magic-slash.io', '/design-system')).toBeNull()
+  })
+
+  it('serves the page at its root', () => {
+    expect(canonicalHost(DESIGN_HOST, '/')).toBeNull()
+    expect(resolveRewrite(DESIGN_HOST, '/')).toBe('/design-system')
+  })
+
+  it('sends every other path to the host that owns it', () => {
+    expect(canonicalHost(DESIGN_HOST, '/faq')).toBe('magic-slash.io')
+    expect(canonicalHost(DESIGN_HOST, '/dashboard')).toBe(APP_HOST)
+  })
+})
+
 describe('retiredPath', () => {
   it('sends the documentation page to the FAQ that replaced it', () => {
     // `/documentation` is in the README, in release notes, and in whatever anybody
