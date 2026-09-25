@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useState, type RefObject } from 'react'
 import { BoardColumn, type BoardColumnTone } from './BoardColumn'
 import { EmptyState, type EmptyStateProps } from './EmptyState'
 import { FilterBar, FILTER_BAR_HEIGHT, type FilterBarProps } from './FilterBar'
@@ -168,11 +168,15 @@ export function TaskBoard({
    * the scroll position where they do. The grid is hundreds of pixels tall and would still
    * be intersecting long after. There is no CSS for the question on the Chromium the desktop
    * ships — `:stuck` and scroll-state queries both landed after it.
+   *
+   * A CALLBACK REF, HELD IN STATE, because the sentinel comes and goes: `empty` takes the
+   * grid out and puts it back (every change of repository does). With a plain ref the
+   * effect never re-ran, kept observing the detached mark, which intersects nothing ever
+   * again — and every column came back pinned, square-cornered at rest.
    */
-  const rowRef = useRef<HTMLDivElement>(null)
+  const [rowEl, setRowEl] = useState<HTMLDivElement | null>(null)
   const [pinned, setPinned] = useState(false)
   useEffect(() => {
-    const rowEl = rowRef.current
     const pane = paneRef?.current
     if (!rowEl || !pane) return
     const observer = new IntersectionObserver(
@@ -180,8 +184,11 @@ export function TaskBoard({
       { root: pane, rootMargin: `-${headingTop}px 0px 0px 0px` },
     )
     observer.observe(rowEl)
-    return () => observer.disconnect()
-  }, [paneRef, headingTop])
+    return () => {
+      observer.disconnect()
+      setPinned(false)
+    }
+  }, [rowEl, paneRef, headingTop])
 
   return (
     <div className={`flex flex-col gap-3 ${className}`.trim()}>
@@ -211,7 +218,7 @@ export function TaskBoard({
           className="relative grid items-start gap-3"
           style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}
         >
-          <div ref={rowRef} className="absolute top-0 left-0 right-0 h-0" aria-hidden />
+          <div ref={setRowEl} className="absolute top-0 left-0 right-0 h-0" aria-hidden />
           {columns.map((column) => (
             <BoardColumn
               key={column.id}
