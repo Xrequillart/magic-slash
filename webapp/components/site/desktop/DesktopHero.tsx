@@ -1,5 +1,6 @@
 'use client'
 
+import { useRef } from 'react'
 import { Columns, Download, Plug, ScrollText, Sparkles } from 'lucide-react'
 import { ButtonNavLink } from '@/components/ui'
 import type { MessageKey } from '@/lib/i18n'
@@ -42,6 +43,8 @@ import { HomeSection, STRUCK_WORD } from '../home/Shell'
  */
 export function DesktopHero() {
   const { t } = useT()
+  // The before/after row: every part of it watches THIS, so the sequence is `order` alone.
+  const row = useRef<HTMLDivElement>(null)
 
   return (
     <HomeSection padding="hero">
@@ -127,24 +130,25 @@ export function DesktopHero() {
           piled into a phone's width read as clutter rather than as the clutter the
           drawing is ABOUT, and the entrance that makes the picture land is exactly what
           `lib/stillness.ts` switches off there. */}
-      <div className="mt-12 hidden items-stretch gap-6 lg:mt-16 lg:grid lg:grid-cols-[0.85fr_1.15fr]">
+      <div ref={row} className="mt-12 hidden items-stretch gap-6 lg:mt-16 lg:grid lg:grid-cols-[0.85fr_1.15fr]">
         <div className="flex flex-col">
-          <Reveal order={6}>
+          <Reveal order={0} watch={row}>
             <Caption>{t('site.desktop.beforeLabel')}</Caption>
           </Reveal>
-          <Before />
+          <Before watch={row} />
         </div>
         <div className="flex flex-col">
-          <Reveal order={6}>
+          <Reveal order={0} watch={row}>
             <Caption tone="after">{t('site.desktop.afterLabel')}</Caption>
           </Reveal>
-          <Reveal order={AFTER_ORDER} className="flex flex-1 flex-col">
+          <Reveal order={AFTER_ORDER} watch={row} className="flex flex-1 flex-col">
             <After />
           </Reveal>
         </div>
       </div>
 
-      <Reveal order={AFTER_ORDER + 2} className="mt-16 sm:mt-20">
+      {/* Its own trigger, a screen further down: `order={2}` from its own arrival. */}
+      <Reveal order={2} className="mt-16 sm:mt-20">
         <Highlights />
       </Reveal>
     </HomeSection>
@@ -181,25 +185,29 @@ function Caption({ tone = 'before', children }: { tone?: 'before' | 'after'; chi
  * where there is no window beside it to set that height — a single column, under `md`.
  */
 /**
- * The beats of the entrance. `BEAT` is three rungs of `Reveal`'s 80ms grid, so a window is
- * a little over half-way through its 400ms rise when the next one starts: one by one, but
- * not one after the other has finished, which would read as a slideshow. (It was two rungs
- * of a 150ms grid; the grid tightened and the beat took a rung to keep the same feel.) The first pane starts at rung
- * 7, right after the captions; the bubbles follow the last pane; the app's window takes the
- * rung after the second bubble has fully landed.
+ * The beats of the entrance, counted from the moment the ROW crosses into view: every
+ * part watches the row (`Reveal`'s `watch`), because since the hero opened on an
+ * illustration the row sits below the fold, and each part watching itself made the
+ * bottom bubble cross last and land after the app's window it is meant to precede.
+ *
+ * `BEAT` is two rungs of `Reveal`'s 80ms grid: a window is under half-way through its
+ * 400ms rise when the next starts. It was three rungs after seven of lead-in, which the
+ * owner found far too slow ("beaucoup trop lente"): the app's window took 2.2s to show.
+ * Captions at 0, the four panes from rung 1, the two bubbles after them, and the app's
+ * window once the second bubble has all but landed (~1.2s).
  */
-const BEAT = 3
-const FIRST_PANE = 7
+const BEAT = 2
+const FIRST_PANE = 1
 const FIRST_BUBBLE = FIRST_PANE + 4 * BEAT
-const AFTER_ORDER = FIRST_BUBBLE + 2 * BEAT + 2
+const AFTER_ORDER = FIRST_BUBBLE + BEAT + 4
 
-function Before() {
+function Before({ watch }: { watch: React.RefObject<HTMLDivElement | null> }) {
   const { t } = useT()
 
   return (
     <div className="relative min-h-[260px] flex-1 overflow-hidden rounded-2xl md:min-h-0">
       <div className="absolute inset-0 opacity-75 grayscale">
-        <Reveal order={FIRST_PANE} className="absolute left-0 top-[7%] h-[62%] w-[62%]">
+        <Reveal order={FIRST_PANE} watch={watch} className="absolute left-0 top-[7%] h-[62%] w-[62%]">
           <Pane title="Terminal — zsh">
           ❯ claude
           <br />…
@@ -208,7 +216,7 @@ function Before() {
           <br />▍
         </Pane>
         </Reveal>
-        <Reveal order={FIRST_PANE + 1 * BEAT} className="absolute left-[18%] top-[20%] h-[62%] w-[62%]">
+        <Reveal order={FIRST_PANE + 1 * BEAT} watch={watch} className="absolute left-[18%] top-[20%] h-[62%] w-[62%]">
           <Pane title="Terminal — zsh (2)">
           ❯ git status
           <br />
@@ -219,7 +227,7 @@ function Before() {
           <span className="text-red-400">✗ 2 tests failed</span>
         </Pane>
         </Reveal>
-        <Reveal order={FIRST_PANE + 2 * BEAT} className="absolute left-[38%] top-[33%] h-[58%] w-[60%]">
+        <Reveal order={FIRST_PANE + 2 * BEAT} watch={watch} className="absolute left-[38%] top-[33%] h-[58%] w-[60%]">
           <Pane title="Jira — MS-268" light>
           MS-268 · In progress
           <br />
@@ -232,7 +240,7 @@ function Before() {
           MS-274 · To do
         </Pane>
         </Reveal>
-        <Reveal order={FIRST_PANE + 3 * BEAT} className="absolute left-[8%] top-[50%] h-[40%] w-[55%]">
+        <Reveal order={FIRST_PANE + 3 * BEAT} watch={watch} className="absolute left-[8%] top-[50%] h-[40%] w-[55%]">
           <Pane title="Terminal — zsh (3)">
           ❯ gh pr view 409
           <br />
@@ -241,10 +249,10 @@ function Before() {
         </Pane>
         </Reveal>
       </div>
-      <Reveal order={FIRST_BUBBLE} className="absolute right-[6%] top-[8%]">
+      <Reveal order={FIRST_BUBBLE} watch={watch} className="absolute right-[6%] top-[8%]">
         <Bubble>{t('site.desktop.bubbleWhich')}</Bubble>
       </Reveal>
-      <Reveal order={FIRST_BUBBLE + BEAT} className="absolute bottom-[5%] left-[4%]">
+      <Reveal order={FIRST_BUBBLE + BEAT} watch={watch} className="absolute bottom-[5%] left-[4%]">
         <Bubble>{t('site.desktop.bubbleBranch')}</Bubble>
       </Reveal>
     </div>

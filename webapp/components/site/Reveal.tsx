@@ -184,10 +184,19 @@ export function Reveal({
   order = 0,
   className,
   children,
+  watch,
 }: {
   order?: number
   className?: string
   children?: React.ReactNode
+  /**
+   * An element to watch INSTEAD of this one: the entrance plays when THAT crosses into
+   * view. For a composition whose parts must arrive in a set order whatever their height
+   * on the page — `DesktopHero`'s before/after, where a bubble near the bottom of the
+   * pile would otherwise cross the fold after the window beside it and land last.
+   * Every part watches the composition, so `order` alone decides the sequence.
+   */
+  watch?: React.RefObject<HTMLElement | null>
 }) {
   const lang = useLanguage()
   const ref = useRef<HTMLDivElement>(null)
@@ -205,7 +214,8 @@ export function Reveal({
       plays.current += 1
       setState(plays.current)
     }
-    const rect = el.getBoundingClientRect()
+    const target = watch?.current ?? el
+    const rect = target.getBoundingClientRect()
     if (rect.top < window.innerHeight && rect.bottom > 0) {
       play()
       return
@@ -220,7 +230,7 @@ export function Reveal({
       },
       { rootMargin: '0px 0px -8% 0px' },
     )
-    observer.observe(el)
+    observer.observe(target)
     return () => observer.disconnect()
   }, [lang])
 
