@@ -1,4 +1,5 @@
 import { PLAN_STATUSES, type PlanRepoRef, type PlanSession, type PlanStatus, type PlanTicketRead } from '../../types'
+import { fold } from '../../text'
 
 /**
  * The Plans page's data, shaped: the `plan_sessions` rows the main process read turned
@@ -120,6 +121,56 @@ export function filterPlanCards<T extends Pick<PlanSession, 'repoId'>>(
 ): T[] {
   if (repoId === null) return cards
   return cards.filter((card) => card.repoId === repoId)
+}
+
+/**
+ * Everything the Plans bar can narrow by. Empty strings mean "not narrowed", which is how
+ * `Select` spells an entry that has been cleared, so the page hands its state over as is.
+ */
+export interface PlanFilter {
+  /** A repository id, or `''` for every repository. */
+  repoId: string
+  /** A `PlanStatus`, or `''` for every status. */
+  status: PlanStatus | ''
+  /** Free text, matched against the title, the slug, the idea and the `#7` number. */
+  query: string
+}
+
+export const NO_PLAN_FILTER: PlanFilter = { repoId: '', status: '', query: '' }
+
+/**
+ * The text one card is searched through, folded once per call.
+ *
+ * NOT THE SPEC, and that is the list read's doing rather than this function's: the spec is
+ * deliberately left out of `LIST_COLUMNS` (main/cloud/plans.ts), so the markdown is not on
+ * this side to be searched. The idea is, and it is the paragraph a reader remembers a plan
+ * by when its title does not come back to them.
+ */
+function planHaystack(card: Pick<PlanSession, 'title' | 'slug' | 'idea' | 'number'>): string {
+  return fold([card.number !== undefined ? `#${card.number}` : '', card.title, card.slug, card.idea].filter(Boolean).join('\n'))
+}
+
+/**
+ * The whole bar, applied. DESKTOP ONLY: the webapp's `/plans` still offers the repository
+ * alone, which is why `filterPlanCards` above keeps its webapp-shaped signature and this
+ * one sits beside it rather than replacing it.
+ *
+ * Every word of the query has to match somewhere, in any order: "spec sync" finds "Sync
+ * the spec to the cloud", which a single `includes` of the whole phrase would not.
+ */
+export function filterPlanCardsBy<T extends Pick<PlanSession, 'repoId' | 'title' | 'slug' | 'idea' | 'number'> & { status: PlanStatus }>(
+  cards: T[],
+  filter: PlanFilter,
+): T[] {
+  const words = fold(filter.query.trim()).split(/\s+/).filter(Boolean)
+  if (!filter.repoId && !filter.status && words.length === 0) return cards
+  return cards.filter((card) => {
+    if (filter.repoId && card.repoId !== filter.repoId) return false
+    if (filter.status && card.status !== filter.status) return false
+    if (words.length === 0) return true
+    const haystack = planHaystack(card)
+    return words.every((word) => haystack.includes(word))
+  })
 }
 
 /**

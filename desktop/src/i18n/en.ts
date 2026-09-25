@@ -1348,6 +1348,9 @@ export const en = {
   'plans.count.one': '1 plan',
   'plans.count.other': '{count} plans',
   'plans.filter.all': 'All repositories',
+  'plans.filter.allStatuses': 'All statuses',
+  'plans.filter.searchPlaceholder': 'Search by title or idea…',
+  'plans.filter.clearSearch': 'Clear the search',
   'plans.status.planning': 'Being written',
   'plans.status.planned': 'Tickets filed',
   'plans.status.inProgress': 'In progress',
@@ -1370,9 +1373,9 @@ export const en = {
   // own-rows-only by RLS, so a colleague's setting is unreadable from here.
   'plans.empty.body':
     'Run /magic:plan in Claude Code: it turns an idea into a reviewable spec, then into an epic and its stories. Every session lands here as it is written. If a teammate has planned something you cannot see, check that plan syncing is on in Settings.',
-  'plans.empty.filteredTitle': 'Nothing on this repository',
+  'plans.empty.filteredTitle': 'No plan matches',
   'plans.empty.filteredBody':
-    'No plan has been written on this repository yet. Pick another one, or go back to all repositories.',
+    'No plan matches these filters. Change the search, or go back to all statuses and all repositories.',
   'plans.empty.noOrgTitle': 'No organization yet',
   'plans.empty.noOrgBody':
     'Plans are read from your account. Sign in, then join or create an organization: every session written on a repository you share shows up here.',

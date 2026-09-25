@@ -1306,6 +1306,9 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.count.one': '1 plan',
   'plans.count.other': '{count} plans',
   'plans.filter.all': 'Tous les dépôts',
+  'plans.filter.allStatuses': 'Tous les statuts',
+  'plans.filter.searchPlaceholder': 'Rechercher dans le titre ou l’idée…',
+  'plans.filter.clearSearch': 'Effacer la recherche',
   'plans.status.planning': 'En cours d’écriture',
   'plans.status.planned': 'Tickets créés',
   'plans.status.inProgress': 'En cours d’implémentation',
@@ -1321,9 +1324,9 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.empty.title': 'Aucun plan pour l’instant',
   'plans.empty.body':
     'Lancez /magic:plan dans Claude Code : il transforme une idée en spec relisible, puis en epic et en stories. Chaque session arrive ici au fil de son écriture. Si un collègue a planifié quelque chose que vous ne voyez pas, vérifiez que la synchronisation des plans est activée dans les Réglages.',
-  'plans.empty.filteredTitle': 'Rien sur ce dépôt',
+  'plans.empty.filteredTitle': 'Aucun plan ne correspond',
   'plans.empty.filteredBody':
-    'Aucun plan n’a encore été écrit sur ce dépôt. Choisissez-en un autre, ou revenez à tous les dépôts.',
+    'Aucun plan ne correspond à ces filtres. Modifiez la recherche, ou revenez à tous les statuts et tous les dépôts.',
   'plans.empty.noOrgTitle': 'Aucune organisation',
   'plans.empty.noOrgBody':
     'Les plans sont lus depuis votre compte. Connectez-vous, puis rejoignez ou créez une organisation : toutes les sessions écrites sur un dépôt que vous partagez apparaîtront ici.',

@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { CloudOff, NotebookPen, RotateCcw, Users } from '@ds/desktop/icons'
-import { ItemGroup, ItemNote, Loader, SectionHeader } from '@ds/desktop'
+import { FilterBar, ItemGroup, ItemNote, Loader, SectionHeader } from '@ds/desktop'
 import type { PlanOverview, PlanStatus } from '../../../types'
 import { useConfig } from '../../hooks/useConfig'
 import { useT, type MessageKey } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
 import { createLatestWriter } from '../../utils/latestWrite'
 import { useStore } from '../../store'
-import type { PlanCard } from '../../utils/planRows'
-import { buildPlanCards, filterPlanCards, planRepoOptions } from '../../utils/planRows'
+import type { PlanCard, PlanFilter } from '../../utils/planRows'
+import { buildPlanCards, filterPlanCardsBy, planRepoOptions } from '../../utils/planRows'
 import { SweepPane } from '../../components/SweepPane'
-import { ALL_REPOS, PlanFilters } from './PlanFilters'
+import { buildPlanFilters } from './PlanFilters'
 import { PlanDetailPage } from './PlanDetailPage'
 import { PlanRow } from './PlanRow'
 
@@ -76,7 +76,7 @@ const NOTHING_READ: PlanOverview = {
  *    switched off. `user_settings` is own-rows-only by RLS, so a colleague's
  *    `plan_sync_enabled` is unreadable from here — a message claiming to know which
  *    teammate opted out would be inventing it.
- *  * A FILTER THAT MATCHED NOTHING. There are plans; this repository has none.
+ *  * A FILTER THAT MATCHED NOTHING. There are plans; none of them survives the bar.
  *
  * EVERY ONE OF THEM IS A STATEMENT ABOUT THE ACCOUNT, which is why none of them may be
  * drawn over a read that failed: "no plan", "no organization" and a count of zero are
@@ -171,6 +171,14 @@ export function PlansPage() {
    */
   const [picked, setPicked] = useState<string | undefined>(undefined)
   /**
+   * The status and the search, which are NOT remembered on the account the way the
+   * repository is: a repository is where you work, and coming back to it is the common
+   * case; a status or a word is a question asked once, and a list reopened on yesterday's
+   * search would look like plans had gone missing.
+   */
+  const [status, setStatus] = useState<PlanFilter['status']>('')
+  const [query, setQuery] = useState('')
+  /**
    * The plan on screen, or null for the list. The CARD itself and not its id: the header
    * of the detail page is drawn from it, so holding the id would mean looking the card
    * back up on every render — and finding nothing at all after a retry replaced the
@@ -200,44 +208,6 @@ export function PlansPage() {
    */
   const paneRef = useRef<HTMLDivElement>(null)
   const listOffsetRef = useRef(0)
-
-  /**
-   * Whether the filter bar has pinned itself to the top of the pane, which is the one
-   * thing it needs to know about itself: `StickyBar` lifts a shadow once it has, and draws
-   * no edge at all before.
-   *
-   * A SENTINEL AND AN OBSERVER rather than a scroll handler, the arrangement the Tasks
-   * board settled on: this is one boolean that flips twice per visit, and a `scroll`
-   * listener would remeasure a rectangle on every frame of every scroll to answer it. The
-   * sentinel is rendered where the bar's top WOULD be — a pinned bar has moved, and can no
-   * longer report that position itself.
-   *
-   * The node is held in STATE rather than in a ref, which is what makes the observer
-   * re-attach on its own: the bar is unmounted with the list every time a plan is opened,
-   * and a fresh sentinel is mounted on the way back. A ref would leave the observer
-   * watching a detached node for the rest of the session, and could not be read on mount
-   * either — child refs are attached before their parent's, so `paneRef` is still null at
-   * the moment a ref callback here would fire.
-   */
-  const [filterSentinel, setFilterSentinel] = useState<HTMLDivElement | null>(null)
-  const [filtersStuck, setFiltersStuck] = useState(false)
-
-  useEffect(() => {
-    const pane = paneRef.current
-    // The sentinel is gone — the plan's page has replaced the list, or there is only one
-    // repository and no bar. Cleared rather than left latched on, or the bar would come
-    // back wearing a shadow it has no business keeping.
-    if (!filterSentinel || !pane) {
-      setFiltersStuck(false)
-      return
-    }
-    const observer = new IntersectionObserver(
-      ([entry]) => setFiltersStuck(!entry.isIntersecting),
-      { root: pane, threshold: 0 },
-    )
-    observer.observe(filterSentinel)
-    return () => observer.disconnect()
-  }, [filterSentinel])
 
   // Frozen at mount, so every row's "3d ago" is measured against one instant and the
   // list cannot renumber itself mid-render. Handed to the detail page too: one clock for
@@ -319,7 +289,7 @@ export function PlansPage() {
    * 2. What they LEFT IT ON, read back off the account (`Config.plansRepo`). This is the
    *    whole point of storing it in the cloud: the app keeps no config file, so without
    *    it the filter would reset on every launch.
-   * 3. ALL REPOSITORIES, which is both the default and the fallback for a stored id that
+   * 3. ALL REPOSITORIES (`''`), which is both the default and the fallback for a stored id that
    *    no longer names a repository with a plan on it — deleted, unshared, or its last
    *    plan removed. That fallback is why the stored value needs no validation on the way
    *    in (see `updatePlansRepo`): an id that names nothing simply fails to match here,
@@ -333,13 +303,20 @@ export function PlansPage() {
   const repoId = useMemo(() => {
     if (picked !== undefined) return picked
     const stored = config?.plansRepo
-    return stored && repoOptions.some((repo) => repo.id === stored) ? stored : ALL_REPOS
+    return stored && repoOptions.some((repo) => repo.id === stored) ? stored : ''
   }, [picked, config?.plansRepo, repoOptions])
 
-  const visible = useMemo(
-    () => filterPlanCards(cards, repoId === ALL_REPOS ? null : repoId),
-    [cards, repoId],
+  /**
+   * The bar's whole state as `filterPlanCardsBy` wants it. A repository filter with only one
+   * repository on offer is dropped rather than applied: the picker is not drawn then, and a
+   * filter nobody can see or clear is a list that silently shows less than it says.
+   */
+  const filter = useMemo<PlanFilter>(
+    () => ({ repoId: repoOptions.length > 1 ? repoId : '', status, query }),
+    [repoOptions.length, repoId, status, query],
   )
+
+  const visible = useMemo(() => filterPlanCardsBy(cards, filter), [cards, filter])
 
   /**
    * Recording the choice on the account, ONE WRITE AT A TIME.
@@ -360,9 +337,13 @@ export function PlansPage() {
    */
   const savePick = useMemo(() => createLatestWriter(updatePlansRepo), [updatePlansRepo])
 
-  const pick = (next: string) => {
-    setPicked(next)
-    savePick(next === ALL_REPOS ? '' : next)
+  const changeFilter = (next: PlanFilter) => {
+    setStatus(next.status)
+    setQuery(next.query)
+    if (next.repoId !== filter.repoId) {
+      setPicked(next.repoId)
+      savePick(next.repoId)
+    }
   }
 
   /**
@@ -395,6 +376,9 @@ export function PlansPage() {
    * one: an account with nothing to read from is the bigger problem, and a reader who
    * switched their own upload off deserves that explanation rather than the catch-all.
    */
+  /** Once there are plans to narrow and the read behind them did not fail. */
+  const showFilters = !!overview && !overview.failed && cards.length > 0
+
   const empty =
     visible.length > 0 ? null
       : cards.length > 0 ? EMPTY_STATES.filtered
@@ -440,50 +424,35 @@ export function PlansPage() {
           <PlanDetailPage card={selected} now={now} paneRef={paneRef} onBack={back} onStatusChange={statusChanged} />
         ) : (
           <>
-            {/* Offered only when there is a choice to make: one repository means the
-                filter can only ever narrow the list to itself. The count rides along with
-                it, so withholding the bar withholds a count the list is already short
-                enough to make by eye.
+            {/* THE BOARD'S ARRANGEMENT: the heading first, then the bar, then the list,
+                in one `gap-3` column with the page's top inset on it. The heading scrolls
+                away and the bar pins, so what narrows the list stays in reach while the
+                name of the section does not need to.
 
-                Unmounted on the detail view along with the rest of the list, exactly as
-                `TaskFilters` is: a bar that narrows a list nobody is looking at would pin
-                itself over the plan and offer to filter it. */}
-            {repoOptions.length > 1 && (
-              <>
-                {/* Zero height, nothing to see: it marks where the top of the bar WOULD
-                    be, which is the one thing a bar that has pinned itself there can no
-                    longer say about itself. It is the list's first child, so there is no
-                    gap above it to cancel — see the Tasks board, whose column has one and
-                    has to.
+                `FilterBar` renders its own sentinel and cancels the gap after it, which is
+                why the three share this one column rather than nesting.
 
-                    There is no CSS for "is this stuck" on the Chromium this app ships:
-                    `:stuck` and scroll-state queries both landed after it. */}
-                <div ref={setFilterSentinel} className="h-0" aria-hidden />
-                <PlanFilters
-                  repoId={repoId}
-                  repos={repoOptions}
-                  count={visible.length}
-                  stuck={filtersStuck}
-                  onChange={pick}
+                The bar is offered once there is a list to narrow, and unmounted on the
+                detail view along with the rest of it: a bar that narrows a list nobody is
+                looking at would pin itself over the plan and offer to filter it. */}
+            <div className="flex flex-col gap-3 pt-6">
+              {/* `SectionHeader` FROM THE DESIGN SYSTEM, as on the board. The glyph is the
+                  one the sidebar's Plans button carries, so the nav entry and the heading
+                  read as one place. The count is what is SHOWING, filters applied, and is
+                  withheld until there is a list to count. */}
+              <SectionHeader
+                icon={NotebookPen}
+                title={t('plans.section')}
+                {...(showFilters ? { count: t(visible.length === 1 ? 'plans.count.one' : 'plans.count.other', { count: visible.length }) } : {})}
+                spacing="none"
+              />
+
+              {showFilters && (
+                <FilterBar
+                  {...buildPlanFilters({ value: filter, repos: repoOptions, t, onChange: changeFilter })}
+                  paneRef={paneRef}
                 />
-              </>
-            )}
-
-            {/* `gap-3` between the heading and what it heads, as on the board. */}
-            <div className={`flex flex-col gap-3 ${repoOptions.length > 1 ? 'pt-4' : 'pt-6'}`}>
-              {/* `SectionHeader` FROM THE DESIGN SYSTEM, where this used to be the same
-                  classes spelled out by hand — and spelled out again on the Tasks board,
-                  and again in four places in Skills, and differently again on the
-                  repository list. Two pages reached from the same rail should name what
-                  is under them the same way, and the only arrangement where they cannot
-                  drift apart is one component. The glyph is the one the sidebar's Plans
-                  button already carries, so the nav entry and the heading read as one
-                  place.
-
-                  `spacing="none"` because the wrapper's `gap-3` already spaces it from
-                  the list. Above the list and below the filter bar, which is pinned and
-                  would otherwise scroll a heading out from under itself. */}
-              <SectionHeader icon={NotebookPen} title={t('plans.section')} spacing="none" />
+              )}
 
               {/* ONE gate, because there is now one read. Whether the reader belongs to an
                   organization rides in on the overview (`hasOrg`), so the page no longer has

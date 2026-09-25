@@ -3,6 +3,8 @@ import type { PlanRepoRef, PlanSession, PlanTicketRead } from '../../types'
 import {
   buildPlanCards,
   filterPlanCards,
+  filterPlanCardsBy,
+  NO_PLAN_FILTER,
   groupPlanTickets,
   planAuthor,
   planLabel,
@@ -153,6 +155,39 @@ describe('filterPlanCards', () => {
     // `repo_id` is `on delete set null`, so an absent repository is a real state — and
     // it must not be swept into whichever repo happens to be selected.
     expect(filterPlanCards(cards, 'r3')).toEqual([])
+  })
+})
+
+describe('filterPlanCardsBy', () => {
+  const cards = [
+    { ...session({ id: 's1', repoId: 'r1', number: 7, title: 'Sync the spec to the cloud', idea: 'Upload as it is written.' }), status: 'planned' as const },
+    { ...session({ id: 's2', repoId: 'r2', title: 'Plans page', idea: 'Une page qui liste les idées.' }), status: 'done' as const },
+    { ...session({ id: 's3', repoId: 'r1', title: undefined, slug: 'tray-popover', idea: undefined }), status: 'planning' as const },
+  ]
+  const ids = (filter: Partial<typeof NO_PLAN_FILTER>) =>
+    filterPlanCardsBy(cards, { ...NO_PLAN_FILTER, ...filter }).map((c) => c.id)
+
+  it('keeps everything, same array, when nothing narrows', () => {
+    expect(filterPlanCardsBy(cards, NO_PLAN_FILTER)).toBe(cards)
+    expect(ids({ query: '   ' })).toEqual(['s1', 's2', 's3'])
+  })
+
+  it('narrows by repository and by status, together', () => {
+    expect(ids({ repoId: 'r1' })).toEqual(['s1', 's3'])
+    expect(ids({ status: 'done' })).toEqual(['s2'])
+    expect(ids({ repoId: 'r1', status: 'done' })).toEqual([])
+  })
+
+  it('searches the title, the slug, the idea and the number, every word in any order', () => {
+    expect(ids({ query: 'spec sync' })).toEqual(['s1'])
+    expect(ids({ query: 'written' })).toEqual(['s1'])
+    expect(ids({ query: 'tray' })).toEqual(['s3'])
+    expect(ids({ query: '#7' })).toEqual(['s1'])
+    expect(ids({ query: 'spec tray' })).toEqual([])
+  })
+
+  it('ignores case and accents', () => {
+    expect(ids({ query: 'IDEES' })).toEqual(['s2'])
   })
 })
 
