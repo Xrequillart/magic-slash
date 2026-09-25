@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.98.6] - 2026-09-25
+
+### Added
+
+- **Landing**: Give every page a descriptive tab title in the reader's language
+- **Landing**: Add a plans band to the desktop page
+- **Landing**: Drive the dev server scene by scroll, framed on its menu
+- **Landing**: Open the desktop hero on the overload illustration
+- **Landing**: Illustrate the spec and commits control cards
+- **Landing**: Illustrate the plan step on the workflow page
+- **Landing**: Reword the footer tagline
+- **Landing**: Trim the opener of the download reassurance line
+- **Landing**: Open the download page on the jetpack illustration
+- **Landing**: Close the home page on a white jetpack over plain black
+- **Landing**: Illustrate the repository and storage security cards
+- **Landing**: Redraw the plan sharing card with black line avatars
+- **Landing**: Draw the team band with the app's own components
+- **Landing**: Illustrate the desktop pillar card
+- **Landing**: Replace the mac card with a made-to-measure one
+- **Landing**: Draw the tasks card with the app's own board
+- **Landing**: Name the plans in the app band and show its window whole
+- **Landing**: Illustrate the workflow cards
+- **Landing**: Replace the animated hero orbit with an illustration
+- **Landing**: Illustrate the commit guard card
+- **Landing**: Draw the repository settings with the app's own components
+- **Landing**: Draw the skills window with the app's own components
+- **Desktop**: Filter plans by status, search and repository
+
+### Changed
+
+- **Landing**: Draw the shortcuts and plan sharing cards in amber
+- **Landing**: Play the desktop before/after entrance off one trigger, faster
+- **Landing**: Drop the workflow hero aura
+- **Landing**: Draw the reference nav glyphs in ink
+- **Landing**: Draw the skills timeline in black
+- **Landing**: Paint every page on white
+- **Desktop**: Move the repository list and page header into the design system
+- **Desktop**: Move the skills page blocks into the design system
+
+### Fixed
+
+- **Desktop**: Notify on every new pr review or comment, including those missed while closed
+- **Landing**: Round the focus ring on the branches card
+- **Desktop**: Keep the active tab in view when the tab strip scrolls
+
 ## [0.98.5] - 2026-09-25
 
 ### Added
@@ -3306,6 +3351,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.98.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.6
 [0.98.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.5
 [0.98.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.4
 [0.98.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.3

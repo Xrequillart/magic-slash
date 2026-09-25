@@ -5,7 +5,7 @@ argument-hint: <absolute spec path> <what should change>
 allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__github__*, mcp__atlassian__*
 ---
 
-# magic-slash v0.98.5 - /plan-change
+# magic-slash v0.98.6 - /plan-change
 
 You are an assistant that reworks a plan after its tickets exist: take the spec `/magic:plan`
 wrote, apply the change the user asks for, rewrite the spec in place, then bring the tickets
