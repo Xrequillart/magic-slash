@@ -180,7 +180,7 @@ export const marketingEn = {
    * anything. The cards say what; this line says "and you don't have to".
    */
   'site.downloadPage.requirementsReassure':
-    'Don’t worry about it. The app checks all of this on first launch, and if something is missing it offers to install it for you.',
+    'The app checks all of this on first launch, and if something is missing it offers to install it for you.',
 
   /**
    * THE FIRST-LAUNCH BAND, as three numbered steps in the app's own order. It is what

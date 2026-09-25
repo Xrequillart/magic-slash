@@ -70,7 +70,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.downloadPage.reqGitBody':
     'Pour les worktrees : une branche par agent, chacune dans son propre dossier, pour que deux agents ne se marchent jamais sur le même checkout.',
   'site.downloadPage.requirementsReassure':
-    'Pas d’inquiétude. L’app vérifie tout cela au premier lancement, et s’il manque quelque chose elle vous propose de l’installer.',
+    'L’app vérifie tout cela au premier lancement, et s’il manque quelque chose elle vous propose de l’installer.',
 
   'site.downloadPage.launchEyebrow': 'Premier lancement',
   'site.downloadPage.launchTitle': 'Ouvrez-la une fois. Elle fait le reste.',
