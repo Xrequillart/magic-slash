@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.98.5] - 2026-09-25
+
+### Added
+
+- **Desktop**: Show only the checklist header once onboarding is complete
+- **Desktop**: Show a loader while the plans list loads
+- **Desktop**: Show a spinner while the tasks board switches repository
+- **Plan**: Invite people onto a plan on a personal repository
+
+### Fixed
+
+- **Desktop**: Stop granting the git -C permission rules claude code warns about
+- **Desktop**: Keep the board columns rounded after switching repository
+
 ## [0.98.4] - 2026-09-24
 
 ### Added
@@ -3292,6 +3306,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.98.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.5
 [0.98.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.4
 [0.98.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.3
 [0.98.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.2
