@@ -2053,18 +2053,15 @@ export const marketingEn = {
   'site.skillsCard.words': '{count} words',
   'site.skillsCard.openInVSCode': 'Open in VS Code',
   'site.skillsCard.fixWithAgent': 'Fix with agent',
-  // The budget gauge. The two figures are drawn as the app draws them — grouped for the
-  // reader's own locale — so they are copy here rather than a number formatted in the
-  // component.
+  // The budget gauge. The two figures are numbers in the component, formatted for the
+  // reader's locale by `BudgetMeter` exactly as the app formats them.
   'site.skillsCard.budgetSection': 'Skills Budget',
   'site.skillsCard.budgetHelp': 'What your skill descriptions cost in every single message.',
   'site.skillsCard.windowLabel': 'Context window',
   'site.skillsCard.windowHint': 'Detected from the running agent.',
   'site.skillsCard.chars': 'Characters (enforced)',
-  'site.skillsCard.charsValue': '32,400 / 40,000',
   'site.skillsCard.unitChars': 'chars',
   'site.skillsCard.tokens': 'Tokens (estimate)',
-  'site.skillsCard.tokensValue': '8,100 / 10,000',
   'site.skillsCard.unitTokens': 'tokens',
   'site.skillsCard.how': 'How this is computed',
   'site.skillsCard.details': 'Details by skill',
