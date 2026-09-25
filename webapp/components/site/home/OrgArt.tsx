@@ -231,16 +231,17 @@ const OUT_WIRES = RECIPIENTS.map(
  * The sheet's four rules, in the order they are written. `d` draws it, `delay` places it
  * in the run, and `bullet` is the marker a story gets and the title does not.
  *
- * 0.4s APART, which is the one number here chosen by eye. Faster and the four arrive as
- * one flicker; slower and the writing beat outgrows the 9s loop the three beats share (see
+ * ~0.27s APART, which was 0.4s on the old 9s loop and was scaled with it when the owner
+ * asked for a faster run. Faster and the four arrive as one flicker; slower and the
+ * writing beat outgrows the 6s loop the three beats share (see
  * `tailwind.config.ts`). Four rules and not six: a title, then three stories, is the
  * shape `/magic:plan` actually leaves behind — a spec, an epic, and the stories under it.
  */
 const RULES: readonly { d: string; delay: string; bullet?: { cx: number; cy: number } }[] = [
   { d: 'M 108 62 h 42', delay: '0s' },
-  { d: 'M 120 86 h 34', delay: '0.4s', bullet: { cx: 110, cy: 86 } },
-  { d: 'M 120 106 h 26', delay: '0.8s', bullet: { cx: 110, cy: 106 } },
-  { d: 'M 120 126 h 38', delay: '1.2s', bullet: { cx: 110, cy: 126 } },
+  { d: 'M 120 86 h 34', delay: '0.27s', bullet: { cx: 110, cy: 86 } },
+  { d: 'M 120 106 h 26', delay: '0.53s', bullet: { cx: 110, cy: 106 } },
+  { d: 'M 120 126 h 38', delay: '0.8s', bullet: { cx: 110, cy: 126 } },
 ]
 
 /** A face on the graph: the photograph, clipped to its node, with the ring over the clip. */
@@ -260,6 +261,10 @@ function GraphFace({
       <clipPath id={clipId}>
         <circle cx={cx} cy={cy} r={NODE_R} />
       </clipPath>
+      {/* The avatars are line drawings on a transparent ground, so the disc is painted
+          white first: without it the card's tone shows through and the node stops
+          reading as a circle. */}
+      <circle cx={cx} cy={cy} r={NODE_R} fill="white" stroke="none" />
       <image
         href={photo}
         x={cx - NODE_R}
@@ -291,15 +296,14 @@ function GraphFace({
  * IT IS A SEQUENCE AND NOT A LOOP OF DECORATION, which is the thing to understand before
  * touching any number in this file. The owner specified the running order — an author, the
  * plan written live, then the plan shared — and the three keyframes that play it share one
- * 9s period so the beats cannot drift apart. `tailwind.config.ts` carries the whole
+ * 6s period so the beats cannot drift apart. `tailwind.config.ts` carries the whole
  * timeline in one comment; each beat's own keyframe explains only its own share of it.
  *
- * THE THREE NODES CARRY THE REAL PHOTOGRAPHS, at the owner's request ("tu peux mettre des
- * vrai photo dans l'illustration"), and it is the same three faces the organisation card
- * puts on its rails — in the same order, so `team-1` is the author here and the first
- * person on the top rail there. Which is worth more than it costs: those two cards are the
- * band's two DIAGRAMS, and the same three people appearing in both is what makes them read
- * as one organisation described twice rather than as two unrelated schematics.
+ * THE THREE NODES CARRY ILLUSTRATED AVATARS, which replaced the real photographs the owner
+ * first asked for ("tu peux mettre des vrai photo dans l'illustration"). They are black line
+ * drawings on a transparent ground, hence the white disc `GraphFace` paints under each one.
+ * The node radius did not move with the swap: the owner asked to keep the circles the size
+ * they were.
  *
  * THE `clipPath` IDS ARE BUILT OFF `useId`, because two of these cards on one page — or
  * this card beside any other drawing that clips — would otherwise collide on a
@@ -319,10 +323,10 @@ function GraphFace({
  * the finished picture: an author, a written plan, two people. Three dots frozen mid-wire
  * would have been a diagram with stray marks on it.
  *
- * DRAWN IN `currentColor`, so the card's ink owns it. This one is on `indigo`, which
- * `components/ui.tsx` pairs with white type, and every stroke here is therefore white
- * without the file naming a colour — the arrangement that lets the drawing survive its
- * card being re-toned. The fills are `currentColor` at low alpha for the same reason.
+ * DRAWN IN `currentColor`, set to `text-ink` on the wrapper: black, at the owner's request,
+ * so the wires, sheet and rings match the black line art of the avatars and of the site's
+ * illustration set. Every stroke follows that one class without the file naming a colour,
+ * and the fills are `currentColor` at low alpha for the same reason.
  *
  * `max-w-[26rem]` AND THE CAP WENT UP WHEN THE COMPOSITION WIDENED. The svg takes the
  * width its card gives it and keeps its ratio, capped so it stays an OBJECT rather than
@@ -339,7 +343,7 @@ export function PlanSharingArt() {
   const uid = useId()
 
   return (
-    <div aria-hidden className="flex justify-center px-7 py-8 text-white">
+    <div aria-hidden className="flex justify-center px-7 py-8 text-ink">
       <svg
         viewBox="0 0 280 180"
         role="presentation"
@@ -396,9 +400,9 @@ export function PlanSharingArt() {
                 offsetPath: `path("${d}")`,
                 transformBox: 'fill-box',
                 offsetAnchor: 'center',
-                // The second story leaves half a second after the first, so the pair reads
+                // The second story leaves a third of a second after the first, so the pair reads
                 // as two people taking one each rather than as a single wide pulse.
-                animationDelay: index === 0 ? '0s' : '0.5s',
+                animationDelay: index === 0 ? '0s' : '0.33s',
               }}
             />
           ))}

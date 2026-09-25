@@ -1678,7 +1678,7 @@ const config: Config = {
         /**
          * ── THE SHARE GRAPH'S THREE BEATS ──────────────────────────────────────
          *
-         * `components/site/home/OrgArt.tsx`'s `PlanSharingArt` plays one story on a 9s
+         * `components/site/home/OrgArt.tsx`'s `PlanSharingArt` plays one story on a 6s
          * loop, and the product owner wrote the running order: "1 personne à gauche => le
          * plan qui s'écrit en live => le plan qui se partage à deux autres personnes avec
          * l'animation des points". Three keyframes, one per beat, and they share a period
@@ -2022,17 +2022,18 @@ const config: Config = {
         // tenth would have the beats drift out of order over a minute of watching. See the
         // keyframes above for the running order.
         //
-        // 9s BECAUSE THE MIDDLE BEAT SETS IT. Four rules writing on at ~0.4s apart, each
-        // taking ~1s to draw, is 2.5s of writing before anything can be shared; the
-        // arrival and the two runs out want about a second each, and the sheet has to stand
-        // finished long enough to be read as finished. Faster and it is a flicker.
+        // 6s, DOWN FROM 9s at the owner's request ("augmenter la vitesse"). Everything was
+        // scaled by the same 2/3 — the period here and the staggers in `OrgArt.tsx` — so
+        // each delay is the same FRACTION of the loop as before and the headroom sums in
+        // the keyframes above still hold. The 9s was chosen as the floor below which the
+        // writing reads as a flicker; the owner judged it slow in front of the page.
         //
         // `linear` ON THE TWO DOT BEATS, because the curve's own shape is the only easing
         // they want — a dot easing in and out along a bezier reads as hesitant. `ease-out`
         // on the writing, where a pen slowing as it finishes a line is exactly right.
-        'plan-arrive': 'plan-arrive 9s linear infinite',
-        'plan-write': 'plan-write 9s ease-out infinite',
-        'plan-share': 'plan-share 9s linear infinite',
+        'plan-arrive': 'plan-arrive 6s linear infinite',
+        'plan-write': 'plan-write 6s ease-out infinite',
+        'plan-share': 'plan-share 6s linear infinite',
         // The done checklist: 400ms between ticks means a 5s loop and 8% steps.
         'done-1': 'done-1 5s linear infinite',
         'done-2': 'done-2 5s linear infinite',
