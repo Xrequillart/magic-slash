@@ -1,26 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { CONTROL_CENTER_GRID, ThemeGrid, type ThemeGridOption } from '@ds/desktop'
-import { DESKTOP_THEMES, DESKTOP_THEME_IDS, type DesktopTheme } from '@/lib/desktopTheme'
+import { CONTROL_CENTER_GRID, ThemeGrid } from '@ds/desktop'
+import { DESKTOP_THEME_IDS, type DesktopTheme } from '@/lib/desktopTheme'
+import { THEME_SWATCHES as THEMES } from '../themeSwatches'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Stage, type PropRow } from '../parts'
 import { usesOf } from './ids'
-
-/** The site’s copy of the registry — CSS variables — as the five colours a swatch is made of. */
-const THEMES: ThemeGridOption[] = DESKTOP_THEME_IDS.map((id) => {
-  const { label, vars } = DESKTOP_THEMES[id]
-  return {
-    id,
-    label,
-    colors: {
-      floor: `rgb(${vars['--c-bg']})`,
-      panel: vars['--c-surface-strong'],
-      line: vars['--c-line-strong'],
-      ink: `rgb(${vars['--c-ink']})`,
-      accent: `rgb(${vars['--c-accent']})`,
-    },
-  }
-})
 
 const PROPS: PropRow[] = [
   { name: 'themes', type: 'ThemeGridOption[]', required: true, description: 'Each theme as an id, a translated name and the FIVE colours a swatch is made of, already resolved to CSS values. The grid knows no theme: the registry is read by the main process too and cannot move into the design system.' },

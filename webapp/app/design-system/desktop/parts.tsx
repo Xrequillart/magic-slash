@@ -85,6 +85,50 @@ export function EntryHeader({
   )
 }
 
+/**
+ * The foot of every entry: the components that DRAW this one — "Built on" read the
+ * other way round, so a reader standing on `Icon` sees what moves if it changes.
+ *
+ * Rendered by the shell under whichever entry is open rather than by each entry, so no
+ * page can forget it and the list is always the graph's, never a sentence someone wrote.
+ */
+export function UsedBy({
+  users,
+  onOpen,
+}: {
+  users: { id: string; label: string }[]
+  onOpen: (id: string) => void
+}) {
+  return (
+    <section className="mt-10 flex flex-col gap-4 border-t border-hairline pt-10">
+      <div className="flex flex-col gap-1.5">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+          Used by
+          {users.length > 0 && <span className="ml-2 tabular-nums">{users.length}</span>}
+        </h2>
+        <p className="max-w-2xl text-sm leading-relaxed text-muted">
+          {users.length > 0
+            ? 'The components that draw this one. Change it, and these move with it.'
+            : 'Nothing in the design system draws this one yet: it is only used by the app itself.'}
+        </p>
+      </div>
+      {users.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {users.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => onOpen(id)}
+              className="rounded-full border border-hairline px-2.5 py-1 font-mono text-[11px] text-ink transition-colors hover:border-ink/20 hover:bg-canvas"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
 export function EntrySection({
   title,
   note,

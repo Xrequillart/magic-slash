@@ -400,6 +400,20 @@ export function usesOf(id: EntryId): { id: EntryId; label: string }[] {
 }
 
 /**
+ * The graph read the other way: every entry that DRAWS this one.
+ *
+ * Derived, never declared — a second hand-kept list is exactly what `ENTRY_USES` was
+ * written to end. Direct users only: "if I change `Icon`, what moves?" is answered one
+ * hop at a time, and the full closure of a foundation is half the folder.
+ */
+export function usedByOf(id: EntryId): { id: EntryId; label: string }[] {
+  return (Object.keys(ENTRY_USES) as EntryId[])
+    .filter((user) => ENTRY_USES[user].includes(id))
+    .sort((a, b) => ENTRY_LABELS[a].localeCompare(ENTRY_LABELS[b]))
+    .map((user) => ({ id: user, label: ENTRY_LABELS[user] }))
+}
+
+/**
  * THE TIERS ARE COMPUTED, and this is the rule in one line: a component sits one rung
  * above the highest thing it draws.
  *

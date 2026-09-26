@@ -1,8 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { ChevronRight } from 'lucide-react'
-import { DESKTOP_THEMES, DESKTOP_THEME_IDS, type DesktopTheme, type DesktopThemeId } from '@/lib/desktopTheme'
+import { useState, type CSSProperties } from 'react'
+import { ChevronRight, Search, X } from 'lucide-react'
+import { ThemeGrid } from '@ds/desktop'
+import { DESKTOP_THEMES, type DesktopTheme, type DesktopThemeId } from '@/lib/desktopTheme'
+import { UsedBy } from './parts'
+import { THEME_SWATCHES } from './themeSwatches'
 import { AgentEntry } from './entries/AgentEntry'
 import { AvatarEntry } from './entries/AvatarEntry'
 import { AvatarPickerEntry } from './entries/AvatarPickerEntry'
@@ -110,7 +113,7 @@ import { SwitchEntry } from './entries/SwitchEntry'
 import { TextEntry } from './entries/TextEntry'
 import { TitleAgentCardEntry } from './entries/TitleAgentCardEntry'
 import { UsageClaudeCodeCardEntry } from './entries/UsageClaudeCodeCardEntry'
-import { ENTRY_LABELS, FAMILIES, FOUNDATION_PAGES, type EntryId } from './entries/ids'
+import { ENTRY_LABELS, ENTRY_NOTES, FAMILIES, FOUNDATION_PAGES, usedByOf, type EntryId } from './entries/ids'
 
 /**
  * The desktop app's design system: a rail of components on the left, one of them
@@ -286,18 +289,35 @@ function Row({
       aria-current={active ? 'page' : undefined}
       /* `flex` and not `block`: a bare `<span>` in a block button is an inline box that
          inherits the page's line-height, which put 5px of dead space on every one of 42
-         rows. A flex item is sized by its own content. */
-      className={`flex w-full items-center rounded-button py-1.5 pr-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+         rows. A flex item is sized by its own content.
+
+         28px a row (`py-[5px]` on a 18px line): at 32 the rail showed eighteen names in a
+         1 000px window, and a menu of a hundred is read by scanning, not by reading. */
+      className={`flex w-full items-center rounded-button py-[5px] pr-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand ${
         indent ? 'pl-[30px]' : 'pl-3'
       } ${active ? 'bg-brand' : 'hover:bg-black/[0.04]'}`}
     >
       <span
-        className={`font-display text-[13px] font-medium ${active ? 'text-white' : 'text-ink/80'}`}
+        className={`truncate font-display text-[13px] font-medium leading-[18px] ${active ? 'text-white' : 'text-ink/80'}`}
       >
         {ENTRY_LABELS[id]}
       </span>
     </button>
   )
+}
+
+/**
+ * Lower-cased and stripped of its accents, so `colour` finds `Colours` and `precedent`
+ * finds `précédent` — the notes are prose, and prose has typography a search box has not.
+ */
+function fold(text: string): string {
+  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[’‘]/g, "'").toLowerCase()
+}
+
+/** Every word of the query somewhere in the name or the description, in any order. */
+function matches(id: EntryId, words: string[]): boolean {
+  const haystack = fold(`${ENTRY_LABELS[id]} ${id} ${ENTRY_NOTES[id] ?? ''}`)
+  return words.every((word) => haystack.includes(word))
 }
 
 export function Shell() {
@@ -307,6 +327,7 @@ export function Shell() {
   // on. The eight are one click away regardless.
   const [theme, setTheme] = useState<DesktopThemeId>('midnight')
   const [entry, setEntry] = useState<EntryId>('colors')
+  const [query, setQuery] = useState('')
 
   /**
    * Which families are folded. Open is the default and this holds the exceptions,
@@ -317,69 +338,121 @@ export function Shell() {
   const toggle = (label: string) =>
     setFolded((f) => (f.includes(label) ? f.filter((l) => l !== label) : [...f, label]))
 
-  const shown = FAMILIES.filter((family) => family.entries.length > 0)
+  /**
+   * Opening an entry starts it at the top. The rail is sticky and the page scrolls under
+   * it, so a "Used by" chip at the foot of one entry would otherwise land a reader at the
+   * foot of the next.
+   */
+  const open = (id: EntryId) => {
+    setEntry(id)
+    window.scrollTo({ top: 0 })
+  }
+
+  const words = fold(query).split(/\s+/).filter(Boolean)
+  const searching = words.length > 0
+  const foundations = FOUNDATION_PAGES.filter((id) => !searching || matches(id, words))
+  const shown = FAMILIES.map((family) => ({
+    ...family,
+    entries: searching ? family.entries.filter((id) => matches(id, words)) : family.entries,
+  })).filter((family) => family.entries.length > 0)
+  const results = [...foundations, ...shown.flatMap((family) => family.entries)]
 
   return (
     <div className="min-h-screen bg-white text-ink">
       <div className="mx-auto flex max-w-[1400px] flex-col lg:flex-row">
         {/* The rail. Sticky on a wide screen, a plain block above the content on a
             narrow one — a 256px column beside a props table does not survive being
-            squeezed, and this page is read on a laptop anyway. */}
-        {/* THE RAIL IS A MENU, NOT A DOCUMENT, and that is the whole of this redesign.
-            Every row used to carry its NAME and a SENTENCE at close to the same weight:
-            42 entries over 2 598px of scroll in a 1 000px window, so eleven of them were
-            visible at a time and none of them scanned. The sentences are still here — on
-            the row you are standing on, which is the one you are reading.
+            squeezed, and this page is read on a laptop anyway.
 
             THE FACE AND THE SHAPE ARE THE MARKETING SITE'S. `font-display` at 13px is what
             `NAV_ITEM_BASE` gives the header's pills; the selected row wears the brand fill
             a primary button wears. Nothing here invents a colour or a corner.
 
-            NO CAPITALS. The family names were tracked-out 11px uppercase grey, which made a
-            heading quieter than its own children — and the site has no capitals anywhere in
-            its navigation. */}
-        <nav className="flex w-full flex-shrink-0 flex-col border-b border-hairline px-4 py-6 lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:border-b-0 lg:border-r">
-          <div className="flex flex-col gap-0.5 px-3 pb-5">
+            ONE GUTTER: `px-3` on the rail and `px-3` inside every row, so the title, the
+            search box, the rows and the theme picker share a left edge at 24px. */}
+        <nav className="flex w-full flex-shrink-0 flex-col border-b border-hairline px-3 py-5 lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:border-b-0 lg:border-r">
+          <div className="flex flex-col gap-0.5 px-3 pb-4">
             <span className="font-display text-base font-semibold text-ink">Design system</span>
             <span className="text-xs text-muted">Magic Slash Desktop</span>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col lg:overflow-y-auto">
+          {/* THE SEARCH, above everything it filters. Names AND descriptions: a reader
+              looking for "the thing with the progress" does not know it is called
+              `BudgetMeter`, and the one-line note under each entry is what says so. */}
+          <div className="relative mb-3">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter opens the first hit, Escape empties the box: the two things a
+                // search field is pressed for once its list has narrowed.
+                if (e.key === 'Enter' && results[0]) open(results[0])
+                if (e.key === 'Escape') setQuery('')
+              }}
+              placeholder="Search components"
+              aria-label="Search components by name or description"
+              className="w-full rounded-button border border-hairline bg-white py-[7px] pl-8 pr-8 font-display text-[13px] text-ink placeholder:text-muted focus:border-brand focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+            />
+            {query && (
+              <button
+                onClick={() => setQuery('')}
+                aria-label="Clear the search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted transition-colors hover:text-ink"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
+          <div className="-mx-3 flex min-h-0 flex-1 flex-col px-3 lg:overflow-y-auto">
+            {searching && results.length === 0 && (
+              <p className="px-3 py-2 text-xs leading-relaxed text-muted">
+                No component matches “{query.trim()}”.
+              </p>
+            )}
+
             {/* ABOVE the families and outside them: a palette is not something you compose
                 with, it is what everything below is made of. */}
-            <ul className="flex flex-col gap-px">
-              {FOUNDATION_PAGES.map((id) => (
-                <li key={id}>
-                  <Row id={id} active={id === entry} onSelect={setEntry} />
-                </li>
-              ))}
-            </ul>
+            {foundations.length > 0 && (
+              <ul className="flex flex-col gap-px">
+                {foundations.map((id) => (
+                  <li key={id}>
+                    <Row id={id} active={id === entry} onSelect={open} />
+                  </li>
+                ))}
+              </ul>
+            )}
 
             {shown.map((family) => {
-              const open = !folded.includes(family.label)
+              // A search opens every family it found something in: a hit hidden behind a
+              // folded heading is a hit the reader has to be told about twice.
+              const unfolded = searching || !folded.includes(family.label)
 
               return (
-                /* A rule per family, so the ladder reads as five bands rather than one
-                   long list. `first:border-t-0`: the top band sits under the title block,
-                   which already has air under it. */
-                <div key={family.label} className="mt-4 border-t border-hairline pt-4 first:mt-3 first:border-t-0 first:pt-0">
+                /* A rule per family, so the ladder reads as bands rather than one long
+                   list. `first:border-t-0`: the top band sits under the search, which
+                   already has air under it. */
+                <div key={family.label} className="mt-3 border-t border-hairline pt-3 first:mt-0 first:border-t-0 first:pt-0">
                   <button
                     onClick={() => toggle(family.label)}
+                    disabled={searching}
                     /* The family's own note lives here rather than under the heading: it is
                        taxonomy prose, and four lines of it between a heading and its rows
                        is what a rail cannot afford. */
                     title={family.note}
-                    className="flex w-full items-center gap-1.5 rounded-button px-3 py-1.5 text-left transition-colors hover:bg-black/[0.04]"
+                    className="flex w-full items-center gap-1.5 rounded-button px-3 py-[5px] text-left transition-colors enabled:hover:bg-black/[0.04]"
                   >
                     {/* Rotated rather than swapped for a second glyph: one element that
                         turns reads as the same control in two states, where two glyphs read
                         as two controls. */}
                     <ChevronRight
                       className={`h-3 w-3 flex-shrink-0 text-muted transition-transform ${
-                        open ? 'rotate-90' : ''
+                        unfolded ? 'rotate-90' : ''
                       }`}
                     />
-                    <span className="font-display text-[13px] font-semibold text-ink">
+                    <span className="font-display text-[13px] font-semibold leading-[18px] text-ink">
                       {family.label}
                     </span>
                     <span className="ml-auto text-[11px] tabular-nums text-muted">
@@ -387,11 +460,11 @@ export function Shell() {
                     </span>
                   </button>
 
-                  {open && (
-                    <ul className="flex flex-col gap-px pt-0.5">
+                  {unfolded && (
+                    <ul className="flex flex-col gap-px pt-px">
                       {family.entries.map((id) => (
                         <li key={id}>
-                          <Row id={id} active={id === entry} indent onSelect={setEntry} />
+                          <Row id={id} active={id === entry} indent onSelect={open} />
                         </li>
                       ))}
                     </ul>
@@ -404,28 +477,34 @@ export function Shell() {
           {/* THE THEME, at the foot of the rail and not above each page. It is one setting
               for the whole workbench — every preview on every entry reads it — so repeating
               it per page made it look like a property of the component being documented.
-              A select rather than eight pills, because eight pills wrap to three rows in a
-              256px column and would take more of the rail than the components do.
 
-              The three-line note under it became the select's `title`: it explains a choice
-              nobody has to understand before making it. */}
-          <div className="mt-5 flex flex-col gap-1.5 border-t border-hairline px-3 pt-4">
-            <label htmlFor="ds-theme" className="text-[11px] text-muted">
-              Theme
-            </label>
-            <select
-              id="ds-theme"
-              value={theme}
-              onChange={(e) => setTheme(e.target.value as DesktopThemeId)}
+              THE DESIGN SYSTEM'S OWN PICKER, `ThemeGrid`: the quick-settings sheet draws it
+              in a column exactly this wide, and a theme is chosen by looking. It sits on the
+              chosen theme's window, so the foot of the rail is itself a preview of it. */}
+          <div className="mt-4 flex flex-col gap-2 border-t border-hairline pt-4">
+            <div className="flex items-baseline justify-between px-3">
+              <span className="text-[11px] text-muted">Theme</span>
+              <span className="font-display text-[12px] font-medium text-ink">
+                {DESKTOP_THEMES[theme].label}
+              </span>
+            </div>
+            <div
               title="Eight of them, and a tint that reads on one can vanish on another. Every preview on the right follows this."
-              className="w-full rounded-button border border-hairline bg-white px-3 py-2 font-display text-[13px] font-medium text-ink transition-colors hover:bg-black/[0.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              style={
+                {
+                  ...DESKTOP_THEMES[theme].vars,
+                  backgroundColor: 'rgb(var(--c-bg))',
+                  colorScheme: DESKTOP_THEMES[theme].appearance,
+                } as CSSProperties
+              }
+              className="rounded-xl p-1.5 text-ink"
             >
-              {DESKTOP_THEME_IDS.map((id) => (
-                <option key={id} value={id}>
-                  {DESKTOP_THEMES[id].label}
-                </option>
-              ))}
-            </select>
+              <ThemeGrid
+                themes={THEME_SWATCHES}
+                value={theme}
+                onSelect={(id) => setTheme(id as DesktopThemeId)}
+              />
+            </div>
           </div>
         </nav>
 
@@ -434,8 +513,12 @@ export function Shell() {
             const Entry = ENTRIES[entry]
             // `onOpen` is what makes a "built on" chip a link: an entry names the
             // components it draws with, and clicking one opens it.
-            return <Entry theme={DESKTOP_THEMES[theme]} onOpen={(id) => setEntry(id as EntryId)} />
+            return <Entry theme={DESKTOP_THEMES[theme]} onOpen={(id) => open(id as EntryId)} />
           })()}
+          {/* The palette is not drawn BY anything, it is what everything is drawn in. */}
+          {!FOUNDATION_PAGES.includes(entry) && (
+            <UsedBy users={usedByOf(entry)} onOpen={(id) => open(id as EntryId)} />
+          )}
         </main>
       </div>
     </div>
