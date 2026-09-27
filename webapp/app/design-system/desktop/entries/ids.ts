@@ -8,6 +8,7 @@
  */
 export type EntryId =
   | 'colors'
+  | 'themes'
   | 'icon'
   | 'text'
   | 'progress'
@@ -117,6 +118,7 @@ export type EntryId =
 
 export const ENTRY_LABELS: Record<EntryId, string> = {
   colors: 'Colours',
+  themes: 'Themes',
   icon: 'Icon',
   progress: 'ProgressBar',
   loader: 'Loader',
@@ -255,12 +257,13 @@ export interface Family {
 }
 
 /**
- * The one entry that is not a component and sits above the families.
+ * The entries that are not components and sit above the families: the palette, and the
+ * eight themes it resolves into.
  *
  * A palette is not something you compose with — it is what everything below is made
  * OF — so filing it under a tier would put it in a sequence it has no place in.
  */
-export const FOUNDATION_PAGES: EntryId[] = ['colors']
+export const FOUNDATION_PAGES: EntryId[] = ['colors', 'themes']
 
 /**
  * THE COMPOSITION GRAPH: what each entry DRAWS, by id.
@@ -282,6 +285,7 @@ export const FOUNDATION_PAGES: EntryId[] = ['colors']
  */
 export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   colors: [],
+  themes: [],
   icon: [],
   progress: [],
   loader: [],
@@ -478,6 +482,7 @@ export const FAMILIES: Family[] = TIER_NAMES.map((label, tier) => ({
 /** What each entry's row says under its name. */
 export const ENTRY_NOTES: Record<EntryId, string> = {
   colors: 'The hexes and the roles, kept apart',
+  themes: 'Eight themes, one click, and everything follows',
   progress: 'A filled track, green until told otherwise',
   loader: 'Something is happening, in two shapes',
   card: 'A raised panel, and nothing else',

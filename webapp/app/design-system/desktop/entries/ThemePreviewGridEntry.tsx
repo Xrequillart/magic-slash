@@ -1,37 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { ThemePreviewGrid, type ThemePreviewOption } from '@ds/desktop'
-import { DESKTOP_THEMES, DESKTOP_THEME_IDS, type DesktopTheme } from '@/lib/desktopTheme'
+import { ThemePreviewGrid } from '@ds/desktop'
+import type { DesktopTheme } from '@/lib/desktopTheme'
+import { THEME_PREVIEWS as THEMES } from '../themeSwatches'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
 import { usesOf } from './ids'
-
-/**
- * The webapp's own copy of the registry, mapped the way the desktop maps its own — this
- * page is the one place the two can be compared side by side.
- */
-const THEMES: ThemePreviewOption[] = DESKTOP_THEME_IDS.map((id) => {
-  const { label, appearance, vars } = DESKTOP_THEMES[id]
-  // The catalogue keeps its colours as the custom properties a `style` prop wants, so
-  // the bare triples are wrapped and the `rgba()` ones are already values. Exactly the
-  // mapping the desktop writes against its own registry.
-  const rgb = (name: string) => `rgb(${vars[name]})`
-  return {
-    id,
-    label,
-    description: appearance === 'dark' ? 'Built on a dark ground' : 'Built on a light ground',
-    colors: {
-      floor: rgb('--c-bg'),
-      bar: vars['--c-surface'],
-      panel: vars['--c-surface-strong'],
-      line: vars['--c-line-strong'],
-      ink: rgb('--c-ink'),
-      textSecondary: rgb('--c-text-secondary'),
-      accent: rgb('--c-accent'),
-      lights: [rgb('--c-red'), rgb('--c-yellow'), rgb('--c-green')],
-    },
-  }
-})
 
 const PROPS: PropRow[] = [
   {

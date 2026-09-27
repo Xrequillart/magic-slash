@@ -385,11 +385,6 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.designSystem.subtitle':
     'Prestige est le design system de Magic Slash. Chaque composant présenté ici est celui qui est compilé dans l’application, depuis le même fichier source : rien n’est redessiné pour l’occasion, ce que vous lisez ici est ce qui tourne.',
   'site.designSystem.cta': 'Explorer les composants desktop',
-  'site.designSystem.playgroundEyebrow': 'À essayer',
-  'site.designSystem.playgroundTitle': 'Huit thèmes. Un clic, et tout suit.',
-  'site.designSystem.playgroundSubtitle':
-    'Choisissez un thème. Ce ne sont pas des captures : ce sont les composants de l’application, rendus ici, et ils se repeignent exactement comme dans l’app.',
-  'site.designSystem.playgroundThemes': 'Thème',
   'site.designSystem.desktopEyebrow': 'Pour l’app desktop',
   'site.designSystem.desktopTitle': 'Pensé pour une fenêtre, pas pour une page web.',
   'site.designSystem.desktopSubtitle':

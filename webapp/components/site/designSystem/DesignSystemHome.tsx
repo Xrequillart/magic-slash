@@ -10,7 +10,6 @@ import { SiteFooter } from '../SiteFooter'
 import { HomeSection } from '../home/Shell'
 import { DesktopBand, WebappBand } from './ProductBand'
 import { DESIGN_SYSTEM_DESKTOP_PATH } from './paths'
-import { ThemePlayground } from './ThemePlayground'
 
 /**
  * THE NAME, HIGHLIGHTED: a marker stroke behind the lower half of the word, drawn from
@@ -27,12 +26,14 @@ const NAME_HIGHLIGHT = [
 
 /**
  * Prestige's home page: the homepage hero's shape, pitch left and drawing right, inside
- * the public site's header and footer, then three bands:
+ * the public site's header and footer, then two bands:
  *
  *   • `DesktopBand`, right under the hero by request: three cards on what the desktop
  *     half is for, and the button into its gallery.
  *   • `WebappBand`, the same band for the web half, "coming soon" in place of its button.
- *   • `ThemePlayground` SHOWS the hero's claim: real components, eight themes, one click.
+ *
+ * The theme playground that closed the page moved into the desktop gallery, as its
+ * Themes page beside Colours.
  *
  * THE HEADER AND FOOTER ARE MOUNTED HERE, not by a layout: a `design-system/layout.tsx`
  * would wrap the two galleries under it too, and they are full-window shells of their
@@ -96,7 +97,6 @@ export function DesignSystemHome() {
       </HomeSection>
       <DesktopBand />
       <WebappBand />
-      <ThemePlayground />
       <SiteFooter serverYear={new Date().getFullYear()} />
     </div>
   )

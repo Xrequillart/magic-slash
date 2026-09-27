@@ -1,74 +1,60 @@
 'use client'
 
 import { useState, type CSSProperties } from 'react'
-import { Button, DiffStat, Kbd, Label, ProgressBar, PullRequestCard, Switch, TicketCard } from '@ds/desktop'
+import { Button, DiffStat, Kbd, Label, ProgressBar, PullRequestCard, Switch, ThemePreviewGrid, TicketCard } from '@ds/desktop'
 import { ChevronsUp, FolderGit2, Play, Plus, Ticket } from '@ds/desktop/icons'
-import { DESKTOP_THEMES, DESKTOP_THEME_IDS, type DesktopThemeId } from '@/lib/desktopTheme'
-import { useT } from '@/lib/i18n/useLanguage'
-import { Reveal } from '../Reveal'
-import { HomeHeading, HomeSection } from '../home/Shell'
+import type { DesktopTheme, DesktopThemeId } from '@/lib/desktopTheme'
+import { EntryHeader, EntrySection, Stage } from '../parts'
+import { THEME_PREVIEWS } from '../themeSwatches'
 
 /**
- * THE PLAYGROUND: a handful of the app's REAL components in a window painted with one
- * of its eight themes, and a row of pills to swap the theme.
+ * THE THEMES PAGE: a handful of the app's REAL components in a window painted with one
+ * of its eight themes, and the eight to pick from above it.
  *
- * Nothing here is drawn for the page. The components come from `@ds/desktop`, the
- * folder Electron compiles, and a theme is nothing but the custom properties the app's
- * own registry sets on its root — which is exactly what `style` sets on the window
- * below, the same way the gallery's `Stage` does. So the repaint a reader sees on click
- * is the repaint the app does when its own theme changes.
+ * It was the playground on Prestige's home page, and it moved here to sit beside
+ * `Colours`: the palette says what a role is, this shows the roles resolving. Like
+ * `Colours` it is a foundation page and not a component, so it has no "Built on" and
+ * no "Used by".
  *
- * THE SAMPLE CONTENT IS ENGLISH, like the gallery's: it is what a ticket or a pull
- * request says in the app, not copy of this site.
+ * THE PICKER IS THE SHELL'S. The grid on this page and the one at the foot of the rail
+ * write the same state, so a click here repaints the window below, the rail's picker and
+ * every other entry the reader opens next. That is the claim of the heading, kept.
+ *
+ * Nothing here is drawn for the page: the components come from `@ds/desktop`, and a theme
+ * is nothing but the custom properties the app's registry sets on its root.
  */
-export function ThemePlayground() {
-  const { t } = useT()
-  const [themeId, setThemeId] = useState<DesktopThemeId>('midnight')
-  const theme = DESKTOP_THEMES[themeId]
-
+export function ThemesEntry({
+  theme,
+  themeId,
+  onTheme,
+}: {
+  theme: DesktopTheme
+  themeId?: DesktopThemeId
+  onTheme?: (id: DesktopThemeId) => void
+}) {
   return (
-    <HomeSection>
-      <Reveal>
-        <HomeHeading
-          eyebrow={t('site.designSystem.playgroundEyebrow')}
-          title={t('site.designSystem.playgroundTitle')}
-          subtitle={t('site.designSystem.playgroundSubtitle')}
-        />
-      </Reveal>
+    <article className="flex flex-col divide-y divide-hairline">
+      <EntryHeader title="Themes">
+        Eight themes. One click, and everything follows. These are not screenshots: they are
+        the app’s components, rendered here, and they repaint exactly as they do in the app.
+      </EntryHeader>
 
-      <Reveal order={2} className="mt-10">
-        <div role="radiogroup" aria-label={t('site.designSystem.playgroundThemes')} className="flex flex-wrap gap-2">
-          {DESKTOP_THEME_IDS.map((id) => {
-            const { label, vars } = DESKTOP_THEMES[id]
-            const active = id === themeId
-            return (
-              <button
-                key={id}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => setThemeId(id)}
-                className={`inline-flex items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3.5 text-sm font-bold transition-colors ${
-                  active ? 'border-ink bg-ink text-white' : 'border-hairline bg-white text-ink hover:bg-canvas'
-                }`}
-              >
-                {/* The theme's own ground with its accent inside it: the two colours
-                    that tell the eight apart at a glance. */}
-                <span
-                  aria-hidden
-                  className="grid h-5 w-5 place-items-center rounded-full ring-1 ring-black/10"
-                  style={{ backgroundColor: `rgb(${vars['--c-bg']})` }}
-                >
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: `rgb(${vars['--c-accent']})` }} />
-                </span>
-                {label}
-              </button>
-            )
-          })}
-        </div>
-      </Reveal>
+      <EntrySection
+        title="Pick one"
+        note="The same choice as the picker at the foot of the rail: every preview on every page follows it."
+      >
+        {themeId && onTheme && (
+          <Stage theme={theme}>
+            <ThemePreviewGrid
+              themes={THEME_PREVIEWS}
+              value={themeId}
+              onSelect={(id) => onTheme(id as DesktopThemeId)}
+            />
+          </Stage>
+        )}
+      </EntrySection>
 
-      <Reveal order={3} className="mt-6">
+      <EntrySection title="In the window">
         <div
           style={
             {
@@ -77,7 +63,7 @@ export function ThemePlayground() {
               colorScheme: theme.appearance,
             } as CSSProperties
           }
-          className="overflow-hidden rounded-2xl border border-hairline text-ink shadow-lift transition-colors duration-300"
+          className="overflow-hidden rounded-2xl border border-hairline text-ink transition-colors duration-300"
         >
           <WindowBar title={theme.label} />
           <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] md:p-6">
@@ -107,8 +93,8 @@ export function ThemePlayground() {
             <Controls />
           </div>
         </div>
-      </Reveal>
-    </HomeSection>
+      </EntrySection>
+    </article>
   )
 }
 

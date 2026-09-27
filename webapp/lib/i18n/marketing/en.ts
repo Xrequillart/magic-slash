@@ -849,11 +849,6 @@ export const marketingEn = {
   'site.designSystem.subtitle':
     'Prestige is the design system behind Magic Slash. Every component on these pages is the one compiled into the app, from the same source file: nothing is redrawn for the occasion, so what you read here is what runs.',
   'site.designSystem.cta': 'Explore the desktop components',
-  'site.designSystem.playgroundEyebrow': 'Try it',
-  'site.designSystem.playgroundTitle': 'Eight themes. One click, and everything follows.',
-  'site.designSystem.playgroundSubtitle':
-    'Pick a theme. These are not screenshots: they are the app’s own components, rendered here, and they repaint themselves exactly as they do in the app.',
-  'site.designSystem.playgroundThemes': 'Theme',
   'site.designSystem.desktopEyebrow': 'For the desktop app',
   'site.designSystem.desktopTitle': 'Built for a window, not a web page.',
   'site.designSystem.desktopSubtitle':

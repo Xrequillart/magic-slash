@@ -83,6 +83,7 @@ import { SpecCardEntry } from './entries/SpecCardEntry'
 import { ModalEntry } from './entries/ModalEntry'
 import { RepositorySelectorEntry } from './entries/RepositorySelectorEntry'
 import { ColorsEntry } from './entries/ColorsEntry'
+import { ThemesEntry } from './entries/ThemesEntry'
 import { ContextAgentCardEntry } from './entries/ContextAgentCardEntry'
 import { BannerEntry } from './entries/BannerEntry'
 import { EditableTextEntry } from './entries/EditableTextEntry'
@@ -144,9 +145,16 @@ import { ENTRY_LABELS, ENTRY_NOTES, FAMILIES, FOUNDATION_PAGES, usedByOf, type E
  */
 const ENTRIES: Record<
   EntryId,
-  (props: { theme: DesktopTheme; onOpen?: (id: string) => void }) => JSX.Element
+  (props: {
+    theme: DesktopTheme
+    onOpen?: (id: string) => void
+    /** The shell's theme and its setter, for the one page that picks it: Themes. */
+    themeId?: DesktopThemeId
+    onTheme?: (id: DesktopThemeId) => void
+  }) => JSX.Element
 > = {
   colors: ColorsEntry,
+  themes: ThemesEntry,
   icon: IconEntry,
   text: TextEntry,
   progress: ProgressBarEntry,
@@ -513,7 +521,14 @@ export function Shell() {
             const Entry = ENTRIES[entry]
             // `onOpen` is what makes a "built on" chip a link: an entry names the
             // components it draws with, and clicking one opens it.
-            return <Entry theme={DESKTOP_THEMES[theme]} onOpen={(id) => open(id as EntryId)} />
+            return (
+              <Entry
+                theme={DESKTOP_THEMES[theme]}
+                onOpen={(id) => open(id as EntryId)}
+                themeId={theme}
+                onTheme={setTheme}
+              />
+            )
           })()}
           {/* The palette is not drawn BY anything, it is what everything is drawn in. */}
           {!FOUNDATION_PAGES.includes(entry) && (
