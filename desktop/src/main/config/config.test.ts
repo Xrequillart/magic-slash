@@ -23,6 +23,7 @@ import {
   updateRepositoryLanguages,
   updateRepositoryPlanSettings,
   updateRepositoryPullRequestSettings,
+  updateRepositoryReviewSettings,
   updateUsageLogsEnabled,
 } from './config'
 
@@ -391,6 +392,27 @@ describe('updateRepositoryCommitSettings', () => {
   it('ignores a non-boolean, rather than storing it', () => {
     updateRepositoryCommitSettings('api', { allowOnProtectedBranch: 'yes' as unknown as boolean })
     expect(readConfig().repositories.api.commit?.allowOnProtectedBranch).toBeUndefined()
+  })
+})
+
+describe('updateRepositoryReviewSettings', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  it('persists both settings', () => {
+    updateRepositoryReviewSettings('api', { confidenceScore: false, mode: 'post' })
+    expect(readConfig().repositories.api.review).toEqual({ confidenceScore: false, mode: 'post' })
+  })
+
+  it('ignores a mode the skill does not know, rather than storing it', () => {
+    updateRepositoryReviewSettings('api', { mode: 'sometimes' })
+    expect(readConfig().repositories.api.review?.mode).toBeUndefined()
   })
 })
 

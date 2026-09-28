@@ -6,6 +6,7 @@ import {
   planSummary,
   prSummary,
   resolveSummary,
+  reviewSummary,
   shortGitHubTarget,
   type PlanSummaryInput,
   type SkillSummary,
@@ -311,6 +312,9 @@ describe('resolveSummary', () => {
 describe('every line a setting can produce', () => {
   /** Every summary reachable by flipping one setting at a time, and then all of them. */
   const ALL: SkillSummary[] = [
+    ...[true, false].flatMap((confidenceScore) =>
+      ['ask', 'post'].map((mode) => reviewSummary({ confidenceScore, mode })),
+    ),
     ...['jira', 'github', 'ask', 'wild'].flatMap((tracker) =>
       [true, false].map((duplicateCheck) =>
         planSummary({ ...PLAN, tracker, duplicateCheck, jiraProject: '', githubTarget: '' }),

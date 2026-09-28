@@ -201,6 +201,7 @@ describe('message catalogues', () => {
       'repo.commit.formatGitmoji',
       'repo.resolve.section',
       'repo.resolve.askNoticeAmend',
+      'repo.review.section',
       'repo.pr.section',
       // "Concise" is the same word in both languages; "Normale" and "Détaillée" are
       // not, which is why only this one of the three levels is listed.

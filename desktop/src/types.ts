@@ -1103,6 +1103,12 @@ export interface RepositoryConfig {
      * resolved with resolveSpecLanguage() from `desktop/src/languages.ts`.
      */
     spec?: string
+    /**
+     * The language /magic:review writes its comments and review body in, on GitHub.
+     * Inherits `pullRequest` when unset: a review is read where the pull request is,
+     * by the same people. Resolved with resolveReviewLanguage().
+     */
+    review?: string
   }
   commit?: {
     style?: string
@@ -1144,6 +1150,20 @@ export interface RepositoryConfig {
      * See skills/magic-resolve/SKILL.md step 7.
      */
     replyVerbosity?: string    // 'minimal' | 'normal' | 'detailed'
+  }
+  review?: {
+    /**
+     * Whether /magic:review gives a confidence score out of 10 (and the reasons for the
+     * missing points) in its draft and in the review body. True by default.
+     */
+    confidenceScore?: boolean
+    /**
+     * - 'ask'  show the draft, then ask the human what to post. The default.
+     * - 'post' post every comment straight away, no question.
+     *
+     * See skills/magic-review/SKILL.md step 8.
+     */
+    mode?: string              // 'ask' | 'post'
   }
   pullRequest?: {
     autoLinkTickets?: boolean
@@ -1264,6 +1284,7 @@ export interface StoredRepository {
   commit?: RepositoryConfig['commit']
   pullRequest?: RepositoryConfig['pullRequest']
   resolve?: RepositoryConfig['resolve']
+  review?: RepositoryConfig['review']
   issues?: RepositoryConfig['issues']
   plan?: RepositoryConfig['plan']
   jira?: RepositoryConfig['jira']

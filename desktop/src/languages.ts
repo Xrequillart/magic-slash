@@ -67,3 +67,11 @@ export function resolveTicketLanguage(languages?: RepositoryConfig['languages'])
 export function resolveSpecLanguage(languages?: RepositoryConfig['languages']): string {
   return languages?.spec || resolveTicketLanguage(languages)
 }
+
+/**
+ * The language /magic:review posts in: `languages.review`, else the pull request's
+ * language, else English. `||` for the reason `resolveTicketLanguage` gives.
+ */
+export function resolveReviewLanguage(languages?: RepositoryConfig['languages']): string {
+  return languages?.review || languages?.pullRequest || FALLBACK_LANGUAGE
+}

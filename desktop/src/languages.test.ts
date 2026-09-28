@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveSpecLanguage, resolveTicketLanguage } from './languages'
+import { resolveReviewLanguage, resolveSpecLanguage, resolveTicketLanguage } from './languages'
 
 describe('resolveTicketLanguage', () => {
   it('prefers an explicit ticket language', () => {
@@ -79,5 +79,18 @@ describe('resolveSpecLanguage', () => {
     for (const langs of [{}, { jiraComment: 'fr' }, { ticket: 'fr' }, { ticket: 'fr', jiraComment: 'en' }]) {
       expect(resolveSpecLanguage(langs)).toBe(resolveTicketLanguage(langs))
     }
+  })
+})
+
+describe('resolveReviewLanguage', () => {
+  it('prefers its own key, then the pull request language, then English', () => {
+    expect(resolveReviewLanguage({ review: 'fr', pullRequest: 'en' })).toBe('fr')
+    expect(resolveReviewLanguage({ pullRequest: 'fr' })).toBe('fr')
+    expect(resolveReviewLanguage({})).toBe('en')
+    expect(resolveReviewLanguage(undefined)).toBe('en')
+  })
+
+  it('treats an empty string as unset', () => {
+    expect(resolveReviewLanguage({ review: '', pullRequest: 'fr' })).toBe('fr')
   })
 })

@@ -143,6 +143,11 @@
               "type": "string",
               "enum": ["en", "fr"],
               "description": "Language created tickets are written in, as opposed to `discussion`, the language the skill talks to you in. Unset falls back to `jiraComment`, then to English — so leaving it out is meaningful, not a gap."
+            },
+            "review": {
+              "type": "string",
+              "enum": ["en", "fr"],
+              "description": "Language /magic:review posts its comments and review body in. Unset falls back to `pullRequest`, then to English."
             }
           },
           "additionalProperties": false,
@@ -201,6 +206,22 @@
           },
           "additionalProperties": false,
           "description": "Review resolve settings"
+        },
+        "review": {
+          "type": "object",
+          "properties": {
+            "confidenceScore": {
+              "type": "boolean",
+              "description": "Give a confidence score out of 10 in the draft and the review body. Defaults to true."
+            },
+            "mode": {
+              "type": "string",
+              "enum": ["ask", "post"],
+              "description": "'ask' (default) shows the draft and asks what to post; 'post' posts every comment straight away."
+            }
+          },
+          "additionalProperties": false,
+          "description": "/magic:review settings"
         },
         "pullRequest": {
           "type": "object",

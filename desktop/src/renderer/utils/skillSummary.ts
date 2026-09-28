@@ -279,6 +279,23 @@ export function prSummary(input: PrSummaryInput): SkillSummary {
   return { steps, tail }
 }
 
+export interface ReviewSummaryInput {
+  confidenceScore: boolean
+  /** 'ask' | 'post' — unknown values read as 'ask'. */
+  mode: string
+}
+
+export function reviewSummary(input: ReviewSummaryInput): SkillSummary {
+  return {
+    steps: [
+      { key: 'repo.review.step.read' },
+      { key: input.confidenceScore ? 'repo.review.step.scoreOn' : 'repo.review.step.scoreOff' },
+      { key: input.mode === 'post' ? 'repo.review.step.modePost' : 'repo.review.step.modeAsk' },
+    ],
+    tail: [],
+  }
+}
+
 export interface ResolveSummaryInput {
   commitMode: string
   useCommitConfig: boolean

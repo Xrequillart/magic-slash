@@ -58,6 +58,11 @@ export interface RepoLanguages {
    * entry, for the same reason as `ticket`.
    */
   spec?: string
+  /**
+   * The language /magic:review posts in. Inherits `pullRequest` when unset, so no
+   * DEFAULTS entry, like `ticket` and `spec`.
+   */
+  review?: string
 }
 
 export interface RepoCommit {
@@ -79,6 +84,13 @@ export interface RepoResolve {
   replyLanguage?: string
   /** 'minimal' | 'normal' | 'detailed' — see skills/magic-resolve/SKILL.md step 7. */
   replyVerbosity?: string
+}
+
+/** Settings for /magic:review — see skills/magic-review/SKILL.md step 8. */
+export interface RepoReview {
+  confidenceScore?: boolean
+  /** 'ask' | 'post' */
+  mode?: string
 }
 
 export interface RepoPullRequest {
@@ -173,6 +185,7 @@ export interface Repository {
   languages: RepoLanguages
   commit: RepoCommit
   resolve: RepoResolve
+  review: RepoReview
   pullRequest: RepoPullRequest
   issues: RepoIssues
   plan: RepoPlan
@@ -200,6 +213,9 @@ interface RepositoryRow {
   languages: RepoLanguages | null
   commit: RepoCommit | null
   resolve: RepoResolve | null
+  // Optional for the reason `jira` gives below: COLUMNS names `review`, so deploy
+  // 20260928100000 before this code or every repository disappears.
+  review?: RepoReview | null
   pull_request: RepoPullRequest | null
   issues: RepoIssues | null
   plan: RepoPlan | null
@@ -216,7 +232,7 @@ interface RepositoryRow {
 }
 
 const COLUMNS =
-  'id, org_id, owner_id, name, keywords, color, languages, commit, resolve, pull_request, issues, plan, jira, branches, worktree_files, remote_url, created_at'
+  'id, org_id, owner_id, name, keywords, color, languages, commit, resolve, review, pull_request, issues, plan, jira, branches, worktree_files, remote_url, created_at'
 
 function toRepository(r: RepositoryRow): Repository {
   return {
@@ -229,6 +245,7 @@ function toRepository(r: RepositoryRow): Repository {
     languages: r.languages ?? {},
     commit: r.commit ?? {},
     resolve: r.resolve ?? {},
+    review: r.review ?? {},
     pullRequest: r.pull_request ?? {},
     issues: r.issues ?? {},
     plan: r.plan ?? {},
@@ -300,6 +317,7 @@ export interface RepositoryPatch {
   languages?: RepoLanguages
   commit?: RepoCommit
   resolve?: RepoResolve
+  review?: RepoReview
   pullRequest?: RepoPullRequest
   issues?: RepoIssues
   plan?: RepoPlan
@@ -327,6 +345,7 @@ export function expandPatch(repo: Repository, patch: RepositoryPatch): Repositor
   if (patch.languages) out.languages = { ...repo.languages, ...patch.languages }
   if (patch.commit) out.commit = { ...repo.commit, ...patch.commit }
   if (patch.resolve) out.resolve = { ...repo.resolve, ...patch.resolve }
+  if (patch.review) out.review = { ...repo.review, ...patch.review }
   if (patch.pullRequest) out.pullRequest = { ...repo.pullRequest, ...patch.pullRequest }
   if (patch.issues) out.issues = { ...repo.issues, ...patch.issues }
   if (patch.jira) out.jira = { ...repo.jira, ...patch.jira }
@@ -372,6 +391,7 @@ export async function updateRepository(
   if (patch.languages !== undefined) row.languages = patch.languages
   if (patch.commit !== undefined) row.commit = patch.commit
   if (patch.resolve !== undefined) row.resolve = patch.resolve
+  if (patch.review !== undefined) row.review = patch.review
   if (patch.pullRequest !== undefined) row.pull_request = patch.pullRequest
   if (patch.issues !== undefined) row.issues = patch.issues
   if (patch.plan !== undefined) row.plan = patch.plan
@@ -468,6 +488,8 @@ export const DEFAULTS = {
   resolveFormat: 'angular',
   replyToComments: true,
   replyVerbosity: 'minimal',
+  reviewConfidenceScore: true,
+  reviewMode: 'ask',
   autoLinkTickets: true,
   watchCI: true,
   testAccounts: 'off',

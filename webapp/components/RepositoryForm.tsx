@@ -15,6 +15,7 @@ import {
   GitPullRequest,
   Lock,
   MessageSquare,
+  ScanSearch,
   Search,
   Settings2,
   Sparkles,
@@ -51,6 +52,7 @@ import {
   planSummary,
   prSummary,
   resolveSummary,
+  reviewSummary,
   type SkillSummary,
 } from '@/lib/skillSummary'
 
@@ -103,6 +105,11 @@ function buildOptions(t: Translate) {
     { value: 'minimal', label: t('repo.resolve.verbosityMinimal'), description: t('repo.resolve.verbosityMinimalHelp') },
     { value: 'normal', label: t('repo.resolve.verbosityNormal'), description: t('repo.resolve.verbosityNormalHelp') },
     { value: 'detailed', label: t('repo.resolve.verbosityDetailed'), description: t('repo.resolve.verbosityDetailedHelp') },
+  ]
+
+  const reviewMode: DropdownOption<string>[] = [
+    { value: 'ask', label: t('repo.review.modeAsk'), description: t('repo.review.modeAskHelp') },
+    { value: 'post', label: t('repo.review.modePost'), description: t('repo.review.modePostHelp') },
   ]
 
   const formatSource: DropdownOption<string>[] = [
@@ -194,6 +201,7 @@ function buildOptions(t: Translate) {
     format,
     commitMode,
     replyVerbosity,
+    reviewMode,
     formatSource,
     testAccounts,
     templateCheckboxes,
@@ -236,6 +244,7 @@ const SKILL_INTROS = {
   plan: { command: '/magic:plan', icon: ClipboardList, lead: 'repo.plan.intro' },
   commit: { command: '/magic:commit', icon: GitCommitHorizontal, lead: 'repo.commit.intro' },
   pr: { command: '/magic:pr', icon: GitPullRequest, lead: 'repo.pr.intro' },
+  review: { command: '/magic:review', icon: ScanSearch, lead: 'repo.review.intro' },
   resolve: { command: '/magic:resolve', icon: MessageSquare, lead: 'repo.resolve.intro' },
 } satisfies Record<string, { command: string; icon: LucideIcon; lead: MessageKey }>
 
@@ -289,7 +298,7 @@ function SkillIntro({ skill, summary }: { skill: keyof typeof SKILL_INTROS; summ
  */
 type RepoTab =
   | 'general' | 'repository' | 'tickets' | 'languages'
-  | 'plan' | 'commit' | 'pr' | 'resolve'
+  | 'plan' | 'commit' | 'pr' | 'review' | 'resolve'
 
 const REPO_TABS: { id: RepoTab; labelKey: Parameters<Translate>[0]; icon: LucideIcon }[] = [
   // Labelled with each subject's OWN `*.section` key rather than a parallel
@@ -314,6 +323,7 @@ const REPO_TABS: { id: RepoTab; labelKey: Parameters<Translate>[0]; icon: Lucide
   { id: 'plan', labelKey: 'repo.plan.section', icon: ClipboardList },
   { id: 'commit', labelKey: 'repo.commit.section', icon: GitCommitHorizontal },
   { id: 'pr', labelKey: 'repo.pr.section', icon: GitPullRequest },
+  { id: 'review', labelKey: 'repo.review.section', icon: ScanSearch },
   { id: 'resolve', labelKey: 'repo.resolve.section', icon: MessageSquare },
 ]
 
@@ -417,6 +427,8 @@ export function RepositoryForm({
   const replyToComments = repo.resolve.replyToComments ?? DEFAULTS.replyToComments
   const replyLanguage = repo.resolve.replyLanguage ?? repo.languages.discussion ?? DEFAULTS.language
   const replyVerbosity = repo.resolve.replyVerbosity ?? DEFAULTS.replyVerbosity
+  const reviewConfidenceScore = repo.review.confidenceScore ?? DEFAULTS.reviewConfidenceScore
+  const reviewMode = repo.review.mode === 'post' ? 'post' : DEFAULTS.reviewMode
 
   const autoLinkTickets = repo.pullRequest.autoLinkTickets ?? DEFAULTS.autoLinkTickets
   const watchCI = repo.pullRequest.watchCI ?? DEFAULTS.watchCI
@@ -450,6 +462,9 @@ export function RepositoryForm({
   // repo that set only `ticket` has to carry that through to its spec. Chained off
   // the line above rather than repeated, exactly as resolveSpecLanguage does it.
   const specLanguage = repo.languages.spec || ticketLanguage
+  // Same rule again: the review inherits the pull request language, `||` included.
+  // The desktop's resolveReviewLanguage walks the same chain.
+  const reviewLanguage = repo.languages.review || repo.languages.pullRequest || DEFAULTS.language
 
   const tracker = repo.plan.tracker ?? DEFAULTS.tracker
   // Resolved, not read: both keys chain onto the legacy `issues.jiraUrl` /
@@ -553,6 +568,7 @@ export function RepositoryForm({
     onPatch({ languages: { [key]: value } })
   const setCommit = (patch: Repository['commit']) => onPatch({ commit: patch })
   const setResolve = (patch: Repository['resolve']) => onPatch({ resolve: patch })
+  const setReview = (patch: Repository['review']) => onPatch({ review: patch })
   const setIssues = (patch: Repository['issues']) => onPatch({ issues: patch })
   // The Jira site and project key are one address, so they share a block and a
   // setter — they used to sit in `issues` and `plan`, two sections apart, which is
@@ -898,6 +914,16 @@ export function RepositoryForm({
               value={lang('pullRequest')}
               options={LANGUAGE_OPTIONS}
               onChange={(v) => setLanguage('pullRequest', v)}
+              width={200}
+              className="w-52"
+            />
+          </SettingRow>
+
+          <SettingRow label={t('repo.langs.review')} description={t('repo.review.languageHelp')}>
+            <Dropdown
+              value={reviewLanguage}
+              options={LANGUAGE_OPTIONS}
+              onChange={(v) => setLanguage('review', v)}
               width={200}
               className="w-52"
             />
@@ -1293,6 +1319,36 @@ export function RepositoryForm({
               label={t('repo.pr.watchCI')}
               checked={watchCI}
               onChange={(watchCI) => onPatch({ pullRequest: { watchCI } })}
+            />
+          </SettingRow>
+        </SettingsCard>
+        </>
+      )}
+
+      {tab === 'review' && (
+        <>
+        <SkillIntro
+          skill="review"
+          summary={reviewSummary({ confidenceScore: reviewConfidenceScore, mode: reviewMode })}
+        />
+
+        <SettingsCard icon={ScanSearch} title={t('repo.review.groupDraft')}>
+          <SettingRow
+            label={t('repo.review.confidenceScore')}
+            description={t('repo.review.confidenceScoreHelp')}
+          >
+            <Toggle
+              label={t('repo.review.confidenceScore')}
+              checked={reviewConfidenceScore}
+              onChange={(confidenceScore) => setReview({ confidenceScore })}
+            />
+          </SettingRow>
+          <SettingRow label={t('repo.review.mode')} description={t('repo.review.modeHelp')}>
+            <Dropdown
+              value={reviewMode}
+              options={options.reviewMode}
+              onChange={(mode) => setReview({ mode })}
+              className="w-52"
             />
           </SettingRow>
         </SettingsCard>

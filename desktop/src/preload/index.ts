@@ -41,6 +41,9 @@ const configApi = {
   updateRepositoryResolveSettings: (name: string, settings: Partial<NonNullable<RepositoryConfig['resolve']>>) =>
     ipcRenderer.invoke('config:updateRepositoryResolveSettings', { name, settings }),
 
+  updateRepositoryReviewSettings: (name: string, settings: Partial<NonNullable<RepositoryConfig['review']>>) =>
+    ipcRenderer.invoke('config:updateRepositoryReviewSettings', { name, settings }),
+
   updateRepositoryPullRequestSettings: (name: string, settings: Partial<NonNullable<RepositoryConfig['pullRequest']>>) =>
     ipcRenderer.invoke('config:updateRepositoryPullRequestSettings', { name, settings }),
 

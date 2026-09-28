@@ -14,6 +14,7 @@ import {
   updateRepositoryLanguages,
   updateRepositoryCommitSettings,
   updateRepositoryResolveSettings,
+  updateRepositoryReviewSettings,
   updateRepositoryPullRequestSettings,
   updateRepositoryIssuesSettings,
   updateRepositoryJiraSettings,
@@ -341,6 +342,12 @@ export function setupConfigHandlers() {
   // Update repository resolve settings
   ipcMain.handle('config:updateRepositoryResolveSettings', async (_event, { name, settings }) => {
     const config = updateRepositoryResolveSettings(name, settings)
+    return { config }
+  })
+
+  // Update repository review settings
+  ipcMain.handle('config:updateRepositoryReviewSettings', async (_event, { name, settings }) => {
+    const config = updateRepositoryReviewSettings(name, settings)
     return { config }
   })
 

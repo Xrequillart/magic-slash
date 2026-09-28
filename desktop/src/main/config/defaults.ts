@@ -71,6 +71,10 @@ export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keyword
     replyLanguage: 'en',
     replyVerbosity: 'minimal'
   },
+  review: {
+    confidenceScore: true,
+    mode: 'ask'
+  },
   pullRequest: {
     autoLinkTickets: true,
     watchCI: true,

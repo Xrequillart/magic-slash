@@ -6,6 +6,7 @@ import {
   planSummary,
   prSummary,
   resolveSummary,
+  reviewSummary,
   shortGitHubTarget,
   type PlanSummaryInput,
   type SkillSummary,
@@ -305,9 +306,31 @@ describe('resolveSummary', () => {
   })
 })
 
+describe('reviewSummary', () => {
+  it('reads the score and the posting mode off the two settings', () => {
+    expect(reviewSummary({ confidenceScore: true, mode: 'ask' }).steps.map((s) => s.key)).toEqual([
+      'repo.review.step.read',
+      'repo.review.step.scoreOn',
+      'repo.review.step.modeAsk',
+    ])
+    expect(reviewSummary({ confidenceScore: false, mode: 'post' }).steps.map((s) => s.key)).toEqual([
+      'repo.review.step.read',
+      'repo.review.step.scoreOff',
+      'repo.review.step.modePost',
+    ])
+  })
+
+  it('reads an unknown mode as ask, the one that posts nothing without you', () => {
+    expect(reviewSummary({ confidenceScore: true, mode: 'wild' }).steps[2].key).toBe('repo.review.step.modeAsk')
+  })
+})
+
 describe('every line a setting can produce', () => {
   /** Every summary reachable by flipping one setting at a time, and then all of them. */
   const ALL: SkillSummary[] = [
+    ...[true, false].flatMap((confidenceScore) =>
+      ['ask', 'post'].map((mode) => reviewSummary({ confidenceScore, mode })),
+    ),
     ...['jira', 'github', 'ask', 'wild'].flatMap((tracker) =>
       [true, false].map((duplicateCheck) =>
         planSummary({ ...PLAN, tracker, duplicateCheck, jiraProject: '', githubTarget: '' }),

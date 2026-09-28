@@ -237,6 +237,7 @@ function persistRepoIdentity(name: string): void {
       commit: repo.commit,
       pullRequest: repo.pullRequest,
       resolve: repo.resolve,
+      review: repo.review,
       issues: repo.issues,
       plan: repo.plan,
       jira: repo.jira,
@@ -451,6 +452,7 @@ export function addRepository(name: string, repoPath: string, keywords: string[]
       commit: repo.commit,
       pullRequest: repo.pullRequest,
       resolve: repo.resolve,
+      review: repo.review,
       issues: repo.issues,
       plan: repo.plan,
       jira: repo.jira,
@@ -548,7 +550,7 @@ export function updateRepositoryLanguages(name: string, languages: Record<string
 
   // 'ticket' and 'spec' must be listed or their selects in Settings appear to work
   // and never persist — the whitelist drops an unknown key in silence.
-  const validKeys = ['commit', 'pullRequest', 'jiraComment', 'discussion', 'ticket', 'spec']
+  const validKeys = ['commit', 'pullRequest', 'jiraComment', 'discussion', 'ticket', 'spec', 'review']
   const validValues = ['en', 'fr', null]
 
   config.repositories[name].languages = config.repositories[name].languages || {}
@@ -614,6 +616,26 @@ export function updateRepositoryResolveSettings(name: string, settings: Settings
 
   if (Object.keys(resolve).length === 0) {
     delete config.repositories[name].resolve
+  }
+
+  setConfigCache(config)
+  persistRepoIdentity(name)
+  return config
+}
+
+export function updateRepositoryReviewSettings(name: string, settings: SettingsInput<NonNullable<RepositoryConfig['review']>>): Config {
+  const config = readConfig()
+  if (!config.repositories || !config.repositories[name]) {
+    throw new Error(`Repository '${name}' not found`)
+  }
+
+  const review = config.repositories[name].review = config.repositories[name].review || {}
+
+  applySetting(review, 'confidenceScore', settings.confidenceScore, isBool)
+  applySetting(review, 'mode', settings.mode, isOneOf(['ask', 'post']))
+
+  if (Object.keys(review).length === 0) {
+    delete config.repositories[name].review
   }
 
   setConfigCache(config)

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   Trash2, AlertTriangle, Plus, ArrowLeft, Building2, Lock, FolderOpen,
-  Ticket, Settings2, Languages, GitBranch, GitCommitHorizontal, MessageSquare, GitPullRequest,
+  Ticket, Settings2, Languages, GitBranch, GitCommitHorizontal, MessageSquare, GitPullRequest, ScanSearch,
   ClipboardList, FolderGit2, type LucideIcon
 } from '@ds/desktop/icons'
 import { useAuth } from '../../hooks/useAuth'
@@ -34,6 +34,7 @@ import {
   planSummary,
   prSummary,
   resolveSummary,
+  reviewSummary,
   type SkillSummary,
 } from '../../utils/skillSummary'
 import { SELECT_WIDTH } from '../../theme/controls'
@@ -42,7 +43,7 @@ import {
   PLAN_ACCEPTANCE_CRITERIA_FORMATS,
   type PlanSettingsInput,
 } from '../../../types'
-import { resolveSpecLanguage, resolveTicketLanguage } from '../../../languages'
+import { resolveReviewLanguage, resolveSpecLanguage, resolveTicketLanguage } from '../../../languages'
 import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../../../tracker'
 
 interface RepoPageProps {
@@ -69,7 +70,7 @@ interface RepoPageProps {
  */
 type RepoTab =
   | 'general' | 'repository' | 'tickets' | 'languages'
-  | 'plan' | 'commit' | 'pr' | 'resolve'
+  | 'plan' | 'commit' | 'pr' | 'review' | 'resolve'
 
 const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: LucideIcon }[] = [
   // Labelled with each subject's OWN `*.section` key rather than a parallel
@@ -95,6 +96,7 @@ const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: LucideIcon }[] = [
   { id: 'plan', labelKey: 'repo.plan.section', icon: ClipboardList },
   { id: 'commit', labelKey: 'repo.commit.section', icon: GitCommitHorizontal },
   { id: 'pr', labelKey: 'repo.pr.section', icon: GitPullRequest },
+  { id: 'review', labelKey: 'repo.review.section', icon: ScanSearch },
   { id: 'resolve', labelKey: 'repo.resolve.section', icon: MessageSquare },
 ]
 
@@ -142,8 +144,8 @@ const PLAN_ACCEPTANCE_CRITERIA_LABELS: Record<(typeof PLAN_ACCEPTANCE_CRITERIA_F
  *
  * The settings alone never said it: "How much to split" and "Acceptance criteria" are
  * knobs on a run whose shape you had to already know — that /magic:plan brainstorms
- * first, writes a spec, and creates nothing until you approve it. Four tabs out of
- * eight configure a skill rather than the repository, and those four get this.
+ * first, writes a spec, and creates nothing until you approve it. Five tabs out of
+ * nine configure a skill rather than the repository, and those five get this.
  *
  * DESCRIBES THIS REPOSITORY, not the skill in general: the steps are composed from the
  * settings below by `utils/skillSummary`, so a repo filing GitHub issues reads "one
@@ -160,6 +162,7 @@ const SKILL_INTROS = {
   plan: { command: '/magic:plan', icon: ClipboardList, lead: 'repo.plan.intro' },
   commit: { command: '/magic:commit', icon: GitCommitHorizontal, lead: 'repo.commit.intro' },
   pr: { command: '/magic:pr', icon: GitPullRequest, lead: 'repo.pr.intro' },
+  review: { command: '/magic:review', icon: ScanSearch, lead: 'repo.review.intro' },
   resolve: { command: '/magic:resolve', icon: MessageSquare, lead: 'repo.resolve.intro' },
 } satisfies Record<string, { command: string; icon: LucideIcon; lead: MessageKey }>
 
@@ -255,6 +258,12 @@ const BODY_VERBOSITY_LABEL: Record<(typeof BODY_VERBOSITY_MODES)[number], Messag
   detailed: 'repo.pr.bodyVerbosityDetailed',
 }
 
+const REVIEW_MODES = ['ask', 'post'] as const
+const REVIEW_MODE_LABEL: Record<(typeof REVIEW_MODES)[number], MessageKey> = {
+  ask: 'repo.review.modeAsk',
+  post: 'repo.review.modePost',
+}
+
 const RESOLVE_COMMIT_MODES = ['new', 'amend', 'ask'] as const
 const RESOLVE_COMMIT_MODE_LABEL: Record<(typeof RESOLVE_COMMIT_MODES)[number], MessageKey> = {
   new: 'repo.resolve.modeNew',
@@ -332,6 +341,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
     updateRepositoryLanguages,
     updateRepositoryCommitSettings,
     updateRepositoryResolveSettings,
+    updateRepositoryReviewSettings,
     updateRepositoryPullRequestSettings,
     updateRepositoryIssuesSettings,
     updateRepositoryJiraSettings,
@@ -571,6 +581,15 @@ export function RepoPage({ repoName }: RepoPageProps) {
     }
   }
 
+  const handleReviewSettingChange = async (key: string, value: boolean | string) => {
+    try {
+      await updateRepositoryReviewSettings(repoName, { [key]: value })
+      showToast(t('toast.settingUpdated'))
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t('toast.settingUpdateFailed'), 'error')
+    }
+  }
+
   const handlePRSettingChange = async (key: string, value: boolean | string) => {
     try {
       if (typeof value === 'boolean') {
@@ -748,6 +767,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const repoLangs = repo.languages || {}
   const commitSettings = repo.commit || {}
   const resolveSettings = repo.resolve || {}
+  const reviewSettings = repo.review || {}
+  const reviewConfidenceScoreVal = reviewSettings.confidenceScore !== undefined ? reviewSettings.confidenceScore : true
+  const reviewModeVal = reviewSettings.mode === 'post' ? 'post' : 'ask'
   const prSettings = repo.pullRequest || {}
   const issuesSettings = repo.issues || {}
   const planSettings = repo.plan || {}
@@ -1382,6 +1404,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
           rows={[
             langRow('commit', t('repo.langs.commit'), t('repo.commit.languageHelp')),
             langRow('pullRequest', t('repo.langs.pullRequest'), t('repo.pr.languageHelp')),
+            // Inherits the pull request language when unset, so it is handed the
+            // resolved value like the ticket cascade below.
+            langRow('review', t('repo.langs.review'), t('repo.review.languageHelp'), resolveReviewLanguage(repoLangs)),
             // NOT a `langRow`: review replies live in `resolve.replyLanguage`, not in the
             // `languages` block, and they fall back to the discussion language rather
             // than to English. Shown only when replies are enabled — a language for
@@ -1760,6 +1785,30 @@ export function RepoPage({ repoName }: RepoPageProps) {
               commentOnPRVal, (next) => handleIssuesSettingChange('commentOnPR', next)),
             switchRow('watchCI', t('repo.pr.watchCI'), t('repo.pr.watchCIHelp'),
               watchCIVal, (next) => handlePRSettingChange('watchCI', next)),
+          ]}
+        />
+        </div>
+      )}
+
+      {tab === 'review' && (
+        <div className="flex flex-col gap-6">
+        <SkillIntro
+          skill="review"
+          summary={reviewSummary({ confidenceScore: reviewConfidenceScoreVal, mode: reviewModeVal })}
+        />
+        <SettingsCard
+          title={t('repo.review.groupDraft')}
+          rows={[
+            switchRow('confidenceScore', t('repo.review.confidenceScore'), t('repo.review.confidenceScoreHelp'),
+              reviewConfidenceScoreVal, (next) => handleReviewSettingChange('confidenceScore', next)),
+            {
+              id: 'reviewMode',
+              label: t('repo.review.mode'),
+              hint: t('repo.review.modeHelp'),
+              disabled: readOnly,
+              control: enumControl(t, reviewModeVal, REVIEW_MODES, REVIEW_MODE_LABEL,
+                (next) => handleReviewSettingChange('mode', next), t('repo.review.mode')),
+            },
           ]}
         />
         </div>
