@@ -91,7 +91,7 @@ export function SkillsRail({
   }, [activeKey])
 
   return (
-    <div className={`w-56 shrink-0 flex flex-col border-r border-line-field bg-surface-sunken-soft ${className}`.trim()}>
+    <div className={`w-56 shrink-0 flex flex-col bg-surface-sunken-soft ${className}`.trim()}>
       <div className="px-2 pt-3 pb-1 border-b border-line-field">
         <MenuSidebarItem
           label={overviewLabel}
