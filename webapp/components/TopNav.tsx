@@ -93,7 +93,8 @@ export function TopNav({ email }: { email?: string }) {
   }, [open])
 
   const signOut = async () => {
-    await getSupabase().auth.signOut()
+    // This browser only: the default `global` scope signs the desktop app out too.
+    await getSupabase().auth.signOut({ scope: 'local' })
     router.replace('/')
   }
 

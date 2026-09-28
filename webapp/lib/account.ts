@@ -73,9 +73,13 @@ export async function deleteAccount(): Promise<void> {
   const supabase = getSupabase()
   const { error } = await supabase.rpc('delete_account')
   if (error) throw new Error(error.message)
-  await supabase.auth.signOut().catch(() => {})
+  await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
 }
 
+/**
+ * THIS browser only. supabase-js defaults to `scope: 'global'`, which revokes every
+ * session of the account, the desktop app's included.
+ */
 export async function signOut(): Promise<void> {
-  await getSupabase().auth.signOut()
+  await getSupabase().auth.signOut({ scope: 'local' })
 }

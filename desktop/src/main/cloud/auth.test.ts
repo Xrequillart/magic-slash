@@ -75,6 +75,7 @@ import {
   requestEmailChange,
   confirmEmailChange,
   deleteAccount,
+  signOut,
 } from './auth'
 
 const SESSION = {
@@ -329,6 +330,16 @@ describe('confirmEmailChange', () => {
     h.state.client = null
     h.state.cloudEnabled = false
     await expect(confirmEmailChange('new@example.com', '654321')).rejects.toThrow('Cloud features are not available')
+  })
+})
+
+describe('signOut', () => {
+  // supabase-js defaults to `global`, which revoked every session of the account:
+  // signing out of the dev build signed the packaged app and every browser out too.
+  it('revokes this session only, never the account\'s other devices', async () => {
+    await signOut()
+    expect(h.mockAuth.signOut).toHaveBeenCalledWith({ scope: 'local' })
+    expect(h.state.clearSession).toHaveBeenCalled()
   })
 })
 

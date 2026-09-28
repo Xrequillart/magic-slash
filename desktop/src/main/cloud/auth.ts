@@ -26,10 +26,14 @@ function toStatus(stored: StoredSession): AuthStatus {
  * Best-effort server-side sign-out. Local teardown (clearSession) is the
  * caller's responsibility; a failure here is logged and swallowed so it never
  * blocks the local state change.
+ *
+ * `scope: 'local'` — THIS session only. supabase-js defaults to `global`, which
+ * revokes every session of the account: signing out of the dev build signed the
+ * packaged app out too, and every browser with it.
  */
 async function signOutQuietly(client: SupabaseClient, context: string): Promise<void> {
   try {
-    await client.auth.signOut()
+    await client.auth.signOut({ scope: 'local' })
   } catch (error) {
     console.error(`[cloud] signOut ${context} (ignored):`, error)
   }
