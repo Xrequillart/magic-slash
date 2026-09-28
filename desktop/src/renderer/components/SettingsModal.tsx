@@ -108,11 +108,15 @@ const GROUPS: { id: string; labelKey: MessageKey; pages: SettingsPageEntry[] }[]
       { id: 'profile', labelKey: 'settings.tab.profile', icon: UserPen },
       { id: 'organization', labelKey: 'settings.tab.organization', icon: Building2 },
       { id: 'claude-code', labelKey: 'settings.tab.claudeCode', icon: SquareTerminal },
-      { id: 'notifications', labelKey: 'settings.tab.notifications', icon: Bell },
       { id: 'connections', labelKey: 'settings.tab.connections', icon: Plug },
       { id: 'appearance', labelKey: 'settings.tab.appearance', icon: Palette },
       { id: 'language', labelKey: 'settings.tab.language', icon: Languages },
     ],
+  },
+  {
+    id: 'notifications',
+    labelKey: 'settings.group.notifications',
+    pages: [{ id: 'notifications', labelKey: 'settings.tab.notifications', icon: Bell }],
   },
   {
     id: 'features',

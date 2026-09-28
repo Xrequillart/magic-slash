@@ -99,6 +99,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.tab.shortcuts': 'Raccourcis',
   'settings.tab.about': 'À propos',
   'settings.group.personal': 'Personnel',
+  'settings.group.notifications': 'Notifications',
   'settings.group.features': 'Fonctionnalités',
   'settings.group.about': 'À propos',
   'settings.language.section': 'Langue et région',

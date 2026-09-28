@@ -121,6 +121,7 @@ export const en = {
   'settings.tab.shortcuts': 'Shortcuts',
   'settings.tab.about': 'About',
   'settings.group.personal': 'Personal',
+  'settings.group.notifications': 'Notifications',
   'settings.group.features': 'Features',
   'settings.group.about': 'About',
   'settings.language.section': 'Language & Region',
