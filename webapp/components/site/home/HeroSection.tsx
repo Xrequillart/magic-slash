@@ -1,14 +1,11 @@
 'use client'
 
-import { Download } from 'lucide-react'
-import { ButtonNavLink } from '@/components/ui'
 import { useT } from '@/lib/i18n/useLanguage'
-import { DOWNLOAD_PATH } from '@/lib/siteNav'
-import { WORKFLOW_PATH } from '@/lib/workflow'
 import { JiraMark } from '../features/TicketCardMockup'
 import { GithubMark } from '../features/TasksModalMockup'
 import { Reveal } from '../Reveal'
 import { RichText } from '../RichText'
+import { WaitlistForm } from '../WaitlistForm'
 import { HomeSection } from './Shell'
 
 /**
@@ -27,7 +24,12 @@ import { HomeSection } from './Shell'
  * FIVE THINGS ABOVE THE FOLD: headline, subtitle, two buttons, one row of the three
  * marks, and the drawing. `Integrations` is the ONLY place the three are named.
  *
- * THE TWO BUTTONS: `primary` opens `/download` — the page, not the .dmg, so the reader
+ * THE WAITLIST FORM, ALONE: the "See the workflow" secondary went by request, and
+ * `site.hero.workflowCta` stays in the catalogues like every retired key.
+ * The primary used to open `/download`;
+ * nobody can sign up to the app yet, so it is a waitlist form now (`WaitlistForm`), and
+ * `/download` keeps its own button for whoever has the link. What follows is the note from
+ * when the pair was two buttons: `primary` opened `/download` — the page, not the .dmg, so the reader
  * meets the prerequisites and what the first launch sets up before the file lands in
  * their folder — and `secondary` opens `/workflow`, where the six artefacts are set out
  * at length. Both `size="lg"`, and the same 46px once `secondary` spends its border on
@@ -60,13 +62,8 @@ export function HeroSection() {
             <p className="max-w-xl text-lg leading-relaxed text-muted">{t('site.hero.subtitle')}</p>
           </Reveal>
 
-          <Reveal order={3} className="flex flex-wrap items-center gap-3">
-            <ButtonNavLink href={DOWNLOAD_PATH} variant="primary" size="lg" icon={Download}>
-              {t('site.hero.downloadCta')}
-            </ButtonNavLink>
-            <ButtonNavLink href={WORKFLOW_PATH} variant="secondary" size="lg">
-              {t('site.hero.workflowCta')}
-            </ButtonNavLink>
+          <Reveal order={3} className="flex w-full flex-col items-start gap-3">
+            <WaitlistForm source="home" />
           </Reveal>
 
           <Reveal order={4}>

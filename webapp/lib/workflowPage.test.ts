@@ -119,15 +119,13 @@ describe('the /workflow page', () => {
     }
   })
 
-  it('anchors each step where the hero sends the reader', () => {
-    // The rail and the secondary button link to `#step-{id}`, and the band carries the
-    // same id through the same function, so the two cannot disagree. Pinned anyway, so a
-    // refactor that spells one of them by hand shows up here.
+  it('anchors each step through the one function', () => {
+    // The rail links to `#step-{id}`, and the band carries the same id through the same
+    // function, so the two cannot disagree. Pinned anyway, so a refactor that spells one
+    // of them by hand shows up here. (The hero's "steps" button that also used it is gone.)
     expect(stepAnchor('plan')).toBe('step-plan')
     const bands = readFileSync(webapp('../components/site/workflow/StepBand.tsx'), 'utf8')
-    const hero = readFileSync(webapp('../components/site/workflow/WorkflowHero.tsx'), 'utf8')
     expect(bands).toContain('id={stepAnchor(step.id)}')
-    expect(hero).toContain('stepAnchor(WORKFLOW_STEPS[0].id)')
   })
 
   it('names the trackers as chips, in both languages', () => {

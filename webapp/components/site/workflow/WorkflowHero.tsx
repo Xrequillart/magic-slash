@@ -1,13 +1,10 @@
 'use client'
 
-import { Download } from 'lucide-react'
-import { ButtonNavLink } from '@/components/ui'
 import { useT } from '@/lib/i18n/useLanguage'
-import { DOWNLOAD_PATH } from '@/lib/siteNav'
-import { WORKFLOW_STEPS } from '@/lib/workflow'
-import { WORKFLOW_PAGE_CHROME, stepAnchor } from '@/lib/workflowPage'
+import { WORKFLOW_PAGE_CHROME } from '@/lib/workflowPage'
 import { Reveal } from '../Reveal'
 import { HomeSection } from '../home/Shell'
+import { WaitlistForm } from '../WaitlistForm'
 
 /**
  * THE OPENING OF `/workflow`: the promise, and the two ways on.
@@ -61,13 +58,10 @@ export function WorkflowHero() {
           </p>
         </Reveal>
 
-        <Reveal order={4} className="flex flex-wrap items-center justify-center gap-3">
-          <ButtonNavLink href={DOWNLOAD_PATH} variant="primary" size="lg" icon={Download}>
-            {t('site.hero.downloadCta')}
-          </ButtonNavLink>
-          <ButtonNavLink href={`#${stepAnchor(WORKFLOW_STEPS[0].id)}`} variant="secondary" size="lg">
-            {t(WORKFLOW_PAGE_CHROME.stepsCta)}
-          </ButtonNavLink>
+        {/* The waitlist form where the download button was: nobody can sign up yet. The
+            "steps" secondary beside it went by request. */}
+        <Reveal order={4} className="flex flex-col items-center gap-3">
+          <WaitlistForm source="workflow" align="center" />
         </Reveal>
 
         <Reveal order={5}>

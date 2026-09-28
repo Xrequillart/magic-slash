@@ -1,14 +1,12 @@
 'use client'
 
 import { useRef } from 'react'
-import { Columns, Download, Plug, ScrollText, Sparkles } from 'lucide-react'
-import { ButtonNavLink } from '@/components/ui'
+import { Columns, Plug, ScrollText, Sparkles } from 'lucide-react'
 import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
-import { DOWNLOAD_PATH } from '@/lib/siteNav'
-import { WORKFLOW_PATH } from '@/lib/workflow'
 import { Reveal } from '../Reveal'
 import { RichText } from '../RichText'
+import { WaitlistForm } from '../WaitlistForm'
 import { AppWindowMockup } from '../home/AppWindowMockup'
 import { HomeSection, STRUCK_WORD } from '../home/Shell'
 
@@ -88,14 +86,11 @@ export function DesktopHero() {
           </p>
         </Reveal>
 
-        <Reveal order={4} className="flex flex-wrap items-center justify-center gap-3">
-          {/* The download PAGE, not the .dmg — same call as the homepage hero's primary. */}
-          <ButtonNavLink href={DOWNLOAD_PATH} variant="primary" size="lg" icon={Download}>
-            {t('site.hero.downloadCta')}
-          </ButtonNavLink>
-          <ButtonNavLink href={WORKFLOW_PATH} variant="secondary" size="lg">
-            {t('site.desktop.howCta')}
-          </ButtonNavLink>
+        {/* The waitlist form where the download button was, as on the homepage hero:
+            nobody can sign up yet, and `/download` keeps its own button. The "how it
+            works" secondary went by request. */}
+        <Reveal order={4} className="flex flex-col items-center gap-3">
+          <WaitlistForm source="desktop" align="center" />
         </Reveal>
 
         <Reveal order={5}>

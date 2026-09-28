@@ -1,8 +1,7 @@
 'use client'
 
-import { ButtonLink } from '@/components/ui'
 import { useT } from '@/lib/i18n/useLanguage'
-import { DESKTOP_DOWNLOAD_URL } from '@/lib/desktopRelease'
+import { WaitlistForm } from '../WaitlistForm'
 import { BAND_TITLE, HomeSection } from './Shell'
 
 /**
@@ -13,6 +12,10 @@ import { BAND_TITLE, HomeSection } from './Shell'
  * `purple` bleeding out of the ink, with the app icon haloed by a blurred copy of itself.
  * The owner asked for both to go ("laisse juste un fond noir"), then for the icon itself to
  * give way to an illustration drawn in white: white on `bg-ink` is the whole band now.
+ *
+ * THE BUTTON IS A WAITLIST FORM NOW. Nobody can sign up to the app yet, so the band asks
+ * for an address rather than handing over the .dmg; `/download` keeps its own button.
+ * The arrows still converge on it. What follows predates that change.
  *
  * ONE BUTTON, NOT TWO. The section used to close on the hero's pair — `primary` to the
  * app, `secondary` to the .dmg — on the argument that a reader who scrolled the whole
@@ -30,14 +33,17 @@ import { BAND_TITLE, HomeSection } from './Shell'
  */
 
 /**
- * The four arrows around the button, positioned exactly as `DownloadContent` places them.
+ * The four arrows around the waitlist form. They were placed exactly as `DownloadContent`
+ * places them, around a ~280px button; the form is 448px (`max-w-md`), 88px wider a side,
+ * so each arrow moved out by those 88px of the 768px box (11.5%) and its tip lands on the
+ * form's edge where it used to land on the button's. Same files, angles and mirroring.
  * LITERAL CLASS LISTS, because Tailwind only emits classes it can see in the source.
  */
 const ARROWS = [
-  { src: '/img/arrow-swirl.svg', className: 'left-[17%] top-0 w-[100px] rotate-[28deg]' },
-  { src: '/img/arrow-wave.svg', className: 'left-[2%] top-8 w-[88px] rotate-[14deg]' },
-  { src: '/img/arrow-zigzag.svg', className: 'right-[17%] top-0 w-[100px] -rotate-[28deg] scale-x-[-1]' },
-  { src: '/img/arrow-bolt.svg', className: 'right-[2%] top-8 w-[88px] -rotate-[14deg] scale-x-[-1]' },
+  { src: '/img/arrow-swirl.svg', className: 'left-[5.5%] top-0 w-[100px] rotate-[28deg]' },
+  { src: '/img/arrow-wave.svg', className: 'left-[-9.5%] top-8 w-[88px] rotate-[14deg]' },
+  { src: '/img/arrow-zigzag.svg', className: 'right-[5.5%] top-0 w-[100px] -rotate-[28deg] scale-x-[-1]' },
+  { src: '/img/arrow-bolt.svg', className: 'right-[-9.5%] top-8 w-[88px] -rotate-[14deg] scale-x-[-1]' },
 ] as const
 
 export function FinalCtaSection() {
@@ -98,9 +104,7 @@ export function FinalCtaSection() {
               className={`pointer-events-none absolute hidden invert lg:block ${arrow.className}`}
             />
           ))}
-          <ButtonLink href={DESKTOP_DOWNLOAD_URL} variant="secondary" size="lg">
-            {t('site.finalCta.button')}
-          </ButtonLink>
+          <WaitlistForm source="final-cta" dark align="center" />
         </div>
       </div>
     </HomeSection>

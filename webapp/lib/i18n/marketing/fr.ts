@@ -108,6 +108,15 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'La spec, les tickets, le worktree, les commits, la review, le ticket fermé : tout ce qui entoure le code, huit skills s’en occupent. Et une app vous simplifie la vie.',
   'site.hero.downloadCta': 'Télécharger pour Mac',
   'site.hero.workflowCta': 'Voir le workflow',
+  // Le formulaire de liste d'attente, à la place des boutons de téléchargement hors
+  // `/download` : voir la note côté anglais.
+  'site.waitlist.label': 'Votre adresse email',
+  'site.waitlist.placeholder': 'vous@entreprise.com',
+  'site.waitlist.button': 'Rejoindre la liste d’attente',
+  'site.waitlist.sending': 'Envoi…',
+  'site.waitlist.done': 'Vous êtes sur la liste. On vous écrit dès l’ouverture.',
+  'site.waitlist.invalid': 'Cette adresse email ne semble pas valide.',
+  'site.waitlist.error': 'Une erreur est survenue. Réessayez dans un instant.',
   // Retirées, conservées comme toutes les familles que la page a abandonnées : voir la
   // note côté anglais.
   'site.hero.eyebrow': '8 skills Claude Code + une app desktop',
@@ -1368,7 +1377,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // `site.cta.*` est partie avec `/story` : voir la note côté anglais.
   'site.finalCta.title':
     'Faites passer votre workflow de product builder à la vitesse supérieure.',
-  'site.finalCta.subtitle': 'Essayez Magic Slash.',
+  'site.finalCta.subtitle': 'Rejoignez la liste d’attente et essayez Magic Slash parmi les premiers.',
   'site.finalCta.button': 'Obtenir Magic Slash pour Mac',
 
   // ── Maquette du hero ───────────────────────────────────────────────────────

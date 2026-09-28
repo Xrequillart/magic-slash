@@ -263,6 +263,17 @@ export const marketingEn = {
   'site.hero.downloadCta': 'Download for Mac',
   'site.hero.workflowCta': 'See the workflow',
   /**
+   * The waitlist form (`components/site/WaitlistForm.tsx`), which took the place of
+   * every download button outside `/download`: nobody can sign up to the app yet.
+   */
+  'site.waitlist.label': 'Your email address',
+  'site.waitlist.placeholder': 'you@company.com',
+  'site.waitlist.button': 'Join the waitlist',
+  'site.waitlist.sending': 'Sending…',
+  'site.waitlist.done': 'You are on the list. We will write to you as soon as it opens.',
+  'site.waitlist.invalid': 'That does not look like an email address.',
+  'site.waitlist.error': 'Something went wrong. Please try again in a moment.',
+  /**
    * RETIRED, all of the below, and kept like every other family this page has shed —
    * nothing tests for an unused key, and pruning one means editing `i18n.test.ts`'s
    * exact allow-list in lockstep. `eyebrow` was the pill above the headline; `cta` the
@@ -2251,7 +2262,7 @@ export const marketingEn = {
   // closing copy on the site — and it keeps its own name rather than moving back, since
   // "the homepage's closing sheet" is what it actually is.
   'site.finalCta.title': 'Upgrade your product builder workflow today.',
-  'site.finalCta.subtitle': 'Try Magic Slash.',
+  'site.finalCta.subtitle': 'Join the waitlist and be the first to try Magic Slash.',
   'site.finalCta.button': 'Get Magic Slash for Mac',
 
   // ── Hero mockup ────────────────────────────────────────────────────────────

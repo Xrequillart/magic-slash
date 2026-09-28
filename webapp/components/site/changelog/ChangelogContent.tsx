@@ -1,10 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Download } from 'lucide-react'
-import { Button, ButtonLink, ButtonNavLink } from '@/components/ui'
+import { Button } from '@/components/ui'
 import { GITHUB_REPO_URL } from '@/components/site/links'
-import { DOWNLOAD_PATH } from '@/lib/siteNav'
 import type { ChangelogVersion } from '@/lib/changelog'
 import {
   CATEGORIES,
@@ -15,6 +13,7 @@ import {
 } from '@/lib/changelogPage'
 import { useT } from '@/lib/i18n/useLanguage'
 import { Reveal } from '../Reveal'
+import { WaitlistForm } from '../WaitlistForm'
 import { HomeSection } from '../home/Shell'
 
 /**
@@ -224,15 +223,11 @@ export function ChangelogContent({ versions }: { versions: ChangelogVersion[] })
                 when the build could not read `CHANGELOG.md` — a real failure mode, see
                 the empty state below — and a CTA pointing at `#vundefined` is worse than
                 no CTA. The download has nothing to do with the file and stays. */}
-            <Reveal order={3} className="mt-8 flex flex-wrap items-center gap-3">
-              <ButtonNavLink href={DOWNLOAD_PATH} variant="primary" size="lg" icon={Download}>
-                {t('site.hero.downloadCta')}
-              </ButtonNavLink>
-              {versions.length > 0 && (
-                <ButtonLink href={`#v${versions[0].version}`} variant="secondary" size="lg">
-                  {t(PAGE_CHROME.seeLatest, { version: versions[0].version })}
-                </ButtonLink>
-              )}
+            {/* The download button is a waitlist form now, as on every hero but
+                `/download`'s: nobody can sign up yet. The "see the latest" secondary went
+                by request; every row keeps its `id`, so `#v0.98.6` still resolves. */}
+            <Reveal order={3} className="mt-8 flex flex-col items-start gap-3">
+              <WaitlistForm source="changelog" />
             </Reveal>
           </div>
 
