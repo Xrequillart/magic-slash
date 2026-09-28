@@ -68,6 +68,13 @@ vi.mock('shiki', () => ({
   codeToHtml: vi.fn().mockResolvedValue('<pre><code><span class="line">mocked</span></code></pre>'),
 }))
 
+// The model list asks the installed CLI through the Agent SDK, a desktop-only dependency:
+// the suite runs on the ROOT node_modules, where it is not installed, so importing the
+// real module fails to resolve before a single test runs. Nothing here exercises it.
+vi.mock('../claude-models', () => ({
+  listClaudeModels: vi.fn().mockResolvedValue([]),
+}))
+
 // Mutable reference for execFileSync so individual tests can override it
 const mockExecFileSync: Mock<() => Buffer> = vi.fn()
 
