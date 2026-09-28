@@ -182,6 +182,14 @@ function subscribe(listener: () => void): () => void {
   return () => { listeners.delete(listener) }
 }
 
+/**
+ * Read the photo again. For the menu bar panel, which never hears `auth:statusChanged`
+ * (main sends it to the main window only) and so re-reads when it is opened instead.
+ */
+export function refreshAvatar(): Promise<void> {
+  return fetchAvatar()
+}
+
 /** The account photo as a `data:` URL, or null when there is none. */
 export function useAvatar(): string | null {
   return useSyncExternalStore(subscribe, () => current)

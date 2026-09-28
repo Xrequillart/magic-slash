@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { CircleUserRound, Power, RefreshCw, RotateCw } from '@ds/desktop/icons'
-import { Agent } from '@ds/desktop'
+import { MenuBarPanel, type MenuBarAgent, type MenuBarUpdate } from '@ds/desktop'
+import { refreshAvatar, useAvatar } from '../../hooks/useAvatar'
 import { displayNameFromEmail } from '../../utils/displayName'
 import { useT, type Translate } from '../../i18n'
-import { QuestionCard } from './QuestionCard'
 import type { TrayAgent, TrayAnswerChoice, TrayState, TrayUpdate } from '../../../types'
 
 const EMPTY: TrayState = { version: '', update: { phase: 'idle' }, agents: [] }
@@ -20,87 +19,35 @@ function stateLabel(state: string, t: Translate): string {
   }
 }
 
-/** Every state of the button shares this, so only the icon and colour differ.
-    Square by construction: the header fixes the same h-6 on the account button, so
-    the pair lines up without leaning on stretch — in a flex row an aspect ratio
-    cannot read back a stretched height, and the width would follow the icon. */
-const ICON_BUTTON =
-  'flex items-center justify-center w-6 h-6 rounded-lg transition-colors shrink-0'
-
 /**
- * The app's update control — the menu bar panel replaced a native menu that had a
- * "Check for Updates" entry, and this is where that went. Icon only, sitting in
- * the header: idle, click to check; ready, an accent button that restarts into the
- * new version. In between it only reports — the download needs no button, it starts
- * by itself. The version it would otherwise print lives in the idle tooltip.
+ * The updater, as the panel's button. Idle, a click checks; ready, a click restarts into
+ * the new version. In between it only reports: the download starts by itself. The
+ * version it would otherwise print lives in the idle tooltip.
  */
-function UpdateButton({ version, update, t }: { version: string; update: TrayUpdate; t: Translate }) {
-  if (update.phase === 'ready') {
-    return (
-      <button
-        onClick={() => window.electronAPI.updater.install()}
-        title={t('tray.update.restart', { version: update.version })}
-        className={`${ICON_BUTTON} bg-accent/15 text-accent hover:bg-accent/25`}
-      >
-        <RotateCw className="w-3.5 h-3.5" />
-      </button>
-    )
-  }
-
-  if (update.phase === 'checking' || update.phase === 'downloading') {
-    return (
-      <span
-        title={
-          update.phase === 'checking'
-            ? t('tray.update.checking')
-            : t('tray.update.downloadingProgress', { percent: update.percent })
-        }
-        className={`${ICON_BUTTON} text-text-secondary`}
-      >
-        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-      </span>
-    )
-  }
-
-  return (
-    <button
-      onClick={() => window.electronAPI.updater.check()}
-      title={
-        update.phase === 'error'
-          ? t('tray.update.checkFailed')
-          : t('tray.update.checkVersion', { version })
+function toUpdate(version: string, update: TrayUpdate, t: Translate): MenuBarUpdate {
+  switch (update.phase) {
+    case 'ready':
+      return {
+        phase: 'ready',
+        title: t('tray.update.restart', { version: update.version }),
+        onInstall: () => window.electronAPI.updater.install(),
       }
-      className={`${ICON_BUTTON} hover:bg-surface ${
-        update.phase === 'error' ? 'text-red' : 'text-text-secondary hover:text-ink'
-      }`}
-    >
-      <RefreshCw className="w-3.5 h-3.5" />
-    </button>
-  )
+    case 'checking':
+      return { phase: 'busy', title: t('tray.update.checking') }
+    case 'downloading':
+      return { phase: 'busy', title: t('tray.update.downloadingProgress', { percent: update.percent }) }
+    default:
+      return {
+        phase: update.phase === 'error' ? 'error' : 'idle',
+        title: update.phase === 'error' ? t('tray.update.checkFailed') : t('tray.update.checkVersion', { version }),
+        onCheck: () => window.electronAPI.updater.check(),
+      }
+  }
 }
 
 /**
- * The SAME row as the sidebar's, which is now literally true rather than a comment
- * claiming it: both are `Agent`. They were two hand-written copies, and the copies had
- * already drifted — only this one drew the ticket id, which the component now carries
- * for whichever list has one.
- */
-function AgentRow({ agent, t }: { agent: TrayAgent; t: Translate }) {
-  return (
-    <Agent
-      name={agent.title || agent.name}
-      state={agent.state}
-      ticketId={agent.ticketId}
-      title={stateLabel(agent.state, t)}
-      onClick={() => window.electronAPI.tray.focusAgent(agent.id)}
-    />
-  )
-}
-
-/**
- * The menu bar panel: the app's own window in place of the native tray menu (see
- * main/tray/tray-manager.ts). Header with the app, its version and the signed-in
- * person, the live agent list, and a way out at the bottom.
+ * The menu bar panel's data: the app's own window in place of the native tray menu (see
+ * main/tray/tray-manager.ts). The drawing is the design system's `MenuBarPanel`.
  *
  * It owns no store and no Supabase client — the window is created empty and never
  * hydrates one. Everything it shows arrives over `tray:getState`, which it polls
@@ -114,6 +61,7 @@ export function TrayPopover() {
   const [{ version, update, agents }, setState] = useState<TrayState>(EMPTY)
   const [account, setAccount] = useState<string | null>(null)
   const [staleAnswer, setStaleAnswer] = useState(false)
+  const avatar = useAvatar()
   const panelRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
@@ -159,6 +107,7 @@ export function TrayPopover() {
    * Who is signed in. Not part of the poll on purpose: resolving it can refresh an
    * expired token over the network. It is re-read on focus instead, which is the
    * moment the panel opens — so a sign-in made in the app is reflected next time.
+   * The photo too, for the same reason: this window never hears the app's sign-ins.
    */
   const loadAccount = useCallback(async () => {
     try {
@@ -169,6 +118,7 @@ export function TrayPopover() {
     } catch {
       setAccount(null)
     }
+    void refreshAvatar()
   }, [t])
 
   useEffect(() => {
@@ -213,98 +163,52 @@ export function TrayPopover() {
   const blocked = agents.filter(a => a.pendingQuestion)
   const ordered = [...blocked, ...agents.filter(a => !a.pendingQuestion)]
 
+  const rows: MenuBarAgent[] = ordered.map(agent => ({
+    id: agent.id,
+    name: agent.title || agent.name,
+    state: agent.state,
+    ticketId: agent.ticketId,
+    title: stateLabel(agent.state, t),
+    onClick: () => window.electronAPI.tray.focusAgent(agent.id),
+    question: agent.pendingQuestion && {
+      token: agent.pendingQuestion.token,
+      kind: agent.pendingQuestion.kind,
+      prompt: agent.pendingQuestion.prompt,
+      preview: agent.pendingQuestion.preview,
+      options: agent.pendingQuestion.options,
+      multiSelect: agent.pendingQuestion.multiSelect,
+      unsupported: agent.pendingQuestion.unsupported,
+      onAnswer: choice => answer(agent, choice),
+      onOpenAgent: () => window.electronAPI.tray.focusAgent(agent.id),
+    },
+  }))
+
   return (
-    <div
-      ref={panelRef}
-      className="w-full bg-bg/80 border border-line rounded-xl overflow-hidden select-none"
-    >
-      {/* Header — the app on the left, the account and the update control right */}
-      <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 border-b border-line">
-        {/* The app's name opens the app — the one thing the native menu did that
-            the list below cannot do on its own when there is no agent yet. */}
-        <button
-          onClick={() => window.electronAPI.tray.showWindow()}
-          title={t('tray.showWindow')}
-          className="text-[13px] font-semibold text-ink hover:text-accent transition-colors truncate"
-        >
-          Magic Slash
-        </button>
-        <div className="flex items-center gap-1 min-w-0">
-          <button
-            onClick={() => window.electronAPI.tray.openSettings()}
-            title={t('tray.popover.account')}
-            className="flex items-center gap-1.5 h-6 px-1.5 rounded-lg text-[12px] text-text-secondary hover:bg-surface hover:text-ink transition-colors min-w-0"
-          >
-            <CircleUserRound className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate max-w-[110px]">
-              {account ?? t('sidebar.accountFallback')}
-            </span>
-          </button>
-          <UpdateButton version={version} update={update} t={t} />
-        </div>
-      </div>
-
-      {/* How many agents are blocked on something, when any are. Only ever shown
-          with a card below it, so it needs no state of its own. */}
-      {blocked.length > 0 && (
-        <div className="px-3.5 py-1.5 border-b border-line text-[11px] font-medium text-accent">
-          {t('tray.question.waiting', { count: blocked.length })}
-        </div>
-      )}
-
-      {/* Every agent in the app, whatever it is doing.
-
-          The cap grows only while a question is on screen: a card is far taller than
-          a row, and at 380px it would open inside a scroller instead of being read at
-          a glance. With nothing blocked the panel keeps exactly the height it had
-          before this feature. 560px stays under MAX_HEIGHT in popover-window once the
-          header, the counter and the footer are added. */}
-      <div className={`${blocked.length > 0 ? 'max-h-[560px]' : 'max-h-[380px]'} overflow-y-auto`}>
-        {agents.length === 0 ? (
-          <div className="px-3.5 py-6 text-center text-[13px] text-text-secondary">
-            {t('tray.popover.empty')}
-          </div>
-        ) : (
-          // px-2 like the sidebar's nav: the rounded rows sit inset from the
-          // panel's edge instead of running into its border.
-          <div className="flex flex-col gap-1 px-2 py-2">
-            {staleAnswer && (
-              <p className="px-2 py-1 text-[11px] text-text-secondary">{t('tray.question.stale')}</p>
-            )}
-            {ordered.map(agent => (
-              // An agent with nothing pending renders exactly as it always did:
-              // the row, and no card.
-              <div key={agent.id} className="flex flex-col gap-1">
-                <AgentRow agent={agent} t={t} />
-                {agent.pendingQuestion && (
-                  <QuestionCard
-                    // Keyed by the token, not the agent: a multiSelect card holds the
-                    // ticked boxes in local state, and a NEW question on the same
-                    // agent has to start from an empty selection rather than inherit
-                    // the previous one's.
-                    key={agent.pendingQuestion.token}
-                    question={agent.pendingQuestion}
-                    onAnswer={choice => answer(agent, choice)}
-                    onOpenAgent={() => window.electronAPI.tray.focusAgent(agent.id)}
-                    t={t}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Way out */}
-      <div className="border-t border-line px-2 py-2">
-        <button
-          onClick={() => window.electronAPI.tray.quit()}
-          className="w-full flex items-center justify-start gap-2 px-2 py-2 rounded-lg text-xs font-medium text-text-secondary hover:bg-red/10 hover:text-red transition-all"
-        >
-          <Power className="w-3.5 h-3.5 shrink-0" />
-          <span>{t('tray.popover.quit')}</span>
-        </button>
-      </div>
-    </div>
+    <MenuBarPanel
+      panelRef={panelRef}
+      app={{ title: t('tray.showWindow'), onOpen: () => window.electronAPI.tray.showWindow() }}
+      account={{
+        label: account ?? t('sidebar.accountFallback'),
+        title: t('tray.popover.account'),
+        onClick: () => window.electronAPI.tray.openSettings(),
+        // Absent when signed out: the label then draws the person glyph, not a face.
+        avatar: account ? { src: avatar, alt: account } : undefined,
+      }}
+      update={toUpdate(version, update, t)}
+      agents={rows}
+      empty={t('tray.popover.empty')}
+      waiting={blocked.length > 0 ? t('tray.question.waiting', { count: blocked.length }) : undefined}
+      notice={staleAnswer ? t('tray.question.stale') : undefined}
+      questionLabels={{
+        allow: t('tray.question.allow'),
+        deny: t('tray.question.deny'),
+        send: t('tray.question.send'),
+        multiHint: t('tray.question.multiHint'),
+        unsupported: t('tray.question.unsupported'),
+        openAgent: t('tray.question.openAgent'),
+        moreOptions: count => t('tray.question.moreOptions', { count }),
+      }}
+      quit={{ label: t('tray.popover.quit'), onClick: () => window.electronAPI.tray.quit() }}
+    />
   )
 }

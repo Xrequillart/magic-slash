@@ -96,7 +96,7 @@ const digit = (index: number): string => String(index + 1)
 /**
  * How many options a multiSelect answer can reach by digit.
  *
- * Far above what the panel renders anyway (MAX_OPTIONS in QuestionCard), so this is
+ * Far above what the panel renders anyway (MAX_OPTIONS in the design system's MenuBarQuestion), so this is
  * a guard rather than a limit anyone meets: the store keeps every option, and an
  * index past this one has no keystroke that would reach it.
  */
