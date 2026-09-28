@@ -66,6 +66,7 @@ export interface UserSettings {
   defaultAgentType: string | null
   defaultModel: string | null
   confirmAgentArchive: boolean | null
+  splitNewAgentPane: string | null
 }
 
 export type UserSettingsPatch = Partial<UserSettings>
@@ -97,10 +98,11 @@ interface UserSettingsRow {
   default_agent_type: string | null
   default_model: string | null
   confirm_agent_archive: boolean | null
+  split_new_agent_pane: string | null
 }
 
 const COLUMNS =
-  'theme, sync_claude_theme, code_syntax, code_font_size, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_active, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type, default_model, confirm_agent_archive'
+  'theme, sync_claude_theme, code_syntax, code_font_size, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_active, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane'
 
 /** Maps a camelCase field to its column. Also the list of writable fields. */
 const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
@@ -130,6 +132,7 @@ const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
   defaultAgentType: 'default_agent_type',
   defaultModel: 'default_model',
   confirmAgentArchive: 'confirm_agent_archive',
+  splitNewAgentPane: 'split_new_agent_pane',
 }
 
 /** What the page shows before the fetch resolves, and when no row exists yet. */
@@ -160,6 +163,7 @@ export const EMPTY_SETTINGS: UserSettings = {
   defaultAgentType: null,
   defaultModel: null,
   confirmAgentArchive: null,
+  splitNewAgentPane: null,
 }
 
 
@@ -191,6 +195,7 @@ function toSettings(row: UserSettingsRow): UserSettings {
     defaultAgentType: row.default_agent_type,
     defaultModel: row.default_model,
     confirmAgentArchive: row.confirm_agent_archive,
+    splitNewAgentPane: row.split_new_agent_pane,
   }
 }
 

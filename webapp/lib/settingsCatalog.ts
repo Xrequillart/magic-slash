@@ -71,6 +71,8 @@ export const DEFAULTS = {
   defaultModel: 'Claude Code default',
   // `=== false` in App.tsx: anything else still asks.
   confirmAgentArchive: true,
+  // NULL = the pane with the keyboard, what the split always did.
+  splitNewAgentPane: 'focused',
 } as const
 
 /**
@@ -226,6 +228,7 @@ export const SETTING_GROUPS: SettingGroup[] = [
     title: 'Split View',
     fields: [
       { field: 'splitActive', label: 'Enabled' },
+      { field: 'splitNewAgentPane', label: 'New agents open in' },
       // Kept in the report, not in the app: see SETTING_DEFAULTS on why a dead
       // column is still worth showing an operator.
       { field: 'splitEnabled', label: 'Enabled (legacy, unused)' },

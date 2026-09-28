@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useStore } from '../store'
-import type { AgentSortMode, CodeSyntaxChoice, Config, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId } from '../../types'
+import type { AgentSortMode, CodeSyntaxChoice, Config, SplitNewAgentPane, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId } from '../../types'
 
 export function useConfig() {
   const { config, configLoading, configError, setConfig, setConfigLoading, setConfigError } = useStore()
@@ -196,6 +196,12 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  const updateSplitNewAgentPane = useCallback(async (pane: SplitNewAgentPane) => {
+    const result = await window.electronAPI.config.setSplitNewAgentPane(pane)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   const updateConfirmAgentArchive = useCallback(async (enabled: boolean) => {
     const result = await window.electronAPI.config.setConfirmAgentArchive(enabled)
     setConfig(result.config)
@@ -310,6 +316,7 @@ export function useConfig() {
     updateCodeFontSize,
     updateDefaultModel,
     updateConfirmAgentArchive,
+    updateSplitNewAgentPane,
     updateUsageCardEnabled,
     updateUsageCardMinimized,
     updateAgentContextEnabled,

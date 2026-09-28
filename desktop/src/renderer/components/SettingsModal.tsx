@@ -14,6 +14,7 @@ import { NotificationsPage } from '../pages/Config/NotificationsPage'
 import { OrgPage } from '../pages/Config/OrgPage'
 import { ProfilePage } from '../pages/Config/ProfilePage'
 import { ShortcutsPage } from '../pages/Config/ShortcutsPage'
+import { SplitViewPage } from '../pages/Config/SplitViewPage'
 import { useStore } from '../store'
 import { useT, type MessageKey } from '../i18n'
 import {
@@ -28,6 +29,7 @@ import {
   Languages,
   Palette,
   Plug,
+  SquareSplitHorizontal,
   SquareTerminal,
   UserPen,
 } from '@ds/desktop/icons'
@@ -73,6 +75,7 @@ export type SettingsTab =
   | 'application'
   | 'agents'
   | 'code-reviews'
+  | 'split-view'
   | 'notifications'
   | 'appearance'
   | 'language'
@@ -115,6 +118,7 @@ const GROUPS: { id: string; labelKey: MessageKey; pages: SettingsPageEntry[] }[]
       { id: 'application', labelKey: 'settings.tab.application', icon: AppWindow },
       { id: 'agents', labelKey: 'settings.tab.agents', icon: Bot },
       { id: 'code-reviews', labelKey: 'settings.tab.codeReviews', icon: CodeXml },
+      { id: 'split-view', labelKey: 'settings.tab.splitView', icon: SquareSplitHorizontal },
     ],
   },
   {
@@ -173,6 +177,7 @@ export function SettingsModal() {
         {tab === 'application' && <ApplicationPage />}
         {tab === 'agents' && <AgentsPage />}
         {tab === 'code-reviews' && <CodeReviewsPage />}
+        {tab === 'split-view' && <SplitViewPage />}
         {tab === 'notifications' && <NotificationsPage />}
         {tab === 'appearance' && <AppearancePage />}
         {tab === 'language' && <LanguagePage />}

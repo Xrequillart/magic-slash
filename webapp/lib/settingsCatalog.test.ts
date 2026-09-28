@@ -26,6 +26,7 @@ const EVERY_FIELD: (keyof AdminUserSettings)[] = [
   'defaultAgentType',
   'defaultModel',
   'confirmAgentArchive',
+  'splitNewAgentPane',
   'agentSort',
   'infoSidebarOnCreate',
   'usageCardEnabled',

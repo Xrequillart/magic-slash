@@ -54,6 +54,7 @@ const emptyRow = (): UserSettingsRow => ({
   code_font_size: null,
   default_model: null,
   confirm_agent_archive: null,
+  split_new_agent_pane: null,
   default_agent_type: null,
   agent_sort: null,
   tasks_repo: null,

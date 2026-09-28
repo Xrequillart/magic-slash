@@ -1615,6 +1615,22 @@ export interface ClaudeModelOption {
   description?: string
 }
 
+/**
+ * Which pane of the split view a new agent (⌘N, the sidebar's +, the File menu) opens in.
+ * `focused` is the one that has the keyboard, which is what the split always did; the two
+ * others pin it to a side, for a reader who keeps one pane for the work and the other for
+ * what they are watching.
+ */
+export const SPLIT_NEW_AGENT_PANES = ['focused', 'left', 'right'] as const
+
+export type SplitNewAgentPane = (typeof SPLIT_NEW_AGENT_PANES)[number]
+
+export const DEFAULT_SPLIT_NEW_AGENT_PANE: SplitNewAgentPane = 'focused'
+
+export function isValidSplitNewAgentPane(value: unknown): value is SplitNewAgentPane {
+  return typeof value === 'string' && (SPLIT_NEW_AGENT_PANES as readonly string[]).includes(value)
+}
+
 export const CODE_FONT_SIZES = [11, 12, 13, 14, 15, 16] as const
 
 export const DEFAULT_CODE_FONT_SIZE = 12
@@ -1729,6 +1745,8 @@ export interface Config {
   codeFontSize?: number
   splitEnabled?: boolean
   splitActive?: boolean
+  /** Where a new agent opens while the window is split. Absent = `focused`. */
+  splitNewAgentPane?: SplitNewAgentPane
   autoStartAtLogin?: boolean
   integrations?: {
     github: true

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  AlertTriangle, BarChart3, Columns, Lightbulb,
+  AlertTriangle, BarChart3, Lightbulb,
   MonitorSmartphone, Search,
 } from '@ds/desktop/icons'
 import { DisclosureCard, SectionHeader, SettingsCard } from '@ds/desktop'
@@ -17,7 +17,7 @@ import type { SpotlightShortcut } from '../../../types'
  * THE APP ITSELF — how this machine is set up, and every feature that can be switched
  * off. The settings modal's Application tab, until the modal lost it.
  *
- * The new-agent defaults moved to the Agents page (`AgentsPage`). The PR watcher's card moved to Code & reviews (`CodeReviewsPage`), beside the palette
+ * The split view moved to a page of its own (`SplitViewPage`). The new-agent defaults moved to the Agents page (`AgentsPage`). The PR watcher's card moved to Code & reviews (`CodeReviewsPage`), beside the palette
  * the reviews it watches are read in.
  *
  * WHY IT IS A COMPONENT AND NOT A TAB ANY MORE. The quick-settings sheet took over the
@@ -98,7 +98,7 @@ const USAGE_LOGS_EXCLUDED: MessageKey[] = [
 
 export function ApplicationPage() {
   const t = useT()
-  const { config, splitActive, toggleSplitActive, setConfig } = useStore()
+  const { config, setConfig } = useStore()
   const { updateSpotlight } = useConfig()
 
   const [autoStart, setAutoStart] = useState(false)
@@ -187,30 +187,6 @@ export function ApplicationPage() {
     <div className="flex flex-col gap-8">
       {/* Machine setup (prerequisites, MCP servers, integrations) */}
       <SetupHealthCard />
-
-      {/* Split View Section — THE SWITCH IS THE SPLIT ITSELF, the same value the
-          Control Center's tile carries. There used to be a second, wider switch behind
-          it: this one said the feature was allowed, the tile said the window was in two
-          panes, and both had to be on for anything to happen. Nobody could see why a lit
-          switch did nothing, so the permission went and the state stayed. */}
-      <div>
-        <SectionHeader icon={Columns} title={t('settings.application.split.section')} />
-        <SettingsCard
-          rows={[
-            {
-              id: 'split',
-              label: t('settings.application.split.label'),
-              hint: t('settings.application.split.help'),
-              control: {
-                kind: 'switch',
-                checked: splitActive,
-                onChange: () => toggleSplitActive(),
-                label: t('settings.application.split.label'),
-              },
-            },
-          ]}
-        />
-      </div>
 
       {/* Spotlight Section */}
       <div>

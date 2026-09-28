@@ -42,7 +42,7 @@ import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '../config/defaults'
 import {
   AGENT_SORT_MODES, codeSyntaxTheme, DEFAULT_CODE_SYNTAX, DEFAULT_CODE_FONT_SIZE, isValidAgentSort,
-  isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidTheme,
+  isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidSplitNewAgentPane, isValidTheme,
   type CodeSample, type Config, type FilePreviewResult, type ChangedLines,
 } from '../../types'
 import { applyLanguage, applyTheme, currentTheme } from '../appearance'
@@ -535,6 +535,14 @@ export function setupConfigHandlers() {
   // What the installed CLI's `/model` offers, for the default-model picker. An empty list
   // means no `claude` on this machine; a rejection, that it did not answer in time.
   ipcMain.handle('claude:listModels', () => listClaudeModels())
+
+  ipcMain.handle('config:setSplitNewAgentPane', async (_event, { pane }: { pane: unknown }) => {
+    if (!isValidSplitNewAgentPane(pane)) throw new Error('Invalid splitNewAgentPane value')
+    const config = readConfig()
+    config.splitNewAgentPane = pane
+    writeConfig(config)
+    return { config }
+  })
 
   ipcMain.handle('config:setConfirmAgentArchive', async (_event, { enabled }: { enabled: unknown }) => {
     if (typeof enabled !== 'boolean') throw new Error('Invalid confirmAgentArchive value: must be a boolean')

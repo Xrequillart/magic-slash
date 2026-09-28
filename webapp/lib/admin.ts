@@ -259,6 +259,7 @@ interface AdminUserDetailRpcRow {
   default_agent_type: string | null
   default_model: string | null
   confirm_agent_archive: boolean | null
+  split_new_agent_pane: string | null
   atlassian_integration_enabled: boolean | null
   theme: string | null
   language: string | null
@@ -420,6 +421,7 @@ function toUserDetail(r: AdminUserDetailRpcRow): AdminUserDetail {
       defaultAgentType: r.default_agent_type,
       defaultModel: r.default_model,
       confirmAgentArchive: r.confirm_agent_archive,
+      splitNewAgentPane: r.split_new_agent_pane,
       atlassianIntegrationEnabled: r.atlassian_integration_enabled,
       theme: r.theme,
       language: r.language,
