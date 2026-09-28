@@ -1,3 +1,4 @@
+import { quickLaunchRepo } from '../quickLaunchRepo'
 import { useEffect, useCallback, useRef, useMemo, useState } from 'react'
 import { AlertTriangle, FolderGit2, ListTodo, NotebookPen, RotateCcw, Sparkles, FolderOpen } from '@ds/desktop/icons'
 import { Loader } from '@ds/desktop'
@@ -307,17 +308,16 @@ export function App() {
       const store = useStore.getState()
       store.closeModal()
 
-      // Find first repo to use as cwd
-      const repos = store.config?.repositories || {}
-      const firstRepo = Object.values(repos)[0]
-      const cwd = firstRepo?.path || '~/Documents'
+      // Which repository: Settings → Quick Launch (the first one unless told otherwise).
+      const repo = quickLaunchRepo(store.config?.repositories, store.config?.quickLaunchRepo, prompt)
+      const cwd = repo?.path || '~/Documents'
 
       // Name the agent "Claude N" like Cmd+N does
       const count = store.terminals.length + 1
       const agentName = `Claude ${count}`
 
       // Launch agent with the prompt passed directly as a CLI argument
-      await launchClaudeTerminal(agentName, cwd, prompt)
+      await launchClaudeTerminal(agentName, cwd, prompt, undefined, undefined, store.config?.quickLaunchLaunchMode)
     })
     return () => { unsubscribe() }
   }, [launchClaudeTerminal])

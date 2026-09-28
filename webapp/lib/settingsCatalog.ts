@@ -73,6 +73,11 @@ export const DEFAULTS = {
   confirmAgentArchive: true,
   // NULL = the pane with the keyboard, what the split always did.
   splitNewAgentPane: 'focused',
+  // NULL = the first repository, what Quick Launch always did.
+  quickLaunchRepo: 'first',
+  quickLaunchBackground: false,
+  // NULL = the account's launch mode.
+  quickLaunchLaunchMode: 'Same as launch mode',
 } as const
 
 /**
@@ -239,6 +244,9 @@ export const SETTING_GROUPS: SettingGroup[] = [
     fields: [
       { field: 'spotlightEnabled', label: 'Enabled' },
       { field: 'spotlightShortcut', label: 'Shortcut' },
+      { field: 'quickLaunchRepo', label: 'Repository' },
+      { field: 'quickLaunchBackground', label: 'Stay in the background' },
+      { field: 'quickLaunchLaunchMode', label: 'Launch mode' },
     ],
   },
   {

@@ -42,7 +42,7 @@ import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '../config/defaults'
 import {
   AGENT_SORT_MODES, codeSyntaxTheme, DEFAULT_CODE_SYNTAX, DEFAULT_CODE_FONT_SIZE, isValidAgentSort,
-  isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidSplitNewAgentPane, isValidTheme,
+  isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidTheme,
   type CodeSample, type Config, type FilePreviewResult, type ChangedLines,
 } from '../../types'
 import { applyLanguage, applyTheme, currentTheme } from '../appearance'
@@ -540,6 +540,29 @@ export function setupConfigHandlers() {
     if (!isValidSplitNewAgentPane(pane)) throw new Error('Invalid splitNewAgentPane value')
     const config = readConfig()
     config.splitNewAgentPane = pane
+    writeConfig(config)
+    return { config }
+  })
+
+  // Quick Launch's three settings, in one channel: they are one page's and nothing else
+  // reads them apart. `null` on the mode goes back to the Agents page's launch mode.
+  ipcMain.handle('config:setQuickLaunch', async (_event, patch: unknown) => {
+    if (typeof patch !== 'object' || patch === null) throw new Error('Invalid Quick Launch settings')
+    const { repo, background, launchMode } = patch as Record<string, unknown>
+    const config = readConfig()
+    if (repo !== undefined) {
+      if (!isValidQuickLaunchRepo(repo)) throw new Error('Invalid Quick Launch repository')
+      config.quickLaunchRepo = repo
+    }
+    if (background !== undefined) {
+      if (typeof background !== 'boolean') throw new Error('Invalid Quick Launch background value')
+      config.quickLaunchBackground = background
+    }
+    if (launchMode !== undefined) {
+      if (launchMode === null) delete config.quickLaunchLaunchMode
+      else if (isValidLaunchMode(launchMode)) config.quickLaunchLaunchMode = launchMode
+      else throw new Error('Invalid Quick Launch launch mode')
+    }
     writeConfig(config)
     return { config }
   })

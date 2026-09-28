@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useStore } from '../store'
-import type { TerminalState, TerminalInfo, TerminalMetadata, InitialPromptMode, LaunchMetadata } from '../../types'
+import type { TerminalState, TerminalInfo, TerminalMetadata, InitialPromptMode, LaunchMetadata, LaunchMode } from '../../types'
 
 export function useTerminals() {
   const {
@@ -168,9 +168,12 @@ export function useTerminals() {
     // — set at creation rather than patched in after, so the agent never renders as
     // an unattached "Claude 3" first. See `LaunchMetadata`.
     metadata?: LaunchMetadata,
+    // A launch mode for this agent alone (Quick Launch's own, when set). Absent, the
+    // configured one applies.
+    launchMode?: LaunchMode,
   ) => {
     const id = `claude-${Date.now()}`
-    const result = await window.electronAPI.terminal.launchClaude(id, name, cwd, initialPrompt, promptMode, metadata)
+    const result = await window.electronAPI.terminal.launchClaude(id, name, cwd, initialPrompt, promptMode, metadata, launchMode)
 
     const terminalInfo: TerminalInfo = {
       id: result.id,

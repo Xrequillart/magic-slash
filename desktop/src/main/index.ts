@@ -600,6 +600,14 @@ function setupTrayHandlers() {
 function setupQuickLaunchHandlers() {
   ipcMain.handle('quicklaunch:dispatch', async (_event, { ticketId, action }: { ticketId: string; action: string }) => {
     hideQuickLaunch()
+    // Settings → Quick Launch can keep the reader where they were: the agent starts in
+    // the main window without it being brought forward, and the "agent waiting"
+    // notification is what says it is ready. A window that does not exist yet has to be
+    // opened either way, so that case still goes through the focus.
+    if (readConfig().quickLaunchBackground === true && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('quicklaunch:dispatch', { ticketId, action })
+      return
+    }
     focusMainWindow(win => win.webContents.send('quicklaunch:dispatch', { ticketId, action }))
   })
 

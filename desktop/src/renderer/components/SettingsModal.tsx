@@ -13,6 +13,7 @@ import { LanguagePage } from '../pages/Config/LanguagePage'
 import { NotificationsPage } from '../pages/Config/NotificationsPage'
 import { OrgPage } from '../pages/Config/OrgPage'
 import { ProfilePage } from '../pages/Config/ProfilePage'
+import { QuickLaunchPage } from '../pages/Config/QuickLaunchPage'
 import { ShortcutsPage } from '../pages/Config/ShortcutsPage'
 import { SplitViewPage } from '../pages/Config/SplitViewPage'
 import { useStore } from '../store'
@@ -31,6 +32,7 @@ import {
   Plug,
   SquareSplitHorizontal,
   SquareTerminal,
+  TextCursorInput,
   UserPen,
 } from '@ds/desktop/icons'
 import type { IconComponent } from '@ds/desktop/types'
@@ -76,6 +78,7 @@ export type SettingsTab =
   | 'agents'
   | 'code-reviews'
   | 'split-view'
+  | 'quick-launch'
   | 'notifications'
   | 'appearance'
   | 'language'
@@ -119,6 +122,7 @@ const GROUPS: { id: string; labelKey: MessageKey; pages: SettingsPageEntry[] }[]
       { id: 'agents', labelKey: 'settings.tab.agents', icon: Bot },
       { id: 'code-reviews', labelKey: 'settings.tab.codeReviews', icon: CodeXml },
       { id: 'split-view', labelKey: 'settings.tab.splitView', icon: SquareSplitHorizontal },
+      { id: 'quick-launch', labelKey: 'settings.tab.quickLaunch', icon: TextCursorInput },
     ],
   },
   {
@@ -178,6 +182,7 @@ export function SettingsModal() {
         {tab === 'agents' && <AgentsPage />}
         {tab === 'code-reviews' && <CodeReviewsPage />}
         {tab === 'split-view' && <SplitViewPage />}
+        {tab === 'quick-launch' && <QuickLaunchPage />}
         {tab === 'notifications' && <NotificationsPage />}
         {tab === 'appearance' && <AppearancePage />}
         {tab === 'language' && <LanguagePage />}

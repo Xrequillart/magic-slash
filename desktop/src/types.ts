@@ -1602,6 +1602,16 @@ export function codeSyntaxTheme(theme: unknown, choice: unknown): string {
  * 12 is the `text-xs` the preview always used. Bounded on both sides by the
  * `user_settings.code_font_size` CHECK.
  */
+/**
+ * Is this something `claude --model` could be handed? An alias (`opus`, `sonnet[1m]`) or a
+ * full id (`claude-fable-5-1[1m]`), never anything a shell would read as more than a word.
+ * The value reaches a command line, so this is the gate and `shQuote` the belt.
+ */
+/** A Quick Launch repository choice: `first`, `match`, or a repository key. */
+export function isValidQuickLaunchRepo(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= 200
+}
+
 export function isValidModelName(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= 100
     && /^[A-Za-z0-9][A-Za-z0-9._:@/[\]-]*$/.test(value)
@@ -1753,7 +1763,16 @@ export interface Config {
     atlassian?: boolean
   }
   spotlight?: SpotlightConfig
+  /**
+   * Where Quick Launch opens its agent: `first` (absent, what it always did), `match`
+   * (the repository whose keywords the prompt names), or a key of `repositories`. See
+   * quickLaunchRepo.ts.
+   */
+  quickLaunchRepo?: string
+  /** Start the agent without bringing the main window forward. Absent = false. */
+  quickLaunchBackground?: boolean
   /** A launch mode for Quick Launch alone. Absent = the Agents page's `launchMode`. */
+  quickLaunchLaunchMode?: LaunchMode
   launchMode?: LaunchMode
   /**
    * What a NEW agent is, when nothing says otherwise. Absent = never chosen, and

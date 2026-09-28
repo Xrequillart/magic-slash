@@ -1,5 +1,5 @@
 import type { Config, SpotlightConfig } from '../../types'
-import { isValidAgentSort, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidSplitNewAgentPane, isValidTheme } from '../../types'
+import { isValidAgentSort, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidTheme } from '../../types'
 import { isValidAgentType, isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 
 // ---------------------------------------------------------------------------
@@ -46,6 +46,9 @@ export interface UserSettingsRow {
   pr_reviews_auto_launch_skills: boolean | null
   spotlight_enabled: boolean | null
   spotlight_shortcut: string | null
+  quick_launch_repo: string | null
+  quick_launch_background: boolean | null
+  quick_launch_launch_mode: string | null
   auto_start_at_login: boolean | null
   launch_mode: string | null
   atlassian_integration_enabled: boolean | null
@@ -71,7 +74,7 @@ export const USER_SETTINGS_COLUMNS =
   'notification_pr_changes_requested, split_enabled, split_active, pr_reviews_enabled, ' +
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
   'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
-  'language, sync_claude_theme, code_syntax, code_font_size, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, agent_sort, tasks_repo, ' +
+  'language, sync_claude_theme, code_syntax, code_font_size, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, agent_sort, tasks_repo, ' +
   'plans_repo'
 
 /**
@@ -99,6 +102,9 @@ export const SETTINGS_KEYS = [
   'splitNewAgentPane',
   'prReviews',
   'spotlight',
+  'quickLaunchRepo',
+  'quickLaunchBackground',
+  'quickLaunchLaunchMode',
   'autoStartAtLogin',
   'launchMode',
   'defaultAgentType',
@@ -149,6 +155,9 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     pr_reviews_auto_launch_skills: orNull(config.prReviews?.autoLaunchSkills),
     spotlight_enabled: orNull(config.spotlight?.enabled),
     spotlight_shortcut: orNull(config.spotlight?.shortcut),
+    quick_launch_repo: orNull(config.quickLaunchRepo),
+    quick_launch_background: orNull(config.quickLaunchBackground),
+    quick_launch_launch_mode: orNull(config.quickLaunchLaunchMode),
     auto_start_at_login: orNull(config.autoStartAtLogin),
     launch_mode: orNull(config.launchMode),
     atlassian_integration_enabled: orNull(config.integrations?.atlassian),
@@ -190,6 +199,9 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   if (isValidSplitNewAgentPane(row.split_new_agent_pane)) config.splitNewAgentPane = row.split_new_agent_pane
   if (isSet(row.auto_start_at_login)) config.autoStartAtLogin = row.auto_start_at_login
   if (isValidLaunchMode(row.launch_mode)) config.launchMode = row.launch_mode
+  if (isValidQuickLaunchRepo(row.quick_launch_repo)) config.quickLaunchRepo = row.quick_launch_repo
+  if (isSet(row.quick_launch_background)) config.quickLaunchBackground = row.quick_launch_background
+  if (isValidLaunchMode(row.quick_launch_launch_mode)) config.quickLaunchLaunchMode = row.quick_launch_launch_mode
   // Re-validated rather than trusted: a newer version may have stored a theme
   // this build has never heard of, and it must read as "unset", not as a theme.
   if (isValidTheme(row.theme)) config.theme = row.theme

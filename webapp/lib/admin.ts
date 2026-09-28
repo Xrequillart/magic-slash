@@ -260,6 +260,9 @@ interface AdminUserDetailRpcRow {
   default_model: string | null
   confirm_agent_archive: boolean | null
   split_new_agent_pane: string | null
+  quick_launch_repo: string | null
+  quick_launch_background: boolean | null
+  quick_launch_launch_mode: string | null
   atlassian_integration_enabled: boolean | null
   theme: string | null
   language: string | null
@@ -422,6 +425,9 @@ function toUserDetail(r: AdminUserDetailRpcRow): AdminUserDetail {
       defaultModel: r.default_model,
       confirmAgentArchive: r.confirm_agent_archive,
       splitNewAgentPane: r.split_new_agent_pane,
+      quickLaunchRepo: r.quick_launch_repo,
+      quickLaunchBackground: r.quick_launch_background,
+      quickLaunchLaunchMode: r.quick_launch_launch_mode,
       atlassianIntegrationEnabled: r.atlassian_integration_enabled,
       theme: r.theme,
       language: r.language,

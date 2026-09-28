@@ -1,23 +1,17 @@
 import { useEffect, useState } from 'react'
-import {
-  AlertTriangle, BarChart3, Lightbulb,
-  MonitorSmartphone, Search,
-} from '@ds/desktop/icons'
+import { BarChart3, Lightbulb, MonitorSmartphone } from '@ds/desktop/icons'
 import { DisclosureCard, SectionHeader, SettingsCard } from '@ds/desktop'
 import { TelemetryHealthCard } from './TelemetryHealthCard'
 import { SetupHealthCard } from './SetupHealthCard'
 import { useToggleRow } from './ToggleRow'
 import { useStore } from '../../store'
-import { useConfig } from '../../hooks/useConfig'
 import { useT, type MessageKey } from '../../i18n'
-import { SELECT_WIDTH } from '../../theme/controls'
-import type { SpotlightShortcut } from '../../../types'
 
 /**
  * THE APP ITSELF — how this machine is set up, and every feature that can be switched
  * off. The settings modal's Application tab, until the modal lost it.
  *
- * The split view moved to a page of its own (`SplitViewPage`). The new-agent defaults moved to the Agents page (`AgentsPage`). The PR watcher's card moved to Code & reviews (`CodeReviewsPage`), beside the palette
+ * Quick Launch moved to a page of its own (`QuickLaunchPage`). The split view moved to a page of its own (`SplitViewPage`). The new-agent defaults moved to the Agents page (`AgentsPage`). The PR watcher's card moved to Code & reviews (`CodeReviewsPage`), beside the palette
  * the reviews it watches are read in.
  *
  * WHY IT IS A COMPONENT AND NOT A TAB ANY MORE. The quick-settings sheet took over the
@@ -45,27 +39,6 @@ import type { SpotlightShortcut } from '../../../types'
  * WHAT IS LEFT HERE IS THE WIRING: which switch writes where, which of them go through
  * the store because another pane reads them, and which rows are offered at all.
  */
-
-/**
- * The eight chords Quick Launch will take. Also read by the Shortcuts tab, which SHOWS
- * the one in force without offering to change it — see `pages/Config/index.tsx`.
- *
- * ONE ENTRY PER KEY, and not the single label this was. A `<select>` needs a flat
- * string and joins them below; the Shortcuts tab needs the keys apart, because `Kbd`
- * sets a modifier glyph a rung above a word and a chord arriving as `'⌃ Space'`
- * would have to be split on a space that is a separator here and a KEY NAME there.
- * Composed where the chords are written rather than parsed where they are drawn.
- */
-export const SPOTLIGHT_OPTIONS: { keys: string[]; value: string }[] = [
-  { keys: ['⌃', 'Space'], value: 'Control+Space' },
-  { keys: ['⌃⇧', 'Space'], value: 'Control+Shift+Space' },
-  { keys: ['⌥', 'Space'], value: 'Alt+Space' },
-  { keys: ['⌥⇧', 'Space'], value: 'Alt+Shift+Space' },
-  { keys: ['⌃', 'M'], value: 'Control+M' },
-  { keys: ['⌃⇧', 'M'], value: 'Control+Shift+M' },
-  { keys: ['⌥', 'M'], value: 'Alt+M' },
-  { keys: ['⌥⇧', 'M'], value: 'Alt+Shift+M' },
-]
 
 // The two halves of the activity-recording breakdown. Message keys rather than
 // labels, for the same reason as the rail's tabs: module scope is evaluated once at
@@ -99,58 +72,19 @@ const USAGE_LOGS_EXCLUDED: MessageKey[] = [
 export function ApplicationPage() {
   const t = useT()
   const { config, setConfig } = useStore()
-  const { updateSpotlight } = useConfig()
 
   const [autoStart, setAutoStart] = useState(false)
-  const [spotlightEnabled, setSpotlightEnabled] = useState(config?.spotlight?.enabled ?? true)
-  const [spotlightShortcut, setSpotlightShortcut] = useState(config?.spotlight?.shortcut ?? 'Control+Space')
-  const [spotlightError, setSpotlightError] = useState(false)
   const [usageLogsEnabled, setUsageLogsEnabled] = useState(config?.usageLogsEnabled ?? true)
 
   useEffect(() => {
     window.electronAPI.config.getAutoStart().then(setAutoStart)
   }, [])
 
-  const configSpotlightEnabled = config?.spotlight?.enabled
-  const configSpotlightShortcut = config?.spotlight?.shortcut
-  useEffect(() => {
-    if (configSpotlightEnabled !== undefined) setSpotlightEnabled(configSpotlightEnabled)
-    if (configSpotlightShortcut !== undefined) setSpotlightShortcut(configSpotlightShortcut)
-  }, [configSpotlightEnabled, configSpotlightShortcut])
-
   const configUsageLogsEnabled = config?.usageLogsEnabled
   useEffect(() => {
     if (configUsageLogsEnabled !== undefined) setUsageLogsEnabled(configUsageLogsEnabled)
   }, [configUsageLogsEnabled])
 
-
-  const handleSpotlightToggle = async () => {
-    const newEnabled = !spotlightEnabled
-    setSpotlightEnabled(newEnabled)
-    setSpotlightError(false)
-    try {
-      const result = await updateSpotlight({ enabled: newEnabled, shortcut: spotlightShortcut })
-      if (newEnabled && !result.registered) {
-        setSpotlightError(true)
-      }
-    } catch {
-      setSpotlightEnabled(!newEnabled) // revert on error
-    }
-  }
-
-  const handleSpotlightShortcutChange = async (newShortcut: SpotlightShortcut) => {
-    const previousShortcut = spotlightShortcut
-    setSpotlightShortcut(newShortcut)
-    setSpotlightError(false)
-    try {
-      const result = await updateSpotlight({ enabled: spotlightEnabled, shortcut: newShortcut })
-      if (spotlightEnabled && !result.registered) {
-        setSpotlightError(true)
-      }
-    } catch {
-      setSpotlightShortcut(previousShortcut)
-    }
-  }
 
   // The one switch on this page whose write is the app's ordinary optimistic one, so it
   // is the one that reaches for the hook. The others each do something particular on the
@@ -187,48 +121,6 @@ export function ApplicationPage() {
     <div className="flex flex-col gap-8">
       {/* Machine setup (prerequisites, MCP servers, integrations) */}
       <SetupHealthCard />
-
-      {/* Spotlight Section */}
-      <div>
-        <SectionHeader icon={Search} title={t('settings.application.spotlight.section')} />
-        <SettingsCard
-          rows={[
-            {
-              id: 'spotlight',
-              label: t('settings.application.spotlight.label'),
-              hint: t('settings.application.spotlight.help'),
-              control: {
-                kind: 'switch',
-                checked: spotlightEnabled,
-                onChange: handleSpotlightToggle,
-                label: t('settings.application.spotlight.label'),
-              },
-            },
-            {
-              id: 'spotlightShortcut',
-              label: t('settings.application.spotlight.shortcutLabel'),
-              hint: t('settings.application.spotlight.shortcutHelp'),
-              control: {
-                kind: 'select',
-                value: spotlightShortcut,
-                options: SPOTLIGHT_OPTIONS.map((opt) => ({ value: opt.value, label: opt.keys.join(' ') })),
-                onChange: (next) => handleSpotlightShortcutChange(next as SpotlightShortcut),
-                disabled: !spotlightEnabled,
-                ariaLabel: t('settings.application.spotlight.shortcutLabel'),
-                width: SELECT_WIDTH,
-              },
-            },
-          ]}
-          /* The chord is set and the OS refused to register it — another app holds it.
-             The picker above still shows what was chosen, so this strip is the only
-             thing saying it did not take. */
-          alert={
-            spotlightError
-              ? { message: t('settings.application.spotlight.error'), icon: AlertTriangle }
-              : undefined
-          }
-        />
-      </div>
 
       {/* Background App Section */}
       <div>

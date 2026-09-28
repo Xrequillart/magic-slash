@@ -91,6 +91,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.tab.appearance': 'Apparence',
   'settings.tab.language': 'Langue et région',
   'settings.tab.application': 'Application',
+  'settings.tab.quickLaunch': 'Quick Launch',
   'settings.tab.splitView': 'Vue divisée',
   'settings.tab.profile': 'Profil',
   'settings.tab.agents': 'Agents',
@@ -335,6 +336,19 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.application.prWatcher.autoLaunchLabel': 'Lancer les skills automatiquement',
   'settings.application.prWatcher.autoLaunchHelp':
     'Envoie /magic:resolve ou /magic:done directement dans le terminal de l’agent. Désactivé par défaut, par prudence.',
+  'settings.quickLaunch.launch.section': 'Lancement',
+  'settings.quickLaunch.repo.label': 'Dépôt',
+  'settings.quickLaunch.repo.help': 'Le dépôt dans lequel travaille l’agent lancé depuis Quick Launch.',
+  'settings.quickLaunch.repo.first': 'Premier dépôt',
+  'settings.quickLaunch.repo.first.help': 'Le premier dépôt de votre liste, quoi que dise le prompt.',
+  'settings.quickLaunch.repo.match': 'Détecter depuis le prompt',
+  'settings.quickLaunch.repo.match.help': 'Le dépôt dont le prompt cite le nom ou un mot-clé. Le premier s’il n’en cite aucun.',
+  'settings.quickLaunch.mode.label': 'Mode de lancement',
+  'settings.quickLaunch.mode.help': 'Le mode de permission d’un agent lancé depuis Quick Launch.',
+  'settings.quickLaunch.mode.inherit': 'Comme Agents ({mode})',
+  'settings.quickLaunch.mode.inherit.help': 'Le mode de lancement réglé dans la page Agents, comme pour tout nouvel agent.',
+  'settings.quickLaunch.background.label': 'Rester en arrière-plan',
+  'settings.quickLaunch.background.help': 'Démarrer l’agent sans ramener Magic Slash au premier plan. Vous restez où vous étiez, et une notification vous prévient quand l’agent a besoin de vous.',
   'settings.application.spotlight.section': 'Spotlight',
   'settings.application.spotlight.label': 'Activer le raccourci global',
   'settings.application.spotlight.help':
@@ -375,7 +389,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.shortcuts.help.plans': 'Ouvre la page des plans.',
   'settings.shortcuts.help.repositories': 'Ouvre la fenêtre des dépôts.',
   'settings.shortcuts.help.controlCenter': 'Déroule les réglages rapides.',
-  'settings.shortcuts.help.quickLaunch': 'Ouvre le panneau de lancement rapide depuis n’importe où sur le Mac. Le raccourci se règle dans la page Application.',
+  'settings.shortcuts.help.quickLaunch': 'Ouvre le panneau de lancement rapide depuis n’importe où sur le Mac. Le raccourci se règle dans la page Quick Launch.',
   'settings.shortcuts.disabled': 'Désactivé',
 
   // ── Réglages → À propos ──────────────────────────────────────────────────
