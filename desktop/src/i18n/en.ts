@@ -113,6 +113,7 @@ export const en = {
   'settings.tab.appearance': 'Appearance',
   'settings.tab.language': 'Language & Region',
   'settings.tab.application': 'Application',
+  'settings.tab.profile': 'Profile',
   'settings.tab.agents': 'Agents',
   'settings.tab.codeReviews': 'Code & reviews',
   'settings.tab.shortcuts': 'Shortcuts',
@@ -946,7 +947,7 @@ export const en = {
   'account.checklist.todo.atlassian':
     'Connect Atlassian from the Connections tab, so the skills can read your Jira tickets and move them along.',
   'account.checklist.todo.profile':
-    'Fill in your profile at the bottom of this tab. The skills read it to pitch their vocabulary and their level of detail at you.',
+    'Fill in your profile on the Profile page, right below Account. The skills read it to pitch their vocabulary and their level of detail at you.',
   'account.checklist.todo.repository':
     'Add a repository from the Repositories tab, or point an existing one back at a folder that still exists.',
   'account.checklist.todo.setup':
@@ -1277,6 +1278,8 @@ export const en = {
   'profile.style.detailed': 'Detailed',
 
   'profile.section': 'Profile',
+  'profile.description':
+    'How Claude should talk to you. Every /magic:* skill reads this profile before it answers: your technical level sets how plain or precise the vocabulary is, your role how deep it goes (a summary for a manager, code-level detail for a developer), your communication style how long and how structured the answers are, and your languages which language it writes in. Your first name is used when it reads naturally. The profile follows your account, so every machine you sign in on uses the same one.',
   'profile.form.requiredWarning':
     'A name, a role and a technical level are required — nothing is saved until all three are filled in.',
   'profile.form.intro':

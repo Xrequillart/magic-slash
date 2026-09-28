@@ -147,7 +147,7 @@ export function ProfileSection() {
 
   return (
     <div>
-      <SectionHeader icon={User} title={t('profile.section')} />
+      <SectionHeader icon={User} title={t('profile.section')} description={t('profile.description')} />
 
       <ProfileCard
         // Only while there is nothing yet: once the rows carry values they say what this

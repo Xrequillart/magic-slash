@@ -12,6 +12,7 @@ import { ConnectionsPage } from '../pages/Config/ConnectionsPage'
 import { LanguagePage } from '../pages/Config/LanguagePage'
 import { NotificationsPage } from '../pages/Config/NotificationsPage'
 import { OrgPage } from '../pages/Config/OrgPage'
+import { ProfilePage } from '../pages/Config/ProfilePage'
 import { ShortcutsPage } from '../pages/Config/ShortcutsPage'
 import { useStore } from '../store'
 import { useT, type MessageKey } from '../i18n'
@@ -28,6 +29,7 @@ import {
   Palette,
   Plug,
   SquareTerminal,
+  UserPen,
 } from '@ds/desktop/icons'
 import type { IconComponent } from '@ds/desktop/types'
 
@@ -64,6 +66,7 @@ import type { IconComponent } from '@ds/desktop/types'
 
 export type SettingsTab =
   | 'account'
+  | 'profile'
   | 'organization'
   | 'connections'
   | 'claude-code'
@@ -96,6 +99,7 @@ const GROUPS: { id: string; labelKey: MessageKey; pages: SettingsPageEntry[] }[]
     labelKey: 'settings.group.personal',
     pages: [
       { id: 'account', labelKey: 'settings.tab.account', icon: CircleUserRound },
+      { id: 'profile', labelKey: 'settings.tab.profile', icon: UserPen },
       { id: 'organization', labelKey: 'settings.tab.organization', icon: Building2 },
       { id: 'claude-code', labelKey: 'settings.tab.claudeCode', icon: SquareTerminal },
       { id: 'notifications', labelKey: 'settings.tab.notifications', icon: Bell },
@@ -162,6 +166,7 @@ export function SettingsModal() {
           that clips, and a card that slides 24px arrives with 24px missing. */}
       <TabSweep tabKey={tab} order={ORDER} style={MODAL_COLUMN_PADDING} vertical>
         {tab === 'account' && <AccountPage />}
+        {tab === 'profile' && <ProfilePage />}
         {tab === 'organization' && <OrgPage />}
         {tab === 'connections' && <ConnectionsPage />}
         {tab === 'claude-code' && <ClaudeCodePage />}

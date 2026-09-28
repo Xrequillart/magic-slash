@@ -91,6 +91,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.tab.appearance': 'Apparence',
   'settings.tab.language': 'Langue et région',
   'settings.tab.application': 'Application',
+  'settings.tab.profile': 'Profil',
   'settings.tab.agents': 'Agents',
   'settings.tab.codeReviews': 'Code et reviews',
   'settings.tab.shortcuts': 'Raccourcis',
@@ -914,7 +915,7 @@ export const fr: Record<keyof typeof en, string> = {
   'account.checklist.todo.atlassian':
     'Connectez Atlassian depuis l’onglet Connexions, pour que les skills lisent vos tickets Jira et les fassent avancer.',
   'account.checklist.todo.profile':
-    'Remplissez votre profil en bas de cet onglet. Les skills le lisent pour ajuster leur vocabulaire et leur niveau de détail.',
+    'Remplissez votre profil dans la page Profil, juste sous Compte. Les skills le lisent pour ajuster leur vocabulaire et leur niveau de détail.',
   'account.checklist.todo.repository':
     'Ajoutez un dépôt depuis l’onglet Dépôts, ou faites pointer un dépôt existant vers un dossier qui existe encore.',
   'account.checklist.todo.setup':
@@ -1236,6 +1237,8 @@ export const fr: Record<keyof typeof en, string> = {
   'profile.style.detailed': 'Détaillé',
 
   'profile.section': 'Profil',
+  'profile.description':
+    'La façon dont Claude vous parle. Chaque skill /magic:* lit ce profil avant de répondre : votre niveau technique règle le vocabulaire, du plus simple au plus précis, votre rôle la profondeur (une synthèse pour un manager, le détail du code pour un développeur), votre style de communication la longueur et la structure des réponses, et vos langues celle dans laquelle il écrit. Votre prénom est utilisé quand c’est naturel. Le profil suit votre compte : toutes les machines où vous vous connectez utilisent le même.',
   'profile.form.requiredWarning':
     'Un prénom, un rôle et un niveau technique sont obligatoires — rien n’est enregistré tant que les trois ne sont pas remplis.',
   'profile.form.intro':
