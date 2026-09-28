@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useStore } from '../store'
-import type { AgentSortMode, CodeSyntaxChoice, Config, LaunchMode, SplitNewAgentPane, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId } from '../../types'
+import type { AgentSortMode, CodeSyntaxChoice, Config, LaunchMode, QuickSettingId, SplitNewAgentPane, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId } from '../../types'
 
 export function useConfig() {
   const { config, configLoading, configError, setConfig, setConfigLoading, setConfigError } = useStore()
@@ -202,6 +202,12 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  const updateQuickSettings = useCallback(async (patch: { enabled?: boolean; items?: QuickSettingId[] }) => {
+    const result = await window.electronAPI.config.setQuickSettings(patch)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   const updateSplitNewAgentPane = useCallback(async (pane: SplitNewAgentPane) => {
     const result = await window.electronAPI.config.setSplitNewAgentPane(pane)
     setConfig(result.config)
@@ -324,6 +330,7 @@ export function useConfig() {
     updateConfirmAgentArchive,
     updateSplitNewAgentPane,
     updateQuickLaunch,
+    updateQuickSettings,
     updateUsageCardEnabled,
     updateUsageCardMinimized,
     updateAgentContextEnabled,

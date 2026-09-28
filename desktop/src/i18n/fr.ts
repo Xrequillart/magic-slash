@@ -91,6 +91,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.tab.appearance': 'Apparence',
   'settings.tab.language': 'Langue et région',
   'settings.tab.application': 'Application',
+  'settings.tab.quickSettings': 'Réglages rapides',
   'settings.tab.quickLaunch': 'Quick Launch',
   'settings.tab.splitView': 'Vue divisée',
   'settings.tab.profile': 'Profil',
@@ -330,6 +331,18 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.application.prWatcher.autoLaunchLabel': 'Lancer les skills automatiquement',
   'settings.application.prWatcher.autoLaunchHelp':
     'Envoie /magic:resolve ou /magic:done directement dans le terminal de l’agent. Désactivé par défaut, par prudence.',
+  // ── Réglages → Réglages rapides ──────────────────────────────────────────
+  'settings.quickSettings.section': 'Réglages rapides',
+  'settings.quickSettings.enabled.label': 'Afficher les réglages rapides',
+  'settings.quickSettings.enabled.help': 'Le bouton à curseurs de la barre de titre, et ⌘, pour dérouler le panneau. Désactivé, ⌘, ouvre cette page à la place.',
+  'settings.quickSettings.arrange.section': 'Interrupteurs',
+  'settings.quickSettings.arrange.description': 'Faites glisser un interrupteur pour le déplacer, vers le bas pour le retirer du panneau, ou depuis le bas vers le panneau pour l’ajouter. Un clic sur un interrupteur du bas l’ajoute à la fin, et le × d’un interrupteur le retire.',
+  'settings.quickSettings.arrange.menu': 'Dans le panneau',
+  'settings.quickSettings.arrange.menuEmpty': 'Glissez des interrupteurs ici',
+  'settings.quickSettings.arrange.available': 'Disponibles',
+  'settings.quickSettings.arrange.availableEmpty': 'Tous les interrupteurs sont dans le panneau.',
+  'settings.quickSettings.arrange.remove': 'Retirer {name}',
+
   'settings.quickLaunch.launch.section': 'Lancement',
   'settings.quickLaunch.repo.label': 'Dépôt',
   'settings.quickLaunch.repo.help': 'Le dépôt dans lequel travaille l’agent lancé depuis Quick Launch.',

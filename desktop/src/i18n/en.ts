@@ -113,6 +113,7 @@ export const en = {
   'settings.tab.appearance': 'Appearance',
   'settings.tab.language': 'Language & Region',
   'settings.tab.application': 'Application',
+  'settings.tab.quickSettings': 'Quick settings',
   'settings.tab.quickLaunch': 'Quick Launch',
   'settings.tab.splitView': 'Split view',
   'settings.tab.profile': 'Profile',
@@ -367,6 +368,18 @@ export const en = {
   'settings.application.prWatcher.autoLaunchLabel': 'Auto-launch skills',
   'settings.application.prWatcher.autoLaunchHelp':
     'Send /magic:resolve or /magic:done directly to the agent’s terminal. Disabled by default for safety.',
+  // ── Settings → Quick settings ────────────────────────────────────────────
+  'settings.quickSettings.section': 'Quick settings',
+  'settings.quickSettings.enabled.label': 'Show the quick settings',
+  'settings.quickSettings.enabled.help': 'The sliders button in the title bar, and ⌘, to pull the sheet down. Off, ⌘, opens this page instead.',
+  'settings.quickSettings.arrange.section': 'Switches',
+  'settings.quickSettings.arrange.description': 'Drag a switch to move it, drag it down to take it off the sheet, or drag one from below onto the sheet to add it. Pressing a switch below adds it at the end, and the × on a switch removes it.',
+  'settings.quickSettings.arrange.menu': 'On the sheet',
+  'settings.quickSettings.arrange.menuEmpty': 'Drag switches here',
+  'settings.quickSettings.arrange.available': 'Available',
+  'settings.quickSettings.arrange.availableEmpty': 'Every switch is on the sheet.',
+  'settings.quickSettings.arrange.remove': 'Remove {name}',
+
   'settings.quickLaunch.launch.section': 'Launch',
   'settings.quickLaunch.repo.label': 'Repository',
   'settings.quickLaunch.repo.help': 'Where the agent started from Quick Launch works.',

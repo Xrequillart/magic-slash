@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import {
   ControlCenter,
   ControlCenterGroup,
@@ -6,13 +5,10 @@ import {
   TITLE_BAR_HEIGHT,
   ToggleButton,
 } from '@ds/desktop'
-import {
-  Bell, BellOff, Brain, ChartSpline, Cog, SquareSplitHorizontal, TextCursorInput,
-} from '@ds/desktop/icons'
+import { Cog } from '@ds/desktop/icons'
 import { useStore } from '../store'
-import { useConfig } from '../hooks/useConfig'
 import { useT } from '../i18n'
-import { showToast } from './Toast'
+import { useQuickSettingIds, useQuickSettingTiles } from './quickSettingTiles'
 
 /**
  * THE QUICK SETTINGS, wired — what comes down when the title bar's sliders are pressed.
@@ -21,12 +17,12 @@ import { showToast } from './Toast'
  * hook, the translator and the one-line handlers, which is the same split `TitleBar`
  * makes with `AppTitleBar`. Nothing here knows how the sheet slides or fades.
  *
- * ── FIVE SWITCHES AND NOTHING ELSE ────────────────────────────────────────────────
+ * ── THE READER'S SWITCHES, IN THE READER'S ORDER ──────────────────────────────────
  *
- * The sheet held four sections: the machine's setup verdict, appearance (the eight
- * themes, the scale, the split view), the features, and the language. It is the
- * features alone now, with the split view moved in among them, and no heading over
- * them: one cluster needs no signpost.
+ * Which tiles the sheet carries is Settings → Quick settings now: a catalogue of the
+ * app's on/off settings (quickSettingTiles.ts), five of them by default. The sheet held
+ * four sections once (the setup verdict, appearance, the features, the language); it is
+ * one cluster of switches, with no heading over it: one cluster needs no signpost.
  *
  * What went is what a person does not reach for in the middle of something else. The
  * theme and the language are chosen once; the scale has ⌘+ and ⌘−; the setup verdict
@@ -40,54 +36,9 @@ import { showToast } from './Toast'
 
 export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
-  const {
-    config, updateNotifications, updateSpotlight, updateUsageCardEnabled, updateAgentContextEnabled,
-  } = useConfig()
-  const { splitActive, toggleSplitActive } = useStore()
   const setSettingsTab = useStore((s) => s.setSettingsTab)
-
-  // ── Quick Launch: a write that can succeed and still not register ──────────
-  // The only tile here with a local copy, and the reason is the shortcut: the config
-  // write lands, and then the OS refuses the chord because something else already holds
-  // it. `result.registered` is how that comes back, so the tile has to be able to move
-  // and then be told it did not.
-  const [spotlightEnabled, setSpotlightEnabled] = useState(config?.spotlight?.enabled ?? true)
-  const configSpotlightEnabled = config?.spotlight?.enabled
-  useEffect(() => {
-    if (configSpotlightEnabled !== undefined) setSpotlightEnabled(configSpotlightEnabled)
-  }, [configSpotlightEnabled])
-
-  const toggleSpotlight = async (next: boolean) => {
-    setSpotlightEnabled(next)
-    try {
-      const result = await updateSpotlight({ enabled: next, shortcut: config?.spotlight?.shortcut ?? 'Control+Space' })
-      if (next && !result.registered) showToast(t('settings.application.spotlight.error'), 'error')
-    } catch {
-      setSpotlightEnabled(!next)
-    }
-  }
-
-  /**
-   * The config-backed tiles share one shape: fire the write, let the store move the
-   * tile, and if the write throws, say so. There is no local copy to revert because
-   * the tile was never told the new value — a failed write leaves it where it was.
-   */
-  const write = async (run: () => Promise<unknown>) => {
-    try {
-      await run()
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : t('controlCenter.saveFailed'), 'error')
-    }
-  }
-
-  // Absent means never chosen, which is on — the reading the main process makes. WHICH
-  // KINDS it may speak about is the Notifications page's question now, not the sheet's;
-  // this tile is the master and nothing else.
-  const notificationsOn = config?.notifications?.enabled !== false
-  // The two optional sidebar panels — absent means never chosen, which is shown, the
-  // reading their settings rows make (Claude Code's page and the Agents page).
-  const usageCardOn = config?.usageCardEnabled !== false
-  const agentContextOn = config?.agentContextEnabled !== false
+  const tiles = useQuickSettingTiles()
+  const ids = useQuickSettingIds()
 
   return (
     <ControlCenter
@@ -96,58 +47,25 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
       top={TITLE_BAR_HEIGHT}
       label={t('controlCenter.title')}
     >
-      {/* The features, notifications first: it is the loudest thing the app does.
-          Everything else here changes what you see when you look; this changes what
-          reaches you when you are not looking. */}
-      <ControlCenterGroup label={t('controlCenter.features')} labelHidden>
-        <ToggleButton
-          icon={Bell}
-          offIcon={BellOff}
-          offTone="danger"
-          checked={notificationsOn}
-          onChange={(next) => void write(() => updateNotifications({ enabled: next }))}
-          caption={false}
-          label={t('settings.notifications.master.label')}
-        />
-        {/* Quick Launch, after the notifications: it came off this sheet once, on the
-            grounds that a panel you set up once does not deserve a tile, and came back,
-            because the one thing people do turn off mid-session is a global chord that
-            has started fighting with another app. */}
-        <ToggleButton
-          icon={TextCursorInput}
-          checked={spotlightEnabled}
-          onChange={toggleSpotlight}
-          caption={false}
-          label={t('controlCenter.quickLaunch')}
-        />
-        <ToggleButton
-          icon={ChartSpline}
-          checked={usageCardOn}
-          onChange={(next) => void write(() => updateUsageCardEnabled(next))}
-          caption={false}
-          label={t('settings.appearance.sidebars.usageCard.label')}
-        />
-        <ToggleButton
-          icon={Brain}
-          checked={agentContextOn}
-          onChange={(next) => void write(() => updateAgentContextEnabled(next))}
-          caption={false}
-          label={t('settings.appearance.sidebars.agentContext.label')}
-        />
-        {/* The split view, last: it changes how the window is laid out rather than what
-            the app does, and it came here from the appearance section that went. THE
-            TILE IS THE SPLIT ITSELF, not the permission for it: the window is in two
-            panes or it is not, and the Split view page says the same with the same value. */}
-        <ToggleButton
-          icon={SquareSplitHorizontal}
-          checked={splitActive}
-          onChange={(next) => {
-            if (next !== splitActive) toggleSplitActive()
-          }}
-          caption={false}
-          label={t('controlCenter.splitView')}
-        />
-      </ControlCenterGroup>
+      {ids.length > 0 && (
+        <ControlCenterGroup label={t('controlCenter.features')} labelHidden>
+          {ids.map((id) => {
+            const tile = tiles[id]
+            return (
+              <ToggleButton
+                key={id}
+                icon={tile.icon}
+                offIcon={tile.offIcon}
+                offTone={tile.offTone}
+                checked={tile.checked}
+                onChange={tile.onChange}
+                caption={false}
+                label={tile.label}
+              />
+            )
+          })}
+        </ControlCenterGroup>
+      )}
 
       {/* ALL SETTINGS — the way to everything the tiles cannot say, under the last
           group and centred: a foot, not a second section, so it takes a `Label` rather

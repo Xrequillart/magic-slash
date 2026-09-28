@@ -70,6 +70,8 @@ export interface UserSettings {
   quickLaunchRepo: string | null
   quickLaunchBackground: boolean | null
   quickLaunchLaunchMode: string | null
+  quickSettingsEnabled: boolean | null
+  quickSettingsItems: string[] | null
 }
 
 export type UserSettingsPatch = Partial<UserSettings>
@@ -105,10 +107,12 @@ interface UserSettingsRow {
   quick_launch_repo: string | null
   quick_launch_background: boolean | null
   quick_launch_launch_mode: string | null
+  quick_settings_enabled: boolean | null
+  quick_settings_items: string[] | null
 }
 
 const COLUMNS =
-  'theme, sync_claude_theme, code_syntax, code_font_size, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_active, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, quick_launch_repo, quick_launch_background, quick_launch_launch_mode'
+  'theme, sync_claude_theme, code_syntax, code_font_size, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_active, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, quick_settings_enabled, quick_settings_items'
 
 /** Maps a camelCase field to its column. Also the list of writable fields. */
 const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
@@ -142,6 +146,8 @@ const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
   quickLaunchRepo: 'quick_launch_repo',
   quickLaunchBackground: 'quick_launch_background',
   quickLaunchLaunchMode: 'quick_launch_launch_mode',
+  quickSettingsEnabled: 'quick_settings_enabled',
+  quickSettingsItems: 'quick_settings_items',
 }
 
 /** What the page shows before the fetch resolves, and when no row exists yet. */
@@ -176,6 +182,8 @@ export const EMPTY_SETTINGS: UserSettings = {
   quickLaunchRepo: null,
   quickLaunchBackground: null,
   quickLaunchLaunchMode: null,
+  quickSettingsEnabled: null,
+  quickSettingsItems: null,
 }
 
 
@@ -211,6 +219,8 @@ function toSettings(row: UserSettingsRow): UserSettings {
     quickLaunchRepo: row.quick_launch_repo,
     quickLaunchBackground: row.quick_launch_background,
     quickLaunchLaunchMode: row.quick_launch_launch_mode,
+    quickSettingsEnabled: row.quick_settings_enabled,
+    quickSettingsItems: row.quick_settings_items,
   }
 }
 

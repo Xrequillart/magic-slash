@@ -14,6 +14,7 @@ import { NotificationsPage } from '../pages/Config/NotificationsPage'
 import { OrgPage } from '../pages/Config/OrgPage'
 import { ProfilePage } from '../pages/Config/ProfilePage'
 import { QuickLaunchPage } from '../pages/Config/QuickLaunchPage'
+import { QuickSettingsPage } from '../pages/Config/QuickSettingsPage'
 import { ShortcutsPage } from '../pages/Config/ShortcutsPage'
 import { SplitViewPage } from '../pages/Config/SplitViewPage'
 import { useStore } from '../store'
@@ -30,6 +31,7 @@ import {
   Languages,
   Palette,
   Plug,
+  Settings2,
   SquareSplitHorizontal,
   SquareTerminal,
   TextCursorInput,
@@ -79,6 +81,7 @@ export type SettingsTab =
   | 'code-reviews'
   | 'split-view'
   | 'quick-launch'
+  | 'quick-settings'
   | 'notifications'
   | 'appearance'
   | 'language'
@@ -127,6 +130,7 @@ const GROUPS: { id: string; labelKey: MessageKey; pages: SettingsPageEntry[] }[]
       { id: 'code-reviews', labelKey: 'settings.tab.codeReviews', icon: CodeXml },
       { id: 'split-view', labelKey: 'settings.tab.splitView', icon: SquareSplitHorizontal },
       { id: 'quick-launch', labelKey: 'settings.tab.quickLaunch', icon: TextCursorInput },
+      { id: 'quick-settings', labelKey: 'settings.tab.quickSettings', icon: Settings2 },
     ],
   },
   {
@@ -187,6 +191,7 @@ export function SettingsModal() {
         {tab === 'code-reviews' && <CodeReviewsPage />}
         {tab === 'split-view' && <SplitViewPage />}
         {tab === 'quick-launch' && <QuickLaunchPage />}
+        {tab === 'quick-settings' && <QuickSettingsPage />}
         {tab === 'notifications' && <NotificationsPage />}
         {tab === 'appearance' && <AppearancePage />}
         {tab === 'language' && <LanguagePage />}

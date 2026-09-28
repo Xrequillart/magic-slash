@@ -263,6 +263,8 @@ interface AdminUserDetailRpcRow {
   quick_launch_repo: string | null
   quick_launch_background: boolean | null
   quick_launch_launch_mode: string | null
+  quick_settings_enabled: boolean | null
+  quick_settings_items: string[] | null
   atlassian_integration_enabled: boolean | null
   theme: string | null
   language: string | null
@@ -428,6 +430,8 @@ function toUserDetail(r: AdminUserDetailRpcRow): AdminUserDetail {
       quickLaunchRepo: r.quick_launch_repo,
       quickLaunchBackground: r.quick_launch_background,
       quickLaunchLaunchMode: r.quick_launch_launch_mode,
+      quickSettingsEnabled: r.quick_settings_enabled,
+      quickSettingsItems: r.quick_settings_items,
       atlassianIntegrationEnabled: r.atlassian_integration_enabled,
       theme: r.theme,
       language: r.language,

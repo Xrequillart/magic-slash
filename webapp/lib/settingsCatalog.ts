@@ -78,6 +78,9 @@ export const DEFAULTS = {
   quickLaunchBackground: false,
   // NULL = the account's launch mode.
   quickLaunchLaunchMode: 'Same as launch mode',
+  quickSettingsEnabled: true,
+  // NULL = the five the sheet carried before it could be arranged.
+  quickSettingsItems: 'notifications, quick-launch, usage-card, agent-context, split-view',
 } as const
 
 /**
@@ -247,6 +250,13 @@ export const SETTING_GROUPS: SettingGroup[] = [
       { field: 'quickLaunchRepo', label: 'Repository' },
       { field: 'quickLaunchBackground', label: 'Stay in the background' },
       { field: 'quickLaunchLaunchMode', label: 'Launch mode' },
+    ],
+  },
+  {
+    title: 'Quick settings',
+    fields: [
+      { field: 'quickSettingsEnabled', label: 'Enabled' },
+      { field: 'quickSettingsItems', label: 'Switches, in order' },
     ],
   },
   {

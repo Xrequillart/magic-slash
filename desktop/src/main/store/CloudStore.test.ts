@@ -2338,6 +2338,8 @@ describe('user settings', () => {
       quick_launch_repo: null,
       quick_launch_background: null,
       quick_launch_launch_mode: null,
+      quick_settings_enabled: null,
+      quick_settings_items: null,
     })
   })
 

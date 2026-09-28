@@ -42,7 +42,7 @@ import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '../config/defaults'
 import {
   AGENT_SORT_MODES, codeSyntaxTheme, DEFAULT_CODE_SYNTAX, DEFAULT_CODE_FONT_SIZE, isValidAgentSort,
-  isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidTheme,
+  cleanQuickSettings, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidTheme,
   type CodeSample, type Config, type FilePreviewResult, type ChangedLines,
 } from '../../types'
 import { applyLanguage, applyTheme, currentTheme } from '../appearance'
@@ -562,6 +562,25 @@ export function setupConfigHandlers() {
       if (launchMode === null) delete config.quickLaunchLaunchMode
       else if (isValidLaunchMode(launchMode)) config.quickLaunchLaunchMode = launchMode
       else throw new Error('Invalid Quick Launch launch mode')
+    }
+    writeConfig(config)
+    return { config }
+  })
+
+  // The quick settings sheet: whether the title bar offers it, and which switches it
+  // carries in which order. Either may come alone.
+  ipcMain.handle('config:setQuickSettings', async (_event, patch: unknown) => {
+    if (typeof patch !== 'object' || patch === null) throw new Error('Invalid quick settings')
+    const { enabled, items } = patch as Record<string, unknown>
+    const config = readConfig()
+    if (enabled !== undefined) {
+      if (typeof enabled !== 'boolean') throw new Error('Invalid quick settings enabled value')
+      config.quickSettingsEnabled = enabled
+    }
+    if (items !== undefined) {
+      const cleaned = cleanQuickSettings(items)
+      if (!cleaned) throw new Error('Invalid quick settings items')
+      config.quickSettingsItems = cleaned
     }
     writeConfig(config)
     return { config }

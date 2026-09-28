@@ -830,8 +830,16 @@ export const useStore = create<AppState>()(
         // The two are EXCLUSIVE and it is settled here rather than in the title bar:
         // they hang from the same corner of the same bar, and the sheet blurs the whole
         // window behind it — a dropdown over that is a menu floating on fog.
-        setQuickSettingsOpen: (quickSettingsOpen) =>
-          set(quickSettingsOpen ? { quickSettingsOpen, accountMenuOpen: false } : { quickSettingsOpen }),
+        // Switched off in Settings → Quick settings, the sheet does not open: every door
+        // to it (⌘, above all) opens the settings window on that page instead, so the
+        // chord still leads somewhere and says where the sheet went.
+        setQuickSettingsOpen: (quickSettingsOpen) => {
+          if (quickSettingsOpen && get().config?.quickSettingsEnabled === false) {
+            get().setSettingsTab('quick-settings')
+            return
+          }
+          set(quickSettingsOpen ? { quickSettingsOpen, accountMenuOpen: false } : { quickSettingsOpen })
+        },
         // Through the setter above and not a bare flip, so the chord cannot open the
         // sheet over an account dropdown the setter would have closed.
         toggleQuickSettings: () => get().setQuickSettingsOpen(!get().quickSettingsOpen),

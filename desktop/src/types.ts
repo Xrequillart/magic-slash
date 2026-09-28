@@ -1641,6 +1641,47 @@ export function isValidSplitNewAgentPane(value: unknown): value is SplitNewAgent
   return typeof value === 'string' && (SPLIT_NEW_AGENT_PANES as readonly string[]).includes(value)
 }
 
+/**
+ * The switches the quick settings sheet can carry, as ids. Every one is a setting that
+ * already has a row somewhere in Settings: the sheet is a second, faster door, never the
+ * only one. The reader picks which of them it shows and in what order (Settings → Quick
+ * settings); the catalogue itself is this list, and the tile each id draws is wired in
+ * renderer/components/quickSettingTiles.ts.
+ *
+ * The ids are the `user_settings_quick_settings_items_check` CHECK (20260928150000):
+ * adding one is an entry here AND a migration widening that list.
+ */
+export const QUICK_SETTING_IDS = [
+  'notifications',
+  'quick-launch',
+  'usage-card',
+  'agent-context',
+  'split-view',
+  'pr-watcher',
+  'plan-sync',
+  'activity',
+  'claude-theme',
+  'archive-confirm',
+  'info-panel',
+  'quick-launch-background',
+  'daily-digest',
+] as const
+
+export type QuickSettingId = (typeof QUICK_SETTING_IDS)[number]
+
+/** What the sheet carried before it could be arranged, in that order. */
+export const DEFAULT_QUICK_SETTINGS: QuickSettingId[] = ['notifications', 'quick-launch', 'usage-card', 'agent-context', 'split-view']
+
+export function isValidQuickSettingId(value: unknown): value is QuickSettingId {
+  return typeof value === 'string' && (QUICK_SETTING_IDS as readonly string[]).includes(value)
+}
+
+/** A stored list, cleaned: unknown ids (a newer build's) and repeats dropped, order kept. */
+export function cleanQuickSettings(value: unknown): QuickSettingId[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  return value.filter((id, index): id is QuickSettingId => isValidQuickSettingId(id) && value.indexOf(id) === index)
+}
+
 export const CODE_FONT_SIZES = [11, 12, 13, 14, 15, 16] as const
 
 export const DEFAULT_CODE_FONT_SIZE = 12
@@ -1773,6 +1814,10 @@ export interface Config {
   quickLaunchBackground?: boolean
   /** A launch mode for Quick Launch alone. Absent = the Agents page's `launchMode`. */
   quickLaunchLaunchMode?: LaunchMode
+  /** Whether the title bar offers the quick settings sheet at all. Absent = on. */
+  quickSettingsEnabled?: boolean
+  /** The sheet's switches, in order. Absent = DEFAULT_QUICK_SETTINGS; empty is empty. */
+  quickSettingsItems?: QuickSettingId[]
   launchMode?: LaunchMode
   /**
    * What a NEW agent is, when nothing says otherwise. Absent = never chosen, and

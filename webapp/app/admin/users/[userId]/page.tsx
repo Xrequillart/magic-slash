@@ -69,9 +69,12 @@ import {
  */
 function resolveSetting(
   field: keyof AdminUserSettings,
-  value: string | number | boolean | null,
+  value: string | number | boolean | string[] | null,
 ): { effective: string | number | boolean; unset: boolean } {
   const unset = value === null || value === undefined
+  // A list (the quick settings switches) reads as its items in order; an empty one is a
+  // choice, not an absence, and says so rather than falling back to the default.
+  if (Array.isArray(value)) return { effective: value.length > 0 ? value.join(', ') : '(none)', unset: false }
   return { effective: unset ? SETTING_DEFAULTS[field] : value, unset }
 }
 

@@ -250,6 +250,9 @@ export type {
   SidebarProps,
   SidebarSelectAction,
 } from './Sidebar'
+export { QuickSettingsEditor } from './QuickSettingsEditor'
+export { placeQuickSetting } from './quickSettingsOrder'
+export type { QuickSettingsEditorItem, QuickSettingsEditorProps } from './QuickSettingsEditor'
 export { Select } from './Select'
 export type { SelectMarker, SelectOption, SelectProps, SelectSize } from './Select'
 export { useAnchoredPanel } from './useAnchoredPanel'
