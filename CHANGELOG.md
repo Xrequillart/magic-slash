@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.101.0] - 2026-09-28
+
+### Added
+
+- **Desktop**: Add a quick settings page to turn the sheet off and arrange its switches
+- **Desktop**: Reduce the quick settings sheet to five switches with no heading
+- **Desktop**: Group the notifications page under its own caption in the settings rail
+- **Desktop**: Add a quick launch settings page with its repository, launch mode and background start
+- **Desktop**: Add a split view settings page with the pane new agents open in
+- **Desktop**: Give the profile its own settings page with a description of what it changes
+- **Desktop**: Move the usage card switch to the claude code settings page
+- **Desktop**: Add an agents settings page with a default model and an archive confirmation
+- **Desktop**: List keyboard shortcuts as setting rows with a description and their keys
+- **Desktop**: Add a code & reviews settings page with syntax theme families and a code font size
+
+### Changed
+
+- **Desktop**: Mock the model list in the config handlers suite
+
 ## [0.100.0] - 2026-09-28
 
 ### Added
@@ -3385,6 +3404,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.101.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.101.0
 [0.100.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.100.0
 [0.99.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.99.0
 [0.98.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.6
