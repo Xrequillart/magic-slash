@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { LivePill } from '@ds/desktop'
 import type { RealtimeStatus } from '../../types'
 import { useConnectivity } from '../hooks/useConnectivity'
 import { useT } from '../i18n'
@@ -33,19 +34,10 @@ export function LiveIndicator() {
   const isLive = connectivity === 'ok' && realtime === 'live'
 
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
-        isLive ? 'bg-green/10 text-green' : 'bg-yellow/10 text-yellow'
-      }`}
+    <LivePill
+      tone={isLive ? 'live' : 'waiting'}
+      label={isLive ? t('live.live') : t('live.reconnecting')}
       title={isLive ? t('live.liveTitle') : t('live.reconnectingTitle')}
-    >
-      <span className="relative flex w-2 h-2">
-        {isLive && (
-          <span className="absolute inline-flex w-full h-full rounded-full bg-green opacity-75 animate-ping" />
-        )}
-        <span className={`relative inline-flex w-2 h-2 rounded-full ${isLive ? 'bg-green' : 'bg-yellow'}`} />
-      </span>
-      {isLive ? t('live.live') : t('live.reconnecting')}
-    </span>
+    />
   )
 }
