@@ -1,5 +1,8 @@
 import { createClient, type RealtimeClientOptions, type SupabaseClient } from '@supabase/supabase-js'
 import WebSocketImpl from 'ws'
+import * as os from 'os'
+import { app } from 'electron'
+import { desktopUserAgent } from '../../sessionAgent'
 import { saveSession, toStoredSession } from './session-store'
 
 // The Supabase URL + anon key are injected at build time by vite.config.ts
@@ -32,6 +35,12 @@ export function getSupabaseClient(): SupabaseClient | null {
       persistSession: false,
       autoRefreshToken: true,
       detectSessionInUrl: false,
+    },
+    // The agent GoTrue records on the session at sign-in, which is how the Security &
+    // Access page tells this Mac from another one and from a browser. Node's default is
+    // `node`, the same on every machine.
+    global: {
+      headers: { 'User-Agent': desktopUserAgent(app.getVersion(), process.platform, os.hostname()) },
     },
     realtime: {
       // Electron's main process is Node 18 — it has NO global WebSocket, and

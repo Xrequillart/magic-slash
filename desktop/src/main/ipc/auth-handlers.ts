@@ -1,5 +1,5 @@
 import { ipcMain, type BrowserWindow } from 'electron'
-import type { AuthStatus } from '../../types'
+import type { AccountSession, AuthStatus } from '../../types'
 import {
   signIn,
   signUp,
@@ -11,6 +11,9 @@ import {
   requestEmailChange,
   confirmEmailChange,
   deleteAccount,
+  listSessions,
+  revokeSession,
+  revokeOtherSessions,
 } from '../cloud/auth'
 import {
   resumeEmailChangeWatch,
@@ -105,6 +108,18 @@ export function setupAuthHandlers(getMainWindow: () => BrowserWindow | null): vo
     stopEmailChangeWatch()
     emit(status)
     return status
+  })
+
+  // Security & Access: the other devices and browsers signed in to the account. None of
+  // these change THIS device's session, so no statusChanged is emitted.
+  ipcMain.handle('auth:listSessions', async (): Promise<AccountSession[]> => listSessions())
+
+  ipcMain.handle('auth:revokeSession', async (_event, { sessionId }: { sessionId: string }): Promise<void> => {
+    await revokeSession(sessionId)
+  })
+
+  ipcMain.handle('auth:revokeOtherSessions', async (): Promise<void> => {
+    await revokeOtherSessions()
   })
 
   // Account deletion (GDPR) — signs the user out; emit the logged-out transition.

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Card, SettingRow } from '@ds/desktop'
+import { Chrome, Firefox, LogOut, MagicSlash, Safari } from '@ds/desktop/icons'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
 import { usesOf } from './ids'
@@ -36,6 +37,12 @@ const PROPS: PropRow[] = [
     type: 'IconComponent',
     description:
       'A mark before the name, saying what KIND of setting this is before the name says which one. A padlock on “Commits on main branches” says the row is a safety, which neither its name nor its switch could say alone. Most rows have none — a mark on every row is decoration, and decoration everywhere stops meaning anything.',
+  },
+  {
+    name: 'mark',
+    type: '{ glyph: IconComponent; title: string }',
+    description:
+      'A logo tile at the head of the row, as tall as the name and its help line together, on the theme’s own plate. What the row IS rather than what kind of setting it is: a device on Security & Access, named by its logo before its words. A monochrome mark takes the theme’s ink, a full-colour one keeps its colours.',
   },
   {
     name: 'layout',
@@ -145,6 +152,45 @@ export function SettingRowEntry({ theme, onOpen }: { theme: DesktopTheme; onOpen
           sidebar rows already had. <code>disabled</code> is the row’s: the second row
           above is dimmed whole, rather than keeping a bright label over an inert control.
         </p>
+      </EntrySection>
+
+      <EntrySection
+        title="A row that is a thing, not a setting"
+        note="mark puts a logo tile before the name, the height of the whole row. It exists for Security & Access, where each row is a device signed in to the account: the app wears its own mark, a browser its logo, all on the same tile so the list reads as one column."
+      >
+        <Stage theme={theme}>
+          <Specimen label="the sessions of an account">
+            <Card className="flex flex-col gap-4">
+              <SettingRow
+                label="Magic Slash on Studio"
+                mark={{ glyph: MagicSlash, title: 'Magic Slash' }}
+                hint="Signed in 12 Sept 2026"
+                control={{ kind: 'live', label: 'Active now' }}
+              />
+              <div className="border-t border-line-subtle" />
+              <SettingRow
+                label="Chrome on macOS"
+                mark={{ glyph: Chrome, title: 'Chrome' }}
+                hint="Last active 3 hours ago · signed in 2 Sept 2026 · 82.64.10.3"
+                control={{ kind: 'button', size: 'sm', tone: 'danger', icon: LogOut, children: 'Sign out' }}
+              />
+              <div className="border-t border-line-subtle" />
+              <SettingRow
+                label="Safari on iOS"
+                mark={{ glyph: Safari, title: 'Safari' }}
+                hint="Last active yesterday · signed in 28 Aug 2026"
+                control={{ kind: 'button', size: 'sm', tone: 'danger', icon: LogOut, children: 'Sign out' }}
+              />
+              <div className="border-t border-line-subtle" />
+              <SettingRow
+                label="Firefox on Windows"
+                mark={{ glyph: Firefox, title: 'Firefox' }}
+                hint="Last active 3 weeks ago · signed in 1 Aug 2026"
+                control={{ kind: 'button', size: 'sm', tone: 'danger', icon: LogOut, children: 'Sign out' }}
+              />
+            </Card>
+          </Specimen>
+        </Stage>
       </EntrySection>
 
       <EntrySection title="Props">

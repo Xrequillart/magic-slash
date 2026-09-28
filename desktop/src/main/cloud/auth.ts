@@ -1,8 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { AuthStatus } from '../../types'
+import type { AccountSession, AuthStatus } from '../../types'
 import { AVATAR_BUCKET, avatarObjectPath } from '../../avatar'
 import { getSupabaseClient, isCloudEnabled } from './supabase-client'
 import { stampPasswordChange } from './password-stamp'
+import { lookupIpLocation } from './ipLocation'
 import {
   saveSession,
   loadSession,
@@ -29,7 +30,8 @@ function toStatus(stored: StoredSession): AuthStatus {
  *
  * `scope: 'local'` — THIS session only. supabase-js defaults to `global`, which
  * revokes every session of the account: signing out of the dev build signed the
- * packaged app out too, and every browser with it.
+ * packaged app out too, and every browser with it. The Security & Access page is
+ * where the other sessions are signed out, on purpose.
  */
 async function signOutQuietly(client: SupabaseClient, context: string): Promise<void> {
   try {
@@ -509,4 +511,58 @@ export async function deleteAccount(): Promise<AuthStatus> {
   await signOutQuietly(client, 'after account deletion')
   clearSession()
   return isCloudEnabled() ? LOGGED_OUT : DISABLED
+}
+
+// ---------------------------------------------------------------------------
+// Sessions (Settings → Security & Access)
+// ---------------------------------------------------------------------------
+
+interface AccountSessionRow {
+  id: string
+  user_agent: string | null
+  ip: string | null
+  created_at: string | null
+  last_used_at: string | null
+  is_current: boolean
+}
+
+/** Every device and browser signed in to the account, this one first. */
+export async function listSessions(): Promise<AccountSession[]> {
+  const client = await getAuthedClient()
+  if (!client) throw new Error('You must be signed in to list your sessions')
+
+  const { data, error } = await client.rpc('list_account_sessions')
+  if (error) throw new Error(error.message)
+
+  // Located in parallel, and never failing the list: a lookup that fails is a row
+  // without a city, not a page that cannot load.
+  return Promise.all(
+    ((data ?? []) as AccountSessionRow[]).map(async (row) => ({
+      id: row.id,
+      userAgent: row.user_agent,
+      ip: row.ip,
+      location: await lookupIpLocation(row.ip),
+      createdAt: row.created_at,
+      lastUsedAt: row.last_used_at,
+      isCurrent: row.is_current,
+    })),
+  )
+}
+
+/** Sign one other device or browser out. The server refuses this device's own session. */
+export async function revokeSession(sessionId: string): Promise<void> {
+  const client = await getAuthedClient()
+  if (!client) throw new Error('You must be signed in to sign a device out')
+
+  const { error } = await client.rpc('revoke_account_session', { p_session_id: sessionId })
+  if (error) throw new Error(error.message)
+}
+
+/** Sign every device and browser out except this one — GoTrue's own `others` scope. */
+export async function revokeOtherSessions(): Promise<void> {
+  const client = await getAuthedClient()
+  if (!client) throw new Error('You must be signed in to sign other devices out')
+
+  const { error } = await client.auth.signOut({ scope: 'others' })
+  if (error) throw new Error(error.message)
 }

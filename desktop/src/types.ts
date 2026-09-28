@@ -2002,6 +2002,28 @@ export interface AuthStatus {
 }
 
 /**
+ * One device or browser signed in to the account, as the Security & Access page lists it
+ * (`list_account_sessions`). `userAgent` is what the client sent when it signed in, raw:
+ * `sessionAgent.ts` turns it into a name. Dates are ISO strings.
+ */
+/** Where an IP address roughly is (`main/cloud/ipLocation`). The country as an ISO code. */
+export interface IpLocation {
+  city: string | null
+  countryCode: string | null
+}
+
+export interface AccountSession {
+  id: string
+  userAgent: string | null
+  ip: string | null
+  /** Looked up from `ip`; null when it could not be, or the address is private. */
+  location: IpLocation | null
+  createdAt: string | null
+  lastUsedAt: string | null
+  isCurrent: boolean
+}
+
+/**
  * The account facts the Account tab's card draws that are not in `AuthStatus` — read
  * once, together, because they come off one row.
  *

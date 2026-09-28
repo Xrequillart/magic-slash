@@ -4,6 +4,7 @@ import { Icon } from './Icon'
 import { ChipInput, type ChipInputProps } from './ChipInput'
 import { Input, type InputProps } from './Input'
 import { Kbd, type KbdProps } from './Kbd'
+import { LivePill, type LivePillProps } from './LivePill'
 import { Select, type SelectProps } from './Select'
 import { Stepper, type StepperProps } from './Stepper'
 import { Switch, type SwitchProps } from './Switch'
@@ -86,6 +87,11 @@ export type SettingRowControl =
    * place, so the caps stand where a picker would and line up down the card's edge.
    */
   | ({ kind: 'kbd' } & KbdProps)
+  /**
+   * A STATE RATHER THAN A CONTROL, where one would stand: the session this page is
+   * being read on is "Active now", and there is nothing to set on it.
+   */
+  | ({ kind: 'live' } & LivePillProps)
 
 /**
  * WHERE THE CONTROL SITS — beside the label, or under it.
@@ -98,6 +104,21 @@ export type SettingRowControl =
  * stacked is a template editor.
  */
 export type SettingRowLayout = 'inline' | 'stacked'
+
+/**
+ * A LOGO TILE AT THE HEAD OF THE ROW, as tall as the name and its help line: what the row IS, where
+ * `icon` says what kind of setting it is. Built for the sessions on Security & Access,
+ * where a row is a device and its logo names it before the words do.
+ *
+ * THE THEME'S OWN PLATE (`surface-strong`), the ground `AccountCard` gives a mark: a
+ * monochrome mark (drawn in `currentColor`) takes the theme's ink, a full-colour one
+ * keeps its colours.
+ */
+export interface SettingRowMark {
+  glyph: IconComponent
+  /** The tile's accessible name and tooltip. Not translated when it is a brand. */
+  title: string
+}
 
 export interface SettingRowProps {
   /** The setting's name. Already translated. */
@@ -116,6 +137,8 @@ export interface SettingRowProps {
    * sixty look different from the rest.
    */
   icon?: IconComponent
+  /** A logo tile left of the name and its help line — see `SettingRowMark`. */
+  mark?: SettingRowMark
   /** What the setting is, quieter, under the name. It wraps. Translated. */
   hint?: string
   /**
@@ -173,6 +196,7 @@ export interface SettingRowProps {
 export function SettingRow({
   label,
   icon,
+  mark,
   hint,
   hintKeys,
   note,
@@ -213,6 +237,8 @@ export function SettingRow({
       <ChipInput key={index} {...one} />
     ) : one.kind === 'kbd' ? (
       <Kbd key={index} {...one} />
+    ) : one.kind === 'live' ? (
+      <LivePill key={index} {...one} />
     ) : (
       <Switch key={index} {...one} />
     ),
@@ -225,31 +251,47 @@ export function SettingRow({
       <div className={stacked ? 'flex flex-col gap-3 min-w-0' : 'flex items-center justify-between gap-6'}>
         {/* `min-w-0` so a long help line wraps instead of pushing the control off the
             card — a row may carry more than one of them. */}
-        <div className="min-w-0">
-          {/* The mark rides ON the name's line rather than in a gutter of its own: a
-              settings card has no gutter, and one carved out for the four rows that have
-              a mark would indent the other fifty-six for nothing. */}
-          <span className="flex items-center gap-1.5">
-            {icon && (
-              <Icon glyph={icon} size="sm" tone="inherit" className="shrink-0 text-text-secondary/50" />
-            )}
-            <Text size="sm" weight="medium">
-              {label}
-            </Text>
-          </span>
-          {hint && (
-            // A wrapping flex rather than a block, so a cap sits ON the line it ends
-            // rather than under it, and a long help line still wraps between words.
-            <span className="mt-0.5 flex flex-wrap items-center gap-1 opacity-50">
-              <Text size="xs" tone="secondary">
-                {hint}
-              </Text>
-              {hintKeys?.map((keys) => (
-                // The chord itself is the key: a row does not offer the same gesture twice.
-                <Kbd key={keys.join('+')} size="xs" keys={keys} />
-              ))}
+        <div className="flex min-w-0 items-stretch gap-3">
+          {/* 40px: the name's line and the help line under it, so the tile is as tall as
+              the row's text. FIXED AND NOT STRETCHED: a square that stretches to its row
+              feeds its own width back into the text's wrapping, and the loop only stops
+              when the tile is as wide as the card. */}
+          {mark && (
+            <span
+              role="img"
+              aria-label={mark.title}
+              title={mark.title}
+              className="flex h-10 w-10 shrink-0 items-center justify-center self-center rounded-xl bg-surface-strong p-2 text-ink"
+            >
+              <mark.glyph className="h-full w-full" />
             </span>
           )}
+          <div className="min-w-0 self-center">
+            {/* The mark rides ON the name's line rather than in a gutter of its own: a
+                settings card has no gutter, and one carved out for the four rows that have
+                a mark would indent the other fifty-six for nothing. */}
+            <span className="flex items-center gap-1.5">
+              {icon && (
+                <Icon glyph={icon} size="sm" tone="inherit" className="shrink-0 text-text-secondary/50" />
+              )}
+              <Text size="sm" weight="medium">
+                {label}
+              </Text>
+            </span>
+            {hint && (
+              // A wrapping flex rather than a block, so a cap sits ON the line it ends
+              // rather than under it, and a long help line still wraps between words.
+              <span className="mt-0.5 flex flex-wrap items-center gap-1 opacity-50">
+                <Text size="xs" tone="secondary">
+                  {hint}
+                </Text>
+                {hintKeys?.map((keys) => (
+                  // The chord itself is the key: a row does not offer the same gesture twice.
+                  <Kbd key={keys.join('+')} size="xs" keys={keys} />
+                ))}
+              </span>
+            )}
+          </div>
         </div>
         {/* STACKED PUTS THE CONTROLS ON THEIR OWN ROW and lets them have the width —
             `shrink-0` is exactly wrong there, since the whole reason to stack is that the
