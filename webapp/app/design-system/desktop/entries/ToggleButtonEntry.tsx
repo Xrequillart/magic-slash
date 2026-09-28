@@ -13,7 +13,7 @@ const PROPS: PropRow[] = [
     name: 'flag',
     type: 'string',
     description:
-      'A language code drawn as the marketing site’s round flag, filling the whole tile, for the one grid where the tiles are choices of one thing rather than features: the quick-settings sheet picks the app’s language from a row of these. The flag is the fill, so the one in force wears a ring of the accent and the others stand back at half strength, in colour.',
+      'A language code drawn as the showcase site’s round flag, filling the whole tile, for the one grid where the tiles are choices of one thing rather than features: the quick-settings sheet picks the app’s language from a row of these. The flag is the fill, so the one in force wears a ring of the accent and the others stand back at half strength, in colour.',
   },
   {
     name: 'offIcon',

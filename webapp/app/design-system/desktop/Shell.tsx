@@ -273,7 +273,7 @@ const ENTRIES: Record<
  * heading and its own paragraph. A rail holds names.
  *
  * THE SELECTED ROW IS THE ONLY COLOUR ON THE RAIL: the brand fill a primary button wears
- * on the marketing site. Everything else is ink, muted and a hairline, so the one thing
+ * on the showcase site. Everything else is ink, muted and a hairline, so the one thing
  * that has to be findable at a glance is the only thing that is loud.
  */
 function Row({
@@ -372,7 +372,7 @@ export function Shell() {
             narrow one — a 256px column beside a props table does not survive being
             squeezed, and this page is read on a laptop anyway.
 
-            THE FACE AND THE SHAPE ARE THE MARKETING SITE'S. `font-display` at 13px is what
+            THE FACE AND THE SHAPE ARE THE SHOWCASE SITE'S. `font-display` at 13px is what
             `NAV_ITEM_BASE` gives the header's pills; the selected row wears the brand fill
             a primary button wears. Nothing here invents a colour or a corner.
 

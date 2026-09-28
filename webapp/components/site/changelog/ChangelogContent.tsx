@@ -86,7 +86,7 @@ import { HomeSection } from '../home/Shell'
  * and a list of two hundred releases holds together only if the date, the version and
  * the entries are visibly the same ink at three strengths.
  *
- * ── NO `marketing.css` ──────────────────────────────────────────────────────────────
+ * ── NO `showcase.css` ──────────────────────────────────────────────────────────────
  *
  * This tree is inside `homepageStylesheet.test.ts`'s scan (it walks `components/site/**`
  * and cuts out only `story/` and `documentation/`), so that is enforced rather than
@@ -137,7 +137,7 @@ export function ChangelogContent({ versions }: { versions: ChangelogVersion[] })
 
   return (
     // WHITE, not `canvas`. See the ink note above; `/features` paints its own ground the
-    // same way, and the `(marketing)` layout deliberately paints none.
+    // same way, and the `(showcase)` layout deliberately paints none.
     <div className="bg-white [--reveal-from:0px]">
       {/* A FADE AND NOT A RISE, and it is one custom property rather than a second
           animation. `reveal-a`/`reveal-b` translate by `var(--reveal-from, 0.75rem)`,

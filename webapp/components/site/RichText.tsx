@@ -13,7 +13,7 @@ import type { MessageKey } from '@/lib/i18n'
  * somewhere else, so the markup stays in the string where a translator can move it.
  *
  * `dangerouslySetInnerHTML` is safe here for a narrow, checkable reason: the only
- * possible input is `lib/i18n/marketing/*.ts`, which is checked into this repo and
+ * possible input is `lib/i18n/showcase/*.ts`, which is checked into this repo and
  * never interpolates anything from a user, a URL, or the network. `i18n.test.ts`
  * pins that down from the other side — it fails on any tag outside `<br>`,
  * `<strong>` and `<code>`, so widening this surface is a deliberate act rather than

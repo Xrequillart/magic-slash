@@ -56,9 +56,9 @@ import { useRevealClass } from './Reveal'
  * where they are made: an OPEN menu keeps the chip without a cursor, and the way in
  * rests on it.
  *
- * IN TAILWIND, where it used to be nine `marketing.css` classes. That stylesheet no
- * longer reaches these routes (see `app/(marketing)/layout.tsx`), so the geometry is
- * restated here in utilities — but not the geometry it defined. `marketing.css` drew a
+ * IN TAILWIND, where it used to be nine `showcase.css` classes. That stylesheet no
+ * longer reaches these routes (see `app/(showcase)/layout.tsx`), so the geometry is
+ * restated here in utilities — but not the geometry it defined. `showcase.css` drew a
  * floating pill: 52px tall, inset 16px, 12px from the top, its own rounded silhouette
  * capped at `max-w-site`. This bar is FULL-BLEED instead: 64px tall, flush to the top,
  * edge to edge, with a hairline under it. The sheet and the rule now run the whole width
@@ -92,7 +92,7 @@ import { useRevealClass } from './Reveal'
  * also what the server renders — so hydration matches rather than flickering through a
  * loading state on the one control everybody looks at.
  *
- * BELOW `md` THE BAR COLLAPSES, which the Tailwind rebuild had dropped: `marketing.css`
+ * BELOW `md` THE BAR COLLAPSES, which the Tailwind rebuild had dropped: `showcase.css`
  * hid `.header-nav` and `.header-cta-btn` under 768px and nothing here replaced it. The
  * arithmetic is not close. Going full-bleed bought back the pill's 16px inset and its
  * border, so the content box is now `viewport − 48` of `px-6`: 327px at 375px and 272px
@@ -458,7 +458,7 @@ export function SiteHeader() {
           <Logo variant="black" size="md" decorative />
         </Link>
 
-        {/* `hidden md:flex`: 768px is the threshold `marketing.css` used, and the same one
+        {/* `hidden md:flex`: 768px is the threshold `showcase.css` used, and the same one
             `MobileMenu` takes over below. */}
         <nav className="hidden items-center gap-1 md:flex">
           {/* THE PRODUCT MENU, back after a release without one — `NavDropdown` was left

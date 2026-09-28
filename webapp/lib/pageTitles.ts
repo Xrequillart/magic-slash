@@ -1,8 +1,8 @@
 import type { MessageKey } from '@/lib/i18n'
-import { marketingEn } from '@/lib/i18n/marketing/en'
+import { showcaseEn } from '@/lib/i18n/showcase/en'
 
 /**
- * THE BROWSER TAB'S TITLE, per marketing page, as catalogue keys.
+ * THE BROWSER TAB'S TITLE, per showcase page, as catalogue keys.
  *
  * TWO READERS, ONE TABLE. The server needs a title before any JavaScript runs, and it
  * cannot know the reader's language — that lives in the browser's `localStorage` (see
@@ -31,5 +31,5 @@ export type TitledPath = keyof typeof PAGE_TITLES
 
 /** The English title, for a page's `metadata`. */
 export function pageTitle(path: TitledPath): string {
-  return marketingEn[PAGE_TITLES[path]]
+  return showcaseEn[PAGE_TITLES[path]]
 }

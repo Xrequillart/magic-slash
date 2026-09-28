@@ -29,7 +29,7 @@ import { HomeHeading, HomeSection } from './Shell'
  * has already seen the thing that runs them. What the move buys is a page that goes from
  * abstract to concrete without a step back — what it is, what you do with it, then the
  * window where all of that happens — so the window reads as the PAYOFF of these five cards
- * instead of their preface. `app/(marketing)/page.tsx` holds the order and the reasoning
+ * instead of their preface. `app/(showcase)/page.tsx` holds the order and the reasoning
  * for all three middle bands.
  *
  * WHAT IS ON THE BAND IS NOT DECIDED HERE. `lib/workflow.ts` is the source of truth —
@@ -41,7 +41,7 @@ import { HomeHeading, HomeSection } from './Shell'
  * IT IS NOT "HOW IT WORKS" COMING BACK. That band was cut by the product owner and its
  * three moments — you describe, it builds, you approve — were a description of the
  * MECHANISM in the abstract, which is the part the owner judged a landing page does not
- * owe a reader (`app/(marketing)/page.tsx` records the argument and what the cut cost).
+ * owe a reader (`app/(showcase)/page.tsx` records the argument and what the cut cost).
  * These five are the opposite kind of thing: each one is a command you type, in the order
  * you type them, drawn as the artefact it produces. `site.how.*` stays retired in the
  * catalogues; nothing here reads it.

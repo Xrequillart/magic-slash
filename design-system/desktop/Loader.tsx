@@ -92,7 +92,7 @@ const TONES: Record<LoaderTone, string> = {
  *
  * They survive resizing because every one of them is a FRACTION of the box rather
  * than a pixel count: 0.375 and 0.8125 are 6 and 13 at the original 16px, and the
- * ratio is what the tuning actually depends on. The marketing site had already
+ * ratio is what the tuning actually depends on. The showcase site had already
  * proved that by hand, redrawing the same loader at 13px.
  *
  * Bars SCALE rather than change height, which keeps the animation off the layout

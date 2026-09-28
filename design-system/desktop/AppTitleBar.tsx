@@ -13,7 +13,7 @@ import type { IconComponent } from './types'
  * what an agent is beyond a string and whether it has the focus. Hand it props and it
  * draws them; hand it none and it draws an empty 40px band the window can be dragged by.
  *
- * THE MARKETING SITE IS WHY, the same way it was for `Sidebar`. `AppWindowMockup` on the
+ * THE SHOWCASE SITE IS WHY, the same way it was for `Sidebar`. `AppWindowMockup` on the
  * public site redrew this bar by hand — the `w-16` gutter, the `p-[5px]` toggles and the
  * two sidebar SVGs copied path for path, with comments naming the lines they came from.
  * A drawing that IS the component cannot fall behind it.

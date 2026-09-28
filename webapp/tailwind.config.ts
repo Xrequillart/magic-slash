@@ -202,7 +202,7 @@ const statusIn = (hidden: number, shown: number) => ({
 // and passes no name: it is the traced picture, and the anchor does not move.
 //
 // EVERY ILLUSTRATION ON THE SITE IS ON ONE OF THESE, which is worth knowing before
-// retuning any of them. `bg-tone-*` is not only the marketing cards' ground: it is the
+// retuning any of them. `bg-tone-*` is not only the showcase cards' ground: it is the
 // plate behind every mockup on `/features` and on the homepage — `SplitViewMockup`,
 // `AgentsSidebarMockup`, `TasksModalMockup`, `RepoCardMockup` and a dozen more all sit on
 // `mist`, `sky` or `indigo`. So these six blooms are what a drawing of the app is
@@ -916,7 +916,7 @@ const config: Config = {
          *
          * A variable with a FALLBACK rather than a flat `INK`, and the fallback is
          * `INK`'s own channels: nothing on the public site sets `--c-ink`, so every
-         * `text-ink` on every marketing page resolves to #0A0A0A exactly as before.
+         * `text-ink` on every showcase page resolves to #0A0A0A exactly as before.
          * The design-system page writes the desktop's theme variables onto its
          * preview ground, and inside that one subtree the shared components' own
          * `text-ink` becomes the near-white those dark grounds need.
@@ -1054,7 +1054,7 @@ const config: Config = {
         // A VARIABLE WITH A FALLBACK, for the reason `ink` is one: the shared
         // components write `bg-accent/20` — and on `/design-system` that has to be the
         // DESKTOP's accent, not this site's. Nothing outside a theme ground sets
-        // `--c-accent`, so the fallback is what every marketing page actually resolves
+        // `--c-accent`, so the fallback is what every showcase page actually resolves
         // to, and it is `BLUE[50]` / `BLUE[40]`: this site's accent, one rung lighter
         // than `brand` and its hover one lighter again.
         //
@@ -1509,7 +1509,7 @@ const config: Config = {
       // (that one is a component with its own breakpoint map and centring behaviour,
       // and shadowing the name would make `max-w-container` read as a reference to it)
       // and not `page` because `/admin` is full-bleed on purpose — see the `regie`
-      // note above. This is the width of the MARKETING column specifically.
+      // note above. This is the width of the SHOWCASE column specifically.
       //
       // The signed-in product does not use it: its pages are on `max-w-*` sizes from
       // Tailwind's own scale, tuned per page, and nothing here changes them.

@@ -285,7 +285,7 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
       </ControlCenterGroup>
 
       {/* LANGUAGE — one tile per language, its flag on it, the one in force lit: the
-          marketing site's row of flags, as tiles. A radio in a switch's clothes: pressing
+          showcase site's row of flags, as tiles. A radio in a switch's clothes: pressing
           the lit one does nothing, pressing another moves the light. */}
       <ControlCenterGroup label={t('controlCenter.language')}>
         {LANGUAGE_IDS.map((id) => (

@@ -3,7 +3,7 @@ import type { LegalSection } from './privacyPage'
 
 /**
  * What `/terms` is made of: its chrome, and the eight headed clauses it renders in
- * order. The SENTENCES are in `lib/i18n/marketing/{en,fr}.ts`; this is the list of keys
+ * order. The SENTENCES are in `lib/i18n/showcase/{en,fr}.ts`; this is the list of keys
  * that says which of them the page actually reads.
  *
  * `lib/privacyPage.ts`'s shape, deliberately identical, and the header on that file

@@ -15,7 +15,7 @@ import { Text } from './Text'
  * is down it sets `data-control-center="open"` on `<html>`, and the APP blurs its own body
  * under that attribute with a plain `filter: blur()` — the one blur Chromium renders fully
  * here — in its stylesheet, where the app's layout is known. This folder cannot name that
- * region and does not try; the marketing site sees the attribute and does nothing with it.
+ * region and does not try; the showcase site sees the attribute and does nothing with it.
  *
  * It is the whole window that frosts, not the ground under the controls alone — the
  * product owner's choice among three, made knowing it: the other two were a frost cut from
@@ -36,7 +36,7 @@ import { Text } from './Text'
  *
  * WHAT IT DOES NOT DECIDE is what is on it. The tiles, the stepper, the pickers, the
  * card are the app's — grouped with `ControlCenterGroup`, which is the one bit of layout
- * this file offers — and the marketing site's drawing of the menu hands it a different
+ * this file offers — and the showcase site's drawing of the menu hands it a different
  * set. `Modal` takes the same position for the same reason.
  *
  * A PORTAL, like `Modal` and for `Modal`'s reason: a sheet rendered where the title bar

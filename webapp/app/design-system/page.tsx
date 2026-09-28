@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { marketingEn } from '@/lib/i18n/marketing/en'
+import { showcaseEn } from '@/lib/i18n/showcase/en'
 import { DesignSystemHome } from '@/components/site/designSystem/DesignSystemHome'
 
 /**
@@ -11,11 +11,11 @@ import { DesignSystemHome } from '@/components/site/designSystem/DesignSystemHom
  * A SERVER COMPONENT for the `metadata`, with the page in a client component next door:
  * the copy needs `useT()`. The same split `/desktop` and `/workflow` make. Not in
  * `PAGE_TITLES`, which `DocumentTitle` reads by the BROWSER's path — `/` on the design
- * host — and this page is not under the `(marketing)` layout that mounts it anyway.
+ * host — and this page is not under the `(showcase)` layout that mounts it anyway.
  */
 
 export const metadata: Metadata = {
-  title: marketingEn['site.meta.designSystemTitle'],
+  title: showcaseEn['site.meta.designSystemTitle'],
   description:
     'Prestige is the Magic Slash design system: every component shown is the one compiled into the app.',
 }

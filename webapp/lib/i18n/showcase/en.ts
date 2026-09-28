@@ -1,8 +1,8 @@
 /**
- * The public site's message catalogue — everything under `app/(marketing)`.
+ * The public site's message catalogue — everything under `app/(showcase)`.
  *
  * Kept SEPARATE from `lib/i18n/en.ts` rather than merged into it: the app catalogue is
- * product copy that mirrors the desktop app word for word, this one is marketing copy
+ * product copy that mirrors the desktop app word for word, this one is showcase copy
  * that gets rewritten on its own cadence, and one 800-line file with both invites edits
  * to the wrong half. `lib/i18n/index.ts` merges the two into the single flat namespace
  * `t()` reads.
@@ -30,7 +30,7 @@
  * because this file is the entire input and it is checked into the repo.
  */
 
-export const marketingEn = {
+export const showcaseEn = {
   // ── Nav ────────────────────────────────────────────────────────────────────
   'site.nav.howItWorks': 'How it works',
   /** Names the header's mobile disclosure — an icon-only trigger, so this IS its
@@ -1325,7 +1325,7 @@ export const marketingEn = {
   /**
    * RETIRED, AND KEPT. This pair dressed a fifth card — "a ticket cannot give the agent
    * orders" — cut when the band went to two rows of two. It stays in the catalogue for the
-   * reason every other retired family on this page does (`app/(marketing)/page.tsx` keeps
+   * reason every other retired family on this page does (`app/(showcase)/page.tsx` keeps
    * that list): nothing tests for an unused key, and bringing the card back should cost one
    * row in `lib/security.ts` rather than a rewrite.
    *
@@ -1541,7 +1541,7 @@ export const marketingEn = {
     'Kept the minimum: a fixed height clips the French copy, which runs longer. Your call.',
   'site.reviewCard.author': 'you',
   'site.reviewCard.comment1':
-    'Any marketing page missing from this set is 307-redirected to the app host, so the new route has to be added here as well as created.',
+    'Any showcase page missing from this set is 307-redirected to the app host, so the new route has to be added here as well as created.',
   'site.reviewCard.comment2':
     'This measures on every scroll event, several times per frame. Coalesce it with requestAnimationFrame, and mark the listener passive.',
   // ── The /features Spotlight and notification drawings ──────────────────────
@@ -2622,7 +2622,7 @@ export const marketingEn = {
     'Four append-only tables. One switch in the app turns off three of them at once, and it is on unless you turn it off. The fourth is written by the database itself and no switch reaches it, so it is described last rather than left out.<br><br><strong>Skill runs</strong>: the name of the <code>magic-</code> skill, when it started, when it ended, and whether it succeeded. Never the arguments it was given, and never the names of skills that are not ours.<br><br><strong>Usage</strong>: one row at the end of each Claude Code session, holding the model name and its stable identifier, every model identifier seen during that session, the cost the session reported, how long it lasted, how many lines it added and removed, and one figure expressed in tokens: the size of the context window of the model in use when the session ended. That last one is a capacity of the model, the same for every session run on it, and not a measure of what the session consumed. No count of the tokens the session used is written here: the column for it exists and is always left empty. The other token figure, how many were sitting in the context window when the status line last reported, is on the agent record described in the section above.<br><br><strong>Activity</strong>: what happened, on which ticket, the short summary of that ticket the agent is carrying, and which repositories were involved.<br><br><strong>Settings changes</strong>: the fourth table, and the switch above does not reach it, because it is written by the database rather than sent by the app. Every time your settings, one of your repositories, or the local path you bound to one of them is created, changed or deleted, a row records which field changed together with its previous value and its new one. For a local path, that means the path of your clone before and the path after. Changes to a team repository can be read by the other members of the organisation, since that configuration is theirs too; changes to your own settings and to your own local paths can be read by you alone.<br><br>The specification upload described above is a second switch, separate from the first and also on unless you turn it off. Turning it off changes nothing on disk: <strong>/magic:plan</strong> keeps writing the file exactly as before.',
   // The complete outbound list, and it is complete because there is nothing to leave
   // out: no analytics package, no crash reporter, no advertising and no payment
-  // processor appears in either `package.json`, and `app/(marketing)/layout.tsx` loads
+  // processor appears in either `package.json`, and `app/(showcase)/layout.tsx` loads
   // no third-party script. That absence is the most reassuring true thing this page has
   // to say, so it is said as a sentence rather than left as an omission.
   //
@@ -2757,7 +2757,7 @@ export const marketingEn = {
   'site.footer.tagline': 'From idea to merged PR, Magic Slash runs the cycle. You make the calls.',
 
   // ── Browser tab titles ───────────────────────────────────────────────────────
-  // One per marketing page, read by `lib/pageTitles.ts`: the English one is the page's
+  // One per showcase page, read by `lib/pageTitles.ts`: the English one is the page's
   // `metadata.title` (what the server sends and a crawler indexes), and `DocumentTitle`
   // swaps in the reader's language once the browser knows it. "·" and not a dash.
   'site.meta.homeTitle': 'Magic Slash · From idea to merged PR with Claude Code',
@@ -2808,7 +2808,7 @@ export const marketingEn = {
    * THE COLUMN IS GONE — cut by request, see `SiteFooter.tsx` — and TWO OF ITS KEYS
    * FINALLY HAVE PAGES. `site.footer.privacyLink` and `site.footer.termsLink` label the
    * two links in the footer's copyright row: `/privacy` and `/terms` are real routes
-   * under `app/(marketing)` now, listed in `PUBLIC_PATHS` and pinned there by
+   * under `app/(showcase)` now, listed in `PUBLIC_PATHS` and pinned there by
    * `hostRouting.test.ts`, and their copy is the `site.privacy.*` and `site.terms.*`
    * families further up this file.
    *

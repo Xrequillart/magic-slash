@@ -20,7 +20,7 @@ import { useT } from '../../i18n'
  * document stands on a `Card`. What is left here is what genuinely belongs to
  * the app: splitting a SKILL.md, resolving where it lives on disk, and the
  * markdown renderer — which is the desktop's own and has no business in a folder
- * the marketing site compiles.
+ * the showcase site compiles.
  */
 
 /** A skill's origin, as `Label` wants it: a value, never a class. */

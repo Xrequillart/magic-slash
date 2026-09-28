@@ -11,7 +11,7 @@ import { Text } from './Text'
  *
  * A repository's keywords, the labels a plan puts on every ticket it files, the files a
  * worktree copies over. All of them are the same object — a set of words, unordered, each
- * whole — and the app drew it twice: once here and once on the marketing site's settings
+ * whole — and the app drew it twice: once here and once on the showcase site's settings
  * form, which is the pairing that made it worth extracting rather than either copy alone.
  *
  * ── A CHIP IS NOT A `Label` ───────────────────────────────────────────────────────

@@ -25,7 +25,7 @@ const REPO_TABS = [
 const PROPS: PropRow[] = [
   { name: 'items', type: 'TabStripItem[]', required: true, description: 'Each is a key, a word, and optionally a mark — a glyph, or a person as { src, alt } data. The avatar wins over the icon where both are given.' },
   { name: 'activeKey', type: 'string | undefined', required: true, description: 'The tab in force. Controlled: which page is open decides what the caller draws under the rail, so the caller holds it. An unmatched key falls back to the first tab rather than to none — every strip here always has an active tab.' },
-  { name: 'onSelect', type: '(key: string) => void', description: 'A press, reporting the item’s own key back. Absent, the rail is a drawing — which is what the marketing site’s storyboards need.' },
+  { name: 'onSelect', type: '(key: string) => void', description: 'A press, reporting the item’s own key back. Absent, the rail is a drawing — which is what the showcase site’s storyboards need.' },
   { name: 'ariaLabel', type: 'string', required: true, description: 'Names the set for a screen reader — “Settings pages”. Translated.' },
   { name: 'className', type: 'string', fallback: "''", description: 'Margins and placement. Not the ground, the radius or the type.' },
 ]

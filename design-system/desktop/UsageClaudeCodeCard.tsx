@@ -69,7 +69,7 @@ export interface UsageClaudeCodeCardProps {
    * Whether the bars EASE between readings. On by default, and off for one reason: the
    * caller is already animating the percentages itself.
    *
-   * The marketing site's illustration is that caller. `ProgressBar`'s own note has the
+   * The showcase site's illustration is that caller. `ProgressBar`'s own note has the
    * measurement — a value that moves every frame restarts the ease on every one of
    * them, and the bar crawls behind the number it is supposed to be showing.
    */

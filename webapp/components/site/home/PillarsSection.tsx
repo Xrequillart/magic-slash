@@ -19,7 +19,7 @@ import { HomeSection } from './Shell'
  *
  * TWO CARDS AND NOT THREE. There is no third half of the product, and a grid that would
  * take one is a grid that invites someone to invent one — the cut bands this page has
- * already lost (`app/(marketing)/page.tsx` keeps that history) all started as a slot
+ * already lost (`app/(showcase)/page.tsx` keeps that history) all started as a slot
  * somebody had to fill.
  *
  * `midnight` BESIDE `sky`, one dark and one light, which is the rule `CARD_TONE_CYCLE`

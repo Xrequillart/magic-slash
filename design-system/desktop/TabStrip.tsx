@@ -44,7 +44,7 @@ import type { IconComponent } from './types'
  * is the objection `Switch` records about scaling a pill.
  *
  * THEME-AWARE THROUGHOUT: the rail, the pill and the labels are theme tokens
- * (`surface-*`, `ink`, `text-secondary`). The marketing site paints the same
+ * (`surface-*`, `ink`, `text-secondary`). The showcase site paints the same
  * two shapes with a solid light rail and a translucent black pill, which it can afford —
  * its pages have one appearance. Transplanted here they would be a pill that disappears
  * the moment the window is dark, so every colour goes through a token instead.

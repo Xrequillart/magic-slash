@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { marketingEn } from './i18n/marketing/en'
-import { marketingFr } from './i18n/marketing/fr'
+import { showcaseEn } from './i18n/showcase/en'
+import { showcaseFr } from './i18n/showcase/fr'
 import { ALL_KEYS, PAGE_CHROME, PRIVACY_PATH, SECTIONS } from './privacyPage'
 
 /**
@@ -31,8 +31,8 @@ import { ALL_KEYS, PAGE_CHROME, PRIVACY_PATH, SECTIONS } from './privacyPage'
  * value from here; `siteNav.test.ts` and `downloadPage.test.ts` read both the same way.
  */
 
-const site = (key: string) => (marketingEn as Record<string, string>)[key]
-const siteFr = (key: string) => (marketingFr as Record<string, string>)[key]
+const site = (key: string) => (showcaseEn as Record<string, string>)[key]
+const siteFr = (key: string) => (showcaseFr as Record<string, string>)[key]
 const webapp = (relative: string) => fileURLToPath(new URL(relative, import.meta.url))
 
 describe('the privacy page', () => {
@@ -85,8 +85,8 @@ describe('the privacy page', () => {
     // `PUBLIC_PATHS` cannot check this half: a listed path with no page behind it is a
     // clean 404, which is honest and still a dead link in the footer of every public
     // page. `features.test.ts` pins a visual to its component the same way.
-    const file = webapp(`../app/(marketing)${PRIVACY_PATH}/page.tsx`)
-    expect(existsSync(file), `app/(marketing)${PRIVACY_PATH}/page.tsx`).toBe(true)
+    const file = webapp(`../app/(showcase)${PRIVACY_PATH}/page.tsx`)
+    expect(existsSync(file), `app/(showcase)${PRIVACY_PATH}/page.tsx`).toBe(true)
 
     const page = readFileSync(file, 'utf8')
     expect(page).toContain('<PrivacyContent')

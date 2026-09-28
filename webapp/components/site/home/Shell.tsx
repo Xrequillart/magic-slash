@@ -10,7 +10,7 @@ import { RichText } from '../RichText'
  *
  * WHY NOT `Section` FROM `ui.tsx`. That one is a SURFACE — a white `rounded-2xl` card
  * with `shadow-card`, a `text-lg` title and a 24px pad, which is what a settings group
- * in the signed-in app looks like. A marketing band is the opposite shape: full-bleed,
+ * in the signed-in app looks like. A showcase band is the opposite shape: full-bleed,
  * no fill of its own, and a headline three times that size. Wrapping the homepage in
  * `Section` would have put six white cards on a white page, so the two do not share a
  * component. What they DO share is where the values come from: nothing below invents a
@@ -221,7 +221,7 @@ export function HomeSection({
  * centred axis — passing `text-center` into this would be a caller dressing a component.
  * (That was a band on this page until it moved to `/desktop`; the band that replaced it,
  * `AppSection`, is a split and uses `HomeHeading` like the rest.) See
- * `app/(marketing)/page.tsx` for the band that went.
+ * `app/(showcase)/page.tsx` for the band that went.
  */
 export function HomeHeading({
   eyebrow,

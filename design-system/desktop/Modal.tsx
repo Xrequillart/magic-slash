@@ -21,7 +21,7 @@ import { createPortal } from 'react-dom'
  *
  * WHICH IS ALSO WHAT `portalTo` IS FOR, on `SelectIcon`'s precedent. The app writes its
  * theme's `--c-*` variables on `:root`, so a dialog on the body inherits them and everything
- * resolves. A DRAWING of the app does not: the marketing site and `/design-system` put those
+ * resolves. A DRAWING of the app does not: the showcase site and `/design-system` put those
  * variables on one element, and a portal to the body lands OUTSIDE it — measured, the panel
  * came out fully transparent, because `bg-bg-secondary` had no variable to read. Pointing it
  * at the themed element is what makes the same component draw in both places.
@@ -29,7 +29,7 @@ import { createPortal } from 'react-dom'
  * THE ANIMATION IS THE CALLER'S. The app's enter and exit keyframes live in its own
  * stylesheet and this folder cannot reach them; `backdropClassName` and `className` are
  * where they go, along with the width. Handed nothing, the dialog simply appears — which is
- * what the marketing site's drawings of it want anyway.
+ * what the showcase site's drawings of it want anyway.
  *
  * `rounded-2xl` AND NO BORDER, which is `PageModal`'s frame exactly — the two are the
  * app's only dialogs and they were 12px-with-a-hairline and 16px-without. A panel lifted
@@ -102,7 +102,7 @@ export function Modal({
   scrollableGround = false,
 }: ModalProps) {
   /**
-   * MOUNTED BEFORE PORTALLED, because `document` does not exist while the marketing site is
+   * MOUNTED BEFORE PORTALLED, because `document` does not exist while the showcase site is
    * pre-rendered on the server and `createPortal` would throw there. One state flip after
    * the first client render costs nothing and is what lets this folder be imported by a
    * Next page at all.

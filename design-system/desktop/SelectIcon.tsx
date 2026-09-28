@@ -203,7 +203,7 @@ export interface SelectIconProps {
    * hears the press, but nothing here decides anything any more, and the outside-click
    * and Escape rules stand down with it: closing is the caller's to do.
    *
-   * IT EXISTS FOR THE DRAWINGS. The marketing site renders this component inside
+   * IT EXISTS FOR THE DRAWINGS. The showcase site renders this component inside
    * storyboards that open the menu on a TIMER — a pointer arrives, presses, the panel
    * appears, an item lights up — and a component that only opens on a real click
    * cannot be told that story. The alternative was a second menu drawn by hand beside

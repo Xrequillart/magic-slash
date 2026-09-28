@@ -380,7 +380,7 @@ const WELCOME = {
  * recording. This read `Try "/magic:continue PAY-318"` first, chosen to match the state
  * the rest of the window is in — and it was wrong twice over. Claude Code's own hints
  * are natural-language tasks, so a slash command there is this drawing inventing a
- * placeholder the product does not print; and a marketing shot whose one editable field
+ * placeholder the product does not print; and a showcase shot whose one editable field
  * tells the reader to type a command they have never seen sells the command instead of
  * the work. A sentence a person would actually say needs no glossary.
  *

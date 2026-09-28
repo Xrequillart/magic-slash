@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { marketingEn } from './i18n/marketing/en'
-import { marketingFr } from './i18n/marketing/fr'
+import { showcaseEn } from './i18n/showcase/en'
+import { showcaseFr } from './i18n/showcase/fr'
 import { ALL_KEYS, FIRST_LAUNCH, PAGE_CHROME, REQUIREMENTS } from './downloadPage'
 import { DOWNLOAD_PATH } from './siteNav'
 
@@ -16,8 +16,8 @@ import { DOWNLOAD_PATH } from './siteNav'
  * `features.test.ts` and `siteNav.test.ts` read their components the same way.
  */
 
-const site = (key: string) => (marketingEn as Record<string, string>)[key]
-const siteFr = (key: string) => (marketingFr as Record<string, string>)[key]
+const site = (key: string) => (showcaseEn as Record<string, string>)[key]
+const siteFr = (key: string) => (showcaseFr as Record<string, string>)[key]
 const webapp = (relative: string) => fileURLToPath(new URL(relative, import.meta.url))
 
 describe('the download page', () => {
@@ -56,7 +56,7 @@ describe('the download page', () => {
   })
 
   it('renders the real page behind the header row', () => {
-    const file = webapp(`../app/(marketing)${DOWNLOAD_PATH}/page.tsx`)
+    const file = webapp(`../app/(showcase)${DOWNLOAD_PATH}/page.tsx`)
     expect(existsSync(file)).toBe(true)
 
     const page = readFileSync(file, 'utf8')

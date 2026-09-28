@@ -747,7 +747,7 @@ export function Gallery() {
 
         <Block
           title="The coloured card — eight tones, and the ink comes with them"
-          why="Card is the product's surface: white, a hairline, one shadow rung, ~35 screens where the CONTENT is what should be read. ToneCard is the marketing pages' counterpart — the ground carries the colour, so the copy has to change ink with it. That pairing is why tone is a slot and not a className: a text-ink title on midnight is invisible, renders fine, and passes every check. Naming the tone names the ink. The gradients are declared in the Tailwind config, so an inline linear-gradient at a call site is the same unfindable value an arbitrary shadow is."
+          why="Card is the product's surface: white, a hairline, one shadow rung, ~35 screens where the CONTENT is what should be read. ToneCard is the showcase pages' counterpart — the ground carries the colour, so the copy has to change ink with it. That pairing is why tone is a slot and not a className: a text-ink title on midnight is invisible, renders fine, and passes every check. Naming the tone names the ink. The gradients are declared in the Tailwind config, so an inline linear-gradient at a call site is the same unfindable value an arbitrary shadow is."
         >
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {(Object.keys(CARD_TONES) as CardTone[]).map((tone) => (
@@ -1087,7 +1087,7 @@ export function Gallery() {
             from the paragraph now is the FACE and the weight together rather than the size alone.
           </p>
           <p className="mt-3 max-w-2xl text-sm text-muted">
-            The icons are the one place on a marketing band where the primary button&apos;s own{' '}
+            The icons are the one place on a showcase band where the primary button&apos;s own{' '}
             <code className="font-mono text-ink">brand</code> blue lands on something that is not a
             button — see &ldquo;Blue that is not the button&rdquo; at the end of this page, which is
             where that judgement gets checked. What makes it safe is that they are 20px glyphs at{' '}

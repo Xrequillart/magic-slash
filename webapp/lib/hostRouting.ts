@@ -11,7 +11,7 @@
  *
  * | Host                    | Serves                                     |
  * | ----------------------- | ------------------------------------------ |
- * | `magic-slash.io`        | the public site — `app/(marketing)`        |
+ * | `magic-slash.io`        | the public site — `app/(showcase)`        |
  * | `app.magic-slash.io`    | the product — `/dashboard`, and `/admin`   |
  * | `invite.magic-slash.io` | the invitation funnel — `/invite/<token>`  |
  * | `design.magic-slash.io` | the design system — `/design-system/*`     |
@@ -64,7 +64,7 @@ const SHARED_DOMAIN = 'magic-slash.io'
  * Listing the public side rather than the product side is deliberate, and it is about
  * which mistake each version makes when someone forgets to update it. Enumerating the
  * product's paths means a new page added to the app is reachable on the apex forever
- * and nobody notices. Enumerating the public ones means a new marketing page redirects
+ * and nobody notices. Enumerating the public ones means a new showcase page redirects
  * to `app.` — wrong, but wrong in the face of whoever loads it, on the first try.
  */
 const PUBLIC_PATHS = new Set([
@@ -90,7 +90,7 @@ const PUBLIC_PATHS = new Set([
   // out is worse than a bar with fewer rows. `lib/siteNav.ts` owns the paths and
   // `siteNav.test.ts` reads this file to pin each one against its page.
   //
-  // `/desktop` is the marketing page for the macOS app, and it is NOT `/application`:
+  // `/desktop` is the showcase page for the macOS app, and it is NOT `/application`:
   // that path belongs to the app's own settings section on `app.magic-slash.io`, where
   // it is decided by this list's own default (absent → the app host).
   //

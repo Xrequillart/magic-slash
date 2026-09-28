@@ -26,7 +26,7 @@ import type { WorkflowStepId } from './workflow'
  * to agree with the first. `workflowPage.test.ts` reads `desktop/icons.ts` as text and
  * checks every name lands there.
  *
- * NO COMMAND NAME IN ANY KEY, the rule every marketing module on this site keeps: the
+ * NO COMMAND NAME IN ANY KEY, the rule every showcase module on this site keeps: the
  * `/magic:…` strings are printed by the page from `lib/commands.ts`, whose template-literal
  * type makes a typo a compile error. In a catalogue they would be strings a translator can
  * edit and nothing can check.

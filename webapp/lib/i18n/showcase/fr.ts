@@ -1,7 +1,7 @@
-import type { marketingEn } from './en'
+import type { showcaseEn } from './en'
 
 /**
- * French catalogue for the public site. Typed against `marketingEn`, so a key added
+ * French catalogue for the public site. Typed against `showcaseEn`, so a key added
  * there and forgotten here is a tsc error rather than an English sentence on a French
  * page.
  *
@@ -11,7 +11,7 @@ import type { marketingEn } from './en'
  * than switching the site to "tu" — a visitor who reads the hero and then the story
  * page would otherwise be addressed two different ways on the same site.
  */
-export const marketingFr: Record<keyof typeof marketingEn, string> = {
+export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   // ── Nav ────────────────────────────────────────────────────────────────────
   'site.nav.howItWorks': 'Comment ça marche',
   'site.nav.menu': 'Menu du site',
@@ -791,7 +791,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Gardé le minimum : une hauteur fixe couperait la copie française, plus longue. À vous de trancher.',
   'site.reviewCard.author': 'vous',
   'site.reviewCard.comment1':
-    'Toute page marketing absente de cet ensemble est redirigée en 307 vers l’hôte de l’app : la nouvelle route doit donc être ajoutée ici, pas seulement créée.',
+    'Toute page showcase absente de cet ensemble est redirigée en 307 vers l’hôte de l’app : la nouvelle route doit donc être ajoutée ici, pas seulement créée.',
   'site.reviewCard.comment2':
     'Ceci mesure à chaque événement de scroll, plusieurs fois par frame. À regrouper avec requestAnimationFrame, et le listener doit être passif.',
   // Voir la note du catalogue anglais.

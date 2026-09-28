@@ -84,7 +84,7 @@ export interface ProgressBarProps {
    * changes every frame and it fights: each new value restarts a 500ms ease from
    * wherever the last one had got to, so the bar crawls behind the number and can end
    * up three times as full as the percentage beside it claims. Measured on the
-   * marketing site's context illustration, which ramps 0 → 54 over two seconds: the
+   * showcase site's context illustration, which ramps 0 → 54 over two seconds: the
    * bar sat at 88% of its final width while the label read 26%.
    */
   transition?: boolean

@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { HOME_CHROME, HOME_QUESTION_IDS, HOME_QUESTIONS, PAGE_CHROME, QUESTIONS } from './faq'
-import { marketingEn } from './i18n/marketing/en'
-import { marketingFr } from './i18n/marketing/fr'
+import { showcaseEn } from './i18n/showcase/en'
+import { showcaseFr } from './i18n/showcase/fr'
 
 /**
  * Runs in the ROOT vitest suite on the root `node_modules`, which is the reason
@@ -23,8 +23,8 @@ import { marketingFr } from './i18n/marketing/fr'
  * Same shape and same reasoning as `changelogPage.test.ts` next door.
  */
 
-const site = (key: string) => (marketingEn as Record<string, string>)[key]
-const siteFr = (key: string) => (marketingFr as Record<string, string>)[key]
+const site = (key: string) => (showcaseEn as Record<string, string>)[key]
+const siteFr = (key: string) => (showcaseFr as Record<string, string>)[key]
 
 describe('the FAQ page', () => {
   it('names keys the catalogues actually carry', () => {
@@ -189,8 +189,8 @@ describe('the documentation page it replaces', () => {
     for (const gone of [
       'app/(docs)',
       'components/site/documentation',
-      'lib/i18n/marketing/doc-en.ts',
-      'lib/i18n/marketing/doc-fr.ts',
+      'lib/i18n/showcase/doc-en.ts',
+      'lib/i18n/showcase/doc-fr.ts',
     ]) {
       expect(
         () => readFileSync(webapp(gone)),
@@ -203,7 +203,7 @@ describe('the documentation page it replaces', () => {
     // The `site.doc.*` family is what `MessageKey` used to reach through `docEn`. A
     // single one of those keys back in the site catalogue means the manual is being
     // rebuilt one paragraph at a time, which is how it grew the first time.
-    const stragglers = Object.keys(marketingEn).filter((key) => key.startsWith('site.doc.'))
+    const stragglers = Object.keys(showcaseEn).filter((key) => key.startsWith('site.doc.'))
     expect(stragglers, `site.doc.* keys back in the site catalogue: ${stragglers.join(', ')}`).toEqual([])
 
     // Matched on the IMPORT PATH, not on the names `docEn`/`docFr` — that module's own
@@ -212,7 +212,7 @@ describe('the documentation page it replaces', () => {
     // `homepageStylesheet.test.ts` makes about its own comments.
     const index = readFileSync(webapp('lib/i18n/index.ts'), 'utf8')
     expect(index, '`lib/i18n/index.ts` imports a doc catalogue again').not.toMatch(
-      /(?:import\s+[^'"\n]*from\s*|require\s*\(\s*)['"][^'"]*marketing\/doc-/,
+      /(?:import\s+[^'"\n]*from\s*|require\s*\(\s*)['"][^'"]*showcase\/doc-/,
     )
   })
 })

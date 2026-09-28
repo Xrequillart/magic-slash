@@ -342,7 +342,7 @@ function PillSwitch({ checked, onChange, label, size = 'sm', disabled }: DrawnSw
           and a colour left in the list is a colour some future theme switch will
           animate for no reason.
 
-          THE EASING OVERSHOOTS, and it is the marketing home's rather than this
+          THE EASING OVERSHOOTS, and it is the showcase home's rather than this
           file's invention: the switch in `MakeItYoursArt` was hand-tuned to this
           curve after the product owner found the plain one slow — "l'animation de
           l'activation est trop lente" — and what was wrong was never the duration.

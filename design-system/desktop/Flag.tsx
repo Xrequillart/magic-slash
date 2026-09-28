@@ -94,7 +94,7 @@ export function Flag({ code, className = 'h-3 w-[18px]' }: { code: string; class
 }
 
 /**
- * THE ROUND FLAG — the marketing site's, from `LanguagesArt`, ported for the language
+ * THE ROUND FLAG — the showcase site's, from `LanguagesArt`, ported for the language
  * tiles on the quick-settings sheet: a disc rather than a rectangle, because the tile it
  * fills is a circle and a rectangle cut to a circle loses its corners and its meaning.
  *

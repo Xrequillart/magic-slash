@@ -34,7 +34,7 @@ import { HomeHeading, HomeSection } from './Shell'
  * still says what the rule is for.
  *
  * IT IS NOT "the eight commands" COMING BACK, and the difference is worth being exact
- * about because that band's cut is documented at length in `app/(marketing)/page.tsx`.
+ * about because that band's cut is documented at length in `app/(showcase)/page.tsx`.
  * `CommandsSection` was a GRID: eight cards, one per command, each with a name and a line
  * of description — an inventory on a landing page, which is the thing `/features` exists
  * to be. This band shows no inventory at all. It makes one argument — eight skills carry a

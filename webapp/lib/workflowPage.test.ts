@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { isLiteralTitle } from './features'
-import { marketingEn } from './i18n/marketing/en'
-import { marketingFr } from './i18n/marketing/fr'
+import { showcaseEn } from './i18n/showcase/en'
+import { showcaseFr } from './i18n/showcase/fr'
 import { COMMAND_DESCRIPTIONS, WORKFLOW_STEPS } from './workflow'
 import {
   ART_COPY,
@@ -22,8 +22,8 @@ import {
  * real, and the module under test may import nothing that would stop it resolving here.
  */
 
-const site = (key: string) => (marketingEn as Record<string, string>)[key]
-const siteFr = (key: string) => (marketingFr as Record<string, string>)[key]
+const site = (key: string) => (showcaseEn as Record<string, string>)[key]
+const siteFr = (key: string) => (showcaseFr as Record<string, string>)[key]
 
 const webapp = (relative: string) => fileURLToPath(new URL(relative, import.meta.url))
 

@@ -21,7 +21,7 @@ import { useConfig } from '../hooks/useConfig'
  * fold into, so the mark announces what the CLICK does instead of what the panel is.
  * `ButtonIcon`'s `active` carries the state that the old icon was also trying to carry.
  *
- * The marketing site's `AppWindowMockup` had copied those SVGs path for path. It renders
+ * The showcase site's `AppWindowMockup` had copied those SVGs path for path. It renders
  * the component now, so the drawing and the app cannot disagree again.
  *
  * THE VIEW SWITCH IS GONE from the bar too: the split view is a tile on the quick

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 /**
- * `marketing.css` carries most of its reasoning in prose, and a broken comment there fails
+ * `showcase.css` carries most of its reasoning in prose, and a broken comment there fails
  * SILENTLY: a `*​/` that closes nothing does not stop the cascade, it makes the parser
  * swallow whatever follows until it can resync — which in practice means the next rule's
  * declarations vanish. Nothing else notices. `tsc`, ESLint and `next build` all pass, the
@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest'
  * with no dependency, which also keeps it inside what the root suite can resolve.
  */
 
-const CSS = fileURLToPath(new URL('../app/(marketing)/marketing.css', import.meta.url))
+const CSS = fileURLToPath(new URL('../app/(showcase)/showcase.css', import.meta.url))
 
 /** Lines carrying a `*​/` that closes no comment, and whether one is left open at EOF. */
 function scanComments(css: string) {
@@ -47,7 +47,7 @@ function scanComments(css: string) {
   return { strayCloses, unterminatedAt: open }
 }
 
-describe('marketing.css', () => {
+describe('showcase.css', () => {
   it('has no comment that closes twice or never closes', () => {
     const { strayCloses, unterminatedAt } = scanComments(readFileSync(CSS, 'utf8'))
 

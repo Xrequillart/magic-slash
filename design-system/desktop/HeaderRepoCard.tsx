@@ -64,7 +64,7 @@ export interface HeaderRepoCardProps {
    *
    * `className` IS THE CALLER'S TOO, and it was not for one release. `SelectIcon` only
    * takes margins and placement there — it says so itself — so nothing in it can break
-   * this row. What it buys is a HANDLE: the marketing site's scroll tour grabs the parts
+   * this row. What it buys is a HANDLE: the showcase site's scroll tour grabs the parts
    * it zooms to with a selector, and a part that lives inside a design-system component
    * has no `data-part` to be found by. A class is how the ticket card's two parts are
    * already marked, and the scripts trigger is the third. The alternative was the tour

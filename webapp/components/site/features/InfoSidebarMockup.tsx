@@ -228,7 +228,7 @@ const FIELD = (value: string) => ({
  * already accepts. The band's selector takes either form.
  *
  * A class as a selector hook rather than an escape hatch in the design system: a
- * marketing page's scroll animation has no business widening a component's API.
+ * showcase page's scroll animation has no business widening a component's API.
  */
 const part = (name: SidebarPart) => `part-${name}`
 

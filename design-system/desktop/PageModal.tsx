@@ -185,7 +185,7 @@ export function PageModal({
   }
   /**
    * MOUNTED BEFORE PORTALLED, `Modal`'s rule: `document` does not exist while the
-   * marketing site is pre-rendered on the server and `createPortal` would throw there.
+   * showcase site is pre-rendered on the server and `createPortal` would throw there.
    */
   const [ready, setReady] = useState(false)
   useEffect(() => setReady(true), [])

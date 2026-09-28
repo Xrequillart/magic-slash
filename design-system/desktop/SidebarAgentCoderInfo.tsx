@@ -22,7 +22,7 @@ import { TEXT_FACE } from './Text'
  * knew that usage is a `ContextAgentCard`, that a repository is a `HeaderRepoCard` above
  * a `BranchCard` above an `UnCommittedChangesCard`, and in what order. That is a DESIGN
  * decision living in an app file, where no drawing of this column could reach it — and
- * the marketing site, which draws this column too, had rebuilt the same arrangement by
+ * the showcase site, which draws this column too, had rebuilt the same arrangement by
  * hand and got a different one.
  *
  * SO THE APP HANDS IT DATA AND CALLBACKS, and nothing else. `usage` is a number and a
@@ -135,7 +135,7 @@ export interface SidebarAgentCoderInfoProps {
     label: string
     onClick: () => void
     /**
-     * The caller's own STATE on the box — the marketing site dims it while its scroll tour
+     * The caller's own STATE on the box — the showcase site dims it while its scroll tour
      * holds another card. Not the dashed rule, the radius or the ink: those are what this
      * slot moved in here to stop having three of.
      */

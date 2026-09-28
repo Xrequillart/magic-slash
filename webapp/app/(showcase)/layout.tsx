@@ -9,18 +9,18 @@ import { DocumentTitle } from '@/components/site/DocumentTitle'
  * `/features`, `/changelog`, `/faq`, `/workflow`, `/desktop`, `/download`, `/privacy`
  * and `/terms`.
  *
- * `marketing.css` IS NO LONGER IMPORTED HERE, and as of the Documentation page's
+ * `showcase.css` IS NO LONGER IMPORTED HERE, and as of the Documentation page's
  * removal it is no longer imported ANYWHERE. It was the old static site's stylesheet,
  * ~5,000 lines of it, and every page under this layout is off it: all of them are built
  * on the design system (`components/ui.tsx` over the tokens in `tailwind.config.ts`).
  * `/story` was the last page with a stylesheet of its own, `story.css`, and both are
  * deleted by request — the path 308s to the homepage (see `RETIRED_PATHS` in
- * `lib/hostRouting.ts`). `app/(docs)/layout.tsx` was `marketing.css`'s last importer;
+ * `lib/hostRouting.ts`). `app/(docs)/layout.tsx` was `showcase.css`'s last importer;
  * `/documentation` is deleted and `/faq` stands in its place. The file itself STAYS on disk, and the reason has changed: it
  * used to be held here by the ~86 `mk-*` classes `components/site/home/AppMockup.tsx`
  * was written against, and #270 deleted that component rather than porting it (see
  * `page.tsx`). Those rules are now stranded — nothing references them — so what keeps the
- * file is `app/(docs)/layout.tsx` and `lib/marketingCss.test.ts`, which still reads it.
+ * file is `app/(docs)/layout.tsx` and `lib/showcaseCss.test.ts`, which still reads it.
  * Pruning the dead block is a follow-up.
  *
  * Nothing global takes its place. The background is painted by whichever page owns it
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   description: 'From ticket to merge — without the busywork.',
 }
 
-export default function MarketingLayout({ children }: { children: React.ReactNode }) {
+export default function ShowcaseLayout({ children }: { children: React.ReactNode }) {
   return (
     // `data-site` is the hook `app/globals.css` uses to cut every CSS animation on the
     // public site below `lg` — see `lib/stillness.ts` for the JavaScript half of that

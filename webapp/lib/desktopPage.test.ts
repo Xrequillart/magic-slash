@@ -14,8 +14,8 @@ import {
   pick,
 } from './desktopPage'
 import { FEATURE_FAMILIES, isLiteralTitle } from './features'
-import { marketingEn } from './i18n/marketing/en'
-import { marketingFr } from './i18n/marketing/fr'
+import { showcaseEn } from './i18n/showcase/en'
+import { showcaseFr } from './i18n/showcase/fr'
 
 /**
  * What `/desktop` says under its hero, pinned from the root suite — the shape
@@ -23,8 +23,8 @@ import { marketingFr } from './i18n/marketing/fr'
  * be compiled here, so the data they render is what gets checked.
  */
 
-const site = (key: string) => (marketingEn as Record<string, string>)[key]
-const siteFr = (key: string) => (marketingFr as Record<string, string>)[key]
+const site = (key: string) => (showcaseEn as Record<string, string>)[key]
+const siteFr = (key: string) => (showcaseFr as Record<string, string>)[key]
 
 const webapp = (relative: string) => fileURLToPath(new URL(relative, import.meta.url))
 
@@ -69,7 +69,7 @@ describe('the /desktop bands', () => {
     for (const band of Object.values(DESKTOP_BANDS)) {
       expect(Object.keys(band).sort()).toEqual(['subtitle', 'title'])
     }
-    expect(Object.keys(marketingEn).filter((key) => /^site\.desktopPage\..*Eyebrow$/.test(key))).toEqual([])
+    expect(Object.keys(showcaseEn).filter((key) => /^site\.desktopPage\..*Eyebrow$/.test(key))).toEqual([])
   })
 
   it('shows no em dash anywhere on the page, in either language', () => {
@@ -234,7 +234,7 @@ describe('the /desktop bands', () => {
     const routing = readFileSync(webapp('./hostRouting.ts'), 'utf8')
     expect(routing, `${path} in PUBLIC_PATHS`).toContain(`'${path}',`)
 
-    expect(existsSync(webapp(`../app/(marketing)${path}/page.tsx`))).toBe(true)
+    expect(existsSync(webapp(`../app/(showcase)${path}/page.tsx`))).toBe(true)
 
     expect(FEATURE_FAMILIES.map((family) => family.anchor)).toContain(anchor)
   })

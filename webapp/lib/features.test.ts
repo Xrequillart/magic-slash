@@ -12,14 +12,14 @@ import {
   type Feature,
   type FeatureTitle,
 } from './features'
-import { marketingEn } from './i18n/marketing/en'
+import { showcaseEn } from './i18n/showcase/en'
 
 /**
  * Runs in the ROOT vitest suite on the root `node_modules`, which is the reason
  * `lib/features.ts` may not import anything but `lib/commands.ts` — see the note on that
  * file. THIS TEST EXISTING IS WHAT KEEPS THAT TRUE: add a `lucide-react`, a `next/*` or
  * a `./supabase` import over there and this fails to RESOLVE rather than shipping a
- * marketing page that drags the auth SDK into a bundle authenticating nobody.
+ * showcase page that drags the auth SDK into a bundle authenticating nobody.
  *
  * The other half of its job is the one a type cannot do, and it is worth being explicit
  * about WHY. `tsc` never runs on `webapp/` in CI (`.github/workflows/ci.yml` typechecks
@@ -588,13 +588,13 @@ describe('the copy every row points at', () => {
     // whole reason those four keys are named in `features.ts` instead of inline in the
     // JSX: a rename in the catalogues would otherwise blank the `h1` with every row
     // below it intact, and no test in the repository would have an opinion.
-    const catalogue = marketingEn as Record<string, string>
+    const catalogue = showcaseEn as Record<string, string>
     const missing = CATALOGUE_KEYS
       .filter(({ key }) => !isLiteralTitle(key))
       .filter(({ key }) => !catalogue[key])
       .map(({ where, key }) => `${where} → ${key}`)
 
-    expect(missing, `key(s) with no entry in marketingEn:\n  ${missing.join('\n  ')}`).toEqual([])
+    expect(missing, `key(s) with no entry in showcaseEn:\n  ${missing.join('\n  ')}`).toEqual([])
   })
 
   it('translates every family heading and intro rather than printing a name', () => {
@@ -610,7 +610,7 @@ describe('the copy every row points at', () => {
     // The six product names exist as literals precisely so they need no en/fr pair. One
     // that ALSO had a catalogue entry would be translated by whichever branch the page
     // took, and the entry would owe a row in `i18n.test.ts`'s exact allow-list.
-    const catalogue = marketingEn as Record<string, string>
+    const catalogue = showcaseEn as Record<string, string>
     for (const name of LITERAL_TITLES) {
       expect(catalogue[name], `\`${name}\` is a catalogue key as well as a literal`).toBeUndefined()
     }
@@ -624,7 +624,7 @@ describe('the copy every row points at', () => {
     expect(isLiteralTitle('Jira')).toBe(true)
     expect(isLiteralTitle('site.features.worktreesTitle')).toBe(false)
 
-    for (const key of Object.keys(marketingEn)) {
+    for (const key of Object.keys(showcaseEn)) {
       expect(key.startsWith('/'), `\`${key}\` would be printed rather than translated`).toBe(false)
     }
   })

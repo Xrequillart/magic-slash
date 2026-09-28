@@ -142,7 +142,7 @@ export type WorkflowStep = {
    *
    * Ids rather than the `/magic:…` strings: `lib/commands.ts` owns the spelling, and its
    * template-literal type is what makes a typo a compile error instead of a command on a
-   * marketing page that does not exist. Whoever renders these resolves them through that
+   * showcase page that does not exist. Whoever renders these resolves them through that
    * module — the drawings do, and so does the page.
    */
   commands: readonly MagicCommandId[]

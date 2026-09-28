@@ -293,7 +293,7 @@ export function Button({
  * Anchor styled as a Button — for external links (downloads) that must stay <a>.
  *
  * AND FOR CROSS-ORIGIN ROUTES, which is the case the parenthesis above does not name:
- * `LOGIN_PATH` leaves the marketing site for the app host, and there is no client-side
+ * `LOGIN_PATH` leaves the showcase site for the app host, and there is no client-side
  * navigation across origins to lose. `ButtonNavLink` below is the one to reach for
  * INSIDE one origin.
  */
@@ -416,7 +416,7 @@ export function Card({
 
 /**
  * THE COLOURED CARD. A gradient surface with a headline, a line under it and room
- * for a visual — the marketing pages' loud counterpart to `Card`, which is white and
+ * for a visual — the showcase pages' loud counterpart to `Card`, which is white and
  * deliberately quiet.
  *
  * WHY IT IS NOT A VARIANT OF `Card`. `Card` is the product's surface: white, a
@@ -826,7 +826,7 @@ export function LogoPlate({
  *
  * WHAT IT IS FOR, AND WHERE IT SITS BETWEEN THE OTHER TWO. `Card` is the product's plain
  * surface — white, a hairline, one shadow rung, and whatever you put in it. `ToneCard`
- * is the marketing counterpart, where the GROUND carries the colour and the copy has to
+ * is the showcase counterpart, where the GROUND carries the colour and the copy has to
  * change ink with it. This is the third shape: the ground stays white and readable, and
  * the colour is spent on one artwork panel that is allowed to be as loud as it likes.
  * That is what makes it the right card for a row about somebody else's product — the
@@ -938,7 +938,7 @@ export type SplitMedia = keyof typeof SPLIT_MEDIA
  * set in, and that recipe already has exactly one home (`BAND_TITLE` in
  * `components/site/home/Shell.tsx`, which `HomeHeading` renders). A `title` prop here
  * would have to respell it, and this file's own header is explicit that nothing may copy a
- * recipe back out — so the block takes the heading as `children` and the marketing page
+ * recipe back out — so the block takes the heading as `children` and the showcase page
  * hands it the component that already owns the type. `art` is a slot for the same reason
  * `ShowcaseCard`'s is: the arrangement knows how a band is split, not what a terminal
  * looks like.
@@ -1039,7 +1039,7 @@ export type FeaturePoint =
  * enough: 600 in the display face is heavier than 400 in the body face at the same
  * nominal size.
  *
- * `text-brand` ON THE ICON, and it is the one place on a marketing band where the primary
+ * `text-brand` ON THE ICON, and it is the one place on a showcase band where the primary
  * button's own blue appears on something that is not a button. That is deliberate rather
  * than an oversight: the icons are 20px glyphs at a hairline weight with no fill and no
  * plate, so there is nothing about them that could be mistaken for a control — and the

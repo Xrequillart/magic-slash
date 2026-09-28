@@ -18,7 +18,7 @@ import { isStill } from '@/lib/stillness'
  * from state and nothing can clobber it.
  *
  * This replaces `Fade.tsx`, and the difference is where the styling comes from: `Fade`
- * emitted `hero-fade` / `visible`, both defined only in `marketing.css`, and that
+ * emitted `hero-fade` / `visible`, both defined only in `showcase.css`, and that
  * stylesheet no longer reaches these routes. `animate-reveal-*` says the same thing —
  * 12px up, 400ms, opacity and translate together — from `tailwind.config.ts`.
  *
@@ -36,7 +36,7 @@ import { isStill } from '@/lib/stillness'
  * blocked, still downloading, or simply not yet hydrated, the first screen of the most
  * conversion-critical page on the site was blank, and only a client effect could ever
  * fill it in. (The stylesheet this replaced had the same flaw in `hero-fade` /
- * `visible`; it was survivable there because `marketing.css` was still painting the
+ * `visible`; it was survivable there because `showcase.css` was still painting the
  * page underneath it.)
  *
  * So THE RESTING STATE IS NOW THE ABSENCE OF EVERYTHING. An element in the entrance

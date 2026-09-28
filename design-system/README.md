@@ -16,7 +16,7 @@ design-system/
 ## The two halves share nothing
 
 Different palettes, different type scales, different grounds. A `Banner` from
-`desktop/` rendered on the marketing site would be wrong in every particular, and
+`desktop/` rendered on the showcase site would be wrong in every particular, and
 the reverse is just as true. **Never import across the two folders.** The day
 something genuinely belongs to both — a type, a naming rule, a layout primitive
 with no colour in it — it gets a `shared/` folder of its own rather than a home

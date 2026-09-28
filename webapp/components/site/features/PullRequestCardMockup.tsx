@@ -116,7 +116,7 @@ export function PullRequestCard({
           children would draw a stray hairline, because the card rules every child it is
           handed. Pointing at the card is close: the step is about the PR's identity, and
           the identity is the top of it. A design-system component that knew about a
-          marketing page's camera would be the wrong trade for the missing 40px. */}
+          showcase page's camera would be the wrong trade for the missing 40px. */}
       <div data-part="prHeader" className={focus === 'prHeader' ? `${FOCUS_RING} rounded-lg` : undefined}>
       <PullRequestCardComponent
         state="open"

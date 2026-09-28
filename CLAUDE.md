@@ -23,7 +23,7 @@ magic-slash/
 │   ├── src/preload/   #   Secure bridge main <-> renderer
 │   └── src/renderer/  #   React UI (pages, components, hooks, Zustand store)
 ├── webapp/            # Next.js site + web product, on Vercel (was docs/ on GitHub Pages)
-│   ├── app/           #   Routes: (marketing) at the apex, dashboard, admin, invite
+│   ├── app/           #   Routes: (showcase) at the apex, dashboard, admin, invite
 │   ├── middleware.ts  #   One host per front door — rules in lib/hostRouting.ts
 │   └── lib/           #   Supabase client, i18n catalogues, helpers
 ├── install/           # Uninstaller and CLI (bash)

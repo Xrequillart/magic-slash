@@ -2,8 +2,8 @@ import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { MAGIC_COMMANDS } from './commands'
-import { marketingEn } from './i18n/marketing/en'
-import { marketingFr } from './i18n/marketing/fr'
+import { showcaseEn } from './i18n/showcase/en'
+import { showcaseFr } from './i18n/showcase/fr'
 import {
   COMMAND_DESCRIPTIONS,
   WORKFLOW_CHROME,
@@ -28,8 +28,8 @@ import {
  * Same shape and same reasoning as `faq.test.ts` and `changelogPage.test.ts` next door.
  */
 
-const site = (key: string) => (marketingEn as Record<string, string>)[key]
-const siteFr = (key: string) => (marketingFr as Record<string, string>)[key]
+const site = (key: string) => (showcaseEn as Record<string, string>)[key]
+const siteFr = (key: string) => (showcaseFr as Record<string, string>)[key]
 
 const webapp = (relative: string) => fileURLToPath(new URL(relative, import.meta.url))
 
@@ -123,6 +123,6 @@ describe('the workflow band and its page', () => {
     // path with no page behind it is a clean 404, which is honest and still a dead button
     // on the homepage. `existsSync` is what `features.test.ts` uses to pin a visual to a
     // component, and it is the same idea — the file, or the reason it is missing.
-    expect(existsSync(webapp(`../app/(marketing)${WORKFLOW_PATH}/page.tsx`))).toBe(true)
+    expect(existsSync(webapp(`../app/(showcase)${WORKFLOW_PATH}/page.tsx`))).toBe(true)
   })
 })

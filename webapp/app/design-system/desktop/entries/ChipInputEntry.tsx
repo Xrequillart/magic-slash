@@ -40,7 +40,7 @@ export function ChipInputEntry({ theme, onOpen }: { theme: DesktopTheme; onOpen?
 
       <EntrySection
         title="Type one, press Enter"
-        note="A repository’s keywords, the labels a plan puts on every ticket, the files a worktree copies over. All of them are the same object — a set of words, unordered, each whole — and the app drew it twice: once in the desktop settings and once on the marketing site’s form."
+        note="A repository’s keywords, the labels a plan puts on every ticket, the files a worktree copies over. All of them are the same object — a set of words, unordered, each whole — and the app drew it twice: once in the desktop settings and once on the showcase site’s form."
       >
         <Stage theme={theme}>
           <Specimen label="with words, and empty">

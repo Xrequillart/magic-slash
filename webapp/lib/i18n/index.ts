@@ -1,8 +1,8 @@
 import { DEFAULT_LANGUAGE, LANGUAGE_LOCALE, type LanguageId } from './languages'
 import { en } from './en'
 import { fr } from './fr'
-import { marketingEn } from './marketing/en'
-import { marketingFr } from './marketing/fr'
+import { showcaseEn } from './showcase/en'
+import { showcaseFr } from './showcase/fr'
 
 /**
  * Translation, as a plain function of (key, language).
@@ -16,7 +16,7 @@ import { marketingFr } from './marketing/fr'
 /**
  * Two catalogues, one namespace.
  *
- * `en`/`fr` are the signed-in app's copy. `marketingEn`/`marketingFr` are the public
+ * `en`/`fr` are the signed-in app's copy. `showcaseEn`/`showcaseFr` are the public
  * site's.
  *
  * THERE WERE THREE. `docEn`/`docFr` carried `/documentation` — 675 positional keys of
@@ -30,7 +30,7 @@ import { marketingFr } from './marketing/fr'
  * is the SAME hook on a landing page and on the dashboard — which is why the language
  * switcher works everywhere without knowing where it is.
  */
-export type MessageKey = keyof typeof en | keyof typeof marketingEn
+export type MessageKey = keyof typeof en | keyof typeof showcaseEn
 
 /**
  * A translate function with the language already bound — what `useT()` returns.
@@ -40,11 +40,11 @@ export type MessageKey = keyof typeof en | keyof typeof marketingEn
 export type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string
 
 const CATALOGUES: Record<LanguageId, Record<MessageKey, string>> = {
-  en: { ...en, ...marketingEn },
-  fr: { ...fr, ...marketingFr },
+  en: { ...en, ...showcaseEn },
+  fr: { ...fr, ...showcaseFr },
 }
 
-export { en, fr, marketingEn, marketingFr }
+export { en, fr, showcaseEn, showcaseFr }
 
 /**
  * Translate `key` into `lang`, substituting `{name}` placeholders from `vars`.

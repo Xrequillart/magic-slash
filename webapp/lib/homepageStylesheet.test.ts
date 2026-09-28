@@ -3,28 +3,28 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 /**
- * Two LINT RULES wearing a test costume, in the shape `marketingCss.test.ts` and
+ * Two LINT RULES wearing a test costume, in the shape `showcaseCss.test.ts` and
  * `designTokens.test.ts` established: read the source as text, assert what it says.
  *
  * Both guard the same thing from two directions — that the homepage is genuinely OFF
- * `marketing.css` and stays off it — and both are here because breaking either fails
+ * `showcase.css` and stays off it — and both are here because breaking either fails
  * SILENTLY. `tsc`, ESLint and `next build` all pass either way, and the page still
  * renders: it just quietly goes back to being dressed by ~5,000 lines of the old static
  * site's stylesheet, which is the debt the rebuild paid off.
  *
- *   1. `app/(marketing)/layout.tsx` MUST NOT import `marketing.css`. One line re-adding
+ *   1. `app/(showcase)/layout.tsx` MUST NOT import `showcase.css`. One line re-adding
  *      it — a merge resolving the wrong way, someone fixing `/story` — hands every
  *      element on the homepage a second, older opinion about how it looks, and nothing
  *      announces it. That import's absence is acceptance criterion 3 of the rebuild.
  *
- *   2. NO `marketing.css` BUTTON CLASS may reappear on the homepage. That stylesheet
+ *   2. NO `showcase.css` BUTTON CLASS may reappear on the homepage. That stylesheet
  *      holds eleven rival button definitions; the rebuild replaced all of them with the
  *      single `Button` / `ButtonLink` recipe in `components/ui.tsx`. A pasted
  *      `className="btn-get-started"` would look right — the class is still on disk — so
  *      this is the only thing standing between the homepage and a twelfth button.
  *      Acceptance criterion 4.
  *
- * NOTHING IMPORTS `marketing.css` ANY MORE, which is new and changes what rule 1 is
+ * NOTHING IMPORTS `showcase.css` ANY MORE, which is new and changes what rule 1 is
  * guarding. `app/(docs)/layout.tsx` was the last importer, and `/documentation` has been
  * deleted (`/faq` replaced it; see `lib/faq.test.ts`). The FILE stays on disk, but no
  * longer because anything is dressed by it: the ~86 `mk-*` classes that held it here used
@@ -32,7 +32,7 @@ import { describe, expect, it } from 'vitest'
  * of porting it — the homepage's window is `home/AppWindowMockup.tsx` now, drawn in
  * tokens. Those rules are stranded. So the rule is no longer "the homepage is off a
  * stylesheet the docs still use" — it is "nothing is on it, and the homepage least of
- * all". `marketingCss.test.ts` still reads the file, which is what keeps it honest until
+ * all". `showcaseCss.test.ts` still reads the file, which is what keeps it honest until
  * the dead block is pruned.
  *
  * TEXT, and only text. The root suite runs on the ROOT `node_modules` and CI never
@@ -45,7 +45,7 @@ import { describe, expect, it } from 'vitest'
 const WEBAPP = new URL('../', import.meta.url)
 const path = (relative: string) => fileURLToPath(new URL(relative, WEBAPP))
 
-const MARKETING_LAYOUT = path('app/(marketing)/layout.tsx')
+const SHOWCASE_LAYOUT = path('app/(showcase)/layout.tsx')
 
 /**
  * The homepage's own tree: the route, the seven bands, and the chrome the layout wraps
@@ -56,7 +56,7 @@ const MARKETING_LAYOUT = path('app/(marketing)/layout.tsx')
  *
  * There were two exemptions, both for trees that legitimately used these classes rather
  * than to make the test pass. `documentation/` was exempt while `app/(docs)/layout.tsx`
- * still imported `marketing.css` for that page's typography; `story/` was exempt because
+ * still imported `showcase.css` for that page's typography; `story/` was exempt because
  * `/story` kept its own `story.css`, carrying the closing-CTA rules it used to borrow —
  * `.btn-get-started` and `.cta-btn` among them. Both pages are deleted (`/faq` replaced
  * the first; the second went by request, and `/story` 308s to the homepage now), so the
@@ -73,9 +73,9 @@ const SCANNED_EXTENSIONS = ['.ts', '.tsx']
 /**
  * Comments stripped, because BOTH rules below have a real false positive in prose.
  *
- * `SiteHeader.tsx`'s own header comment explains that `marketing.css` "hid
- * `.header-nav` and `.header-cta-btn` under 768px", and `app/(marketing)/layout.tsx`'s
- * says at length that `marketing.css` IS NO LONGER IMPORTED HERE. Both sentences exist
+ * `SiteHeader.tsx`'s own header comment explains that `showcase.css` "hid
+ * `.header-nav` and `.header-cta-btn` under 768px", and `app/(showcase)/layout.tsx`'s
+ * says at length that `showcase.css` IS NO LONGER IMPORTED HERE. Both sentences exist
  * so the next reader understands the change; neither may fail the test that protects
  * it. A rule about what the code does has to read the code.
  *
@@ -90,7 +90,7 @@ function stripComments(source: string): string {
 /** Every scanned file of the homepage tree, paired with its text, comments removed. */
 function homepageSources(): [path: string, source: string][] {
   const files = [
-    path('app/(marketing)/page.tsx'),
+    path('app/(showcase)/page.tsx'),
     ...readdirSync(path('components/site'), { recursive: true })
       .map(String)
       .filter((entry) => SCANNED_EXTENSIONS.some((ext) => entry.endsWith(ext)))
@@ -102,20 +102,20 @@ function homepageSources(): [path: string, source: string][] {
 }
 
 /**
- * Whether a module imports `marketing.css`, however it spells the path.
+ * Whether a module imports `showcase.css`, however it spells the path.
  *
- * Side-effect form (`import '../(marketing)/marketing.css'`) is the one both layouts
+ * Side-effect form (`import '../(showcase)/showcase.css'`) is the one both layouts
  * use; the `from` branch and `require` are covered so a different spelling cannot slip
  * the rule.
  */
-function importsMarketingCss(source: string): boolean {
-  return /(?:import\s+(?:[^'"\n]*\bfrom\s*)?|require\s*\(\s*)['"][^'"]*marketing\.css['"]/.test(
+function importsShowcaseCss(source: string): boolean {
+  return /(?:import\s+(?:[^'"\n]*\bfrom\s*)?|require\s*\(\s*)['"][^'"]*showcase\.css['"]/.test(
     stripComments(source),
   )
 }
 
 /**
- * The eleven-way button pile from `marketing.css`, by name.
+ * The eleven-way button pile from `showcase.css`, by name.
  *
  * MATCHED ON A BOUNDARY THAT TREATS `-` AS PART OF THE WORD, not as a `btn-` substring.
  * The case that forced it is gone — `AppMockup.tsx` carried `mk-panel-btn--right`, one of
@@ -124,7 +124,7 @@ function importsMarketingCss(source: string): boolean {
  * failed on that class, and a `\b` boundary would let a hypothetical `mk-status-btn` match
  * `status-btn` for the same reason. So: no `-` and no word character on either side.
  */
-const MARKETING_BUTTON_CLASSES = [
+const SHOWCASE_BUTTON_CLASSES = [
   'btn-get-started',
   'btn-secondary',
   'cta-btn',
@@ -138,15 +138,15 @@ const MARKETING_BUTTON_CLASSES = [
 ]
 
 const BUTTON_CLASS_PATTERN = new RegExp(
-  `(?<![-\\w])(?:${MARKETING_BUTTON_CLASSES.join('|')})(?![-\\w])`,
+  `(?<![-\\w])(?:${SHOWCASE_BUTTON_CLASSES.join('|')})(?![-\\w])`,
   'g',
 )
 
-describe('the homepage is off marketing.css', () => {
-  it('does not import the stylesheet in the (marketing) layout', () => {
+describe('the homepage is off showcase.css', () => {
+  it('does not import the stylesheet in the (showcase) layout', () => {
     expect(
-      importsMarketingCss(readFileSync(MARKETING_LAYOUT, 'utf8')),
-      '`app/(marketing)/layout.tsx` imports `marketing.css` again. The homepage is built on the design system (`components/ui.tsx` over the tokens in `tailwind.config.ts`); that stylesheet is the old static site and re-importing it dresses every element on the page a second time.',
+      importsShowcaseCss(readFileSync(SHOWCASE_LAYOUT, 'utf8')),
+      '`app/(showcase)/layout.tsx` imports `showcase.css` again. The homepage is built on the design system (`components/ui.tsx` over the tokens in `tailwind.config.ts`); that stylesheet is the old static site and re-importing it dresses every element on the page a second time.',
     ).toBe(false)
   })
 
@@ -158,16 +158,16 @@ describe('the homepage is off marketing.css', () => {
      *
      * It used to be held up by the other half of a pair: `app/(docs)/layout.tsx` DID
      * import the file, and asserting that kept the pattern honest. `/documentation` is
-     * deleted and nothing imports `marketing.css` any longer, so there is no real
+     * deleted and nothing imports `showcase.css` any longer, so there is no real
      * importer left to point at — hence a synthetic one. Same tripwire, no page required.
      */
-    expect(importsMarketingCss("import '../(marketing)/marketing.css'")).toBe(true)
-    expect(importsMarketingCss("import styles from './marketing.css'")).toBe(true)
-    expect(importsMarketingCss("require('../(marketing)/marketing.css')")).toBe(true)
+    expect(importsShowcaseCss("import '../(showcase)/showcase.css'")).toBe(true)
+    expect(importsShowcaseCss("import styles from './showcase.css'")).toBe(true)
+    expect(importsShowcaseCss("require('../(showcase)/showcase.css')")).toBe(true)
     // A stylesheet that is NOT this one, so the pattern is shown to discriminate rather
     // than to match any `.css` import. It was `'./story.css'` until that page was
     // deleted; `globals.css` is real and imported by the root layout.
-    expect(importsMarketingCss("import './globals.css'")).toBe(false)
+    expect(importsShowcaseCss("import './globals.css'")).toBe(false)
   })
 
   it('uses none of the stylesheet’s button classes', () => {
@@ -185,7 +185,7 @@ describe('the homepage is off marketing.css', () => {
 
     expect(
       offenders,
-      `marketing.css button class(es) back on the homepage:\n  ${offenders.join('\n  ')}\nUse \`Button\` / \`ButtonLink\` from \`components/ui.tsx\` — one recipe, four rungs — rather than a class from the stylesheet this page no longer loads.`,
+      `showcase.css button class(es) back on the homepage:\n  ${offenders.join('\n  ')}\nUse \`Button\` / \`ButtonLink\` from \`components/ui.tsx\` — one recipe, four rungs — rather than a class from the stylesheet this page no longer loads.`,
     ).toEqual([])
   })
 })

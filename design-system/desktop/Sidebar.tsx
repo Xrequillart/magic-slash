@@ -19,7 +19,7 @@ import type { IconComponent } from './types'
  * translator, no clock, no idea what an agent IS beyond a name and a state. Hand it
  * arrays and it draws them; hand it nothing and it draws an empty column.
  *
- * THAT IS THE WHOLE POINT, and the marketing site is why. `AgentsSidebarMockup` on the
+ * THAT IS THE WHOLE POINT, and the showcase site is why. `AgentsSidebarMockup` on the
  * public site was a 394-line REDRAWING of this column — band for band, every padding
  * copied out of `Sidebar.tsx` with a comment saying so — and it had already fallen
  * behind: it still shows a `Team` row with ⌘T, a page the app replaced with `Plans`.

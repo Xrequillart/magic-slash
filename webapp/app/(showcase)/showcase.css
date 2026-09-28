@@ -15,8 +15,8 @@
 /**
  * The public site's stylesheet, lifted from `docs/styles.css`.
  *
- * Imported by `app/(marketing)/layout.tsx` and therefore loaded ONLY on the
- * marketing routes — which is what makes it safe for a stylesheet this global to
+ * Imported by `app/(showcase)/layout.tsx` and therefore loaded ONLY on the
+ * showcase routes — which is what makes it safe for a stylesheet this global to
  * live in a Tailwind app. The signed-in pages never see it.
  *
  * Two deliberate edits against the original:

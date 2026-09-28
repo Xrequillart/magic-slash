@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { marketingEn } from './i18n/marketing/en'
-import { marketingFr } from './i18n/marketing/fr'
+import { showcaseEn } from './i18n/showcase/en'
+import { showcaseFr } from './i18n/showcase/fr'
 import * as siteNav from './siteNav'
 import {
   ALL_NAV_GROUPS,
@@ -40,8 +40,8 @@ import {
  * Same shape and same reasoning as `workflow.test.ts` and `skillsBand.test.ts` next door.
  */
 
-const site = (key: string) => (marketingEn as Record<string, string>)[key]
-const siteFr = (key: string) => (marketingFr as Record<string, string>)[key]
+const site = (key: string) => (showcaseEn as Record<string, string>)[key]
+const siteFr = (key: string) => (showcaseFr as Record<string, string>)[key]
 
 const webapp = (relative: string) => fileURLToPath(new URL(relative, import.meta.url))
 
@@ -74,8 +74,8 @@ describe('the site header nav', () => {
       // ② And something has to be there. `existsSync` is what `features.test.ts` uses to
       // pin a visual to its component — the file, or the reason it is missing.
       expect(
-        existsSync(webapp(`../app/(marketing)${row.href}/page.tsx`)),
-        `app/(marketing)${row.href}/page.tsx`,
+        existsSync(webapp(`../app/(showcase)${row.href}/page.tsx`)),
+        `app/(showcase)${row.href}/page.tsx`,
       ).toBe(true)
     }
   })
@@ -105,17 +105,17 @@ describe('the site header nav', () => {
     // `PlaceholderContent` reintroduced under a finished page would put "Coming soon"
     // beneath `/desktop`'s release notes, and nothing on the route would object.
     for (const row of ALL_NAV_ROWS) {
-      const page = readFileSync(webapp(`../app/(marketing)${row.href}/page.tsx`), 'utf8')
+      const page = readFileSync(webapp(`../app/(showcase)${row.href}/page.tsx`), 'utf8')
       expect(page, `${row.href} is written`).not.toContain('PlaceholderContent')
     }
 
     // And the two pages the homepage handed its own bands to still render them, which is
     // what makes the loop above a check on their CONTENT rather than on their absence.
     expect(
-      readFileSync(webapp(`../app/(marketing)${DESKTOP_PATH}/page.tsx`), 'utf8'),
+      readFileSync(webapp(`../app/(showcase)${DESKTOP_PATH}/page.tsx`), 'utf8'),
     ).toContain('<DesktopContent />')
     expect(
-      readFileSync(webapp(`../app/(marketing)${DOWNLOAD_PATH}/page.tsx`), 'utf8'),
+      readFileSync(webapp(`../app/(showcase)${DOWNLOAD_PATH}/page.tsx`), 'utf8'),
     ).toContain('<DownloadContent')
   })
 
@@ -164,8 +164,8 @@ describe('the site header nav', () => {
     expect(Object.keys(siteNav)).not.toContain('HELP_MENU')
     expect(Object.keys(siteNav)).not.toContain('HELP_MENU_LABEL')
     expect(Object.keys(siteNav)).not.toContain('STORY_NAV_ROW')
-    expect(existsSync(webapp('../app/(marketing)/best-practices/page.tsx'))).toBe(false)
-    expect(existsSync(webapp('../app/(marketing)/story/page.tsx'))).toBe(false)
+    expect(existsSync(webapp('../app/(showcase)/best-practices/page.tsx'))).toBe(false)
+    expect(existsSync(webapp('../app/(showcase)/story/page.tsx'))).toBe(false)
 
     for (const gone of ['site.nav.help', 'site.nav.bestPractices', 'site.nav.ourStory']) {
       expect(site(gone), `en.${gone}`).toBeUndefined()
@@ -311,7 +311,7 @@ describe('the site header nav', () => {
     expect(Object.keys(siteNav)).not.toContain('PLACEHOLDER_NOTE')
     expect(Object.keys(siteNav)).not.toContain('SOON_NOTE')
     expect(ALL_NAV_ROWS.map((row) => row.href)).not.toContain('/cloud')
-    expect(existsSync(webapp('../app/(marketing)/cloud/page.tsx'))).toBe(false)
+    expect(existsSync(webapp('../app/(showcase)/cloud/page.tsx'))).toBe(false)
     expect(existsSync(webapp('../components/site/PlaceholderContent.tsx'))).toBe(false)
 
     for (const gone of ['site.nav.cloud', 'site.cloudPage.title', 'site.pageSoon.note']) {

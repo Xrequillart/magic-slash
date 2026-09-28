@@ -61,7 +61,7 @@
   font-display: swap;
 }
 /* The two italics only the public site uses. Declared here with the rest of the
-   family rather than in `(marketing)/marketing.css`, so there is ONE place that
+   family rather than in `(showcase)/showcase.css`, so there is ONE place that
    says what Cera Pro is; without them the browser synthesises an oblique from the
    upright and the headline it is used on renders visibly wrong. */
 @font-face {
@@ -158,7 +158,7 @@ fieldset:disabled label:has(> input[type='checkbox']) {
 }
 
 /* THE PUBLIC SITE HOLDS STILL ON PHONES AND TABLETS. Every `animate-*` class under the
-   marketing layout (`[data-site]`, set in `app/(marketing)/layout.tsx`) is cut below
+   showcase layout (`[data-site]`, set in `app/(showcase)/layout.tsx`) is cut below
    Tailwind's `lg`. The width is the one `STILL_QUERY` names in `lib/stillness.ts`, which
    is where the JavaScript-driven loops read it — a rule here cannot import a constant, so
    the number lives in both places and each comment points at the other. Transitions are

@@ -196,7 +196,7 @@ export function SidebarEntry({
         note="The public site carried a 394-line redrawing of this column — band for band, every padding copied out of the app with a comment saying where it came from — and it had already fallen behind: it still showed a Team row the app had replaced with Plans. A drawing that IS the component cannot fall behind it."
       >
         <Stage theme={theme}>
-          <Snippet>{`// on the marketing site, inside an AppGround that paints the app's theme
+          <Snippet>{`// on the showcase site, inside an AppGround that paints the app's theme
 <Sidebar menu={PAGES} lists={[{ label: 'Agents', agents: AGENTS }]} version="v0.94.2" />`}</Snippet>
         </Stage>
       </EntrySection>

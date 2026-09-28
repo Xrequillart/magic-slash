@@ -29,7 +29,7 @@ import { NEW_ISSUE_URL } from '../links'
  * is no legal entity, because the repository names an author and not a company. There is
  * no GDPR legal basis and no certification, for the same reason. Where the code does not
  * settle a question, the copy says less. The notes beside the `site.privacy.*` family in
- * `lib/i18n/marketing/en.ts` name a migration or a module per claim.
+ * `lib/i18n/showcase/en.ts` name a migration or a module per claim.
  *
  * ── THE SHAPE ───────────────────────────────────────────────────────────────────────
  *
@@ -71,7 +71,7 @@ import { NEW_ISSUE_URL } from '../links'
  * one here would be inventing a mailbox nobody reads, on the page where being reachable
  * is the entire point.
  *
- * ── NO `marketing.css` ──────────────────────────────────────────────────────────────
+ * ── NO `showcase.css` ──────────────────────────────────────────────────────────────
  *
  * `homepageStylesheet.test.ts` walks `components/site/**` recursively, so this tree is in
  * it. Every value here is a token from `tailwind.config.ts`; there is no button on the

@@ -71,7 +71,7 @@ import { RichText } from '../RichText'
  * `.dmg`, and a download page ending on a second download button is the same ask twice;
  * `/changelog` makes the same call for the opposite reason.
  *
- * `bg-white` on the wrapper, like every page in this group: the `(marketing)` layout
+ * `bg-white` on the wrapper, like every page in this group: the `(showcase)` layout
  * paints no ground, so whichever page owns one paints its own.
  */
 

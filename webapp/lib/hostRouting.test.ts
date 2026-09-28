@@ -334,7 +334,7 @@ describe('resolveRewrite', () => {
         expect(resolveRewrite('magic-slash.io', path), path).toBeNull()
       }
       // The two legal pages, for the same reason: they are ordinary routes under
-      // `app/(marketing)`, and the only rewrite the apex has is its root.
+      // `app/(showcase)`, and the only rewrite the apex has is its root.
       for (const path of ['/privacy', '/terms']) {
         expect(resolveRewrite('magic-slash.io', path), path).toBeNull()
       }

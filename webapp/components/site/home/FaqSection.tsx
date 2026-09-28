@@ -93,7 +93,7 @@ import { HomeHeading, HomeSection } from './Shell'
  *
  * NO `id` ON THE BAND EITHER, which is the homepage's standing rule: every nav row that
  * names this page names a ROUTE, and the page publishes no same-page anchor. See
- * `app/(marketing)/page.tsx`. A `#faq` here would be the first, and it would compete
+ * `app/(showcase)/page.tsx`. A `#faq` here would be the first, and it would compete
  * with `/faq` in the header for the same word.
  */
 export function FaqSection() {

@@ -10,8 +10,8 @@ import {
 } from './languages'
 import { en } from './en'
 import { fr } from './fr'
-import { marketingEn } from './marketing/en'
-import { marketingFr } from './marketing/fr'
+import { showcaseEn } from './showcase/en'
+import { showcaseFr } from './showcase/fr'
 import { localeOf, t } from '.'
 
 /**
@@ -21,22 +21,22 @@ import { localeOf, t } from '.'
  */
 
 const CATALOGUES: Record<LanguageId, Record<string, string>> = {
-  en: { ...en, ...marketingEn },
-  fr: { ...fr, ...marketingFr },
+  en: { ...en, ...showcaseEn },
+  fr: { ...fr, ...showcaseFr },
 }
 
 /**
  * The app catalogue and the public site's are checked with the same three rules but
  * SEPARATE allow-lists for "legitimately identical in both languages". Merging the
- * lists would mean a marketing rewrite could silently mask an untranslated string in
+ * lists would mean a showcase rewrite could silently mask an untranslated string in
  * the product copy, and the two files are edited by different people.
  */
 const PAIRS = [
   { name: 'app', en: en as Record<string, string>, fr: fr as Record<string, string> },
   {
     name: 'site',
-    en: marketingEn as Record<string, string>,
-    fr: marketingFr as Record<string, string>,
+    en: showcaseEn as Record<string, string>,
+    fr: showcaseFr as Record<string, string>,
   },
 ] as const
 
@@ -69,7 +69,7 @@ describe('message catalogues', () => {
     // its keys are ordinary `site.faq.*` entries in the catalogue below. `faq.test.ts`
     // is what keeps the family from creeping back in.
     const appKeys = Object.keys(en)
-    const siteKeys = Object.keys(marketingEn)
+    const siteKeys = Object.keys(showcaseEn)
 
     expect(siteKeys.filter((key) => !key.startsWith('site.')), 'unprefixed site keys').toEqual([])
     expect(appKeys.filter((key) => key.startsWith('site.')), 'app keys in the site namespace').toEqual([])
@@ -96,8 +96,8 @@ describe('message catalogues', () => {
     // does not just lose bold — it leaks the tag into the rest of the page.
     const tags = (message: string) => (message.match(/<\/?[a-z]+>/g) ?? []).sort()
 
-    const source = marketingEn as Record<string, string>
-    const target = marketingFr as Record<string, string>
+    const source = showcaseEn as Record<string, string>
+    const target = showcaseFr as Record<string, string>
     for (const key of Object.keys(source)) {
       expect(tags(target[key]), `fr.${key} markup`).toEqual(tags(source[key]))
     }
@@ -110,7 +110,7 @@ describe('message catalogues', () => {
     // would put a URL in a translator's hands, and a `<script>` would end the argument.
     const ALLOWED = /^<\/?(br|strong|code|em)>$/
 
-    for (const catalogue of [marketingEn, marketingFr]) {
+    for (const catalogue of [showcaseEn, showcaseFr]) {
       for (const [key, message] of Object.entries(catalogue)) {
         for (const tag of message.match(/<[^>]+>/g) ?? []) {
           expect(ALLOWED.test(tag), `${key} contains ${tag}`).toBe(true)

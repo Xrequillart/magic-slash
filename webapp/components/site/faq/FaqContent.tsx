@@ -53,7 +53,7 @@ import { RichText } from '../RichText'
  *
  * `site.faq.*` PREDATES THE PAGE. Five of these questions were written as band ⑧ of the
  * homepage, which the rebuild cut; their keys sat in the catalogue unread until there
- * was somewhere to put them. See the note in `lib/i18n/marketing/en.ts`.
+ * was somewhere to put them. See the note in `lib/i18n/showcase/en.ts`.
  *
  * ── ONE INK AT SEVERAL ALPHAS ───────────────────────────────────────────────────────
  *
@@ -69,7 +69,7 @@ import { RichText } from '../RichText'
  * the `/changelog` rows' 70% — the reasoning is on the component, and it is about a row
  * that has no rule under it.
  *
- * ── NO `marketing.css` ──────────────────────────────────────────────────────────────
+ * ── NO `showcase.css` ──────────────────────────────────────────────────────────────
  *
  * `homepageStylesheet.test.ts` walks `components/site/**` and this tree is in it, so
  * that is enforced rather than remembered. Nothing here is a class from the old static
@@ -82,7 +82,7 @@ export function FaqContent() {
 
   return (
     // WHITE, not `canvas`. See the ink note above; `/features` and `/changelog` paint
-    // their own ground the same way, and the `(marketing)` layout deliberately paints
+    // their own ground the same way, and the `(showcase)` layout deliberately paints
     // none.
     <div className="bg-white [--reveal-from:0px]">
       {/* A FADE AND NOT A RISE, and it is one custom property rather than a second

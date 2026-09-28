@@ -63,7 +63,7 @@ export interface ToggleButtonProps {
   icon?: IconComponent
   /**
    * A FLAG AS THE WHOLE TILE — a language code, `fr`, drawn by `RoundFlag` filling the
-   * circle, the marketing site's disc flags as tiles.
+   * circle, the showcase site's disc flags as tiles.
    *
    * For the one grid where the tiles are not features but CHOICES of one thing: the
    * quick-settings sheet picks the app's language from a row of these, and a lucide
@@ -131,7 +131,7 @@ export function ToggleButton({
     : glyph
       ? <Icon glyph={glyph} size={shape.icon} tone="inherit" />
       : null
-  // ON IS THE THEME'S ACCENT. The marketing site's brand blue was tried for a moment
+  // ON IS THE THEME'S ACCENT. The showcase site's brand blue was tried for a moment
   // and put back — the colour question is open, and until it is settled the tiles wear
   // what every other lit control in the app wears.
   const ground = flag

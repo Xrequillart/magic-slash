@@ -63,7 +63,7 @@ import { VISUALS } from './visuals'
  * they came for. Which is also why there is no search and no filter — see the note in
  * `FeaturesSidebar.tsx`.
  *
- * NO `marketing.css`, and none of that stylesheet's eleven button recipes. This tree is
+ * NO `showcase.css`, and none of that stylesheet's eleven button recipes. This tree is
  * in `homepageStylesheet.test.ts`'s scan (it walks `components/site/**` and excludes only
  * `story/` and `documentation/`), so the rule is enforced rather than remembered: every
  * value below is a token from `tailwind.config.ts` or a primitive from `components/ui.tsx`.
@@ -216,7 +216,7 @@ export function FeaturesContent() {
   const { t } = useT()
 
   return (
-    // `bg-white` on the page's own root rather than in the `(marketing)` layout: that
+    // `bg-white` on the page's own root rather than in the `(showcase)` layout: that
     // layout also wraps the homepage (on `canvas`), so each page paints its own ground.
     // See the ink note above for why this one is white.
     <div className="bg-white">

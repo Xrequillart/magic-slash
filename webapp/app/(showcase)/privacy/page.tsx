@@ -16,7 +16,7 @@ import { PrivacyContent } from '@/components/site/privacy/PrivacyContent'
  * `app.magic-slash.io` instead, has been answered in the least reassuring way available.
  * `hostRouting.test.ts` pins the entry.
  *
- * THE METADATA IS ENGLISH ONLY, like every other page here. Nothing in `app/(marketing)`
+ * THE METADATA IS ENGLISH ONLY, like every other page here. Nothing in `app/(showcase)`
  * localises its `<title>`: the language is a client-side choice (`useLanguage`), and the
  * page is statically generated once. See `faq/page.tsx`.
  *
@@ -25,7 +25,7 @@ import { PrivacyContent } from '@/components/site/privacy/PrivacyContent'
  * answered. This one closes on what happens when you delete your account, and selling to
  * somebody who has just read the retention section would undo the tone of the page.
  *
- * WHAT THE COPY MAY SAY is decided in `lib/i18n/marketing/{en,fr}.ts`, and the rule it
+ * WHAT THE COPY MAY SAY is decided in `lib/i18n/showcase/{en,fr}.ts`, and the rule it
  * was written under is worth restating where somebody will edit it: every claim on this
  * page must be sourced from code in this repository. No retention period we do not
  * enforce, no legal entity we do not have, no certification we have not been given.

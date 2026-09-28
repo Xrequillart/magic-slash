@@ -14,8 +14,8 @@ import { loadChangelog } from '@/lib/changelog'
  *   • It was on the wrong chrome. `(docs)` is the one route group on this site with a
  *     dark theme and a full-height sidebar in place of the header and footer — right for
  *     a manual, wrong for a page people arrive at from a release note.
- *   • It was the last thing on the public site still dressed by `marketing.css`, the old
- *     static site's ~5,000-line stylesheet. Under `(marketing)` it is on the design
+ *   • It was the last thing on the public site still dressed by `showcase.css`, the old
+ *     static site's ~5,000-line stylesheet. Under `(showcase)` it is on the design
  *     system instead, and `homepageStylesheet.test.ts` keeps it there.
  *
  * A SERVER COMPONENT, which is the point of the split: `loadChangelog()` reads

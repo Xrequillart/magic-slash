@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 /**
  * This is a LINT RULE wearing a test costume, and it is here for the same reason
- * `marketingCss.test.ts` is: the thing it checks fails silently.
+ * `showcaseCss.test.ts` is: the thing it checks fails silently.
  *
  * A design system made of Tailwind classes has no compiler. Write
  * `shadow-[0_1px_2px_rgba(0,0,0,.06)]` at a call site and everything passes — `tsc`,
@@ -51,7 +51,7 @@ const SCANNED_EXTENSIONS = ['.ts', '.tsx', '.css']
  * replaced that page); `story.css` went with `/story`, deleted by request — the path
  * 308s to the homepage now, see `RETIRED_PATHS` in `lib/hostRouting.ts`.
  */
-const EXCLUDED_FILES = ['marketing.css']
+const EXCLUDED_FILES = ['showcase.css']
 
 /** Tailwind's own `boxShadow` scale, which needs no declaration of ours. */
 const BUILT_IN_SHADOWS = ['sm', 'md', 'lg', 'xl', '2xl', 'inner', 'none']

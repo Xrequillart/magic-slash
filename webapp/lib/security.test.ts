@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { marketingEn } from './i18n/marketing/en'
-import { marketingFr } from './i18n/marketing/fr'
+import { showcaseEn } from './i18n/showcase/en'
+import { showcaseFr } from './i18n/showcase/fr'
 import { SECURITY_CARDS, SECURITY_CHROME } from './security'
 
 /**
@@ -25,8 +25,8 @@ import { SECURITY_CARDS, SECURITY_CHROME } from './security'
  * rail nobody implements any more is the single worst thing this page could ship.
  */
 
-const site = (key: string) => (marketingEn as Record<string, string>)[key]
-const siteFr = (key: string) => (marketingFr as Record<string, string>)[key]
+const site = (key: string) => (showcaseEn as Record<string, string>)[key]
+const siteFr = (key: string) => (showcaseFr as Record<string, string>)[key]
 
 const repo = (relative: string) => fileURLToPath(new URL(`../../${relative}`, import.meta.url))
 const webapp = (relative: string) => fileURLToPath(new URL(relative, import.meta.url))

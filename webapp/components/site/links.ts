@@ -20,7 +20,7 @@ export const RELEASE_TAG_URL = `${GITHUB_REPO_URL}/releases/tag/v${LATEST_DESKTO
  * policy. They live in the repository, and they are read from there.
  *
  * THE SITE HAS `/privacy` AND `/terms` NOW — story #273 wrote them, as ordinary routes
- * under `app/(marketing)`, listed in `PUBLIC_PATHS` and linked from the footer's
+ * under `app/(showcase)`, listed in `PUBLIC_PATHS` and linked from the footer's
  * copyright row. THESE TWO ARE NOT THOSE TWO, which is the whole reason this note still
  * exists: that story added a privacy policy and terms of use, and it added no licence
  * page and no security page. So the argument below is unchanged for the two constants it

@@ -22,7 +22,7 @@ import { HomeHeading, HomeSection } from './Shell'
  *
  * IT IS THE LAST BAND BEFORE THE FAQ, and the two are doing related jobs in the right
  * order: this one answers the objection everybody has, and `FaqSection` answers the five
- * that are specific to the reader. `app/(marketing)/page.tsx` holds the running argument
+ * that are specific to the reader. `app/(showcase)/page.tsx` holds the running argument
  * for the page's order.
  *
  * ── WHY THE COPY IS SHORT AND THE VERIFICATION IS LONG ────────────────────────────

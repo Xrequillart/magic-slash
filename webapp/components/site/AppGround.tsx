@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { DESKTOP_THEMES, type DesktopThemeId } from '@/lib/desktopTheme'
 
 /**
- * A patch of the DESKTOP APP inside a marketing page.
+ * A patch of the DESKTOP APP inside a showcase page.
  *
  * It writes a theme's `--c-*` variables onto one element and paints the app's own
  * window colour under them, so a component from `design-system/desktop/` resolves its

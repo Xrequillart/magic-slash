@@ -117,13 +117,13 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * and `MkLoader.tsx` were kept on disk for #270 — unrendered, with a note on each saying
  * so — on the plan that this story would convert them from time-driven to scroll-driven.
  * It did not: those ~455 lines reference ~81 `mk-*` class names defined only in
- * `app/(marketing)/marketing.css`, which the `(marketing)` layout deliberately no longer
+ * `app/(showcase)/showcase.css`, which the `(showcase)` layout deliberately no longer
  * imports (acceptance criterion 3 of #268, guarded by `lib/homepageStylesheet.test.ts`),
  * so every one of them would have had to be ported to Tailwind anyway. Porting a
  * six-phase JS timeline to reach a static window nobody asked to animate is more work for
  * less, so the three files are DELETED and the window is written in tokens. The `.mk-*`
- * rules they were the only consumer of are still in `marketing.css`, now stranded: the
- * file stays because `(docs)` still imports it and `lib/marketingCss.test.ts` still reads
+ * rules they were the only consumer of are still in `showcase.css`, now stranded: the
+ * file stays because `(docs)` still imports it and `lib/showcaseCss.test.ts` still reads
  * it, and pruning the ~1,260-line "App illustrations" block out of it — 174 lines of it carrying
  * one of 86 distinct `.mk-*` selectors, and its `.pj-*` / `.rs-*` / `.ap-*` neighbours
  * unreferenced along with them — is a follow-up of its own.
@@ -193,8 +193,8 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * lockstep. Rather less of it is unreferenced now: `/features` reused a dozen of those
  * pairs instead of writing new ones, which is why they were kept.
  *
- * Rebuilt from zero on the design system landed by #267. There is no `marketing.css`
- * behind any of this — the `(marketing)` layout no longer imports it — so every band is
+ * Rebuilt from zero on the design system landed by #267. There is no `showcase.css`
+ * behind any of this — the `(showcase)` layout no longer imports it — so every band is
  * Tailwind over the tokens in `tailwind.config.ts` and the primitives in
  * `components/ui.tsx`. What that replaces: eight sections dressed by ~5,000 lines of
  * ported stylesheet, eleven rival button definitions among them.

@@ -286,7 +286,7 @@ export function Status({
    *
    * It costs the app nothing — a status changes when a skill reports or a person picks
    * one, both of them moments where a fade is what you want — and it is what lets the
-   * marketing site's scroll tour walk a reader through the eleven states without the
+   * showcase site's scroll tour walk a reader through the eleven states without the
    * pill flashing at each step.
    */
   /**

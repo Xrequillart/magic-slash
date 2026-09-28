@@ -43,7 +43,7 @@ export interface ContextAgentCardProps {
   /** How long it has taken, already formatted. */
   duration?: string
   /**
-   * Off when the CALLER is animating `contextPercent` itself — the marketing site's
+   * Off when the CALLER is animating `contextPercent` itself — the showcase site's
    * illustration ramps it every frame, and the fill's own easing fights a value that
    * moves that fast. See `ProgressBar`.
    */
@@ -63,7 +63,7 @@ export interface ContextAgentCardProps {
    * Margins, and the caller's own state on the plate. Not the ground, the padding or the
    * gap — those are the sidebar column's, and this card is drawn inside it.
    *
-   * It exists because the marketing site's scroll tour rings this card and zooms to it:
+   * It exists because the showcase site's scroll tour rings this card and zooms to it:
    * `SidebarAgentCoderInfo` renders the card itself now, so a wrapper `div` around it is
    * no longer somewhere a caller can reach.
    */
