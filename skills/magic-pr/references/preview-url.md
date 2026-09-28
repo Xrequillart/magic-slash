@@ -68,7 +68,7 @@ that puts the URL in the bullet also turns them into links against it:
 
 | Before | After |
 | ------ | ----- |
-| `1. Open ` + inline-code `/admin/dashboard` | `1. Open [/admin/dashboard](https://x-abc.vercel.app/admin/dashboard)` |
+| `1. [ ] Open ` + inline-code `/admin/dashboard` | `1. [ ] Open [/admin/dashboard](https://x-abc.vercel.app/admin/dashboard)` |
 
 The link's **text is the path itself**, and its href is `<preview base>` + `<that same path>`. That
 shape *is* the handle: this feature keeps no state, so a link is recognised as its own by its own
