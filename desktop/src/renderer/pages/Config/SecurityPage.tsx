@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { EmptyState, SettingsCard, type SettingsCardRow } from '@ds/desktop'
-import { Chrome, Firefox, Globe, LogOut, MagicSlash, MonitorSmartphone, RefreshCw, Safari, ShieldAlert } from '@ds/desktop/icons'
+import { EmptyState, SectionHeader, SettingsCard, type SettingsCardRow } from '@ds/desktop'
+import { Chrome, Firefox, Globe, LaptopMinimalCheck, LogOut, MagicSlash, MonitorSmartphone, RefreshCw, Safari, ShieldAlert } from '@ds/desktop/icons'
 import type { IconComponent } from '@ds/desktop/types'
 import type { AccountSession } from '../../../types'
 import { parseSessionAgent } from '../../../sessionAgent'
@@ -95,12 +95,18 @@ export function SecurityPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <SettingsCard title={t('security.current')} rows={current.map(row)} note={t('security.geoCredit')} />
-      {others.length === 0 ? (
-        <EmptyState icon={MonitorSmartphone}>{t('security.noOthers')}</EmptyState>
-      ) : (
-        <SettingsCard title={t('security.others')} rows={others.map(row)} note={t('security.note')} />
-      )}
+      <div>
+        <SectionHeader icon={LaptopMinimalCheck} title={t('security.current')} />
+        <SettingsCard rows={current.map(row)} note={t('security.geoCredit')} />
+      </div>
+      <div>
+        <SectionHeader icon={MonitorSmartphone} title={t('security.others')} count={others.length} />
+        {others.length === 0 ? (
+          <EmptyState icon={MonitorSmartphone}>{t('security.noOthers')}</EmptyState>
+        ) : (
+          <SettingsCard rows={others.map(row)} note={t('security.note')} />
+        )}
+      </div>
       {others.length > 1 && (
         <SettingsCard
           rows={[
