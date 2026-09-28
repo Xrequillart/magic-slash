@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.99.0] - 2026-09-28
+
+### Added
+
+- **Review**: Present a scored draft and ask before posting, per repo settings
+- **Desktop**: Add a review tab and a review language to repository settings
+- **Desktop**: Draw the app icon on the macOS grid with a white background
+- **Landing**: Replace the download buttons with a waitlist form backed by Supabase
+- **Landing**: Move the theme playground into the desktop gallery as a themes page
+- **Landing**: Add search, theme grid and used-by to the desktop design system
+- **Landing**: Give the design system a home page and move its galleries under it
+- **Landing**: Add a halves layout to tone cards
+- **Landing**: Serve the design system on design.magic-slash.io
+
+### Changed
+
+- **Landing**: Rename the marketing route group and vocabulary to showcase
+
 ## [0.98.6] - 2026-09-25
 
 ### Added
@@ -3351,6 +3369,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.99.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.99.0
 [0.98.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.6
 [0.98.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.5
 [0.98.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.4
