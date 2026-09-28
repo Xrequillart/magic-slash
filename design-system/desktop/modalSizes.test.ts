@@ -4,8 +4,10 @@ import {
   MODAL_COLUMN_GUTTER,
   MODAL_COLUMN_MEASURE,
   MODAL_COLUMN_PADDING,
+  PAGE_MODAL_RAIL_WIDTH,
   PAGE_MODAL_SIZES,
   PAGE_MODAL_WIDTH,
+  SETTINGS_RAIL_WIDTH,
 } from './modalSizes'
 
 /**
@@ -26,6 +28,10 @@ describe('PAGE_MODAL_WIDTH', () => {
 
   it('makes the column panel the measure plus both gutters, to the pixel', () => {
     expect(PAGE_MODAL_WIDTH.column).toBe(`${MODAL_COLUMN_MEASURE + MODAL_COLUMN_GUTTER * 2}px`)
+  })
+
+  it('makes the rail panel the rail plus exactly the column, so no page narrows beside it', () => {
+    expect(PAGE_MODAL_RAIL_WIDTH).toBe(`${SETTINGS_RAIL_WIDTH + parseFloat(PAGE_MODAL_WIDTH.column)}px`)
   })
 
   it('pads the travelling layer by the same gutter the panel was measured from', () => {

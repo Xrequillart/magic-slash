@@ -199,8 +199,10 @@ export {
   MODAL_COLUMN_MEASURE,
   MODAL_COLUMN_PADDING,
   MODAL_COLUMN_PADDING_Y,
+  PAGE_MODAL_RAIL_WIDTH,
   PAGE_MODAL_SIZES,
   PAGE_MODAL_WIDTH,
+  SETTINGS_RAIL_WIDTH,
 } from './modalSizes'
 export type { PageModalSize } from './modalSizes'
 export { MetaBlock } from './MetaBlock'
@@ -208,6 +210,8 @@ export type { MetaBlockProps } from './MetaBlock'
 export { Menu } from './Menu'
 export type { MenuGroup, MenuHeader, MenuItem, MenuProps } from './Menu'
 export { MenuSidebar } from './MenuSidebar'
+export { SettingsRail } from './SettingsRail'
+export type { SettingsRailGroup, SettingsRailProps, SettingsRailRow } from './SettingsRail'
 export type { MenuSidebarEntry, MenuSidebarProps } from './MenuSidebar'
 export { MenuSidebarItem } from './MenuSidebarItem'
 export type { MenuSidebarItemProps } from './MenuSidebarItem'

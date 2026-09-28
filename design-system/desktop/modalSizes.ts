@@ -86,3 +86,16 @@ export const PAGE_MODAL_WIDTH: Record<PageModalSize, string> = {
   page: '72rem',
   column: `${MODAL_COLUMN_MEASURE + 2 * MODAL_COLUMN_GUTTER}px`,
 }
+
+/**
+ * The settings window's left column, in px — `SettingsRail`'s width, and `SkillsRail`'s
+ * (`w-56`), because the two are the same object in two windows.
+ */
+export const SETTINGS_RAIL_WIDTH = 224
+
+/**
+ * The column panel with that rail beside it: the rail, then exactly the column it has
+ * always been. The rail is added and not carved out of the column, so every page that
+ * was measured for the column still fits it to the pixel.
+ */
+export const PAGE_MODAL_RAIL_WIDTH = `${SETTINGS_RAIL_WIDTH + MODAL_COLUMN_MEASURE + 2 * MODAL_COLUMN_GUTTER}px`
