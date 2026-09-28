@@ -64,6 +64,8 @@ export interface UserSettings {
   prReviewsAutoLaunchSkills: boolean | null
   launchMode: string | null
   defaultAgentType: string | null
+  defaultModel: string | null
+  confirmAgentArchive: boolean | null
 }
 
 export type UserSettingsPatch = Partial<UserSettings>
@@ -93,10 +95,12 @@ interface UserSettingsRow {
   pr_reviews_auto_launch_skills: boolean | null
   launch_mode: string | null
   default_agent_type: string | null
+  default_model: string | null
+  confirm_agent_archive: boolean | null
 }
 
 const COLUMNS =
-  'theme, sync_claude_theme, code_syntax, code_font_size, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_active, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type'
+  'theme, sync_claude_theme, code_syntax, code_font_size, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_active, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type, default_model, confirm_agent_archive'
 
 /** Maps a camelCase field to its column. Also the list of writable fields. */
 const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
@@ -124,6 +128,8 @@ const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
   prReviewsAutoLaunchSkills: 'pr_reviews_auto_launch_skills',
   launchMode: 'launch_mode',
   defaultAgentType: 'default_agent_type',
+  defaultModel: 'default_model',
+  confirmAgentArchive: 'confirm_agent_archive',
 }
 
 /** What the page shows before the fetch resolves, and when no row exists yet. */
@@ -152,6 +158,8 @@ export const EMPTY_SETTINGS: UserSettings = {
   prReviewsAutoLaunchSkills: null,
   launchMode: null,
   defaultAgentType: null,
+  defaultModel: null,
+  confirmAgentArchive: null,
 }
 
 
@@ -181,6 +189,8 @@ function toSettings(row: UserSettingsRow): UserSettings {
     prReviewsAutoLaunchSkills: row.pr_reviews_auto_launch_skills,
     launchMode: row.launch_mode,
     defaultAgentType: row.default_agent_type,
+    defaultModel: row.default_model,
+    confirmAgentArchive: row.confirm_agent_archive,
   }
 }
 

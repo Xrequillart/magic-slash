@@ -3,6 +3,7 @@ import { TabSweep } from './TabSweep'
 import { MODAL_COLUMN_PADDING } from '@ds/desktop'
 import { AboutPage } from '../pages/Config/AboutPage'
 import { AccountPage } from '../pages/Config/AccountPage'
+import { AgentsPage } from '../pages/Config/AgentsPage'
 import { ApplicationPage } from '../pages/Config/ApplicationPage'
 import { AppearancePage } from '../pages/Config/AppearancePage'
 import { ClaudeCodePage } from '../pages/Config/ClaudeCodePage'
@@ -17,6 +18,7 @@ import { useT, type MessageKey } from '../i18n'
 import {
   AppWindow,
   Bell,
+  Bot,
   Building2,
   CircleUserRound,
   CodeXml,
@@ -66,6 +68,7 @@ export type SettingsTab =
   | 'connections'
   | 'claude-code'
   | 'application'
+  | 'agents'
   | 'code-reviews'
   | 'notifications'
   | 'appearance'
@@ -106,6 +109,7 @@ const GROUPS: { id: string; labelKey: MessageKey; pages: SettingsPageEntry[] }[]
     labelKey: 'settings.group.features',
     pages: [
       { id: 'application', labelKey: 'settings.tab.application', icon: AppWindow },
+      { id: 'agents', labelKey: 'settings.tab.agents', icon: Bot },
       { id: 'code-reviews', labelKey: 'settings.tab.codeReviews', icon: CodeXml },
     ],
   },
@@ -162,6 +166,7 @@ export function SettingsModal() {
         {tab === 'connections' && <ConnectionsPage />}
         {tab === 'claude-code' && <ClaudeCodePage />}
         {tab === 'application' && <ApplicationPage />}
+        {tab === 'agents' && <AgentsPage />}
         {tab === 'code-reviews' && <CodeReviewsPage />}
         {tab === 'notifications' && <NotificationsPage />}
         {tab === 'appearance' && <AppearancePage />}

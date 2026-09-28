@@ -113,6 +113,7 @@ export const en = {
   'settings.tab.appearance': 'Appearance',
   'settings.tab.language': 'Language & Region',
   'settings.tab.application': 'Application',
+  'settings.tab.agents': 'Agents',
   'settings.tab.codeReviews': 'Code & reviews',
   'settings.tab.shortcuts': 'Shortcuts',
   'settings.tab.about': 'About',
@@ -1157,6 +1158,21 @@ export const en = {
   'role.user.help': 'Can see the team and work on shared repositories',
   'role.admin': 'Admin',
   'role.admin.help': 'Can invite, change roles and archive the organization',
+
+  // ── Settings → Agents ────────────────────────────────────────────────────
+  'settings.agents.model.label': 'Model',
+  'settings.agents.model.help': 'The Claude model a new agent starts on. The list is the one your Claude Code offers in /model.',
+  'settings.agents.model.cliDefault': 'Claude Code default',
+  'settings.agents.model.cliDefaultHelp': 'Whatever /model is set to in Claude Code.',
+  'settings.agents.model.loading': 'Asking Claude Code for its models…',
+  'settings.agents.model.unavailable': 'Claude Code did not answer, so only its default is offered.',
+  'settings.agents.list.section': 'Agents list',
+  'settings.agents.sort.label': 'Order',
+  'settings.agents.sort.help': 'How the agents are ordered in the left sidebar. Also in the menu at the top of the list.',
+  'settings.agents.panel.section': 'Agent panel',
+  'settings.agents.archive.section': 'Archiving',
+  'settings.agents.archive.confirm.label': 'Confirm before archiving',
+  'settings.agents.archive.confirm.help': 'Ask before ⌘W or the title bar button archives an agent. Off, the agent is archived at once.',
 
   // ── Settings → Code & reviews ────────────────────────────────────────────
   'settings.code.section': 'Code',

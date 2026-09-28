@@ -1,5 +1,5 @@
 import type { Config, SpotlightConfig } from '../../types'
-import { isValidAgentSort, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidTheme } from '../../types'
+import { isValidAgentSort, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidTheme } from '../../types'
 import { isValidAgentType, isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 
 // ---------------------------------------------------------------------------
@@ -54,6 +54,8 @@ export interface UserSettingsRow {
   code_syntax: string | null
   code_font_size: number | null
   default_agent_type: string | null
+  default_model: string | null
+  confirm_agent_archive: boolean | null
   agent_sort: string | null
   tasks_repo: string | null
   plans_repo: string | null
@@ -68,7 +70,7 @@ export const USER_SETTINGS_COLUMNS =
   'notification_pr_changes_requested, split_enabled, split_active, pr_reviews_enabled, ' +
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
   'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
-  'language, sync_claude_theme, code_syntax, code_font_size, default_agent_type, agent_sort, tasks_repo, ' +
+  'language, sync_claude_theme, code_syntax, code_font_size, default_agent_type, default_model, confirm_agent_archive, agent_sort, tasks_repo, ' +
   'plans_repo'
 
 /**
@@ -98,6 +100,8 @@ export const SETTINGS_KEYS = [
   'autoStartAtLogin',
   'launchMode',
   'defaultAgentType',
+  'defaultModel',
+  'confirmAgentArchive',
   'agentSort',
   'tasksRepo',
   'plansRepo',
@@ -151,6 +155,8 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     code_syntax: orNull(config.codeSyntax),
     code_font_size: orNull(config.codeFontSize),
     default_agent_type: orNull(config.defaultAgentType),
+    default_model: orNull(config.defaultModel),
+    confirm_agent_archive: orNull(config.confirmAgentArchive),
     agent_sort: orNull(config.agentSort),
     tasks_repo: orNull(config.tasksRepo),
     plans_repo: orNull(config.plansRepo),
@@ -195,6 +201,10 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   // this one does not know, and that must read as "unset" rather than lay out an
   // agent as something this version cannot render.
   if (isValidAgentType(row.default_agent_type)) config.defaultAgentType = row.default_agent_type
+  // A model NAME, not an enum: the legal values are the installed CLI's, so the shape is
+  // all that can be checked. A name the CLI no longer knows is the CLI's to refuse.
+  if (isValidModelName(row.default_model)) config.defaultModel = row.default_model
+  if (isSet(row.confirm_agent_archive)) config.confirmAgentArchive = row.confirm_agent_archive
   // Re-validated like the four above: a sort mode this build does not know must read as
   // "unset" — the list then falls back to newest-first, the order it always had, rather
   // than to no order at all.

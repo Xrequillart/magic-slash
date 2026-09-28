@@ -42,11 +42,12 @@ import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '../config/defaults'
 import {
   AGENT_SORT_MODES, codeSyntaxTheme, DEFAULT_CODE_SYNTAX, DEFAULT_CODE_FONT_SIZE, isValidAgentSort,
-  isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidTheme,
+  isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidTheme,
   type CodeSample, type Config, type FilePreviewResult, type ChangedLines,
 } from '../../types'
 import { applyLanguage, applyTheme, currentTheme } from '../appearance'
 import { CODE_SAMPLES } from '../code-sample'
+import { listClaudeModels } from '../claude-models'
 import { unifiedSpecDiff } from '../store/specDiff'
 import {
   validateRepoName,
@@ -516,6 +517,30 @@ export function setupConfigHandlers() {
   ipcMain.handle('config:setInfoSidebarOnCreate', async (_event, { open }) => {
     if (typeof open !== 'boolean') throw new Error('Invalid infoSidebarOnCreate value: must be a boolean')
     const config = updateInfoSidebarOnCreate(open)
+    return { config }
+  })
+
+  // The model a new agent is launched on. `null` clears it: no `--model`, the CLI's own
+  // default. Read at spawn time (pty/terminal-manager.ts), so agents already running keep
+  // the model they started on.
+  ipcMain.handle('config:setDefaultModel', async (_event, { model }: { model: unknown }) => {
+    if (model !== null && !isValidModelName(model)) throw new Error('Invalid model name')
+    const config = readConfig()
+    if (model === null) delete config.defaultModel
+    else config.defaultModel = model
+    writeConfig(config)
+    return { config }
+  })
+
+  // What the installed CLI's `/model` offers, for the default-model picker. An empty list
+  // means no `claude` on this machine; a rejection, that it did not answer in time.
+  ipcMain.handle('claude:listModels', () => listClaudeModels())
+
+  ipcMain.handle('config:setConfirmAgentArchive', async (_event, { enabled }: { enabled: unknown }) => {
+    if (typeof enabled !== 'boolean') throw new Error('Invalid confirmAgentArchive value: must be a boolean')
+    const config = readConfig()
+    config.confirmAgentArchive = enabled
+    writeConfig(config)
     return { config }
   })
 

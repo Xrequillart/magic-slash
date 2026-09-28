@@ -1,28 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Banner,
   Card,
   EmptyLine,
   FactList,
   RateLimitBar,
   SectionHeader,
-  SettingRow,
   UsageTable,
   type FactListRow,
 } from '@ds/desktop'
-import { AlertTriangle, Coins, Gauge, Shield, User } from '@ds/desktop/icons'
+import { Coins, Gauge, User } from '@ds/desktop/icons'
 import { formatReset } from '../../components/agent-info-sidebar/LimitGauge'
-import { showToast } from '../../components/Toast'
-import { useConfig } from '../../hooks/useConfig'
 import { useStore } from '../../store'
 import { formatUsd } from '../../utils/usageStats'
-import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
-import { SELECT_WIDTH } from '../../theme/controls'
-import type { ClaudeAccount, LaunchMode, SpendSummary } from '../../../types'
+import { useLocale, useT, type Translate } from '../../i18n'
+import type { ClaudeAccount, SpendSummary } from '../../../types'
 
 /**
- * EVERYTHING ABOUT THE CLI ITSELF: the account it runs as, how it launches, and how
- * much of the plan it is consuming.
+ * EVERYTHING ABOUT THE CLI ITSELF: the account it runs as, and how much of the plan it
+ * is consuming. How an agent LAUNCHES it (the permission mode, the model) moved to the
+ * Agents page, beside the other decisions about a new agent.
  *
  * It was a tab of the settings modal and it is a tab of the account sheet's panel now,
  * which is the move the whole modal made: what is left in that window is repositories,
@@ -46,16 +42,6 @@ import type { ClaudeAccount, LaunchMode, SpendSummary } from '../../../types'
  * WHAT IS LEFT HERE IS THE READING: which account is on disk, which usage report is the
  * freshest, how a figure is written in the reader's language, and the optimistic writes.
  */
-
-// Message keys rather than labels: module scope is evaluated once at import, so a
-// literal here would pin the select to the boot language.
-const LAUNCH_MODE_OPTIONS: { value: LaunchMode; labelKey: MessageKey; descriptionKey: MessageKey }[] = [
-  { value: 'plan', labelKey: 'settings.launchMode.plan', descriptionKey: 'settings.launchMode.plan.help' },
-  { value: 'default', labelKey: 'settings.launchMode.default', descriptionKey: 'settings.launchMode.default.help' },
-  { value: 'acceptEdits', labelKey: 'settings.launchMode.acceptEdits', descriptionKey: 'settings.launchMode.acceptEdits.help' },
-  { value: 'auto', labelKey: 'settings.launchMode.auto', descriptionKey: 'settings.launchMode.auto.help' },
-  { value: 'bypassPermissions', labelKey: 'settings.launchMode.bypass', descriptionKey: 'settings.launchMode.bypass.help' },
-]
 
 // Human-readable label for a Claude seat tier / billing type. Not translated: these are
 // Anthropic's own plan names, identical in every language.
@@ -82,37 +68,7 @@ function formatTokensCompact(n: number, locale: string, t: Translate): string {
 export function ClaudeCodePage() {
   const t = useT()
   const locale = useLocale()
-  const config = useStore((s) => s.config)
   const terminals = useStore((s) => s.terminals)
-  const { updateLaunchMode } = useConfig()
-
-  const [launchMode, setLaunchMode] = useState<LaunchMode>(config?.launchMode ?? 'default')
-  const [showBypassWarning, setShowBypassWarning] = useState(false)
-
-  const configLaunchMode = config?.launchMode
-  useEffect(() => {
-    if (configLaunchMode !== undefined) setLaunchMode(configLaunchMode)
-  }, [configLaunchMode])
-
-  const applyLaunchMode = async (mode: LaunchMode) => {
-    const previous = launchMode
-    setLaunchMode(mode)
-    setShowBypassWarning(false)
-    try {
-      await updateLaunchMode(mode)
-      showToast(t('toast.launchModeUpdated'), 'success')
-    } catch {
-      setLaunchMode(previous)
-    }
-  }
-
-  const handleLaunchModeChange = (mode: LaunchMode) => {
-    if (mode === 'bypassPermissions') {
-      setShowBypassWarning(true)
-      return
-    }
-    applyLaunchMode(mode)
-  }
 
   // Latest known Claude account usage (plan rate limits). These are account-global, so
   // they're identical across agents — pick the most recently reported one that actually
@@ -181,8 +137,6 @@ export function ClaudeCodePage() {
       ].flatMap((fact) => (fact.value ? [{ ...fact, value: fact.value }] : []))
     : []
 
-  const activeLaunchMode = LAUNCH_MODE_OPTIONS.find((option) => option.value === launchMode)
-
   return (
     <div className="flex flex-col gap-8">
       {/* Account — the Claude identity read from ~/.claude, not the cloud account */}
@@ -190,47 +144,6 @@ export function ClaudeCodePage() {
         <SectionHeader icon={User} title={t('settings.claude.account')} />
         <Card>
           <FactList rows={accountFacts} empty={t('settings.claude.noAccount')} />
-        </Card>
-      </div>
-
-      <div>
-        <SectionHeader icon={Shield} title={t('settings.launchMode.section')} />
-        <Card className="flex flex-col gap-4">
-          <SettingRow
-            label={t('settings.launchMode.label')}
-            hint={t('settings.launchMode.help')}
-            note={activeLaunchMode ? t(activeLaunchMode.descriptionKey) : undefined}
-            control={{
-              kind: 'select',
-              value: launchMode,
-              options: LAUNCH_MODE_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.labelKey) })),
-              onChange: (next) => handleLaunchModeChange(next as LaunchMode),
-              ariaLabel: t('settings.launchMode.label'),
-              width: SELECT_WIDTH,
-            }}
-          />
-          {/* The one mode that asks before it is set. It is not a toast and not a modal:
-              the question is about the row above it and the answer changes that row, so
-              it belongs in the card, which is what `Banner` is. The confirm is the
-              primary — it is what the reader just asked for — and cancelling simply puts
-              the picker back where it was. */}
-          {showBypassWarning && (
-            <Banner
-              variant="danger"
-              icon={AlertTriangle}
-              layout="stacked"
-              actions={[
-                {
-                  label: t('settings.launchMode.bypassConfirm'),
-                  primary: true,
-                  onClick: () => applyLaunchMode('bypassPermissions'),
-                },
-                { label: t('common.cancel'), onClick: () => setShowBypassWarning(false) },
-              ]}
-            >
-              {t('settings.launchMode.bypassWarning')}
-            </Banner>
-          )}
         </Card>
       </div>
 

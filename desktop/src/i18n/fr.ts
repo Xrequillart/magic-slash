@@ -91,6 +91,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.tab.appearance': 'Apparence',
   'settings.tab.language': 'Langue et région',
   'settings.tab.application': 'Application',
+  'settings.tab.agents': 'Agents',
   'settings.tab.codeReviews': 'Code et reviews',
   'settings.tab.shortcuts': 'Raccourcis',
   'settings.tab.about': 'À propos',
@@ -1117,6 +1118,21 @@ export const fr: Record<keyof typeof en, string> = {
   'role.user.help': 'Peut voir l’équipe et travailler sur les dépôts partagés',
   'role.admin': 'Admin',
   'role.admin.help': 'Peut inviter, changer les rôles et archiver l’organisation',
+
+  // ── Réglages → Agents ────────────────────────────────────────────────────
+  'settings.agents.model.label': 'Modèle',
+  'settings.agents.model.help': 'Le modèle Claude sur lequel démarre un nouvel agent. La liste est celle que votre Claude Code propose dans /model.',
+  'settings.agents.model.cliDefault': 'Défaut de Claude Code',
+  'settings.agents.model.cliDefaultHelp': 'Celui réglé dans /model de Claude Code.',
+  'settings.agents.model.loading': 'Claude Code liste ses modèles…',
+  'settings.agents.model.unavailable': 'Claude Code n’a pas répondu : seul son modèle par défaut est proposé.',
+  'settings.agents.list.section': 'Liste des agents',
+  'settings.agents.sort.label': 'Ordre',
+  'settings.agents.sort.help': 'L’ordre des agents dans la barre latérale gauche. Aussi dans le menu en haut de la liste.',
+  'settings.agents.panel.section': 'Panneau de l’agent',
+  'settings.agents.archive.section': 'Archivage',
+  'settings.agents.archive.confirm.label': 'Confirmer avant d’archiver',
+  'settings.agents.archive.confirm.help': 'Demander avant que ⌘W ou le bouton de la barre de titre archive un agent. Désactivé, l’agent est archivé tout de suite.',
 
   // ── Réglages → Code et reviews ───────────────────────────────────────────
   'settings.code.section': 'Code',

@@ -2332,6 +2332,8 @@ describe('user settings', () => {
       sync_claude_theme: null,
       code_syntax: null,
       code_font_size: null,
+      default_model: null,
+      confirm_agent_archive: null,
     })
   })
 

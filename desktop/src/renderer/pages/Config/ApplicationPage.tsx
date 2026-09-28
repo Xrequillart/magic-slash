@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  AlertTriangle, BarChart3, Bot, Columns, Lightbulb,
+  AlertTriangle, BarChart3, Columns, Lightbulb,
   MonitorSmartphone, Search,
 } from '@ds/desktop/icons'
 import { DisclosureCard, SectionHeader, SettingsCard } from '@ds/desktop'
@@ -11,14 +11,13 @@ import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
 import { useT, type MessageKey } from '../../i18n'
 import { SELECT_WIDTH } from '../../theme/controls'
-import { showToast } from '../../components/Toast'
-import type { AgentType, SpotlightShortcut } from '../../../types'
+import type { SpotlightShortcut } from '../../../types'
 
 /**
  * THE APP ITSELF — how this machine is set up, and every feature that can be switched
  * off. The settings modal's Application tab, until the modal lost it.
  *
- * The PR watcher's card moved to Code & reviews (`CodeReviewsPage`), beside the palette
+ * The new-agent defaults moved to the Agents page (`AgentsPage`). The PR watcher's card moved to Code & reviews (`CodeReviewsPage`), beside the palette
  * the reviews it watches are read in.
  *
  * WHY IT IS A COMPONENT AND NOT A TAB ANY MORE. The quick-settings sheet took over the
@@ -97,20 +96,12 @@ const USAGE_LOGS_EXCLUDED: MessageKey[] = [
   'settings.application.usageLogs.excluded.otherSkills',
 ]
 
-// Message keys rather than labels: module scope is evaluated once at import, so a
-// literal here would pin the select to the boot language.
-const AGENT_TYPE_OPTIONS: { value: AgentType; labelKey: MessageKey; descriptionKey: MessageKey }[] = [
-  { value: 'coder', labelKey: 'agentType.coder', descriptionKey: 'agentType.coderHint' },
-  { value: 'planner', labelKey: 'agentType.planner', descriptionKey: 'agentType.plannerHint' },
-]
-
 export function ApplicationPage() {
   const t = useT()
   const { config, splitActive, toggleSplitActive, setConfig } = useStore()
-  const { updateSpotlight, updateDefaultAgentType } = useConfig()
+  const { updateSpotlight } = useConfig()
 
   const [autoStart, setAutoStart] = useState(false)
-  const [defaultAgentType, setDefaultAgentType] = useState<AgentType>(config?.defaultAgentType ?? 'coder')
   const [spotlightEnabled, setSpotlightEnabled] = useState(config?.spotlight?.enabled ?? true)
   const [spotlightShortcut, setSpotlightShortcut] = useState(config?.spotlight?.shortcut ?? 'Control+Space')
   const [spotlightError, setSpotlightError] = useState(false)
@@ -119,11 +110,6 @@ export function ApplicationPage() {
   useEffect(() => {
     window.electronAPI.config.getAutoStart().then(setAutoStart)
   }, [])
-
-  const configDefaultAgentType = config?.defaultAgentType
-  useEffect(() => {
-    if (configDefaultAgentType !== undefined) setDefaultAgentType(configDefaultAgentType)
-  }, [configDefaultAgentType])
 
   const configSpotlightEnabled = config?.spotlight?.enabled
   const configSpotlightShortcut = config?.spotlight?.shortcut
@@ -137,18 +123,6 @@ export function ApplicationPage() {
     if (configUsageLogsEnabled !== undefined) setUsageLogsEnabled(configUsageLogsEnabled)
   }, [configUsageLogsEnabled])
 
-
-  // Optimistic, then reverted on failure — the shape every write on this page uses.
-  const applyDefaultAgentType = async (type: AgentType) => {
-    const previous = defaultAgentType
-    setDefaultAgentType(type)
-    try {
-      await updateDefaultAgentType(type)
-      showToast(t('toast.defaultAgentTypeUpdated'), 'success')
-    } catch {
-      setDefaultAgentType(previous)
-    }
-  }
 
   const handleSpotlightToggle = async () => {
     const newEnabled = !spotlightEnabled
@@ -193,24 +167,6 @@ export function ApplicationPage() {
     errorMessage: t('settings.application.planSync.error'),
   })
 
-  // Written the same optimistic way as planSyncRow, and reaching for the same hook:
-  // the value is a plain boolean on the config and nothing else happens on the way.
-  // What it sets is only a FALLBACK — an agent whose panel has been toggled keeps its
-  // own state — so flipping it changes no agent already on screen that was decided
-  // about, which is why there is nothing to push into the store beyond the config.
-  const infoSidebarRow = useToggleRow({
-    label: t('settings.application.infoSidebar.label'),
-    help: t('settings.application.infoSidebar.help'),
-    value: config?.infoSidebarOnCreate,
-    onChange: async (next) => {
-      const result = await window.electronAPI.config.setInfoSidebarOnCreate(next)
-      setConfig(result.config)
-    },
-    errorMessage: t('toast.settingUpdateFailed'),
-  })
-
-  const activeAgentType = AGENT_TYPE_OPTIONS.find((option) => option.value === defaultAgentType)
-
   const usageLogsRow = useToggleRow({
     label: t('settings.application.usageLogs.label'),
     help: t('settings.application.usageLogs.help'),
@@ -252,34 +208,6 @@ export function ApplicationPage() {
                 label: t('settings.application.split.label'),
               },
             },
-          ]}
-        />
-      </div>
-
-      {/* New agents — what an agent IS the moment it is created, then what it looks
-          like. The type came from the Claude Code tab, which is about the CLI itself:
-          which account it runs as, how it launches, what it costs. Whether a new agent
-          is a coder or a planner is a decision about this app's agents, and it reads
-          here beside the panel they open with. */}
-      <div>
-        <SectionHeader icon={Bot} title={t('settings.application.agentDefaults.section')} />
-        <SettingsCard
-          rows={[
-            {
-              id: 'defaultAgentType',
-              label: t('settings.defaultAgentType.title'),
-              hint: t('settings.defaultAgentType.description'),
-              note: activeAgentType ? t(activeAgentType.descriptionKey) : undefined,
-              control: {
-                kind: 'select',
-                value: defaultAgentType,
-                options: AGENT_TYPE_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.labelKey) })),
-                onChange: (next) => applyDefaultAgentType(next as AgentType),
-                ariaLabel: t('settings.defaultAgentType.title'),
-                width: SELECT_WIDTH,
-              },
-            },
-            { id: 'infoSidebar', ...infoSidebarRow },
           ]}
         />
       </div>

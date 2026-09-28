@@ -1602,6 +1602,19 @@ export function codeSyntaxTheme(theme: unknown, choice: unknown): string {
  * 12 is the `text-xs` the preview always used. Bounded on both sides by the
  * `user_settings.code_font_size` CHECK.
  */
+export function isValidModelName(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= 100
+    && /^[A-Za-z0-9][A-Za-z0-9._:@/[\]-]*$/.test(value)
+}
+
+/** One entry of the model picker: what Claude Code's own `/model` offers. */
+export interface ClaudeModelOption {
+  /** What `--model` takes. */
+  value: string
+  label: string
+  description?: string
+}
+
 export const CODE_FONT_SIZES = [11, 12, 13, 14, 15, 16] as const
 
 export const DEFAULT_CODE_FONT_SIZE = 12
@@ -1722,6 +1735,7 @@ export interface Config {
     atlassian?: boolean
   }
   spotlight?: SpotlightConfig
+  /** A launch mode for Quick Launch alone. Absent = the Agents page's `launchMode`. */
   launchMode?: LaunchMode
   /**
    * What a NEW agent is, when nothing says otherwise. Absent = never chosen, and
@@ -1730,6 +1744,19 @@ export interface Config {
    * start is a property of the person, not of the machine.
    */
   defaultAgentType?: AgentType
+  /**
+   * The Claude model a NEW agent is launched on, passed to the CLI as `--model`. Absent =
+   * never chosen, and no flag is passed: the CLI's own default applies, i.e. whatever
+   * `/model` is set to in Claude Code. The legal values are not a list this app ships —
+   * they are what the installed CLI offers (see `claude:listModels`), so this is only
+   * checked for being a model NAME (`isValidModelName`), never against an enum.
+   */
+  defaultModel?: string
+  /**
+   * Whether archiving an agent (⌘W, the title bar's button) asks first. Absent = on,
+   * which is what it always did; only an explicit false archives at once.
+   */
+  confirmAgentArchive?: boolean
   /**
    * How the left sidebar orders its agents. Absent = never chosen, and the app
    * applies `recent` — the order the list has always had. Follows the account

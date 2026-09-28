@@ -24,6 +24,8 @@ const EVERY_FIELD: (keyof AdminUserSettings)[] = [
   'codeFontSize',
   'launchMode',
   'defaultAgentType',
+  'defaultModel',
+  'confirmAgentArchive',
   'agentSort',
   'infoSidebarOnCreate',
   'usageCardEnabled',

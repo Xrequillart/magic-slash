@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AvatarSourceResult, AvatarWriteResult } from '../avatar'
 import type { UsernameCheckResult, UsernameSaveResult } from '../username'
-import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanOverview, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
+import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanOverview, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -93,6 +93,11 @@ const configApi = {
     ipcRenderer.invoke('config:setPlanSyncEnabled', { enabled }),
   setInfoSidebarOnCreate: (open: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setInfoSidebarOnCreate', { open }),
+  setDefaultModel: (model: string | null): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setDefaultModel', { model }),
+  setConfirmAgentArchive: (enabled: boolean): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setConfirmAgentArchive', { enabled }),
+  listClaudeModels: (): Promise<ClaudeModelOption[]> => ipcRenderer.invoke('claude:listModels'),
   setDailyDigestEnabled: (enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setDailyDigestEnabled', { enabled }),
 

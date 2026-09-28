@@ -52,6 +52,8 @@ const emptyRow = (): UserSettingsRow => ({
   sync_claude_theme: null,
   code_syntax: null,
   code_font_size: null,
+  default_model: null,
+  confirm_agent_archive: null,
   default_agent_type: null,
   agent_sort: null,
   tasks_repo: null,

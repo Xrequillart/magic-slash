@@ -207,9 +207,17 @@ export function App() {
     }
   }, [closeAgentModal, killTerminal, closeCloseAgentModal])
 
+  // Settings → Agents can turn the question off. The request still goes through the
+  // modal's state, so ⌘W and the title bar's button keep one road, and is answered here
+  // at once instead of being drawn. Absent means ask, which is what it always did.
+  const skipArchiveConfirm = config?.confirmAgentArchive === false
+  useEffect(() => {
+    if (closeAgentModal && skipArchiveConfirm) handleCloseAgent()
+  }, [closeAgentModal, skipArchiveConfirm, handleCloseAgent])
+
   // Focus confirm button and listen for Enter/Escape when close agent modal is shown
   useEffect(() => {
-    if (!closeAgentModal) return
+    if (!closeAgentModal || skipArchiveConfirm) return
 
     setTimeout(() => confirmCloseButtonRef.current?.focus(), 0)
 
@@ -225,7 +233,7 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [closeAgentModal, handleCloseAgent, closeCloseAgentModal])
+  }, [closeAgentModal, skipArchiveConfirm, handleCloseAgent, closeCloseAgentModal])
 
   // Listen for tray:focusAgent IPC events
   useEffect(() => {
@@ -597,7 +605,7 @@ export function App() {
       <ToastContainer />
 
       {/* Global Close Agent Confirmation Modal */}
-      {closeAgentModal && (
+      {closeAgentModal && !skipArchiveConfirm && (
         <div
           className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-modal-backdrop"
           onClick={closeCloseAgentModal}

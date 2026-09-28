@@ -257,6 +257,8 @@ interface AdminUserDetailRpcRow {
   auto_start_at_login: boolean | null
   launch_mode: string | null
   default_agent_type: string | null
+  default_model: string | null
+  confirm_agent_archive: boolean | null
   atlassian_integration_enabled: boolean | null
   theme: string | null
   language: string | null
@@ -416,6 +418,8 @@ function toUserDetail(r: AdminUserDetailRpcRow): AdminUserDetail {
       autoStartAtLogin: r.auto_start_at_login,
       launchMode: r.launch_mode,
       defaultAgentType: r.default_agent_type,
+      defaultModel: r.default_model,
+      confirmAgentArchive: r.confirm_agent_archive,
       atlassianIntegrationEnabled: r.atlassian_integration_enabled,
       theme: r.theme,
       language: r.language,

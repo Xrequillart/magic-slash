@@ -67,6 +67,10 @@ export const DEFAULTS = {
   launchMode: 'default',
   // NULL means never chosen; the desktop resolves that to 'coder'.
   defaultAgentType: 'coder',
+  // NULL = no `--model`: the CLI's own default. Shown as that phrase, not as a model id.
+  defaultModel: 'Claude Code default',
+  // `=== false` in App.tsx: anything else still asks.
+  confirmAgentArchive: true,
 } as const
 
 /**
@@ -183,6 +187,8 @@ export const SETTING_GROUPS: SettingGroup[] = [
     title: 'New agents',
     fields: [
       { field: 'defaultAgentType', label: 'New agent is a' },
+      { field: 'defaultModel', label: 'Model' },
+      { field: 'confirmAgentArchive', label: 'Confirm before archiving' },
       { field: 'infoSidebarOnCreate', label: 'Info panel open' },
     ],
   },
