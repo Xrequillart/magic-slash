@@ -5,12 +5,16 @@ import {
   FactList,
   RateLimitBar,
   SectionHeader,
+  SettingsCard,
   UsageTable,
   type FactListRow,
 } from '@ds/desktop'
-import { Coins, Gauge, User } from '@ds/desktop/icons'
+import { Coins, Gauge, PanelLeft, User } from '@ds/desktop/icons'
 import { formatReset } from '../../components/agent-info-sidebar/LimitGauge'
 import { useStore } from '../../store'
+import { useConfig } from '../../hooks/useConfig'
+import { useToggleRow } from './ToggleRow'
+import { useFormatSelect } from './FormatSelect'
 import { formatUsd } from '../../utils/usageStats'
 import { useLocale, useT, type Translate } from '../../i18n'
 import type { ClaudeAccount, SpendSummary } from '../../../types'
@@ -69,6 +73,30 @@ export function ClaudeCodePage() {
   const t = useT()
   const locale = useLocale()
   const terminals = useStore((s) => s.terminals)
+  const { config, updateUsageCardEnabled, updateUsageCardMinimized } = useConfig()
+
+  // The left sidebar's usage card: the plan limits below, kept in view. It was a row of
+  // Appearance, beside panels it had nothing in common with but being optional; it reads
+  // here beside the very gauges it repeats.
+  //
+  // Both hooks at the top, not inside `trailing`: a hook called from a callback is a hook
+  // called conditionally. What the row decides is whether to OFFER the format.
+  const usageCardFormat = useFormatSelect({
+    minimized: config?.usageCardMinimized,
+    onChange: updateUsageCardMinimized,
+    ariaLabel: `${t('settings.appearance.sidebars.usageCard.label')} · ${t('settings.appearance.sidebars.format.label')}`,
+    errorMessage: t('toast.sidebarPanelFailed'),
+  })
+  const usageCardRow = useToggleRow({
+    label: t('settings.appearance.sidebars.usageCard.label'),
+    help: t('settings.appearance.sidebars.usageCard.help'),
+    value: config?.usageCardEnabled,
+    onChange: updateUsageCardEnabled,
+    errorMessage: t('toast.sidebarPanelFailed'),
+    // Hidden card, hidden format: asking how to lay out something that is not on screen
+    // is a question with no answer. The choice stays in the config for when it returns.
+    trailing: (enabled) => enabled && usageCardFormat,
+  })
 
   // Latest known Claude account usage (plan rate limits). These are account-global, so
   // they're identical across agents — pick the most recently reported one that actually
@@ -172,6 +200,12 @@ export function ClaudeCodePage() {
             <EmptyLine>{t('settings.rate.empty')}</EmptyLine>
           )}
         </Card>
+      </div>
+
+      {/* The sidebar card that keeps the gauges above in view */}
+      <div>
+        <SectionHeader icon={PanelLeft} title={t('settings.claude.usageCard.section')} />
+        <SettingsCard rows={[{ id: 'usageCard', ...usageCardRow }]} />
       </div>
 
       {/* Spend & tokens */}

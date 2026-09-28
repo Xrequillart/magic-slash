@@ -296,6 +296,7 @@ export const en = {
     'Security warning: Bypass mode disables all permission checks. Only use in sandboxed environments with no internet access.',
   'settings.launchMode.bypassConfirm': 'I understand, enable Bypass',
 
+  'settings.claude.usageCard.section': 'Usage card',
   'settings.rate.section': 'Rate usage',
   'settings.rate.empty':
     'No live rate-limit data yet — available for Claude.ai Pro/Max after the first agent activity.',

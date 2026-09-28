@@ -259,6 +259,7 @@ export const fr: Record<keyof typeof en, string> = {
     'Avertissement de sécurité : le mode Bypass désactive toutes les vérifications de permission. À n’utiliser que dans un environnement isolé, sans accès à Internet.',
   'settings.launchMode.bypassConfirm': 'J’ai compris, activer Bypass',
 
+  'settings.claude.usageCard.section': 'Carte d’usage',
   'settings.rate.section': 'Consommation du forfait',
   'settings.rate.empty':
     'Aucune donnée de limite en temps réel — disponible sur Claude.ai Pro/Max après la première activité d’un agent.',
