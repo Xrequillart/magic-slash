@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { AccountSettings, Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, PlanSession, PlanSpecInput, PlanTicketsInput, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
+import type { AccountSettings, Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, PlanSession, PlanSessionRef, PlanSpecInput, PlanTicketsInput, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
 import {
   AVATAR_BUCKET,
   AVATAR_CACHE_CONTROL,
@@ -1599,14 +1599,15 @@ export class CloudStore implements Store {
   private async upsertPlanSession(
     ctx: { client: SupabaseClient; uid: string },
     input: PlanSpecInput,
-  ): Promise<string | null> {
+  ): Promise<PlanSessionRef | null> {
     const { data, error } = await ctx.client
       .from('plan_sessions')
       .upsert(this.planSessionRow(input, ctx.uid), { onConflict: 'owner_id,spec_key' })
-      .select('id')
+      .select('id, number')
       .setHeader('x-magic-plan-source', 'agent')
     if (error) throw new Error(`plan_sessions upsert failed: ${error.message}`)
-    return ((data ?? []) as { id: string }[])[0]?.id ?? null
+    const row = ((data ?? []) as { id: string; number: number | null }[])[0]
+    return row ? { id: row.id, ...(typeof row.number === 'number' ? { number: row.number } : {}) } : null
   }
 
   /**
@@ -1615,10 +1616,10 @@ export class CloudStore implements Store {
    * userContext, not context: a plan written on a personal repository has no
    * organization, and requiring one would drop exactly those sessions.
    */
-  async savePlanSpec(input: PlanSpecInput): Promise<void> {
+  async savePlanSpec(input: PlanSpecInput): Promise<PlanSessionRef | null> {
     const ctx = await this.userContext()
-    if (!ctx) return
-    await this.upsertPlanSession(ctx, input)
+    if (!ctx) return null
+    return this.upsertPlanSession(ctx, input)
   }
 
   /**
@@ -1646,7 +1647,7 @@ export class CloudStore implements Store {
 
     const sessionId =
       (data as { id: string } | null)?.id ??
-      (await this.upsertPlanSession(ctx, { agentId: input.agentId, specPath: input.specPath }))
+      (await this.upsertPlanSession(ctx, { agentId: input.agentId, specPath: input.specPath }))?.id
     if (!sessionId) throw new Error('savePlanTickets failed: no plan session to attach the tickets to')
 
     const rows = input.tickets.map((ticket) => ({

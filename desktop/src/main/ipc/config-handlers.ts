@@ -41,11 +41,14 @@ import { getGitHubAuthStatus } from '../github'
 import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '../config/defaults'
 import {
-  AGENT_SORT_MODES, codeAppearance, DEFAULT_CODE_THEME_MODE, isValidAgentSort,
-  isValidCodeThemeMode, isValidLanguage, isValidTheme,
-  type Config, type FilePreviewResult, type ChangedLines,
+  AGENT_SORT_MODES, codeSyntaxTheme, DEFAULT_CODE_SYNTAX, DEFAULT_CODE_FONT_SIZE, isValidAgentSort,
+  cleanQuickSettings, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidTheme,
+  type CodeSample, type Config, type FilePreviewResult, type ChangedLines,
 } from '../../types'
 import { applyLanguage, applyTheme, currentTheme } from '../appearance'
+import { CODE_SAMPLES } from '../code-sample'
+import { listClaudeModels } from '../claude-models'
+import { unifiedSpecDiff } from '../store/specDiff'
 import {
   validateRepoName,
   validateRepoPath,
@@ -401,15 +404,36 @@ export function setupConfigHandlers() {
     return { config }
   })
 
-  // Which appearance the file preview's syntax highlighting is painted in. Nothing
-  // to re-apply: the highlighting is produced per read, and the renderer keys its
-  // cache on the resolved appearance, so the next read of a file already on screen
-  // comes back in the new one.
-  ipcMain.handle('config:setCodeTheme', async (_event, { mode }: { mode: unknown }) => {
+  // Which palette family code is highlighted in. Nothing to re-apply: the highlighting
+  // is produced per read, and the renderer keys its cache on the resolved shiki theme,
+  // so the next read of a file already on screen comes back in the new one.
+  ipcMain.handle('config:setCodeSyntax', async (_event, { choice }: { choice: unknown }) => {
     const config = readConfig()
-    config.codeTheme = isValidCodeThemeMode(mode) ? mode : DEFAULT_CODE_THEME_MODE
+    config.codeSyntax = isValidCodeSyntax(choice) ? choice : DEFAULT_CODE_SYNTAX
     writeConfig(config)
     return { config }
+  })
+
+  // The size code is set in. Drawn by the renderer alone (CodeView), so a write is all.
+  ipcMain.handle('config:setCodeFontSize', async (_event, { size }: { size: unknown }) => {
+    const config = readConfig()
+    config.codeFontSize = isValidCodeFontSize(size) ? size : DEFAULT_CODE_FONT_SIZE
+    writeConfig(config)
+    return { config }
+  })
+
+  // The palette preview in Settings → Code & reviews: a sample file with a small change
+  // over it, highlighted and annotated by the very functions the file preview goes
+  // through, so what the settings page shows is what a diff will look like.
+  ipcMain.handle('config:codeSample', async (_event, { language }: { language: unknown }): Promise<CodeSample> => {
+    const lang = typeof language === 'string' && Object.hasOwn(CODE_SAMPLES, language)
+      ? (language as keyof typeof CODE_SAMPLES)
+      : 'ts'
+    const { before, after } = CODE_SAMPLES[lang]
+    const shikiTheme = previewShikiTheme()
+    const numbered = await highlightNumbered(after, lang, shikiTheme)
+    const highlightedHtml = numbered ? annotateAgainstDiff(numbered, unifiedSpecDiff(before, after).diff).highlightedHtml : null
+    return { content: after, highlightedHtml, shikiTheme }
   })
 
   // Show/hide the Claude usage card in the left sidebar
@@ -493,6 +517,80 @@ export function setupConfigHandlers() {
   ipcMain.handle('config:setInfoSidebarOnCreate', async (_event, { open }) => {
     if (typeof open !== 'boolean') throw new Error('Invalid infoSidebarOnCreate value: must be a boolean')
     const config = updateInfoSidebarOnCreate(open)
+    return { config }
+  })
+
+  // The model a new agent is launched on. `null` clears it: no `--model`, the CLI's own
+  // default. Read at spawn time (pty/terminal-manager.ts), so agents already running keep
+  // the model they started on.
+  ipcMain.handle('config:setDefaultModel', async (_event, { model }: { model: unknown }) => {
+    if (model !== null && !isValidModelName(model)) throw new Error('Invalid model name')
+    const config = readConfig()
+    if (model === null) delete config.defaultModel
+    else config.defaultModel = model
+    writeConfig(config)
+    return { config }
+  })
+
+  // What the installed CLI's `/model` offers, for the default-model picker. An empty list
+  // means no `claude` on this machine; a rejection, that it did not answer in time.
+  ipcMain.handle('claude:listModels', () => listClaudeModels())
+
+  ipcMain.handle('config:setSplitNewAgentPane', async (_event, { pane }: { pane: unknown }) => {
+    if (!isValidSplitNewAgentPane(pane)) throw new Error('Invalid splitNewAgentPane value')
+    const config = readConfig()
+    config.splitNewAgentPane = pane
+    writeConfig(config)
+    return { config }
+  })
+
+  // Quick Launch's three settings, in one channel: they are one page's and nothing else
+  // reads them apart. `null` on the mode goes back to the Agents page's launch mode.
+  ipcMain.handle('config:setQuickLaunch', async (_event, patch: unknown) => {
+    if (typeof patch !== 'object' || patch === null) throw new Error('Invalid Quick Launch settings')
+    const { repo, background, launchMode } = patch as Record<string, unknown>
+    const config = readConfig()
+    if (repo !== undefined) {
+      if (!isValidQuickLaunchRepo(repo)) throw new Error('Invalid Quick Launch repository')
+      config.quickLaunchRepo = repo
+    }
+    if (background !== undefined) {
+      if (typeof background !== 'boolean') throw new Error('Invalid Quick Launch background value')
+      config.quickLaunchBackground = background
+    }
+    if (launchMode !== undefined) {
+      if (launchMode === null) delete config.quickLaunchLaunchMode
+      else if (isValidLaunchMode(launchMode)) config.quickLaunchLaunchMode = launchMode
+      else throw new Error('Invalid Quick Launch launch mode')
+    }
+    writeConfig(config)
+    return { config }
+  })
+
+  // The quick settings sheet: whether the title bar offers it, and which switches it
+  // carries in which order. Either may come alone.
+  ipcMain.handle('config:setQuickSettings', async (_event, patch: unknown) => {
+    if (typeof patch !== 'object' || patch === null) throw new Error('Invalid quick settings')
+    const { enabled, items } = patch as Record<string, unknown>
+    const config = readConfig()
+    if (enabled !== undefined) {
+      if (typeof enabled !== 'boolean') throw new Error('Invalid quick settings enabled value')
+      config.quickSettingsEnabled = enabled
+    }
+    if (items !== undefined) {
+      const cleaned = cleanQuickSettings(items)
+      if (!cleaned) throw new Error('Invalid quick settings items')
+      config.quickSettingsItems = cleaned
+    }
+    writeConfig(config)
+    return { config }
+  })
+
+  ipcMain.handle('config:setConfirmAgentArchive', async (_event, { enabled }: { enabled: unknown }) => {
+    if (typeof enabled !== 'boolean') throw new Error('Invalid confirmAgentArchive value: must be a boolean')
+    const config = readConfig()
+    config.confirmAgentArchive = enabled
+    writeConfig(config)
     return { config }
   })
 
@@ -677,18 +775,12 @@ export function setupConfigHandlers() {
   )
 }
 
-/**
- * The shiki theme a preview is highlighted with.
- *
- * GitHub's own pair, because the diff chrome CodeView draws over the result (the
- * +/- rails, the gutter) is GitHub's palette too — mixing a third highlighter's
- * colours in would put two different greens on the same added line.
- */
-const SHIKI_THEMES = { light: 'github-light', dark: 'github-dark' } as const
+/** What `readFileForPreview` paints in when a caller does not say — the tests. */
+const FALLBACK_SHIKI_THEME = 'github-dark'
 
 /**
- * Which of the two to use right now: the app's theme, unless the reader pinned an
- * appearance in Settings → Appearance.
+ * The shiki theme a preview is highlighted with: the reader's palette family in the
+ * variant the app's theme calls for — see `codeSyntaxTheme`.
  *
  * Resolved HERE rather than inside `readFileForPreview`, which stays a pure
  * function of its arguments — it is the one part of this file with a test suite,
@@ -696,7 +788,7 @@ const SHIKI_THEMES = { light: 'github-light', dark: 'github-dark' } as const
  * native theme to read a file off disk.
  */
 export function previewShikiTheme(): string {
-  return SHIKI_THEMES[codeAppearance(currentTheme(), readConfig().codeTheme)]
+  return codeSyntaxTheme(currentTheme(), readConfig().codeSyntax)
 }
 
 /** Is `child` the directory itself, or something beneath it? Plain string containment. */
@@ -713,7 +805,7 @@ export async function readFileForPreview(
   repoPath: string,
   filePath: string,
   status?: string,
-  shikiTheme: string = SHIKI_THEMES.dark,
+  shikiTheme: string = FALLBACK_SHIKI_THEME,
 ): Promise<FilePreviewResult> {
   const resolvedRepo = path.resolve(repoPath)
   const resolvedFile = path.resolve(repoPath, filePath)

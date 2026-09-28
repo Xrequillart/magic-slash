@@ -57,7 +57,7 @@ const TITLE = {
 const SPEC = {
   repos: [{ name: 'magic-pay', color: '#F43F5E' }],
   emptyLabel: 'spec.md',
-  ticket: { children: 'PAY-318', tone: 'jira' as const, title: 'PAY-318', onClick: noop },
+  plan: { children: 'Plan #7', tone: 'magic-slash' as const, title: 'Open the plan', onClick: noop },
   status: { label: 'Planned', tone: 'purple' as const, options: [], onSelect: noop },
   expand: { title: 'Open the spec', onClick: noop },
   title: TITLE,

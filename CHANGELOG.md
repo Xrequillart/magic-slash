@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.100.0] - 2026-09-28
+
+### Added
+
+- **Plan**: Link the planner to its plan instead of a ticket
+- **Desktop**: Link planners to their plan from the first write, with a badge, a picker and a plan page banner
+- **Desktop**: Merge the account and settings modals into one window with a sidebar
+- **Desktop**: Add a settings rail to the page modal, full height with no title band
+- **Desktop**: Move the switch knob edge by edge and stretch it on hover
+- **Pr**: Write how-to-test steps as checkable boxes for the reviewer
+
+### Changed
+
+- **Desktop**: Drop the right border of the skills rail
+- **Desktop**: Share the tab strip's edge-by-edge pill motion
+
 ## [0.99.0] - 2026-09-28
 
 ### Added
@@ -3369,6 +3385,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.100.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.100.0
 [0.99.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.99.0
 [0.98.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.6
 [0.98.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.98.5

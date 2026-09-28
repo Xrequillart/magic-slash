@@ -108,6 +108,17 @@ export interface SectionHeaderProps {
    * content rather than its heading.
    */
   hint?: string
+  /**
+   * WHAT THE SECTION IS, EXPLAINED: a paragraph under the title, before the content, for
+   * a section whose purpose the name cannot carry ("Profile" says nothing about who
+   * reads it or what it changes).
+   *
+   * NOT A LONGER `hint`. The hint is a quiet second line at 40%, sized to be skipped; a
+   * paragraph drawn at that weight would be unreadable, and it is meant to be read once.
+   * This is the secondary tone at 70%, a step quieter than the title, with relaxed
+   * leading, across the full width of the card under it. Translated, plain text.
+   */
+  description?: string
   /** At the far edge. Empty draws nothing. */
   actions?: SectionHeaderAction[]
   /**
@@ -126,6 +137,7 @@ export function SectionHeader({
   title,
   count,
   hint,
+  description,
   actions = [],
   spacing = 'default',
   className = '',
@@ -135,7 +147,7 @@ export function SectionHeader({
     // top, not centred against a block the hint made taller. Without a hint the two
     // spellings are identical, so the row keeps `items-center` and nothing moves.
     <div
-      className={`flex justify-between ${hint ? 'items-start' : 'h-5 items-center'} ${
+      className={`flex justify-between ${hint || description ? 'items-start' : 'h-5 items-center'} ${
         spacing === 'none' ? '' : 'mb-4'
       } ${className}`.trim()}
     >
@@ -144,7 +156,9 @@ export function SectionHeader({
           and the word at one weight. `Icon` has no `secondary` tone of its own — it
           offers `default`, `muted` and `inherit` — so a mark that took its own colour
           here would be a bright glyph beside a quiet label. */}
-      <div className="min-w-0">
+      {/* `flex-1` under a description: the paragraph spans the whole width the card
+          below it does, instead of the width its words happened to push the column to. */}
+      <div className={`min-w-0 ${description ? 'flex-1' : ''}`.trim()}>
         <div className="flex h-5 min-w-0 items-center gap-2 text-text-secondary">
           {/* `md` — 16px, the size every copy already used. */}
           <Icon glyph={icon} size="md" tone="inherit" className="flex-shrink-0" />
@@ -163,6 +177,13 @@ export function SectionHeader({
           // `CollapsibleLine` makes about what unfolds under a header.
           <Text size="xs" tone="secondary" className="mt-0.5 block opacity-40">
             {hint}
+          </Text>
+        )}
+        {description && (
+          // One step quieter than the title it explains (the secondary tone at 70%), and
+          // still well above the hint's 40%: it is meant to be read, once.
+          <Text size="xs" tone="secondary" className="mt-2 block leading-relaxed opacity-70">
+            {description}
           </Text>
         )}
       </div>

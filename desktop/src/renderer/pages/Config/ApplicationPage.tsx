@@ -1,22 +1,18 @@
 import { useEffect, useState } from 'react'
-import {
-  AlertTriangle, BarChart3, Bot, Columns, GitPullRequest, Lightbulb,
-  MonitorSmartphone, Search,
-} from '@ds/desktop/icons'
+import { BarChart3, Lightbulb, MonitorSmartphone } from '@ds/desktop/icons'
 import { DisclosureCard, SectionHeader, SettingsCard } from '@ds/desktop'
 import { TelemetryHealthCard } from './TelemetryHealthCard'
 import { SetupHealthCard } from './SetupHealthCard'
 import { useToggleRow } from './ToggleRow'
 import { useStore } from '../../store'
-import { useConfig } from '../../hooks/useConfig'
 import { useT, type MessageKey } from '../../i18n'
-import { SELECT_WIDTH } from '../../theme/controls'
-import { showToast } from '../../components/Toast'
-import type { AgentType, SpotlightShortcut } from '../../../types'
 
 /**
  * THE APP ITSELF — how this machine is set up, and every feature that can be switched
  * off. The settings modal's Application tab, until the modal lost it.
+ *
+ * Quick Launch moved to a page of its own (`QuickLaunchPage`). The split view moved to a page of its own (`SplitViewPage`). The new-agent defaults moved to the Agents page (`AgentsPage`). The PR watcher's card moved to Code & reviews (`CodeReviewsPage`), beside the palette
+ * the reviews it watches are read in.
  *
  * WHY IT IS A COMPONENT AND NOT A TAB ANY MORE. The quick-settings sheet took over the
  * on/off half of this page — the split view, Quick Launch, the login start, the PR
@@ -43,41 +39,6 @@ import type { AgentType, SpotlightShortcut } from '../../../types'
  * WHAT IS LEFT HERE IS THE WIRING: which switch writes where, which of them go through
  * the store because another pane reads them, and which rows are offered at all.
  */
-
-/**
- * The eight chords Quick Launch will take. Also read by the Shortcuts tab, which SHOWS
- * the one in force without offering to change it — see `pages/Config/index.tsx`.
- *
- * ONE ENTRY PER KEY, and not the single label this was. A `<select>` needs a flat
- * string and joins them below; the Shortcuts tab needs the keys apart, because `Kbd`
- * sets a modifier glyph a rung above a word and a chord arriving as `'⌃ Space'`
- * would have to be split on a space that is a separator here and a KEY NAME there.
- * Composed where the chords are written rather than parsed where they are drawn.
- */
-/**
- * How often the pull-request watcher looks, in milliseconds, and what each interval is
- * called. Keys rather than labels, for `SPOTLIGHT_OPTIONS`' reason: module scope is
- * evaluated once at import, so a `t()` here would pin the list to the boot language.
- */
-export const PR_WATCHER_INTERVALS = [30_000, 60_000, 120_000, 300_000] as const
-
-const PR_WATCHER_INTERVAL_LABEL: Record<(typeof PR_WATCHER_INTERVALS)[number], MessageKey> = {
-  30_000: 'settings.application.prWatcher.interval30s',
-  60_000: 'settings.application.prWatcher.interval1m',
-  120_000: 'settings.application.prWatcher.interval2m',
-  300_000: 'settings.application.prWatcher.interval5m',
-}
-
-export const SPOTLIGHT_OPTIONS: { keys: string[]; value: string }[] = [
-  { keys: ['⌃', 'Space'], value: 'Control+Space' },
-  { keys: ['⌃⇧', 'Space'], value: 'Control+Shift+Space' },
-  { keys: ['⌥', 'Space'], value: 'Alt+Space' },
-  { keys: ['⌥⇧', 'Space'], value: 'Alt+Shift+Space' },
-  { keys: ['⌃', 'M'], value: 'Control+M' },
-  { keys: ['⌃⇧', 'M'], value: 'Control+Shift+M' },
-  { keys: ['⌥', 'M'], value: 'Alt+M' },
-  { keys: ['⌥⇧', 'M'], value: 'Alt+Shift+M' },
-]
 
 // The two halves of the activity-recording breakdown. Message keys rather than
 // labels, for the same reason as the rail's tabs: module scope is evaluated once at
@@ -108,97 +69,22 @@ const USAGE_LOGS_EXCLUDED: MessageKey[] = [
   'settings.application.usageLogs.excluded.otherSkills',
 ]
 
-// Message keys rather than labels: module scope is evaluated once at import, so a
-// literal here would pin the select to the boot language.
-const AGENT_TYPE_OPTIONS: { value: AgentType; labelKey: MessageKey; descriptionKey: MessageKey }[] = [
-  { value: 'coder', labelKey: 'agentType.coder', descriptionKey: 'agentType.coderHint' },
-  { value: 'planner', labelKey: 'agentType.planner', descriptionKey: 'agentType.plannerHint' },
-]
-
 export function ApplicationPage() {
   const t = useT()
-  const { config, splitActive, toggleSplitActive, setConfig } = useStore()
-  const { updateSpotlight, updateDefaultAgentType } = useConfig()
+  const { config, setConfig } = useStore()
 
   const [autoStart, setAutoStart] = useState(false)
-  const [defaultAgentType, setDefaultAgentType] = useState<AgentType>(config?.defaultAgentType ?? 'coder')
-  const [spotlightEnabled, setSpotlightEnabled] = useState(config?.spotlight?.enabled ?? true)
-  const [spotlightShortcut, setSpotlightShortcut] = useState(config?.spotlight?.shortcut ?? 'Control+Space')
-  const [spotlightError, setSpotlightError] = useState(false)
   const [usageLogsEnabled, setUsageLogsEnabled] = useState(config?.usageLogsEnabled ?? true)
-  const [prWatcherEnabled, setPrWatcherEnabled] = useState(config?.prReviews?.enabled ?? true)
-  const [prWatcherInterval, setPrWatcherInterval] = useState(config?.prReviews?.pollIntervalMs ?? 60_000)
-  const [prWatcherAutoLaunch, setPrWatcherAutoLaunch] = useState(config?.prReviews?.autoLaunchSkills ?? false)
 
   useEffect(() => {
     window.electronAPI.config.getAutoStart().then(setAutoStart)
   }, [])
-
-  const configDefaultAgentType = config?.defaultAgentType
-  useEffect(() => {
-    if (configDefaultAgentType !== undefined) setDefaultAgentType(configDefaultAgentType)
-  }, [configDefaultAgentType])
-
-  const configSpotlightEnabled = config?.spotlight?.enabled
-  const configSpotlightShortcut = config?.spotlight?.shortcut
-  useEffect(() => {
-    if (configSpotlightEnabled !== undefined) setSpotlightEnabled(configSpotlightEnabled)
-    if (configSpotlightShortcut !== undefined) setSpotlightShortcut(configSpotlightShortcut)
-  }, [configSpotlightEnabled, configSpotlightShortcut])
 
   const configUsageLogsEnabled = config?.usageLogsEnabled
   useEffect(() => {
     if (configUsageLogsEnabled !== undefined) setUsageLogsEnabled(configUsageLogsEnabled)
   }, [configUsageLogsEnabled])
 
-  const configPrWatcherEnabled = config?.prReviews?.enabled
-  const configPrWatcherInterval = config?.prReviews?.pollIntervalMs
-  const configPrWatcherAutoLaunch = config?.prReviews?.autoLaunchSkills
-  useEffect(() => {
-    if (configPrWatcherEnabled !== undefined) setPrWatcherEnabled(configPrWatcherEnabled)
-    if (configPrWatcherInterval !== undefined) setPrWatcherInterval(configPrWatcherInterval)
-    if (configPrWatcherAutoLaunch !== undefined) setPrWatcherAutoLaunch(configPrWatcherAutoLaunch)
-  }, [configPrWatcherEnabled, configPrWatcherInterval, configPrWatcherAutoLaunch])
-
-  // Optimistic, then reverted on failure — the shape every write on this page uses.
-  const applyDefaultAgentType = async (type: AgentType) => {
-    const previous = defaultAgentType
-    setDefaultAgentType(type)
-    try {
-      await updateDefaultAgentType(type)
-      showToast(t('toast.defaultAgentTypeUpdated'), 'success')
-    } catch {
-      setDefaultAgentType(previous)
-    }
-  }
-
-  const handleSpotlightToggle = async () => {
-    const newEnabled = !spotlightEnabled
-    setSpotlightEnabled(newEnabled)
-    setSpotlightError(false)
-    try {
-      const result = await updateSpotlight({ enabled: newEnabled, shortcut: spotlightShortcut })
-      if (newEnabled && !result.registered) {
-        setSpotlightError(true)
-      }
-    } catch {
-      setSpotlightEnabled(!newEnabled) // revert on error
-    }
-  }
-
-  const handleSpotlightShortcutChange = async (newShortcut: SpotlightShortcut) => {
-    const previousShortcut = spotlightShortcut
-    setSpotlightShortcut(newShortcut)
-    setSpotlightError(false)
-    try {
-      const result = await updateSpotlight({ enabled: spotlightEnabled, shortcut: newShortcut })
-      if (spotlightEnabled && !result.registered) {
-        setSpotlightError(true)
-      }
-    } catch {
-      setSpotlightShortcut(previousShortcut)
-    }
-  }
 
   // The one switch on this page whose write is the app's ordinary optimistic one, so it
   // is the one that reaches for the hook. The others each do something particular on the
@@ -214,24 +100,6 @@ export function ApplicationPage() {
     },
     errorMessage: t('settings.application.planSync.error'),
   })
-
-  // Written the same optimistic way as planSyncRow, and reaching for the same hook:
-  // the value is a plain boolean on the config and nothing else happens on the way.
-  // What it sets is only a FALLBACK — an agent whose panel has been toggled keeps its
-  // own state — so flipping it changes no agent already on screen that was decided
-  // about, which is why there is nothing to push into the store beyond the config.
-  const infoSidebarRow = useToggleRow({
-    label: t('settings.application.infoSidebar.label'),
-    help: t('settings.application.infoSidebar.help'),
-    value: config?.infoSidebarOnCreate,
-    onChange: async (next) => {
-      const result = await window.electronAPI.config.setInfoSidebarOnCreate(next)
-      setConfig(result.config)
-    },
-    errorMessage: t('toast.settingUpdateFailed'),
-  })
-
-  const activeAgentType = AGENT_TYPE_OPTIONS.find((option) => option.value === defaultAgentType)
 
   const usageLogsRow = useToggleRow({
     label: t('settings.application.usageLogs.label'),
@@ -253,100 +121,6 @@ export function ApplicationPage() {
     <div className="flex flex-col gap-8">
       {/* Machine setup (prerequisites, MCP servers, integrations) */}
       <SetupHealthCard />
-
-      {/* Split View Section — THE SWITCH IS THE SPLIT ITSELF, the same value the
-          Control Center's tile carries. There used to be a second, wider switch behind
-          it: this one said the feature was allowed, the tile said the window was in two
-          panes, and both had to be on for anything to happen. Nobody could see why a lit
-          switch did nothing, so the permission went and the state stayed. */}
-      <div>
-        <SectionHeader icon={Columns} title={t('settings.application.split.section')} />
-        <SettingsCard
-          rows={[
-            {
-              id: 'split',
-              label: t('settings.application.split.label'),
-              hint: t('settings.application.split.help'),
-              control: {
-                kind: 'switch',
-                checked: splitActive,
-                onChange: () => toggleSplitActive(),
-                label: t('settings.application.split.label'),
-              },
-            },
-          ]}
-        />
-      </div>
-
-      {/* New agents — what an agent IS the moment it is created, then what it looks
-          like. The type came from the Claude Code tab, which is about the CLI itself:
-          which account it runs as, how it launches, what it costs. Whether a new agent
-          is a coder or a planner is a decision about this app's agents, and it reads
-          here beside the panel they open with. */}
-      <div>
-        <SectionHeader icon={Bot} title={t('settings.application.agentDefaults.section')} />
-        <SettingsCard
-          rows={[
-            {
-              id: 'defaultAgentType',
-              label: t('settings.defaultAgentType.title'),
-              hint: t('settings.defaultAgentType.description'),
-              note: activeAgentType ? t(activeAgentType.descriptionKey) : undefined,
-              control: {
-                kind: 'select',
-                value: defaultAgentType,
-                options: AGENT_TYPE_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.labelKey) })),
-                onChange: (next) => applyDefaultAgentType(next as AgentType),
-                ariaLabel: t('settings.defaultAgentType.title'),
-                width: SELECT_WIDTH,
-              },
-            },
-            { id: 'infoSidebar', ...infoSidebarRow },
-          ]}
-        />
-      </div>
-
-      {/* Spotlight Section */}
-      <div>
-        <SectionHeader icon={Search} title={t('settings.application.spotlight.section')} />
-        <SettingsCard
-          rows={[
-            {
-              id: 'spotlight',
-              label: t('settings.application.spotlight.label'),
-              hint: t('settings.application.spotlight.help'),
-              control: {
-                kind: 'switch',
-                checked: spotlightEnabled,
-                onChange: handleSpotlightToggle,
-                label: t('settings.application.spotlight.label'),
-              },
-            },
-            {
-              id: 'spotlightShortcut',
-              label: t('settings.application.spotlight.shortcutLabel'),
-              hint: t('settings.application.spotlight.shortcutHelp'),
-              control: {
-                kind: 'select',
-                value: spotlightShortcut,
-                options: SPOTLIGHT_OPTIONS.map((opt) => ({ value: opt.value, label: opt.keys.join(' ') })),
-                onChange: (next) => handleSpotlightShortcutChange(next as SpotlightShortcut),
-                disabled: !spotlightEnabled,
-                ariaLabel: t('settings.application.spotlight.shortcutLabel'),
-                width: SELECT_WIDTH,
-              },
-            },
-          ]}
-          /* The chord is set and the OS refused to register it — another app holds it.
-             The picker above still shows what was chosen, so this strip is the only
-             thing saying it did not take. */
-          alert={
-            spotlightError
-              ? { message: t('settings.application.spotlight.error'), icon: AlertTriangle }
-              : undefined
-          }
-        />
-      </div>
 
       {/* Background App Section */}
       <div>
@@ -386,74 +160,6 @@ export function ApplicationPage() {
         <SettingsCard
           rows={[{ id: 'planSync', ...planSyncRow }]}
           note={t('settings.application.planSync.footnote')}
-        />
-      </div>
-
-      {/* PR Review Watcher Section */}
-      <div>
-        <SectionHeader icon={GitPullRequest} title={t('settings.application.prWatcher.section')} />
-        <SettingsCard
-          rows={[
-            {
-              id: 'prWatcher',
-              label: t('settings.application.prWatcher.label'),
-              hint: t('settings.application.prWatcher.help'),
-              control: {
-                kind: 'switch',
-                checked: prWatcherEnabled,
-                onChange: async () => {
-                  const newValue = !prWatcherEnabled
-                  setPrWatcherEnabled(newValue)
-                  // Pushed into the store, not just written to disk: the PR card in
-                  // the agent sidebar reads this setting to decide whether to say
-                  // "watching is off", and it would otherwise keep claiming the
-                  // opposite until the next config load.
-                  setConfig(await window.electronAPI.prWatcher.setEnabled(newValue))
-                },
-                label: t('settings.application.prWatcher.label'),
-              },
-            },
-            // Both are questions about a watcher that is running: how often, and what it
-            // may start on its own. Left out rather than dimmed while it is not.
-            prWatcherEnabled && {
-              id: 'prWatcherInterval',
-              label: t('settings.application.prWatcher.intervalLabel'),
-              hint: t('settings.application.prWatcher.intervalHelp'),
-              control: {
-                kind: 'select' as const,
-                value: String(prWatcherInterval),
-                // The interval is a NUMBER of milliseconds and the picker deals in
-                // strings, so it is parsed on the way back — where the native select
-                // made the same trip through `e.target.value`.
-                options: PR_WATCHER_INTERVALS.map((ms) => ({
-                  value: String(ms),
-                  label: t(PR_WATCHER_INTERVAL_LABEL[ms]),
-                })),
-                onChange: (next: string) => {
-                  const newInterval = parseInt(next, 10)
-                  setPrWatcherInterval(newInterval)
-                  window.electronAPI.prWatcher.setInterval(newInterval)
-                },
-                ariaLabel: t('settings.application.prWatcher.intervalLabel'),
-                width: SELECT_WIDTH,
-              },
-            },
-            prWatcherEnabled && {
-              id: 'prWatcherAutoLaunch',
-              label: t('settings.application.prWatcher.autoLaunchLabel'),
-              hint: t('settings.application.prWatcher.autoLaunchHelp'),
-              control: {
-                kind: 'switch' as const,
-                checked: prWatcherAutoLaunch,
-                onChange: () => {
-                  const newValue = !prWatcherAutoLaunch
-                  setPrWatcherAutoLaunch(newValue)
-                  window.electronAPI.prWatcher.setAutoLaunchSkills(newValue)
-                },
-                label: t('settings.application.prWatcher.autoLaunchLabel'),
-              },
-            },
-          ]}
         />
       </div>
 

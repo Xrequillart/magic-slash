@@ -29,9 +29,11 @@ export const DEFAULTS = {
   // `?? true` in AppearancePage: an unreadable transcript would read as a bug
   // rather than as a feature nobody switched on.
   syncClaudeTheme: true,
-  // NULL means never chosen; the desktop resolves that to 'auto', i.e. the file
-  // preview highlights code in the appearance of the theme in use.
-  codeTheme: 'auto',
+  // NULL means never chosen; the desktop resolves that to 'auto', i.e. the family
+  // each theme is paired with (THEME_CODE_SYNTAX in desktop/src/types.ts).
+  codeSyntax: 'auto',
+  // `text-xs`, the size the preview always used.
+  codeFontSize: 12,
   language: 'en',
   usageCardEnabled: true,
   // `=== true` in SidebarUsageCard / the agent card, so anything else is expanded.
@@ -65,6 +67,20 @@ export const DEFAULTS = {
   launchMode: 'default',
   // NULL means never chosen; the desktop resolves that to 'coder'.
   defaultAgentType: 'coder',
+  // NULL = no `--model`: the CLI's own default. Shown as that phrase, not as a model id.
+  defaultModel: 'Claude Code default',
+  // `=== false` in App.tsx: anything else still asks.
+  confirmAgentArchive: true,
+  // NULL = the pane with the keyboard, what the split always did.
+  splitNewAgentPane: 'focused',
+  // NULL = the first repository, what Quick Launch always did.
+  quickLaunchRepo: 'first',
+  quickLaunchBackground: false,
+  // NULL = the account's launch mode.
+  quickLaunchLaunchMode: 'Same as launch mode',
+  quickSettingsEnabled: true,
+  // NULL = the five the sheet carried before it could be arranged.
+  quickSettingsItems: 'notifications, quick-launch, usage-card, agent-context, split-view',
 } as const
 
 /**
@@ -160,7 +176,8 @@ export const SETTING_GROUPS: SettingGroup[] = [
       { field: 'theme', label: 'Theme' },
       { field: 'language', label: 'Interface language' },
       { field: 'syncClaudeTheme', label: 'Sync Claude Code theme' },
-      { field: 'codeTheme', label: 'Syntax highlighting' },
+      { field: 'codeSyntax', label: 'Code theme' },
+      { field: 'codeFontSize', label: 'Code font size' },
     ],
   },
   {
@@ -180,6 +197,8 @@ export const SETTING_GROUPS: SettingGroup[] = [
     title: 'New agents',
     fields: [
       { field: 'defaultAgentType', label: 'New agent is a' },
+      { field: 'defaultModel', label: 'Model' },
+      { field: 'confirmAgentArchive', label: 'Confirm before archiving' },
       { field: 'infoSidebarOnCreate', label: 'Info panel open' },
     ],
   },
@@ -217,6 +236,7 @@ export const SETTING_GROUPS: SettingGroup[] = [
     title: 'Split View',
     fields: [
       { field: 'splitActive', label: 'Enabled' },
+      { field: 'splitNewAgentPane', label: 'New agents open in' },
       // Kept in the report, not in the app: see SETTING_DEFAULTS on why a dead
       // column is still worth showing an operator.
       { field: 'splitEnabled', label: 'Enabled (legacy, unused)' },
@@ -227,6 +247,16 @@ export const SETTING_GROUPS: SettingGroup[] = [
     fields: [
       { field: 'spotlightEnabled', label: 'Enabled' },
       { field: 'spotlightShortcut', label: 'Shortcut' },
+      { field: 'quickLaunchRepo', label: 'Repository' },
+      { field: 'quickLaunchBackground', label: 'Stay in the background' },
+      { field: 'quickLaunchLaunchMode', label: 'Launch mode' },
+    ],
+  },
+  {
+    title: 'Quick settings',
+    fields: [
+      { field: 'quickSettingsEnabled', label: 'Enabled' },
+      { field: 'quickSettingsItems', label: 'Switches, in order' },
     ],
   },
   {

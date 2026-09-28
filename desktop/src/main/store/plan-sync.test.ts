@@ -31,6 +31,7 @@ import {
   recordPlanSession,
   resetPlanSyncForTests,
   schedulePlanSpecUpload,
+  setPlanSessionListener,
   slugFor,
   specKeyFor,
 } from './plan-sync'
@@ -67,12 +68,14 @@ beforeEach(() => {
     savePlanSpec: async (input) => {
       if (failWrites) throw new Error('offline')
       saved.push(input)
+      return null
     },
   })
 })
 
 afterEach(() => {
   vi.useRealTimers()
+  setPlanSessionListener(null)
 })
 
 describe('specKeyFor', () => {
@@ -173,6 +176,31 @@ describe('the debounced upload', () => {
     expect(saved).toEqual([{ agentId: 'claude-1', specPath: SPEC }])
   })
 
+  it('hands the session id to the listener, which is what links the planner to its plan', async () => {
+    // From the FIRST write, before any spec exists: the sidebar links to the plan from
+    // the agent's first minute rather than to a ticket at its last.
+    setStore({ ...NOOP_STORE, savePlanSpec: async () => ({ id: 'plan-42', number: 7 }) })
+    const heard: unknown[] = []
+    setPlanSessionListener((agentId, plan) => heard.push([agentId, plan]))
+
+    recordPlanSession('claude-1', SPEC)
+    await vi.advanceTimersByTimeAsync(3000)
+
+    expect(heard).toEqual([['claude-1', { id: 'plan-42', number: 7 }]])
+  })
+
+  it('tells the listener nothing when there was no row to write', async () => {
+    // Signed out: the store answers null, and an agent must not be linked to nothing.
+    const heard: unknown[] = []
+    setPlanSessionListener((...args) => heard.push(args))
+
+    recordPlanSession('claude-1', SPEC)
+    await vi.advanceTimersByTimeAsync(3000)
+
+    expect(saved).toHaveLength(1)
+    expect(heard).toEqual([])
+  })
+
   it('uploads nothing when the user turned the sync off', async () => {
     cfg.config = { planSyncEnabled: false } as Config
     fs.writeFileSync(SPEC, '## Idea\n\nprivate\n')
@@ -228,7 +256,7 @@ describe('the launch reconcile', () => {
     agents.list = [agentWithSpec('claude-1', SPEC)]
     setStore({
       ...NOOP_STORE,
-      savePlanSpec: async (input) => { saved.push(input) },
+      savePlanSpec: async (input) => { saved.push(input); return null },
       loadPlanSyncState: async () => [
         { specKey: specKeyFor(SPEC), specSyncedAt: new Date(Date.now() - 60_000).toISOString(), specOversize: false },
       ],
@@ -245,7 +273,7 @@ describe('the launch reconcile', () => {
     agents.list = [agentWithSpec('claude-1', SPEC)]
     setStore({
       ...NOOP_STORE,
-      savePlanSpec: async (input) => { saved.push(input) },
+      savePlanSpec: async (input) => { saved.push(input); return null },
       loadPlanSyncState: async () => [
         { specKey: specKeyFor(SPEC), specSyncedAt: new Date(Date.now() + 60_000).toISOString(), specOversize: false },
       ],
@@ -262,7 +290,7 @@ describe('the launch reconcile', () => {
     agents.list = [agentWithSpec('claude-1', SPEC)]
     setStore({
       ...NOOP_STORE,
-      savePlanSpec: async (input) => { saved.push(input) },
+      savePlanSpec: async (input) => { saved.push(input); return null },
       // What an oversized spec leaves behind: the flag set, and no timestamp — the
       // upload never happened, so there is nothing for it to have stamped.
       loadPlanSyncState: async () => [{ specKey: specKeyFor(SPEC), specOversize: true }],
@@ -279,7 +307,7 @@ describe('the launch reconcile', () => {
     agents.list = [agentWithSpec('claude-1', SPEC)]
     setStore({
       ...NOOP_STORE,
-      savePlanSpec: async (input) => { saved.push(input) },
+      savePlanSpec: async (input) => { saved.push(input); return null },
       loadPlanSyncState: async () => [{ specKey: specKeyFor(SPEC), specOversize: false }],
     })
 
@@ -297,7 +325,7 @@ describe('the launch reconcile', () => {
     agents.list = [agentWithSpec('claude-1', SPEC)]
     setStore({
       ...NOOP_STORE,
-      savePlanSpec: async (input) => { saved.push(input) },
+      savePlanSpec: async (input) => { saved.push(input); return null },
       // Still flagged from when it was too large, and still no timestamp: the size
       // test is what has to stop matching for this to upload at all.
       loadPlanSyncState: async () => [{ specKey: specKeyFor(SPEC), specOversize: true }],
@@ -315,7 +343,7 @@ describe('the launch reconcile', () => {
     agents.list = [agentWithSpec('claude-1', SPEC), { id: 'claude-2', name: 'B', repositories: [] } as Agent]
     setStore({
       ...NOOP_STORE,
-      savePlanSpec: async (input) => { saved.push(input) },
+      savePlanSpec: async (input) => { saved.push(input); return null },
       loadPlanSyncState: async () => { read = true; return [] },
     })
 

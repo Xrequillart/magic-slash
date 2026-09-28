@@ -2330,7 +2330,16 @@ describe('user settings', () => {
       theme: null,
       language: null,
       sync_claude_theme: null,
-      code_theme: null,
+      code_syntax: null,
+      code_font_size: null,
+      default_model: null,
+      confirm_agent_archive: null,
+      split_new_agent_pane: null,
+      quick_launch_repo: null,
+      quick_launch_background: null,
+      quick_launch_launch_mode: null,
+      quick_settings_enabled: null,
+      quick_settings_items: null,
     })
   })
 

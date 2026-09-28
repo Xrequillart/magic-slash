@@ -34,7 +34,7 @@ import { addHistoryEntry } from '../config/activity-history'
 import { recordUsageSnapshot } from '../usage/usage-events'
 import { readConfig } from '../config/config'
 import { expandPath } from '../config/validation'
-import { isValidAgentType, DEFAULT_AGENT_TYPE } from '../config/defaults'
+import { isValidAgentType, isValidLaunchMode, DEFAULT_AGENT_TYPE } from '../config/defaults'
 import { checkRepoPath } from '../config/repo-validation'
 import { ensureHydrated } from '../store/hydrate'
 import { flushPlanSpec } from '../store/plan-sync'
@@ -523,7 +523,7 @@ export function setupTerminalHandlers(
   })
 
   // Launch Claude in a new terminal
-  ipcMain.handle('terminal:launchClaude', async (_event, { id, name, cwd, initialPrompt, promptMode, agentType, metadata }) => {
+  ipcMain.handle('terminal:launchClaude', async (_event, { id, name, cwd, initialPrompt, promptMode, agentType, metadata, launchMode }) => {
     if (typeof id !== 'string' || typeof name !== 'string') {
       throw new Error('terminal:launchClaude requires id (string) and name (string)')
     }
@@ -560,7 +560,9 @@ export function setupTerminalHandlers(
       callbacks.onRepositoriesChange,
       undefined,
       typeof initialPrompt === 'string' ? initialPrompt : undefined,
-      undefined,
+      // A caller's own launch mode (Quick Launch's, when one is set there), validated
+      // like everything crossing IPC. Absent, the configured one applies at spawn.
+      isValidLaunchMode(launchMode) ? launchMode : undefined,
       // Validated rather than forwarded: this crosses the IPC boundary, and `run` is
       // the mode that must survive any junk arriving here — it is what every caller
       // but the Tasks page's "Discuss" button wants.

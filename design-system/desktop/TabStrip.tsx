@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Avatar } from './Avatar'
 import { Icon } from './Icon'
+import { pillTransition } from './pillMotion'
 import { Text } from './Text'
 import type { IconComponent } from './types'
 
@@ -118,12 +119,6 @@ const TRAVEL_MS = 260
  */
 const TRAIL_DELAY_MS = 100
 
-/** The edge in front. Symmetric, so its progress reads as even and lands without drama. */
-const LEAD_EASE = 'cubic-bezier(.4, 0, .2, 1)'
-
-/** The edge behind. `Switch`'s curve — it passes its mark by a hair and settles. */
-const TRAIL_EASE = 'cubic-bezier(.32, 1.4, .55, 1)'
-
 /**
  * Where a tab sits, as the pair of insets that pin the pill to it.
  *
@@ -136,21 +131,6 @@ function insetsFor(tab: HTMLElement, track: HTMLElement): PillInsets {
     left: tab.offsetLeft,
     right: track.clientWidth - (tab.offsetLeft + tab.offsetWidth),
   }
-}
-
-/**
- * The transition for a move, with the delay on whichever edge is behind.
- *
- * `'right'` means the pill is travelling RIGHTWARDS, so the right edge leads and the left
- * one is late. Written as one shorthand rather than as four longhand properties because
- * the pairing is the point: each edge carries its own duration, curve and delay, and
- * splitting them across `transitionDelay` and `transitionTimingFunction` lists puts the
- * two halves of one decision in two places.
- */
-function pillTransition(leading: 'left' | 'right'): string {
-  const lead = `${leading} ${TRAVEL_MS}ms ${LEAD_EASE}`
-  const trail = `${leading === 'right' ? 'left' : 'right'} ${TRAVEL_MS}ms ${TRAIL_EASE} ${TRAIL_DELAY_MS}ms`
-  return `${lead}, ${trail}`
 }
 
 export interface TabStripProps {
@@ -294,7 +274,7 @@ export function TabStrip({ items, activeKey, onSelect, ariaLabel, className = ''
               right: pill.right,
               // Absent for the first placement, so the pill appears on its tab instead of
               // sliding in from the left edge of the rail.
-              transition: animate ? pillTransition(leading) : undefined,
+              transition: animate ? pillTransition(leading, TRAVEL_MS, TRAIL_DELAY_MS) : undefined,
             }}
           />
         )}

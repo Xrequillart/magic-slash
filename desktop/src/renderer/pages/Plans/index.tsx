@@ -13,6 +13,7 @@ import { SweepPane } from '../../components/SweepPane'
 import { buildPlanFilters } from './PlanFilters'
 import { PlanDetailPage } from './PlanDetailPage'
 import { PlanRow } from './PlanRow'
+import { PickPlanBanner, PICK_PLAN_BAR_H } from './PickPlanBanner'
 
 /**
  * Every `/magic:plan` session you can see: your own, plus your teammates' on the
@@ -199,6 +200,19 @@ export function PlansPage() {
   const setInitialPlanId = useStore((s) => s.setPlansInitialPlanId)
 
   /**
+   * Set when the list is open to CHOOSE a plan for a planner — the Tasks board's picking
+   * mode. It changes two things: what a row's click does, and the banner pinned above the
+   * filter bar. See `plansPickAgentId`.
+   */
+  const pickAgentId = useStore((s) => s.plansPickAgentId)
+  const pickAgentName = useStore((s) => {
+    const terminal = s.terminals.find((candidate) => candidate.id === s.plansPickAgentId)
+    return terminal ? terminal.metadata?.title || terminal.name : null
+  })
+  const pickPlanForAgent = useStore((s) => s.pickPlanForAgent)
+  const closeModal = useStore((s) => s.closeModal)
+
+  /**
    * The one scrolling element, and where the list was left.
    *
    * Opening a plan starts it at the top and coming back restores the offset — the same
@@ -351,9 +365,15 @@ export function PlansPage() {
    * that runs, the pane has already been scrolled to the top of the plan.
    */
   const select = useCallback((card: PlanCard) => {
+    // PICKING MODE SHORT-CIRCUITS THE PAGE, the board's rule: the reader came to answer
+    // one question, and opening the plan they answered it with would be a page to dismiss.
+    if (pickAgentId) {
+      pickPlanForAgent(pickAgentId, card.id, card.number)
+      return
+    }
     listOffsetRef.current = paneRef.current?.scrollTop ?? 0
     setSelected(card)
-  }, [])
+  }, [pickAgentId, pickPlanForAgent])
 
   const back = useCallback(() => setSelected(null), [])
   // A status set on the plan's page, carried back to the row it was opened from.
@@ -389,6 +409,12 @@ export function PlansPage() {
   return (
     // One scrolling pane holding two pages: the list, and the plan that replaces it.
     <div ref={paneRef} className="h-full overflow-y-auto">
+      {/* Above the sweep and outside its padding, the board's arrangement: it describes
+          what the whole modal is for, not either page. The agent may have been closed
+          since, and the mode is still valid, so the name degrades rather than the band. */}
+      {pickAgentId && (
+        <PickPlanBanner agentName={pickAgentName || t('tasks.pick.fallbackAgent')} onCancel={closeModal} />
+      )}
       {/* The title and the live indicator are rendered by the hosting modal.
 
           The page's padding is on the SWEEP LAYERS, not on the pane: a `sticky` child
@@ -450,6 +476,7 @@ export function PlansPage() {
               {showFilters && (
                 <FilterBar
                   {...buildPlanFilters({ value: filter, repos: repoOptions, t, onChange: changeFilter })}
+                  top={pickAgentId ? PICK_PLAN_BAR_H : 0}
                   paneRef={paneRef}
                 />
               )}

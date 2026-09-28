@@ -5,7 +5,9 @@ import { AlertTriangle, Check, Palette, PanelsTopLeft } from 'lucide-react'
 import { Dropdown } from '@/components/Dropdown'
 import { SettingRow, SettingsCard, Toggle } from '@/components/SettingRow'
 import { useT } from '@/lib/i18n/useLanguage'
-import { CODE_THEME_OPTIONS, DEFAULTS, PANEL_FORMAT_OPTIONS, THEME_OPTIONS, type ThemeSwatch } from '@/lib/settings'
+import {
+  CODE_FONT_SIZES, CODE_SYNTAX_FAMILIES, DEFAULTS, PANEL_FORMAT_OPTIONS, THEME_OPTIONS, type ThemeSwatch,
+} from '@/lib/settings'
 import { useAppSettings } from '@/components/application/SettingsContext'
 import { translateOptions } from '@/components/application/options'
 
@@ -53,7 +55,11 @@ export function AppearanceSettings() {
   const { settings, patch } = useAppSettings()
 
   const formatOptions = useMemo(() => translateOptions(PANEL_FORMAT_OPTIONS, t), [t])
-  const codeThemeOptions = useMemo(() => translateOptions(CODE_THEME_OPTIONS, t), [t])
+  const codeSyntaxOptions = useMemo(
+    () => [{ value: 'auto', label: t('settings.appearance.codeSyntax.auto') }, ...CODE_SYNTAX_FAMILIES],
+    [t],
+  )
+  const codeFontSizeOptions = CODE_FONT_SIZES.map((px) => ({ value: String(px), label: `${px}px` }))
 
   // A null column means the user never chose, so the desktop applies its own
   // default — show that, never a normalised value.
@@ -129,17 +135,30 @@ export function AppearanceSettings() {
             label={t('settings.appearance.claudeTheme.label')}
           />
         </SettingRow>
-        {/* The other half of "how far the theme reaches": the file preview's
-            syntax highlighting. A dropdown rather than a toggle because
-            "follows the theme" is a third state, not the off position. */}
+        {/* The other half of "how far the theme reaches": the palette the file
+            preview paints code in. A family, whose light or dark variant the theme
+            picks, so no choice here can put light code on a dark window. */}
         <SettingRow
-          label={t('settings.appearance.codeTheme.label')}
-          description={t('settings.appearance.codeTheme.help')}
+          label={t('settings.appearance.codeSyntax.label')}
+          description={t('settings.appearance.codeSyntax.help')}
         >
           <Dropdown
-            value={settings.codeTheme ?? DEFAULTS.codeTheme}
-            options={codeThemeOptions}
-            onChange={(codeTheme) => patch({ codeTheme })}
+            value={settings.codeSyntax ?? DEFAULTS.codeSyntax}
+            options={codeSyntaxOptions}
+            onChange={(codeSyntax) => patch({ codeSyntax })}
+            className="w-40"
+            width={200}
+            size="sm"
+          />
+        </SettingRow>
+        <SettingRow
+          label={t('settings.appearance.codeFontSize.label')}
+          description={t('settings.appearance.codeFontSize.help')}
+        >
+          <Dropdown
+            value={String(settings.codeFontSize ?? DEFAULTS.codeFontSize)}
+            options={codeFontSizeOptions}
+            onChange={(size) => patch({ codeFontSize: parseInt(size, 10) })}
             className="w-40"
             width={180}
             size="sm"

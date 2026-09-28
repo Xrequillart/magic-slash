@@ -3,7 +3,7 @@ import { Bot } from '@ds/desktop/icons'
 import { useTerminals } from '../../hooks/useTerminals'
 import { useOrderedTerminals } from '../../hooks/useOrderedTerminals'
 import { useStore } from '../../store'
-import type { InitialPromptMode, LaunchMetadata } from '../../../types'
+import { DEFAULT_SPLIT_NEW_AGENT_PANE, type InitialPromptMode, type LaunchMetadata } from '../../../types'
 import { TerminalView } from '../../components/TerminalView'
 import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
@@ -126,6 +126,17 @@ export function TerminalsPage() {
     return () => window.removeEventListener('debug:empty-state', handleDebugEmptyState)
   }, [])
 
+  // Where a new agent opens while the window is split: Settings → Split view. Outside
+  // the split there is one pane, so every setting reads as left. ONE place for the rule,
+  // because the sidebar's +, ⌘N and the File menu all arrive through the two listeners
+  // below and must not disagree about it.
+  const splitNewAgentPane = useStore((s) => s.config?.splitNewAgentPane) ?? DEFAULT_SPLIT_NEW_AGENT_PANE
+  const newAgentPane = (): 'left' | 'right' => {
+    if (!isSplitMode) return 'left'
+    if (splitNewAgentPane === 'left' || splitNewAgentPane === 'right') return splitNewAgentPane
+    return focusedPane === 'secondary' ? 'right' : 'left'
+  }
+
   // Listen for new terminal event from sidebar
   useEffect(() => {
     const handleNewTerminal = (event: Event) => {
@@ -134,12 +145,12 @@ export function TerminalsPage() {
       // `createTerminal` takes both, so either still means "a new agent, at the
       // default, with nothing to say to it".
       const detail = (event as CustomEvent<NewTerminalDetail | null>).detail
-      createTerminal(detail, isSplitMode && focusedPane === 'secondary' ? 'right' : 'left')
+      createTerminal(detail, newAgentPane())
     }
 
     window.addEventListener('new-terminal', handleNewTerminal)
     return () => window.removeEventListener('new-terminal', handleNewTerminal)
-  }, [terminals.length, isCreating, isSplitMode, focusedPane])
+  }, [terminals.length, isCreating, isSplitMode, focusedPane, splitNewAgentPane])
 
   // Listen for Command+N keyboard shortcut
   useEffect(() => {
@@ -147,13 +158,13 @@ export function TerminalsPage() {
       // Check for Command+N (Mac) or Ctrl+N (Windows/Linux)
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault()
-        createTerminal(null, isSplitMode && focusedPane === 'secondary' ? 'right' : 'left')
+        createTerminal(null, newAgentPane())
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [terminals.length, isCreating, isSplitMode, focusedPane])
+  }, [terminals.length, isCreating, isSplitMode, focusedPane, splitNewAgentPane])
 
   // Listen for Command+Arrow to switch between agents (within current zone in split mode)
   useEffect(() => {

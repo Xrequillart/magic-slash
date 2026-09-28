@@ -8,7 +8,7 @@ import { showToast } from './Toast'
 import { useAuth } from '../hooks/useAuth'
 import { useStore } from '../store'
 import { useT } from '../i18n'
-import type { AccountModalTab } from './AccountModal'
+import type { SettingsTab } from './SettingsModal'
 
 /**
  * THE ACCOUNT, AS A DROPDOWN under the label at the end of the title bar.
@@ -23,12 +23,11 @@ import type { AccountModalTab } from './AccountModal'
  * THE FIRST TWO LINES ARE NOT ROWS. The face, the name and the address are the menu's
  * header: they say whose menu this is and nothing happens when they are pressed.
  *
- * THEN THE DESTINATIONS, and there are two kinds sharing one run. Four are tabs of
- * `AccountModal` — the row picks which one it opens on. The fifth, Settings, opens the
- * OTHER dialog, the one the quick settings sheet also leads to: it sits between Claude
- * Code and About because that is where it belongs by subject, not because it is the
- * same kind of link. Nothing on screen distinguishes them and nothing should: from the
- * reader's side both are "take me to that page".
+ * THEN THE DESTINATIONS, every one of them a page of the settings window — the row
+ * picks which one it opens on. Settings is the odd one by name only: it opens the same
+ * window on Application, the page the quick settings sheet also leads to, and sits
+ * between Claude Code and About because that is where it belongs by subject. The rail
+ * inside the window reaches the other pages from there.
  *
  * THEN THE TWO THAT ARE NOT DESTINATIONS AT ALL, under their own rule. Checking for
  * updates ACTS IN PLACE — it spins on its own row and the menu stays down, because an
@@ -37,12 +36,12 @@ import type { AccountModalTab } from './AccountModal'
  * dangerous row it is.
  *
  * THE ID OF EVERY DESTINATION ROW IS ITS TAB, which is why the switch below is a cast
- * and not a table: `AccountModalTab` is the union, the rows are built from it, and a row
+ * and not a table: `SettingsTab` is the union, the rows are built from it, and a row
  * that did not correspond to a tab could not be added without `tsc` noticing.
  */
 
 /** The rows that open the modal. The id IS the tab — see the note above. */
-const DESTINATIONS: { tab: AccountModalTab; icon: MenuItem['icon']; labelKey: Parameters<ReturnType<typeof useT>>[0] }[] = [
+const DESTINATIONS: { tab: SettingsTab; icon: MenuItem['icon']; labelKey: Parameters<ReturnType<typeof useT>>[0] }[] = [
   { tab: 'account', icon: CircleUserRound, labelKey: 'settings.tab.account' },
   { tab: 'organization', icon: Building2, labelKey: 'settings.tab.organization' },
   { tab: 'connections', icon: Plug, labelKey: 'settings.tab.connections' },
@@ -51,7 +50,7 @@ const DESTINATIONS: { tab: AccountModalTab; icon: MenuItem['icon']; labelKey: Pa
 ]
 
 /** Where Settings sits in that run — after Claude Code, before About. */
-const SETTINGS_AFTER: AccountModalTab = 'claude-code'
+const SETTINGS_AFTER: SettingsTab = 'claude-code'
 
 const APP_SETTINGS = 'app-settings'
 const CHECK_UPDATES = 'check-updates'
@@ -63,8 +62,7 @@ export function AccountMenu({ anchor }: { anchor: HTMLElement | null }) {
   const { name, avatar } = useAccountIdentity()
   const open = useStore((s) => s.accountMenuOpen)
   const setOpen = useStore((s) => s.setAccountMenuOpen)
-  const setAccountTab = useStore((s) => s.setAccountTab)
-  const setAppSettingsTab = useStore((s) => s.setAppSettingsTab)
+  const setSettingsTab = useStore((s) => s.setSettingsTab)
   // The wait on the update check, and nothing else — a row that spins is the whole of
   // what this component has to remember between the press and the answer.
   const [checking, setChecking] = useState(false)
@@ -136,7 +134,7 @@ export function AccountMenu({ anchor }: { anchor: HTMLElement | null }) {
       return
     }
     if (item.id === APP_SETTINGS) {
-      setAppSettingsTab('application')
+      setSettingsTab('application')
       return
     }
     if (item.id === SIGN_OUT) {
@@ -151,7 +149,7 @@ export function AccountMenu({ anchor }: { anchor: HTMLElement | null }) {
     }
     // Everything else is a destination, and its id is the tab it opens. The cast holds
     // because `DESTINATIONS` is built from the union itself.
-    setAccountTab(item.id as AccountModalTab)
+    setSettingsTab(item.id as SettingsTab)
   }
 
   return (

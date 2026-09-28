@@ -91,8 +91,18 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.tab.appearance': 'Apparence',
   'settings.tab.language': 'Langue et région',
   'settings.tab.application': 'Application',
+  'settings.tab.quickSettings': 'Réglages rapides',
+  'settings.tab.quickLaunch': 'Quick Launch',
+  'settings.tab.splitView': 'Vue divisée',
+  'settings.tab.profile': 'Profil',
+  'settings.tab.agents': 'Agents',
+  'settings.tab.codeReviews': 'Code et reviews',
   'settings.tab.shortcuts': 'Raccourcis',
   'settings.tab.about': 'À propos',
+  'settings.group.personal': 'Personnel',
+  'settings.group.notifications': 'Notifications',
+  'settings.group.features': 'Fonctionnalités',
+  'settings.group.about': 'À propos',
   'settings.language.section': 'Langue et région',
   'settings.language.label': 'Langue de l’interface',
   'settings.language.help':
@@ -130,18 +140,11 @@ export const fr: Record<keyof typeof en, string> = {
   'controlCenter.quickLaunch': 'Quick Launch',
   'controlCenter.launchAtLogin': 'Lancer au démarrage',
   'controlCenter.prWatcher': 'Veille PR',
-  'controlCenter.appearance': 'Apparence',
   'controlCenter.theme': 'Thème',
-  'controlCenter.language': 'Langue',
   'controlCenter.about': 'À propos',
   'controlCenter.allSettings': 'Tous les réglages',
   'controlCenter.saveFailed': 'Impossible d’enregistrer ce réglage.',
   'controlCenter.notificationsOff': 'Notifications coupées',
-  'controlCenter.setup.ready': 'Machine prête',
-  'controlCenter.setup.issues': '{count} à corriger',
-  'controlCenter.setup.checking': 'Vérification…',
-  'controlCenter.setup.failed': 'Vérification échouée',
-  'controlCenter.setup.open': 'Ouvrir la configuration de la machine',
 
   // ── Barre latérale gauche ────────────────────────────────────────────────
   'sidebar.newAgent': 'Nouvel agent',
@@ -254,6 +257,7 @@ export const fr: Record<keyof typeof en, string> = {
     'Avertissement de sécurité : le mode Bypass désactive toutes les vérifications de permission. À n’utiliser que dans un environnement isolé, sans accès à Internet.',
   'settings.launchMode.bypassConfirm': 'J’ai compris, activer Bypass',
 
+  'settings.claude.usageCard.section': 'Carte d’usage',
   'settings.rate.section': 'Consommation du forfait',
   'settings.rate.empty':
     'Aucune donnée de limite en temps réel — disponible sur Claude.ai Pro/Max après la première activité d’un agent.',
@@ -299,6 +303,14 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.application.planSync.footnote':
     'Le couper ne change rien sur votre machine : le fichier de spec est toujours écrit dans le dépôt, et l’app le suit toujours en direct.',
   'settings.application.planSync.error': 'Impossible d’enregistrer ce réglage.',
+  'settings.split.newAgentPane.label': 'Les nouveaux agents s’ouvrent',
+  'settings.split.newAgentPane.help': 'Le panneau où arrive un agent créé avec ⌘N, le bouton + ou le menu Fichier.',
+  'settings.split.newAgentPane.focused': 'Dans le panneau actif',
+  'settings.split.newAgentPane.focused.help': 'Le panneau dans lequel vous travaillez, celui qui a le clavier.',
+  'settings.split.newAgentPane.left': 'Toujours à gauche',
+  'settings.split.newAgentPane.left.help': 'Le nouveau travail démarre toujours à gauche, quel que soit le panneau actif.',
+  'settings.split.newAgentPane.right': 'Toujours à droite',
+  'settings.split.newAgentPane.right.help': 'Le nouveau travail démarre toujours à droite, quel que soit le panneau actif.',
   'settings.application.split.section': 'Vue divisée',
   'settings.application.split.label': 'Activer la vue divisée',
   'settings.application.split.help': 'Affiche deux agents côte à côte sur les écrans larges',
@@ -319,6 +331,31 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.application.prWatcher.autoLaunchLabel': 'Lancer les skills automatiquement',
   'settings.application.prWatcher.autoLaunchHelp':
     'Envoie /magic:resolve ou /magic:done directement dans le terminal de l’agent. Désactivé par défaut, par prudence.',
+  // ── Réglages → Réglages rapides ──────────────────────────────────────────
+  'settings.quickSettings.section': 'Réglages rapides',
+  'settings.quickSettings.enabled.label': 'Afficher les réglages rapides',
+  'settings.quickSettings.enabled.help': 'Le bouton à curseurs de la barre de titre, et ⌘, pour dérouler le panneau. Désactivé, ⌘, ouvre cette page à la place.',
+  'settings.quickSettings.arrange.section': 'Interrupteurs',
+  'settings.quickSettings.arrange.description': 'Faites glisser un interrupteur pour le déplacer, vers le bas pour le retirer du panneau, ou depuis le bas vers le panneau pour l’ajouter. Un clic sur un interrupteur du bas l’ajoute à la fin, et le × d’un interrupteur le retire.',
+  'settings.quickSettings.arrange.menu': 'Dans le panneau',
+  'settings.quickSettings.arrange.menuEmpty': 'Glissez des interrupteurs ici',
+  'settings.quickSettings.arrange.available': 'Disponibles',
+  'settings.quickSettings.arrange.availableEmpty': 'Tous les interrupteurs sont dans le panneau.',
+  'settings.quickSettings.arrange.remove': 'Retirer {name}',
+
+  'settings.quickLaunch.launch.section': 'Lancement',
+  'settings.quickLaunch.repo.label': 'Dépôt',
+  'settings.quickLaunch.repo.help': 'Le dépôt dans lequel travaille l’agent lancé depuis Quick Launch.',
+  'settings.quickLaunch.repo.first': 'Premier dépôt',
+  'settings.quickLaunch.repo.first.help': 'Le premier dépôt de votre liste, quoi que dise le prompt.',
+  'settings.quickLaunch.repo.match': 'Détecter depuis le prompt',
+  'settings.quickLaunch.repo.match.help': 'Le dépôt dont le prompt cite le nom ou un mot-clé. Le premier s’il n’en cite aucun.',
+  'settings.quickLaunch.mode.label': 'Mode de lancement',
+  'settings.quickLaunch.mode.help': 'Le mode de permission d’un agent lancé depuis Quick Launch.',
+  'settings.quickLaunch.mode.inherit': 'Comme Agents ({mode})',
+  'settings.quickLaunch.mode.inherit.help': 'Le mode de lancement réglé dans la page Agents, comme pour tout nouvel agent.',
+  'settings.quickLaunch.background.label': 'Rester en arrière-plan',
+  'settings.quickLaunch.background.help': 'Démarrer l’agent sans ramener Magic Slash au premier plan. Vous restez où vous étiez, et une notification vous prévient quand l’agent a besoin de vous.',
   'settings.application.spotlight.section': 'Spotlight',
   'settings.application.spotlight.label': 'Activer le raccourci global',
   'settings.application.spotlight.help':
@@ -346,6 +383,20 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.shortcuts.toggleAgentsList': 'Afficher/masquer la liste des agents',
   'settings.shortcuts.toggleSplit': 'Afficher/masquer la vue divisée',
   'settings.shortcuts.quickLaunch': 'Lancement rapide',
+  'settings.shortcuts.help.newAgent': 'Démarre un nouvel agent dans le panneau actif.',
+  'settings.shortcuts.help.duplicateAgent': 'Démarre une copie de l’agent sélectionné, sur le même dépôt et la même branche.',
+  'settings.shortcuts.help.closeAgent': 'Archive l’agent sélectionné, après confirmation.',
+  'settings.shortcuts.help.previousAgent': 'Sélectionne l’agent au-dessus dans la liste.',
+  'settings.shortcuts.help.nextAgent': 'Sélectionne l’agent en dessous dans la liste.',
+  'settings.shortcuts.help.toggleAgentInfo': 'Affiche ou masque le panneau à droite de l’agent sélectionné.',
+  'settings.shortcuts.help.toggleAgentsList': 'Affiche ou masque la liste des agents à gauche.',
+  'settings.shortcuts.help.toggleSplit': 'Divise la fenêtre en deux panneaux, ou la ramène à un seul.',
+  'settings.shortcuts.help.skills': 'Ouvre la page des skills.',
+  'settings.shortcuts.help.tasks': 'Ouvre vos tâches Jira et GitHub.',
+  'settings.shortcuts.help.plans': 'Ouvre la page des plans.',
+  'settings.shortcuts.help.repositories': 'Ouvre la fenêtre des dépôts.',
+  'settings.shortcuts.help.controlCenter': 'Déroule les réglages rapides.',
+  'settings.shortcuts.help.quickLaunch': 'Ouvre le panneau de lancement rapide depuis n’importe où sur le Mac. Le raccourci se règle dans la page Quick Launch.',
   'settings.shortcuts.disabled': 'Désactivé',
 
   // ── Réglages → À propos ──────────────────────────────────────────────────
@@ -894,7 +945,7 @@ export const fr: Record<keyof typeof en, string> = {
   'account.checklist.todo.atlassian':
     'Connectez Atlassian depuis l’onglet Connexions, pour que les skills lisent vos tickets Jira et les fassent avancer.',
   'account.checklist.todo.profile':
-    'Remplissez votre profil en bas de cet onglet. Les skills le lisent pour ajuster leur vocabulaire et leur niveau de détail.',
+    'Remplissez votre profil dans la page Profil, juste sous Compte. Les skills le lisent pour ajuster leur vocabulaire et leur niveau de détail.',
   'account.checklist.todo.repository':
     'Ajoutez un dépôt depuis l’onglet Dépôts, ou faites pointer un dépôt existant vers un dossier qui existe encore.',
   'account.checklist.todo.setup':
@@ -1100,6 +1151,32 @@ export const fr: Record<keyof typeof en, string> = {
   'role.admin': 'Admin',
   'role.admin.help': 'Peut inviter, changer les rôles et archiver l’organisation',
 
+  // ── Réglages → Agents ────────────────────────────────────────────────────
+  'settings.agents.model.label': 'Modèle',
+  'settings.agents.model.help': 'Le modèle Claude sur lequel démarre un nouvel agent. La liste est celle que votre Claude Code propose dans /model.',
+  'settings.agents.model.cliDefault': 'Défaut de Claude Code',
+  'settings.agents.model.cliDefaultHelp': 'Celui réglé dans /model de Claude Code.',
+  'settings.agents.model.loading': 'Claude Code liste ses modèles…',
+  'settings.agents.model.unavailable': 'Claude Code n’a pas répondu : seul son modèle par défaut est proposé.',
+  'settings.agents.list.section': 'Liste des agents',
+  'settings.agents.sort.label': 'Ordre',
+  'settings.agents.sort.help': 'L’ordre des agents dans la barre latérale gauche. Aussi dans le menu en haut de la liste.',
+  'settings.agents.panel.section': 'Panneau de l’agent',
+  'settings.agents.archive.section': 'Archivage',
+  'settings.agents.archive.confirm.label': 'Confirmer avant d’archiver',
+  'settings.agents.archive.confirm.help': 'Demander avant que ⌘W ou le bouton de la barre de titre archive un agent. Désactivé, l’agent est archivé tout de suite.',
+
+  // ── Réglages → Code et reviews ───────────────────────────────────────────
+  'settings.code.section': 'Code',
+  'settings.code.syntax.label': 'Thème du code',
+  'settings.code.syntax.help': 'Suit le thème de l’interface, sauf si vous en choisissez un autre. La variante claire ou sombre suit toujours le thème.',
+  'settings.code.syntax.auto': 'Auto : {name}',
+  'settings.code.font.label': 'Taille du texte',
+  'settings.code.font.help': 'Aperçus de fichiers, diffs et historique des plans.',
+  'settings.code.font.option': '{size} px',
+  'settings.code.preview.language': 'Langage de l’aperçu',
+  'settings.code.preview.failed': 'L’aperçu n’a pas pu être coloré.',
+
   // ── Thèmes (libellés du registre) ────────────────────────────────────────
   'theme.dark': 'Sombre',
   'theme.dark.help': 'L’original, presque noir.',
@@ -1163,12 +1240,6 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.appearance.claudeTheme.label': 'Accorder Claude Code au thème',
   'settings.appearance.claudeTheme.help':
     'Claude Code adopte les couleurs du thème choisi dans les terminaux de l’app. Les sessions déjà ouvertes se repeignent aussi. Votre Claude Code lancé depuis un vrai terminal n’est pas touché.',
-  'settings.appearance.codeTheme.label': 'Coloration du code',
-  'settings.appearance.codeTheme.help':
-    'L’apparence dans laquelle l’aperçu de fichier affiche le code. Suivre le thème convient à presque tout le monde ; fixez-en une pour lire du code sombre sur une interface claire, ou l’inverse.',
-  'settings.appearance.codeTheme.auto': 'Suit le thème',
-  'settings.appearance.codeTheme.light': 'Toujours claire',
-  'settings.appearance.codeTheme.dark': 'Toujours sombre',
   'settings.appearance.displaySection': 'Affichage',
   'settings.appearance.scale': 'Échelle de l’interface',
   'settings.appearance.scaleHelp':
@@ -1178,7 +1249,6 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.appearance.zoomReset': 'Revenir à 100 %',
   'toast.themeChangeFailed': 'Impossible de changer de thème',
   'toast.claudeThemeSyncFailed': 'Impossible de changer le thème de Claude Code',
-  'toast.codeThemeFailed': 'Impossible de changer la coloration du code',
   'toast.sidebarPanelFailed': 'Impossible de modifier les panneaux des barres latérales',
 
   // ── Champs du profil utilisateur ─────────────────────────────────────────
@@ -1197,6 +1267,8 @@ export const fr: Record<keyof typeof en, string> = {
   'profile.style.detailed': 'Détaillé',
 
   'profile.section': 'Profil',
+  'profile.description':
+    'La façon dont Claude vous parle. Chaque skill /magic:* lit ce profil avant de répondre : votre niveau technique règle le vocabulaire, du plus simple au plus précis, votre rôle la profondeur (une synthèse pour un manager, le détail du code pour un développeur), votre style de communication la longueur et la structure des réponses, et vos langues celle dans laquelle il écrit. Votre prénom est utilisé quand c’est naturel. Le profil suit votre compte : toutes les machines où vous vous connectez utilisent le même.',
   'profile.form.requiredWarning':
     'Un prénom, un rôle et un niveau technique sont obligatoires — rien n’est enregistré tant que les trois ne sont pas remplis.',
   'profile.form.intro':
@@ -1715,6 +1787,11 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.viewPullRequest': 'Voir la pull request',
   'agentInfo.addTicket': 'Ajouter un ticket',
   'agentInfo.addTicketHint': 'Choisir un ticket à rattacher à cet agent',
+  'agentInfo.plan': 'Plan',
+  'agentInfo.planNumber': 'Plan #{number}',
+  'agentInfo.planOpen': 'Ouvrir ce plan dans Plans',
+  'agentInfo.addPlan': 'Ajouter un plan',
+  'agentInfo.addPlanHint': 'Choisir un plan à rattacher à cet agent',
   'agentInfo.ticketOpenInTasks': 'Ouvrir ce ticket dans Tâches',
   'agentInfo.titlePlaceholder': 'Saisissez un titre…',
   'agentInfo.addTitle': 'Cliquez pour ajouter un titre',
@@ -2097,6 +2174,10 @@ export const fr: Record<keyof typeof en, string> = {
   'tasks.pick.hint': 'Cliquez sur une carte pour la rattacher. Rien n’est démarré.',
   'tasks.pick.cancel': 'Annuler',
   'tasks.pick.fallbackAgent': 'cet agent',
+  'plans.pick.title': 'Choisir un plan pour {name}',
+  'plans.pick.hint': 'Cliquez sur un plan pour le rattacher. Rien n’est démarré.',
+  'plans.hasAgentHint': 'Un agent travaille sur ce plan.',
+  'plans.detachAgentHint': 'Retirer cet agent du plan. L’agent continue de tourner.',
   'tasks.discussAgent': 'Discuter avec un agent',
   'tasks.noLocalRepo': 'Aucun dossier local n’est associé à ce dépôt sur cette machine.',
   'tasks.noLocalRepoHint':

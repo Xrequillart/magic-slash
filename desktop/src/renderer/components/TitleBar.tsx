@@ -83,6 +83,9 @@ export function TitleBar() {
   // out. The button in the bar is one of three things that move this value.
   const quickSettingsOpen = useStore((s) => s.quickSettingsOpen)
   const setQuickSettingsOpen = useStore((s) => s.setQuickSettingsOpen)
+  const setSettingsTab = useStore((s) => s.setSettingsTab)
+  // Settings → Quick settings can take the sheet away; the bar then has no button for it.
+  const quickSettingsEnabled = useStore((s) => s.config?.quickSettingsEnabled !== false)
 
   // THE ACCOUNT — the label at the far right, the element its dropdown hangs from, and
   // the login overlay the signed-out label needs. Mutual exclusion with the sheet is the
@@ -150,14 +153,14 @@ export function TitleBar() {
         label: t('controlCenter.notificationsOff'),
         title: t('controlCenter.notificationsOff'),
         icon: BellOff,
-        onClick: () => setQuickSettingsOpen(true),
+        // With the sheet switched off, straight to the page that holds the switch.
+        onClick: () => (quickSettingsEnabled ? setQuickSettingsOpen(true) : setSettingsTab('notifications')),
       } : undefined}
-      settings={{
+      settings={quickSettingsEnabled ? {
         open: quickSettingsOpen,
         title: t('titlebar.quickSettings'),
         onToggle: () => setQuickSettingsOpen(!quickSettingsOpen),
-
-      }}
+      } : undefined}
       // Past the sliders, where the platform keeps its own account: the person, and the
       // sheet of everything they are signed in to.
       account={account}

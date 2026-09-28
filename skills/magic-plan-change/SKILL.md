@@ -5,7 +5,7 @@ argument-hint: <absolute spec path> <what should change>
 allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__github__*, mcp__atlassian__*
 ---
 
-# magic-slash v0.99.0 - /plan-change
+# magic-slash v0.100.0 - /plan-change
 
 You are an assistant that reworks a plan after its tickets exist: take the spec `/magic:plan`
 wrote, apply the change the user asks for, rewrite the spec in place, then bring the tickets
@@ -208,7 +208,6 @@ under `{REPO_PATH}/.magic/`, which is git-excluded:
 | `.magic/.mp-title` | `{PRIMARY_ID}: {PRIMARY_TITLE}`, capped at 30 characters |
 | `.magic/.mp-spec-path` | `{SPEC_ABS_PATH}`, the path Step 1.2 accepted, byte for byte |
 | `.magic/.mp-repo-path` | `{REPO_PATH}` |
-| `.magic/.mp-ticket-id` | `{PRIMARY_KEY}` (below) |
 
 `{PRIMARY_ID}` and `{PRIMARY_TITLE}` are the epic's row on a breakdown, the single story's on a
 single-story plan: the same `TICKET-ID: Title` shape `/magic:plan` Step 7.1 sent, rebuilt from the
@@ -219,16 +218,14 @@ Then run the calls from `{REPO_PATH}`:
 ```bash
 cd {REPO_PATH}
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=$(jq -Rs -c '[sub("\n$";"")]' < .magic/.mp-repo-path | jq -sRr 'sub("\n$";"") | @uri')" > /dev/null 2>&1 || true
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-title)&type=planner&specPath=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-spec-path)&ticketId=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-ticket-id)" > /dev/null 2>&1 || true
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-title)&type=planner&specPath=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-spec-path)" > /dev/null 2>&1 || true
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/plan/spec?id=$MAGIC_SLASH_TERMINAL_ID" > /dev/null 2>&1 || true
-rm -f .magic/.mp-title .magic/.mp-spec-path .magic/.mp-repo-path .magic/.mp-ticket-id
+rm -f .magic/.mp-title .magic/.mp-spec-path .magic/.mp-repo-path
 ```
 
-`{PRIMARY_KEY}` is `{PRIMARY_ID}` as a URL can carry it: a Jira key as is (`PROJ-1234`), a GitHub
-issue as its bare number (`412`, never `#412`). A raw `#` would start the URL's fragment. It comes
-from the table, so it goes through a file like every other value, never into the command itself,
-and it has already passed Step 1.3's canonical-key check; it is last in the query so that a slip
-costs that one field and not the spec path.
+**No `ticketId`.** A planner is linked to its plan, not to a ticket: the desktop resolves the plan's
+row from `specPath` and writes its id onto this agent, so the sidebar's plan badge opens the plan
+being reworked — `/magic:plan` Step 7.1 gives the full reason.
 
 **`specPath` is the existing spec's path, exactly.** The plan's cloud row is keyed on a hash of that
 string, so the same path is what makes this agent write onto the plan that already exists rather
@@ -457,7 +454,7 @@ One metadata write, and nothing after it:
 
 | When | Fields |
 | --- | --- |
-| Step 2 | `/repositories` with the repository path; then `title` (`TICKET-ID: Title`), `type=planner`, `specPath` (the existing spec, byte for byte), `ticketId` (the primary ticket, no `#`) |
+| Step 2 | `/repositories` with the repository path; then `title` (`TICKET-ID: Title`), `type=planner`, `specPath` (the existing spec, byte for byte) — never `ticketId` |
 
 Plus the two `/plan/*` pings:
 

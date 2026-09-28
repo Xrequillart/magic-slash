@@ -82,8 +82,10 @@ function RevisionDiff({ from, to, olderHidden, stamp }: {
 }) {
   const t = useT()
   const [ref, seen] = useSeen<HTMLDivElement>()
-  const diff = usePlanRevisionDiff(seen ? from : undefined, seen && !olderHidden ? to : undefined, stamp)
-  const { appearance, blend } = useCodeAppearance()
+  const { appearance, blend, shikiTheme } = useCodeAppearance()
+  // The palette rides on the stamp: the diff comes back highlighted, so a change of theme
+  // or of palette has to ask for it again.
+  const diff = usePlanRevisionDiff(seen ? from : undefined, seen && !olderHidden ? to : undefined, `${stamp}|${shikiTheme}`)
   const [wholeSpec, setWholeSpec] = useState(false)
   const [open, setOpen] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)

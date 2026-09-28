@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 
 import type { ComponentSize } from './componentSizes'
+import { LEAD_EASE, pillTransition } from './pillMotion'
 
 /**
  * A setting that is on or off, and takes effect the moment you say so.
@@ -59,8 +60,7 @@ import type { ComponentSize } from './componentSizes'
 export type SwitchSize = ComponentSize
 
 /**
- * The geometry. Three numbers per rung, and they are one decision — so they sit
- * in one row of one table rather than in three tables keyed by size.
+ * The geometry, as the knob's two insets from the track's edges in each position.
  *
  * THE KNOB IS A PILL AT EVERY RUNG — wider than it is tall, 1.25 to 1.4 — and not
  * the circle this carried before. A circle in a track reads as a dot that slid; a
@@ -73,27 +73,32 @@ export type SwitchSize = ComponentSize
  * to its row, not the subject of it. Length is what came back down; the knob did
  * not, and the height is the ladder's now rather than anyone's preference.
  *
- * 4px of padding all round at every rung, which is what makes the arithmetic
- * check: the height is 4 + knob + 4, and the width is 4 + knob + travel + 4.
+ * INSETS AND NOT A WIDTH AND A TRANSLATE, and that is `TabStrip`'s reason: the knob
+ * moves the way the strip's active background does, edge by edge (`pillMotion.ts`),
+ * and two edges that leave at different times have to be two properties. The knob's
+ * width is whatever the insets leave — `track w - 8 - travel` — and the 4px of padding
+ * is the inset that does not move: `left-1` when off, `right-1` when on.
  *
- * Every value is a stock Tailwind class with no arbitrary brackets anywhere. That
- * is a sign rather than a rule — a ladder that lands on the scale's own numbers
- * at all three rungs is usually the right ladder.
- *
- * `stretch` AND `pressedTravel` ARE THE SQUASH, and the two are one number seen
- * from both ends: the knob gains 4px of width while the pointer is down, and when
- * it is already at the far end it gives back the same 4px of travel so it grows
- * INWARD. Without that second class the stretch would push the pill through the
- * right-hand padding and out of its own track.
+ * `offStretch` AND `onStretch` ARE THE SQUASH: 4px given to the knob while the pointer
+ * is over it or down, always on the edge that will LEAD the next move — the right one
+ * when off, the left one when on. So hovering already starts the travel the click
+ * finishes, and the knob grows inward at the far end instead of through the padding.
+ * `group-enabled` keeps it off a disabled switch: `:hover` still fires on a disabled
+ * button, and a knob that answered the pointer would promise a toggle the page has
+ * refused.
  *
  * Four pixels at every rung rather than a proportion of the knob. The squash is a
  * gesture, not a measurement — it has to read the same on a 20px pill as on a
  * 32px one, and a proportional stretch is invisible at `sm` by the time it is
  * right at `lg`.
+ *
+ * Every value is a stock Tailwind class, the one arbitrary track width aside. That is
+ * a sign rather than a rule — a ladder that lands on the scale's own numbers is usually
+ * the right ladder.
  */
 const SIZES: Record<
   SwitchSize,
-  { track: string; knob: string; travel: string; stretch: string; pressedTravel: string }
+  { track: string; off: string; offStretch: string; on: string; onStretch: string }
 > = {
   /**
    * 24×16, knob 12×8, travel 4.
@@ -105,10 +110,10 @@ const SIZES: Record<
    */
   '2xs': {
     track: 'w-6 h-4',
-    knob: 'w-3 h-2',
-    travel: 'translate-x-1',
-    stretch: 'group-active:w-4',
-    pressedTravel: 'group-active:translate-x-0',
+    off: 'left-1 right-2',
+    offStretch: 'group-active:right-1 group-hover:group-enabled:right-1',
+    on: 'left-2 right-1',
+    onStretch: 'group-active:left-1 group-hover:group-enabled:left-1',
   },
   /**
    * 32×20, knob 16×12, travel 8.
@@ -120,42 +125,42 @@ const SIZES: Record<
    */
   xs: {
     track: 'w-8 h-5',
-    knob: 'w-4 h-3',
-    travel: 'translate-x-2',
-    stretch: 'group-active:w-5',
-    pressedTravel: 'group-active:translate-x-1',
+    off: 'left-1 right-3',
+    offStretch: 'group-active:right-2 group-hover:group-enabled:right-2',
+    on: 'left-3 right-1',
+    onStretch: 'group-active:left-2 group-hover:group-enabled:left-2',
   },
   /** 40×24, knob 20×16, travel 12. The settings rows, and the default. */
   sm: {
     track: 'w-10 h-6',
-    knob: 'w-5 h-4',
-    travel: 'translate-x-3',
-    stretch: 'group-active:w-6',
-    pressedTravel: 'group-active:translate-x-2',
+    off: 'left-1 right-4',
+    offStretch: 'group-active:right-3 group-hover:group-enabled:right-3',
+    on: 'left-4 right-1',
+    onStretch: 'group-active:left-3 group-hover:group-enabled:left-3',
   },
   /** 48×28, knob 28×20, travel 12. */
   md: {
     track: 'w-12 h-7',
-    knob: 'w-7 h-5',
-    travel: 'translate-x-3',
-    stretch: 'group-active:w-8',
-    pressedTravel: 'group-active:translate-x-2',
+    off: 'left-1 right-4',
+    offStretch: 'group-active:right-3 group-hover:group-enabled:right-3',
+    on: 'left-4 right-1',
+    onStretch: 'group-active:left-3 group-hover:group-enabled:left-3',
   },
   /** 56×32, knob 32×24, travel 16. */
   lg: {
     track: 'w-14 h-8',
-    knob: 'w-8 h-6',
-    travel: 'translate-x-4',
-    stretch: 'group-active:w-9',
-    pressedTravel: 'group-active:translate-x-3',
+    off: 'left-1 right-5',
+    offStretch: 'group-active:right-4 group-hover:group-enabled:right-4',
+    on: 'left-5 right-1',
+    onStretch: 'group-active:left-4 group-hover:group-enabled:left-4',
   },
   /** 64×36, knob 36×28, travel 20. */
   xl: {
     track: 'w-16 h-9',
-    knob: 'w-9 h-7',
-    travel: 'translate-x-5',
-    stretch: 'group-active:w-10',
-    pressedTravel: 'group-active:translate-x-4',
+    off: 'left-1 right-6',
+    offStretch: 'group-active:right-5 group-hover:group-enabled:right-5',
+    on: 'left-6 right-1',
+    onStretch: 'group-active:left-5 group-hover:group-enabled:left-5',
   },
   /**
    * 72×40, knob 40×32, travel 24. The switch as a page's one control.
@@ -166,12 +171,27 @@ const SIZES: Record<
    */
   '2xl': {
     track: 'w-[72px] h-10',
-    knob: 'w-10 h-8',
-    travel: 'translate-x-6',
-    stretch: 'group-active:w-11',
-    pressedTravel: 'group-active:translate-x-5',
+    off: 'left-1 right-7',
+    offStretch: 'group-active:right-6 group-hover:group-enabled:right-6',
+    on: 'left-7 right-1',
+    onStretch: 'group-active:left-6 group-hover:group-enabled:left-6',
   },
 }
+
+/**
+ * How long an edge takes, and how long the edge behind waits. `Switch`'s own 200ms
+ * rather than `TabStrip`'s 260: the travel is 12px against a tab's width, and the
+ * product owner already found this switch slow once — "l'animation de l'activation est
+ * trop lente". The delay keeps the strip's proportion, 100 of 260.
+ */
+const TRAVEL_MS = 200
+const TRAIL_DELAY_MS = 80
+
+/**
+ * The squash, which is not a move: both edges answer the pointer at once, on the lead
+ * curve, so a hover never waits out a delay that belongs to a toggle.
+ */
+const SQUASH_TRANSITION = `left ${TRAVEL_MS}ms ${LEAD_EASE}, right ${TRAVEL_MS}ms ${LEAD_EASE}`
 
 /**
  * Two drawings of the same control, and the second one is jh3y's.
@@ -308,6 +328,33 @@ type DrawnSwitchProps = Omit<SwitchProps, 'variant'>
 function PillSwitch({ checked, onChange, label, size = 'sm', disabled }: DrawnSwitchProps) {
   const shape = SIZES[size]
 
+  /**
+   * Which way the knob is travelling, for as long as it is — null at rest.
+   *
+   * THE DELAY BELONGS TO A MOVE, NOT TO THE KNOB. With the trailing edge's delay left on
+   * permanently, the squash on the far end would wait it out on every hover: when on, the
+   * edge the pointer stretches is the left one, which is the edge behind on the way in.
+   * So the move's transition is worn for exactly as long as the move lasts, and the rest
+   * of the time both edges answer at once.
+   *
+   * Keyed on `checked` and not on the click, which is `LiquidSwitch`'s rule too: this is
+   * a controlled component, and a parent that refuses the change must leave a knob that
+   * never left rather than one that played a move to nowhere. The first render is not a
+   * move either — a page opening is not the answer to anything.
+   */
+  const [moving, setMoving] = useState<'left' | 'right' | null>(null)
+  const first = useRef(true)
+
+  useLayoutEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    setMoving(checked ? 'right' : 'left')
+    const id = setTimeout(() => setMoving(null), TRAVEL_MS + TRAIL_DELAY_MS)
+    return () => clearTimeout(id)
+  }, [checked])
+
   return (
     <button
       // Explicit: a bare <button> inside a <form> defaults to submit, and half
@@ -326,37 +373,37 @@ function PillSwitch({ checked, onChange, label, size = 'sm', disabled }: DrawnSw
           it stays the same object whichever end it is at. Tinting it when off
           would make the switch look like two different controls.
 
-          `top-1 left-1` is not keyed by size because the padding is 4px on every
+          `top-1 bottom-1` is not keyed by size because the padding is 4px on every
           rung — it is the one number the ladder does NOT scale, since a track
           that grew its inset as it grew would swallow the knob's own proportion
           and the pill would close back up into a circle at `lg`.
 
-          WIDTH AND NOT `scale-x`, which is the obvious way to stretch a thing and
+          INSETS AND NOT `scale-x`, which is the obvious way to stretch a thing and
           the wrong one here. A scaled pill scales its corners too: at 1.25 the
           radius goes elliptical and the ends stop being semicircles, which is
-          visible on the very shape this component exists to be. Animating the real
-          width leaves `rounded-full` to recompute honestly at every frame.
+          visible on the very shape this component exists to be. Moving the real
+          edges leaves `rounded-full` to recompute honestly at every frame.
 
-          `transition-[width,transform]` and not `transition-all`, so the squash
-          and the travel are the only things easing. `bg-on-brand` never changes
-          and a colour left in the list is a colour some future theme switch will
-          animate for no reason.
+          THE MOVE IS `TabStrip`'s, edge by edge: the edge in front leaves first on a
+          symmetric curve, the one behind follows 80ms later and overshoots by a hair.
+          That overshoot is the showcase home's fix for "l'animation de l'activation est
+          trop lente" — a knob that passes its mark and settles reads as THROWN rather
+          than SLID — and it now sits on the trailing edge only, the last to arrive.
+          It cannot poke out of the track: it lands inside the knob, narrowing it by
+          about 9% of the travel for an instant.
 
-          THE EASING OVERSHOOTS, and it is the showcase home's rather than this
-          file's invention: the switch in `MakeItYoursArt` was hand-tuned to this
-          curve after the product owner found the plain one slow — "l'animation de
-          l'activation est trop lente" — and what was wrong was never the duration.
-          A knob on `ease-out` decelerates into its stop and reads as SLID; one that
-          passes its mark by a hair and settles reads as THROWN, which is what a
-          switch being flicked actually is. The card draws this component now, so
-          the curve belongs here and the app's sixteen switches get it too.
-
-          It cannot poke out of the track: the curve tops out near 1.09, which on
-          `lg`'s 16px travel is 1.4px against the 4px of padding it has left. */}
-      <div
-        className={`absolute top-1 left-1 ${shape.knob} ${shape.stretch} rounded-full bg-on-brand transition-[width,transform] duration-200 ease-[cubic-bezier(.32,1.4,.55,1)] ${
-          checked ? `${shape.travel} ${shape.pressedTravel}` : 'translate-x-0'
+          The transition is inline and names only `left` and `right`, so the squash and
+          the travel are the only things easing. `bg-on-brand` never changes, and a
+          colour left in the list is a colour some future theme switch will animate for
+          no reason. */}
+      <span
+        aria-hidden
+        className={`absolute top-1 bottom-1 rounded-full bg-on-brand ${
+          checked ? `${shape.on} ${shape.onStretch}` : `${shape.off} ${shape.offStretch}`
         }`}
+        style={{
+          transition: moving ? pillTransition(moving, TRAVEL_MS, TRAIL_DELAY_MS) : SQUASH_TRANSITION,
+        }}
       />
     </button>
   )

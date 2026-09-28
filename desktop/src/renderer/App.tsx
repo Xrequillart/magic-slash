@@ -1,3 +1,4 @@
+import { quickLaunchRepo } from '../quickLaunchRepo'
 import { useEffect, useCallback, useRef, useMemo, useState } from 'react'
 import { AlertTriangle, FolderGit2, ListTodo, NotebookPen, RotateCcw, Sparkles, FolderOpen } from '@ds/desktop/icons'
 import { Loader } from '@ds/desktop'
@@ -18,7 +19,6 @@ import { UpdateOverlay } from './components/UpdateOverlay'
 import { WhatsNewModal } from './components/WhatsNewModal'
 import { ScriptTerminalModal } from './components/ScriptTerminalModal'
 import { SettingsModal } from './components/SettingsModal'
-import { AccountModal } from './components/AccountModal'
 import { ConfigPage } from './pages/Config'
 import { TerminalsPage } from './pages/Terminals'
 import { SkillsPage } from './pages/Skills'
@@ -208,9 +208,17 @@ export function App() {
     }
   }, [closeAgentModal, killTerminal, closeCloseAgentModal])
 
+  // Settings → Agents can turn the question off. The request still goes through the
+  // modal's state, so ⌘W and the title bar's button keep one road, and is answered here
+  // at once instead of being drawn. Absent means ask, which is what it always did.
+  const skipArchiveConfirm = config?.confirmAgentArchive === false
+  useEffect(() => {
+    if (closeAgentModal && skipArchiveConfirm) handleCloseAgent()
+  }, [closeAgentModal, skipArchiveConfirm, handleCloseAgent])
+
   // Focus confirm button and listen for Enter/Escape when close agent modal is shown
   useEffect(() => {
-    if (!closeAgentModal) return
+    if (!closeAgentModal || skipArchiveConfirm) return
 
     setTimeout(() => confirmCloseButtonRef.current?.focus(), 0)
 
@@ -226,7 +234,7 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [closeAgentModal, handleCloseAgent, closeCloseAgentModal])
+  }, [closeAgentModal, skipArchiveConfirm, handleCloseAgent, closeCloseAgentModal])
 
   // Listen for tray:focusAgent IPC events
   useEffect(() => {
@@ -271,7 +279,7 @@ export function App() {
           // Straight to the dialog rather than to the dropdown that normally opens it:
           // somebody who picked "Account" in the menu bar asked for the page, not for a
           // list of pages.
-          store.setAccountTab('account')
+          store.setSettingsTab('account')
           break
       }
     })
@@ -300,17 +308,16 @@ export function App() {
       const store = useStore.getState()
       store.closeModal()
 
-      // Find first repo to use as cwd
-      const repos = store.config?.repositories || {}
-      const firstRepo = Object.values(repos)[0]
-      const cwd = firstRepo?.path || '~/Documents'
+      // Which repository: Settings → Quick Launch (the first one unless told otherwise).
+      const repo = quickLaunchRepo(store.config?.repositories, store.config?.quickLaunchRepo, prompt)
+      const cwd = repo?.path || '~/Documents'
 
       // Name the agent "Claude N" like Cmd+N does
       const count = store.terminals.length + 1
       const agentName = `Claude ${count}`
 
       // Launch agent with the prompt passed directly as a CLI argument
-      await launchClaudeTerminal(agentName, cwd, prompt)
+      await launchClaudeTerminal(agentName, cwd, prompt, undefined, undefined, store.config?.quickLaunchLaunchMode)
     })
     return () => { unsubscribe() }
   }, [launchClaudeTerminal])
@@ -593,13 +600,12 @@ export function App() {
           inside one of its openers would go when that opener did. Both read their own
           open state from the store, so mounting them costs a null render. */}
       <SettingsModal />
-      <AccountModal />
 
       {/* Toast Notifications */}
       <ToastContainer />
 
       {/* Global Close Agent Confirmation Modal */}
-      {closeAgentModal && (
+      {closeAgentModal && !skipArchiveConfirm && (
         <div
           className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-modal-backdrop"
           onClick={closeCloseAgentModal}

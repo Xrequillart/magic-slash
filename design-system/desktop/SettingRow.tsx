@@ -3,7 +3,7 @@ import { ButtonIcon, type ButtonIconProps } from './ButtonIcon'
 import { Icon } from './Icon'
 import { ChipInput, type ChipInputProps } from './ChipInput'
 import { Input, type InputProps } from './Input'
-import { Kbd } from './Kbd'
+import { Kbd, type KbdProps } from './Kbd'
 import { Select, type SelectProps } from './Select'
 import { Stepper, type StepperProps } from './Stepper'
 import { Switch, type SwitchProps } from './Switch'
@@ -80,6 +80,12 @@ export type SettingRowControl =
    */
   | ({ kind: 'buttonIcon' } & ButtonIconProps)
   | ({ kind: 'chips' } & ChipInputProps)
+  /**
+   * A CHORD, READ AND NOT SET: the Shortcuts page's rows, where the value is the keys
+   * themselves and there is nothing to change. `Kbd` rather than text in a control's
+   * place, so the caps stand where a picker would and line up down the card's edge.
+   */
+  | ({ kind: 'kbd' } & KbdProps)
 
 /**
  * WHERE THE CONTROL SITS — beside the label, or under it.
@@ -205,6 +211,8 @@ export function SettingRow({
       <ButtonIcon key={index} size="md" {...one} />
     ) : one.kind === 'chips' ? (
       <ChipInput key={index} {...one} />
+    ) : one.kind === 'kbd' ? (
+      <Kbd key={index} {...one} />
     ) : (
       <Switch key={index} {...one} />
     ),

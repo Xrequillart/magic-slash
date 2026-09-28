@@ -9,8 +9,7 @@ import {
 import { migrateSkillsContextWindow } from '../pages/Skills/contextWindow'
 import { selectInfoSidebarOpen, selectInspectedTerminalId } from './infoSidebar'
 import type { TasksTarget } from '../utils/taskSelection'
-import type { AccountModalTab } from '../components/AccountModal'
-import type { AppSettingsTab } from '../components/SettingsModal'
+import type { SettingsTab } from '../components/SettingsModal'
 
 interface CloseAgentModalData {
   terminalId: string
@@ -246,23 +245,22 @@ interface AppState {
 
   // UI
   /**
-   * THE TITLE BAR'S TWO CONTROLS AND THE TWO DIALOGS THEY LEAD TO.
+   * THE TITLE BAR'S TWO CONTROLS AND THE ONE DIALOG THEY LEAD TO.
    *
    * IN THE STORE AND NOT IN `TitleBar`, which is where the sheet started, because none
    * of the four is opened only by the control beside it any more. ⌘, opens the sheet
    * from a window-level listener; the app menu's Account item and the Tasks page's
-   * missing-credential banner both open the account modal; the sheet itself opens the
-   * settings modal and closes on the way. Four surfaces that share no ancestor short of
+   * missing-credential banner both open the settings window on the page they mean; the
+   * sheet itself opens it and closes on the way. Four surfaces that share no ancestor short of
    * the app root.
    *
-   * A NULL TAB IS A SHUT DIALOG, for both of them. It is one value rather than an
+   * A NULL TAB IS A SHUT DIALOG. It is one value rather than an
    * `open` boolean beside a tab, because the two can only ever disagree: an open dialog
    * showing no page, or a page nobody can see.
    */
   quickSettingsOpen: boolean
   accountMenuOpen: boolean
-  appSettingsTab: AppSettingsTab | null
-  accountTab: AccountModalTab | null
+  settingsTab: SettingsTab | null
   // When set, the Tasks page opens on this ticket rather than on the backlog, then
   // resets it to null. Same one-shot deep link as `settingsInitialTab`, and one-shot
   // for the same reason: reopening Tasks by hand with ⌘J must not replay the last
@@ -278,6 +276,12 @@ interface AppState {
    * into "attach this ticket", and to pin the banner that says so.
    */
   tasksPickAgentId: string | null
+  /**
+   * The planner a plan is being PICKED for, or null for an ordinary visit — the Plans
+   * modal's twin of `tasksPickAgentId`, cleared by `closeModal` for the same reason. A
+   * row's click attaches the plan instead of opening it.
+   */
+  plansPickAgentId: string | null
   // When set, the Plans page opens straight on this plan rather than on the list,
   // then resets it to null. `tasksInitialTarget`'s twin, one-shot for its reason —
   // opening Plans by hand afterwards must give the list, not replay the plan somebody
@@ -456,10 +460,8 @@ interface AppState {
   /** ⌘, — the same key puts the sheet away again. */
   toggleQuickSettings: () => void
   setAccountMenuOpen: (open: boolean) => void
-  /** Open the app-settings dialog on `tab`, or shut it with null. */
-  setAppSettingsTab: (tab: AppSettingsTab | null) => void
-  /** Open the account dialog on `tab`, or shut it with null. */
-  setAccountTab: (tab: AccountModalTab | null) => void
+  /** Open the settings window on `tab`, or shut it with null. */
+  setSettingsTab: (tab: SettingsTab | null) => void
 
   setTasksInitialTarget: (target: TasksTarget | null) => void
   setPlansInitialPlanId: (id: string | null) => void
@@ -478,6 +480,12 @@ interface AppState {
   pickTicketForAgent: (agentId: string, ticketId: string) => void
   /** Take an agent off the ticket it is on, leaving the agent itself alone. */
   detachTicketFromAgent: (agentId: string) => void
+  /** Open Plans to choose the plan a planner is writing. See `plansPickAgentId`. */
+  openPlansPicker: (agentId: string) => void
+  /** Attach a plan to a planner and leave picking mode. */
+  pickPlanForAgent: (agentId: string, planId: string, planNumber?: number) => void
+  /** Take a planner off the plan it is on, leaving the agent itself alone. */
+  detachPlanFromAgent: (agentId: string) => void
   openPlansModal: (planId: string) => void
   /**
    * Remember whether the info panel is open for ONE agent, and write it through to
@@ -628,10 +636,10 @@ export const useStore = create<AppState>()(
 
         quickSettingsOpen: false,
         accountMenuOpen: false,
-        appSettingsTab: null,
-        accountTab: null,
+        settingsTab: null,
         tasksInitialTarget: null,
         tasksPickAgentId: null,
+        plansPickAgentId: null,
         plansInitialPlanId: null,
         settingsOrgId: null,
         activeModal: null,
@@ -822,8 +830,16 @@ export const useStore = create<AppState>()(
         // The two are EXCLUSIVE and it is settled here rather than in the title bar:
         // they hang from the same corner of the same bar, and the sheet blurs the whole
         // window behind it — a dropdown over that is a menu floating on fog.
-        setQuickSettingsOpen: (quickSettingsOpen) =>
-          set(quickSettingsOpen ? { quickSettingsOpen, accountMenuOpen: false } : { quickSettingsOpen }),
+        // Switched off in Settings → Quick settings, the sheet does not open: every door
+        // to it (⌘, above all) opens the settings window on that page instead, so the
+        // chord still leads somewhere and says where the sheet went.
+        setQuickSettingsOpen: (quickSettingsOpen) => {
+          if (quickSettingsOpen && get().config?.quickSettingsEnabled === false) {
+            get().setSettingsTab('quick-settings')
+            return
+          }
+          set(quickSettingsOpen ? { quickSettingsOpen, accountMenuOpen: false } : { quickSettingsOpen })
+        },
         // Through the setter above and not a bare flip, so the chord cannot open the
         // sheet over an account dropdown the setter would have closed.
         toggleQuickSettings: () => get().setQuickSettingsOpen(!get().quickSettingsOpen),
@@ -832,10 +848,8 @@ export const useStore = create<AppState>()(
         // Opening either dialog puts away whatever opened it: you asked for the page, so
         // the menu gets out of the way rather than sitting under a dialog it cannot be
         // reached past.
-        setAppSettingsTab: (appSettingsTab) =>
-          set(appSettingsTab ? { appSettingsTab, quickSettingsOpen: false, accountMenuOpen: false } : { appSettingsTab }),
-        setAccountTab: (accountTab) =>
-          set(accountTab ? { accountTab, quickSettingsOpen: false, accountMenuOpen: false } : { accountTab }),
+        setSettingsTab: (settingsTab) =>
+          set(settingsTab ? { settingsTab, quickSettingsOpen: false, accountMenuOpen: false } : { settingsTab }),
 
         setTasksInitialTarget: (tasksInitialTarget) => set({ tasksInitialTarget }),
         setPlansInitialPlanId: (plansInitialPlanId) => set({ plansInitialPlanId }),
@@ -867,7 +881,7 @@ export const useStore = create<AppState>()(
          * the next open to land on.
          */
         closeModal: () => {
-          set({ activeModal: null, tasksPickAgentId: null })
+          set({ activeModal: null, tasksPickAgentId: null, plansPickAgentId: null })
           if (window.location.hash && window.location.hash !== '#/') {
             window.location.hash = '#/'
           }
@@ -962,8 +976,32 @@ export const useStore = create<AppState>()(
         // modal — which `openModal` already handles: only one can be on screen, so the
         // Tasks modal closes as this opens rather than stacking behind it.
         openPlansModal: (planId) => {
-          set({ plansInitialPlanId: planId })
+          set({ plansInitialPlanId: planId, plansPickAgentId: null })
           get().openModal('plans')
+        },
+        // `openTasksModal`'s picking mode, for a planner and its plan: the list, not a
+        // plan, because the reader came to choose one.
+        openPlansPicker: (agentId) => {
+          set({ plansInitialPlanId: null, plansPickAgentId: agentId })
+          get().openModal('plans')
+        },
+        // `pickTicketForAgent`'s pair, both halves and for its reasons. The desktop also
+        // writes `planId` itself when the agent's own spec lands on a plan — the plan an
+        // agent is actually writing is the truth, so that write wins over a pick.
+        // `detachTicketFromAgent`'s pair: an EMPTY id rather than a removed key, for its
+        // reason — a key omitted from a metadata merge is a key left alone. The number is
+        // left behind with nothing to label; the badge reads the id.
+        detachPlanFromAgent: (agentId) => {
+          get().updateTerminalMetadata(agentId, { planId: '' })
+          window.electronAPI?.terminal.updateMetadata(agentId, { planId: '' }).catch(() => {})
+        },
+        pickPlanForAgent: (agentId, planId, planNumber) => {
+          // The number goes with the id, or a plan picked in place of a numbered one
+          // would keep the old `#` on its badge.
+          const plan = { planId, planNumber }
+          get().updateTerminalMetadata(agentId, plan)
+          window.electronAPI?.terminal.updateMetadata(agentId, plan).catch(() => {})
+          get().closeModal()
         },
         setInfoSidebarOpen: (terminalId, open) => {
           // Written through on every flip, the way `moveTerminalToPane` writes the

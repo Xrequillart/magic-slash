@@ -1,30 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
 import {
   ControlCenter,
   ControlCenterGroup,
   Label,
-  SetupStatusCard,
-  Stepper,
-  ThemeGrid,
   TITLE_BAR_HEIGHT,
   ToggleButton,
-  type SetupState,
-  type ThemeGridOption,
 } from '@ds/desktop'
-import {
-  Bell, BellOff, Brain, ChartSpline, Cog, SquareSplitHorizontal, TextCursorInput,
-} from '@ds/desktop/icons'
-import { getSetupStatus, SETUP_SIMULATION_EVENT } from '../dev/simulatedSetup'
+import { Cog } from '@ds/desktop/icons'
 import { useStore } from '../store'
-import { useConfig } from '../hooks/useConfig'
-import { useZoom } from '../hooks/useZoom'
-import { THEMES, THEME_IDS, useTheme } from '../theme'
-import { useLanguage, useT } from '../i18n'
-import { languageName } from '../languages'
-import { showToast } from './Toast'
-import {
-  DEFAULT_ZOOM, LANGUAGE_IDS, MAX_ZOOM, MIN_ZOOM, type SetupStatus, type ThemeId,
-} from '../../types'
+import { useT } from '../i18n'
+import { useQuickSettingIds, useQuickSettingTiles } from './quickSettingTiles'
 
 /**
  * THE QUICK SETTINGS, wired — what comes down when the title bar's sliders are pressed.
@@ -33,143 +17,28 @@ import {
  * hook, the translator and the one-line handlers, which is the same split `TitleBar`
  * makes with `AppTitleBar`. Nothing here knows how the sheet slides or fades.
  *
- * WHAT IS ON IT, and why these and not everything: the Settings pages hold some forty
- * controls, and a menu that pulls down from the bar has room for the ones a person
- * reaches for WITHOUT wanting a page — the features that are on or off, the scale, the
- * theme and the language.
+ * ── THE READER'S SWITCHES, IN THE READER'S ORDER ──────────────────────────────────
  *
- * TWO TILES WENT, and the rule they broke is worth naming because it is the rule for
- * anything added here. "Start at login" and the PR watcher are settings you decide ONCE,
- * when you set the machine up, and then never touch — where everything left on this
- * sheet is something you reach for in the middle of doing something else: the theme, the
- * scale, the split, whether the app may speak to you, whether the sidebar panels are
- * showing. A tile for a once-a-year decision is a tile that is in the way every other
- * day of the year. Both keep their rows on the Application page, which is one press away
- * at the foot of this sheet.
+ * Which tiles the sheet carries is Settings → Quick settings now: a catalogue of the
+ * app's on/off settings (quickSettingTiles.ts), five of them by default. The sheet held
+ * four sections once (the setup verdict, appearance, the features, the language); it is
+ * one cluster of switches, with no heading over it: one cluster needs no signpost.
  *
- * QUICK LAUNCH WENT WITH THEM AND CAME BACK, which is the useful half of that rule: a
- * global keyboard chord is not a once-a-year decision. It is the one setting here people
- * reach for in anger — the moment it starts fighting with another app for ⌃Space, they
- * want it off NOW and not four clicks into a settings page. A polling interval, a keyboard shortcut, a theme's reach into
- * Claude Code's terminal, the version and its changelog: those keep their rows on the
- * pages. Nothing is moved OFF the pages by this menu; it is a second, faster door to
- * the same values.
- *
- * FOUR SECTIONS, each a grid of four points to a row — a tile is one point, a picker or
- * the stepper three, the theme card all four — and the sections are the product owner's:
- * the machine's setup (its verdict and a re-check), appearance (the eight themes as the
- * miniatures the Appearance page paints, then the scale and the split view), features
- * (notifications first, then what the app does that can be switched off), and language.
+ * What went is what a person does not reach for in the middle of something else. The
+ * theme and the language are chosen once; the scale has ⌘+ and ⌘−; the setup verdict
+ * is a check you run when something is wrong, and it has its card at the top of the
+ * Application page. What stayed is on or off and wanted NOW: whether the app may speak
+ * to you, the global chord that has started fighting another app for ⌃Space, the two
+ * sidebar panels, and the split. Every one of them keeps its row on its settings page;
+ * this sheet is a second, faster door to the same values, and "All settings" at its
+ * foot is the door to the rest.
  */
 
 export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
-  const {
-    config, updateNotifications, updateSpotlight,
-    updateTheme, updateLanguage, updateUsageCardEnabled, updateAgentContextEnabled,
-  } = useConfig()
-  const { splitActive, toggleSplitActive } = useStore()
-  const setAppSettingsTab = useStore((s) => s.setAppSettingsTab)
-  const activeTheme = useTheme()
-  const activeLanguage = useLanguage()
-  const { zoom, set: setZoom, step: stepZoom } = useZoom()
-
-  // ── Quick Launch: a write that can succeed and still not register ──────────
-  // The only tile here with a local copy, and the reason is the shortcut: the config
-  // write lands, and then the OS refuses the chord because something else already holds
-  // it. `result.registered` is how that comes back, so the tile has to be able to move
-  // and then be told it did not.
-  const [spotlightEnabled, setSpotlightEnabled] = useState(config?.spotlight?.enabled ?? true)
-  const configSpotlightEnabled = config?.spotlight?.enabled
-  useEffect(() => {
-    if (configSpotlightEnabled !== undefined) setSpotlightEnabled(configSpotlightEnabled)
-  }, [configSpotlightEnabled])
-
-  const toggleSpotlight = async (next: boolean) => {
-    setSpotlightEnabled(next)
-    try {
-      const result = await updateSpotlight({ enabled: next, shortcut: config?.spotlight?.shortcut ?? 'Control+Space' })
-      if (next && !result.registered) showToast(t('settings.application.spotlight.error'), 'error')
-    } catch {
-      setSpotlightEnabled(!next)
-    }
-  }
-
-  // ── Machine setup: the verdict `SetupHealthCard` gives, in two words ───────
-  // Null while the check is in flight, so the card shows it is checking rather than a
-  // verdict computed the last time the sheet was open. Checked on every open — setups
-  // rot, which is the whole reason that card exists — and again on the refresh tile.
-  const [setup, setSetup] = useState<SetupStatus | null>(null)
-  const [setupFailed, setSetupFailed] = useState(false)
-  const checkSetup = useCallback(() => {
-    setSetup(null)
-    setSetupFailed(false)
-    // Through `dev/simulatedSetup` and not straight to the IPC, so the debug menu can
-    // show what a machine in trouble looks like here. Outside the dev server it is the
-    // IPC call and nothing else.
-    getSetupStatus().then(setSetup).catch(() => setSetupFailed(true))
-  }, [])
-  useEffect(() => {
-    if (open) checkSetup()
-  }, [open, checkSetup])
-  // The debug switch flipping while the sheet is down: ask again, so the verdict changes
-  // under the eye rather than on the next open.
-  useEffect(() => {
-    window.addEventListener(SETUP_SIMULATION_EVENT, checkSetup)
-    return () => window.removeEventListener(SETUP_SIMULATION_EVENT, checkSetup)
-  }, [checkSetup])
-  // The same three checks `SetupHealthCard` makes, counted rather than listed: the
-  // required tools missing or too old, the MCP servers of the chosen integrations not
-  // configured, the skills not installed.
-  const setupIssues = setup
-    ? setup.prerequisites.filter((p) => p.required && (!p.installed || p.outdated)).length
-      + setup.mcpServers.filter((m) => m.state !== 'configured' && (m.id === 'github' ? setup.integrations.github : setup.integrations.atlassian)).length
-      + setup.missingSkills.length
-    : 0
-  const setupState: SetupState = setupFailed ? 'failed' : setup === null ? 'checking' : setupIssues > 0 ? 'issues' : 'ready'
-
-  /**
-   * The config-backed tiles share one shape: fire the write, let the store move the
-   * tile, and if the write throws, say so. There is no local copy to revert because
-   * the tile was never told the new value — a failed write leaves it where it was.
-   */
-  const write = async (run: () => Promise<unknown>) => {
-    try {
-      await run()
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : t('controlCenter.saveFailed'), 'error')
-    }
-  }
-
-  // Absent means never chosen, which is on — the reading the main process makes. WHICH
-  // KINDS it may speak about is the Notifications page's question now, not the sheet's;
-  // this tile is the master and nothing else.
-  const notificationsOn = config?.notifications?.enabled !== false
-  // The two optional sidebar panels — absent means never chosen, which is shown, the
-  // reading the Appearance page's rows make.
-  const usageCardOn = config?.usageCardEnabled !== false
-  const agentContextOn = config?.agentContextEnabled !== false
-
-
-  const percent = Math.round(zoom * 100)
-
-  // The registry's eight, as the five colours a swatch is made of — resolved here,
-  // because `ThemeGrid` knows no theme and the registry cannot move into the design
-  // system (the main process reads it too).
-  const themeOptions: ThemeGridOption[] = THEME_IDS.map((id) => {
-    const { tokens } = THEMES[id]
-    return {
-      id,
-      label: t(THEMES[id].labelKey),
-      colors: {
-        floor: `rgb(${tokens.bgRgb})`,
-        panel: tokens.surfaceStrong,
-        line: tokens.lineStrong,
-        ink: `rgb(${tokens.inkRgb})`,
-        accent: `rgb(${tokens.accentRgb})`,
-      },
-    }
-  })
+  const setSettingsTab = useStore((s) => s.setSettingsTab)
+  const tiles = useQuickSettingTiles()
+  const ids = useQuickSettingIds()
 
   return (
     <ControlCenter
@@ -178,130 +47,28 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
       top={TITLE_BAR_HEIGHT}
       label={t('controlCenter.title')}
     >
-      {/* MACHINE SETUP — the verdict on three points and the re-check on the fourth.
-          Pressing the verdict opens the panel beside the sheet, where the setup card
-          with the fixes is the first thing on it. It used to open the settings modal's
-          Application tab; the tab is gone and the card came with it, so the menu no
-          longer has to send you to another window to act on what it just told you. */}
-      <ControlCenterGroup label={t('settings.application.setup.title')}>
-        <SetupStatusCard
-          state={setupState}
-          label={t(SETUP_LABEL[setupState], { count: setupIssues })}
-          openTitle={t('controlCenter.setup.open')}
-          onOpen={() => setAppSettingsTab('application')}
-          refreshTitle={t('settings.application.setup.recheck')}
-          onRefresh={checkSetup}
-        />
-      </ControlCenterGroup>
-
-      {/* APPEARANCE — the eight themes to look at, then the scale and the split view.
-          HOW FAR THE THEME REACHES IS NOT HERE: Claude Code's terminals and the file
-          preview's highlighting were a tile and a picker on this row for a while, and
-          they went back to the Appearance page in the settings panel. A tile says
-          whether a feature is on; "does the code preview follow the theme" is a
-          sentence, and the sheet has no room for the sentence. */}
-      <ControlCenterGroup label={t('controlCenter.appearance')}>
-        <ThemeGrid
-          themes={themeOptions}
-          value={activeTheme}
-          onSelect={(id) => void write(() => updateTheme(id as ThemeId))}
-        />
-        <Stepper
-          value={`${percent}%`}
-          label={t('settings.appearance.scale')}
-          className="col-span-3 w-full"
-          onDecrement={() => stepZoom(-1)}
-          onIncrement={() => stepZoom(1)}
-          canDecrement={zoom > MIN_ZOOM}
-          canIncrement={zoom < MAX_ZOOM}
-          decrementTitle={t('menu.zoomOut')}
-          incrementTitle={t('menu.zoomIn')}
-          onReset={() => setZoom(DEFAULT_ZOOM)}
-          canReset={zoom !== DEFAULT_ZOOM}
-          resetTitle={t('settings.appearance.zoomReset')}
-        />
-        {/* The split view beside the scale: both are about how the window is laid out.
-            THE TILE IS THE SPLIT ITSELF, not the permission for it — the title bar's
-            normal/split switch went when this arrived, and the feature flag that used to
-            sit behind it went too. One switch, one meaning: the window is in two panes
-            or it is not, and the Application page says the same thing with the same
-            value. */}
-        <ToggleButton
-          icon={SquareSplitHorizontal}
-          checked={splitActive}
-          onChange={(next) => {
-            if (next !== splitActive) toggleSplitActive()
-          }}
-          caption={false}
-          label={t('controlCenter.splitView')}
-        />
-      </ControlCenterGroup>
-
-      {/* FEATURES — what the app does that can be switched off, NOTIFICATIONS FIRST.
-          They were a section of their own, six tiles: a master and every kind the
-          Notifications page lists. The kinds went back to that page — a tile can say
-          whether the app may speak to you, and it takes a page to say which of five
-          things it may speak about — and one switch is not a section, so the master
-          stands at the head of this one. It is first because it is the loudest thing
-          the app does: everything else here changes what you see when you look, this
-          changes what reaches you when you are not looking. */}
-      <ControlCenterGroup label={t('controlCenter.features')}>
-        <ToggleButton
-          icon={Bell}
-          offIcon={BellOff}
-          offTone="danger"
-          checked={notificationsOn}
-          onChange={(next) => void write(() => updateNotifications({ enabled: next }))}
-          caption={false}
-          label={t('settings.notifications.master.label')}
-        />
-        {/* Quick Launch, between the notifications and the two sidebar panels: those
-            three are all "may the app do this", where the theme and the scale above are
-            "what does it look like". It came off this sheet once, on the grounds that a
-            panel you set up once does not deserve a tile — and came back, because the
-            one thing people do turn off mid-session is a global chord that has started
-            fighting with another app. */}
-        <ToggleButton
-          icon={TextCursorInput}
-          checked={spotlightEnabled}
-          onChange={toggleSpotlight}
-          caption={false}
-          label={t('controlCenter.quickLaunch')}
-        />
-        <ToggleButton
-          icon={ChartSpline}
-          checked={usageCardOn}
-          onChange={(next) => void write(() => updateUsageCardEnabled(next))}
-          caption={false}
-          label={t('settings.appearance.sidebars.usageCard.label')}
-        />
-        <ToggleButton
-          icon={Brain}
-          checked={agentContextOn}
-          onChange={(next) => void write(() => updateAgentContextEnabled(next))}
-          caption={false}
-          label={t('settings.appearance.sidebars.agentContext.label')}
-        />
-      </ControlCenterGroup>
-
-      {/* LANGUAGE — one tile per language, its flag on it, the one in force lit: the
-          showcase site's row of flags, as tiles. A radio in a switch's clothes: pressing
-          the lit one does nothing, pressing another moves the light. */}
-      <ControlCenterGroup label={t('controlCenter.language')}>
-        {LANGUAGE_IDS.map((id) => (
-          <ToggleButton
-            key={id}
-            flag={id}
-            checked={id === activeLanguage}
-            onChange={(next) => { if (next && id !== activeLanguage) void write(() => updateLanguage(id)) }}
-            caption={false}
-            label={languageName(id)}
-          />
-        ))}
-      </ControlCenterGroup>
+      {ids.length > 0 && (
+        <ControlCenterGroup label={t('controlCenter.features')} labelHidden>
+          {ids.map((id) => {
+            const tile = tiles[id]
+            return (
+              <ToggleButton
+                key={id}
+                icon={tile.icon}
+                offIcon={tile.offIcon}
+                offTone={tile.offTone}
+                checked={tile.checked}
+                onChange={tile.onChange}
+                caption={false}
+                label={tile.label}
+              />
+            )
+          })}
+        </ControlCenterGroup>
+      )}
 
       {/* ALL SETTINGS — the way to everything the tiles cannot say, under the last
-          group and centred: a foot, not a fifth section, so it takes a `Label` rather
+          group and centred: a foot, not a second section, so it takes a `Label` rather
           than a tile. A LABEL AND NOT A BUTTON because that is what this folder's one
           chip is — a mark and a word on a plate — and `onClick` is what makes it
           pressable at all; without one it would light up under the cursor and do
@@ -311,22 +78,12 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
           sheet with the tiles still lit under your hand, which read as a menu that had
           grown a second window. Pressing a menu item asks for the thing; the menu's job
           after that is to get out of the way. The store closes the sheet — see
-          `setAppSettingsTab` — so a row that opens a dialog cannot forget to. */}
+          `setSettingsTab` — so a row that opens a dialog cannot forget to. */}
       <div className="flex justify-center">
-        <Label icon={Cog} size="md" onClick={() => setAppSettingsTab('application')}>
+        <Label icon={Cog} size="md" onClick={() => setSettingsTab('application')}>
           {t('controlCenter.allSettings')}
         </Label>
       </div>
     </ControlCenter>
   )
 }
-
-/** The two words per setup state; `issues` carries the count. */
-const SETUP_LABEL = {
-  checking: 'controlCenter.setup.checking',
-  ready: 'controlCenter.setup.ready',
-  issues: 'controlCenter.setup.issues',
-  failed: 'controlCenter.setup.failed',
-} as const
-
-

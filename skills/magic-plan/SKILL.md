@@ -5,7 +5,7 @@ argument-hint: <idea or feature description>
 allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Agent, AskUserQuestion, mcp__github__*, mcp__atlassian__*
 ---
 
-# magic-slash v0.99.0 - /plan
+# magic-slash v0.100.0 - /plan
 
 You are an assistant that turns an idea into tickets: brainstorm it against the real codebase,
 write a spec the user can review, get their approval, then create the epic and its stories.
@@ -545,16 +545,21 @@ this agent. The button has to be there by the time they read the line that menti
 Write `{TICKET_ID}: {TICKET_TITLE}` to `.magic/.mp-title` with the `Write` tool, then:
 
 ```bash
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&ticketId={TICKET_ID}&title=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-title)&status=planned" > /dev/null 2>&1 || true
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-title)&status=planned" > /dev/null 2>&1 || true
 rm -f .magic/.mp-title
 ```
 
-`{TICKET_ID}` is a tracker-issued identifier (`#412`, `PROJ-1234`) and is the one value still
-substituted directly — it cannot carry shell syntax. Everything free-form goes through a file.
+`{TICKET_ID}` is the **epic** on a breakdown, the story on a single — it names what this agent
+planned, in the title and nowhere else. `{TICKET_TITLE}` is capped at 30 characters, and the
+`TICKET-ID: Title` shape is the same convention `/magic:start` uses, so the two skills produce
+comparable rows.
 
-`{TICKET_ID}` is the **epic** on a breakdown: the epic is what this agent planned, and it is what
-the sidebar should show. `{TICKET_TITLE}` is capped at 30 characters, and the `TICKET-ID: Title`
-shape is the same convention `/magic:start` uses, so the two skills produce comparable rows.
+**Never send `ticketId`.** A planner is linked to its **plan**, not to a ticket, and it is linked
+from the first minute: the desktop creates the plan's row when Step 2.5 announces `specPath`, and
+writes that row's id back onto the agent itself — the sidebar's plan badge opens it. The tickets
+hang off the plan (Step 7.2), which is where the Plans page and the ticket's own page read them.
+A `ticketId` here would make the planner an agent *on* the epic, which it is not: nobody works on
+an epic, and the Tasks board would show a finished planning session as someone busy on it.
 
 **Never send `description`.** The planning agent's sidebar card shows the spec itself, not a
 description field — the field is not rendered there at all, so anything written to it would be
@@ -563,8 +568,7 @@ output and the tickets carry their own bodies; there is nothing left for a summa
 about the **agent metadata** field only: the ticket descriptions composed in `trackers.md` §3.3 are
 a tracker field and are unaffected.
 
-Run this call even after a partial failure, carrying whatever ticket id does exist — and carrying
-`status=planned` all the same. A half-created plan is still a plan the sidebar should show, and the
+Run this call even after a partial failure, carrying `status=planned` all the same. A half-created plan is still a plan the sidebar should show, and the
 planning is over either way: what is missing is tickets, not a decision. Leaving such an agent at
 `planning` would make the one case where the user most needs to act on the result the one case where
 the sidebar hides that there is a result.
@@ -619,9 +623,8 @@ never succeeded — the two are independent, and a list of tickets is worth havi
 
 Display `MSG_NEXT_STEPS`, offering `/magic:start <TICKET-ID>`.
 
-On an epic breakdown, offer the **first story**, not the epic. The agent carries the epic as its
-`ticketId` because that is what it planned, but an epic is not something anyone checks out a branch
-for — those are two different questions and this is the one about branches.
+On an epic breakdown, offer the **first story**, not the epic: an epic is not something anyone
+checks out a branch for.
 
 Remind the user, in the one line `MSG_NEXT_STEPS` already carries, that the spec lives in the main
 checkout: `/magic:start` creates a worktree, and an untracked `.magic/spec-*.md` does not appear
@@ -667,7 +670,7 @@ Three writes, and nothing between them:
 | --- | --- |
 | Step 2.5 — repository chosen | `/repositories` with the repository path; then `title` (short idea), `status=planning`, `specPath` (absolute) |
 | Step 6.1 — structure approved | `title`, refined to the agreed epic/story wording |
-| Step 7.1 — tickets created | `ticketId`, `title` = `TICKET-ID: Title`, `status=planned` — never `description`, see Step 7.1 |
+| Step 7.1 — tickets created | `title` = `TICKET-ID: Title`, `status=planned` — never `ticketId` nor `description`, see Step 7.1 |
 
 Plus two pings on `/plan/*`, which are notifications rather than metadata: they tell the desktop that
 something it already knows where to find has changed.

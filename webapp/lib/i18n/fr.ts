@@ -341,12 +341,12 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.appearance.claudeTheme.label': 'Accorder Claude Code au thème',
   'settings.appearance.claudeTheme.help':
     'Claude Code adopte les couleurs du thème choisi dans les terminaux de l’app. Les sessions déjà ouvertes se repeignent aussi. Votre Claude Code lancé depuis un vrai terminal n’est pas touché.',
-  'settings.appearance.codeTheme.label': 'Coloration du code',
-  'settings.appearance.codeTheme.help':
-    'L’apparence dans laquelle l’aperçu de fichier de l’application affiche le code. Suivre le thème convient à presque tout le monde ; fixez-en une pour lire du code sombre sur une interface claire, ou l’inverse.',
-  'settings.appearance.codeTheme.auto': 'Suit le thème',
-  'settings.appearance.codeTheme.light': 'Toujours claire',
-  'settings.appearance.codeTheme.dark': 'Toujours sombre',
+  'settings.appearance.codeSyntax.label': 'Thème du code',
+  'settings.appearance.codeSyntax.help':
+    'La palette dans laquelle l’app desktop colore le code. Sa variante claire ou sombre suit toujours le thème.',
+  'settings.appearance.codeSyntax.auto': 'Assorti au thème',
+  'settings.appearance.codeFontSize.label': 'Taille du code',
+  'settings.appearance.codeFontSize.help': 'Aperçus de fichiers, diffs et historique des plans dans l’app desktop.',
   'settings.sidebars.section': 'Barres latérales',
   'settings.sidebars.agentContext.label': 'Contexte de l’agent',
   'settings.sidebars.agentContext.help':

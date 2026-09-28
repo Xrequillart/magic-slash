@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useStore } from '../store'
-import type { AgentSortMode, CodeThemeMode, Config, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId } from '../../types'
+import type { AgentSortMode, CodeSyntaxChoice, Config, LaunchMode, QuickSettingId, SplitNewAgentPane, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId } from '../../types'
 
 export function useConfig() {
   const { config, configLoading, configError, setConfig, setConfigLoading, setConfigError } = useStore()
@@ -180,11 +180,49 @@ export function useConfig() {
     return result
   }, [setConfig])
 
-  // Which appearance the file preview highlights code in. Recorded here and read
-  // back through `useCodeAppearance`, which is what the preview keys its cache on
-  // — so the drawer re-highlights the file already on screen.
-  const updateCodeTheme = useCallback(async (mode: CodeThemeMode) => {
-    const result = await window.electronAPI.config.setCodeTheme(mode)
+  // Which palette family code is highlighted in. Recorded here and read back through
+  // `useCodeAppearance`, which is what the preview keys its cache on — so the drawer
+  // re-highlights the file already on screen.
+  const updateCodeSyntax = useCallback(async (choice: CodeSyntaxChoice) => {
+    const result = await window.electronAPI.config.setCodeSyntax(choice)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  // The model a new agent is launched on; null goes back to the CLI's own default.
+  const updateDefaultModel = useCallback(async (model: string | null) => {
+    const result = await window.electronAPI.config.setDefaultModel(model)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  const updateQuickLaunch = useCallback(async (patch: { repo?: string; background?: boolean; launchMode?: LaunchMode | null }) => {
+    const result = await window.electronAPI.config.setQuickLaunch(patch)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  const updateQuickSettings = useCallback(async (patch: { enabled?: boolean; items?: QuickSettingId[] }) => {
+    const result = await window.electronAPI.config.setQuickSettings(patch)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  const updateSplitNewAgentPane = useCallback(async (pane: SplitNewAgentPane) => {
+    const result = await window.electronAPI.config.setSplitNewAgentPane(pane)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  const updateConfirmAgentArchive = useCallback(async (enabled: boolean) => {
+    const result = await window.electronAPI.config.setConfirmAgentArchive(enabled)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  // The size code is set in; CodeView reads it straight off the config.
+  const updateCodeFontSize = useCallback(async (size: number) => {
+    const result = await window.electronAPI.config.setCodeFontSize(size)
     setConfig(result.config)
     return result
   }, [setConfig])
@@ -286,7 +324,13 @@ export function useConfig() {
     updatePlansRepo,
     updateTheme,
     updateSyncClaudeTheme,
-    updateCodeTheme,
+    updateCodeSyntax,
+    updateCodeFontSize,
+    updateDefaultModel,
+    updateConfirmAgentArchive,
+    updateSplitNewAgentPane,
+    updateQuickLaunch,
+    updateQuickSettings,
     updateUsageCardEnabled,
     updateUsageCardMinimized,
     updateAgentContextEnabled,

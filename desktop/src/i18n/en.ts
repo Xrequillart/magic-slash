@@ -113,8 +113,18 @@ export const en = {
   'settings.tab.appearance': 'Appearance',
   'settings.tab.language': 'Language & Region',
   'settings.tab.application': 'Application',
+  'settings.tab.quickSettings': 'Quick settings',
+  'settings.tab.quickLaunch': 'Quick Launch',
+  'settings.tab.splitView': 'Split view',
+  'settings.tab.profile': 'Profile',
+  'settings.tab.agents': 'Agents',
+  'settings.tab.codeReviews': 'Code & reviews',
   'settings.tab.shortcuts': 'Shortcuts',
   'settings.tab.about': 'About',
+  'settings.group.personal': 'Personal',
+  'settings.group.notifications': 'Notifications',
+  'settings.group.features': 'Features',
+  'settings.group.about': 'About',
   'settings.language.section': 'Language & Region',
   'settings.language.label': 'Interface language',
   'settings.language.help':
@@ -157,20 +167,13 @@ export const en = {
   'controlCenter.quickLaunch': 'Quick Launch',
   'controlCenter.launchAtLogin': 'Start at login',
   'controlCenter.prWatcher': 'PR watcher',
-  'controlCenter.appearance': 'Appearance',
   'controlCenter.theme': 'Theme',
-  'controlCenter.language': 'Language',
   'controlCenter.about': 'About',
   'controlCenter.allSettings': 'All settings',
   'controlCenter.saveFailed': 'Failed to save that setting.',
   /** The title bar's standing notice while notifications are off; pressing it opens the sheet. */
   'controlCenter.notificationsOff': 'Notifications off',
   // The machine's setup, in two words: a 3-point card has no room for the page's sentences.
-  'controlCenter.setup.ready': 'Machine ready',
-  'controlCenter.setup.issues': '{count} to fix',
-  'controlCenter.setup.checking': 'Checking…',
-  'controlCenter.setup.failed': 'Check failed',
-  'controlCenter.setup.open': 'Open the machine setup',
 
   // ── Left sidebar ─────────────────────────────────────────────────────────
   'sidebar.newAgent': 'New agent',
@@ -291,6 +294,7 @@ export const en = {
     'Security warning: Bypass mode disables all permission checks. Only use in sandboxed environments with no internet access.',
   'settings.launchMode.bypassConfirm': 'I understand, enable Bypass',
 
+  'settings.claude.usageCard.section': 'Usage card',
   'settings.rate.section': 'Rate usage',
   'settings.rate.empty':
     'No live rate-limit data yet — available for Claude.ai Pro/Max after the first agent activity.',
@@ -335,6 +339,14 @@ export const en = {
   'settings.application.planSync.footnote':
     'Turning it off changes nothing on your machine: the spec file is still written in the repository, and the app still follows it live.',
   'settings.application.planSync.error': 'Failed to save that setting.',
+  'settings.split.newAgentPane.label': 'New agents open in',
+  'settings.split.newAgentPane.help': 'Which pane an agent created with ⌘N, the + button or the File menu lands in.',
+  'settings.split.newAgentPane.focused': 'The active pane',
+  'settings.split.newAgentPane.focused.help': 'The pane you are working in, the one with the keyboard.',
+  'settings.split.newAgentPane.left': 'Always left',
+  'settings.split.newAgentPane.left.help': 'New work always starts on the left, whichever pane is active.',
+  'settings.split.newAgentPane.right': 'Always right',
+  'settings.split.newAgentPane.right.help': 'New work always starts on the right, whichever pane is active.',
   'settings.application.split.section': 'Split View',
   'settings.application.split.label': 'Enable split view',
   'settings.application.split.help': 'Display two agents side by side on wide screens',
@@ -356,6 +368,31 @@ export const en = {
   'settings.application.prWatcher.autoLaunchLabel': 'Auto-launch skills',
   'settings.application.prWatcher.autoLaunchHelp':
     'Send /magic:resolve or /magic:done directly to the agent’s terminal. Disabled by default for safety.',
+  // ── Settings → Quick settings ────────────────────────────────────────────
+  'settings.quickSettings.section': 'Quick settings',
+  'settings.quickSettings.enabled.label': 'Show the quick settings',
+  'settings.quickSettings.enabled.help': 'The sliders button in the title bar, and ⌘, to pull the sheet down. Off, ⌘, opens this page instead.',
+  'settings.quickSettings.arrange.section': 'Switches',
+  'settings.quickSettings.arrange.description': 'Drag a switch to move it, drag it down to take it off the sheet, or drag one from below onto the sheet to add it. Pressing a switch below adds it at the end, and the × on a switch removes it.',
+  'settings.quickSettings.arrange.menu': 'On the sheet',
+  'settings.quickSettings.arrange.menuEmpty': 'Drag switches here',
+  'settings.quickSettings.arrange.available': 'Available',
+  'settings.quickSettings.arrange.availableEmpty': 'Every switch is on the sheet.',
+  'settings.quickSettings.arrange.remove': 'Remove {name}',
+
+  'settings.quickLaunch.launch.section': 'Launch',
+  'settings.quickLaunch.repo.label': 'Repository',
+  'settings.quickLaunch.repo.help': 'Where the agent started from Quick Launch works.',
+  'settings.quickLaunch.repo.first': 'First repository',
+  'settings.quickLaunch.repo.first.help': 'The first repository in your list, whatever the prompt says.',
+  'settings.quickLaunch.repo.match': 'Detect from the prompt',
+  'settings.quickLaunch.repo.match.help': 'The repository whose name or keywords the prompt mentions. The first one when it mentions none.',
+  'settings.quickLaunch.mode.label': 'Launch mode',
+  'settings.quickLaunch.mode.help': 'The permission mode an agent started from Quick Launch runs in.',
+  'settings.quickLaunch.mode.inherit': 'Same as Agents ({mode})',
+  'settings.quickLaunch.mode.inherit.help': 'The launch mode set on the Agents page, like any other new agent.',
+  'settings.quickLaunch.background.label': 'Stay in the background',
+  'settings.quickLaunch.background.help': 'Start the agent without bringing Magic Slash forward. You stay where you were, and a notification says when the agent needs you.',
   'settings.application.spotlight.section': 'Spotlight',
   'settings.application.spotlight.label': 'Enable global shortcut',
   'settings.application.spotlight.help': 'Open the Quick Launch panel from anywhere with a keyboard shortcut',
@@ -380,6 +417,20 @@ export const en = {
   'settings.shortcuts.toggleAgentsList': 'Toggle agents list',
   'settings.shortcuts.toggleSplit': 'Toggle Split View',
   'settings.shortcuts.quickLaunch': 'Quick Launch',
+  'settings.shortcuts.help.newAgent': 'Starts a new agent in the focused pane.',
+  'settings.shortcuts.help.duplicateAgent': 'Starts a copy of the selected agent, on the same repository and branch.',
+  'settings.shortcuts.help.closeAgent': 'Archives the selected agent, after asking you to confirm.',
+  'settings.shortcuts.help.previousAgent': 'Selects the agent above in the list.',
+  'settings.shortcuts.help.nextAgent': 'Selects the agent below in the list.',
+  'settings.shortcuts.help.toggleAgentInfo': 'Shows or hides the panel on the right of the selected agent.',
+  'settings.shortcuts.help.toggleAgentsList': 'Shows or hides the list of agents on the left.',
+  'settings.shortcuts.help.toggleSplit': 'Splits the window in two panes, or brings it back to one.',
+  'settings.shortcuts.help.skills': 'Opens the skills page.',
+  'settings.shortcuts.help.tasks': 'Opens your Jira and GitHub tasks.',
+  'settings.shortcuts.help.plans': 'Opens the plans page.',
+  'settings.shortcuts.help.repositories': 'Opens the repositories window.',
+  'settings.shortcuts.help.controlCenter': 'Pulls down the quick settings sheet.',
+  'settings.shortcuts.help.quickLaunch': 'Opens the Quick Launch panel from anywhere on the Mac. The chord is set on the Quick Launch page.',
   'settings.shortcuts.disabled': 'Disabled',
 
   // ── Settings → About ─────────────────────────────────────────────────────
@@ -926,7 +977,7 @@ export const en = {
   'account.checklist.todo.atlassian':
     'Connect Atlassian from the Connections tab, so the skills can read your Jira tickets and move them along.',
   'account.checklist.todo.profile':
-    'Fill in your profile at the bottom of this tab. The skills read it to pitch their vocabulary and their level of detail at you.',
+    'Fill in your profile on the Profile page, right below Account. The skills read it to pitch their vocabulary and their level of detail at you.',
   'account.checklist.todo.repository':
     'Add a repository from the Repositories tab, or point an existing one back at a folder that still exists.',
   'account.checklist.todo.setup':
@@ -1140,6 +1191,32 @@ export const en = {
   'role.admin': 'Admin',
   'role.admin.help': 'Can invite, change roles and archive the organization',
 
+  // ── Settings → Agents ────────────────────────────────────────────────────
+  'settings.agents.model.label': 'Model',
+  'settings.agents.model.help': 'The Claude model a new agent starts on. The list is the one your Claude Code offers in /model.',
+  'settings.agents.model.cliDefault': 'Claude Code default',
+  'settings.agents.model.cliDefaultHelp': 'Whatever /model is set to in Claude Code.',
+  'settings.agents.model.loading': 'Asking Claude Code for its models…',
+  'settings.agents.model.unavailable': 'Claude Code did not answer, so only its default is offered.',
+  'settings.agents.list.section': 'Agents list',
+  'settings.agents.sort.label': 'Order',
+  'settings.agents.sort.help': 'How the agents are ordered in the left sidebar. Also in the menu at the top of the list.',
+  'settings.agents.panel.section': 'Agent panel',
+  'settings.agents.archive.section': 'Archiving',
+  'settings.agents.archive.confirm.label': 'Confirm before archiving',
+  'settings.agents.archive.confirm.help': 'Ask before ⌘W or the title bar button archives an agent. Off, the agent is archived at once.',
+
+  // ── Settings → Code & reviews ────────────────────────────────────────────
+  'settings.code.section': 'Code',
+  'settings.code.syntax.label': 'Code theme',
+  'settings.code.syntax.help': 'Matches your interface theme unless overridden. The light or dark variant always follows the theme.',
+  'settings.code.syntax.auto': 'Auto: {name}',
+  'settings.code.font.label': 'Font size',
+  'settings.code.font.help': 'File previews, diffs and plan history.',
+  'settings.code.font.option': '{size}px',
+  'settings.code.preview.language': 'Preview language',
+  'settings.code.preview.failed': 'The preview could not be highlighted.',
+
   // ── Themes (registry labels) ─────────────────────────────────────────────
   'theme.dark': 'Dark',
   'theme.dark.help': 'The original, near-black.',
@@ -1203,12 +1280,6 @@ export const en = {
   'settings.appearance.claudeTheme.label': 'Match Claude Code to the theme',
   'settings.appearance.claudeTheme.help':
     'Claude Code takes the chosen theme’s colours in the app’s terminals, repainting sessions that are already open. Claude Code started from a real terminal is left alone.',
-  'settings.appearance.codeTheme.label': 'Syntax highlighting',
-  'settings.appearance.codeTheme.help':
-    'Which appearance the file preview paints code in. Following the theme is right for almost everyone; pin one to read dark code on a light interface, or the other way round.',
-  'settings.appearance.codeTheme.auto': 'Follows the theme',
-  'settings.appearance.codeTheme.light': 'Always light',
-  'settings.appearance.codeTheme.dark': 'Always dark',
   'settings.appearance.displaySection': 'Display',
   'settings.appearance.scale': 'Interface scale',
   // Written towards the two accelerator caps the row draws at the end of it — see
@@ -1219,7 +1290,6 @@ export const en = {
   'settings.appearance.zoomReset': 'Reset to 100%',
   'toast.themeChangeFailed': 'Failed to change theme',
   'toast.claudeThemeSyncFailed': 'Failed to change the Claude Code theme',
-  'toast.codeThemeFailed': 'Failed to change the syntax highlighting',
   'toast.sidebarPanelFailed': 'Failed to change the sidebar panels',
 
   // ── User profile fields ──────────────────────────────────────────────────
@@ -1238,6 +1308,8 @@ export const en = {
   'profile.style.detailed': 'Detailed',
 
   'profile.section': 'Profile',
+  'profile.description':
+    'How Claude should talk to you. Every /magic:* skill reads this profile before it answers: your technical level sets how plain or precise the vocabulary is, your role how deep it goes (a summary for a manager, code-level detail for a developer), your communication style how long and how structured the answers are, and your languages which language it writes in. Your first name is used when it reads naturally. The profile follows your account, so every machine you sign in on uses the same one.',
   'profile.form.requiredWarning':
     'A name, a role and a technical level are required — nothing is saved until all three are filled in.',
   'profile.form.intro':
@@ -1818,6 +1890,11 @@ export const en = {
   'agentInfo.viewPullRequest': 'View Pull Request',
   'agentInfo.addTicket': 'Add a ticket',
   'agentInfo.addTicketHint': 'Pick a ticket to attach to this agent',
+  'agentInfo.plan': 'Plan',
+  'agentInfo.planNumber': 'Plan #{number}',
+  'agentInfo.planOpen': 'Open this plan in Plans',
+  'agentInfo.addPlan': 'Add plan',
+  'agentInfo.addPlanHint': 'Pick a plan to attach to this agent',
   'agentInfo.ticketOpenInTasks': 'Open this ticket in Tasks',
   'agentInfo.titlePlaceholder': 'Enter title…',
   'agentInfo.addTitle': 'Click to add title',
@@ -2454,6 +2531,10 @@ export const en = {
   'tasks.pick.hint': 'Click a card to attach it. Nothing is started.',
   'tasks.pick.cancel': 'Cancel',
   'tasks.pick.fallbackAgent': 'this agent',
+  'plans.pick.title': 'Pick a plan for {name}',
+  'plans.pick.hint': 'Click a plan to attach it. Nothing is started.',
+  'plans.hasAgentHint': 'An agent is working on this plan.',
+  'plans.detachAgentHint': 'Take this agent off the plan. The agent keeps running.',
   // The alternative to starting the work: an agent that reads the issue and talks about it.
   // "Discuss with", not "Start a discussion with" — it sits directly under "Start an agent",
   // and two labels both opening on the same verb read as two ways of doing one thing.

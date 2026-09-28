@@ -10,7 +10,7 @@ import { recordSkillInvocation } from './usage/skill-invocations'
 import { installShellIntegration } from './hooks/shell-integration'
 import { configureClaudeHooks, configureStatusLine } from './hooks/claude-hooks-config'
 import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook, writeToTerminal, getTerminalBuffer } from './pty/terminal-manager'
-import type { MenuCommand, TerminalUsage, TrayAnswerChoice, TrayAnswerResult, TrayState, TrayUpdate } from '../types'
+import type { MenuCommand, TerminalMetadata, TerminalUsage, TrayAnswerChoice, TrayAnswerResult, TrayState, TrayUpdate } from '../types'
 import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, checkForUpdates, isUpdating, getUpdateStatus } from './updater'
 import { updateSkills } from './skills-updater'
 import { setupSkillsHandlers } from './ipc/skills-handlers'
@@ -20,7 +20,7 @@ import { setupConnectivityHandlers } from './ipc/connectivity-handlers'
 import { setupAppearanceHandlers } from './ipc/appearance-handlers'
 import { setStore } from './store/Store'
 import { CloudStore } from './store/CloudStore'
-import { recordPlanSession, schedulePlanSpecUpload, syncPlanTickets } from './store/plan-sync'
+import { recordPlanSession, schedulePlanSpecUpload, setPlanSessionListener, syncPlanTickets } from './store/plan-sync'
 import { readConfig, writeConfig, updateRepositoryWorktreeFilesSettings } from './config/config'
 import { archiveLegacyConfig } from './config/legacy-cleanup'
 import { expandPath } from './config/validation'
@@ -600,6 +600,14 @@ function setupTrayHandlers() {
 function setupQuickLaunchHandlers() {
   ipcMain.handle('quicklaunch:dispatch', async (_event, { ticketId, action }: { ticketId: string; action: string }) => {
     hideQuickLaunch()
+    // Settings → Quick Launch can keep the reader where they were: the agent starts in
+    // the main window without it being brought forward, and the "agent waiting"
+    // notification is what says it is ready. A window that does not exist yet has to be
+    // opened either way, so that case still goes through the focus.
+    if (readConfig().quickLaunchBackground === true && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('quicklaunch:dispatch', { ticketId, action })
+      return
+    }
     focusMainWindow(win => win.webContents.send('quicklaunch:dispatch', { ticketId, action }))
   })
 
@@ -720,7 +728,10 @@ async function initializeHooksAndSessions() {
       }
     })
 
-    setMetadataCallback((terminalId: string, metadata: Record<string, string | string[] | Record<string, { prUrl?: string }>>) => {
+    // One path for every metadata write, whoever makes it: a skill through the hook, or
+    // this process on the agent's behalf (the plan link below). Persisted, sent to the
+    // renderer, and reflected in the tray, in that order.
+    const applyMetadata = (terminalId: string, metadata: Partial<TerminalMetadata>) => {
       updateTerminalMetadataFromHook(terminalId, metadata)
       if (mainWindow) {
         mainWindow.webContents.send('terminal:metadata', {
@@ -732,6 +743,17 @@ async function initializeHooksAndSessions() {
       if (aggregator) {
         aggregator.update()
       }
+    }
+    setMetadataCallback(applyMetadata)
+
+    // The planner's plan, as soon as its row exists: written back onto the agent so the
+    // sidebar can link to it from the first minute. Only when it changes — the listener
+    // hears every upsert, and most of them re-announce the same id.
+    setPlanSessionListener((terminalId, plan) => {
+      const agent = readAgents().find((a) => a.id === terminalId)
+      if (!agent) return
+      if (agent.metadata?.planId === plan.id && agent.metadata?.planNumber === plan.number) return
+      applyMetadata(terminalId, { planId: plan.id, ...(plan.number !== undefined ? { planNumber: plan.number } : {}) })
     })
 
     // Usage stats from the statusLine wrapper — in-memory update + single metadata IPC.

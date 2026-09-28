@@ -15,6 +15,7 @@ import { resolveAgentCwd } from './agent-cwd'
 import { getCommonPaths } from '../utils/paths'
 import { clearPendingQuestion, clearAllPendingQuestions } from '../questions/pending-questions'
 import type { TerminalMetadata, TerminalState, LaunchMode, TerminalUsage, InitialPromptMode } from '../../types'
+import { isValidModelName } from '../../types'
 export type { TerminalMetadata, TerminalState }
 
 const DEFAULT_PTY_ROWS = 40
@@ -498,6 +499,14 @@ export function launchClaude(
   let pendingPrompt = initialPromptMode === 'run' ? (initialPrompt || null) : null
   let pendingDraft = initialPromptMode === 'draft' ? (initialPrompt || null) : null
 
+  // The model is read ONCE, when the agent is created, unlike the launch mode and the
+  // theme below: an agent that restarts after a crash must come back on the model it was
+  // started on, not on whatever Settings → Agents says now. Absent means no flag, so the
+  // CLI's own default (`/model`) applies. Validated again here because the value came
+  // through the cloud; quoted for the reason `modeFlag` is.
+  const defaultModel = readConfig().defaultModel
+  const modelFlag = isValidModelName(defaultModel) ? ` --model ${shQuote(defaultModel)}` : ''
+
   // Function to create and attach a new PTY process
   const createPtyProcess = (currentCwd: string, cols: number = 120, rows: number = DEFAULT_PTY_ROWS) => {
     const launchMode = launchModeOverride ?? readConfig().launchMode
@@ -527,8 +536,8 @@ export function launchClaude(
      * enumerate shell metacharacters correctly forever.
      */
     const claudeCmd = pendingPrompt
-      ? `claude${modeFlag}${themeFlag} ${shQuote(pendingPrompt)}`
-      : `claude${modeFlag}${themeFlag}`
+      ? `claude${modeFlag}${modelFlag}${themeFlag} ${shQuote(pendingPrompt)}`
+      : `claude${modeFlag}${modelFlag}${themeFlag}`
     pendingPrompt = null
     const ptyProcess = pty.spawn(shell, ['-li', '-c', claudeCmd], {
       name: 'xterm-256color',

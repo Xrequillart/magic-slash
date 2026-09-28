@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { PageModal as PageModalGround, type ModalHeaderProps, type PageModalSize } from '@ds/desktop'
+import { PageModal as PageModalGround, type ModalHeaderProps, type PageModalSize, type SettingsRailProps } from '@ds/desktop'
 import type { IconComponent } from '@ds/desktop/types'
 import { useIsFullScreen } from '../hooks/useIsFullScreen'
 import { useModalExit } from '../hooks/useModalExit'
@@ -112,10 +112,12 @@ interface PageModalProps {
    * The scroller is the design system's at that size, and this is what remounts it.
    */
   bodyKey?: string
+  /** `column` only: the settings window's page list, down the left. See the design system's prop. */
+  rail?: SettingsRailProps
   children: ReactNode
 }
 
-export function PageModal({ title, titleIcon, onClose, tabs, headerRight, size, bodyKey, children }: PageModalProps) {
+export function PageModal({ title, titleIcon, onClose, tabs, headerRight, size, bodyKey, rail, children }: PageModalProps) {
   const t = useT()
   const fullScreen = useStore((s) => s.pageModalFullScreen)
   const toggleFullScreen = useStore((s) => s.togglePageModalFullScreen)
@@ -196,6 +198,7 @@ export function PageModal({ title, titleIcon, onClose, tabs, headerRight, size, 
       trafficLightGutter={!windowFullScreen}
       size={size}
       bodyKey={bodyKey}
+      rail={rail}
       header={{
         title,
         icon: titleIcon,

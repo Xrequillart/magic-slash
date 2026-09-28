@@ -1,5 +1,5 @@
 import type { Config, SpotlightConfig } from '../../types'
-import { isValidAgentSort, isValidCodeThemeMode, isValidLanguage, isValidTheme } from '../../types'
+import { cleanQuickSettings, isValidAgentSort, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidTheme } from '../../types'
 import { isValidAgentType, isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 
 // ---------------------------------------------------------------------------
@@ -35,6 +35,7 @@ export interface UserSettingsRow {
   daily_digest_enabled: boolean | null
   split_enabled: boolean | null
   split_active: boolean | null
+  split_new_agent_pane: string | null
   notifications_enabled: boolean | null
   notification_agent_waiting: boolean | null
   notification_agent_completed: boolean | null
@@ -45,14 +46,22 @@ export interface UserSettingsRow {
   pr_reviews_auto_launch_skills: boolean | null
   spotlight_enabled: boolean | null
   spotlight_shortcut: string | null
+  quick_launch_repo: string | null
+  quick_launch_background: boolean | null
+  quick_launch_launch_mode: string | null
+  quick_settings_enabled: boolean | null
+  quick_settings_items: string[] | null
   auto_start_at_login: boolean | null
   launch_mode: string | null
   atlassian_integration_enabled: boolean | null
   theme: string | null
   language: string | null
   sync_claude_theme: boolean | null
-  code_theme: string | null
+  code_syntax: string | null
+  code_font_size: number | null
   default_agent_type: string | null
+  default_model: string | null
+  confirm_agent_archive: boolean | null
   agent_sort: string | null
   tasks_repo: string | null
   plans_repo: string | null
@@ -67,7 +76,7 @@ export const USER_SETTINGS_COLUMNS =
   'notification_pr_changes_requested, split_enabled, split_active, pr_reviews_enabled, ' +
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
   'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
-  'language, sync_claude_theme, code_theme, default_agent_type, agent_sort, tasks_repo, ' +
+  'language, sync_claude_theme, code_syntax, code_font_size, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, quick_settings_enabled, quick_settings_items, agent_sort, tasks_repo, ' +
   'plans_repo'
 
 /**
@@ -92,11 +101,19 @@ export const SETTINGS_KEYS = [
   'notifications',
   'splitEnabled',
   'splitActive',
+  'splitNewAgentPane',
   'prReviews',
   'spotlight',
+  'quickLaunchRepo',
+  'quickLaunchBackground',
+  'quickLaunchLaunchMode',
+  'quickSettingsEnabled',
+  'quickSettingsItems',
   'autoStartAtLogin',
   'launchMode',
   'defaultAgentType',
+  'defaultModel',
+  'confirmAgentArchive',
   'agentSort',
   'tasksRepo',
   'plansRepo',
@@ -104,7 +121,8 @@ export const SETTINGS_KEYS = [
   'theme',
   'language',
   'syncClaudeTheme',
-  'codeTheme',
+  'codeSyntax',
+  'codeFontSize',
 ] as const
 
 /** `undefined` (key absent from Config) → `null` (column unset). */
@@ -130,6 +148,7 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     daily_digest_enabled: orNull(config.dailyDigest?.enabled),
     split_enabled: orNull(config.splitEnabled),
     split_active: orNull(config.splitActive),
+    split_new_agent_pane: orNull(config.splitNewAgentPane),
     notifications_enabled: orNull(config.notifications?.enabled),
     notification_agent_waiting: orNull(config.notifications?.agentWaiting),
     notification_agent_completed: orNull(config.notifications?.agentCompleted),
@@ -140,14 +159,22 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     pr_reviews_auto_launch_skills: orNull(config.prReviews?.autoLaunchSkills),
     spotlight_enabled: orNull(config.spotlight?.enabled),
     spotlight_shortcut: orNull(config.spotlight?.shortcut),
+    quick_launch_repo: orNull(config.quickLaunchRepo),
+    quick_launch_background: orNull(config.quickLaunchBackground),
+    quick_launch_launch_mode: orNull(config.quickLaunchLaunchMode),
+    quick_settings_enabled: orNull(config.quickSettingsEnabled),
+    quick_settings_items: orNull(config.quickSettingsItems),
     auto_start_at_login: orNull(config.autoStartAtLogin),
     launch_mode: orNull(config.launchMode),
     atlassian_integration_enabled: orNull(config.integrations?.atlassian),
     theme: orNull(config.theme),
     language: orNull(config.language),
     sync_claude_theme: orNull(config.syncClaudeTheme),
-    code_theme: orNull(config.codeTheme),
+    code_syntax: orNull(config.codeSyntax),
+    code_font_size: orNull(config.codeFontSize),
     default_agent_type: orNull(config.defaultAgentType),
+    default_model: orNull(config.defaultModel),
+    confirm_agent_archive: orNull(config.confirmAgentArchive),
     agent_sort: orNull(config.agentSort),
     tasks_repo: orNull(config.tasksRepo),
     plans_repo: orNull(config.plansRepo),
@@ -175,8 +202,17 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   if (isSet(row.daily_digest_enabled)) config.dailyDigest = { enabled: row.daily_digest_enabled }
   if (isSet(row.split_enabled)) config.splitEnabled = row.split_enabled
   if (isSet(row.split_active)) config.splitActive = row.split_active
+  if (isValidSplitNewAgentPane(row.split_new_agent_pane)) config.splitNewAgentPane = row.split_new_agent_pane
   if (isSet(row.auto_start_at_login)) config.autoStartAtLogin = row.auto_start_at_login
   if (isValidLaunchMode(row.launch_mode)) config.launchMode = row.launch_mode
+  if (isValidQuickLaunchRepo(row.quick_launch_repo)) config.quickLaunchRepo = row.quick_launch_repo
+  if (isSet(row.quick_launch_background)) config.quickLaunchBackground = row.quick_launch_background
+  if (isValidLaunchMode(row.quick_launch_launch_mode)) config.quickLaunchLaunchMode = row.quick_launch_launch_mode
+  if (isSet(row.quick_settings_enabled)) config.quickSettingsEnabled = row.quick_settings_enabled
+  // Cleaned rather than trusted: a tile a newer build knows and this one does not is
+  // dropped from the sheet here, not drawn as nothing.
+  const quickSettingsItems = cleanQuickSettings(row.quick_settings_items)
+  if (quickSettingsItems) config.quickSettingsItems = quickSettingsItems
   // Re-validated rather than trusted: a newer version may have stored a theme
   // this build has never heard of, and it must read as "unset", not as a theme.
   if (isValidTheme(row.theme)) config.theme = row.theme
@@ -184,14 +220,18 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   // so this build falls back to English rather than to a locale it cannot show.
   if (isValidLanguage(row.language)) config.language = row.language
   if (isSet(row.sync_claude_theme)) config.syncClaudeTheme = row.sync_claude_theme
-  // Re-validated like the theme above: a mode a newer build knows and this one does
-  // not must read as "unset" — the preview then follows the theme, which is the
-  // behaviour every version had before the setting existed.
-  if (isValidCodeThemeMode(row.code_theme)) config.codeTheme = row.code_theme
+  // Re-validated like the theme above: a family a newer build knows and this one does
+  // not must read as "unset" — the preview then takes the theme's own pairing.
+  if (isValidCodeSyntax(row.code_syntax)) config.codeSyntax = row.code_syntax
+  if (isValidCodeFontSize(row.code_font_size)) config.codeFontSize = row.code_font_size
   // Re-validated like launchMode and the theme: a newer build may have stored a kind
   // this one does not know, and that must read as "unset" rather than lay out an
   // agent as something this version cannot render.
   if (isValidAgentType(row.default_agent_type)) config.defaultAgentType = row.default_agent_type
+  // A model NAME, not an enum: the legal values are the installed CLI's, so the shape is
+  // all that can be checked. A name the CLI no longer knows is the CLI's to refuse.
+  if (isValidModelName(row.default_model)) config.defaultModel = row.default_model
+  if (isSet(row.confirm_agent_archive)) config.confirmAgentArchive = row.confirm_agent_archive
   // Re-validated like the four above: a sort mode this build does not know must read as
   // "unset" — the list then falls back to newest-first, the order it always had, rather
   // than to no order at all.

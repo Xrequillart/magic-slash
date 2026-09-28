@@ -9,9 +9,8 @@ import {
 } from '../../utils/reviewComments'
 import { useRepoColors } from './RepoMark'
 import { useStatusPicker } from './StatusPill'
-import { useTicketBadge } from './TicketIdLink'
+import { NotebookPen } from '@ds/desktop/icons'
 import { useAgentIdentityFields, type AgentIdentity } from './AgentIdentityFields'
-import type { TaskSelection } from '../../utils/taskSelection'
 import { useT } from '../../i18n'
 
 /**
@@ -68,10 +67,13 @@ interface SpecCardOptions {
    */
   repoNames: string[]
   status: string
-  /** Present once `/magic:plan` has created the ticket, i.e. at `planned`. */
-  ticketId?: string
-  /** Where the Tasks modal opens when the id is clicked. See `TicketIdLink`. */
-  taskSelection: TaskSelection | null
+  /**
+   * The plan's row, written onto the agent by the desktop as soon as it exists — see
+   * `TerminalMetadata.planId`. Absent while signed out, or before the first write lands.
+   */
+  planId?: string
+  /** Its `#7`, carried beside the id. See `TerminalMetadata.planNumber`. */
+  planNumber?: number
   /** Directory of the spec, as `splitSpecPath` returns it. */
   repoPath: string
   /** Bare file name of the spec, as `splitSpecPath` returns it. */
@@ -86,8 +88,8 @@ export function useSpecCard({
   identity,
   repoNames,
   status,
-  ticketId,
-  taskSelection,
+  planId,
+  planNumber,
   repoPath,
   filePath,
   refreshToken,
@@ -95,6 +97,9 @@ export function useSpecCard({
 }: SpecCardOptions): SpecCardProps {
   const t = useT()
   const setSelectedFile = useStore(s => s.setSelectedFile)
+  const openPlansModal = useStore(s => s.openPlansModal)
+  const openPlansPicker = useStore(s => s.openPlansPicker)
+  const openRepoSettings = useStore(s => s.openRepoSettings)
   const focusFileComment = useStore(s => s.focusFileComment)
   const repoColors = useRepoColors()
 
@@ -172,18 +177,42 @@ export function useSpecCard({
     setSelectedFile({ repoPath, path: filePath, status: '', spec: { agentId } })
   }, [setSelectedFile, repoPath, filePath, agentId])
 
-  const ticket = useTicketBadge({ ticketId, taskSelection, agentId })
   const statusPicker = useStatusPicker({ status, agentType: 'planner', onStatusChange })
   const { title } = useAgentIdentityFields(identity)
 
   return {
-    repos: repoNames.map(name => ({ name, color: repoColors[name] })),
+    // Clickable like a coder's repository header, and to the same page.
+    repos: repoNames.map(name => ({ name, color: repoColors[name], onClick: () => openRepoSettings(name) })),
     // With no repository attached the spec's own file name stands in, so the row is never
     // left empty. The card decides WHEN to use it — it is the one that knows whether the
     // chips above drew anything.
     emptyLabel: filePath,
-    // Only at `planned`: before that there is no ticket to reach.
-    ticket: ticketId ? { ...ticket, className: 'gap-1' } : undefined,
+    // From the first write: the plan exists before a word of the spec does. Until it
+    // does — signed out, or an agent from before the link — the badge is the ticket
+    // badge's placeholder, and picking one attaches it by hand.
+    //
+    // THE TICKET BADGE'S SHAPE, with our own mark where a tracker's would be: the
+    // `magic-slash` tone the Plans page's `#7` wears, so the badge and the row it opens
+    // read as the same plan. No icon passed — the tone brings the logo, as a tracker's
+    // tone brings Jira's.
+    plan: planId
+      ? {
+          children: typeof planNumber === 'number'
+            ? t('agentInfo.planNumber', { number: planNumber })
+            : t('agentInfo.plan'),
+          tone: 'magic-slash',
+          title: t('agentInfo.planOpen'),
+          onClick: () => openPlansModal(planId),
+          className: 'gap-1 tabular-nums',
+        }
+      : {
+          children: t('agentInfo.addPlan'),
+          icon: NotebookPen,
+          quiet: true,
+          title: t('agentInfo.addPlanHint'),
+          onClick: () => openPlansPicker(agentId),
+          className: 'gap-1',
+        },
     comments: commentCount > 0 ? (
       <ReviewCommentsButton
         variant="header"

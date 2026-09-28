@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type AnimationEvent, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { ModalHeader, type ModalHeaderProps } from './ModalHeader'
-import { PAGE_MODAL_WIDTH, type PageModalSize } from './modalSizes'
+import { MODAL_HEADER_HEIGHT, ModalHeader, type ModalHeaderProps } from './ModalHeader'
+import { PAGE_MODAL_RAIL_WIDTH, PAGE_MODAL_WIDTH, type PageModalSize } from './modalSizes'
+import { SettingsRail, type SettingsRailProps } from './SettingsRail'
 
 /**
  * THE BIG ONE — a dialog the size of a page, floating on the dimmed app, with a header
@@ -122,6 +123,15 @@ export interface PageModalProps {
    */
   bodyKey?: string
   /**
+   * `column` only: the settings window's left column, listing every page it holds.
+   *
+   * DATA AND NOT A NODE, so the column is this folder's drawing and not the caller's:
+   * the panel is sized FROM the rail (`PAGE_MODAL_RAIL_WIDTH`), and a rail the caller
+   * drew could be any width at all. With it, the panel is the rail plus exactly the
+   * column it always was, and the header carries no tabs — the rail is the control.
+   */
+  rail?: SettingsRailProps
+  /**
    * The caller's enter and exit animation for the dimmed ground, and for the panel.
    *
    * THE ANIMATION IS THE CALLER'S, `Modal`'s rule and for its reason: the app's
@@ -156,6 +166,7 @@ export function PageModal({
   size = 'page',
   children,
   bodyKey,
+  rail,
   backdropClassName = '',
   panelClassName = '',
   onBackdropClick,
@@ -191,6 +202,24 @@ export function PageModal({
   useEffect(() => setReady(true), [])
   if (!ready) return null
   if (typeof document === 'undefined') return null
+
+  // NO PADDING ON EITHER OF THESE, and it is load-bearing rather than tidy: a scrolling
+  // box clips at its PADDING BOX, so content inset from the scroller's edge has nowhere to
+  // travel — slide it and its leading pixels are cut off for the length of the animation,
+  // which is every card in the page arriving with a side missing. The inset belongs to
+  // whatever moves, and the caller puts it there with `MODAL_COLUMN_PADDING`. The 24px
+  // that leaves the box is then the layer's own empty margin and the content arrives whole.
+  //
+  // The column is capped even though the panel is exactly this wide, because FULL SCREEN
+  // is where the two part: the panel becomes the window, and without the cap the forms
+  // would stretch across all of it, label at one end and control at the other.
+  const column = (
+    <div ref={scroller} className="h-full overflow-y-auto">
+      <div className="mx-auto w-full" style={{ maxWidth: PAGE_MODAL_WIDTH.column }}>
+        {children}
+      </div>
+    </div>
+  )
 
   return createPortal(
     // The backdrop's `p-6` is what the panel is inset by, so full screen has to drop it
@@ -258,7 +287,7 @@ export function PageModal({
         // They agree at rest: full screen is exactly when the backdrop's padding is zero,
         // so the padded box IS the viewport.
         style={{
-          maxWidth: fullScreen ? '100vw' : PAGE_MODAL_WIDTH[size],
+          maxWidth: fullScreen ? '100vw' : size === 'column' && rail ? PAGE_MODAL_RAIL_WIDTH : PAGE_MODAL_WIDTH[size],
           height: fullScreen ? '100vh' : '85vh',
           borderRadius: fullScreen ? 0 : '1rem',
         }}
@@ -267,34 +296,50 @@ export function PageModal({
         {/* The two the panel owns rather than the caller — see the note at the top. Both
             are false while inset, where the app's real title bar is above doing both
             jobs, and a gutter or a drag region down here would be a second one. */}
-        <ModalHeader
-          {...header}
-          trafficLightGutter={fullScreen && trafficLightGutter}
-          draggable={fullScreen}
-        />
-        <div className="flex-1 overflow-hidden">
-          {size === 'column' ? (
-            // NO PADDING ON EITHER OF THESE, and it is load-bearing rather than tidy: a
-            // scrolling box clips at its PADDING BOX, so content inset from the scroller's
-            // edge has nowhere to travel — slide it and its leading pixels are cut off for
-            // the length of the animation, which is every card in the page arriving with a
-            // side missing. The inset belongs to whatever moves, and the caller puts it
-            // there with `MODAL_COLUMN_PADDING`. The 24px that leaves the box is then the
-            // layer's own empty margin and the content arrives whole.
-            //
-            // The column is capped even though the panel is exactly this wide, because
-            // FULL SCREEN is where the two part: the panel becomes the window, and without
-            // the cap the forms would stretch across all of it, label at one end and
-            // control at the other.
-            <div ref={scroller} className="h-full overflow-y-auto">
-              <div className="mx-auto w-full" style={{ maxWidth: PAGE_MODAL_WIDTH.column }}>
-                {children}
-              </div>
+        {rail && size === 'column' ? (
+          /* THE SETTINGS WINDOW HAS NO TITLE BAND. The rail is the control AND the label
+             — the lit row already says which page is open — so a band naming it again
+             above the page was the third answer to one question. The rail runs the full
+             height, and the header survives only as its buttons, over the page side.
+
+             The buttons keep a row of their own rather than floating over the page: the
+             column's cards start 20px down with a 24px gutter, which is exactly where a
+             floating close button would land. */
+          <div className="flex min-h-0 flex-1">
+            <SettingsRail
+              {...rail}
+              // Full screen puts the traffic lights over the rail's top-left corner, so
+              // the rail starts below the band they sit in.
+              topInset={fullScreen && trafficLightGutter ? MODAL_HEADER_HEIGHT : undefined}
+            />
+            <div className="flex min-w-0 flex-1 flex-col">
+              <ModalHeader
+                {...header}
+                title=""
+                icon={undefined}
+                tabs={undefined}
+                trafficLightGutter={false}
+                draggable={fullScreen}
+              />
+              <div className="min-h-0 flex-1 overflow-hidden">{column}</div>
             </div>
-          ) : (
-            children
-          )}
-        </div>
+          </div>
+        ) : (
+          <>
+            <ModalHeader
+              {...header}
+              trafficLightGutter={fullScreen && trafficLightGutter}
+              draggable={fullScreen}
+            />
+            <div className="flex-1 overflow-hidden">
+              {size === 'column' ? (
+                column
+              ) : (
+                children
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>,
     portalTo ?? document.body,

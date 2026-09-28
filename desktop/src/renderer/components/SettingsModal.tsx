@@ -1,59 +1,155 @@
 import { PageModal } from './PageModal'
 import { TabSweep } from './TabSweep'
 import { MODAL_COLUMN_PADDING } from '@ds/desktop'
+import { AboutPage } from '../pages/Config/AboutPage'
+import { AccountPage } from '../pages/Config/AccountPage'
+import { AgentsPage } from '../pages/Config/AgentsPage'
 import { ApplicationPage } from '../pages/Config/ApplicationPage'
-import { NotificationsPage } from '../pages/Config/NotificationsPage'
 import { AppearancePage } from '../pages/Config/AppearancePage'
+import { ClaudeCodePage } from '../pages/Config/ClaudeCodePage'
+import { CodeReviewsPage } from '../pages/Config/CodeReviewsPage'
+import { ConnectionsPage } from '../pages/Config/ConnectionsPage'
 import { LanguagePage } from '../pages/Config/LanguagePage'
+import { NotificationsPage } from '../pages/Config/NotificationsPage'
+import { OrgPage } from '../pages/Config/OrgPage'
+import { ProfilePage } from '../pages/Config/ProfilePage'
+import { QuickLaunchPage } from '../pages/Config/QuickLaunchPage'
+import { QuickSettingsPage } from '../pages/Config/QuickSettingsPage'
 import { ShortcutsPage } from '../pages/Config/ShortcutsPage'
+import { SplitViewPage } from '../pages/Config/SplitViewPage'
 import { useStore } from '../store'
 import { useT, type MessageKey } from '../i18n'
-import { AppWindow, Bell, Keyboard, Languages, Palette } from '@ds/desktop/icons'
+import {
+  AppWindow,
+  Bell,
+  Bot,
+  Building2,
+  CircleUserRound,
+  CodeXml,
+  Info,
+  Keyboard,
+  Languages,
+  Palette,
+  Plug,
+  Settings2,
+  SquareSplitHorizontal,
+  SquareTerminal,
+  TextCursorInput,
+  UserPen,
+} from '@ds/desktop/icons'
 import type { IconComponent } from '@ds/desktop/types'
 
 /**
- * EVERYTHING THE QUICK SETTINGS SHEET DOES NOT HOLD — as a page overlay in the middle of
- * the window.
+ * WHO YOU ARE AND WHAT THE APP DOES, in one page overlay with every page down the left.
  *
- * The sheet is a grid of tiles: it answers the settings that are a yes or a no, a scale
- * or a swatch. The REST has to live somewhere — the machine's setup card with its
- * installers, the Quick Launch shortcut, the PR watcher's interval and its skill
- * auto-launch, the two sidebar panels' format, every chord, and every sentence of help
- * text a 40px circle has no room for. This is where they are read.
+ * IT WAS TWO WINDOWS. `AccountModal` held who the app is signed in as — the account, the
+ * organization, the connections, Claude Code, About — and this one held what it does —
+ * the machine's setup, the notifications, the appearance, the language, the chords. Each
+ * had a tab strip in its header, and the split was the one the title bar draws. It was a
+ * clean line on paper and a guess in practice: a reader looking for the language had to
+ * know which of two controls it lived behind before they could find it. One window with
+ * all of them down the side answers that by showing them.
  *
- * A `PageModal` AND NOT A DIALOG, which it was for a while, and the tab strip is what
- * decided it. These five are PAGES — they scroll, they hold forms, one of them holds the
- * machine's whole setup — and the app already has a window for pages: the one Skills,
- * Tasks and Plans open into, with the strip centred in its header and the button that
- * takes it full screen. A second window shape for the same kind of content, with its
- * tabs in the BODY under a title band, was two answers to one question.
+ * THE RAIL IS THE DESIGN SYSTEM'S, handed over as data (`PageModal`'s `rail`), because
+ * the panel is sized from it: the rail plus exactly the column these pages were always
+ * measured for, so no page got narrower for the merge.
  *
- * THE TITLE NAMES THE ACTIVE PAGE, which is that header's rule: the strip in the middle
- * is what you choose with, the word on the left is what you are on.
+ * STILL OPENED ON A PAGE, by every door that led to either window: the account dropdown
+ * picks its row, the quick settings sheet and ⌘, lead to Application, the Tasks page's
+ * missing-credential banner to Connections. See `settingsTab` in the store.
  *
- * ONLY THE OPEN PAGE IS MOUNTED. Three of the five ask the main process something when
- * they mount — the setup status, the auto-start flag — and mounting all five to hide
- * four would be those round trips for pages nobody opened. The cost is that a page
- * starts at its top each time it comes back, which is what a settings page should do.
+ * REPOSITORIES ARE STILL THE OTHER WINDOW — the one ⌘P opens — because a repository is
+ * neither a preference nor an identity: it is a folder on this disk with a detail page
+ * of its own, and a row here that swapped windows would be the one row that does not
+ * open a page.
+ *
+ * ONLY THE OPEN PAGE IS MOUNTED. Most of these ask the main process or the cloud
+ * something on mount — the org roster, the Jira status, the Claude account and its
+ * spend, the setup status, the app version — and mounting ten to hide nine would be
+ * those round trips for pages nobody opened. The cost is that a page starts at its top
+ * each time it comes back, which is what a settings page should do.
  */
 
-export type AppSettingsTab = 'application' | 'notifications' | 'appearance' | 'language' | 'shortcuts'
+export type SettingsTab =
+  | 'account'
+  | 'profile'
+  | 'organization'
+  | 'connections'
+  | 'claude-code'
+  | 'application'
+  | 'agents'
+  | 'code-reviews'
+  | 'split-view'
+  | 'quick-launch'
+  | 'quick-settings'
+  | 'notifications'
+  | 'appearance'
+  | 'language'
+  | 'shortcuts'
+  | 'about'
 
-/** The five, in the order the settings rail used to list them. Message KEYS rather than
- *  labels, for the reason the rail gave: module scope is evaluated once at import, so a
- *  `t()` here would pin the bar to whatever language the app booted in. */
-const PAGES: { id: AppSettingsTab; labelKey: MessageKey; icon: IconComponent }[] = [
-  { id: 'application', labelKey: 'settings.tab.application', icon: AppWindow },
-  { id: 'notifications', labelKey: 'settings.tab.notifications', icon: Bell },
-  { id: 'appearance', labelKey: 'settings.tab.appearance', icon: Palette },
-  { id: 'language', labelKey: 'settings.tab.language', icon: Languages },
-  { id: 'shortcuts', labelKey: 'settings.tab.shortcuts', icon: Keyboard },
+interface SettingsPageEntry {
+  id: SettingsTab
+  labelKey: MessageKey
+  icon: IconComponent
+}
+
+/**
+ * The runs, top to bottom, each under its caption: everything that is about YOU and how
+ * the app treats you, then what the app does, then the reference pages — the chords to
+ * learn and the copy you are running.
+ *
+ * Message KEYS rather than labels: module scope is evaluated once at import, so a `t()`
+ * here would pin the rail to whatever language the app booted in.
+ */
+const GROUPS: { id: string; labelKey: MessageKey; pages: SettingsPageEntry[] }[] = [
+  {
+    id: 'personal',
+    labelKey: 'settings.group.personal',
+    pages: [
+      { id: 'account', labelKey: 'settings.tab.account', icon: CircleUserRound },
+      { id: 'profile', labelKey: 'settings.tab.profile', icon: UserPen },
+      { id: 'organization', labelKey: 'settings.tab.organization', icon: Building2 },
+      { id: 'claude-code', labelKey: 'settings.tab.claudeCode', icon: SquareTerminal },
+      { id: 'connections', labelKey: 'settings.tab.connections', icon: Plug },
+      { id: 'appearance', labelKey: 'settings.tab.appearance', icon: Palette },
+      { id: 'language', labelKey: 'settings.tab.language', icon: Languages },
+    ],
+  },
+  {
+    id: 'notifications',
+    labelKey: 'settings.group.notifications',
+    pages: [{ id: 'notifications', labelKey: 'settings.tab.notifications', icon: Bell }],
+  },
+  {
+    id: 'features',
+    labelKey: 'settings.group.features',
+    pages: [
+      { id: 'application', labelKey: 'settings.tab.application', icon: AppWindow },
+      { id: 'agents', labelKey: 'settings.tab.agents', icon: Bot },
+      { id: 'code-reviews', labelKey: 'settings.tab.codeReviews', icon: CodeXml },
+      { id: 'split-view', labelKey: 'settings.tab.splitView', icon: SquareSplitHorizontal },
+      { id: 'quick-launch', labelKey: 'settings.tab.quickLaunch', icon: TextCursorInput },
+      { id: 'quick-settings', labelKey: 'settings.tab.quickSettings', icon: Settings2 },
+    ],
+  },
+  {
+    id: 'about',
+    labelKey: 'settings.group.about',
+    pages: [
+      { id: 'shortcuts', labelKey: 'settings.tab.shortcuts', icon: Keyboard },
+      { id: 'about', labelKey: 'settings.tab.about', icon: Info },
+    ],
+  },
 ]
+
+const PAGES = GROUPS.flatMap(({ pages }) => pages)
+const ORDER = PAGES.map(({ id }) => id)
 
 export function SettingsModal() {
   const t = useT()
-  const tab = useStore((s) => s.appSettingsTab)
-  const setTab = useStore((s) => s.setAppSettingsTab)
+  const tab = useStore((s) => s.settingsTab)
+  const setTab = useStore((s) => s.setSettingsTab)
 
   if (tab === null) return null
   const active = PAGES.find((page) => page.id === tab) ?? PAGES[0]
@@ -63,35 +159,44 @@ export function SettingsModal() {
       title={t(active.labelKey)}
       titleIcon={active.icon}
       onClose={() => setTab(null)}
-      tabs={{
-        items: PAGES.map(({ id, labelKey, icon }) => ({ key: id, label: t(labelKey), icon })),
-        activeKey: tab,
-        // The cast holds because the strip only ever reports back a key it was given.
-        onSelect: (key) => setTab(key as AppSettingsTab),
-        ariaLabel: t('controlCenter.allSettings'),
-      }}
-      /* ONE COLUMN OF FORMS, so the window is exactly that column and its padding rather
-         than the 72rem the pages with layouts open into — twelve rem of empty panel
-         either side read as a page that had failed to load on the short tabs.
-         `bodyKey` is what puts each page at its top: the scroller belongs to the design
-         system at this size, and it is the scroller that holds the offset. */
       size="column"
       bodyKey={tab}
+      rail={{
+        groups: GROUPS.map(({ id, labelKey, pages }) => ({
+          id,
+          label: t(labelKey),
+          rows: pages.map((page) => ({ key: page.id, label: t(page.labelKey), icon: page.icon })),
+        })),
+        activeKey: tab,
+        // The cast holds because the rail only ever reports back a key it was given.
+        onSelect: (key) => setTab(key as SettingsTab),
+        ariaLabel: t('accountMenu.settings'),
+      }}
     >
-      {/* The arriving page travels in the direction of the pill you pressed — the same
-          `TabSweep` the organization and repository tabs move by, so no two tab strips
-          in the app slide differently. It sits INSIDE the scroller, which is why that
-          scroller is reset rather than remounted: a sweep rebuilt on every switch has
-          nothing to sweep from. */}
+      {/* The arriving page travels along the rail: a page further down the list comes up
+          from below. The organization page has a strip of its own inside it, and the two
+          nest without fighting — the inner one animates its own element, which is already
+          at rest by the time anybody reaches it. */}
       {/* THE PAGE'S PADDING RIDES ON THE SWEEP, not on the scroller around it — see
           `MODAL_COLUMN_PADDING`. On the scroller, the cards sit flush against the box
           that clips, and a card that slides 24px arrives with 24px missing. */}
-      <TabSweep tabKey={tab} order={PAGES.map(({ id }) => id)} style={MODAL_COLUMN_PADDING}>
+      <TabSweep tabKey={tab} order={ORDER} style={MODAL_COLUMN_PADDING} vertical>
+        {tab === 'account' && <AccountPage />}
+        {tab === 'profile' && <ProfilePage />}
+        {tab === 'organization' && <OrgPage />}
+        {tab === 'connections' && <ConnectionsPage />}
+        {tab === 'claude-code' && <ClaudeCodePage />}
         {tab === 'application' && <ApplicationPage />}
+        {tab === 'agents' && <AgentsPage />}
+        {tab === 'code-reviews' && <CodeReviewsPage />}
+        {tab === 'split-view' && <SplitViewPage />}
+        {tab === 'quick-launch' && <QuickLaunchPage />}
+        {tab === 'quick-settings' && <QuickSettingsPage />}
         {tab === 'notifications' && <NotificationsPage />}
         {tab === 'appearance' && <AppearancePage />}
         {tab === 'language' && <LanguagePage />}
         {tab === 'shortcuts' && <ShortcutsPage />}
+        {tab === 'about' && <AboutPage />}
       </TabSweep>
     </PageModal>
   )

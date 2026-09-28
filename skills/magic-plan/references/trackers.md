@@ -614,7 +614,7 @@ return these values — this table is the whole contract; `SKILL.md` restates no
 | `failed` | list of `{title, reason}`, empty on success | `MSG_PARTIAL_CREATION` |
 | `hierarchy_ok` | true when every parent/child link landed | `MSG_TICKETS_CREATED` / `MSG_PARTIAL_CREATION` |
 | `hierarchy_route` | Jira only: `parent` / `epic_link` / `issue_link` | `{hierarchy_route}` in `MSG_TICKETS_CREATED` |
-| `primary_ticket_id` | the epic on a breakdown, the story on a single — `#412` or `PROJ-1234` | `ticketId` in the Step 7.1 metadata call |
+| `primary_ticket_id` | the epic on a breakdown, the story on a single — `#412` or `PROJ-1234` | the `TICKET-ID: Title` title in the Step 7.1 metadata call — never a `ticketId`, see Step 7.1 |
 
 `primary_ticket_id` is the epic on a breakdown because the agent planned the whole epic — that is
 what this terminal did. `MSG_NEXT_STEPS` still offers the **first story** for `/magic:start`: what

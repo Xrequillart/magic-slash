@@ -347,6 +347,12 @@ export interface ControlCenterGroupProps {
    * decision. `cards` is a full-width stack; see `CONTROL_CENTER_STACK`.
    */
   layout?: 'tiles' | 'cards'
+  /**
+   * Keep the heading for assistive technology but do not draw it: for a sheet with one
+   * group, where a word over the only cluster there is names nothing the eye needs. The
+   * section is then labelled by `aria-label` instead of by the visible text.
+   */
+  labelHidden?: boolean
   /** Margins and placement of the items box. Not the track — that is the group's. */
   className?: string
 }
@@ -358,12 +364,14 @@ export interface ControlCenterGroupProps {
  * cluster of tiles — because it is a signpost and not a title: the tiles are what the
  * eye lands on, the word above them says which cluster this is once the eye has landed.
  */
-export function ControlCenterGroup({ label, children, layout = 'tiles', className = '' }: ControlCenterGroupProps) {
+export function ControlCenterGroup({ label, children, layout = 'tiles', labelHidden = false, className = '' }: ControlCenterGroupProps) {
   return (
-    <section className="flex flex-col gap-2.5">
-      <Text size="2xs" weight="bold" tone="secondary" className="uppercase tracking-[0.12em] px-0.5">
-        {label}
-      </Text>
+    <section className="flex flex-col gap-2.5" aria-label={labelHidden ? label : undefined}>
+      {!labelHidden && (
+        <Text size="2xs" weight="bold" tone="secondary" className="uppercase tracking-[0.12em] px-0.5">
+          {label}
+        </Text>
+      )}
       {/* `data-cc-items` is what the sheet's bubble stylesheet reaches for: each direct
           child of this box pops in its turn. */}
       <div
