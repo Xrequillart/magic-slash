@@ -1821,6 +1821,11 @@ export const en = {
   'agentInfo.viewPullRequest': 'View Pull Request',
   'agentInfo.addTicket': 'Add a ticket',
   'agentInfo.addTicketHint': 'Pick a ticket to attach to this agent',
+  'agentInfo.plan': 'Plan',
+  'agentInfo.planNumber': 'Plan #{number}',
+  'agentInfo.planOpen': 'Open this plan in Plans',
+  'agentInfo.addPlan': 'Add plan',
+  'agentInfo.addPlanHint': 'Pick a plan to attach to this agent',
   'agentInfo.ticketOpenInTasks': 'Open this ticket in Tasks',
   'agentInfo.titlePlaceholder': 'Enter title…',
   'agentInfo.addTitle': 'Click to add title',
@@ -2457,6 +2462,10 @@ export const en = {
   'tasks.pick.hint': 'Click a card to attach it. Nothing is started.',
   'tasks.pick.cancel': 'Cancel',
   'tasks.pick.fallbackAgent': 'this agent',
+  'plans.pick.title': 'Pick a plan for {name}',
+  'plans.pick.hint': 'Click a plan to attach it. Nothing is started.',
+  'plans.hasAgentHint': 'An agent is working on this plan.',
+  'plans.detachAgentHint': 'Take this agent off the plan. The agent keeps running.',
   // The alternative to starting the work: an agent that reads the issue and talks about it.
   // "Discuss with", not "Start a discussion with" — it sits directly under "Start an agent",
   // and two labels both opening on the same verb read as two ways of doing one thing.

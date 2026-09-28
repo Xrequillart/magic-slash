@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { createHash } from 'crypto'
-import type { PlanSpecInput, PlanTicket } from '../../types'
+import type { PlanSessionRef, PlanSpecInput, PlanTicket } from '../../types'
 import { readAgents } from '../config/agents'
 import { readConfig } from '../config/config'
 import { loadSession } from '../cloud/session-store'
@@ -36,6 +36,19 @@ import { getStore } from './Store'
  * collapse into a single upsert of the file as it stands when the timer fires. The
  * file is read at THAT moment, not at ping time: last write wins, always.
  */
+
+/**
+ * Told the session's id once an upsert has landed — every time, not only the first: a
+ * row id is stable, so repeating it costs the listener one comparison, and it is what
+ * links an agent whose first write went through the outbox instead.
+ */
+type PlanSessionListener = (agentId: string, plan: PlanSessionRef) => void
+let onPlanSession: PlanSessionListener | null = null
+
+/** Registered by `main/index.ts`, which owns the agent's metadata and the window. */
+export function setPlanSessionListener(listener: PlanSessionListener | null): void {
+  onPlanSession = listener
+}
 
 /** How long a burst of pings is allowed to collapse into one upload. */
 const DEBOUNCE_MS = 3000
@@ -196,7 +209,8 @@ async function send(upload: PendingUpload): Promise<void> {
     ...specFields(read),
   }
   try {
-    await getStore().savePlanSpec(input)
+    const plan = await getStore().savePlanSpec(input)
+    if (plan) onPlanSession?.(upload.agentId, plan)
   } catch (error) {
     console.error('[plan-sync] Queued a spec upload after a failed write:', error)
     // The PATH, never the markdown: see the outbox header for what a queue full of

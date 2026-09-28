@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { AlertTriangle, ArrowLeft, CloudOff, FileText, FileWarning, History, Lightbulb, Lock, NotebookPen, RotateCcw } from '@ds/desktop/icons'
+import { AlertTriangle, ArrowLeft, BotMessageSquare, CloudOff, FileText, FileWarning, History, Lightbulb, Lock, NotebookPen, RotateCcw, Unlink } from '@ds/desktop/icons'
 import { PLAN_STATUSES, type PlanComment, type PlanDetail, type PlanEditPolicy, type PlanLocalSpec, type PlanSpecUpdateResult, type PlanStatus, type PlanStatusUpdateResult, type PlanTicketRead, type PlanTicketStates } from '../../../types'
 import { useT, type MessageKey } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
@@ -1113,6 +1113,47 @@ export function PlanDetailPage({
     )
     : <Status label={t(labelKey)} tone={tone} />
   const session = detail?.session
+
+  /**
+   * The agent on THIS machine that is writing this plan — the one whose `planId` is this
+   * row, set by the desktop from the agent's own spec or picked by hand from its sidebar.
+   *
+   * The ticket page's banner, for a plan: the fact, the way to go and look, and the way to
+   * cut the link. Only local agents, and that is narrower than the ticket's `hasAgent`,
+   * which also reads the org roster: a plan link is an agent's metadata, and a teammate's
+   * agent has no terminal here to open or to detach anyway.
+   *
+   * The selector returns a string, so the pty's constant rewrites of `terminals` do not
+   * re-render this page — only an agent picking up or dropping the plan does.
+   */
+  const agentTerminalId = useStore((s) => s.terminals.find((terminal) => terminal.metadata?.planId === card.id)?.id ?? null)
+  const agentBannerActions = useMemo(
+    () =>
+      agentTerminalId
+        ? [
+            {
+              label: t('tasks.viewAgent'),
+              icon: BotMessageSquare,
+              primary: true,
+              // Closing first is what makes the agent appear: this page is a modal over
+              // the terminals. The ticket page's `viewAgent`, verbatim.
+              onClick: () => {
+                const { setActiveTerminal, closeModal } = useStore.getState()
+                closeModal()
+                setActiveTerminal(agentTerminalId)
+              },
+            },
+            {
+              label: t('tasks.detachAgent'),
+              icon: Unlink,
+              title: t('plans.detachAgentHint'),
+              onClick: () => useStore.getState().detachPlanFromAgent(agentTerminalId),
+            },
+          ]
+        : undefined,
+    [agentTerminalId, t],
+  )
+
   // Zero for "no such timestamp", the sentinel `planRecency` and `PlanRow` already use
   // for one — an unparseable stamp lands there too, since `NaN > 0` is false.
   const syncedAt = session?.specSyncedAt ? new Date(session.specSyncedAt).getTime() || 0 : 0
@@ -1727,6 +1768,15 @@ export function PlanDetailPage({
         />
       ) : (
         <>
+          {/* The ticket page's banner, in its green and with its two verbs: the first thing
+              under the heading, because it is a fact about the whole plan rather than about
+              any one tab of it. */}
+          {agentTerminalId && (
+            <Banner variant="success" icon={BotMessageSquare} className="mt-6" actions={agentBannerActions}>
+              {t('plans.hasAgentHint')}
+            </Banner>
+          )}
+
           {/* THE PAGE'S TABS, between the heading and everything under it: the idea the plan
               came from, the plan itself (its tickets, its links, its spec), and its history.
               The spec is where a reader lands. */}

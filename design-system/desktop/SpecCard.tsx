@@ -53,6 +53,11 @@ export interface SpecCardProps {
     name: string
     /** The hue it was given in Settings, or undefined for one this app knows none for. */
     color?: string
+    /**
+     * What a click on the chip does — `HeaderRepoCard`'s `onNameClick`, and in the app
+     * the same destination: the repository's settings page. Absent, the chip is inert.
+     */
+    onClick?: () => void
   }[]
   /**
    * What heads the row when NO repository is attached — the spec's own file name, in
@@ -63,12 +68,16 @@ export interface SpecCardProps {
    */
   emptyLabel: string
   /**
-   * The ticket, once `/magic:plan` has created it.
+   * The plan this agent is writing, as a badge that opens it.
    *
-   * The ticket card never comes back for a planning agent, so without this the ticket the
-   * skill just created would be unreachable from the sidebar.
+   * THE PLAN AND NOT THE TICKET. This used to be the epic, and it only appeared at
+   * `planned`, once `/magic:plan` had filed it — so for the whole of the session, the
+   * part where the spec is being argued over, the card linked to nothing. The plan's row
+   * exists from the first minute (the desktop creates it when the skill announces its
+   * spec), and the tickets hang off the plan rather than off the agent, so the plan is
+   * the one link that is true all the way through.
    */
-  ticket?: Omit<LabelProps, 'size' | 'truncate'>
+  plan?: Omit<LabelProps, 'size' | 'truncate'>
   /**
    * The comments on the spec — a node, and absent until there is at least one.
    *
@@ -103,7 +112,7 @@ export interface SpecCardProps {
 export function SpecCard({
   repos = [],
   emptyLabel,
-  ticket,
+  plan,
   comments,
   status,
   expand,
@@ -141,6 +150,11 @@ export function SpecCard({
               hue — the one place `Label` does that, and it does it here for the reason it
               does it there: a repository has no mark of its own, so the colour is the mark. */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
+            {/* THE PLAN FIRST, before the repository: it is what this agent IS — the row it
+                is writing — where the repository is only what it is planned against. The
+                right-hand group keeps what describes the agent's state and the frame. */}
+            {/* Never the one that gives way: a long repository name truncates, the id does not. */}
+            {plan && <Label {...plan} className={`flex-shrink-0 ${plan.className ?? ''}`.trim()} />}
             {repos.length > 0 ? (
               repos.map(repo => (
                 <Label
@@ -148,6 +162,7 @@ export function SpecCard({
                   tone="neutral"
                   icon={FolderGit2}
                   color={repo.color}
+                  onClick={repo.onClick}
                   title={repo.name}
                   truncate
                 >
@@ -161,7 +176,6 @@ export function SpecCard({
             )}
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            {ticket && <Label {...ticket} />}
             {/* Before the status and the expand control rather than after: the comments
                 belong to the DOCUMENT, and those two describe the agent and the frame
                 around it. `gap-1.5` on the row is what spaces them, so none needs a margin

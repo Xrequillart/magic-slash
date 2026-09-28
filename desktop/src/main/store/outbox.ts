@@ -246,11 +246,12 @@ async function replay(entry: OutboxEntry): Promise<void> {
       //
       // agent_id may resolve to nothing by now — replay happens after the agent was
       // archived, which releases its app id. The session keeps its owner regardless.
-      return store.savePlanSpec({
+      await store.savePlanSpec({
         agentId: entry.payload.agentId,
         specPath: entry.payload.specPath,
         ...specFields(read),
       })
+      return
     }
   }
 }

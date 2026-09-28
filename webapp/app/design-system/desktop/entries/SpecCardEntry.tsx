@@ -21,10 +21,10 @@ const PROPS: PropRow[] = [
       'What heads the row when no repository is attached — the spec’s own file name, in practice, so the row is never left empty. Plain text rather than a chip, deliberately: a repository chip in front of a file name would name something that is not there.',
   },
   {
-    name: 'ticket',
+    name: 'plan',
     type: 'LabelProps',
     description:
-      'The ticket, once /magic:plan has created it. The ticket card never comes back for a planning agent, so without this the ticket the skill just created would be unreachable from the sidebar.',
+      'The plan this agent is writing, as a badge that opens it. It replaced the ticket, which only appeared at planned: the plan exists from the first minute, and the tickets hang off it rather than off the agent.',
   },
   {
     name: 'comments',
@@ -115,12 +115,12 @@ export function SpecCardEntry({
         note="Every decision here follows from that. It carries the agent’s title and status because the ticket card that normally holds them is not on screen; it does not collapse, because folding away the one thing worth reading would put it an interaction away; and it grows to fill the column rather than scrolling inside a column that also scrolls."
       >
         <Stage theme={theme}>
-          <Specimen label="a plan at planned — ticket, status, document">
+          <Specimen label="a plan at planned — plan, status, document">
             <div className="flex h-[420px] w-[420px] flex-col">
               <SpecCard
                 repos={[{ name: 'magic-pay', color: '#F43F5E' }]}
                 emptyLabel="spec.md"
-                ticket={{ children: 'PAY-318', tone: 'jira', title: 'PAY-318', onClick: noop }}
+                plan={{ children: 'Plan #7', tone: 'magic-slash' as const, title: 'Open the plan', onClick: noop }}
                 status={{ label: 'Planned', tone: 'purple', options: [], onSelect: noop }}
                 expand={{ title: 'Open the spec', onClick: noop }}
                 title={TITLE}

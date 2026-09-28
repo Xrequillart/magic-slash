@@ -1,4 +1,4 @@
-import type { AccountSettings, AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, OrgSharedConfig, OrgAgent, PlanSession, PlanSpecInput, PlanTicketsInput, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
+import type { AccountSettings, AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, OrgSharedConfig, OrgAgent, PlanSession, PlanSessionRef, PlanSpecInput, PlanTicketsInput, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
 
 /**
  * Result of a backend reachability probe.
@@ -118,8 +118,11 @@ export interface Store {
    * Upsert ONE plan session from its spec. Creates the row when the spec is still
    * a promise (no file yet), which is what records a plan whose agent was closed
    * before anything was written.
+   *
+   * Resolves to the session's id and short number, which is what links the planner to
+   * its plan — or to nothing when there is no signed-in user to write as.
    */
-  savePlanSpec(input: PlanSpecInput): Promise<void>
+  savePlanSpec(input: PlanSpecInput): Promise<PlanSessionRef | null>
   /**
    * Upsert the tickets ONE plan session created, resolving the session from the
    * spec path. Creates the session first when there is none — the tickets exist
@@ -330,7 +333,7 @@ export const NOOP_STORE: Store = {
   async saveAgents() { /* no-op */ },
   async archiveAgent() { /* no-op */ },
   async loadOrgAgents() { return [] },
-  async savePlanSpec() { /* no-op */ },
+  async savePlanSpec() { return null },
   async savePlanTickets() { /* no-op */ },
   async loadPlanSyncState() { return [] },
   async appendHistory() { /* no-op */ },

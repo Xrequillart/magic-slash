@@ -936,6 +936,12 @@ export interface SpendSummary {
   hasData: boolean
 }
 
+/** Which plan a write landed on: the row id, and the short `#7` when the row has one. */
+export interface PlanSessionRef {
+  id: string
+  number?: number
+}
+
 export interface TerminalMetadata {
   title?: string
   branchName?: string
@@ -964,6 +970,23 @@ export interface TerminalMetadata {
    * announces where the spec will be, and nothing here checks the filesystem.
    */
   specPath?: string
+  /**
+   * The `plan_sessions` row this planner writes, as soon as the desktop has created it.
+   *
+   * NOT SENT BY ANY SKILL, and that is the point of it: the skill announces `specPath`,
+   * the desktop creates the session from it (`recordPlanSession`) and writes the row's
+   * id back here. A planner is linked to its plan from its first minute rather than to a
+   * ticket at its last — the tickets hang off the plan (`plan_tickets`), not off the
+   * agent.
+   */
+  planId?: string
+  /**
+   * That plan's short id — the `#7` the Plans page prints — carried beside `planId` so
+   * the sidebar badge can say which plan without a read. Refreshed on every write of the
+   * agent's own spec, which is what keeps it honest in the one case the database moves
+   * it (see `PlanSession.number`). Absent on a row from before numbers existed.
+   */
+  planNumber?: number
   /**
    * Absent on agents created before the type existed, and on any agent whose skill
    * has not announced one yet. Readers must treat absent as `coder`: that is what

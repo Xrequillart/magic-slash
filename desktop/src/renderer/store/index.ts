@@ -276,6 +276,12 @@ interface AppState {
    * into "attach this ticket", and to pin the banner that says so.
    */
   tasksPickAgentId: string | null
+  /**
+   * The planner a plan is being PICKED for, or null for an ordinary visit — the Plans
+   * modal's twin of `tasksPickAgentId`, cleared by `closeModal` for the same reason. A
+   * row's click attaches the plan instead of opening it.
+   */
+  plansPickAgentId: string | null
   // When set, the Plans page opens straight on this plan rather than on the list,
   // then resets it to null. `tasksInitialTarget`'s twin, one-shot for its reason —
   // opening Plans by hand afterwards must give the list, not replay the plan somebody
@@ -474,6 +480,12 @@ interface AppState {
   pickTicketForAgent: (agentId: string, ticketId: string) => void
   /** Take an agent off the ticket it is on, leaving the agent itself alone. */
   detachTicketFromAgent: (agentId: string) => void
+  /** Open Plans to choose the plan a planner is writing. See `plansPickAgentId`. */
+  openPlansPicker: (agentId: string) => void
+  /** Attach a plan to a planner and leave picking mode. */
+  pickPlanForAgent: (agentId: string, planId: string, planNumber?: number) => void
+  /** Take a planner off the plan it is on, leaving the agent itself alone. */
+  detachPlanFromAgent: (agentId: string) => void
   openPlansModal: (planId: string) => void
   /**
    * Remember whether the info panel is open for ONE agent, and write it through to
@@ -627,6 +639,7 @@ export const useStore = create<AppState>()(
         settingsTab: null,
         tasksInitialTarget: null,
         tasksPickAgentId: null,
+        plansPickAgentId: null,
         plansInitialPlanId: null,
         settingsOrgId: null,
         activeModal: null,
@@ -860,7 +873,7 @@ export const useStore = create<AppState>()(
          * the next open to land on.
          */
         closeModal: () => {
-          set({ activeModal: null, tasksPickAgentId: null })
+          set({ activeModal: null, tasksPickAgentId: null, plansPickAgentId: null })
           if (window.location.hash && window.location.hash !== '#/') {
             window.location.hash = '#/'
           }
@@ -955,8 +968,32 @@ export const useStore = create<AppState>()(
         // modal — which `openModal` already handles: only one can be on screen, so the
         // Tasks modal closes as this opens rather than stacking behind it.
         openPlansModal: (planId) => {
-          set({ plansInitialPlanId: planId })
+          set({ plansInitialPlanId: planId, plansPickAgentId: null })
           get().openModal('plans')
+        },
+        // `openTasksModal`'s picking mode, for a planner and its plan: the list, not a
+        // plan, because the reader came to choose one.
+        openPlansPicker: (agentId) => {
+          set({ plansInitialPlanId: null, plansPickAgentId: agentId })
+          get().openModal('plans')
+        },
+        // `pickTicketForAgent`'s pair, both halves and for its reasons. The desktop also
+        // writes `planId` itself when the agent's own spec lands on a plan — the plan an
+        // agent is actually writing is the truth, so that write wins over a pick.
+        // `detachTicketFromAgent`'s pair: an EMPTY id rather than a removed key, for its
+        // reason — a key omitted from a metadata merge is a key left alone. The number is
+        // left behind with nothing to label; the badge reads the id.
+        detachPlanFromAgent: (agentId) => {
+          get().updateTerminalMetadata(agentId, { planId: '' })
+          window.electronAPI?.terminal.updateMetadata(agentId, { planId: '' }).catch(() => {})
+        },
+        pickPlanForAgent: (agentId, planId, planNumber) => {
+          // The number goes with the id, or a plan picked in place of a numbered one
+          // would keep the old `#` on its badge.
+          const plan = { planId, planNumber }
+          get().updateTerminalMetadata(agentId, plan)
+          window.electronAPI?.terminal.updateMetadata(agentId, plan).catch(() => {})
+          get().closeModal()
         },
         setInfoSidebarOpen: (terminalId, open) => {
           // Written through on every flip, the way `moveTerminalToPane` writes the

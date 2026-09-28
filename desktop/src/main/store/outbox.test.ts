@@ -55,7 +55,7 @@ function fakeStore(failFrom?: (entry: HistoryEntry) => boolean): Store {
     },
     appendUsage: async (e) => { delivered.usage.push(e) },
     recordSkillInvocation: async (i) => { delivered.skill.push(i) },
-    savePlanSpec: async (i) => { delivered.planSpec.push(i) },
+    savePlanSpec: async (i) => { delivered.planSpec.push(i); return null },
   }
 }
 
