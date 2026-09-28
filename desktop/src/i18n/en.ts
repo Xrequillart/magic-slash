@@ -166,20 +166,13 @@ export const en = {
   'controlCenter.quickLaunch': 'Quick Launch',
   'controlCenter.launchAtLogin': 'Start at login',
   'controlCenter.prWatcher': 'PR watcher',
-  'controlCenter.appearance': 'Appearance',
   'controlCenter.theme': 'Theme',
-  'controlCenter.language': 'Language',
   'controlCenter.about': 'About',
   'controlCenter.allSettings': 'All settings',
   'controlCenter.saveFailed': 'Failed to save that setting.',
   /** The title bar's standing notice while notifications are off; pressing it opens the sheet. */
   'controlCenter.notificationsOff': 'Notifications off',
   // The machine's setup, in two words: a 3-point card has no room for the page's sentences.
-  'controlCenter.setup.ready': 'Machine ready',
-  'controlCenter.setup.issues': '{count} to fix',
-  'controlCenter.setup.checking': 'Checking…',
-  'controlCenter.setup.failed': 'Check failed',
-  'controlCenter.setup.open': 'Open the machine setup',
 
   // ── Left sidebar ─────────────────────────────────────────────────────────
   'sidebar.newAgent': 'New agent',

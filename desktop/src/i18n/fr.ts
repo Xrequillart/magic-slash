@@ -139,18 +139,11 @@ export const fr: Record<keyof typeof en, string> = {
   'controlCenter.quickLaunch': 'Quick Launch',
   'controlCenter.launchAtLogin': 'Lancer au démarrage',
   'controlCenter.prWatcher': 'Veille PR',
-  'controlCenter.appearance': 'Apparence',
   'controlCenter.theme': 'Thème',
-  'controlCenter.language': 'Langue',
   'controlCenter.about': 'À propos',
   'controlCenter.allSettings': 'Tous les réglages',
   'controlCenter.saveFailed': 'Impossible d’enregistrer ce réglage.',
   'controlCenter.notificationsOff': 'Notifications coupées',
-  'controlCenter.setup.ready': 'Machine prête',
-  'controlCenter.setup.issues': '{count} à corriger',
-  'controlCenter.setup.checking': 'Vérification…',
-  'controlCenter.setup.failed': 'Vérification échouée',
-  'controlCenter.setup.open': 'Ouvrir la configuration de la machine',
 
   // ── Barre latérale gauche ────────────────────────────────────────────────
   'sidebar.newAgent': 'Nouvel agent',
