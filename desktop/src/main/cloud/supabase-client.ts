@@ -1,5 +1,5 @@
 import { createClient, type RealtimeClientOptions, type SupabaseClient } from '@supabase/supabase-js'
-import WebSocketImpl from 'ws'
+import { QuietWebSocket } from './quiet-websocket'
 import * as os from 'os'
 import { app } from 'electron'
 import { desktopUserAgent } from '../../sessionAgent'
@@ -50,7 +50,9 @@ export function getSupabaseClient(): SupabaseClient | null {
       // is ever delivered, and the team dashboard sits on "Reconnecting…"
       // forever. Supplying `ws` explicitly is the documented Node < 22 path;
       // it can go away once Electron ships a runtime with a native WebSocket.
-      transport: WebSocketImpl as unknown as RealtimeClientOptions['transport'],
+      // `QuietWebSocket` and not `ws` itself: see there for the uncaught exception a
+      // channel torn down mid-handshake used to raise.
+      transport: QuietWebSocket as unknown as RealtimeClientOptions['transport'],
     },
   })
 
