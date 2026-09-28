@@ -115,6 +115,9 @@ export const en = {
   'settings.tab.application': 'Application',
   'settings.tab.shortcuts': 'Shortcuts',
   'settings.tab.about': 'About',
+  'settings.group.personal': 'Personal',
+  'settings.group.features': 'Features',
+  'settings.group.about': 'About',
   'settings.language.section': 'Language & Region',
   'settings.language.label': 'Interface language',
   'settings.language.help':

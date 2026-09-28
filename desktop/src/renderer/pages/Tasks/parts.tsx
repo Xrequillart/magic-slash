@@ -204,7 +204,7 @@ export function JiraErrorLines({
           size="xs"
           tone="accent"
           icon={Settings}
-          onClick={() => useStore.getState().setAccountTab('connections')}
+          onClick={() => useStore.getState().setSettingsTab('connections')}
           className="self-start"
         >
           {t('tasks.jira.connect')}

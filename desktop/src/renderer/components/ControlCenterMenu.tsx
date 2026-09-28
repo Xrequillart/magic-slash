@@ -69,7 +69,7 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
     updateTheme, updateLanguage, updateUsageCardEnabled, updateAgentContextEnabled,
   } = useConfig()
   const { splitActive, toggleSplitActive } = useStore()
-  const setAppSettingsTab = useStore((s) => s.setAppSettingsTab)
+  const setSettingsTab = useStore((s) => s.setSettingsTab)
   const activeTheme = useTheme()
   const activeLanguage = useLanguage()
   const { zoom, set: setZoom, step: stepZoom } = useZoom()
@@ -188,7 +188,7 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
           state={setupState}
           label={t(SETUP_LABEL[setupState], { count: setupIssues })}
           openTitle={t('controlCenter.setup.open')}
-          onOpen={() => setAppSettingsTab('application')}
+          onOpen={() => setSettingsTab('application')}
           refreshTitle={t('settings.application.setup.recheck')}
           onRefresh={checkSetup}
         />
@@ -311,9 +311,9 @@ export function ControlCenterMenu({ open, onClose }: { open: boolean; onClose: (
           sheet with the tiles still lit under your hand, which read as a menu that had
           grown a second window. Pressing a menu item asks for the thing; the menu's job
           after that is to get out of the way. The store closes the sheet — see
-          `setAppSettingsTab` — so a row that opens a dialog cannot forget to. */}
+          `setSettingsTab` — so a row that opens a dialog cannot forget to. */}
       <div className="flex justify-center">
-        <Label icon={Cog} size="md" onClick={() => setAppSettingsTab('application')}>
+        <Label icon={Cog} size="md" onClick={() => setSettingsTab('application')}>
           {t('controlCenter.allSettings')}
         </Label>
       </div>

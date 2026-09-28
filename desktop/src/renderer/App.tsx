@@ -18,7 +18,6 @@ import { UpdateOverlay } from './components/UpdateOverlay'
 import { WhatsNewModal } from './components/WhatsNewModal'
 import { ScriptTerminalModal } from './components/ScriptTerminalModal'
 import { SettingsModal } from './components/SettingsModal'
-import { AccountModal } from './components/AccountModal'
 import { ConfigPage } from './pages/Config'
 import { TerminalsPage } from './pages/Terminals'
 import { SkillsPage } from './pages/Skills'
@@ -271,7 +270,7 @@ export function App() {
           // Straight to the dialog rather than to the dropdown that normally opens it:
           // somebody who picked "Account" in the menu bar asked for the page, not for a
           // list of pages.
-          store.setAccountTab('account')
+          store.setSettingsTab('account')
           break
       }
     })
@@ -593,7 +592,6 @@ export function App() {
           inside one of its openers would go when that opener did. Both read their own
           open state from the store, so mounting them costs a null render. */}
       <SettingsModal />
-      <AccountModal />
 
       {/* Toast Notifications */}
       <ToastContainer />

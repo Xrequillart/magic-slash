@@ -14,10 +14,9 @@ import { CHANGELOG_URL } from '../../../urls'
  * this page mentions recording, so a card reporting on it read as a fact about the
  * RELEASE — as though the app were telling you its own build was unwell.
  *
- * It is a tab of `AccountModal` and not of `SettingsModal` because of what the two
- * answer: that one is "what does this app do", and a version number is not a setting —
- * it is a fact about the copy YOU are running, which is the account menu's question.
- * The release notes button is the one thing on this page that acts.
+ * It is the last run of the settings window's rail, on its own, because a version number
+ * is not a setting — it is a fact about the copy YOU are running. The release notes
+ * button is the one thing on this page that acts.
  *
  * ── IT IS THE SAME CARD AS THE OTHER TABS' ─────────────────────────────────────────
  *

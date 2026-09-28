@@ -40,6 +40,7 @@ export function TabSweep({
   className = '',
   style,
   bleed = false,
+  vertical = false,
   children,
 }: {
   /** The active tab. A change slides; the first render does not. */
@@ -81,6 +82,13 @@ export function TabSweep({
    * the bleed is it.
    */
   bleed?: boolean
+  /**
+   * TRAVEL UP AND DOWN, for tabs listed DOWN a rail rather than across a strip — the
+   * settings window's. The eye follows the row you picked, so a page further down the
+   * list arrives from below. Same distance, same duration: only the axis follows the
+   * control.
+   */
+  vertical?: boolean
   children: ReactNode
 }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -113,11 +121,12 @@ export function TabSweep({
 
     const list = keys.split('\u0000')
     const forward = list.indexOf(tabKey) > list.indexOf(from)
+    const axis = vertical ? 'translateY' : 'translateX'
     setClipX(true)
     const animation = el.animate(
       [
-        { opacity: 0, transform: `translateX(${forward ? SLIDE_PX : -SLIDE_PX}px)` },
-        { opacity: 1, transform: 'translateX(0)' },
+        { opacity: 0, transform: `${axis}(${forward ? SLIDE_PX : -SLIDE_PX}px)` },
+        { opacity: 1, transform: `${axis}(0)` },
       ],
       { duration: SLIDE_MS, easing: 'ease-out' },
     )
@@ -128,14 +137,15 @@ export function TabSweep({
       animation.cancel()
       setClipX(false)
     }
-  }, [tabKey, keys])
+  }, [tabKey, keys, vertical])
 
   return (
     // The margin and the padding are PERMANENT and cancel each other out; only the clip
     // is held for the length of the slide. Toggling the inset with it would move the
     // whole page sideways by 24px at the start of every switch.
     <div
-      className={clipX ? 'overflow-x-clip' : undefined}
+      // Clipped on the axis it travels, so the overhang never adds a scrollbar.
+      className={clipX ? (vertical ? 'overflow-y-clip' : 'overflow-x-clip') : undefined}
       style={bleed ? { marginLeft: -SLIDE_PX, marginRight: -SLIDE_PX } : undefined}
     >
       <div

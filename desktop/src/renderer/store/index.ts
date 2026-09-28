@@ -9,8 +9,7 @@ import {
 import { migrateSkillsContextWindow } from '../pages/Skills/contextWindow'
 import { selectInfoSidebarOpen, selectInspectedTerminalId } from './infoSidebar'
 import type { TasksTarget } from '../utils/taskSelection'
-import type { AccountModalTab } from '../components/AccountModal'
-import type { AppSettingsTab } from '../components/SettingsModal'
+import type { SettingsTab } from '../components/SettingsModal'
 
 interface CloseAgentModalData {
   terminalId: string
@@ -246,23 +245,22 @@ interface AppState {
 
   // UI
   /**
-   * THE TITLE BAR'S TWO CONTROLS AND THE TWO DIALOGS THEY LEAD TO.
+   * THE TITLE BAR'S TWO CONTROLS AND THE ONE DIALOG THEY LEAD TO.
    *
    * IN THE STORE AND NOT IN `TitleBar`, which is where the sheet started, because none
    * of the four is opened only by the control beside it any more. ⌘, opens the sheet
    * from a window-level listener; the app menu's Account item and the Tasks page's
-   * missing-credential banner both open the account modal; the sheet itself opens the
-   * settings modal and closes on the way. Four surfaces that share no ancestor short of
+   * missing-credential banner both open the settings window on the page they mean; the
+   * sheet itself opens it and closes on the way. Four surfaces that share no ancestor short of
    * the app root.
    *
-   * A NULL TAB IS A SHUT DIALOG, for both of them. It is one value rather than an
+   * A NULL TAB IS A SHUT DIALOG. It is one value rather than an
    * `open` boolean beside a tab, because the two can only ever disagree: an open dialog
    * showing no page, or a page nobody can see.
    */
   quickSettingsOpen: boolean
   accountMenuOpen: boolean
-  appSettingsTab: AppSettingsTab | null
-  accountTab: AccountModalTab | null
+  settingsTab: SettingsTab | null
   // When set, the Tasks page opens on this ticket rather than on the backlog, then
   // resets it to null. Same one-shot deep link as `settingsInitialTab`, and one-shot
   // for the same reason: reopening Tasks by hand with ⌘J must not replay the last
@@ -456,10 +454,8 @@ interface AppState {
   /** ⌘, — the same key puts the sheet away again. */
   toggleQuickSettings: () => void
   setAccountMenuOpen: (open: boolean) => void
-  /** Open the app-settings dialog on `tab`, or shut it with null. */
-  setAppSettingsTab: (tab: AppSettingsTab | null) => void
-  /** Open the account dialog on `tab`, or shut it with null. */
-  setAccountTab: (tab: AccountModalTab | null) => void
+  /** Open the settings window on `tab`, or shut it with null. */
+  setSettingsTab: (tab: SettingsTab | null) => void
 
   setTasksInitialTarget: (target: TasksTarget | null) => void
   setPlansInitialPlanId: (id: string | null) => void
@@ -628,8 +624,7 @@ export const useStore = create<AppState>()(
 
         quickSettingsOpen: false,
         accountMenuOpen: false,
-        appSettingsTab: null,
-        accountTab: null,
+        settingsTab: null,
         tasksInitialTarget: null,
         tasksPickAgentId: null,
         plansInitialPlanId: null,
@@ -832,10 +827,8 @@ export const useStore = create<AppState>()(
         // Opening either dialog puts away whatever opened it: you asked for the page, so
         // the menu gets out of the way rather than sitting under a dialog it cannot be
         // reached past.
-        setAppSettingsTab: (appSettingsTab) =>
-          set(appSettingsTab ? { appSettingsTab, quickSettingsOpen: false, accountMenuOpen: false } : { appSettingsTab }),
-        setAccountTab: (accountTab) =>
-          set(accountTab ? { accountTab, quickSettingsOpen: false, accountMenuOpen: false } : { accountTab }),
+        setSettingsTab: (settingsTab) =>
+          set(settingsTab ? { settingsTab, quickSettingsOpen: false, accountMenuOpen: false } : { settingsTab }),
 
         setTasksInitialTarget: (tasksInitialTarget) => set({ tasksInitialTarget }),
         setPlansInitialPlanId: (plansInitialPlanId) => set({ plansInitialPlanId }),

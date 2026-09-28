@@ -349,7 +349,7 @@ export function taskFailureNotices(rows: TaskRow[], t: Translate): TaskBoardNoti
         label: t('tasks.jira.connect'),
         icon: Settings,
         primary: true,
-        onClick: () => useStore.getState().setAccountTab('connections'),
+        onClick: () => useStore.getState().setSettingsTab('connections'),
       }]
       : undefined
 
