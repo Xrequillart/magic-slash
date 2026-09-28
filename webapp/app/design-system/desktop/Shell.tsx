@@ -20,6 +20,8 @@ import { OrganizationCardEntry } from './entries/OrganizationCardEntry'
 import { FactListEntry } from './entries/FactListEntry'
 import { LanguageCardEntry } from './entries/LanguageCardEntry'
 import { SettingRowEntry } from './entries/SettingRowEntry'
+import { LivePillEntry } from './entries/LivePillEntry'
+import { MenuBarPanelEntry } from './entries/MenuBarPanelEntry'
 import { SettingsCardEntry } from './entries/SettingsCardEntry'
 import { DisclosureCardEntry } from './entries/DisclosureCardEntry'
 import { HealthCardEntry } from './entries/HealthCardEntry'
@@ -194,6 +196,8 @@ const ENTRIES: Record<
   factlist: FactListEntry,
   languagecard: LanguageCardEntry,
   settingrow: SettingRowEntry,
+  livepill: LivePillEntry,
+  menubarpanel: MenuBarPanelEntry,
   settingscard: SettingsCardEntry,
   disclosurecard: DisclosureCardEntry,
   healthcard: HealthCardEntry,

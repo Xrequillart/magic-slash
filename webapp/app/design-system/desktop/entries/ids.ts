@@ -99,6 +99,8 @@ export type EntryId =
   | 'repositoryselector'
   | 'banner'
   | 'agent'
+  | 'livepill'
+  | 'menubarpanel'
   | 'contextagentcard'
   | 'headerrepocard'
   | 'menusidebar'
@@ -225,6 +227,8 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   repositoryselector: 'RepositorySelector',
   banner: 'Banner',
   agent: 'Agent',
+  livepill: 'LivePill',
+  menubarpanel: 'MenuBarPanel',
 }
 
 /**
@@ -344,7 +348,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   fieldtable: ['button', 'text'],
   factlist: ['status', 'text'],
   languagecard: ['card', 'settingrow', 'text'],
-  settingrow: ['button', 'buttonicon', 'chipinput', 'icon', 'input', 'select', 'stepper', 'switch', 'text'],
+  settingrow: ['button', 'buttonicon', 'chipinput', 'icon', 'input', 'livepill', 'select', 'stepper', 'switch', 'text'],
   settingscard: ['banner', 'card', 'settingrow', 'text'],
   disclosurecard: ['card', 'icon', 'settingrow', 'text'],
   healthcard: ['banner', 'card', 'icon', 'loader', 'repairlist', 'settingrow', 'text'],
@@ -395,6 +399,8 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   speccard: ['card', 'label', 'status', 'editabletext', 'buttonicon'],
   banner: ['button', 'icon', 'text'],
   agent: ['loader', 'icon', 'text'],
+  livepill: [],
+  menubarpanel: ['agent', 'buttonicon', 'icon', 'label', 'menusidebaritem', 'text'],
   accountcard: ['fieldtable', 'avatar', 'banner', 'button', 'icon', 'text'],
 }
 
@@ -589,4 +595,6 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   sidebaragentcoderinfo: 'The right column, and the agent in it',
   banner: 'States a fact about a surface',
   agent: 'What it is called, and what it is doing',
+  livepill: 'Something is happening right now',
+  menubarpanel: 'The window that drops from the menu bar',
 }
