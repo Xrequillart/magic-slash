@@ -1505,39 +1505,130 @@ export function isValidTheme(value: unknown): value is ThemeId {
 }
 
 /**
- * How the syntax highlighting inside the file preview is painted.
+ * The palettes code is highlighted in, as FAMILIES: one name, a light variant and a dark
+ * one. The reader picks a family and the app's theme picks the variant, so choosing
+ * Catppuccin on a dark theme and then moving to a light one paints Latte instead of
+ * leaving Mocha's pale ink on a white page.
  *
- * `auto` — the default and the only one most people should need — takes the
- * appearance of the theme in use, so a light theme stops showing a black slab of
- * code in the middle of a white drawer. The two explicit values exist because
- * reading code is not reading UI: someone on a light interface may still want
- * their code dark, and that preference has nothing to do with the theme.
+ * WHY FAMILIES AND NOT THEMES. The setting this replaced let a reader pin "always dark"
+ * code on a light interface, and every single-appearance palette would have reopened that:
+ * Dracula has no light variant, so on a light theme it is either a black slab in a white
+ * drawer or light ink on white. A family has an answer for both appearances by
+ * construction, which is what lets the preview drop the palette's own background and
+ * sit the code straight on the panel (`useCodeAppearance`'s `blend`).
+ *
+ * Each id is shiki's own theme name, resolved in the main process — see
+ * `previewShikiTheme` in main/ipc/config-handlers.ts. The labels are proper names and are
+ * not translated.
+ *
+ * The ids are the `user_settings.code_syntax` CHECK (20260928110000): adding a family is
+ * an entry here AND a migration widening that list.
  */
-export const CODE_THEME_MODES = ['auto', 'light', 'dark'] as const
+export const CODE_SYNTAX_FAMILIES = {
+  github: { label: 'GitHub', light: 'github-light', dark: 'github-dark' },
+  'github-high-contrast': {
+    label: 'GitHub High Contrast', light: 'github-light-high-contrast', dark: 'github-dark-high-contrast',
+  },
+  one: { label: 'One', light: 'one-light', dark: 'one-dark-pro' },
+  vscode: { label: 'Visual Studio', light: 'light-plus', dark: 'dark-plus' },
+  catppuccin: { label: 'Catppuccin', light: 'catppuccin-latte', dark: 'catppuccin-mocha' },
+  'rose-pine': { label: 'Rosé Pine', light: 'rose-pine-dawn', dark: 'rose-pine' },
+  'night-owl': { label: 'Night Owl', light: 'night-owl-light', dark: 'night-owl' },
+  solarized: { label: 'Solarized', light: 'solarized-light', dark: 'solarized-dark' },
+  gruvbox: { label: 'Gruvbox', light: 'gruvbox-light-medium', dark: 'gruvbox-dark-medium' },
+  everforest: { label: 'Everforest', light: 'everforest-light', dark: 'everforest-dark' },
+  kanagawa: { label: 'Kanagawa', light: 'kanagawa-lotus', dark: 'kanagawa-wave' },
+  vitesse: { label: 'Vitesse', light: 'vitesse-light', dark: 'vitesse-dark' },
+  ayu: { label: 'Ayu', light: 'ayu-light', dark: 'ayu-dark' },
+  material: { label: 'Material', light: 'material-theme-lighter', dark: 'material-theme-darker' },
+  min: { label: 'Min', light: 'min-light', dark: 'min-dark' },
+} as const satisfies Record<string, { label: string; light: string; dark: string }>
 
-export type CodeThemeMode = (typeof CODE_THEME_MODES)[number]
+export type CodeSyntaxFamily = keyof typeof CODE_SYNTAX_FAMILIES
 
-export const DEFAULT_CODE_THEME_MODE: CodeThemeMode = 'auto'
+export const CODE_SYNTAX_FAMILY_IDS = Object.keys(CODE_SYNTAX_FAMILIES) as CodeSyntaxFamily[]
 
-export function isValidCodeThemeMode(value: unknown): value is CodeThemeMode {
-  return typeof value === 'string' && (CODE_THEME_MODES as readonly string[]).includes(value)
+/**
+ * What the reader stored: a family, or `auto` — the family each interface theme is paired
+ * with below. `auto` is the default and what an untouched account gets.
+ */
+export type CodeSyntaxChoice = 'auto' | CodeSyntaxFamily
+
+export const DEFAULT_CODE_SYNTAX: CodeSyntaxChoice = 'auto'
+
+export function isValidCodeSyntax(value: unknown): value is CodeSyntaxChoice {
+  return value === 'auto' || (typeof value === 'string' && Object.hasOwn(CODE_SYNTAX_FAMILIES, value))
 }
 
 /**
- * The appearance the highlighter should paint in, from the theme and the mode.
+ * The family `auto` means on each interface theme — the palette whose ground and ink sit
+ * closest to the window's. GitHub on the two neutral themes, which is what the preview
+ * painted before the setting existed, so an untouched account sees no change there.
  *
- * Lives here — beside THEME_APPEARANCE, which it reads — rather than in either
- * process, because BOTH have to reach the same answer from the same inputs: the
- * main process picks the shiki theme with it, and the renderer keys its read
- * cache on it so switching theme actually re-highlights. Two copies of this rule
- * would be a preview cached under one appearance and painted in the other.
- *
- * Anything unknown for either argument reads as "never chosen", which is what
- * makes it safe to call with a raw config value.
+ * A total record, like THEME_APPEARANCE: a new theme cannot be added without pairing it.
  */
-export function codeAppearance(theme: unknown, mode: unknown): 'light' | 'dark' {
-  if (mode === 'light' || mode === 'dark') return mode
-  return THEME_APPEARANCE[isValidTheme(theme) ? theme : DEFAULT_THEME]
+export const THEME_CODE_SYNTAX: Record<ThemeId, CodeSyntaxFamily> = {
+  dark: 'github',
+  midnight: 'night-owl',
+  espresso: 'gruvbox',
+  'high-contrast': 'github-high-contrast',
+  light: 'github',
+  mist: 'catppuccin',
+  sepia: 'solarized',
+  daylight: 'github-high-contrast',
+}
+
+/** The family actually in force: the stored one, or the theme's own pairing. */
+export function codeSyntaxFamily(theme: unknown, choice: unknown): CodeSyntaxFamily {
+  const id = isValidTheme(theme) ? theme : DEFAULT_THEME
+  return isValidCodeSyntax(choice) && choice !== 'auto' ? choice : THEME_CODE_SYNTAX[id]
+}
+
+/**
+ * The shiki theme to highlight in, from the interface theme and the stored choice.
+ *
+ * Lives here, beside THEME_APPEARANCE, because BOTH processes have to reach the same
+ * answer: the main process highlights with it, and the renderer keys its read cache on it
+ * so a change of theme or of palette actually re-highlights. Two copies of this rule would
+ * be a preview cached under one palette and painted in another.
+ */
+export function codeSyntaxTheme(theme: unknown, choice: unknown): string {
+  const id = isValidTheme(theme) ? theme : DEFAULT_THEME
+  return CODE_SYNTAX_FAMILIES[codeSyntaxFamily(id, choice)][THEME_APPEARANCE[id]]
+}
+
+/**
+ * The size code is set in, in CSS pixels, everywhere a file or a diff is previewed.
+ * 12 is the `text-xs` the preview always used. Bounded on both sides by the
+ * `user_settings.code_font_size` CHECK.
+ */
+export const CODE_FONT_SIZES = [11, 12, 13, 14, 15, 16] as const
+
+export const DEFAULT_CODE_FONT_SIZE = 12
+
+export function isValidCodeFontSize(value: unknown): value is number {
+  return typeof value === 'number' && (CODE_FONT_SIZES as readonly number[]).includes(value)
+}
+
+/** The languages Settings → Code & reviews previews a palette in (main/code-sample.ts). */
+export const CODE_SAMPLE_LANGUAGES = [
+  { id: 'ts', label: 'TypeScript' },
+  { id: 'py', label: 'Python' },
+  { id: 'go', label: 'Go' },
+  { id: 'rs', label: 'Rust' },
+] as const
+
+export type CodeSampleLanguage = (typeof CODE_SAMPLE_LANGUAGES)[number]['id']
+
+/**
+ * A sample highlighted in the palette in force, ready for `CodeView`. `highlightedHtml`
+ * is null when shiki failed, in which case CodeView falls back to the plain text.
+ */
+export interface CodeSample {
+  content: string
+  highlightedHtml: string | null
+  /** The shiki theme it was painted in — what the renderer keys its request on. */
+  shikiTheme: string
 }
 
 /**
@@ -1616,12 +1707,13 @@ export interface Config {
    */
   syncClaudeTheme?: boolean
   /**
-   * Which appearance the file preview's syntax highlighting is painted in.
-   * Absent = DEFAULT_CODE_THEME_MODE, i.e. follow `theme`. Follows the account
-   * for the same reason the theme does — it is a reading preference, not a
-   * property of the screen.
+   * The palette code is highlighted in — a family, whose variant the theme picks. Absent =
+   * DEFAULT_CODE_SYNTAX, the theme's own pairing. Follows the account for the same reason
+   * the theme does: it is a reading preference, not a property of the screen.
    */
-  codeTheme?: CodeThemeMode
+  codeSyntax?: CodeSyntaxChoice
+  /** Code's size in pixels. Absent = DEFAULT_CODE_FONT_SIZE. Follows the account too. */
+  codeFontSize?: number
   splitEnabled?: boolean
   splitActive?: boolean
   autoStartAtLogin?: boolean

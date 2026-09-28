@@ -91,6 +91,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.tab.appearance': 'Apparence',
   'settings.tab.language': 'Langue et région',
   'settings.tab.application': 'Application',
+  'settings.tab.codeReviews': 'Code et reviews',
   'settings.tab.shortcuts': 'Raccourcis',
   'settings.tab.about': 'À propos',
   'settings.group.personal': 'Personnel',
@@ -1103,6 +1104,17 @@ export const fr: Record<keyof typeof en, string> = {
   'role.admin': 'Admin',
   'role.admin.help': 'Peut inviter, changer les rôles et archiver l’organisation',
 
+  // ── Réglages → Code et reviews ───────────────────────────────────────────
+  'settings.code.section': 'Code',
+  'settings.code.syntax.label': 'Thème du code',
+  'settings.code.syntax.help': 'Suit le thème de l’interface, sauf si vous en choisissez un autre. La variante claire ou sombre suit toujours le thème.',
+  'settings.code.syntax.auto': 'Auto : {name}',
+  'settings.code.font.label': 'Taille du texte',
+  'settings.code.font.help': 'Aperçus de fichiers, diffs et historique des plans.',
+  'settings.code.font.option': '{size} px',
+  'settings.code.preview.language': 'Langage de l’aperçu',
+  'settings.code.preview.failed': 'L’aperçu n’a pas pu être coloré.',
+
   // ── Thèmes (libellés du registre) ────────────────────────────────────────
   'theme.dark': 'Sombre',
   'theme.dark.help': 'L’original, presque noir.',
@@ -1166,12 +1178,6 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.appearance.claudeTheme.label': 'Accorder Claude Code au thème',
   'settings.appearance.claudeTheme.help':
     'Claude Code adopte les couleurs du thème choisi dans les terminaux de l’app. Les sessions déjà ouvertes se repeignent aussi. Votre Claude Code lancé depuis un vrai terminal n’est pas touché.',
-  'settings.appearance.codeTheme.label': 'Coloration du code',
-  'settings.appearance.codeTheme.help':
-    'L’apparence dans laquelle l’aperçu de fichier affiche le code. Suivre le thème convient à presque tout le monde ; fixez-en une pour lire du code sombre sur une interface claire, ou l’inverse.',
-  'settings.appearance.codeTheme.auto': 'Suit le thème',
-  'settings.appearance.codeTheme.light': 'Toujours claire',
-  'settings.appearance.codeTheme.dark': 'Toujours sombre',
   'settings.appearance.displaySection': 'Affichage',
   'settings.appearance.scale': 'Échelle de l’interface',
   'settings.appearance.scaleHelp':
@@ -1181,7 +1187,6 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.appearance.zoomReset': 'Revenir à 100 %',
   'toast.themeChangeFailed': 'Impossible de changer de thème',
   'toast.claudeThemeSyncFailed': 'Impossible de changer le thème de Claude Code',
-  'toast.codeThemeFailed': 'Impossible de changer la coloration du code',
   'toast.sidebarPanelFailed': 'Impossible de modifier les panneaux des barres latérales',
 
   // ── Champs du profil utilisateur ─────────────────────────────────────────

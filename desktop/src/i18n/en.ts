@@ -113,6 +113,7 @@ export const en = {
   'settings.tab.appearance': 'Appearance',
   'settings.tab.language': 'Language & Region',
   'settings.tab.application': 'Application',
+  'settings.tab.codeReviews': 'Code & reviews',
   'settings.tab.shortcuts': 'Shortcuts',
   'settings.tab.about': 'About',
   'settings.group.personal': 'Personal',
@@ -1143,6 +1144,17 @@ export const en = {
   'role.admin': 'Admin',
   'role.admin.help': 'Can invite, change roles and archive the organization',
 
+  // ── Settings → Code & reviews ────────────────────────────────────────────
+  'settings.code.section': 'Code',
+  'settings.code.syntax.label': 'Code theme',
+  'settings.code.syntax.help': 'Matches your interface theme unless overridden. The light or dark variant always follows the theme.',
+  'settings.code.syntax.auto': 'Auto: {name}',
+  'settings.code.font.label': 'Font size',
+  'settings.code.font.help': 'File previews, diffs and plan history.',
+  'settings.code.font.option': '{size}px',
+  'settings.code.preview.language': 'Preview language',
+  'settings.code.preview.failed': 'The preview could not be highlighted.',
+
   // ── Themes (registry labels) ─────────────────────────────────────────────
   'theme.dark': 'Dark',
   'theme.dark.help': 'The original, near-black.',
@@ -1206,12 +1218,6 @@ export const en = {
   'settings.appearance.claudeTheme.label': 'Match Claude Code to the theme',
   'settings.appearance.claudeTheme.help':
     'Claude Code takes the chosen theme’s colours in the app’s terminals, repainting sessions that are already open. Claude Code started from a real terminal is left alone.',
-  'settings.appearance.codeTheme.label': 'Syntax highlighting',
-  'settings.appearance.codeTheme.help':
-    'Which appearance the file preview paints code in. Following the theme is right for almost everyone; pin one to read dark code on a light interface, or the other way round.',
-  'settings.appearance.codeTheme.auto': 'Follows the theme',
-  'settings.appearance.codeTheme.light': 'Always light',
-  'settings.appearance.codeTheme.dark': 'Always dark',
   'settings.appearance.displaySection': 'Display',
   'settings.appearance.scale': 'Interface scale',
   // Written towards the two accelerator caps the row draws at the end of it — see
@@ -1222,7 +1228,6 @@ export const en = {
   'settings.appearance.zoomReset': 'Reset to 100%',
   'toast.themeChangeFailed': 'Failed to change theme',
   'toast.claudeThemeSyncFailed': 'Failed to change the Claude Code theme',
-  'toast.codeThemeFailed': 'Failed to change the syntax highlighting',
   'toast.sidebarPanelFailed': 'Failed to change the sidebar panels',
 
   // ── User profile fields ──────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import { AccountPage } from '../pages/Config/AccountPage'
 import { ApplicationPage } from '../pages/Config/ApplicationPage'
 import { AppearancePage } from '../pages/Config/AppearancePage'
 import { ClaudeCodePage } from '../pages/Config/ClaudeCodePage'
+import { CodeReviewsPage } from '../pages/Config/CodeReviewsPage'
 import { ConnectionsPage } from '../pages/Config/ConnectionsPage'
 import { LanguagePage } from '../pages/Config/LanguagePage'
 import { NotificationsPage } from '../pages/Config/NotificationsPage'
@@ -18,6 +19,7 @@ import {
   Bell,
   Building2,
   CircleUserRound,
+  CodeXml,
   Info,
   Keyboard,
   Languages,
@@ -36,7 +38,7 @@ import type { IconComponent } from '@ds/desktop/types'
  * had a tab strip in its header, and the split was the one the title bar draws. It was a
  * clean line on paper and a guess in practice: a reader looking for the language had to
  * know which of two controls it lived behind before they could find it. One window with
- * all ten down the side answers that by showing them.
+ * all of them down the side answers that by showing them.
  *
  * THE RAIL IS THE DESIGN SYSTEM'S, handed over as data (`PageModal`'s `rail`), because
  * the panel is sized from it: the rail plus exactly the column these pages were always
@@ -64,6 +66,7 @@ export type SettingsTab =
   | 'connections'
   | 'claude-code'
   | 'application'
+  | 'code-reviews'
   | 'notifications'
   | 'appearance'
   | 'language'
@@ -101,7 +104,10 @@ const GROUPS: { id: string; labelKey: MessageKey; pages: SettingsPageEntry[] }[]
   {
     id: 'features',
     labelKey: 'settings.group.features',
-    pages: [{ id: 'application', labelKey: 'settings.tab.application', icon: AppWindow }],
+    pages: [
+      { id: 'application', labelKey: 'settings.tab.application', icon: AppWindow },
+      { id: 'code-reviews', labelKey: 'settings.tab.codeReviews', icon: CodeXml },
+    ],
   },
   {
     id: 'about',
@@ -156,6 +162,7 @@ export function SettingsModal() {
         {tab === 'connections' && <ConnectionsPage />}
         {tab === 'claude-code' && <ClaudeCodePage />}
         {tab === 'application' && <ApplicationPage />}
+        {tab === 'code-reviews' && <CodeReviewsPage />}
         {tab === 'notifications' && <NotificationsPage />}
         {tab === 'appearance' && <AppearancePage />}
         {tab === 'language' && <LanguagePage />}

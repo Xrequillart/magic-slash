@@ -42,7 +42,8 @@ export { DEFAULTS } from './settingsCatalog'
 export interface UserSettings {
   theme: string | null
   syncClaudeTheme: boolean | null
-  codeTheme: string | null
+  codeSyntax: string | null
+  codeFontSize: number | null
   language: string | null
   usageCardEnabled: boolean | null
   usageCardMinimized: boolean | null
@@ -70,7 +71,8 @@ export type UserSettingsPatch = Partial<UserSettings>
 interface UserSettingsRow {
   theme: string | null
   sync_claude_theme: boolean | null
-  code_theme: string | null
+  code_syntax: string | null
+  code_font_size: number | null
   language: string | null
   usage_card_enabled: boolean | null
   usage_card_minimized: boolean | null
@@ -94,13 +96,14 @@ interface UserSettingsRow {
 }
 
 const COLUMNS =
-  'theme, sync_claude_theme, code_theme, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_active, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type'
+  'theme, sync_claude_theme, code_syntax, code_font_size, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_active, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type'
 
 /** Maps a camelCase field to its column. Also the list of writable fields. */
 const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
   theme: 'theme',
   syncClaudeTheme: 'sync_claude_theme',
-  codeTheme: 'code_theme',
+  codeSyntax: 'code_syntax',
+  codeFontSize: 'code_font_size',
   language: 'language',
   usageCardEnabled: 'usage_card_enabled',
   usageCardMinimized: 'usage_card_minimized',
@@ -127,7 +130,8 @@ const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
 export const EMPTY_SETTINGS: UserSettings = {
   theme: null,
   syncClaudeTheme: null,
-  codeTheme: null,
+  codeSyntax: null,
+  codeFontSize: null,
   language: null,
   usageCardEnabled: null,
   usageCardMinimized: null,
@@ -155,7 +159,8 @@ function toSettings(row: UserSettingsRow): UserSettings {
   return {
     theme: row.theme,
     syncClaudeTheme: row.sync_claude_theme,
-    codeTheme: row.code_theme,
+    codeSyntax: row.code_syntax,
+    codeFontSize: row.code_font_size,
     language: row.language,
     usageCardEnabled: row.usage_card_enabled,
     usageCardMinimized: row.usage_card_minimized,
@@ -413,15 +418,31 @@ export const LAUNCH_MODE_OPTIONS: KeyedOption[] = [
  * writes the same two columns.
  */
 /**
- * The appearances the desktop's file preview can highlight code in. `auto` is the
- * default, and the only one most people need — the two pinned values exist because
- * reading code is not reading UI.
+ * The palette families the desktop highlights code in, whose light or dark variant the
+ * theme picks. Mirrors `CODE_SYNTAX_FAMILIES` in `desktop/src/types.ts` (the two builds
+ * cannot import each other) and the `user_settings_code_syntax_check` CHECK. The labels
+ * are proper names and are not translated; `auto` is, and is not in this list.
  */
-export const CODE_THEME_OPTIONS: KeyedOption[] = [
-  { value: 'auto', labelKey: 'settings.appearance.codeTheme.auto' },
-  { value: 'light', labelKey: 'settings.appearance.codeTheme.light' },
-  { value: 'dark', labelKey: 'settings.appearance.codeTheme.dark' },
+export const CODE_SYNTAX_FAMILIES: { value: string; label: string }[] = [
+  { value: 'github', label: 'GitHub' },
+  { value: 'github-high-contrast', label: 'GitHub High Contrast' },
+  { value: 'one', label: 'One' },
+  { value: 'vscode', label: 'Visual Studio' },
+  { value: 'catppuccin', label: 'Catppuccin' },
+  { value: 'rose-pine', label: 'Rosé Pine' },
+  { value: 'night-owl', label: 'Night Owl' },
+  { value: 'solarized', label: 'Solarized' },
+  { value: 'gruvbox', label: 'Gruvbox' },
+  { value: 'everforest', label: 'Everforest' },
+  { value: 'kanagawa', label: 'Kanagawa' },
+  { value: 'vitesse', label: 'Vitesse' },
+  { value: 'ayu', label: 'Ayu' },
+  { value: 'material', label: 'Material' },
+  { value: 'min', label: 'Min' },
 ]
+
+/** `CODE_FONT_SIZES` in `desktop/src/types.ts`, and the column's CHECK. */
+export const CODE_FONT_SIZES = [11, 12, 13, 14, 15, 16] as const
 
 export const PANEL_FORMAT_OPTIONS: KeyedOption[] = [
   { value: 'full', labelKey: 'settings.sidebars.format.full' },

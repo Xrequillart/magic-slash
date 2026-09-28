@@ -2330,7 +2330,8 @@ describe('user settings', () => {
       theme: null,
       language: null,
       sync_claude_theme: null,
-      code_theme: null,
+      code_syntax: null,
+      code_font_size: null,
     })
   })
 

@@ -5,7 +5,6 @@ import {
   Text,
   ThemePreviewGrid,
   type SettingRowControl,
-  type SettingsCardRow,
   type ThemePreviewOption,
 } from '@ds/desktop'
 import { useEffect, useState } from 'react'
@@ -15,10 +14,7 @@ import { showToast } from '../../components/Toast'
 import { useToggleRow } from './ToggleRow'
 import { THEMES, THEME_IDS, useTheme } from '../../theme'
 import { useT } from '../../i18n'
-import {
-  CODE_THEME_MODES, DEFAULT_CODE_THEME_MODE, DEFAULT_ZOOM, MAX_ZOOM, MIN_ZOOM,
-  type CodeThemeMode, type ThemeId,
-} from '../../../types'
+import { DEFAULT_ZOOM, MAX_ZOOM, MIN_ZOOM, type ThemeId } from '../../../types'
 
 /**
  * WHAT THE WINDOW LOOKS LIKE: the theme, how far it reaches, which optional panels are
@@ -95,56 +91,6 @@ function useFormatSelect({ minimized, onChange, ariaLabel, errorMessage }: Forma
   }
 }
 
-/**
- * Which appearance the file preview highlights code in, as a row.
- *
- * A select rather than a switch because "follow the theme" is a third state, not the off
- * position of a toggle: pinning light and pinning dark are both real answers, and neither
- * is "don't follow".
- *
- * Optimistic like every other control in Settings — the value moves first and reverts if
- * the write fails.
- */
-function useCodeThemeRow(): SettingsCardRow {
-  const { config, updateCodeTheme } = useConfig()
-  const t = useT()
-  const stored = config?.codeTheme ?? DEFAULT_CODE_THEME_MODE
-  const [value, setValue] = useState<CodeThemeMode>(stored)
-
-  useEffect(() => {
-    setValue(stored)
-  }, [stored])
-
-  const choose = async (next: CodeThemeMode) => {
-    if (next === value) return
-    const previous = value
-    setValue(next)
-    try {
-      await updateCodeTheme(next)
-    } catch (error) {
-      setValue(previous)
-      showToast(error instanceof Error ? error.message : t('toast.codeThemeFailed'), 'error')
-    }
-  }
-
-  return {
-    id: 'codeTheme',
-    label: t('settings.appearance.codeTheme.label'),
-    hint: t('settings.appearance.codeTheme.help'),
-    control: {
-      kind: 'select',
-      value,
-      options: CODE_THEME_MODES.map((mode) => ({
-        value: mode,
-        label: t(`settings.appearance.codeTheme.${mode}`),
-      })),
-      onChange: (next) => choose(next as CodeThemeMode),
-      ariaLabel: t('settings.appearance.codeTheme.label'),
-      width: 160,
-    },
-  }
-}
-
 export function AppearancePage() {
   const {
     config,
@@ -215,7 +161,6 @@ export function AppearancePage() {
     onChange: updateSyncClaudeTheme,
     errorMessage: t('toast.claudeThemeSyncFailed'),
   })
-  const codeThemeRow = useCodeThemeRow()
 
   const usageCardRow = useToggleRow({
     label: t('settings.appearance.sidebars.usageCard.label'),
@@ -250,7 +195,7 @@ export function AppearancePage() {
           nothing. */}
       <SettingsCard
         className="mt-3"
-        rows={[{ id: 'claudeTheme', ...claudeThemeRow }, codeThemeRow]}
+        rows={[{ id: 'claudeTheme', ...claudeThemeRow }]}
       />
 
       <div className="mt-8">

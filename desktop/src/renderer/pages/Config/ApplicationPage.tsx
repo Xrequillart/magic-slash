@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  AlertTriangle, BarChart3, Bot, Columns, GitPullRequest, Lightbulb,
+  AlertTriangle, BarChart3, Bot, Columns, Lightbulb,
   MonitorSmartphone, Search,
 } from '@ds/desktop/icons'
 import { DisclosureCard, SectionHeader, SettingsCard } from '@ds/desktop'
@@ -17,6 +17,9 @@ import type { AgentType, SpotlightShortcut } from '../../../types'
 /**
  * THE APP ITSELF — how this machine is set up, and every feature that can be switched
  * off. The settings modal's Application tab, until the modal lost it.
+ *
+ * The PR watcher's card moved to Code & reviews (`CodeReviewsPage`), beside the palette
+ * the reviews it watches are read in.
  *
  * WHY IT IS A COMPONENT AND NOT A TAB ANY MORE. The quick-settings sheet took over the
  * on/off half of this page — the split view, Quick Launch, the login start, the PR
@@ -54,20 +57,6 @@ import type { AgentType, SpotlightShortcut } from '../../../types'
  * would have to be split on a space that is a separator here and a KEY NAME there.
  * Composed where the chords are written rather than parsed where they are drawn.
  */
-/**
- * How often the pull-request watcher looks, in milliseconds, and what each interval is
- * called. Keys rather than labels, for `SPOTLIGHT_OPTIONS`' reason: module scope is
- * evaluated once at import, so a `t()` here would pin the list to the boot language.
- */
-export const PR_WATCHER_INTERVALS = [30_000, 60_000, 120_000, 300_000] as const
-
-const PR_WATCHER_INTERVAL_LABEL: Record<(typeof PR_WATCHER_INTERVALS)[number], MessageKey> = {
-  30_000: 'settings.application.prWatcher.interval30s',
-  60_000: 'settings.application.prWatcher.interval1m',
-  120_000: 'settings.application.prWatcher.interval2m',
-  300_000: 'settings.application.prWatcher.interval5m',
-}
-
 export const SPOTLIGHT_OPTIONS: { keys: string[]; value: string }[] = [
   { keys: ['⌃', 'Space'], value: 'Control+Space' },
   { keys: ['⌃⇧', 'Space'], value: 'Control+Shift+Space' },
@@ -126,9 +115,6 @@ export function ApplicationPage() {
   const [spotlightShortcut, setSpotlightShortcut] = useState(config?.spotlight?.shortcut ?? 'Control+Space')
   const [spotlightError, setSpotlightError] = useState(false)
   const [usageLogsEnabled, setUsageLogsEnabled] = useState(config?.usageLogsEnabled ?? true)
-  const [prWatcherEnabled, setPrWatcherEnabled] = useState(config?.prReviews?.enabled ?? true)
-  const [prWatcherInterval, setPrWatcherInterval] = useState(config?.prReviews?.pollIntervalMs ?? 60_000)
-  const [prWatcherAutoLaunch, setPrWatcherAutoLaunch] = useState(config?.prReviews?.autoLaunchSkills ?? false)
 
   useEffect(() => {
     window.electronAPI.config.getAutoStart().then(setAutoStart)
@@ -151,14 +137,6 @@ export function ApplicationPage() {
     if (configUsageLogsEnabled !== undefined) setUsageLogsEnabled(configUsageLogsEnabled)
   }, [configUsageLogsEnabled])
 
-  const configPrWatcherEnabled = config?.prReviews?.enabled
-  const configPrWatcherInterval = config?.prReviews?.pollIntervalMs
-  const configPrWatcherAutoLaunch = config?.prReviews?.autoLaunchSkills
-  useEffect(() => {
-    if (configPrWatcherEnabled !== undefined) setPrWatcherEnabled(configPrWatcherEnabled)
-    if (configPrWatcherInterval !== undefined) setPrWatcherInterval(configPrWatcherInterval)
-    if (configPrWatcherAutoLaunch !== undefined) setPrWatcherAutoLaunch(configPrWatcherAutoLaunch)
-  }, [configPrWatcherEnabled, configPrWatcherInterval, configPrWatcherAutoLaunch])
 
   // Optimistic, then reverted on failure — the shape every write on this page uses.
   const applyDefaultAgentType = async (type: AgentType) => {
@@ -386,74 +364,6 @@ export function ApplicationPage() {
         <SettingsCard
           rows={[{ id: 'planSync', ...planSyncRow }]}
           note={t('settings.application.planSync.footnote')}
-        />
-      </div>
-
-      {/* PR Review Watcher Section */}
-      <div>
-        <SectionHeader icon={GitPullRequest} title={t('settings.application.prWatcher.section')} />
-        <SettingsCard
-          rows={[
-            {
-              id: 'prWatcher',
-              label: t('settings.application.prWatcher.label'),
-              hint: t('settings.application.prWatcher.help'),
-              control: {
-                kind: 'switch',
-                checked: prWatcherEnabled,
-                onChange: async () => {
-                  const newValue = !prWatcherEnabled
-                  setPrWatcherEnabled(newValue)
-                  // Pushed into the store, not just written to disk: the PR card in
-                  // the agent sidebar reads this setting to decide whether to say
-                  // "watching is off", and it would otherwise keep claiming the
-                  // opposite until the next config load.
-                  setConfig(await window.electronAPI.prWatcher.setEnabled(newValue))
-                },
-                label: t('settings.application.prWatcher.label'),
-              },
-            },
-            // Both are questions about a watcher that is running: how often, and what it
-            // may start on its own. Left out rather than dimmed while it is not.
-            prWatcherEnabled && {
-              id: 'prWatcherInterval',
-              label: t('settings.application.prWatcher.intervalLabel'),
-              hint: t('settings.application.prWatcher.intervalHelp'),
-              control: {
-                kind: 'select' as const,
-                value: String(prWatcherInterval),
-                // The interval is a NUMBER of milliseconds and the picker deals in
-                // strings, so it is parsed on the way back — where the native select
-                // made the same trip through `e.target.value`.
-                options: PR_WATCHER_INTERVALS.map((ms) => ({
-                  value: String(ms),
-                  label: t(PR_WATCHER_INTERVAL_LABEL[ms]),
-                })),
-                onChange: (next: string) => {
-                  const newInterval = parseInt(next, 10)
-                  setPrWatcherInterval(newInterval)
-                  window.electronAPI.prWatcher.setInterval(newInterval)
-                },
-                ariaLabel: t('settings.application.prWatcher.intervalLabel'),
-                width: SELECT_WIDTH,
-              },
-            },
-            prWatcherEnabled && {
-              id: 'prWatcherAutoLaunch',
-              label: t('settings.application.prWatcher.autoLaunchLabel'),
-              hint: t('settings.application.prWatcher.autoLaunchHelp'),
-              control: {
-                kind: 'switch' as const,
-                checked: prWatcherAutoLaunch,
-                onChange: () => {
-                  const newValue = !prWatcherAutoLaunch
-                  setPrWatcherAutoLaunch(newValue)
-                  window.electronAPI.prWatcher.setAutoLaunchSkills(newValue)
-                },
-                label: t('settings.application.prWatcher.autoLaunchLabel'),
-              },
-            },
-          ]}
         />
       </div>
 

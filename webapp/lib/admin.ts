@@ -261,7 +261,8 @@ interface AdminUserDetailRpcRow {
   theme: string | null
   language: string | null
   sync_claude_theme: boolean | null
-  code_theme: string | null
+  code_syntax: string | null
+  code_font_size: number | null
   agent_sort: string | null
   info_sidebar_on_create: boolean | null
 }
@@ -419,7 +420,8 @@ function toUserDetail(r: AdminUserDetailRpcRow): AdminUserDetail {
       theme: r.theme,
       language: r.language,
       syncClaudeTheme: r.sync_claude_theme,
-      codeTheme: r.code_theme,
+      codeSyntax: r.code_syntax,
+      codeFontSize: r.code_font_size,
       agentSort: r.agent_sort,
       infoSidebarOnCreate: r.info_sidebar_on_create,
     },

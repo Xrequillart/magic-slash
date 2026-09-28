@@ -41,11 +41,13 @@ import { getGitHubAuthStatus } from '../github'
 import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '../config/defaults'
 import {
-  AGENT_SORT_MODES, codeAppearance, DEFAULT_CODE_THEME_MODE, isValidAgentSort,
-  isValidCodeThemeMode, isValidLanguage, isValidTheme,
-  type Config, type FilePreviewResult, type ChangedLines,
+  AGENT_SORT_MODES, codeSyntaxTheme, DEFAULT_CODE_SYNTAX, DEFAULT_CODE_FONT_SIZE, isValidAgentSort,
+  isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidTheme,
+  type CodeSample, type Config, type FilePreviewResult, type ChangedLines,
 } from '../../types'
 import { applyLanguage, applyTheme, currentTheme } from '../appearance'
+import { CODE_SAMPLES } from '../code-sample'
+import { unifiedSpecDiff } from '../store/specDiff'
 import {
   validateRepoName,
   validateRepoPath,
@@ -401,15 +403,36 @@ export function setupConfigHandlers() {
     return { config }
   })
 
-  // Which appearance the file preview's syntax highlighting is painted in. Nothing
-  // to re-apply: the highlighting is produced per read, and the renderer keys its
-  // cache on the resolved appearance, so the next read of a file already on screen
-  // comes back in the new one.
-  ipcMain.handle('config:setCodeTheme', async (_event, { mode }: { mode: unknown }) => {
+  // Which palette family code is highlighted in. Nothing to re-apply: the highlighting
+  // is produced per read, and the renderer keys its cache on the resolved shiki theme,
+  // so the next read of a file already on screen comes back in the new one.
+  ipcMain.handle('config:setCodeSyntax', async (_event, { choice }: { choice: unknown }) => {
     const config = readConfig()
-    config.codeTheme = isValidCodeThemeMode(mode) ? mode : DEFAULT_CODE_THEME_MODE
+    config.codeSyntax = isValidCodeSyntax(choice) ? choice : DEFAULT_CODE_SYNTAX
     writeConfig(config)
     return { config }
+  })
+
+  // The size code is set in. Drawn by the renderer alone (CodeView), so a write is all.
+  ipcMain.handle('config:setCodeFontSize', async (_event, { size }: { size: unknown }) => {
+    const config = readConfig()
+    config.codeFontSize = isValidCodeFontSize(size) ? size : DEFAULT_CODE_FONT_SIZE
+    writeConfig(config)
+    return { config }
+  })
+
+  // The palette preview in Settings → Code & reviews: a sample file with a small change
+  // over it, highlighted and annotated by the very functions the file preview goes
+  // through, so what the settings page shows is what a diff will look like.
+  ipcMain.handle('config:codeSample', async (_event, { language }: { language: unknown }): Promise<CodeSample> => {
+    const lang = typeof language === 'string' && Object.hasOwn(CODE_SAMPLES, language)
+      ? (language as keyof typeof CODE_SAMPLES)
+      : 'ts'
+    const { before, after } = CODE_SAMPLES[lang]
+    const shikiTheme = previewShikiTheme()
+    const numbered = await highlightNumbered(after, lang, shikiTheme)
+    const highlightedHtml = numbered ? annotateAgainstDiff(numbered, unifiedSpecDiff(before, after).diff).highlightedHtml : null
+    return { content: after, highlightedHtml, shikiTheme }
   })
 
   // Show/hide the Claude usage card in the left sidebar
@@ -677,18 +700,12 @@ export function setupConfigHandlers() {
   )
 }
 
-/**
- * The shiki theme a preview is highlighted with.
- *
- * GitHub's own pair, because the diff chrome CodeView draws over the result (the
- * +/- rails, the gutter) is GitHub's palette too — mixing a third highlighter's
- * colours in would put two different greens on the same added line.
- */
-const SHIKI_THEMES = { light: 'github-light', dark: 'github-dark' } as const
+/** What `readFileForPreview` paints in when a caller does not say — the tests. */
+const FALLBACK_SHIKI_THEME = 'github-dark'
 
 /**
- * Which of the two to use right now: the app's theme, unless the reader pinned an
- * appearance in Settings → Appearance.
+ * The shiki theme a preview is highlighted with: the reader's palette family in the
+ * variant the app's theme calls for — see `codeSyntaxTheme`.
  *
  * Resolved HERE rather than inside `readFileForPreview`, which stays a pure
  * function of its arguments — it is the one part of this file with a test suite,
@@ -696,7 +713,7 @@ const SHIKI_THEMES = { light: 'github-light', dark: 'github-dark' } as const
  * native theme to read a file off disk.
  */
 export function previewShikiTheme(): string {
-  return SHIKI_THEMES[codeAppearance(currentTheme(), readConfig().codeTheme)]
+  return codeSyntaxTheme(currentTheme(), readConfig().codeSyntax)
 }
 
 /** Is `child` the directory itself, or something beneath it? Plain string containment. */
@@ -713,7 +730,7 @@ export async function readFileForPreview(
   repoPath: string,
   filePath: string,
   status?: string,
-  shikiTheme: string = SHIKI_THEMES.dark,
+  shikiTheme: string = FALLBACK_SHIKI_THEME,
 ): Promise<FilePreviewResult> {
   const resolvedRepo = path.resolve(repoPath)
   const resolvedFile = path.resolve(repoPath, filePath)

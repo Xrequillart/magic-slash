@@ -49,6 +49,10 @@ export type { FilterBarControl, FilterBarProps, FilterBarSearch } from './Filter
 export { BranchCard } from './BranchCard'
 export type { BranchCardProps } from './BranchCard'
 export { Card } from './Card'
+export { CodeSample } from './CodeSample'
+export type { CodeSampleProps } from './CodeSample'
+export { CodeThemeCard } from './CodeThemeCard'
+export type { CodeThemeCardPreview, CodeThemeCardProps, CodeThemeCardRow } from './CodeThemeCard'
 export { CommitCard } from './CommitCard'
 export type { CommitCardCommit, CommitCardProps } from './CommitCard'
 // `CommitRail` is deliberately absent: it is `CommitCard`'s and `CommitLine`'s shared
