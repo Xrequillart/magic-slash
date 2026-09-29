@@ -33,10 +33,15 @@ describe('DEFAULT_WORKFLOW', () => {
     }
   })
 
-  it('leaves plan-change and continue out', () => {
+  it('runs the cycle plan, start, commit, pr, resolve, done', () => {
+    expect(DEFAULT_WORKFLOW.nodes.map((n) => n.id)).toEqual(['plan', 'start', 'commit', 'pr', 'resolve', 'done'])
+  })
+
+  it('leaves plan-change, continue and review out', () => {
     const skills = DEFAULT_WORKFLOW.nodes.map((n) => n.skill)
     expect(skills).not.toContain('magic-plan-change')
     expect(skills).not.toContain('magic-continue')
+    expect(skills).not.toContain('magic-review')
   })
 
   it('starts a ticket from plan or start', () => {
@@ -51,13 +56,10 @@ describe('DEFAULT_WORKFLOW', () => {
     expect(next('magic-plan', 'planned')).toEqual({ auto: null, suggest: ['start'] })
     expect(next('magic-start', 'implemented')).toEqual({ auto: null, suggest: ['commit'] })
     expect(next('magic-commit', 'committed')).toEqual({ auto: null, suggest: ['pr'] })
-    expect(next('magic-pr', 'pr_created')).toEqual({ auto: null, suggest: ['review'] })
+    expect(next('magic-pr', 'pr_created')).toEqual({ auto: null, suggest: [] })
     expect(next('magic-pr', 'review_comments')).toEqual({ auto: 'resolve', suggest: [] })
     expect(next('magic-pr', 'ci_green')).toEqual({ auto: null, suggest: [] })
-    expect(next('magic-review', 'changes_requested')).toEqual({ auto: null, suggest: ['resolve'] })
-    expect(next('magic-review', 'approved')).toEqual({ auto: null, suggest: ['done'] })
-    expect(next('magic-review', 'commented')).toEqual({ auto: null, suggest: [] })
-    expect(next('magic-resolve', 'resolved')).toEqual({ auto: null, suggest: ['review'] })
+    expect(next('magic-resolve', 'resolved')).toEqual({ auto: null, suggest: ['done'] })
     expect(next('magic-done', 'done')).toEqual({ auto: null, suggest: [] })
   })
 

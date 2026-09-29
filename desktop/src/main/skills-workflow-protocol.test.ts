@@ -6,7 +6,7 @@ import { DEFAULT_WORKFLOW } from '../workflow/defaultFlow'
 // Every cycle skill reads its workflow at Step 0 and computes its next step from it, following
 // one protocol: `references/workflow.md`. That file is COPIED into each cycle skill rather than
 // shared, because the skills updater installs `skills/<skill>/**` and nothing else, so a shared
-// folder would never reach a user's machine. Seven copies of one protocol drift the moment one
+// folder would never reach a user's machine. Six copies of one protocol drift the moment one
 // is edited alone, and the drift is silent: each skill still reads a plausible protocol, just
 // not the same one, and two skills of the same chain disagree about when to chain.
 //
@@ -68,8 +68,8 @@ describe('workflow protocol shipped with the skills', () => {
 
   it('keeps the side skills out of the protocol', () => {
     const side = shippedSkills().filter((skill) => !CYCLE_SKILLS.includes(skill))
-    // The two side doors today; the list is derived so that a new one is held out too.
-    expect(side).toEqual(expect.arrayContaining(['magic-continue', 'magic-plan-change']))
+    // The three side doors today; the list is derived so that a new one is held out too.
+    expect(side).toEqual(expect.arrayContaining(['magic-continue', 'magic-plan-change', 'magic-review']))
     for (const skill of side) {
       expect(existsSync(skillFile(skill, PROTOCOL))).toBe(false)
       expect(readFileSync(skillFile(skill, 'SKILL.md'), 'utf-8')).not.toContain('references/workflow.md')

@@ -3,8 +3,8 @@ import { SIDE_SKILLS, SKILLS } from './skills'
 
 /**
  * The flow every repository follows until it has one of its own: today's cycle,
- * written down. The suggestions it yields are the ones the skills printed before
- * workflows existed, so a repository without a custom flow sees no change.
+ * written down as a line: plan, start, commit, pr, resolve, done. /magic:review is
+ * not on it (see SIDE_SKILLS).
  *
  * The nodes are DERIVED from the shipped skills list rather than spelled out a ninth
  * time: every skill of the cycle, minus the side doors (SIDE_SKILLS). What that list
@@ -19,25 +19,22 @@ const TRAITS: Record<string, NodeTraits> = {
   start: { mode: 'blocking', required: true, outcomes: ['implemented'], provides: ['worktree', 'branch'] },
   commit: { mode: 'blocking', required: true, outcomes: ['committed'], provides: ['commits'] },
   pr: { mode: 'blocking', required: true, outcomes: ['pr_created', 'review_comments', 'ci_green'], provides: ['pr'] },
-  review: { mode: 'advisory', required: false, outcomes: ['approved', 'changes_requested', 'commented'], provides: ['review'] },
   resolve: { mode: 'blocking', required: false, outcomes: ['resolved'], provides: ['fixes'] },
   done: { mode: 'advisory', required: true, outcomes: ['done'], provides: [] },
 }
 
 /**
- * Today's hand-offs. `ci_green`, `commented` and `done` lead nowhere on purpose: the
+ * Today's hand-offs. `pr_created`, `ci_green` and `done` lead nowhere on purpose: the
  * skills keep their closing text there. pr → resolve is the one `auto` link: review
- * comments already waiting on a PR are addressed without asking.
+ * comments already waiting on a PR are addressed without asking. Once they are,
+ * /magic:done is the next step, taken when the PR is merged.
  */
 export const DEFAULT_LINKS: WorkflowLink[] = [
   { from: 'plan', to: 'start', kind: 'suggest' },
   { from: 'start', to: 'commit', kind: 'suggest' },
   { from: 'commit', to: 'pr', kind: 'suggest' },
   { from: 'pr', to: 'resolve', kind: 'auto', outcome: 'review_comments' },
-  { from: 'pr', to: 'review', kind: 'suggest', outcome: 'pr_created' },
-  { from: 'review', to: 'resolve', kind: 'suggest', outcome: 'changes_requested' },
-  { from: 'review', to: 'done', kind: 'suggest', outcome: 'approved' },
-  { from: 'resolve', to: 'review', kind: 'suggest' },
+  { from: 'resolve', to: 'done', kind: 'suggest' },
 ]
 
 /** `magic-commit` → `commit`. */

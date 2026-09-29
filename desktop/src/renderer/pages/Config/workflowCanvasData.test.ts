@@ -19,7 +19,11 @@ describe('workflowCanvasData', () => {
 
   it('names each node after its skill', () => {
     const labels = Object.fromEntries(data.nodes.map((node) => [node.id, node.label]))
-    expect(labels).toMatchObject({ plan: 'Plan', commit: 'Commit', pr: 'PR', review: 'Review', done: 'Done' })
+    expect(labels).toMatchObject({ plan: 'Plan', commit: 'Commit', pr: 'PR', resolve: 'Resolve', done: 'Done' })
+  })
+
+  it('draws no review node, /magic:review being a side door', () => {
+    expect(data.nodes.map((node) => node.id)).not.toContain('review')
   })
 
   it('carries each conditional link on an outcome its source node has a port for', () => {

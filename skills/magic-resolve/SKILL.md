@@ -87,7 +87,7 @@ fi
 
 If the config could not be read, the app is not running: display **`MSG_APP_NOT_RUNNING`** and stop. Never proceed on a guessed config.
 
-Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-resolve`. An unreachable app fails the same way: `APP_NOT_RUNNING` means **`MSG_APP_NOT_RUNNING`** and stop, with no fallback. `WORKFLOW_UNAVAILABLE` (a running app that does not serve `/workflow`) is not a failure: there is no workflow next step, and the skill carries on as written. Keep the graph, this skill's node and its possible next steps in context for Step 9. The flow changes nothing in between: every step, question and guard below runs as written, whether the user typed `/magic:resolve` or `/magic:pr` chained into it. This node is the resolve node on every pass of a review and resolve loop, and carries nothing from the pass before.
+Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-resolve`. An unreachable app fails the same way: `APP_NOT_RUNNING` means **`MSG_APP_NOT_RUNNING`** and stop, with no fallback. `WORKFLOW_UNAVAILABLE` (a running app that does not serve `/workflow`) is not a failure: there is no workflow next step, and the skill carries on as written. Keep the graph, this skill's node and its possible next steps in context for Step 9. The flow changes nothing in between: every step, question and guard below runs as written, whether the user typed `/magic:resolve` or `/magic:pr` chained into it. This node is the resolve node every time it runs, including when `/magic:pr` chains into it again from a later invocation, and carries nothing from the pass before.
 
 #### Check `gh` CLI availability
 
@@ -468,7 +468,7 @@ Use the conditional blocks `{IF_RESOLVED}...{/IF_RESOLVED}`, `{IF_SKIPPED}...{/I
 | No unresolved comment was found (`MSG_NO_COMMENTS`), or the user chose not to go on | none: no link |
 | The run stopped on an error it could not resolve | `failed`, with the reason |
 
-Each selected `suggest` link is one numbered line. A link to `magic-review` reads `Run /magic:review for a self-review of the fixes` (fr: `Lance /magic:review pour une auto-review des corrections`), which is what the default flow renders, so the summary reads as it always has; any other target uses `MSG_WORKFLOW_NEXT_STEP_LINE` (`references/workflow.md` §7). An `auto` link is not followed here: only after Step 11 has recorded the run. When this skill was chained from `/magic:pr`, that session carries on with its own watch once this skill is done: the summary still shows the next step, and `/magic:pr` alone decides what happens after.
+Each selected `suggest` link is one numbered line. A link to `magic-done` reads `Run /magic:done once the PR is merged` (fr: `Lance /magic:done une fois la PR mergée`), which is what the default flow renders; any other target uses `MSG_WORKFLOW_NEXT_STEP_LINE` (`references/workflow.md` §7). An `auto` link is not followed here: only after Step 11 has recorded the run. When this skill was chained from `/magic:pr`, that session carries on with its own watch once this skill is done: the summary still shows the next step, and `/magic:pr` alone decides what happens after.
 
 `{IF_RESOLVED}` carries one line per resolved comment, with the same `{fix_summary}` posted in its thread. This is the terminal's copy of the run and it is not capped by `$RESOLVE_REPLY_VERBOSITY` — a summary only you read costs a reviewer nothing. It is also what makes a `minimal` reply safe to prefer: the detail is not lost, it is just not published.
 

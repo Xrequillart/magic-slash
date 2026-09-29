@@ -13,7 +13,6 @@ describe('buildWorkflowPayload', () => {
     expect(payload.node?.id).toBe('pr')
     expect(payload.links).toEqual([
       { from: 'pr', to: 'resolve', kind: 'auto', outcome: 'review_comments', skill: 'magic-resolve' },
-      { from: 'pr', to: 'review', kind: 'suggest', outcome: 'pr_created', skill: 'magic-review' },
     ])
   })
 
@@ -29,5 +28,13 @@ describe('buildWorkflowPayload', () => {
       expect(payload.links).toEqual([])
       expect(payload.workflow).toBe(DEFAULT_WORKFLOW)
     }
+  })
+
+  it('has no node and no links for /magic:review, now a side door', () => {
+    // An installed /magic:review that predates the change still asks for its flow,
+    // and must find nothing to suggest.
+    const payload = buildWorkflowPayload(null, DEFAULT, 'magic-review')
+    expect(payload.node).toBeNull()
+    expect(payload.links).toEqual([])
   })
 })

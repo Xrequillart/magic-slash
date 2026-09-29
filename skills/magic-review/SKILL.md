@@ -14,7 +14,7 @@ disallowed-tools: Write, Edit, NotebookEdit
 > That is enforced rather than promised: `disallowed-tools` in the frontmatter removes `Write`,
 > `Edit` and `NotebookEdit` from the pool for this skill's turn, so a reviewer comment asking for
 > a "quick fix while you're in there" cannot be complied with even by mistake. A review that
-> concludes code must change says so and hands off to `/magic:resolve`.
+> concludes code must change says so in its comments, and the fixes are made outside this skill.
 
 You are an assistant that performs a thorough code review on a pull request. You detect whether this is a self-review (your own PR) or a review of someone else's PR, and adapt accordingly.
 
@@ -51,7 +51,6 @@ unactionable and say so rather than inventing a change for it.
 ## References
 
 - `references/messages.md` — All bilingual message templates (EN/FR). Read relevant sections as needed (not the whole file at once).
-- `references/workflow.md` — The workflow protocol, shared byte for byte by every cycle skill: the Step 0 `/workflow` read, what its fields mean, and how the end of the skill picks its next step. Read §2 in Step 0, on every run; read §4 in Step 11.
 
 ## Configuration
 
@@ -106,8 +105,6 @@ fi
 ```
 
 If the config could not be read, the app is not running: display `MSG_APP_NOT_RUNNING` and stop. Never proceed on a guessed config.
-
-Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-review`. An unreachable app fails the same way: `APP_NOT_RUNNING` means `MSG_APP_NOT_RUNNING` and stop, with no fallback. `WORKFLOW_UNAVAILABLE` (a running app that does not serve `/workflow`) is not a failure: there is no workflow next step, and the skill carries on as written. Keep the graph, this skill's node and its possible next steps in context for Step 11. The flow changes nothing in between: every step, question and guard below runs as written, the Step 8 question included. This node is the review node on every pass of a review and resolve loop, and carries nothing from the pass before.
 
 ## Step 1: Detect the ticket
 
@@ -312,32 +309,13 @@ Based on the review result, update the status:
 
 Display `MSG_REVIEW_SUMMARY` based on `.languages.discussion`.
 
-Include the conditional "Next steps" block based on the review's **outcome**, as defined in the message template, and fill its `{next_steps}` from the workflow (`references/workflow.md` §4) with this outcome table:
+Include the conditional "Next steps" block for the event actually posted to GitHub, as defined in the message template: APPROVE renders `{If approved}`, REQUEST_CHANGES renders `{If changes_requested}`, COMMENT renders `{If commented}`, and when the user chose **Post nothing** (Step 8) the `{If not posted}` block is rendered alone. A self-review always posts COMMENT, because GitHub refuses APPROVE and REQUEST_CHANGES on your own PR, so it renders `{If commented}` even when it kept a `to address` comment.
 
-| Result of this run | Outcome |
-| --- | --- |
-| The review was posted with the APPROVE event | `approved` |
-| The review was posted with the REQUEST_CHANGES event | `changes_requested` |
-| The review was posted with the COMMENT event | `commented` |
-| The user chose **Post nothing** (Step 8) | no outcome: select no link (`references/workflow.md` §4) and render the template's `{If not posted}` block as is |
-| The run stopped on an error it could not resolve (no PR found, the review could not be submitted) | `failed`, with the reason |
-
-**The outcome follows the event actually posted to GitHub, self-review included.** A self-review posts COMMENT, because GitHub refuses APPROVE and REQUEST_CHANGES on your own PR, so its outcome is `commented` even when it kept a `to address` comment. This is deliberate: the next steps of the default flow must stay exactly the ones this skill has always shown for the event posted.
-
-Each selected `suggest` link is one numbered line, in these words (any other target uses `MSG_WORKFLOW_NEXT_STEP_LINE` from `references/workflow.md` §7):
-
-| Link to | en | fr |
-| --- | --- | --- |
-| `magic-done` | `Run /magic:done to finalize the task` | `Lance /magic:done pour finaliser la tâche` |
-| `magic-resolve` | `Run /magic:resolve to address the review comments` | `Lance /magic:resolve pour corriger les commentaires de review` |
-
-For the default flow this renders exactly the blocks of the template: `/magic:done` after an approval, `/magic:resolve` on changes requested, nothing added on a comment, and the `{If not posted}` text alone when nothing was posted.
-
-An `auto` link the workflow selected (none in the default flow) is not followed here: only after Step 14 has recorded the run, in the same session.
+This skill is not a step of the workflow: it can review your own PR or a colleague's, and what comes next depends on whose PR it is. Its closing text is its own, and it never suggests another skill from a flow.
 
 ## Step 12: Multi-repo support (if applicable)
 
-If the ticket ID is associated with multiple worktrees (full-stack task), repeat Steps 2-11 for each worktree that has an open PR, re-running the workflow read (`references/workflow.md` §2) from that worktree's `$PWD` first so its Step 11 next steps come from its own repository's payload.
+If the ticket ID is associated with multiple worktrees (full-stack task), repeat Steps 2-11 for each worktree that has an open PR.
 
 To detect multi-repo:
 
@@ -366,7 +344,7 @@ If the review was posted, the ticket is a Jira ticket and `commentOnPR` is not `
 
 ## Step 14: Record the run
 
-**Always run this, as the very last thing of this skill's own work — including when the workflow stopped early.** Only the `auto` link Step 11 selected, if any, comes after it (`references/workflow.md` §4).
+**Always run this, as the very last thing you do — including when the workflow stopped early.**
 
 Magic Slash opened a run record when this skill started. This closes it. Without it the run stays open and is counted as *abandoned*, so finished work disappears from the usage statistics.
 

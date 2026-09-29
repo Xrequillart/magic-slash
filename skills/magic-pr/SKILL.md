@@ -379,7 +379,7 @@ Display **`MSG_SUMMARY`**, substituting `{branch}`, `{PR_URL}`, `{PR_NUMBER}`, `
 `MSG_SUMMARY` has two variants — pick based on `pullRequest.watchCI` (from the config loaded in the Configuration step, default `true`), taking into account the skip conditions listed in Step 7.4.0:
 
 - **`watchCI` is `true`**: use the **watch** variant, whose next-steps announce that the watch phase is starting. Its `{review_feedback_line}` says whether review feedback will be addressed on its own: it will only when the Step 0.0 links hold an `auto` link from this node on `review_comments` or with no outcome (the default flow has one, to `magic-resolve`). Then continue to Step 7.4.
-- **`watchCI` is `false`**: use the **manual** variant (the classic "wait for CI, then run /magic:review" list), whose `{next_steps}` renders the links of the outcome `pr_created` as Step 8.5 says (the outcome is already known here), then stop here — skip Step 7.4 entirely. The preview-URL backfill does not run on this path (it needs a settled deployment, and nothing here waits for one), so the test scenarios stay local-only.
+- **`watchCI` is `false`**: use the **manual** variant (the classic "wait for approval and CI, merge, then run /magic:done" list), whose `{next_steps}` renders the links of the outcome `pr_created` as Step 8.5 says (the outcome is already known here), then stop here — skip Step 7.4 entirely. The preview-URL backfill does not run on this path (it needs a settled deployment, and nothing here waits for one), so the test scenarios stay local-only.
 
 ## Step 7.4: Watch the CI and handle review feedback
 
@@ -435,7 +435,7 @@ When `checks.state` is `all_passed` (or `no_checks`) **and** `review.actionable_
    [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&status=CI%20green" > /dev/null 2>&1 || true
    ```
 
-3. **Stop.** The work is done — do not chain into `/magic:review` or `/magic:resolve`, and do not ask the user for anything else. The outcome is `ci_green` (Step 8.5), on which the default flow has no link: the run ends on `MSG_CI_ALL_GREEN`, as it always has. Only a link the Step 0.0 payload declares on `ci_green` may add a next step, and only at Step 8.5, never from here.
+3. **Stop.** The work is done: do not chain into `/magic:resolve` or any other skill, and do not ask the user for anything else. The outcome is `ci_green` (Step 8.5), on which the default flow has no link: the run ends on `MSG_CI_ALL_GREEN`, as it always has. Only a link the Step 0.0 payload declares on `ci_green` may add a next step, and only at Step 8.5, never from here.
 
 ### 7.4.4: Checks failed — auto-fix loop
 
@@ -488,7 +488,7 @@ In multi-repo mode, each PR's next step comes from its own repository's payload 
 
 Where each outcome renders:
 
-- `pr_created`: `{next_steps}` in the **manual** variant of `MSG_SUMMARY` (Step 7.3), one numbered line per `suggest` link in `MSG_WORKFLOW_NEXT_STEP_LINE` wording (for the default flow, `1. Run /magic:review to perform a code review`), followed by this skill's own lines, numbered on.
+- `pr_created`: `{next_steps}` in the **manual** variant of `MSG_SUMMARY` (Step 7.3), one numbered line per `suggest` link in `MSG_WORKFLOW_NEXT_STEP_LINE` wording, followed by this skill's own lines, numbered on. The default flow has no link on `pr_created`: `{next_steps}` is empty and the list starts at this skill's own lines.
 - `review_comments`: already handled in Step 7.4.5, which chained or suggested from these same links. Nothing is rendered or followed here.
 - `ci_green`: nothing for the default flow. A link the payload declares on `ci_green` is shown as `MSG_NEXT_STEPS` after `MSG_CI_ALL_GREEN`.
 
