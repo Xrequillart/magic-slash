@@ -81,11 +81,16 @@ export interface AvatarProps {
    * author the API reported as null still has a mark where every other row has one.
    */
   name?: string
+  /**
+   * The monogram's native `title`. On by default, off for a caller that draws its own
+   * tooltip: the platform's would come up a second later, over the one already there.
+   */
+  nativeTitle?: boolean
   /** Layout only — a margin, a ring. Not the box, which the size owns. */
   className?: string
 }
 
-export function Avatar({ src, alt, size = 'lg', fallback = 'portrait', name, className = '' }: AvatarProps) {
+export function Avatar({ src, alt, size = 'lg', fallback = 'portrait', name, nativeTitle = true, className = '' }: AvatarProps) {
   const { box, bare, initial } = AVATAR_SIZES[size]
 
   // The default portrait is drawn by the SAME line as a real photo, and not merely by a
@@ -116,7 +121,7 @@ export function Avatar({ src, alt, size = 'lg', fallback = 'portrait', name, cla
   // What is left of it is this, and it is the only thing that still draws the plate.
   return (
     <span
-      title={alt || name}
+      title={nativeTitle ? alt || name : undefined}
       className={`${box} flex items-center justify-center rounded-full bg-accent/20 text-accent shrink-0 ${className}`}
     >
       {/* `inherit`, so the letter takes the wrapper's `text-accent` rather than naming a

@@ -1,6 +1,7 @@
 import { Avatar } from './Avatar'
 import { AVATAR_SIZES } from './avatarSizes'
 import { splitAvatarStack } from './avatarStackOverflow'
+import { Label } from './Label'
 import { Text } from './Text'
 
 /**
@@ -61,22 +62,54 @@ export function AvatarStack({ people, max = 4, size = 'md', label, className = '
   const ring = 'ring-2 ring-bg-secondary rounded-full'
 
   return (
-    <div role="group" aria-label={label} title={label} className={`flex shrink-0 items-center ${className}`.trim()}>
+    // No `title` on the group: every face has its own pill, and a native tooltip in the
+    // gaps between them would be a second, slower answer. The label stays the group's
+    // accessible name.
+    <div role="group" aria-label={label} className={`flex shrink-0 items-center ${className}`.trim()}>
       {shown.map((person, index) => (
-        // The name on the wrapper as well as on the image: `Avatar` gives a photo an `alt`
-        // but no tooltip, and hovering a face is how a reader asks whose it is.
-        <span key={person.id} title={person.name} className={`flex ${index > 0 ? OVERLAP[size] : ''}`}>
-          <Avatar src={person.src ?? null} alt={person.name} name={person.name} size={size} fallback="initials" className={ring} />
+        <span key={person.id} className={`relative flex group ${index > 0 ? OVERLAP[size] : ''}`}>
+          <Avatar
+            src={person.src ?? null}
+            alt={person.name}
+            name={person.name}
+            size={size}
+            fallback="initials"
+            nativeTitle={false}
+            className={ring}
+          />
+          <HoverPill text={person.name} />
         </span>
       ))}
       {rest.length > 0 && (
-        <span
-          title={rest.map((person) => person.name).join(', ')}
-          className={`${box} ${shown.length > 0 ? OVERLAP[size] : ''} ${ring} flex shrink-0 items-center justify-center bg-bg-tertiary text-text-secondary`}
-        >
-          <Text size={initial} weight="bold" tone="inherit">{`+${rest.length}`}</Text>
+        <span className={`relative flex group ${shown.length > 0 ? OVERLAP[size] : ''}`}>
+          <span
+            className={`${box} ${ring} flex shrink-0 items-center justify-center bg-bg-tertiary text-text-secondary`}
+          >
+            <Text size={initial} weight="bold" tone="inherit">{`+${rest.length}`}</Text>
+          </span>
+          <HoverPill text={rest.map((person) => person.name).join(', ')} />
         </span>
       )}
     </div>
+  )
+}
+
+/**
+ * WHOSE FACE, the moment the pointer is on it: `ToggleButton`'s tooltip, to the class — a
+ * `raised` `Label` under the mark, faded in on hover. The native `title` it replaces came
+ * up a second late and in the platform's dress, where the quick settings' tiles already
+ * answer at once in the app's own. Hover only, for that tooltip's reason (a pill left up
+ * by the focus after the pointer has gone), out of the pointer's way, above the faces it
+ * overlaps, and `aria-hidden` because the face's `alt` already says the name.
+ */
+function HoverPill({ text }: { text: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 -translate-x-1/2
+        opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+    >
+      <Label raised size="sm" className="whitespace-nowrap shadow-lg">{text}</Label>
+    </span>
   )
 }
