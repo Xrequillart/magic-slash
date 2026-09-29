@@ -54,28 +54,19 @@ unactionable and say so rather than inventing a change for it.
 - `references/trackers.md` — Tracker detection, creation calls, the parent/child hierarchy and partial-failure handling. Read §1 in Step 2.3 (detection, the carried resolution, and the refusal); read §2-§4 in Step 7, after approval.
 - `references/jira-fields.md` — Jira site, project and issue-type resolution, and the required-field discovery that must happen before the structure is proposed. Read in Step 2.3, only when the tracker resolved to Jira.
 - `references/api.md` — Magic Slash Desktop API reference (endpoints `/metadata`, `/repositories`, `/plan/spec` and `/plan/tickets`).
+- `references/config.md`: the live-config read (Step 0.1), the Atlassian flag read (Step 0.5), and why Step 0.2's ticket and spec languages are fallback chains. Read §1 in Step 0.1 and §3 in Step 0.5, on every run; read §2 only when a language chain's result is in doubt.
+- `references/repo-selection.md`: how the configured repositories are ranked before the question. Read in Step 2.1, only when more than one repository is configured.
+- `references/spec-file-setup.md`: the commands that exclude `.magic/` from git and create the spec file, with how to derive `{SLUG}`, then why each part is there (the `cd {REPO_PATH}`, the newline guard on `info/exclude`, the timestamp in the filename). Read §1 in Step 2.4 and run its blocks, on every run; read §2-§3 only before changing a command or when the spec or the exclusion lands in the wrong place.
+- `references/duplicate-search.md`: the duplicate search call and scope per tracker, the Jira query, and what to display and write for each outcome. Read in Step 3.3, only when `plan.duplicateCheck` is `true`.
+- `references/framing-jira-fields.md`: how the Jira required fields Step 2.3 could not fill are asked in the framing batch, the overflow rule, and how their answers are recorded. Read in Step 4, only when Step 2.3 handed forward `must_ask_fields`.
+- `references/metadata-contract.md`: the desktop metadata calls and the reasons behind each, plus the full contract and every field this skill never sends. Read §1 in Step 2.5, §2 in Step 6.1, §3 in Step 7.1 and §4 in Step 7.2, and run the block each holds; read §5-§6 only when a call's shape is in doubt or before changing one.
 
 ## Step 0: Configuration
 
 ### 0.1: Read the live config
 
-```bash
-# Magic Slash Desktop is the single source of truth (Supabase). The port comes from the
-# environment inside an app terminal, and from the file the app publishes anywhere else —
-# so a Claude started from a plain terminal reaches the same live config.
-MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
-CONFIG_FILE=""
-if [ -n "$MS_PORT" ]; then
-  MS_TMP_CONFIG="$(mktemp)"
-  trap 'rm -f "$MS_TMP_CONFIG"' EXIT
-  # A published port may name a server that has since died: -sf turns that into a failure.
-  if curl -sf --max-time 5 "http://127.0.0.1:$MS_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
-     && [ "$(jq '.repositories | length' "$MS_TMP_CONFIG" 2>/dev/null || echo 0)" -gt 0 ]; then
-    CONFIG_FILE="$MS_TMP_CONFIG"
-  fi
-fi
-[ -z "$CONFIG_FILE" ] && echo "APP_NOT_RUNNING" || echo "OK"
-```
+Read `references/config.md` §1 and run its block. It asks the running app for the live config and
+prints `APP_NOT_RUNNING` or `OK`.
 
 If `APP_NOT_RUNNING`, the app is not running and the cloud config is unreachable: display
 `MSG_APP_NOT_RUNNING` and stop. Never proceed on a guessed config. There is no local config file to
@@ -95,23 +86,14 @@ This skill needs **three** languages, and they are independent.
 | ticket | `.repositories.<key>.languages.ticket` → `.languages.jiraComment` → `en` | — | the ticket bodies and their acceptance criteria |
 | spec | `.repositories.<key>.languages.spec` → the resolved **ticket** language | — | the `.magic/spec-*.md` document |
 
-The ticket and spec languages are **fallback chains**, not defaulted fields: neither
-`languages.ticket` nor `languages.spec` exists in the config defaults, because materialising `en`
-there would pin every existing repository to English and make the chain unreachable. Resolve each at
-read time, in the order above, and take the first non-empty value. Treat an empty string as unset —
-the config is a jsonb blob written wholesale, so `''` does arrive.
-
-Note the spec chains onto the **resolved** ticket language, not onto `jiraComment`: a repository that
-set only `languages.ticket` must carry that value through to its spec.
+Resolve the ticket and spec chains at read time, in the order above, and take the first non-empty
+value. Treat an empty string as unset. `references/config.md` §2 says why they are chains rather
+than defaults, and why the spec chains onto the **resolved** ticket language.
 
 **When the two differ, the spec is the source text and Step 7 translates as it composes.** Reviewing
 a document and filing a ticket have different audiences — the author reads the spec, the team reads
 the tracker — so `spec: fr` with `ticket: en` is a configuration to serve, not to correct. What it
 must never become is a licence to recompose a body from the conversation: see Step 7.
-
-A French-speaking developer who files English tickets for an international team is the normal case
-here, not an edge case. Talking in one language and writing in another is expected behaviour — do
-not "helpfully" align them.
 
 Both are per-repository, so neither is known until Step 2 has picked one. Until then, use English.
 
@@ -152,12 +134,7 @@ before creation. Neither is configurable, by design.
 Read `integrations.atlassian` from config. Default: `true` (backward compatibility). It is
 account-level, not per-repository, so it is read here rather than with the `plan` block above.
 
-```bash
-# Every bash block runs in its own shell: $MS_PORT does not survive from Step 0.1,
-# so resolve it again here. One line, and it costs nothing to repeat.
-MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
-curl -sf --max-time 5 "http://127.0.0.1:$MS_PORT/config" | jq -r '.integrations.atlassian // true'
-```
+Run the block in `references/config.md` §3.
 
 Store the result as `$ATLASSIAN_ENABLED` — the same value, read the same way, as Step 0.3 of
 `/magic:start`. Step 2.3 is where it decides anything (`references/trackers.md` §1.2).
@@ -180,20 +157,12 @@ nor detect the tracker, nor check for duplicates — so it comes before any expl
 
 ### 2.1: Pre-select, never decide
 
-Rank the configured repositories to make the question easy to answer:
-
-1. **The repository containing the current `pwd`** goes first, labelled as such. Match `$PWD`
-   against each repository's `path`, accepting a worktree or a subdirectory of it.
-2. **Keyword score** for the rest: score the idea text against each repository's `keywords`,
-   case-insensitively and tolerating the usual variants (`backend` matches `back-end`). +5 per
-   keyword found in the idea, counted once per keyword.
-3. Everything else follows, unranked.
-
-This is a pre-selection and nothing more. **Every configured repository stays offered**, and the
-user always has the final say: the idea is one sentence long at this point, so keyword scoring on
-it is a weak signal — much weaker than the labels and components `/magic:start` scores against.
-
 **Short-circuit**: with a single repository configured, use it and skip the question.
+
+Otherwise rank the configured repositories to make the question easy to answer, per
+`references/repo-selection.md`: the repository containing the current `pwd` first, then a keyword
+score on the idea, then the rest. This is a pre-selection and nothing more. **Every configured
+repository stays offered**, and the user always has the final say.
 
 ### 2.2: Ask
 
@@ -236,41 +205,11 @@ on the second question still leaves the user able to redirect the idea or file t
 
 Read `references/spec-template.md` now. It owns the filename, the structure and the write order.
 
-**Exclude `.magic/` from git first**, before writing anything:
-
-```bash
-cd {REPO_PATH}
-EX="$(git rev-parse --git-path info/exclude)"; mkdir -p "$(dirname "$EX")"; touch "$EX"
-grep -qxF '.magic/' "$EX" || { [ -s "$EX" ] && [ -n "$(tail -c1 "$EX")" ] && printf '\n' >> "$EX"; printf '.magic/\n' >> "$EX"; }
-```
-
-`cd {REPO_PATH}` is not optional, and it is not the cwd. `/magic:plan` is invoked from wherever the
-user happens to be standing, and Step 2.2 exists precisely because that is usually **not** the
-repository they picked — so both commands here are relative to a repo this shell has not entered
-yet. Without the `cd`, `git rev-parse` resolves the exclude file of the wrong repository and
-`mkdir -p .magic` writes the spec there: two silent side effects in a repository nobody asked about,
-and no spec where one was promised. Substitute the path from the config entry chosen in Step 2.2,
-and keep every later command in this step in the same directory.
-
-The exclusion itself is idempotent: `grep -qxF` makes any later run a no-op. The newline guard is not
-cosmetic — if `info/exclude` does not end with a newline, a plain append produces
-`node_modules.magic/`, `.magic/` is then **not** ignored, and the `git add -A` of `/magic:commit`
-commits the spec.
-
-Then create the file, still in `{REPO_PATH}`:
-
-```bash
-mkdir -p .magic
-echo ".magic/spec-{SLUG}-$(date +%Y%m%d-%H%M%S).md"
-```
-
-`{SLUG}` is a placeholder you substitute, not a shell variable — nothing above assigns it, so leaving
-it as `$SLUG` would expand to the empty string and produce `spec--20260820-093000.md`. Derive it from
-the idea: lower-cased, non-alphanumerics collapsed to hyphens, ~5 words or 30 characters. **The timestamp is not decoration.** The slug derives from the idea, so planning the
-same idea twice on one repository produces the same filename — and #194 keys a spec's cloud row on a
-hash of its path, so the second session would silently overwrite the first, on disk and in the
-cloud. It also gives `.magic/` a chronological sort, which is what makes a directory of specs
-readable.
+**Exclude `.magic/` from git first**, before writing anything, then create the file: run the two
+blocks of `references/spec-file-setup.md` §1, in that order. `cd {REPO_PATH}` is not optional, and
+it is not the cwd: substitute the path from the config entry chosen in Step 2.2, and keep every
+later command in this step in the same directory. The same file says how to derive `{SLUG}`, and why
+the newline guard and the timestamp matter.
 
 **Do not delete a pre-existing spec.** `/magic:start` deletes a stale `.magic/design-brief.md`
 because a brief belongs to the ticket being started. That reasoning does not transfer: an older
@@ -286,45 +225,12 @@ it fills, and an interrupted session must leave behind everything that was settl
 
 **Put each composed value on disk with the `Write` tool, then let the shell read the file.** Never
 substitute the text into the command itself — see `## Metadata contract` for why this shape is
-mandatory rather than stylistic. Write these three files under the `.magic/` directory created in
-2.4 (it is git-excluded, so nothing here can be committed):
+mandatory rather than stylistic.
 
-| File | Content |
-| --- | --- |
-| `.magic/.mp-title` | `{IDEA_SHORT}` — a short form of the idea, max 30 chars |
-| `.magic/.mp-spec-path` | `{SPEC_ABS_PATH}` — the **absolute** path of the file created in 2.4 |
-| `.magic/.mp-repo-path` | `{REPO_PATH}` — the target repository root |
-
-Then run the calls. The only thing the command line ever contains is a fixed literal path:
-
-```bash
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=$(jq -Rs -c '[sub("\n$";"")]' < .magic/.mp-repo-path | jq -sRr 'sub("\n$";"") | @uri')" > /dev/null 2>&1 || true
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-title)&status=planning&type=planner&specPath=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-spec-path)" > /dev/null 2>&1 || true
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/plan/spec?id=$MAGIC_SLASH_TERMINAL_ID" > /dev/null 2>&1 || true
-rm -f .magic/.mp-title .magic/.mp-spec-path .magic/.mp-repo-path
-```
-
-`specPath` is the absolute path, in the main checkout. `sub("\n$";"")` drops the single trailing
-newline the file carries. The `repos` value is built as a real JSON array by `jq -c` and then
-URI-encoded **once** — not `@json`, which would encode the array into a JSON *string* and make the
-server receive `"[\"…\"]"` instead of `["…"]`.
-
-`{IDEA_SHORT}` is a short form of the idea (max 30 chars). `{SPEC_ABS_PATH}` is the **absolute**
-path of the file created in 2.4, in the main checkout. The `repos` array is built by `jq -nc --arg`
-rather than by pasting the path between literal brackets, so a path containing a quote produces
-valid JSON instead of a broken payload.
-
-`specPath` is sent **now**, at creation time, before the brainstorm starts. Consumers tolerate the
-file not existing yet — the writer announces where the spec will be, and nothing checks the
-filesystem — but they cannot tolerate a path that arrives ten minutes late, because the whole point
-is that the user can open the spec while it fills.
-
-**The third call — `/plan/spec` — must stay last in this block, and must not be moved earlier.** It
-carries no payload: it says "the spec at the path you already know has changed on disk", and the
-desktop reads the file itself. Which is exactly why it cannot run at Step 2.4, however tempting it
-looks there — the desktop only learns `specPath` from the `/metadata` call on the line above, so a
-ping issued before it resolves to an agent with no spec path and is a guaranteed no-op. After the
-`/metadata` call, the first ping is what records the session in the cloud.
+Then write the three files and run the calls of `references/metadata-contract.md` §1. That section
+also holds the reasons behind the block: how `repos` is built, and why `specPath` goes out now,
+before the brainstorm. **The third call — `/plan/spec` — must stay last in this block, and must not
+be moved earlier.** §1 gives the reason.
 
 **Ping it again after every later write to the spec** — at the end of Step 3 (`## Codebase findings`,
 `## Related tickets`), Step 4 (`## Framing decisions`), Step 5 (`## Sizing`, `## Proposed tickets`),
@@ -333,10 +239,6 @@ each Step 6 edit, and the Step 7 append. One line, unchanged, in the directory t
 ```bash
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/plan/spec?id=$MAGIC_SLASH_TERMINAL_ID" > /dev/null 2>&1 || true
 ```
-
-Pinging often is free and pinging rarely is not: the desktop coalesces bursts before it uploads, so
-an extra call costs nothing, while a skipped one leaves the last section of a spec invisible to
-everyone else until the next write happens to land.
 
 See `## Metadata contract` at the end of this file for the fields this skill never sends, and why.
 
@@ -377,26 +279,9 @@ proposing anything new — the tracker **carried** from Step 2.3, never re-deriv
 strongest nouns from the idea, across **open and closed** tickets: a closed one is often the more
 valuable find, because it may carry the reason this was rejected before.
 
-| Tracker | Call | Scope |
-| --- | --- | --- |
-| GitHub | `mcp__github__search_issues` | the `owner/repo` carried from Step 2.3 |
-| Jira | `mcp__atlassian__searchJiraIssuesUsingJql` | the carried Jira project, on the carried `cloudId` |
-
-The Jira call takes the same `{"jql": …, "fields": [...]}` shape `/magic:start` uses, scoped to the
-project and asking only for `summary`, `status` and `issuetype`:
-`project = PROJ AND text ~ "rate limit" ORDER BY updated DESC`. No status clause — `text ~` already
-spans open and closed issues, and filtering on status would drop exactly the closed ticket worth
-finding. Report the issue key (`PROJ-123`), not a `#number`.
-
-- **Matches found** → display `MSG_DUPLICATES_FOUND` and ask. Every entry states *why* it looked
-  related; an unexplained list is noise the user has to re-investigate. Write the list into the
-  spec's `## Related tickets` whatever the answer is.
-- **Nothing found** → display `MSG_NO_DUPLICATES`, with `{searched_scope}` = the Scope cell above,
-  and write `None found` into that section.
-- **Search fails twice** → display `MSG_TRACKER_ERROR` — `{tracker}` = the tracker that did not
-  answer, `{operation}` = `duplicate search` — and continue with `Not checked` in the spec.
-  A failed duplicate check degrades the run; it does not end it. But `Not checked` and `None found`
-  are different facts and must never read the same.
+Read `references/duplicate-search.md` and follow it: it gives the call and scope per tracker, the
+Jira query shape, and what to display and write into `## Related tickets` for each outcome (matches
+found, nothing found, the search failing twice).
 
 When `plan.duplicateCheck` is `false`, skip the search entirely and write `Not checked`.
 
@@ -419,29 +304,13 @@ confirm what the exploration already showed. If the idea is unambiguous after St
 well-specified ideas often are — ask nothing and say so in one line.
 
 **Fields the tracker requires that nothing else can answer.** When Step 2.3's pre-flight handed
-forward required fields it cannot fill itself — today only Jira's, as `must_ask_fields`
-(`references/jira-fields.md` §2) — ask for them inside this same `AskUserQuestion` batch, using
-`MSG_JIRA_REQUIRED_FIELDS`, whose note owns the shape of the question. This is the one addition that
-does not break the rule above: neither the code nor the config can answer it, and the tracker
-refuses the creation without it.
-
-When they do not all fit this batch alongside the framing questions, display
-`MSG_JIRA_TOO_MANY_FIELDS` and follow the option the user picks. Its first option asks the overflow
-in one further `AskUserQuestion` immediately after this batch — the only second round this step ever
-makes, and the reason the cap is tested here rather than at Step 2.3, which cannot know what this
-batch will hold. Never drop a field silently: one mandatory field left unasked comes back as a 400
-at creation time, after the whole brainstorm.
-
-It belongs here rather than at Step 2.3 because the spec only exists from Step 2.4, so a value
-collected at 2.3 has nowhere to be recorded — and an unrecorded answer is one nothing keeps once the
-session ends. Detection at 2.3, the question here, and Step 5 is still the first step that writes
-`## Proposed tickets`.
+forward required fields it cannot fill itself (today only Jira's, as `must_ask_fields`), read
+`references/framing-jira-fields.md` and follow it. They are asked inside this same `AskUserQuestion`
+batch, and a field is never dropped silently.
 
 Write each resolved answer into the spec's `## Framing decisions` table **as it is answered**, with
 its reason. A decision recorded without its reason is a decision nobody can revisit later. A Jira
-required-field answer is recorded the same way, its reason naming the issue type that required it —
-that row is the audit trail of what was sent to Jira and why, and it is what makes the spec explain
-the created ticket on its own, to a reader now or to a resume feature later.
+required-field answer is recorded with its own reason, per `references/framing-jira-fields.md` §2.
 
 ## Step 5: Sizing
 
@@ -489,12 +358,8 @@ someone else owns. The review is the one thing standing between a good brainstor
 Once the structure is approved, refine the title to the agreed wording — the epic's title on a
 breakdown, the story's on a single.
 
-Write `{AGREED_TITLE}` to `.magic/.mp-title` with the `Write` tool, then:
-
-```bash
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-title)" > /dev/null 2>&1 || true
-rm -f .magic/.mp-title
-```
+Write `{AGREED_TITLE}` to `.magic/.mp-title` with the `Write` tool, then run the call in
+`references/metadata-contract.md` §2.
 
 ## Step 7: Ticket creation
 
@@ -533,45 +398,26 @@ and becomes the record: months later it is the only place holding why the epic w
 ### 7.1: Metadata — third write
 
 **This is the write that ends the planning phase, and it is not optional.** `status=planned` is the
-planner's terminal status, and the agent stays at `planning` until this call lands — a session whose
-tickets are already filed still showing as *planning* reads as one that is still thinking, its
-`planned` event never reaches the history the flow metrics are computed from, and the desktop keeps
-the agent's close button hidden, because it only offers it at a workflow's end. So the transition is
-part of the deliverable: the tickets exist, and the agent has to say so.
+planner's terminal status; `references/metadata-contract.md` §3 says what goes wrong while the agent
+stays at `planning`.
 
 Send it as soon as the tickets exist — before Step 8, whose message tells the user they may close
 this agent. The button has to be there by the time they read the line that mentions it.
 
-Write `{TICKET_ID}: {TICKET_TITLE}` to `.magic/.mp-title` with the `Write` tool, then:
-
-```bash
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-title)&status=planned" > /dev/null 2>&1 || true
-rm -f .magic/.mp-title
-```
+Write `{TICKET_ID}: {TICKET_TITLE}` to `.magic/.mp-title` with the `Write` tool, then run the call
+in `references/metadata-contract.md` §3.
 
 `{TICKET_ID}` is the **epic** on a breakdown, the story on a single — it names what this agent
 planned, in the title and nowhere else. `{TICKET_TITLE}` is capped at 30 characters, and the
 `TICKET-ID: Title` shape is the same convention `/magic:start` uses, so the two skills produce
 comparable rows.
 
-**Never send `ticketId`.** A planner is linked to its **plan**, not to a ticket, and it is linked
-from the first minute: the desktop creates the plan's row when Step 2.5 announces `specPath`, and
-writes that row's id back onto the agent itself — the sidebar's plan badge opens it. The tickets
-hang off the plan (Step 7.2), which is where the Plans page and the ticket's own page read them.
-A `ticketId` here would make the planner an agent *on* the epic, which it is not: nobody works on
-an epic, and the Tasks board would show a finished planning session as someone busy on it.
+**Never send `ticketId`, and never send `description`.** A planner is linked to its plan, not to a
+ticket. The `description` rule is about the **agent metadata** field only: the ticket descriptions
+composed in `trackers.md` §3.3 are a tracker field and are unaffected.
 
-**Never send `description`.** The planning agent's sidebar card shows the spec itself, not a
-description field — the field is not rendered there at all, so anything written to it would be
-invisible while still overwriting whatever the user had typed. The spec is this skill's long-form
-output and the tickets carry their own bodies; there is nothing left for a summary to say. This is
-about the **agent metadata** field only: the ticket descriptions composed in `trackers.md` §3.3 are
-a tracker field and are unaffected.
-
-Run this call even after a partial failure, carrying `status=planned` all the same. A half-created plan is still a plan the sidebar should show, and the
-planning is over either way: what is missing is tickets, not a decision. Leaving such an agent at
-`planning` would make the one case where the user most needs to act on the result the one case where
-the sidebar hides that there is a result.
+Run this call even after a partial failure, carrying `status=planned` all the same.
+`references/metadata-contract.md` §3 gives the reason behind each of these three rules.
 
 ### 7.2: The created tickets
 
@@ -579,42 +425,12 @@ The metadata write above carries **one** ticket id — the epic, because that is
 is. This call carries the whole list, so the plan's page in the webapp can show the epic with its
 stories under it instead of a single link.
 
-Write the list to `.magic/.mp-tickets.json` with the `Write` tool, as a JSON array of objects with
-exactly these five fields:
-
-| Field | Value |
-| --- | --- |
-| `key` | the tracker's identifier — `#412`, `PROJ-1234` |
-| `url` | the ticket's browse URL — **required**, never `null` |
-| `title` | the ticket's title, in `languages.ticket` |
-| `kind` | `"epic"` or `"story"` — nothing else |
-| `parent_key` | the epic's `key` for a story under one, `null` otherwise |
+Write the list to `.magic/.mp-tickets.json` with the `Write` tool and send it with
+`references/metadata-contract.md` §4, which owns the five fields, what to do when a creation call
+returned no `url` (never send `null`), and the block itself.
 
 A single-story plan is one object with `kind: "story"` and `parent_key: null`. An epic whose stories
 partly failed lists what exists — never a placeholder for what does not.
-
-`url` is the one field with no fallback: an entry missing it is **dropped**, silently, because the
-column is `not null` and a ticket nobody can click is not worth a row. If the creation call did not
-return a URL, compose it from the tracker coordinates the repo config already carries — `jira.siteUrl`
-plus the key, or the GitHub repo's `issues/<number>` — rather than sending `null` and losing the ticket.
-
-```bash
-jq -c . < .magic/.mp-tickets.json > .magic/.mp-tickets-min.json
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/plan/tickets?id=$MAGIC_SLASH_TERMINAL_ID&tickets=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-tickets-min.json)" > /dev/null 2>&1 || true
-rm -f .magic/.mp-tickets.json .magic/.mp-tickets-min.json
-```
-
-Three properties of that block are load-bearing, in the terms `## Metadata contract` sets out:
-
-- **The list is never written into the command.** Ticket titles are free text — quotes, apostrophes,
-  accents — and this payload is the largest one the skill produces. It goes on disk and the shell
-  reads the path, exactly like every other free-form value here.
-- **`jq -c` builds it, and `jq -Rsr @uri` encodes it once.** The first pass compacts the array and,
-  more importantly, *validates* it: a malformed list fails here, on this machine, instead of arriving
-  at the server as a query string nobody can read. Never `@json` before `@uri` — that would encode
-  the array into a JSON *string* and the server would receive `"[{…}]"` where it expects `[{…}]`.
-- **No `session_id`.** The skill has never seen one: the row is keyed on the spec's path and the
-  desktop resolves the id at write time. Sending anything that looks like one would be a guess.
 
 Run this after a partial failure too, with whatever was created. And run it even if `/plan/spec` has
 never succeeded — the two are independent, and a list of tickets is worth having on its own.
@@ -631,12 +447,8 @@ checkout: `/magic:start` creates a worktree, and an untracked `.magic/spec-*.md`
 there.
 
 `MSG_NEXT_STEPS` also says that this agent has finished and can be closed, and that `/magic:start`
-belongs in a **new** one. That is not a courtesy line. A planner's work ends at `planned`: it holds
-no branch and no worktree, and everything it has to hand on is already in the spec and in the
-tickets — so the conversation behind it is spent context, and continuing in it would start the
-implementation with the window mostly full of a debate that has been settled. The close button the
-line points at is on this agent at `planned` (Step 7.1), so the instruction matches something the
-user can actually see and click.
+belongs in a **new** one. That line is not a courtesy: `references/metadata-contract.md` §5 says
+why.
 
 ## Step 9: Record the run
 
@@ -664,81 +476,20 @@ printf '{"type":"end","skill":"magic-plan","agentId":"%s","outcome":"success","o
 
 ## Metadata contract
 
-Three writes, and nothing between them:
+The full contract (the three writes and two pings, when each one is sent, and the reasons behind
+them) lives in `references/metadata-contract.md` §6. Read it before changing any call in Steps 2.5,
+6.1, 7.1 or 7.2. The rules every call obeys hold on every run, so they stay here:
 
-| When | Fields |
-| --- | --- |
-| Step 2.5 — repository chosen | `/repositories` with the repository path; then `title` (short idea), `status=planning`, `specPath` (absolute) |
-| Step 6.1 — structure approved | `title`, refined to the agreed epic/story wording |
-| Step 7.1 — tickets created | `title` = `TICKET-ID: Title`, `status=planned` — never `ticketId` nor `description`, see Step 7.1 |
-
-Plus two pings on `/plan/*`, which are notifications rather than metadata: they tell the desktop that
-something it already knows where to find has changed.
-
-| When | Call |
-| --- | --- |
-| Step 2.5, **after** `/metadata` — then after every later write to the spec | `/plan/spec?id=…`, bodyless |
-| Step 7.2 — tickets created | `/plan/tickets?id=…&tickets=…`, the five-field list |
-
-`/plan/spec` sends nothing but the terminal id, and the ordering is the whole subtlety: the desktop
-learns `specPath` from the `/metadata` call, so a ping placed at Step 2.4 — before that call — has no
-path to read and does nothing at all. Last in the 2.5 block, never earlier.
-
-Every call is guarded by `[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ]`, sends
-every value through `jq -sRr @uri`, and ends in `|| true`. The skill must work with the desktop app
-closed — a plan is still a plan without a sidebar to show it in.
-
-**This skill never talks to Supabase, and must never start.** It holds no URL, no key and no session,
-and none of these calls reaches further than `127.0.0.1`. Everything that ends up in the cloud —
-the session row, the spec, the ticket list — is written by the desktop app on the user's behalf,
-under the user's own credentials and subject to their sync setting, which the skill neither reads nor
-respects because it never needs to know: it reports to the local process and stops there.
-
-That is what the guards and the `|| true` are for, and it is the reason they can never be tidied
-away. With the app closed there is no port, the guard short-circuits, and the skill runs to
-completion writing the spec and filing the tickets exactly as it would otherwise — nothing about the
-plan depends on the cloud, and the spec on disk is always the complete artefact. A network call the
-skill made itself would break that: it would need a secret, it would need to be online, and a plan
-would start being able to fail for reasons that have nothing to do with planning.
-
-**Free text never touches the command line.** Every free-form value — the idea, the agreed title —
-is written to a file under `.magic/` with the `Write` tool, and the shell reads it back with
-`jq -Rsr 'sub("\n$";"") | @uri' < <path>`. The command line therefore contains nothing but
-a fixed literal path. This is a correctness requirement, not a style preference, and it is the part
-of these blocks that must survive any later tidying:
-
-- The point is not which quoting scheme is used, but that **no quoting scheme is involved at all**.
-  Any attempt to carry the text through the command itself has a pathological input: single quotes
-  break on the first apostrophe — and `/magic:plan` runs in a product used in French, where
-  `j'ai une idée d'export` is the *normal* case; a quoted heredoc survives quotes, `$` and backticks
-  but ends early on a line equal to its own delimiter. Handing the shell a path removes the whole
-  class rather than moving its boundary, which is why the earlier heredoc form was replaced.
-- `jq -sRr @uri` is not what makes this safe, and it is worth being precise about why: it encodes the
-  value it *receives*. A literal that broke apart before `jq` ever ran is not a value it can protect.
-  Reading from a file is what guarantees `jq` receives the whole value.
-- `.magic/` is already created in Step 2.4 and git-excluded, so these files cost no new directory and
-  can never be committed. Delete them right after the call — they are a transport, not an artefact.
-
-Where a value must become JSON rather than a bare string, build it with `jq -c` and encode the result
-**once** — never `@json` followed by another encode, which yields a JSON string where the server
-expects an array, and never by pasting the value between literal brackets or braces.
-
-`{TICKET_ID}` is the one value still substituted directly into a command, in Step 7.1: it is a
-tracker-issued identifier (`#412`, `PROJ-1234`) and cannot carry shell syntax.
-
-`status=planning` and `status=planned` are already members of the `TerminalMetadata.status` union and
-already have `statusToAction` entries: the contract was declared before anything sent them, so
-there is nothing to add on the desktop side.
-
-**`branchName` and `baseBranch` are never sent. Not once, not empty, not "for completeness".**
-`/magic:plan` creates no worktree and no branch, so it has no branch to report and must not claim
-one — a plausible wrong branch on an agent is worse than a null one, and every reader (the sidebar,
-the back-office agent list) would show it as fact. If a later change to this skill seems to need
-them, it means the skill has started creating branches, and that is a different skill.
-
-`specPath` is absolute and stays a **main-checkout** path, for the same reason: `/magic:start`
-creates a worktree where an untracked spec does not appear, so the chained skill has to read it
-where it actually is.
+- Every call is guarded by `[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ]`, sends
+  every value through `jq -sRr @uri`, and ends in `|| true`. The skill must work with the desktop
+  app closed.
+- **This skill never talks to Supabase, and must never start.** None of these calls reaches further
+  than `127.0.0.1`.
+- **Free text never touches the command line.** Every free-form value is written to a file under
+  `.magic/` with the `Write` tool, and the shell reads it back with
+  `jq -Rsr 'sub("\n$";"") | @uri' < <path>`. Delete those files right after the call.
+- **`branchName` and `baseBranch` are never sent**, and neither are `ticketId` nor `description`
+  (Step 7.1).
 
 For the Magic Slash Desktop API reference (endpoints `/metadata`, `/repositories`, `/plan/spec` and
 `/plan/tickets`), see `references/api.md`.
