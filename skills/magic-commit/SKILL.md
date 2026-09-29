@@ -45,6 +45,7 @@ unactionable and say so rather than inventing a change for it.
 - `references/messages.md` — All bilingual message templates (EN/FR). Read this file to get the exact wording for user-facing messages.
 - `references/node-setup.md` — Node.js version manager detection (nvm/fnm/volta). Read this before any Node.js-dependent command.
 - `references/glossary.md` — EN/FR terminology reference.
+- `references/workflow.md` — The workflow protocol, shared byte for byte by every cycle skill: the Step 0 `/workflow` read, what its fields mean, and how the end of the skill picks its next step. Read §2 in Step 0.1, on every run; read §4 in Step 7.5.
 
 ---
 
@@ -75,6 +76,8 @@ fi
 ```
 
 If the config could not be read, the app is not running: display the error message from `references/messages.md` (MSG_APP_NOT_RUNNING) and stop. Never proceed on a guessed config.
+
+Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-commit`. An unreachable app fails the same way: `APP_NOT_RUNNING` means MSG_APP_NOT_RUNNING and stop, with no fallback. `WORKFLOW_UNAVAILABLE` (a running app that does not serve `/workflow`) is not a failure: there is no workflow next step, and the skill carries on as written. Keep the graph, this skill's node and its possible next steps in context for Step 7.5. The flow changes nothing in between: every step, question and guard below runs as written.
 
 ### 0.2: Determine languages
 
@@ -119,6 +122,8 @@ If multiple worktrees have changes, display the multi-repo summary (see `referen
 Read `references/node-setup.md` and follow its instructions to detect and store `$NODE_PREFIX`. This prefix must be prepended to any Node.js-dependent command (git commit with hooks, npx, npm, etc.).
 
 For multi-repo setups, re-run this detection when switching worktrees — each repo may need a different Node.js version.
+
+Re-run the workflow read (`references/workflow.md` §2) in each worktree too, from its `$PWD`: each repository's commits pick their outcome and links from its own payload, and Step 7.5 shows the links of every repository once.
 
 ---
 
@@ -373,9 +378,25 @@ If you committed in multiple worktrees, display a final summary listing all comm
 
 ---
 
+## Step 7.5: Next step
+
+Pick the outcome and the links as `references/workflow.md` §4 says, with this table:
+
+| Result of this run | Outcome |
+| --- | --- |
+| At least one commit was created (Step 6), in one repo or several | `committed` |
+| Nothing to commit (Step 1), or the user aborted the commit (`MSG_HOOK_MANUAL_FIX`, option 3) | none: no link |
+| The run stopped on an error it could not resolve | `failed`, with the reason |
+
+When links were selected, display `MSG_NEXT_STEPS` (see `references/messages.md`) once, after the last `MSG_COMMIT_SUCCESS` or after `MSG_MULTI_REPO_FINAL`, never once per commit. Each selected `suggest` link is one `MSG_WORKFLOW_NEXT_STEP_LINE` (`references/workflow.md` §7); for the default flow that is `/magic:pr`. With no link selected, display nothing: the commit confirmation stays the last line, as it always was.
+
+Then Step 8. An `auto` link is followed only after Step 8 has recorded the run.
+
+---
+
 ## Step 8: Record the run
 
-**Always run this, as the very last thing you do — including when the workflow stopped early.**
+**Always run this, as the very last thing of this skill's own work — including when the workflow stopped early.** Only the `auto` link Step 7.5 selected, if any, comes after it (`references/workflow.md` §4).
 
 Magic Slash opened a run record when this skill started. This closes it. Without it the run stays open and is counted as *abandoned*, so finished work disappears from the usage statistics.
 

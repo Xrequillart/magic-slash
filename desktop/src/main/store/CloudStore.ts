@@ -894,6 +894,29 @@ export class CloudStore implements Store {
   }
 
   /**
+   * repo id → stored workflow definition, for every repo the caller can see.
+   *
+   * `userContext()`, not `context()`: a personal repo can carry a flow too, and a
+   * user with no membership still has those. RLS is what scopes the rows (the
+   * repository's own visibility test, 20260929120000). Most repos have no row —
+   * they follow the default flow — so an empty record is the common answer. A
+   * failed read is `null` instead, so the caller keeps the flows it already had
+   * rather than mistaking an outage for "no custom flow".
+   */
+  async loadRepositoryWorkflows(): Promise<Record<string, unknown> | null> {
+    const ctx = await this.userContext()
+    if (!ctx) return {}
+    const { data, error } = await ctx.client.from('repository_workflows').select('repo_id, definition')
+    if (error || !data) {
+      if (error) console.error('[cloud] could not read the repository workflows:', error.message)
+      return null
+    }
+    const workflows: Record<string, unknown> = {}
+    for (const row of data as { repo_id: string; definition: unknown }[]) workflows[row.repo_id] = row.definition
+    return workflows
+  }
+
+  /**
    * Move legacy repos embedded in the config blob into the repositories table as
    * PERSONAL repos (org_id null), binding the local path. Best-effort and
    * idempotent: a duplicate-name insert (23505) means a prior run already

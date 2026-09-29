@@ -520,6 +520,19 @@ Displayed in Step 6.5, immediately after the PR is created — before the ticket
 
 Two variants. Use **watch** when `pullRequest.watchCI` is `true` (Step 7.4 follows), **manual** when it is `false`.
 
+- `{review_feedback_line}` (watch): the first wording when the workflow has an `auto` link from
+  this node on `review_comments` or with no outcome (the default flow does), the second otherwise:
+  - en: `Review feedback from bots or humans gets addressed automatically` /
+    `Review feedback from bots or humans gets reported, with the next step to run`
+  - fr: `Les retours de review (bots ou humains) sont traités automatiquement` /
+    `Les retours de review (bots ou humains) sont signalés, avec la prochaine étape à lancer`
+- `{next_steps}` (manual): one numbered line per `suggest` link the workflow selected on
+  `pr_created` (SKILL.md Step 8.5), in `MSG_WORKFLOW_NEXT_STEP_LINE` wording
+  (`references/workflow.md` §7) without its bullet. The lines after it are this skill's own and
+  keep counting from where `{next_steps}` stopped. For the default flow, `{next_steps}` is
+  `1. Run /magic:review to perform a code review` (fr: `1. Lance /magic:review pour faire une revue
+  de code`), so the list reads as it always has.
+
 ### en — watch
 
 ```text
@@ -532,7 +545,7 @@ Two variants. Use **watch** when `pullRequest.watchCI` is `true` (Step 7.4 follo
 Now watching the PR — you can leave this running:
 1. Waiting for the CI checks to finish
 2. Failing checks get fixed and re-pushed automatically (up to 3 attempts)
-3. Review feedback from bots or humans gets addressed automatically
+3. {review_feedback_line}
 4. Run /magic:done once the PR is merged
 ```
 
@@ -546,10 +559,10 @@ Now watching the PR — you can leave this running:
 🎫 Ticket   : {TICKET_ID} → {ticket_status}
 
 Next steps:
-1. Run /magic:review to perform a code review
-2. Wait for approval and CI checks
-3. Merge the PR once approved
-4. Run /magic:done to finalize the task
+{next_steps}
+{n}. Wait for approval and CI checks
+{n}. Merge the PR once approved
+{n}. Run /magic:done to finalize the task
 ```
 
 ### fr — watch
@@ -564,7 +577,7 @@ Next steps:
 Je surveille la PR — tu peux laisser tourner :
 1. J'attends la fin des checks CI
 2. Les checks en échec sont corrigés et repoussés automatiquement (3 tentatives max)
-3. Les retours de review (bots ou humains) sont traités automatiquement
+3. {review_feedback_line}
 4. Lance /magic:done une fois la PR mergée
 ```
 
@@ -578,10 +591,10 @@ Je surveille la PR — tu peux laisser tourner :
 🎫 Ticket   : {TICKET_ID} → {ticket_status}
 
 Prochaines étapes :
-1. Lance /magic:review pour faire une revue de code
-2. Attend l'approbation et les checks CI
-3. Merge la PR une fois approuvée
-4. Lance /magic:done pour finaliser la tâche
+{next_steps}
+{n}. Attend l'approbation et les checks CI
+{n}. Merge la PR une fois approuvée
+{n}. Lance /magic:done pour finaliser la tâche
 ```
 
 ## MSG_PREVIEW_URL_MULTIPLE
@@ -812,9 +825,23 @@ Je m'arrête ici plutôt que de pousser une correction au hasard.
 
 ## MSG_REVIEW_COMMENTS_FOUND
 
-Displayed in Step 7.4.5 before chaining into the resolve workflow.
+Displayed in Step 7.4.5. Two variants, chosen by the workflow read in Step 0.0 and by nothing else:
+**chain** when it has an `auto` link from this node on `review_comments` or with no outcome (the default flow does,
+to `magic-resolve`, so `{skill}` is `/magic:resolve`), **suggest** otherwise. The suggest variant
+never says the comments are being addressed, because nothing is.
 
-### en
+`{chain_line}` (chain) depends on the link's target. When it is `magic-resolve`, the skill that
+addresses review comments: `Addressing them now via /magic:resolve...` (fr: `Je les traite
+maintenant via /magic:resolve...`), today's line. Any other target may address nothing, so the line
+only says where the run goes: `Handing over to {skill}, as this repository's workflow says. It may
+not address them.` (fr: `Je passe la main à {skill}, comme le prévoit le workflow de ce repository.
+Il ne les traitera peut-être pas.`).
+
+`{next_steps}` (suggest) holds one `MSG_WORKFLOW_NEXT_STEP_LINE` (`references/workflow.md` §7) per
+suggested link. With none, replace the `Next step` header and `{next_steps}` with one line:
+`They are yours to address when you are ready.` (fr: `À toi de les traiter quand tu veux.`).
+
+### en — chain
 
 ```text
 💬 {count} actionable review comment(s) on the PR — from {reviewers}
@@ -822,10 +849,24 @@ Displayed in Step 7.4.5 before chaining into the resolve workflow.
   • [{severity}] {source} · {path}:{line}
     {request}
 
-Addressing them now via /magic:resolve...
+{chain_line}
 ```
 
-### fr
+### en — suggest
+
+```text
+💬 {count} actionable review comment(s) on the PR, from {reviewers}
+
+  • [{severity}] {source} · {path}:{line}
+    {request}
+
+This repository's workflow does not address them on its own.
+
+Next step:
+{next_steps}
+```
+
+### fr — chain
 
 ```text
 💬 {count} commentaire(s) de review à traiter sur la PR — de {reviewers}
@@ -833,7 +874,60 @@ Addressing them now via /magic:resolve...
   • [{severity}] {source} · {path}:{line}
     {request}
 
-Je les traite maintenant via /magic:resolve...
+{chain_line}
+```
+
+### fr — suggest
+
+```text
+💬 {count} commentaire(s) de review à traiter sur la PR, de {reviewers}
+
+  • [{severity}] {source} · {path}:{line}
+    {request}
+
+Le workflow de ce repository ne les traite pas tout seul.
+
+Prochaine étape :
+{next_steps}
+```
+
+## MSG_REVIEW_COMMENTS_OUTSTANDING
+
+Displayed in Step 7.4.5 when the chained skill ended without pushing anything, so the comments shown
+in `MSG_REVIEW_COMMENTS_FOUND` are still open. `{skill}` is the skill that was chained into.
+
+### en
+
+```text
+⚠️ {skill} pushed nothing: the {count} review comment(s) above are still open on the PR.
+Address them yourself, or run /magic:resolve.
+```
+
+### fr
+
+```text
+⚠️ {skill} n'a rien poussé : les {count} commentaire(s) de review ci-dessus sont toujours ouverts sur la PR.
+Traite-les toi-même, ou lance /magic:resolve.
+```
+
+## MSG_NEXT_STEPS
+
+Displayed in Step 8.5 after `MSG_CI_ALL_GREEN`, only when the workflow declares a link on
+`ci_green` (the default flow does not, so a default user never sees it). `{next_steps}` holds one
+`MSG_WORKFLOW_NEXT_STEP_LINE` (`references/workflow.md` §7) per link.
+
+### en
+
+```text
+💡 Next step:
+{next_steps}
+```
+
+### fr
+
+```text
+💡 Prochaine étape :
+{next_steps}
 ```
 
 ## MSG_CI_WATCH_TIMEOUT

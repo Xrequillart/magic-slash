@@ -87,6 +87,14 @@ export interface Store {
   setRepositoryRemoteUrl(id: string, url: string): Promise<boolean>
   /** Set (or clear, when null) the caller's own local path binding for a repo. */
   setRepositoryPath(id: string, path: string | null): Promise<void>
+  /**
+   * The custom workflows of the repos visible to the caller, repo id → the stored
+   * definition, unvalidated (main/workflow/workflows.ts decides whether it is usable).
+   * A repo absent from the record follows the default flow. Read-only: editing a
+   * flow is out of scope in v1. Never rejects: a failed read is `null`, kept apart
+   * from `{}` (no rows), so a refresh that fails leaves the last loaded flows alone.
+   */
+  loadRepositoryWorkflows(): Promise<Record<string, unknown> | null>
 
   loadAgents(): Promise<Agent[]>
   /** Upsert the caller's agents. Never destructive: an absent agent is left alone. */
@@ -329,6 +337,7 @@ export const NOOP_STORE: Store = {
   async deleteRepository() { /* no-op */ },
   async setRepositoryRemoteUrl() { return false },
   async setRepositoryPath() { /* no-op */ },
+  async loadRepositoryWorkflows() { return {} },
   async loadAgents() { return [] },
   async saveAgents() { /* no-op */ },
   async archiveAgent() { /* no-op */ },

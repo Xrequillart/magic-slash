@@ -67,6 +67,13 @@ type SkillCallback = (terminalId: string | undefined, skill: string) => void
 type ConfigProvider = () => unknown
 type AgentProvider = (terminalId: string) => unknown
 /**
+ * `path` is the skill's working directory (a repo or one of its worktrees) and
+ * decides the repository, hence the flow; `skill` (`magic-commit`) picks the node
+ * the answer is centred on. Either may be missing — the provider decides what that
+ * means (see main/index.ts: the default flow, no node).
+ */
+type WorkflowProvider = (path: string | null, skill: string | null) => unknown
+/**
  * `path` is the working directory the skill is in (a repo or one of its
  * worktrees) and is the reliable identifier; `repo` is the legacy name, kept for
  * skills that have not been updated.
@@ -131,6 +138,7 @@ let clearQuestionCallback: ClearQuestionCallback | null = null
 let skillCallback: SkillCallback | null = null
 let configProvider: ConfigProvider | null = null
 let agentProvider: AgentProvider | null = null
+let workflowProvider: WorkflowProvider | null = null
 let worktreeFilesWriter: WorktreeFilesWriter | null = null
 let prUrlCallback: PRUrlCallback | null = null
 let specPathCallback: SpecPathCallback | null = null
@@ -241,6 +249,26 @@ function specBelongsToAgent(terminalId: string, specPath: string): boolean {
 
 export function setAgentProvider(provider: AgentProvider) {
   agentProvider = provider
+}
+
+export function setWorkflowProvider(provider: WorkflowProvider) {
+  workflowProvider = provider
+}
+
+/**
+ * Answer a read-only route with what its provider returns, as JSON. No provider
+ * (a nullish answer) or a throwing one both answer 200 with `fallback`,
+ * so a skill reading the route never has to tell those apart.
+ */
+function sendProvided(res: http.ServerResponse, route: string, fallback: unknown, provide: () => unknown) {
+  let payload = JSON.stringify(fallback)
+  try {
+    payload = JSON.stringify(provide() ?? fallback)
+  } catch (e) {
+    console.error(`[StatusServer] ${route} provider failed:`, e)
+  }
+  res.writeHead(200, { 'Content-Type': 'application/json' })
+  res.end(payload)
 }
 
 export function setWorktreeFilesWriter(writer: WorktreeFilesWriter) {
@@ -780,25 +808,18 @@ export function startStatusServer(): Promise<number> {
         } else if (url.pathname === '/config') {
           // Read-only: the current config from the app's in-memory cache (hydrated from the
           // cloud store). Lets skills read the live config instead of a stale local config.json.
-          let payload = '{}'
-          try {
-            if (configProvider) payload = JSON.stringify(configProvider() ?? {})
-          } catch (e) {
-            console.error('[StatusServer] /config provider failed:', e)
-          }
-          res.writeHead(200, { 'Content-Type': 'application/json' })
-          res.end(payload)
+          sendProvided(res, '/config', {}, () => configProvider?.())
         } else if (url.pathname === '/agent') {
           // Read-only: the agent/task metadata for a given terminal id (terminalId === agent.id).
           const terminalId = url.searchParams.get('id')
-          let payload = 'null'
-          try {
-            if (terminalId && agentProvider) payload = JSON.stringify(agentProvider(terminalId) ?? null)
-          } catch (e) {
-            console.error('[StatusServer] /agent provider failed:', e)
-          }
-          res.writeHead(200, { 'Content-Type': 'application/json' })
-          res.end(payload)
+          sendProvided(res, '/agent', null, () => (terminalId ? agentProvider?.(terminalId) : null))
+        } else if (url.pathname === '/workflow') {
+          // Read-only: the workflow the calling skill's repository follows, centred on
+          // that skill's node, so it can compute its next steps (#328). `null` when no
+          // provider answers — a skill reading that keeps its built-in closing text.
+          const path = url.searchParams.get('path')
+          const skill = url.searchParams.get('skill')
+          sendProvided(res, '/workflow', null, () => workflowProvider?.(path, skill))
         } else if (url.pathname === '/config/worktree-files') {
           // Write: persist a repo's worktreeFiles to the cloud store (the one config mutation
           // skills perform). Kept as GET+query to match the other curl-friendly write routes.

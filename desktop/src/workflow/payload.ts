@@ -1,0 +1,48 @@
+import type { ResolvedWorkflow, Workflow, WorkflowLinkKind, WorkflowNode } from './model'
+import { nodeForSkill, outgoingLinks } from './model'
+
+/**
+ * The body of `GET /workflow`, as the skills read it at Step 0.
+ *
+ * The skills depend on this shape exactly, so it is built here, pure and tested,
+ * rather than inline in the route. `links` spares a skill the join it would otherwise
+ * do in prose: each outgoing link carries the SKILL it leads to, and `outcome` is an
+ * explicit null when the link applies whatever the outcome (a JSON reader cannot
+ * tell an absent key from a forgotten one).
+ */
+export interface WorkflowPayloadLink {
+  from: string
+  to: string
+  kind: WorkflowLinkKind
+  outcome: string | null
+  skill: string | null
+}
+
+export interface WorkflowPayload {
+  /** The repository's key in the config, or null when the path matches none. */
+  repository: string | null
+  source: ResolvedWorkflow['source']
+  workflow: Workflow
+  /** The node of the calling skill, or null when it is not in the flow (or none was named). */
+  node: WorkflowNode | null
+  links: WorkflowPayloadLink[]
+}
+
+export function buildWorkflowPayload(
+  repository: string | null,
+  resolved: ResolvedWorkflow,
+  skill: string | null,
+): WorkflowPayload {
+  const { workflow, source } = resolved
+  const node = skill ? nodeForSkill(workflow, skill) : null
+  const links = node
+    ? outgoingLinks(workflow, node.id).map((link) => ({
+        from: link.from,
+        to: link.to,
+        kind: link.kind,
+        outcome: link.outcome ?? null,
+        skill: workflow.nodes.find((n) => n.id === link.to)?.skill ?? null,
+      }))
+    : []
+  return { repository, source, workflow, node, links }
+}

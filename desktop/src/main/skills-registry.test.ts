@@ -37,6 +37,10 @@ const WEBAPP_TILES = 'webapp/lib/skills.ts'
 // `webapp/components/site/home/HowSection.tsx`, and #268 lifted it OUT of the component
 // into `webapp/lib/commands.ts` so the webapp's own test suite could read it without
 // pulling React in. That is why the path is a named constant.
+// The skill list the desktop's code builds on. It lived in skills-updater.ts until #328
+// lifted it into a pure module, so the default workflow could be derived from the same
+// list the updater downloads rather than from a ninth copy.
+const DESKTOP_SKILLS = 'desktop/src/workflow/skills.ts'
 const LAUNCHER_COMMANDS = 'desktop/src/renderer/pages/QuickLaunch/index.tsx'
 const LANDING_COMMANDS = 'webapp/lib/commands.ts'
 
@@ -161,8 +165,10 @@ function commandSkills(relativePath: string): string[] {
  */
 const LISTS: { where: string; read: () => string[]; omits?: string[] }[] = [
   {
-    where: 'desktop/src/main/skills-updater.ts SKILLS',
-    read: () => flatArray(read('desktop/src/main/skills-updater.ts'), 'SKILLS'),
+    // The desktop's pure copy, which the updater imports and the default workflow is
+    // derived from. See the skills-updater test below: the updater must keep reading it.
+    where: `${DESKTOP_SKILLS} SKILLS`,
+    read: () => flatArray(read(DESKTOP_SKILLS), 'SKILLS'),
   },
   {
     where: 'desktop/src/main/setup/status.ts SKILLS',
@@ -210,6 +216,16 @@ describe('the shipped skill list, in the eight places that duplicate it', () => 
 
   it.each(LISTS)('$where lists exactly the skills that ship', ({ read, omits = [] }) => {
     expect([...read()].sort()).toEqual(shippedSkills().filter((skill) => !omits.includes(skill)))
+  })
+
+  it('keeps skills-updater downloading the checked list rather than a copy of its own', () => {
+    // The updater's list moved to DESKTOP_SKILLS, which the row above checks. That check
+    // only protects the updater while it imports that list: a local `SKILLS = [...]`
+    // reintroduced there would drift unseen, and a skill missing from it is never
+    // downloaded. So: the import is there, and no declaration of its own is.
+    const source = read('desktop/src/main/skills-updater.ts')
+    expect(source).toMatch(/import\s*\{[^}]*\bSKILLS\b[^}]*\}\s*from\s*'\.\.\/workflow\/skills'/)
+    expect(source).not.toMatch(/\bSKILLS\s*=/)
   })
 
   it('keeps the landing exception to skills that actually ship', () => {
