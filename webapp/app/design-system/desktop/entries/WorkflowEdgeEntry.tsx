@@ -4,17 +4,16 @@ import { WorkflowCanvas, type WorkflowCanvasLink, type WorkflowCanvasNode } from
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Specimen, Stage, type PropRow } from '../parts'
 import { usesOf } from './ids'
-import { SAMPLE_LABELS, sampleSubset } from './workflowSample'
+import { SAMPLE_LABELS, loopSubset, sampleSubset } from './workflowSample'
 
 // Module scope, so the canvas is handed the same arrays on every render.
 const AUTO = sampleSubset(['pr', 'resolve'])
 const SUGGEST = sampleSubset(['start', 'commit'])
-const LOOP = sampleSubset(['review', 'resolve'])
+// The default flow has no loop: this one comes from a custom flow that keeps a review step.
+const LOOP = loopSubset(['review', 'resolve'])
 const AUTO_ENTRY = ['pr']
 const SUGGEST_ENTRY = ['start']
 const LOOP_ENTRY = ['review']
-// pr → resolve on its own, for the specimen: in the sample it also has pr → review.
-const AUTO_LINKS: WorkflowCanvasLink[] = AUTO.links.filter((link) => link.kind === 'auto')
 
 // A custom flow's shapes the default one never has: a loop of three steps, closing from
 // its bottom card to its top one past the card between, and a step that retries itself.
@@ -51,7 +50,7 @@ export function WorkflowEdgeEntry({ theme, onOpen }: { theme: DesktopTheme; onOp
       >
         <Stage theme={theme} className="flex flex-col gap-6">
           <Specimen label="auto, on an outcome">
-            <WorkflowCanvas nodes={AUTO.nodes} links={AUTO_LINKS} entry={AUTO_ENTRY} labels={SAMPLE_LABELS} className="h-[260px]" />
+            <WorkflowCanvas nodes={AUTO.nodes} links={AUTO.links} entry={AUTO_ENTRY} labels={SAMPLE_LABELS} className="h-[260px]" />
           </Specimen>
           <Specimen label="suggest, unconditional">
             <WorkflowCanvas nodes={SUGGEST.nodes} links={SUGGEST.links} entry={SUGGEST_ENTRY} labels={SAMPLE_LABELS} className="h-[260px]" />

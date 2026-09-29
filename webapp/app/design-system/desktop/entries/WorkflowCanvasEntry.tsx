@@ -23,7 +23,7 @@ export function WorkflowCanvasEntry({ theme, onOpen }: { theme: DesktopTheme; on
 
       <EntrySection
         title="The default flow"
-        note="Every repository shows this until it has a flow of its own: seven steps, one auto link (pr to resolve, when review comments are already waiting) and the review ⇄ resolve loop, its two steps stacked in one column so no link runs over or under a card. Drag or scroll to pan, pinch or ⌘ + scroll to zoom, Space + drag works too."
+        note="Every repository shows this until it has a flow of its own: six steps, one auto link (pr to resolve, when review comments are already waiting), on one line. Drag or scroll to pan, pinch or ⌘ + scroll to zoom, Space + drag works too."
       >
         <Stage theme={theme}>
           <Specimen label="the Workflow tab of a repository’s settings, read-only">

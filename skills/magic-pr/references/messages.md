@@ -529,9 +529,9 @@ Two variants. Use **watch** when `pullRequest.watchCI` is `true` (Step 7.4 follo
 - `{next_steps}` (manual): one numbered line per `suggest` link the workflow selected on
   `pr_created` (SKILL.md Step 8.5), in `MSG_WORKFLOW_NEXT_STEP_LINE` wording
   (`references/workflow.md` §7) without its bullet. The lines after it are this skill's own and
-  keep counting from where `{next_steps}` stopped. For the default flow, `{next_steps}` is
-  `1. Run /magic:review to perform a code review` (fr: `1. Lance /magic:review pour faire une revue
-  de code`), so the list reads as it always has.
+  keep counting from where `{next_steps}` stopped. The default flow has no link on
+  `pr_created`, so for it `{next_steps}` is empty and the list starts at this skill's own lines,
+  numbered from 1.
 
 ### en — watch
 

@@ -11,8 +11,10 @@ export const SKILLS = ['magic-plan', 'magic-plan-change', 'magic-start', 'magic-
 
 /**
  * Side doors off the cycle rather than steps of it: /magic:plan-change reworks a
- * plan already filed, /magic:continue resumes a ticket already started. Neither is
- * a node of the default workflow — they are entered by hand, from wherever the user
- * is, and a flow that "suggested" them after every step would be noise.
+ * plan already filed, /magic:continue resumes a ticket already started, and
+ * /magic:review reviews a pull request, your own or a colleague's, so what follows
+ * it depends on whose PR it is rather than on a flow. None is a node of the default
+ * workflow. They are entered by hand, from wherever the user is, and a flow that
+ * "suggested" them after every step would be noise.
  */
-export const SIDE_SKILLS = ['magic-plan-change', 'magic-continue']
+export const SIDE_SKILLS = ['magic-plan-change', 'magic-continue', 'magic-review']

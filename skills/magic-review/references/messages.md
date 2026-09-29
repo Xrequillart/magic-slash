@@ -122,15 +122,11 @@ Je poste les {count} commentaire(s) sur la PR #{PR_NUMBER} (ce repository poste 
 
 Drop the confidence line when `review.confidenceScore` is off.
 
-The next-steps block is chosen by the review's **outcome** (SKILL.md Step 11), which follows the
-event actually posted, self-review included: APPROVE is `approved`, REQUEST_CHANGES is
-`changes_requested`, COMMENT is `commented` (so a self-review is always `commented`). When
-nothing was posted there is no outcome: no link is selected and the `{If not posted}` block is
-rendered as is. `{next_steps}` holds one numbered line per link the workflow selected, and this
-skill's own lines around it keep counting (`{n}`). For the default flow, `approved` renders
-`3. Run /magic:done to finalize the task`, `changes_requested` renders `1. Run /magic:resolve to
-address the review comments`, and `commented` renders nothing, so every block reads as it always
-has. A `commented` block with a selected link shows it under the block's own lines.
+The next-steps block is chosen by the event actually posted (SKILL.md Step 11), self-review
+included: APPROVE renders `{If approved}`, REQUEST_CHANGES `{If changes_requested}`, COMMENT
+`{If commented}` (so a self-review always renders `{If commented}`). When nothing was posted, the
+`{If not posted}` block is rendered as is. These lines are this skill's own: it is not a step of
+the workflow, and never adds a next step from it.
 
 ### en
 
@@ -148,19 +144,17 @@ has. A `commented` block with a selected link shows it under the block's own lin
 Next steps:
 1. Wait for CI checks to pass
 2. Merge the PR once approved
-{next_steps}
 
 {If changes_requested}
 Next steps:
-{next_steps}
-{n}. Request a re-review after fixing
+1. The author addresses the comments
+2. Run /magic:review again once they push
 
 {If commented}
 Next steps:
 1. Consider the suggestions and discuss if needed
 2. Wait for CI checks to pass
 3. Merge the PR once approved
-{next_steps}
 
 {If not posted}
 Nothing was posted on GitHub. The draft above is yours to reuse.
@@ -184,19 +178,17 @@ Nothing was posted on GitHub. The draft above is yours to reuse.
 Prochaines étapes :
 1. Attend que les checks CI passent
 2. Merge la PR une fois approuvée
-{next_steps}
 
 {Si changes_requested}
 Prochaines étapes :
-{next_steps}
-{n}. Demande une re-review après correction
+1. L'auteur traite les commentaires
+2. Relance /magic:review une fois ses corrections poussées
 
 {Si commented}
 Prochaines étapes :
 1. Considère les suggestions et discute si besoin
 2. Attend que les checks CI passent
 3. Merge la PR une fois approuvée
-{next_steps}
 
 {Si non postée}
 Rien n'a été posté sur GitHub. Le brouillon ci-dessus reste à ta disposition.

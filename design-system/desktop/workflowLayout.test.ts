@@ -12,8 +12,9 @@ import {
 /**
  * The canvas's layout is the one piece of it that can be wrong while looking fine: a
  * loop laid out along a row, whose links then run over or under the cards, or a node no entry reaches that is quietly
- * never drawn. Tested on a copy of the default flow's shape, which is the graph every
- * repository shows until it has one of its own.
+ * never drawn. Tested on the default flow's shape, which is the graph every repository
+ * shows until it has one of its own, and on a custom flow with a review ⇄ resolve loop,
+ * the shape a loop takes in practice.
  */
 
 const node = (id: string, outcomes: string[] = []): WorkflowCanvasNode => ({
@@ -23,6 +24,25 @@ const node = (id: string, outcomes: string[] = []): WorkflowCanvasNode => ({
   outcomes,
 })
 
+// The default flow: one line, plan to done, with pr → resolve its one conditional link.
+const DEFAULT_NODES: WorkflowCanvasNode[] = [
+  node('plan', ['planned']),
+  node('start', ['implemented']),
+  node('commit', ['committed']),
+  node('pr', ['pr_created', 'review_comments', 'ci_green']),
+  node('resolve', ['resolved']),
+  node('done', ['done']),
+]
+
+const DEFAULT_LINKS: WorkflowCanvasLink[] = [
+  { from: 'plan', to: 'start', kind: 'suggest' },
+  { from: 'start', to: 'commit', kind: 'suggest' },
+  { from: 'commit', to: 'pr', kind: 'suggest' },
+  { from: 'pr', to: 'resolve', kind: 'auto', outcome: 'review_comments' },
+  { from: 'resolve', to: 'done', kind: 'suggest' },
+]
+
+// A custom flow that keeps a review step, looping with resolve.
 const NODES: WorkflowCanvasNode[] = [
   node('plan', ['planned']),
   node('start', ['implemented']),
@@ -33,7 +53,7 @@ const NODES: WorkflowCanvasNode[] = [
   node('done', ['done']),
 ]
 
-// In the default flow's own order, which lists pr → resolve BEFORE pr → review.
+// Listing pr → resolve BEFORE pr → review, so the loop is not found in link order.
 const LINKS: WorkflowCanvasLink[] = [
   { from: 'plan', to: 'start', kind: 'suggest' },
   { from: 'start', to: 'commit', kind: 'suggest' },
@@ -46,6 +66,12 @@ const LINKS: WorkflowCanvasLink[] = [
 ]
 
 describe('layoutWorkflow', () => {
+  it('lays the default flow out as one line, a column per step, every link forward', () => {
+    const { layers, routes } = layoutWorkflow(DEFAULT_NODES, DEFAULT_LINKS, ['plan', 'start'])
+    expect(layers).toEqual({ plan: 0, start: 1, commit: 2, pr: 3, resolve: 4, done: 5 })
+    expect(DEFAULT_LINKS.map((_, i) => routes[i])).toEqual(DEFAULT_LINKS.map(() => 'forward'))
+  })
+
   it('puts each step one column after the one it follows, the review ⇄ resolve loop in one', () => {
     const { layers } = layoutWorkflow(NODES, LINKS, ['plan', 'start'])
     expect(layers).toEqual({ plan: 0, start: 1, commit: 2, pr: 3, review: 4, resolve: 4, done: 5 })

@@ -1,19 +1,22 @@
 # Workflow protocol
 
 The same file ships in every cycle skill (`magic-plan`, `magic-start`, `magic-commit`, `magic-pr`,
-`magic-review`, `magic-resolve`, `magic-done`), byte for byte. It is copied rather than shared
+`magic-resolve`, `magic-done`), byte for byte. It is copied rather than shared
 because the skills updater installs `skills/<skill>/**` and nothing else: a shared folder would
 never reach the user's machine. A test holds the copies identical, so edit one and copy it to the
-six others.
+five others.
 
-`magic-plan-change` and `magic-continue` do not carry it. They are side doors, entered by hand
-from wherever the user is, not steps of the cycle, and no flow has a node for them.
+`magic-plan-change`, `magic-continue` and `magic-review` do not carry it. They are side doors,
+entered by hand from wherever the user is, not steps of the cycle, and the default flow has no node
+for them. A review can target your own PR or a colleague's, so what follows it depends on whose PR
+it is, not on a flow: even a custom flow with a review node gets no next step out of
+`/magic:review`, which ends on its own closing text.
 
 ## 1. The principle: know the workflow, then do your own job
 
 Each repository follows a workflow: a graph of skills saying what may run after what. Magic Slash
 Desktop serves it, and a repository without a flow of its own gets the default one, which is
-today's cycle written down (plan, start, commit, pr, review, resolve, done).
+today's cycle written down (plan, start, commit, pr, resolve, done).
 
 The skill reads that graph at Step 0 and uses it for **one thing only: what it says, or does, once
 its own work is finished.** The flow never adds, removes or skips a step, a question or a guard of
@@ -22,8 +25,8 @@ successor is `auto` still asks every question it asks today; a `required` node e
 graph does not make this skill refuse to run. Everything between Step 0 and the end of the skill
 is exactly what `SKILL.md` says, as if no flow existed.
 
-This is also why a default user sees no change: the default flow's links are the suggestions the
-skills printed before workflows existed, and each skill renders them in its usual words.
+This is also why the default flow reads as the skills always have: its links are the hand-offs of
+the cycle, and each skill renders them in its usual words.
 
 ## 2. Step 0: read the flow
 
@@ -62,7 +65,7 @@ the skill simply has no workflow next step.
 The `$PWD` of Step 0 is the right one even for a skill that later moves into a worktree of the
 same repository: the app resolves a worktree path to its repository. A skill that walks the
 worktrees of **several repositories** in one run (the multi-repo mode of `magic-commit`,
-`magic-pr`, `magic-review` and `magic-resolve`) repeats this read in each worktree, from that
+`magic-pr` and `magic-resolve`) repeats this read in each worktree, from that
 worktree's `$PWD`, just as it re-runs its Node.js detection there: each repository can follow its
 own flow. Each repository's pass picks its outcome and its links from its own payload, never from
 the one read in the first directory. A skill that renders its next steps once for the whole run
@@ -166,8 +169,8 @@ is have one run on its own.
 ## 6. No state between passes
 
 Each invocation is its own node, read fresh at its own Step 0. Nothing is carried from one pass to
-the next: in the review and resolve loop, `magic-review` is the review node every time it runs and
-`magic-resolve` the resolve node every time it runs, and neither knows how many passes came before.
+the next: `magic-resolve` is the resolve node every time it runs, including when `magic-pr` chains
+into it again from a later invocation, and it never knows how many passes came before.
 
 A guard that must fire only once (such as `magic-pr` never starting a second resolve cycle from the
 same invocation) is enforced by the skill, per invocation, as its `SKILL.md` says. The graph does

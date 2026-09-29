@@ -397,7 +397,7 @@ function WorkflowPanel({ repoName }: { repoName: string }) {
         <Banner variant="danger" icon={AlertTriangle}>{t('repo.workflow.loadError')}</Banner>
       ) : resolved ? (
         // A fixed height: the canvas fills its box, and a settings pane has no height of
-        // its own to give it. Tall enough for the default flow's review/resolve column
+        // its own to give it. Tall enough for a custom flow's loop, stacked in one column,
         // at the fitted zoom, short enough to leave the header on screen.
         <WorkflowCanvas
           nodes={resolved.data.nodes}

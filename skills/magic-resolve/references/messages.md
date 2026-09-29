@@ -564,7 +564,7 @@ encore été affiché.
 
 `{next_steps}` holds one numbered line per link the workflow selected (SKILL.md Step 9), numbered
 from 1 in `{IF_RE_REQUEST_OK}` and from 2 in `{IF_RE_REQUEST_FAIL}`. For the default flow it is
-the `/magic:review` self-review line, so both blocks read as they always have. With no link,
+the `/magic:done` line, `Run /magic:done once the PR is merged`. With no link,
 drop `{IF_RE_REQUEST_OK}` entirely, and keep only its own first line in `{IF_RE_REQUEST_FAIL}`.
 
 ### en

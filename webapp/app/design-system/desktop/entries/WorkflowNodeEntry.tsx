@@ -4,10 +4,11 @@ import { WorkflowCanvas } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Specimen, Stage, type PropRow } from '../parts'
 import { usesOf } from './ids'
-import { SAMPLE_LABELS, sampleSubset } from './workflowSample'
+import { SAMPLE_LABELS, loopSubset, sampleSubset } from './workflowSample'
 
 // Module scope, so the canvas is handed the same arrays on every render.
-const REVIEW = sampleSubset(['review'])
+// Review has the most outcomes of any step; it comes from a custom flow, the default having none.
+const REVIEW = loopSubset(['review'])
 const REVIEW_ENTRY = ['review']
 const PR = sampleSubset(['pr'])
 const PR_ENTRY = ['pr']
@@ -31,7 +32,7 @@ export function WorkflowNodeEntry({ theme, onOpen }: { theme: DesktopTheme; onOp
 
       <EntrySection
         title="The ports are the outcomes"
-        note="A conditional link leaves from the row naming its outcome, so “review, on changes_requested, suggests resolve” reads off the card. An unconditional link leaves from the header. Every outcome gets its row, linked or not: an outcome that leads nowhere is part of what the flow says."
+        note="A conditional link leaves from the row naming its outcome, so “review, on changes_requested, suggests resolve” reads off the card in a flow that has one. An unconditional link leaves from the header. Every outcome gets its row, linked or not: an outcome that leads nowhere is part of what the flow says."
       >
         <Stage theme={theme} className="flex flex-col gap-6">
           <Specimen label="three outcomes">
