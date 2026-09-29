@@ -3,7 +3,7 @@ import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupRepoHandlers } from './ipc/repo-handlers'
 import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
-import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback } from './hooks/status-server'
+import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback } from './hooks/status-server'
 import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion } from './questions/pending-questions'
 import { answerPendingQuestion } from './questions/answer-question'
 import { recordSkillInvocation } from './usage/skill-invocations'
@@ -25,6 +25,8 @@ import { readConfig, writeConfig, updateRepositoryWorktreeFilesSettings } from '
 import { archiveLegacyConfig } from './config/legacy-cleanup'
 import { expandPath } from './config/validation'
 import { resolveRepoIds } from '../repoMatch'
+import { buildWorkflowPayload } from '../workflow/payload'
+import { workflowForRepo } from './workflow/workflows'
 import { readAgents } from './config/agents'
 import { TrayManager } from './tray/tray-manager'
 import { AgentStateAggregator } from './tray/agent-state-aggregator'
@@ -859,13 +861,25 @@ async function initializeHooksAndSessions() {
     // one config mutation they perform (worktreeFiles).
     setConfigProvider(() => readConfig())
     setAgentProvider((terminalId: string) => readAgents().find((a) => a.id === terminalId) ?? null)
-    setWorktreeFilesWriter((files: string[], path: string | null, repo: string | null) => {
-      // Resolve to the repo's KEY in the config record, which is not always its
-      // name: two orgs can share a name, and the second one's key is suffixed.
+    // The flow the calling skill's repository follows (#328). A worktree resolves to
+    // its repo; a path matching none gets the default flow.
+    // A skill's $PWD (a repo or one of its worktrees) → the repo's id and its KEY in the
+    // config record, which is not always its name: two orgs can share a name, and the
+    // second one's key is suffixed.
+    const repoForPath = (path: string | null) => {
       const repositories = readConfig().repositories ?? {}
       const [repoId] = path ? resolveRepoIds([path], repositories, expandPath) : []
+      const key = repoId ? Object.keys(repositories).find((k) => repositories[k].id === repoId) : undefined
+      return { repositories, repoId: repoId ?? null, key }
+    }
+    setWorkflowProvider((path: string | null, skill: string | null) => {
+      const { repoId, key } = repoForPath(path)
+      return buildWorkflowPayload(key ?? null, workflowForRepo(repoId), skill)
+    })
+    setWorktreeFilesWriter((files: string[], path: string | null, repo: string | null) => {
+      const { repositories, repoId, key: keyForPath } = repoForPath(path)
       const key = repoId
-        ? Object.keys(repositories).find((k) => repositories[k].id === repoId)
+        ? keyForPath
         : Object.keys(repositories).find((k) => k === repo || repositories[k].name === repo)
 
       if (!key) {

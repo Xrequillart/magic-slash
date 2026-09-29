@@ -24,6 +24,7 @@ import {
   getServerPort,
   setConfigProvider,
   setAgentProvider,
+  setWorkflowProvider,
   setWorktreeFilesWriter,
   setSkillCallback,
   setQuestionCallback,
@@ -225,6 +226,43 @@ describe('read-back endpoints', () => {
     expect(JSON.parse(found.body)).toEqual({ id: 'term-1', metadata: { ticketId: 'PROJ-9' } })
     const missing = await httpGet('/agent?id=nope')
     expect(missing.body).toBe('null')
+  })
+
+  describe('GET /workflow', () => {
+    it('passes the skill\'s path and name to the provider and returns its payload', async () => {
+      const calls: [string | null, string | null][] = []
+      setWorkflowProvider((path, skill) => {
+        calls.push([path, skill])
+        return { repository: 'api', source: 'default', node: { id: 'commit' }, links: [] }
+      })
+      const { status, body } = await httpGet(`/workflow?path=${encodeURIComponent('/tmp/api-PROJ-1')}&skill=magic-commit`)
+      expect(status).toBe(200)
+      expect(JSON.parse(body)).toEqual({ repository: 'api', source: 'default', node: { id: 'commit' }, links: [] })
+      expect(calls).toEqual([['/tmp/api-PROJ-1', 'magic-commit']])
+    })
+
+    it('passes null for a missing parameter', async () => {
+      const calls: [string | null, string | null][] = []
+      setWorkflowProvider((path, skill) => {
+        calls.push([path, skill])
+        return null
+      })
+      const { body } = await httpGet('/workflow')
+      expect(body).toBe('null')
+      expect(calls).toEqual([[null, null]])
+    })
+
+    it('answers 200 null when the provider throws', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      setWorkflowProvider(() => {
+        throw new Error('boom')
+      })
+      const { status, body } = await httpGet('/workflow?path=/tmp/api&skill=magic-pr')
+      expect(status).toBe(200)
+      expect(body).toBe('null')
+      expect(error).toHaveBeenCalled()
+      error.mockRestore()
+    })
   })
 
   describe('GET /config/worktree-files', () => {
