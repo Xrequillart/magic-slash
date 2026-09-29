@@ -56,6 +56,10 @@ import type { IconComponent } from './types'
  *  `Sidebar.tsx`. A number and not a class, because the collapse is the negative of it. */
 export const SIDEBAR_WIDTH = 230
 
+/** The compact column: a 40px row inside the column's `px-2`, and nothing else. Every
+ *  mark in it (menu, agent state, list control) is a square that fits that row. */
+export const SIDEBAR_COMPACT_WIDTH = 56
+
 /** One mark in a list's header that ACTS when pressed — the control that adds to the
  *  list. The shape `ButtonIcon` needs, and nothing more; a control that opens a menu
  *  instead is a `SidebarSelectAction`. */
@@ -182,6 +186,12 @@ export interface SidebarProps {
   /** Folded away: it slides out by its own width rather than unmounting, so the
    *  agents are where they were when it comes back. */
   collapsed?: boolean
+  /**
+   * ICONS ONLY: the menu as its marks, each agent as its state (a robot when it has none),
+   * a rule in place of the list header and its controls, and no usage card or build number, which have no mark to
+   * shrink to. Every name moves to a tooltip. The reader's choice, on the Application page.
+   */
+  compact?: boolean
   /** Margins. Not the width, the ground, or the order of the regions. */
   className?: string
 }
@@ -195,21 +205,23 @@ export function Sidebar({
   usage,
   version,
   collapsed = false,
+  compact = false,
   className = '',
 }: SidebarProps) {
   const empty = lists.every((list) => list.agents.length === 0)
+  const width = compact ? SIDEBAR_COMPACT_WIDTH : SIDEBAR_WIDTH
 
   return (
     <div
       className={`bg-surface-sunken flex flex-col h-full relative z-10
         transition-all duration-300 ease-in-out ${className}`}
-      style={{ width: SIDEBAR_WIDTH, marginLeft: collapsed ? -SIDEBAR_WIDTH : 0 }}
+      style={{ width, marginLeft: collapsed ? -width : 0 }}
     >
       {/* THE MENU IS FIRST and the order inside it is the caller's: in the app it is
           the order the work happens in — you plan something, then you pick it up, and
           the reference material is for doing so. This column would have no way to know
           that, so it does not try. */}
-      <MenuSidebar ariaLabel={menuAriaLabel} className="px-2 pt-3" items={menu} />
+      <MenuSidebar ariaLabel={menuAriaLabel} className="px-2 pt-3" items={menu} compact={compact} />
 
       <nav
         aria-label={listsAriaLabel}
@@ -220,12 +232,14 @@ export function Sidebar({
             {/* The divider between panes, drawn by the second list rather than
                 between the two: a separator is a fact about what follows it, and a
                 sibling in the loop would need a key of its own to say nothing. */}
-            {index > 0 && <div className="border-t border-line-subtle mx-2 my-2" />}
-            <ListHeader list={list} />
+            {/* Not in compact: there every list header is already a rule, and a second
+                one here would draw the split as two lines. */}
+            {index > 0 && !compact && <div className="border-t border-line-subtle mx-2 my-2" />}
+            <ListHeader list={list} compact={compact} />
             <DropZone drop={list.drop}>
-              <Attention attention={list.attention} />
-              <AgentRows list={list} />
-              {list.agents.length === 0 && list.emptyHint && (
+              <Attention attention={list.attention} compact={compact} />
+              <AgentRows list={list} compact={compact} />
+              {list.agents.length === 0 && list.emptyHint && !compact && (
                 <div className="text-text-secondary/30 text-xs text-center py-3">
                   {list.emptyHint}
                 </div>
@@ -234,16 +248,16 @@ export function Sidebar({
           </div>
         ))}
 
-        {empty && emptyLabel && (
+        {empty && emptyLabel && !compact && (
           <div className="flex-1 flex items-center justify-center text-text-secondary text-xs p-4 text-center">
             {emptyLabel}
           </div>
         )}
       </nav>
 
-      {usage && <UsageClaudeCodeCard {...usage} />}
+      {usage && !compact && <UsageClaudeCodeCard {...usage} />}
 
-      {version && (
+      {version && !compact && (
         // `pt-1`: the usage card above carries its own bottom margin, and the pair
         // used to add up to a blank row between the card and the number.
         <div className="px-4 pt-1 pb-2 text-xs text-text-secondary flex items-center justify-start gap-2">
@@ -269,7 +283,18 @@ export function Sidebar({
  * pt-3 pb-2` with an `mr-auto` — so the two headers of one sidebar sat on different
  * lines. They are the same row now.
  */
-function ListHeader({ list }: { list: SidebarList }) {
+function ListHeader({ list, compact }: { list: SidebarList; compact: boolean }) {
+  // Compact: no word, no chip and no controls, only a rule between the menu and the
+  // agents. Sorting and adding stay one wide column away (and ⌘N adds from anywhere); a
+  // stack of controls here read as more agents. The label is the group's accessible name.
+  if (compact) {
+    return (
+      <div role="group" aria-label={list.label} className="px-2 pt-3 pb-2">
+        <div className="border-t border-line-subtle" />
+      </div>
+    )
+  }
+
   return (
     <div className="pl-2 pt-3 pb-2 flex items-center gap-1">
       <div className="text-xs text-text-secondary/50 uppercase tracking-wider mr-auto">
@@ -318,8 +343,20 @@ function ListHeader({ list }: { list: SidebarList }) {
 }
 
 /** The count of agents stuck on the person. Nothing at zero — see `SidebarList`. */
-function Attention({ attention }: { attention?: SidebarList['attention'] }) {
+function Attention({ attention, compact }: { attention?: SidebarList['attention']; compact: boolean }) {
   if (!attention || attention.count === 0) return null
+
+  if (compact) {
+    return (
+      <div
+        title={`${attention.label}: ${attention.count}`}
+        className="flex items-center justify-center gap-1 py-1 text-xs font-medium text-orange"
+      >
+        <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+        <span>{attention.count}</span>
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-orange">
@@ -337,15 +374,16 @@ function Attention({ attention }: { attention?: SidebarList['attention'] }) {
  * siblings in one column, and a box around the pair would give the group a ground the
  * design never asked for.
  */
-function AgentRows({ list }: { list: SidebarList }) {
+function AgentRows({ list, compact }: { list: SidebarList; compact: boolean }) {
   if (list.agents.length === 0) return null
 
   return (
     <div className="flex flex-col gap-1">
       {list.agents.map((agent) => (
         <Fragment key={agent.id}>
-          {agent.heading && <GroupHeading heading={agent.heading} />}
+          {agent.heading && <GroupHeading heading={agent.heading} compact={compact} />}
           <Agent
+            compact={compact}
             name={agent.name}
             state={agent.state}
             ticketId={agent.ticketId}
@@ -376,7 +414,16 @@ function AgentRows({ list }: { list: SidebarList }) {
  * none to be tinted with, so the glyph inherits the heading's muted ink. That is the
  * intent rather than an oversight.
  */
-function GroupHeading({ heading }: { heading: NonNullable<SidebarAgentRow['heading']> }) {
+function GroupHeading({ heading, compact }: { heading: NonNullable<SidebarAgentRow['heading']>; compact: boolean }) {
+  // Compact: the tinted glyph alone, the repository's name on hover.
+  if (compact) {
+    return (
+      <div title={heading.label} className="flex items-center justify-center pt-2 pb-1 text-text-secondary/50">
+        <FolderGit2 className="w-3 h-3 flex-shrink-0" style={{ color: heading.color }} />
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center gap-2 px-2 pt-2 pb-1 text-xs text-text-secondary/50 tracking-wider">
       <FolderGit2 className="w-3 h-3 flex-shrink-0" style={{ color: heading.color }} />

@@ -1,7 +1,7 @@
 import { useInsertionEffect } from 'react'
 import type { DragEvent, MouseEvent } from 'react'
 import { Icon } from './Icon'
-import { Check, MessageCircleQuestionMark, XCircle } from './icons'
+import { Bot, Check, MessageCircleQuestionMark, XCircle } from './icons'
 import { Loader } from './Loader'
 import { Text } from './Text'
 
@@ -134,6 +134,13 @@ export interface AgentProps {
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void
   draggable?: boolean
   onDragStart?: (event: DragEvent<HTMLButtonElement>) => void
+  /**
+   * THE STATE ALONE, for the compact column: the row a square holding the glyph it
+   * always ends on, and an agent with nothing to report (`idle`) wears a robot there
+   * instead of nothing, since an empty square would read as a missing row. The name
+   * moves to the tooltip and the accessible name.
+   */
+  compact?: boolean
   /** Margins and width. Not the grounds, the padding or any of the state colours. */
   className?: string
 }
@@ -147,11 +154,36 @@ export function Agent({
   onClick,
   draggable,
   onDragStart,
+  compact = false,
   className = '',
 }: AgentProps) {
   useAgentStyles()
 
   const spec = STATES[state]
+
+  if (compact) {
+    const fullName = ticketId ? `${ticketId} ${name}` : name
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        draggable={draggable}
+        onDragStart={onDragStart}
+        title={title ?? fullName}
+        aria-label={fullName}
+        className={`w-full flex items-center justify-center py-2 rounded-lg border-none transition-all
+          ${draggable ? 'cursor-pointer active:cursor-grab' : 'cursor-pointer'}
+          ${active ? `${spec.ground} text-ink` : spec.hover}
+          ${className}`}
+      >
+        <span className={`flex items-center ${spec.text}`}>
+          {state === 'idle'
+            ? <Icon glyph={Bot} size="md" tone="inherit" />
+            : <StateGlyph state={state} />}
+        </span>
+      </button>
+    )
+  }
 
   return (
     <button

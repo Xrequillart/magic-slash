@@ -238,7 +238,7 @@ export type {
   ProgressTrack,
 } from './ProgressBar'
 export type { LabelProps, LabelSize, LabelTone } from './Label'
-export { Sidebar, SIDEBAR_WIDTH } from './Sidebar'
+export { Sidebar, SIDEBAR_COMPACT_WIDTH, SIDEBAR_WIDTH } from './Sidebar'
 export { SidebarAgentCoderInfo } from './SidebarAgentCoderInfo'
 export type { CoderRepository, SidebarAgentCoderInfoProps } from './SidebarAgentCoderInfo'
 export { SidebarAgentPlannerInfo } from './SidebarAgentPlannerInfo'

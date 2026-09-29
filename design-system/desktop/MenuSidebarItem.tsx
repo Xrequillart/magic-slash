@@ -83,6 +83,12 @@ export interface MenuSidebarItemProps {
    */
   active?: boolean
   onClick: () => void
+  /**
+   * THE MARK ALONE, for the compact column: no name and no shortcut, the row a square the
+   * column's width. Both move to the tooltip, and the name to the accessible name, so
+   * nothing a reader could learn from the wide row is lost, only put one hover away.
+   */
+  compact?: boolean
   /** Margins. Not the padding, the radius, the gap or either colour. */
   className?: string
 }
@@ -96,12 +102,15 @@ export function MenuSidebarItem({
   alert = false,
   active,
   onClick,
+  compact = false,
   className = '',
 }: MenuSidebarItemProps) {
   return (
     <button
       type="button"
       onClick={onClick}
+      title={compact ? (shortcut ? `${label} (${shortcut})` : label) : undefined}
+      aria-label={compact ? label : undefined}
       // `relative` at all times rather than only under `alert`: the badge is absolutely
       // positioned against this box, and a class that appears with the thing it anchors
       // is a class that will one day appear a frame late.
@@ -109,7 +118,7 @@ export function MenuSidebarItem({
       // `ButtonIcon.active` is a control that is switched on. The two are read out
       // differently, and only one of them is true here.
       aria-current={active ? 'page' : undefined}
-      className={`relative w-full flex items-center justify-start gap-2 px-2 py-2 rounded-lg
+      className={`relative w-full flex items-center ${compact ? 'justify-center' : 'justify-start'} gap-2 px-2 py-2 rounded-lg
         text-xs font-medium border-none cursor-pointer transition-all
         ${
           alert
@@ -139,11 +148,13 @@ export function MenuSidebarItem({
 
       {/* `inherit`, because the row owns the colour — secondary, ink on hover, or
           yellow throughout when something is wrong. A tone here would fight all three. */}
-      <Text tone="inherit" className="truncate">
-        {label}
-      </Text>
+      {!compact && (
+        <Text tone="inherit" className="truncate">
+          {label}
+        </Text>
+      )}
 
-      {shortcut && (
+      {shortcut && !compact && (
         <span className="ml-auto text-xs opacity-50 flex-shrink-0">{shortcut}</span>
       )}
 

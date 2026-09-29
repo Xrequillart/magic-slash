@@ -131,6 +131,13 @@ const PROPS: PropRow[] = [
       'Folded away: it slides out by its own width rather than unmounting, so the agents are where they were when it comes back.',
   },
   {
+    name: 'compact',
+    type: 'boolean',
+    fallback: 'false',
+    description:
+      'Icons only, at 56px: the menu as its marks, each agent as its state (a robot when it has none), and a rule in place of the list header and its controls. The usage card and the build number have no mark to shrink to and are left out. Every name moves to a tooltip.',
+  },
+  {
     name: 'className',
     type: 'string',
     fallback: "''",
@@ -238,6 +245,18 @@ export function SidebarEntry({
             <Sidebar menu={MENU} lists={[list({ agents: GROUPED })]} version="v0.94.2" />
           </Column>
           <Snippet>{`{ id, name, state, heading: { label: 'checkout', color } }`}</Snippet>
+        </Stage>
+      </EntrySection>
+
+      <EntrySection
+        title="Icons only"
+        note="The reader’s choice, on the Application page. The same lists and the same menu: an agent keeps its state glyph and an idle one wears a robot, a heading keeps its tinted glyph, and every name is one hover away."
+      >
+        <Stage theme={theme} className="flex items-start gap-8">
+          <Column>
+            <Sidebar compact menu={MENU} lists={[list({ agents: [...GROUPED, { id: 'idle', name: 'onboarding copy', state: 'idle' }] })]} version="v0.94.2" />
+          </Column>
+          <Snippet>{`<Sidebar compact menu={…} lists={…} />`}</Snippet>
         </Stage>
       </EntrySection>
 

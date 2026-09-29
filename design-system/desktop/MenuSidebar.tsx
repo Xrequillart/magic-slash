@@ -40,15 +40,17 @@ export interface MenuSidebarProps {
    * exactly that: this menu, and the agent list below it.
    */
   ariaLabel?: string
+  /** Every row as its mark alone: see `MenuSidebarItem.compact`. */
+  compact?: boolean
   /** Where the group sits: the column's padding, a margin. Not the gap between rows. */
   className?: string
 }
 
-export function MenuSidebar({ items, ariaLabel, className = '' }: MenuSidebarProps) {
+export function MenuSidebar({ items, ariaLabel, compact = false, className = '' }: MenuSidebarProps) {
   return (
     <nav aria-label={ariaLabel} className={`flex flex-col gap-1 ${className}`.trim()}>
       {items.map(({ id, ...item }) => (
-        <MenuSidebarItem key={id} {...item} />
+        <MenuSidebarItem key={id} compact={compact} {...item} />
       ))}
     </nav>
   )
