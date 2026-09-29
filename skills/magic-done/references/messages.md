@@ -95,6 +95,13 @@ Nettoyage manuel : git worktree remove --force {WORKTREE_PATH}
 
 ## MSG_DONE_SUMMARY
 
+`{next_steps}` (both summaries) is empty for the default flow, which has no link after `done`: the
+closing line follows the ticket or cleanup lines exactly as it always has. When the workflow
+selects a `suggest` link (SKILL.md Step 6), `{next_steps}` is `💡 Next step:` (fr: `💡 Prochaine
+étape :`), one `MSG_WORKFLOW_NEXT_STEP_LINE` per link (`references/workflow.md` §7), and a blank
+line. When an `auto` link will be followed, it is `MSG_WORKFLOW_CHAINING` and a blank line, and the
+closing line is dropped: this agent is not done yet.
+
 ### en
 
 ```text
@@ -106,7 +113,7 @@ Nettoyage manuel : git worktree remove --force {WORKTREE_PATH}
 🎫 Ticket   : {TICKET_STATUS}
 🧹 Cleanup  : {CLEANUP_STATUS}
 
-You can close this agent (⌘W).
+{next_steps}You can close this agent (⌘W).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -122,7 +129,7 @@ You can close this agent (⌘W).
 🎫 Ticket   : {TICKET_STATUS}
 🧹 Nettoyage : {CLEANUP_STATUS}
 
-Tu peux fermer cet agent (⌘W).
+{next_steps}Tu peux fermer cet agent (⌘W).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -146,7 +153,7 @@ Cleanup:
 
 🎫 Ticket: {TICKET_STATUS}
 
-You can close this agent (⌘W).
+{next_steps}You can close this agent (⌘W).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -168,7 +175,7 @@ Nettoyage :
 
 🎫 Ticket : {TICKET_STATUS}
 
-Tu peux fermer cet agent (⌘W).
+{next_steps}Tu peux fermer cet agent (⌘W).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```

@@ -122,6 +122,16 @@ Je poste les {count} commentaire(s) sur la PR #{PR_NUMBER} (ce repository poste 
 
 Drop the confidence line when `review.confidenceScore` is off.
 
+The next-steps block is chosen by the review's **outcome** (SKILL.md Step 11), which follows the
+event actually posted, self-review included: APPROVE is `approved`, REQUEST_CHANGES is
+`changes_requested`, COMMENT is `commented` (so a self-review is always `commented`). When
+nothing was posted there is no outcome: no link is selected and the `{If not posted}` block is
+rendered as is. `{next_steps}` holds one numbered line per link the workflow selected, and this
+skill's own lines around it keep counting (`{n}`). For the default flow, `approved` renders
+`3. Run /magic:done to finalize the task`, `changes_requested` renders `1. Run /magic:resolve to
+address the review comments`, and `commented` renders nothing, so every block reads as it always
+has. A `commented` block with a selected link shows it under the block's own lines.
+
 ### en
 
 ```text
@@ -134,22 +144,23 @@ Drop the confidence line when `review.confidenceScore` is off.
 📊 Result   : {APPROVE / REQUEST_CHANGES / COMMENT / not posted}
 💬 Posted   : {posted} of {drafted} comment(s), {count} to address
 
-{If APPROVE}
+{If approved}
 Next steps:
 1. Wait for CI checks to pass
 2. Merge the PR once approved
-3. Run /magic:done to finalize the task
+{next_steps}
 
-{If REQUEST_CHANGES}
+{If changes_requested}
 Next steps:
-1. Run /magic:resolve to address the review comments
-2. Request a re-review after fixing
+{next_steps}
+{n}. Request a re-review after fixing
 
-{If COMMENT}
+{If commented}
 Next steps:
 1. Consider the suggestions and discuss if needed
 2. Wait for CI checks to pass
 3. Merge the PR once approved
+{next_steps}
 
 {If not posted}
 Nothing was posted on GitHub. The draft above is yours to reuse.
@@ -169,22 +180,23 @@ Nothing was posted on GitHub. The draft above is yours to reuse.
 📊 Résultat : {APPROVE / REQUEST_CHANGES / COMMENT / non postée}
 💬 Postés   : {posted} commentaire(s) sur {drafted}, dont {count} à traiter
 
-{Si APPROVE}
+{Si approved}
 Prochaines étapes :
 1. Attend que les checks CI passent
 2. Merge la PR une fois approuvée
-3. Lance /magic:done pour finaliser la tâche
+{next_steps}
 
-{Si REQUEST_CHANGES}
+{Si changes_requested}
 Prochaines étapes :
-1. Lance /magic:resolve pour corriger les commentaires de review
-2. Demande une re-review après correction
+{next_steps}
+{n}. Demande une re-review après correction
 
-{Si COMMENT}
+{Si commented}
 Prochaines étapes :
 1. Considère les suggestions et discute si besoin
 2. Attend que les checks CI passent
 3. Merge la PR une fois approuvée
+{next_steps}
 
 {Si non postée}
 Rien n'a été posté sur GitHub. Le brouillon ci-dessus reste à ta disposition.

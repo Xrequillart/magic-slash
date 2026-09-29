@@ -20,3 +20,15 @@ Read by `SKILL.md` Step 5.5.3, to populate every placeholder of `MSG_FINAL_SUMMA
 - `{backend_modified}`, `{backend_created}` — same as `{modified_files}`/`{created_files}` but scoped to the backend worktree
 - `{frontend_modified}`, `{frontend_created}` — same but scoped to the frontend worktree
 - `{interaction}` — summary of how the backend and frontend changes interact (e.g., new API endpoints consumed by the frontend); derive from the cross-repo interactions noted in the step 5.1 exploration and the actual changes made
+
+**Next steps** (both messages):
+- `{next_steps}` — the workflow's next steps, computed at the end of the run as `references/workflow.md` §4 says, from the links Step 0.1 read. The "Test the changes" bullet above it is this skill's own and always stays. Each selected link renders as one bullet, in these words:
+
+  | Link to | en | fr |
+  | --- | --- | --- |
+  | `magic-commit` (single repo) | `   • Run /magic:commit to create a commit` | `   • Lance /magic:commit pour créer un commit` |
+  | `magic-commit` (full-stack) | `   • Run /magic:commit in each worktree to create commits` | `   • Lance /magic:commit dans chaque worktree pour créer les commits` |
+  | `magic-pr` | `   • Run /magic:pr to create a Pull Request` | `   • Lance /magic:pr pour créer une Pull Request` |
+  | any other skill | `MSG_WORKFLOW_NEXT_STEP_LINE` (`references/workflow.md` §7) | same |
+
+  A link to `magic-commit` is followed by one bullet per `suggest` link **leaving the commit node** in the graph (for the default flow, `/magic:pr`): committing and opening the Pull Request are one gesture once the implementation is done, and the summary has always named both. Never list the same skill twice. With no selected link, `{next_steps}` is empty and the block keeps only the "Test the changes" bullet.

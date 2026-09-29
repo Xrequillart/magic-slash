@@ -51,6 +51,7 @@ unactionable and say so rather than inventing a change for it.
 ## References
 
 - `references/messages.md` — All bilingual message templates (EN/FR). Read relevant sections as needed (not the whole file at once).
+- `references/workflow.md` — The workflow protocol, shared byte for byte by every cycle skill: the Step 0 `/workflow` read, what its fields mean, and how the end of the skill picks its next step. Read §2 in Step 0, on every run; read §4 in Step 11.
 
 ## Configuration
 
@@ -105,6 +106,8 @@ fi
 ```
 
 If the config could not be read, the app is not running: display `MSG_APP_NOT_RUNNING` and stop. Never proceed on a guessed config.
+
+Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-review`. It fails the same way: `APP_NOT_RUNNING` means `MSG_APP_NOT_RUNNING` and stop, with no fallback. Keep the graph, this skill's node and its possible next steps in context for Step 11. The flow changes nothing in between: every step, question and guard below runs as written, the Step 8 question included. This node is the review node on every pass of a review and resolve loop, and carries nothing from the pass before.
 
 ## Step 1: Detect the ticket
 
@@ -309,7 +312,28 @@ Based on the review result, update the status:
 
 Display `MSG_REVIEW_SUMMARY` based on `.languages.discussion`.
 
-Include the conditional "Next steps" block based on the review result (APPROVE, REQUEST_CHANGES, COMMENT, or not posted) as defined in the message template.
+Include the conditional "Next steps" block based on the review's **outcome**, as defined in the message template, and fill its `{next_steps}` from the workflow (`references/workflow.md` §4) with this outcome table:
+
+| Result of this run | Outcome |
+| --- | --- |
+| The review was posted with the APPROVE event | `approved` |
+| The review was posted with the REQUEST_CHANGES event | `changes_requested` |
+| The review was posted with the COMMENT event | `commented` |
+| The user chose **Post nothing** (Step 8) | no outcome: select no link (`references/workflow.md` §4) and render the template's `{If not posted}` block as is |
+| The run stopped on an error it could not resolve (no PR found, the review could not be submitted) | `failed`, with the reason |
+
+**The outcome follows the event actually posted to GitHub, self-review included.** A self-review posts COMMENT, because GitHub refuses APPROVE and REQUEST_CHANGES on your own PR, so its outcome is `commented` even when it kept a `to address` comment. This is deliberate: the next steps of the default flow must stay exactly the ones this skill has always shown for the event posted.
+
+Each selected `suggest` link is one numbered line, in these words (any other target uses `MSG_WORKFLOW_NEXT_STEP_LINE` from `references/workflow.md` §7):
+
+| Link to | en | fr |
+| --- | --- | --- |
+| `magic-done` | `Run /magic:done to finalize the task` | `Lance /magic:done pour finaliser la tâche` |
+| `magic-resolve` | `Run /magic:resolve to address the review comments` | `Lance /magic:resolve pour corriger les commentaires de review` |
+
+For the default flow this renders exactly the blocks of the template: `/magic:done` after an approval, `/magic:resolve` on changes requested, nothing added on a comment, and the `{If not posted}` text alone when nothing was posted.
+
+An `auto` link the workflow selected (none in the default flow) is not followed here: only after Step 14 has recorded the run, in the same session.
 
 ## Step 12: Multi-repo support (if applicable)
 
@@ -342,7 +366,7 @@ If the review was posted, the ticket is a Jira ticket and `commentOnPR` is not `
 
 ## Step 14: Record the run
 
-**Always run this, as the very last thing you do — including when the workflow stopped early.**
+**Always run this, as the very last thing of this skill's own work — including when the workflow stopped early.** Only the `auto` link Step 11 selected, if any, comes after it (`references/workflow.md` §4).
 
 Magic Slash opened a run record when this skill started. This closes it. Without it the run stays open and is counted as *abandoned*, so finished work disappears from the usage statistics.
 

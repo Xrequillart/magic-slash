@@ -913,8 +913,7 @@ Repli en mode `reference` : le résumé pointera vers la source documentée à l
 
 💡 Next steps:
    • Test the changes (see "How to test" above)
-   • Run /commit to create a commit
-   • Run /pr to create a Pull Request
+{next_steps}
 ```
 
 ### fr
@@ -952,8 +951,7 @@ Repli en mode `reference` : le résumé pointera vers la source documentée à l
 
 💡 Prochaines étapes :
    • Teste les changements (voir « Comment tester » ci-dessus)
-   • Lance /commit pour créer un commit
-   • Lance /pr pour créer une Pull Request
+{next_steps}
 ```
 
 ## MSG_FINAL_SUMMARY_FULLSTACK
@@ -1006,8 +1004,7 @@ Repli en mode `reference` : le résumé pointera vers la source documentée à l
 
 💡 Next steps:
    • Test the changes in both repos (see "How to test" above)
-   • Run /commit in each worktree to create commits
-   • Run /pr to create a Pull Request
+{next_steps}
 ```
 
 ### fr
@@ -1058,8 +1055,7 @@ Repli en mode `reference` : le résumé pointera vers la source documentée à l
 
 💡 Prochaines étapes :
    • Teste les changements dans les deux repos (voir « Comment tester » ci-dessus)
-   • Lance /commit dans chaque worktree pour créer les commits
-   • Lance /pr pour créer une Pull Request
+{next_steps}
 ```
 
 ## MSG_AUTOFIX

@@ -100,6 +100,8 @@ fi
 
 If the config could not be read, the app is not running: display **`MSG_APP_NOT_RUNNING`** and stop. Never proceed on a guessed config.
 
+Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-pr`. It fails the same way: `APP_NOT_RUNNING` means **`MSG_APP_NOT_RUNNING`** and stop, with no fallback. Keep the graph, this skill's node and its possible next steps in context: Step 7.3 reads them to word the watch announcement, Step 7.4.5 to decide whether review feedback chains into another skill, and Step 8.5 to pick the next step. Nothing else changes: every step, question and guard below runs as written.
+
 ### 0.1: Extract the ticket ID from the current worktree
 
 Get the current directory name and extract the ticket ID:
@@ -374,8 +376,8 @@ Display **`MSG_SUMMARY`**, substituting `{branch}`, `{PR_URL}`, `{PR_NUMBER}`, `
 
 `MSG_SUMMARY` has two variants — pick based on `pullRequest.watchCI` (from the config loaded in the Configuration step, default `true`), taking into account the skip conditions listed in Step 7.4.0:
 
-- **`watchCI` is `true`**: use the **watch** variant, whose next-steps announce that the watch phase is starting. Then continue to Step 7.4.
-- **`watchCI` is `false`**: use the **manual** variant (the classic "wait for CI, then run /magic:review" list), then stop here — skip Step 7.4 entirely. The preview-URL backfill does not run on this path (it needs a settled deployment, and nothing here waits for one), so the test scenarios stay local-only.
+- **`watchCI` is `true`**: use the **watch** variant, whose next-steps announce that the watch phase is starting. Its `{review_feedback_line}` says whether review feedback will be addressed on its own: it will only when the Step 0.0 links hold an `auto` link from this node on `review_comments` (the default flow has one, to `magic-resolve`). Then continue to Step 7.4.
+- **`watchCI` is `false`**: use the **manual** variant (the classic "wait for CI, then run /magic:review" list), whose `{next_steps}` renders the links of the outcome `pr_created` as Step 8.5 says (the outcome is already known here), then stop here — skip Step 7.4 entirely. The preview-URL backfill does not run on this path (it needs a settled deployment, and nothing here waits for one), so the test scenarios stay local-only.
 
 ## Step 7.4: Watch the CI and handle review feedback
 
@@ -431,7 +433,7 @@ When `checks.state` is `all_passed` (or `no_checks`) **and** `review.actionable_
    [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&status=CI%20green" > /dev/null 2>&1 || true
    ```
 
-3. **Stop.** The work is done — do not chain into `/magic:review` or `/magic:resolve`, and do not ask the user for anything else.
+3. **Stop.** The work is done — do not chain into `/magic:review` or `/magic:resolve`, and do not ask the user for anything else. The outcome is `ci_green` (Step 8.5), on which the default flow has no link: the run ends on `MSG_CI_ALL_GREEN`, as it always has. Only a link the Step 0.0 payload declares on `ci_green` may add a next step, and only at Step 8.5, never from here.
 
 ### 7.4.4: Checks failed — auto-fix loop
 
@@ -445,10 +447,12 @@ Then run up to **3** fix rounds (fix, validate locally, commit, push, re-resolve
 
 ### 7.4.5: Review feedback — chain into /magic:resolve
 
-When the checks are settled (green, or failures explicitly handed back to the user) **and** `review.actionable_count` is greater than `0`:
+When the checks are settled (green, or failures explicitly handed back to the user) **and** `review.actionable_count` is greater than `0`, the outcome is `review_comments`. What happens next is decided by the Step 0.0 payload, not by this step: read `references/watch-actions.md`, section "Step 7.4.5", and follow it.
 
-1. Display **`MSG_REVIEW_COMMENTS_FOUND`**, then chain into the resolve workflow **without asking the user first**: read `references/watch-actions.md`, section "Step 7.4.5", and follow it
-2. After resolve pushes, re-resolve `$HEAD_SHA`, re-launch the watcher once and re-evaluate from Step 7.4.2.5. Do **not** start another resolve cycle from this skill: if a second round of comments arrives, report it and let the user decide.
+1. **The payload has an `auto` link from this node on `review_comments`** (the default flow's, to `magic-resolve`): display **`MSG_REVIEW_COMMENTS_FOUND`** in its **chain** variant, then chain into that skill **without asking the user first**. After resolve pushes, re-resolve `$HEAD_SHA`, re-launch the watcher once and re-evaluate from Step 7.4.2.5. Do **not** start another resolve cycle from this skill: if a second round of comments arrives, report it and let the user decide.
+2. **It has none** (a custom flow that only suggests, or links nowhere, on `review_comments`): display **`MSG_REVIEW_COMMENTS_FOUND`** in its **suggest** variant, which lists the comments and the linked skills to run, and do not chain. Nothing was pushed, so there is nothing to watch again: the watch phase ends here.
+
+This is the one chain this skill takes in the middle of its own work (`references/workflow.md` §4, last paragraph): what follows it, the re-watch, is still this skill's. Step 8.5 never takes the same link a second time.
 
 ### 7.4.6: Timeout or watcher error
 
@@ -465,11 +469,34 @@ If you created PRs in multiple worktrees, display **`MSG_MULTI_REPO_FINAL`**, su
 
 In multi-repo mode, Step 7.4 does **not** run inside each worktree cycle: create every PR first, update the ticket once, display this summary, **then** watch each PR. The order is in `references/multi-repo.md`, section "Step 8: Multi-repo and the watch phase".
 
+## Step 8.5: Next step
+
+Pick the outcome and the links as `references/workflow.md` §4 says, with this table:
+
+| Result of this run | Outcome |
+| --- | --- |
+| The PR was created and the watch phase did not run (`watchCI` is `false`, or a Step 7.4.0 skip condition held) | `pr_created` |
+| The watcher reported actionable review feedback (Step 7.4.5 was reached, on any pass) | `review_comments` |
+| The watcher found everything green with no feedback (Step 7.4.3), after any auto-fix rounds, and Step 7.4.5 was never reached | `ci_green` |
+| The watch timed out or errored with no feedback to handle (Step 7.4.6), or the CI fix loop gave up (`MSG_CI_FIX_EXHAUSTED`) | none: no link, the message shown keeps its own closing text |
+| Step 1.1 found an existing PR and the user chose to stop | none: no link |
+| The run stopped on an error it could not resolve | `failed`, with the reason |
+
+In multi-repo mode, the run has one outcome: `review_comments` if any PR reached Step 7.4.5, else `ci_green` if every watched PR was green, else `pr_created` when the watch did not run.
+
+Where each outcome renders:
+
+- `pr_created`: `{next_steps}` in the **manual** variant of `MSG_SUMMARY` (Step 7.3), one numbered line per `suggest` link in `MSG_WORKFLOW_NEXT_STEP_LINE` wording (for the default flow, `1. Run /magic:review to perform a code review`), followed by this skill's own lines, numbered on.
+- `review_comments`: already handled in Step 7.4.5, which chained or suggested from these same links. Nothing is rendered or followed here.
+- `ci_green`: nothing for the default flow. A link the payload declares on `ci_green` is shown as `MSG_NEXT_STEPS` after `MSG_CI_ALL_GREEN`.
+
+Then Step 9. An `auto` link left to follow (only possible on `pr_created` or `ci_green`, from a custom flow) is followed only after Step 9 has recorded the run.
+
 ---
 
 ## Step 9: Record the run
 
-**Always run this, as the very last thing you do — including when the workflow stopped early.**
+**Always run this, as the very last thing of this skill's own work — including when the workflow stopped early.** Only an `auto` link Step 8.5 left to follow, if any, comes after it (`references/workflow.md` §4). The one Step 7.4.5 takes is not such a link: it runs inside the watch phase, before this step.
 
 Magic Slash opened a run record when this skill started. This closes it. Without it the run stays open and is counted as *abandoned*, so finished work disappears from the usage statistics.
 
@@ -496,4 +523,5 @@ printf '{"type":"end","skill":"magic-pr","agentId":"%s","outcome":"success","occ
 - `references/pr-body-checks.md`: The seven body checks and the failure procedure. Read in Step 6.2.1 on every run.
 - `references/ticket-update.md`: The MCP calls for the Jira transition and comment, and for the GitHub issue comment and labels. Read in Step 7.1 or Step 7.2, only when a ticket is linked.
 - `references/watch-actions.md`: The main-session side of the watch phase: the watcher prompt, the auto-fix rounds, the failures never auto-fixed, and the chain into `/magic:resolve`. Read in Step 7.4.2, and again in Step 7.4.4 or 7.4.5 when they apply.
+- `references/workflow.md`: The workflow protocol, shared byte for byte by every cycle skill: the Step 0 `/workflow` read, what its fields mean, and how the end of the skill picks its next step. Read §2 in Step 0.0, on every run; read §4 in Step 7.4.5 and Step 8.5.
 - `references/preview-url.md` — Preview-URL discovery (deployments API, bot-comment fallback), the console-URL rejection rules, the multi-candidate question, and the write procedure for what this feature owns: the one preview bullet and the route links of the test steps — create them, re-host them in place when the head commit's preview changed, revert them when no preview may be named, or leave the body untouched. Read before Step 7.4.2.5.

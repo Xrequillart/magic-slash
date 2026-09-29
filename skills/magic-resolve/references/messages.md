@@ -562,6 +562,11 @@ encore été affiché.
 
 ## MSG_SUMMARY
 
+`{next_steps}` holds one numbered line per link the workflow selected (SKILL.md Step 9), numbered
+from 1 in `{IF_RE_REQUEST_OK}` and from 2 in `{IF_RE_REQUEST_FAIL}`. For the default flow it is
+the `/magic:review` self-review line, so both blocks read as they always have. With no link,
+drop `{IF_RE_REQUEST_OK}` entirely, and keep only its own first line in `{IF_RE_REQUEST_FAIL}`.
+
 ### en
 
 ```text
@@ -589,13 +594,13 @@ Changes have been pushed.
 
 {IF_RE_REQUEST_OK}
 Next step:
-1. Run /magic:review for a self-review of the fixes
+{next_steps}
 {/IF_RE_REQUEST_OK}
 
 {IF_RE_REQUEST_FAIL}
 Next steps:
 1. Request a re-review from the reviewer
-2. Run /magic:review for a self-review of the fixes
+{next_steps}
 {/IF_RE_REQUEST_FAIL}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -628,13 +633,13 @@ Les changements ont été pushés.
 
 {IF_RE_REQUEST_OK}
 Prochaine étape :
-1. Lance /magic:review pour une auto-review des corrections
+{next_steps}
 {/IF_RE_REQUEST_OK}
 
 {IF_RE_REQUEST_FAIL}
 Prochaines étapes :
 1. Demande une re-review au reviewer
-2. Lance /magic:review pour une auto-review des corrections
+{next_steps}
 {/IF_RE_REQUEST_FAIL}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
