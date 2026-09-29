@@ -22,6 +22,7 @@ import { LanguageCardEntry } from './entries/LanguageCardEntry'
 import { SettingRowEntry } from './entries/SettingRowEntry'
 import { LivePillEntry } from './entries/LivePillEntry'
 import { MenuBarPanelEntry } from './entries/MenuBarPanelEntry'
+import { SidebarPagesEditorEntry } from './entries/SidebarPagesEditorEntry'
 import { SettingsCardEntry } from './entries/SettingsCardEntry'
 import { DisclosureCardEntry } from './entries/DisclosureCardEntry'
 import { HealthCardEntry } from './entries/HealthCardEntry'
@@ -198,6 +199,7 @@ const ENTRIES: Record<
   settingrow: SettingRowEntry,
   livepill: LivePillEntry,
   menubarpanel: MenuBarPanelEntry,
+  sidebarpageseditor: SidebarPagesEditorEntry,
   settingscard: SettingsCardEntry,
   disclosurecard: DisclosureCardEntry,
   healthcard: HealthCardEntry,

@@ -259,6 +259,8 @@ export type {
 export { QuickSettingsEditor } from './QuickSettingsEditor'
 export { placeQuickSetting } from './quickSettingsOrder'
 export type { QuickSettingsEditorItem, QuickSettingsEditorProps } from './QuickSettingsEditor'
+export { SidebarPagesEditor } from './SidebarPagesEditor'
+export type { SidebarPagesEditorItem, SidebarPagesEditorProps } from './SidebarPagesEditor'
 export { Select } from './Select'
 export type { SelectMarker, SelectOption, SelectProps, SelectSize } from './Select'
 export { useAnchoredPanel } from './useAnchoredPanel'

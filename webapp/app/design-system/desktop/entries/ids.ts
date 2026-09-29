@@ -101,6 +101,7 @@ export type EntryId =
   | 'agent'
   | 'livepill'
   | 'menubarpanel'
+  | 'sidebarpageseditor'
   | 'contextagentcard'
   | 'headerrepocard'
   | 'menusidebar'
@@ -229,6 +230,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   agent: 'Agent',
   livepill: 'LivePill',
   menubarpanel: 'MenuBarPanel',
+  sidebarpageseditor: 'SidebarPagesEditor',
 }
 
 /**
@@ -401,6 +403,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   agent: ['loader', 'icon', 'text'],
   livepill: [],
   menubarpanel: ['agent', 'buttonicon', 'icon', 'label', 'menusidebaritem', 'text'],
+  sidebarpageseditor: ['card', 'icon', 'select', 'text'],
   accountcard: ['fieldtable', 'avatar', 'banner', 'button', 'icon', 'text'],
 }
 
@@ -597,4 +600,5 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   agent: 'What it is called, and what it is doing',
   livepill: 'Something is happening right now',
   menubarpanel: 'The window that drops from the menu bar',
+  sidebarpageseditor: 'Which pages the sidebar draws, in order',
 }
