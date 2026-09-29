@@ -994,3 +994,68 @@ from a different deployments list, so the answer is never carried over. The aski
 per PR — never asked when the body is already right, never asked when a single Phase 1 candidate
 settles it, at most once per head commit otherwise — and each worktree has its own PR, so it
 applies independently in each.
+
+## Rounds and outcomes, as the caller sees them
+
+Moved from `SKILL.md` Step 7.4.2.5, where the caller runs this procedure.
+
+This runs in the **main session**, never inside the watcher — the watcher stays a read-only
+observer (Step 7.4.2). It is a post-creation backfill, not a detection phase: the PR already
+exists, so this asks GitHub what got deployed for `$HEAD_SHA` and, if the project publishes a
+per-PR preview, makes the PR body name that URL so the reviewer can test the actual deployed
+code instead of rebuilding locally.
+
+`$HEAD_SHA` must be the **current** head of the branch, re-resolved via Step 7.4.1 on every entry
+— not the value captured on the first pass. A stale SHA makes this step describe a commit the PR
+no longer has, which is the same wrong-code failure the whole design exists to avoid.
+
+Immediately after the watcher returns its report — regardless of what it says (green, failed,
+timed out, or errored) — read `references/preview-url.md` and follow it exactly to attempt this.
+Do not improvise the discovery logic.
+
+Pass `checks.deploy_checks` from that report through as the reference file's `DEPLOY_CHECKS`
+prerequisite (empty when the report is missing or unparseable): it is what tells the procedure
+whether the bot-comment fallback is worth a call.
+
+The step owns two things inside the testing section, and nothing else in the body: **exactly one
+bullet** — the `Preview:` / `Aperçu :` one — for the whole life of the PR, not one per round, and
+**the route links of the numbered steps**, built from the inline-code paths Step 6.1 wrote
+(`/admin/dashboard` → `[/admin/dashboard](https://<preview>/admin/dashboard)`). Because the head
+commit moves between rounds, the preview URL legitimately changes: the step keeps both current by
+**replacing** the bullet, never adding a second one, and re-hosting the links in the same write.
+When no preview may be named, the bullet goes and the links revert to bare paths — the link text
+is the original path, so nothing is lost.
+
+When several previews were deployed for the same commit (a monorepo, one per app), the reference
+file's Phase 6 asks the user which one to write, with `MSG_PREVIEW_URL_MULTIPLE` — unless the line
+already names one of them, in which case nothing is asked and nothing is written.
+
+Run this every time the watcher concludes: once here, again after each auto-fix push
+(Step 7.4.4 re-launches the watcher and returns here first), and again after the post-resolve
+re-check (Step 7.4.5) — 1 + up to 3 + 1 = up to **5** rounds per PR, each of which may be a
+different head commit with a different preview URL.
+
+What makes those rounds safe is not "write only once" but the reference file's **four-outcome**
+classification (Phase 5, which reads and classifies the body *before* Phase 6's question):
+
+- the owned bullet already names one of this round's candidates, and the step routes already point
+  at it → **no-op**: no question, no write, no chat output, body byte-identical. This is the common
+  repeat case (3 `gh` calls, nothing said)
+- the bullet is right but a step is not — a route added by a `/magic:resolve` push is still a bare
+  path, or a link still names an older base → **routes rewritten**, bullet byte-identical, silently
+- the bullet exists but names a URL that is none of this head commit's candidates → **replaced in
+  place** (`MSG_PREVIEW_URL_UPDATED`), never appended — and with a single candidate, without asking;
+  every route link is re-hosted to the new base in the same write
+- no bullet yet → **created** (`MSG_PREVIEW_URL_ADDED`), and the routes are linked against it
+- the bullet is out of date and no URL may be written (the user answered "none", or the question
+  could not be asked at all) → the bullet is **removed**, the route links **revert** to bare paths,
+  and nothing is added, silently: a link pointing at code the PR no longer has is worse than none
+
+So the user is never asked when the body is already right and never asked when a single deployment
+settles it; only a multi-preview repo whose head commit moved can be asked again, at most once per
+head commit (see Phase 6 of the reference file).
+
+If nothing is found (by far the most common case — most projects have no preview deployment),
+say nothing and do nothing: no chat message, no body edit — and an existing bullet is left exactly
+as it is, since a round with no candidate has no evidence against it. Then continue to Step 7.4.3
+as normal.
