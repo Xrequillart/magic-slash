@@ -2,6 +2,7 @@ import type { Config } from '../../types'
 import { applySettingsRow, SETTINGS_KEYS, type UserSettingsRow } from '../store/user-settings-mapper'
 import { applyAppearanceFromConfig } from '../store/hydrate'
 import { hasConfigCache, hydrateConfig, installRemoteConfig, readConfig } from './config'
+import { hydrateWorkflows } from '../workflow/workflows'
 
 // ---------------------------------------------------------------------------
 // Applies configuration changes that originate ELSEWHERE — the web app, or the
@@ -161,7 +162,9 @@ async function runRefresh(): Promise<void> {
   try {
     if (!hasConfigCache()) return
     const prev = readConfig()
-    const next = await hydrateConfig()
+    // The repositories' workflows ride the same reload, in parallel and whether or not
+    // the config itself moved: nothing else would ever refresh them. Never rejects.
+    const [next] = await Promise.all([hydrateConfig(), hydrateWorkflows()])
     // Same object means hydrateConfig discarded its load — either it failed, or a
     // local edit landed mid-flight and is the fresher value. Nothing was adopted.
     if (next === prev) return
