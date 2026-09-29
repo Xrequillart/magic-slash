@@ -171,7 +171,8 @@ export function Agent({
         onDragStart={onDragStart}
         title={title ?? fullName}
         aria-label={fullName}
-        className={`w-full flex items-center justify-center py-2 rounded-lg border-none transition-all
+        // A 40px square, like the compact menu rows above it: see `MenuSidebarItem`.
+        className={`mx-auto h-10 w-10 flex items-center justify-center rounded-lg border-none transition-all
           ${draggable ? 'cursor-pointer active:cursor-grab' : 'cursor-pointer'}
           ${active ? `${spec.ground} text-ink` : spec.hover}
           ${className}`}

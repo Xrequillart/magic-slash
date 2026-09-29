@@ -118,7 +118,9 @@ export function MenuSidebarItem({
       // `ButtonIcon.active` is a control that is switched on. The two are read out
       // differently, and only one of them is true here.
       aria-current={active ? 'page' : undefined}
-      className={`relative w-full flex items-center ${compact ? 'justify-center' : 'justify-start'} gap-2 px-2 py-2 rounded-lg
+      // Compact: a 40px SQUARE, the full width the 56px column leaves inside its `px-2`, and
+      // centred, rather than the wide row's padding around a lone glyph, which is a rectangle.
+      className={`relative flex items-center ${compact ? 'mx-auto h-10 w-10 justify-center' : 'w-full justify-start px-2 py-2'} gap-2 rounded-lg
         text-xs font-medium border-none cursor-pointer transition-all
         ${
           alert
