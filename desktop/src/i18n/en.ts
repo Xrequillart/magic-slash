@@ -20,7 +20,7 @@ export const en = {
   'menu.actualSize': 'Actual Size',
   'menu.zoomIn': 'Zoom In',
   'menu.zoomOut': 'Zoom Out',
-  'menu.newAgent': 'New Agent',
+  'menu.newAgent': 'New Session',
   'menu.tasks': 'Tasks',
   'menu.skills': 'Skills',
   'menu.plans': 'Plans',
@@ -48,9 +48,9 @@ export const en = {
   // happened, the body says which piece of work it happened to. Nothing here may
   // interpolate a URL or a raw enum value — see notifications/pr-review-message.ts
   // for how a review status becomes one of the sentences below.
-  'notification.waiting.title': 'An agent is waiting for you',
+  'notification.waiting.title': 'A session is waiting for you',
   'notification.waiting.body': '{subject} needs your answer to continue',
-  'notification.completed.title': 'An agent has finished',
+  'notification.completed.title': 'A session has finished',
   'notification.completed.body': '{subject} finished its task',
   /**
    * How an agent is named in the two bodies above — see notifications/agent-message.ts.
@@ -60,7 +60,7 @@ export const en = {
    */
   'notification.agent.subject.named': '"{name}"',
   'notification.agent.subject.namedWithRepo': '"{name}" ({repo})',
-  'notification.agent.subject.unknown': 'An agent',
+  'notification.agent.subject.unknown': 'A session',
   'notification.prReview.approved.title': 'Pull request approved',
   'notification.prReview.approved.body': '{subject} was approved',
   'notification.prReview.approved.bodyNamed': '{subject} was approved by {reviewer}',
@@ -77,7 +77,7 @@ export const en = {
   'notification.prReview.subject.prOnly': 'PR #{number}',
   'notification.prReview.subject.unknown': 'your pull request',
   'notification.pickup.title': 'A colleague picked up {ticket}',
-  'notification.pickup.body': 'A teammate is now working on {ticket} — you have an agent on it too',
+  'notification.pickup.body': 'A teammate is now working on {ticket} — you have a session on it too',
 
   // ── Daily team digest ────────────────────────────────────────────────────
   // The clauses are whole sentences fragments rather than "{count} PR(s)": the
@@ -118,7 +118,7 @@ export const en = {
   'settings.tab.quickLaunch': 'Quick Launch',
   'settings.tab.splitView': 'Split view',
   'settings.tab.profile': 'Profile',
-  'settings.tab.agents': 'Agents',
+  'settings.tab.agents': 'Sessions',
   'settings.tab.codeReviews': 'Code & reviews',
   'settings.tab.shortcuts': 'Shortcuts',
   'settings.tab.about': 'About',
@@ -138,7 +138,7 @@ export const en = {
   // ── Title bar (terminal chrome) ──────────────────────────────────────────
   'titlebar.normalView': 'Normal',
   'titlebar.splitView': 'Split view',
-  'titlebar.toggleAgentsList': 'Toggle agents list (⌘B)',
+  'titlebar.toggleAgentsList': 'Toggle sessions list (⌘B)',
   'titlebar.normalViewTitle': 'Normal view (⌘/)',
   'titlebar.splitViewTitle': 'Split view (⌘/)',
   'titlebar.info': 'Info',
@@ -177,11 +177,11 @@ export const en = {
   // The machine's setup, in two words: a 3-point card has no room for the page's sentences.
 
   // ── Left sidebar ─────────────────────────────────────────────────────────
-  'sidebar.newAgent': 'New agent',
+  'sidebar.newAgent': 'New session',
   // The same action as a compact chip on the AGENTS header, where there is no room
   // for the visible shortcut hint the full-width entries carry — so the shortcut
   // moves into the tooltip and the accessible name.
-  'sidebar.newAgentShortcut': 'New agent ({shortcut})',
+  'sidebar.newAgentShortcut': 'New session ({shortcut})',
   'sidebar.skills': 'Skills',
   'sidebar.tasks': 'Tasks',
   /** Names the menu landmark — the sidebar has two, this one and the agent list. */
@@ -190,11 +190,11 @@ export const en = {
   'sidebar.settings': 'Settings',
   'sidebar.login': 'Login / Sign up',
   'sidebar.accountFallback': 'Account',
-  'sidebar.agents': 'Agents',
+  'sidebar.agents': 'Sessions',
   // The sort control on the AGENTS header. Icon only, so the current mode is named in
   // the tooltip and the accessible name — and each option carries the one line that
   // says what it costs, since two of the three let the list move under the cursor.
-  'sidebar.sort.title': 'Sort agents: {mode}',
+  'sidebar.sort.title': 'Sort sessions: {mode}',
   'sidebar.sort.group': 'Sort by',
   'sidebar.sort.recent': 'Newest first',
   'sidebar.sort.status': 'By status',
@@ -206,8 +206,8 @@ export const en = {
   'sidebar.needsAttention': 'Needs attention',
   'sidebar.paneLeft': 'Left',
   'sidebar.paneRight': 'Right',
-  'sidebar.empty': 'No agents yet. Click “New agent” to start.',
-  'sidebar.dropAgents': 'Drop agents here',
+  'sidebar.empty': 'No sessions yet. Click “New session” to start.',
+  'sidebar.dropAgents': 'Drop sessions here',
 
   // ── Claude plan usage gauges ─────────────────────────────────────────────
   // The reset countdown is split per unit rather than assembled from a suffix:
@@ -223,7 +223,7 @@ export const en = {
   'usage.weeklyShort': 'weekly',
   'usage.claudeAccount': 'Claude account',
   'usage.noData': 'No usage data',
-  'usage.noDataHint': 'No usage data yet — Claude.ai Pro/Max after the first agent activity.',
+  'usage.noDataHint': 'No usage data yet — Claude.ai Pro/Max after the first session activity.',
   'usage.expand': 'Expand',
   'usage.minimize': 'Minimize',
   // Compact token magnitudes. Suffixes, not words — but French abbreviates a
@@ -267,8 +267,8 @@ export const en = {
   'settings.repos.connected': 'Connected',
   'settings.repos.noRemote': 'No remote',
   'settings.repos.noLocalFolder': 'No local folder — click to set it',
-  'settings.repos.agents.one': '{count} agent',
-  'settings.repos.agents.other': '{count} agents',
+  'settings.repos.agents.one': '{count} session',
+  'settings.repos.agents.other': '{count} sessions',
 
   // ── Settings → Claude Code ───────────────────────────────────────────────
   'settings.claude.account': 'Account',
@@ -280,7 +280,7 @@ export const en = {
 
   'settings.launchMode.section': 'Launch mode',
   'settings.launchMode.label': 'Permission mode',
-  'settings.launchMode.help': 'Controls the level of autonomy for all Claude Code agents',
+  'settings.launchMode.help': 'Controls the level of autonomy for all Claude Code sessions',
   'settings.launchMode.plan': 'Plan',
   'settings.launchMode.plan.help': 'Read-only — Claude explores and analyzes but never modifies anything',
   'settings.launchMode.default': 'Standard',
@@ -298,7 +298,7 @@ export const en = {
   'settings.claude.usageCard.section': 'Usage card',
   'settings.rate.section': 'Rate usage',
   'settings.rate.empty':
-    'No live rate-limit data yet — available for Claude.ai Pro/Max after the first agent activity.',
+    'No live rate-limit data yet — available for Claude.ai Pro/Max after the first session activity.',
 
   'settings.spend.section': 'Spend & tokens',
   'settings.spend.tokens': 'Tokens',
@@ -314,10 +314,10 @@ export const en = {
   'settings.application.usageLogs.section': 'Activity recording',
   'settings.application.usageLogs.label': 'Share my activity with my team',
   'settings.application.usageLogs.help':
-    'On by default, and yours to turn off at any time. What you do with your agents is sent to Magic Slash Cloud so your team’s dashboard reflects your work. Turning it off stops new records; what was already sent is kept.',
+    'On by default, and yours to turn off at any time. What you do with your sessions is sent to Magic Slash Cloud so your team’s dashboard reflects your work. Turning it off stops new records; what was already sent is kept.',
   'settings.application.usageLogs.collected': 'Collected',
   'settings.application.usageLogs.excluded': 'Never collected',
-  'settings.application.usageLogs.collected.activity': 'Agent activity: tickets, commits, PRs, reviews',
+  'settings.application.usageLogs.collected.activity': 'Session activity: tickets, commits, PRs, reviews',
   'settings.application.usageLogs.collected.skills':
     'The skills you run (/magic:start, /magic:pr, …), how long each run takes and how it ended',
   'settings.application.usageLogs.collected.session':
@@ -332,7 +332,7 @@ export const en = {
   'settings.application.usageLogs.footnote':
     'Every member of your organization can see these figures per person on the Team page.',
   'settings.application.usageLogs.footnote.agents':
-    'Whatever this setting says, your agents (name, branch, ticket, repositories) sync to your team — that is what powers the live view.',
+    'Whatever this setting says, your sessions (name, branch, ticket, repositories) sync to your team — that is what powers the live view.',
   'settings.application.sidebar.section': 'Sidebar',
   'settings.application.sidebar.label': 'App sidebar',
   'settings.application.sidebar.help': 'Choose which pages the sidebar shows, and in what order.',
@@ -344,7 +344,7 @@ export const en = {
   'settings.application.sidebar.visibility': '{page} visibility',
   'settings.application.sidebar.footnote': 'Drag a page to move it, or focus its handle and use the arrow keys. A hidden page keeps its keyboard shortcut.',
   'settings.application.sidebar.compact.label': 'Icons only',
-  'settings.application.sidebar.compact.help': 'A narrow sidebar: pages as their icons, each agent as its status, and a robot for an agent with nothing to report. Names show on hover.',
+  'settings.application.sidebar.compact.help': 'A narrow sidebar: pages as their icons, each session as its status, and a robot for a session with nothing to report. Names show on hover.',
   'settings.application.planSync.section': 'Plan sessions',
   'settings.application.planSync.label': 'Save my plan sessions to the cloud',
   'settings.application.planSync.help':
@@ -352,8 +352,8 @@ export const en = {
   'settings.application.planSync.footnote':
     'Turning it off changes nothing on your machine: the spec file is still written in the repository, and the app still follows it live.',
   'settings.application.planSync.error': 'Failed to save that setting.',
-  'settings.split.newAgentPane.label': 'New agents open in',
-  'settings.split.newAgentPane.help': 'Which pane an agent created with ⌘N, the + button or the File menu lands in.',
+  'settings.split.newAgentPane.label': 'New sessions open in',
+  'settings.split.newAgentPane.help': 'Which pane a session created with ⌘N, the + button or the File menu lands in.',
   'settings.split.newAgentPane.focused': 'The active pane',
   'settings.split.newAgentPane.focused.help': 'The pane you are working in, the one with the keyboard.',
   'settings.split.newAgentPane.left': 'Always left',
@@ -362,16 +362,16 @@ export const en = {
   'settings.split.newAgentPane.right.help': 'New work always starts on the right, whichever pane is active.',
   'settings.application.split.section': 'Split View',
   'settings.application.split.label': 'Enable split view',
-  'settings.application.split.help': 'Display two agents side by side on wide screens',
+  'settings.application.split.help': 'Display two sessions side by side on wide screens',
   // The section is about what a NEW agent looks like; the switch itself is only a
   // fallback, since each agent remembers its own panel from the moment it is toggled.
-  'settings.application.agentDefaults.section': 'New agents',
-  'settings.application.infoSidebar.label': 'Open the info panel on a new agent',
+  'settings.application.agentDefaults.section': 'New sessions',
+  'settings.application.infoSidebar.label': 'Open the info panel on a new session',
   'settings.application.infoSidebar.help':
-    'Each agent then remembers whether you left its panel open or closed',
+    'Each session then remembers whether you left its panel open or closed',
   'settings.application.prWatcher.section': 'PR Review Watcher',
   'settings.application.prWatcher.label': 'Watch PR reviews',
-  'settings.application.prWatcher.help': 'Poll GitHub to track review status on agents’ pull requests',
+  'settings.application.prWatcher.help': 'Poll GitHub to track review status on sessions’ pull requests',
   'settings.application.prWatcher.intervalLabel': 'Polling interval',
   'settings.application.prWatcher.intervalHelp': 'How often the GitHub API is polled',
   'settings.application.prWatcher.interval30s': '30 seconds',
@@ -380,7 +380,7 @@ export const en = {
   'settings.application.prWatcher.interval5m': '5 minutes',
   'settings.application.prWatcher.autoLaunchLabel': 'Auto-launch skills',
   'settings.application.prWatcher.autoLaunchHelp':
-    'Send /magic:resolve or /magic:done directly to the agent’s terminal. Disabled by default for safety.',
+    'Send /magic:resolve or /magic:done directly to the session’s terminal. Disabled by default for safety.',
   // ── Settings → Quick settings ────────────────────────────────────────────
   'settings.quickSettings.section': 'Quick settings',
   'settings.quickSettings.enabled.label': 'Show the quick settings',
@@ -395,17 +395,17 @@ export const en = {
 
   'settings.quickLaunch.launch.section': 'Launch',
   'settings.quickLaunch.repo.label': 'Repository',
-  'settings.quickLaunch.repo.help': 'Where the agent started from Quick Launch works.',
+  'settings.quickLaunch.repo.help': 'Where the session started from Quick Launch works.',
   'settings.quickLaunch.repo.first': 'First repository',
   'settings.quickLaunch.repo.first.help': 'The first repository in your list, whatever the prompt says.',
   'settings.quickLaunch.repo.match': 'Detect from the prompt',
   'settings.quickLaunch.repo.match.help': 'The repository whose name or keywords the prompt mentions. The first one when it mentions none.',
   'settings.quickLaunch.mode.label': 'Launch mode',
-  'settings.quickLaunch.mode.help': 'The permission mode an agent started from Quick Launch runs in.',
-  'settings.quickLaunch.mode.inherit': 'Same as Agents ({mode})',
-  'settings.quickLaunch.mode.inherit.help': 'The launch mode set on the Agents page, like any other new agent.',
+  'settings.quickLaunch.mode.help': 'The permission mode a session started from Quick Launch runs in.',
+  'settings.quickLaunch.mode.inherit': 'Same as Sessions ({mode})',
+  'settings.quickLaunch.mode.inherit.help': 'The launch mode set on the Sessions page, like any other new session.',
   'settings.quickLaunch.background.label': 'Stay in the background',
-  'settings.quickLaunch.background.help': 'Start the agent without bringing Magic Slash forward. You stay where you were, and a notification says when the agent needs you.',
+  'settings.quickLaunch.background.help': 'Start the session without bringing Magic Slash forward. You stay where you were, and a notification says when the session needs you.',
   'settings.application.spotlight.section': 'Spotlight',
   'settings.application.spotlight.label': 'Enable global shortcut',
   'settings.application.spotlight.help': 'Open the Quick Launch panel from anywhere with a keyboard shortcut',
@@ -418,25 +418,25 @@ export const en = {
   'settings.application.background.autoStartHelp': 'Start Magic Slash automatically when you log in',
   'settings.application.background.menuBarLabel': 'Menu bar',
   'settings.application.background.menuBarHelp':
-    'Magic Slash runs in the menu bar. Click the tray icon to see agent status, or right-click for quick actions. Closing the window hides it to the tray.',
+    'Magic Slash runs in the menu bar. Click the tray icon to see session status, or right-click for quick actions. Closing the window hides it to the tray.',
 
   // ── Settings → Shortcuts ─────────────────────────────────────────────────
   'settings.shortcuts.section': 'Keyboard Shortcuts',
-  'settings.shortcuts.duplicateAgent': 'Duplicate agent',
-  'settings.shortcuts.closeAgent': 'Archive agent',
-  'settings.shortcuts.previousAgent': 'Previous agent',
-  'settings.shortcuts.nextAgent': 'Next agent',
-  'settings.shortcuts.toggleAgentInfo': 'Toggle agent info',
-  'settings.shortcuts.toggleAgentsList': 'Toggle agents list',
+  'settings.shortcuts.duplicateAgent': 'Duplicate session',
+  'settings.shortcuts.closeAgent': 'Archive session',
+  'settings.shortcuts.previousAgent': 'Previous session',
+  'settings.shortcuts.nextAgent': 'Next session',
+  'settings.shortcuts.toggleAgentInfo': 'Toggle session info',
+  'settings.shortcuts.toggleAgentsList': 'Toggle sessions list',
   'settings.shortcuts.toggleSplit': 'Toggle Split View',
   'settings.shortcuts.quickLaunch': 'Quick Launch',
-  'settings.shortcuts.help.newAgent': 'Starts a new agent in the focused pane.',
-  'settings.shortcuts.help.duplicateAgent': 'Starts a copy of the selected agent, on the same repository and branch.',
-  'settings.shortcuts.help.closeAgent': 'Archives the selected agent, after asking you to confirm.',
-  'settings.shortcuts.help.previousAgent': 'Selects the agent above in the list.',
-  'settings.shortcuts.help.nextAgent': 'Selects the agent below in the list.',
-  'settings.shortcuts.help.toggleAgentInfo': 'Shows or hides the panel on the right of the selected agent.',
-  'settings.shortcuts.help.toggleAgentsList': 'Shows or hides the list of agents on the left.',
+  'settings.shortcuts.help.newAgent': 'Starts a new session in the focused pane.',
+  'settings.shortcuts.help.duplicateAgent': 'Starts a copy of the selected session, on the same repository and branch.',
+  'settings.shortcuts.help.closeAgent': 'Archives the selected session, after asking you to confirm.',
+  'settings.shortcuts.help.previousAgent': 'Selects the session above in the list.',
+  'settings.shortcuts.help.nextAgent': 'Selects the session below in the list.',
+  'settings.shortcuts.help.toggleAgentInfo': 'Shows or hides the panel on the right of the selected session.',
+  'settings.shortcuts.help.toggleAgentsList': 'Shows or hides the list of sessions on the left.',
   'settings.shortcuts.help.toggleSplit': 'Splits the window in two panes, or brings it back to one.',
   'settings.shortcuts.help.skills': 'Opens the skills page.',
   'settings.shortcuts.help.tasks': 'Opens your Jira and GitHub tasks.',
@@ -609,7 +609,7 @@ export const en = {
   'repo.general.colorHelp': 'Project color in sidebar',
   'repo.general.colorChange': 'Change color',
   'repo.general.colorModalTitle': 'Repository color',
-  'repo.general.colorModalHelp': 'Shown wherever this repository appears — sidebar, tasks and agent cards.',
+  'repo.general.colorModalHelp': 'Shown wherever this repository appears — sidebar, tasks and session cards.',
   'repo.general.setColor': 'Set color {color}',
 
   'repo.tracker.mode': 'Trackers',
@@ -1206,18 +1206,18 @@ export const en = {
 
   // ── Settings → Agents ────────────────────────────────────────────────────
   'settings.agents.model.label': 'Model',
-  'settings.agents.model.help': 'The Claude model a new agent starts on. The list is the one your Claude Code offers in /model.',
+  'settings.agents.model.help': 'The Claude model a new session starts on. The list is the one your Claude Code offers in /model.',
   'settings.agents.model.cliDefault': 'Claude Code default',
   'settings.agents.model.cliDefaultHelp': 'Whatever /model is set to in Claude Code.',
   'settings.agents.model.loading': 'Asking Claude Code for its models…',
   'settings.agents.model.unavailable': 'Claude Code did not answer, so only its default is offered.',
-  'settings.agents.list.section': 'Agents list',
+  'settings.agents.list.section': 'Sessions list',
   'settings.agents.sort.label': 'Order',
-  'settings.agents.sort.help': 'How the agents are ordered in the left sidebar. Also in the menu at the top of the list.',
-  'settings.agents.panel.section': 'Agent panel',
+  'settings.agents.sort.help': 'How the sessions are ordered in the left sidebar. Also in the menu at the top of the list.',
+  'settings.agents.panel.section': 'Session panel',
   'settings.agents.archive.section': 'Archiving',
   'settings.agents.archive.confirm.label': 'Confirm before archiving',
-  'settings.agents.archive.confirm.help': 'Ask before ⌘W or the title bar button archives an agent. Off, the agent is archived at once.',
+  'settings.agents.archive.confirm.help': 'Ask before ⌘W or the title bar button archives a session. Off, the session is archived at once.',
 
   // ── Settings → Code & reviews ────────────────────────────────────────────
   'settings.code.section': 'Code',
@@ -1255,25 +1255,25 @@ export const en = {
     'Everything below, plus the ones with no switch of their own: a colleague picking up a ticket you are on. Notifications never appear while the window is focused.',
   'settings.notifications.allOff':
     'Everything is silenced. Your per-kind choices are kept — turn this back on to see them again.',
-  'settings.notifications.agents.section': 'Your agents',
-  'settings.notifications.agentWaiting.label': 'Agent waiting for you',
+  'settings.notifications.agents.section': 'Your sessions',
+  'settings.notifications.agentWaiting.label': 'Session waiting for you',
   'settings.notifications.agentWaiting.help':
-    'An agent has stopped and needs an answer or a permission before it can carry on.',
-  'settings.notifications.agentCompleted.label': 'Agent finished',
-  'settings.notifications.agentCompleted.help': 'An agent has finished the task it was given.',
+    'A session has stopped and needs an answer or a permission before it can carry on.',
+  'settings.notifications.agentCompleted.label': 'Session finished',
+  'settings.notifications.agentCompleted.help': 'A session has finished the task it was given.',
   'settings.notifications.pr.section': 'Pull requests',
   'settings.notifications.prReview.label': 'Review status changed',
   'settings.notifications.prReview.help':
     'The PR watcher saw the review status of one of your open PRs move — approved, changes requested, back to pending. Only on an actual change: switching the watcher on, or restarting the app, never notifies on its own.',
   'settings.notifications.prChangesRequested.label': 'Changes requested on your PR',
   'settings.notifications.prChangesRequested.help':
-    'A reviewer asked for changes on one of your PRs. Comes from your team’s activity, so it arrives even for a PR no agent on this machine is watching.',
+    'A reviewer asked for changes on one of your PRs. Comes from your team’s activity, so it arrives even for a PR no session on this machine is watching.',
   'settings.notifications.team.section': 'Team',
   'settings.notifications.digest.label': 'Daily team digest',
   'settings.notifications.digest.help':
     'Off by default. One notification at 9:00 AM summarizing your team’s last 24 hours (PRs shipped, tickets moved to Done). Nothing is sent when there was no activity.',
   'settings.notifications.team.footnote':
-    'A colleague picking up a ticket you also have an agent on follows the master switch above — it is rare enough not to need one of its own.',
+    'A colleague picking up a ticket you also have a session on follows the master switch above — it is rare enough not to need one of its own.',
   'toast.notificationsFailed': 'Failed to change the notification settings',
 
   // ── Settings → Appearance ────────────────────────────────────────────────
@@ -1284,9 +1284,9 @@ export const en = {
   'settings.appearance.sidebars.usageCard.label': 'Usage card',
   'settings.appearance.sidebars.usageCard.help':
     'The connected account and the Session (5h) / Weekly (7d) gauges, at the bottom of the left sidebar.',
-  'settings.appearance.sidebars.agentContext.label': 'Agent context',
+  'settings.appearance.sidebars.agentContext.label': 'Session context',
   'settings.appearance.sidebars.agentContext.help':
-    'The selected agent’s context gauge, model, cost and elapsed time, at the top of the right sidebar.',
+    'The selected session’s context gauge, model, cost and elapsed time, at the top of the right sidebar.',
   'settings.appearance.sidebars.format.label': 'Format',
   'settings.appearance.sidebars.format.full': 'Expanded',
   'settings.appearance.sidebars.format.minimized': 'Compact',
@@ -1501,7 +1501,7 @@ export const en = {
   // the webapp's wording: the webapp has no agent to open. The three reasons are what the
   // button's tooltip and the line under the heading say when it is disabled.
   'plans.detail.change': 'Rework the plan',
-  'plans.detail.changeHint': 'Opens a new agent with /magic:plan-change on this spec. Add what should change, then send.',
+  'plans.detail.changeHint': 'Opens a new session with /magic:plan-change on this spec. Add what should change, then send.',
   'plans.detail.changeNotOwner': 'Only the author can rework this plan: its spec file is on their machine.',
   'plans.detail.changeNoFile': 'The spec file of this plan is not on this machine.',
   'plans.detail.changeFailed': 'Could not check where the spec file of this plan is.',
@@ -1718,8 +1718,8 @@ export const en = {
   'skills.budget.window.large': '1M tokens',
   'skills.budget.window.auto': 'Auto',
   'skills.budget.window.autoValue': 'Auto · {window}',
-  'skills.budget.window.autoDetected': 'Detected from the running agent.',
-  'skills.budget.window.autoNoAgent': 'No agent running, falling back to {window}.',
+  'skills.budget.window.autoDetected': 'Detected from the running session.',
+  'skills.budget.window.autoNoAgent': 'No session running, falling back to {window}.',
   'skills.budget.window.forced': 'Forced to {window}, whatever is running.',
   'skills.budget.over':
     'Over budget by {over} characters. Claude Code is already listing some skills by name only: it can still run them, but it can no longer tell when they apply.',
@@ -1743,7 +1743,7 @@ export const en = {
     'The listing is not trimmed evenly. Claude Code drops whole descriptions, starting with the skills you invoke least, and lists those by name only. Claude can still run them if you name them, but it no longer knows when to reach for them on its own.',
   'skills.budget.card.why.title': 'Where the window comes from',
   'skills.budget.card.why.body':
-    'Since the budget is a fraction of the context window, the same set of skills is comfortable on a 1M-token model and over budget on a 200K one. On Auto, the window is read from the agent you have running: the real one, reported by Claude Code itself. The two presets override it, to see what your skills would look like on another model or when nothing is running. Either way it changes the gauges here and nothing else.',
+    'Since the budget is a fraction of the context window, the same set of skills is comfortable on a 1M-token model and over budget on a 200K one. On Auto, the window is read from the session you have running: the real one, reported by Claude Code itself. The two presets override it, to see what your skills would look like on another model or when nothing is running. Either way it changes the gauges here and nothing else.',
   'skills.budget.card.override.title': 'Changing the budget itself',
   'skills.budget.card.override.body':
     'In settings.json, skillListingBudgetFraction raises the 1% share and skillListingMaxDescChars the per-skill cap; the SLASH_COMMAND_TOOL_CHAR_BUDGET environment variable replaces the whole computation with a fixed character count. Run /doctor to see what the listing really costs.',
@@ -1775,7 +1775,7 @@ export const en = {
     '{count} skills with descriptions longer than 110 words. Consider optimizing them for better performance.',
   'skills.longDesc.words': '{count} words',
   'skills.openInVSCode': 'Open in VS Code',
-  'skills.fixWithAgent': 'Fix with agent',
+  'skills.fixWithAgent': 'Fix in a session',
   'skills.fixAgentName': 'Fix skill descriptions',
 
   'skills.editor.newTitle': 'New Skill',
@@ -1827,18 +1827,18 @@ export const en = {
 
   // ── Terminals page ───────────────────────────────────────────────────────
   'terminals.emptyTitle': 'Ready to work',
-  'terminals.emptyHint': 'Launch a Claude agent to start a ticket, open a pull request or run a review.',
-  'terminals.launch': 'New agent',
+  'terminals.emptyHint': 'Launch a Claude Code session to start a ticket, open a pull request or run a review.',
+  'terminals.launch': 'New session',
   'terminals.launching': 'Launching…',
-  'terminals.paneEmpty': 'Drag an agent here or create a new one',
+  'terminals.paneEmpty': 'Drag a session here or create a new one',
   'terminals.invalidRepos.one':
-    '{count} repository path is invalid. Re-point it in Settings before launching an agent.',
+    '{count} repository path is invalid. Re-point it in Settings before launching a session.',
   'terminals.invalidRepos.other':
-    '{count} repository paths are invalid. Re-point them in Settings before launching an agent.',
+    '{count} repository paths are invalid. Re-point them in Settings before launching a session.',
   'terminals.openSettings': 'Open settings',
-  'terminals.maxAgents': 'Maximum of {count} agents reached',
+  'terminals.maxAgents': 'Maximum of {count} sessions reached',
   'terminals.createFailed': 'Failed to create terminal',
-  'terminals.duplicateFailed': 'Failed to duplicate agent',
+  'terminals.duplicateFailed': 'Failed to duplicate session',
 
   // ── Quick launch ─────────────────────────────────────────────────────────
   'quickLaunch.placeholder': 'PROJ-123 /start',
@@ -1853,7 +1853,7 @@ export const en = {
   'quickLaunch.cmd.done': 'Finalize after merge',
 
   // ── Tray popover ─────────────────────────────────────────────────────────
-  'tray.popover.empty': 'No active agents',
+  'tray.popover.empty': 'No active sessions',
   'tray.popover.account': 'Account and settings',
   'tray.popover.quit': 'Quit the app',
 
@@ -1863,7 +1863,7 @@ export const en = {
   'tray.question.waiting': '{count} awaiting an answer',
   'tray.question.allow': 'Allow',
   'tray.question.deny': 'Deny',
-  'tray.question.openAgent': 'Open the agent',
+  'tray.question.openAgent': 'Open the session',
   // Shown when the question was answered elsewhere between two polls. Nothing was
   // written to the agent — that is the point of saying so.
   'tray.question.stale': 'Already answered — nothing was sent',
@@ -1874,7 +1874,7 @@ export const en = {
   'tray.question.send': 'Send',
   // The card renders at most four rows. Saying how many it left out beats a list that
   // silently looks complete — "Open the agent" right below is where the rest is.
-  'tray.question.moreOptions': '{count} more in the agent',
+  'tray.question.moreOptions': '{count} more in the session',
 
   // ── Compact relative time (agent info sidebar) ───────────────────────────
   // Abbreviations, one key per unit: French shortens a day to "j" and a week to
@@ -1891,7 +1891,7 @@ export const en = {
   'relative.ago': '{time} ago',
 
   // ── Agent info sidebar ───────────────────────────────────────────────────
-  'agentInfo.closeAgent': 'Archive the agent',
+  'agentInfo.closeAgent': 'Archive the session',
   'agentInfo.notGitRepo': 'Not a git repo',
   'agentInfo.unknownError': 'Unknown error',
   'agentInfo.selectRepositories': 'Select repositories',
@@ -1908,12 +1908,12 @@ export const en = {
   'agentInfo.viewOnGitHub': 'View on GitHub',
   'agentInfo.viewPullRequest': 'View Pull Request',
   'agentInfo.addTicket': 'Add a ticket',
-  'agentInfo.addTicketHint': 'Pick a ticket to attach to this agent',
+  'agentInfo.addTicketHint': 'Pick a ticket to attach to this session',
   'agentInfo.plan': 'Plan',
   'agentInfo.planNumber': 'Plan #{number}',
   'agentInfo.planOpen': 'Open this plan in Plans',
   'agentInfo.addPlan': 'Add plan',
-  'agentInfo.addPlanHint': 'Pick a plan to attach to this agent',
+  'agentInfo.addPlanHint': 'Pick a plan to attach to this session',
   'agentInfo.ticketOpenInTasks': 'Open this ticket in Tasks',
   'agentInfo.titlePlaceholder': 'Enter title…',
   'agentInfo.addTitle': 'Click to add title',
@@ -1923,7 +1923,7 @@ export const en = {
   'agentInfo.noScripts': 'No scripts found',
   'agentInfo.context': 'Context',
   'agentInfo.tokensOf': '{used} / {total} tokens',
-  'agentInfo.noActiveAgent': 'No active agent',
+  'agentInfo.noActiveAgent': 'No active session',
   'agentInfo.addRepository': 'Add a repository',
   'agentInfo.noRepositories': 'No repositories configured',
   'agentInfo.openRepoInEditor': 'Open the repository in VS Code',
@@ -1943,15 +1943,15 @@ export const en = {
   // a byte, so "no such file" is the normal first state of a planning agent.
   'agentInfo.spec.drafting': 'Drafting the spec…',
   'agentType.coder': 'Coder',
-  'toast.defaultAgentTypeUpdated': 'Default agent type updated',
+  'toast.defaultAgentTypeUpdated': 'Default session type updated',
   'agentType.planner': 'Planner',
   'agentType.coderHint': 'Implementation cycle: start, commit, PR, review, done',
   'agentType.plannerHint': 'Planning: turn an idea into a spec, then into tickets',
-  'settings.defaultAgentType.title': 'Default agent type',
-  'settings.defaultAgentType.description': 'What a new agent is, before any skill says otherwise. You can still switch it from the title bar until the agent reports a status.',
+  'settings.defaultAgentType.title': 'Default session type',
+  'settings.defaultAgentType.description': 'What a new session is, before any skill says otherwise. You can still switch it from the title bar until the session reports a status.',
   'agentInfo.spec.open': 'Open the spec full screen',
   'agentInfo.spec.scrollToTop': 'Back to top',
-  'toast.commandSent': 'Sent {command} to the agent',
+  'toast.commandSent': 'Sent {command} to the session',
   'toast.commandCopied': 'Auto-launch disabled — {command} copied to clipboard',
   'toast.commandFailed': 'Failed to launch command',
 
@@ -2026,10 +2026,10 @@ export const en = {
   // Why the two controls above can be dead. The target is ONE named agent — the one this
   // card belongs to — so "no agent is running" would be a plain falsehood whenever another
   // agent happens to be selected. Nothing to point at instead: a thread row has no Copy.
-  'agentInfo.pr.prepareThreadNoAgent': 'The agent this pull request belongs to is no longer running',
+  'agentInfo.pr.prepareThreadNoAgent': 'The session this pull request belongs to is no longer running',
   // The write did not reach a pty. A toast rather than a state in the row: 500 px of row
   // has no space for a sentence, and this card already reports its failures this way.
-  'agentInfo.pr.prepareThreadFailed': 'Could not reach the agent — nothing was pasted',
+  'agentInfo.pr.prepareThreadFailed': 'Could not reach the session — nothing was pasted',
   'agentInfo.pr.lastChecked': 'checked {time}',
   'agentInfo.pr.neverChecked': 'never checked',
   'agentInfo.pr.refresh': 'Refresh now',
@@ -2114,7 +2114,7 @@ export const en = {
 
   // ── App shell ────────────────────────────────────────────────────────────
   'app.connecting': 'Connecting…',
-  'app.closeAgent.title': 'Archive this agent?',
+  'app.closeAgent.title': 'Archive this session?',
   'app.closeAgent.body': 'It leaves your list, and its history is kept.',
   'app.closeAgent.confirm': 'Yes, archive it',
   'app.later': 'Later',
@@ -2133,9 +2133,9 @@ export const en = {
   'repoSetup.title.empty': 'Add your first repository',
   'repoSetup.title.fix': 'Finish setting up your repositories',
   'repoSetup.body.empty':
-    'Magic Slash needs at least one repository to launch agents on. Pick a local folder to get started.',
+    'Magic Slash needs at least one repository to launch sessions on. Pick a local folder to get started.',
   'repoSetup.body.fix':
-    'These repositories have no usable local folder yet. Pick one for each so agents can run on them.',
+    'These repositories have no usable local folder yet. Pick one for each so sessions can run on them.',
   'repoSetup.reason.noLocalPath': 'No folder on this machine',
   'repoSetup.reason.missing': 'Folder no longer exists',
   'repoSetup.reason.notGit': 'Not a git repository',
@@ -2154,15 +2154,15 @@ export const en = {
   'toast.cloudWriteFailed':
     'Failed to save your {kind} to the cloud. Your latest change may not have been saved — reloaded from the server.',
   'toast.cloudWriteKind.config': 'settings',
-  'toast.cloudWriteKind.agents': 'agents',
+  'toast.cloudWriteKind.agents': 'sessions',
   'toast.connectionLost':
     'Lost the connection to the cloud — retrying. Your changes won’t be saved until it is back.',
   'toast.connectionRestored': 'Back online',
 
   // ── Agent relaunched in its repository ───────────────────────────────────
-  'toast.cwdRelaunched': 'Agent relaunched in “{dir}”',
+  'toast.cwdRelaunched': 'Session relaunched in “{dir}”',
   'toast.cwdRelaunchOffer':
-    'This agent is still running in “{current}”. Relaunching it in “{dir}” will clear its current conversation.',
+    'This session is still running in “{current}”. Relaunching it in “{dir}” will clear its current conversation.',
   'toast.cwdRelaunchAction': 'Relaunch in “{dir}”',
 
   // ── Login screen ─────────────────────────────────────────────────────────
@@ -2171,7 +2171,7 @@ export const en = {
   'login.resetHelp':
     'Reset your password with a 6-digit code sent to your email — no link to click.',
   'login.signinHelp':
-    'Sign in to continue. Magic Slash keeps your config, agents and history in your organization’s cloud.',
+    'Sign in to continue. Magic Slash keeps your config, sessions and history in your organization’s cloud.',
   'login.emailPlaceholder': 'Email',
   'login.codePlaceholder': '6-digit code',
   'login.passwordPlaceholder': 'Password',
@@ -2249,7 +2249,7 @@ export const en = {
   // Commenting on a diff. `commentLine` and `commentLines` are two keys rather than one
   // with a plural rule: "Lines 12–12" reads as a bug, and a suffix rule that works in
   // English does not survive translation.
-  'filePreview.commentPlaceholder': 'What should the agent know about these lines?',
+  'filePreview.commentPlaceholder': 'What should the session know about these lines?',
   // Its twin for a comment on the RENDERED markdown, where there are no lines to ask about
   // — the passage is the whole of the anchor. A second key rather than a vaguer sentence
   // covering both: the composer prompt is where a reader learns what the comment will be
@@ -2262,7 +2262,7 @@ export const en = {
   // passage, of a document, and of an anchor that can no longer be found, which is exactly
   // what a spec rewritten under the reader produces. `filePreview` is the namespace of the
   // component doing the rendering, not of the review it was first written for.
-  'filePreview.commentQuotePlaceholder': 'What should the agent know about this passage?',
+  'filePreview.commentQuotePlaceholder': 'What should the session know about this passage?',
   'filePreview.commentDelete': 'Delete',
   // Two forms again, and the plural one carries the count as well as the gesture: the pill
   // on a commented line draws an icon rather than a number, so this tooltip is the only
@@ -2345,14 +2345,14 @@ export const en = {
   // Sending, and the reason it cannot be done. Two keys rather than one sentence with a
   // condition in it: the second is a tooltip on a disabled control, and its whole job is
   // to say which of the two states this is.
-  'filePreview.sendToAgent': 'Send to the agent',
-  'filePreview.sendNoAgent': 'No agent is running — copy the comments instead',
+  'filePreview.sendToAgent': 'Send to the session',
+  'filePreview.sendNoAgent': 'No session is running — copy the comments instead',
   // The same disabled control, one placement over, where the reason is a different one: the
   // send has ONE possible target — the agent the document belongs to — so "no agent is
   // running" would be false in the ordinary case of another agent being selected. This names
   // what actually happened, and points at Copy beside it.
   'filePreview.sendAgentGone':
-    'The agent this document belongs to is no longer running — copy the comments instead',
+    'The session this document belongs to is no longer running — copy the comments instead',
   // The send did not reach a pty. TWO keys, on the pattern above: the short one is the button's
   // own text, the hint is its tooltip — and the hint says the part that actually matters, which
   // is that nothing was thrown away. The store cannot warn about this in advance: an exited
@@ -2360,7 +2360,7 @@ export const en = {
   // agent idle at its prompt reports, so the failure is only knowable after the write.
   'filePreview.sendFailed': 'Not delivered',
   'filePreview.sendFailedHint':
-    'Could not reach the agent — your comments were kept, copy them instead',
+    'Could not reach the session — your comments were kept, copy them instead',
 
   // ── Tasks ────────────────────────────────────────────────────────────────
   'tasks.title': 'Tasks',
@@ -2468,9 +2468,9 @@ export const en = {
   // and "Without" would change nothing. Both entries are about the TICKET rather than
   // about the person: a teammate's agent counts, which is what the board's own marker
   // says too.
-  'tasks.filter.anyAgent': 'Any agent',
-  'tasks.filter.withAgent': 'With an agent',
-  'tasks.filter.withoutAgent': 'Without an agent',
+  'tasks.filter.anyAgent': 'Any session',
+  'tasks.filter.withAgent': 'With a session',
+  'tasks.filter.withoutAgent': 'Without a session',
   'tasks.filter.clearSearch': 'Clear the search',
   // The filters matched nothing. Deliberately NOT one of the four states above:
   // those send the reader to a settings field, which would be the page blaming its
@@ -2543,38 +2543,38 @@ export const en = {
   // folder, pre-filled with `/magic:start` and this issue's URL. The second line
   // is that sentence said plainly — the label alone says what the button IS, and
   // people hesitate over a button whose consequence they have to guess.
-  'tasks.startAgent': 'Start an agent',
+  'tasks.startAgent': 'Start a session',
   'tasks.detachAgent': 'Detach',
-  'tasks.detachAgentHint': 'Take this agent off the ticket. The agent keeps running.',
+  'tasks.detachAgentHint': 'Take this session off the ticket. The session keeps running.',
   'tasks.pick.title': 'Pick a ticket for {name}',
   'tasks.pick.hint': 'Click a card to attach it. Nothing is started.',
   'tasks.pick.cancel': 'Cancel',
-  'tasks.pick.fallbackAgent': 'this agent',
+  'tasks.pick.fallbackAgent': 'this session',
   'plans.pick.title': 'Pick a plan for {name}',
   'plans.pick.hint': 'Click a plan to attach it. Nothing is started.',
-  'plans.hasAgentHint': 'An agent is working on this plan.',
-  'plans.detachAgentHint': 'Take this agent off the plan. The agent keeps running.',
+  'plans.hasAgentHint': 'A session is working on this plan.',
+  'plans.detachAgentHint': 'Take this session off the plan. The session keeps running.',
   // The alternative to starting the work: an agent that reads the issue and talks about it.
   // "Discuss with", not "Start a discussion with" — it sits directly under "Start an agent",
   // and two labels both opening on the same verb read as two ways of doing one thing.
-  'tasks.discussAgent': 'Discuss with an agent',
+  'tasks.discussAgent': 'Discuss in a session',
   // Why the action is unavailable, said in place instead of failing on the click.
   // A team repository that nobody has bound to a folder on THIS machine has no
   // directory to open a terminal in, and the fix is a setting.
   'tasks.noLocalRepo': 'No local folder is bound to this repository on this machine.',
   'tasks.noLocalRepoHint':
-    'Set its folder in Settings → Repositories, and an agent can be started on its issues from here.',
+    'Set its folder in Settings → Repositories, and a session can be started on its issues from here.',
   // The backstop, for the case the check above passed and the launch still failed.
   // Deliberately generic: the underlying error is an untranslated English sentence.
-  'tasks.startFailed': 'This ticket could not be handed to an agent.',
+  'tasks.startFailed': 'This ticket could not be handed to a session.',
   // The same fact as `tasks.noLocalRepo`, in the length a card's hover text has. The
   // card has no room for the sentence and its fix, so it says why the button is off and
   // the ticket's own page says what to do about it.
   'tasks.startNoPath': 'No local folder is bound to this repository.',
   // The row marker: an issue somebody is already working on. A word next to the
   // dot, because a bare coloured dot says nothing on its own.
-  'tasks.viewAgent': 'View the agent',
-  'tasks.hasAgentHint': 'An agent is already working on this ticket.',
+  'tasks.viewAgent': 'View the session',
+  'tasks.hasAgentHint': 'A session is already working on this ticket.',
 
   // ── Tasks · GitHub is not connected ──────────────────────────────────────
   'tasks.github.title': 'GitHub is not connected.',

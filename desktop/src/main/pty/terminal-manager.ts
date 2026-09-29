@@ -649,7 +649,7 @@ export function launchClaude(
 
       if (tracker.count > MAX_RESTARTS) {
         // Too many restarts — stop and show error
-        const errorMsg = '\x1b[2J\x1b[H\x1b[31m--- Claude Code crashed too many times. Please restart the agent manually. ---\x1b[0m\r\n\r\n'
+        const errorMsg = '\x1b[2J\x1b[H\x1b[31m--- Claude Code crashed too many times. Please restart the session manually. ---\x1b[0m\r\n\r\n'
         onData(errorMsg)
         displayBuffers.delete(id)
         const previousStateBeforeError = terminal.state

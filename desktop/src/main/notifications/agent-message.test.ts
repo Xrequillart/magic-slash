@@ -46,19 +46,19 @@ describe('agentSubject', () => {
   it('treats blank metadata as absent', () => {
     // A title cleared to an empty string must not render as `""`.
     expect(agentSubject(en, { ticketId: '  ', title: '', name: 'Claude 3' })).toBe('"Claude 3"')
-    expect(agentSubject(en, {})).toBe('An agent')
-    expect(agentSubject(fr, {})).toBe('Un agent')
+    expect(agentSubject(en, {})).toBe('A session')
+    expect(agentSubject(fr, {})).toBe('Une session')
   })
 })
 
 describe('agentNotification', () => {
   it('says which agent and what it needs, in both languages', () => {
     expect(agentNotification(en, 'waiting', { ticketId: 'MAGIC-202' })).toEqual({
-      title: 'An agent is waiting for you',
+      title: 'A session is waiting for you',
       body: 'MAGIC-202 needs your answer to continue',
     })
     expect(agentNotification(fr, 'waiting', { ticketId: 'MAGIC-202' })).toEqual({
-      title: 'Un agent vous attend',
+      title: 'Une session vous attend',
       body: 'MAGIC-202 a besoin de votre réponse pour continuer',
     })
   })
@@ -67,11 +67,11 @@ describe('agentNotification', () => {
     // A constant title is recognised at a glance without being read; only the body
     // varies. See the `metadata.status`-in-the-title option, deliberately not taken.
     expect(agentNotification(en, 'completed', { title: 'Refonte du menu' })).toEqual({
-      title: 'An agent has finished',
+      title: 'A session has finished',
       body: '"Refonte du menu" finished its task',
     })
     expect(agentNotification(fr, 'completed', { name: 'Claude 3', repositories: ['/x/magic-slash'] })).toEqual({
-      title: 'Un agent a terminé',
+      title: 'Une session a terminé',
       body: '« Claude 3 » (magic-slash) a terminé sa tâche',
     })
   })

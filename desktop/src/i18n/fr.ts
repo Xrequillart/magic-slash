@@ -18,7 +18,7 @@ export const fr: Record<keyof typeof en, string> = {
   'menu.actualSize': 'Taille réelle',
   'menu.zoomIn': 'Agrandir',
   'menu.zoomOut': 'Réduire',
-  'menu.newAgent': 'Nouvel agent',
+  'menu.newAgent': 'Nouvelle session',
   'menu.tasks': 'Tâches',
   'menu.skills': 'Skills',
   'menu.plans': 'Plans',
@@ -38,13 +38,13 @@ export const fr: Record<keyof typeof en, string> = {
   'tray.update.checkVersion': 'Rechercher les mises à jour (v{version})',
 
   // ── Notifications système ────────────────────────────────────────────────
-  'notification.waiting.title': 'Un agent vous attend',
+  'notification.waiting.title': 'Une session vous attend',
   'notification.waiting.body': '{subject} a besoin de votre réponse pour continuer',
-  'notification.completed.title': 'Un agent a terminé',
+  'notification.completed.title': 'Une session a terminé',
   'notification.completed.body': '{subject} a terminé sa tâche',
   'notification.agent.subject.named': '« {name} »',
   'notification.agent.subject.namedWithRepo': '« {name} » ({repo})',
-  'notification.agent.subject.unknown': 'Un agent',
+  'notification.agent.subject.unknown': 'Une session',
   'notification.prReview.approved.title': 'Pull request approuvée',
   'notification.prReview.approved.body': '{subject} a été approuvée',
   'notification.prReview.approved.bodyNamed': '{subject} a été approuvée par {reviewer}',
@@ -60,7 +60,7 @@ export const fr: Record<keyof typeof en, string> = {
   'notification.prReview.subject.prOnly': 'PR #{number}',
   'notification.prReview.subject.unknown': 'votre pull request',
   'notification.pickup.title': 'Un collègue a pris {ticket}',
-  'notification.pickup.body': 'Un collègue travaille maintenant sur {ticket} — vous avez aussi un agent dessus',
+  'notification.pickup.body': 'Un collègue travaille maintenant sur {ticket} — vous avez aussi une session dessus',
 
   // ── Résumé quotidien de l'équipe ─────────────────────────────────────────
   'digest.title': 'Votre équipe hier',
@@ -96,7 +96,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.tab.quickLaunch': 'Quick Launch',
   'settings.tab.splitView': 'Vue divisée',
   'settings.tab.profile': 'Profil',
-  'settings.tab.agents': 'Agents',
+  'settings.tab.agents': 'Sessions',
   'settings.tab.codeReviews': 'Code et reviews',
   'settings.tab.shortcuts': 'Raccourcis',
   'settings.tab.about': 'À propos',
@@ -117,7 +117,7 @@ export const fr: Record<keyof typeof en, string> = {
   // ── Barre de titre (chrome du terminal) ──────────────────────────────────
   'titlebar.normalView': 'Normal',
   'titlebar.splitView': 'Vue divisée',
-  'titlebar.toggleAgentsList': 'Afficher/masquer la liste des agents (⌘B)',
+  'titlebar.toggleAgentsList': 'Afficher/masquer la liste des sessions (⌘B)',
   'titlebar.normalViewTitle': 'Vue normale (⌘/)',
   'titlebar.splitViewTitle': 'Vue divisée (⌘/)',
   'titlebar.info': 'Infos',
@@ -148,8 +148,8 @@ export const fr: Record<keyof typeof en, string> = {
   'controlCenter.notificationsOff': 'Notifications coupées',
 
   // ── Barre latérale gauche ────────────────────────────────────────────────
-  'sidebar.newAgent': 'Nouvel agent',
-  'sidebar.newAgentShortcut': 'Nouvel agent ({shortcut})',
+  'sidebar.newAgent': 'Nouvelle session',
+  'sidebar.newAgentShortcut': 'Nouvelle session ({shortcut})',
   'sidebar.skills': 'Skills',
   'sidebar.tasks': 'Tâches',
   /** Names the menu landmark — the sidebar has two, this one and the agent list. */
@@ -158,8 +158,8 @@ export const fr: Record<keyof typeof en, string> = {
   'sidebar.settings': 'Réglages',
   'sidebar.login': 'Connexion / Inscription',
   'sidebar.accountFallback': 'Compte',
-  'sidebar.agents': 'Agents',
-  'sidebar.sort.title': 'Trier les agents : {mode}',
+  'sidebar.agents': 'Sessions',
+  'sidebar.sort.title': 'Trier les sessions : {mode}',
   'sidebar.sort.group': 'Trier par',
   'sidebar.sort.recent': 'Plus récent',
   'sidebar.sort.status': 'Par statut',
@@ -170,8 +170,8 @@ export const fr: Record<keyof typeof en, string> = {
   'sidebar.needsAttention': 'Demande une action',
   'sidebar.paneLeft': 'Gauche',
   'sidebar.paneRight': 'Droite',
-  'sidebar.empty': 'Aucun agent pour l’instant. Cliquez sur « Nouvel agent » pour démarrer.',
-  'sidebar.dropAgents': 'Déposez des agents ici',
+  'sidebar.empty': 'Aucune session pour l’instant. Cliquez sur « Nouvelle session » pour démarrer.',
+  'sidebar.dropAgents': 'Déposez des sessions ici',
 
   // ── Jauges d'usage du forfait Claude ─────────────────────────────────────
   'usage.reset.soon': 'bientôt',
@@ -186,7 +186,7 @@ export const fr: Record<keyof typeof en, string> = {
   'usage.claudeAccount': 'Compte Claude',
   'usage.noData': 'Aucune donnée d’usage',
   'usage.noDataHint':
-    'Aucune donnée d’usage pour l’instant — Claude.ai Pro/Max, après la première activité d’un agent.',
+    'Aucune donnée d’usage pour l’instant — Claude.ai Pro/Max, après la première activité d’une session.',
   'usage.expand': 'Déplier',
   'usage.minimize': 'Replier',
   'usage.unit.billion': ' Md',
@@ -226,8 +226,8 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.repos.connected': 'Connecté',
   'settings.repos.noRemote': 'Aucun remote',
   'settings.repos.noLocalFolder': 'Aucun dossier local — cliquez pour le définir',
-  'settings.repos.agents.one': '{count} agent',
-  'settings.repos.agents.other': '{count} agents',
+  'settings.repos.agents.one': '{count} session',
+  'settings.repos.agents.other': '{count} sessions',
 
   // ── Réglages → Claude Code ───────────────────────────────────────────────
   'settings.claude.account': 'Compte',
@@ -239,7 +239,7 @@ export const fr: Record<keyof typeof en, string> = {
 
   'settings.launchMode.section': 'Mode de lancement',
   'settings.launchMode.label': 'Mode de permissions',
-  'settings.launchMode.help': 'Détermine le niveau d’autonomie de tous les agents Claude Code',
+  'settings.launchMode.help': 'Détermine le niveau d’autonomie de toutes les sessions Claude Code',
   'settings.launchMode.plan': 'Plan',
   'settings.launchMode.plan.help':
     'Lecture seule — Claude explore et analyse, mais ne modifie jamais rien',
@@ -261,7 +261,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.claude.usageCard.section': 'Carte d’usage',
   'settings.rate.section': 'Consommation du forfait',
   'settings.rate.empty':
-    'Aucune donnée de limite en temps réel — disponible sur Claude.ai Pro/Max après la première activité d’un agent.',
+    'Aucune donnée de limite en temps réel — disponible sur Claude.ai Pro/Max après la première activité d’une session.',
 
   'settings.spend.section': 'Coût et tokens',
   'settings.spend.tokens': 'Tokens',
@@ -277,10 +277,10 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.application.usageLogs.section': 'Enregistrement de l’activité',
   'settings.application.usageLogs.label': 'Partager mon activité avec mon équipe',
   'settings.application.usageLogs.help':
-    'Activé par défaut, et vous pouvez le couper à tout moment. Ce que vous faites avec vos agents est envoyé au cloud Magic Slash pour que le tableau de bord de votre équipe reflète votre travail. Le couper arrête les nouveaux enregistrements ; ce qui a déjà été envoyé est conservé.',
+    'Activé par défaut, et vous pouvez le couper à tout moment. Ce que vous faites avec vos sessions est envoyé au cloud Magic Slash pour que le tableau de bord de votre équipe reflète votre travail. Le couper arrête les nouveaux enregistrements ; ce qui a déjà été envoyé est conservé.',
   'settings.application.usageLogs.collected': 'Collecté',
   'settings.application.usageLogs.excluded': 'Jamais collecté',
-  'settings.application.usageLogs.collected.activity': 'L’activité des agents : tickets, commits, PR, revues',
+  'settings.application.usageLogs.collected.activity': 'L’activité des sessions : tickets, commits, PR, revues',
   'settings.application.usageLogs.collected.skills':
     'Les skills que vous lancez (/magic:start, /magic:pr, …), la durée de chaque exécution et comment elle s’est terminée',
   'settings.application.usageLogs.collected.session':
@@ -296,7 +296,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.application.usageLogs.footnote':
     'Chaque membre de votre organisation voit ces chiffres par personne sur la page Équipe.',
   'settings.application.usageLogs.footnote.agents':
-    'Quoi que dise ce réglage, vos agents (nom, branche, ticket, dépôts) se synchronisent avec votre équipe — c’est ce qui alimente la vue temps réel.',
+    'Quoi que dise ce réglage, vos sessions (nom, branche, ticket, dépôts) se synchronisent avec votre équipe — c’est ce qui alimente la vue temps réel.',
   'settings.application.sidebar.section': 'Barre latérale',
   'settings.application.sidebar.label': 'Barre latérale de l’app',
   'settings.application.sidebar.help': 'Choisissez les pages affichées dans la barre latérale, et leur ordre.',
@@ -308,7 +308,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.application.sidebar.visibility': 'Visibilité de {page}',
   'settings.application.sidebar.footnote': 'Glissez une page pour la déplacer, ou placez le focus sur sa poignée et utilisez les flèches. Une page masquée garde son raccourci clavier.',
   'settings.application.sidebar.compact.label': 'Icônes seulement',
-  'settings.application.sidebar.compact.help': 'Une barre latérale étroite : les pages en icônes, chaque agent par son statut, et un robot pour un agent sans rien à signaler. Les noms s’affichent au survol.',
+  'settings.application.sidebar.compact.help': 'Une barre latérale étroite : les pages en icônes, chaque session par son statut, et un robot pour une session sans rien à signaler. Les noms s’affichent au survol.',
   'settings.application.planSync.section': 'Sessions de planification',
   'settings.application.planSync.label': 'Enregistrer mes sessions de planification dans le cloud',
   'settings.application.planSync.help':
@@ -316,8 +316,8 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.application.planSync.footnote':
     'Le couper ne change rien sur votre machine : le fichier de spec est toujours écrit dans le dépôt, et l’app le suit toujours en direct.',
   'settings.application.planSync.error': 'Impossible d’enregistrer ce réglage.',
-  'settings.split.newAgentPane.label': 'Les nouveaux agents s’ouvrent',
-  'settings.split.newAgentPane.help': 'Le panneau où arrive un agent créé avec ⌘N, le bouton + ou le menu Fichier.',
+  'settings.split.newAgentPane.label': 'Les nouvelles sessions s’ouvrent',
+  'settings.split.newAgentPane.help': 'Le panneau où arrive une session créée avec ⌘N, le bouton + ou le menu Fichier.',
   'settings.split.newAgentPane.focused': 'Dans le panneau actif',
   'settings.split.newAgentPane.focused.help': 'Le panneau dans lequel vous travaillez, celui qui a le clavier.',
   'settings.split.newAgentPane.left': 'Toujours à gauche',
@@ -326,15 +326,15 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.split.newAgentPane.right.help': 'Le nouveau travail démarre toujours à droite, quel que soit le panneau actif.',
   'settings.application.split.section': 'Vue divisée',
   'settings.application.split.label': 'Activer la vue divisée',
-  'settings.application.split.help': 'Affiche deux agents côte à côte sur les écrans larges',
-  'settings.application.agentDefaults.section': 'Nouveaux agents',
-  'settings.application.infoSidebar.label': 'Ouvrir le panneau d’informations sur un nouvel agent',
+  'settings.application.split.help': 'Affiche deux sessions côte à côte sur les écrans larges',
+  'settings.application.agentDefaults.section': 'Nouvelles sessions',
+  'settings.application.infoSidebar.label': 'Ouvrir le panneau d’informations sur une nouvelle session',
   'settings.application.infoSidebar.help':
-    'Chaque agent retient ensuite si vous avez laissé son panneau ouvert ou fermé',
+    'Chaque session retient ensuite si vous avez laissé son panneau ouvert ou fermé',
   'settings.application.prWatcher.section': 'Surveillance des revues de PR',
   'settings.application.prWatcher.label': 'Surveiller les revues de PR',
   'settings.application.prWatcher.help':
-    'Interroge GitHub pour suivre l’état des revues sur les pull requests des agents',
+    'Interroge GitHub pour suivre l’état des revues sur les pull requests des sessions',
   'settings.application.prWatcher.intervalLabel': 'Fréquence d’interrogation',
   'settings.application.prWatcher.intervalHelp': 'Fréquence des appels à l’API GitHub',
   'settings.application.prWatcher.interval30s': '30 secondes',
@@ -343,7 +343,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.application.prWatcher.interval5m': '5 minutes',
   'settings.application.prWatcher.autoLaunchLabel': 'Lancer les skills automatiquement',
   'settings.application.prWatcher.autoLaunchHelp':
-    'Envoie /magic:resolve ou /magic:done directement dans le terminal de l’agent. Désactivé par défaut, par prudence.',
+    'Envoie /magic:resolve ou /magic:done directement dans le terminal de la session. Désactivé par défaut, par prudence.',
   // ── Réglages → Réglages rapides ──────────────────────────────────────────
   'settings.quickSettings.section': 'Réglages rapides',
   'settings.quickSettings.enabled.label': 'Afficher les réglages rapides',
@@ -358,17 +358,17 @@ export const fr: Record<keyof typeof en, string> = {
 
   'settings.quickLaunch.launch.section': 'Lancement',
   'settings.quickLaunch.repo.label': 'Dépôt',
-  'settings.quickLaunch.repo.help': 'Le dépôt dans lequel travaille l’agent lancé depuis Quick Launch.',
+  'settings.quickLaunch.repo.help': 'Le dépôt dans lequel travaille la session lancée depuis Quick Launch.',
   'settings.quickLaunch.repo.first': 'Premier dépôt',
   'settings.quickLaunch.repo.first.help': 'Le premier dépôt de votre liste, quoi que dise le prompt.',
   'settings.quickLaunch.repo.match': 'Détecter depuis le prompt',
   'settings.quickLaunch.repo.match.help': 'Le dépôt dont le prompt cite le nom ou un mot-clé. Le premier s’il n’en cite aucun.',
   'settings.quickLaunch.mode.label': 'Mode de lancement',
-  'settings.quickLaunch.mode.help': 'Le mode de permission d’un agent lancé depuis Quick Launch.',
-  'settings.quickLaunch.mode.inherit': 'Comme Agents ({mode})',
-  'settings.quickLaunch.mode.inherit.help': 'Le mode de lancement réglé dans la page Agents, comme pour tout nouvel agent.',
+  'settings.quickLaunch.mode.help': 'Le mode de permission d’une session lancée depuis Quick Launch.',
+  'settings.quickLaunch.mode.inherit': 'Comme Sessions ({mode})',
+  'settings.quickLaunch.mode.inherit.help': 'Le mode de lancement réglé dans la page Sessions, comme pour toute nouvelle session.',
   'settings.quickLaunch.background.label': 'Rester en arrière-plan',
-  'settings.quickLaunch.background.help': 'Démarrer l’agent sans ramener Magic Slash au premier plan. Vous restez où vous étiez, et une notification vous prévient quand l’agent a besoin de vous.',
+  'settings.quickLaunch.background.help': 'Démarrer la session sans ramener Magic Slash au premier plan. Vous restez où vous étiez, et une notification vous prévient quand la session a besoin de vous.',
   'settings.application.spotlight.section': 'Spotlight',
   'settings.application.spotlight.label': 'Activer le raccourci global',
   'settings.application.spotlight.help':
@@ -384,25 +384,25 @@ export const fr: Record<keyof typeof en, string> = {
     'Démarre Magic Slash automatiquement quand vous ouvrez votre session',
   'settings.application.background.menuBarLabel': 'Barre de menus',
   'settings.application.background.menuBarHelp':
-    'Magic Slash vit dans la barre de menus. Cliquez sur l’icône pour voir l’état des agents, ou faites un clic droit pour les actions rapides. Fermer la fenêtre la masque dans la barre de menus.',
+    'Magic Slash vit dans la barre de menus. Cliquez sur l’icône pour voir l’état des sessions, ou faites un clic droit pour les actions rapides. Fermer la fenêtre la masque dans la barre de menus.',
 
   // ── Réglages → Raccourcis ────────────────────────────────────────────────
   'settings.shortcuts.section': 'Raccourcis clavier',
-  'settings.shortcuts.duplicateAgent': 'Dupliquer l’agent',
-  'settings.shortcuts.closeAgent': 'Archiver l’agent',
-  'settings.shortcuts.previousAgent': 'Agent précédent',
-  'settings.shortcuts.nextAgent': 'Agent suivant',
-  'settings.shortcuts.toggleAgentInfo': 'Afficher/masquer les infos de l’agent',
-  'settings.shortcuts.toggleAgentsList': 'Afficher/masquer la liste des agents',
+  'settings.shortcuts.duplicateAgent': 'Dupliquer la session',
+  'settings.shortcuts.closeAgent': 'Archiver la session',
+  'settings.shortcuts.previousAgent': 'Session précédente',
+  'settings.shortcuts.nextAgent': 'Session suivante',
+  'settings.shortcuts.toggleAgentInfo': 'Afficher/masquer les infos de la session',
+  'settings.shortcuts.toggleAgentsList': 'Afficher/masquer la liste des sessions',
   'settings.shortcuts.toggleSplit': 'Afficher/masquer la vue divisée',
   'settings.shortcuts.quickLaunch': 'Lancement rapide',
-  'settings.shortcuts.help.newAgent': 'Démarre un nouvel agent dans le panneau actif.',
-  'settings.shortcuts.help.duplicateAgent': 'Démarre une copie de l’agent sélectionné, sur le même dépôt et la même branche.',
-  'settings.shortcuts.help.closeAgent': 'Archive l’agent sélectionné, après confirmation.',
-  'settings.shortcuts.help.previousAgent': 'Sélectionne l’agent au-dessus dans la liste.',
-  'settings.shortcuts.help.nextAgent': 'Sélectionne l’agent en dessous dans la liste.',
-  'settings.shortcuts.help.toggleAgentInfo': 'Affiche ou masque le panneau à droite de l’agent sélectionné.',
-  'settings.shortcuts.help.toggleAgentsList': 'Affiche ou masque la liste des agents à gauche.',
+  'settings.shortcuts.help.newAgent': 'Démarre une nouvelle session dans le panneau actif.',
+  'settings.shortcuts.help.duplicateAgent': 'Démarre une copie de la session sélectionnée, sur le même dépôt et la même branche.',
+  'settings.shortcuts.help.closeAgent': 'Archive la session sélectionnée, après confirmation.',
+  'settings.shortcuts.help.previousAgent': 'Sélectionne la session au-dessus dans la liste.',
+  'settings.shortcuts.help.nextAgent': 'Sélectionne la session en dessous dans la liste.',
+  'settings.shortcuts.help.toggleAgentInfo': 'Affiche ou masque le panneau à droite de la session sélectionnée.',
+  'settings.shortcuts.help.toggleAgentsList': 'Affiche ou masque la liste des sessions à gauche.',
   'settings.shortcuts.help.toggleSplit': 'Divise la fenêtre en deux panneaux, ou la ramène à un seul.',
   'settings.shortcuts.help.skills': 'Ouvre la page des skills.',
   'settings.shortcuts.help.tasks': 'Ouvre vos tâches Jira et GitHub.',
@@ -573,7 +573,7 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.general.colorHelp': 'Couleur du projet dans la barre latérale',
   'repo.general.colorChange': 'Changer la couleur',
   'repo.general.colorModalTitle': 'Couleur du dépôt',
-  'repo.general.colorModalHelp': 'Utilisée partout où ce dépôt apparaît : barre latérale, tâches et cartes d’agent.',
+  'repo.general.colorModalHelp': 'Utilisée partout où ce dépôt apparaît : barre latérale, tâches et cartes de session.',
   'repo.general.setColor': 'Choisir la couleur {color}',
 
   'repo.tracker.mode': 'Outils de suivi',
@@ -1166,18 +1166,18 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Réglages → Agents ────────────────────────────────────────────────────
   'settings.agents.model.label': 'Modèle',
-  'settings.agents.model.help': 'Le modèle Claude sur lequel démarre un nouvel agent. La liste est celle que votre Claude Code propose dans /model.',
+  'settings.agents.model.help': 'Le modèle Claude sur lequel démarre une nouvelle session. La liste est celle que votre Claude Code propose dans /model.',
   'settings.agents.model.cliDefault': 'Défaut de Claude Code',
   'settings.agents.model.cliDefaultHelp': 'Celui réglé dans /model de Claude Code.',
   'settings.agents.model.loading': 'Claude Code liste ses modèles…',
   'settings.agents.model.unavailable': 'Claude Code n’a pas répondu : seul son modèle par défaut est proposé.',
-  'settings.agents.list.section': 'Liste des agents',
+  'settings.agents.list.section': 'Liste des sessions',
   'settings.agents.sort.label': 'Ordre',
-  'settings.agents.sort.help': 'L’ordre des agents dans la barre latérale gauche. Aussi dans le menu en haut de la liste.',
-  'settings.agents.panel.section': 'Panneau de l’agent',
+  'settings.agents.sort.help': 'L’ordre des sessions dans la barre latérale gauche. Aussi dans le menu en haut de la liste.',
+  'settings.agents.panel.section': 'Panneau de la session',
   'settings.agents.archive.section': 'Archivage',
   'settings.agents.archive.confirm.label': 'Confirmer avant d’archiver',
-  'settings.agents.archive.confirm.help': 'Demander avant que ⌘W ou le bouton de la barre de titre archive un agent. Désactivé, l’agent est archivé tout de suite.',
+  'settings.agents.archive.confirm.help': 'Demander avant que ⌘W ou le bouton de la barre de titre archive une session. Désactivé, la session est archivée tout de suite.',
 
   // ── Réglages → Code et reviews ───────────────────────────────────────────
   'settings.code.section': 'Code',
@@ -1215,25 +1215,25 @@ export const fr: Record<keyof typeof en, string> = {
     'Tout ce qui suit, ainsi que celles qui n’ont pas d’interrupteur propre : un collègue qui reprend un ticket sur lequel vous êtes. Aucune notification n’apparaît quand la fenêtre est au premier plan.',
   'settings.notifications.allOff':
     'Tout est en sourdine. Vos choix par type sont conservés — réactivez pour les revoir.',
-  'settings.notifications.agents.section': 'Vos agents',
-  'settings.notifications.agentWaiting.label': 'Agent en attente',
+  'settings.notifications.agents.section': 'Vos sessions',
+  'settings.notifications.agentWaiting.label': 'Session en attente',
   'settings.notifications.agentWaiting.help':
-    'Un agent s’est arrêté et attend une réponse ou une autorisation pour continuer.',
-  'settings.notifications.agentCompleted.label': 'Agent terminé',
-  'settings.notifications.agentCompleted.help': 'Un agent a terminé la tâche qui lui a été confiée.',
+    'Une session s’est arrêtée et attend une réponse ou une autorisation pour continuer.',
+  'settings.notifications.agentCompleted.label': 'Session terminée',
+  'settings.notifications.agentCompleted.help': 'Une session a terminé la tâche qui lui a été confiée.',
   'settings.notifications.pr.section': 'Pull requests',
   'settings.notifications.prReview.label': 'Statut de revue modifié',
   'settings.notifications.prReview.help':
     'La surveillance des PR a vu le statut de revue d’une de vos PR ouvertes changer : approuvée, modifications demandées, retour en attente. Uniquement sur un vrai changement : activer la surveillance ou redémarrer l’app ne déclenche plus rien.',
   'settings.notifications.prChangesRequested.label': 'Modifications demandées sur votre PR',
   'settings.notifications.prChangesRequested.help':
-    'Un relecteur a demandé des modifications sur une de vos PR. Vient de l’activité de votre équipe : elle arrive donc même pour une PR qu’aucun agent de cette machine ne surveille.',
+    'Un relecteur a demandé des modifications sur une de vos PR. Vient de l’activité de votre équipe : elle arrive donc même pour une PR qu’aucune session de cette machine ne surveille.',
   'settings.notifications.team.section': 'Équipe',
   'settings.notifications.digest.label': 'Résumé quotidien de l’équipe',
   'settings.notifications.digest.help':
     'Désactivé par défaut. Une notification à 9 h résumant les dernières 24 heures de votre équipe (PR livrées, tickets passés en Terminé). Rien n’est envoyé s’il n’y a eu aucune activité.',
   'settings.notifications.team.footnote':
-    'Un collègue qui reprend un ticket sur lequel vous avez aussi un agent suit l’interrupteur principal ci-dessus — c’est assez rare pour ne pas mériter le sien.',
+    'Un collègue qui reprend un ticket sur lequel vous avez aussi une session suit l’interrupteur principal ci-dessus — c’est assez rare pour ne pas mériter le sien.',
   'toast.notificationsFailed': 'Impossible de modifier les réglages de notification',
 
   // ── Réglages → Apparence ─────────────────────────────────────────────────
@@ -1244,9 +1244,9 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.appearance.sidebars.usageCard.label': 'Carte d’usage',
   'settings.appearance.sidebars.usageCard.help':
     'Le compte connecté et les jauges Session (5 h) / Semaine (7 j), en bas de la barre latérale gauche.',
-  'settings.appearance.sidebars.agentContext.label': 'Contexte de l’agent',
+  'settings.appearance.sidebars.agentContext.label': 'Contexte de la session',
   'settings.appearance.sidebars.agentContext.help':
-    'La jauge de contexte de l’agent sélectionné, son modèle, son coût et sa durée, en haut de la barre latérale droite.',
+    'La jauge de contexte de la session sélectionnée, son modèle, son coût et sa durée, en haut de la barre latérale droite.',
   'settings.appearance.sidebars.format.label': 'Format',
   'settings.appearance.sidebars.format.full': 'Complet',
   'settings.appearance.sidebars.format.minimized': 'Réduit',
@@ -1442,7 +1442,7 @@ export const fr: Record<keyof typeof en, string> = {
   // ── Plans · un plan ─────────────────────────────────────────────────────────
   'plans.detail.back': 'Tous les plans',
   'plans.detail.change': 'Retravailler le plan',
-  'plans.detail.changeHint': 'Ouvre un nouvel agent avec /magic:plan-change sur cette spec. Ajoutez ce qui doit changer, puis envoyez.',
+  'plans.detail.changeHint': 'Ouvre une nouvelle session avec /magic:plan-change sur cette spec. Ajoutez ce qui doit changer, puis envoyez.',
   'plans.detail.changeNotOwner': 'Seul l’auteur peut retravailler ce plan : son fichier de spec est sur sa machine.',
   'plans.detail.changeNoFile': 'Le fichier de spec de ce plan n’est pas sur cette machine.',
   'plans.detail.changeFailed': 'Impossible de vérifier où se trouve le fichier de spec de ce plan.',
@@ -1627,8 +1627,8 @@ export const fr: Record<keyof typeof en, string> = {
   'skills.budget.window.large': '1M tokens',
   'skills.budget.window.auto': 'Auto',
   'skills.budget.window.autoValue': 'Auto · {window}',
-  'skills.budget.window.autoDetected': 'Détectée sur l’agent en cours.',
-  'skills.budget.window.autoNoAgent': 'Aucun agent en cours, repli sur {window}.',
+  'skills.budget.window.autoDetected': 'Détectée sur la session en cours.',
+  'skills.budget.window.autoNoAgent': 'Aucune session en cours, repli sur {window}.',
   'skills.budget.window.forced': 'Forcée à {window}, quoi qu’il tourne.',
   'skills.budget.over':
     'Dépassement de {over} caractères. Claude Code liste déjà certains skills par leur nom seul : il peut encore les lancer, mais il ne sait plus quand ils s’appliquent.',
@@ -1652,7 +1652,7 @@ export const fr: Record<keyof typeof en, string> = {
     'Le catalogue n’est pas rogné uniformément. Claude Code supprime des descriptions entières, en commençant par les skills que vous invoquez le moins, et ne liste plus que leur nom. Claude peut encore les lancer si vous les nommez, mais il ne sait plus y penser tout seul.',
   'skills.budget.card.why.title': 'D’où vient la fenêtre',
   'skills.budget.card.why.body':
-    'Le budget étant une fraction de la fenêtre de contexte, un même ensemble de skills tient à l’aise sur un modèle 1M et déborde sur un 200K. En Auto, la fenêtre est lue sur l’agent que vous avez en cours : la vraie, remontée par Claude Code lui-même. Les deux préréglages la forcent, pour voir ce que donneraient vos skills sur un autre modèle ou quand rien ne tourne. Dans tous les cas, cela ne change que les jauges de cette page.',
+    'Le budget étant une fraction de la fenêtre de contexte, un même ensemble de skills tient à l’aise sur un modèle 1M et déborde sur un 200K. En Auto, la fenêtre est lue sur la session que vous avez en cours : la vraie, remontée par Claude Code lui-même. Les deux préréglages la forcent, pour voir ce que donneraient vos skills sur un autre modèle ou quand rien ne tourne. Dans tous les cas, cela ne change que les jauges de cette page.',
   'skills.budget.card.override.title': 'Changer le budget lui-même',
   'skills.budget.card.override.body':
     'Dans settings.json, skillListingBudgetFraction relève la part de 1 % et skillListingMaxDescChars le plafond par skill ; la variable d’environnement SLASH_COMMAND_TOOL_CHAR_BUDGET remplace tout le calcul par un nombre de caractères fixe. Lancez /doctor pour voir ce que le catalogue coûte vraiment.',
@@ -1684,7 +1684,7 @@ export const fr: Record<keyof typeof en, string> = {
     '{count} skills dont les descriptions dépassent 110 mots. Envisagez de les optimiser pour de meilleures performances.',
   'skills.longDesc.words': '{count} mots',
   'skills.openInVSCode': 'Ouvrir dans VS Code',
-  'skills.fixWithAgent': 'Corriger avec un agent',
+  'skills.fixWithAgent': 'Corriger dans une session',
   'skills.fixAgentName': 'Corriger les descriptions de skills',
 
   'skills.editor.newTitle': 'Nouveau skill',
@@ -1737,18 +1737,18 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Page des terminaux ───────────────────────────────────────────────────
   'terminals.emptyTitle': 'Prêt à travailler',
-  'terminals.emptyHint': 'Lancez un agent Claude pour démarrer un ticket, ouvrir une pull request ou lancer une revue.',
-  'terminals.launch': 'Nouvel agent',
+  'terminals.emptyHint': 'Lancez une session Claude Code pour démarrer un ticket, ouvrir une pull request ou lancer une revue.',
+  'terminals.launch': 'Nouvelle session',
   'terminals.launching': 'Lancement…',
-  'terminals.paneEmpty': 'Faites glisser un agent ici, ou créez-en un',
+  'terminals.paneEmpty': 'Faites glisser une session ici, ou créez-en une',
   'terminals.invalidRepos.one':
-    '{count} chemin de dépôt est invalide. Corrigez-le dans les réglages avant de lancer un agent.',
+    '{count} chemin de dépôt est invalide. Corrigez-le dans les réglages avant de lancer une session.',
   'terminals.invalidRepos.other':
-    '{count} chemins de dépôts sont invalides. Corrigez-les dans les réglages avant de lancer un agent.',
+    '{count} chemins de dépôts sont invalides. Corrigez-les dans les réglages avant de lancer une session.',
   'terminals.openSettings': 'Ouvrir les réglages',
-  'terminals.maxAgents': 'Maximum de {count} agents atteint',
+  'terminals.maxAgents': 'Maximum de {count} sessions atteint',
   'terminals.createFailed': 'Impossible de créer le terminal',
-  'terminals.duplicateFailed': 'Impossible de dupliquer l’agent',
+  'terminals.duplicateFailed': 'Impossible de dupliquer la session',
 
   // ── Lancement rapide ─────────────────────────────────────────────────────
   'quickLaunch.placeholder': 'PROJ-123 /start',
@@ -1763,7 +1763,7 @@ export const fr: Record<keyof typeof en, string> = {
   'quickLaunch.cmd.done': 'Finaliser après le merge',
 
   // ── Popover de la barre de menus ─────────────────────────────────────────
-  'tray.popover.empty': 'Aucun agent actif',
+  'tray.popover.empty': 'Aucune session active',
   'tray.popover.account': 'Compte et réglages',
   'tray.popover.quit': 'Quitter l’application',
 
@@ -1771,12 +1771,12 @@ export const fr: Record<keyof typeof en, string> = {
   'tray.question.waiting': '{count} en attente de réponse',
   'tray.question.allow': 'Autoriser',
   'tray.question.deny': 'Refuser',
-  'tray.question.openAgent': 'Ouvrir l’agent',
+  'tray.question.openAgent': 'Ouvrir la session',
   'tray.question.stale': 'Déjà répondu — rien n’a été envoyé',
   'tray.question.unsupported': 'À répondre dans l’application',
   'tray.question.multiHint': 'Plusieurs réponses possibles',
   'tray.question.send': 'Envoyer',
-  'tray.question.moreOptions': '{count} de plus dans l’agent',
+  'tray.question.moreOptions': '{count} de plus dans la session',
 
   // ── Temps relatif compact (barre d'infos de l'agent) ─────────────────────
   'relative.now': 'à l’instant',
@@ -1791,7 +1791,7 @@ export const fr: Record<keyof typeof en, string> = {
   'relative.ago': 'il y a {time}',
 
   // ── Barre d'infos de l'agent ─────────────────────────────────────────────
-  'agentInfo.closeAgent': 'Archiver l’agent',
+  'agentInfo.closeAgent': 'Archiver la session',
   'agentInfo.notGitRepo': 'Ce n’est pas un dépôt git',
   'agentInfo.unknownError': 'Erreur inconnue',
   'agentInfo.selectRepositories': 'Choisir des dépôts',
@@ -1805,12 +1805,12 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.viewOnGitHub': 'Voir sur GitHub',
   'agentInfo.viewPullRequest': 'Voir la pull request',
   'agentInfo.addTicket': 'Ajouter un ticket',
-  'agentInfo.addTicketHint': 'Choisir un ticket à rattacher à cet agent',
+  'agentInfo.addTicketHint': 'Choisir un ticket à rattacher à cette session',
   'agentInfo.plan': 'Plan',
   'agentInfo.planNumber': 'Plan #{number}',
   'agentInfo.planOpen': 'Ouvrir ce plan dans Plans',
   'agentInfo.addPlan': 'Ajouter un plan',
-  'agentInfo.addPlanHint': 'Choisir un plan à rattacher à cet agent',
+  'agentInfo.addPlanHint': 'Choisir un plan à rattacher à cette session',
   'agentInfo.ticketOpenInTasks': 'Ouvrir ce ticket dans Tâches',
   'agentInfo.titlePlaceholder': 'Saisissez un titre…',
   'agentInfo.addTitle': 'Cliquez pour ajouter un titre',
@@ -1820,7 +1820,7 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.noScripts': 'Aucun script trouvé',
   'agentInfo.context': 'Contexte',
   'agentInfo.tokensOf': '{used} / {total} tokens',
-  'agentInfo.noActiveAgent': 'Aucun agent actif',
+  'agentInfo.noActiveAgent': 'Aucune session active',
   'agentInfo.addRepository': 'Ajouter un dépôt',
   'agentInfo.noRepositories': 'Aucun dépôt configuré',
   'agentInfo.openRepoInEditor': 'Ouvrir le dépôt dans VS Code',
@@ -1835,15 +1835,15 @@ export const fr: Record<keyof typeof en, string> = {
   // ── Panneau de spec en direct (barre d'infos, agents en planification) ───
   'agentInfo.spec.drafting': 'Rédaction de la spec…',
   'agentType.coder': 'Coder',
-  'toast.defaultAgentTypeUpdated': 'Type d’agent par défaut mis à jour',
+  'toast.defaultAgentTypeUpdated': 'Type de session par défaut mis à jour',
   'agentType.planner': 'Planner',
   'agentType.coderHint': 'Cycle d’implémentation : start, commit, PR, review, done',
   'agentType.plannerHint': 'Planification : transformer une idée en spec, puis en tickets',
-  'settings.defaultAgentType.title': 'Type d’agent par défaut',
-  'settings.defaultAgentType.description': 'Ce qu’est un nouvel agent, avant qu’une skill n’en décide autrement. Tu peux encore le changer depuis la barre de titre tant que l’agent n’a pas remonté de statut.',
+  'settings.defaultAgentType.title': 'Type de session par défaut',
+  'settings.defaultAgentType.description': 'Ce qu’est une nouvelle session, avant qu’une skill n’en décide autrement. Tu peux encore le changer depuis la barre de titre tant que la session n’a pas remonté de statut.',
   'agentInfo.spec.open': 'Ouvrir la spec en plein écran',
   'agentInfo.spec.scrollToTop': 'Revenir en haut',
-  'toast.commandSent': '{command} envoyé à l’agent',
+  'toast.commandSent': '{command} envoyé à la session',
   'toast.commandCopied': 'Lancement automatique désactivé — {command} copié dans le presse-papiers',
   'toast.commandFailed': 'Impossible de lancer la commande',
 
@@ -1881,8 +1881,8 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.pr.threadOpen': 'ouvert',
   'agentInfo.pr.threadReview': 'review',
   'agentInfo.pr.prepareAllThreads': 'Préparer les fils non résolus',
-  'agentInfo.pr.prepareThreadNoAgent': 'L’agent de cette pull request n’est plus en cours d’exécution',
-  'agentInfo.pr.prepareThreadFailed': 'Impossible de joindre l’agent — rien n’a été collé',
+  'agentInfo.pr.prepareThreadNoAgent': 'La session de cette pull request n’est plus en cours d’exécution',
+  'agentInfo.pr.prepareThreadFailed': 'Impossible de joindre la session — rien n’a été collé',
   'agentInfo.pr.lastChecked': 'vérifié {time}',
   'agentInfo.pr.neverChecked': 'jamais vérifié',
   'agentInfo.pr.refresh': 'Rafraîchir maintenant',
@@ -1944,8 +1944,8 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Coquille de l'application ────────────────────────────────────────────
   'app.connecting': 'Connexion…',
-  'app.closeAgent.title': 'Archiver cet agent ?',
-  'app.closeAgent.body': 'Il quitte ta liste, et son historique est conservé.',
+  'app.closeAgent.title': 'Archiver cette session ?',
+  'app.closeAgent.body': 'Elle quitte ta liste, et son historique est conservé.',
   'app.closeAgent.confirm': 'Oui, archiver',
   'app.later': 'Plus tard',
   'app.errorBoundary.title': 'Une erreur est survenue',
@@ -1963,9 +1963,9 @@ export const fr: Record<keyof typeof en, string> = {
   'repoSetup.title.empty': 'Ajoutez votre premier dépôt',
   'repoSetup.title.fix': 'Terminez la configuration de vos dépôts',
   'repoSetup.body.empty':
-    'Magic Slash a besoin d’au moins un dépôt pour lancer des agents. Choisissez un dossier local pour commencer.',
+    'Magic Slash a besoin d’au moins un dépôt pour lancer des sessions. Choisissez un dossier local pour commencer.',
   'repoSetup.body.fix':
-    'Ces dépôts n’ont pas encore de dossier local utilisable. Choisissez-en un pour chacun afin que les agents puissent y travailler.',
+    'Ces dépôts n’ont pas encore de dossier local utilisable. Choisissez-en un pour chacun afin que les sessions puissent y travailler.',
   'repoSetup.reason.noLocalPath': 'Aucun dossier sur cette machine',
   'repoSetup.reason.missing': 'Le dossier n’existe plus',
   'repoSetup.reason.notGit': 'Ce n’est pas un dépôt git',
@@ -1984,15 +1984,15 @@ export const fr: Record<keyof typeof en, string> = {
   'toast.cloudWriteFailed':
     'Impossible d’enregistrer {kind} dans le cloud. Votre dernière modification n’a peut-être pas été sauvegardée — les données ont été rechargées depuis le serveur.',
   'toast.cloudWriteKind.config': 'vos réglages',
-  'toast.cloudWriteKind.agents': 'vos agents',
+  'toast.cloudWriteKind.agents': 'vos sessions',
   'toast.connectionLost':
     'Connexion au cloud perdue — nouvelle tentative en cours. Vos modifications ne seront pas enregistrées tant qu’elle n’est pas rétablie.',
   'toast.connectionRestored': 'Connexion rétablie',
 
   // ── Agent relancé dans son dépôt ─────────────────────────────────────────
-  'toast.cwdRelaunched': 'Agent relancé dans « {dir} »',
+  'toast.cwdRelaunched': 'Session relancée dans « {dir} »',
   'toast.cwdRelaunchOffer':
-    'Cet agent tourne toujours dans « {current} ». Le relancer dans « {dir} » effacera sa conversation en cours.',
+    'Cette session tourne toujours dans « {current} ». La relancer dans « {dir} » effacera sa conversation en cours.',
   'toast.cwdRelaunchAction': 'Relancer dans « {dir} »',
 
   // ── Écran de connexion ───────────────────────────────────────────────────
@@ -2001,7 +2001,7 @@ export const fr: Record<keyof typeof en, string> = {
   'login.resetHelp':
     'Réinitialisez votre mot de passe avec un code à 6 chiffres envoyé par e-mail — aucun lien à cliquer.',
   'login.signinHelp':
-    'Connectez-vous pour continuer. Magic Slash conserve votre configuration, vos agents et votre historique dans le cloud de votre organisation.',
+    'Connectez-vous pour continuer. Magic Slash conserve votre configuration, vos sessions et votre historique dans le cloud de votre organisation.',
   'login.emailPlaceholder': 'E-mail',
   'login.codePlaceholder': 'Code à 6 chiffres',
   'login.passwordPlaceholder': 'Mot de passe',
@@ -2067,8 +2067,8 @@ export const fr: Record<keyof typeof en, string> = {
   'filePreview.markdownMode': "Mode d'affichage du markdown",
   'filePreview.markdownRaw': 'Brut',
   'filePreview.markdownRendered': 'Rendu',
-  'filePreview.commentPlaceholder': "Que doit savoir l'agent à propos de ces lignes ?",
-  'filePreview.commentQuotePlaceholder': "Que doit savoir l'agent à propos de ce passage ?",
+  'filePreview.commentPlaceholder': "Que doit savoir la session à propos de ces lignes ?",
+  'filePreview.commentQuotePlaceholder': "Que doit savoir la session à propos de ce passage ?",
   'filePreview.commentDelete': 'Supprimer',
   'filePreview.commentMarker': 'Lire ce commentaire',
   'filePreview.commentMarkers': '{count} commentaires sur ces lignes',
@@ -2099,13 +2099,13 @@ export const fr: Record<keyof typeof en, string> = {
   'filePreview.reviewComments': 'Commentaires de cette revue',
   'filePreview.documentComments': 'Commentaires de ce document',
   'filePreview.commentOnFile': 'Tout le fichier',
-  'filePreview.sendToAgent': "Envoyer à l'agent",
-  'filePreview.sendNoAgent': 'Aucun agent en cours — copiez les commentaires à la place',
+  'filePreview.sendToAgent': "Envoyer à la session",
+  'filePreview.sendNoAgent': 'Aucune session en cours — copiez les commentaires à la place',
   'filePreview.sendAgentGone':
-    "L'agent propriétaire de ce document n'est plus en cours — copiez les commentaires à la place",
+    "La session propriétaire de ce document n'est plus en cours — copiez les commentaires à la place",
   'filePreview.sendFailed': 'Non délivré',
   'filePreview.sendFailedHint':
-    'Impossible de joindre l’agent — vos commentaires ont été conservés, copiez-les à la place',
+    'Impossible de joindre la session — vos commentaires ont été conservés, copiez-les à la place',
 
   // ── Tâches ───────────────────────────────────────────────────────────────
   'tasks.title': 'Tâches',
@@ -2155,9 +2155,9 @@ export const fr: Record<keyof typeof en, string> = {
   'tasks.filter.sortRecent': 'Plus récents',
   'tasks.filter.sortPriority': 'Priorité',
   'tasks.filter.allEpics': 'Tous les epics',
-  'tasks.filter.anyAgent': 'Tous les agents',
-  'tasks.filter.withAgent': 'Avec un agent',
-  'tasks.filter.withoutAgent': 'Sans agent',
+  'tasks.filter.anyAgent': 'Toutes les sessions',
+  'tasks.filter.withAgent': 'Avec une session',
+  'tasks.filter.withoutAgent': 'Sans session',
   'tasks.filter.clearSearch': 'Effacer la recherche',
   'tasks.filter.noMatch': 'Aucun ticket ne correspond à ces filtres.',
   'tasks.filter.clearAll': 'Effacer les filtres',
@@ -2186,25 +2186,25 @@ export const fr: Record<keyof typeof en, string> = {
   'tasks.detail.parent': 'Ticket parent',
   'tasks.detail.none': 'aucun',
   'tasks.detail.emptyBody': 'Ce ticket n’a pas de description.',
-  'tasks.startAgent': 'Démarrer un agent',
+  'tasks.startAgent': 'Démarrer une session',
   'tasks.detachAgent': 'Détacher',
-  'tasks.detachAgentHint': 'Retirer cet agent du ticket. L’agent continue de tourner.',
+  'tasks.detachAgentHint': 'Retirer cette session du ticket. La session continue de tourner.',
   'tasks.pick.title': 'Choisir un ticket pour {name}',
   'tasks.pick.hint': 'Cliquez sur une carte pour la rattacher. Rien n’est démarré.',
   'tasks.pick.cancel': 'Annuler',
-  'tasks.pick.fallbackAgent': 'cet agent',
+  'tasks.pick.fallbackAgent': 'cette session',
   'plans.pick.title': 'Choisir un plan pour {name}',
   'plans.pick.hint': 'Cliquez sur un plan pour le rattacher. Rien n’est démarré.',
-  'plans.hasAgentHint': 'Un agent travaille sur ce plan.',
-  'plans.detachAgentHint': 'Retirer cet agent du plan. L’agent continue de tourner.',
-  'tasks.discussAgent': 'Discuter avec un agent',
+  'plans.hasAgentHint': 'Une session travaille sur ce plan.',
+  'plans.detachAgentHint': 'Retirer cette session du plan. La session continue de tourner.',
+  'tasks.discussAgent': 'Discuter dans une session',
   'tasks.noLocalRepo': 'Aucun dossier local n’est associé à ce dépôt sur cette machine.',
   'tasks.noLocalRepoHint':
-    'Indiquez son dossier dans Réglages → Dépôts, et un agent pourra être démarré sur ses tickets depuis ici.',
-  'tasks.startFailed': 'Ce ticket n’a pas pu être confié à un agent.',
+    'Indiquez son dossier dans Réglages → Dépôts, et une session pourra être démarrée sur ses tickets depuis ici.',
+  'tasks.startFailed': 'Ce ticket n’a pas pu être confié à une session.',
   'tasks.startNoPath': 'Aucun dossier local n’est associé à ce dépôt.',
-  'tasks.viewAgent': 'Voir l’agent',
-  'tasks.hasAgentHint': 'Un agent travaille déjà sur ce ticket.',
+  'tasks.viewAgent': 'Voir la session',
+  'tasks.hasAgentHint': 'Une session travaille déjà sur ce ticket.',
 
   // ── Tâches · GitHub n’est pas connecté ───────────────────────────────────
   'tasks.github.title': 'GitHub n’est pas connecté.',
