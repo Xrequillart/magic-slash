@@ -2340,6 +2340,8 @@ describe('user settings', () => {
       quick_launch_launch_mode: null,
       quick_settings_enabled: null,
       quick_settings_items: null,
+      sidebar_order: null,
+      sidebar_hidden: null,
     })
   })
 

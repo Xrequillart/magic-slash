@@ -42,7 +42,7 @@ import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '../config/defaults'
 import {
   AGENT_SORT_MODES, codeSyntaxTheme, DEFAULT_CODE_SYNTAX, DEFAULT_CODE_FONT_SIZE, isValidAgentSort,
-  cleanQuickSettings, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidTheme,
+  cleanQuickSettings, cleanSidebarPages, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidTheme,
   type CodeSample, type Config, type FilePreviewResult, type ChangedLines,
 } from '../../types'
 import { applyLanguage, applyTheme, currentTheme } from '../appearance'
@@ -581,6 +581,25 @@ export function setupConfigHandlers() {
       const cleaned = cleanQuickSettings(items)
       if (!cleaned) throw new Error('Invalid quick settings items')
       config.quickSettingsItems = cleaned
+    }
+    writeConfig(config)
+    return { config }
+  })
+
+  // The sidebar menu: which pages it draws, in which order. Either may come alone.
+  ipcMain.handle('config:setSidebarPages', async (_event, patch: unknown) => {
+    if (typeof patch !== 'object' || patch === null) throw new Error('Invalid sidebar pages')
+    const { order, hidden } = patch as Record<string, unknown>
+    const config = readConfig()
+    if (order !== undefined) {
+      const cleaned = cleanSidebarPages(order)
+      if (!cleaned) throw new Error('Invalid sidebar order')
+      config.sidebarOrder = cleaned
+    }
+    if (hidden !== undefined) {
+      const cleaned = cleanSidebarPages(hidden)
+      if (!cleaned) throw new Error('Invalid sidebar hidden pages')
+      config.sidebarHidden = cleaned
     }
     writeConfig(config)
     return { config }

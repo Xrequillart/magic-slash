@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useStore } from '../store'
-import type { AgentSortMode, CodeSyntaxChoice, Config, LaunchMode, QuickSettingId, SplitNewAgentPane, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId } from '../../types'
+import type { AgentSortMode, CodeSyntaxChoice, Config, LaunchMode, QuickSettingId, SidebarPageId, SplitNewAgentPane, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId } from '../../types'
 
 export function useConfig() {
   const { config, configLoading, configError, setConfig, setConfigLoading, setConfigError } = useStore()
@@ -208,6 +208,12 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  const updateSidebarPages = useCallback(async (patch: { order?: SidebarPageId[]; hidden?: SidebarPageId[] }) => {
+    const result = await window.electronAPI.config.setSidebarPages(patch)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   const updateSplitNewAgentPane = useCallback(async (pane: SplitNewAgentPane) => {
     const result = await window.electronAPI.config.setSplitNewAgentPane(pane)
     setConfig(result.config)
@@ -331,6 +337,7 @@ export function useConfig() {
     updateSplitNewAgentPane,
     updateQuickLaunch,
     updateQuickSettings,
+    updateSidebarPages,
     updateUsageCardEnabled,
     updateUsageCardMinimized,
     updateAgentContextEnabled,

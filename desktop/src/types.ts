@@ -1682,6 +1682,38 @@ export function cleanQuickSettings(value: unknown): QuickSettingId[] | undefined
   return value.filter((id, index): id is QuickSettingId => isValidQuickSettingId(id) && value.indexOf(id) === index)
 }
 
+/**
+ * The pages of the sidebar's menu, in the order it drew them before it could be arranged:
+ * the order the work happens in (plan, pick up, reference), then the account's entry.
+ */
+export const SIDEBAR_PAGE_IDS = ['plans', 'tasks', 'skills', 'repositories'] as const
+
+export type SidebarPageId = (typeof SIDEBAR_PAGE_IDS)[number]
+
+export function isValidSidebarPageId(value: unknown): value is SidebarPageId {
+  return typeof value === 'string' && (SIDEBAR_PAGE_IDS as readonly string[]).includes(value)
+}
+
+/**
+ * A stored page list, cleaned: unknown ids (a newer build's) and repeats dropped, order
+ * kept. Unlike the quick settings sheet this is not a selection, so it is NOT completed
+ * here: `sidebarPageOrder` puts the missing pages back when the menu is drawn.
+ */
+export function cleanSidebarPages(value: unknown): SidebarPageId[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  return value.filter((id, index): id is SidebarPageId => isValidSidebarPageId(id) && value.indexOf(id) === index)
+}
+
+/**
+ * Every page, in the stored order: the ones the stored list names first, then any it does
+ * not (a page this account has never arranged, like one a newer release added) in their
+ * default place. A page is hidden by `sidebarHidden`, never by being absent from here.
+ */
+export function sidebarPageOrder(stored: readonly SidebarPageId[] | undefined): SidebarPageId[] {
+  const known = cleanSidebarPages(stored) ?? []
+  return [...known, ...SIDEBAR_PAGE_IDS.filter((id) => !known.includes(id))]
+}
+
 export const CODE_FONT_SIZES = [11, 12, 13, 14, 15, 16] as const
 
 export const DEFAULT_CODE_FONT_SIZE = 12
@@ -1818,6 +1850,10 @@ export interface Config {
   quickSettingsEnabled?: boolean
   /** The sheet's switches, in order. Absent = DEFAULT_QUICK_SETTINGS; empty is empty. */
   quickSettingsItems?: QuickSettingId[]
+  /** The sidebar menu's pages, in order. Absent = SIDEBAR_PAGE_IDS; see sidebarPageOrder. */
+  sidebarOrder?: SidebarPageId[]
+  /** The pages the sidebar menu leaves out. Absent or empty = all shown. */
+  sidebarHidden?: SidebarPageId[]
   launchMode?: LaunchMode
   /**
    * What a NEW agent is, when nothing says otherwise. Absent = never chosen, and
