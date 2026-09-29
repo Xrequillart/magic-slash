@@ -104,7 +104,7 @@ Display **MSG_APP_NOT_RUNNING** (see `references/messages.md`).
 
 #### Read the workflow
 
-Then read `references/workflow.md` §2 and run its block, with `<skill>` set to `magic-done`. It fails the same way: `APP_NOT_RUNNING` means **MSG_APP_NOT_RUNNING** and stop, with no fallback. Keep the graph, this skill's node and its possible next steps in context for Step 6. The flow changes nothing in between: every step below runs as written, in order.
+Then read `references/workflow.md` §2 and run its block, with `<skill>` set to `magic-done`. An unreachable app fails the same way: `APP_NOT_RUNNING` means **MSG_APP_NOT_RUNNING** and stop, with no fallback. `WORKFLOW_UNAVAILABLE` (a running app that does not serve `/workflow`) is not a failure: there is no workflow next step, and the skill carries on as written. Keep the graph, this skill's node and its possible next steps in context for Step 6. The flow changes nothing in between: every step below runs as written, in order.
 
 ## Step 1: Extract the ticket ID
 

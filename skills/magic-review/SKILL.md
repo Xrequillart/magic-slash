@@ -107,7 +107,7 @@ fi
 
 If the config could not be read, the app is not running: display `MSG_APP_NOT_RUNNING` and stop. Never proceed on a guessed config.
 
-Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-review`. It fails the same way: `APP_NOT_RUNNING` means `MSG_APP_NOT_RUNNING` and stop, with no fallback. Keep the graph, this skill's node and its possible next steps in context for Step 11. The flow changes nothing in between: every step, question and guard below runs as written, the Step 8 question included. This node is the review node on every pass of a review and resolve loop, and carries nothing from the pass before.
+Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-review`. An unreachable app fails the same way: `APP_NOT_RUNNING` means `MSG_APP_NOT_RUNNING` and stop, with no fallback. `WORKFLOW_UNAVAILABLE` (a running app that does not serve `/workflow`) is not a failure: there is no workflow next step, and the skill carries on as written. Keep the graph, this skill's node and its possible next steps in context for Step 11. The flow changes nothing in between: every step, question and guard below runs as written, the Step 8 question included. This node is the review node on every pass of a review and resolve loop, and carries nothing from the pass before.
 
 ## Step 1: Detect the ticket
 
@@ -337,7 +337,7 @@ An `auto` link the workflow selected (none in the default flow) is not followed 
 
 ## Step 12: Multi-repo support (if applicable)
 
-If the ticket ID is associated with multiple worktrees (full-stack task), repeat Steps 2-11 for each worktree that has an open PR.
+If the ticket ID is associated with multiple worktrees (full-stack task), repeat Steps 2-11 for each worktree that has an open PR, re-running the workflow read (`references/workflow.md` §2) from that worktree's `$PWD` first so its Step 11 next steps come from its own repository's payload.
 
 To detect multi-repo:
 

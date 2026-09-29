@@ -27,25 +27,47 @@ skills printed before workflows existed, and each skill renders them in its usua
 
 ## 2. Step 0: read the flow
 
-Run this inside the skill's Step 0, right after its config read, and fail the same way. Replace
+Run this inside the skill's Step 0, right after its config read. Replace
 `<skill>` with this skill's folder name (the `skill` field of its "Record the run" step, e.g.
 `magic-commit`).
 
 ```bash
 # Every bash block runs in its own shell: resolve the port again, exactly as the config read did.
 MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
-WORKFLOW_JSON=""
-[ -n "$MS_PORT" ] && WORKFLOW_JSON="$(curl -sf --max-time 5 "http://127.0.0.1:$MS_PORT/workflow?path=$(printf %s "$PWD" | jq -sRr @uri)&skill=<skill>" 2>/dev/null)"
-[ -z "$WORKFLOW_JSON" ] && echo "APP_NOT_RUNNING" || echo "$WORKFLOW_JSON"
+WORKFLOW_FILE="$(mktemp)"
+HTTP_CODE="000"
+[ -n "$MS_PORT" ] && HTTP_CODE="$(curl -s -o "$WORKFLOW_FILE" -w '%{http_code}' --max-time 5 "http://127.0.0.1:$MS_PORT/workflow?path=$(printf %s "$PWD" | jq -sRr @uri)&skill=<skill>" 2>/dev/null)"
+case "$HTTP_CODE" in
+  000) echo "APP_NOT_RUNNING" ;;
+  200) [ -s "$WORKFLOW_FILE" ] && cat "$WORKFLOW_FILE" || echo "WORKFLOW_UNAVAILABLE" ;;
+  *) echo "WORKFLOW_UNAVAILABLE" ;;
+esac
+rm -f "$WORKFLOW_FILE"
 ```
 
-If it prints `APP_NOT_RUNNING`, the app is unreachable: display the skill's own
-`MSG_APP_NOT_RUNNING` and stop, exactly as a failed config read does. **There is no fallback.**
-Never assume the default flow, never hard-code one, never carry on without it: a skill that guessed
-its successor could chain where the repository's flow says it must not.
+Three answers, and only one of them stops the skill:
 
-The `$PWD` of Step 0 is the right one even for a skill that later moves into a worktree: the app
-resolves a worktree path to its repository.
+- **`APP_NOT_RUNNING`** (no port, or no connection at all): the app is unreachable. Display the
+  skill's own `MSG_APP_NOT_RUNNING` and stop, exactly as a failed config read does.
+- **`WORKFLOW_UNAVAILABLE`**: the app answered, but not with a flow. That is an older app that
+  does not serve `/workflow` yet (HTTP 404), or any other status than 200 (the app is running
+  either way), or an empty 200. Carry on exactly as if the payload were `node: null` (below): the
+  skill runs as it always has, keeps its own closing text, and never chains. Say nothing about it.
+- anything else is the payload (HTTP 200).
+
+**There is no fallback flow.** Never assume the default flow, never hard-code one: a skill that
+guessed its successor could chain where the repository's flow says it must not. Without a payload,
+the skill simply has no workflow next step.
+
+The `$PWD` of Step 0 is the right one even for a skill that later moves into a worktree of the
+same repository: the app resolves a worktree path to its repository. A skill that walks the
+worktrees of **several repositories** in one run (the multi-repo mode of `magic-commit`,
+`magic-pr`, `magic-review` and `magic-resolve`) repeats this read in each worktree, from that
+worktree's `$PWD`, just as it re-runs its Node.js detection there: each repository can follow its
+own flow. Each repository's pass picks its outcome and its links from its own payload, never from
+the one read in the first directory. A skill that renders its next steps once for the whole run
+shows every link any repository selected, each target once; and the run still follows at most one
+`auto` link (§4, step 5), the first repository's that applies.
 
 Keep in context, for the whole run (the variable does not survive the block):
 
@@ -54,9 +76,9 @@ Keep in context, for the whole run (the variable does not survive the block):
 - **the possible next steps** (`links`): every link leaving this node, each with the `skill` it
   leads to
 
-A `null` body, or `node: null` (this skill is not in the flow), means **no workflow next step**:
-the skill keeps its own closing text and never chains. That is not an error and not a reason to
-stop.
+A `null` body, `node: null` (this skill is not in the flow), or `WORKFLOW_UNAVAILABLE` means **no
+workflow next step**: the skill keeps its own closing text and never chains. That is not an error
+and not a reason to stop.
 
 ### The payload
 

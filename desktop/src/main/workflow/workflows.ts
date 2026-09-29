@@ -41,7 +41,7 @@ function usableWorkflows(stored: Record<string, unknown>): Record<string, Workfl
 
 export async function hydrateWorkflows(): Promise<void> {
   const started = generation
-  let loaded: Record<string, unknown>
+  let loaded: Record<string, unknown> | null
   try {
     loaded = await getStore().loadRepositoryWorkflows()
   } catch (error) {
@@ -50,6 +50,8 @@ export async function hydrateWorkflows(): Promise<void> {
     return
   }
   if (generation !== started) return
+  // A failed read (null) keeps the last valid cache: an outage is not "no custom flow".
+  if (loaded === null) return
   workflows = usableWorkflows(loaded)
 }
 

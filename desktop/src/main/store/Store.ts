@@ -91,9 +91,10 @@ export interface Store {
    * The custom workflows of the repos visible to the caller, repo id → the stored
    * definition, unvalidated (main/workflow/workflows.ts decides whether it is usable).
    * A repo absent from the record follows the default flow. Read-only: editing a
-   * flow is out of scope in v1. Never rejects: a failed read is an empty record.
+   * flow is out of scope in v1. Never rejects: a failed read is `null`, kept apart
+   * from `{}` (no rows), so a refresh that fails leaves the last loaded flows alone.
    */
-  loadRepositoryWorkflows(): Promise<Record<string, unknown>>
+  loadRepositoryWorkflows(): Promise<Record<string, unknown> | null>
 
   loadAgents(): Promise<Agent[]>
   /** Upsert the caller's agents. Never destructive: an absent agent is left alone. */

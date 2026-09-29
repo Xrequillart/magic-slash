@@ -14,7 +14,7 @@ const CUSTOM: Workflow = {
   links: [{ from: 'commit', to: 'pr', kind: 'auto' }],
 }
 
-function withStoredWorkflows(workflows: Record<string, unknown>) {
+function withStoredWorkflows(workflows: Record<string, unknown> | null) {
   setStore({ ...NOOP_STORE, loadRepositoryWorkflows: async () => workflows })
 }
 
@@ -62,5 +62,31 @@ describe('workflowForRepo', () => {
     setStore({ ...NOOP_STORE, loadRepositoryWorkflows: async () => { throw new Error('offline') } })
     await hydrateWorkflows()
     expect(workflowForRepo('repo-1').source).toBe('repository')
+  })
+
+  it('keeps what it had when a refresh fails to read', async () => {
+    withStoredWorkflows({ 'repo-1': CUSTOM })
+    await hydrateWorkflows()
+    withStoredWorkflows(null)
+    await hydrateWorkflows()
+    expect(workflowForRepo('repo-1')).toEqual({ workflow: CUSTOM, source: 'repository' })
+  })
+
+  it('drops the flows a successful load no longer returns', async () => {
+    withStoredWorkflows({ 'repo-1': CUSTOM })
+    await hydrateWorkflows()
+    withStoredWorkflows({})
+    await hydrateWorkflows()
+    expect(workflowForRepo('repo-1').source).toBe('default')
+  })
+
+  it('does not land a load that started before a sign-out', async () => {
+    let release: (value: Record<string, unknown>) => void = () => {}
+    setStore({ ...NOOP_STORE, loadRepositoryWorkflows: () => new Promise((resolve) => { release = resolve }) })
+    const pending = hydrateWorkflows()
+    resetWorkflowsCache()
+    release({ 'repo-1': CUSTOM })
+    await pending
+    expect(workflowForRepo('repo-1').source).toBe('default')
   })
 })

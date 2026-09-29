@@ -86,7 +86,7 @@ fi
 
 If `APP_NOT_RUNNING`, the app is not running and the cloud config is unreachable: display `MSG_APP_NOT_RUNNING` and stop. Never proceed on a guessed config.
 
-Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-start`, from the same `$PWD` (the worktree Step 4 creates later changes nothing: the app resolves either path to the same repository). It fails the same way: `APP_NOT_RUNNING` means `MSG_APP_NOT_RUNNING` and stop, with no fallback. Keep the graph, this skill's node and its possible next steps in context for Step 5.5.3. The flow changes nothing in between: every step, question and guard below runs as written.
+Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-start`, from the same `$PWD` (the worktree Step 4 creates later changes nothing: the app resolves either path to the same repository). An unreachable app fails the same way: `APP_NOT_RUNNING` means `MSG_APP_NOT_RUNNING` and stop, with no fallback. `WORKFLOW_UNAVAILABLE` (a running app that does not serve `/workflow`) is not a failure: there is no workflow next step, and the skill carries on as written. Keep the graph, this skill's node and its possible next steps in context for Step 5.5.3. The flow changes nothing in between: every step, question and guard below runs as written.
 
 ### 0.2: Determine language
 

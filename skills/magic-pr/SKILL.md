@@ -100,7 +100,7 @@ fi
 
 If the config could not be read, the app is not running: display **`MSG_APP_NOT_RUNNING`** and stop. Never proceed on a guessed config.
 
-Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-pr`. It fails the same way: `APP_NOT_RUNNING` means **`MSG_APP_NOT_RUNNING`** and stop, with no fallback. Keep the graph, this skill's node and its possible next steps in context: Step 7.3 reads them to word the watch announcement, Step 7.4.5 to decide whether review feedback chains into another skill, and Step 8.5 to pick the next step. Nothing else changes: every step, question and guard below runs as written.
+Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-pr`. An unreachable app fails the same way: `APP_NOT_RUNNING` means **`MSG_APP_NOT_RUNNING`** and stop, with no fallback. `WORKFLOW_UNAVAILABLE` (a running app that does not serve `/workflow`) is not a failure: there is no workflow next step, and the skill carries on as written. Keep the graph, this skill's node and its possible next steps in context: Step 7.3 reads them to word the watch announcement, Step 7.4.5 to decide whether review feedback chains into another skill, and Step 8.5 to pick the next step. Nothing else changes: every step, question and guard below runs as written.
 
 ### 0.1: Extract the ticket ID from the current worktree
 
@@ -144,6 +144,8 @@ A worktree that fails during its PR cycle does not stop the entire process: foll
 Read `references/node-setup.md` to detect the Node.js version manager and set `$NODE_PREFIX`.
 
 **For multi-repo**: Re-execute this step each time you switch to a different worktree, as each repo may require a different Node.js version.
+
+**For multi-repo**, likewise: re-run the workflow read (`references/workflow.md` §2) in each worktree, from that worktree's `$PWD`, and let each PR's outcome and next step (its watch announcement, Step 7.4.5, Step 8.5) follow that repository's own payload.
 
 ---
 
@@ -376,7 +378,7 @@ Display **`MSG_SUMMARY`**, substituting `{branch}`, `{PR_URL}`, `{PR_NUMBER}`, `
 
 `MSG_SUMMARY` has two variants — pick based on `pullRequest.watchCI` (from the config loaded in the Configuration step, default `true`), taking into account the skip conditions listed in Step 7.4.0:
 
-- **`watchCI` is `true`**: use the **watch** variant, whose next-steps announce that the watch phase is starting. Its `{review_feedback_line}` says whether review feedback will be addressed on its own: it will only when the Step 0.0 links hold an `auto` link from this node on `review_comments` (the default flow has one, to `magic-resolve`). Then continue to Step 7.4.
+- **`watchCI` is `true`**: use the **watch** variant, whose next-steps announce that the watch phase is starting. Its `{review_feedback_line}` says whether review feedback will be addressed on its own: it will only when the Step 0.0 links hold an `auto` link from this node on `review_comments` or with no outcome (the default flow has one, to `magic-resolve`). Then continue to Step 7.4.
 - **`watchCI` is `false`**: use the **manual** variant (the classic "wait for CI, then run /magic:review" list), whose `{next_steps}` renders the links of the outcome `pr_created` as Step 8.5 says (the outcome is already known here), then stop here — skip Step 7.4 entirely. The preview-URL backfill does not run on this path (it needs a settled deployment, and nothing here waits for one), so the test scenarios stay local-only.
 
 ## Step 7.4: Watch the CI and handle review feedback
@@ -449,8 +451,8 @@ Then run up to **3** fix rounds (fix, validate locally, commit, push, re-resolve
 
 When the checks are settled (green, or failures explicitly handed back to the user) **and** `review.actionable_count` is greater than `0`, the outcome is `review_comments`. What happens next is decided by the Step 0.0 payload, not by this step: read `references/watch-actions.md`, section "Step 7.4.5", and follow it.
 
-1. **The payload has an `auto` link from this node on `review_comments`** (the default flow's, to `magic-resolve`): display **`MSG_REVIEW_COMMENTS_FOUND`** in its **chain** variant, then chain into that skill **without asking the user first**. After resolve pushes, re-resolve `$HEAD_SHA`, re-launch the watcher once and re-evaluate from Step 7.4.2.5. Do **not** start another resolve cycle from this skill: if a second round of comments arrives, report it and let the user decide.
-2. **It has none** (a custom flow that only suggests, or links nowhere, on `review_comments`): display **`MSG_REVIEW_COMMENTS_FOUND`** in its **suggest** variant, which lists the comments and the linked skills to run, and do not chain. Nothing was pushed, so there is nothing to watch again: the watch phase ends here.
+1. **The payload has an `auto` link from this node on `review_comments` or with no outcome** (the default flow's, to `magic-resolve`): display **`MSG_REVIEW_COMMENTS_FOUND`** in its **chain** variant, then chain into that skill **without asking the user first**. After resolve pushes, re-resolve `$HEAD_SHA`, re-launch the watcher once and re-evaluate from Step 7.4.2.5. Do **not** start another resolve cycle from this skill: if a second round of comments arrives, report it and let the user decide.
+2. **It has none** (a custom flow that only suggests, or links nowhere, on `review_comments` and unconditionally): display **`MSG_REVIEW_COMMENTS_FOUND`** in its **suggest** variant, which lists the comments and the linked skills to run, and do not chain. Nothing was pushed, so there is nothing to watch again: the watch phase ends here.
 
 This is the one chain this skill takes in the middle of its own work (`references/workflow.md` §4, last paragraph): what follows it, the re-watch, is still this skill's. Step 8.5 never takes the same link a second time.
 
@@ -482,7 +484,7 @@ Pick the outcome and the links as `references/workflow.md` §4 says, with this t
 | Step 1.1 found an existing PR and the user chose to stop | none: no link |
 | The run stopped on an error it could not resolve | `failed`, with the reason |
 
-In multi-repo mode, the run has one outcome: `review_comments` if any PR reached Step 7.4.5, else `ci_green` if every watched PR was green, else `pr_created` when the watch did not run.
+In multi-repo mode, each PR's next step comes from its own repository's payload (Step 0.6), with that PR's own result; the run as a whole has one outcome for Step 9: `review_comments` if any PR reached Step 7.4.5, else `ci_green` if every watched PR was green, else `pr_created` when the watch did not run.
 
 Where each outcome renders:
 

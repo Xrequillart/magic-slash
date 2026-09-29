@@ -77,8 +77,10 @@ migration and must not be read.
 Keep the config in memory: `$CONFIG_FILE` is a temp file that does not survive into a later bash
 block.
 
-Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-plan`. It fails
-the same way, `APP_NOT_RUNNING` meaning `MSG_APP_NOT_RUNNING` and stop, with no fallback. Keep the
+Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-plan`. An
+unreachable app fails the same way, `APP_NOT_RUNNING` meaning `MSG_APP_NOT_RUNNING` and stop, with
+no fallback. `WORKFLOW_UNAVAILABLE` (a running app that does not serve `/workflow`) is not a
+failure: there is no workflow next step, and the skill carries on as written. Keep the
 graph, this skill's node and its possible next steps in context for Step 8. The flow changes
 nothing between here and Step 8: every step, question and guard below runs as written.
 
@@ -451,12 +453,19 @@ Pick the outcome and the links as `references/workflow.md` §4 says, with this t
 | The user chose to stop at Step 6, or the idea was abandoned | none: no link, no `MSG_NEXT_STEPS` |
 | A Step 2.3 refusal, or a tracker write that failed | `failed` |
 
-On `planned`, display `MSG_NEXT_STEPS`, offering `/magic:start <TICKET-ID>`. Its `{next_steps}` is
-the `/magic:start` line, which is this skill's own closing text rather than a link's rendering:
-`/magic:start` is how any ticket this skill filed gets worked on, so the line stays whatever the
-flow says. Any other selected link adds its line under it, in `MSG_WORKFLOW_NEXT_STEP_LINE`
-wording. A link to `magic-start` never adds a second line, and is **never** followed on its own,
-even when a payload marks it `auto`: see below.
+On `planned`, display `MSG_NEXT_STEPS`. Its `{next_steps}` is built from the links selected on
+`planned` (those with outcome `planned` and the unconditional ones):
+
+- a selected link to `magic-start` renders the `/magic:start <TICKET-ID>` line, in this skill's
+  words (`references/messages.md`, `MSG_NEXT_STEPS`), once, first. The default flow has exactly
+  this link, so it renders the message as it always has. That link is **never** followed on its
+  own, even when a payload marks it `auto`: see below.
+- any other selected link adds its line under it, in `MSG_WORKFLOW_NEXT_STEP_LINE` wording
+  (`references/workflow.md` §7).
+- with no link selected (`node: null`, `WORKFLOW_UNAVAILABLE`, or a flow with no link leaving
+  plan on `planned`), there is no workflow next step: `MSG_NEXT_STEPS` drops its header and
+  `{next_steps}`, and keeps this skill's own closing text, the "close this agent" paragraph and
+  the spec path note.
 
 On an epic breakdown, offer the **first story**, not the epic: an epic is not something anyone
 checks out a branch for.

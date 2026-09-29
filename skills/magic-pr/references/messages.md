@@ -521,7 +521,7 @@ Displayed in Step 6.5, immediately after the PR is created — before the ticket
 Two variants. Use **watch** when `pullRequest.watchCI` is `true` (Step 7.4 follows), **manual** when it is `false`.
 
 - `{review_feedback_line}` (watch): the first wording when the workflow has an `auto` link from
-  this node on `review_comments` (the default flow does), the second otherwise:
+  this node on `review_comments` or with no outcome (the default flow does), the second otherwise:
   - en: `Review feedback from bots or humans gets addressed automatically` /
     `Review feedback from bots or humans gets reported, with the next step to run`
   - fr: `Les retours de review (bots ou humains) sont traités automatiquement` /
@@ -826,7 +826,7 @@ Je m'arrête ici plutôt que de pousser une correction au hasard.
 ## MSG_REVIEW_COMMENTS_FOUND
 
 Displayed in Step 7.4.5. Two variants, chosen by the workflow read in Step 0.0 and by nothing else:
-**chain** when it has an `auto` link from this node on `review_comments` (the default flow does,
+**chain** when it has an `auto` link from this node on `review_comments` or with no outcome (the default flow does,
 to `magic-resolve`, so `{skill}` is `/magic:resolve`), **suggest** otherwise. The suggest variant
 never says the comments are being addressed, because nothing is.
 

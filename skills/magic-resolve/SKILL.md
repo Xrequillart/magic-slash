@@ -87,7 +87,7 @@ fi
 
 If the config could not be read, the app is not running: display **`MSG_APP_NOT_RUNNING`** and stop. Never proceed on a guessed config.
 
-Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-resolve`. It fails the same way: `APP_NOT_RUNNING` means **`MSG_APP_NOT_RUNNING`** and stop, with no fallback. Keep the graph, this skill's node and its possible next steps in context for Step 9. The flow changes nothing in between: every step, question and guard below runs as written, whether the user typed `/magic:resolve` or `/magic:pr` chained into it. This node is the resolve node on every pass of a review and resolve loop, and carries nothing from the pass before.
+Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-resolve`. An unreachable app fails the same way: `APP_NOT_RUNNING` means **`MSG_APP_NOT_RUNNING`** and stop, with no fallback. `WORKFLOW_UNAVAILABLE` (a running app that does not serve `/workflow`) is not a failure: there is no workflow next step, and the skill carries on as written. Keep the graph, this skill's node and its possible next steps in context for Step 9. The flow changes nothing in between: every step, question and guard below runs as written, whether the user typed `/magic:resolve` or `/magic:pr` chained into it. This node is the resolve node on every pass of a review and resolve loop, and carries nothing from the pass before.
 
 #### Check `gh` CLI availability
 
@@ -157,7 +157,7 @@ The config was already dumped in Step 0.3. Before proceeding, resolve the curren
 
 Read `references/resolve-config.md` and run its bash block. It resolves `$REPO_KEY` and echoes every `RESOLVE_*` value. The echoes are functionally required: each Bash call runs in a fresh shell, so carry the echoed values forward from that output. Steps 5.5, 6, 7 and 7.5 reference these captured values. The file also holds the table of variables, config paths and defaults.
 
-> **Multi-repo**: Re-run this step for each worktree before its resolve cycle (Step 0.6), since each repo may have its own resolve config.
+> **Multi-repo**: Re-run this step for each worktree before its resolve cycle (Step 0.6), since each repo may have its own resolve config. Re-run the workflow read (`references/workflow.md` §2) there as well, from the worktree's `$PWD`, so that worktree's Step 9 next steps come from its own repository's payload.
 
 ## Step 1: Detect the ticket and worktree
 

@@ -899,16 +899,17 @@ export class CloudStore implements Store {
    * `userContext()`, not `context()`: a personal repo can carry a flow too, and a
    * user with no membership still has those. RLS is what scopes the rows (the
    * repository's own visibility test, 20260929120000). Most repos have no row —
-   * they follow the default flow — so an empty record is the common answer, and
-   * the one a failure gives too: the skills then get today's behaviour.
+   * they follow the default flow — so an empty record is the common answer. A
+   * failed read is `null` instead, so the caller keeps the flows it already had
+   * rather than mistaking an outage for "no custom flow".
    */
-  async loadRepositoryWorkflows(): Promise<Record<string, unknown>> {
+  async loadRepositoryWorkflows(): Promise<Record<string, unknown> | null> {
     const ctx = await this.userContext()
     if (!ctx) return {}
     const { data, error } = await ctx.client.from('repository_workflows').select('repo_id, definition')
     if (error || !data) {
       if (error) console.error('[cloud] could not read the repository workflows:', error.message)
-      return {}
+      return null
     }
     const workflows: Record<string, unknown> = {}
     for (const row of data as { repo_id: string; definition: unknown }[]) workflows[row.repo_id] = row.definition

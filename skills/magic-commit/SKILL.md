@@ -77,7 +77,7 @@ fi
 
 If the config could not be read, the app is not running: display the error message from `references/messages.md` (MSG_APP_NOT_RUNNING) and stop. Never proceed on a guessed config.
 
-Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-commit`. It fails the same way: `APP_NOT_RUNNING` means MSG_APP_NOT_RUNNING and stop, with no fallback. Keep the graph, this skill's node and its possible next steps in context for Step 7.5. The flow changes nothing in between: every step, question and guard below runs as written.
+Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-commit`. An unreachable app fails the same way: `APP_NOT_RUNNING` means MSG_APP_NOT_RUNNING and stop, with no fallback. `WORKFLOW_UNAVAILABLE` (a running app that does not serve `/workflow`) is not a failure: there is no workflow next step, and the skill carries on as written. Keep the graph, this skill's node and its possible next steps in context for Step 7.5. The flow changes nothing in between: every step, question and guard below runs as written.
 
 ### 0.2: Determine languages
 
@@ -122,6 +122,8 @@ If multiple worktrees have changes, display the multi-repo summary (see `referen
 Read `references/node-setup.md` and follow its instructions to detect and store `$NODE_PREFIX`. This prefix must be prepended to any Node.js-dependent command (git commit with hooks, npx, npm, etc.).
 
 For multi-repo setups, re-run this detection when switching worktrees — each repo may need a different Node.js version.
+
+Re-run the workflow read (`references/workflow.md` §2) in each worktree too, from its `$PWD`: each repository's commits pick their outcome and links from its own payload, and Step 7.5 shows the links of every repository once.
 
 ---
 
