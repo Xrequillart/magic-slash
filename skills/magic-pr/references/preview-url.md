@@ -68,7 +68,7 @@ that puts the URL in the bullet also turns them into links against it:
 
 | Before | After |
 | ------ | ----- |
-| `1. [ ] Open ` + inline-code `/admin/dashboard` | `1. [ ] Open [/admin/dashboard](https://x-abc.vercel.app/admin/dashboard)` |
+| `- [ ] 1. Open ` + inline-code `/admin/dashboard` | `- [ ] 1. Open [/admin/dashboard](https://x-abc.vercel.app/admin/dashboard)` |
 
 The link's **text is the path itself**, and its href is `<preview base>` + `<that same path>`. That
 shape *is* the handle: this feature keeps no state, so a link is recognised as its own by its own
@@ -775,7 +775,7 @@ write, one state.
        p = 0
        for (i = hs + 1; i <= he; i++) if (trim(L[i]) != "") { p = i; break }
        if (p == 0) { ins = hs; instext = "\n" bullet }              # empty section
-       else if (trim(L[p]) ~ /^[0-9]+[.)][[:space:]]/) { ins = p - 1; instext = bullet "\n" }
+       else if (trim(L[p]) ~ /^([-*][[:space:]]+\[[ xX]\][[:space:]]+)?[0-9]+[.)][[:space:]]/) { ins = p - 1; instext = bullet "\n" }
        else {                                                       # prerequisites line at p
          k = p; pad = "  "
          while (k + 1 <= he && L[k + 1] ~ /^[[:space:]]+[-*][[:space:]]/) { k++; pad = indent_of(L[k]) }

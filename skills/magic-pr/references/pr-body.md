@@ -14,7 +14,7 @@ or `* [ ]`):
 - `type`: at most **one** box may be ticked, and only inside a categorisation group whose heading belongs to the type-of-change family (e.g. `## Type of change`, `### Type of Change:`, `**Change type**`, `## Kind of change`, `## Type de changement`) — matched case-insensitively and ignoring the surrounding markdown noise, so leading `#` marks, bold markers and a trailing `:` never break the match. The family is a closed list, not an open-ended guess: `Type of change`, `Change type`, `Kind of change`, `Type de changement`. Every other group keeps its boxes empty, and a heading that still matches none of them is treated as `never`
 - `all`: tick the boxes genuinely verified, and only those
 - Every mode wins over the template's own instruction comments (`<!-- Mark the appropriate option with an "x" -->` and the like), and is inert on a repo with no template of its own: **`MSG_PR_TEMPLATE_EN`** / **`MSG_PR_TEMPLATE_FR`** ship no checkboxes of their own, and no mode invents one to have something to tick
-- The test-step boxes you write in the testing section (`1. [ ] …`) are outside every mode: they belong to the reviewer and ship empty even at `all`, because nobody has run the scenario yet
+- The test-step boxes you write in the testing section (`- [ ] 1. …`) are outside every mode: they belong to the reviewer and ship empty even at `all`, because nobody has run the scenario yet
 
 ## Body length and shape (Step 6.1)
 
