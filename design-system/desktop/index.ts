@@ -335,6 +335,23 @@ export { Stepper } from './Stepper'
 export type { StepperProps, StepperSize } from './Stepper'
 export { ToggleButton } from './ToggleButton'
 export type { ToggleButtonProps, ToggleButtonSize } from './ToggleButton'
+// The workflow canvas: the only components built on `@xyflow/react` (see README.md,
+// rule 1). Its data types are exported too, since a caller maps its own model onto
+// them; the layout and the handle ids stay inside the folder.
+export { WorkflowCanvas } from './WorkflowCanvas'
+export type { WorkflowCanvasLabels, WorkflowCanvasProps } from './WorkflowCanvas'
+export { WorkflowNode } from './WorkflowNode'
+export type { WorkflowNodeData, WorkflowNodeType } from './WorkflowNode'
+export { WorkflowEdge } from './WorkflowEdge'
+export type { WorkflowEdgeData, WorkflowEdgeType } from './WorkflowEdge'
+export { CanvasMinimap } from './CanvasMinimap'
+export type { CanvasMinimapProps } from './CanvasMinimap'
+export type {
+  WorkflowCanvasLink,
+  WorkflowCanvasLinkKind,
+  WorkflowCanvasNode,
+} from './workflowLayout'
+export { skillIcon } from './skillIcons'
 // Icons are imported from `@ds/desktop/icons` directly rather than through here: an
 // app pulls dozens of them per file, and routing that through the component barrel
 // would make every icon import drag the components along behind it.
