@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AvatarSourceResult, AvatarWriteResult } from '../avatar'
 import type { UsernameCheckResult, UsernameSaveResult } from '../username'
-import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanOverview, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
+import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanLiveChange, PlanOverview, PlanPresence, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -814,11 +814,11 @@ const tasksApi = {
 // Plans API — every `/magic:plan` session the reader may see: their own, plus their
 // teammates' on the repositories their organizations share.
 //
-// No subscription, and that is the table's own design rather than this page's shortcut:
-// `plan_sessions` is deliberately absent from the realtime publication (see the end of
-// supabase/migrations/20260821090000_plan_sessions.sql), so the list reads when the page
-// opens, and again when the reader asks it to after a read that failed — the Retry
-// button of the page's error state, which is the only other thing that calls it.
+// THE LIST has no subscription: it reads when the page opens, and again when the reader
+// asks it to after a read that failed — the Retry button of the page's error state.
+// ONE OPEN PLAN is live (`live` below, #306): `plan_sessions` and `plan_comments` are
+// published since 20260929110000, and the main process joins that plan's channels for
+// the page, which is what keeps the socket on that side of the bridge.
 const plansApi = {
   list: (): Promise<PlanOverview> => ipcRenderer.invoke('plans:list'),
   // ONE plan, with the spec markdown the list leaves out and the tickets it created.
@@ -844,9 +844,8 @@ const plansApi = {
   // same either way.
   //
   // EVERY WRITE IS FOLLOWED BY A REFETCH, on the renderer's side (`usePlanComments`).
-  // The table is deliberately not published to realtime — that is issue #298 — so a
-  // reply a colleague posted while this plan was open arrives on the next read, not on
-  // its own.
+  // A reply a colleague posts while the plan is open arrives through `live.onChanged`,
+  // which is a nudge to run that same read again: the rows never travel over it.
   comments: {
     // `sessionId` is the uuid the detail read handed over. Answers an unfailed empty
     // set for a plan that does not exist or is not visible, exactly as `detail` answers
@@ -927,6 +926,34 @@ const plansApi = {
     ipcRenderer.invoke('plans:addCollaborator', input),
   removeCollaborator: (input: { sessionId: string; userId: string }): Promise<PlanCollaboratorWriteResult> =>
     ipcRenderer.invoke('plans:removeCollaborator', input),
+  // THE OPEN PLAN, LIVE (#306). `open` when the page shows a plan and `close` when it
+  // leaves it; one plan at a time, and opening another replaces it. The main process joins
+  // the plan's channels and relays what they say:
+  //  - `onPresence`: who else has this plan open, the reader excluded — `{ userId, email,
+  //    joinedAt }` each, no photo (the page resolves faces from what it already holds);
+  //  - `onChanged`: the spec or the comments moved, read them again. Never the rows;
+  //  - `onStatus`: the channels' health, `null` when no plan is open.
+  // Every event names its plan, so a late one about the plan just left can be ignored.
+  live: {
+    open: (sessionId: string): Promise<boolean> => ipcRenderer.invoke('plans:live:open', sessionId),
+    close: (sessionId: string): Promise<void> => ipcRenderer.invoke('plans:live:close', sessionId),
+    getStatus: (): Promise<RealtimeStatus | null> => ipcRenderer.invoke('plans:live:status'),
+    onPresence: (callback: (presence: PlanPresence) => void) => {
+      const listener = (_event: IpcRendererEvent, presence: PlanPresence) => callback(presence)
+      ipcRenderer.on('plans:live:presence', listener)
+      return () => ipcRenderer.removeListener('plans:live:presence', listener)
+    },
+    onChanged: (callback: (change: PlanLiveChange) => void) => {
+      const listener = (_event: IpcRendererEvent, change: PlanLiveChange) => callback(change)
+      ipcRenderer.on('plans:live:changed', listener)
+      return () => ipcRenderer.removeListener('plans:live:changed', listener)
+    },
+    onStatus: (callback: (status: RealtimeStatus | null) => void) => {
+      const listener = (_event: IpcRendererEvent, status: RealtimeStatus | null) => callback(status)
+      ipcRenderer.on('plans:live:status', listener)
+      return () => ipcRenderer.removeListener('plans:live:status', listener)
+    },
+  },
 }
 
 // Org API (organization membership + invitations + multi-org management)

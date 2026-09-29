@@ -77,6 +77,16 @@ vi.mock('../cloud/planHistory', () => ({
   readRevisionTexts: (...args: unknown[]) => mockReadTexts(...args),
 }))
 
+// The live channels' module, which reaches the Supabase client through `./auth`.
+const mockOpenLive = vi.fn()
+const mockCloseLive = vi.fn()
+const mockLiveStatus = vi.fn()
+vi.mock('../cloud/plan-live', () => ({
+  openPlanLive: (...args: unknown[]) => mockOpenLive(...args),
+  closePlanLive: (...args: unknown[]) => mockCloseLive(...args),
+  getPlanLiveStatus: () => mockLiveStatus(),
+}))
+
 // The preview machinery, which pulls shiki and the whole config layer. The diff channel's
 // own job is the guard and the wiring; `specDiff.test.ts` covers the line diff, and the
 // file preview's suite the annotation. The highlighter answers the text wrapped, so a test
@@ -400,5 +410,32 @@ describe('who may edit a plan', () => {
     expect(await invoke('plans:removeCollaborator', args)).toEqual({ status: 'failed' })
     expect(mockAddCollaborator).not.toHaveBeenCalled()
     expect(mockRemoveCollaborator).not.toHaveBeenCalled()
+  })
+})
+
+describe('plans:live', () => {
+  it('opens a well-formed plan, and nothing for anything else', async () => {
+    expect(await invoke('plans:live:open', SESSION_ID)).toBe(true)
+    expect(mockOpenLive).toHaveBeenCalledWith(SESSION_ID)
+    mockOpenLive.mockClear()
+    expect(await invoke('plans:live:open', 'plan:../../x')).toBe(false)
+    expect(await invoke('plans:live:open', undefined)).toBe(false)
+    expect(mockOpenLive).not.toHaveBeenCalled()
+  })
+
+  it('closes the plan it names, and nothing on a malformed or missing id', async () => {
+    await invoke('plans:live:close', SESSION_ID)
+    expect(mockCloseLive).toHaveBeenCalledWith(SESSION_ID)
+    mockCloseLive.mockClear()
+    await invoke('plans:live:close', 'nope')
+    await invoke('plans:live:close', undefined)
+    expect(mockCloseLive).not.toHaveBeenCalled()
+  })
+
+  it('answers the channel health, null when no plan is open', async () => {
+    mockLiveStatus.mockReturnValue(null)
+    expect(await invoke('plans:live:status')).toBeNull()
+    mockLiveStatus.mockReturnValue('live')
+    expect(await invoke('plans:live:status')).toBe('live')
   })
 })

@@ -1449,6 +1449,7 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.detail.changeNotOwner': 'Seul l’auteur peut retravailler ce plan : son fichier de spec est sur sa machine.',
   'plans.detail.changeNoFile': 'Le fichier de spec de ce plan n’est pas sur cette machine.',
   'plans.detail.changeFailed': 'Impossible de vérifier où se trouve le fichier de spec de ce plan.',
+  'plans.presence.label': 'Aussi sur ce plan',
   'plans.detail.notFound': 'Ce plan n’est pas accessible',
   'plans.detail.notFoundHint':
     'Il n’existe pas, ou il appartient à un dépôt qu’aucune de vos organisations ne partage.',

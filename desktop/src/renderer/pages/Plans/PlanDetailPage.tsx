@@ -20,6 +20,9 @@ import { useStore, type FileComment } from '../../store'
 import { useAuth } from '../../hooks/useAuth'
 import { useAvatar } from '../../hooks/useAvatar'
 import { usePlanComments } from '../../hooks/usePlanComments'
+import { usePlanLive } from '../../hooks/usePlanLive'
+import { useMemberAvatars } from '../../hooks/useMemberAvatars'
+import { createLatestWriter } from '../../utils/latestWrite'
 import { configKeyForRepoId } from '../../utils/projectColors'
 import type { PlanCard, PlanTicketGroup } from '../../utils/planRows'
 import { groupPlanTickets, planAuthor, planLabel, toStatus } from '../../utils/planRows'
@@ -38,8 +41,8 @@ import { codeToMarkdown, richTextToMarkdown, type RichNode } from '../../utils/r
 import { blockShortcut, inlineShortcut } from '../../utils/markdownShortcuts'
 import { detectTicketProvider } from '../../components/agent-info-sidebar/utils'
 import {
-  Banner, Button, CommentCard as TurnCard, Label, Status, StickyBar, TabStrip, Text, TrackerBadge, caretOffsetIn,
-  type RichTextBlockProps,
+  AvatarStack, Banner, Button, CommentCard as TurnCard, Label, Status, StickyBar, TabStrip, Text, TrackerBadge, caretOffsetIn,
+  type AvatarStackPerson, type RichTextBlockProps,
 } from '@ds/desktop'
 import { JiraStatusPill, StateChip } from '../Tasks/parts'
 import { STATUS_LOOK } from './PlanRow'
@@ -653,6 +656,8 @@ export function PlanDetailPage({
   latestRef.current = composed
   const savedRef = useRef<string | null>(null)
   const updatedAtRef = useRef<string | null>(null)
+  /** A read held back while a block was open. See the effect that adopts a read. */
+  const deferredSpecRef = useRef(false)
   const savingRef = useRef(false)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   /** Bumped when a save lands behind newer text, so the autosave arms again for it. */
@@ -748,6 +753,7 @@ export function PlanDetailPage({
       savingRef.current = false
       pastRef.current = []
       futureRef.current = []
+      deferredSpecRef.current = false
       setDoc(null)
       setBlock(null)
       setSaveState('idle')
@@ -766,6 +772,16 @@ export function PlanDetailPage({
     const session = detail?.session
     if (!session) return
     if (latestRef.current !== null && latestRef.current !== savedRef.current) return
+    // A block holding the caret, untouched, and a spec that is NOT the one this page last
+    // saved or read: somebody else wrote while the reader sat in a block — which, since the
+    // plan is live (#306), is the ordinary way a colleague's edit arrives. Taking the row's
+    // `updated_at` here while the document stays the old one would arm the autosave to send
+    // that old document under the new guard, and silently revert the colleague. So nothing
+    // is adopted until the block closes, and the effect below reads the plan again then.
+    if (blockRef.current && (session.spec ?? null) !== savedRef.current) {
+      deferredSpecRef.current = true
+      return
+    }
     savedRef.current = session.spec ?? null
     updatedAtRef.current = session.updatedAt ?? null
     // A block holding the caret was cut out of `doc` by its offsets, and a `doc` swapped
@@ -1234,17 +1250,59 @@ export function PlanDetailPage({
 
   /**
    * Read the plan again QUIETLY — no loading state, and a failed read keeps what is on
-   * screen. After a change of who may edit, and after a save the database refused: both
-   * change what `viewerCanEdit` and the invitation list say.
+   * screen. After a change of who may edit, after a save (the database refused it, or it
+   * landed and `idea` may have moved with the spec), and for the live channel (#306).
+   *
+   * SERIALIZED: the channel also hears this page's own saves (a spec autosave is one event,
+   * and the agent uploading beside it another), so a burst of reads issues at most two, the
+   * last one reflecting all of them. See `createLatestWriter`. What a read may and may not
+   * take from the reader is the adopting effect's business, not this one's.
    */
-  const refreshDetail = useCallback(() => {
-    const id = card.id
-    window.electronAPI.plans.detail(id)
-      .then((next) => {
-        if (cardIdRef.current === id && !next.failed) setDetail(next)
-      })
-      .catch(() => {})
-  }, [card.id])
+  const detailRead = useMemo(() => createLatestWriter<string>(async (id) => {
+    const next = await window.electronAPI.plans.detail(id)
+    if (cardIdRef.current === id && !next.failed) setDetail(next)
+  }), [])
+  const refreshDetail = useCallback(() => detailRead(card.id), [card.id, detailRead])
+
+  /** A read held back while a block was open is run once the block closes. */
+  useEffect(() => {
+    if (block || !deferredSpecRef.current) return
+    deferredSpecRef.current = false
+    refreshDetail()
+  }, [block, refreshDetail])
+
+  /**
+   * WHO ELSE IS ON THIS PLAN, and their edits and comments as they land (#306).
+   *
+   * The spec: read the row again, and let the adopting effect decide — it takes the new
+   * spec unless the reader has unsaved text (the conflict banner is then the way out, as it
+   * always was) or a block open (held until it closes, see above).
+   *
+   * The comments: read them again, unless the event is a DELETE of a comment this page is not
+   * showing, which `refresh` itself tells apart.
+   */
+  const presentMembers = usePlanLive(detail?.session?.id, {
+    onSpecChanged: refreshDetail,
+    onCommentsChanged: comments.refresh,
+  })
+
+  /**
+   * THEIR FACES, from what the page can already reach: the photos of the plan's organization
+   * (the same `useMemberAvatars` read the members roster makes), then those of the
+   * comments' authors — the only source on a plan of a personal repository, which has no
+   * organization. The presence payload carries no photo on purpose (see `PlanPresenceMember`),
+   * and anyone found in neither wears their initial.
+   */
+  const orgAvatars = useMemberAvatars(card.orgId ? [card.orgId] : [])
+  const authorAvatars = comments.read?.avatarByAuthor
+  const present: AvatarStackPerson[] = useMemo(
+    () => presentMembers.map((member) => ({
+      id: member.userId,
+      name: member.email,
+      src: orgAvatars[member.userId] ?? authorAvatars?.[member.userId] ?? null,
+    })),
+    [presentMembers, orgAvatars, authorAvatars],
+  )
 
   /**
    * The edit policy was changed from `PlanAccess`: the write moved the row's `updated_at`,
@@ -1613,9 +1671,13 @@ export function PlanDetailPage({
    * offered `personal`), nothing for anyone else. On a plan of a personal repository, the
    * author invites people from their organizations. `detail` rather than `session` for
    * the invitation list, which only the detail read carries.
+   *
+   * FIRST, WHO ELSE HAS IT OPEN (#306), as faces: in the bar for the reason the actions are,
+   * so it stays in sight however far down the spec the reader is. Nothing when nobody is.
    */
   const planActions = session && (
     <div className="flex shrink-0 items-center gap-2">
+      <AvatarStack people={present} max={4} label={t('plans.presence.label')} className="mr-1" />
       <Button
         icon={NotebookPen}
         onClick={reworkPlan}

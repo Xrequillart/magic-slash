@@ -21,9 +21,10 @@ import { fetchAuthors } from './plans'
  * from the renderer either. It comes off the LIVE session, falling back to the stored one
  * — see `authorOf`, which is where the difference between those two turned out to matter.
  *
- * NO REALTIME. The table is deliberately not published (see the migration's closing note,
- * and issue #298). Every write below is followed by a refetch on the renderer's side —
- * `usePlanComments` — which is the whole of how a thread stays current.
+ * NO REALTIME HERE. The table is published since 20260929110000, but this module never
+ * subscribes: the open plan's channel (`plan-live.ts`) only nudges the renderer, which
+ * re-reads through `listPlanComments` below. Every write is followed by the same refetch
+ * (`usePlanComments`), so one read is how a thread stays current, live or not.
  */
 
 interface PlanCommentRow {

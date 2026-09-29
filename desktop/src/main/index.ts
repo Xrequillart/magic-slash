@@ -41,6 +41,7 @@ import { setupOrgHandlers } from './ipc/org-handlers'
 import { setupPlansHandlers } from './ipc/plans-handlers'
 import { setupTasksHandlers } from './ipc/tasks-handlers'
 import { stopOrgAgentsRealtime } from './cloud/realtime'
+import { closePlanLive } from './cloud/plan-live'
 import { PRReviewWatcher } from './pr-review-watcher/watcher'
 import { setupPRReviewHandlers } from './ipc/pr-review-handlers'
 import { setupReengagementNotifications } from './notifications/reengagement'
@@ -308,10 +309,11 @@ function setupHandlers() {
   // in the browser, so the credential arrives long after `jira:connect` returned.
   setupJiraHandlers(() => mainWindow)
   setupOrgHandlers()
-  // The Plans page's read of `/magic:plan` sessions. Read-only and pull-only, like
-  // Tasks below: `plan_sessions` is deliberately not published to realtime (see the
-  // end of 20260821090000), so there is no subscription to start here. The page reads
-  // on open, and again when the reader retries a read that failed.
+  // The Plans page's read of `/magic:plan` sessions. The list is pull-only: it reads on
+  // open, and again when the reader retries a read that failed. ONE open plan is live
+  // (#306, 20260929110000): the page asks for it through `plans:live:open`, and the
+  // channels are joined on demand by `cloud/plan-live.ts`, so there is still nothing to
+  // start here.
   setupPlansHandlers()
   // The Tasks page's backlog read. No poller behind it: the page reads on open and
   // on an explicit reload, so there is nothing to start here beyond the channel.
@@ -954,6 +956,9 @@ app.on('before-quit', async (event) => {
 
   // Tear down the org-agents realtime channel
   void stopOrgAgentsRealtime()
+  // And the open plan's: leaving it untracks the reader, so colleagues see them go now
+  // rather than when the server notices the socket is dead.
+  void closePlanLive()
 
   // Cleanup global shortcuts
   globalShortcut.unregisterAll()

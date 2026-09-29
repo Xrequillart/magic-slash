@@ -12,12 +12,11 @@ import { createLatestWriter } from '../utils/latestWrite'
  * three branches over it that the plans list draws over its own, so the two cannot come to
  * disagree about what an empty answer means.
  *
- * NO REALTIME, and the refetch is not a poor substitute for one. `plan_comments` is
- * deliberately not published (see the migration's closing note); live propagation is issue
- * #298, with its own questions about what happens to a card somebody is typing in when the
- * passage under it moves. What this hook promises is narrower and is stated plainly on the
- * page: the comments as they were when the plan was opened, plus every change made from
- * here.
+ * LIVE THROUGH THE SAME READ. `plan_comments` is published since 20260929110000, and a
+ * colleague's comment reaches the open plan as a nudge (`plans.live.onChanged`, relayed by
+ * the page) to call `refresh` — which is this very read, run quietly. The rows never travel
+ * over the channel, so a live update and a reopen cannot draw two different threads. A card
+ * somebody is typing in keeps its draft: it is the card's state, not this read's.
  */
 
 /** An answer with nothing in it and nothing wrong — no plan open, or nothing said yet. */
@@ -34,6 +33,16 @@ export interface PlanComments {
   /** Ask again. The one thing a reader can do about a failed read. */
   retry: () => void
   /**
+   * Read again QUIETLY: no loading state in between, and serialized with every other read
+   * (a burst of nudges issues at most two). For the live channel, which says a colleague
+   * wrote, edited or deleted a comment on this plan.
+   *
+   * `deletedId` is a comment DELETE, the one event the database cannot scope to a plan: every
+   * deleted comment on every plan the socket hears of arrives with it, so the read runs only
+   * when that comment is one this thread is showing.
+   */
+  refresh: (deletedId?: string) => void
+  /**
    * The three writes. Each resolves to whether it went through and then refetches, so a
    * caller can leave a card open on a failure instead of closing it over a comment that
    * was never stored.
@@ -45,6 +54,9 @@ export interface PlanComments {
 
 export function usePlanComments(sessionId: string | undefined): PlanComments {
   const [read, setRead] = useState<PlanCommentsRead | null>(null)
+  /** The thread on screen, for `refresh` to tell our deletes from other plans'. */
+  const readRef = useRef(read)
+  readRef.current = read
   /**
    * Bumped by `retry`, for the reason `Plans/index.tsx` gives: ONE effect owns the state,
    * so the reset to `null`, the cancellation and the failure fallback are written once and
@@ -119,11 +131,16 @@ export function usePlanComments(sessionId: string | undefined): PlanComments {
    * the comment was deleted by its author from the webapp, the plan was unshared — and
    * showing the reader why costs one read they were about to want anyway.
    */
-  const after = useCallback(async (ok: boolean): Promise<boolean> => {
+  const refresh = useCallback((deletedId?: string) => {
+    if (deletedId && !readRef.current?.comments.some((comment) => comment.id === deletedId)) return
     const id = sessionRef.current
     if (id) load(id)
-    return ok
   }, [load])
+
+  const after = useCallback(async (ok: boolean): Promise<boolean> => {
+    refresh()
+    return ok
+  }, [refresh])
 
   const create = useCallback(async (input: NewPlanComment) => {
     const ok = await window.electronAPI.plans.comments.create(input).catch(() => false)
@@ -148,7 +165,7 @@ export function usePlanComments(sessionId: string | undefined): PlanComments {
    * on every scroll frame, and the spec would be re-parsed on each one.
    */
   return useMemo(
-    () => ({ read, retry, create, update, remove }),
-    [read, retry, create, update, remove],
+    () => ({ read, retry, refresh, create, update, remove }),
+    [read, retry, refresh, create, update, remove],
   )
 }
