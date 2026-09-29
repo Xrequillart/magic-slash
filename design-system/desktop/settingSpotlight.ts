@@ -9,8 +9,13 @@
  * already on screen, it is what the result showed, and the rows that draw it mark their
  * own box — `data-setting-row` on `SettingRow` and on each `FieldTable` row,
  * `data-section-header` on `SectionHeader` — so the ring goes round the whole row rather
- * than round a word. A heading rings the block it opens: its parent, the heading and the
- * card under it.
+ * than round a word. A heading rings the block it opens: the element right after it, the
+ * card or the grid. Not its parent, which pages nest the next section inside as often as
+ * not.
+ *
+ * A RESULT FOUND BY A CHOICE lands on that choice when the choice is on screen as a thing
+ * of its own — a theme tile, marked `data-setting-choice`. A select's choices are not: only
+ * the current one is drawn, so those land on the row.
  *
  * HERE AND NOT IN THE APP because the markers are this folder's: the app would otherwise
  * be reaching into the DOM of components it only knows as props.
@@ -23,22 +28,37 @@
  */
 const RING = ['outline', 'outline-2', 'outline-blue', 'outline-offset-4'] as const
 
-/** The box to ring for the setting named `label` inside `root`, or null while it is not there. */
-export function findSettingTarget(root: HTMLElement, label: string): HTMLElement | null {
-  const wanted = label.trim()
-  if (!wanted) return null
-
+/** Every element inside `root` whose own text is exactly `text`. */
+function* carrying(root: HTMLElement, text: string): Generator<HTMLElement> {
+  const wanted = text.trim()
+  if (!wanted) return
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (node.textContent?.trim() !== wanted) continue
-    const at = node.parentElement
-    if (!at) continue
+    if (node.textContent?.trim() === wanted && node.parentElement) yield node.parentElement
+  }
+}
 
+/**
+ * The box to ring for the setting named `label` inside `root` — or for its choice `option`,
+ * when that choice is drawn as a box of its own — or null while it is not there.
+ */
+export function findSettingTarget(root: HTMLElement, label: string, option?: string): HTMLElement | null {
+  if (option) {
+    for (const at of carrying(root, option)) {
+      const choice = at.closest<HTMLElement>('[data-setting-choice]')
+      if (choice && root.contains(choice)) return choice
+    }
+  }
+
+  for (const at of carrying(root, label)) {
     const row = at.closest<HTMLElement>('[data-setting-row]')
     if (row && root.contains(row)) return row
 
-    const block = at.closest<HTMLElement>('[data-section-header]')?.parentElement
-    if (block && block !== root && root.contains(block)) return block
+    const header = at.closest<HTMLElement>('[data-section-header]')
+    if (header && root.contains(header)) {
+      const block = header.nextElementSibling
+      return block instanceof HTMLElement ? block : header
+    }
 
     return at
   }

@@ -1,9 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { en } from '../../i18n/en'
-import { fr } from '../../i18n/fr'
-import { SETTINGS_SEARCH_ENTRIES, foldForSearch, searchSettings } from './settingsSearch'
+import { foldForSearch, searchSettings } from './settingsSearch'
 
-const item = (key: string, label: string, page = 'Page', help = '') => ({ key, label, page, help })
+const item = (key: string, label: string, page = 'Page', help = '', options: string[] = []) => ({
+  key,
+  label,
+  page,
+  help,
+  options,
+})
 
 describe('foldForSearch', () => {
   it('folds case and accents', () => {
@@ -37,13 +41,22 @@ describe('searchSettings', () => {
   })
 })
 
-describe('SETTINGS_SEARCH_ENTRIES', () => {
-  it('names only keys that both catalogues translate', () => {
-    for (const { labelKey, helpKey } of SETTINGS_SEARCH_ENTRIES) {
-      for (const key of [labelKey, helpKey].filter(Boolean) as (keyof typeof en)[]) {
-        expect(en[key], key).toBeTruthy()
-        expect(fr[key], key).toBeTruthy()
-      }
-    }
+describe('searchSettings, by choice', () => {
+  const items = [
+    item('theme', 'Theme', 'Appearance', '', ['Dark', 'Midnight', 'Espresso']),
+    item('mode', 'Launch mode', 'Sessions', 'Accept edits without asking', ['Plan', 'Accept edits']),
+  ]
+
+  it('finds a setting by one of its choices, and says which', () => {
+    expect(searchSettings(items, 'midnight')).toEqual([{ ...items[0], option: 'Midnight' }])
+  })
+
+  it('lets the words span the name and the choice', () => {
+    expect(searchSettings(items, 'theme espresso')).toEqual([{ ...items[0], option: 'Espresso' }])
+    expect(searchSettings(items, 'mode plan').map((hit) => hit.option)).toEqual(['Plan'])
+  })
+
+  it('ranks a choice ahead of the help line', () => {
+    expect(searchSettings(items, 'accept edits')[0].option).toBe('Accept edits')
   })
 })

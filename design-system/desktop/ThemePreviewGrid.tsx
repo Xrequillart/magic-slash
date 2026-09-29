@@ -124,6 +124,8 @@ export function ThemePreviewGrid({ themes, value, onSelect, className = '' }: Th
           <button
             key={theme.id}
             type="button"
+            // A choice the settings search can land on by name — see `settingSpotlight`.
+            data-setting-choice=""
             role="radio"
             aria-checked={active}
             onClick={() => { if (!active) onSelect(theme.id) }}

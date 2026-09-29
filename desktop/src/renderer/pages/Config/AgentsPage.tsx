@@ -32,7 +32,7 @@ import {
 
 // Message keys rather than labels: module scope is evaluated once at import, so a
 // literal here would pin the select to the boot language.
-const AGENT_TYPE_OPTIONS: { value: AgentType; labelKey: MessageKey; descriptionKey: MessageKey }[] = [
+export const AGENT_TYPE_OPTIONS: { value: AgentType; labelKey: MessageKey; descriptionKey: MessageKey }[] = [
   { value: 'coder', labelKey: 'agentType.coder', descriptionKey: 'agentType.coderHint' },
   { value: 'planner', labelKey: 'agentType.planner', descriptionKey: 'agentType.plannerHint' },
 ]
@@ -45,7 +45,7 @@ export const LAUNCH_MODE_OPTIONS: { value: LaunchMode; labelKey: MessageKey; des
   { value: 'bypassPermissions', labelKey: 'settings.launchMode.bypass', descriptionKey: 'settings.launchMode.bypass.help' },
 ]
 
-const SORT_LABEL: Record<AgentSortMode, MessageKey> = {
+export const SORT_LABEL: Record<AgentSortMode, MessageKey> = {
   recent: 'sidebar.sort.recent',
   status: 'sidebar.sort.status',
   repository: 'sidebar.sort.repository',

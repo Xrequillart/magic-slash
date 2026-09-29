@@ -43,7 +43,7 @@ import {
  */
 export const PR_WATCHER_INTERVALS = [30_000, 60_000, 120_000, 300_000] as const
 
-const PR_WATCHER_INTERVAL_LABEL: Record<(typeof PR_WATCHER_INTERVALS)[number], MessageKey> = {
+export const PR_WATCHER_INTERVAL_LABEL: Record<(typeof PR_WATCHER_INTERVALS)[number], MessageKey> = {
   30_000: 'settings.application.prWatcher.interval30s',
   60_000: 'settings.application.prWatcher.interval1m',
   120_000: 'settings.application.prWatcher.interval2m',

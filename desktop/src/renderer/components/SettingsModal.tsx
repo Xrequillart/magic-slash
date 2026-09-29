@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { PageModal } from './PageModal'
 import { TabSweep } from './TabSweep'
-import { SETTINGS_SEARCH_ENTRIES, searchSettings, type SettingsSearchEntry } from './settingsSearch'
+import { SETTINGS_CATALOGUE } from './settingsCatalogue'
+import { searchSettings } from './settingsSearch'
 import { MODAL_COLUMN_PADDING, findSettingTarget, spotlightSetting } from '@ds/desktop'
 import { AboutPage } from '../pages/Config/AboutPage'
 import { AccountPage } from '../pages/Config/AccountPage'
@@ -18,7 +19,7 @@ import { ProfilePage } from '../pages/Config/ProfilePage'
 import { QuickLaunchPage } from '../pages/Config/QuickLaunchPage'
 import { QuickSettingsPage } from '../pages/Config/QuickSettingsPage'
 import { SecurityPage } from '../pages/Config/SecurityPage'
-import { CHORDS, ShortcutsPage } from '../pages/Config/ShortcutsPage'
+import { ShortcutsPage } from '../pages/Config/ShortcutsPage'
 import { SplitViewPage } from '../pages/Config/SplitViewPage'
 import { useStore } from '../store'
 import { useT, type MessageKey } from '../i18n'
@@ -152,12 +153,6 @@ const GROUPS: { id: string; labelKey: MessageKey; pages: SettingsPageEntry[] }[]
 const PAGES = GROUPS.flatMap(({ pages }) => pages)
 const ORDER = PAGES.map(({ id }) => id)
 
-/** The search box's catalogue: the settings pages list, then the chords the shortcuts page owns. */
-const SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
-  ...SETTINGS_SEARCH_ENTRIES,
-  ...CHORDS.map(([labelKey, helpKey]) => ({ tab: 'shortcuts' as const, labelKey, helpKey })),
-]
-
 /**
  * How long a picked setting may take to appear on its page before the ring gives up.
  * Most are there on the first frame; the Claude account and the org roster arrive from a
@@ -178,11 +173,12 @@ export function SettingsModal() {
   const [query, setQuery] = useState('')
   const items = useMemo(
     () =>
-      SEARCH_ENTRIES.map((entry, index) => ({
+      SETTINGS_CATALOGUE.map((entry, index) => ({
         key: String(index),
         entry,
         label: t(entry.labelKey),
         help: entry.helpKey ? t(entry.helpKey) : '',
+        options: entry.options?.(t) ?? [],
         page: t((PAGES.find((page) => page.id === entry.tab) ?? PAGES[0]).labelKey),
       })),
     [t],
@@ -193,7 +189,7 @@ export function SettingsModal() {
    * THE SETTING A RESULT POINTED AT, until the reader touches the page. `seq` so picking
    * the same result twice rings it again rather than being a state that did not change.
    */
-  const [spot, setSpot] = useState<{ label: string; seq: number } | null>(null)
+  const [spot, setSpot] = useState<{ label: string; option?: string; seq: number } | null>(null)
   const page = useRef<HTMLDivElement>(null)
   useSettingSpotlight(page, spot, () => setSpot(null))
 
@@ -226,9 +222,11 @@ export function SettingsModal() {
           placeholder: t('settings.search.placeholder'),
           clearLabel: t('settings.search.clear'),
           emptyLabel: t('settings.search.empty'),
-          results: results.map(({ key, label, entry }) => {
+          results: results.map(({ key, label, entry, option }) => {
             const home = PAGES.find((one) => one.id === entry.tab) ?? PAGES[0]
-            return { key, label, context: t(home.labelKey), icon: home.icon }
+            // Found by a choice, the line under the name says which one, after the page.
+            const where = t(home.labelKey)
+            return { key, label, context: option ? `${where} · ${option}` : where, icon: home.icon }
           }),
           // The query stays in the box: a reader comparing two results goes back to the
           // list for the second one, and it should still be there.
@@ -236,7 +234,9 @@ export function SettingsModal() {
             const picked = items[Number(key)]
             if (!picked) return
             setTab(picked.entry.tab)
-            setSpot({ label: picked.label, seq: Date.now() })
+            // The choice rides along, so a tile found by name is the thing that lights.
+            const option = results.find((hit) => hit.key === key)?.option
+            setSpot({ label: picked.label, option, seq: Date.now() })
           },
         },
       }}
@@ -285,7 +285,7 @@ export function SettingsModal() {
  */
 function useSettingSpotlight(
   page: RefObject<HTMLDivElement>,
-  spot: { label: string; seq: number } | null,
+  spot: { label: string; option?: string; seq: number } | null,
   onDone: () => void,
 ) {
   const done = useRef(onDone)
@@ -297,7 +297,7 @@ function useSettingSpotlight(
 
     let undo: (() => void) | null = null
     const land = () => {
-      const target = findSettingTarget(root, spot.label)
+      const target = findSettingTarget(root, spot.label, spot.option)
       if (target) undo = spotlightSetting(target)
       return target !== null
     }
