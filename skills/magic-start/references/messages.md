@@ -26,6 +26,15 @@ rien de fiable sur quoi travailler.
 Lance Magic Slash, puis relance cette commande.
 ```
 
+## MSG_ATLASSIAN_NOT_CONFIGURED
+
+English only: Step 1 displays it before the repo, and so the language, is known.
+
+### en
+
+> ⚠️ Atlassian integration is not configured. Only GitHub issues (#123) are supported.
+> To enable Atlassian, open the Magic Slash app → Settings → Integrations.
+
 ## MSG_NODE_NO_MANAGER
 
 ### en
