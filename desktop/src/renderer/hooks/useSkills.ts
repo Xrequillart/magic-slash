@@ -31,6 +31,30 @@ export interface RepoSkillInfo {
   filePath: string
 }
 
+/**
+ * One entry of the listing Claude Code injects every turn, as `skills:listingEntries`
+ * reads it (see main/skills-listing.ts). Wider than `skills` + `repoSkills`: plugins count.
+ */
+export interface ListingEntry {
+  name: string
+  /** `description` and `when_to_use` joined. Uncapped. */
+  text: string
+  source: 'built-in' | 'custom' | 'repo' | 'plugin'
+  mode: 'full' | 'name-only' | 'hidden'
+  origin?: string
+}
+
+export interface ListingSettings {
+  budgetFraction?: number
+  maxDescChars?: number
+  fixedCharBudget?: number
+}
+
+export interface Listing {
+  entries: ListingEntry[]
+  settings: ListingSettings
+}
+
 export function useSkills() {
   const [skills, setSkills] = useState<SkillInfo[]>([])
   const [loading, setLoading] = useState(false)

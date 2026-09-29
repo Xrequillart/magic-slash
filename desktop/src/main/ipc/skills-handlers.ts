@@ -6,6 +6,7 @@ import { readConfig } from '../config/config'
 import { expandPath } from '../config/validation'
 import AdmZip from 'adm-zip'
 import { t } from '../i18n'
+import { collectListingEntries } from '../skills-listing'
 
 const BUILT_IN_SKILLS = ['magic-plan', 'magic-plan-change', 'magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done']
 
@@ -352,6 +353,16 @@ export function setupSkillsHandlers() {
     }
 
     return repoSkills
+  })
+
+  // Everything Claude Code puts in its skill listing, for the budget gauge. Wider than
+  // skills:list + skills:listRepoSkills on purpose: plugins count too (see skills-listing.ts).
+  ipcMain.handle('skills:listingEntries', async () => {
+    const repos = Object.entries(readConfig().repositories || {}).map(([name, repo]) => ({
+      name,
+      path: expandPath(repo.path),
+    }))
+    return collectListingEntries({ home: os.homedir(), repos, builtIn: BUILT_IN_SKILLS, env: process.env })
   })
 
   // Get a specific repo skill's full content

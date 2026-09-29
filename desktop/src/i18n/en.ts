@@ -1707,19 +1707,19 @@ export const en = {
   'skills.budget.window.auto': 'Auto',
   'skills.budget.window.autoValue': 'Auto · {window}',
   'skills.budget.window.autoDetected': 'Detected from the running agent.',
-  'skills.budget.window.autoNoAgent': 'No agent running — falling back to {window}.',
+  'skills.budget.window.autoNoAgent': 'No agent running, falling back to {window}.',
   'skills.budget.window.forced': 'Forced to {window}, whatever is running.',
   'skills.budget.over':
-    'Over budget by {over} characters. Claude Code is already listing some skills by name only — it can still run them, but it can no longer tell when they apply.',
+    'Over budget by {over} characters. Claude Code is already listing some skills by name only: it can still run them, but it can no longer tell when they apply.',
   'skills.budget.truncated.one':
     '{count} skill has a description longer than {max} characters. Everything past that is cut before Claude sees it, so it is counted at {max} here.',
   'skills.budget.truncated.other':
     '{count} skills have descriptions longer than {max} characters. Everything past that is cut before Claude sees it, so they are counted at {max} here.',
   'skills.budget.cut': 'cut',
   'skills.budget.how': 'How this is computed',
-  'skills.budget.card.scope.title': 'Only descriptions are counted',
+  'skills.budget.card.scope.title': 'Every listed skill counts',
   'skills.budget.card.scope.body':
-    'Claude Code injects a listing of every skill — name plus description — into the system prompt on every turn. The body of a SKILL.md is not in it: that loads only when the skill actually runs. So this gauge measures your descriptions, not your instructions.',
+    'Claude Code injects a listing of every skill it can reach into the system prompt on every turn: its name, its description and its when_to_use. That means your plugins and the skills synced from your organisation too, not only the ones this page manages. The body of a SKILL.md is not in it: that loads only when the skill runs. Skills with disable-model-invocation, or set to off or user-invocable-only in skillOverrides, are left out; name-only ones cost their name. The skills bundled inside Claude Code have no file to read and are not counted, so /doctor stays the exact figure.',
   'skills.budget.card.formula.title': 'The budget follows the model',
   'skills.budget.card.formula.body':
     'budget = context window × 4 characters per token × {percent}%. For a {context}-token window that is {chars} characters, or about {tokens} tokens.',
@@ -1731,11 +1731,15 @@ export const en = {
     'The listing is not trimmed evenly. Claude Code drops whole descriptions, starting with the skills you invoke least, and lists those by name only. Claude can still run them if you name them, but it no longer knows when to reach for them on its own.',
   'skills.budget.card.why.title': 'Where the window comes from',
   'skills.budget.card.why.body':
-    'Since the budget is a fraction of the context window, the same set of skills is comfortable on a 1M-token model and over budget on a 200K one. On Auto, the window is read from the agent you have running — the real one, reported by Claude Code itself. The two presets override it, to see what your skills would look like on another model or when nothing is running. Either way it changes the gauges here and nothing else.',
+    'Since the budget is a fraction of the context window, the same set of skills is comfortable on a 1M-token model and over budget on a 200K one. On Auto, the window is read from the agent you have running: the real one, reported by Claude Code itself. The two presets override it, to see what your skills would look like on another model or when nothing is running. Either way it changes the gauges here and nothing else.',
   'skills.budget.card.override.title': 'Changing the budget itself',
   'skills.budget.card.override.body':
     'In settings.json, skillListingBudgetFraction raises the 1% share and skillListingMaxDescChars the per-skill cap; the SLASH_COMMAND_TOOL_CHAR_BUDGET environment variable replaces the whole computation with a fixed character count. Run /doctor to see what the listing really costs.',
   'skills.budget.details': 'Details by skill',
+  'skills.budget.card.formula.fixed':
+    'SLASH_COMMAND_TOOL_CHAR_BUDGET is set, so the budget is a fixed {chars} characters, or about {tokens} tokens, whatever the model.',
+  'skills.budget.nameOnly':
+    'name only',
   'skills.budget.tok': '{count} tok',
   'skills.weight.high': 'High',
   'skills.weight.medium': 'Medium',
@@ -1743,6 +1747,8 @@ export const en = {
   'skills.source.builtIn': 'built-in',
   'skills.source.custom': 'custom',
   'skills.source.repo': 'repo',
+  'skills.source.plugin':
+    'plugin',
   'skills.source.repoNamed': 'repo ({name})',
 
   'skills.warnings': 'Warnings',

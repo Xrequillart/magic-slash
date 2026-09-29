@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Plus, Trash2, Save, Share2, FolderInput, Info, Sparkles, PenTool, GitFork, Wand2, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal } from '@ds/desktop/icons'
 import { Banner, Button, FormField, ImageField, Loader, SkillsOverview, SkillsRail, Text, type BannerAction, type NoticeCardProps, type SkillBudgetBanner, type SkillBudgetProps, type SkillsOverviewCard, type SkillsRailGroup } from '@ds/desktop'
-import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
+import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo, type Listing, type ListingEntry } from '../../hooks/useSkills'
 import SkillDocument from './SkillDocument'
 import { VSCode } from '@ds/desktop/icons'
 import { SweepPane } from '../../components/SweepPane'
@@ -26,16 +26,17 @@ import { DEFAULT_CONTEXT_WINDOW, detectContextWindow, resolveContextWindow, form
  *
  * The fraction is `skillListingBudgetFraction` in settings.json, and
  * `SLASH_COMMAND_TOOL_CHAR_BUDGET` overrides the whole computation with a fixed
- * character count. We mirror the shipped defaults; the window itself is read off
- * the running agents (see contextWindow.ts), and the switch above the gauges
+ * character count. Both are honoured when the main process finds them (see
+ * main/skills-listing.ts), the shipped defaults otherwise; the window itself is read
+ * off the running agents (see contextWindow.ts), and the switch above the gauges
  * forces one of the two presets when you want to size against another model.
  */
 const CHARS_PER_TOKEN = 4
 const BUDGET_FRACTION = 0.01
 
 /**
- * `skillListingMaxDescChars` — the per-skill cap on `description` + `when_to_use`
- * combined. Text past it never reaches the model, so a 4 000-character
+ * `skillListingMaxDescChars`, the per-skill cap on `description` + `when_to_use`
+ * combined, by default. Text past it never reaches the model, so a 4 000-character
  * description costs 1 536, not 4 000. Counting the raw length would bill skills
  * for characters Claude never sees.
  */
@@ -44,18 +45,20 @@ const MAX_DESC_CHARS = 1536
 /** The two windows worth comparing. Order is the order of the switch, after Auto. */
 const CONTEXT_WINDOWS: readonly SkillsContextWindow[] = [200_000, 1_000_000]
 
-function charBudgetFor(contextWindow: number): number {
-  return Math.max(1, Math.floor(contextWindow * CHARS_PER_TOKEN * BUDGET_FRACTION))
+function charBudgetFor(contextWindow: number, fraction: number): number {
+  return Math.max(1, Math.floor(contextWindow * CHARS_PER_TOKEN * fraction))
 }
 
 interface SkillTokenEntry {
   name: string
   tokens: number
-  /** What this skill actually spends — its description, capped at MAX_DESC_CHARS. */
+  /** What this skill actually spends: its name, plus its description capped at the per-skill cap. */
   chars: number
   /** Its description is longer than the cap, so the listing shows a cut version. */
   truncated: boolean
-  source: 'built-in' | 'custom' | 'repo'
+  /** `name-only` in skillOverrides: listed by its name, the description dropped. */
+  nameOnly: boolean
+  source: ListingEntry['source']
   weight: 'high' | 'medium' | 'low'
 }
 
@@ -66,10 +69,25 @@ interface DuplicateSkillEntry {
 
 // Anchored to the per-skill cap rather than to round numbers: "high" is a skill
 // spending the entire allowance a single description is allowed.
-function getWeight(chars: number): 'high' | 'medium' | 'low' {
-  if (chars >= MAX_DESC_CHARS) return 'high'
-  if (chars >= MAX_DESC_CHARS / 2) return 'medium'
+function getWeight(chars: number, cap: number): 'high' | 'medium' | 'low' {
+  if (chars >= cap) return 'high'
+  if (chars >= cap / 2) return 'medium'
   return 'low'
+}
+
+/**
+ * The listing as the page alone knows it, for as long as `skills:listingEntries` has not
+ * answered (or on a build whose main process predates it): the skills this page manages,
+ * each fully listed. Narrower than the truth, never wider.
+ */
+function fallbackListing(skills: SkillInfo[], repoSkills: RepoSkillInfo[]): Listing {
+  return {
+    entries: [
+      ...skills.map((s): ListingEntry => ({ name: s.name, text: s.description, source: s.isBuiltIn ? 'built-in' : 'custom', mode: 'full' })),
+      ...repoSkills.map((s): ListingEntry => ({ name: s.name, text: s.description, source: 'repo', mode: 'full', origin: s.repoName })),
+    ],
+    settings: {},
+  }
 }
 
 /**
@@ -90,6 +108,7 @@ const SOURCE_COLOR: Record<string, string> = {
   'built-in': 'rgb(var(--c-accent, 99 102 241))',
   repo: 'rgb(var(--c-blue, 59 130 246))',
   custom: 'rgb(var(--c-green, 34 197 94))',
+  plugin: 'rgb(var(--c-purple, 168 85 247))',
 }
 
 /**
@@ -118,6 +137,7 @@ const SOURCE_KEYS: Record<string, MessageKey> = {
   'built-in': 'skills.source.builtIn',
   custom: 'skills.source.custom',
   repo: 'skills.source.repo',
+  plugin: 'skills.source.plugin',
 }
 
 function sourceLabel(source: string, t: Translate): string {
@@ -150,27 +170,45 @@ function useSkillBudget(skills: SkillInfo[], repoSkills: RepoSkillInfo[]): Skill
     s.isSplitMode && s.focusedPane === 'secondary' ? s.splitTerminalId : s.activeTerminalId,
   ))
 
+  // What Claude Code actually lists, plugins included. Re-read whenever the page's own
+  // skills move, since an edit here changes the listing too.
+  const [listing, setListing] = useState<Listing | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    const fetchListing = window.electronAPI?.skills?.listingEntries as (() => Promise<Listing>) | undefined
+    if (!fetchListing) return
+    fetchListing().then((result) => { if (!cancelled) setListing(result) }).catch(() => { /* keep the fallback */ })
+    return () => { cancelled = true }
+  }, [skills, repoSkills])
+  const effectiveListing = useMemo(() => listing ?? fallbackListing(skills, repoSkills), [listing, skills, repoSkills])
+  const { settings } = effectiveListing
+  const fraction = settings.budgetFraction ?? BUDGET_FRACTION
+  const maxDesc = settings.maxDescChars ?? MAX_DESC_CHARS
+
   const effectiveWindow = resolveContextWindow(contextWindow, detected)
-  const charBudget = charBudgetFor(effectiveWindow)
+  const charBudget = settings.fixedCharBudget ?? charBudgetFor(effectiveWindow, fraction)
   const tokenBudget = Math.floor(charBudget / CHARS_PER_TOKEN)
 
   const { totalTokens, totalChars, truncatedCount, breakdown } = useMemo(() => {
     const entries: SkillTokenEntry[] = []
-    const add = (name: string, description: string, source: SkillTokenEntry['source']) => {
-      const raw = (description || '').length
-      // Only what survives the per-skill cap reaches the model, so only that is billed.
-      const chars = Math.min(raw, MAX_DESC_CHARS)
+    for (const entry of effectiveListing.entries) {
+      // Hidden skills (disable-model-invocation, `off`, `user-invocable-only`) are not in
+      // the listing at all, so they cost nothing.
+      if (entry.mode === 'hidden') continue
+      const raw = entry.mode === 'full' ? entry.text.length : 0
+      // The name is always listed. Only the part of the description that survives the
+      // per-skill cap reaches the model, so only that is billed.
+      const chars = entry.name.length + Math.min(raw, maxDesc)
       entries.push({
-        name,
+        name: entry.name,
         chars,
         tokens: Math.ceil(chars / CHARS_PER_TOKEN),
-        truncated: raw > MAX_DESC_CHARS,
-        source,
-        weight: getWeight(chars),
+        truncated: raw > maxDesc,
+        nameOnly: entry.mode === 'name-only',
+        source: entry.source,
+        weight: getWeight(chars, maxDesc),
       })
     }
-    for (const s of skills) add(s.name, s.description, s.isBuiltIn ? 'built-in' : 'custom')
-    for (const rs of repoSkills) add(rs.name, rs.description, 'repo')
 
     entries.sort((a, b) => b.tokens - a.tokens)
     let tc = 0, cc = 0, cut = 0
@@ -179,7 +217,7 @@ function useSkillBudget(skills: SkillInfo[], repoSkills: RepoSkillInfo[]): Skill
       if (e.truncated) cut += 1
     }
     return { totalTokens: tc, totalChars: cc, truncatedCount: cut, breakdown: entries }
-  }, [skills, repoSkills])
+  }, [effectiveListing, maxDesc])
 
   const n = (value: number) => value.toLocaleString(locale)
 
@@ -196,7 +234,7 @@ function useSkillBudget(skills: SkillInfo[], repoSkills: RepoSkillInfo[]): Skill
       icon: Scissors,
       text: t(truncatedCount > 1 ? 'skills.budget.truncated.other' : 'skills.budget.truncated.one', {
         count: truncatedCount,
-        max: n(MAX_DESC_CHARS),
+        max: n(maxDesc),
       }),
     })
   }
@@ -239,16 +277,18 @@ function useSkillBudget(skills: SkillInfo[], repoSkills: RepoSkillInfo[]): Skill
           id: 'formula',
           icon: Calculator,
           title: t('skills.budget.card.formula.title'),
-          body: t('skills.budget.card.formula.body', {
-            // Formatted, not grouped: the detected window is whatever the model reports,
-            // so "1M" reads where "1 048 576" would not.
-            context: formatWindow(effectiveWindow),
-            percent: `${BUDGET_FRACTION * 100}`,
-            chars: n(charBudget),
-            tokens: n(tokenBudget),
-          }),
+          body: settings.fixedCharBudget !== undefined
+            ? t('skills.budget.card.formula.fixed', { chars: n(charBudget), tokens: n(tokenBudget) })
+            : t('skills.budget.card.formula.body', {
+              // Formatted, not grouped: the detected window is whatever the model reports,
+              // so "1M" reads where "1 048 576" would not.
+              context: formatWindow(effectiveWindow),
+              percent: `${Math.round(fraction * 10_000) / 100}`,
+              chars: n(charBudget),
+              tokens: n(tokenBudget),
+            }),
         },
-        { id: 'cap', icon: Scissors, title: t('skills.budget.card.cap.title', { max: n(MAX_DESC_CHARS) }), body: t('skills.budget.card.cap.body', { max: n(MAX_DESC_CHARS) }) },
+        { id: 'cap', icon: Scissors, title: t('skills.budget.card.cap.title', { max: n(maxDesc) }), body: t('skills.budget.card.cap.body', { max: n(maxDesc) }) },
         { id: 'overflow', icon: EyeOff, title: t('skills.budget.card.overflow.title'), body: t('skills.budget.card.overflow.body') },
         { id: 'why', icon: SlidersHorizontal, title: t('skills.budget.card.why.title'), body: t('skills.budget.card.why.body') },
         { id: 'override', icon: Info, title: t('skills.budget.card.override.title'), body: t('skills.budget.card.override.body') },
@@ -261,6 +301,7 @@ function useSkillBudget(skills: SkillInfo[], repoSkills: RepoSkillInfo[]): Skill
         lead: { label: sourceLabel(entry.source, t), color: SOURCE_COLOR[entry.source] },
         name: entry.name,
         ...(entry.truncated ? { tags: [{ label: t('skills.budget.cut'), color: WEIGHT_COLOR.medium }] } : {}),
+        ...(entry.nameOnly ? { tags: [{ label: t('skills.budget.nameOnly'), color: WEIGHT_COLOR.low }] } : {}),
         detail: t('skills.budget.tok', { count: entry.tokens }),
         verdict: { label: t(WEIGHT_LABELS[entry.weight]), color: WEIGHT_COLOR[entry.weight] },
       })),

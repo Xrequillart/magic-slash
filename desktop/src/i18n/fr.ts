@@ -1616,19 +1616,19 @@ export const fr: Record<keyof typeof en, string> = {
   'skills.budget.window.auto': 'Auto',
   'skills.budget.window.autoValue': 'Auto · {window}',
   'skills.budget.window.autoDetected': 'Détectée sur l’agent en cours.',
-  'skills.budget.window.autoNoAgent': 'Aucun agent en cours — repli sur {window}.',
+  'skills.budget.window.autoNoAgent': 'Aucun agent en cours, repli sur {window}.',
   'skills.budget.window.forced': 'Forcée à {window}, quoi qu’il tourne.',
   'skills.budget.over':
-    'Dépassement de {over} caractères. Claude Code liste déjà certains skills par leur nom seul — il peut encore les lancer, mais il ne sait plus quand ils s’appliquent.',
+    'Dépassement de {over} caractères. Claude Code liste déjà certains skills par leur nom seul : il peut encore les lancer, mais il ne sait plus quand ils s’appliquent.',
   'skills.budget.truncated.one':
     '{count} skill a une description de plus de {max} caractères. Tout ce qui dépasse est coupé avant que Claude ne le voie : il est donc compté à {max} ici.',
   'skills.budget.truncated.other':
     '{count} skills ont une description de plus de {max} caractères. Tout ce qui dépasse est coupé avant que Claude ne le voie : ils sont donc comptés à {max} ici.',
   'skills.budget.cut': 'coupé',
   'skills.budget.how': 'Comment c’est calculé',
-  'skills.budget.card.scope.title': 'Seules les descriptions comptent',
+  'skills.budget.card.scope.title': 'Tout skill listé compte',
   'skills.budget.card.scope.body':
-    'Claude Code injecte à chaque tour un catalogue de tous les skills — nom et description. Le corps du SKILL.md n’y est pas : il ne se charge qu’au moment où le skill s’exécute. Cette jauge mesure donc vos descriptions, pas vos instructions.',
+    'Claude Code injecte à chaque tour un catalogue de tous les skills qu’il peut atteindre : leur nom, leur description et leur when_to_use. Vos plugins et les skills synchronisés par votre organisation en font partie, pas seulement ceux que gère cette page. Le corps du SKILL.md n’y est pas : il ne se charge qu’au moment où le skill s’exécute. Les skills en disable-model-invocation, ou réglés sur off ou user-invocable-only dans skillOverrides, en sont exclus ; ceux en name-only coûtent leur nom. Les skills intégrés à Claude Code n’ont pas de fichier à lire et ne sont pas comptés : /doctor reste le chiffre exact.',
   'skills.budget.card.formula.title': 'Le budget suit le modèle',
   'skills.budget.card.formula.body':
     'budget = fenêtre de contexte × 4 caractères par token × {percent} %. Pour une fenêtre de {context} tokens, cela fait {chars} caractères, soit environ {tokens} tokens.',
@@ -1640,11 +1640,15 @@ export const fr: Record<keyof typeof en, string> = {
     'Le catalogue n’est pas rogné uniformément. Claude Code supprime des descriptions entières, en commençant par les skills que vous invoquez le moins, et ne liste plus que leur nom. Claude peut encore les lancer si vous les nommez, mais il ne sait plus y penser tout seul.',
   'skills.budget.card.why.title': 'D’où vient la fenêtre',
   'skills.budget.card.why.body':
-    'Le budget étant une fraction de la fenêtre de contexte, un même ensemble de skills tient à l’aise sur un modèle 1M et déborde sur un 200K. En Auto, la fenêtre est lue sur l’agent que vous avez en cours — la vraie, remontée par Claude Code lui-même. Les deux préréglages la forcent, pour voir ce que donneraient vos skills sur un autre modèle ou quand rien ne tourne. Dans tous les cas, cela ne change que les jauges de cette page.',
+    'Le budget étant une fraction de la fenêtre de contexte, un même ensemble de skills tient à l’aise sur un modèle 1M et déborde sur un 200K. En Auto, la fenêtre est lue sur l’agent que vous avez en cours : la vraie, remontée par Claude Code lui-même. Les deux préréglages la forcent, pour voir ce que donneraient vos skills sur un autre modèle ou quand rien ne tourne. Dans tous les cas, cela ne change que les jauges de cette page.',
   'skills.budget.card.override.title': 'Changer le budget lui-même',
   'skills.budget.card.override.body':
     'Dans settings.json, skillListingBudgetFraction relève la part de 1 % et skillListingMaxDescChars le plafond par skill ; la variable d’environnement SLASH_COMMAND_TOOL_CHAR_BUDGET remplace tout le calcul par un nombre de caractères fixe. Lancez /doctor pour voir ce que le catalogue coûte vraiment.',
   'skills.budget.details': 'Détail par skill',
+  'skills.budget.card.formula.fixed':
+    'SLASH_COMMAND_TOOL_CHAR_BUDGET est défini : le budget est fixé à {chars} caractères, soit environ {tokens} tokens, quel que soit le modèle.',
+  'skills.budget.nameOnly':
+    'nom seul',
   'skills.budget.tok': '{count} tok',
   'skills.weight.high': 'Élevé',
   'skills.weight.medium': 'Moyen',
@@ -1652,6 +1656,8 @@ export const fr: Record<keyof typeof en, string> = {
   'skills.source.builtIn': 'intégré',
   'skills.source.custom': 'perso',
   'skills.source.repo': 'dépôt',
+  'skills.source.plugin':
+    'plugin',
   'skills.source.repoNamed': 'dépôt ({name})',
 
   'skills.warnings': 'Avertissements',

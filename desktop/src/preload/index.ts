@@ -440,6 +440,7 @@ const skillsApi = {
     ipcRenderer.invoke('skills:import'),
   listRepoSkills: () => ipcRenderer.invoke('skills:listRepoSkills'),
   getRepoSkill: (filePath: string) => ipcRenderer.invoke('skills:getRepoSkill', { filePath }),
+  listingEntries: () => ipcRenderer.invoke('skills:listingEntries'),
 }
 
 // Scripts API
