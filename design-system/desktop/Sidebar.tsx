@@ -2,7 +2,7 @@ import { Fragment } from 'react'
 import type { DragEvent, MouseEvent, ReactNode } from 'react'
 import { Agent, type AgentProps } from './Agent'
 import { ButtonIcon } from './ButtonIcon'
-import { AlertTriangle, FolderGit2 } from './icons'
+import { AlertTriangle, FolderGit2, Plus } from './icons'
 import { Label } from './Label'
 import { MenuSidebar, type MenuSidebarEntry } from './MenuSidebar'
 import { UsageClaudeCodeCard, type UsageClaudeCodeCardProps } from './UsageClaudeCodeCard'
@@ -239,11 +239,22 @@ export function Sidebar({
             <DropZone drop={list.drop}>
               <Attention attention={list.attention} compact={compact} />
               <AgentRows list={list} compact={compact} />
-              {list.agents.length === 0 && list.emptyHint && !compact && (
+              {list.agents.length === 0 && list.emptyHint && (compact ? (
+                // Compact: the hint as a dashed square, the size of an agent it is waiting
+                // for. NOT nothing: an empty list has no rows, so without it the drop zone
+                // is zero pixels tall and an agent dragged onto the right pane has nowhere
+                // to land. The sentence moves to the tooltip.
+                <div
+                  title={list.emptyHint}
+                  className="mx-auto my-1 flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-line text-text-secondary/40"
+                >
+                  <Plus className="h-4 w-4" />
+                </div>
+              ) : (
                 <div className="text-text-secondary/30 text-xs text-center py-3">
                   {list.emptyHint}
                 </div>
-              )}
+              ))}
             </DropZone>
           </div>
         ))}
