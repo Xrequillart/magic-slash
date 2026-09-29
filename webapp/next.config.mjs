@@ -34,6 +34,11 @@ const nextConfig = {
       //
       // NOT `react`, ever — see the note below.
       'lucide-react': path.resolve(process.cwd(), 'node_modules/lucide-react'),
+      // `@xyflow/react` for the same reason and on the same terms (the workflow canvas).
+      // A webpack alias without `$` is a PREFIX, which is what this one needs: the
+      // canvas also imports `@xyflow/react/dist/base.css`, and that subpath must land in
+      // the same install as the module, or the styles and the code drift apart.
+      '@xyflow/react': path.resolve(process.cwd(), 'node_modules/@xyflow/react'),
     }
     return config
   },
