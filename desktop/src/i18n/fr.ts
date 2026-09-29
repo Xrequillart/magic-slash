@@ -307,6 +307,8 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.application.sidebar.move': 'Déplacer {page}',
   'settings.application.sidebar.visibility': 'Visibilité de {page}',
   'settings.application.sidebar.footnote': 'Glissez une page pour la déplacer, ou placez le focus sur sa poignée et utilisez les flèches. Une page masquée garde son raccourci clavier.',
+  'settings.application.sidebar.compact.label': 'Icônes seulement',
+  'settings.application.sidebar.compact.help': 'Une barre latérale étroite : les pages en icônes, chaque agent par son statut, et un robot pour un agent sans rien à signaler. Les noms s’affichent au survol.',
   'settings.application.planSync.section': 'Sessions de planification',
   'settings.application.planSync.label': 'Enregistrer mes sessions de planification dans le cloud',
   'settings.application.planSync.help':

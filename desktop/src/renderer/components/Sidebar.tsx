@@ -346,6 +346,7 @@ export function Sidebar() {
     <>
       <SidebarColumn
         collapsed={!leftSidebarVisible}
+        compact={config?.sidebarCompact === true}
         menuAriaLabel={t('sidebar.menu.aria')}
         listsAriaLabel={t('sidebar.agents')}
         /* THE DEFAULT ORDER IS THE ORDER THE WORK HAPPENS IN (SIDEBAR_PAGE_IDS): you plan

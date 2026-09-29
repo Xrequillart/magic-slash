@@ -6,6 +6,7 @@ import { SetupHealthCard } from './SetupHealthCard'
 import { SidebarPagesModal } from './SidebarPagesModal'
 import { useToggleRow } from './ToggleRow'
 import { useStore } from '../../store'
+import { useConfig } from '../../hooks/useConfig'
 import { useT, type MessageKey } from '../../i18n'
 
 /**
@@ -92,6 +93,17 @@ export function ApplicationPage() {
   // is the one that reaches for the hook. The others each do something particular on the
   // way — registering a global shortcut with the OS, pushing the result into the store —
   // and spell their own handler above.
+  const { updateSidebarPages } = useConfig()
+  const sidebarCompactRow = useToggleRow({
+    label: t('settings.application.sidebar.compact.label'),
+    help: t('settings.application.sidebar.compact.help'),
+    value: config?.sidebarCompact === true,
+    onChange: async (next) => {
+      await updateSidebarPages({ compact: next })
+    },
+    errorMessage: t('toast.settingUpdateFailed'),
+  })
+
   const planSyncRow = useToggleRow({
     label: t('settings.application.planSync.label'),
     help: t('settings.application.planSync.help'),
@@ -174,6 +186,7 @@ export function ApplicationPage() {
                 onClick: () => setSidebarEditorOpen(true),
               },
             },
+            { id: 'sidebarCompact', ...sidebarCompactRow },
           ]}
         />
         <SidebarPagesModal isOpen={sidebarEditorOpen} onClose={() => setSidebarEditorOpen(false)} />

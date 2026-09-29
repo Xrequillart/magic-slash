@@ -343,6 +343,8 @@ export const en = {
   'settings.application.sidebar.move': 'Move {page}',
   'settings.application.sidebar.visibility': '{page} visibility',
   'settings.application.sidebar.footnote': 'Drag a page to move it, or focus its handle and use the arrow keys. A hidden page keeps its keyboard shortcut.',
+  'settings.application.sidebar.compact.label': 'Icons only',
+  'settings.application.sidebar.compact.help': 'A narrow sidebar: pages as their icons, each agent as its status, and a robot for an agent with nothing to report. Names show on hover.',
   'settings.application.planSync.section': 'Plan sessions',
   'settings.application.planSync.label': 'Save my plan sessions to the cloud',
   'settings.application.planSync.help':
