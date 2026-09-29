@@ -35,13 +35,11 @@ export interface PlanComments {
   /**
    * Read again QUIETLY: no loading state in between, and serialized with every other read
    * (a burst of nudges issues at most two). For the live channel, which says a colleague
-   * wrote, edited or deleted a comment on this plan.
-   *
-   * `deletedId` is a comment DELETE, the one event the database cannot scope to a plan: every
-   * deleted comment on every plan the socket hears of arrives with it, so the read runs only
-   * when that comment is one this thread is showing.
+   * wrote, edited or deleted a comment on this plan. Never dropped, not even while the first
+   * read is still pending: that read may have left before the change, and the writer queues
+   * this one behind it.
    */
-  refresh: (deletedId?: string) => void
+  refresh: () => void
   /**
    * The three writes. Each resolves to whether it went through and then refetches, so a
    * caller can leave a card open on a failure instead of closing it over a comment that
@@ -54,9 +52,6 @@ export interface PlanComments {
 
 export function usePlanComments(sessionId: string | undefined): PlanComments {
   const [read, setRead] = useState<PlanCommentsRead | null>(null)
-  /** The thread on screen, for `refresh` to tell our deletes from other plans'. */
-  const readRef = useRef(read)
-  readRef.current = read
   /**
    * Bumped by `retry`, for the reason `Plans/index.tsx` gives: ONE effect owns the state,
    * so the reset to `null`, the cancellation and the failure fallback are written once and
@@ -131,8 +126,7 @@ export function usePlanComments(sessionId: string | undefined): PlanComments {
    * the comment was deleted by its author from the webapp, the plan was unshared — and
    * showing the reader why costs one read they were about to want anyway.
    */
-  const refresh = useCallback((deletedId?: string) => {
-    if (deletedId && !readRef.current?.comments.some((comment) => comment.id === deletedId)) return
+  const refresh = useCallback(() => {
     const id = sessionRef.current
     if (id) load(id)
   }, [load])

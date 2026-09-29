@@ -12,6 +12,7 @@ interface FakeChannel {
   track: ReturnType<typeof vi.fn>
   untrack: ReturnType<typeof vi.fn>
   presenceState: ReturnType<typeof vi.fn>
+  send?: ReturnType<typeof vi.fn>
 }
 
 const h = vi.hoisted(() => {
@@ -64,6 +65,7 @@ vi.mock('./session-store', () => ({
 }))
 
 import {
+  announcePlanCommentDeleted,
   closePlanLive,
   flattenPresence,
   getPlanLiveStatus,
@@ -94,6 +96,16 @@ function statusCb(channel: FakeChannel): (status: string) => void {
 function syncCb(channel: FakeChannel): () => void {
   const call = channel.on.mock.calls.find(([type]) => type === 'presence')
   return call![2] as () => void
+}
+
+function broadcastCb(channel: FakeChannel): () => void {
+  const call = channel.on.mock.calls.find(([type]) => type === 'broadcast')
+  return call![2] as () => void
+}
+
+/** Let the `track` acknowledgement (a resolved promise) reach the module. */
+async function settle(): Promise<void> {
+  for (let i = 0; i < 5; i++) await Promise.resolve()
 }
 
 function changeCb(channel: FakeChannel, table: string, event: string): (payload?: unknown) => void {
@@ -133,8 +145,9 @@ describe('openPlanLive', () => {
       { event: '*', schema: 'public', table: 'plan_sessions', filter: `id=eq.${PLAN_A}` },
       { event: 'INSERT', schema: 'public', table: 'plan_comments', filter: `session_id=eq.${PLAN_A}` },
       { event: 'UPDATE', schema: 'public', table: 'plan_comments', filter: `session_id=eq.${PLAN_A}` },
-      { event: 'DELETE', schema: 'public', table: 'plan_comments' },
     ])
+    // No DELETE binding: it cannot be scoped to a plan, so it would leak every org's ids.
+    expect(changesChannel.on.mock.calls.some(([, filter]) => filter.event === 'DELETE')).toBe(false)
     expect(isPlanLiveActive()).toBe(true)
     expect(getPlanLiveStatus()).toBe('reconnecting')
   })
@@ -150,6 +163,7 @@ describe('openPlanLive', () => {
     const { presence, changes: changesChannel } = channelsOf()
 
     statusCb(presence)('SUBSCRIBED')
+    await settle()
     expect(getPlanLiveStatus()).toBe('reconnecting')
     statusCb(changesChannel)('SUBSCRIBED')
     expect(getPlanLiveStatus()).toBe('live')
@@ -191,20 +205,72 @@ describe('openPlanLive', () => {
     ])
   })
 
-  it('forwards changes payload-blind, a comment delete with its id', async () => {
+  it('forwards changes payload-blind, a deletion heard on the plan\'s own channel', async () => {
     await openPlanLive(PLAN_A)
-    const { changes: changesChannel } = channelsOf()
+    const { presence, changes: changesChannel } = channelsOf()
 
     changeCb(changesChannel, 'plan_sessions', '*')({ new: { spec: 'a whole spec' } })
     changeCb(changesChannel, 'plan_comments', 'INSERT')({ new: { id: 'c1' } })
-    changeCb(changesChannel, 'plan_comments', 'DELETE')({ old: { id: 'c2' } })
-    changeCb(changesChannel, 'plan_comments', 'DELETE')({ old: {} })
+    broadcastCb(presence)()
 
     expect(changes).toEqual([
       { sessionId: PLAN_A, kind: 'spec' },
       { sessionId: PLAN_A, kind: 'comments' },
-      { sessionId: PLAN_A, kind: 'comments', deletedId: 'c2' },
+      { sessionId: PLAN_A, kind: 'comments' },
     ])
+    expect(presence.on.mock.calls.find(([type]) => type === 'broadcast')![1]).toEqual({ event: 'comment-deleted' })
+  })
+
+  it('announces a deletion on the presence channel only once it is live', async () => {
+    await openPlanLive(PLAN_A)
+    const { presence } = channelsOf()
+    presence.send = vi.fn().mockResolvedValue('ok')
+
+    announcePlanCommentDeleted()
+    expect(presence.send).not.toHaveBeenCalled()
+
+    statusCb(presence)('SUBSCRIBED')
+    await settle()
+    announcePlanCommentDeleted()
+    expect(presence.send).toHaveBeenCalledWith({ type: 'broadcast', event: 'comment-deleted', payload: {} })
+  })
+
+  it('counts the presence live only once the server took the track, retrying one it refused', async () => {
+    vi.useFakeTimers()
+    try {
+      await openPlanLive(PLAN_A)
+      const { presence, changes: changesChannel } = channelsOf()
+      statusCb(changesChannel)('SUBSCRIBED')
+      presence.track.mockResolvedValueOnce('timed out')
+
+      statusCb(presence)('SUBSCRIBED')
+      await settle()
+      // Joined, but invisible to the others: not live.
+      expect(getPlanLiveStatus()).toBe('reconnecting')
+
+      await vi.advanceTimersByTimeAsync(3_000)
+      expect(presence.track).toHaveBeenCalledTimes(2)
+      expect(getPlanLiveStatus()).toBe('live')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('stops retrying a track once the join it belonged to is gone', async () => {
+    vi.useFakeTimers()
+    try {
+      await openPlanLive(PLAN_A)
+      const { presence } = channelsOf()
+      presence.track.mockResolvedValueOnce('error')
+      statusCb(presence)('SUBSCRIBED')
+      await settle()
+      statusCb(presence)('CHANNEL_ERROR')
+
+      await vi.advanceTimersByTimeAsync(3_000)
+      expect(presence.track).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('asks for a re-read when the changes channel REJOINS, not on its first join', async () => {
@@ -309,6 +375,7 @@ describe('openPlanLive', () => {
       const rejoined = h.state.channels[2]
       expect(rejoined.topic).toBe(`plan:${PLAN_A}`)
       statusCb(rejoined)('SUBSCRIBED')
+      await settle()
       expect(rejoined.track).toHaveBeenCalledTimes(1)
       expect(getPlanLiveStatus()).toBe('live')
       // The changes channel did not rejoin, so nothing asks for a re-read.
@@ -375,6 +442,7 @@ describe('closePlanLive', () => {
     await openPlanLive(PLAN_A)
     const { presence, changes: changesChannel } = channelsOf()
     statusCb(presence)('SUBSCRIBED')
+    await settle()
     await closePlanLive(PLAN_A)
 
     expect(presence.untrack).toHaveBeenCalled()

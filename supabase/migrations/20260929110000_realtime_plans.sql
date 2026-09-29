@@ -34,9 +34,10 @@
 -- carries every column either way.
 --
 -- A comment DELETE is the one event no filter can reach: its old image is the primary key
--- alone. The desktop takes those unfiltered and re-reads only when the id is one of the
--- comments it is showing. Realtime does not run RLS on a DELETE, so what such an event
--- discloses to a subscriber is a comment's uuid and nothing else.
+-- alone, and Realtime runs no RLS on a DELETE. Subscribing to it would hand every open plan
+-- the id of every comment deleted anywhere, across organizations, so the desktop does NOT:
+-- the reader who deletes a comment says so on the plan's private channel instead (the
+-- `broadcast` half of the policies below).
 alter publication supabase_realtime add table public.plan_sessions;
 alter publication supabase_realtime add table public.plan_comments;
 
@@ -87,9 +88,10 @@ grant execute on function public.plan_topic_readable(text) to authenticated;
 -- these policies, which Realtime evaluates as the joining user when they JOIN — not per
 -- message, so a reader removed from a plan keeps their seat until they leave or reconnect.
 --
--- SELECT lets a reader receive the channel's presence state and diffs; INSERT lets them
--- `track` themselves on it. Both are limited to the `presence` extension: nothing in the app
--- broadcasts on a plan channel, and a policy that does not need to allow it should not.
+-- SELECT lets a reader receive the channel's presence state and diffs, and its broadcasts;
+-- INSERT lets them `track` themselves on it, and broadcast. Both are limited to those two
+-- extensions. The one broadcast the app sends is `comment-deleted`, payload-less: a reader
+-- who forges one costs the others a re-read of the comments and nothing else.
 --
 -- Named after the topic prefix they govern. Permissive, so they widen nothing on any other
 -- private topic: a policy here only ever answers for `plan:<uuid>`.
@@ -97,7 +99,7 @@ drop policy if exists plan_topic_presence_select on realtime.messages;
 create policy plan_topic_presence_select on realtime.messages
   for select to authenticated
   using (
-    realtime.messages.extension = 'presence'
+    realtime.messages.extension in ('presence', 'broadcast')
     and public.plan_topic_readable(realtime.topic())
   );
 
@@ -105,6 +107,6 @@ drop policy if exists plan_topic_presence_insert on realtime.messages;
 create policy plan_topic_presence_insert on realtime.messages
   for insert to authenticated
   with check (
-    realtime.messages.extension = 'presence'
+    realtime.messages.extension in ('presence', 'broadcast')
     and public.plan_topic_readable(realtime.topic())
   );

@@ -23,8 +23,8 @@ import type { PlanPresenceMember } from '../../types'
 export interface PlanLiveHandlers {
   /** The session row moved: its spec, its status, who may edit it. */
   onSpecChanged: () => void
-  /** A comment was written or edited, or `deletedId` was deleted (on this plan or another). */
-  onCommentsChanged: (deletedId?: string) => void
+  /** A comment on this plan was written, edited or deleted. */
+  onCommentsChanged: () => void
 }
 
 export function usePlanLive(sessionId: string | undefined, handlers: PlanLiveHandlers): PlanPresenceMember[] {
@@ -48,7 +48,7 @@ export function usePlanLive(sessionId: string | undefined, handlers: PlanLiveHan
     const offChanged = live.onChanged((change) => {
       if (change.sessionId !== sessionId) return
       if (change.kind === 'spec') handlersRef.current.onSpecChanged()
-      else handlersRef.current.onCommentsChanged(change.deletedId)
+      else handlersRef.current.onCommentsChanged()
     })
     live.open(sessionId).catch(() => { /* the page still works without the live view */ })
     return () => {

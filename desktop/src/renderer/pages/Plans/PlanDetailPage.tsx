@@ -1278,8 +1278,8 @@ export function PlanDetailPage({
    * spec unless the reader has unsaved text (the conflict banner is then the way out, as it
    * always was) or a block open (held until it closes, see above).
    *
-   * The comments: read them again, unless the event is a DELETE of a comment this page is not
-   * showing, which `refresh` itself tells apart.
+   * The comments: read them again, a deletion included (it arrives on this plan's own
+   * channel, see `plan-live.ts`).
    */
   const presentMembers = usePlanLive(detail?.session?.id, {
     onSpecChanged: refreshDetail,

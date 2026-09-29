@@ -2755,14 +2755,11 @@ export interface PlanPresence {
  * opened the plan with, so a live update and a reopen can never draw two different things.
  *
  * `spec` is a change to the session row (its spec, its status, who may edit it); `comments`
- * a comment written, edited or deleted. A DELETE is the one event no filter can scope to a
- * plan, so it carries `deletedId` and the page re-reads only when that comment is one of its
- * own.
+ * a comment written, edited or deleted.
  */
 export interface PlanLiveChange {
   sessionId: string
   kind: 'spec' | 'comments'
-  deletedId?: string
 }
 
 /** What a view hands over to create a comment: everything the database does not mint. */

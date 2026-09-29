@@ -19,13 +19,20 @@ import { loadSession } from './session-store'
 // `realtime.messages` for presence, the tables' RLS and publication for the changes. One
 // failing must not take the other down with it.
 //
-//   'plan:<id>'          PRIVATE. Presence only, keyed by user id. Each reader `track`s
-//                        { userId, email, joinedAt } and nothing heavier (no photo).
-//                        Authorized at JOIN by `plan_topic_readable` (20260929110000).
+//   'plan:<id>'          PRIVATE. Presence, keyed by user id: each reader `track`s
+//                        { userId, email, joinedAt } and nothing heavier (no photo). Plus
+//                        one broadcast, `comment-deleted`, sent by the reader who deleted
+//                        one (see `announcePlanCommentDeleted`). Authorized at JOIN by
+//                        `plan_topic_readable` (20260929110000).
 //   'plan-changes:<id>'  postgres_changes on `plan_sessions` (id=eq.<id>) and
-//                        `plan_comments` (session_id=eq.<id> on INSERT/UPDATE; DELETE
-//                        unfiltered, since its old image is the primary key alone).
+//                        `plan_comments` (session_id=eq.<id>, INSERT and UPDATE).
 //                        Payload-blind: an event only says "re-read this".
+//
+// NO postgres_changes DELETE on comments. Its old image is the primary key alone, so no
+// filter can scope it to a plan, and Realtime runs no RLS on a DELETE: the binding would hand
+// every open plan the id of every comment deleted anywhere, across organizations. The desktop
+// is the only client that deletes a comment, so the deleter says so on the plan's own
+// private channel instead.
 //
 // The lifecycle is `realtime.ts`'s: every entry point serialized by a lock, the socket
 // authorized with the user's JWT (and re-authorized on every refresh), a 15s deadline on the
@@ -87,6 +94,17 @@ const subscribeWatchdogs = new Map<ChannelName, ReturnType<typeof setTimeout>>()
 // Leaving the channel drops the presence server-side anyway; the untrack is the courteous
 // half, and must never hold the lock for realtime-js's default 10s push timeout.
 const UNTRACK_TIMEOUT_MS = 1_000
+
+// A `track` the server did not acknowledge is tried again at this pace, for as long as the
+// presence channel stays joined. The join's watchdog bounds it: a presence still not live at
+// the deadline is left, and the connectivity poller joins it afresh.
+const TRACK_RETRY_MS = 3_000
+/**
+ * Bumped on every status of the presence channel. A `track` loop runs for ONE join and stops
+ * as soon as this moves: a rejoin starts its own, and a loss must not keep pushing onto a
+ * channel that is not joined.
+ */
+let presenceJoin = 0
 
 function clearSubscribeWatchdog(name: ChannelName): void {
   const timer = subscribeWatchdogs.get(name)
@@ -319,17 +337,56 @@ function joinPresence(client: SupabaseClient, sessionId: string): void {
       if (presenceChannel !== presence) return
       emitPresence(sessionId, flattenPresence(presence.presenceState(), reader.userId))
     })
+    .on('broadcast', { event: 'comment-deleted' }, () => {
+      if (presenceChannel !== presence) return
+      emitters?.changed({ sessionId, kind: 'comments' })
+    })
     .subscribe((status: string) => {
       if (presenceChannel !== presence) return
-      handleStatus('presence', status)
+      const join = ++presenceJoin
+      if (status !== 'SUBSCRIBED') {
+        handleStatus('presence', status)
+        return
+      }
       // On EVERY join, the first and each rejoin: realtime-js does not publish the
       // presence again after a rejoin, so a reader whose socket dropped would otherwise
       // come back to the plan invisible.
-      if (status === 'SUBSCRIBED') {
-        presence.track(reader.me).catch((error: unknown) => console.error('[plan-live] failed to track presence:', error))
-      }
+      void trackUntilLive(presence, reader.me, join)
     })
   armSubscribeWatchdog('presence', presence)
+}
+
+/**
+ * Put the reader on the plan, and only THEN count the presence channel as live. Joined is not
+ * enough: a reader whose `track` was refused or timed out is invisible to everyone else, and
+ * an indicator saying Live over that would be the one lie this channel must not tell.
+ * `track` resolves to 'ok' | 'timed out' | 'error' rather than rejecting, so the answer is read,
+ * not caught.
+ */
+async function trackUntilLive(presence: RealtimeChannel, me: PlanPresenceMember, join: number): Promise<void> {
+  if (presenceChannel !== presence || presenceJoin !== join) return
+  const result = await presence.track(me).catch(() => 'error' as const)
+  if (presenceChannel !== presence || presenceJoin !== join) return
+  if (result === 'ok') {
+    handleStatus('presence', 'SUBSCRIBED')
+    return
+  }
+  console.warn(`[plan-live] presence track answered ${result}, retrying`)
+  const retry = setTimeout(() => void trackUntilLive(presence, me, join), TRACK_RETRY_MS)
+  retry.unref?.()
+}
+
+/**
+ * The reader deleted a comment: tell the others on the plan, who have no other way to hear of
+ * it (see the header). Called by the delete handler once the delete went through, and aimed at
+ * the open plan, which is the only place a comment can be deleted from. A no-op while the
+ * presence channel is not live: the colleagues then see the deletion on their next read.
+ */
+export function announcePlanCommentDeleted(): void {
+  const presence = presenceChannel
+  if (!presence || !live.has('presence')) return
+  presence.send({ type: 'broadcast', event: 'comment-deleted', payload: {} })
+    .catch((error: unknown) => console.error('[plan-live] failed to announce a deleted comment:', error))
 }
 
 /**
@@ -347,18 +404,10 @@ function joinChanges(client: SupabaseClient, sessionId: string, resync: boolean)
     if (changesChannel === changes) emitters?.changed({ sessionId, ...change })
   }
   const nudge = (kind: PlanLiveChange['kind']) => () => emitChange({ kind })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onCommentDeleted = (payload: any) => {
-    // Unfiltered: every deleted comment the socket hears of, on any plan. Only the id is
-    // known, and the page decides whether it is one of its own.
-    const id = payload?.old?.id
-    if (typeof id === 'string') emitChange({ kind: 'comments', deletedId: id })
-  }
   changes
     .on('postgres_changes', { event: '*', schema: 'public', table: 'plan_sessions', filter: `id=eq.${sessionId}` }, nudge('spec'))
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'plan_comments', filter: `session_id=eq.${sessionId}` }, nudge('comments'))
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'plan_comments', filter: `session_id=eq.${sessionId}` }, nudge('comments'))
-    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'plan_comments' }, onCommentDeleted)
     .subscribe((status: string) => {
       if (changesChannel !== changes || !handleStatus('changes', status)) return
       // Nothing is replayed after a loss: a rejoin reads both halves of the page again.

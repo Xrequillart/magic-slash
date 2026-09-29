@@ -47,6 +47,7 @@ const mockListComments = vi.fn()
 const mockCreateComment = vi.fn()
 const mockUpdateComment = vi.fn()
 const mockDeleteComment = vi.fn()
+const mockAnnounceDeleted = vi.fn()
 vi.mock('../cloud/planComments', () => ({
   listPlanComments: (...args: unknown[]) => mockListComments(...args),
   createPlanComment: (...args: unknown[]) => mockCreateComment(...args),
@@ -85,6 +86,7 @@ vi.mock('../cloud/plan-live', () => ({
   openPlanLive: (...args: unknown[]) => mockOpenLive(...args),
   closePlanLive: (...args: unknown[]) => mockCloseLive(...args),
   getPlanLiveStatus: () => mockLiveStatus(),
+  announcePlanCommentDeleted: () => mockAnnounceDeleted(),
 }))
 
 // The preview machinery, which pulls shiki and the whole config layer. The diff channel's
@@ -226,6 +228,14 @@ describe('plans:comments:delete', () => {
   it('passes a well-formed id through', async () => {
     expect(await invoke('plans:comments:delete', COMMENT_ID)).toBe(true)
     expect(mockDeleteComment).toHaveBeenCalledWith(COMMENT_ID)
+    // The others on the plan hear of it from the deleter, not from the database.
+    expect(mockAnnounceDeleted).toHaveBeenCalledTimes(1)
+  })
+
+  it('announces nothing when the delete did not go through', async () => {
+    mockDeleteComment.mockResolvedValueOnce(false)
+    expect(await invoke('plans:comments:delete', COMMENT_ID)).toBe(false)
+    expect(mockAnnounceDeleted).not.toHaveBeenCalled()
   })
 
   it.each([
