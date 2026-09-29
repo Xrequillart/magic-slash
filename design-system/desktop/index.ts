@@ -221,7 +221,14 @@ export { Menu } from './Menu'
 export type { MenuGroup, MenuHeader, MenuItem, MenuProps } from './Menu'
 export { MenuSidebar } from './MenuSidebar'
 export { SettingsRail } from './SettingsRail'
-export type { SettingsRailGroup, SettingsRailProps, SettingsRailRow } from './SettingsRail'
+export { findSettingTarget, spotlightSetting } from './settingSpotlight'
+export type {
+  SettingsRailGroup,
+  SettingsRailProps,
+  SettingsRailRow,
+  SettingsRailSearch,
+  SettingsRailSearchResult,
+} from './SettingsRail'
 export type { MenuSidebarEntry, MenuSidebarProps } from './MenuSidebar'
 export { MenuSidebarItem } from './MenuSidebarItem'
 export type { MenuSidebarItemProps } from './MenuSidebarItem'

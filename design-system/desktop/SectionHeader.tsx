@@ -147,6 +147,9 @@ export function SectionHeader({
     // top, not centred against a block the hint made taller. Without a hint the two
     // spellings are identical, so the row keeps `items-center` and nothing moves.
     <div
+      // The settings search's second target: a section found by its heading outlines the
+      // block the heading opens — the heading's parent — rather than the heading alone.
+      data-section-header=""
       className={`flex justify-between ${hint || description ? 'items-start' : 'h-5 items-center'} ${
         spacing === 'none' ? '' : 'mb-4'
       } ${className}`.trim()}

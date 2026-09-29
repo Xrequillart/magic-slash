@@ -1,4 +1,3 @@
-import { Fragment } from 'react'
 import { Button, type ButtonTone } from './Button'
 import { Text } from './Text'
 import type { IconComponent } from './types'
@@ -39,7 +38,7 @@ import type { IconComponent } from './types'
  *
  * ONE GRID AND NOT A GRID PER ROW, which is the mistake this shape invites: a row that
  * sized its own columns would align with nothing, and five of them would be five tables
- * stacked up. So each row is a `Fragment` contributing three cells to one grid, and the
+ * stacked up. So each row is a `subgrid` contributing three cells to one grid, and the
  * column widths are decided once, across all of them.
  *
  * ── IT DOES NOT KNOW WHAT IT IS DRAWING ───────────────────────────────────────────
@@ -182,7 +181,10 @@ export function FieldTable({ rows, flush = false, className = '' }: FieldTablePr
         const rule = index === 0 && flush ? '' : 'border-t border-line-subtle'
         const cell = `${rule} pt-3 ${index === rows.length - 1 ? '' : 'pb-3'}`
         return (
-          <Fragment key={row.id}>
+          // A ROW OF ITS OWN ON THE SUBGRID, where it used to be a bare fragment: the three
+          // cells still sit on the table's columns, and the row now has a box — which is
+          // what the settings search outlines when it lands on one (`data-setting-row`).
+          <div key={row.id} data-setting-row="" className="col-span-3 grid grid-cols-subgrid">
             {/* `min-h-7` on the first line of all three cells — the height of a `sm`
                 button — so the label, the value and the buttons share one band whatever
                 the row's total height. Without it a row carrying a three-line hint would
@@ -223,7 +225,7 @@ export function FieldTable({ rows, flush = false, className = '' }: FieldTablePr
             <div className={`${cell} flex min-h-7 items-center justify-end`}>
               <RowActions actions={row.actions} />
             </div>
-          </Fragment>
+          </div>
         )
       })}
     </div>

@@ -1,6 +1,8 @@
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { PageModal } from './PageModal'
 import { TabSweep } from './TabSweep'
-import { MODAL_COLUMN_PADDING } from '@ds/desktop'
+import { SETTINGS_SEARCH_ENTRIES, searchSettings, type SettingsSearchEntry } from './settingsSearch'
+import { MODAL_COLUMN_PADDING, findSettingTarget, spotlightSetting } from '@ds/desktop'
 import { AboutPage } from '../pages/Config/AboutPage'
 import { AccountPage } from '../pages/Config/AccountPage'
 import { AgentsPage } from '../pages/Config/AgentsPage'
@@ -16,7 +18,7 @@ import { ProfilePage } from '../pages/Config/ProfilePage'
 import { QuickLaunchPage } from '../pages/Config/QuickLaunchPage'
 import { QuickSettingsPage } from '../pages/Config/QuickSettingsPage'
 import { SecurityPage } from '../pages/Config/SecurityPage'
-import { ShortcutsPage } from '../pages/Config/ShortcutsPage'
+import { CHORDS, ShortcutsPage } from '../pages/Config/ShortcutsPage'
 import { SplitViewPage } from '../pages/Config/SplitViewPage'
 import { useStore } from '../store'
 import { useT, type MessageKey } from '../i18n'
@@ -150,10 +152,50 @@ const GROUPS: { id: string; labelKey: MessageKey; pages: SettingsPageEntry[] }[]
 const PAGES = GROUPS.flatMap(({ pages }) => pages)
 const ORDER = PAGES.map(({ id }) => id)
 
+/** The search box's catalogue: the settings pages list, then the chords the shortcuts page owns. */
+const SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
+  ...SETTINGS_SEARCH_ENTRIES,
+  ...CHORDS.map(([labelKey, helpKey]) => ({ tab: 'shortcuts' as const, labelKey, helpKey })),
+]
+
+/**
+ * How long a picked setting may take to appear on its page before the ring gives up.
+ * Most are there on the first frame; the Claude account and the org roster arrive from a
+ * round trip, and a ring landing two seconds late is still the ring the reader asked for.
+ */
+const SPOTLIGHT_WAIT_MS = 3000
+
 export function SettingsModal() {
   const t = useT()
   const tab = useStore((s) => s.settingsTab)
   const setTab = useStore((s) => s.setSettingsTab)
+
+  /**
+   * THE SEARCH, held here and not in the store: it belongs to this window being open, and
+   * a query still sitting in the box the next time someone opens settings would be a
+   * search they never typed. The modal unmounts on close, and the box empties with it.
+   */
+  const [query, setQuery] = useState('')
+  const items = useMemo(
+    () =>
+      SEARCH_ENTRIES.map((entry, index) => ({
+        key: String(index),
+        entry,
+        label: t(entry.labelKey),
+        help: entry.helpKey ? t(entry.helpKey) : '',
+        page: t((PAGES.find((page) => page.id === entry.tab) ?? PAGES[0]).labelKey),
+      })),
+    [t],
+  )
+  const results = useMemo(() => searchSettings(items, query), [items, query])
+
+  /**
+   * THE SETTING A RESULT POINTED AT, until the reader touches the page. `seq` so picking
+   * the same result twice rings it again rather than being a state that did not change.
+   */
+  const [spot, setSpot] = useState<{ label: string; seq: number } | null>(null)
+  const page = useRef<HTMLDivElement>(null)
+  useSettingSpotlight(page, spot, () => setSpot(null))
 
   if (tab === null) return null
   const active = PAGES.find((page) => page.id === tab) ?? PAGES[0]
@@ -173,8 +215,30 @@ export function SettingsModal() {
         })),
         activeKey: tab,
         // The cast holds because the rail only ever reports back a key it was given.
-        onSelect: (key) => setTab(key as SettingsTab),
+        onSelect: (key) => {
+          setSpot(null)
+          setTab(key as SettingsTab)
+        },
         ariaLabel: t('accountMenu.settings'),
+        search: {
+          value: query,
+          onChange: setQuery,
+          placeholder: t('settings.search.placeholder'),
+          clearLabel: t('settings.search.clear'),
+          emptyLabel: t('settings.search.empty'),
+          results: results.map(({ key, label, entry }) => {
+            const home = PAGES.find((one) => one.id === entry.tab) ?? PAGES[0]
+            return { key, label, context: t(home.labelKey), icon: home.icon }
+          }),
+          // The query stays in the box: a reader comparing two results goes back to the
+          // list for the second one, and it should still be there.
+          onPick: (key) => {
+            const picked = items[Number(key)]
+            if (!picked) return
+            setTab(picked.entry.tab)
+            setSpot({ label: picked.label, seq: Date.now() })
+          },
+        },
       }}
     >
       {/* The arriving page travels along the rail: a page further down the list comes up
@@ -185,24 +249,78 @@ export function SettingsModal() {
           `MODAL_COLUMN_PADDING`. On the scroller, the cards sit flush against the box
           that clips, and a card that slides 24px arrives with 24px missing. */}
       <TabSweep tabKey={tab} order={ORDER} style={MODAL_COLUMN_PADDING} vertical>
-        {tab === 'account' && <AccountPage />}
-        {tab === 'profile' && <ProfilePage />}
-        {tab === 'organization' && <OrgPage />}
-        {tab === 'connections' && <ConnectionsPage />}
-        {tab === 'security' && <SecurityPage />}
-        {tab === 'claude-code' && <ClaudeCodePage />}
-        {tab === 'application' && <ApplicationPage />}
-        {tab === 'agents' && <AgentsPage />}
-        {tab === 'code-reviews' && <CodeReviewsPage />}
-        {tab === 'split-view' && <SplitViewPage />}
-        {tab === 'quick-launch' && <QuickLaunchPage />}
-        {tab === 'quick-settings' && <QuickSettingsPage />}
-        {tab === 'notifications' && <NotificationsPage />}
-        {tab === 'appearance' && <AppearancePage />}
-        {tab === 'language' && <LanguagePage />}
-        {tab === 'shortcuts' && <ShortcutsPage />}
-        {tab === 'about' && <AboutPage />}
+        {/* The one box the spotlight searches, so a result can only ever ring something on
+            the page and never the rail's own copy of its name. */}
+        <div ref={page}>
+          {tab === 'account' && <AccountPage />}
+          {tab === 'profile' && <ProfilePage />}
+          {tab === 'organization' && <OrgPage />}
+          {tab === 'connections' && <ConnectionsPage />}
+          {tab === 'security' && <SecurityPage />}
+          {tab === 'claude-code' && <ClaudeCodePage />}
+          {tab === 'application' && <ApplicationPage />}
+          {tab === 'agents' && <AgentsPage />}
+          {tab === 'code-reviews' && <CodeReviewsPage />}
+          {tab === 'split-view' && <SplitViewPage />}
+          {tab === 'quick-launch' && <QuickLaunchPage />}
+          {tab === 'quick-settings' && <QuickSettingsPage />}
+          {tab === 'notifications' && <NotificationsPage />}
+          {tab === 'appearance' && <AppearancePage />}
+          {tab === 'language' && <LanguagePage />}
+          {tab === 'shortcuts' && <ShortcutsPage />}
+          {tab === 'about' && <AboutPage />}
+        </div>
       </TabSweep>
     </PageModal>
   )
+}
+
+/**
+ * Rings the setting `spot` names on the open page — see `settingSpotlight` in the design
+ * system — and takes the ring off at the reader's next press on the page.
+ *
+ * WATCHED FOR, NOT LOOKED UP ONCE: the page it lands on has only just mounted, and some
+ * of its rows wait on a round trip. A `MutationObserver` on the page catches the row the
+ * moment it is drawn, for up to `SPOTLIGHT_WAIT_MS`.
+ */
+function useSettingSpotlight(
+  page: RefObject<HTMLDivElement>,
+  spot: { label: string; seq: number } | null,
+  onDone: () => void,
+) {
+  const done = useRef(onDone)
+  done.current = onDone
+
+  useEffect(() => {
+    const root = page.current
+    if (!spot || !root) return
+
+    let undo: (() => void) | null = null
+    const land = () => {
+      const target = findSettingTarget(root, spot.label)
+      if (target) undo = spotlightSetting(target)
+      return target !== null
+    }
+
+    let observer: MutationObserver | null = null
+    let timer: ReturnType<typeof setTimeout> | undefined
+    if (!land()) {
+      observer = new MutationObserver(() => {
+        if (!land()) return
+        observer?.disconnect()
+        clearTimeout(timer)
+      })
+      observer.observe(root, { childList: true, subtree: true, characterData: true })
+      timer = setTimeout(() => observer?.disconnect(), SPOTLIGHT_WAIT_MS)
+    }
+
+    const release = () => done.current()
+    root.addEventListener('pointerdown', release)
+    return () => {
+      observer?.disconnect()
+      clearTimeout(timer)
+      root.removeEventListener('pointerdown', release)
+      undo?.()
+    }
+  }, [page, spot])
 }

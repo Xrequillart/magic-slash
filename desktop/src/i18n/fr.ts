@@ -82,6 +82,9 @@ export const fr: Record<keyof typeof en, string> = {
   'dialog.filter.images': 'Images',
 
   // ── Réglages → Langue et région ──────────────────────────────────────────
+  'settings.search.placeholder': 'Rechercher un réglage',
+  'settings.search.clear': 'Effacer la recherche',
+  'settings.search.empty': 'Aucun réglage ne correspond à cette recherche.',
   'settings.tab.account': 'Compte',
   'settings.tab.connections': 'Connexions',
   'settings.tab.organization': 'Organisation',

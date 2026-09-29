@@ -104,6 +104,9 @@ export const en = {
   'dialog.filter.images': 'Images',
 
   // ── Settings → Language & Region ─────────────────────────────────────────
+  'settings.search.placeholder': 'Search settings',
+  'settings.search.clear': 'Clear the search',
+  'settings.search.empty': 'No setting matches this search.',
   'settings.tab.account': 'Account',
   'settings.tab.connections': 'Connections',
   'settings.tab.organization': 'Organization',

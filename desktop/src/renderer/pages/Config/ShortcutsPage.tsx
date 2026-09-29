@@ -32,7 +32,7 @@ import { useT, type MessageKey } from '../../i18n'
 /** The thirteen chords, each ⌘ plus one key: its name, what it does, the key. Message
  *  KEYS, resolved in the render path: module scope is evaluated once at import, so a
  *  `t()` here would pin the list to whatever language the app booted in. */
-const CHORDS: readonly (readonly [MessageKey, MessageKey, string])[] = [
+export const CHORDS: readonly (readonly [MessageKey, MessageKey, string])[] = [
   ['sidebar.newAgent', 'settings.shortcuts.help.newAgent', 'N'],
   ['settings.shortcuts.duplicateAgent', 'settings.shortcuts.help.duplicateAgent', 'D'],
   ['settings.shortcuts.closeAgent', 'settings.shortcuts.help.closeAgent', 'W'],

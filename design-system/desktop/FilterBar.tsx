@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from 'react'
+import { useEffect, useState, type KeyboardEvent, type RefObject } from 'react'
 import { ButtonIcon } from './ButtonIcon'
 import { Icon } from './Icon'
 import { Input, type InputTrailing } from './Input'
@@ -208,7 +208,19 @@ function Control({ control }: { control: FilterBarControl }) {
   return <Select {...select} />
 }
 
-function SearchField({ search }: { search: FilterBarSearch }) {
+/**
+ * THE BOX ALONE, for the one other column that searches: the settings rail. Exported so
+ * the two boxes cannot drift apart — the same mark, the same clear button, the same
+ * Escape. `onKeyDown` is what the rail adds on top (the arrows walk its results); it runs
+ * after Escape has had its say.
+ */
+export function SearchField({
+  search,
+  onKeyDown,
+}: {
+  search: FilterBarSearch
+  onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
+}) {
   const { value, onChange, placeholder, clearLabel, busy, busyLabel, warning } = search
   const canClear = !!value && !!clearLabel
 
@@ -228,10 +240,13 @@ function SearchField({ search }: { search: FilterBarSearch }) {
         // means in a search box everywhere else. Only when there is something to clear, so
         // an empty box still closes the page.
         onKeyDown={(event) => {
-          if (event.key !== 'Escape' || !value) return
-          event.preventDefault()
-          event.stopPropagation()
-          onChange('')
+          if (event.key === 'Escape' && value) {
+            event.preventDefault()
+            event.stopPropagation()
+            onChange('')
+            return
+          }
+          onKeyDown?.(event)
         }}
         {...(placeholder ? { placeholder } : {})}
         icon={Search}

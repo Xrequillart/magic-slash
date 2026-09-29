@@ -245,7 +245,10 @@ export function SettingRow({
   )
 
   return (
+    // `data-setting-row` is the settings search's target: a result picked in the rail
+    // lands on the page and outlines the row carrying its name. See `SettingsModal`.
     <div
+      data-setting-row=""
       className={`flex flex-col gap-3 transition-opacity ${disabled ? 'pointer-events-none opacity-40' : ''} ${className}`.trim()}
     >
       <div className={stacked ? 'flex flex-col gap-3 min-w-0' : 'flex items-center justify-between gap-6'}>
