@@ -30,6 +30,11 @@ import { loadSession } from './session-store'
 // The lifecycle is `realtime.ts`'s: every entry point serialized by a lock, the socket
 // authorized with the user's JWT (and re-authorized on every refresh), a 15s deadline on the
 // join, and a status that is `live` only when BOTH channels are SUBSCRIBED.
+//
+// The deadline is PER CHANNEL, and so is what it tears down. A presence JOIN refused for
+// good (the migration not applied yet, Realtime Authorization off on the project, a policy
+// that says no) must cost the reader the faces and nothing else: the changes channel keeps
+// delivering, and `resumePlanLive` retries only the channel that is missing.
 // ---------------------------------------------------------------------------
 
 export interface PlanLiveEmitters {
@@ -57,8 +62,10 @@ type ChannelName = 'presence' | 'changes'
  * `resumePlanLive` is how the connectivity poller puts it back.
  */
 let wantedSessionId: string | null = null
-/** The plan whose channels are currently claimed (joined or joining). */
+/** The plan whose channels are currently claimed (joined or joining, one or both). */
 let activeSessionId: string | null = null
+/** Who the reader is on that plan, kept so a channel lost alone can be joined again. */
+let activeReader: { userId: string; me: PlanPresenceMember } | null = null
 let presenceChannel: RealtimeChannel | null = null
 let changesChannel: RealtimeChannel | null = null
 let activeClient: SupabaseClient | null = null
@@ -73,36 +80,42 @@ let lastStatus: RealtimeStatus | null = null
 let lastPresenceKey = ''
 
 // Same reasoning as the org-agents watchdog: a join that never lands would hold the slot
-// forever, and the connectivity poller's `resumePlanLive` would never retry.
+// forever, and the connectivity poller's `resumePlanLive` would never retry. One per channel.
 const SUBSCRIBE_DEADLINE_MS = 15_000
-let subscribeWatchdog: ReturnType<typeof setTimeout> | null = null
+const subscribeWatchdogs = new Map<ChannelName, ReturnType<typeof setTimeout>>()
 
 // Leaving the channel drops the presence server-side anyway; the untrack is the courteous
 // half, and must never hold the lock for realtime-js's default 10s push timeout.
 const UNTRACK_TIMEOUT_MS = 1_000
 
-function clearSubscribeWatchdog(): void {
-  if (subscribeWatchdog) {
-    clearTimeout(subscribeWatchdog)
-    subscribeWatchdog = null
+function clearSubscribeWatchdog(name: ChannelName): void {
+  const timer = subscribeWatchdogs.get(name)
+  if (timer) {
+    clearTimeout(timer)
+    subscribeWatchdogs.delete(name)
   }
 }
 
-function armSubscribeWatchdog(sessionId: string): void {
-  clearSubscribeWatchdog()
-  subscribeWatchdog = setTimeout(() => {
-    subscribeWatchdog = null
+function currentChannel(name: ChannelName): RealtimeChannel | null {
+  return name === 'presence' ? presenceChannel : changesChannel
+}
+
+function armSubscribeWatchdog(name: ChannelName, channel: RealtimeChannel): void {
+  clearSubscribeWatchdog(name)
+  const timer = setTimeout(() => {
+    subscribeWatchdogs.delete(name)
     void withLock(async () => {
-      // Both channels landed, or the reader has moved on to another plan? Nothing to do.
-      if (activeSessionId !== sessionId || live.size === 2) return
-      console.warn('[plan-live] channels never fully subscribed — tearing down so the next connectivity check retries')
-      await teardown()
+      // Landed, or replaced (another plan, a rejoin)? Nothing to do.
+      if (currentChannel(name) !== channel || live.has(name)) return
+      console.warn(`[plan-live] ${name} channel never subscribed — leaving it so the next connectivity check retries it`)
+      await leaveChannel(name)
       // Still wanted: the page is open and waiting on a connection, not closed.
-      setStatus('reconnecting')
+      refreshStatus()
     })
   }, SUBSCRIBE_DEADLINE_MS)
   // Never hold the process open for the deadline (matters in tests/teardown).
-  subscribeWatchdog.unref?.()
+  timer.unref?.()
+  subscribeWatchdogs.set(name, timer)
 }
 
 function setStatus(next: RealtimeStatus | null): void {
@@ -175,7 +188,7 @@ function handleStatus(name: ChannelName, status: string): boolean {
   }
   if (live.has(name)) return false
   live.add(name)
-  if (live.size === 2) clearSubscribeWatchdog()
+  clearSubscribeWatchdog(name)
   refreshStatus()
   return true
 }
@@ -223,20 +236,24 @@ export function openPlanLive(sessionId: string): Promise<void> {
 }
 
 /**
- * Put the wanted plan's channels back if nothing is joined — after a watchdog teardown, a
- * sign-in, a connection that came back. Called by the connectivity poller on every `ok`;
- * a no-op when no plan is open or its channels are already up.
+ * Put the wanted plan's channels back where they are missing — after a watchdog left one
+ * (or both), a sign-in, a connection that came back. Called by the connectivity poller on
+ * every `ok`; a no-op when no plan is open or both its channels are claimed.
  */
 export function resumePlanLive(): Promise<void> {
   const sessionId = wantedSessionId
-  if (!sessionId || activeSessionId === sessionId) return Promise.resolve()
+  if (!sessionId || (activeSessionId === sessionId && presenceChannel && changesChannel)) return Promise.resolve()
   return withLock(() => openInternal(sessionId, true))
 }
 
 async function openInternal(sessionId: string, resync: boolean): Promise<void> {
   // Superseded while waiting on the lock: the reader has closed it, or opened another.
   if (wantedSessionId !== sessionId) return
-  if (activeSessionId === sessionId) return
+  if (activeSessionId === sessionId) {
+    // Same plan, one channel lost alone: join that one again, leave the other be.
+    rejoinMissing(sessionId)
+    return
+  }
 
   const client = await getAuthedClient()
   const stored = loadSession()
@@ -257,73 +274,14 @@ async function openInternal(sessionId: string, resync: boolean): Promise<void> {
 
   activeClient = client
   activeSessionId = sessionId
-  setStatus('reconnecting')
-
   // Once per open, not per join: a rejoin is the same visit, and must not move the reader
   // to the end of everyone else's stack.
-  const me = { userId, email: user.email ?? '', joinedAt: new Date().toISOString() }
-  /**
-   * Whether the changes channel's next SUBSCRIBED is a REJOIN: the socket came back after a
-   * loss, or (`resync`) the plan was put back by `resumePlanLive` with the page open all
-   * along. Events that occurred while nothing was joined are NOT replayed, and that is the
-   * only signal the page may have fallen behind.
-   */
-  let changesJoined = resync
+  activeReader = { userId, me: { userId, email: user.email ?? '', joinedAt: new Date().toISOString() } }
+  setStatus('reconnecting')
 
   try {
-    const presence = client.channel(`plan:${sessionId}`, {
-      config: { private: true, presence: { key: userId } },
-    })
-    presenceChannel = presence
-    presence
-      .on('presence', { event: 'sync' }, () => {
-        // A late sync from a channel already torn down is about a plan nobody is looking at.
-        if (presenceChannel !== presence) return
-        emitPresence(sessionId, flattenPresence(presence.presenceState(), userId))
-      })
-      .subscribe((status: string) => {
-        if (presenceChannel !== presence) return
-        handleStatus('presence', status)
-        // On EVERY join, the first and each rejoin: realtime-js does not publish the
-        // presence again after a rejoin, so a reader whose socket dropped would otherwise
-        // come back to the plan invisible.
-        if (status === 'SUBSCRIBED') {
-          presence.track(me).catch((error: unknown) => console.error('[plan-live] failed to track presence:', error))
-        }
-      })
-
-    const changes = client.channel(`plan-changes:${sessionId}`)
-    changesChannel = changes
-    // Every callback checks it is still the live channel: a late one from a channel already
-    // torn down is about a plan nobody is looking at.
-    const emitChange = (change: Omit<PlanLiveChange, 'sessionId'>) => {
-      if (changesChannel === changes) emitters?.changed({ sessionId, ...change })
-    }
-    const nudge = (kind: PlanLiveChange['kind']) => () => emitChange({ kind })
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const onCommentDeleted = (payload: any) => {
-      // Unfiltered: every deleted comment the socket hears of, on any plan. Only the id is
-      // known, and the page decides whether it is one of its own.
-      const id = payload?.old?.id
-      if (typeof id === 'string') emitChange({ kind: 'comments', deletedId: id })
-    }
-    changes
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'plan_sessions', filter: `id=eq.${sessionId}` }, nudge('spec'))
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'plan_comments', filter: `session_id=eq.${sessionId}` }, nudge('comments'))
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'plan_comments', filter: `session_id=eq.${sessionId}` }, nudge('comments'))
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'plan_comments' }, onCommentDeleted)
-      .subscribe((status: string) => {
-        if (changesChannel !== changes || !handleStatus('changes', status)) return
-        // Nothing is replayed after a loss: a rejoin reads both halves of the page again.
-        const rejoin = changesJoined
-        changesJoined = true
-        if (rejoin) {
-          emitChange({ kind: 'spec' })
-          emitChange({ kind: 'comments' })
-        }
-      })
-
-    armSubscribeWatchdog(sessionId)
+    joinPresence(client, sessionId)
+    joinChanges(client, sessionId, resync)
   } catch (error) {
     // subscribe() throws when the socket can't even be created. Release the slot so the next
     // connectivity check retries, rather than leaving it claimed by channels that don't exist.
@@ -331,6 +289,87 @@ async function openInternal(sessionId: string, resync: boolean): Promise<void> {
     await teardown()
     setStatus('reconnecting')
   }
+}
+
+/** Join whichever of the open plan's channels a watchdog left. Lock held by the caller. */
+function rejoinMissing(sessionId: string): void {
+  const client = activeClient
+  if (!client) return
+  try {
+    if (!presenceChannel) joinPresence(client, sessionId)
+    // A changes channel joined again has missed whatever moved while it was gone.
+    if (!changesChannel) joinChanges(client, sessionId, true)
+  } catch (error) {
+    // Left as it was: the channel still missing is retried on the next `ok`.
+    console.error('[plan-live] failed to rejoin:', error)
+  }
+  refreshStatus()
+}
+
+function joinPresence(client: SupabaseClient, sessionId: string): void {
+  const reader = activeReader
+  if (!reader) return
+  const presence = client.channel(`plan:${sessionId}`, {
+    config: { private: true, presence: { key: reader.userId } },
+  })
+  presenceChannel = presence
+  presence
+    .on('presence', { event: 'sync' }, () => {
+      // A late sync from a channel already torn down is about a plan nobody is looking at.
+      if (presenceChannel !== presence) return
+      emitPresence(sessionId, flattenPresence(presence.presenceState(), reader.userId))
+    })
+    .subscribe((status: string) => {
+      if (presenceChannel !== presence) return
+      handleStatus('presence', status)
+      // On EVERY join, the first and each rejoin: realtime-js does not publish the
+      // presence again after a rejoin, so a reader whose socket dropped would otherwise
+      // come back to the plan invisible.
+      if (status === 'SUBSCRIBED') {
+        presence.track(reader.me).catch((error: unknown) => console.error('[plan-live] failed to track presence:', error))
+      }
+    })
+  armSubscribeWatchdog('presence', presence)
+}
+
+/**
+ * `resync`: whether the channel's first SUBSCRIBED is already a REJOIN — the plan was put
+ * back by `resumePlanLive` with the page open all along. Events that occurred while nothing
+ * was joined are NOT replayed, and that is the only signal the page may have fallen behind.
+ */
+function joinChanges(client: SupabaseClient, sessionId: string, resync: boolean): void {
+  let joined = resync
+  const changes = client.channel(`plan-changes:${sessionId}`)
+  changesChannel = changes
+  // Every callback checks it is still the live channel: a late one from a channel already
+  // torn down is about a plan nobody is looking at.
+  const emitChange = (change: Omit<PlanLiveChange, 'sessionId'>) => {
+    if (changesChannel === changes) emitters?.changed({ sessionId, ...change })
+  }
+  const nudge = (kind: PlanLiveChange['kind']) => () => emitChange({ kind })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onCommentDeleted = (payload: any) => {
+    // Unfiltered: every deleted comment the socket hears of, on any plan. Only the id is
+    // known, and the page decides whether it is one of its own.
+    const id = payload?.old?.id
+    if (typeof id === 'string') emitChange({ kind: 'comments', deletedId: id })
+  }
+  changes
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'plan_sessions', filter: `id=eq.${sessionId}` }, nudge('spec'))
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'plan_comments', filter: `session_id=eq.${sessionId}` }, nudge('comments'))
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'plan_comments', filter: `session_id=eq.${sessionId}` }, nudge('comments'))
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'plan_comments' }, onCommentDeleted)
+    .subscribe((status: string) => {
+      if (changesChannel !== changes || !handleStatus('changes', status)) return
+      // Nothing is replayed after a loss: a rejoin reads both halves of the page again.
+      const rejoin = joined
+      joined = true
+      if (rejoin) {
+        emitChange({ kind: 'spec' })
+        emitChange({ kind: 'comments' })
+      }
+    })
+  armSubscribeWatchdog('changes', changes)
 }
 
 /**
@@ -361,40 +400,45 @@ export function suspendPlanLive(): Promise<void> {
   })
 }
 
-async function teardown(): Promise<void> {
-  const sessionId = activeSessionId
-  const presence = presenceChannel
-  const changes = changesChannel
+/**
+ * Leave one of the open plan's channels, keeping the plan and the other channel. Released
+ * BEFORE the awaits: removeChannel fires the channel's CLOSED callback, and it must find
+ * nothing to report on.
+ */
+async function leaveChannel(name: ChannelName): Promise<void> {
+  const channel = currentChannel(name)
   const client = activeClient
-  const presenceLive = live.has('presence')
+  const sessionId = activeSessionId
+  const wasLive = live.has(name)
+  if (name === 'presence') presenceChannel = null
+  else changesChannel = null
+  live.delete(name)
+  clearSubscribeWatchdog(name)
 
-  // Released BEFORE the awaits: removeChannel fires the channels' CLOSED callbacks, and
-  // those must find nothing to report on.
-  presenceChannel = null
-  changesChannel = null
-  activeClient = null
-  activeSessionId = null
-  live.clear()
-  clearSubscribeWatchdog()
-  if (authListenerUnsub) {
-    authListenerUnsub()
-    authListenerUnsub = null
-  }
-
-  if (client) {
-    const remove = (channel: RealtimeChannel) => client.removeChannel(channel)
-      .catch((error: unknown) => console.error('[plan-live] failed to remove channel:', error))
-    // The two leaves run side by side, the untrack still ahead of the presence one: each
-    // waits on a server reply, and the lock is held for the longest, not their sum.
-    await Promise.all([
-      presence && (presenceLive ? presence.untrack({ timeout: UNTRACK_TIMEOUT_MS }) : Promise.resolve())
+  if (client && channel) {
+    // The untrack goes ahead of the leave, and is the courteous half only (see its timeout).
+    if (name === 'presence' && wasLive) {
+      await channel.untrack({ timeout: UNTRACK_TIMEOUT_MS })
         .catch((error: unknown) => console.error('[plan-live] failed to untrack presence:', error))
-        .then(() => remove(presence)),
-      changes && remove(changes),
-    ])
+    }
+    await client.removeChannel(channel)
+      .catch((error: unknown) => console.error('[plan-live] failed to remove channel:', error))
   }
 
   // Whoever was on the plan is unknown from here: the page must not keep drawing faces the
   // channel can no longer vouch for.
-  if (sessionId) emitPresence(sessionId, [])
+  if (name === 'presence' && sessionId) emitPresence(sessionId, [])
+}
+
+async function teardown(): Promise<void> {
+  if (authListenerUnsub) {
+    authListenerUnsub()
+    authListenerUnsub = null
+  }
+  // The two leaves run side by side: each waits on a server reply, and the lock is held for
+  // the longest, not their sum. The slot is released only once both have let go of it.
+  await Promise.all([leaveChannel('presence'), leaveChannel('changes')])
+  activeClient = null
+  activeSessionId = null
+  activeReader = null
 }

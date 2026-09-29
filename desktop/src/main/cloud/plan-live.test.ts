@@ -275,17 +275,80 @@ describe('openPlanLive', () => {
     expect(isPlanLiveActive()).toBe(true)
   })
 
-  it('tears the channels down when they never both subscribe within the deadline', async () => {
+  it('leaves only the channel that missed the deadline, and keeps the other delivering', async () => {
     vi.useFakeTimers()
     try {
       await openPlanLive(PLAN_A)
-      statusCb(channelsOf().changes)('SUBSCRIBED')
+      const { presence, changes: changesChannel } = channelsOf()
+      statusCb(changesChannel)('SUBSCRIBED')
 
       await vi.advanceTimersByTimeAsync(15_000)
-      expect(isPlanLiveActive()).toBe(false)
-      expect(h.state.client.removeChannel).toHaveBeenCalledTimes(2)
-      // Still wanted: the page is waiting on a connection, not closed.
+      // The refused presence goes; the changes channel stays up and keeps nudging the page.
+      expect(h.state.client.removeChannel).toHaveBeenCalledTimes(1)
+      expect(h.state.client.removeChannel).toHaveBeenCalledWith(presence)
+      expect(isPlanLiveActive()).toBe(true)
       expect(getPlanLiveStatus()).toBe('reconnecting')
+      changeCb(changesChannel, 'plan_sessions', '*')()
+      expect(changes).toEqual([{ sessionId: PLAN_A, kind: 'spec' }])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('rejoins only the missing channel on resume, and reports live once it lands', async () => {
+    vi.useFakeTimers()
+    try {
+      await openPlanLive(PLAN_A)
+      const { changes: changesChannel } = channelsOf()
+      statusCb(changesChannel)('SUBSCRIBED')
+      await vi.advanceTimersByTimeAsync(15_000)
+
+      await resumePlanLive()
+      // One new channel, the presence one: the changes channel was never left.
+      expect(h.state.channels).toHaveLength(3)
+      const rejoined = h.state.channels[2]
+      expect(rejoined.topic).toBe(`plan:${PLAN_A}`)
+      statusCb(rejoined)('SUBSCRIBED')
+      expect(rejoined.track).toHaveBeenCalledTimes(1)
+      expect(getPlanLiveStatus()).toBe('live')
+      // The changes channel did not rejoin, so nothing asks for a re-read.
+      expect(changes).toEqual([])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('asks for a re-read when a changes channel left by the watchdog is joined again', async () => {
+    vi.useFakeTimers()
+    try {
+      await openPlanLive(PLAN_A)
+      statusCb(channelsOf().presence)('SUBSCRIBED')
+      await vi.advanceTimersByTimeAsync(15_000)
+      expect(h.state.client.removeChannel).toHaveBeenCalledWith(channelsOf().changes)
+
+      await resumePlanLive()
+      const rejoined = h.state.channels[2]
+      expect(rejoined.topic).toBe(`plan-changes:${PLAN_A}`)
+      statusCb(rejoined)('SUBSCRIBED')
+      expect(changes).toEqual([
+        { sessionId: PLAN_A, kind: 'spec' },
+        { sessionId: PLAN_A, kind: 'comments' },
+      ])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('leaves both channels when neither subscribes within the deadline', async () => {
+    vi.useFakeTimers()
+    try {
+      await openPlanLive(PLAN_A)
+      await vi.advanceTimersByTimeAsync(15_000)
+      expect(h.state.client.removeChannel).toHaveBeenCalledTimes(2)
+      expect(getPlanLiveStatus()).toBe('reconnecting')
+
+      await resumePlanLive()
+      expect(h.state.channels).toHaveLength(4)
     } finally {
       vi.useRealTimers()
     }
