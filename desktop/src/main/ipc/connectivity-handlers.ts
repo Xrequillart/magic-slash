@@ -26,6 +26,7 @@ import {
   startUserSyncRealtime,
   stopUserSyncRealtime,
 } from '../cloud/settings-realtime'
+import { resumePlanLive, setPlanLiveEmitters, suspendPlanLive } from '../cloud/plan-live'
 
 let restoredOnce = false
 
@@ -72,6 +73,15 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
     (change) => getMainWindow()?.webContents.send('org:agentsChanged', change),
     (status) => getMainWindow()?.webContents.send('org:realtimeStatusChanged', status),
   )
+
+  // The open plan's channels (#306): who else is on it, a nudge to re-read it, and their
+  // health. The renderer asks for a plan with `plans:live:open`; what the channels say
+  // comes back here, so the renderer never holds a socket of its own.
+  setPlanLiveEmitters({
+    presence: (presence) => getMainWindow()?.webContents.send('plans:live:presence', presence),
+    changed: (change) => getMainWindow()?.webContents.send('plans:live:changed', change),
+    status: (status) => getMainWindow()?.webContents.send('plans:live:status', status),
+  })
 
   // Same wiring for the user-scoped channels: a setting or a repository changed
   // on the web app (or on another machine) is adopted by remote-sync, then the
@@ -159,6 +169,13 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
             )
           }
         }
+        // A plan still open on the page whose channels went down — a join that missed its
+        // deadline, a sign-in after a sign-out, an open made offline — is joined again here,
+        // and asks the page to re-read on its first join: nothing is replayed. A no-op when
+        // no plan is wanted or the wanted one is already joined, which it checks itself.
+        void resumePlanLive().catch((error) =>
+          console.error('[connectivity] failed to resume plan realtime:', error),
+        )
       } catch (error) {
         console.error('[connectivity] hydration failed:', error)
       }
@@ -168,6 +185,10 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
       // Session gone → tear down the realtime channels so the next user starts clean.
       void stopOrgAgentsRealtime()
       void stopUserSyncRealtime()
+      // Suspended rather than closed: the page may still be mounted behind the sign-in
+      // gate, and the plan it holds is joined again on the next 'ok'. The page's own
+      // unmount is what closes it for good.
+      void suspendPlanLive()
     }
 
     getMainWindow()?.webContents.send('connectivity:statusChanged', status)

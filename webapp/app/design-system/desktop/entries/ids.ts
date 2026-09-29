@@ -16,6 +16,7 @@ export type EntryId =
   | 'card'
   | 'avatar'
   | 'avatarpicker'
+  | 'avatarstack'
   | 'accountcard'
   | 'button'
   | 'buttonicon'
@@ -155,6 +156,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   text: 'Text',
   avatar: 'Avatar',
   avatarpicker: 'AvatarPicker',
+  avatarstack: 'AvatarStack',
   accountcard: 'AccountCard',
   label: 'Label',
   status: 'Status',
@@ -328,6 +330,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   text: [],
   avatar: ['icon'],
   avatarpicker: [],
+  avatarstack: ['avatar', 'text'],
   label: ['icon', 'text', 'avatar'],
   status: ['icon', 'text'],
   switch: [],
@@ -535,6 +538,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   text: 'Cera Pro, six sizes, four weights',
   avatar: 'A face, or the default portrait when there is none',
   avatarpicker: 'Thirty drawn faces, six to a line',
+  avatarstack: 'Who else is here, as overlapping faces',
   label: 'Names a thing, on a tinted plate',
   status: 'Reports a state, and changes it',
   switch: 'On or off, and it takes at once',

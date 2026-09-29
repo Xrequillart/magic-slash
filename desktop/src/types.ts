@@ -2725,6 +2725,43 @@ export interface PlanCommentsRead {
   failed: boolean
 }
 
+/**
+ * One colleague who has a plan open right now, as the plan's presence channel reports them
+ * (#306). The three fields are EVERYTHING the channel carries: no name, no photo. A photo is
+ * a `data:` URL tens of kilobytes long, and presence is re-sent to every reader on every
+ * join; the renderer resolves the face from what it already holds (the org's member
+ * avatars, the comments' authors) and falls back to an initial.
+ */
+export interface PlanPresenceMember {
+  userId: string
+  email: string
+  /** When they opened the plan, ISO. Orders the stack: the first to arrive comes first. */
+  joinedAt: string
+}
+
+/**
+ * Who else is on a plan, for ONE plan. `sessionId` travels with the list so a late event
+ * about the plan the reader just left cannot land on the one they opened next. The reader
+ * themselves is never in `members`: the main process removes them.
+ */
+export interface PlanPresence {
+  sessionId: string
+  members: PlanPresenceMember[]
+}
+
+/**
+ * Something moved on the open plan, and the page should read it again. PAYLOAD-BLIND on
+ * purpose: the row is not forwarded, the renderer re-reads through the same channel it
+ * opened the plan with, so a live update and a reopen can never draw two different things.
+ *
+ * `spec` is a change to the session row (its spec, its status, who may edit it); `comments`
+ * a comment written, edited or deleted.
+ */
+export interface PlanLiveChange {
+  sessionId: string
+  kind: 'spec' | 'comments'
+}
+
 /** What a view hands over to create a comment: everything the database does not mint. */
 export interface NewPlanComment {
   sessionId: string

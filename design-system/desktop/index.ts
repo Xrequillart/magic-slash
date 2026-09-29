@@ -25,6 +25,8 @@ export type {
 export type { AgentProps, AgentState } from './Agent'
 export { Avatar } from './Avatar'
 export { AvatarPicker } from './AvatarPicker'
+export { AvatarStack } from './AvatarStack'
+export type { AvatarStackPerson, AvatarStackProps, AvatarStackSize } from './AvatarStack'
 export { DEFAULT_PORTRAIT_ID, DEFAULT_PORTRAIT_SRC } from './defaultAvatar'
 export { Button, BUTTON_TONES } from './Button'
 export type { ButtonProps, ButtonSize, ButtonTone } from './Button'

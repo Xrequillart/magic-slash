@@ -553,12 +553,12 @@ export function App() {
           that call now reads as "switch to this tab" without any of the three wrappers
           knowing.
 
-          The live indicator rides with the Plans tab alone and reports the CONNECTION,
-          not the list. `plan_sessions` is deliberately absent from the realtime
-          publication (see the end of 20260821090000_plan_sessions.sql), so a plan written
-          by a teammate while this is open arrives on the next read rather than by itself
-          — what the dot says is whether the backend is reachable at all, which is still
-          the answer to "why does this look emptier than I expected".
+          The live indicator rides with the Plans tab alone. On the LIST it reports the
+          connection, not the list: the list has no subscription of its own, so a plan a
+          teammate starts while it is open arrives on the next read, and what the dot says
+          is whether the backend is reachable at all. On an OPEN PLAN it reports that
+          plan's channels (#306, 20260929110000): who else is on it, and their edits and
+          comments, arrive live while the dot is green — see `LiveIndicator`.
 
           Only the ACTIVE tab's page is mounted. Each is a full page with its own reads —
           the board alone asks every tracked repository for its issues — and keeping the

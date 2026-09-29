@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { EMPTY_PLAN_HISTORY, isPlanCommentAnchor, type NewPlanComment, type PlanCollaboratorWriteResult, type PlanCommentsRead, type PlanDetail, type PlanEditPolicyUpdateResult, type PlanHistoryRead, type PlanLinksRead, type PlanLocalSpec, type PlanOverview, type PlanRevisionDiff, type PlanSpecUpdateResult, type PlanStatus, type PlanStatusUpdateResult, type PlanTicketOrigin, isPlanEditPolicy, PLAN_STATUSES } from '../../types'
+import { EMPTY_PLAN_HISTORY, isPlanCommentAnchor, type NewPlanComment, type PlanCollaboratorWriteResult, type PlanCommentsRead, type PlanDetail, type PlanEditPolicyUpdateResult, type PlanHistoryRead, type PlanLinksRead, type PlanLocalSpec, type PlanOverview, type PlanRevisionDiff, type PlanSpecUpdateResult, type PlanStatus, type PlanStatusUpdateResult, type PlanTicketOrigin, type RealtimeStatus, isPlanEditPolicy, PLAN_STATUSES } from '../../types'
 import {
   addPlanCollaborator, findPlanForTicket, listPlanDetail, listPlanSessions, removePlanCollaborator, updatePlanEditPolicy, updatePlanStatus,
 } from '../cloud/plans'
@@ -9,6 +9,7 @@ import {
 import { resolveLocalSpecPath, saveEditedPlanSpec } from '../store/plan-edit'
 import { createPlanLink, deletePlanLink, listPlanLinks } from '../cloud/planLinks'
 import { listPlanHistory, readRevisionTexts } from '../cloud/planHistory'
+import { announcePlanCommentDeleted, closePlanLive, getPlanLiveSessionId, getPlanLiveStatus, openPlanLive } from '../cloud/plan-live'
 import { unifiedSpecDiff } from '../store/specDiff'
 import { annotateAgainstDiff, highlightNumbered, previewShikiTheme } from './config-handlers'
 
@@ -193,7 +194,13 @@ export function setupPlansHandlers(): void {
 
   ipcMain.handle('plans:comments:delete', async (_e, id: unknown): Promise<boolean> => {
     if (typeof id !== 'string' || !UUID_RE.test(id)) return false
-    return deletePlanComment(id)
+    // The one comment write the others on the plan cannot hear from the database (#306).
+    // The plan is noted before the await: a comment is deleted from the plan on screen, and
+    // the reader may have opened another by the time the delete comes back.
+    const plan = getPlanLiveSessionId()
+    const ok = await deletePlanComment(id)
+    if (ok && plan) announcePlanCommentDeleted(plan)
+    return ok
   })
 
   /**
@@ -348,4 +355,28 @@ export function setupPlansHandlers(): void {
     if (typeof id !== 'string' || !UUID_RE.test(id)) return { ok: false, reason: 'no_file' }
     return resolveLocalSpecPath(id)
   })
+
+  /**
+   * The open plan, live (#306): who else has it open, and a nudge to re-read when its spec
+   * or its comments move. The channels are joined HERE, in main, and what they say comes
+   * back as `plans:live:presence` / `plans:live:changed` / `plans:live:status` events (wired
+   * in connectivity-handlers). SHAPE ONLY, like every channel in this file: whether the
+   * reader may join a plan's channel is the `realtime.messages` policies' question
+   * (20260929110000), and a malformed id opens nothing.
+   *
+   * `close` takes the id of the plan being left, so a close that lands after the reader
+   * opened the next one does not take that one down.
+   */
+  ipcMain.handle('plans:live:open', async (_e, id: unknown): Promise<boolean> => {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) return false
+    await openPlanLive(id)
+    return true
+  })
+
+  ipcMain.handle('plans:live:close', async (_e, id: unknown): Promise<void> => {
+    if (typeof id !== 'string' || !UUID_RE.test(id)) return
+    await closePlanLive(id)
+  })
+
+  ipcMain.handle('plans:live:status', async (): Promise<RealtimeStatus | null> => getPlanLiveStatus())
 }
