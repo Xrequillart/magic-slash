@@ -70,6 +70,7 @@ import {
   getLastCommand
 } from '../config/command-history'
 import { ensureHydrated } from '../store/hydrate'
+import { workflowForRepo } from '../workflow/workflows'
 import {
   computeVisibleRanges, countShikiRows, numberShikiLines, renderRows, splitShikiLines, ROW_MARKER,
 } from './hunkView'
@@ -715,6 +716,20 @@ export function setupConfigHandlers() {
   ipcMain.handle('config:setIntegration', async (_event, { name, enabled }: { name: 'atlassian'; enabled: boolean }) => {
     const config = setIntegration(name, enabled)
     return { config }
+  })
+
+  // The flow a repository's skills follow, for the Workflow tab of its settings. Read
+  // on the tab's mount and not pushed: the tab is read-only, and a flow that changes
+  // while it is open (nothing edits one yet) shows up on the next visit.
+  //
+  // Keyed by NAME because that is what the renderer holds, and resolved to the id here
+  // because the workflows cache is keyed by id. A name matching no repository, or one
+  // without a cloud id yet, gets the default flow: the same answer `GET /workflow`
+  // gives a skill running there.
+  ipcMain.handle('config:getRepositoryWorkflow', async (_event, { name }: { name: string }) => {
+    await ensureHydrated()
+    const repoId = readConfig().repositories[name]?.id ?? null
+    return workflowForRepo(repoId)
   })
 
   // GitHub CLI auth status for DISPLAY only (`gh auth status`). No token stored.
