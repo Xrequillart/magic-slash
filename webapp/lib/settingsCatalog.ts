@@ -85,6 +85,7 @@ export const DEFAULTS = {
   sidebarOrder: 'plans, tasks, skills, repositories',
   // NULL = every page shown.
   sidebarHidden: 'none',
+  sidebarCompact: false,
 } as const
 
 /**
@@ -268,6 +269,7 @@ export const SETTING_GROUPS: SettingGroup[] = [
     fields: [
       { field: 'sidebarOrder', label: 'Pages, in order' },
       { field: 'sidebarHidden', label: 'Hidden pages' },
+      { field: 'sidebarCompact', label: 'Icons only' },
     ],
   },
   {

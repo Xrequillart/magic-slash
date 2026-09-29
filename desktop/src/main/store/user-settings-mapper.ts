@@ -53,6 +53,7 @@ export interface UserSettingsRow {
   quick_settings_items: string[] | null
   sidebar_order: string[] | null
   sidebar_hidden: string[] | null
+  sidebar_compact: boolean | null
   auto_start_at_login: boolean | null
   launch_mode: string | null
   atlassian_integration_enabled: boolean | null
@@ -78,7 +79,7 @@ export const USER_SETTINGS_COLUMNS =
   'notification_pr_changes_requested, split_enabled, split_active, pr_reviews_enabled, ' +
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
   'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
-  'language, sync_claude_theme, code_syntax, code_font_size, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, quick_settings_enabled, quick_settings_items, sidebar_order, sidebar_hidden, agent_sort, tasks_repo, ' +
+  'language, sync_claude_theme, code_syntax, code_font_size, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, quick_settings_enabled, quick_settings_items, sidebar_order, sidebar_hidden, sidebar_compact, agent_sort, tasks_repo, ' +
   'plans_repo'
 
 /**
@@ -113,6 +114,7 @@ export const SETTINGS_KEYS = [
   'quickSettingsItems',
   'sidebarOrder',
   'sidebarHidden',
+  'sidebarCompact',
   'autoStartAtLogin',
   'launchMode',
   'defaultAgentType',
@@ -170,6 +172,7 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     quick_settings_items: orNull(config.quickSettingsItems),
     sidebar_order: orNull(config.sidebarOrder),
     sidebar_hidden: orNull(config.sidebarHidden),
+    sidebar_compact: orNull(config.sidebarCompact),
     auto_start_at_login: orNull(config.autoStartAtLogin),
     launch_mode: orNull(config.launchMode),
     atlassian_integration_enabled: orNull(config.integrations?.atlassian),
@@ -224,6 +227,7 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   if (sidebarOrder) config.sidebarOrder = sidebarOrder
   const sidebarHidden = cleanSidebarPages(row.sidebar_hidden)
   if (sidebarHidden) config.sidebarHidden = sidebarHidden
+  if (isSet(row.sidebar_compact)) config.sidebarCompact = row.sidebar_compact
   // Re-validated rather than trusted: a newer version may have stored a theme
   // this build has never heard of, and it must read as "unset", not as a theme.
   if (isValidTheme(row.theme)) config.theme = row.theme

@@ -586,10 +586,11 @@ export function setupConfigHandlers() {
     return { config }
   })
 
-  // The sidebar menu: which pages it draws, in which order. Either may come alone.
+  // The sidebar: which pages its menu draws, in which order, and whether it is drawn as
+  // icons only. Any of the three may come alone.
   ipcMain.handle('config:setSidebarPages', async (_event, patch: unknown) => {
     if (typeof patch !== 'object' || patch === null) throw new Error('Invalid sidebar pages')
-    const { order, hidden } = patch as Record<string, unknown>
+    const { order, hidden, compact } = patch as Record<string, unknown>
     const config = readConfig()
     if (order !== undefined) {
       const cleaned = cleanSidebarPages(order)
@@ -600,6 +601,10 @@ export function setupConfigHandlers() {
       const cleaned = cleanSidebarPages(hidden)
       if (!cleaned) throw new Error('Invalid sidebar hidden pages')
       config.sidebarHidden = cleaned
+    }
+    if (compact !== undefined) {
+      if (typeof compact !== 'boolean') throw new Error('Invalid sidebar compact value')
+      config.sidebarCompact = compact
     }
     writeConfig(config)
     return { config }

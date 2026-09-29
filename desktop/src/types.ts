@@ -1854,6 +1854,8 @@ export interface Config {
   sidebarOrder?: SidebarPageId[]
   /** The pages the sidebar menu leaves out. Absent or empty = all shown. */
   sidebarHidden?: SidebarPageId[]
+  /** The sidebar drawn as icons only. Absent = false, the wide column. */
+  sidebarCompact?: boolean
   launchMode?: LaunchMode
   /**
    * What a NEW agent is, when nothing says otherwise. Absent = never chosen, and
