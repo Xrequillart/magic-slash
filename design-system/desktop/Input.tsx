@@ -249,6 +249,13 @@ export type InputProps = SingleLineProps | MultilineProps
  * one place the component still sets it is INSIDE the icon wrapper, where no caller class
  * can reach and there is nothing to race.
  */
+/**
+ * A SEARCH BOX'S OWN CLEAR BUTTON IS THE CALLER'S. Chromium draws a white cross inside every
+ * `type="search"`, in its own colour and at its own size, and every box here that clears
+ * already draws a `ButtonIcon` for it — so the two stood side by side. The native one goes.
+ */
+const NO_NATIVE_CLEAR = '[&::-webkit-search-cancel-button]:appearance-none'
+
 const CHROME = 'border transition-colors focus:outline-none disabled:cursor-not-allowed'
 
 /**
@@ -285,7 +292,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, InputPro
   // A password's bullets are spaced, and nothing else is — see PASSWORD_TRACKING. It
   // rides on `face` because that is already the "what the glyphs look like" slot, and a
   // field cannot be both `mono` and a password in this app.
-  const face = mono ? 'font-mono' : props.type === 'password' ? PASSWORD_TRACKING : ''
+  const face = mono ? 'font-mono' : props.type === 'password' ? PASSWORD_TRACKING : props.type === 'search' ? NO_NATIVE_CLEAR : ''
   const ground = `${TONES[tone]} ${invalid ? INVALID : ''}`
 
   if (props.multiline) {
