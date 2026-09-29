@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.103.0] - 2026-09-29
+
+### Added
+
+- **Desktop**: Let the application page switch the sidebar to icons only
+- **Desktop**: Add an icons-only compact mode to the design system sidebar
+- **Desktop**: Store the compact sidebar preference in user settings
+- **Desktop**: Let the application page reorder and hide the sidebar pages
+- **Desktop**: Add the SidebarPagesEditor to the design system and its showcase
+- **Desktop**: Store the sidebar page order and hidden pages in user settings
+- **Desktop**: Count plugins, when_to_use and hidden skills in the skills budget gauge
+
+### Changed
+
+- **Desktop**: Draw the compact sidebar buttons as 40px squares
+- **Plan**: Move detailed procedures out of skill.md into references
+- **Resolve**: Move detailed procedures out of skill.md into references
+- **Pr**: Move detailed procedures out of skill.md into references
+- **Start**: Move detailed procedures out of skill.md into references
+
+### Fixed
+
+- **Desktop**: Keep an empty pane droppable in the compact sidebar
+
 ## [0.102.1] - 2026-09-28
 
 ### Changed
@@ -3428,6 +3452,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.103.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.103.0
 [0.102.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.102.1
 [0.102.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.102.0
 [0.101.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.101.0
