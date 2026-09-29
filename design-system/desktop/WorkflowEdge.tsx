@@ -24,12 +24,12 @@ import {
  * A CONDITIONAL LINK CARRIES ITS OUTCOME'S NAME, on a plate at its middle, as the
  * skills spell it. The port it leaves from names it too; the label is what keeps a
  * link readable where it arrives, far from that port. A link that skips a column
- * (pr → resolve, over review) would have its middle on the card it skips, where the
- * plate reads as part of that card: its label sits in the first gap instead, next to
- * the port it leaves from.
+ * (pr → resolve over review, in a custom flow that has one) would have its middle on
+ * the card it skips, where the plate reads as part of that card: its label sits in the
+ * first gap instead, next to the port it leaves from.
  *
- * THE STEPS OF A LOOP (review ⇄ resolve) are stacked in one column by
- * `workflowLayout.ts`, and the links between them are straight verticals in the gap
+ * THE STEPS OF A LOOP (a custom flow's review ⇄ resolve, say) are stacked in one
+ * column by `workflowLayout.ts`, and the links between them are straight verticals in the gap
  * between the two cards: one down, one up, side by side. Two shapes of a custom flow
  * cannot be joined straight without crossing a card, and take a right-angled detour
  * instead: a loop of three steps or more closing from its bottom card to its top one

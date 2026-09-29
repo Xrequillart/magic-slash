@@ -12,9 +12,10 @@
  * import app code, and the canvas needs a display name the engine has no business
  * carrying. The names differ on purpose, so a file importing both never has to alias.
  *
- * No dagre, no elk. A workflow is a handful of nodes in a mostly linear chain with one
- * loop, and longest-path layering with the loop stacked in a column draws that exactly; a layout engine would be a
- * dependency in both apps for a graph this size.
+ * No dagre, no elk. A workflow is a handful of nodes in a mostly linear chain, with a
+ * loop or two at most, and longest-path layering with each loop stacked in a column
+ * draws that exactly; a layout engine would be a dependency in both apps for a graph
+ * this size.
  */
 
 export type WorkflowCanvasLinkKind = 'auto' | 'suggest'
@@ -60,9 +61,9 @@ const WORKFLOW_NODE_BORDER = 2
 /** Room between two columns (edge labels live there) and between two cards of one column. */
 export const WORKFLOW_COLUMN_GAP = 80
 /**
- * Taller than a card's margin needs to be: the review ⇄ resolve pair is stacked in one
- * column, and the two links between them run in this gap, one carrying its outcome's
- * label.
+ * Taller than a card's margin needs to be: the two steps of a loop (a custom flow's
+ * review ⇄ resolve, say) are stacked in one column, and the two links between them run
+ * in this gap, one carrying its outcome's label.
  */
 const ROW_GAP = 72
 
@@ -108,14 +109,15 @@ export interface WorkflowLayout {
  * 1. The loops are found first: the strongly connected components of the graph
  *    (Tarjan's walk, children in declaration order). A loop has no longest path, and
  *    laid out along a row it made one of its links run backwards over the cards and
- *    another skip a column UNDER the card between (pr → resolve under review). Put in
- *    one column instead, the loop's steps stack, their links are short verticals
- *    between them, and every link into the loop reaches its target one column on.
+ *    another skip a column UNDER the card between (pr → resolve under review, in a
+ *    custom flow with a review ⇄ resolve loop). Put in one column instead, the loop's
+ *    steps stack, their links are short verticals between them, and every link into
+ *    the loop reaches its target one column on.
  * 2. Between loops the graph is acyclic; each loop's column is the longest path to it
  *    from one nothing points at. An entry is such a node unless a forward link reaches
  *    it, which is how plan (0) → start (1) keeps start one column right of plan.
- * 3. Inside a column, cards are stacked in declaration order (review above resolve)
- *    and the stack is centred on the tallest column, so a single card next to a pair
+ * 3. Inside a column, cards are stacked in declaration order (review above resolve in
+ *    that loop) and the stack is centred on the tallest column, so a single card next to a pair
  *    sits between them.
  *
  * A loop of three steps or more stacks the same way; its links between cards that are
