@@ -62,7 +62,7 @@ not to, is data (`references/workflow.md` §5): it never makes this choice.
 
 ### With an `auto` link: chain
 
-1. Display **`MSG_REVIEW_COMMENTS_FOUND`** in its **chain** variant, substituting `{count}`, `{reviewers}`, the comment list (each with `{source}`, `{path}`, `{line}`, `{severity}`, `{request}`), and `{skill}` (the link's target as a command, `/magic:resolve` in the default flow)
+1. Display **`MSG_REVIEW_COMMENTS_FOUND`** in its **chain** variant, substituting `{count}`, `{reviewers}`, the comment list (each with `{source}`, `{path}`, `{line}`, `{severity}`, `{request}`), `{skill}` (the link's target as a command, `/magic:resolve` in the default flow) and `{chain_line}`. Only a link to `magic-resolve` may announce that the comments are being addressed: any other target gets the hand-over line, because nothing says it fixes anything
 2. Chain into that skill **without asking the user first** — the review feedback is handled automatically:
    - Invoke the link's skill (`magic-resolve`) via the `Skill` tool. It runs its own flow and asks its own questions, and records its own run when it finishes
    - If that is unavailable and the target is `magic-resolve`, read `~/.claude/skills/magic-resolve/SKILL.md` and execute its **Steps 3 to 7.5** (retrieve comments → apply fixes → preview → validate → commit → push → reply → re-request review), reusing the PR number and ticket ID already resolved here instead of re-detecting them
@@ -72,8 +72,9 @@ not to, is data (`references/workflow.md` §5): it never makes this choice.
 The guard in point 4 is this invocation's, and holds whatever the flow says: a flow whose links
 loop from resolve back to pr does not make a second cycle legitimate. The workflow carries no state
 between passes (`references/workflow.md` §6), so counting cycles is this skill's job alone. If the
-chained skill did not push anything, there is no new commit to watch: skip point 4 and end the
-watch phase.
+chained skill did not push anything, there is no new commit to watch: skip point 4, display
+**`MSG_REVIEW_COMMENTS_OUTSTANDING`** so the comments are not left looking handled, and end the watch
+phase. This holds for any target, `magic-resolve` included (it may skip every comment).
 
 ### Without one: suggest
 

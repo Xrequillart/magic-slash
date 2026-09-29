@@ -830,6 +830,13 @@ Displayed in Step 7.4.5. Two variants, chosen by the workflow read in Step 0.0 a
 to `magic-resolve`, so `{skill}` is `/magic:resolve`), **suggest** otherwise. The suggest variant
 never says the comments are being addressed, because nothing is.
 
+`{chain_line}` (chain) depends on the link's target. When it is `magic-resolve`, the skill that
+addresses review comments: `Addressing them now via /magic:resolve...` (fr: `Je les traite
+maintenant via /magic:resolve...`), today's line. Any other target may address nothing, so the line
+only says where the run goes: `Handing over to {skill}, as this repository's workflow says. It may
+not address them.` (fr: `Je passe la main à {skill}, comme le prévoit le workflow de ce repository.
+Il ne les traitera peut-être pas.`).
+
 `{next_steps}` (suggest) holds one `MSG_WORKFLOW_NEXT_STEP_LINE` (`references/workflow.md` §7) per
 suggested link. With none, replace the `Next step` header and `{next_steps}` with one line:
 `They are yours to address when you are ready.` (fr: `À toi de les traiter quand tu veux.`).
@@ -842,7 +849,7 @@ suggested link. With none, replace the `Next step` header and `{next_steps}` wit
   • [{severity}] {source} · {path}:{line}
     {request}
 
-Addressing them now via {skill}...
+{chain_line}
 ```
 
 ### en — suggest
@@ -867,7 +874,7 @@ Next step:
   • [{severity}] {source} · {path}:{line}
     {request}
 
-Je les traite maintenant via {skill}...
+{chain_line}
 ```
 
 ### fr — suggest
@@ -882,6 +889,25 @@ Le workflow de ce repository ne les traite pas tout seul.
 
 Prochaine étape :
 {next_steps}
+```
+
+## MSG_REVIEW_COMMENTS_OUTSTANDING
+
+Displayed in Step 7.4.5 when the chained skill ended without pushing anything, so the comments shown
+in `MSG_REVIEW_COMMENTS_FOUND` are still open. `{skill}` is the skill that was chained into.
+
+### en
+
+```text
+⚠️ {skill} pushed nothing: the {count} review comment(s) above are still open on the PR.
+Address them yourself, or run /magic:resolve.
+```
+
+### fr
+
+```text
+⚠️ {skill} n'a rien poussé : les {count} commentaire(s) de review ci-dessus sont toujours ouverts sur la PR.
+Traite-les toi-même, ou lance /magic:resolve.
 ```
 
 ## MSG_NEXT_STEPS
