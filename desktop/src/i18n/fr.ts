@@ -1730,8 +1730,8 @@ export const fr: Record<keyof typeof en, string> = {
   // ── État d'un terminal (popover de la barre de menus) ────────────────────
   'agentState.working': 'Au travail',
   'agentState.waiting': 'En attente de votre réponse',
-  'agentState.idle': 'Inactif',
-  'agentState.completed': 'Terminé',
+  'agentState.idle': 'Inactive',
+  'agentState.completed': 'Terminée',
   'agentState.error': 'Erreur',
   'duration.seconds': '{count} s',
 
