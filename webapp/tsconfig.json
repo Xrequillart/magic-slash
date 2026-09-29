@@ -21,7 +21,8 @@
       "react/*": ["./node_modules/@types/react/*"],
       "react-dom": ["./node_modules/@types/react-dom"],
       "react-dom/*": ["./node_modules/@types/react-dom/*"],
-      "lucide-react": ["./node_modules/lucide-react"]
+      "lucide-react": ["./node_modules/lucide-react"],
+      "@xyflow/react": ["./node_modules/@xyflow/react"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "../design-system/desktop/**/*.ts", "../design-system/desktop/**/*.tsx", "../design-system/webapp/**/*.ts", "../design-system/webapp/**/*.tsx"],

@@ -6,8 +6,9 @@ import { describe, expect, it } from 'vitest'
  * The webapp satisfies the design system's dependencies out of its OWN install, and
  * this is what keeps that from becoming a lie.
  *
- * WHY IT HAS TO. `design-system/` declares `lucide-react` and owns its version — that
- * is the point of the dependency living there rather than in either app. But on Vercel
+ * WHY IT HAS TO. `design-system/` declares `lucide-react` (and `@xyflow/react`, for the
+ * workflow canvas) and owns their versions — that is the point of the dependencies
+ * living there rather than in either app. But on Vercel
  * the deployment's root is `webapp/`, so `npm install` runs there and nowhere else:
  * `design-system/node_modules` simply does not exist, and the build died with
  * `Module not found: Can't resolve 'lucide-react'`. Both `next.config.mjs` and
@@ -29,7 +30,7 @@ const read = (...parts: string[]) =>
   }
 
 /** Every package the webapp resolves on the design system's behalf. */
-const ALIASED = ['lucide-react']
+const ALIASED = ['@xyflow/react', 'lucide-react']
 
 describe('the dependencies the webapp resolves for the design system', () => {
   const ds = read('design-system', 'package.json').dependencies ?? {}
@@ -45,6 +46,20 @@ describe('the dependencies the webapp resolves for the design system', () => {
   it('asks for the same version the design system does', () => {
     for (const name of ALIASED) {
       expect(web[name], `${name} in webapp/package.json`).toBe(ds[name])
+    }
+  })
+
+  it('is aliased by both resolvers, webpack and TypeScript', () => {
+    // The two package.json files agreeing is not enough: a package left out of either
+    // alias table still resolves locally (the design system has its own install here)
+    // and dies on Vercel, where it has none.
+    const nextConfig = readFileSync(join(__dirname, '..', 'next.config.mjs'), 'utf8')
+    const paths = (JSON.parse(readFileSync(join(__dirname, '..', 'tsconfig.json'), 'utf8')) as {
+      compilerOptions: { paths: Record<string, string[]> }
+    }).compilerOptions.paths
+    for (const name of ALIASED) {
+      expect(nextConfig, `${name} in next.config.mjs`).toContain(`'${name}': path.resolve(`)
+      expect(paths[name], `${name} in tsconfig.json`).toEqual([`./node_modules/${name}`])
     }
   })
 })

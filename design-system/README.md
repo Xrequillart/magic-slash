@@ -45,6 +45,14 @@ once. Lucide also removes icons between majors — v1 dropped every brand glyph,
 which is why the GitHub mark is the app's own `GithubMark` and not `Github` from
 the library.
 
+`@xyflow/react` (React Flow, for the workflow canvas) sits beside it on the same
+terms: declared here, imported by `WorkflowCanvas`, `WorkflowNode`, `WorkflowEdge`
+and `CanvasMinimap` only, and resolved by the webapp from its own install at the
+SAME range (`webapp/lib/sharedDeps.test.ts` fails the day the two drift). It is also
+the one dependency that ships a stylesheet: `WorkflowCanvas.tsx` imports
+`@xyflow/react/dist/base.css` and `workflowCanvas.css`, which maps React Flow's
+`--xy-*` variables onto the theme's `--c-*` ones so the canvas follows every theme.
+
 REACT IS THE EXCEPTION, and `.npmrc` is what enforces it: peer dependencies are
 not installed here, so React comes from whichever app is compiling these files.
 A copy of its own would be a second React in someone's bundle.

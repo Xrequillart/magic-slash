@@ -119,6 +119,10 @@ export type EntryId =
   | 'setupstatuscard'
   | 'themegrid'
   | 'themepreviewgrid'
+  | 'workflowcanvas'
+  | 'workflownode'
+  | 'workflowedge'
+  | 'canvasminimap'
 
 export const ENTRY_LABELS: Record<EntryId, string> = {
   colors: 'Colours',
@@ -233,6 +237,10 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   livepill: 'LivePill',
   menubarpanel: 'MenuBarPanel',
   sidebarpageseditor: 'SidebarPagesEditor',
+  workflowcanvas: 'WorkflowCanvas',
+  workflownode: 'WorkflowNode',
+  workflowedge: 'WorkflowEdge',
+  canvasminimap: 'CanvasMinimap',
 }
 
 /**
@@ -408,6 +416,14 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   menubarpanel: ['agent', 'buttonicon', 'icon', 'label', 'menusidebaritem', 'text'],
   sidebarpageseditor: ['card', 'icon', 'select', 'text'],
   accountcard: ['fieldtable', 'avatar', 'banner', 'button', 'icon', 'text'],
+  // The canvas draws its cards, its links and its minimap itself (nothing is a slot),
+  // plus the legend's two words.
+  workflowcanvas: ['workflownode', 'workflowedge', 'canvasminimap', 'text'],
+  workflownode: ['icon', 'text'],
+  // The link and the minimap are strokes and xyflow's own drawing: no component of
+  // this folder inside either.
+  workflowedge: [],
+  canvasminimap: [],
 }
 
 /** The graph as `EntryHeader` wants it: an id and the label to print on the chip. */
@@ -605,4 +621,8 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   livepill: 'Something is happening right now',
   menubarpanel: 'The window that drops from the menu bar',
   sidebarpageseditor: 'Which pages the sidebar draws, in order',
+  workflowcanvas: 'A repository’s workflow, on an infinite canvas',
+  workflownode: 'One step, and a port for every way it ends',
+  workflowedge: 'What runs next, on its own or only offered',
+  canvasminimap: 'Where the view is, on a canvas bigger than it',
 }

@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Trash2, AlertTriangle, Plus, ArrowLeft, Building2, Lock, FolderOpen,
-  Ticket, Settings2, Languages, GitBranch, GitCommitHorizontal, MessageSquare, GitPullRequest, ScanSearch,
-  ClipboardList, FolderGit2, type LucideIcon
+  Ticket, Settings2, Languages, GitBranch, FolderGit2, Workflow,
 } from '@ds/desktop/icons'
 import { useAuth } from '../../hooks/useAuth'
 import { useConfig } from '../../hooks/useConfig'
@@ -17,13 +16,19 @@ import {
   Button,
   Card,
   EmptyState,
+  Loader,
   OutputSample,
   RepoPageHeader,
+  SectionHeader,
   SettingsCard,
   SkillIntro as DsSkillIntro,
   TabStrip,
   Text,
+  WorkflowCanvas,
+  skillIcon,
+  type IconComponent,
   type SettingsCardRow,
+  type WorkflowCanvasLabels,
 } from '@ds/desktop'
 import { LANGUAGES } from '../../languages'
 import { TabSweep } from '../../components/TabSweep'
@@ -45,6 +50,8 @@ import {
 } from '../../../types'
 import { resolveReviewLanguage, resolveSpecLanguage, resolveTicketLanguage } from '../../../languages'
 import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../../../tracker'
+import type { ResolvedWorkflow } from '../../../workflow/model'
+import { workflowCanvasData, type WorkflowCanvasData } from './workflowCanvasData'
 
 interface RepoPageProps {
   repoName: string
@@ -69,10 +76,10 @@ interface RepoPageProps {
  * there, and the bin is what keeps it from reading as a fourth ordinary tab.
  */
 type RepoTab =
-  | 'general' | 'repository' | 'tickets' | 'languages'
+  | 'general' | 'repository' | 'tickets' | 'languages' | 'workflow'
   | 'plan' | 'commit' | 'pr' | 'review' | 'resolve'
 
-const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: LucideIcon }[] = [
+const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: IconComponent }[] = [
   // Labelled with each subject's OWN `*.section` key rather than a parallel
   // `repo.tab.*` family: a tab and the thing it holds have one name, so there is
   // nowhere for two spellings of it to drift apart — and no second string to forget
@@ -85,6 +92,10 @@ const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: LucideIcon }[] = [
   { id: 'repository', labelKey: 'repo.repository.section', icon: GitBranch },
   { id: 'tickets', labelKey: 'repo.tickets.section', icon: Ticket },
   { id: 'languages', labelKey: 'repo.langs.section', icon: Languages },
+  // The workflow sits between the repository's own tabs and the skills': it is the map
+  // of the skill tabs after it, the order they run in and what each leads to, so it
+  // is read before any one of them.
+  { id: 'workflow', labelKey: 'repo.workflow.section', icon: Workflow },
   // One tab per skill rather than one "Skills" tab holding four sections: each of
   // these is a workflow with its own vocabulary, and stacking them made the tab that
   // held them longer than the five others put together.
@@ -93,11 +104,11 @@ const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: LucideIcon }[] = [
   // tickets, tickets become commits, commits become a pull request, and the review
   // comments a repo resolves only exist once that pull request does — so Resolve comes
   // after PR, not before it.
-  { id: 'plan', labelKey: 'repo.plan.section', icon: ClipboardList },
-  { id: 'commit', labelKey: 'repo.commit.section', icon: GitCommitHorizontal },
-  { id: 'pr', labelKey: 'repo.pr.section', icon: GitPullRequest },
-  { id: 'review', labelKey: 'repo.review.section', icon: ScanSearch },
-  { id: 'resolve', labelKey: 'repo.resolve.section', icon: MessageSquare },
+  { id: 'plan', labelKey: 'repo.plan.section', icon: skillIcon('magic-plan') },
+  { id: 'commit', labelKey: 'repo.commit.section', icon: skillIcon('magic-commit') },
+  { id: 'pr', labelKey: 'repo.pr.section', icon: skillIcon('magic-pr') },
+  { id: 'review', labelKey: 'repo.review.section', icon: skillIcon('magic-review') },
+  { id: 'resolve', labelKey: 'repo.resolve.section', icon: skillIcon('magic-resolve') },
 ]
 
 /**
@@ -159,12 +170,12 @@ const PLAN_ACCEPTANCE_CRITERIA_LABELS: Record<(typeof PLAN_ACCEPTANCE_CRITERIA_F
  * id, labels) trail below as short phrases instead of taking a step of their own.
  */
 const SKILL_INTROS = {
-  plan: { command: '/magic:plan', icon: ClipboardList, lead: 'repo.plan.intro' },
-  commit: { command: '/magic:commit', icon: GitCommitHorizontal, lead: 'repo.commit.intro' },
-  pr: { command: '/magic:pr', icon: GitPullRequest, lead: 'repo.pr.intro' },
-  review: { command: '/magic:review', icon: ScanSearch, lead: 'repo.review.intro' },
-  resolve: { command: '/magic:resolve', icon: MessageSquare, lead: 'repo.resolve.intro' },
-} satisfies Record<string, { command: string; icon: LucideIcon; lead: MessageKey }>
+  plan: { command: '/magic:plan', icon: skillIcon('magic-plan'), lead: 'repo.plan.intro' },
+  commit: { command: '/magic:commit', icon: skillIcon('magic-commit'), lead: 'repo.commit.intro' },
+  pr: { command: '/magic:pr', icon: skillIcon('magic-pr'), lead: 'repo.pr.intro' },
+  review: { command: '/magic:review', icon: skillIcon('magic-review'), lead: 'repo.review.intro' },
+  resolve: { command: '/magic:resolve', icon: skillIcon('magic-resolve'), lead: 'repo.resolve.intro' },
+} satisfies Record<string, { command: string; icon: IconComponent; lead: MessageKey }>
 
 function SkillIntro({ skill, summary }: { skill: keyof typeof SKILL_INTROS; summary: SkillSummary }) {
   const t = useT()
@@ -328,6 +339,80 @@ function generateCommitExample(format: string, style: string, includeTicketId: b
   }
 
   return firstLine
+}
+
+/**
+ * THE WORKFLOW TAB: the flow this repository's skills follow, drawn on the design
+ * system's canvas. Read-only: nothing edits a flow yet.
+ *
+ * Asked for on mount (`config:getRepositoryWorkflow`), not pushed: the tab shows what
+ * `GET /workflow` would answer a skill running in this repository right now, and
+ * re-asks each time the tab is opened. A push channel would be plumbing for an edit
+ * that no screen can make.
+ *
+ * A component of its own, at module scope, because it owns a fetch: RepoPage's state
+ * is the repository's settings, and this is not one of them.
+ */
+function WorkflowPanel({ repoName }: { repoName: string }) {
+  const t = useT()
+  // null while loading. The canvas data is mapped once, when the flow arrives.
+  const [loaded, setLoaded] = useState<
+    { source: ResolvedWorkflow['source']; data: WorkflowCanvasData } | 'error' | null
+  >(null)
+
+  useEffect(() => {
+    let live = true
+    setLoaded(null)
+    window.electronAPI.config.getRepositoryWorkflow(repoName).then(
+      (next) => { if (live) setLoaded({ source: next.source, data: workflowCanvasData(next.workflow) }) },
+      (error) => {
+        console.error('Failed to load the repository workflow:', error)
+        if (live) setLoaded('error')
+      },
+    )
+    return () => { live = false }
+  }, [repoName])
+
+  const resolved = loaded === 'error' ? null : loaded
+  // Memoised so the canvas does not rebuild its nodes on every render of the page.
+  const labels = useMemo<WorkflowCanvasLabels>(() => ({
+    canvas: t('repo.workflow.canvas', { name: repoName }),
+    minimap: t('repo.workflow.minimap'),
+    auto: t('repo.workflow.auto'),
+    suggest: t('repo.workflow.suggest'),
+  }), [t, repoName])
+
+  return (
+    <div className="flex flex-col gap-4">
+      <SectionHeader
+        icon={Workflow}
+        title={t('repo.workflow.section')}
+        hint={resolved
+          ? (resolved.source === 'repository' ? t('repo.workflow.sourceRepository') : t('repo.workflow.sourceDefault'))
+          : undefined}
+        description={`${t('repo.workflow.intro')} ${t('repo.workflow.navigation')}`}
+        spacing="none"
+      />
+      {loaded === 'error' ? (
+        <Banner variant="danger" icon={AlertTriangle}>{t('repo.workflow.loadError')}</Banner>
+      ) : resolved ? (
+        // A fixed height: the canvas fills its box, and a settings pane has no height of
+        // its own to give it. Tall enough for the default flow's review/resolve column
+        // at the fitted zoom, short enough to leave the header on screen.
+        <WorkflowCanvas
+          nodes={resolved.data.nodes}
+          links={resolved.data.links}
+          entry={resolved.data.entry}
+          labels={labels}
+          className="h-[520px]"
+        />
+      ) : (
+        <div className="flex h-[520px] items-center justify-center">
+          <Loader variant="spin" label={t('repo.workflow.loading')} />
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function RepoPage({ repoName }: RepoPageProps) {
@@ -1440,6 +1525,10 @@ export function RepoPage({ repoName }: RepoPageProps) {
         />
         </div>
       )}
+
+      {/* Mounted only while its tab is shown, which TabSweep's `tab ===` already
+          guarantees: the canvas listens for the space bar on the whole document. */}
+      {tab === 'workflow' && <WorkflowPanel repoName={repoName} />}
 
       {tab === 'plan' && (
         <div className="flex flex-col gap-6">

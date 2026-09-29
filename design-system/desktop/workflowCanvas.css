@@ -1,0 +1,114 @@
+/*
+ * THE WORKFLOW CANVAS IN THE THEME'S COLOURS: xyflow's `--xy-*` variables, and the
+ * strokes of `WorkflowEdge`, mapped onto the app's `--c-*` roles.
+ *
+ * The first stylesheet in this folder, and it exists because the classes cannot reach
+ * where xyflow paints: the dotted ground, the minimap and the handles are the
+ * library's own elements, styled by variables it reads. Setting those variables to
+ * the roles is what makes the canvas follow every theme, in the app and on the
+ * showcase's `Stage` alike. Still no hex here, by the folder's rule: a role, always.
+ *
+ * TWO FORMS OF VARIABLE, as in the Tailwind config. The accent, the inks and the
+ * grounds are `R G B` channels and are wrapped: `rgb(var(--c-accent) / 0.4)`. Surfaces
+ * and lines are complete colours whose translucency is per theme, and are used as
+ * they are: `var(--c-line-strong)`. Wrapping a complete colour in `rgb()` yields
+ * nothing at all, silently.
+ *
+ * Scoped to `.ms-workflow-canvas` (the wrapper `WorkflowCanvas` draws), so a second
+ * React Flow elsewhere in an app one day keeps its own look.
+ */
+
+.ms-workflow-canvas {
+  /* The wrapper paints the ground (`bg-bg`); xyflow's own stays out of the way. */
+  --xy-background-color: transparent;
+  --xy-background-pattern-color: var(--c-line-strong);
+
+  --xy-handle-background-color: rgb(var(--c-icon-muted));
+
+  --xy-minimap-background-color: rgb(var(--c-bg-secondary));
+  --xy-minimap-mask-background-color: rgb(var(--c-bg) / 0.6);
+  --xy-minimap-mask-stroke-color: rgb(var(--c-accent));
+  --xy-minimap-mask-stroke-width: 1.5;
+  --xy-minimap-node-background-color: rgb(var(--c-text-secondary) / 0.35);
+  --xy-minimap-node-stroke-color: transparent;
+}
+
+/* The ground's cursor says it can be grabbed, and says so while it is. */
+.ms-workflow-canvas .react-flow__pane {
+  cursor: grab;
+}
+.ms-workflow-canvas .react-flow__pane.dragging {
+  cursor: grabbing;
+}
+
+/* A read-only card is not a button: no pointer, whatever xyflow assumes of a node. */
+.ms-workflow-canvas .react-flow__node {
+  cursor: default;
+}
+
+/*
+ * The ports: a small dot on the card's edge, ringed in the card's own ground so it
+ * reads as sitting ON the border rather than beside it.
+ */
+.ms-workflow-canvas .react-flow__handle {
+  width: 7px;
+  height: 7px;
+  min-width: 0;
+  min-height: 0;
+  border: 1.5px solid rgb(var(--c-bg-secondary));
+  border-radius: 9999px;
+}
+
+/* The ports of a loop's vertical links: where the line meets the card, never a dot. */
+.ms-workflow-canvas .react-flow__handle.ms-wf-lane {
+  opacity: 0;
+}
+
+/* `auto`: solid, in the accent, a little heavier than a suggestion. */
+.ms-workflow-canvas .ms-wf-edge-auto {
+  stroke: rgb(var(--c-accent));
+  stroke-width: 2;
+  fill: none;
+}
+
+/* `suggest`: dashed and neutral. Offered, not taken. */
+.ms-workflow-canvas .ms-wf-edge-suggest {
+  stroke: rgb(var(--c-text-secondary) / 0.7);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  fill: none;
+}
+
+.ms-workflow-canvas .ms-wf-arrow-auto {
+  fill: rgb(var(--c-accent));
+}
+.ms-workflow-canvas .ms-wf-arrow-suggest {
+  fill: rgb(var(--c-text-secondary) / 0.7);
+}
+
+/* The dot travelling along an `auto` link. */
+.ms-workflow-canvas .ms-wf-pulse {
+  fill: rgb(var(--c-accent));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-workflow-canvas .ms-wf-pulse {
+    display: none;
+  }
+}
+
+.ms-workflow-canvas .react-flow__minimap {
+  overflow: hidden;
+  border: 1px solid var(--c-line);
+  border-radius: 10px;
+}
+
+/*
+ * Outcome labels ABOVE the cards. xyflow stacks them under the nodes, and a column gap
+ * is narrower than `changes_requested`: under the cards, the ends of a label were cut
+ * off by the two cards it sits between. On top, the plate overlaps a card's edge and
+ * stays whole.
+ */
+.ms-workflow-canvas .react-flow__edgelabel-renderer {
+  z-index: 1001;
+}
