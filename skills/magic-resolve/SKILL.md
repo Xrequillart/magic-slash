@@ -53,40 +53,11 @@ Read the live config fetched in Step 0 (kept in memory — `$CONFIG_FILE` does n
 
 ### Language parameters
 
-| Parameter           | Repo path                                    | Default |
-| ------------------- | -------------------------------------------- | ------ |
-| Discussion language | `.repositories.<name>.languages.discussion`  | `"en"` |
+The discussion language is read from `.repositories.<name>.languages.discussion` (default `"en"`, table in `references/resolve-config.md`). It selects the variant of every message in `references/messages.md`.
 
 ### Resolve parameters
 
-| Parameter         | Repo path                                      | Default   |
-| ----------------- | ---------------------------------------------- | --------- |
-| Commit mode       | `.repositories.<name>.resolve.commitMode`      | `"new"`   |
-| Format            | `.repositories.<name>.resolve.format`          | *(from commit config)* |
-| Style             | `.repositories.<name>.resolve.style`           | *(from commit config)* |
-| Use commit config | `.repositories.<name>.resolve.useCommitConfig` | `true`    |
-| Reply to comments | `.repositories.<name>.resolve.replyToComments` | `true`    |
-| Reply language    | `.repositories.<name>.resolve.replyLanguage`   | `"en"`    |
-| Reply verbosity   | `.repositories.<name>.resolve.replyVerbosity`  | `"minimal"` |
-| Re-request review | `.repositories.<name>.resolve.autoReRequestReview` | `true`  |
-| Template checkboxes | `.repositories.<name>.pullRequest.templateCheckboxes` | `"never"` |
-| Body verbosity      | `.repositories.<name>.pullRequest.bodyVerbosity`      | `"concise"` |
-
-**Logic:**
-- `commitMode: "new"` (default) → create new commit + `git push`
-- `commitMode: "amend"` → `git commit --amend --no-edit` + `git push --force-with-lease`
-- `commitMode: "ask"` → prompt the user for `new` vs `amend` at preview time (Step 5.5); the chosen mode drives Step 6 for this run only
-- `useCommitConfig: true` (default) → format/style are read from `.repositories.<name>.commit.*`
-- `useCommitConfig: false` → format/style are read from `.repositories.<name>.resolve.*`
-- When `commitMode: "amend"`, format/style are irrelevant (no new message)
-- `replyToComments: true` (default) → reply in-thread on each resolved comment (Step 7)
-- `replyToComments: false` → skip Step 7 entirely
-- `replyLanguage` (default `"en"`) → language of the in-thread reply bodies in Step 7 (independent of the discussion language)
-- `replyVerbosity` (default `"minimal"`) → how much each in-thread reply says in Step 7, *after* the two parts every level shares (the commit reference, then a plain sentence describing the change): `minimal` stops there, `normal` adds why when the fix departs from the comment, `detailed` keeps the reasoning in a conversational reply. Any other value is read as `minimal`.
-- `autoReRequestReview: true` (default) → automatically re-request review from original reviewers (Step 7.5)
-- `autoReRequestReview: false` → skip Step 7.5, suggest manual re-request in summary
-- `templateCheckboxes` (default `"never"`) → read from the `pullRequest` block, not `resolve`, the way `useCommitConfig` reads the `commit` one. Listed here **defensively**: this skill writes no PR body today, so nothing reads it yet; do not go looking for the code path. It is a **hard invariant**, not a soft default: should this skill ever write a PR body, a project template's checkbox state must come out byte-for-byte as this setting allows, exactly as in `/magic:pr` Step 6.1
-- `bodyVerbosity` (default `"concise"`) → read from the `pullRequest` block, and listed here **defensively for the same reason**, under the same invariant: this skill writes no PR body today. Should it ever write one, that body obeys the length contract of `/magic:pr` Step 6.1 — bullets rather than paragraphs, capped per section — rather than inventing a second house style for the same repository
+The resolve parameters (commit mode, format and style, replies, re-request review, and the two `pullRequest` settings listed defensively) and what each value does are in `references/resolve-config.md`, which Step 0.7 reads on every run. The defaults: `commitMode: "new"`, `useCommitConfig: true`, `replyToComments: true`, `replyLanguage: "en"`, `replyVerbosity: "minimal"`, `autoReRequestReview: true`.
 
 ## Step 0: Check configuration, detect Node.js version and multi-repo worktrees
 
@@ -151,48 +122,15 @@ If no ID is detected (you are in a regular repo, not a worktree), skip directly 
 
 ### 0.3: Read the repos configuration
 
-```bash
-# Every bash block runs in its own shell: $MS_PORT does not survive from Step 0,
-# so resolve it again here. One line, and it costs nothing to repeat.
-MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
-curl -sf --max-time 5 "http://127.0.0.1:$MS_PORT/config"
-```
-
-Retrieve the list of configured repos with their paths:
-
-```json
-{
-  "repositories": {
-    "api": {"path": "/path/to/api", "keywords": [...]},
-    "web": {"path": "/path/to/web", "keywords": [...]}
-  }
-}
-```
+Steps 0.3 to 0.5 run only when Step 0.2 found a ticket ID. Read `references/multi-repo.md` and follow its sections 0.3, 0.4 and 0.5. Here, fetch the live config again and retrieve the list of configured repos with their paths (command and expected shape in section 0.3).
 
 ### 0.4: Search for associated worktrees
 
-For each configured repo, check if a worktree with the same TICKET-ID exists:
-
-```bash
-ls -d {REPO_PATH}-{TICKET_ID} 2>/dev/null
-```
-
-For example, if TICKET-ID = `PROJ-123` and the repos are `/projects/api` and `/projects/web`, search for:
-
-- `/projects/api-PROJ-123`
-- `/projects/web-PROJ-123`
-
-Collect all found worktrees.
+For each configured repo, check if a worktree `{REPO_PATH}-{TICKET_ID}` exists (command and example in `references/multi-repo.md`, section 0.4). Collect all found worktrees.
 
 ### 0.5: Check PRs with review comments in each worktree
 
-For each found worktree, check if there is a PR with unresolved review comments:
-
-1. Get the branch name: `git -C {WORKTREE_PATH} branch --show-current`
-2. Use `mcp__github__list_pull_requests` to find open PRs matching the branch
-3. Use `mcp__github__pull_request_read` with `method: "get_review_comments"` to check for unresolved comments
-
-Keep only the worktrees that have a PR with unresolved review comments.
+For each found worktree, check if there is a PR with unresolved review comments (procedure in `references/multi-repo.md`, section 0.5). Keep only the worktrees that have a PR with unresolved review comments.
 
 ### 0.6: Multi-repo summary and confirmation
 
@@ -209,93 +147,13 @@ At the end of each resolve cycle, display a confirmation before moving to the ne
 
 ### Multi-repo partial failure handling
 
-If a worktree fails during its resolve cycle (push error, API failure, etc.):
-
-1. **Do not stop the entire process** — log the failure for this worktree
-2. **Continue to the next worktree** after displaying **`MSG_MULTI_REPO_FAILURE`**, substituting `{worktree-name}` and `{error reason}`
-3. **Include failed worktrees in the Step 10 summary** with their error status
+If a worktree fails during its resolve cycle (push error, API failure, etc.), do not stop the entire process: read `references/multi-repo.md` (section "Multi-repo partial failure handling") and follow it.
 
 ### 0.7: Read resolve parameters from config
 
 The config was already dumped in Step 0.3. Before proceeding, resolve the current repo (compare `$PWD` against each `.repositories.<name>.path`) and **pin every resolve parameter into concrete shell variables now**, using `jq`. Downstream steps (5.5, 6, 7, 7.5) MUST reference these pinned variables — do not re-derive the values later.
 
-```bash
-# Magic Slash Desktop is the single source of truth (Supabase). The port comes from the
-# environment inside an app terminal, and from the file the app publishes anywhere else —
-# so a Claude started from a plain terminal reaches the same live config.
-MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
-CONFIG_FILE=""
-if [ -n "$MS_PORT" ]; then
-  MS_TMP_CONFIG="$(mktemp)"
-  trap 'rm -f "$MS_TMP_CONFIG"' EXIT
-  # A published port may name a server that has since died: -sf turns that into a failure.
-  if curl -sf --max-time 5 "http://127.0.0.1:$MS_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
-     && [ "$(jq '.repositories | length' "$MS_TMP_CONFIG" 2>/dev/null || echo 0)" -gt 0 ]; then
-    CONFIG_FILE="$MS_TMP_CONFIG"
-  fi
-fi
-
-# Resolve the repo key whose path matches the current worktree/repo root.
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
-REPO_KEY=$(jq -r --arg pwd "$REPO_ROOT" '
-  .repositories | to_entries
-  # Longest path first so the most specific repo wins on a tie, then match on a
-  # path boundary only. Worktrees are siblings named "{path}-{TICKET}", so the
-  # "-" boundary is accepted alongside exact match and the "/" child boundary.
-  # This prevents /projects/api from mis-matching a /projects/api-v2 worktree.
-  | sort_by(.value.path | length) | reverse
-  | map(select(.value.path as $p
-      | ($pwd == $p) or ($pwd | startswith($p + "/")) or ($pwd | startswith($p + "-"))))
-  | .[0].key // ""' "$CONFIG_FILE")
-
-# Helper: read a resolve field with a fallback default.
-rget() { jq -r --arg k "$REPO_KEY" --arg f "$1" --arg d "$2" \
-  '(.repositories[$k].resolve[$f]) // $d' "$CONFIG_FILE"; }
-cget() { jq -r --arg k "$REPO_KEY" --arg f "$1" --arg d "$2" \
-  '(.repositories[$k].commit[$f]) // $d' "$CONFIG_FILE"; }
-
-RESOLVE_COMMIT_MODE=$(rget commitMode new)             # new | amend | ask
-RESOLVE_USE_COMMIT_CONFIG=$(rget useCommitConfig true) # true | false
-RESOLVE_REPLY=$(rget replyToComments true)             # true | false
-RESOLVE_REPLY_LANG=$(rget replyLanguage en)            # en | fr | ...
-RESOLVE_REPLY_VERBOSITY=$(rget replyVerbosity minimal) # minimal | normal | detailed
-RESOLVE_AUTO_REREQUEST=$(rget autoReRequestReview true)
-
-# Format/style: inherit from commit config when useCommitConfig is true.
-if [ "$RESOLVE_USE_COMMIT_CONFIG" = "true" ]; then
-  RESOLVE_FORMAT=$(cget format angular)
-  RESOLVE_STYLE=$(cget style single-line)
-else
-  RESOLVE_FORMAT=$(rget format "$(cget format angular)")
-  RESOLVE_STYLE=$(rget style "$(cget style single-line)")
-fi
-
-# Shell state does NOT persist across Bash invocations in the Claude Code
-# harness, so echo every resolved value: this is what lets the model capture
-# them into context for Steps 5.5, 6, 7 and 7.5. Do not skip these echoes.
-echo "REPO_KEY=$REPO_KEY"
-echo "RESOLVE_COMMIT_MODE=$RESOLVE_COMMIT_MODE"
-echo "RESOLVE_USE_COMMIT_CONFIG=$RESOLVE_USE_COMMIT_CONFIG"
-echo "RESOLVE_FORMAT=$RESOLVE_FORMAT"
-echo "RESOLVE_STYLE=$RESOLVE_STYLE"
-echo "RESOLVE_REPLY=$RESOLVE_REPLY"
-echo "RESOLVE_REPLY_LANG=$RESOLVE_REPLY_LANG"
-echo "RESOLVE_REPLY_VERBOSITY=$RESOLVE_REPLY_VERBOSITY"
-echo "RESOLVE_AUTO_REREQUEST=$RESOLVE_AUTO_REREQUEST"
-```
-
-> **Important**: The `echo` lines above are functionally required, not cosmetic. Because each Bash call runs in a fresh shell, the variable assignments are gone by the next step — the model must read the echoed values from this step's output and carry them forward. Downstream steps reference these captured values (e.g. "the pinned `$RESOLVE_COMMIT_MODE`"), not a live shell variable.
-
-| Variable | Config path | Default |
-| -------- | ----------- | ------- |
-| `$RESOLVE_COMMIT_MODE` | `.repositories.<name>.resolve.commitMode` | `"new"` |
-| `$RESOLVE_USE_COMMIT_CONFIG` | `.repositories.<name>.resolve.useCommitConfig` | `true` |
-| `$RESOLVE_FORMAT` | `resolve.format` (or `commit.format` if `useCommitConfig`) | `"angular"` |
-| `$RESOLVE_STYLE` | `resolve.style` (or `commit.style` if `useCommitConfig`) | `"single-line"` |
-| `$RESOLVE_REPLY` | `.repositories.<name>.resolve.replyToComments` | `true` |
-| `$RESOLVE_REPLY_LANG` | `.repositories.<name>.resolve.replyLanguage` | `"en"` |
-| `$RESOLVE_REPLY_VERBOSITY` | `.repositories.<name>.resolve.replyVerbosity` | `"minimal"` |
-| `$RESOLVE_AUTO_REREQUEST` | `.repositories.<name>.resolve.autoReRequestReview` | `true` |
+Read `references/resolve-config.md` and run its bash block. It resolves `$REPO_KEY` and echoes every `RESOLVE_*` value. The echoes are functionally required: each Bash call runs in a fresh shell, so carry the echoed values forward from that output. Steps 5.5, 6, 7 and 7.5 reference these captured values. The file also holds the table of variables, config paths and defaults.
 
 > **Multi-repo**: Re-run this step for each worktree before its resolve cycle (Step 0.6), since each repo may have its own resolve config.
 
@@ -419,9 +277,7 @@ For each selected comment:
 
 ### Error handling during fixes
 
-- **File not found**: If the file referenced by a comment no longer exists (renamed or deleted), skip the comment and add it to the "skipped" list with reason "file not found"
-- **Line out of bounds**: If the `line` from the comment no longer matches (code has shifted), use the surrounding code context from the comment's `diff_hunk` to locate the correct position. If still unable to find the relevant code, skip the comment with reason "code context not found"
-- **Unclear or ambiguous comment**: If the reviewer's intent cannot be determined with confidence, skip the comment with reason "ambiguous — requires human review"
+If the file referenced by a comment no longer exists, its `line` no longer matches, or the reviewer's intent cannot be determined with confidence, read `references/fix-errors.md`: it says how to recover or which reason to skip the comment with.
 
 All skipped comments (with their reasons) are tracked and displayed in the Step 9 summary.
 
@@ -446,30 +302,13 @@ Once resolved, store the value as the effective `commitMode` and use it consiste
 
 ### Determine the commit mode label and action label
 
-Before displaying the message, compute two display strings based on the effective `commitMode` value:
-
-| effective `commitMode` | `{commit_mode_label}` | `{commit_mode_action}` |
-| ---------------------- | --------------------- | ---------------------- |
-| `"new"` | `new commit` | `create a new commit (fix: address review feedback)` |
-| `"amend"` | `amend last commit` | `amend the last commit (git commit --amend --no-edit)` |
-
-> When `$RESOLVE_COMMIT_MODE` is `"ask"`, resolve the choice **before** computing these labels so the preview reflects the mode the user just picked.
+Compute `{commit_mode_label}` and `{commit_mode_action}` from the effective `commitMode`, using the table in `references/changes-preview.md`. When `$RESOLVE_COMMIT_MODE` is `"ask"`, resolve the choice **before** computing these labels so the preview reflects the mode the user just picked.
 
 Display **`MSG_CHANGES_PREVIEW`**, substituting `{TICKET-ID}`, the list of modified files (each with `{file}`, `{fix_summary}`, `{reviewer}`), `{count}`, `{additions}`, `{deletions}`, `{commit_mode_label}`, `{commitMode}` (effective value), and `{commit_mode_action}`.
 
 ### Handle user response
 
-The `Y`/`O` key confirms using the effective commit mode. The user may also type `amend` or `new` to override the mode for this run only (without modifying the config file).
-
-| Input | Action |
-| ----- | ------ |
-| `Y` / `O` | Proceed to Step 5.9 using the effective `commitMode` |
-| `amend` | Override: set effective `commitMode = "amend"` for this run, proceed to Step 5.9 |
-| `new` | Override: set effective `commitMode = "new"` for this run, proceed to Step 5.9 |
-| `diff` | Display the full `git diff` output and ask again |
-| `n` | Abort the resolve, discard changes with `git checkout -- .` and stop |
-
-> **Note**: `amend` and `new` are only offered as override options when they differ from the effective mode. If the effective mode is already `"amend"`, typing `amend` is equivalent to `Y`. When `$RESOLVE_COMMIT_MODE` is `"ask"`, the mandatory choice already happened above, so this table just lets the user switch their pick before confirming.
+Read `references/changes-preview.md` for the accepted inputs. `Y` / `O` confirms with the effective commit mode and proceeds to Step 5.9; `amend` or `new` overrides the mode for this run only (never written to the config); `diff` displays the full diff and asks again; `n` aborts the resolve, discards changes with `git checkout -- .` and stops.
 
 ## Step 5.9: Post-fix validation
 
@@ -479,31 +318,11 @@ Before committing, run a quick validation to catch issues introduced by the auto
 
 ### Detect the project's verification command
 
-Detect the appropriate validation command for the project:
-
-1. Check `package.json` scripts for common verification commands:
-   - `"lint"` → `npm run lint` (or yarn/pnpm equivalent)
-   - `"typecheck"` or `"type-check"` → `npm run typecheck`
-   - `"check"` → `npm run check`
-2. For non-Node.js projects, detect common tools:
-   - Python: `mypy`, `ruff check`, `flake8`
-   - Go: `go vet ./...`
-   - Rust: `cargo check`
-3. If no verification command is found, skip this step
+Read `references/post-fix-validation.md` to detect the validation command (`package.json` scripts first, then common tools for non-Node.js projects). If no verification command is found, skip this step.
 
 ### Run validation on modified files only
 
-Run the detected command scoped to the modified files when possible:
-
-```bash
-# Example for ESLint (scope to changed files):
-$NODE_PREFIX npx eslint {modified-files}
-
-# Example for TypeScript (full check, cannot scope):
-$NODE_PREFIX npx tsc --noEmit
-```
-
-> **Node.js version**: If `$NODE_PREFIX` was determined in Step 0.1, prepend it to any validation command.
+Run the detected command scoped to the modified files when possible, as shown in `references/post-fix-validation.md`. Prepend `$NODE_PREFIX` (from Step 0.1) when it is set.
 
 ### Handle validation results
 
@@ -587,69 +406,7 @@ git push --force-with-lease
 
 ### 6.4: Push hook error handling
 
-If the push fails (non-zero exit code), analyze the error:
-
-**Error classification by level**:
-
-| Level | Error type | Examples | Action |
-| ----- | ---------- | -------- | ------ |
-| 1 - Auto | **Formatter** | Prettier, Black, gofmt | Fix automatically |
-| 2 - Semi-auto | **Linter** | ESLint --fix, Pylint, Flake8, Rubocop | Fix and inform |
-| 3 - Manual | **Type check** | TypeScript, mypy | **Ask the user** |
-| 3 - Manual | **Tests** | Jest, pytest (if in pre-push) | **Ask the user** |
-| 3 - Manual | **Other** | Secrets detected, files too large | **Ask the user** |
-
-#### For level 3 errors (manual)
-
-These errors require human intervention because automatic fixes could introduce regressions.
-
-Display **`MSG_PUSH_ERROR_MANUAL`**, substituting `{error message}`.
-
-Handle the user's choice:
-- Option 1: Fix manually and retry
-- Option 2: Skip this check (`--no-verify`) — display a warning if the user chooses this option
-- Option 3: Abort push
-
-#### Automatic correction process (levels 1 and 2 only)
-
-1. **Analyze the error output** to identify:
-   - The affected files
-   - The problematic lines
-   - The error type (lint, format, type, etc.)
-
-2. **Fix the code**:
-   - Read the files with errors
-   - Apply the necessary corrections
-   - For formatting, run the formatter if available: `npx prettier --write`, `black`, etc.
-   - **Remember to prepend `$NODE_PREFIX`** (from Step 0.1) to any Node.js command (npx, npm, yarn, pnpm)
-
-3. **Re-stage the corrected files**:
-
-   ```bash
-   git add <corrected-files>
-   ```
-
-4. **Re-commit** (to include the hook fixes):
-
-   ```bash
-   git commit --amend --no-edit
-   ```
-
-5. **Update COMMIT_SHA** after the re-commit:
-
-   ```bash
-   COMMIT_SHA=$(git rev-parse HEAD)
-   ```
-
-6. **Retry the push** (remember to prepend `$NODE_PREFIX` if set):
-
-   ```bash
-   git push
-   ```
-
-7. **Repeat up to 3 times maximum**. If the push still fails after 3 attempts, display a detailed error message and ask the user to intervene.
-
-Display **`MSG_PUSH_AUTO_FIX`** during the correction process, substituting the error details and fix results.
+Only when the push fails (non-zero exit code): read `references/push-errors.md` and follow it. It classifies the error by level: formatters (level 1) and linters (level 2) are fixed automatically, while type checks, tests and anything else (level 3) **ask the user** through `MSG_PUSH_ERROR_MANUAL`. It also holds the automatic correction loop (re-stage, `git commit --amend --no-edit`, update `COMMIT_SHA`, retry the push, at most 3 attempts) and `MSG_PUSH_AUTO_FIX`. Skip hooks with `--no-verify` only when the user picks that option, and display a warning when they do.
 
 ## Step 7: Reply to resolved comments on GitHub
 
@@ -663,78 +420,9 @@ Display **`MSG_PUSH_AUTO_FIX`** during the correction process, substituting the 
 
 Replying in-thread on each resolved comment creates a clear audit trail for reviewers — it tells them which commit to look at, and closes the thread. The reply points at the fix; it does not stand in for it. The diff and the commit message are right there, and a reviewer who wants the detail opens them.
 
-That is what keeps these replies short by default. You arrive at this step holding the full reasoning behind every fix you just applied, and writing it out here is the path of least resistance — but it lands as an essay in a thread the reviewer wanted to close, and it says nothing the diff does not already say better.
-
-SHORT IS NOT THE SAME AS TERSE, and this is the half that is easy to get wrong in the other direction. A reply compressed to `timer in a ref, cleared on unmount` has no subject and no verb: it is a note to somebody who already has the file open, which the reviewer does not. Every reply carries a plain sentence saying what changed — see the rules below. Cutting words is right; cutting the sentence is not.
-
 For each resolved comment, reply in-thread on GitHub to indicate the fix has been applied.
 
-### Why `gh api`
-
-`gh api` (invoked via the Bash tool, which `Bash(*)` allows) is the primary method here because it takes the numeric comment id Step 3 already stored, and one call posts one reply.
-
-`mcp__github__add_reply_to_pull_request_comment` does the same job and is the fallback below — it wants that same numeric id (the `#discussion_r...` one, never the `PRRT_...` thread node id). What does *not* work is `mcp__github__add_issue_comment`: it only creates top-level issue comments, never a threaded reply on a specific review comment.
-
-### Primary: `gh api` (with retry)
-
-Use the comment ID (stored in Step 3) and the commit SHA (from Step 6.2):
-
-```bash
-gh api repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies -f body="{message}"
-```
-
-For each `gh api` call, if it fails with a transient error (HTTP 5xx, network timeout, rate limit 429):
-- **Retry up to 2 times** with a 2-second pause between attempts
-- If all retries fail for a specific comment, log the failure and continue with the next comment
-- At the end, if any replies failed, fall back to the consolidated MCP comment (see below)
-
-#### Message template
-
-Pick the template from `$RESOLVE_REPLY_VERBOSITY`. Substitute `{COMMIT_SHA}` (short SHA, first 7 characters from `git rev-parse --short HEAD`) and `{fix_summary}`. Render the template and every substitution in `$RESOLVE_REPLY_LANG`.
-
-EVERY LEVEL HAS THE SAME FIRST LINE AND THE SAME BLANK LINE AFTER IT. The commit reference is a pointer, read by somebody checking the thread is closed; the description is what a human reads. They sat on one line separated by a dash, and the description was the half that got skimmed past. What the levels change is what comes *after* the description, never the two lines above it.
-
-| `$RESOLVE_REPLY_VERBOSITY` | Template | Hard cap |
-| -------------------------- | -------- | -------- |
-| `minimal` (default) | **`MSG_REPLY_MINIMAL`** | The reference line, a blank line, then one or two plain sentences. ≤ 300 characters total. No code block, no list. |
-| `normal` | **`MSG_REPLY_NORMAL`** | ≤ 550 characters total. The `minimal` form, plus a `why` paragraph **only** when the fix departs from what the comment asked for. When it does not depart, this level renders exactly like `minimal`. |
-| `detailed` | **`MSG_REPLY_DETAILED`** | ≤ 1200 characters, at most 3 short paragraphs. |
-
-Any other value — including an empty one — is read as `minimal`.
-
-Count the characters before posting. If the body is over its cap, cut it rather than posting it: the cap is the contract, not a target to approach. Cut a clause, a qualifier or a whole second sentence — never the verb, and never down to a fragment. A description that no longer parses as a sentence is over budget in the only way that matters.
-
-##### The description has to read like a sentence a person wrote
-
-`{fix_summary}` is the only part of the reply anybody actually reads, and it is on a line of its own for exactly that reason. It is not a changelog entry and not a commit subject. It answers one question — *what did you change, and what does that mean?* — for a reviewer who has not opened the diff yet and may not open it at all.
-
-- **A WHOLE SENTENCE**, with a subject and a verb, ending in a full stop. Not a fragment (`keyed by repo + path`), not a telegram of symbols (`` `arm()` no-ops after `stop()` ``). If it cannot be read out loud, it is not finished.
-- **NAME THE EFFECT, NOT ONLY THE MECHANISM.** "The board now keeps the repository you left it on, even after a restart" says what changed for somebody using it; "moved `tasksRepo` onto the account" says where you typed. When both fit, the effect comes first and the mechanism trails it.
-- **SPELL THINGS OUT.** An identifier earns its place when it is the thing the reviewer asked about, or when naming it in words would be longer and vaguer. Otherwise prefer the words: a reply made of three backticked symbols is addressed to the compiler.
-- **ONE IDEA.** Two changes in one description are two sentences at most, and usually mean the thread deserved two replies.
-- **NO JARGON THE COMMENT DID NOT USE.** The reviewer set the register. Matching it is how the reply reads as an answer rather than as a status line.
-
-This is the rule the caps bend around, not the other way up. A description one clause over `minimal` that a person can read beats one under it that they cannot.
-
-##### What never goes in a reply, at any level
-
-- **What the diff shows.** Naming the change is the reply; walking through it is not.
-- **How the codebase got this way.** Which other files hold a copy of the pattern, what existed before, why it was spelled that way — none of it is the reviewer's question.
-- **Alternatives you rejected**, and deviations you decided were worth flagging on your own initiative. A genuine departure from the comment belongs in `normal` and `detailed`; a tour of the roads not taken belongs nowhere.
-- **Test counts.** "7 new tests cover it", "1716 tests green" — CI reports that, and it reports it accurately.
-- **The reviewer's comment, quoted back.** They wrote it; it is directly above your reply.
-
-At `minimal` and `normal`, also leave out **acknowledgements** — "good catch", "you were right that…", "thanks, this was a real defect". They are warm and they are noise at those levels. `detailed` is the level that exists for a reply that reads like a person talking, so it may open with one.
-
-### Fallback: reply over MCP, then a consolidated comment
-
-If the `gh` CLI is not available or all `gh api` calls fail, try `mcp__github__add_reply_to_pull_request_comment` (`owner`, `repo`, `pullNumber`, `commentId`, `body`) for each comment. It keeps the replies in-thread, which is the whole point of this step.
-
-Only if that also fails, fall back to a single consolidated top-level comment using `mcp__github__add_issue_comment`.
-
-Use **`MSG_REPLY_FALLBACK`** for the fallback comment body, substituting `{COMMIT_SHA}` and the list of resolved comments (each with `{file}`, `{line}`, `{fix_summary}`). Render it in `$RESOLVE_REPLY_LANG`.
-
-Every entry is one line, whatever `$RESOLVE_REPLY_VERBOSITY` says. This is a list of what was addressed, and the level only ever governed the reply to a *single* comment — a consolidated comment carrying eight `detailed` bodies is the one thing worse than eight verbose threads.
+Before writing any reply, read `references/replies.md` and follow it. It holds why the reply stays short (but never terse), why `gh api` is the primary method, the `gh api` call and its retry rule, the template and hard cap for each `$RESOLVE_REPLY_VERBOSITY` level, the rules `{fix_summary}` must meet, what never goes in a reply, and the fallback (in-thread reply over MCP, then a single consolidated `MSG_REPLY_FALLBACK` comment).
 
 > **Note**: If both `gh api` and the MCP fallback fail, log a warning but do not block the workflow.
 
@@ -748,35 +436,11 @@ Without an explicit re-request, reviewers may not notice that their feedback has
 
 Automatically re-request a review from the original reviewers who requested changes.
 
-### Identify reviewers
-
-Use the reviewer usernames stored in Step 3 (from `CHANGES_REQUESTED` reviews). These are the reviewers who need to re-review the fixes.
-
-### Re-request via `gh api`
-
-```bash
-gh api repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers -f "reviewers[]={reviewer_login}" -X POST
-```
-
-If multiple reviewers requested changes, include all of them in a single API call:
-
-```bash
-gh api repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers --input - <<EOF
-{"reviewers": ["{reviewer1}", "{reviewer2}"]}
-EOF
-```
-
-### Retry and fallback
-
-For each `gh api` call, if it fails with a transient error (HTTP 5xx, network timeout, rate limit 429):
-- **Retry up to 2 times** with a 2-second pause between attempts
-- If all retries fail, log a warning and add "manual re-request needed" to the Step 9 summary
+Read `references/re-request-review.md` and follow it: it names the reviewers to include (the `CHANGES_REQUESTED` logins stored in Step 3), the `gh api` calls (a single call when several reviewers requested changes) and the retry rule. If all retries fail, log a warning and add "manual re-request needed" to the Step 9 summary.
 
 ### Confirmation
 
 Display **`MSG_RE_REQUEST_REVIEW`**, substituting `{reviewer1}`, `{reviewer2}`, etc.
-
-> **Note**: If `gh` CLI is not available, skip this step and add "Request re-review manually" to the Step 9 next steps.
 
 ## Step 8: Update Magic Slash metadata
 
@@ -822,3 +486,11 @@ printf '{"type":"end","skill":"magic-resolve","agentId":"%s","outcome":"success"
 
 - `references/messages.md` — All bilingual message templates (EN/FR). Read relevant sections as needed (not the whole file at once).
 - `references/node-setup.md` — Node.js version manager detection. Read before any Node.js-dependent command (Step 0.1).
+- `references/resolve-config.md`: every resolve parameter and what each value does, plus the bash block that pins them and the variable table. Read in Step 0.7, on every run.
+- `references/multi-repo.md`: the commands for Steps 0.3 to 0.5 and the multi-repo partial failure handling. Read in Step 0.3, only when Step 0.2 found a ticket ID, and again when a worktree fails during its cycle.
+- `references/fix-errors.md`: how to recover from, or skip, a comment that cannot be applied. Read in Step 5, only when a file is gone, a line no longer matches, or a comment is ambiguous.
+- `references/changes-preview.md`: the commit mode labels for `MSG_CHANGES_PREVIEW` and the inputs the preview accepts. Read in Step 5.5.
+- `references/post-fix-validation.md`: how to detect the verification command and scope it to the modified files. Read in Step 5.9.
+- `references/push-errors.md`: the error levels and the automatic correction loop for a failed push. Read in Step 6.4, only when `git push` fails.
+- `references/replies.md`: reply rules, verbosity caps, `gh api` call with retry, and the MCP and consolidated-comment fallbacks. Read in Step 7, only when `$RESOLVE_REPLY` is `true`.
+- `references/re-request-review.md`: the reviewers to include, the `gh api` calls and the retry rule. Read in Step 7.5, only when `$RESOLVE_AUTO_REREQUEST` and `$GH_AVAILABLE` are both `true`.
