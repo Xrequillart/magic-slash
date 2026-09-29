@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { BarChart3, Lightbulb, MonitorSmartphone } from '@ds/desktop/icons'
+import { BarChart3, Lightbulb, MonitorSmartphone, PanelLeft } from '@ds/desktop/icons'
 import { DisclosureCard, SectionHeader, SettingsCard } from '@ds/desktop'
 import { TelemetryHealthCard } from './TelemetryHealthCard'
 import { SetupHealthCard } from './SetupHealthCard'
+import { SidebarPagesModal } from './SidebarPagesModal'
 import { useToggleRow } from './ToggleRow'
 import { useStore } from '../../store'
 import { useT, type MessageKey } from '../../i18n'
@@ -74,6 +75,7 @@ export function ApplicationPage() {
   const { config, setConfig } = useStore()
 
   const [autoStart, setAutoStart] = useState(false)
+  const [sidebarEditorOpen, setSidebarEditorOpen] = useState(false)
   const [usageLogsEnabled, setUsageLogsEnabled] = useState(config?.usageLogsEnabled ?? true)
 
   useEffect(() => {
@@ -152,6 +154,29 @@ export function ApplicationPage() {
             },
           ]}
         />
+      </div>
+
+      {/* The sidebar's menu: its pages' order and which of them it draws. The editor is a
+          dialog rather than rows here, on the reference the reader gave: four rows with a
+          grip and a select each would push every card below it down the page. */}
+      <div>
+        <SectionHeader icon={PanelLeft} title={t('settings.application.sidebar.section')} />
+        <SettingsCard
+          rows={[
+            {
+              id: 'sidebarPages',
+              label: t('settings.application.sidebar.label'),
+              hint: t('settings.application.sidebar.help'),
+              control: {
+                kind: 'button',
+                size: 'sm',
+                children: t('settings.application.sidebar.customize'),
+                onClick: () => setSidebarEditorOpen(true),
+              },
+            },
+          ]}
+        />
+        <SidebarPagesModal isOpen={sidebarEditorOpen} onClose={() => setSidebarEditorOpen(false)} />
       </div>
 
       {/* Plan session sync (ON by default — an explicit false opts out) */}

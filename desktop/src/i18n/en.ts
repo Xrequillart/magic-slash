@@ -333,6 +333,16 @@ export const en = {
     'Every member of your organization can see these figures per person on the Team page.',
   'settings.application.usageLogs.footnote.agents':
     'Whatever this setting says, your agents (name, branch, ticket, repositories) sync to your team — that is what powers the live view.',
+  'settings.application.sidebar.section': 'Sidebar',
+  'settings.application.sidebar.label': 'App sidebar',
+  'settings.application.sidebar.help': 'Choose which pages the sidebar shows, and in what order.',
+  'settings.application.sidebar.customize': 'Customize',
+  'settings.application.sidebar.modalTitle': 'Customize sidebar',
+  'settings.application.sidebar.show': 'Always show',
+  'settings.application.sidebar.hide': 'Don’t show',
+  'settings.application.sidebar.move': 'Move {page}',
+  'settings.application.sidebar.visibility': '{page} visibility',
+  'settings.application.sidebar.footnote': 'Drag a page to move it, or focus its handle and use the arrow keys. A hidden page keeps its keyboard shortcut.',
   'settings.application.planSync.section': 'Plan sessions',
   'settings.application.planSync.label': 'Save my plan sessions to the cloud',
   'settings.application.planSync.help':

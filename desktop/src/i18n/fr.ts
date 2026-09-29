@@ -297,6 +297,16 @@ export const fr: Record<keyof typeof en, string> = {
     'Chaque membre de votre organisation voit ces chiffres par personne sur la page Équipe.',
   'settings.application.usageLogs.footnote.agents':
     'Quoi que dise ce réglage, vos agents (nom, branche, ticket, dépôts) se synchronisent avec votre équipe — c’est ce qui alimente la vue temps réel.',
+  'settings.application.sidebar.section': 'Barre latérale',
+  'settings.application.sidebar.label': 'Barre latérale de l’app',
+  'settings.application.sidebar.help': 'Choisissez les pages affichées dans la barre latérale, et leur ordre.',
+  'settings.application.sidebar.customize': 'Personnaliser',
+  'settings.application.sidebar.modalTitle': 'Personnaliser la barre latérale',
+  'settings.application.sidebar.show': 'Toujours afficher',
+  'settings.application.sidebar.hide': 'Ne pas afficher',
+  'settings.application.sidebar.move': 'Déplacer {page}',
+  'settings.application.sidebar.visibility': 'Visibilité de {page}',
+  'settings.application.sidebar.footnote': 'Glissez une page pour la déplacer, ou placez le focus sur sa poignée et utilisez les flèches. Une page masquée garde son raccourci clavier.',
   'settings.application.planSync.section': 'Sessions de planification',
   'settings.application.planSync.label': 'Enregistrer mes sessions de planification dans le cloud',
   'settings.application.planSync.help':

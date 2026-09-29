@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useMemo, useState } from 'react'
 import { Plus, Sparkles, NotebookPen, ListTodo } from '@ds/desktop/icons'
-import { Sidebar as SidebarColumn, type SidebarAgentRow, type SidebarList } from '@ds/desktop'
+import { Sidebar as SidebarColumn, type MenuSidebarEntry, type SidebarAgentRow, type SidebarList } from '@ds/desktop'
 import { useStore, type ModalId } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos } from '../hooks/useOrderedTerminals'
@@ -9,6 +9,7 @@ import { useAgentSortAction } from './AgentSort'
 import { useSidebarUsageCard } from './SidebarUsageCard'
 import { useRepositoriesMenuEntry } from './SidebarAccount'
 import { useT } from '../i18n'
+import { sidebarPageOrder, type SidebarPageId } from '../../types'
 
 /**
  * The left column, WIRED — and nothing else.
@@ -327,23 +328,31 @@ export function Sidebar() {
     ]
   }, [isSplitMode, terminals.length, sortAction, t, shortcutKey, ordered, activeTerminalId, colorMap, toRows, handleSelectTerminal, leftTerminals, rightTerminals, splitColorMap, focusedPane, splitTerminalId, rightPaneTerminalIds.length, dragOverZone, handleSelectLeftTerminal, handleSelectRightTerminal, handleAgentDragStart, handleDragOverZone, handleDropOnZone])
 
+  /* The pages, in the order the reader arranged them on the Application page, minus the
+     ones they took off (`sidebarOrder`, `sidebarHidden`). A hidden page keeps its
+     shortcut: taking Tasks off the column is not taking ⌘J away. */
+  const menu = useMemo<MenuSidebarEntry[]>(() => {
+    const entries: Record<SidebarPageId, MenuSidebarEntry> = {
+      plans: { id: 'plans', icon: NotebookPen, label: t('sidebar.plans'), shortcut: plansShortcutKey, onClick: () => openModal('plans') },
+      tasks: { id: 'tasks', icon: ListTodo, label: t('sidebar.tasks'), shortcut: tasksShortcutKey, onClick: () => openModal('tasks') },
+      skills: { id: 'skills', icon: Sparkles, label: t('sidebar.skills'), shortcut: skillsShortcutKey, onClick: () => openModal('skills') },
+      repositories: accountEntry,
+    }
+    const hidden = config?.sidebarHidden ?? []
+    return sidebarPageOrder(config?.sidebarOrder).filter((id) => !hidden.includes(id)).map((id) => entries[id])
+  }, [t, plansShortcutKey, tasksShortcutKey, skillsShortcutKey, openModal, accountEntry, config?.sidebarOrder, config?.sidebarHidden])
+
   return (
     <>
       <SidebarColumn
         collapsed={!leftSidebarVisible}
         menuAriaLabel={t('sidebar.menu.aria')}
         listsAriaLabel={t('sidebar.agents')}
-        /* THE ORDER IS THE ORDER THE WORK HAPPENS IN: you plan something, then you pick
-           it up, and Skills is the reference material for doing so — putting the
-           reference list above either view of live work would be filing the manual in
-           front of the job. The account is last and is the one row that changes shape,
-           which is why it arrives as an entry rather than as markup. */
-        menu={[
-          { id: 'plans', icon: NotebookPen, label: t('sidebar.plans'), shortcut: plansShortcutKey, onClick: () => openModal('plans') },
-          { id: 'tasks', icon: ListTodo, label: t('sidebar.tasks'), shortcut: tasksShortcutKey, onClick: () => openModal('tasks') },
-          { id: 'skills', icon: Sparkles, label: t('sidebar.skills'), shortcut: skillsShortcutKey, onClick: () => openModal('skills') },
-          accountEntry,
-        ]}
+        /* THE DEFAULT ORDER IS THE ORDER THE WORK HAPPENS IN (SIDEBAR_PAGE_IDS): you plan
+           something, then you pick it up, and Skills is the reference material for doing
+           so. The reader can rearrange it on the Application page. The account is the one
+           row that changes shape, which is why it arrives as an entry rather than as markup. */
+        menu={menu}
         lists={lists}
         emptyLabel={t('sidebar.empty')}
         /* Claude usage card — opt-out: shown unless explicitly disabled. The CARD is the
