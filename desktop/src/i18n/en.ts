@@ -1510,7 +1510,7 @@ export const en = {
   'plans.detail.changeFailed': 'Could not check where the spec file of this plan is.',
   // The faces in the plan's bar: the colleagues who have it open right now (#306). The
   // stack's tooltip and its accessible name; each face is named by its own tooltip.
-  'plans.presence.label': 'Also on this plan',
+  'plans.presence.label': 'On this plan',
   'plans.detail.notFound': 'This plan is not available',
   'plans.detail.notFoundHint':
     'It does not exist, or it belongs to a repository none of your organizations share.',

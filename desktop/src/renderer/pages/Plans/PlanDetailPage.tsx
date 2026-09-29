@@ -1292,16 +1292,32 @@ export function PlanDetailPage({
    * comments' authors — the only source on a plan of a personal repository, which has no
    * organization. The presence payload carries no photo on purpose (see `PlanPresenceMember`),
    * and anyone found in neither wears their initial.
+   *
+   * THE READER FIRST, and always: the stack says who is on the plan, and they are. Drawn from
+   * `viewer` rather than from presence, which leaves them out (`plan-live.ts` skips its own
+   * id), so their face is there from the first frame instead of after a round trip, and it
+   * is the photo they set rather than the organization's copy of it.
    */
   const orgAvatars = useMemberAvatars(card.orgId ? [card.orgId] : [])
   const authorAvatars = comments.read?.avatarByAuthor
+  /**
+   * THE HANDLE ON HOVER, the email only while there is none: an address is the one name a
+   * person cannot choose the look of (see `profiles.username`). The colleagues' handles come
+   * with their presence; the reader's own is read once, from their own profile.
+   */
+  const ownUsername = useOwnUsername(viewerId)
   const present: AvatarStackPerson[] = useMemo(
-    () => presentMembers.map((member) => ({
-      id: member.userId,
-      name: member.email,
-      src: orgAvatars[member.userId] ?? authorAvatars?.[member.userId] ?? null,
-    })),
-    [presentMembers, orgAvatars, authorAvatars],
+    () => [
+      ...(viewerId && viewer
+        ? [{ id: viewerId, name: `${ownUsername ?? viewer.name}${t('org.you')}`, src: viewer.avatarUrl ?? null }]
+        : []),
+      ...presentMembers.map((member) => ({
+        id: member.userId,
+        name: member.username ?? member.email,
+        src: orgAvatars[member.userId] ?? authorAvatars?.[member.userId] ?? null,
+      })),
+    ],
+    [viewerId, viewer, ownUsername, t, presentMembers, orgAvatars, authorAvatars],
   )
 
   /**
@@ -1672,8 +1688,8 @@ export function PlanDetailPage({
    * author invites people from their organizations. `detail` rather than `session` for
    * the invitation list, which only the detail read carries.
    *
-   * FIRST, WHO ELSE HAS IT OPEN (#306), as faces: in the bar for the reason the actions are,
-   * so it stays in sight however far down the spec the reader is. Nothing when nobody is.
+   * FIRST, WHO HAS IT OPEN (#306), as faces, the reader's own first: in the bar for the
+   * reason the actions are, so it stays in sight however far down the spec the reader is.
    */
   const planActions = session && (
     <div className="flex shrink-0 items-center gap-2">
@@ -2040,4 +2056,23 @@ export function PlanDetailPage({
       )}
     </div>
   )
+}
+
+/**
+ * The reader's own handle, or null while it is being read, on failure, and when they have
+ * none. Asked again only when the account changes.
+ */
+function useOwnUsername(userId: string | undefined): string | null {
+  const [username, setUsername] = useState<string | null>(null)
+  useEffect(() => {
+    setUsername(null)
+    if (!userId) return
+    let alive = true
+    window.electronAPI.profile
+      .getAccountSettings()
+      .then((settings) => { if (alive) setUsername(settings.username) })
+      .catch(() => { /* the email stands in */ })
+    return () => { alive = false }
+  }, [userId])
+  return username
 }

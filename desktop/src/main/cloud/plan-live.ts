@@ -20,7 +20,9 @@ import { loadSession } from './session-store'
 // failing must not take the other down with it.
 //
 //   'plan:<id>'          PRIVATE. Presence, keyed by user id: each reader `track`s
-//                        { userId, email, joinedAt } and nothing heavier (no photo). Plus
+//                        { userId, email, username, joinedAt } and nothing heavier (no
+//                        photo). `username` is their own handle, read from their own
+//                        profile row, the one row of `profiles` they can read. Plus
 //                        one broadcast, `comment-deleted`, sent by the reader who deleted
 //                        one (see `announcePlanCommentDeleted`). Authorized at JOIN by
 //                        `plan_topic_readable` (20260929110000).
@@ -179,11 +181,13 @@ export function flattenPresence(state: Record<string, unknown[]>, selfId: string
     if (!Array.isArray(entries)) continue
     for (const entry of entries) {
       if (!entry || typeof entry !== 'object') continue
-      const { userId, email, joinedAt } = entry as Record<string, unknown>
+      const { userId, email, username, joinedAt } = entry as Record<string, unknown>
       if (typeof userId !== 'string' || typeof email !== 'string' || typeof joinedAt !== 'string') continue
       if (userId === selfId) continue
       const seen = byUser.get(userId)
-      if (!seen || joinedAt < seen.joinedAt) byUser.set(userId, { userId, email, joinedAt })
+      // Optional: a build older than the handle sends none, and that is not a blank face.
+      const handle = typeof username === 'string' && username ? username : null
+      if (!seen || joinedAt < seen.joinedAt) byUser.set(userId, { userId, email, username: handle, joinedAt })
     }
   }
   return [...byUser.values()].sort((a, b) => a.joinedAt.localeCompare(b.joinedAt) || a.userId.localeCompare(b.userId))
@@ -191,7 +195,9 @@ export function flattenPresence(state: Record<string, unknown[]>, selfId: string
 
 /** Presence re-syncs on every join and leave; only a change of who is there is sent. */
 function emitPresence(sessionId: string, members: PlanPresenceMember[]): void {
-  const key = members.length === 0 ? '' : `${sessionId}|${members.map((m) => `${m.userId}@${m.joinedAt}`).join('|')}`
+  const key = members.length === 0
+    ? ''
+    : `${sessionId}|${members.map((m) => `${m.userId}@${m.joinedAt}:${m.username ?? ''}`).join('|')}`
   if (key === lastPresenceKey) return
   lastPresenceKey = key
   emitters?.presence({ sessionId, members })
@@ -294,7 +300,10 @@ async function openInternal(sessionId: string, resync: boolean): Promise<void> {
   activeSessionId = sessionId
   // Once per open, not per join: a rejoin is the same visit, and must not move the reader
   // to the end of everyone else's stack.
-  activeReader = { userId, me: { userId, email: user.email ?? '', joinedAt: new Date().toISOString() } }
+  activeReader = {
+    userId,
+    me: { userId, email: user.email ?? '', username: await readOwnUsername(client, userId), joinedAt: new Date().toISOString() },
+  }
   setStatus('reconnecting')
 
   try {
@@ -306,6 +315,21 @@ async function openInternal(sessionId: string, resync: boolean): Promise<void> {
     console.error('[plan-live] failed to subscribe:', error)
     await teardown()
     setStatus('reconnecting')
+  }
+}
+
+/**
+ * The reader's own handle, for their presence entry. Null on any failure: the others then
+ * see the email address, which is what they saw before handles existed.
+ */
+async function readOwnUsername(client: SupabaseClient, userId: string): Promise<string | null> {
+  try {
+    const { data, error } = await client.from('profiles').select('username').eq('user_id', userId).maybeSingle()
+    if (error || !data) return null
+    const { username } = data as { username: unknown }
+    return typeof username === 'string' && username ? username : null
+  } catch {
+    return null
   }
 }
 

@@ -2735,6 +2735,13 @@ export interface PlanCommentsRead {
 export interface PlanPresenceMember {
   userId: string
   email: string
+  /**
+   * The handle they picked (`profiles.username`), or null when they have none. Carried by
+   * presence because it is the only way a reader can learn it: `profiles_select` lets a
+   * user read their own row and nobody else's. Each reader sends their own. Absent from an
+   * older build's payload, which reads as null.
+   */
+  username: string | null
   /** When they opened the plan, ISO. Orders the stack: the first to arrive comes first. */
   joinedAt: string
 }

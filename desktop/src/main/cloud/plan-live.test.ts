@@ -22,6 +22,7 @@ const h = vi.hoisted(() => {
     client: null as any,
     token: 'access-token' as string | undefined,
     userId: 'self-id' as string | undefined,
+    username: 'me' as string | null,
   }
   return { state, authSubscription: { unsubscribe: vi.fn() } }
 })
@@ -50,6 +51,15 @@ function makeClient() {
     }),
     removeChannel: vi.fn().mockResolvedValue('ok'),
     realtime: { setAuth: vi.fn() },
+    // The reader's own profile row, for the handle their presence carries.
+    from: vi.fn(() => {
+      const query = {
+        select: () => query,
+        eq: () => query,
+        maybeSingle: async () => ({ data: { username: h.state.username }, error: null }),
+      }
+      return query
+    }),
     auth: { onAuthStateChange: vi.fn(() => ({ data: { subscription: h.authSubscription } })) },
   }
 }
@@ -179,9 +189,9 @@ describe('openPlanLive', () => {
     statusCb(presence)('SUBSCRIBED')
     expect(presence.track).toHaveBeenCalledTimes(1)
     const payload = presence.track.mock.calls[0][0]
-    expect(payload).toEqual({ userId: 'self-id', email: 'me@example.com', joinedAt: expect.any(String) })
-    // Exactly the three fields: nothing heavier travels on presence.
-    expect(Object.keys(payload).sort()).toEqual(['email', 'joinedAt', 'userId'])
+    expect(payload).toEqual({ userId: 'self-id', email: 'me@example.com', username: 'me', joinedAt: expect.any(String) })
+    // Exactly the four fields: nothing heavier travels on presence.
+    expect(Object.keys(payload).sort()).toEqual(['email', 'joinedAt', 'userId', 'username'])
 
     // The socket drops and comes back: realtime-js does not re-publish presence itself.
     statusCb(presence)('CHANNEL_ERROR')
@@ -201,7 +211,7 @@ describe('openPlanLive', () => {
     syncCb(presence)()
 
     expect(presences).toEqual([
-      { sessionId: PLAN_A, members: [{ userId: 'u2', email: 'u2@example.com', joinedAt: '2026-09-29T10:01:00Z' }] },
+      { sessionId: PLAN_A, members: [{ userId: 'u2', email: 'u2@example.com', username: null, joinedAt: '2026-09-29T10:01:00Z' }] },
     ])
   })
 
@@ -513,7 +523,15 @@ describe('flattenPresence', () => {
         { userId: 'u2', email: 'u2@example.com', joinedAt: '2026-09-29T10:05:00Z' },
         { userId: 'u2', email: 'u2@example.com', joinedAt: '2026-09-29T10:01:00Z' },
       ],
-    }, 'self-id')).toEqual([{ userId: 'u2', email: 'u2@example.com', joinedAt: '2026-09-29T10:01:00Z' }])
+    }, 'self-id')).toEqual([{ userId: 'u2', email: 'u2@example.com', username: null, joinedAt: '2026-09-29T10:01:00Z' }])
+  })
+
+  it('carries a colleague\'s handle, and reads a missing or blank one as none', () => {
+    expect(flattenPresence({
+      u2: [{ userId: 'u2', email: 'u2@example.com', username: 'camille', joinedAt: '2026-09-29T10:01:00Z' }],
+      u3: [{ userId: 'u3', email: 'u3@example.com', username: '', joinedAt: '2026-09-29T10:02:00Z' }],
+      u4: [{ userId: 'u4', email: 'u4@example.com', username: 42, joinedAt: '2026-09-29T10:03:00Z' }],
+    }, 'self-id').map((m) => m.username)).toEqual(['camille', null, null])
   })
 
   it('drops the reader and malformed entries, and orders by arrival', () => {
