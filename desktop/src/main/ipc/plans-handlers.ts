@@ -9,7 +9,7 @@ import {
 import { resolveLocalSpecPath, saveEditedPlanSpec } from '../store/plan-edit'
 import { createPlanLink, deletePlanLink, listPlanLinks } from '../cloud/planLinks'
 import { listPlanHistory, readRevisionTexts } from '../cloud/planHistory'
-import { announcePlanCommentDeleted, closePlanLive, getPlanLiveStatus, openPlanLive } from '../cloud/plan-live'
+import { announcePlanCommentDeleted, closePlanLive, getPlanLiveSessionId, getPlanLiveStatus, openPlanLive } from '../cloud/plan-live'
 import { unifiedSpecDiff } from '../store/specDiff'
 import { annotateAgainstDiff, highlightNumbered, previewShikiTheme } from './config-handlers'
 
@@ -194,9 +194,12 @@ export function setupPlansHandlers(): void {
 
   ipcMain.handle('plans:comments:delete', async (_e, id: unknown): Promise<boolean> => {
     if (typeof id !== 'string' || !UUID_RE.test(id)) return false
-    const ok = await deletePlanComment(id)
     // The one comment write the others on the plan cannot hear from the database (#306).
-    if (ok) announcePlanCommentDeleted()
+    // The plan is noted before the await: a comment is deleted from the plan on screen, and
+    // the reader may have opened another by the time the delete comes back.
+    const plan = getPlanLiveSessionId()
+    const ok = await deletePlanComment(id)
+    if (ok && plan) announcePlanCommentDeleted(plan)
     return ok
   })
 

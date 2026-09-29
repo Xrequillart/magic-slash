@@ -226,13 +226,38 @@ describe('openPlanLive', () => {
     const { presence } = channelsOf()
     presence.send = vi.fn().mockResolvedValue('ok')
 
-    announcePlanCommentDeleted()
+    announcePlanCommentDeleted(PLAN_A)
     expect(presence.send).not.toHaveBeenCalled()
 
     statusCb(presence)('SUBSCRIBED')
     await settle()
-    announcePlanCommentDeleted()
+    announcePlanCommentDeleted(PLAN_A)
     expect(presence.send).toHaveBeenCalledWith({ type: 'broadcast', event: 'comment-deleted', payload: {} })
+  })
+
+  it('announces a deletion only on the plan it was made on', async () => {
+    await openPlanLive(PLAN_A)
+    await openPlanLive(PLAN_B)
+    const { presence } = channelsOf(1)
+    presence.send = vi.fn().mockResolvedValue('ok')
+    statusCb(presence)('SUBSCRIBED')
+    await settle()
+
+    // Deleted on A, answered after the reader opened B: B's readers must hear nothing.
+    announcePlanCommentDeleted(PLAN_A)
+    expect(presence.send).not.toHaveBeenCalled()
+  })
+
+  it('re-reads the comments when the presence channel REJOINS, a missed deletion included', async () => {
+    await openPlanLive(PLAN_A)
+    const { presence } = channelsOf()
+
+    statusCb(presence)('SUBSCRIBED')
+    expect(changes).toEqual([])
+
+    statusCb(presence)('CHANNEL_ERROR')
+    statusCb(presence)('SUBSCRIBED')
+    expect(changes).toEqual([{ sessionId: PLAN_A, kind: 'comments' }])
   })
 
   it('counts the presence live only once the server took the track, retrying one it refused', async () => {
@@ -378,8 +403,9 @@ describe('openPlanLive', () => {
       await settle()
       expect(rejoined.track).toHaveBeenCalledTimes(1)
       expect(getPlanLiveStatus()).toBe('live')
-      // The changes channel did not rejoin, so nothing asks for a re-read.
-      expect(changes).toEqual([])
+      // The changes channel did not rejoin, so the spec is not re-read; the comments are, as
+      // a deletion announced while presence was down would otherwise be missed.
+      expect(changes).toEqual([{ sessionId: PLAN_A, kind: 'comments' }])
     } finally {
       vi.useRealTimers()
     }

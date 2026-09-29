@@ -298,7 +298,7 @@ async function openInternal(sessionId: string, resync: boolean): Promise<void> {
   setStatus('reconnecting')
 
   try {
-    joinPresence(client, sessionId)
+    joinPresence(client, sessionId, resync)
     joinChanges(client, sessionId, resync)
   } catch (error) {
     // subscribe() throws when the socket can't even be created. Release the slot so the next
@@ -314,7 +314,7 @@ function rejoinMissing(sessionId: string): void {
   const client = activeClient
   if (!client) return
   try {
-    if (!presenceChannel) joinPresence(client, sessionId)
+    if (!presenceChannel) joinPresence(client, sessionId, true)
     // A changes channel joined again has missed whatever moved while it was gone.
     if (!changesChannel) joinChanges(client, sessionId, true)
   } catch (error) {
@@ -324,9 +324,15 @@ function rejoinMissing(sessionId: string): void {
   refreshStatus()
 }
 
-function joinPresence(client: SupabaseClient, sessionId: string): void {
+/**
+ * `resync`: as for `joinChanges`, whether the first SUBSCRIBED is already a REJOIN. A deletion
+ * is announced on THIS channel, and a broadcast sent while it was down is not replayed, so a
+ * rejoin reads the comments again: the one way to learn of a deletion the reader missed.
+ */
+function joinPresence(client: SupabaseClient, sessionId: string, resync: boolean): void {
   const reader = activeReader
   if (!reader) return
+  let joined = resync
   const presence = client.channel(`plan:${sessionId}`, {
     config: { private: true, presence: { key: reader.userId } },
   })
@@ -352,6 +358,8 @@ function joinPresence(client: SupabaseClient, sessionId: string): void {
       // presence again after a rejoin, so a reader whose socket dropped would otherwise
       // come back to the plan invisible.
       void trackUntilLive(presence, reader.me, join)
+      if (joined) emitters?.changed({ sessionId, kind: 'comments' })
+      joined = true
     })
   armSubscribeWatchdog('presence', presence)
 }
@@ -376,15 +384,23 @@ async function trackUntilLive(presence: RealtimeChannel, me: PlanPresenceMember,
   retry.unref?.()
 }
 
+/** The plan whose channels are claimed, for the delete handler to note BEFORE it deletes. */
+export function getPlanLiveSessionId(): string | null {
+  return activeSessionId
+}
+
 /**
- * The reader deleted a comment: tell the others on the plan, who have no other way to hear of
- * it (see the header). Called by the delete handler once the delete went through, and aimed at
- * the open plan, which is the only place a comment can be deleted from. A no-op while the
- * presence channel is not live: the colleagues then see the deletion on their next read.
+ * The reader deleted a comment of `sessionId`: tell the others on that plan, who have no other
+ * way to hear of it (see the header). Called by the delete handler once the delete went
+ * through, with the plan that was open when it STARTED: the reader may have moved to another
+ * by then, and that plan's readers must not be told of a comment that was never theirs.
+ *
+ * A no-op when that plan is no longer the open one, or its presence channel is not live. Its
+ * readers then see the deletion on their next read, which a presence rejoin always triggers.
  */
-export function announcePlanCommentDeleted(): void {
+export function announcePlanCommentDeleted(sessionId: string): void {
   const presence = presenceChannel
-  if (!presence || !live.has('presence')) return
+  if (activeSessionId !== sessionId || !presence || !live.has('presence')) return
   presence.send({ type: 'broadcast', event: 'comment-deleted', payload: {} })
     .catch((error: unknown) => console.error('[plan-live] failed to announce a deleted comment:', error))
 }

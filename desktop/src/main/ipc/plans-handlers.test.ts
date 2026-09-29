@@ -48,6 +48,8 @@ const mockCreateComment = vi.fn()
 const mockUpdateComment = vi.fn()
 const mockDeleteComment = vi.fn()
 const mockAnnounceDeleted = vi.fn()
+const mockLiveSessionId = vi.fn()
+const PLAN_OPEN = 'e0000000-0000-0000-0000-0000000000aa'
 vi.mock('../cloud/planComments', () => ({
   listPlanComments: (...args: unknown[]) => mockListComments(...args),
   createPlanComment: (...args: unknown[]) => mockCreateComment(...args),
@@ -86,7 +88,8 @@ vi.mock('../cloud/plan-live', () => ({
   openPlanLive: (...args: unknown[]) => mockOpenLive(...args),
   closePlanLive: (...args: unknown[]) => mockCloseLive(...args),
   getPlanLiveStatus: () => mockLiveStatus(),
-  announcePlanCommentDeleted: () => mockAnnounceDeleted(),
+  announcePlanCommentDeleted: (...args: unknown[]) => mockAnnounceDeleted(...args),
+  getPlanLiveSessionId: () => mockLiveSessionId(),
 }))
 
 // The preview machinery, which pulls shiki and the whole config layer. The diff channel's
@@ -127,6 +130,7 @@ beforeEach(() => {
   mockCreateComment.mockResolvedValue(true)
   mockUpdateComment.mockResolvedValue(true)
   mockDeleteComment.mockResolvedValue(true)
+  mockLiveSessionId.mockReturnValue(PLAN_OPEN)
   mockCreateLink.mockResolvedValue(true)
   mockDeleteLink.mockResolvedValue(true)
   mockListLinks.mockResolvedValue({ links: [], emailByAuthor: {}, failed: false })
@@ -228,8 +232,15 @@ describe('plans:comments:delete', () => {
   it('passes a well-formed id through', async () => {
     expect(await invoke('plans:comments:delete', COMMENT_ID)).toBe(true)
     expect(mockDeleteComment).toHaveBeenCalledWith(COMMENT_ID)
-    // The others on the plan hear of it from the deleter, not from the database.
-    expect(mockAnnounceDeleted).toHaveBeenCalledTimes(1)
+    // The others on the plan hear of it from the deleter, not from the database, on the
+    // plan that was open when the delete started, even if another is open by now.
+    expect(mockAnnounceDeleted).toHaveBeenCalledWith(PLAN_OPEN)
+  })
+
+  it('announces nothing when no plan was open', async () => {
+    mockLiveSessionId.mockReturnValueOnce(null)
+    expect(await invoke('plans:comments:delete', COMMENT_ID)).toBe(true)
+    expect(mockAnnounceDeleted).not.toHaveBeenCalled()
   })
 
   it('announces nothing when the delete did not go through', async () => {
