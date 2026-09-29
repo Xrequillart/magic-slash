@@ -8,7 +8,7 @@ import { CanvasMinimap } from './CanvasMinimap'
 import { Text } from './Text'
 import { WorkflowEdge, type WorkflowEdgeType } from './WorkflowEdge'
 import {
-  WORKFLOW_DEFAULT_HANDLE, WORKFLOW_TARGET_HANDLE, WORKFLOW_VERTICAL_HANDLES, WorkflowNode, type WorkflowNodeType,
+  WORKFLOW_DEFAULT_HANDLE, WORKFLOW_SELF_TARGET_HANDLE, WORKFLOW_SIDE_TARGET_HANDLE, WORKFLOW_TARGET_HANDLE, WORKFLOW_VERTICAL_HANDLES, WorkflowNode, type WorkflowNodeType,
 } from './WorkflowNode'
 import {
   layoutWorkflow, workflowNodeHeight, WORKFLOW_NODE_WIDTH, type WorkflowCanvasLink, type WorkflowCanvasLinkKind, type WorkflowCanvasNode,
@@ -112,15 +112,20 @@ export function WorkflowCanvas({ nodes, links, entry, labels, className = '' }: 
       // A link on an outcome its node does not declare has no port to leave from; it
       // leaves from the header instead of vanishing (xyflow drops an edge whose handle
       // is missing).
-      // Between two stacked steps of a loop, the link runs straight down or up instead,
-      // and its outcome is carried by its label alone.
+      // Between two neighbouring steps of a loop, the link runs straight down or up
+      // instead, and its outcome is carried by its label alone. The two detours leave
+      // from the port like a forward link, and come back in where they can without
+      // crossing a card: the right side (`side`), or the top (`self`).
       const route = layout.routes[i] ?? 'forward'
-      const handles = route === 'forward'
-        ? {
-            sourceHandle: link.outcome && from.outcomes.includes(link.outcome) ? link.outcome : WORKFLOW_DEFAULT_HANDLE,
-            targetHandle: WORKFLOW_TARGET_HANDLE,
+      const port = link.outcome && from.outcomes.includes(link.outcome) ? link.outcome : WORKFLOW_DEFAULT_HANDLE
+      const handles = route === 'down' || route === 'up'
+        ? { sourceHandle: WORKFLOW_VERTICAL_HANDLES[route].source, targetHandle: WORKFLOW_VERTICAL_HANDLES[route].target }
+        : {
+            sourceHandle: port,
+            targetHandle: route === 'side' ? WORKFLOW_SIDE_TARGET_HANDLE
+              : route === 'self' ? WORKFLOW_SELF_TARGET_HANDLE
+              : WORKFLOW_TARGET_HANDLE,
           }
-        : { sourceHandle: WORKFLOW_VERTICAL_HANDLES[route].source, targetHandle: WORKFLOW_VERTICAL_HANDLES[route].target }
       return [{
         id: `${link.from}-${link.to}-${i}`,
         source: link.from,

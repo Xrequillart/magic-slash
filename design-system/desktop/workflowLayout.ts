@@ -79,11 +79,19 @@ export function workflowNodeHeight(outcomeCount: number): number {
  * How a link is drawn, decided by where its two ends landed:
  *
  *  - `forward`: to a later column, left to right, out of the source's port;
- *  - `down` / `up`: between two cards of ONE column, the steps of a loop. Straight
- *    down from the upper card's bottom, or straight up from the lower card's top, each
- *    on its own side of the card's middle so the pair reads as the loop it is.
+ *  - `down` / `up`: between two ADJACENT cards of one column, the steps of a loop.
+ *    Straight down from the upper card's bottom, or straight up from the lower card's
+ *    top, each on its own side of the card's middle so the pair reads as the loop it is;
+ *  - `side`: between two cards of one column with a card between them (a loop of three
+ *    steps or more, closing from the bottom card back to the top one). A straight line
+ *    would cross the card between, so it leaves the source's port, runs down or up the
+ *    gap on the column's right, and comes back into the target's right side;
+ *  - `self`: a node linked to itself. Out of its port, up over its own corner, and
+ *    down into its top.
+ *
+ * Both detours are drawn by `orthogonalPath`.
  */
-export type WorkflowLinkRoute = 'forward' | 'down' | 'up'
+export type WorkflowLinkRoute = 'forward' | 'down' | 'up' | 'side' | 'self'
 
 export interface WorkflowLayout {
   /** Top-left corner of each node, by id. Every node is placed, reachable or not. */
@@ -110,10 +118,10 @@ export interface WorkflowLayout {
  *    and the stack is centred on the tallest column, so a single card next to a pair
  *    sits between them.
  *
- * A loop of three steps or more stacks the same way, and its link from the bottom card
- * back to the top one then crosses the card between: a v1 limit the default flow never
- * reaches. Deterministic for a given input: nothing iterates a Set or an object whose
- * order depends on anything but the arrays passed in.
+ * A loop of three steps or more stacks the same way; its links between cards that are
+ * not neighbours take the `side` route around the ones between. Deterministic for a
+ * given input: nothing iterates a Set or an object whose order depends on anything but
+ * the arrays passed in.
  */
 export function layoutWorkflow(
   nodes: WorkflowCanvasNode[],
@@ -206,13 +214,43 @@ export function layoutWorkflow(
   })
 
   // Two ends in one column can only be two steps of one loop: a link between columns
-  // always lands at least one column on.
+  // always lands at least one column on. Neighbours in the column are joined straight;
+  // anything with a card between them goes round it.
+  const rowOf = new Map<string, number>()
+  for (const col of columns) col?.forEach((node, row) => rowOf.set(node.id, row))
   const routes: Record<number, WorkflowLinkRoute> = {}
   for (const { link, i } of usable) {
-    const from = positions[link.from]
-    const to = positions[link.to]
-    routes[i] = layers[link.from] !== layers[link.to] || link.from === link.to ? 'forward' : to.y > from.y ? 'down' : 'up'
+    if (link.from === link.to) routes[i] = 'self'
+    else if (layers[link.from] !== layers[link.to]) routes[i] = 'forward'
+    else {
+      const step = rowOf.get(link.to)! - rowOf.get(link.from)!
+      routes[i] = step === 1 ? 'down' : step === -1 ? 'up' : 'side'
+    }
   }
 
   return { positions, layers, routes }
+}
+
+/**
+ * A RIGHT-ANGLED PATH through `points`, its corners rounded to `radius`: the detours of
+ * the `side` and `self` routes. Each corner is pulled in by the radius along both of its
+ * segments, never past half a segment, so a short stub still turns cleanly.
+ */
+export function orthogonalPath(points: [number, number][], radius = 12): string {
+  let path = `M ${points[0][0]} ${points[0][1]}`
+  for (let i = 1; i < points.length - 1; i++) {
+    const [px, py] = points[i - 1]
+    const [cx, cy] = points[i]
+    const [nx, ny] = points[i + 1]
+    const inLen = Math.hypot(cx - px, cy - py)
+    const outLen = Math.hypot(nx - cx, ny - cy)
+    const r = Math.min(radius, inLen / 2, outLen / 2)
+    const ax = cx - ((cx - px) / (inLen || 1)) * r
+    const ay = cy - ((cy - py) / (inLen || 1)) * r
+    const bx = cx + ((nx - cx) / (outLen || 1)) * r
+    const by = cy + ((ny - cy) / (outLen || 1)) * r
+    path += ` L ${ax} ${ay} Q ${cx} ${cy} ${bx} ${by}`
+  }
+  const [lx, ly] = points[points.length - 1]
+  return `${path} L ${lx} ${ly}`
 }

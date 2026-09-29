@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   layoutWorkflow,
+  orthogonalPath,
   workflowNodeHeight,
   WORKFLOW_NODE_WIDTH,
   type WorkflowCanvasLink,
@@ -87,6 +88,27 @@ describe('layoutWorkflow', () => {
     expect(layoutWorkflow(three, ring, ['a']).layers).toEqual({ a: 0, b: 1, c: 1, d: 1 })
   })
 
+  it('sends a loop link past a card between its ends round the side, never straight through it', () => {
+    const three = [node('a'), node('b'), node('c'), node('d')]
+    const ring: WorkflowCanvasLink[] = [
+      { from: 'a', to: 'b', kind: 'suggest' },
+      { from: 'b', to: 'c', kind: 'suggest' },
+      { from: 'c', to: 'd', kind: 'suggest' },
+      { from: 'd', to: 'b', kind: 'suggest' },
+    ]
+    const { routes } = layoutWorkflow(three, ring, ['a'])
+    expect(ring.map((_, i) => routes[i])).toEqual(['forward', 'down', 'down', 'side'])
+  })
+
+  it('draws a node linked to itself as a loop of its own', () => {
+    const { routes, layers } = layoutWorkflow([node('a'), node('b')], [
+      { from: 'a', to: 'a', kind: 'suggest' },
+      { from: 'a', to: 'b', kind: 'suggest' },
+    ], ['a'])
+    expect(routes[0]).toBe('self')
+    expect(layers).toEqual({ a: 0, b: 1 })
+  })
+
   it('still places a node that no entry reaches', () => {
     const lonely = [...NODES, node('audit', ['ok'])]
     const { positions, layers } = layoutWorkflow(lonely, LINKS, ['plan', 'start'])
@@ -104,5 +126,14 @@ describe('layoutWorkflow', () => {
     const again = layoutWorkflow(NODES, [...LINKS].reverse(), ['plan', 'start'])
     expect(again.positions).toEqual(once.positions)
     expect(layoutWorkflow(NODES, LINKS, ['plan', 'start'])).toEqual(once)
+  })
+})
+
+describe('orthogonalPath', () => {
+  it('starts and ends on the given points, and rounds every corner in between', () => {
+    const path = orthogonalPath([[0, 0], [30, 0], [30, 100], [0, 100]])
+    expect(path.startsWith('M 0 0')).toBe(true)
+    expect(path.endsWith('L 0 100')).toBe(true)
+    expect(path.match(/Q/g)).toHaveLength(2)
   })
 })

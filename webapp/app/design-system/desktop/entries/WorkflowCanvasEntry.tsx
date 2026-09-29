@@ -7,10 +7,10 @@ import { usesOf } from './ids'
 import { SAMPLE_ENTRY, SAMPLE_LABELS, SAMPLE_LINKS, SAMPLE_NODES } from './workflowSample'
 
 const PROPS: PropRow[] = [
-  { name: 'nodes', type: 'WorkflowCanvasNode[]', required: true, description: 'The steps: id, label (translated), skill folder, outcomes, mode, required. Drawn as WorkflowNode cards.' },
+  { name: 'nodes', type: 'WorkflowCanvasNode[]', required: true, description: 'The steps: id, label, skill folder and outcomes. Drawn as WorkflowNode cards.' },
   { name: 'links', type: 'WorkflowCanvasLink[]', required: true, description: 'from, to, kind (auto or suggest) and an optional outcome. A link with an outcome leaves from that outcome’s port and carries its name.' },
   { name: 'entry', type: 'string[]', required: true, description: 'The node ids a ticket may start from. The layout counts its columns from them.' },
-  { name: 'labels', type: 'WorkflowCanvasLabels', required: true, description: 'Every word the canvas draws or announces, translated by the caller: its accessible name, the minimap’s, the legend’s two strokes, the two modes and the lock’s tooltip.' },
+  { name: 'labels', type: 'WorkflowCanvasLabels', required: true, description: 'Every word the canvas draws or announces, translated by the caller: its accessible name, the minimap’s, and the legend’s two strokes.' },
   { name: 'className', type: 'string', description: 'The box. A height is required: the canvas fills its parent, and a parent with no height is a canvas zero pixels tall.' },
 ]
 

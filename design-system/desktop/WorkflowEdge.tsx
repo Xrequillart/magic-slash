@@ -1,7 +1,7 @@
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, getStraightPath, type Edge, type EdgeProps } from '@xyflow/react'
 
 import {
-  WORKFLOW_COLUMN_GAP, WORKFLOW_NODE_WIDTH, type WorkflowCanvasLinkKind, type WorkflowLinkRoute,
+  orthogonalPath, WORKFLOW_COLUMN_GAP, WORKFLOW_NODE_WIDTH, type WorkflowCanvasLinkKind, type WorkflowLinkRoute,
 } from './workflowLayout'
 
 /**
@@ -30,8 +30,11 @@ import {
  *
  * THE STEPS OF A LOOP (review ⇄ resolve) are stacked in one column by
  * `workflowLayout.ts`, and the links between them are straight verticals in the gap
- * between the two cards: one down, one up, side by side. Nothing runs backwards over
- * the cards or under them any more.
+ * between the two cards: one down, one up, side by side. Two shapes of a custom flow
+ * cannot be joined straight without crossing a card, and take a right-angled detour
+ * instead: a loop of three steps or more closing from its bottom card to its top one
+ * (`side`, down or up the gap on the column's right), and a node linked to itself
+ * (`self`, over its own corner).
  *
  * Drawn by `WorkflowCanvas` through xyflow's `edgeTypes`; all it knows arrives in
  * `data`.
@@ -52,6 +55,9 @@ export interface WorkflowEdgeData extends Record<string, unknown> {
 
 export type WorkflowEdgeType = Edge<WorkflowEdgeData, 'workflow'>
 
+/** How far a detour stands off the cards it goes round, in canvas pixels. */
+const DETOUR = 28
+
 /** Spelled in full, per kind, so Tailwind finds every class. */
 const LABEL_TONES: Record<WorkflowCanvasLinkKind, string> = {
   auto: 'border-accent/40 text-accent',
@@ -70,7 +76,22 @@ export function WorkflowEdge({
 }: EdgeProps<WorkflowEdgeType>) {
   const kind = data?.kind ?? 'suggest'
   let path: string, labelX: number, labelY: number
-  if (data && data.route !== 'forward') {
+  const route = data?.route ?? 'forward'
+  if (route === 'side') {
+    // Down or up the gap on the column's right, clear of every card between the two.
+    const x = Math.max(sourceX, targetX) + DETOUR
+    path = orthogonalPath([[sourceX, sourceY], [x, sourceY], [x, targetY], [targetX, targetY]])
+    labelX = x
+    labelY = (sourceY + targetY) / 2
+  } else if (route === 'self') {
+    // Out of the port, up past the card's top, and down into its corner: a loop of its
+    // own. Tighter than a `side` detour, so the two never share the gap's vertical.
+    const x = sourceX + DETOUR / 2
+    const top = targetY - DETOUR / 2
+    path = orthogonalPath([[sourceX, sourceY], [x, sourceY], [x, top], [targetX, top], [targetX, targetY]])
+    labelX = x
+    labelY = (sourceY + top) / 2
+  } else if (route !== 'forward') {
     [path, labelX, labelY] = getStraightPath({ sourceX, sourceY, targetX, targetY })
   } else {
     [path, labelX, labelY] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition })

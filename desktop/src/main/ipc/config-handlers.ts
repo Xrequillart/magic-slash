@@ -725,10 +725,18 @@ export function setupConfigHandlers() {
   // Keyed by NAME because that is what the renderer holds, and resolved to the id here
   // because the workflows cache is keyed by id. A name matching no repository, or one
   // without a cloud id yet, gets the default flow: the same answer `GET /workflow`
-  // gives a skill running there.
-  ipcMain.handle('config:getRepositoryWorkflow', async (_event, { name }: { name: string }) => {
+  // gives a skill running there. The payload's TYPE is checked here, which the erased
+  // annotation cannot do: a malformed call is rejected at the boundary rather than
+  // answered with the default flow. `hasOwn` keeps a key like `constructor` from
+  // resolving through the prototype.
+  ipcMain.handle('config:getRepositoryWorkflow', async (_event, payload: unknown) => {
+    const name = payload && typeof payload === 'object' ? (payload as { name?: unknown }).name : undefined
+    if (typeof name !== 'string') {
+      throw new Error(`Invalid workflow repository: expected a config key, got ${typeof name}.`)
+    }
     await ensureHydrated()
-    const repoId = readConfig().repositories[name]?.id ?? null
+    const repositories = readConfig().repositories
+    const repoId = Object.hasOwn(repositories, name) ? repositories[name].id ?? null : null
     return workflowForRepo(repoId)
   })
 

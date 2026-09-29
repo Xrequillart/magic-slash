@@ -55,6 +55,20 @@ export const WORKFLOW_VERTICAL_HANDLES = {
   up: { source: 'up-out', target: 'up-in' },
 } as const
 
+/**
+ * Where a `side` detour comes back in: the card's right edge, level with its header,
+ * so the arrow points at the card from the gap it ran down. Invisible like the lanes.
+ */
+export const WORKFLOW_SIDE_TARGET_HANDLE = 'side-in'
+
+/**
+ * Where a `self` loop comes back in: the top edge, near the right corner, clear of the
+ * two lanes a loop's vertical links use, so a step that retries itself never shares a
+ * line with the step before it.
+ */
+export const WORKFLOW_SELF_TARGET_HANDLE = 'self-in'
+const SELF_LANE = { left: '88%' }
+
 /** Spelled as styles: xyflow positions a handle by `left`, which no class here sets per port. */
 const DOWN_LANE = { left: '38%' }
 const UP_LANE = { left: '62%' }
@@ -73,6 +87,7 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
       <Handle type="target" position={Position.Top} id={WORKFLOW_VERTICAL_HANDLES.down.target} style={DOWN_LANE} className="ms-wf-lane" isConnectable={false} />
       <Handle type="source" position={Position.Top} id={WORKFLOW_VERTICAL_HANDLES.up.source} style={UP_LANE} className="ms-wf-lane" isConnectable={false} />
       <Handle type="target" position={Position.Bottom} id={WORKFLOW_VERTICAL_HANDLES.up.target} style={UP_LANE} className="ms-wf-lane" isConnectable={false} />
+      <Handle type="target" position={Position.Top} id={WORKFLOW_SELF_TARGET_HANDLE} style={SELF_LANE} className="ms-wf-lane" isConnectable={false} />
       <div
         className={`relative flex h-14 items-center gap-2.5 px-3 ${hasOutcomes ? 'border-b border-line' : ''}`.trim()}
       >
@@ -89,6 +104,7 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
           </code>
         </span>
         <Handle type="source" position={Position.Right} id={WORKFLOW_DEFAULT_HANDLE} isConnectable={false} />
+        <Handle type="target" position={Position.Right} id={WORKFLOW_SIDE_TARGET_HANDLE} className="ms-wf-lane" isConnectable={false} />
       </div>
 
       {hasOutcomes && (
