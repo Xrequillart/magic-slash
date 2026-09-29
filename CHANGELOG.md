@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.104.0] - 2026-09-29
+
+### Added
+
+- **Desktop**: Call agents sessions throughout the interface
+- **Desktop**: Search every setting from the settings sidebar
+- **Desktop**: Find settings by the values their selects offer
+- **Desktop**: Publish plans on realtime and make their presence channels private
+- **Desktop**: Add the avatar stack to the design system and its showcase
+- **Desktop**: See who is on a plan and follow its edits and comments live
+- **Desktop**: Show the reader and everyone's handle in the plan presence stack
+- **Desktop**: Name each face of an avatar stack in an instant hover pill
+
+### Fixed
+
+- **Desktop**: Make the idle and completed session states feminine in French
+- **Pr**: Number the test steps after their checkbox so GitHub shows the order
+- **Desktop**: Drop the native clear cross from search fields
+- **Desktop**: Let a refused plan presence channel leave the changes channel running
+
 ## [0.103.0] - 2026-09-29
 
 ### Added
@@ -3452,6 +3472,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.104.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.104.0
 [0.103.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.103.0
 [0.102.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.102.1
 [0.102.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.102.0
