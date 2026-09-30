@@ -21,7 +21,7 @@ export function ColorSwatchesEntry({ theme, onOpen }: { theme: DesktopTheme; onO
     <article className="flex flex-col divide-y divide-hairline">
       <EntryHeader title="ColorSwatches" uses={usesOf('colorswatches')} onOpen={onOpen}>
         One colour picked among a few: a radio group whose options are their own colour. A
-        SettingRow control (`kind: 'swatches'`), which is how a workflow step picks its card.
+        <code>SettingRow</code> control (<code>kind: &apos;swatches&apos;</code>), which is how a workflow step picks its card.
       </EntryHeader>
 
       <EntrySection title="The workflow steps’ palette" note="The picked swatch is outlined, not ringed, so the gap stays see-through on any ground.">
