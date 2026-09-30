@@ -362,7 +362,8 @@ export type { WorkflowEditorBanner, WorkflowEditorLabels, WorkflowEditorProps } 
 // The editor around the canvas: no xyflow in any of them.
 export { WorkflowInspector } from './WorkflowInspector'
 export type {
-  WorkflowInspectorLabels, WorkflowInspectorLink, WorkflowInspectorProps, WorkflowInspectorStep, WorkflowInspectorTarget,
+  WorkflowInspectorLabels, WorkflowInspectorLink, WorkflowInspectorProps, WorkflowInspectorIntro, WorkflowInspectorSettings, WorkflowInspectorStep,
+  WorkflowInspectorTarget,
 } from './WorkflowInspector'
 export { WorkflowSkillPicker } from './WorkflowSkillPicker'
 export type {

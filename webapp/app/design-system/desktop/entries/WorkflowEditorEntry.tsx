@@ -113,6 +113,7 @@ function EditorSpecimen() {
     <div ref={stageRef} className="h-[640px] overflow-hidden rounded-xl border border-line">
       <WorkflowEditor
         title="Editing the workflow of magic-slash"
+        repository="magic-slash"
         labels={{ ...LABELS, dock: { ...DOCK_LABELS, problems: `${problems.length} problem${problems.length === 1 ? '' : 's'} to fix before saving` } }}
         nodes={nodes}
         links={flow.links}

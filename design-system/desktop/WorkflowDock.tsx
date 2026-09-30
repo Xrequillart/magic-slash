@@ -12,8 +12,8 @@ import type { WorkflowProblemItem } from './WorkflowProblems'
  * THE EDITOR'S DOCK: a floating bar at the bottom centre of the canvas, holding what
  * the editor does to the whole flow rather than to what is selected.
  *
- * Left to right: add a step, undo and redo, the zoom, the problems, and the way out
- * (discard, save, close). The selection's own controls are the inspector's, which is
+ * Left to right: add a step, undo and redo, the zoom, the problems, and the draft's
+ * fate (discard, save), then a close button when the caller has one to give. The selection's own controls are the inspector's, which is
  * why nothing here needs one.
  *
  * DRAWN BY `WorkflowCanvas`, INSIDE ITS FLOW, and never by hand: the zoom buttons and
@@ -44,8 +44,8 @@ export interface WorkflowDockLabels {
   problems: string
   discard: string
   save: string
-  /** "Close the editor". */
-  close: string
+  /** "Close the editor", when there is a close button: `onClose`. */
+  close?: string
 }
 
 export interface WorkflowDockProps {
@@ -66,7 +66,8 @@ export interface WorkflowDockProps {
   canSave?: boolean
   onSave?: () => void
   onDiscard?: () => void
-  onClose: () => void
+  /** A close button at the end of the bar. None without it: the full-screen editor closes from its title bar. */
+  onClose?: () => void
 }
 
 /** How far a zoom button moves, and how long it takes. */
@@ -173,8 +174,12 @@ export function WorkflowDock({
           )}
         </>
       )}
-      <Divider />
-      <ButtonIcon icon={X} title={labels.close} onClick={onClose} tone="ghost" size="lg" />
+      {onClose && (
+        <>
+          <Divider />
+          <ButtonIcon icon={X} title={labels.close ?? ''} onClick={onClose} tone="ghost" size="lg" />
+        </>
+      )}
     </div>
   )
 }

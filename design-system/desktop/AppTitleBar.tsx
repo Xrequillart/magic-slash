@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode, RefObject } from 'react'
 import { ButtonIcon } from './ButtonIcon'
-import { Archive, CircleUserRound, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Settings2 } from './icons'
+import { Archive, CircleUserRound, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Settings2, X } from './icons'
 import { Label } from './Label'
 import type { IconComponent } from './types'
 
@@ -222,6 +222,12 @@ export interface AppTitleBarProps {
   left?: TitleBarToggle
   /** The switch beside the left toggle. */
   leftSwitch?: TitleBarSwitch
+  /**
+   * A LABEL after the left controls, naming what the window is showing when it is not the
+   * app's own: the repository a full-screen editor is changing. A `Label`, the bar's badge,
+   * with its mark.
+   */
+  label?: { text: string; icon?: IconComponent; color?: string }
   /** The name, or the two names, in the middle. */
   titles?: TitleBarTitle[]
   /** The action before the right toggle. */
@@ -251,6 +257,11 @@ export interface AppTitleBarProps {
   notice?: TitleBarAction
   /** The account, last in the bar — see `TitleBarAccount`. */
   account?: TitleBarAccount
+  /**
+   * A CLOSE BUTTON, the very last thing in the bar: for a view that covers the app and has
+   * to be left, the full-screen workflow editor. `title` is its tooltip and its name.
+   */
+  close?: { title: string; onClick: () => void }
   /** Margins and placement. Not the height, the ground, or the order of the regions. */
   className?: string
 }
@@ -265,9 +276,11 @@ export function AppTitleBar({
   settings,
   notice,
   account,
+  label,
+  close,
   className = '',
 }: AppTitleBarProps) {
-  const hasRight = Boolean(action || right || settings || notice || account)
+  const hasRight = Boolean(action || right || settings || notice || account || close)
 
   return (
     <div
@@ -290,6 +303,7 @@ export function AppTitleBar({
             />
           )}
           {leftSwitch && <Switch {...leftSwitch} />}
+          {label && <Label tone="neutral" icon={label.icon} color={label.color}>{label.text}</Label>}
         </Controls>
       </div>
 
@@ -326,6 +340,7 @@ export function AppTitleBar({
             />
           )}
           {account && <Account {...account} />}
+          {close && <ButtonIcon icon={X} title={close.title} onClick={close.onClick} />}
         </Controls>
       )}
     </div>

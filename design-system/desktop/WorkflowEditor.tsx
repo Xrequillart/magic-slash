@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type AnimationEvent } from 'react'
 
 import { AppTitleBar } from './AppTitleBar'
 import { Banner, type BannerVariant } from './Banner'
+import { FolderGit2 } from './icons'
 import { WorkflowCanvas, type WorkflowCanvasLabels, type WorkflowCanvasSelection } from './WorkflowCanvas'
 import type { WorkflowDockLabels } from './WorkflowDock'
 import { WorkflowInspector, type WorkflowInspectorLabels, type WorkflowInspectorProps, type WorkflowInspectorTarget } from './WorkflowInspector'
@@ -64,6 +65,9 @@ export interface WorkflowEditorLabels {
 export interface WorkflowEditorProps {
   /** In the middle of the title bar: "Editing the workflow of magic-slash". */
   title: string
+  /** On the title bar's left, the repository being edited, as a `Label`, in its own colour. */
+  repository?: string
+  repositoryColor?: string
   labels: WorkflowEditorLabels
 
   nodes: WorkflowCanvasNode[]
@@ -118,6 +122,8 @@ export interface WorkflowEditorProps {
 
 export function WorkflowEditor({
   title,
+  repository,
+  repositoryColor,
   labels,
   nodes,
   links,
@@ -186,7 +192,13 @@ export function WorkflowEditor({
       className={`ms-wfe flex h-full w-full flex-col overflow-hidden bg-bg ${leaving ? 'ms-wfe-leaving ' : ''}${className}`.trim()}
       onAnimationEnd={onRootAnimationEnd}
     >
-      <AppTitleBar trafficLightGutter={trafficLightGutter} titles={[{ id: 'workflow', label: title }]} className="ms-wfe-bar flex-shrink-0" />
+      <AppTitleBar
+        trafficLightGutter={trafficLightGutter}
+        label={repository ? { text: repository, icon: FolderGit2, color: repositoryColor } : undefined}
+        titles={[{ id: 'workflow', label: title }]}
+        close={{ title: labels.dock.close ?? '', onClick: onClose }}
+        className="ms-wfe-bar flex-shrink-0"
+      />
       {/* 6px in from the window on every side: the canvas is framed, not bled. */}
       <div className="relative min-h-0 flex-1 p-1.5">
         <div className="ms-wfe-stage h-full">
@@ -203,7 +215,8 @@ export function WorkflowEditor({
             onMove={readOnly ? undefined : onMove}
             onConnect={readOnly ? undefined : onConnect}
             focusRequest={focusRequest}
-            dock={readOnly ? { labels: labels.dock, onClose } : {
+            // The dock has no close button: the title bar's, top right, is the way out.
+            dock={readOnly ? { labels: labels.dock } : {
               labels: labels.dock,
               onAdd: (anchor, position) => setPicker({ anchor, position }),
               canUndo,
@@ -217,7 +230,6 @@ export function WorkflowEditor({
               canSave,
               onSave,
               onDiscard,
-              onClose,
             }}
           />
         </div>
@@ -240,7 +252,7 @@ export function WorkflowEditor({
 
         {panel && (
           <div
-            className={`ms-wfe-panel absolute right-4 top-4 max-h-[calc(100%-8rem)] w-80 overflow-y-auto rounded-xl shadow-2xl ${open ? '' : 'ms-wfe-panel-leaving'}`.trim()}
+            className={`ms-wfe-panel absolute right-4 top-4 max-h-[calc(100%-10.5rem)] w-[27rem] overflow-y-auto rounded-xl shadow-2xl ${open ? '' : 'ms-wfe-panel-leaving'}`.trim()}
             onAnimationEnd={(event) => { if (event.animationName === 'ms-wfe-panel-out' && !open) setExiting(null) }}
           >
             <div key={panelKey} className="ms-wfe-swap">

@@ -1,10 +1,13 @@
-import { Banner } from './Banner'
+import { Banner, type BannerVariant } from './Banner'
 import { Button } from './Button'
 import { ButtonIcon } from './ButtonIcon'
 import { Card, type CardGround } from './Card'
 import { Icon } from './Icon'
+import { OutputSample } from './OutputSample'
 import { ArrowRight, Lock, Trash, X } from './icons'
 import { Select, type SelectOption } from './Select'
+import { SettingsCard, type SettingsCardRow } from './SettingsCard'
+import { SkillIntro } from './SkillIntro'
 import { skillIcon } from './skillIcons'
 import { Text } from './Text'
 import type { WorkflowSkillOption, WorkflowSkillSource } from './WorkflowSkillPicker'
@@ -24,6 +27,9 @@ import type { WorkflowCanvasLinkKind, WorkflowCanvasNodeMode } from './workflowL
  *  - a LINK: from and to, the outcome it is taken on if any, and its kind. A kind the
  *    model refuses there (`disabledKinds`, an auto link into start, say) stays in the
  *    list, greyed, with the link's `hint` saying why.
+ *
+ * A STEP'S OWN SETTINGS (`settings`), when its skill has any, follow its controls: the
+ * repository's settings of that skill, saved as they change.
  *
  * A DRAWN LINK can also be removed, and the outcome it is taken on changed (`outcomes`,
  * the ones its source can end on). A default link cannot: it is the product's, and only
@@ -50,6 +56,38 @@ export interface WorkflowInspectorStep {
   warning?: string
   /** Quiet lines under the controls, already translated. */
   hints?: string[]
+  /**
+   * The skill's own settings, the ones its repository gives it (Plan: search for
+   * duplicates, how to split, what tickets to file), in groups. Drawn under the step's
+   * controls, built-in step or not: a locked step cannot be removed, but how it runs is
+   * the repository's to say. The rows are `SettingsCard`'s, each one's `onChange` the
+   * caller's, and they are saved as they change, not with the workflow.
+   */
+  settings?: WorkflowInspectorSettings[]
+  /** What the skill does with those settings, in words: `SkillIntro`'s, above them. */
+  intro?: WorkflowInspectorIntro
+}
+
+/** A `SkillIntro`, as data: its command, its one-line lead, then its steps and flags. Translated. */
+export interface WorkflowInspectorIntro {
+  command: string
+  lead: string
+  steps?: string[]
+  flags?: string[]
+}
+
+/**
+ * One group of a step's settings: a `SettingsCard`, and under it either what those
+ * settings produce (`sample`, an `OutputSample`: the commit message they would write) or
+ * a warning in its place (`notice`, a `Banner`), when what they produce cannot be shown.
+ */
+export interface WorkflowInspectorSettings {
+  id: string
+  title?: string
+  /** `SettingsCard`'s rows. A falsy entry is a row that does not apply, and is skipped. */
+  rows: (SettingsCardRow | false | null | undefined)[]
+  sample?: { label: string; text: string }
+  notice?: { variant: BannerVariant; text: string }
 }
 
 export interface WorkflowInspectorLink {
@@ -106,6 +144,10 @@ export interface WorkflowInspectorLabels {
   defaultLink?: string
   /** The corner X, with `onClose`. */
   close?: string
+  /** The heading over a step's settings: "Settings". */
+  settings?: string
+  /** Under it: "Saved as soon as they change." */
+  settingsHint?: string
 }
 
 export interface WorkflowInspectorProps {
@@ -257,6 +299,33 @@ function StepPanel({
             </Button>
           )}
         </>
+      )}
+
+      {step.settings && step.settings.length > 0 && (
+        <div className="-mx-1 mt-1 flex flex-col gap-3 border-t border-line px-1 pt-3">
+          {labels.settings && (
+            <div className="flex flex-col gap-0.5">
+              <Text size="xs" weight="bold">{labels.settings}</Text>
+              {labels.settingsHint && <Text size="2xs" tone="secondary">{labels.settingsHint}</Text>}
+            </div>
+          )}
+          {step.intro && (
+            <SkillIntro command={step.intro.command} icon={skillIcon(step.skill)} steps={step.intro.steps} flags={step.intro.flags}>
+              {step.intro.lead}
+            </SkillIntro>
+          )}
+          {step.settings.map((group) => (
+            <div key={group.id} className="flex flex-col gap-2">
+              <SettingsCard
+                title={group.title}
+                // Stacked: a panel this narrow has no room for a label and its control side by side.
+                rows={group.rows.map((row) => row && { ...row, layout: 'stacked' as const })}
+              />
+              {group.sample && <OutputSample label={group.sample.label}>{group.sample.text}</OutputSample>}
+              {group.notice && <Banner variant={group.notice.variant} bordered={false}>{group.notice.text}</Banner>}
+            </div>
+          ))}
+        </div>
       )}
     </>
   )

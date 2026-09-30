@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Trash2, AlertTriangle, Plus, ArrowLeft, Building2, Lock, FolderOpen,
-  Ticket, Settings2, Languages, GitBranch, FolderGit2, Workflow,
+  Ticket, Settings2, Puzzle, GitBranch, FolderGit2, Workflow,
 } from '@ds/desktop/icons'
 import { useAuth } from '../../hooks/useAuth'
 import { useConfig } from '../../hooks/useConfig'
@@ -19,7 +19,6 @@ import {
   Card,
   EmptyState,
   Loader,
-  OutputSample,
   RepoPageHeader,
   SectionHeader,
   SettingsCard,
@@ -36,6 +35,8 @@ import {
   type WorkflowCanvasSelection,
   type WorkflowEditorBanner,
   type WorkflowEditorLabels,
+  type WorkflowInspectorIntro,
+  type WorkflowInspectorSettings,
   type WorkflowInspectorTarget,
   type WorkflowProblemItem,
 } from '@ds/desktop'
@@ -94,8 +95,8 @@ interface RepoPageProps {
  * there, and the bin is what keeps it from reading as a fourth ordinary tab.
  */
 type RepoTab =
-  | 'general' | 'repository' | 'tickets' | 'languages' | 'workflow'
-  | 'plan' | 'commit' | 'pr' | 'review' | 'resolve'
+  | 'general' | 'repository' | 'tickets' | 'workflow'
+  | 'annex'
 
 const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: IconComponent }[] = [
   // Labelled with each subject's OWN `*.section` key rather than a parallel
@@ -104,29 +105,20 @@ const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: IconComponent }[] = 
   // to translate. Danger is the exception: its section is headed "Danger Zone",
   // which is a warning, where a pill wants one word.
   { id: 'general', labelKey: 'repo.general.section', icon: Settings2 },
-  // Repository before Tickets, and both before Languages: the first three tabs are
-  // the repo itself — what it is, where its code lives, where its tickets go — and
-  // the strip reads as that list before it turns to how the skills behave.
+  // Repository before Tickets: the first three tabs are the repo itself, what it is,
+  // where its code lives, where its tickets go, before the strip turns to the skills.
+  //
+  // There is no Languages tab: each language is set where it is used, on the skill that
+  // writes in it (the workflow editor's inspector), and the discussion language, which
+  // every skill speaks, on General.
   { id: 'repository', labelKey: 'repo.repository.section', icon: GitBranch },
   { id: 'tickets', labelKey: 'repo.tickets.section', icon: Ticket },
-  { id: 'languages', labelKey: 'repo.langs.section', icon: Languages },
-  // The workflow sits between the repository's own tabs and the skills': it is the map
-  // of the skill tabs after it, the order they run in and what each leads to, so it
-  // is read before any one of them.
+  // The workflow holds the cycle skills' settings now: each one's are read and changed
+  // on its step, in the workflow editor's inspector (`stepSettings`), not in a tab.
   { id: 'workflow', labelKey: 'repo.workflow.section', icon: Workflow },
-  // One tab per skill rather than one "Skills" tab holding four sections: each of
-  // these is a workflow with its own vocabulary, and stacking them made the tab that
-  // held them longer than the five others put together.
-  //
-  // In workflow order, which is also the order the skills run in: an idea becomes
-  // tickets, tickets become commits, commits become a pull request, and the review
-  // comments a repo resolves only exist once that pull request does — so Resolve comes
-  // after PR, not before it.
-  { id: 'plan', labelKey: 'repo.plan.section', icon: skillIcon('magic-plan') },
-  { id: 'commit', labelKey: 'repo.commit.section', icon: skillIcon('magic-commit') },
-  { id: 'pr', labelKey: 'repo.pr.section', icon: skillIcon('magic-pr') },
-  { id: 'review', labelKey: 'repo.review.section', icon: skillIcon('magic-review') },
-  { id: 'resolve', labelKey: 'repo.resolve.section', icon: skillIcon('magic-resolve') },
+  // The side skills, entered from wherever the user is rather than as steps of the cycle,
+  // have no step to hang their settings from: they share this tab. Review, for now.
+  { id: 'annex', labelKey: 'repo.annex.section', icon: Puzzle },
 ]
 
 /**
@@ -189,6 +181,7 @@ const PLAN_ACCEPTANCE_CRITERIA_LABELS: Record<(typeof PLAN_ACCEPTANCE_CRITERIA_F
  */
 const SKILL_INTROS = {
   plan: { command: '/magic:plan', icon: skillIcon('magic-plan'), lead: 'repo.plan.intro' },
+  start: { command: '/magic:start', icon: skillIcon('magic-start'), lead: 'repo.start.intro' },
   commit: { command: '/magic:commit', icon: skillIcon('magic-commit'), lead: 'repo.commit.intro' },
   pr: { command: '/magic:pr', icon: skillIcon('magic-pr'), lead: 'repo.pr.intro' },
   review: { command: '/magic:review', icon: skillIcon('magic-review'), lead: 'repo.review.intro' },
@@ -287,6 +280,24 @@ const BODY_VERBOSITY_LABEL: Record<(typeof BODY_VERBOSITY_MODES)[number], Messag
   detailed: 'repo.pr.bodyVerbosityDetailed',
 }
 
+const START_EXPLORATION_MODES = ['auto', 'always', 'never'] as const
+const START_EXPLORATION_LABEL: Record<(typeof START_EXPLORATION_MODES)[number], MessageKey> = {
+  auto: 'repo.start.explorationAuto',
+  always: 'repo.start.explorationAlways',
+  never: 'repo.start.explorationNever',
+}
+
+const START_EXECUTION_MODES = ['auto', 'solo', 'multi'] as const
+const START_EXECUTION_LABEL: Record<(typeof START_EXECUTION_MODES)[number], MessageKey> = {
+  auto: 'repo.start.executionAuto',
+  solo: 'repo.start.executionSolo',
+  multi: 'repo.start.executionMulti',
+}
+
+/** The critic's two numbers, and the range the write path accepts for each (config.ts). */
+const START_CRITIC_ITERATIONS = { min: 0, max: 5, fallback: 3 }
+const START_CRITIC_SCORE = { min: 1, max: 10, fallback: 8 }
+
 const REVIEW_MODES = ['ask', 'post'] as const
 const REVIEW_MODE_LABEL: Record<(typeof REVIEW_MODES)[number], MessageKey> = {
   ask: 'repo.review.modeAsk',
@@ -359,6 +370,12 @@ function generateCommitExample(format: string, style: string, includeTicketId: b
   return firstLine
 }
 
+/** What a step's inspector shows of its skill: what it does, then its settings. */
+interface WorkflowStepConfig {
+  intro?: WorkflowInspectorIntro
+  settings: WorkflowInspectorSettings[]
+}
+
 /**
  * THE WORKFLOW TAB: the flow this repository's skills follow, drawn on the design
  * system's canvas, and the full-screen editor its Edit button opens for whoever may
@@ -415,7 +432,19 @@ function generateCommitExample(format: string, style: string, includeTicketId: b
  * A component of its own, at module scope, because it owns a fetch and an editor's
  * state: RepoPage's state is the repository's settings, and this is not one of them.
  */
-function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boolean }) {
+function WorkflowPanel({
+  repoName,
+  repoColor,
+  readOnly,
+  stepSettings,
+}: {
+  repoName: string
+  /** The repository's hue, as its rail item and list row wear it: the editor's title bar label. */
+  repoColor?: string
+  readOnly: boolean
+  /** A step's own settings, by the skill it runs, for the inspector. RepoPage's, which holds them. */
+  stepSettings: Readonly<Record<string, WorkflowStepConfig>>
+}) {
   const t = useT()
   const windowFullScreen = useIsFullScreen()
   // null while loading. `saved` is what the backend holds, `source` whether it is the
@@ -723,9 +752,10 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
       const hints = stepHints(flow, node.id).map((hint) => t(
         hint === 'on-review-comments' ? 'repo.workflow.hint.reviewComments' : 'repo.workflow.hint.skippedFromStart',
       ))
+      const config = stepSettings[node.skill]
       return {
         type: 'node',
-        step: { ...node, hints: hints.length > 0 ? hints : undefined },
+        step: { ...node, hints: hints.length > 0 ? hints : undefined, settings: config?.settings, intro: config?.intro },
       }
     }
     const link = flow.links.find((l) => l.from === selected.from && l.to === selected.to)
@@ -927,6 +957,8 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
       anyOutcome: t('repo.workflow.inspector.anyOutcome'),
       defaultLink: t('repo.workflow.inspector.defaultLink'),
       close: t('repo.workflow.inspector.close'),
+      settings: t('repo.workflow.inspector.settings'),
+      settingsHint: t('repo.workflow.inspector.settingsHint'),
     },
     dock: {
       dock: t('repo.workflow.dock.label'),
@@ -1002,6 +1034,8 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
             <div className="fixed inset-0 z-[55]">
               <WorkflowEditor
                 title={t('repo.workflow.editor.title', { name: repoName })}
+                repository={repoName}
+                repositoryColor={repoColor}
                 labels={editorLabels}
                 nodes={data.nodes}
                 links={data.links}
@@ -1119,6 +1153,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
     updateRepositoryCommitSettings,
     updateRepositoryResolveSettings,
     updateRepositoryReviewSettings,
+    updateRepositoryStartSettings,
     updateRepositoryPullRequestSettings,
     updateRepositoryIssuesSettings,
     updateRepositoryJiraSettings,
@@ -1358,6 +1393,15 @@ export function RepoPage({ repoName }: RepoPageProps) {
     }
   }
 
+  const handleStartSettingChange = async (key: string, value: boolean | string | number) => {
+    try {
+      await updateRepositoryStartSettings(repoName, { [key]: value })
+      showToast(t('toast.settingUpdated'))
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t('toast.settingUpdateFailed'), 'error')
+    }
+  }
+
   const handleReviewSettingChange = async (key: string, value: boolean | string) => {
     try {
       await updateRepositoryReviewSettings(repoName, { [key]: value })
@@ -1544,6 +1588,16 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const repoLangs = repo.languages || {}
   const commitSettings = repo.commit || {}
   const resolveSettings = repo.resolve || {}
+  // /magic:start's, every one defaulting to what the skill did before it had settings.
+  const startSettings = repo.start || {}
+  const startExplorationVal = startSettings.exploration || 'auto'
+  const startPlanVal = startSettings.plan !== undefined ? startSettings.plan : true
+  const startPlanReviewVal = startSettings.planReview !== undefined ? startSettings.planReview : true
+  const startPlanApprovalVal = startSettings.planApproval !== undefined ? startSettings.planApproval : true
+  const startExecutionVal = startSettings.execution || 'auto'
+  const startSimplifyVal = startSettings.simplify !== undefined ? startSettings.simplify : true
+  const startIterationsVal = startSettings.criticIterations ?? START_CRITIC_ITERATIONS.fallback
+  const startMinScoreVal = startSettings.criticMinScore ?? START_CRITIC_SCORE.fallback
   const reviewSettings = repo.review || {}
   const reviewConfidenceScoreVal = reviewSettings.confidenceScore !== undefined ? reviewSettings.confidenceScore : true
   const reviewModeVal = reviewSettings.mode === 'post' ? 'post' : 'ask'
@@ -1725,6 +1779,566 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
   // No entrance animation of its own: the settings content pane already animates
   // every page switch, and two nested slides would compound.
+  // Each skill's languages, where it writes in them (the Languages tab is gone). The
+  // ticket cascade still reads top-down: `spec` inherits `ticket`, which inherits
+  // `jiraComment`, and each row shows the RESOLVED value, what is actually in force.
+  const languagesGroup = (rows: (SettingsCardRow | false)[]): WorkflowInspectorSettings => ({
+    id: 'languages',
+    title: t('repo.langs.section'),
+    rows,
+  })
+
+  /**
+   * THE PLAN SKILL'S SETTINGS, in the three phases the skill itself runs in: it looks
+   * for what already exists, it decides how to cut the work up, then it creates the
+   * tickets. Shown in the workflow editor's inspector when the Plan step is selected,
+   * and nowhere else: the tab they had is gone, the step on the canvas is where they are
+   * read. Saved as soon as they change, like every other setting on this page, not with
+   * the workflow's Save.
+   */
+  const planStepSettings: WorkflowInspectorSettings[] = [
+    { id: 'before', title: t('repo.plan.groupBefore'), rows: [{
+        id: 'duplicateCheck',
+        label: t('repo.plan.duplicateCheck'),
+        hint: t('repo.plan.duplicateCheckHelp'),
+        disabled: readOnly,
+        control: {
+          kind: 'switch' as const,
+          checked: planDuplicateCheckVal,
+          onChange: (next: boolean) => handlePlanSettingChange('duplicateCheck', next),
+          label: t('repo.plan.duplicateCheck'),
+        },
+      }] },
+    { id: 'breakdown', title: t('repo.plan.groupBreakdown'), rows: [
+        {
+          id: 'splitting',
+          label: t('repo.plan.splitting'),
+          hint: t('repo.plan.splittingHelp'),
+          disabled: readOnly,
+          control: enumControl(
+            t,
+            planSplittingVal,
+            PLAN_SPLITTING_MODES,
+            PLAN_SPLITTING_LABELS,
+            (v) => handlePlanSettingChange('splitting', v),
+            t('repo.plan.splitting'),
+          ),
+        },
+        {
+          id: 'acceptanceCriteria',
+          label: t('repo.plan.acceptanceCriteria'),
+          hint: t('repo.plan.acceptanceCriteriaHelp'),
+          disabled: readOnly,
+          control: enumControl(
+            t,
+            planAcceptanceCriteriaVal,
+            PLAN_ACCEPTANCE_CRITERIA_FORMATS,
+            PLAN_ACCEPTANCE_CRITERIA_LABELS,
+            (v) => handlePlanSettingChange('acceptanceCriteria', v),
+            t('repo.plan.acceptanceCriteria'),
+          ),
+        },
+      ] },
+    { id: 'tickets', title: t('repo.plan.groupTickets'), rows: [
+        // Jira issue-type NAMES, as that project spells them — read by this skill and
+        // nothing else (jira-fields.md §1.2), which is why they sit here rather than
+        // with the Jira address on the Tickets tab. Hidden when the repo files into
+        // GitHub, where an "Epic" issue type does not exist.
+        ...(trackerModeVal === 'jira'
+          ? ([
+            ['epic', t('repo.plan.epicType'), t('repo.plan.epicTypeHelp'), planEpicTypeVal, 'Epic'],
+            ['story', t('repo.plan.storyType'), t('repo.plan.storyTypeHelp'), planStoryTypeVal, 'Story'],
+          ] as const).map(([key, label, hint, value, placeholder]) => ({
+            id: `issueType-${key}`,
+            label,
+            hint,
+            disabled: readOnly,
+            control: {
+              kind: 'input' as const,
+              value,
+              onChange: (next: string) => handlePlanIssueTypeChange(key, next),
+              placeholder,
+              className: 'w-64',
+            },
+          }))
+          : []),
+        // Two switches that differ only by key, and whose message keys are
+        // mechanically `repo.plan.<key>` / `<key>Help`. `duplicateCheck` used to ride
+        // along here; it belongs to the phase before any of this.
+        ...([
+          ['useRepoTemplates', planUseRepoTemplatesVal],
+          ['assignToMe', planAssignToMeVal],
+        ] as const).map(([key, checked]) => ({
+          id: key,
+          label: t(`repo.plan.${key}` as MessageKey),
+          hint: t(`repo.plan.${key}Help` as MessageKey),
+          disabled: readOnly,
+          control: {
+            kind: 'switch' as const,
+            checked,
+            onChange: (next: boolean) => handlePlanSettingChange(key, next),
+            label: t(`repo.plan.${key}` as MessageKey),
+          },
+        })),
+        {
+          id: 'defaultLabels',
+          label: t('repo.plan.defaultLabels'),
+          hint: t('repo.plan.defaultLabelsHelp'),
+          disabled: readOnly,
+          layout: 'stacked' as const,
+          control: {
+            kind: 'chips' as const,
+            items: planDefaultLabelsVal,
+            onChange: (labels: string[]) => handlePlanSettingChange('defaultLabels', labels),
+            placeholder: 'enhancement',
+            addLabel: t('common.add'),
+            removeLabel: t('common.remove'),
+            id: 'plan-default-label-input',
+            disabled: readOnly,
+          },
+        },
+      ] },
+    languagesGroup([
+      langRow('ticket', t('repo.issues.ticketLang'), t('repo.issues.ticketLangHelp'), resolveTicketLanguage(repoLangs)),
+      langRow('spec', t('repo.issues.specLang'), t('repo.issues.specLangHelp'), resolveSpecLanguage(repoLangs)),
+    ]),
+  ]
+  /**
+   * /MAGIC:START'S SETTINGS, in the order its Step 5 runs: what it does before writing
+   * code, who writes it, then how hard the critic is to satisfy. The plan's own rows (its
+   * review, its approval, who implements it) only show while there is a plan: without
+   * one, the agent implements straight from the ticket, alone.
+   */
+  const stepperFor = (
+    key: 'criticIterations' | 'criticMinScore',
+    value: number,
+    range: { min: number; max: number; fallback: number },
+    label: string,
+    text: string,
+  ) => ({
+    kind: 'stepper' as const,
+    value: text,
+    onDecrement: () => handleStartSettingChange(key, value - 1),
+    onIncrement: () => handleStartSettingChange(key, value + 1),
+    canDecrement: value > range.min,
+    canIncrement: value < range.max,
+    decrementTitle: t('repo.start.less'),
+    incrementTitle: t('repo.start.more'),
+    onReset: () => handleStartSettingChange(key, range.fallback),
+    canReset: value !== range.fallback,
+    resetTitle: t('repo.start.reset'),
+    label,
+    disabled: readOnly,
+  })
+  const startStepSettings: WorkflowInspectorSettings[] = [
+    {
+      id: 'before',
+      title: t('repo.start.groupBefore'),
+      rows: [
+        {
+          id: 'exploration',
+          label: t('repo.start.exploration'),
+          hint: t('repo.start.explorationHelp'),
+          disabled: readOnly,
+          control: enumControl(t, startExplorationVal, START_EXPLORATION_MODES, START_EXPLORATION_LABEL,
+            (next) => handleStartSettingChange('exploration', next), t('repo.start.exploration')),
+        },
+        switchRow('plan', t('repo.start.plan'), t('repo.start.planHelp'),
+          startPlanVal, (next) => handleStartSettingChange('plan', next)),
+        startPlanVal && switchRow('planReview', t('repo.start.planReview'), t('repo.start.planReviewHelp'),
+          startPlanReviewVal, (next) => handleStartSettingChange('planReview', next)),
+        startPlanVal && switchRow('planApproval', t('repo.start.planApproval'), t('repo.start.planApprovalHelp'),
+          startPlanApprovalVal, (next) => handleStartSettingChange('planApproval', next)),
+      ],
+    },
+    {
+      id: 'implementation',
+      title: t('repo.start.groupImplementation'),
+      rows: [
+        startPlanVal && {
+          id: 'execution',
+          label: t('repo.start.execution'),
+          hint: t('repo.start.executionHelp'),
+          disabled: readOnly,
+          control: enumControl(t, startExecutionVal, START_EXECUTION_MODES, START_EXECUTION_LABEL,
+            (next) => handleStartSettingChange('execution', next), t('repo.start.execution')),
+        },
+        switchRow('simplify', t('repo.start.simplify'), t('repo.start.simplifyHelp'),
+          startSimplifyVal, (next) => handleStartSettingChange('simplify', next)),
+      ],
+    },
+    {
+      id: 'critic',
+      title: t('repo.start.groupCritic'),
+      rows: [
+        {
+          id: 'criticIterations',
+          label: t('repo.start.criticIterations'),
+          hint: t('repo.start.criticIterationsHelp'),
+          disabled: readOnly,
+          control: stepperFor('criticIterations', startIterationsVal, START_CRITIC_ITERATIONS,
+            t('repo.start.criticIterations'), String(startIterationsVal)),
+        },
+        {
+          id: 'criticMinScore',
+          label: t('repo.start.criticMinScore'),
+          hint: t('repo.start.criticMinScoreHelp'),
+          disabled: readOnly,
+          control: stepperFor('criticMinScore', startMinScoreVal, START_CRITIC_SCORE,
+            t('repo.start.criticMinScore'), `${startMinScoreVal}/10`),
+        },
+      ],
+    },
+  ]
+
+  /**
+   * THE COMMIT, PULL REQUEST AND RESOLVE SKILLS' SETTINGS, as their steps' inspector
+   * shows them, like Plan's above and for the same reasons: the tabs they had are gone.
+   * A group's `sample` is the preview that sat under its card, and `notice` the warning
+   * that replaces it when there is nothing to preview.
+   */
+  const commitStepSettings: WorkflowInspectorSettings[] = [
+    {
+      id: 'message',
+      title: t('repo.commit.groupMessage'),
+      rows: [
+        {
+          id: 'style',
+          label: t('repo.commit.style'),
+          hint: t('repo.commit.styleHelp'),
+          disabled: readOnly,
+          control: enumControl(t, styleVal, COMMIT_STYLES, COMMIT_STYLE_LABEL,
+            (next) => handleCommitSettingChange('style', next), t('repo.commit.style')),
+        },
+        {
+          id: 'format',
+          label: t('repo.commit.format'),
+          hint: t('repo.commit.formatHelp'),
+          disabled: readOnly,
+          control: enumControl(t, formatVal, COMMIT_FORMATS, COMMIT_FORMAT_LABEL,
+            (next) => handleCommitSettingChange('format', next), t('repo.commit.format')),
+        },
+        switchRow('coAuthor', t('repo.commit.coAuthor'), t('repo.commit.coAuthorHelp'),
+          coAuthorVal, (next) => handleCommitSettingChange('coAuthor', next)),
+        switchRow('ticketId', t('repo.commit.ticketId'), t('repo.commit.ticketIdHelp'),
+          includeTicketIdVal, (next) => handleCommitSettingChange('includeTicketId', next)),
+      ],
+      sample: { label: t('repo.example'), text: commitPreview },
+    },
+    {
+      id: 'branches',
+      title: t('repo.commit.groupBranches'),
+      rows: [{
+        id: 'protectedBranch',
+        // The padlock says this row is a guard rail rather than another property of
+        // the message — see `SettingRow.icon`, which exists for it.
+        icon: Lock,
+        label: t('repo.commit.protectedBranch'),
+        // The help text has to say which way round it is, because both states do
+        // something: ON means allowed-but-asked, OFF means /magic:commit branches
+        // off first.
+        hint: allowOnProtectedBranchVal
+          ? t('repo.commit.protectedBranchHelpOn')
+          : t('repo.commit.protectedBranchHelpOff'),
+        disabled: readOnly,
+        control: {
+          kind: 'switch' as const,
+          checked: allowOnProtectedBranchVal,
+          onChange: (next: boolean) => handleCommitSettingChange('allowOnProtectedBranch', next),
+          label: t('repo.commit.protectedBranch'),
+        },
+      }],
+    },
+    languagesGroup([langRow('commit', t('repo.langs.commit'), t('repo.commit.languageHelp'))]),
+  ]
+
+  const prStepSettings: WorkflowInspectorSettings[] = [
+    {
+      id: 'description',
+      title: t('repo.pr.groupDescription'),
+      rows: [
+        // First row of the card because it governs the body itself, where the rows
+        // under it only add things to that body.
+        {
+          id: 'bodyVerbosity',
+          label: t('repo.pr.bodyVerbosity'),
+          hint: t('repo.pr.bodyVerbosityHelp'),
+          disabled: readOnly,
+          control: enumControl(t, bodyVerbosityVal, BODY_VERBOSITY_MODES, BODY_VERBOSITY_LABEL,
+            (next) => handlePRSettingChange('bodyVerbosity', next), t('repo.pr.bodyVerbosity')),
+        },
+        switchRow('autoLink', t('repo.pr.autoLink'), t('repo.pr.autoLinkHelp'),
+          autoLinkTicketsVal, (next) => handlePRSettingChange('autoLinkTickets', next)),
+        {
+          id: 'testAccounts',
+          label: t('repo.pr.testAccounts'),
+          hint: t('repo.pr.testAccountsHelp'),
+          // The warning is about the VALUE — test accounts written into a description
+          // a public repository will publish — which is exactly what `note` is for.
+          ...(testAccountsVal === 'inline' ? { note: t('repo.pr.testAccountsPublicWarn') } : {}),
+          disabled: readOnly,
+          control: enumControl(t, testAccountsVal, TEST_ACCOUNT_MODES, TEST_ACCOUNT_LABEL,
+            (next) => handlePRSettingChange('testAccounts', next), t('repo.pr.testAccounts')),
+        },
+        // Only when the accounts are surfaced at all: where to read them from is not a
+        // question about a feature that is off.
+        testAccountsVal !== 'off' && {
+          id: 'testAccountsSource',
+          label: t('repo.pr.testAccountsSource'),
+          hint: t('repo.pr.testAccountsSourceHelp'),
+          disabled: readOnly,
+          control: {
+            kind: 'input' as const,
+            value: testAccountsSourceVal,
+            onChange: (next: string) => handlePRSettingChange('testAccountsSource', next),
+            placeholder: 'docs/test-accounts.md',
+            className: 'w-64',
+          },
+        },
+        // What /magic:pr may do with the boxes of the template edited just below,
+        // which is why it sits against that block rather than with the rows above.
+        {
+          id: 'templateCheckboxes',
+          label: t('repo.pr.templateCheckboxes'),
+          hint: t('repo.pr.templateCheckboxesHelp'),
+          disabled: readOnly,
+          control: enumControl(t, templateCheckboxesVal, TEMPLATE_CHECKBOX_MODES, TEMPLATE_CHECKBOX_LABEL,
+            (next) => handlePRSettingChange('templateCheckboxes', next), t('repo.pr.templateCheckboxes')),
+        },
+        // THE TEMPLATE IS ONE ROW IN THREE STATES, which is what it always was and
+        // could not say while it was three blocks of markup: the file is being looked
+        // for, it is not there and can be written, or it is there and can be edited.
+        templateLoading
+          ? { id: 'template', label: t('repo.pr.template'), hint: t('repo.pr.templateHelp'), note: t('repo.pr.templateChecking') }
+          : !template?.exists
+            ? {
+              id: 'template',
+              label: t('repo.pr.template'),
+              hint: t('repo.pr.templateHelp'),
+              disabled: readOnly,
+              control: {
+                kind: 'button' as const,
+                icon: Plus,
+                children: t('repo.pr.templateGenerate'),
+                onClick: handleGenerateTemplate,
+              },
+            }
+            : {
+              id: 'template',
+              label: t('repo.pr.template'),
+              hint: t('repo.pr.templateHelp'),
+              // WHERE the file is, which is the one fact the editor below cannot
+              // carry: a template is a real path in the repository, not a field.
+              note: template.path,
+              disabled: readOnly,
+              // Stacked: a 64-line editor has no business in a right-hand column.
+              layout: 'stacked' as const,
+              control: [
+                {
+                  kind: 'input' as const,
+                  multiline: true as const,
+                  rows: 14,
+                  resize: 'vertical' as const,
+                  value: templateContent,
+                  onChange: (next: string) => {
+                    setTemplateContent(next)
+                    setTemplateChanged(next !== template.content)
+                  },
+                  placeholder: t('repo.pr.templatePlaceholder'),
+                  className: 'flex-1 min-w-0',
+                },
+                ...(templateChanged
+                  ? [{ kind: 'button' as const, children: t('common.save'), onClick: handleSaveTemplate }]
+                  : []),
+              ],
+            },
+      ],
+    },
+    {
+      id: 'after',
+      title: t('repo.pr.groupAfter'),
+      rows: [
+        // The comment lands on the TICKET and carries the PR link. It sits here
+        // rather than with the tracker's address because it is the pull request that
+        // triggers it — the same reason the auto-link row above is on this tab.
+        // /magic:review and /magic:done read it too.
+        switchRow('commentOnPR', t('repo.issues.commentOnPR'), t('repo.issues.commentOnPRHelp'),
+          commentOnPRVal, (next) => handleIssuesSettingChange('commentOnPR', next)),
+        switchRow('watchCI', t('repo.pr.watchCI'), t('repo.pr.watchCIHelp'),
+          watchCIVal, (next) => handlePRSettingChange('watchCI', next)),
+      ],
+    },
+    languagesGroup([
+      langRow('pullRequest', t('repo.langs.pullRequest'), t('repo.pr.languageHelp')),
+      // The comment /magic:pr leaves on the ticket, and the start of the ticket cascade.
+      langRow('jiraComment', t('repo.issues.commentLang'), t('repo.issues.commentLangHelp')),
+    ]),
+  ]
+
+  const resolveStepSettings: WorkflowInspectorSettings[] = [
+    {
+      id: 'commits',
+      title: t('repo.resolve.groupCommits'),
+      rows: [
+        {
+          id: 'commitMode',
+          label: t('repo.resolve.commitMode'),
+          hint: t('repo.resolve.commitModeHelp'),
+          disabled: readOnly,
+          control: enumControl(t, resolveCommitModeVal, RESOLVE_COMMIT_MODES, RESOLVE_COMMIT_MODE_LABEL,
+            (next) => handleResolveSettingChange('commitMode', next), t('repo.resolve.commitMode')),
+        },
+        // Shown when a new commit is possible at all — amending writes no message of
+        // its own, so there is no format to choose.
+        resolveCommitModeVal !== 'amend' && {
+          id: 'commitFormatSource',
+          label: t('repo.resolve.commitFormat'),
+          hint: t('repo.resolve.commitFormatHelp'),
+          disabled: readOnly,
+          control: enumControl(t, resolveUseCommitConfigVal ? 'commit' : 'custom',
+            RESOLVE_CONFIG_SOURCES, RESOLVE_CONFIG_SOURCE_LABEL,
+            (next) => handleResolveSettingChange('useCommitConfig', next === 'commit'),
+            t('repo.resolve.commitFormat')),
+        },
+        // ...and its own style and format only once it has been told not to borrow
+        // the commit tab's.
+        ...(resolveCommitModeVal !== 'amend' && !resolveUseCommitConfigVal
+          ? [
+            {
+              id: 'resolveStyle',
+              label: t('repo.commit.style'),
+              hint: t('repo.commit.styleHelp'),
+              disabled: readOnly,
+              control: enumControl(t, resolveStyleVal, COMMIT_STYLES, COMMIT_STYLE_LABEL,
+                (next) => handleResolveSettingChange('style', next), t('repo.commit.style')),
+            },
+            {
+              id: 'resolveFormat',
+              label: t('repo.commit.format'),
+              hint: t('repo.commit.formatHelp'),
+              disabled: readOnly,
+              control: enumControl(t, resolveFormatVal, COMMIT_FORMATS, COMMIT_FORMAT_LABEL,
+                (next) => handleResolveSettingChange('format', next), t('repo.commit.format')),
+            },
+          ]
+          : []),
+      ],
+      // THE THREE MODES SAY THREE DIFFERENT THINGS HERE, and only one of them is a
+      // preview. A new commit can be shown; amending and asking cannot be, because what
+      // they produce is a rewritten history rather than a message, so they warn about
+      // the force-push instead.
+      ...(resolveCommitModeVal === 'new'
+        ? { sample: { label: t('repo.example'), text: resolvePreview } }
+        : { notice: { variant: 'warning' as const, text: `${t(resolveCommitModeVal === 'amend' ? 'repo.resolve.amendNotice' : 'repo.resolve.askNotice')} --force-with-lease` } }),
+    },
+    {
+      id: 'replies',
+      title: t('repo.resolve.groupReplies'),
+      rows: [
+        // The language these replies are written in lives on the Languages tab, with
+        // every other language — this switch decides whether they are written at all,
+        // which is a different question.
+        switchRow('reply', t('repo.resolve.reply'), t('repo.resolve.replyHelp'),
+          resolveReplyVal, (next) => handleResolveSettingChange('replyToComments', next)),
+        // Shown only when replies are on, like the language row on the Languages tab:
+        // how much a reply says is not a question worth asking about replies that are
+        // never written.
+        resolveReplyVal && {
+          id: 'replyVerbosity',
+          label: t('repo.resolve.replyVerbosity'),
+          hint: t('repo.resolve.replyVerbosityHelp'),
+          disabled: readOnly,
+          control: enumControl(t, resolveReplyVerbosityVal, RESOLVE_VERBOSITIES, RESOLVE_VERBOSITY_LABEL,
+            (next) => handleResolveSettingChange('replyVerbosity', next), t('repo.resolve.replyVerbosity')),
+        },
+      ],
+    },
+    // Review replies live in `resolve.replyLanguage`, not in the `languages` block, and
+    // fall back to the discussion language. Only while replies are written at all.
+    ...(resolveReplyVal
+      ? [languagesGroup([{
+        id: 'replyLanguage',
+        label: t('repo.resolve.replyLang'),
+        hint: t('repo.resolve.replyLangHelp'),
+        disabled: readOnly,
+        control: languageControl(
+          resolveReplyLangVal,
+          (next) => handleResolveSettingChange('replyLanguage', next),
+          t('repo.resolve.replyLang'),
+        ),
+      }])]
+      : []),
+  ]
+
+  /** A skill's `SkillIntro`, translated for the inspector: the same words its tab opened on. */
+  const introOf = (skill: keyof typeof SKILL_INTROS, summary: SkillSummary): WorkflowInspectorIntro => ({
+    command: SKILL_INTROS[skill].command,
+    lead: t(SKILL_INTROS[skill].lead),
+    steps: summary.steps.map((step) => t(step.key, step.vars)),
+    flags: summary.tail.map((flag) => t(flag.key, flag.vars)),
+  })
+
+  // By skill: what each step's inspector shows below its own controls.
+  const stepSettings: Record<string, WorkflowStepConfig> = {
+    'magic-plan': {
+      intro: introOf('plan', planSummary({
+        tracker: planTrackerVal,
+        jiraProject: jiraProjectVal,
+        githubTarget: githubIssuesTargetVal,
+        epicType: planEpicTypeVal,
+        storyType: planStoryTypeVal,
+        duplicateCheck: planDuplicateCheckVal,
+        splitting: planSplittingVal,
+        acceptanceCriteria: planAcceptanceCriteriaVal,
+        assignToMe: planAssignToMeVal,
+        labels: planDefaultLabelsVal,
+        useRepoTemplates: planUseRepoTemplatesVal,
+      })),
+      settings: planStepSettings,
+    },
+    'magic-start': {
+      intro: introOf('start', { steps: [], tail: [] }),
+      settings: startStepSettings,
+    },
+    'magic-commit': {
+      intro: introOf('commit', commitSummary({
+        format: formatVal,
+        style: styleVal,
+        allowOnProtectedBranch: allowOnProtectedBranchVal,
+        developmentBranch: branchSettings.development || '',
+        coAuthor: coAuthorVal,
+        includeTicketId: includeTicketIdVal,
+      })),
+      settings: commitStepSettings,
+    },
+    'magic-pr': {
+      intro: introOf('pr', prSummary({
+        trackerMode: trackerModeVal,
+        autoLinkTickets: autoLinkTicketsVal,
+        testAccounts: testAccountsVal,
+        testAccountsSource: testAccountsSourceVal,
+        commentOnPR: commentOnPRVal,
+        watchCI: watchCIVal,
+        templateCheckboxes: templateCheckboxesVal,
+        bodyVerbosity: bodyVerbosityVal,
+      })),
+      settings: prStepSettings,
+    },
+    'magic-resolve': {
+      intro: introOf('resolve', resolveSummary({
+        commitMode: resolveCommitModeVal,
+        useCommitConfig: resolveUseCommitConfigVal,
+        // Translated here rather than in the summary: a step carries strings, and these
+        // two labels are the resolve settings' own dropdowns spelled out.
+        formatLabel: t(COMMIT_FORMAT_LABELS[resolveFormatVal] ?? COMMIT_FORMAT_LABELS.angular),
+        styleLabel: t(COMMIT_STYLE_LABELS[resolveStyleVal] ?? COMMIT_STYLE_LABELS['single-line']),
+        replyToComments: resolveReplyVal,
+        replyVerbosity: resolveReplyVerbosityVal,
+      })),
+      settings: resolveStepSettings,
+    },
+  }
+
   return (
     <div>
       <RepoPageHeader
@@ -1811,6 +2425,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {tab === 'general' && (
         <div className="flex flex-col gap-6">
+        <SectionHeader icon={Settings2} title={t('repo.general.section')} description={t('repo.general.intro')} spacing="none" />
         {/* WHO THE REPOSITORY BELONGS TO, and the one move that changes it.
 
             A `SettingRow` with a mark rather than the accent-tinted badge this drew by
@@ -1854,6 +2469,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 // a picker with nothing in it.
                 : { note: t('repo.scope.joinOrg') }),
           }]}
+        />
+
+        {/* The one language that belongs to no skill: the one Claude speaks with you, in
+            every skill alike. Each skill's own languages are on its step in the workflow. */}
+        <SettingsCard
+          title={t('repo.langs.groupChat')}
+          rows={[langRow('discussion', t('repo.general.discussionLang'), t('repo.general.discussionLangHelp'))]}
         />
 
         <SettingsCard
@@ -1941,6 +2563,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {tab === 'repository' && (
         <div className="flex flex-col gap-6">
+        <SectionHeader icon={GitBranch} title={t('repo.repository.section')} description={t('repo.repository.intro')} spacing="none" />
         {/* Repository, in three groups that answer three different questions: WHERE the
             repo is — the folder on this machine and the address teammates clone — which
             branch work starts from, and what a fresh worktree needs copied into it. One
@@ -2047,6 +2670,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {tab === 'tickets' && (
         <div className="flex flex-col gap-6">
+        <SectionHeader icon={Ticket} title={t('repo.tickets.section')} description={t('repo.tickets.intro')} spacing="none" />
         {/* Tickets, in groups that answer one question each: WHERE do tickets go, and
             what is each tracker's address. It was one flat list of seven rows mixing
             the two with Jira issue-type names, and it read as a form rather than as an
@@ -2158,421 +2782,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
         </div>
       )}
 
-      {tab === 'languages' && (
-        <div className="flex flex-col gap-6">
-        {/* Languages, in three groups — BY WHO READS THEM, not by which skill writes
-            them. Grouping by skill is what this tab was created to undo: the six rows
-            were one per skill section, and answering "what language does this repo work
-            in?" meant visiting five of them.
-
-            The audience is the useful axis because it is what a wrong answer costs. The
-            discussion language is between you and Claude and nobody else ever sees it;
-            everything in the second group is read by whoever opens the repository; the
-            third is read by whoever opens the ticket — often a different set of people,
-            which is exactly why a French-speaking developer filing English tickets is
-            the normal case rather than an inconsistency. */}
-        <SettingsCard
-          title={t('repo.langs.groupChat')}
-          rows={[langRow('discussion', t('repo.general.discussionLang'), t('repo.general.discussionLangHelp'))]}
-        />
-
-        <SettingsCard
-          title={t('repo.langs.groupCode')}
-          rows={[
-            langRow('commit', t('repo.langs.commit'), t('repo.commit.languageHelp')),
-            langRow('pullRequest', t('repo.langs.pullRequest'), t('repo.pr.languageHelp')),
-            // Inherits the pull request language when unset, so it is handed the
-            // resolved value like the ticket cascade below.
-            langRow('review', t('repo.langs.review'), t('repo.review.languageHelp'), resolveReviewLanguage(repoLangs)),
-            // NOT a `langRow`: review replies live in `resolve.replyLanguage`, not in the
-            // `languages` block, and they fall back to the discussion language rather
-            // than to English. Shown only when replies are enabled — a language for
-            // something switched off is a setting with no effect.
-            resolveReplyVal && {
-              id: 'replyLanguage',
-              label: t('repo.resolve.replyLang'),
-              hint: t('repo.resolve.replyLangHelp'),
-              disabled: readOnly,
-              control: languageControl(
-                resolveReplyLangVal,
-                (next) => handleResolveSettingChange('replyLanguage', next),
-                t('repo.resolve.replyLang'),
-              ),
-            },
-          ]}
-        />
-
-        <SettingsCard
-          title={t('repo.langs.groupTickets')}
-          rows={[
-            // One cascade, in reading order: each row inherits the one above it when
-            // unset (`spec` -> `ticket` -> `jiraComment` -> 'en'), and each is handed the
-            // RESOLVED value so a row shows what is actually in force rather than a blank.
-            langRow('jiraComment', t('repo.issues.commentLang'), t('repo.issues.commentLangHelp')),
-            langRow('ticket', t('repo.issues.ticketLang'), t('repo.issues.ticketLangHelp'), resolveTicketLanguage(repoLangs)),
-            // Last of the three, because the cascade reads top-down: the spec inherits
-            // the tickets, which inherit the comments.
-            langRow('spec', t('repo.issues.specLang'), t('repo.issues.specLangHelp'), resolveSpecLanguage(repoLangs)),
-          ]}
-        />
-        </div>
-      )}
-
       {/* Mounted only while its tab is shown, which TabSweep's `tab ===` already
           guarantees: the canvas listens for the space bar on the whole document. */}
-      {tab === 'workflow' && <WorkflowPanel repoName={repoName} readOnly={readOnly} />}
+      {tab === 'workflow' && <WorkflowPanel repoName={repoName} repoColor={repoColor} readOnly={readOnly} stepSettings={stepSettings} />}
 
-      {tab === 'plan' && (
+      {tab === 'annex' && (
         <div className="flex flex-col gap-6">
-        <SkillIntro
-          skill="plan"
-          summary={planSummary({
-            tracker: planTrackerVal,
-            jiraProject: jiraProjectVal,
-            githubTarget: githubIssuesTargetVal,
-            epicType: planEpicTypeVal,
-            storyType: planStoryTypeVal,
-            duplicateCheck: planDuplicateCheckVal,
-            splitting: planSplittingVal,
-            acceptanceCriteria: planAcceptanceCriteriaVal,
-            assignToMe: planAssignToMeVal,
-            labels: planDefaultLabelsVal,
-            useRepoTemplates: planUseRepoTemplatesVal,
-          })}
-        />
-        {/* Plan, in the three phases the skill itself runs in: it looks for what already
-            exists, it decides how to cut the work up, then it creates the tickets. The
-            settings were one list of seven rows in which "search for duplicates" sat
-            between "acceptance criteria" and "assign to me" — three different moments of
-            one run, in no particular order. */}
-        <SettingsCard
-          title={t('repo.plan.groupBefore')}
-          rows={[{
-            id: 'duplicateCheck',
-            label: t('repo.plan.duplicateCheck'),
-            hint: t('repo.plan.duplicateCheckHelp'),
-            disabled: readOnly,
-            control: {
-              kind: 'switch' as const,
-              checked: planDuplicateCheckVal,
-              onChange: (next: boolean) => handlePlanSettingChange('duplicateCheck', next),
-              label: t('repo.plan.duplicateCheck'),
-            },
-          }]}
-        />
-
-        <SettingsCard
-          title={t('repo.plan.groupBreakdown')}
-          rows={[
-            {
-              id: 'splitting',
-              label: t('repo.plan.splitting'),
-              hint: t('repo.plan.splittingHelp'),
-              disabled: readOnly,
-              control: enumControl(
-                t,
-                planSplittingVal,
-                PLAN_SPLITTING_MODES,
-                PLAN_SPLITTING_LABELS,
-                (v) => handlePlanSettingChange('splitting', v),
-                t('repo.plan.splitting'),
-              ),
-            },
-            {
-              id: 'acceptanceCriteria',
-              label: t('repo.plan.acceptanceCriteria'),
-              hint: t('repo.plan.acceptanceCriteriaHelp'),
-              disabled: readOnly,
-              control: enumControl(
-                t,
-                planAcceptanceCriteriaVal,
-                PLAN_ACCEPTANCE_CRITERIA_FORMATS,
-                PLAN_ACCEPTANCE_CRITERIA_LABELS,
-                (v) => handlePlanSettingChange('acceptanceCriteria', v),
-                t('repo.plan.acceptanceCriteria'),
-              ),
-            },
-          ]}
-        />
-
-        <SettingsCard
-          title={t('repo.plan.groupTickets')}
-          rows={[
-            // Jira issue-type NAMES, as that project spells them — read by this skill and
-            // nothing else (jira-fields.md §1.2), which is why they sit here rather than
-            // with the Jira address on the Tickets tab. Hidden when the repo files into
-            // GitHub, where an "Epic" issue type does not exist.
-            ...(trackerModeVal === 'jira'
-              ? ([
-                ['epic', t('repo.plan.epicType'), t('repo.plan.epicTypeHelp'), planEpicTypeVal, 'Epic'],
-                ['story', t('repo.plan.storyType'), t('repo.plan.storyTypeHelp'), planStoryTypeVal, 'Story'],
-              ] as const).map(([key, label, hint, value, placeholder]) => ({
-                id: `issueType-${key}`,
-                label,
-                hint,
-                disabled: readOnly,
-                control: {
-                  kind: 'input' as const,
-                  value,
-                  onChange: (next: string) => handlePlanIssueTypeChange(key, next),
-                  placeholder,
-                  className: 'w-64',
-                },
-              }))
-              : []),
-            // Two switches that differ only by key, and whose message keys are
-            // mechanically `repo.plan.<key>` / `<key>Help`. `duplicateCheck` used to ride
-            // along here; it belongs to the phase before any of this.
-            ...([
-              ['useRepoTemplates', planUseRepoTemplatesVal],
-              ['assignToMe', planAssignToMeVal],
-            ] as const).map(([key, checked]) => ({
-              id: key,
-              label: t(`repo.plan.${key}` as MessageKey),
-              hint: t(`repo.plan.${key}Help` as MessageKey),
-              disabled: readOnly,
-              control: {
-                kind: 'switch' as const,
-                checked,
-                onChange: (next: boolean) => handlePlanSettingChange(key, next),
-                label: t(`repo.plan.${key}` as MessageKey),
-              },
-            })),
-            {
-              id: 'defaultLabels',
-              label: t('repo.plan.defaultLabels'),
-              hint: t('repo.plan.defaultLabelsHelp'),
-              disabled: readOnly,
-              layout: 'stacked' as const,
-              control: {
-                kind: 'chips' as const,
-                items: planDefaultLabelsVal,
-                onChange: (labels: string[]) => handlePlanSettingChange('defaultLabels', labels),
-                placeholder: 'enhancement',
-                addLabel: t('common.add'),
-                removeLabel: t('common.remove'),
-                id: 'plan-default-label-input',
-                disabled: readOnly,
-              },
-            },
-          ]}
-        />
-        </div>
-      )}
-
-      {tab === 'commit' && (
-        <div className="flex flex-col gap-6">
-        <SkillIntro
-          skill="commit"
-          summary={commitSummary({
-            format: formatVal,
-            style: styleVal,
-            allowOnProtectedBranch: allowOnProtectedBranchVal,
-            developmentBranch: branchSettings.development || '',
-            coAuthor: coAuthorVal,
-            includeTicketId: includeTicketIdVal,
-          })}
-        />
-        {/* Commit — what the message looks like, then the one rule about which branch
-            it may land on. The protected-branch guard was the last row of a list of
-            five, reading as a fifth property of the message; it is not, it is the only
-            setting here that can move your work to another branch. */}
-        <div className="flex flex-col gap-3">
-          <SettingsCard
-            title={t('repo.commit.groupMessage')}
-            rows={[
-              {
-                id: 'style',
-                label: t('repo.commit.style'),
-                hint: t('repo.commit.styleHelp'),
-                disabled: readOnly,
-                control: enumControl(t, styleVal, COMMIT_STYLES, COMMIT_STYLE_LABEL,
-                  (next) => handleCommitSettingChange('style', next), t('repo.commit.style')),
-              },
-              {
-                id: 'format',
-                label: t('repo.commit.format'),
-                hint: t('repo.commit.formatHelp'),
-                disabled: readOnly,
-                control: enumControl(t, formatVal, COMMIT_FORMATS, COMMIT_FORMAT_LABEL,
-                  (next) => handleCommitSettingChange('format', next), t('repo.commit.format')),
-              },
-              switchRow('coAuthor', t('repo.commit.coAuthor'), t('repo.commit.coAuthorHelp'),
-                coAuthorVal, (next) => handleCommitSettingChange('coAuthor', next)),
-              switchRow('ticketId', t('repo.commit.ticketId'), t('repo.commit.ticketIdHelp'),
-                includeTicketIdVal, (next) => handleCommitSettingChange('includeTicketId', next)),
-            ]}
-          />
-          {/* Under the card it previews rather than inside it. It was the last child of
-              the group's own box, which only read as belonging there because the box had
-              a border: with the outline gone, a sunken plate directly under the card says
-              the same thing and says it as a different KIND of block. */}
-          <OutputSample label={t('repo.example')}>{commitPreview}</OutputSample>
-        </div>
-
-        <SettingsCard
-          title={t('repo.commit.groupBranches')}
-          rows={[{
-            id: 'protectedBranch',
-            // The padlock says this row is a guard rail rather than another property of
-            // the message — see `SettingRow.icon`, which exists for it.
-            icon: Lock,
-            label: t('repo.commit.protectedBranch'),
-            // The help text has to say which way round it is, because both states do
-            // something: ON means allowed-but-asked, OFF means /magic:commit branches
-            // off first.
-            hint: allowOnProtectedBranchVal
-              ? t('repo.commit.protectedBranchHelpOn')
-              : t('repo.commit.protectedBranchHelpOff'),
-            disabled: readOnly,
-            control: {
-              kind: 'switch' as const,
-              checked: allowOnProtectedBranchVal,
-              onChange: (next: boolean) => handleCommitSettingChange('allowOnProtectedBranch', next),
-              label: t('repo.commit.protectedBranch'),
-            },
-          }]}
-        />
-        </div>
-      )}
-
-      {tab === 'pr' && (
-        <div className="flex flex-col gap-6">
-        <SkillIntro
-          skill="pr"
-          summary={prSummary({
-            trackerMode: trackerModeVal,
-            autoLinkTickets: autoLinkTicketsVal,
-            testAccounts: testAccountsVal,
-            testAccountsSource: testAccountsSourceVal,
-            commentOnPR: commentOnPRVal,
-            watchCI: watchCIVal,
-            templateCheckboxes: templateCheckboxesVal,
-            bodyVerbosity: bodyVerbosityVal,
-          })}
-        />
-        {/* Pull request — what goes INTO it, then what happens once it is open. Those
-            are two moments, and watching the checks was sitting second in a list whose
-            other rows all described the body of the PR. */}
-        <SettingsCard
-          title={t('repo.pr.groupDescription')}
-          rows={[
-            // First row of the card because it governs the body itself, where the rows
-            // under it only add things to that body.
-            {
-              id: 'bodyVerbosity',
-              label: t('repo.pr.bodyVerbosity'),
-              hint: t('repo.pr.bodyVerbosityHelp'),
-              disabled: readOnly,
-              control: enumControl(t, bodyVerbosityVal, BODY_VERBOSITY_MODES, BODY_VERBOSITY_LABEL,
-                (next) => handlePRSettingChange('bodyVerbosity', next), t('repo.pr.bodyVerbosity')),
-            },
-            switchRow('autoLink', t('repo.pr.autoLink'), t('repo.pr.autoLinkHelp'),
-              autoLinkTicketsVal, (next) => handlePRSettingChange('autoLinkTickets', next)),
-            {
-              id: 'testAccounts',
-              label: t('repo.pr.testAccounts'),
-              hint: t('repo.pr.testAccountsHelp'),
-              // The warning is about the VALUE — test accounts written into a description
-              // a public repository will publish — which is exactly what `note` is for.
-              ...(testAccountsVal === 'inline' ? { note: t('repo.pr.testAccountsPublicWarn') } : {}),
-              disabled: readOnly,
-              control: enumControl(t, testAccountsVal, TEST_ACCOUNT_MODES, TEST_ACCOUNT_LABEL,
-                (next) => handlePRSettingChange('testAccounts', next), t('repo.pr.testAccounts')),
-            },
-            // Only when the accounts are surfaced at all: where to read them from is not a
-            // question about a feature that is off.
-            testAccountsVal !== 'off' && {
-              id: 'testAccountsSource',
-              label: t('repo.pr.testAccountsSource'),
-              hint: t('repo.pr.testAccountsSourceHelp'),
-              disabled: readOnly,
-              control: {
-                kind: 'input' as const,
-                value: testAccountsSourceVal,
-                onChange: (next: string) => handlePRSettingChange('testAccountsSource', next),
-                placeholder: 'docs/test-accounts.md',
-                className: 'w-64',
-              },
-            },
-            // What /magic:pr may do with the boxes of the template edited just below,
-            // which is why it sits against that block rather than with the rows above.
-            {
-              id: 'templateCheckboxes',
-              label: t('repo.pr.templateCheckboxes'),
-              hint: t('repo.pr.templateCheckboxesHelp'),
-              disabled: readOnly,
-              control: enumControl(t, templateCheckboxesVal, TEMPLATE_CHECKBOX_MODES, TEMPLATE_CHECKBOX_LABEL,
-                (next) => handlePRSettingChange('templateCheckboxes', next), t('repo.pr.templateCheckboxes')),
-            },
-            // THE TEMPLATE IS ONE ROW IN THREE STATES, which is what it always was and
-            // could not say while it was three blocks of markup: the file is being looked
-            // for, it is not there and can be written, or it is there and can be edited.
-            templateLoading
-              ? { id: 'template', label: t('repo.pr.template'), hint: t('repo.pr.templateHelp'), note: t('repo.pr.templateChecking') }
-              : !template?.exists
-                ? {
-                  id: 'template',
-                  label: t('repo.pr.template'),
-                  hint: t('repo.pr.templateHelp'),
-                  disabled: readOnly,
-                  control: {
-                    kind: 'button' as const,
-                    icon: Plus,
-                    children: t('repo.pr.templateGenerate'),
-                    onClick: handleGenerateTemplate,
-                  },
-                }
-                : {
-                  id: 'template',
-                  label: t('repo.pr.template'),
-                  hint: t('repo.pr.templateHelp'),
-                  // WHERE the file is, which is the one fact the editor below cannot
-                  // carry: a template is a real path in the repository, not a field.
-                  note: template.path,
-                  disabled: readOnly,
-                  // Stacked: a 64-line editor has no business in a right-hand column.
-                  layout: 'stacked' as const,
-                  control: [
-                    {
-                      kind: 'input' as const,
-                      multiline: true as const,
-                      rows: 14,
-                      resize: 'vertical' as const,
-                      value: templateContent,
-                      onChange: (next: string) => {
-                        setTemplateContent(next)
-                        setTemplateChanged(next !== template.content)
-                      },
-                      placeholder: t('repo.pr.templatePlaceholder'),
-                      className: 'flex-1 min-w-0',
-                    },
-                    ...(templateChanged
-                      ? [{ kind: 'button' as const, children: t('common.save'), onClick: handleSaveTemplate }]
-                      : []),
-                  ],
-                },
-          ]}
-        />
-
-        <SettingsCard
-          title={t('repo.pr.groupAfter')}
-          rows={[
-            // The comment lands on the TICKET and carries the PR link. It sits here
-            // rather than with the tracker's address because it is the pull request that
-            // triggers it — the same reason the auto-link row above is on this tab.
-            // /magic:review and /magic:done read it too.
-            switchRow('commentOnPR', t('repo.issues.commentOnPR'), t('repo.issues.commentOnPRHelp'),
-              commentOnPRVal, (next) => handleIssuesSettingChange('commentOnPR', next)),
-            switchRow('watchCI', t('repo.pr.watchCI'), t('repo.pr.watchCIHelp'),
-              watchCIVal, (next) => handlePRSettingChange('watchCI', next)),
-          ]}
-        />
-        </div>
-      )}
-
-      {tab === 'review' && (
-        <div className="flex flex-col gap-6">
+        <SectionHeader icon={Puzzle} title={t('repo.annex.section')} description={t('repo.annex.intro')} spacing="none" />
         <SkillIntro
           skill="review"
           summary={reviewSummary({ confidenceScore: reviewConfidenceScoreVal, mode: reviewModeVal })}
@@ -2592,109 +2808,10 @@ export function RepoPage({ repoName }: RepoPageProps) {
             },
           ]}
         />
-        </div>
-      )}
-
-      {tab === 'resolve' && (
-        <div className="flex flex-col gap-6">
-        <SkillIntro
-          skill="resolve"
-          summary={resolveSummary({
-            commitMode: resolveCommitModeVal,
-            useCommitConfig: resolveUseCommitConfigVal,
-            // Translated here rather than in the summary: a step carries strings, and
-            // these two labels are the resolve tab's own dropdowns spelled out.
-            formatLabel: t(COMMIT_FORMAT_LABELS[resolveFormatVal] ?? COMMIT_FORMAT_LABELS.angular),
-            styleLabel: t(COMMIT_STYLE_LABELS[resolveStyleVal] ?? COMMIT_STYLE_LABELS['single-line']),
-            replyToComments: resolveReplyVal,
-            replyVerbosity: resolveReplyVerbosityVal,
-          })}
-        />
-        {/* Resolve — the commits that carry the fixes, then what is written back to the
-            reviewer. The reply switch was wedged between the commit format and the
-            commit preview, which is the one place it does not belong. */}
-        <div className="flex flex-col gap-3">
-          <SettingsCard
-            title={t('repo.resolve.groupCommits')}
-            rows={[
-              {
-                id: 'commitMode',
-                label: t('repo.resolve.commitMode'),
-                hint: t('repo.resolve.commitModeHelp'),
-                disabled: readOnly,
-                control: enumControl(t, resolveCommitModeVal, RESOLVE_COMMIT_MODES, RESOLVE_COMMIT_MODE_LABEL,
-                  (next) => handleResolveSettingChange('commitMode', next), t('repo.resolve.commitMode')),
-              },
-              // Shown when a new commit is possible at all — amending writes no message of
-              // its own, so there is no format to choose.
-              resolveCommitModeVal !== 'amend' && {
-                id: 'commitFormatSource',
-                label: t('repo.resolve.commitFormat'),
-                hint: t('repo.resolve.commitFormatHelp'),
-                disabled: readOnly,
-                control: enumControl(t, resolveUseCommitConfigVal ? 'commit' : 'custom',
-                  RESOLVE_CONFIG_SOURCES, RESOLVE_CONFIG_SOURCE_LABEL,
-                  (next) => handleResolveSettingChange('useCommitConfig', next === 'commit'),
-                  t('repo.resolve.commitFormat')),
-              },
-              // ...and its own style and format only once it has been told not to borrow
-              // the commit tab's.
-              ...(resolveCommitModeVal !== 'amend' && !resolveUseCommitConfigVal
-                ? [
-                  {
-                    id: 'resolveStyle',
-                    label: t('repo.commit.style'),
-                    hint: t('repo.commit.styleHelp'),
-                    disabled: readOnly,
-                    control: enumControl(t, resolveStyleVal, COMMIT_STYLES, COMMIT_STYLE_LABEL,
-                      (next) => handleResolveSettingChange('style', next), t('repo.commit.style')),
-                  },
-                  {
-                    id: 'resolveFormat',
-                    label: t('repo.commit.format'),
-                    hint: t('repo.commit.formatHelp'),
-                    disabled: readOnly,
-                    control: enumControl(t, resolveFormatVal, COMMIT_FORMATS, COMMIT_FORMAT_LABEL,
-                      (next) => handleResolveSettingChange('format', next), t('repo.commit.format')),
-                  },
-                ]
-                : []),
-            ]}
-          />
-          {/* THE THREE MODES SAY THREE DIFFERENT THINGS HERE, and only one of them is a
-              preview. A new commit can be shown; amending and asking cannot be, because
-              what they produce is a rewritten history rather than a message — so they
-              warn about the force-push instead. */}
-          {resolveCommitModeVal === 'new' && (
-            <OutputSample label={t('repo.example')}>{resolvePreview}</OutputSample>
-          )}
-          {resolveCommitModeVal !== 'new' && (
-            <Banner variant="warning" bordered={false}>
-              {`${t(resolveCommitModeVal === 'amend' ? 'repo.resolve.amendNotice' : 'repo.resolve.askNotice')} --force-with-lease`}
-            </Banner>
-          )}
-        </div>
-
         <SettingsCard
-          title={t('repo.resolve.groupReplies')}
-          rows={[
-            // The language these replies are written in lives on the Languages tab, with
-            // every other language — this switch decides whether they are written at all,
-            // which is a different question.
-            switchRow('reply', t('repo.resolve.reply'), t('repo.resolve.replyHelp'),
-              resolveReplyVal, (next) => handleResolveSettingChange('replyToComments', next)),
-            // Shown only when replies are on, like the language row on the Languages tab:
-            // how much a reply says is not a question worth asking about replies that are
-            // never written.
-            resolveReplyVal && {
-              id: 'replyVerbosity',
-              label: t('repo.resolve.replyVerbosity'),
-              hint: t('repo.resolve.replyVerbosityHelp'),
-              disabled: readOnly,
-              control: enumControl(t, resolveReplyVerbosityVal, RESOLVE_VERBOSITIES, RESOLVE_VERBOSITY_LABEL,
-                (next) => handleResolveSettingChange('replyVerbosity', next), t('repo.resolve.replyVerbosity')),
-            },
-          ]}
+          title={t('repo.langs.section')}
+          // Inherits the pull request language when unset, so it is handed the resolved value.
+          rows={[langRow('review', t('repo.langs.review'), t('repo.review.languageHelp'), resolveReviewLanguage(repoLangs))]}
         />
         </div>
       )}
