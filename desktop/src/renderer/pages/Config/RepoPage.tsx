@@ -521,6 +521,7 @@ function WorkflowPanel({
   repoName,
   repositories,
   openEditor,
+  onEditorOpened,
   readOnly,
   stepSettings,
   startVersion,
@@ -528,8 +529,13 @@ function WorkflowPanel({
   repoName: string
   /** Every configured repository, for the editor's picker. */
   repositories: SelectOption[]
-  /** Mounted by a switch from another repository's editor: open this one's straight away. */
+  /**
+   * Mounted by a switch from another repository's editor: open this one's straight away.
+   * ONCE: read at mount, then handed back through `onEditorOpened`, so leaving the tab and
+   * coming back mounts the panel with its editor closed, as an Edit press left it.
+   */
   openEditor: boolean
+  onEditorOpened: () => void
   readOnly: boolean
   /** A step's own settings, by the skill it runs, for the inspector. RepoPage's, which holds them. */
   stepSettings: Readonly<Record<string, WorkflowStepConfig>>
@@ -547,6 +553,13 @@ function WorkflowPanel({
   // The drafts before this one, and the ones undone since, for ⌘Z and ⇧⌘Z.
   const [history, setHistory] = useState<{ past: WorkflowOverlay[]; future: WorkflowOverlay[] }>(EMPTY_HISTORY)
   const [editing, setEditing] = useState(openEditor)
+  // The mount's answer, kept for the load effect: the prop goes false as soon as it is
+  // consumed, and that must not close the editor it just opened.
+  const openEditorRef = useRef(openEditor)
+  useEffect(() => {
+    if (openEditorRef.current) onEditorOpened()
+    // Once, at mount: the intent is consumed, not followed.
+  }, [])
   // Unsaved edits ask before a switch as before a close: where the switch was going.
   const [switchTo, setSwitchTo] = useState<string | null>(null)
   const mountedFor = useRef(repoName)
@@ -643,7 +656,7 @@ function WorkflowPanel({
     setLoaded(null)
     setSelected(null)
     // Idempotent, so StrictMode's second run keeps it open.
-    setEditing(openEditor && repoName === mountedFor.current)
+    setEditing(openEditorRef.current && repoName === mountedFor.current)
     setLeavingEditor(false)
     setClosePrompt(false)
     setSaveError(null)
@@ -664,7 +677,7 @@ function WorkflowPanel({
         }
       },
     )
-  }, [fetchWorkflow, adopt, openEditor, repoName])
+  }, [fetchWorkflow, adopt, repoName])
 
   // A commit or a push made in a terminal changes the warnings without telling us: look
   // again when the window comes back to the front. Debounced, as focus and visibility
@@ -1393,7 +1406,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const t = useT()
   const { status } = useAuth()
   // Reached from another repository's editor: straight back into this one's.
-  const [openEditor] = useState(() => reopenEditorFor === repoName)
+  // Consumed by the Workflow tab as it opens the editor: a later visit to the tab is a
+  // visit, not a switch, and lands on the read-only canvas.
+  const [openEditor, setOpenEditor] = useState(() => reopenEditorFor === repoName)
   useEffect(() => {
     if (reopenEditorFor === repoName) reopenEditorFor = null
   }, [repoName])
@@ -3046,7 +3061,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {/* Mounted only while its tab is shown, which TabSweep's `tab ===` already
           guarantees: the canvas listens for the space bar on the whole document. */}
-      {tab === 'workflow' && <WorkflowPanel repoName={repoName} repositories={repositoryOptions} openEditor={openEditor} readOnly={readOnly} stepSettings={stepSettings} startVersion={JSON.stringify(repo?.start ?? {})} />}
+      {tab === 'workflow' && <WorkflowPanel repoName={repoName} repositories={repositoryOptions} openEditor={openEditor} onEditorOpened={() => setOpenEditor(false)} readOnly={readOnly} stepSettings={stepSettings} startVersion={JSON.stringify(repo?.start ?? {})} />}
 
       {tab === 'annex' && (
         <div className="flex flex-col gap-6">
