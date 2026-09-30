@@ -32,6 +32,7 @@ import {
   workflowCardWidths,
   workflowPositions,
   type IconComponent,
+  type SelectOption,
   type SettingsCardRow,
   type WorkflowCanvasLabels,
   type WorkflowCanvasSelection,
@@ -445,15 +446,27 @@ interface WorkflowStepConfig {
  * A component of its own, at module scope, because it owns a fetch and an editor's
  * state: RepoPage's state is the repository's settings, and this is not one of them.
  */
+/**
+ * The repository whose editor opens as soon as its page mounts: set by the editor's
+ * repository picker just before it navigates there. A switch is a new route, which
+ * remounts RepoPage on General with the editor closed; this is how the next page knows
+ * it was reached from an editor. Module scope because the two pages never coexist in
+ * one component; RepoPage clears it once it has read it.
+ */
+let reopenEditorFor: string | null = null
+
 function WorkflowPanel({
   repoName,
-  repoColor,
+  repositories,
+  openEditor,
   readOnly,
   stepSettings,
 }: {
   repoName: string
-  /** The repository's hue, as its rail item and list row wear it: the editor's title bar label. */
-  repoColor?: string
+  /** Every configured repository, for the editor's picker. */
+  repositories: SelectOption[]
+  /** Mounted by a switch from another repository's editor: open this one's straight away. */
+  openEditor: boolean
   readOnly: boolean
   /** A step's own settings, by the skill it runs, for the inspector. RepoPage's, which holds them. */
   stepSettings: Readonly<Record<string, WorkflowStepConfig>>
@@ -468,7 +481,10 @@ function WorkflowPanel({
   const [draft, setDraft] = useState<WorkflowOverlay>(EMPTY_OVERLAY)
   // The drafts before this one, and the ones undone since, for ⌘Z and ⇧⌘Z.
   const [history, setHistory] = useState<{ past: WorkflowOverlay[]; future: WorkflowOverlay[] }>(EMPTY_HISTORY)
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(openEditor)
+  // Unsaved edits ask before a switch as before a close: where the switch was going.
+  const [switchTo, setSwitchTo] = useState<string | null>(null)
+  const mountedFor = useRef(repoName)
   // The editor is playing its way out: it unmounts once it says it has (`onLeft`).
   const [leavingEditor, setLeavingEditor] = useState(false)
   const [closePrompt, setClosePrompt] = useState(false)
@@ -559,7 +575,8 @@ function WorkflowPanel({
     const at = ++generation.current
     setLoaded(null)
     setSelected(null)
-    setEditing(false)
+    // Idempotent, so StrictMode's second run keeps it open.
+    setEditing(openEditor && repoName === mountedFor.current)
     setLeavingEditor(false)
     setClosePrompt(false)
     setSaveError(null)
@@ -573,10 +590,14 @@ function WorkflowPanel({
       (next) => { if (at === generation.current) void adopt(next) },
       (error) => {
         console.error('Failed to load the repository workflow:', error)
-        if (at === generation.current) setLoaded('error')
+        if (at === generation.current) {
+          setLoaded('error')
+          // Nothing to edit: an editor left open would never draw, and never close.
+          setEditing(false)
+        }
       },
     )
-  }, [fetchWorkflow, adopt])
+  }, [fetchWorkflow, adopt, openEditor, repoName])
 
   // A commit or a push made in a terminal changes the warnings without telling us: look
   // again when the window comes back to the front. Debounced, as focus and visibility
@@ -880,9 +901,31 @@ function WorkflowPanel({
     void refreshUnshared(savedRef.current)
   }
 
+  /** To another repository's editor: its page, which opens it on mount. */
+  const goTo = (name: string) => {
+    reopenEditorFor = name
+    window.location.hash = `#/repo/${encodeURIComponent(name)}`
+  }
+  const switchRepository = (name: string) => {
+    if (name === repoName) return
+    if (dirty) {
+      setSwitchTo(name)
+      setClosePrompt(true)
+    } else goTo(name)
+  }
+  const keepEditing = () => {
+    setClosePrompt(false)
+    setSwitchTo(null)
+  }
+
   /** Out of the editor, the draft dropped: the tab shows what is saved. It plays its exit first. */
   const leave = () => {
     setClosePrompt(false)
+    if (switchTo) {
+      setSwitchTo(null)
+      goTo(switchTo)
+      return
+    }
     setLeavingEditor(true)
   }
   const left = () => {
@@ -959,6 +1002,7 @@ function WorkflowPanel({
   }
   const editorLabels: WorkflowEditorLabels = {
     canvas: labels,
+    back: t('repo.workflow.editor.back'),
     picker: {
       title: t('repo.workflow.picker.title'),
       empty: t('repo.workflow.picker.empty'),
@@ -1043,6 +1087,9 @@ function WorkflowPanel({
         ].join(' ')}
         spacing="none"
       />
+      {/* Reached from another repository's editor, whose layer is gone: the window stays
+          covered while this flow loads, rather than flashing the settings between the two. */}
+      {editing && !loaded && createPortal(<div className="fixed inset-0 z-[55] bg-bg" />, document.body)}
       {loaded === 'error' ? (
         <Banner variant="danger" icon={AlertTriangle}>{t('repo.workflow.loadError')}</Banner>
       ) : loaded ? (
@@ -1067,8 +1114,12 @@ function WorkflowPanel({
             <div className="fixed inset-0 z-[55]">
               <WorkflowEditor
                 title={t('repo.workflow.editor.title', { name: repoName })}
-                repository={repoName}
-                repositoryColor={repoColor}
+                repositories={repositories.length > 1 ? {
+                  value: repoName,
+                  options: repositories,
+                  onChange: switchRepository,
+                  label: t('repo.workflow.editor.repository'),
+                } : undefined}
                 labels={editorLabels}
                 nodes={data.nodes}
                 links={data.links}
@@ -1125,11 +1176,11 @@ function WorkflowPanel({
           )}
           <Modal
             isOpen={closePrompt}
-            onClose={() => setClosePrompt(false)}
-            title={t('repo.workflow.editor.close.title')}
+            onClose={keepEditing}
+            title={switchTo ? t('repo.workflow.editor.switch.title', { name: switchTo }) : t('repo.workflow.editor.close.title')}
             footer={
               <>
-                <Button tone="ghost" onClick={() => setClosePrompt(false)}>{t('repo.workflow.editor.close.keep')}</Button>
+                <Button tone="ghost" onClick={keepEditing}>{t('repo.workflow.editor.close.keep')}</Button>
                 <Button tone="danger" onClick={leave}>{t('repo.workflow.editor.close.leave')}</Button>
               </>
             }
@@ -1201,7 +1252,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const { orgs } = useOrg()
   const t = useT()
   const { status } = useAuth()
-  const [tab, setTab] = useState<RepoTab>('general')
+  // Reached from another repository's editor: straight back into this one's.
+  const [openEditor] = useState(() => reopenEditorFor === repoName)
+  useEffect(() => {
+    if (reopenEditorFor === repoName) reopenEditorFor = null
+  }, [repoName])
+  const [tab, setTab] = useState<RepoTab>(openEditor ? 'workflow' : 'general')
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [editedName, setEditedName] = useState(repoName)
@@ -1214,6 +1270,16 @@ export function RepoPage({ repoName }: RepoPageProps) {
     Object.keys(config?.repositories ?? {}),
     config?.repositories,
   )[repoName]
+  // The workflow editor's picker: every repository, by name, each in its own colour.
+  const repositoryOptions = useMemo<SelectOption[]>(
+    () => {
+      const colors = getProjectColorMap(Object.keys(config?.repositories ?? {}), config?.repositories)
+      return Object.keys(config?.repositories ?? {})
+        .sort((a, b) => a.localeCompare(b))
+        .map((name) => ({ value: name, label: name, color: colors[name] }))
+    },
+    [config?.repositories],
+  )
   const scopeOrg = repo?.orgId ? orgs.find((o) => o.id === repo.orgId) : null
 
   /**
@@ -2831,7 +2897,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {/* Mounted only while its tab is shown, which TabSweep's `tab ===` already
           guarantees: the canvas listens for the space bar on the whole document. */}
-      {tab === 'workflow' && <WorkflowPanel repoName={repoName} repoColor={repoColor} readOnly={readOnly} stepSettings={stepSettings} />}
+      {tab === 'workflow' && <WorkflowPanel repoName={repoName} repositories={repositoryOptions} openEditor={openEditor} readOnly={readOnly} stepSettings={stepSettings} />}
 
       {tab === 'annex' && (
         <div className="flex flex-col gap-6">

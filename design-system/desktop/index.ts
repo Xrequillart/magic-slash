@@ -343,7 +343,7 @@ export type { ToggleButtonProps, ToggleButtonSize } from './ToggleButton'
 // rule 1). Its data types are exported too, since a caller maps its own model onto
 // them; the layout and the handle ids stay inside the folder.
 export { WorkflowCanvas } from './WorkflowCanvas'
-export type { WorkflowCanvasLabels, WorkflowCanvasProps, WorkflowCanvasSelection } from './WorkflowCanvas'
+export type { WorkflowCanvasLabels, WorkflowCanvasProps, WorkflowCanvasRepositories, WorkflowCanvasSelection } from './WorkflowCanvas'
 export { WorkflowNode } from './WorkflowNode'
 export type { WorkflowNodeData, WorkflowNodeLabels, WorkflowNodeType } from './WorkflowNode'
 export { WorkflowEdge } from './WorkflowEdge'

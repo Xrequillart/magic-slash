@@ -14,9 +14,16 @@ import {
   isSampleDefaultLink,
 } from './workflowSample'
 
+const SAMPLE_REPOSITORIES = [
+  { value: 'magic-slash', label: 'magic-slash', color: '#8b5cf6' },
+  { value: 'poppins-app', label: 'poppins-app', color: '#10b981' },
+  { value: 'infra', label: 'infra', color: '#f59e0b' },
+]
+
 const PROPS: PropRow[] = [
   { name: 'nodes · links · entry · positions', type: 'WorkflowCanvasNode[] · WorkflowCanvasLink[] · string[] · Record<id, {x, y}>', required: true, description: 'The flow, as WorkflowCanvas draws it. A card without a position is laid out; a moved one stays where it was left.' },
   { name: 'selected · onSelect · target', type: 'WorkflowCanvasSelection | null · (selection) => void · WorkflowInspectorTarget | null', required: true, description: 'The selection, and what the floating inspector shows for it. The inspector is only drawn while something is selected; its X and a press on the ground both report null.' },
+  { name: 'repositories', type: 'WorkflowCanvasRepositories', description: 'A picker left of the legend, as tall as it, to edit another repository’s flow. The editor only reports the choice: switching is the caller’s. Not drawn without it.' },
   { name: 'onMove · onConnect', type: '(id, position) => void · (from, to, outcome?) => void', required: true, description: 'A card was dragged and let go; a link was drawn out of a port, the outcome being the row it left from.' },
   { name: 'onToggle', type: '(id, enabled: boolean) => void', required: true, description: 'A step’s eye was pressed, on its card or in the inspector: turn it on or off. Start’s is greyed (alwaysOn).' },
   { name: 'onAdd', type: '(skill: string, position: {x, y}) => void', required: true, description: 'A skill was picked off the dock’s +. The position is the middle of the view: the step lands where the admin is looking, linked to nothing.' },
@@ -30,7 +37,7 @@ const PROPS: PropRow[] = [
   { name: 'trafficLightGutter', type: 'boolean', fallback: 'false', description: 'In the app: keep the title bar’s left corner clear of the traffic lights.' },
 ]
 
-const LABELS: WorkflowEditorLabels = { canvas: EDIT_LABELS, inspector: INSPECTOR_LABELS, picker: PICKER_LABELS, dock: DOCK_LABELS }
+const LABELS: WorkflowEditorLabels = { canvas: EDIT_LABELS, inspector: INSPECTOR_LABELS, picker: PICKER_LABELS, dock: DOCK_LABELS, back: 'Back to settings' }
 
 interface Flow {
   nodes: WorkflowCanvasNode[]
@@ -57,6 +64,8 @@ function EditorSpecimen() {
   const [selected, setSelected] = useState<WorkflowCanvasSelection | null>(null)
   const [focus, setFocus] = useState<{ id: string; n: number } | null>(null)
   const stageRef = useRef<HTMLDivElement>(null)
+  // The picker only: the flow stays the same whichever repository it says.
+  const [repository, setRepository] = useState('magic-slash')
 
   const problems = useMemo(() => problemsOf(flow.links), [flow.links])
   const nodes = useMemo(
@@ -113,8 +122,8 @@ function EditorSpecimen() {
   return (
     <div ref={stageRef} className="h-[640px] overflow-hidden rounded-xl border border-line">
       <WorkflowEditor
-        title="Editing the workflow of magic-slash"
-        repository="magic-slash"
+        title={`Editing the workflow of ${repository}`}
+        repositories={{ value: repository, options: SAMPLE_REPOSITORIES, onChange: setRepository, label: 'Repository' }}
         labels={{ ...LABELS, dock: { ...DOCK_LABELS, problems: `${problems.length} problem${problems.length === 1 ? '' : 's'} to fix before saving` } }}
         nodes={nodes}
         links={flow.links}

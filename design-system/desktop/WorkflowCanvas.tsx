@@ -9,6 +9,7 @@ import {
 import { Button } from './Button'
 import { CanvasMinimap, CANVAS_MINIMAP_SIZE } from './CanvasMinimap'
 import { Pencil } from './icons'
+import { Select, type SelectOption } from './Select'
 import { Text } from './Text'
 import { WorkflowDock, type WorkflowDockProps } from './WorkflowDock'
 import { WorkflowEdge, type WorkflowEdgeType } from './WorkflowEdge'
@@ -78,6 +79,9 @@ import {
  *  - `dock` floats the editor's `WorkflowDock` at the bottom centre. Data, not a node:
  *    the dock reads the flow's store, so the canvas draws it inside the flow.
  *
+ * `repositories` puts a picker left of the legend, as tall as it and on the same plate:
+ * the editor's way over to another repository's flow. Data, like the rest.
+ *
  * READ-ONLY, `onEdit` puts an Edit button in the corner above the minimap: the way into
  * the full-screen editor.
  */
@@ -108,6 +112,17 @@ export interface WorkflowCanvasLabels {
   /** EDITABLE ONLY. A custom step's mode, on its card's plate. */
   blocking?: string
   advisory?: string
+}
+
+/** The picker left of the legend: which repository's flow this is, and the others on offer. */
+export interface WorkflowCanvasRepositories {
+  /** The repository shown, one of `options`' values. */
+  value: string
+  /** Every repository on offer, each in its own colour. */
+  options: SelectOption[]
+  onChange: (value: string) => void
+  /** The picker's accessible name: "Repository". */
+  label: string
 }
 
 export interface WorkflowCanvasProps {
@@ -148,6 +163,8 @@ export interface WorkflowCanvasProps {
   scrollPans?: boolean
   /** Where the legend sits. Top left unless the corner is taken, as the editor's title takes it. */
   legend?: 'top-left' | 'bottom-left'
+  /** The picker left of the legend. Not drawn without it. */
+  repositories?: WorkflowCanvasRepositories
   /** The minimap in the corner. On by default; off for a canvas that is an illustration of a flow, not a place to move around. */
   minimap?: boolean
 }
@@ -169,6 +186,9 @@ const FIT_VIEW = { padding: 0.12, maxZoom: 1, minZoom: 0.55 }
 /** Centring on a node never leaves the view further out than this: a problem is read, not spotted. */
 const FOCUS_MIN_ZOOM = 0.8
 const FOCUS_DURATION = 300
+
+/** The repository picker's width, and its list's: a name, not a sentence. */
+const REPOSITORIES_WIDTH = 208
 
 /** The Edit button clears the minimap: its height, xyflow's 15px panel margin, and a gap. */
 const EDIT_OFFSET = { marginBottom: CANVAS_MINIMAP_SIZE.height + 15 + 8 }
@@ -192,6 +212,7 @@ export function WorkflowCanvas({
   frameless = false,
   legend = 'top-left',
   scrollPans = true,
+  repositories,
   minimap = true,
 }: WorkflowCanvasProps) {
   // Where a card is being dragged to, until it is let go and the caller has its place.
@@ -404,8 +425,20 @@ export function WorkflowCanvas({
         aria-label={labels.canvas}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.5} />
-        <Panel position={legend}>
-          <div className="flex items-center gap-3 rounded-lg border border-line bg-bg-secondary px-2.5 py-1.5">
+        <Panel position={legend} className="flex items-center gap-2">
+          {/* `md` is `h-7`, and so is the legend: the two plates line up edge to edge. */}
+          {repositories && (
+            <Select
+              value={repositories.value}
+              options={repositories.options}
+              onChange={repositories.onChange}
+              ariaLabel={repositories.label}
+              marker="repo"
+              width={REPOSITORIES_WIDTH}
+              floating
+            />
+          )}
+          <div className="flex h-7 items-center gap-3 rounded-lg border border-line bg-bg-secondary px-2.5">
             {LINK_KINDS.map((kind) => (
               <span key={kind} className="flex items-center gap-1.5">
                 <svg aria-hidden="true" width="22" height="6" className="overflow-visible">

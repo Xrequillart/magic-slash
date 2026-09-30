@@ -2,8 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type AnimationEvent } fro
 
 import { AppTitleBar } from './AppTitleBar'
 import { Banner, type BannerVariant } from './Banner'
-import { FolderGit2 } from './icons'
-import { WorkflowCanvas, type WorkflowCanvasLabels, type WorkflowCanvasSelection } from './WorkflowCanvas'
+import { ArrowLeft } from './icons'
+import { WorkflowCanvas, type WorkflowCanvasLabels, type WorkflowCanvasRepositories, type WorkflowCanvasSelection } from './WorkflowCanvas'
 import type { WorkflowDockLabels } from './WorkflowDock'
 import { WorkflowInspector, type WorkflowInspectorLabels, type WorkflowInspectorProps, type WorkflowInspectorTarget } from './WorkflowInspector'
 import type { WorkflowProblemItem } from './WorkflowProblems'
@@ -16,10 +16,13 @@ import type { WorkflowCanvasLink, WorkflowCanvasNode } from './workflowLayout'
  * edges, with everything else floating on it.
  *
  *  - the title bar is `AppTitleBar` itself, so the window is still dragged by it and the
- *    traffic lights keep their corner (`trafficLightGutter`) while the editor covers the app;
+ *    traffic lights keep their corner (`trafficLightGutter`) while the editor covers the app.
+ *    Its left end, past the traffic lights, is the way out, named (`labels.back`): the settings are where it goes;
  *  - top centre, the banners: a conflict, a change made elsewhere, a refused save;
  *  - on the right, the INSPECTOR, only while something is selected. A press on a card or
  *    a link opens it, a press on the ground or its X closes it;
+ *  - top left, beside the legend, the REPOSITORY PICKER (`repositories`), when there are
+ *    others to go to: which flow is edited is the caller's, the picker only asks;
  *  - at the bottom centre, the DOCK (`WorkflowDock`): add a step, undo and redo, the
  *    zoom, the problems, discard, save, close.
  *
@@ -60,14 +63,15 @@ export interface WorkflowEditorLabels {
   inspector: WorkflowInspectorLabels
   picker: WorkflowSkillPickerLabels
   dock: WorkflowDockLabels
+  /** The title bar's way out, beside its arrow: "Back to settings". Its tooltip is `dock.close`. */
+  back: string
 }
 
 export interface WorkflowEditorProps {
   /** In the middle of the title bar: "Editing the workflow of magic-slash". */
   title: string
-  /** On the title bar's left, the repository being edited, as a `Label`, in its own colour. */
-  repository?: string
-  repositoryColor?: string
+  /** The picker left of the canvas's legend, to edit another repository's flow. Not drawn without it. */
+  repositories?: WorkflowCanvasRepositories
   labels: WorkflowEditorLabels
 
   nodes: WorkflowCanvasNode[]
@@ -124,8 +128,7 @@ export interface WorkflowEditorProps {
 
 export function WorkflowEditor({
   title,
-  repository,
-  repositoryColor,
+  repositories,
   labels,
   nodes,
   links,
@@ -202,9 +205,8 @@ export function WorkflowEditor({
     >
       <AppTitleBar
         trafficLightGutter={trafficLightGutter}
-        label={repository ? { text: repository, icon: FolderGit2, color: repositoryColor } : undefined}
         titles={[{ id: 'workflow', label: title }]}
-        close={{ title: labels.dock.close ?? '', onClick: onClose }}
+        back={{ label: labels.back, title: labels.dock.close ?? '', onClick: onClose, icon: ArrowLeft }}
         className="ms-wfe-bar flex-shrink-0"
       />
       {/* 6px in from the window on every side: the canvas is framed, not bled. */}
@@ -224,6 +226,7 @@ export function WorkflowEditor({
             onConnect={readOnly ? undefined : onConnect}
             onToggle={readOnly ? undefined : onToggle}
             focusRequest={focusRequest}
+            repositories={repositories}
             // The dock has no close button: the title bar's, top right, is the way out.
             dock={readOnly ? { labels: labels.dock } : {
               labels: labels.dock,

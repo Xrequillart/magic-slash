@@ -146,6 +146,12 @@ export interface SelectProps {
   active?: boolean
   /** Stops the press and dims the control. The panel cannot open. */
   disabled?: boolean
+  /**
+   * Drawn on the ground of the panels floating over a canvas (its legend's, its dock's)
+   * rather than as a form field: the same plate, the same hairline. For a picker that
+   * floats on a surface instead of sitting in a form.
+   */
+  floating?: boolean
   /** The accessible name, where the control has no visible label beside it. Translated. */
   ariaLabel?: string
   /** Margins and width. Not the ground, the height or the radius. */
@@ -206,6 +212,7 @@ export function Select({
   size = 'md',
   active = false,
   disabled = false,
+  floating = false,
   ariaLabel,
   className = '',
   fit = false,
@@ -228,10 +235,10 @@ export function Select({
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
         style={width ? { width } : undefined}
-        className={`flex items-center ${shape.gap} ${shape.box} bg-surface border cursor-pointer transition-colors ${
+        className={`flex items-center ${shape.gap} ${shape.box} ${floating ? 'bg-bg-secondary' : 'bg-surface'} border cursor-pointer transition-colors ${
           width ? 'flex-shrink-0' : 'w-full'
         } disabled:opacity-50 disabled:cursor-not-allowed ${
-          active ? 'border-accent/40 text-ink' : 'border-line-field text-ink hover:border-accent'
+          active ? 'border-accent/40 text-ink' : `${floating ? 'border-line' : 'border-line-field'} text-ink hover:border-accent`
         } ${className}`.trim()}
       >
         {TriggerIcon && (
