@@ -39,7 +39,7 @@ describe('collectListingEntries', () => {
   it('joins when_to_use to the description, as the listing appends it', () => {
     skill(join(home, '.claude/skills/a'), 'name: a\ndescription: Does A.\nwhen_to_use: When A.')
     const { entries } = collectListingEntries({ home, repos: [], builtIn: [] })
-    expect(entries).toEqual([{ name: 'a', text: 'Does A. When A.', source: 'custom', mode: 'full' }])
+    expect(entries).toEqual([{ name: 'a', text: 'Does A. When A.', description: 'Does A.', source: 'custom', mode: 'full' }])
   })
 
   it('marks built-ins by directory and reads user commands', () => {

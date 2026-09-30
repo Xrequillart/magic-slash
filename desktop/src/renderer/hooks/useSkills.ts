@@ -39,6 +39,8 @@ export interface ListingEntry {
   name: string
   /** `description` and `when_to_use` joined. Uncapped. */
   text: string
+  /** The frontmatter's `description` alone, when it has one. */
+  description?: string
   source: 'built-in' | 'custom' | 'repo' | 'plugin'
   mode: 'full' | 'name-only' | 'hidden'
   origin?: string

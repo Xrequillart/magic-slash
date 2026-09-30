@@ -32,6 +32,8 @@ export interface ListingEntry {
   name: string
   /** `description` and `when_to_use` joined, as the listing appends them. Uncapped. */
   text: string
+  /** The frontmatter's `description` alone, when it has one: what the skill says it does. */
+  description?: string
   source: ListingSource
   mode: ListingMode
   /** The repository or plugin it comes from, when there is one. */
@@ -156,6 +158,7 @@ function entryFrom(
   return {
     name,
     text,
+    ...(fm.description ? { description: fm.description } : {}),
     source,
     // An override may name a plugin skill with or without its `plugin:` prefix.
     mode: overrides[name] === undefined ? modeFor(fm, base, overrides) : modeFor(fm, name, overrides),
