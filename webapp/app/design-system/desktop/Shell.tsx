@@ -114,6 +114,7 @@ import { ModalHeaderEntry } from './entries/ModalHeaderEntry'
 import { SelectIconEntry } from './entries/SelectIconEntry'
 import { AppTitleBarEntry } from './entries/AppTitleBarEntry'
 import { SidebarEntry } from './entries/SidebarEntry'
+import { ConfirmDialogEntry } from './entries/ConfirmDialogEntry'
 import { UpdateDialogEntry } from './entries/UpdateDialogEntry'
 import { WhatsNewDialogEntry } from './entries/WhatsNewDialogEntry'
 import { ToggleButtonEntry } from './entries/ToggleButtonEntry'
@@ -190,6 +191,7 @@ const ENTRIES: Record<
   sidebar: SidebarEntry,
   apptitlebar: AppTitleBarEntry,
   updatedialog: UpdateDialogEntry,
+  confirmdialog: ConfirmDialogEntry,
   whatsnewdialog: WhatsNewDialogEntry,
   togglebutton: ToggleButtonEntry,
   stepper: StepperEntry,

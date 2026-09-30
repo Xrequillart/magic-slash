@@ -113,6 +113,7 @@ export type EntryId =
   | 'sidebar'
   | 'apptitlebar'
   | 'updatedialog'
+  | 'confirmdialog'
   | 'whatsnewdialog'
   | 'togglebutton'
   | 'stepper'
@@ -155,6 +156,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   sidebar: 'Sidebar',
   apptitlebar: 'AppTitleBar',
   updatedialog: 'UpdateDialog',
+  confirmdialog: 'ConfirmDialog',
   whatsnewdialog: 'WhatsNewDialog',
   togglebutton: 'ToggleButton',
   stepper: 'Stepper',
@@ -344,6 +346,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   themegrid: ['card'],
   themepreviewgrid: ['icon', 'text'],
   updatedialog: ['modal', 'card', 'icon', 'progress', 'text'],
+  confirmdialog: ['modal', 'card', 'icon', 'button', 'text'],
   whatsnewdialog: ['modal', 'button', 'text'],
   text: [],
   avatar: ['icon'],
@@ -549,6 +552,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   menusidebaritem: 'One row that takes you somewhere',
   sidebar: 'The whole left column, and it knows nothing',
   updatedialog: 'The app, about to become a newer app',
+  confirmdialog: 'A question, and its two answers',
   accountcard: 'Who is signed in, and what you can do about it',
   whatsnewdialog: 'What the version you just installed brought',
   speccard: 'A plan being written, live',
