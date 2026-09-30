@@ -9,17 +9,16 @@ import {
  *
  * TWO STROKES FOR TWO PROMISES, which is the whole drawing:
  *
- *  - `auto` is a SOLID accent line with a dot travelling along it. The next skill
- *    runs by itself, so the link is drawn as something already moving. The dot is the
- *    animation and not a dash offset, because a moving dash is a dashed line, and
- *    dashed is what `suggest` means.
- *  - `suggest` is a DASHED neutral line, standing still. It is offered at the end of
- *    the run and happens only if the user says so.
+ *  - `auto` is an accent line, a little heavier, with a dot travelling along it. The
+ *    next skill runs by itself, so the link is drawn as something already moving.
+ *  - `suggest` is a grey line, standing still. It is offered at the end of the run and
+ *    happens only if the user says so.
  *
- * Colour alone does not carry the difference (solid or dashed does), so it survives
- * a theme whose accent is close to its lines, and a reader who cannot tell the two
- * apart by hue. The dot stops under `prefers-reduced-motion` (see
- * `workflowCanvas.css`, where the strokes are painted from the theme's roles).
+ * Both are solid, a choice of the product's. So colour does not carry the difference
+ * alone: the weight and the moving dot do too, which is what a
+ * reader who cannot tell the two apart by hue goes by. The dot stops under
+ * `prefers-reduced-motion`, which leaves the weight (see `workflowCanvas.css`, where
+ * the strokes are painted from the theme's roles).
  *
  * A CONDITIONAL LINK CARRIES ITS OUTCOME'S NAME, on a plate at its middle, as the
  * skills spell it. The port it leaves from names it too; the label is what keeps a
@@ -47,11 +46,6 @@ export interface WorkflowEdgeData extends Record<string, unknown> {
   outcome?: string
   /** Across columns, or up / down between two steps of a loop stacked in one column. */
   route: WorkflowLinkRoute
-  /**
-   * The id of the canvas's arrowhead markers, without the kind suffix. Per canvas, so
-   * two canvases on one page (the showcase) never reference each other's defs.
-   */
-  markerId: string
   /** Drawn heavier, with a halo in the accent: the link the editor's inspector is showing. */
   selected?: boolean
 }
@@ -110,7 +104,6 @@ export function WorkflowEdge({
         id={id}
         path={path}
         className={`ms-wf-edge-${kind}${data?.selected ? ' ms-wf-edge-selected' : ''}`}
-        markerEnd={data ? `url(#${data.markerId}-${kind})` : undefined}
       />
       {kind === 'auto' && (
         <circle r={3} className="ms-wf-pulse">

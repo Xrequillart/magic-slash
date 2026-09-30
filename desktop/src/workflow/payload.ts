@@ -20,7 +20,8 @@ export interface WorkflowPayloadLink {
   /**
    * What follows the target when it is a custom step, empty otherwise. A custom skill
    * does not read `/workflow`, so the magic skill before it carries its hand-offs,
-   * through any further custom steps, down to the next built-in one.
+   * through any further custom steps, down to the next built-in one. A custom step
+   * already on the way there is not walked again: custom steps can loop now.
    */
   then: WorkflowPayloadLink[]
 }
@@ -35,15 +36,15 @@ export interface WorkflowPayload {
   links: WorkflowPayloadLink[]
 }
 
-function payloadLinks(workflow: Workflow, nodeId: string): WorkflowPayloadLink[] {
+function payloadLinks(workflow: Workflow, nodeId: string, walked: ReadonlySet<string> = new Set([nodeId])): WorkflowPayloadLink[] {
   return outgoingLinks(workflow, nodeId).map((link) => ({
     from: link.from,
     to: link.to,
     kind: link.kind,
     outcome: link.outcome ?? null,
     skill: workflow.nodes.find((n) => n.id === link.to)?.skill ?? null,
-    // The line has no cycle, so the walk ends at the next built-in step or the end.
-    then: isCustomNodeId(link.to) ? payloadLinks(workflow, link.to) : [],
+    // The walk ends at a built-in step, a dead end, or a custom step it already went through.
+    then: isCustomNodeId(link.to) && !walked.has(link.to) ? payloadLinks(workflow, link.to, new Set([...walked, link.to])) : [],
   }))
 }
 

@@ -1,8 +1,9 @@
 import { Banner } from './Banner'
 import { Button } from './Button'
-import { Card } from './Card'
+import { ButtonIcon } from './ButtonIcon'
+import { Card, type CardGround } from './Card'
 import { Icon } from './Icon'
-import { ArrowRight, Lock, Trash } from './icons'
+import { ArrowRight, Lock, Trash, X } from './icons'
 import { Select, type SelectOption } from './Select'
 import { skillIcon } from './skillIcons'
 import { Text } from './Text'
@@ -24,8 +25,12 @@ import type { WorkflowCanvasLinkKind, WorkflowCanvasNodeMode } from './workflowL
  *    model refuses there (`disabledKinds`, an auto link into start, say) stays in the
  *    list, greyed, with the link's `hint` saying why.
  *
- * NOTHING SELECTED draws `labels.empty`, so the panel keeps its place beside the canvas
- * instead of appearing and vanishing with every press on the ground.
+ * A DRAWN LINK can also be removed, and the outcome it is taken on changed (`outcomes`,
+ * the ones its source can end on). A default link cannot: it is the product's, and only
+ * its kind is the repository's (`locked`, with `labels.defaultLink` saying so).
+ *
+ * NOTHING SELECTED draws `labels.empty`. The full-screen editor floats the panel over the
+ * canvas and shows it only while something is selected, with `onClose` for its corner X.
  *
  * DATA IN, CALLBACKS OUT. Every word arrives translated in `labels`; nothing here knows
  * the model's rules, which is why `disabled` and `disabledKinds` are the caller's.
@@ -60,6 +65,10 @@ export interface WorkflowInspectorLink {
   disabledKinds?: WorkflowCanvasLinkKind[]
   /** Why, or anything else worth a line under the kind. Already translated. */
   hint?: string
+  /** A default link: it cannot be removed, nor its outcome changed. */
+  locked?: boolean
+  /** A drawn link's choice of outcome: what its source can end on. Empty or absent: no choice. */
+  outcomes?: string[]
 }
 
 export type WorkflowInspectorTarget =
@@ -89,6 +98,14 @@ export interface WorkflowInspectorLabels {
   sources: Record<WorkflowSkillSource, string>
   /** The note on a skill already on the line: "In the workflow". */
   inWorkflow: string
+  /** A drawn link's Remove. */
+  removeLink?: string
+  /** The outcome choice meaning "whatever it ended on". */
+  anyOutcome?: string
+  /** A default link's sentence: "Default link: it cannot be removed, only its kind changes." */
+  defaultLink?: string
+  /** The corner X, with `onClose`. */
+  close?: string
 }
 
 export interface WorkflowInspectorProps {
@@ -102,6 +119,13 @@ export interface WorkflowInspectorProps {
   onChangeMode?: (nodeId: string, mode: WorkflowCanvasNodeMode) => void
   onRemove?: (nodeId: string) => void
   onChangeKind?: (from: string, to: string, kind: WorkflowCanvasLinkKind) => void
+  /** A drawn link's outcome, or none (`undefined`: whatever the source ended on). */
+  onChangeOutcome?: (from: string, to: string, outcome: string | undefined) => void
+  onRemoveLink?: (from: string, to: string) => void
+  /** The corner X. Not drawn without it. */
+  onClose?: () => void
+  /** `raised` where the panel floats over something, the canvas: opaque, not the page's frost. */
+  ground?: CardGround
   /** Margins and width. Not the ground or the padding. */
   className?: string
 }
@@ -118,11 +142,18 @@ export function WorkflowInspector({
   onChangeMode,
   onRemove,
   onChangeKind,
+  onChangeOutcome,
+  onRemoveLink,
+  onClose,
+  ground = 'surface',
   className = '',
 }: WorkflowInspectorProps) {
   return (
     <section aria-label={labels.title} className={className}>
-      <Card padding="regular" className="flex flex-col gap-3">
+      <Card padding="regular" ground={ground} className="relative flex flex-col gap-3">
+        {onClose && (
+          <ButtonIcon icon={X} title={labels.close ?? labels.title} onClick={onClose} tone="ghost" size="sm" className="absolute right-2 top-2" />
+        )}
         {!target ? (
           <Text size="xs" tone="secondary">{labels.empty}</Text>
         ) : target.type === 'node' ? (
@@ -136,7 +167,14 @@ export function WorkflowInspector({
             onRemove={onRemove}
           />
         ) : (
-          <LinkPanel link={target.link} labels={labels} readOnly={readOnly} onChangeKind={onChangeKind} />
+          <LinkPanel
+            link={target.link}
+            labels={labels}
+            readOnly={readOnly}
+            onChangeKind={onChangeKind}
+            onChangeOutcome={onChangeOutcome}
+            onRemoveLink={onRemoveLink}
+          />
         )}
       </Card>
     </section>
@@ -171,7 +209,7 @@ function StepPanel({
 
   return (
     <>
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2.5 pr-6">
         <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
           <Icon glyph={skillIcon(step.skill)} size="md" tone="inherit" />
         </span>
@@ -229,12 +267,18 @@ function LinkPanel({
   labels,
   readOnly,
   onChangeKind,
+  onChangeOutcome,
+  onRemoveLink,
 }: {
   link: WorkflowInspectorLink
   labels: WorkflowInspectorLabels
   readOnly: boolean
   onChangeKind?: WorkflowInspectorProps['onChangeKind']
+  onChangeOutcome?: WorkflowInspectorProps['onChangeOutcome']
+  onRemoveLink?: WorkflowInspectorProps['onRemoveLink']
 }) {
+  const outcomeChoice = !link.locked && (link.outcomes?.length ?? 0) > 0
+  const outcomeOptions: SelectOption[] = (link.outcomes ?? []).map((outcome) => ({ value: outcome, label: outcome }))
   const kindOptions: SelectOption[] = KINDS.map((kind) => ({
     value: kind,
     label: labels[kind],
@@ -243,13 +287,28 @@ function LinkPanel({
 
   return (
     <>
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2 pr-6">
         <Text size="sm" weight="bold" className="truncate" title={link.fromLabel}>{link.fromLabel}</Text>
         <Icon glyph={ArrowRight} size="sm" tone="muted" className="flex-shrink-0" />
         <Text size="sm" weight="bold" className="truncate" title={link.toLabel}>{link.toLabel}</Text>
       </div>
 
-      {link.outcome && (
+      {outcomeChoice ? (
+        <Field label={labels.outcome}>
+          <Select
+            value={link.outcome ?? ''}
+            options={outcomeOptions}
+            // "Whatever it ended on" is the Select's cleared state, `''`.
+            clearLabel={labels.anyOutcome}
+            placeholder={labels.anyOutcome}
+            onChange={(outcome) => onChangeOutcome?.(link.from, link.to, outcome === '' ? undefined : outcome)}
+            disabled={readOnly || !onChangeOutcome}
+            ariaLabel={labels.outcome}
+            size="md"
+            fit
+          />
+        </Field>
+      ) : link.outcome && (
         <div className="flex items-center gap-1.5">
           <Text size="2xs" tone="secondary">{labels.outcome}</Text>
           <code className="rounded-md border border-line-strong px-1.5 py-0.5 font-mono text-[10px] leading-4 text-text-secondary">
@@ -270,6 +329,12 @@ function LinkPanel({
         />
       </Field>
       {link.hint && <Text size="2xs" tone="secondary">{link.hint}</Text>}
+      {link.locked && labels.defaultLink && <Text size="2xs" tone="secondary">{labels.defaultLink}</Text>}
+      {!link.locked && !readOnly && onRemoveLink && (
+        <Button tone="danger" size="sm" icon={Trash} onClick={() => onRemoveLink(link.from, link.to)} className="self-start">
+          {labels.removeLink ?? labels.remove}
+        </Button>
+      )}
     </>
   )
 }

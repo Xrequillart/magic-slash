@@ -5,8 +5,14 @@ import type { WorkflowOverlay } from '../../workflow/overlay'
 import { EMPTY_OVERLAY, composeWorkflow } from '../../workflow/overlay'
 import { hydrateWorkflows, overlayForRepo, resetWorkflowsCache, revisionForRepo, setWorkflow, workflowForRepo } from './workflows'
 
-/** A check step between start and commit. */
-const OVERLAY: WorkflowOverlay = { version: 1, steps: [{ skill: 'check', mode: 'advisory', before: 'commit' }], kinds: {} }
+/** A check step after commit. */
+const OVERLAY: WorkflowOverlay = {
+  version: 2,
+  steps: [{ skill: 'check', mode: 'advisory' }],
+  links: [{ from: 'commit', to: 'custom:check', kind: 'suggest' }],
+  kinds: {},
+  positions: {},
+}
 const CUSTOM = composeWorkflow(OVERLAY)
 
 /** Rows as the store returns them: each definition at `revision`. */
@@ -52,7 +58,7 @@ describe('workflowForRepo', () => {
 
   it('ignores an invalid flow, with a warning, and serves the default', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const duplicated: WorkflowOverlay = { ...OVERLAY, steps: [{ skill: 'magic-commit', mode: 'advisory', before: 'pr' }] }
+    const duplicated: WorkflowOverlay = { ...OVERLAY, steps: [{ skill: 'magic-commit', mode: 'advisory' }] }
     // A full workflow, as stored before overlays: not an overlay, so not served.
     withStoredWorkflows({ 'repo-1': duplicated, 'repo-2': { nodes: 'nope' }, 'repo-3': DEFAULT_WORKFLOW })
     await hydrateWorkflows()
@@ -132,7 +138,7 @@ describe('setWorkflow', () => {
   it('judges a saved overlay as a load would, serving the default for an unusable one', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     setWorkflow('repo-1', OVERLAY, 'rev-2')
-    setWorkflow('repo-1', { ...OVERLAY, steps: [{ skill: 'magic-commit', mode: 'advisory', before: 'pr' }] }, 'rev-3')
+    setWorkflow('repo-1', { ...OVERLAY, steps: [{ skill: 'magic-commit', mode: 'advisory' }] }, 'rev-3')
     expect(workflowForRepo('repo-1').source).toBe('default')
     expect(warn).toHaveBeenCalledTimes(1)
   })
@@ -157,8 +163,26 @@ describe('hydrateWorkflows', () => {
   it('reports nothing when the same flows come back, whatever their key order', async () => {
     setWorkflow('repo-1', OVERLAY, 'rev-1')
     // jsonb hands keys back in its own order.
-    withStoredWorkflows({ 'repo-1': { steps: [{ before: 'commit', mode: 'advisory', skill: 'check' }], kinds: {}, version: 1 } })
+    withStoredWorkflows({
+      'repo-1': { positions: {}, kinds: {}, links: [{ kind: 'suggest', to: 'custom:check', from: 'commit' }], steps: [{ mode: 'advisory', skill: 'check' }], version: 2 },
+    })
     expect(await hydrateWorkflows()).toEqual([])
+  })
+
+  it('upgrades a v1 row (the line of before) into the graph the editor edits', async () => {
+    withStoredWorkflows({ 'repo-1': { version: 1, steps: [{ skill: 'check', mode: 'advisory', before: 'commit' }], kinds: {} } })
+    await hydrateWorkflows()
+    expect(workflowForRepo('repo-1').source).toBe('repository')
+    expect(overlayForRepo('repo-1')).toEqual({
+      version: 2,
+      steps: [{ skill: 'check', mode: 'advisory' }],
+      links: [
+        { from: 'start', to: 'custom:check', kind: 'suggest' },
+        { from: 'custom:check', to: 'commit', kind: 'suggest' },
+      ],
+      kinds: {},
+      positions: {},
+    })
   })
 
   it('reports nothing when the read fails', async () => {

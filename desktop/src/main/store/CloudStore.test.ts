@@ -2003,7 +2003,13 @@ describe('loadRepositoryWorkflows', () => {
 })
 
 describe('saveRepositoryWorkflow', () => {
-  const OVERLAY = { version: 1 as const, steps: [{ skill: 'check', mode: 'advisory' as const, before: 'commit' }], kinds: {} }
+  const OVERLAY = {
+    version: 2 as const,
+    steps: [{ skill: 'check', mode: 'advisory' as const }],
+    links: [{ from: 'commit', to: 'custom:check', kind: 'suggest' as const }],
+    kinds: {},
+    positions: {},
+  }
   const has = (calls: RecordedCall[], method: string, ...args: unknown[]) =>
     calls.some((c) => c.table === 'repository_workflows' && c.method === method && args.every((a, i) => c.args[i] === a))
 

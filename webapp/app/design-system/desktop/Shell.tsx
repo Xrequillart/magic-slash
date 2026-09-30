@@ -29,6 +29,7 @@ import { WorkflowNodeEntry } from './entries/WorkflowNodeEntry'
 import { WorkflowInspectorEntry } from './entries/WorkflowInspectorEntry'
 import { WorkflowSkillPickerEntry } from './entries/WorkflowSkillPickerEntry'
 import { WorkflowProblemsEntry } from './entries/WorkflowProblemsEntry'
+import { WorkflowEditorEntry } from './entries/WorkflowEditorEntry'
 import { MenuBarPanelEntry } from './entries/MenuBarPanelEntry'
 import { SidebarPagesEditorEntry } from './entries/SidebarPagesEditorEntry'
 import { SettingsCardEntry } from './entries/SettingsCardEntry'
@@ -283,6 +284,7 @@ const ENTRIES: Record<
   workflowinspector: WorkflowInspectorEntry,
   workflowskillpicker: WorkflowSkillPickerEntry,
   workflowproblems: WorkflowProblemsEntry,
+  workfloweditor: WorkflowEditorEntry,
 }
 
 /**

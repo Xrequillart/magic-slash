@@ -94,24 +94,37 @@ export function problemNodeIds(found: readonly WorkflowProblem[]): string[] {
  * Facts about where a custom step sits that change WHEN it runs, for the inspector to
  * say in words (the caller translates each code):
  *
- *  - `on-review-comments`: the link into it is taken only on `review_comments`, the
- *    first hop of a split `pr → resolve`, so it runs only when the PR has comments;
- *  - `skipped-from-start`: it sits between plan and start, outside the entry, so a
- *    ticket started straight from /magic:start never passes through it.
+ *  - `on-review-comments`: a link into it is taken only on `review_comments`, so it runs
+ *    only when the PR has comments;
+ *  - `skipped-from-start`: it is reached from plan, never from start, so a ticket started
+ *    straight from /magic:start never passes through it.
  *
- * A built-in step gets none: its place is the product's, not the repository's.
+ * A built-in step gets none: its place is the product's, not the repository's. A step
+ * nothing reaches gets none either: its card already says it never runs.
  */
 export type WorkflowStepHint = 'on-review-comments' | 'skipped-from-start'
+
+/** The node ids reachable from `from`, itself included. */
+function reachableFrom(flow: Workflow, from: string): Set<string> {
+  const seen = new Set([from])
+  const queue = [from]
+  while (queue.length > 0) {
+    const id = queue.shift()!
+    for (const link of flow.links) {
+      if (link.from === id && !seen.has(link.to)) {
+        seen.add(link.to)
+        queue.push(link.to)
+      }
+    }
+  }
+  return seen
+}
 
 export function stepHints(flow: Workflow, nodeId: string): WorkflowStepHint[] {
   if (!isCustomNodeId(nodeId)) return []
   const hints: WorkflowStepHint[] = []
   if (flow.links.some((link) => link.to === nodeId && link.outcome === 'review_comments')) hints.push('on-review-comments')
-  const ids = flow.nodes.map((node) => node.id)
-  const at = ids.indexOf(nodeId)
-  const plan = ids.indexOf(PLAN_NODE_ID)
-  const start = ids.indexOf(START_NODE_ID)
-  if (plan !== -1 && start !== -1 && plan < at && at < start) hints.push('skipped-from-start')
+  if (reachableFrom(flow, PLAN_NODE_ID).has(nodeId) && !reachableFrom(flow, START_NODE_ID).has(nodeId)) hints.push('skipped-from-start')
   return hints
 }
 
@@ -122,14 +135,14 @@ const PICKABLE: readonly WorkflowSkillOption['source'][] = ['custom', 'repo', 'p
  * The skills a custom step may run, for the picker and the inspector's `Select`.
  *
  * Out of the listing Claude Code injects (`skills:listingEntries`), minus:
- *  - the built-in skills, which are already on the line and cannot be placed twice;
+ *  - the built-in skills, which are already in the flow and cannot be placed twice;
  *  - the OTHER repositories' skills, which do not exist in this one;
  *  - `hidden` entries (`disable-model-invocation`, an `off` override): the protocol
  *    chains a step by having Claude invoke it, which is exactly what they forbid.
  * One option per name: a skill both in `~/.claude/skills` and in the repository is the
  * repository's, since that is the copy every member has.
  *
- * `inWorkflow` are the skills already on the line: listed, greyed (`disabled`).
+ * `inWorkflow` are the skills already in the flow: listed, greyed (`disabled`).
  */
 export function skillOptions(
   entries: readonly ListingEntry[],

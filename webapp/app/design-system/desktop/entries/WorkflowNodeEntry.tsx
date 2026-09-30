@@ -49,7 +49,7 @@ export function WorkflowNodeEntry({ theme, onOpen }: { theme: DesktopTheme; onOp
 
       <EntrySection
         title="The ports are the outcomes"
-        note="A conditional link leaves from the row naming its outcome, so “review, on changes_requested, suggests resolve” reads off the card in a flow that has one. An unconditional link leaves from the header. Every outcome gets its row, linked or not: an outcome that leads nowhere is part of what the flow says."
+        note="A conditional link leaves from the row naming its outcome, so “review, on changes_requested, suggests resolve” reads off the card in a flow that has one. Links arrive at the one port on the header’s left, and the header has no way out: an unconditional link leaves from the last row, When done, or from the one row of a card with a single outcome, which says the same. Every outcome gets its row, linked or not: an outcome that leads nowhere is part of what the flow says."
       >
         <Stage theme={theme} className="flex flex-col gap-6">
           <Specimen label="three outcomes">

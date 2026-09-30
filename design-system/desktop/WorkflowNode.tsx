@@ -1,10 +1,12 @@
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
 
 import { Icon } from './Icon'
-import { Lock, Plus, TriangleAlert } from './icons'
+import { Lock, TriangleAlert } from './icons'
 import { skillIcon } from './skillIcons'
 import { Text } from './Text'
-import type { WorkflowCanvasNode, WorkflowCanvasNodeMode } from './workflowLayout'
+import {
+  workflowExitRows, WORKFLOW_ANY_EXIT, type WorkflowCanvasLinkKind, type WorkflowCanvasNode, type WorkflowCanvasNodeMode,
+} from './workflowLayout'
 
 /**
  * ONE STEP OF A WORKFLOW, AS A CARD ON THE CANVAS: the skill's glyph and name, and a
@@ -14,12 +16,17 @@ import type { WorkflowCanvasNode, WorkflowCanvasNodeMode } from './workflowLayou
  * props are xyflow's `NodeProps`, and everything it shows arrives in `data`, already
  * translated. Nothing here is a `ReactNode` slot, by the folder's rule.
  *
- * THE PORTS ARE THE OUTCOMES. A conditional link leaves from the row naming the
- * outcome it is taken on (the handle's id IS the outcome's name), so "review, when it
- * ends on changes_requested, suggests resolve" reads off the card without a legend.
- * An unconditional link leaves from the header, the one port that means "whatever
- * happened". Every outcome gets its row, linked or not: an outcome that leads nowhere
- * is part of what the flow says.
+ * ONE WAY IN, THE WAYS OUT BELOW IT. Links arrive at the one port on the header's left,
+ * and leave from the rows under it (`workflowExitRows`): a conditional link from the row
+ * naming the outcome it is taken on (the handle's id IS the outcome's name), so "review,
+ * when it ends on changes_requested, suggests resolve" reads off the card without a
+ * legend; an unconditional one from the last row, `anyExit` ("When done"), or from the
+ * one row of a card with a single outcome, which says the same. The header has no port
+ * out. Every row is drawn, linked or not: an outcome that leads nowhere is part of what
+ * the flow says.
+ *
+ * A PORT IN USE SAYS SO: bigger, and ringed in the stroke of the link plugged into it
+ * (`ports`): the accent for an automatic one, grey for a suggestion.
  *
  * THE GROUND IS OPAQUE (`bg-bg-secondary`), unlike most of this folder's translucent
  * surfaces: a link running under a card must not show through it.
@@ -36,6 +43,12 @@ import type { WorkflowCanvasNode, WorkflowCanvasNodeMode } from './workflowLayou
  * small plate, and a warning badge whose tooltip is the warning. A step named by a
  * problem wears a red border; the selected step a ring in the accent. None of it is drawn
  * unless the node says so, so the read-only canvas looks exactly as it did.
+ *
+ * LINKS ARE DRAWN FROM THE PORTS, in the editor (`connectable`): dragged out of an
+ * outcome's row, a link is taken only on that outcome; out of the "When done" row,
+ * whatever the step ended on. They land on the header's left port. The lanes of a loop's
+ * verticals and detours stay out of it: they are where a link is drawn, not a place to
+ * start one.
  */
 
 /** The words the card draws beside a node's own, translated by the caller. */
@@ -53,12 +66,18 @@ export interface WorkflowNodeData extends Record<string, unknown> {
   selected?: boolean
   /** Needed only when the node carries `locked` or `mode`; without them neither mark is drawn. */
   labels?: WorkflowNodeLabels
+  /** Its ports start and take links: the editor's canvas, when it may draw them. */
+  connectable?: boolean
+  /** The "whatever it ended on" row's word: "When done". */
+  anyExit?: string
+  /** The ports a link is plugged into, by handle id, and the kind of that link: drawn in its stroke. */
+  ports?: Readonly<Record<string, WorkflowCanvasLinkKind>>
 }
 
 export type WorkflowNodeType = Node<WorkflowNodeData, 'workflow'>
 
-/** The port an unconditional link leaves from, and the one every link arrives at. */
-export const WORKFLOW_DEFAULT_HANDLE = 'default'
+/** The port an unconditional link leaves from (the last row), and the one every link arrives at. */
+export const WORKFLOW_DEFAULT_HANDLE = WORKFLOW_ANY_EXIT
 export const WORKFLOW_TARGET_HANDLE = 'in'
 
 /**
@@ -108,8 +127,10 @@ const MODE_TONES: Record<WorkflowCanvasNodeMode, string> = {
 }
 
 export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
-  const { node, selected = false, labels } = data
-  const hasOutcomes = node.outcomes.length > 0
+  const { node, selected = false, labels, connectable = false, anyExit = '', ports } = data
+  // A used port wears its link's stroke (`workflowCanvas.css`).
+  const used = (handle: string) => (ports?.[handle] ? `ms-wf-port-${ports[handle]}` : undefined)
+  const exits = workflowExitRows(node)
   const frame = selected
     ? node.problem ? FRAMES.selectedProblem : FRAMES.selected
     : node.problem ? FRAMES.problem : FRAMES.rest
@@ -128,9 +149,9 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
       <Handle type="target" position={Position.Bottom} id={WORKFLOW_VERTICAL_HANDLES.up.target} style={UP_LANE} className="ms-wf-lane" isConnectable={false} />
       <Handle type="target" position={Position.Top} id={WORKFLOW_SELF_TARGET_HANDLE} style={SELF_LANE} className="ms-wf-lane" isConnectable={false} />
       <div
-        className={`relative flex h-14 items-center gap-2.5 px-3 ${hasOutcomes ? 'border-b border-line' : ''}`.trim()}
+        className="relative flex h-14 items-center gap-2.5 border-b border-line px-3"
       >
-        <Handle type="target" position={Position.Left} id={WORKFLOW_TARGET_HANDLE} isConnectable={false} />
+        <Handle type="target" position={Position.Left} id={WORKFLOW_TARGET_HANDLE} isConnectable={connectable} className={used(WORKFLOW_TARGET_HANDLE)} />
         <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
           <Icon glyph={skillIcon(node.skill)} size="md" tone="inherit" />
         </span>
@@ -168,61 +189,23 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
             )}
           </span>
         )}
-        <Handle type="source" position={Position.Right} id={WORKFLOW_DEFAULT_HANDLE} isConnectable={false} />
         <Handle type="target" position={Position.Right} id={WORKFLOW_SIDE_TARGET_HANDLE} className="ms-wf-lane" isConnectable={false} />
       </div>
 
-      {hasOutcomes && (
-        <ul className="pb-2">
-          {node.outcomes.map((outcome) => (
-            <li key={outcome} className="relative flex h-6 items-center justify-end pl-3 pr-4">
-              <code className="truncate font-mono text-[10px] leading-4 text-text-secondary" title={outcome}>
-                {outcome}
+      <ul className="pb-2">
+        {exits.map((exit) => (
+          <li key={exit} className="relative flex h-6 items-center justify-end pl-3 pr-4">
+            {exit === WORKFLOW_ANY_EXIT ? (
+              <Text size="2xs" tone="secondary" className="truncate italic" title={anyExit}>{anyExit}</Text>
+            ) : (
+              <code className="truncate font-mono text-[10px] leading-4 text-text-secondary" title={exit}>
+                {exit}
               </code>
-              <Handle type="source" position={Position.Right} id={outcome} isConnectable={false} />
-            </li>
-          ))}
-        </ul>
-      )}
+            )}
+            <Handle type="source" position={Position.Right} id={exit} isConnectable={connectable} className={used(exit)} />
+          </li>
+        ))}
+      </ul>
     </div>
-  )
-}
-
-/**
- * THE EDITOR'S "+", as a node of its own: a round button in a gap of the line, where a
- * step would be inserted. Placed by `workflowInsertSlots` (its centre) and drawn by
- * `WorkflowCanvas` only while it is editable.
- *
- * A NODE AND NOT AN EDGE LABEL, because the two ends of the line have no link to hang
- * a label from, and one mechanism for every slot keeps them in step. It carries no
- * handle, is never focused by xyflow (the button inside is the stop on the keyboard's
- * path), and `nodrag nopan` keeps a press on it from panning the ground.
- *
- * The button hands its own element back with the slot, so the caller can hang the
- * skill picker off it.
- */
-export interface WorkflowInsertNodeData extends Record<string, unknown> {
-  slot: number
-  /** The button's accessible name and tooltip: "Add a step here". */
-  label: string
-  onInsert: (slot: number, anchor: HTMLElement) => void
-}
-
-export type WorkflowInsertNodeType = Node<WorkflowInsertNodeData, 'insert'>
-
-/** The button's diameter, in canvas pixels. The canvas centres the node on its slot with it. */
-export const WORKFLOW_INSERT_SIZE = 22
-
-export function WorkflowInsertNode({ data }: NodeProps<WorkflowInsertNodeType>) {
-  return (
-    <button
-      type="button"
-      aria-label={data.label}
-      title={data.label}
-      onClick={(event) => data.onInsert(data.slot, event.currentTarget)}
-      className="nodrag nopan flex h-full w-full items-center justify-center rounded-full border border-line-strong bg-bg-secondary text-icon shadow-sm transition-colors hover:border-accent hover:bg-accent hover:text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-    >
-      <Icon glyph={Plus} size="xs" tone="inherit" />
-    </button>
   )
 }

@@ -20,8 +20,11 @@ export interface CanvasMinimapProps {
   label: string
 }
 
-/** Small enough to leave the corner to the graph, big enough to find a node in. */
-const SIZE = { width: 168, height: 112 }
+/**
+ * Small enough to leave the corner to the graph, big enough to find a node in. Exported
+ * for what sits above it in the same corner: the canvas's Edit button.
+ */
+export const CANVAS_MINIMAP_SIZE = { width: 168, height: 112 }
 
 export function CanvasMinimap({ label }: CanvasMinimapProps) {
   return (
@@ -31,10 +34,7 @@ export function CanvasMinimap({ label }: CanvasMinimapProps) {
       zoomable
       position="bottom-right"
       nodeBorderRadius={6}
-      // The editable canvas's "+" buttons are nodes too; they are not steps, and the
-      // stylesheet hides a node carrying this class.
-      nodeClassName={(node) => (node.type === 'insert' ? 'ms-wf-mini-hidden' : '')}
-      style={SIZE}
+      style={CANVAS_MINIMAP_SIZE}
     />
   )
 }

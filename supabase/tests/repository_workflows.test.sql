@@ -19,7 +19,7 @@
 -- Not run by CI (no pgTAP there): replay by hand before touching these policies.
 
 begin;
-select plan(29);
+select plan(31);
 
 -- ---------------------------------------------------------------------------
 -- Seed as the table owner (RLS bypassed). u1 = admin of Org A and owner of every
@@ -120,6 +120,19 @@ select throws_ok(
   '23514',
   NULL,
   'the version is the number 1, not the string "1"'
+);
+
+-- 8b-8c. *** Version 2, the graph the canvas draws, is stored; half a v2 is not. ***
+select results_eq(
+  $sql$ with w as (update public.repository_workflows set definition = '{"version":2,"steps":[{"skill":"perso","mode":"advisory"}],"links":[{"from":"commit","to":"custom:perso","kind":"suggest"}],"kinds":{},"positions":{"custom:perso":{"x":0,"y":0}}}' where repo_id = 'd0000000-0000-0000-0000-000000000001' returning 1) select count(*)::int from w $sql$,
+  $sql$ values (1) $sql$,
+  'a v2 overlay (steps, links, kinds, positions) is stored'
+);
+select throws_ok(
+  $sql$ update public.repository_workflows set definition = '{"version":2,"steps":[],"kinds":{}}' where repo_id = 'd0000000-0000-0000-0000-000000000001' $sql$,
+  '23514',
+  NULL,
+  'a v2 overlay without its links and positions is refused'
 );
 
 -- ---------------------------------------------------------------------------

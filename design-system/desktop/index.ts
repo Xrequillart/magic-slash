@@ -340,13 +340,11 @@ export type { ToggleButtonProps, ToggleButtonSize } from './ToggleButton'
 // them; the layout and the handle ids stay inside the folder.
 export { WorkflowCanvas } from './WorkflowCanvas'
 export type { WorkflowCanvasLabels, WorkflowCanvasProps, WorkflowCanvasSelection } from './WorkflowCanvas'
-export { WorkflowInsertNode, WorkflowNode } from './WorkflowNode'
-export type {
-  WorkflowInsertNodeData, WorkflowInsertNodeType, WorkflowNodeData, WorkflowNodeLabels, WorkflowNodeType,
-} from './WorkflowNode'
+export { WorkflowNode } from './WorkflowNode'
+export type { WorkflowNodeData, WorkflowNodeLabels, WorkflowNodeType } from './WorkflowNode'
 export { WorkflowEdge } from './WorkflowEdge'
 export type { WorkflowEdgeData, WorkflowEdgeType } from './WorkflowEdge'
-export { CanvasMinimap } from './CanvasMinimap'
+export { CANVAS_MINIMAP_SIZE, CanvasMinimap } from './CanvasMinimap'
 export type { CanvasMinimapProps } from './CanvasMinimap'
 export type {
   WorkflowCanvasLink,
@@ -354,6 +352,13 @@ export type {
   WorkflowCanvasNode,
   WorkflowCanvasNodeMode,
 } from './workflowLayout'
+// Where each card is drawn: the editor pins them there before an edit to the links.
+export { workflowPositions } from './workflowLayout'
+// The dock and the full-screen editor draw a canvas, so they are xyflow's too.
+export { WorkflowDock } from './WorkflowDock'
+export type { WorkflowDockLabels, WorkflowDockProps } from './WorkflowDock'
+export { WorkflowEditor } from './WorkflowEditor'
+export type { WorkflowEditorBanner, WorkflowEditorLabels, WorkflowEditorProps } from './WorkflowEditor'
 // The editor around the canvas: no xyflow in any of them.
 export { WorkflowInspector } from './WorkflowInspector'
 export type {

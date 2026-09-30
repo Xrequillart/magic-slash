@@ -3,10 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   layoutWorkflow,
   orthogonalPath,
-  workflowInsertSlots,
+  workflowPositions,
   workflowNodeHeight,
-  WORKFLOW_COLUMN_GAP,
-  WORKFLOW_INSERT_LABEL_CLEARANCE,
   WORKFLOW_NODE_WIDTH,
   type WorkflowCanvasLink,
   type WorkflowCanvasNode,
@@ -167,62 +165,35 @@ describe('orthogonalPath', () => {
   })
 })
 
-describe('workflowInsertSlots', () => {
-  // The editable line: the default flow with a custom step between start and commit.
-  const LINE: WorkflowCanvasNode[] = [
-    DEFAULT_NODES[0],
-    DEFAULT_NODES[1],
-    { id: 'custom:lint', label: 'Lint', skill: 'lint', outcomes: [], mode: 'blocking' },
-    ...DEFAULT_NODES.slice(2),
+describe('workflowPositions', () => {
+  const nodes: WorkflowCanvasNode[] = [
+    { id: 'a', label: 'A', skill: 'a', outcomes: [] },
+    { id: 'b', label: 'B', skill: 'b', outcomes: [] },
+    { id: 'c', label: 'C', skill: 'c', outcomes: [] },
   ]
-  const LINE_LINKS: WorkflowCanvasLink[] = [
-    { from: 'plan', to: 'start', kind: 'suggest' },
-    { from: 'start', to: 'custom:lint', kind: 'auto' },
-    { from: 'custom:lint', to: 'commit', kind: 'suggest' },
-    { from: 'commit', to: 'pr', kind: 'suggest' },
-    { from: 'pr', to: 'resolve', kind: 'auto', outcome: 'review_comments' },
-    { from: 'resolve', to: 'done', kind: 'suggest' },
+  // b ⇄ c is a loop: stacked in one column, joined by straight verticals.
+  const links: WorkflowCanvasLink[] = [
+    { from: 'a', to: 'b', kind: 'suggest' },
+    { from: 'b', to: 'c', kind: 'suggest' },
+    { from: 'c', to: 'b', kind: 'suggest' },
   ]
-  const { positions } = layoutWorkflow(LINE, LINE_LINKS, ['plan', 'start'])
-  const slots = workflowInsertSlots(LINE, LINE_LINKS, positions)
 
-  it('gives one slot per gap of the line and one at each end, numbered 0 to length', () => {
-    expect(slots.map((s) => s.slot)).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
+  it('is the computed layout when nothing was moved', () => {
+    const layout = layoutWorkflow(nodes, links, ['a'])
+    expect(workflowPositions(nodes, links, ['a'])).toEqual({ positions: layout.positions, routes: layout.routes })
   })
 
-  it('puts the ends half a gap out from the first and last cards', () => {
-    expect(slots[0].x).toBe(positions.plan.x - WORKFLOW_COLUMN_GAP / 2)
-    expect(slots[7].x).toBe(positions.done.x + WORKFLOW_NODE_WIDTH + WORKFLOW_COLUMN_GAP / 2)
+  it('keeps a stored position, and turns the links of a moved card into plain curves', () => {
+    const layout = layoutWorkflow(nodes, links, ['a'])
+    const { positions, routes } = workflowPositions(nodes, links, ['a'], { c: { x: 900, y: 40 } })
+    expect(positions.c).toEqual({ x: 900, y: 40 })
+    expect(positions.a).toEqual(layout.positions.a)
+    expect(routes).toEqual({ 0: 'forward', 1: 'forward', 2: 'forward' })
   })
 
-  it('centres a slot between two cards in the gap between them, never over a card', () => {
-    for (let i = 1; i < LINE.length; i++) {
-      const left = positions[LINE[i - 1].id].x + WORKFLOW_NODE_WIDTH
-      const right = positions[LINE[i].id].x
-      expect(slots[i].x).toBe((left + right) / 2)
-    }
-  })
-
-  it('sits on an unlabelled link between two headers, at their height', () => {
-    // start and the custom step: one outcome row against none, so the headers differ.
-    const header = (id: string) => positions[id].y + 1 + 28
-    expect(slots[2].y).toBe((header('start') + header('custom:lint')) / 2)
-  })
-
-  it('drops under the outcome label of a conditional link rather than covering it', () => {
-    const pr = LINE.find((n) => n.id === 'pr')!
-    const port = positions.pr.y + 1 + 56 + pr.outcomes.indexOf('review_comments') * 24 + 12
-    const mid = (port + positions.resolve.y + 1 + 28) / 2
-    expect(slots[5].y).toBe(mid + WORKFLOW_INSERT_LABEL_CLEARANCE)
-  })
-
-  it('still gives a slot between two cards no link joins', () => {
-    const two = [node('a'), node('b')]
-    const { positions: p } = layoutWorkflow(two, [], ['a', 'b'])
-    expect(workflowInsertSlots(two, [], p).map((s) => s.slot)).toEqual([0, 1, 2])
-  })
-
-  it('offers a single slot on an empty line', () => {
-    expect(workflowInsertSlots([], [], {})).toEqual([{ slot: 0, x: 0, y: 0 }])
+  it('keeps the computed route when a stored position is where the layout put the card anyway', () => {
+    const layout = layoutWorkflow(nodes, links, ['a'])
+    const { routes } = workflowPositions(nodes, links, ['a'], { b: layout.positions.b, c: layout.positions.c })
+    expect(routes).toEqual(layout.routes)
   })
 })

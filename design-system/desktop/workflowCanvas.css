@@ -49,14 +49,54 @@
 /*
  * The ports: a small dot on the card's edge, ringed in the card's own ground so it
  * reads as sitting ON the border rather than beside it.
+ *
+ * THE BOX IS FIXED AND THE DOT IS DRAWN INSIDE IT (`::after`). xyflow measures a port's
+ * box once, when its card mounts, and ends every link at that box's edge: a port that
+ * grew on its own would leave its links a few pixels short of it, and one that shrank,
+ * inside it. So the box is the size of the largest dot, a USED port's, and a link ends
+ * exactly on that dot's rim; what changes with the state is only what is painted.
  */
 .ms-workflow-canvas .react-flow__handle {
-  width: 7px;
-  height: 7px;
+  width: 13px;
+  height: 13px;
   min-width: 0;
   min-height: 0;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+}
+.ms-workflow-canvas .react-flow__handle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
   border: 1.5px solid rgb(var(--c-bg-secondary));
   border-radius: 9999px;
+  background: var(--xy-handle-background-color);
+  transition: transform 120ms ease-out, background-color 120ms ease-out, width 160ms ease-out, height 160ms ease-out;
+}
+
+/*
+ * A USED PORT wears the stroke of its link: bigger, hollow on the card's ground, and
+ * ringed in the link's colour, the accent for `auto`, neutral grey for `suggest`. A port with links of both kinds wears `auto`'s, the one that acts.
+ */
+.ms-workflow-canvas .react-flow__handle.ms-wf-port-auto::after,
+.ms-workflow-canvas .react-flow__handle.ms-wf-port-suggest::after {
+  width: 13px;
+  height: 13px;
+  border-width: 2px;
+  background: rgb(var(--c-bg-secondary));
+}
+.ms-workflow-canvas .react-flow__handle.ms-wf-port-auto::after {
+  border-style: solid;
+  border-color: rgb(var(--c-accent));
+}
+.ms-workflow-canvas .react-flow__handle.ms-wf-port-suggest::after {
+  border-style: solid;
+  border-color: rgb(var(--c-text-secondary) / 0.7);
 }
 
 /* The ports of a loop's vertical links: where the line meets the card, never a dot. */
@@ -71,25 +111,18 @@
   fill: none;
 }
 
-/* `suggest`: dashed and neutral. Offered, not taken. */
+/* `suggest`: solid, neutral and still. Offered, not taken. */
 .ms-workflow-canvas .ms-wf-edge-suggest {
   stroke: rgb(var(--c-text-secondary) / 0.7);
   stroke-width: 1.5;
-  stroke-dasharray: 5 4;
   fill: none;
 }
 
-.ms-workflow-canvas .ms-wf-arrow-auto {
-  fill: rgb(var(--c-accent));
-}
-.ms-workflow-canvas .ms-wf-arrow-suggest {
-  fill: rgb(var(--c-text-secondary) / 0.7);
-}
 
 /*
  * THE EDITABLE CANVAS. A card and a link are pressed to select them, so both say so;
  * the selected link is heavier and haloed in the accent, whichever of the two strokes
- * it is. The editor's "+" nodes are not steps: the minimap leaves them out.
+ * it is.
  */
 .ms-workflow-canvas.ms-wf-editable .react-flow__node-workflow,
 .ms-workflow-canvas.ms-wf-editable .react-flow__edge {
@@ -98,9 +131,6 @@
 .ms-workflow-canvas .ms-wf-edge-selected {
   stroke-width: 3;
   filter: drop-shadow(0 0 3px rgb(var(--c-accent) / 0.55));
-}
-.ms-workflow-canvas .react-flow__minimap-node.ms-wf-mini-hidden {
-  display: none;
 }
 .ms-workflow-canvas .react-flow__node-workflow:focus-visible {
   outline: 2px solid rgb(var(--c-accent));
@@ -133,4 +163,137 @@
  */
 .ms-workflow-canvas .react-flow__edgelabel-renderer {
   z-index: 1001;
+}
+
+/*
+ * DRAGGING AND LINKING, in the editor. A draggable card says it can be grabbed; a port a
+ * link can start from grows under the pointer, since a 7px dot is a small target to
+ * aim a drag at. The link being drawn is in the accent, dashed: a link in the making,
+ * not yet one of the two kinds (it lands as a suggestion).
+ */
+.ms-workflow-canvas .react-flow__node-workflow.draggable {
+  cursor: grab;
+}
+.ms-workflow-canvas .react-flow__node-workflow.dragging {
+  cursor: grabbing;
+}
+.ms-workflow-canvas .react-flow__handle.connectable {
+  cursor: crosshair;
+}
+/* Under the pointer, or where a link being drawn would land: the dot fills in the accent. */
+.ms-workflow-canvas .react-flow__handle.connectable:not(.ms-wf-lane):hover::after,
+.ms-workflow-canvas .react-flow__handle.connectingto::after,
+.ms-workflow-canvas .react-flow__handle.valid::after {
+  transform: scale(1.35);
+  background-color: rgb(var(--c-accent));
+  border-color: rgb(var(--c-bg-secondary));
+  border-style: solid;
+}
+.ms-workflow-canvas .react-flow__connection-path {
+  stroke: rgb(var(--c-accent));
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  fill: none;
+}
+
+/*
+ * THE FULL-SCREEN EDITOR'S MOTION (`WorkflowEditor`). One choreography on the way in, the
+ * same one run backwards on the way out, and the inspector sliding in from the right.
+ *
+ * IN, one beat after another, so the eye is led and not flooded: the title bar drops in,
+ * the canvas rises, the cards arrive one after the other in the
+ * flow's order, then the links, and the dock slides up from under the window's edge with
+ * a little overshoot, the one element with some spring in it, since it is the one the
+ * hand goes to. The legend and the minimap come last and quietly.
+ *
+ * NOTHING THAT CARRIES A PORT MAY MOVE OR SCALE ON THE WAY IN. xyflow measures where each
+ * port sits the moment a card mounts, relative to the card and divided by its own zoom:
+ * a card still sliding, or a canvas still scaled up, is measured a few pixels off, and
+ * every link then lands beside its port for good. So the cards only fade in (and
+ * sharpen), and the canvas only slides, which moves a card and its ports together.
+ *
+ * OUT, faster than in (leaving should never be waited on): the dock drops, the canvas
+ * sinks back, the whole layer fades. The editor tells its caller when that is over
+ * (`onLeft`, on the root's own `animationend`), which is why REDUCED MOTION shortens the
+ * animations to nothing rather than removing them: an animation that never runs never
+ * ends, and the editor would never close.
+ *
+ * Here and not in the app's Tailwind config for the reason the rest of this sheet is: the
+ * showcase draws the same editor, and it has no access to the app's keyframes.
+ */
+
+@keyframes ms-wfe-fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes ms-wfe-leave { from { opacity: 1 } to { opacity: 0 } }
+@keyframes ms-wfe-bar-in { from { opacity: 0; transform: translateY(-100%) } to { opacity: 1; transform: none } }
+@keyframes ms-wfe-stage-in { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+@keyframes ms-wfe-stage-out { from { opacity: 1; transform: none } to { opacity: 0; transform: translateY(10px) scale(0.985) } }
+@keyframes ms-wfe-card-in { from { opacity: 0; filter: blur(3px) } to { opacity: 1; filter: none } }
+@keyframes ms-wfe-dock-in {
+  0% { opacity: 0; transform: translateY(calc(100% + 32px)) }
+  70% { opacity: 1; transform: translateY(-4px) }
+  100% { opacity: 1; transform: none }
+}
+@keyframes ms-wfe-dock-out { from { opacity: 1; transform: none } to { opacity: 0; transform: translateY(calc(100% + 32px)) } }
+@keyframes ms-wfe-soft-in { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+@keyframes ms-wfe-panel-in { from { opacity: 0; transform: translateX(calc(100% + 24px)) } to { opacity: 1; transform: none } }
+@keyframes ms-wfe-panel-out { from { opacity: 1; transform: none } to { opacity: 0; transform: translateX(calc(100% + 24px)) } }
+@keyframes ms-wfe-swap { from { opacity: 0; transform: translateX(8px) } to { opacity: 1; transform: none } }
+@keyframes ms-wfe-banner-in { from { opacity: 0; transform: translateY(-12px) } to { opacity: 1; transform: none } }
+
+/* The easing of everything that arrives: fast out of the gate, settling softly. */
+.ms-wfe {
+  --ms-wfe-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  animation: ms-wfe-fade-in 180ms ease-out both;
+}
+.ms-wfe-bar { animation: ms-wfe-bar-in 360ms var(--ms-wfe-ease) both; }
+.ms-wfe-stage { animation: ms-wfe-stage-in 520ms var(--ms-wfe-ease) 60ms both; }
+
+/* The cards, in the flow's order: xyflow draws them as siblings, in the order given. */
+.ms-wfe-stage .react-flow__node-workflow > div {
+  animation: ms-wfe-card-in 420ms var(--ms-wfe-ease) calc(220ms + var(--ms-wfe-i, 0) * 45ms) both;
+}
+.ms-wfe-stage .react-flow__node-workflow:nth-child(1) { --ms-wfe-i: 0; }
+.ms-wfe-stage .react-flow__node-workflow:nth-child(2) { --ms-wfe-i: 1; }
+.ms-wfe-stage .react-flow__node-workflow:nth-child(3) { --ms-wfe-i: 2; }
+.ms-wfe-stage .react-flow__node-workflow:nth-child(4) { --ms-wfe-i: 3; }
+.ms-wfe-stage .react-flow__node-workflow:nth-child(5) { --ms-wfe-i: 4; }
+.ms-wfe-stage .react-flow__node-workflow:nth-child(6) { --ms-wfe-i: 5; }
+.ms-wfe-stage .react-flow__node-workflow:nth-child(7) { --ms-wfe-i: 6; }
+.ms-wfe-stage .react-flow__node-workflow:nth-child(8) { --ms-wfe-i: 7; }
+.ms-wfe-stage .react-flow__node-workflow:nth-child(n + 9) { --ms-wfe-i: 8; }
+
+/* The links once their cards are there, and the corners' furniture last. */
+.ms-wfe-stage .react-flow__edges,
+.ms-wfe-stage .react-flow__edgelabel-renderer {
+  animation: ms-wfe-fade-in 420ms ease-out 520ms both;
+}
+.ms-wfe-stage .react-flow__minimap,
+.ms-wfe-stage .react-flow__panel.top.left {
+  animation: ms-wfe-soft-in 380ms var(--ms-wfe-ease) 560ms both;
+}
+.ms-wfe-stage .react-flow__panel.bottom.center > [role='toolbar'] {
+  animation: ms-wfe-dock-in 620ms var(--ms-wfe-ease) 280ms both;
+}
+
+.ms-wfe-banner { animation: ms-wfe-banner-in 320ms var(--ms-wfe-ease) both; }
+
+/* The inspector: in from the right, and back out to it. A new selection swaps its content in place. */
+.ms-wfe-panel { animation: ms-wfe-panel-in 340ms var(--ms-wfe-ease) both; }
+.ms-wfe-panel.ms-wfe-panel-leaving { animation: ms-wfe-panel-out 220ms cubic-bezier(0.4, 0, 1, 1) both; pointer-events: none; }
+.ms-wfe-swap { animation: ms-wfe-swap 200ms var(--ms-wfe-ease) both; }
+
+/* Leaving: the dock first, the canvas after it, the whole layer last. */
+.ms-wfe.ms-wfe-leaving { animation: ms-wfe-leave 260ms ease-in 60ms both; pointer-events: none; }
+.ms-wfe-leaving .ms-wfe-stage { animation: ms-wfe-stage-out 280ms cubic-bezier(0.4, 0, 1, 1) both; }
+.ms-wfe-leaving .ms-wfe-stage .react-flow__panel.bottom.center > [role='toolbar'] {
+  animation: ms-wfe-dock-out 220ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+.ms-wfe-leaving .ms-wfe-panel { animation: ms-wfe-panel-out 200ms cubic-bezier(0.4, 0, 1, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-wfe,
+  .ms-wfe * {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+  }
 }

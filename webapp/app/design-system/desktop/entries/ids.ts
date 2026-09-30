@@ -126,6 +126,7 @@ export type EntryId =
   | 'workflowinspector'
   | 'workflowskillpicker'
   | 'workflowproblems'
+  | 'workfloweditor'
 
 export const ENTRY_LABELS: Record<EntryId, string> = {
   colors: 'Colours',
@@ -247,6 +248,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   workflowinspector: 'WorkflowInspector',
   workflowskillpicker: 'WorkflowSkillPicker',
   workflowproblems: 'WorkflowProblems',
+  workfloweditor: 'WorkflowEditor',
 }
 
 /**
@@ -424,7 +426,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   accountcard: ['fieldtable', 'avatar', 'banner', 'button', 'icon', 'text'],
   // The canvas draws its cards, its links and its minimap itself (nothing is a slot),
   // plus the legend's two words.
-  workflowcanvas: ['workflownode', 'workflowedge', 'canvasminimap', 'text'],
+  workflowcanvas: ['workflownode', 'workflowedge', 'canvasminimap', 'button', 'buttonicon', 'menu', 'text'],
   workflownode: ['icon', 'text'],
   // The link and the minimap are strokes and xyflow's own drawing: no component of
   // this folder inside either.
@@ -432,9 +434,10 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   canvasminimap: [],
   // The editor around the canvas. None of the three draws the canvas: the page arranges
   // them side by side, and each is its own region of it.
-  workflowinspector: ['banner', 'button', 'card', 'icon', 'select', 'text'],
+  workflowinspector: ['banner', 'button', 'buttonicon', 'card', 'icon', 'select', 'text'],
   workflowskillpicker: ['menu'],
   workflowproblems: ['icon', 'text'],
+  workfloweditor: ['apptitlebar', 'workflowcanvas', 'workflowinspector', 'workflowskillpicker', 'banner'],
 }
 
 /** The graph as `EntryHeader` wants it: an id and the label to print on the chip. */
@@ -639,4 +642,5 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   workflowinspector: 'What is selected on the canvas, and what it can become',
   workflowskillpicker: 'Which skill a new step runs',
   workflowproblems: 'Why the workflow cannot be saved yet',
+  workfloweditor: 'A repository’s workflow, edited full screen',
 }

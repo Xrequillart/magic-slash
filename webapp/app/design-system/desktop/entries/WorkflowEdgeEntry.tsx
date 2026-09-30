@@ -31,10 +31,9 @@ const DETOUR_LINKS: WorkflowCanvasLink[] = [
 const DETOUR_ENTRY = ['build']
 
 const PROPS: PropRow[] = [
-  { name: 'data.kind', type: "'auto' | 'suggest'", required: true, description: 'auto: a solid accent line with a dot travelling along it (hidden under reduced motion). suggest: dashed and neutral, standing still.' },
+  { name: 'data.kind', type: "'auto' | 'suggest'", required: true, description: 'auto: a solid accent line with a dot travelling along it (hidden under reduced motion). suggest: a grey line, lighter, standing still.' },
   { name: 'data.outcome', type: 'string', description: 'The outcome the link is taken on, drawn on a plate at its middle. Absent on an unconditional link.' },
   { name: 'data.route', type: "'forward' | 'down' | 'up' | 'side' | 'self'", required: true, description: 'Across columns, left to right, as a curve. Between two neighbouring steps of a loop stacked in one column, a straight line down or up. Past a card between its ends, a detour down the column’s right gap (side). From a step to itself, a loop over its own corner (self).' },
-  { name: 'data.markerId', type: 'string', required: true, description: 'The canvas’s arrowhead ids, so two canvases on one page never borrow each other’s.' },
 ]
 
 export function WorkflowEdgeEntry({ theme, onOpen }: { theme: DesktopTheme; onOpen?: (id: string) => void }) {
@@ -46,7 +45,7 @@ export function WorkflowEdgeEntry({ theme, onOpen }: { theme: DesktopTheme; onOp
 
       <EntrySection
         title="Two strokes for two promises"
-        note="Solid or dashed carries the difference, not colour alone, so it survives a theme whose accent sits close to its lines. The moving part of an auto link is a dot and not a dash offset: a moving dash is a dashed line, and dashed is what suggest means."
+        note="Both strokes are solid. Colour does not carry the difference alone: an auto link is heavier and has a dot travelling along it, a suggestion is lighter and still, so the two stay apart in a theme whose accent sits close to its lines."
       >
         <Stage theme={theme} className="flex flex-col gap-6">
           <Specimen label="auto, on an outcome">

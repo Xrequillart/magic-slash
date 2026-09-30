@@ -1,18 +1,23 @@
 import '@xyflow/react/dist/base.css'
 import './workflowCanvas.css'
 
-import { useCallback, useEffect, useId, useMemo, type KeyboardEvent } from 'react'
-import { Background, BackgroundVariant, Panel, ReactFlow, useReactFlow, type Edge, type Node } from '@xyflow/react'
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
+import {
+  Background, BackgroundVariant, Panel, ReactFlow, useReactFlow, type Connection, type Edge, type IsValidConnection, type Node, type NodeChange, type OnConnectEnd,
+} from '@xyflow/react'
 
-import { CanvasMinimap } from './CanvasMinimap'
+import { Button } from './Button'
+import { CanvasMinimap, CANVAS_MINIMAP_SIZE } from './CanvasMinimap'
+import { Pencil } from './icons'
 import { Text } from './Text'
+import { WorkflowDock, type WorkflowDockProps } from './WorkflowDock'
 import { WorkflowEdge, type WorkflowEdgeType } from './WorkflowEdge'
 import {
-  WORKFLOW_DEFAULT_HANDLE, WORKFLOW_INSERT_SIZE, WORKFLOW_SELF_TARGET_HANDLE, WORKFLOW_SIDE_TARGET_HANDLE, WORKFLOW_TARGET_HANDLE, WORKFLOW_VERTICAL_HANDLES,
-  WorkflowInsertNode, WorkflowNode, type WorkflowInsertNodeType, type WorkflowNodeLabels, type WorkflowNodeType,
+  WORKFLOW_SELF_TARGET_HANDLE, WORKFLOW_SIDE_TARGET_HANDLE, WORKFLOW_TARGET_HANDLE, WORKFLOW_VERTICAL_HANDLES,
+  WorkflowNode, type WorkflowNodeLabels, type WorkflowNodeType,
 } from './WorkflowNode'
 import {
-  layoutWorkflow, workflowInsertSlots, workflowNodeHeight, WORKFLOW_NODE_WIDTH, type WorkflowCanvasLink, type WorkflowCanvasLinkKind, type WorkflowCanvasNode,
+  workflowCardHeight, workflowExitOf, workflowOutcomeOfExit, workflowPositions, WORKFLOW_NODE_WIDTH, type WorkflowCanvasLink, type WorkflowCanvasLinkKind, type WorkflowCanvasNode,
 } from './workflowLayout'
 
 /**
@@ -20,8 +25,8 @@ import {
  * that goes on in every direction, the flow's steps as cards on it, their links
  * between them, and a minimap in the corner saying where the view is.
  *
- * READ-ONLY, and every xyflow switch that could say otherwise is off: nothing drags,
- * nothing connects, nothing is selected or takes focus. What is left is moving
+ * READ-ONLY BY DEFAULT, and every xyflow switch that could say otherwise is off: nothing
+ * drags, nothing connects, nothing is selected or takes focus. What is left is moving
  * around, and that follows FigJam's hands rather than xyflow's defaults:
  *
  *  - two fingers on a trackpad PAN (`panOnScroll`), where xyflow would zoom;
@@ -30,9 +35,9 @@ import {
  *  - a pinch zooms, and so does ⌘ + scroll (`zoomActivationKeyCode`, `Meta` by
  *    default), between a quarter and twice the size.
  *
- * THE LAYOUT IS COMPUTED, not passed: `workflowLayout.ts` puts the steps in columns
- * from the entry nodes. A flow has no saved positions to show until someone can edit
- * one.
+ * THE LAYOUT IS COMPUTED where no place is passed: `workflowLayout.ts` puts the steps in
+ * columns from the entry nodes, and `positions` overrides it card by card, with the
+ * places the editor left them at (`workflowPositions`).
  *
  * DATA IN, NOTHING ELSE. Nodes, links, the entry, and every word already translated;
  * no `ReactNode` anywhere, by the folder's rule. The cards and links are this
@@ -57,20 +62,24 @@ import {
  * without it, to the pixel. Editable, the canvas still owns nothing: it reports and the
  * caller decides.
  *
- *  - `nodes` are read as a LINE, in order, and a "+" sits in every insert slot: `0`
- *    before the first node, `i` between `nodes[i - 1]` and `nodes[i]`, `nodes.length`
- *    after the last (`workflowInsertSlots`). Pressing one calls `onInsert(slot, button)`,
- *    the button being where the caller hangs its skill picker.
  *  - pressing a card or a link calls `onSelect` with it, pressing the ground with
  *    `null`, and `selected` is drawn: CONTROLLED, never xyflow's own selection, which
  *    stays off (`elementsSelectable`), so nothing can be selected the caller did not say.
  *    A card takes the keyboard's focus too, and Enter or Space selects it.
+ *  - with `onMove`, cards are DRAGGED. The card follows the pointer on its own while it
+ *    moves, and `onMove(id, position)` reports where it was let go; `positions` is where
+ *    the caller keeps them (a card without one is laid out, `workflowPositions`).
+ *  - with `onConnect`, links are DRAWN out of a card's ports onto another card's left
+ *    port: `onConnect(from, to, outcome)`, the outcome being the row it left from, none
+ *    from the header. A second link between the same two cards, or a card to itself,
+ *    cannot be drawn.
  *  - `focusRequest` centres the view on a node, keeping the zoom unless it is too far
- *    out to read. A request is `{ id, n }`: bump `n` to centre on the same node again
- *    (the problems list does, on every press).
+ *    out to read. A request is `{ id, n }`: bump `n` to centre on the same node again.
+ *  - `dock` floats the editor's `WorkflowDock` at the bottom centre. Data, not a node:
+ *    the dock reads the flow's store, so the canvas draws it inside the flow.
  *
- * Nothing drags and nothing connects, editable or not: the line's order is the model's,
- * and a step moves by being removed and inserted again.
+ * READ-ONLY, `onEdit` puts an Edit button in the corner above the minimap: the way into
+ * the full-screen editor.
  */
 
 /** What the editor needs the inspector to show: a step, or the link between two. */
@@ -86,8 +95,10 @@ export interface WorkflowCanvasLabels {
   /** The legend's two words, for the two strokes. */
   auto: string
   suggest: string
-  /** EDITABLE ONLY. Each "+" button's accessible name and tooltip: "Add a step here". */
-  insert?: string
+  /** The last row of a card without exactly one outcome, the way out whatever it ended on: "When done". */
+  anyExit?: string
+  /** WITH `onEdit` ONLY. The button above the minimap: "Edit". */
+  edit?: string
   /** EDITABLE ONLY. The lock's tooltip on a built-in card: "Built-in step, locked". */
   locked?: string
   /** EDITABLE ONLY. A custom step's mode, on its card's plate. */
@@ -109,16 +120,34 @@ export interface WorkflowCanvasProps {
   selected?: WorkflowCanvasSelection | null
   /** A card or a link was pressed, or the ground (`null`). Editable only. */
   onSelect?: (selection: WorkflowCanvasSelection | null) => void
-  /** A "+" was pressed: the slot, and the button, to anchor a picker to. Editable only; no "+" without it. */
-  onInsert?: (slot: number, anchor: HTMLElement) => void
+  /** Where each card was left, by id. A card missing from it is laid out. */
+  positions?: Readonly<Record<string, { x: number; y: number }>>
+  /** A card was dragged and let go there. Editable only; nothing drags without it. */
+  onMove?: (id: string, position: { x: number; y: number }) => void
+  /** A link was drawn, out of `outcome`'s port (none: the header's). Editable only; nothing connects without it. */
+  onConnect?: (from: string, to: string, outcome?: string) => void
   /** Centre the view on `id`, again each time `n` changes. */
   focusRequest?: { id: string; n: number } | null
+  /** The Edit button above the minimap, and what it opens. Not drawn without it. */
+  onEdit?: () => void
+  /** The editor's dock, floating at the bottom centre. Not drawn without it. */
+  dock?: WorkflowDockProps
+  /** No border, no rounded corners: a canvas that IS the screen, the full-screen editor's. */
+  frameless?: boolean
+  /**
+   * Whether two fingers on a trackpad (the wheel) move around the canvas. Off, the wheel
+   * is left to the page the canvas sits in, which scrolls past it instead: a canvas in a
+   * settings page must not swallow the page's scroll. Dragging still pans, a pinch still zooms.
+   */
+  scrollPans?: boolean
+  /** Where the legend sits. Top left unless the corner is taken, as the editor's title takes it. */
+  legend?: 'top-left' | 'bottom-left'
 }
 
-const NODE_TYPES = { workflow: WorkflowNode, insert: WorkflowInsertNode }
+const NODE_TYPES = { workflow: WorkflowNode }
 const EDGE_TYPES = { workflow: WorkflowEdge }
 
-/** The two strokes, in the order the legend reads them. Also the arrowheads' suffixes and the labels' keys. */
+/** The two strokes, in the order the legend reads them. Also the labels' keys. */
 const LINK_KINDS: WorkflowCanvasLinkKind[] = ['auto', 'suggest']
 
 /**
@@ -133,9 +162,8 @@ const FIT_VIEW = { padding: 0.12, maxZoom: 1, minZoom: 0.55 }
 const FOCUS_MIN_ZOOM = 0.8
 const FOCUS_DURATION = 300
 
-type CanvasNode = WorkflowNodeType | WorkflowInsertNodeType
-
-const INSERT_STYLE = { pointerEvents: 'all' } as const
+/** The Edit button clears the minimap: its height, xyflow's 15px panel margin, and a gap. */
+const EDIT_OFFSET = { marginBottom: CANVAS_MINIMAP_SIZE.height + 15 + 8 }
 
 export function WorkflowCanvas({
   nodes,
@@ -146,22 +174,29 @@ export function WorkflowCanvas({
   editable = false,
   selected = null,
   onSelect,
-  onInsert,
+  positions: stored,
+  onMove,
+  onConnect,
   focusRequest = null,
+  onEdit,
+  dock,
+  frameless = false,
+  legend = 'top-left',
+  scrollPans = true,
 }: WorkflowCanvasProps) {
-  // `useId` yields `:r1:`-style ids, and a colon inside `url(#…)` is read as the end
-  // of the fragment. Letters and digits only.
-  const markerId = `ms-wf-arrow-${useId().replace(/[^a-zA-Z0-9]/g, '')}`
+  // Where a card is being dragged to, until it is let go and the caller has its place.
+  const [dragged, setDragged] = useState<Record<string, { x: number; y: number }>>({})
 
-  // The layout depends on the line alone, so selecting or re-rendering never redoes it.
-  const { layout, slots, centres } = useMemo(() => {
-    const layout = layoutWorkflow(nodes, links, entry)
+  // The layout depends on the flow and the stored places alone, so selecting or
+  // re-rendering never redoes it.
+  const { layout, centres } = useMemo(() => {
+    const layout = workflowPositions(nodes, links, entry, stored)
     const centres = new Map(nodes.map((node) => [node.id, {
       x: layout.positions[node.id].x + WORKFLOW_NODE_WIDTH / 2,
-      y: layout.positions[node.id].y + workflowNodeHeight(node.outcomes.length) / 2,
+      y: layout.positions[node.id].y + workflowCardHeight(node) / 2,
     }]))
-    return { layout, slots: workflowInsertSlots(nodes, links, layout.positions), centres }
-  }, [nodes, links, entry])
+    return { layout, centres }
+  }, [nodes, links, entry, stored])
 
   const { flowNodes, flowEdges } = useMemo(() => {
     const byId = new Map(nodes.map((node) => [node.id, node]))
@@ -169,51 +204,40 @@ export function WorkflowCanvas({
       ? { locked: labels.locked ?? '', blocking: labels.blocking ?? '', advisory: labels.advisory ?? '' }
       : undefined
 
-    const flowNodes: CanvasNode[] = nodes.map((node) => ({
+    const connectable = editable && !!onConnect
+    const flowNodes: WorkflowNodeType[] = nodes.map((node) => ({
       id: node.id,
       type: 'workflow',
-      position: layout.positions[node.id],
+      position: dragged[node.id] ?? layout.positions[node.id],
       // Fixed sizes, not measured ones: see WORKFLOW_NODE_WIDTH on why the minimap needs them.
       width: WORKFLOW_NODE_WIDTH,
-      height: workflowNodeHeight(node.outcomes.length),
+      height: workflowCardHeight(node),
+      // And handed over as MEASURED too. Nodes are rebuilt on every change, and xyflow
+      // drops what it measured of a node's ports whenever the node it is handed carries
+      // no `measured`: until the card was measured again, which a card whose size did not
+      // change never is, its links were not drawn and no link could land on it.
+      measured: { width: WORKFLOW_NODE_WIDTH, height: workflowCardHeight(node) },
       data: {
         node,
-        ...(editable ? { selected: selected?.type === 'node' && selected.id === node.id, labels: nodeLabels } : {}),
+        anyExit: labels.anyExit,
+        ...(editable ? { selected: selected?.type === 'node' && selected.id === node.id, labels: nodeLabels, connectable } : {}),
       },
       ...(editable ? { ariaLabel: node.label } : {}),
     }))
 
-    if (editable && onInsert) {
-      for (const slot of slots) {
-        flowNodes.push({
-          id: `insert-${slot.slot}`,
-          type: 'insert',
-          position: { x: slot.x - WORKFLOW_INSERT_SIZE / 2, y: slot.y - WORKFLOW_INSERT_SIZE / 2 },
-          width: WORKFLOW_INSERT_SIZE,
-          height: WORKFLOW_INSERT_SIZE,
-          // Above the links it sits on, and never a stop of xyflow's own: the button is.
-          zIndex: 1,
-          focusable: false,
-          // xyflow turns a node's pointer events off when nothing of its own listens on it,
-          // which would leave the button unpressable on a canvas with no `onSelect`.
-          style: INSERT_STYLE,
-          data: { slot: slot.slot, label: labels.insert ?? '', onInsert },
-        })
-      }
-    }
-
     const flowEdges: WorkflowEdgeType[] = links.flatMap((link, i) => {
       const from = byId.get(link.from)
       if (!from || !byId.has(link.to)) return []
-      // A link on an outcome its node does not declare has no port to leave from; it
-      // leaves from the header instead of vanishing (xyflow drops an edge whose handle
-      // is missing).
+      // A link leaves from the row it is taken on (`workflowExitOf`): its outcome's, or
+      // the "whatever it ended on" row, which is also where a link on an outcome its node
+      // does not declare leaves from instead of vanishing (xyflow drops an edge whose
+      // handle is missing).
       // Between two neighbouring steps of a loop, the link runs straight down or up
       // instead, and its outcome is carried by its label alone. The two detours leave
       // from the port like a forward link, and come back in where they can without
       // crossing a card: the right side (`side`), or the top (`self`).
       const route = layout.routes[i] ?? 'forward'
-      const port = link.outcome && from.outcomes.includes(link.outcome) ? link.outcome : WORKFLOW_DEFAULT_HANDLE
+      const port = workflowExitOf(from, link.outcome)
       const handles = route === 'down' || route === 'up'
         ? { sourceHandle: WORKFLOW_VERTICAL_HANDLES[route].source, targetHandle: WORKFLOW_VERTICAL_HANDLES[route].target }
         : {
@@ -230,13 +254,28 @@ export function WorkflowCanvas({
         target: link.to,
         ...handles,
         type: 'workflow',
-        data: { kind: link.kind, outcome: link.outcome, route, markerId, ...(isSelected ? { selected: true } : {}) },
+        data: { kind: link.kind, outcome: link.outcome, route, ...(isSelected ? { selected: true } : {}) },
         ...(editable ? { ariaLabel: `${from.label} → ${byId.get(link.to)!.label}` } : {}),
       }]
     })
 
+    // Which ports a link is plugged into, and the stroke they then wear: `auto` wins.
+    const ports = new Map<string, Record<string, WorkflowCanvasLinkKind>>()
+    const plug = (nodeId: string, handle: string | null | undefined, kind: WorkflowCanvasLinkKind) => {
+      if (!handle) return
+      const own = ports.get(nodeId) ?? {}
+      if (own[handle] !== 'auto') own[handle] = kind
+      ports.set(nodeId, own)
+    }
+    for (const edge of flowEdges) {
+      const kind = edge.data?.kind ?? 'suggest'
+      plug(edge.source, edge.sourceHandle, kind)
+      plug(edge.target, edge.targetHandle, kind)
+    }
+    for (const node of flowNodes) node.data = { ...node.data, ports: ports.get(node.id) }
+
     return { flowNodes, flowEdges }
-  }, [nodes, links, layout, slots, labels, markerId, editable, selected, onInsert])
+  }, [nodes, links, layout, dragged, labels, editable, selected, onConnect])
 
   const select = editable ? onSelect : undefined
   const onNodeClick = useCallback((_: unknown, node: Node) => {
@@ -246,6 +285,52 @@ export function WorkflowCanvas({
     select?.({ type: 'link', from: edge.source, to: edge.target })
   }, [select])
   const onPaneClick = useCallback(() => select?.(null), [select])
+
+  // xyflow moves nothing on its own with controlled nodes: the card follows the pointer
+  // here, and lands where the caller says once it is let go.
+  const move = editable ? onMove : undefined
+  const onNodesChange = useCallback((changes: NodeChange[]) => {
+    const moves = changes.filter((change) => change.type === 'position' && change.position)
+    if (moves.length === 0) return
+    setDragged((was) => {
+      const next = { ...was }
+      for (const change of moves) if (change.type === 'position' && change.position) next[change.id] = change.position
+      return next
+    })
+  }, [])
+  const onNodeDragStop = useCallback((_: unknown, node: Node) => {
+    move?.(node.id, node.position)
+    setDragged((was) => {
+      const { [node.id]: _gone, ...rest } = was
+      return rest
+    })
+  }, [move])
+
+  const connect = editable ? onConnect : undefined
+  const onConnectLink = useCallback((connection: Connection) => {
+    const from = nodes.find((node) => node.id === connection.source)
+    if (!from || !connection.target) return
+    connect?.(connection.source, connection.target, workflowOutcomeOfExit(from, connection.sourceHandle))
+  }, [connect, nodes])
+  // A link let go ON A CARD rather than on its port lands on the card: a 7px port is a
+  // small target, and the card is what the admin is aiming at. Started from a card's
+  // left port, the link runs the other way, from the card it was dropped on.
+  const onConnectEnd = useCallback<OnConnectEnd>((event, state) => {
+    if (!connect || state.isValid || !state.fromNode || !state.fromHandle) return
+    const point = 'changedTouches' in event ? event.changedTouches[0] : event
+    const card = document.elementFromPoint(point.clientX, point.clientY)?.closest('.react-flow__node-workflow')
+    const other = card?.getAttribute('data-id')
+    if (!other || other === state.fromNode.id) return
+    const [from, to] = state.fromHandle.type === 'source' ? [state.fromNode.id, other] : [other, state.fromNode.id]
+    if (links.some((link) => link.from === from && link.to === to)) return
+    const source = nodes.find((node) => node.id === from)
+    const handle = state.fromHandle.type === 'source' ? state.fromHandle.id : null
+    connect(from, to, source ? workflowOutcomeOfExit(source, handle) : undefined)
+  }, [connect, links, nodes])
+  const isValidConnection = useCallback<IsValidConnection>((connection) =>
+    connection.source !== connection.target &&
+    !links.some((link) => link.from === connection.source && link.to === connection.target),
+  [links])
 
   // Enter or Space on a focused card selects it. xyflow's own key handling selects only
   // what `elementsSelectable` allows, which is nothing here: the selection is the caller's.
@@ -261,34 +346,32 @@ export function WorkflowCanvas({
 
   return (
     <div
-      className={`ms-workflow-canvas relative w-full overflow-hidden rounded-xl border border-line bg-bg ${editable ? 'ms-wf-editable ' : ''}${className}`.trim()}
+      className={`ms-workflow-canvas relative w-full overflow-hidden bg-bg ${frameless ? '' : 'rounded-xl border border-line '}${editable ? 'ms-wf-editable ' : ''}${className}`.trim()}
       onKeyDown={editable ? onKeyDown : undefined}
     >
-      {/* The two arrowheads, once per canvas. Filled from the theme in the stylesheet. */}
-      <svg aria-hidden="true" className="absolute h-0 w-0">
-        <defs>
-          {LINK_KINDS.map((kind) => (
-            <marker key={kind} id={`${markerId}-${kind}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
-              <path d="M0,1 L9,5 L0,9 z" className={`ms-wf-arrow-${kind}`} />
-            </marker>
-          ))}
-        </defs>
-      </svg>
-
       <ReactFlow
         nodes={flowNodes}
         edges={flowEdges}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
-        nodesDraggable={false}
-        nodesConnectable={false}
+        nodesDraggable={!!move}
+        nodesConnectable={!!connect}
+        onNodesChange={move ? onNodesChange : undefined}
+        onNodeDragStop={move ? onNodeDragStop : undefined}
+        onConnect={connect ? onConnectLink : undefined}
+        onConnectEnd={connect ? onConnectEnd : undefined}
+        isValidConnection={isValidConnection}
+        connectionRadius={28}
+        deleteKeyCode={null}
         elementsSelectable={false}
         nodesFocusable={editable}
         edgesFocusable={false}
         onNodeClick={select ? onNodeClick : undefined}
         onEdgeClick={select ? onEdgeClick : undefined}
         onPaneClick={select ? onPaneClick : undefined}
-        panOnScroll
+        panOnScroll={scrollPans}
+        zoomOnScroll={scrollPans}
+        preventScrolling={scrollPans}
         zoomOnDoubleClick={false}
         minZoom={0.25}
         maxZoom={2}
@@ -299,7 +382,7 @@ export function WorkflowCanvas({
         aria-label={labels.canvas}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.5} />
-        <Panel position="top-left">
+        <Panel position={legend}>
           <div className="flex items-center gap-3 rounded-lg border border-line bg-bg-secondary px-2.5 py-1.5">
             {LINK_KINDS.map((kind) => (
               <span key={kind} className="flex items-center gap-1.5">
@@ -312,6 +395,16 @@ export function WorkflowCanvas({
           </div>
         </Panel>
         <CanvasMinimap label={labels.minimap} />
+        {onEdit && (
+          <Panel position="bottom-right" style={EDIT_OFFSET}>
+            <Button tone="solid" size="sm" icon={Pencil} onClick={onEdit}>{labels.edit ?? ''}</Button>
+          </Panel>
+        )}
+        {dock && (
+          <Panel position="bottom-center">
+            <WorkflowDock {...dock} />
+          </Panel>
+        )}
         <FocusOn centres={centres} request={focusRequest} />
       </ReactFlow>
     </div>

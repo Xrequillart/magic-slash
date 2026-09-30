@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Trash2, AlertTriangle, Plus, ArrowLeft, Building2, Lock, FolderOpen,
   Ticket, Settings2, Languages, GitBranch, FolderGit2, Workflow,
@@ -6,6 +7,7 @@ import {
 import { useAuth } from '../../hooks/useAuth'
 import { useConfig } from '../../hooks/useConfig'
 import { useOrg } from '../../hooks/useOrg'
+import { useIsFullScreen } from '../../hooks/useIsFullScreen'
 import { Modal } from '../../components/Modal'
 import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
@@ -25,18 +27,17 @@ import {
   TabStrip,
   Text,
   WorkflowCanvas,
-  WorkflowInspector,
-  WorkflowProblems,
-  WorkflowSkillPicker,
+  WorkflowEditor,
   skillIcon,
+  workflowPositions,
   type IconComponent,
   type SettingsCardRow,
   type WorkflowCanvasLabels,
   type WorkflowCanvasSelection,
-  type WorkflowInspectorLabels,
+  type WorkflowEditorBanner,
+  type WorkflowEditorLabels,
   type WorkflowInspectorTarget,
   type WorkflowProblemItem,
-  type WorkflowSkillPickerLabels,
 } from '@ds/desktop'
 import { LANGUAGES } from '../../languages'
 import { TabSweep } from '../../components/TabSweep'
@@ -61,8 +62,9 @@ import { resolveReviewLanguage, resolveSpecLanguage, resolveTicketLanguage } fro
 import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../../../tracker'
 import type { ResolvedWorkflow } from '../../../workflow/model'
 import {
-  EMPTY_OVERLAY, composeWorkflow, customNodeId, insertStep, isLinkIntoStart, problems, removeStep, sameOverlay, setLinkKind,
-  setStepMode, setStepSkill, type WorkflowOverlay, type WorkflowProblem,
+  EMPTY_OVERLAY, addLink, addStep, composeWorkflow, customNodeId, isCustomNodeId, isDefaultLink, isLinkIntoStart, moveNode,
+  pinPositions, problems, removeLink, removeStep, sameOverlay, setLinkKind, setLinkOutcome, setStepMode, setStepSkill,
+  unreachableSteps, type WorkflowOverlay, type WorkflowProblem,
 } from '../../../workflow/overlay'
 import type { ListingEntry } from '../../hooks/useSkills'
 import {
@@ -359,15 +361,31 @@ function generateCommitExample(format: string, style: string, includeTicketId: b
 
 /**
  * THE WORKFLOW TAB: the flow this repository's skills follow, drawn on the design
- * system's canvas, and its editor for whoever may change it (the repository's owner,
- * or an admin of its organization: `readOnly` is RepoPage's, which mirrors RLS).
+ * system's canvas, and the full-screen editor its Edit button opens for whoever may
+ * change it (the repository's owner, or an admin of its organization: `readOnly` is
+ * RepoPage's, which mirrors RLS).
  *
- * WHAT IS EDITED IS THE OVERLAY, not the flow: the steps and link kinds added to the
- * default line (workflow/overlay.ts). Two copies of it are kept, the one saved and the
- * draft, and everything drawn is `composeWorkflow(draft)`, so the canvas shows the
- * flow the skills would get if Save were pressed now. `problems(draft)`, the same judge
- * the main process saves with, lists what stands in the way, and Save stays disabled
- * until the list is empty and the draft differs from what is saved.
+ * THE TAB ONLY SHOWS. The canvas in the tab is read-only, with an Edit button above its
+ * minimap; everything that changes the flow happens in the editor, which covers the
+ * whole window (`WorkflowEditor`, in a fixed layer over the app and its settings
+ * overlay). A read-only member gets the same button, as Open, and the same editor with
+ * nothing to change: the inspector still says how each step and link runs.
+ *
+ * WHAT IS EDITED IS THE OVERLAY, not the flow: the steps, links, link kinds and card
+ * positions added to the default flow (workflow/overlay.ts). Two copies of it are kept,
+ * the one saved and the draft, and everything the editor draws is `composeWorkflow(draft)`,
+ * so the canvas shows the flow the skills would get if Save were pressed now.
+ * `problems(draft)`, the same judge the main process saves with, lists what stands in
+ * the way, and Save stays disabled until the list is empty and the draft differs from
+ * what is saved. Every edit is recorded, for ⌘Z and ⇧⌘Z; a reload forgets the history.
+ *
+ * CARDS STAY WHERE THEY WERE SEEN. A card without a stored position is laid out from the
+ * links, so an edit to the links would move the ones not yet placed: before such an
+ * edit (a step added or removed, a link drawn or removed, a card moved), every card is
+ * pinned at the place it is drawn at (`pinPositions`).
+ *
+ * LEAVING WITH UNSAVED EDITS ASKS FIRST, and leaving drops them: the tab always shows
+ * what is saved.
  *
  * PUSHED AS WELL AS ASKED FOR. Loaded on mount, and reloaded whenever the main process
  * says this repository's workflow changed (`onWorkflowChanged`: a save from another
@@ -390,23 +408,30 @@ function generateCommitExample(format: string, style: string, includeTicketId: b
  * and when the window comes back to the front, so a commit or a push made in a
  * terminal clears it, and a declined copy does not quietly forget it.
  *
- * READ-ONLY MEMBERS see the same canvas, still selectable so the inspector can say how
- * each step and link runs, with every control disabled, no "+", and no Save bar.
+ * THE KEYBOARD, while the editor is open: ⌘Z / ⇧⌘Z, Delete for what is selected, and
+ * Escape to deselect, then to leave. Escape stops here, or the settings overlay under the
+ * editor would close with it (its listener is on `window`, this one on `document`).
  *
  * A component of its own, at module scope, because it owns a fetch and an editor's
  * state: RepoPage's state is the repository's settings, and this is not one of them.
  */
 function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boolean }) {
   const t = useT()
+  const windowFullScreen = useIsFullScreen()
   // null while loading. `saved` is what the backend holds, `source` whether it is the
   // repository's own flow or the default (the header's hint).
   const [loaded, setLoaded] = useState<
     { saved: WorkflowOverlay; revision: string | null; source: ResolvedWorkflow['source'] } | 'error' | null
   >(null)
   const [draft, setDraft] = useState<WorkflowOverlay>(EMPTY_OVERLAY)
+  // The drafts before this one, and the ones undone since, for ⌘Z and ⇧⌘Z.
+  const [history, setHistory] = useState<{ past: WorkflowOverlay[]; future: WorkflowOverlay[] }>(EMPTY_HISTORY)
+  const [editing, setEditing] = useState(false)
+  // The editor is playing its way out: it unmounts once it says it has (`onLeft`).
+  const [leavingEditor, setLeavingEditor] = useState(false)
+  const [closePrompt, setClosePrompt] = useState(false)
   const [selected, setSelected] = useState<WorkflowCanvasSelection | null>(null)
   const [focus, setFocus] = useState<{ id: string; n: number } | null>(null)
-  const [picker, setPicker] = useState<{ slot: number; anchor: HTMLElement } | null>(null)
   const [entries, setEntries] = useState<ListingEntry[]>([])
   // The custom steps' skills teammates don't have yet, and how far each one got: in the
   // editor's `~/.claude` only (`missing`), or in the checkout, not yet on the remote.
@@ -480,6 +505,7 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
     revisionRef.current = next.revision
     setLoaded({ saved: next.overlay, revision: next.revision, source: next.source })
     setDraft(next.overlay)
+    setHistory(EMPTY_HISTORY)
     setRefused(null)
     setStale(false)
     // The version a conflict was about is now the one on screen.
@@ -487,13 +513,13 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
     return refreshUnshared(next.overlay)
   }, [refreshUnshared])
 
-  // Stable, so the canvas does not rebuild its "+" buttons on every render of the tab.
-  const openPicker = useCallback((slot: number, anchor: HTMLElement) => setPicker({ slot, anchor }), [])
-
   useEffect(() => {
     const at = ++generation.current
     setLoaded(null)
     setSelected(null)
+    setEditing(false)
+    setLeavingEditor(false)
+    setClosePrompt(false)
     setSaveError(null)
     setUnshared({})
     // An offer is about the previous repository's skills: accepting it here would copy
@@ -587,6 +613,7 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
   const flow = useMemo(() => composeWorkflow(draft), [draft])
   const found = useMemo(() => problems(draft), [draft])
   const shown = useMemo(() => (found.length > 0 ? found : (refused ?? [])), [found, refused])
+  const unreachable = useMemo(() => unreachableSteps(draft), [draft])
   const dirty = !sameOverlay(draft, saved)
 
   const labelOf = (id: string) => {
@@ -606,11 +633,20 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
         default: return t('repo.workflow.warning.noFolder')
       }
     }
-    const warnings = Object.fromEntries(
+    const warnings: Record<string, string> = Object.fromEntries(
       Object.entries(unshared).map(([skill, share]) => [customNodeId(skill), warningOf(share)]),
     )
+    for (const id of unreachable) {
+      warnings[id] = warnings[id] ? `${t('repo.workflow.warning.unreachable')} ${warnings[id]}` : t('repo.workflow.warning.unreachable')
+    }
     return workflowCanvasData(flow, { problems: problemNodeIds(shown), warnings })
-  }, [flow, shown, unshared, t])
+  }, [flow, shown, unshared, unreachable, t])
+
+  // Where every card is drawn right now: what an edit to the links pins them at.
+  const drawn = useMemo(
+    () => workflowPositions(data.nodes, data.links, data.entry, draft.positions).positions,
+    [data, draft.positions],
+  )
 
   const skills = useMemo(
     () => skillOptions(entries, repoName, flow.nodes.map((node) => node.skill)),
@@ -623,6 +659,14 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
         return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.duplicate', { skill: problem.skill }) }
       case 'auto-into-start':
         return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.autoIntoStart', { from: labelOf(problem.nodeId) }) }
+      case 'self-link':
+        return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.selfLink', { step: labelOf(problem.nodeId) }) }
+      case 'duplicate-link':
+        return {
+          id: `${problem.code}-${problem.nodeId}-${problem.to}`,
+          nodeId: problem.nodeId,
+          message: t('repo.workflow.problem.duplicateLink', { from: labelOf(problem.nodeId), to: labelOf(problem.to) }),
+        }
       default:
         return { id: `${problem.code}-${i}`, message: t('repo.workflow.problem.invalid', { message: problem.message }) }
     }
@@ -634,14 +678,41 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
   }
 
   /**
-   * Every edit goes through here: a refusal is about the draft it was made on. A
-   * conflict is not, it is about the version under the draft, and only a reload
-   * settles it: it stays.
+   * Every edit goes through here: it is recorded for undo, and a refusal is about the
+   * draft it was made on. A conflict is not, it is about the version under the draft,
+   * and only a reload settles it: it stays.
    */
   const edit = (next: WorkflowOverlay) => {
+    if (sameOverlay(next, draft)) return
+    setHistory((was) => ({ past: [...was.past, draft].slice(-HISTORY_LIMIT), future: [] }))
     setDraft(next)
     setRefused(null)
     setSaveError((was) => (was?.kind === 'conflict' ? was : null))
+  }
+  /** An edit that changes what the layout is computed from: every card is pinned first. */
+  const reshape = (change: (pinned: WorkflowOverlay) => WorkflowOverlay) => edit(change(pinPositions(draft, drawn)))
+
+  const travel = (from: 'past' | 'future') => {
+    const stack = history[from]
+    if (stack.length === 0) return
+    const next = stack[stack.length - 1]
+    const to = from === 'past' ? 'future' : 'past'
+    setHistory({ ...history, [from]: stack.slice(0, -1), [to]: [...history[to], draft] } as typeof history)
+    setDraft(next)
+    setRefused(null)
+    setSelected(null)
+  }
+
+  const removeSelection = () => {
+    if (!selected) return
+    if (selected.type === 'node') {
+      if (!isCustomNodeId(selected.id)) return
+      reshape((pinned) => removeStep(pinned, skillOf(selected.id)))
+    } else {
+      if (isDefaultLink(selected.from, selected.to)) return
+      reshape((pinned) => removeLink(pinned, selected.from, selected.to))
+    }
+    setSelected(null)
   }
 
   const target: WorkflowInspectorTarget | null = (() => {
@@ -661,6 +732,7 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
     if (!link) return null
     // Links leaving a custom step need no word: the protocol applies them like any other.
     const intoStart = isLinkIntoStart(link)
+    const locked = isDefaultLink(link.from, link.to)
     return {
       type: 'link',
       link: {
@@ -672,6 +744,8 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
         outcome: link.outcome,
         disabledKinds: intoStart ? ['auto'] : undefined,
         hint: intoStart ? t('repo.workflow.hint.intoStart') : undefined,
+        locked,
+        outcomes: locked ? undefined : flow.nodes.find((n) => n.id === link.from)?.outcomes,
       },
     }
   })()
@@ -752,44 +826,143 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
     void refreshUnshared(savedRef.current)
   }
 
+  /** Out of the editor, the draft dropped: the tab shows what is saved. It plays its exit first. */
+  const leave = () => {
+    setClosePrompt(false)
+    setLeavingEditor(true)
+  }
+  const left = () => {
+    setEditing(false)
+    setLeavingEditor(false)
+    setSelected(null)
+    setDraft(savedRef.current)
+    setHistory(EMPTY_HISTORY)
+    setRefused(null)
+    setSaveError(null)
+    setStale(false)
+  }
+  const requestClose = () => (dirty ? setClosePrompt(true) : leave())
+
+  // The editor's keys. Re-bound on every render, which is what lets them read the draft
+  // as it is now; there is one listener at a time.
+  const keysRef = useRef<(event: KeyboardEvent) => void>(() => {})
+  keysRef.current = (event) => {
+    // The dialogs answer their own keys, and so do the menus and the fields.
+    if (closePrompt || copyOffer !== null || leavingEditor) return
+    if (document.querySelector('[role="menu"], [role="listbox"]')) return
+    const el = event.target as HTMLElement | null
+    if (el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))) return
+    const mod = event.metaKey || event.ctrlKey
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+      if (selected) setSelected(null)
+      else requestClose()
+      return
+    }
+    if (readOnly) return
+    if (mod && event.key.toLowerCase() === 'z') {
+      event.preventDefault()
+      travel(event.shiftKey ? 'future' : 'past')
+    } else if (mod && event.key.toLowerCase() === 'y') {
+      event.preventDefault()
+      travel('future')
+    } else if (!mod && (event.key === 'Delete' || event.key === 'Backspace')) {
+      event.preventDefault()
+      removeSelection()
+    }
+  }
+  useEffect(() => {
+    if (!editing) return
+    const onKeyDown = (event: KeyboardEvent) => keysRef.current(event)
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [editing])
+
   const source = loaded && loaded !== 'error' ? loaded.source : null
+  const sourceHint = source
+    ? (source === 'repository' ? t('repo.workflow.sourceRepository') : t('repo.workflow.sourceDefault'))
+    : undefined
   // Memoised so the canvas does not rebuild its nodes on every render of the page.
   const labels = useMemo<WorkflowCanvasLabels>(() => ({
     canvas: t('repo.workflow.canvas', { name: repoName }),
     minimap: t('repo.workflow.minimap'),
     auto: t('repo.workflow.auto'),
     suggest: t('repo.workflow.suggest'),
-    insert: t('repo.workflow.insert'),
+    anyExit: t('repo.workflow.anyExit'),
+    edit: readOnly ? t('repo.workflow.open') : t('repo.workflow.edit'),
     locked: t('repo.workflow.locked'),
     blocking: t('repo.workflow.blocking'),
     advisory: t('repo.workflow.advisory'),
-  }), [t, repoName])
-  const sources = useMemo(() => ({
+  }), [t, repoName, readOnly])
+  const sources = {
     custom: t('repo.workflow.source.custom'),
     repo: t('repo.workflow.source.repo'),
     plugin: t('repo.workflow.source.plugin'),
-  }), [t])
-  const pickerLabels: WorkflowSkillPickerLabels = {
-    title: t('repo.workflow.picker.title'),
-    empty: t('repo.workflow.picker.empty'),
-    inWorkflow: t('repo.workflow.inWorkflow'),
-    sources,
   }
-  const inspectorLabels: WorkflowInspectorLabels = {
-    title: t('repo.workflow.inspector.title'),
-    empty: readOnly ? t('repo.workflow.inspector.emptyReadOnly') : t('repo.workflow.inspector.empty'),
-    skill: t('repo.workflow.inspector.skill'),
-    mode: t('repo.workflow.inspector.mode'),
-    kind: t('repo.workflow.inspector.kind'),
-    outcome: t('repo.workflow.inspector.outcome'),
-    blocking: t('repo.workflow.inspector.blocking'),
-    advisory: t('repo.workflow.inspector.advisory'),
-    auto: t('repo.workflow.inspector.auto'),
-    suggest: t('repo.workflow.inspector.suggest'),
-    remove: t('repo.workflow.inspector.remove'),
-    builtIn: t('repo.workflow.inspector.builtIn'),
-    sources,
-    inWorkflow: t('repo.workflow.inWorkflow'),
+  const editorLabels: WorkflowEditorLabels = {
+    canvas: labels,
+    picker: {
+      title: t('repo.workflow.picker.title'),
+      empty: t('repo.workflow.picker.empty'),
+      inWorkflow: t('repo.workflow.inWorkflow'),
+      sources,
+    },
+    inspector: {
+      title: t('repo.workflow.inspector.title'),
+      empty: readOnly ? t('repo.workflow.inspector.emptyReadOnly') : t('repo.workflow.inspector.empty'),
+      skill: t('repo.workflow.inspector.skill'),
+      mode: t('repo.workflow.inspector.mode'),
+      kind: t('repo.workflow.inspector.kind'),
+      outcome: t('repo.workflow.inspector.outcome'),
+      blocking: t('repo.workflow.inspector.blocking'),
+      advisory: t('repo.workflow.inspector.advisory'),
+      auto: t('repo.workflow.inspector.auto'),
+      suggest: t('repo.workflow.inspector.suggest'),
+      remove: t('repo.workflow.inspector.remove'),
+      builtIn: t('repo.workflow.inspector.builtIn'),
+      sources,
+      inWorkflow: t('repo.workflow.inWorkflow'),
+      removeLink: t('repo.workflow.inspector.removeLink'),
+      anyOutcome: t('repo.workflow.inspector.anyOutcome'),
+      defaultLink: t('repo.workflow.inspector.defaultLink'),
+      close: t('repo.workflow.inspector.close'),
+    },
+    dock: {
+      dock: t('repo.workflow.dock.label'),
+      add: t('repo.workflow.dock.add'),
+      undo: t('repo.workflow.dock.undo'),
+      redo: t('repo.workflow.dock.redo'),
+      zoomIn: t('repo.workflow.dock.zoomIn'),
+      zoomOut: t('repo.workflow.dock.zoomOut'),
+      fit: t('repo.workflow.dock.fit'),
+      problems: problemItems.length === 1
+        ? t('repo.workflow.problems.one')
+        : t('repo.workflow.problems.other', { count: problemItems.length }),
+      discard: t('repo.workflow.discard'),
+      save: t('common.save'),
+      close: t('repo.workflow.dock.close'),
+    },
+  }
+
+  const banners: WorkflowEditorBanner[] = []
+  if (saveError?.kind === 'conflict') {
+    banners.push({
+      id: 'conflict', variant: 'warning', message: t('repo.workflow.conflict'), hint: t('repo.workflow.conflictHint'),
+      action: { label: t('repo.workflow.reload'), onClick: reload },
+    })
+  } else if (stale) {
+    // The conflict banner already says it, with the same Reload.
+    banners.push({
+      id: 'stale', variant: 'info', message: t('repo.workflow.changedElsewhere'), hint: t('repo.workflow.changedElsewhereHint'),
+      action: { label: t('repo.workflow.reload'), onClick: reload },
+    })
+  }
+  if (saveError?.kind === 'denied') {
+    banners.push({ id: 'denied', variant: 'danger', message: t('repo.workflow.denied'), hint: t('repo.workflow.deniedHint') })
+  }
+  if (saveError?.kind === 'failed') {
+    banners.push({ id: 'failed', variant: 'danger', message: t('repo.workflow.saveFailed'), hint: saveError.message })
   }
 
   return (
@@ -797,9 +970,7 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
       <SectionHeader
         icon={Workflow}
         title={t('repo.workflow.section')}
-        hint={source
-          ? (source === 'repository' ? t('repo.workflow.sourceRepository') : t('repo.workflow.sourceDefault'))
-          : undefined}
+        hint={sourceHint}
         description={[
           t('repo.workflow.intro'),
           readOnly ? t('repo.workflow.readOnlyHint') : t('repo.workflow.editHint'),
@@ -811,100 +982,94 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
         <Banner variant="danger" icon={AlertTriangle}>{t('repo.workflow.loadError')}</Banner>
       ) : loaded ? (
         <>
-          {saveError?.kind === 'conflict' && (
-            <Banner
-              variant="warning"
-              hint={t('repo.workflow.conflictHint')}
-              actions={[{ label: t('repo.workflow.reload'), onClick: reload }]}
-            >
-              {t('repo.workflow.conflict')}
-            </Banner>
-          )}
-          {/* The conflict banner already says it, with the same Reload. */}
-          {stale && saveError?.kind !== 'conflict' && (
-            <Banner
-              variant="info"
-              hint={t('repo.workflow.changedElsewhereHint')}
-              actions={[{ label: t('repo.workflow.reload'), onClick: reload }]}
-            >
-              {t('repo.workflow.changedElsewhere')}
-            </Banner>
-          )}
-          {saveError?.kind === 'denied' && (
-            <Banner variant="danger" icon={Lock} hint={t('repo.workflow.deniedHint')}>{t('repo.workflow.denied')}</Banner>
-          )}
-          {saveError?.kind === 'failed' && (
-            <Banner variant="danger" icon={AlertTriangle} hint={saveError.message}>{t('repo.workflow.saveFailed')}</Banner>
-          )}
-          <WorkflowProblems
-            problems={problemItems}
-            onFocus={focusOn}
-            labels={{
-              title: problemItems.length === 1
-                ? t('repo.workflow.problems.one')
-                : t('repo.workflow.problems.other', { count: problemItems.length }),
-              show: t('repo.workflow.problems.show'),
-            }}
-          />
-          {/* The Save bar sits ABOVE the canvas: the canvas is 520px tall, and a bar
-              under it would be off screen on a laptop while the edits it saves are not. */}
-          {!readOnly && (
-            <div className="flex items-center justify-end gap-2">
-              {dirty && <Text size="xs" tone="secondary" className="mr-auto">{t('repo.workflow.unsaved')}</Text>}
-              <Button tone="ghost" size="sm" disabled={!dirty || saving} onClick={() => edit(saved)}>
-                {t('repo.workflow.discard')}
-              </Button>
-              <Button tone="accent" size="sm" busy={saving} disabled={!dirty || shown.length > 0} onClick={save}>
-                {t('common.save')}
-              </Button>
-            </div>
-          )}
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_18rem]">
-            {/* A fixed height: the canvas fills its box, and a settings pane has no height
-                of its own to give it. `editable` for everyone, since it is what makes a
-                card selectable; a read-only member gets no "+" (no `onInsert`). */}
+          {/* Read-only: what is saved, and the way into the editor. A fixed height, since the
+              canvas fills its box and a settings pane has none to give it. Not mounted while
+              the editor is open: a canvas listens for Space on the whole document. */}
+          {!editing && (
             <WorkflowCanvas
               nodes={data.nodes}
               links={data.links}
               entry={data.entry}
               labels={labels}
+              positions={draft.positions}
               className="h-[520px]"
-              editable
-              selected={selected}
-              onSelect={setSelected}
-              onInsert={readOnly ? undefined : openPicker}
-              focusRequest={focus}
+              // The wheel scrolls the settings page, not the canvas: dragging still pans.
+              scrollPans={false}
+              onEdit={() => setEditing(true)}
             />
-            <WorkflowInspector
-              target={target}
-              skills={skills}
-              labels={inspectorLabels}
-              readOnly={readOnly}
-              className="self-start"
-              onChangeSkill={(id, skill) => {
-                edit(setStepSkill(draft, skillOf(id), skill))
-                setSelected({ type: 'node', id: customNodeId(skill) })
-              }}
-              onChangeMode={(id, mode) => edit(setStepMode(draft, skillOf(id), mode))}
-              onRemove={(id) => {
-                edit(removeStep(draft, skillOf(id)))
-                setSelected(null)
-              }}
-              onChangeKind={(from, to, kind) => edit(setLinkKind(draft, from, to, kind))}
-            />
-          </div>
-          <WorkflowSkillPicker
-            open={picker !== null}
-            onClose={() => setPicker(null)}
-            anchor={picker?.anchor ?? null}
-            skills={skills}
-            labels={pickerLabels}
-            onPick={(skill) => {
-              if (!picker) return
-              edit(insertStep(draft, picker.slot, skill))
-              focusOn(customNodeId(skill))
-            }}
-          />
+          )}
+          {editing && createPortal(
+            <div className="fixed inset-0 z-[55]">
+              <WorkflowEditor
+                title={t('repo.workflow.editor.title', { name: repoName })}
+                labels={editorLabels}
+                nodes={data.nodes}
+                links={data.links}
+                entry={data.entry}
+                positions={draft.positions}
+                selected={selected}
+                onSelect={setSelected}
+                onMove={(id, position) => reshape((pinned) => moveNode(pinned, id, position))}
+                onConnect={(from, to, outcome) => {
+                  reshape((pinned) => addLink(pinned, from, to, outcome))
+                  setSelected({ type: 'link', from, to })
+                }}
+                focusRequest={focus}
+                target={target}
+                skills={skills}
+                onChangeSkill={(id, skill) => {
+                  edit(setStepSkill(draft, skillOf(id), skill))
+                  setSelected({ type: 'node', id: customNodeId(skill) })
+                }}
+                onChangeMode={(id, mode) => edit(setStepMode(draft, skillOf(id), mode))}
+                onRemove={(id) => {
+                  reshape((pinned) => removeStep(pinned, skillOf(id)))
+                  setSelected(null)
+                }}
+                onChangeKind={(from, to, kind) => edit(setLinkKind(draft, from, to, kind))}
+                onChangeOutcome={(from, to, outcome) => edit(setLinkOutcome(draft, from, to, outcome))}
+                onRemoveLink={(from, to) => {
+                  reshape((pinned) => removeLink(pinned, from, to))
+                  setSelected(null)
+                }}
+                onAdd={(skill, position) => {
+                  reshape((pinned) => addStep(pinned, skill, position))
+                  setSelected({ type: 'node', id: customNodeId(skill) })
+                }}
+                canUndo={history.past.length > 0}
+                canRedo={history.future.length > 0}
+                onUndo={() => travel('past')}
+                onRedo={() => travel('future')}
+                problems={problemItems}
+                onFocusProblem={focusOn}
+                dirty={dirty}
+                saving={saving}
+                canSave={shown.length === 0}
+                onSave={save}
+                onDiscard={() => edit(saved)}
+                onClose={requestClose}
+                banners={banners}
+                readOnly={readOnly}
+                leaving={leavingEditor}
+                onLeft={left}
+                trafficLightGutter={!windowFullScreen}
+              />
+            </div>,
+            document.body,
+          )}
+          <Modal
+            isOpen={closePrompt}
+            onClose={() => setClosePrompt(false)}
+            title={t('repo.workflow.editor.close.title')}
+            footer={
+              <>
+                <Button tone="ghost" onClick={() => setClosePrompt(false)}>{t('repo.workflow.editor.close.keep')}</Button>
+                <Button tone="danger" onClick={leave}>{t('repo.workflow.editor.close.leave')}</Button>
+              </>
+            }
+          >
+            <Text size="sm" className="block">{t('repo.workflow.editor.close.body')}</Text>
+          </Modal>
           <Modal
             isOpen={copyOffer !== null}
             onClose={() => setCopyOffer(null)}
@@ -936,6 +1101,11 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
     </div>
   )
 }
+
+/** Nothing to undo, nothing to redo. */
+const EMPTY_HISTORY: { past: WorkflowOverlay[]; future: WorkflowOverlay[] } = { past: [], future: [] }
+/** How many edits ⌘Z goes back through. */
+const HISTORY_LIMIT = 100
 
 export function RepoPage({ repoName }: RepoPageProps) {
   const {

@@ -7,6 +7,9 @@
  * one part of the canvas that can be wrong without looking wrong, and the root test
  * suite can only load a file that imports nothing.
  *
+ * The editor lets cards be dragged, and a moved card keeps its place
+ * (`workflowPositions`): the layout is then what a card without one falls back to.
+ *
  * THE DATA TYPES LIVE HERE TOO, and they are the canvas's own, not the desktop's
  * `WorkflowNode` / `WorkflowLink` (`desktop/src/workflow/model.ts`): this folder cannot
  * import app code, and the canvas needs a display name the engine has no business
@@ -77,6 +80,43 @@ export const WORKFLOW_COLUMN_GAP = 80
  * in this gap, one carrying its outcome's label.
  */
 const ROW_GAP = 72
+
+/**
+ * THE WAYS OUT OF A CARD, one row and one port each, and the header has none: a link
+ * leaves from the row it is taken on.
+ *
+ *  - each OUTCOME the skill declares is a row, and a link conditioned on it leaves there;
+ *  - a link taken WHATEVER the outcome leaves from the last row, `WORKFLOW_ANY_EXIT`,
+ *    drawn on every card that has not exactly one outcome (a custom step has none, PR has
+ *    three);
+ *  - a card with EXACTLY ONE outcome has no such row: whatever it ended on is that
+ *    outcome, so its one row carries its unconditional links too.
+ */
+export const WORKFLOW_ANY_EXIT = 'default'
+
+export function workflowExitRows(node: Pick<WorkflowCanvasNode, 'outcomes'>): string[] {
+  return node.outcomes.length === 1 ? node.outcomes : [...node.outcomes, WORKFLOW_ANY_EXIT]
+}
+
+/** The row a link leaves `node` from: its outcome's, or the "whatever it ended on" one. */
+export function workflowExitOf(node: Pick<WorkflowCanvasNode, 'outcomes'>, outcome: string | undefined): string {
+  if (outcome !== undefined && node.outcomes.includes(outcome)) return outcome
+  return node.outcomes.length === 1 ? node.outcomes[0] : WORKFLOW_ANY_EXIT
+}
+
+/**
+ * The outcome a link drawn out of `exit` is taken on: none from the "whatever" row, and
+ * none from the one row of a single-outcome card either, since it stands for the same.
+ */
+export function workflowOutcomeOfExit(node: Pick<WorkflowCanvasNode, 'outcomes'>, exit: string | null | undefined): string | undefined {
+  if (!exit || exit === WORKFLOW_ANY_EXIT || node.outcomes.length === 1) return undefined
+  return node.outcomes.includes(exit) ? exit : undefined
+}
+
+/** A card's height, from its rows. */
+export function workflowCardHeight(node: Pick<WorkflowCanvasNode, 'outcomes'>): number {
+  return workflowNodeHeight(workflowExitRows(node).length)
+}
 
 export function workflowNodeHeight(outcomeCount: number): number {
   return (
@@ -213,7 +253,7 @@ export function layoutWorkflow(
   const columns: WorkflowCanvasNode[][] = []
   for (const node of nodes) (columns[layers[node.id]] ??= []).push(node)
   const heightOf = (col: WorkflowCanvasNode[]) =>
-    col.reduce((sum, node) => sum + workflowNodeHeight(node.outcomes.length), 0) + ROW_GAP * (col.length - 1)
+    col.reduce((sum, node) => sum + workflowCardHeight(node), 0) + ROW_GAP * (col.length - 1)
   const tallest = Math.max(0, ...columns.map((col) => (col ? heightOf(col) : 0)))
 
   const positions: Record<string, { x: number; y: number }> = {}
@@ -222,7 +262,7 @@ export function layoutWorkflow(
     let y = (tallest - heightOf(col)) / 2
     for (const node of col) {
       positions[node.id] = { x: layer * (WORKFLOW_NODE_WIDTH + WORKFLOW_COLUMN_GAP), y }
-      y += workflowNodeHeight(node.outcomes.length) + ROW_GAP
+      y += workflowCardHeight(node) + ROW_GAP
     }
   })
 
@@ -269,72 +309,37 @@ export function orthogonalPath(points: [number, number][], radius = 12): string 
 }
 
 /**
- * WHERE THE EDITOR'S "+" BUTTONS SIT, one per insert slot of the line.
+ * WHERE EACH CARD IS DRAWN, once the editor may have moved some: the stored position
+ * where there is one, the computed layout everywhere else.
  *
- * The editable canvas draws a LINE: `nodes` in line order, each linked to the next.
- * Slot `i` is where a step inserted at index `i` would land: `0` before the first node,
- * `i` between `nodes[i - 1]` and `nodes[i]`, `nodes.length` after the last. Every slot
- * gets its button, whether or not a link joins its two neighbours.
+ * The routes follow. A loop's straight verticals and detours only make sense between
+ * cards the layout stacked itself, so a link keeps its computed route while both its
+ * ends sit where the layout put them, and becomes a plain `forward` curve as soon as
+ * either was moved. A node linked to itself stays `self` wherever it is.
  *
- * `x` / `y` are the button's CENTRE, in canvas pixels:
- *
- *  - the two ends sit half a column gap out from the first and last cards, level with
- *    their header;
- *  - a slot between two cards sits at the middle of the link joining them, which is
- *    the middle of its curve (a bezier between two points is symmetric about its
- *    midpoint). A link carrying an outcome has its label there, so the button drops
- *    under it by `WORKFLOW_INSERT_LABEL_CLEARANCE`;
- *  - with no link between them, it sits halfway between the two headers.
- *
- * The heights are the card's (see `WORKFLOW_NODE_WIDTH`): a header centre is one border
- * and half a header down, an outcome row's is one border, a header and its rows above.
+ * Exported for the editor too: before an edit to the links, it pins every card still
+ * laid out at the place it is drawn at, so that a new link never reshuffles the columns
+ * under the admin's eyes.
  */
-export interface WorkflowInsertSlot {
-  slot: number
-  x: number
-  y: number
-}
-
-/** How far under an outcome's label plate a "+" drops, so the two never overlap. */
-export const WORKFLOW_INSERT_LABEL_CLEARANCE = 20
-
-export function workflowInsertSlots(
+export function workflowPositions(
   nodes: WorkflowCanvasNode[],
   links: WorkflowCanvasLink[],
-  positions: WorkflowLayout['positions'],
-): WorkflowInsertSlot[] {
-  if (nodes.length === 0) return [{ slot: 0, x: 0, y: 0 }]
-  const border = WORKFLOW_NODE_BORDER / 2
-  const header = (node: WorkflowCanvasNode) => positions[node.id].y + border + WORKFLOW_NODE_HEADER / 2
-  const port = (node: WorkflowCanvasNode, outcome: string | undefined) => {
-    const row = outcome === undefined ? -1 : node.outcomes.indexOf(outcome)
-    return row < 0
-      ? header(node)
-      : positions[node.id].y + border + WORKFLOW_NODE_HEADER + row * WORKFLOW_NODE_ROW + WORKFLOW_NODE_ROW / 2
+  entry: string[],
+  stored: Readonly<Record<string, { x: number; y: number }>> = {},
+): Pick<WorkflowLayout, 'positions' | 'routes'> {
+  const layout = layoutWorkflow(nodes, links, entry)
+  const positions: WorkflowLayout['positions'] = {}
+  const moved = new Set<string>()
+  for (const node of nodes) {
+    const own = stored[node.id]
+    const computed = layout.positions[node.id]
+    positions[node.id] = own ?? computed
+    if (own && (own.x !== computed.x || own.y !== computed.y)) moved.add(node.id)
   }
-
-  const first = nodes[0]
-  const last = nodes[nodes.length - 1]
-  const slots: WorkflowInsertSlot[] = [
-    { slot: 0, x: positions[first.id].x - WORKFLOW_COLUMN_GAP / 2, y: header(first) },
-  ]
-  for (let i = 1; i < nodes.length; i++) {
-    const a = nodes[i - 1]
-    const b = nodes[i]
-    const link = links.find((l) => l.from === a.id && l.to === b.id)
-    const x = (positions[a.id].x + WORKFLOW_NODE_WIDTH + positions[b.id].x) / 2
-    if (!link) {
-      slots.push({ slot: i, x, y: (header(a) + header(b)) / 2 })
-      continue
-    }
-    const labelled = link.outcome !== undefined && a.outcomes.includes(link.outcome)
-    const y = (port(a, labelled ? link.outcome : undefined) + header(b)) / 2
-    slots.push({ slot: i, x, y: labelled ? y + WORKFLOW_INSERT_LABEL_CLEARANCE : y })
+  const routes: WorkflowLayout['routes'] = {}
+  for (const [i, route] of Object.entries(layout.routes)) {
+    const link = links[Number(i)]
+    routes[Number(i)] = route === 'self' || (!moved.has(link.from) && !moved.has(link.to)) ? route : 'forward'
   }
-  slots.push({
-    slot: nodes.length,
-    x: positions[last.id].x + WORKFLOW_NODE_WIDTH + WORKFLOW_COLUMN_GAP / 2,
-    y: header(last),
-  })
-  return slots
+  return { positions, routes }
 }

@@ -3,152 +3,212 @@ import { DEFAULT_WORKFLOW } from './defaultFlow'
 import { buildWorkflowPayload } from './payload'
 import type { WorkflowOverlay } from './overlay'
 import {
-  EMPTY_OVERLAY, composeWorkflow, customNodeId, insertStep, isOverlay, kindOf, lineOf, problems,
-  removeStep, resolveOverlay, setLinkKind, setStepMode, setStepSkill,
+  EMPTY_OVERLAY, addLink, addStep, cleanOverlay, composeWorkflow, customNodeId, isDefaultLink, isOverlay, moveNode, pinPositions,
+  problems, removeLink, removeStep, resolveOverlay, sameOverlay, setLinkKind, setLinkOutcome, setStepMode, setStepSkill, toOverlay,
+  unreachableSteps,
 } from './overlay'
 
 const CHECK = customNodeId('check')
+const AT = { x: 10, y: 20 }
 
-/** The slot between two consecutive node ids of the line. */
-function slotAfter(overlay: WorkflowOverlay, id: string): number {
-  return lineOf(overlay).indexOf(id) + 1
+/** A check step between start and commit: start → check → commit. */
+function withCheck(): WorkflowOverlay {
+  return addLink(addLink(addStep(EMPTY_OVERLAY, 'check', AT), 'start', CHECK), CHECK, 'commit')
 }
 
 describe('composeWorkflow', () => {
-  it('composes the empty overlay into the default line, links and entry', () => {
+  it('composes the empty overlay into the default flow', () => {
     const flow = composeWorkflow(EMPTY_OVERLAY)
     expect(flow.nodes).toEqual(DEFAULT_WORKFLOW.nodes)
     expect(flow.links).toEqual(DEFAULT_WORKFLOW.links)
     expect(flow.entry).toEqual(DEFAULT_WORKFLOW.entry)
   })
 
-  it('inserts a step between start and commit, reached by an auto link from start', () => {
-    let overlay = insertStep(EMPTY_OVERLAY, slotAfter(EMPTY_OVERLAY, 'start'), 'check')
-    overlay = setLinkKind(overlay, 'start', CHECK, 'auto')
-    const flow = composeWorkflow(overlay)
-    expect(lineOf(overlay)).toEqual(['plan', 'start', CHECK, 'commit', 'pr', 'resolve', 'done'])
-    expect(flow.links).toContainEqual({ from: 'start', to: CHECK, kind: 'auto' })
+  it('adds a custom step and its drawn links, keeping every default link', () => {
+    const flow = composeWorkflow(withCheck())
+    expect(flow.nodes.map((node) => node.id)).toContain(CHECK)
+    expect(flow.links).toContainEqual({ from: 'start', to: CHECK, kind: 'suggest' })
     expect(flow.links).toContainEqual({ from: CHECK, to: 'commit', kind: 'suggest' })
-    expect(flow.links.find((l) => l.from === 'start' && l.to === 'commit')).toBeUndefined()
-    expect(problems(overlay)).toEqual([])
+    // Default links are locked: drawing around one does not remove it.
+    expect(flow.links).toContainEqual({ from: 'start', to: 'commit', kind: 'suggest' })
+    expect(flow.entry).toEqual(DEFAULT_WORKFLOW.entry)
+    expect(problems(withCheck())).toEqual([])
   })
 
-  it('puts a step before plan first in the entry, in plan\'s place', () => {
-    const overlay = insertStep(EMPTY_OVERLAY, 0, 'check')
-    expect(lineOf(overlay)[0]).toBe(CHECK)
-    expect(composeWorkflow(overlay).entry).toEqual([CHECK, 'start'])
-    expect(composeWorkflow(overlay).links).toContainEqual({ from: CHECK, to: 'plan', kind: 'suggest' })
-  })
-
-  it('leaves a step between plan and start out of the entry', () => {
-    const overlay = insertStep(EMPTY_OVERLAY, slotAfter(EMPTY_OVERLAY, 'plan'), 'check')
-    expect(composeWorkflow(overlay).entry).toEqual(['plan', 'start'])
-  })
-
-  it('appends a step after done', () => {
-    const overlay = insertStep(EMPTY_OVERLAY, lineOf(EMPTY_OVERLAY).length, 'check')
-    expect(lineOf(overlay).at(-1)).toBe(CHECK)
-    expect(composeWorkflow(overlay).links.at(-1)).toEqual({ from: 'done', to: CHECK, kind: 'suggest' })
-  })
-
-  it('keeps the outcome on the first hop only when splitting pr → resolve', () => {
-    const overlay = insertStep(EMPTY_OVERLAY, slotAfter(EMPTY_OVERLAY, 'pr'), 'check')
-    const flow = composeWorkflow(overlay)
-    expect(flow.links).toContainEqual({ from: 'pr', to: CHECK, kind: 'auto', outcome: 'review_comments' })
-    expect(flow.links).toContainEqual({ from: CHECK, to: 'resolve', kind: 'auto' })
-    expect(problems(overlay)).toEqual([])
-  })
-
-  it('switches a built-in link, commit → pr, to auto', () => {
+  it('switches a default link, commit → pr, to auto, and drops the override once back to its kind', () => {
     const overlay = setLinkKind(EMPTY_OVERLAY, 'commit', 'pr', 'auto')
     expect(composeWorkflow(overlay).links).toContainEqual({ from: 'commit', to: 'pr', kind: 'auto' })
-    // Back to its default kind, the override is dropped rather than stored.
     expect(setLinkKind(overlay, 'commit', 'pr', 'suggest').kinds).toEqual({})
-  })
-
-  it('keeps several custom steps of one gap in line order', () => {
-    let overlay = insertStep(EMPTY_OVERLAY, slotAfter(EMPTY_OVERLAY, 'start'), 'a')
-    overlay = insertStep(overlay, slotAfter(overlay, customNodeId('a')), 'b')
-    overlay = insertStep(overlay, slotAfter(overlay, 'start'), 'c')
-    expect(lineOf(overlay).slice(1, 6)).toEqual(['start', customNodeId('c'), customNodeId('a'), customNodeId('b'), 'commit'])
   })
 })
 
 describe('editing', () => {
-  it('inherits the split link\'s kind on both new links', () => {
-    const auto = setLinkKind(EMPTY_OVERLAY, 'commit', 'pr', 'auto')
-    const overlay = insertStep(auto, slotAfter(auto, 'commit'), 'check')
-    expect(kindOf(overlay, 'commit', CHECK)).toBe('auto')
-    expect(kindOf(overlay, CHECK, 'pr')).toBe('auto')
-    expect(overlay.kinds['commit>pr']).toBeUndefined()
+  it('adds a step linked to nothing, where it was dropped', () => {
+    const overlay = addStep(EMPTY_OVERLAY, 'check', { x: 10.4, y: 19.6 })
+    expect(overlay.steps).toEqual([{ skill: 'check', mode: 'advisory' }])
+    expect(overlay.links).toEqual([])
+    expect(overlay.positions[CHECK]).toEqual(AT)
+    expect(unreachableSteps(overlay)).toEqual([CHECK])
   })
 
-  it('removes a step and every kind that named it', () => {
-    let overlay = insertStep(EMPTY_OVERLAY, slotAfter(EMPTY_OVERLAY, 'start'), 'check')
-    overlay = setLinkKind(overlay, 'start', CHECK, 'auto')
-    overlay = removeStep(overlay, 'check')
+  it('draws a link from an outcome\'s port, and changes or drops its outcome', () => {
+    let overlay = addLink(addStep(EMPTY_OVERLAY, 'check', AT), 'pr', CHECK, 'ci_green')
+    expect(overlay.links).toEqual([{ from: 'pr', to: CHECK, kind: 'suggest', outcome: 'ci_green' }])
+    overlay = setLinkOutcome(overlay, 'pr', CHECK, 'pr_created')
+    expect(overlay.links[0].outcome).toBe('pr_created')
+    overlay = setLinkOutcome(overlay, 'pr', CHECK, undefined)
+    expect(overlay.links).toEqual([{ from: 'pr', to: CHECK, kind: 'suggest' }])
+  })
+
+  it('draws no second link between two steps, no default one again, and none from a step to itself', () => {
+    const overlay = withCheck()
+    expect(addLink(overlay, 'start', CHECK)).toBe(overlay)
+    expect(addLink(overlay, 'commit', 'pr')).toBe(overlay)
+    expect(addLink(overlay, CHECK, CHECK)).toBe(overlay)
+  })
+
+  it('removes a drawn link, never a default one', () => {
+    const overlay = removeLink(withCheck(), 'start', CHECK)
+    expect(overlay.links).toEqual([{ from: CHECK, to: 'commit', kind: 'suggest' }])
+    expect(isDefaultLink('start', 'commit')).toBe(true)
+    expect(composeWorkflow(removeLink(overlay, 'start', 'commit')).links).toContainEqual({ from: 'start', to: 'commit', kind: 'suggest' })
+  })
+
+  it('sets a drawn link\'s kind in place', () => {
+    const overlay = setLinkKind(withCheck(), 'start', CHECK, 'auto')
+    expect(overlay.links[0]).toEqual({ from: 'start', to: CHECK, kind: 'auto' })
+    expect(overlay.kinds).toEqual({})
+  })
+
+  it('removes a step with its links and its place', () => {
+    const overlay = removeStep(withCheck(), 'check')
     expect(overlay).toEqual(EMPTY_OVERLAY)
   })
 
-  it('changes a step\'s mode and skill, keeping its place and its links\' kinds', () => {
-    let overlay = insertStep(EMPTY_OVERLAY, slotAfter(EMPTY_OVERLAY, 'start'), 'check')
-    overlay = setLinkKind(overlay, 'start', CHECK, 'auto')
-    overlay = setStepMode(setStepSkill(overlay, 'check', 'lint'), 'lint', 'blocking')
-    expect(overlay.steps).toEqual([{ skill: 'lint', mode: 'blocking', before: 'commit' }])
-    expect(kindOf(overlay, 'start', customNodeId('lint'))).toBe('auto')
+  it('changes a step\'s mode and skill, keeping its links and its place', () => {
+    const overlay = setStepMode(setStepSkill(withCheck(), 'check', 'lint'), 'lint', 'blocking')
+    const lint = customNodeId('lint')
+    expect(overlay.steps).toEqual([{ skill: 'lint', mode: 'blocking' }])
+    expect(overlay.links).toEqual([{ from: 'start', to: lint, kind: 'suggest' }, { from: lint, to: 'commit', kind: 'suggest' }])
+    expect(overlay.positions).toEqual({ [lint]: AT })
+  })
+
+  it('moves any card, a built-in one included, to whole pixels', () => {
+    expect(moveNode(EMPTY_OVERLAY, 'commit', { x: 1.2, y: 3.7 }).positions).toEqual({ commit: { x: 1, y: 4 } })
+  })
+
+  it('pins the cards still laid out, and leaves the placed ones where they are', () => {
+    const drawn = { plan: { x: 0, y: 0 }, start: { x: 300, y: 0 }, [CHECK]: { x: 999, y: 999 } }
+    const overlay = pinPositions(addStep(EMPTY_OVERLAY, 'check', AT), drawn)
+    expect(overlay.positions).toEqual({ [CHECK]: AT, plan: { x: 0, y: 0 }, start: { x: 300, y: 0 } })
+    expect(pinPositions(overlay, drawn)).toBe(overlay)
   })
 
   it('never mutates its input', () => {
-    const frozen = structuredClone(EMPTY_OVERLAY)
-    insertStep(frozen, 2, 'check')
-    expect(frozen).toEqual(EMPTY_OVERLAY)
+    const frozen = structuredClone(withCheck())
+    const copy = structuredClone(frozen)
+    removeStep(moveNode(setLinkKind(frozen, 'start', CHECK, 'auto'), CHECK, AT), 'check')
+    expect(frozen).toEqual(copy)
   })
 })
 
 describe('problems', () => {
   it('lists the same skill on two steps, naming the second one', () => {
-    let overlay = insertStep(EMPTY_OVERLAY, 0, 'check')
-    overlay = insertStep(overlay, lineOf(overlay).length, 'check')
+    const overlay = addStep(addStep(EMPTY_OVERLAY, 'check', AT), 'check', AT)
     expect(problems(overlay)).toContainEqual({ code: 'duplicate-skill', nodeId: CHECK, skill: 'check' })
   })
 
   it('lists a custom step that repeats a built-in skill', () => {
-    const overlay = insertStep(EMPTY_OVERLAY, 0, 'magic-commit')
+    const overlay = addStep(EMPTY_OVERLAY, 'magic-commit', AT)
     expect(problems(overlay)).toEqual([{ code: 'duplicate-skill', nodeId: customNodeId('magic-commit'), skill: 'magic-commit' }])
   })
 
-  it('refuses an auto link into start, custom step or not', () => {
-    const overlay = setLinkKind(insertStep(EMPTY_OVERLAY, 1, 'check'), CHECK, 'start', 'auto')
+  it('refuses an auto link into start, drawn or default', () => {
+    const overlay = setLinkKind(addLink(addStep(EMPTY_OVERLAY, 'check', AT), CHECK, 'start'), CHECK, 'start', 'auto')
     expect(problems(overlay)).toEqual([{ code: 'auto-into-start', nodeId: CHECK }])
     expect(problems(setLinkKind(EMPTY_OVERLAY, 'plan', 'start', 'auto'))).toEqual([{ code: 'auto-into-start', nodeId: 'plan' }])
   })
-})
 
-describe('isOverlay / resolveOverlay', () => {
-  it('accepts an overlay and refuses a full workflow or a step before an unknown node', () => {
-    expect(isOverlay(EMPTY_OVERLAY)).toBe(true)
-    expect(isOverlay(DEFAULT_WORKFLOW)).toBe(false)
-    expect(isOverlay({ version: 1, steps: [{ skill: 'x', mode: 'advisory', before: 'nowhere' }], kinds: {} })).toBe(false)
+  it('refuses what only a hand-written overlay can hold: a self link, two links between the same steps', () => {
+    const base = addStep(EMPTY_OVERLAY, 'check', AT)
+    expect(problems({ ...base, links: [{ from: CHECK, to: CHECK, kind: 'suggest' }] })).toEqual([{ code: 'self-link', nodeId: CHECK }])
+    expect(problems({ ...base, links: [{ from: 'commit', to: 'pr', kind: 'auto' }] }))
+      .toEqual([{ code: 'duplicate-link', nodeId: 'commit', to: 'pr' }])
   })
 
-  it('resolves a usable overlay and reports an unusable one', () => {
-    expect('workflow' in resolveOverlay(insertStep(EMPTY_OVERLAY, 0, 'check'))).toBe(true)
-    expect('error' in resolveOverlay(insertStep(EMPTY_OVERLAY, 0, 'magic-pr'))).toBe(true)
+  it('allows a step nothing links into: it is a warning, not a problem', () => {
+    expect(problems(addStep(EMPTY_OVERLAY, 'check', AT))).toEqual([])
+  })
+})
+
+describe('shapes', () => {
+  it('accepts a v2 overlay and refuses a full workflow or a v2 without its links', () => {
+    expect(isOverlay(EMPTY_OVERLAY)).toBe(true)
+    expect(isOverlay(withCheck())).toBe(true)
+    expect(isOverlay(DEFAULT_WORKFLOW)).toBe(false)
+    expect(isOverlay({ version: 2, steps: [], kinds: {}, positions: {} })).toBe(false)
+    expect(isOverlay({ ...EMPTY_OVERLAY, positions: { plan: { x: 'a', y: 0 } } })).toBe(false)
+  })
+
+  it('upgrades a v1 line: its composed links made explicit, a split default link back', () => {
+    const v1 = { version: 1, steps: [{ skill: 'check', mode: 'blocking', before: 'resolve' }], kinds: { 'pr>custom:check': 'suggest' } }
+    expect(toOverlay(v1)).toEqual({
+      version: 2,
+      steps: [{ skill: 'check', mode: 'blocking' }],
+      links: [
+        { from: 'pr', to: CHECK, kind: 'suggest', outcome: 'review_comments' },
+        { from: CHECK, to: 'resolve', kind: 'auto' },
+      ],
+      kinds: {},
+      positions: {},
+    })
+    expect(toOverlay({ version: 1, steps: [{ skill: 'x', mode: 'advisory', before: 'nowhere' }], kinds: {} })).toBeNull()
+  })
+
+  it('resolves a usable overlay, v1 or v2, and reports an unusable one', () => {
+    expect('workflow' in resolveOverlay(withCheck())).toBe(true)
+    expect('workflow' in resolveOverlay({ version: 1, steps: [], kinds: {} })).toBe(true)
+    expect('error' in resolveOverlay(addStep(EMPTY_OVERLAY, 'magic-pr', AT))).toBe(true)
     expect('error' in resolveOverlay({ nope: true })).toBe(true)
+  })
+
+  it('compares positions whatever their key order, and cleans those of steps it no longer has', () => {
+    const a = moveNode(moveNode(EMPTY_OVERLAY, 'plan', AT), 'done', AT)
+    const b = moveNode(moveNode(EMPTY_OVERLAY, 'done', AT), 'plan', AT)
+    expect(sameOverlay(a, b)).toBe(true)
+    expect(sameOverlay(a, moveNode(a, 'plan', { x: 11, y: 20 }))).toBe(false)
+    expect(cleanOverlay({ ...a, positions: { ...a.positions, [CHECK]: AT } }).positions).toEqual(a.positions)
   })
 })
 
 describe('payload then', () => {
   it('carries what follows consecutive custom steps down to the next built-in one', () => {
-    let overlay = insertStep(EMPTY_OVERLAY, slotAfter(EMPTY_OVERLAY, 'start'), 'a')
-    overlay = insertStep(overlay, slotAfter(overlay, customNodeId('a')), 'b')
+    const a = customNodeId('a')
+    const b = customNodeId('b')
+    let overlay = addStep(addStep(EMPTY_OVERLAY, 'a', AT), 'b', AT)
+    overlay = addLink(addLink(addLink(overlay, 'start', a), a, b), b, 'commit')
     const payload = buildWorkflowPayload('r', { workflow: composeWorkflow(overlay), source: 'repository' }, 'magic-start')
-    expect(payload.links).toEqual([{
-      from: 'start', to: customNodeId('a'), kind: 'suggest', outcome: null, skill: 'a',
+    expect(payload.links).toContainEqual({
+      from: 'start', to: a, kind: 'suggest', outcome: null, skill: 'a',
       then: [{
-        from: customNodeId('a'), to: customNodeId('b'), kind: 'suggest', outcome: null, skill: 'b',
-        then: [{ from: customNodeId('b'), to: 'commit', kind: 'suggest', outcome: null, skill: 'magic-commit', then: [] }],
+        from: a, to: b, kind: 'suggest', outcome: null, skill: 'b',
+        then: [{ from: b, to: 'commit', kind: 'suggest', outcome: null, skill: 'magic-commit', then: [] }],
       }],
-    }])
+    })
+  })
+
+  it('stops at a custom step already on the way, so a loop of custom steps ends', () => {
+    const a = customNodeId('a')
+    const b = customNodeId('b')
+    let overlay = addStep(addStep(EMPTY_OVERLAY, 'a', AT), 'b', AT)
+    overlay = addLink(addLink(addLink(overlay, 'commit', a), a, b), b, a)
+    const payload = buildWorkflowPayload('r', { workflow: composeWorkflow(overlay), source: 'repository' }, 'magic-commit')
+    expect(payload.links).toContainEqual({
+      from: 'commit', to: a, kind: 'suggest', outcome: null, skill: 'a',
+      then: [{
+        from: a, to: b, kind: 'suggest', outcome: null, skill: 'b',
+        then: [{ from: b, to: a, kind: 'suggest', outcome: null, skill: 'a', then: [] }],
+      }],
+    })
   })
 })

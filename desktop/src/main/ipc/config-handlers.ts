@@ -72,7 +72,7 @@ import {
 import { ensureHydrated } from '../store/hydrate'
 import { hydrateWorkflows, overlayForRepo, revisionForRepo, setWorkflow, workflowForRepo } from '../workflow/workflows'
 import { notifyWorkflowsChanged } from '../workflow/notify'
-import { EMPTY_OVERLAY, isOverlay, problems, sameOverlay, type WorkflowOverlay } from '../../workflow/overlay'
+import { EMPTY_OVERLAY, cleanOverlay, isOverlay, problems, sameOverlay } from '../../workflow/overlay'
 import { getStore, isStoreConflict, isStoreForbidden } from '../store/Store'
 import {
   computeVisibleRanges, countShikiRows, numberShikiLines, renderRows, splitShikiLines, ROW_MARKER,
@@ -279,13 +279,6 @@ function repoIdOf(name: string): string | null {
  * Just the overlay's own fields, so nothing else a caller put on the object reaches
  * the database. Shape already checked by isOverlay.
  */
-function cleanOverlay(overlay: WorkflowOverlay): WorkflowOverlay {
-  return {
-    version: 1,
-    steps: overlay.steps.map(({ skill, mode, before }) => ({ skill, mode, before })),
-    kinds: { ...overlay.kinds },
-  }
-}
 
 const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico'])
 
@@ -766,7 +759,7 @@ export function setupConfigHandlers() {
   })
 
   // What the editor starts from: the repository's stored overlay, only what was ADDED
-  // to the default line (workflow/overlay.ts). The empty overlay for a repository on
+  // to the default flow (workflow/overlay.ts), upgraded to v2 if it was stored as v1. The empty overlay for a repository on
   // the default flow, or one with an unusable definition (which is served the default).
   // With the revision of its row, which the save hands back: an unusable row has one
   // too, so the first save from the editor replaces it rather than colliding with it.
@@ -809,7 +802,8 @@ export function setupConfigHandlers() {
     // A repository without a cloud id has no row to hang a flow on (yet).
     if (!repoId) return { status: 'failed', message: `Repository "${name}" is not in the cloud yet.` }
 
-    const overlay = sameOverlay(raw, EMPTY_OVERLAY) ? null : cleanOverlay(raw)
+    const clean = cleanOverlay(raw)
+    const overlay = sameOverlay(clean, EMPTY_OVERLAY) ? null : clean
     let revision: string | null
     try {
       revision = await getStore().saveRepositoryWorkflow(repoId, overlay, expectedRevision)

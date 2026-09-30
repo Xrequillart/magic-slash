@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { DEFAULT_WORKFLOW } from '../../../workflow/defaultFlow'
 import {
-  EMPTY_OVERLAY, composeWorkflow, customNodeId, insertStep, isLinkIntoStart, lineOf, problems, sameOverlay, setLinkKind,
+  EMPTY_OVERLAY, addLink, addStep, composeWorkflow, customNodeId, isLinkIntoStart, problems, sameOverlay, setLinkKind,
 } from '../../../workflow/overlay'
 import type { ListingEntry } from '../../hooks/useSkills'
 import {
@@ -62,12 +62,12 @@ describe('skillDisplayName', () => {
 
 /**
  * The editor's marks: what the Workflow tab draws on a card once it can be edited. The
- * overlay is placed by slot, the way a "+" on the canvas places it.
+ * overlay is built the way the editor builds it: a step dropped, then linked.
  */
 describe('workflowCanvasData, editing', () => {
-  const slotBefore = (overlay: typeof EMPTY_OVERLAY, id: string) => lineOf(overlay).indexOf(id)
-  const withLint = insertStep(EMPTY_OVERLAY, slotBefore(EMPTY_OVERLAY, 'commit'), 'lint', 'blocking')
+  const AT = { x: 0, y: 0 }
   const lint = customNodeId('lint')
+  const withLint = addLink(addLink(addStep(EMPTY_OVERLAY, 'lint', AT, 'blocking'), 'start', lint), lint, 'commit')
 
   it('locks every built-in step and gives a custom one its mode', () => {
     const data = workflowCanvasData(composeWorkflow(withLint))
@@ -83,7 +83,7 @@ describe('workflowCanvasData, editing', () => {
   })
 
   it('marks the steps a problem names, and warns the ones it is told to', () => {
-    const twice = insertStep(withLint, 0, 'magic-commit')
+    const twice = addStep(withLint, 'magic-commit', AT)
     const found = problems(twice)
     const data = workflowCanvasData(composeWorkflow(twice), {
       problems: problemNodeIds(found),
@@ -100,14 +100,18 @@ describe('workflowCanvasData, editing', () => {
     expect(problemNodeIds([{ code: 'invalid', message: 'x' }])).toEqual([])
   })
 
-  it('says a step after pr runs only on review comments', () => {
-    const overlay = insertStep(EMPTY_OVERLAY, slotBefore(EMPTY_OVERLAY, 'resolve'), 'triage')
-    expect(stepHints(composeWorkflow(overlay), customNodeId('triage'))).toEqual(['on-review-comments'])
+  it('says a step reached on review comments runs only then', () => {
+    const triage = customNodeId('triage')
+    const overlay = addLink(addStep(EMPTY_OVERLAY, 'triage', AT), 'pr', triage, 'review_comments')
+    expect(stepHints(composeWorkflow(overlay), triage)).toEqual(['on-review-comments'])
   })
 
-  it('says a step between plan and start is skipped from start', () => {
-    const overlay = insertStep(EMPTY_OVERLAY, slotBefore(EMPTY_OVERLAY, 'start'), 'refine')
-    expect(stepHints(composeWorkflow(overlay), customNodeId('refine'))).toEqual(['skipped-from-start'])
+  it('says a step reached from plan, never from start, is skipped from start', () => {
+    const refine = customNodeId('refine')
+    const overlay = addLink(addStep(EMPTY_OVERLAY, 'refine', AT), 'plan', refine)
+    expect(stepHints(composeWorkflow(overlay), refine)).toEqual(['skipped-from-start'])
+    // Reached from start as well, it is not skipped.
+    expect(stepHints(composeWorkflow(addLink(overlay, 'commit', refine)), refine)).toEqual([])
   })
 
   it('says nothing of a plain step, nor of a built-in one', () => {
@@ -152,7 +156,7 @@ describe('skillOptions', () => {
 
 describe('folderSkillsOf and sameOverlay', () => {
   it('leaves plugin skills out of the ones a teammate may miss', () => {
-    const overlay = insertStep(insertStep(EMPTY_OVERLAY, 1, 'lint'), 1, 'plug:check')
+    const overlay = addStep(addStep(EMPTY_OVERLAY, 'lint', { x: 0, y: 0 }), 'plug:check', { x: 0, y: 0 })
     expect(folderSkillsOf(overlay)).toEqual(['lint'])
   })
 
@@ -161,6 +165,7 @@ describe('folderSkillsOf and sameOverlay', () => {
     const b = setLinkKind(setLinkKind(EMPTY_OVERLAY, 'commit', 'pr', 'auto'), 'start', 'commit', 'auto')
     expect(sameOverlay(a, b)).toBe(true)
     expect(sameOverlay(a, EMPTY_OVERLAY)).toBe(false)
-    expect(sameOverlay(insertStep(EMPTY_OVERLAY, 1, 'lint'), insertStep(EMPTY_OVERLAY, 1, 'lint', 'blocking'))).toBe(false)
+    const at = { x: 0, y: 0 }
+    expect(sameOverlay(addStep(EMPTY_OVERLAY, 'lint', at), addStep(EMPTY_OVERLAY, 'lint', at, 'blocking'))).toBe(false)
   })
 })

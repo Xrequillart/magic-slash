@@ -13,8 +13,9 @@ import { EMPTY_OVERLAY, resolveOverlay, sameOverlay } from '../../workflow/overl
  * the skills over `GET /workflow`. Never mirrored to disk, for the reason the config
  * is not.
  *
- * What is stored is an overlay (workflow/overlay.ts): the steps an admin added to the
- * default line. It is judged once, when it lands in the cache — loaded or saved, both
+ * What is stored is an overlay (workflow/overlay.ts): the steps and links an admin added
+ * to the default flow. A v1 overlay (the line of before) is upgraded here, so the cache
+ * and the editor only ever hold a v2. It is judged once, when it lands in the cache — loaded or saved, both
  * through `accept` — so a definition this build does not understand costs a warning
  * and its repository follows the default flow, instead of breaking a skill.
  */
@@ -22,7 +23,7 @@ import { EMPTY_OVERLAY, resolveOverlay, sameOverlay } from '../../workflow/overl
 interface CachedWorkflow {
   /** The stored overlay, as the editor edits it. */
   overlay: WorkflowOverlay
-  /** It composed onto the default line. */
+  /** It composed onto the default flow. */
   workflow: Workflow
 }
 
@@ -54,7 +55,7 @@ function accept(repoId: string, definition: unknown): CachedWorkflow | null {
     console.warn(`[workflow] repository ${repoId} has an unusable stored workflow (${resolved.error}), serving the default`)
     return null
   }
-  return { overlay: definition as WorkflowOverlay, workflow: resolved.workflow }
+  return { overlay: resolved.overlay, workflow: resolved.workflow }
 }
 
 /**

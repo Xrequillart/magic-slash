@@ -1,6 +1,6 @@
 import type {
-  WorkflowCanvasLabels, WorkflowCanvasLink, WorkflowCanvasNode, WorkflowInspectorLabels, WorkflowProblemItem, WorkflowProblemsLabels,
-  WorkflowSkillOption, WorkflowSkillPickerLabels,
+  WorkflowCanvasLabels, WorkflowCanvasLink, WorkflowCanvasNode, WorkflowDockLabels, WorkflowInspectorLabels, WorkflowProblemItem,
+  WorkflowProblemsLabels, WorkflowSkillOption, WorkflowSkillPickerLabels,
 } from '@ds/desktop'
 
 /**
@@ -61,6 +61,7 @@ export const SAMPLE_LABELS: WorkflowCanvasLabels = {
   minimap: 'Minimap',
   auto: 'Automatic chaining',
   suggest: 'Suggested',
+  anyExit: 'When done',
 }
 
 type Subset = { nodes: WorkflowCanvasNode[]; links: WorkflowCanvasLink[] }
@@ -83,17 +84,17 @@ export function loopSubset(ids: string[]): Subset {
 }
 
 /**
- * THE EDITABLE LINE, as the workflow editor draws a repository's own flow: the default
- * six steps, locked, with one custom step (`lint`, blocking) between start and commit,
- * chained from start on its own. Line order, since the editable canvas reads `nodes` as
- * the line. `lint` carries a warning and `plan` a problem, so the specimens show both.
+ * A REPOSITORY'S OWN FLOW, as the workflow editor draws it: the default six steps,
+ * locked, with one custom step (`lint`, blocking) drawn between start and commit and
+ * chained from start on its own. The default links are all still there: they are locked.
+ * `lint` carries a warning and `plan` a problem, so the specimens show both.
  *
  * The problem is a real rule of the model: a link into start cannot be automatic, since
  * starting a ticket always opens a new agent. The sample breaks it on purpose.
  */
 export const EDIT_LABELS: WorkflowCanvasLabels = {
   ...SAMPLE_LABELS,
-  insert: 'Add a step here',
+  edit: 'Edit',
   locked: 'Built-in step, locked',
   blocking: 'Blocking',
   advisory: 'Advisory',
@@ -111,27 +112,17 @@ export const EDIT_NODES: WorkflowCanvasNode[] = [
   ...SAMPLE_NODES.slice(2).map(locked),
 ]
 
-/** The kinds the sample overrides, keyed `from>to` like the app's overlay. Anything else suggests. */
-export const EDIT_KINDS: Record<string, WorkflowCanvasLink['kind']> = {
-  'plan>start': 'auto',
-  'start>custom:lint': 'auto',
-  'pr>resolve': 'auto',
-}
+/** The default links, plan → start turned auto (the problem), and the two drawn around lint. */
+export const EDIT_LINKS: WorkflowCanvasLink[] = [
+  { ...SAMPLE_LINKS[0], kind: 'auto' },
+  ...SAMPLE_LINKS.slice(1),
+  { from: 'start', to: 'custom:lint', kind: 'auto' },
+  { from: 'custom:lint', to: 'commit', kind: 'suggest' },
+]
 
-/**
- * The links of a line: one per pair of neighbours. PR keeps its outcome on the hop out
- * of it, the way the app splits the default pr to resolve link.
- */
-export function lineLinks(nodes: WorkflowCanvasNode[], kinds: Record<string, WorkflowCanvasLink['kind']>): WorkflowCanvasLink[] {
-  return nodes.slice(1).map((to, i) => {
-    const from = nodes[i]
-    const link: WorkflowCanvasLink = { from: from.id, to: to.id, kind: kinds[`${from.id}>${to.id}`] ?? 'suggest' }
-    if (from.id === 'pr') link.outcome = 'review_comments'
-    return link
-  })
-}
-
-export const EDIT_LINKS: WorkflowCanvasLink[] = lineLinks(EDIT_NODES, EDIT_KINDS)
+/** Whether a link is one of the default flow's: locked, only its kind changes. */
+export const isSampleDefaultLink = (from: string, to: string) =>
+  SAMPLE_LINKS.some((link) => link.from === from && link.to === to)
 
 /** What a repository could add, from the three places a skill comes from. `lint` is on the line already. */
 export const SAMPLE_SKILLS: WorkflowSkillOption[] = [
@@ -166,6 +157,24 @@ export const INSPECTOR_LABELS: WorkflowInspectorLabels = {
   builtIn: 'Built-in step, locked. It cannot be removed or changed.',
   sources: SOURCES,
   inWorkflow: 'In the workflow',
+  removeLink: 'Remove the link',
+  anyOutcome: 'Whatever the outcome',
+  defaultLink: 'Default link: it cannot be removed, only its chaining changes.',
+  close: 'Close',
+}
+
+export const DOCK_LABELS: WorkflowDockLabels = {
+  dock: 'Workflow tools',
+  add: 'Add a step',
+  undo: 'Undo (⌘Z)',
+  redo: 'Redo (⇧⌘Z)',
+  zoomIn: 'Zoom in',
+  zoomOut: 'Zoom out',
+  fit: 'Recenter on the workflow',
+  problems: '1 problem to fix before saving',
+  discard: 'Discard changes',
+  save: 'Save',
+  close: 'Close the editor (Esc)',
 }
 
 export const SAMPLE_PROBLEMS: WorkflowProblemItem[] = [

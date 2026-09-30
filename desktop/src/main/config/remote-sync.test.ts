@@ -78,7 +78,13 @@ let repositoriesReloaded: number
 let changes: ConfigChange[]
 let workflowsChanged: string[][]
 
-const OVERLAY = { version: 1, steps: [{ skill: 'check', mode: 'advisory', before: 'commit' }], kinds: {} }
+const OVERLAY = {
+  version: 2,
+  steps: [{ skill: 'check', mode: 'advisory' }],
+  links: [{ from: 'commit', to: 'custom:check', kind: 'suggest' }],
+  kinds: {},
+  positions: {},
+}
 /** OVERLAY as loadRepositoryWorkflows returns it, at a revision. */
 const row = (revision = 'rev-1', definition: unknown = OVERLAY) => ({ definition, revision })
 
