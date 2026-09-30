@@ -15,6 +15,8 @@ import { loadSession } from '../cloud/session-store'
 import { isCloudEnabled } from '../cloud/supabase-client'
 import { mapOrgAgentRow, type OrgAgentRow } from '../cloud/realtime'
 import type { AvatarWriteOutcome, ConnectivityStatus, Store, UsernameWriteOutcome } from './Store'
+import { StoreConflictError, StoreForbiddenError, type StoredWorkflow } from './Store'
+import type { WorkflowOverlay } from '../../workflow/overlay'
 import { enqueuePendingArchive, resolvePendingArchive } from './pending-archives'
 import { ideaFrom, slugFor, specKeyFor } from './plan-sync'
 import {
@@ -894,7 +896,7 @@ export class CloudStore implements Store {
   }
 
   /**
-   * repo id → stored workflow definition, for every repo the caller can see.
+   * repo id → stored workflow definition and revision, for every repo the caller can see.
    *
    * `userContext()`, not `context()`: a personal repo can carry a flow too, and a
    * user with no membership still has those. RLS is what scopes the rows (the
@@ -902,18 +904,115 @@ export class CloudStore implements Store {
    * they follow the default flow — so an empty record is the common answer. A
    * failed read is `null` instead, so the caller keeps the flows it already had
    * rather than mistaking an outage for "no custom flow".
+   *
+   * The revision is `updated_at` (kept by the `set_updated_at` trigger), the token a
+   * save hands back to say which version it edited: see saveRepositoryWorkflow.
    */
-  async loadRepositoryWorkflows(): Promise<Record<string, unknown> | null> {
+  async loadRepositoryWorkflows(): Promise<Record<string, StoredWorkflow> | null> {
     const ctx = await this.userContext()
     if (!ctx) return {}
-    const { data, error } = await ctx.client.from('repository_workflows').select('repo_id, definition')
+    const { data, error } = await ctx.client.from('repository_workflows').select('repo_id, definition, updated_at')
     if (error || !data) {
       if (error) console.error('[cloud] could not read the repository workflows:', error.message)
       return null
     }
-    const workflows: Record<string, unknown> = {}
-    for (const row of data as { repo_id: string; definition: unknown }[]) workflows[row.repo_id] = row.definition
+    const workflows: Record<string, StoredWorkflow> = {}
+    for (const row of data as { repo_id: string; definition: unknown; updated_at: string }[]) {
+      workflows[row.repo_id] = { definition: row.definition, revision: row.updated_at }
+    }
     return workflows
+  }
+
+  /**
+   * See Store.saveRepositoryWorkflow. `userContext()` for the reason the read uses it:
+   * a personal repo can carry a flow too.
+   *
+   * OPTIMISTIC CONCURRENCY ON `updated_at`. Every write is conditioned on the revision
+   * the editor started from, so two admins saving at once cannot have the second
+   * silently overwrite the first:
+   *  - no row expected, an overlay to store: a plain INSERT, never an upsert. A unique
+   *    violation (23505) means someone created the row meanwhile: a conflict.
+   *  - a row expected: UPDATE (or DELETE, back to the default) WHERE repo_id AND
+   *    updated_at match. The trigger moves `updated_at` on every update, so a row
+   *    edited since no longer matches.
+   *  - no row expected, back to the default: nothing to write, as long as there is
+   *    still no row; one that appeared since is a conflict.
+   *
+   * RLS answers in two ways too. A refused INSERT or UPDATE raises 42501; a refused
+   * UPDATE can also just match nothing, and a refused DELETE always does: the policy
+   * filters the row out. So every conditional write asks for its rows back, and when
+   * none come, the row is read again to say why. Gone or at another revision: someone
+   * else wrote it, a conflict (except a delete finding it gone, which is the outcome
+   * it wanted). Still there at the revision we expected: the write was ours to lose,
+   * so RLS filtered it, a refusal.
+   */
+  async saveRepositoryWorkflow(repoId: string, overlay: WorkflowOverlay | null, expectedRevision: string | null): Promise<string | null> {
+    const ctx = await this.userContext()
+    if (!ctx) throw new Error('saveRepositoryWorkflow failed: no session')
+    const client = ctx.client
+    const refused = (error: { code?: string; message: string }) =>
+      error.code === '42501'
+        ? new StoreForbiddenError(`saveRepositoryWorkflow refused: ${error.message}`)
+        : new Error(`saveRepositoryWorkflow failed: ${error.message}`)
+    const conflict = () => new StoreConflictError('saveRepositoryWorkflow conflict: the workflow changed since it was read')
+    /** The row's revision now, or null when there is no row (that the caller can see). */
+    const currentRevision = async (): Promise<string | null> => {
+      const { data, error } = await client.from('repository_workflows').select('updated_at').eq('repo_id', repoId)
+      if (error) throw new Error(`saveRepositoryWorkflow failed: ${error.message}`)
+      const rows = (data ?? []) as { updated_at: string }[]
+      return rows.length > 0 ? rows[0].updated_at : null
+    }
+    /** Why a conditional write matched no row. `goneIsDone`: a delete, content with no row. */
+    const explainMiss = async (goneIsDone: boolean): Promise<null> => {
+      const now = await currentRevision()
+      if (now === null && goneIsDone) return null
+      if (now !== expectedRevision) throw conflict()
+      throw new StoreForbiddenError('saveRepositoryWorkflow refused: the row is still there, unchanged')
+    }
+    const revisionOf = (data: unknown): string | null => {
+      const rows = (data ?? []) as { updated_at?: string }[]
+      return rows.length > 0 ? (rows[0].updated_at ?? null) : null
+    }
+
+    if (overlay && expectedRevision === null) {
+      const { data, error } = await client
+        .from('repository_workflows')
+        .insert({ repo_id: repoId, definition: overlay })
+        .select('repo_id, updated_at')
+      if (error) throw error.code === '23505' ? conflict() : refused(error)
+      const revision = revisionOf(data)
+      if (revision === null) throw new StoreForbiddenError('saveRepositoryWorkflow refused: no row written')
+      return revision
+    }
+
+    if (overlay && expectedRevision !== null) {
+      const { data, error } = await client
+        .from('repository_workflows')
+        .update({ definition: overlay })
+        .eq('repo_id', repoId)
+        .eq('updated_at', expectedRevision)
+        .select('repo_id, updated_at')
+      if (error) throw refused(error)
+      const revision = revisionOf(data)
+      if (revision !== null) return revision
+      return explainMiss(false)
+    }
+
+    if (expectedRevision === null) {
+      // Back to the default from the default: only a row created since stands in the way.
+      if ((await currentRevision()) !== null) throw conflict()
+      return null
+    }
+
+    const { data, error } = await client
+      .from('repository_workflows')
+      .delete()
+      .eq('repo_id', repoId)
+      .eq('updated_at', expectedRevision)
+      .select('repo_id')
+    if (error) throw refused(error)
+    if (data && (data as unknown[]).length > 0) return null
+    return explainMiss(true)
   }
 
   /**

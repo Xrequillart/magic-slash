@@ -2,7 +2,8 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AvatarSourceResult, AvatarWriteResult } from '../avatar'
 import type { UsernameCheckResult, UsernameSaveResult } from '../username'
 import type { ResolvedWorkflow } from '../workflow/model'
-import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanLiveChange, PlanOverview, PlanPresence, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata } from '../types'
+import type { WorkflowOverlay } from '../workflow/overlay'
+import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanLiveChange, PlanOverview, PlanPresence, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata, RepositoryWorkflowOverlay, RepositoryWorkflowSaveResult, SkillShareResult, WorkflowChange } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -172,6 +173,30 @@ const configApi = {
   /** The flow this repository's skills follow (its own, or the default), for the Workflow tab. */
   getRepositoryWorkflow: (name: string): Promise<ResolvedWorkflow> =>
     ipcRenderer.invoke('config:getRepositoryWorkflow', { name }),
+
+  /**
+   * What the workflow editor edits: only the steps and link kinds added to the default,
+   * with the revision of the row they came from (hand it back to saveRepositoryWorkflow).
+   */
+  getRepositoryWorkflowOverlay: (name: string): Promise<RepositoryWorkflowOverlay> =>
+    ipcRenderer.invoke('config:getRepositoryWorkflowOverlay', { name }),
+
+  /**
+   * Save the repository's workflow. An empty overlay puts it back on the default flow.
+   * `expectedRevision` is the revision the draft was based on: `conflict` when someone
+   * else saved since. `denied` is the backend refusing: only its owner or an org admin
+   * may edit it.
+   */
+  saveRepositoryWorkflow: (name: string, overlay: WorkflowOverlay, expectedRevision: string | null): Promise<RepositoryWorkflowSaveResult> =>
+    ipcRenderer.invoke('config:saveRepositoryWorkflow', { name, overlay, expectedRevision }),
+
+  // A repository's workflow changed, saved from any window or from elsewhere (Realtime).
+  // The payload names the repository only: read its workflow again.
+  onWorkflowChanged: (callback: (change: WorkflowChange) => void) => {
+    const listener = (_event: IpcRendererEvent, change: WorkflowChange) => callback(change)
+    ipcRenderer.on('workflow:changed', listener)
+    return () => ipcRenderer.removeListener('workflow:changed', listener)
+  },
 
   setIntegration: (name: 'atlassian', enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setIntegration', { name, enabled }),
@@ -448,6 +473,18 @@ const skillsApi = {
   listRepoSkills: () => ipcRenderer.invoke('skills:listRepoSkills'),
   getRepoSkill: (filePath: string) => ipcRenderer.invoke('skills:getRepoSkill', { filePath }),
   listingEntries: () => ipcRenderer.invoke('skills:listingEntries'),
+  /**
+   * How far the repo's copy of `<skill>` (`.claude/skills/<dir>` or `.claude/commands/<rel>.md`)
+   * has reached its members: missing, uncommitted, unpushed (to `origin/<branch>`), shared,
+   * or unknown when the repo has no folder on this machine.
+   */
+  repoSkillStatus: (repoName: string, skill: string): Promise<SkillShareResult> =>
+    ipcRenderer.invoke('skills:repoSkillStatus', { repoName, skill }),
+  /** Whether `~/.claude` has the skill (folder or command), i.e. whether copyToRepo has something to copy. */
+  homeHasSkill: (skill: string): Promise<boolean> => ipcRenderer.invoke('skills:homeHasSkill', { skill }),
+  /** Copy the personal skill or command into the repo's `.claude/`. Rejects with the reason. */
+  copyToRepo: (repoName: string, skill: string): Promise<{ success: true; path: string }> =>
+    ipcRenderer.invoke('skills:copyToRepo', { repoName, skill }),
 }
 
 // Scripts API
