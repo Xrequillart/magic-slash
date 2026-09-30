@@ -5,24 +5,22 @@ import { WorkflowInspector, type WorkflowCanvasLinkKind, type WorkflowCanvasNode
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
 import { usesOf } from './ids'
-import { INSPECTOR_LABELS, LINT_WARNING, SAMPLE_SKILLS } from './workflowSample'
+import { INSPECTOR_LABELS, LINT_DESCRIPTION, LINT_WARNING } from './workflowSample'
 
 const PROPS: PropRow[] = [
-  { name: 'target', type: 'WorkflowInspectorTarget | null', required: true, description: '{ type: "node", step } or { type: "link", link }, as data: the step’s id, label, skill, locked, mode, warning and hints, or the link’s two ends, their labels, its kind, outcome, disabledKinds and hint. Null draws `labels.empty`.' },
-  { name: 'skills', type: 'WorkflowSkillOption[]', required: true, description: 'What a custom step may run: name, source (custom, repo or plugin) and disabled for a skill already on the line, listed greyed with `labels.inWorkflow` as its note.' },
-  { name: 'labels', type: 'WorkflowInspectorLabels', required: true, description: 'Every word: the field names, the two modes, the two kinds, Remove, the locked sentence, the sources.' },
+  { name: 'target', type: 'WorkflowInspectorTarget | null', required: true, description: '{ type: "node", step } or { type: "link", link }, as data: the step’s id, label, skill, description, locked, disabled, alwaysOn, mode, warning and hints, or the link’s two ends, their labels, its kind, outcome, disabledKinds and hint. Null draws `labels.empty`.' },
+  { name: 'labels', type: 'WorkflowInspectorLabels', required: true, description: 'Every word: the field names, the two modes, the two kinds, Remove, the built-in sentence, the switch’s tooltips.' },
   { name: 'readOnly', type: 'boolean', fallback: 'false', description: 'Every control disabled and Remove hidden, for a viewer who may not edit. The panel still says what is selected.' },
-  { name: 'onChangeSkill · onChangeMode · onRemove', type: '(nodeId, skill) · (nodeId, mode) · (nodeId) => void', description: 'A custom step’s three actions. A control whose callback is missing is disabled.' },
+  { name: 'onChangeMode · onRemove · onToggle', type: '(nodeId, mode) · (nodeId) · (nodeId, enabled) => void', description: 'A custom step’s mode and Remove, and any step’s switch. A control whose callback is missing is disabled.' },
   { name: 'onChangeKind', type: '(from, to, kind) => void', description: 'A link’s kind. A kind in `disabledKinds` is listed, greyed, and never reported.' },
   { name: 'className', type: 'string', description: 'Margins and width.' },
 ]
 
 export function WorkflowInspectorEntry({ theme, onOpen }: { theme: DesktopTheme; onOpen?: (id: string) => void }) {
-  const [skill, setSkill] = useState('lint')
   const [mode, setMode] = useState<WorkflowCanvasNodeMode>('blocking')
+  const [color, setColor] = useState('#6366F1')
   const [kind, setKind] = useState<WorkflowCanvasLinkKind>('auto')
   const [removed, setRemoved] = useState(false)
-  const skills = SAMPLE_SKILLS.map((s) => ({ ...s, disabled: s.name === skill }))
 
   return (
     <article className="flex flex-col divide-y divide-hairline">
@@ -32,26 +30,24 @@ export function WorkflowInspectorEntry({ theme, onOpen }: { theme: DesktopTheme;
 
       <EntrySection
         title="Three shapes"
-        note="A custom step has a skill, a mode and Remove. A built-in step is locked and says so, with nothing to press. A link has its kind, and a kind the model refuses there stays listed, greyed, with the reason under it."
+        note="A custom step says what its skill does, and has a mode and Remove. A built-in step is locked and says so, with nothing to press. A link has its kind, and a kind the model refuses there stays listed, greyed, with the reason under it."
       >
         <Stage theme={theme} className="grid gap-4 md:grid-cols-3">
           <Specimen label="a custom step">
             <WorkflowInspector
               target={removed ? null : {
                 type: 'node',
-                step: { id: `custom:${skill}`, label: skill, skill, mode, warning: skill === 'lint' ? LINT_WARNING : undefined, hints: ['Runs after Start, before Commit.'] },
+                step: { id: 'custom:lint', label: 'lint', skill: 'lint', description: LINT_DESCRIPTION, mode, color, warning: LINT_WARNING, hints: ['Runs after Start, before Commit.'] },
               }}
-              skills={skills}
               labels={INSPECTOR_LABELS}
-              onChangeSkill={(_, next) => setSkill(next)}
               onChangeMode={(_, next) => setMode(next)}
+              onChangeColor={(_, next) => setColor(next)}
               onRemove={() => setRemoved(true)}
             />
           </Specimen>
           <Specimen label="a built-in step">
             <WorkflowInspector
               target={{ type: 'node', step: { id: 'commit', label: 'Commit', skill: 'magic-commit', locked: true } }}
-              skills={SAMPLE_SKILLS}
               labels={INSPECTOR_LABELS}
             />
           </Specimen>
@@ -65,7 +61,6 @@ export function WorkflowInspectorEntry({ theme, onOpen }: { theme: DesktopTheme;
                   hint: 'Starting a ticket always opens a new agent, so this link can only be suggested.',
                 },
               }}
-              skills={SAMPLE_SKILLS}
               labels={INSPECTOR_LABELS}
               onChangeKind={(_, __, next) => setKind(next)}
             />
@@ -73,7 +68,6 @@ export function WorkflowInspectorEntry({ theme, onOpen }: { theme: DesktopTheme;
           <Specimen label="a conditional link">
             <WorkflowInspector
               target={{ type: 'link', link: { from: 'pr', to: 'resolve', fromLabel: 'PR', toLabel: 'Resolve', kind: 'auto', outcome: 'review_comments' } }}
-              skills={SAMPLE_SKILLS}
               labels={INSPECTOR_LABELS}
               onChangeKind={() => undefined}
             />
@@ -81,16 +75,14 @@ export function WorkflowInspectorEntry({ theme, onOpen }: { theme: DesktopTheme;
           <Specimen label="read-only">
             <WorkflowInspector
               target={{ type: 'node', step: { id: 'custom:lint', label: 'lint', skill: 'lint', mode: 'blocking' } }}
-              skills={SAMPLE_SKILLS}
               labels={INSPECTOR_LABELS}
               readOnly
-              onChangeSkill={() => undefined}
               onChangeMode={() => undefined}
               onRemove={() => undefined}
             />
           </Specimen>
           <Specimen label="nothing selected">
-            <WorkflowInspector target={null} skills={SAMPLE_SKILLS} labels={INSPECTOR_LABELS} />
+            <WorkflowInspector target={null} labels={INSPECTOR_LABELS} />
           </Specimen>
         </Stage>
       </EntrySection>
@@ -101,10 +93,8 @@ export function WorkflowInspectorEntry({ theme, onOpen }: { theme: DesktopTheme;
 
 <WorkflowInspector
   target={target}
-  skills={skills}
   labels={labels}
   readOnly={!canEdit}
-  onChangeSkill={changeSkill}
   onChangeMode={changeMode}
   onRemove={removeStep}
   onChangeKind={changeKind}

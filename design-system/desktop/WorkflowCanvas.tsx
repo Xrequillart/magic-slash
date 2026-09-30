@@ -17,7 +17,7 @@ import {
   WorkflowNode, type WorkflowNodeLabels, type WorkflowNodeType,
 } from './WorkflowNode'
 import {
-  workflowCardHeight, workflowExitOf, workflowOutcomeOfExit, workflowPositions, WORKFLOW_NODE_WIDTH, type WorkflowCanvasLink, type WorkflowCanvasLinkKind, type WorkflowCanvasNode,
+  workflowCardHeight, workflowCardWidths, workflowExitOf, workflowOutcomeOfExit, workflowPositions, type WorkflowCanvasLink, type WorkflowCanvasLinkKind, type WorkflowCanvasNode,
 } from './workflowLayout'
 
 /**
@@ -99,8 +99,12 @@ export interface WorkflowCanvasLabels {
   anyExit?: string
   /** WITH `onEdit` ONLY. The button above the minimap: "Edit". */
   edit?: string
-  /** EDITABLE ONLY. The lock's tooltip on a built-in card: "Built-in step, locked". */
-  locked?: string
+  /** EDITABLE ONLY. A card's switch, on a step that is on, off, and on start: "Turn off", "Turn on", "Start cannot be turned off". */
+  disable?: string
+  enable?: string
+  alwaysOn?: string
+  /** READ-ONLY ONLY. The shut eye on a step that is off: "Turned off". */
+  off?: string
   /** EDITABLE ONLY. A custom step's mode, on its card's plate. */
   blocking?: string
   advisory?: string
@@ -126,6 +130,8 @@ export interface WorkflowCanvasProps {
   onMove?: (id: string, position: { x: number; y: number }) => void
   /** A link was drawn, out of `outcome`'s port (none: the header's). Editable only; nothing connects without it. */
   onConnect?: (from: string, to: string, outcome?: string) => void
+  /** A card's switch was pressed: turn it on (`true`) or off. Editable only; the switches are greyed without it. */
+  onToggle?: (id: string, enabled: boolean) => void
   /** Centre the view on `id`, again each time `n` changes. */
   focusRequest?: { id: string; n: number } | null
   /** The Edit button above the minimap, and what it opens. Not drawn without it. */
@@ -177,6 +183,7 @@ export function WorkflowCanvas({
   positions: stored,
   onMove,
   onConnect,
+  onToggle,
   focusRequest = null,
   onEdit,
   dock,
@@ -189,19 +196,25 @@ export function WorkflowCanvas({
 
   // The layout depends on the flow and the stored places alone, so selecting or
   // re-rendering never redoes it.
+  // Each card is as wide as its words (`workflowCardWidth`), and the columns follow.
+  const { anyExit, blocking, advisory } = labels
+  const widths = useMemo(() => workflowCardWidths(nodes, { anyExit, blocking, advisory }), [nodes, anyExit, blocking, advisory])
   const { layout, centres } = useMemo(() => {
-    const layout = workflowPositions(nodes, links, entry, stored)
+    const layout = workflowPositions(nodes, links, entry, stored, widths)
     const centres = new Map(nodes.map((node) => [node.id, {
-      x: layout.positions[node.id].x + WORKFLOW_NODE_WIDTH / 2,
+      x: layout.positions[node.id].x + widths[node.id] / 2,
       y: layout.positions[node.id].y + workflowCardHeight(node) / 2,
     }]))
     return { layout, centres }
-  }, [nodes, links, entry, stored])
+  }, [nodes, links, entry, stored, widths])
 
   const { flowNodes, flowEdges } = useMemo(() => {
     const byId = new Map(nodes.map((node) => [node.id, node]))
     const nodeLabels: WorkflowNodeLabels | undefined = editable
-      ? { locked: labels.locked ?? '', blocking: labels.blocking ?? '', advisory: labels.advisory ?? '' }
+      ? {
+          disable: labels.disable ?? '', enable: labels.enable ?? '', alwaysOn: labels.alwaysOn ?? '',
+          blocking: labels.blocking ?? '', advisory: labels.advisory ?? '',
+        }
       : undefined
 
     const connectable = editable && !!onConnect
@@ -209,18 +222,20 @@ export function WorkflowCanvas({
       id: node.id,
       type: 'workflow',
       position: dragged[node.id] ?? layout.positions[node.id],
-      // Fixed sizes, not measured ones: see WORKFLOW_NODE_WIDTH on why the minimap needs them.
-      width: WORKFLOW_NODE_WIDTH,
+      // Computed sizes, not measured ones: see WORKFLOW_NODE_WIDTH on why the minimap needs them.
+      width: widths[node.id],
       height: workflowCardHeight(node),
       // And handed over as MEASURED too. Nodes are rebuilt on every change, and xyflow
       // drops what it measured of a node's ports whenever the node it is handed carries
       // no `measured`: until the card was measured again, which a card whose size did not
       // change never is, its links were not drawn and no link could land on it.
-      measured: { width: WORKFLOW_NODE_WIDTH, height: workflowCardHeight(node) },
+      measured: { width: widths[node.id], height: workflowCardHeight(node) },
       data: {
         node,
         anyExit: labels.anyExit,
-        ...(editable ? { selected: selected?.type === 'node' && selected.id === node.id, labels: nodeLabels, connectable } : {}),
+        ...(editable
+          ? { selected: selected?.type === 'node' && selected.id === node.id, labels: nodeLabels, connectable, onToggle }
+          : { off: labels.off }),
       },
       ...(editable ? { ariaLabel: node.label } : {}),
     }))
@@ -254,7 +269,11 @@ export function WorkflowCanvas({
         target: link.to,
         ...handles,
         type: 'workflow',
-        data: { kind: link.kind, outcome: link.outcome, route, ...(isSelected ? { selected: true } : {}) },
+        data: {
+          kind: link.kind, outcome: link.outcome, route,
+          ...(isSelected ? { selected: true } : {}),
+          ...(from.disabled || byId.get(link.to)!.disabled ? { muted: true } : {}),
+        },
         ...(editable ? { ariaLabel: `${from.label} → ${byId.get(link.to)!.label}` } : {}),
       }]
     })
@@ -275,7 +294,7 @@ export function WorkflowCanvas({
     for (const node of flowNodes) node.data = { ...node.data, ports: ports.get(node.id) }
 
     return { flowNodes, flowEdges }
-  }, [nodes, links, layout, dragged, labels, editable, selected, onConnect])
+  }, [nodes, links, layout, widths, dragged, labels, editable, selected, onConnect, onToggle])
 
   const select = editable ? onSelect : undefined
   const onNodeClick = useCallback((_: unknown, node: Node) => {

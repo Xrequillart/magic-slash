@@ -12,6 +12,7 @@ import { Modal } from '../../components/Modal'
 import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
 import { RepoColorPicker } from './RepoColorPicker'
+import { nextWorkflowStepColor } from '@ds/desktop/palette'
 import { useT, type MessageKey, type Translate } from '../../i18n'
 import {
   Banner,
@@ -28,6 +29,7 @@ import {
   WorkflowCanvas,
   WorkflowEditor,
   skillIcon,
+  workflowCardWidths,
   workflowPositions,
   type IconComponent,
   type SettingsCardRow,
@@ -64,12 +66,12 @@ import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../
 import type { ResolvedWorkflow } from '../../../workflow/model'
 import {
   EMPTY_OVERLAY, addLink, addStep, composeWorkflow, customNodeId, isCustomNodeId, isDefaultLink, isLinkIntoStart, moveNode,
-  pinPositions, problems, removeLink, removeStep, sameOverlay, setLinkKind, setLinkOutcome, setStepMode, setStepSkill,
+  pinPositions, problems, removeLink, removeStep, sameOverlay, setLinkKind, setLinkOutcome, setStepColor, setStepEnabled, setStepMode,
   unreachableSteps, type WorkflowOverlay, type WorkflowProblem,
 } from '../../../workflow/overlay'
 import type { ListingEntry } from '../../hooks/useSkills'
 import {
-  folderSkillsOf, problemNodeIds, skillDisplayName, skillOptions, stepHints, workflowCanvasData,
+  folderSkillsOf, modeHasEffect, problemNodeIds, skillDescription, stepColors, skillDisplayName, skillOptions, stepHints, workflowCanvasData,
 } from './workflowCanvasData'
 
 interface RepoPageProps {
@@ -668,13 +670,15 @@ function WorkflowPanel({
     for (const id of unreachable) {
       warnings[id] = warnings[id] ? `${t('repo.workflow.warning.unreachable')} ${warnings[id]}` : t('repo.workflow.warning.unreachable')
     }
-    return workflowCanvasData(flow, { problems: problemNodeIds(shown), warnings })
-  }, [flow, shown, unshared, unreachable, t])
+    return workflowCanvasData(flow, { problems: problemNodeIds(shown), warnings, disabled: draft.disabled, colors: stepColors(draft) })
+  }, [flow, shown, unshared, unreachable, draft, t])
 
   // Where every card is drawn right now: what an edit to the links pins them at.
   const drawn = useMemo(
-    () => workflowPositions(data.nodes, data.links, data.entry, draft.positions).positions,
-    [data, draft.positions],
+    () => workflowPositions(data.nodes, data.links, data.entry, draft.positions, workflowCardWidths(data.nodes, {
+      anyExit: t('repo.workflow.anyExit'), blocking: t('repo.workflow.blocking'), advisory: t('repo.workflow.advisory'),
+    })).positions,
+    [data, draft.positions, t],
   )
 
   const skills = useMemo(
@@ -688,6 +692,8 @@ function WorkflowPanel({
         return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.duplicate', { skill: problem.skill }) }
       case 'auto-into-start':
         return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.autoIntoStart', { from: labelOf(problem.nodeId) }) }
+      case 'start-disabled':
+        return { id: problem.code, nodeId: problem.nodeId, message: t('repo.workflow.problem.startDisabled') }
       case 'self-link':
         return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.selfLink', { step: labelOf(problem.nodeId) }) }
       case 'duplicate-link':
@@ -755,7 +761,14 @@ function WorkflowPanel({
       const config = stepSettings[node.skill]
       return {
         type: 'node',
-        step: { ...node, hints: hints.length > 0 ? hints : undefined, settings: config?.settings, intro: config?.intro },
+        step: {
+          ...node,
+          description: isCustomNodeId(node.id) ? skillDescription(entries, repoName, node.skill) : undefined,
+          hints: hints.length > 0 ? hints : undefined,
+          modeNote: isCustomNodeId(node.id) && !modeHasEffect(flow, node.id) ? t('repo.workflow.hint.modeNoEffect') : undefined,
+          settings: config?.settings,
+          intro: config?.intro,
+        },
       }
     }
     const link = flow.links.find((l) => l.from === selected.from && l.to === selected.to)
@@ -921,7 +934,10 @@ function WorkflowPanel({
     suggest: t('repo.workflow.suggest'),
     anyExit: t('repo.workflow.anyExit'),
     edit: readOnly ? t('repo.workflow.open') : t('repo.workflow.edit'),
-    locked: t('repo.workflow.locked'),
+    disable: t('repo.workflow.disable'),
+    enable: t('repo.workflow.enable'),
+    alwaysOn: t('repo.workflow.alwaysOn'),
+    off: t('repo.workflow.off'),
     blocking: t('repo.workflow.blocking'),
     advisory: t('repo.workflow.advisory'),
   }), [t, repoName, readOnly])
@@ -941,8 +957,8 @@ function WorkflowPanel({
     inspector: {
       title: t('repo.workflow.inspector.title'),
       empty: readOnly ? t('repo.workflow.inspector.emptyReadOnly') : t('repo.workflow.inspector.empty'),
-      skill: t('repo.workflow.inspector.skill'),
       mode: t('repo.workflow.inspector.mode'),
+      color: t('repo.workflow.inspector.color'),
       kind: t('repo.workflow.inspector.kind'),
       outcome: t('repo.workflow.inspector.outcome'),
       blocking: t('repo.workflow.inspector.blocking'),
@@ -950,9 +966,13 @@ function WorkflowPanel({
       auto: t('repo.workflow.inspector.auto'),
       suggest: t('repo.workflow.inspector.suggest'),
       remove: t('repo.workflow.inspector.remove'),
+      removeRow: t('repo.workflow.inspector.removeRow'),
+      removeHint: t('repo.workflow.inspector.removeHint'),
       builtIn: t('repo.workflow.inspector.builtIn'),
-      sources,
-      inWorkflow: t('repo.workflow.inWorkflow'),
+      disable: t('repo.workflow.disable'),
+      enable: t('repo.workflow.enable'),
+      alwaysOn: t('repo.workflow.alwaysOn'),
+      offHint: t('repo.workflow.inspector.offHint'),
       removeLink: t('repo.workflow.inspector.removeLink'),
       anyOutcome: t('repo.workflow.inspector.anyOutcome'),
       defaultLink: t('repo.workflow.inspector.defaultLink'),
@@ -1051,10 +1071,6 @@ function WorkflowPanel({
                 focusRequest={focus}
                 target={target}
                 skills={skills}
-                onChangeSkill={(id, skill) => {
-                  edit(setStepSkill(draft, skillOf(id), skill))
-                  setSelected({ type: 'node', id: customNodeId(skill) })
-                }}
                 onChangeMode={(id, mode) => edit(setStepMode(draft, skillOf(id), mode))}
                 onRemove={(id) => {
                   reshape((pinned) => removeStep(pinned, skillOf(id)))
@@ -1066,8 +1082,11 @@ function WorkflowPanel({
                   reshape((pinned) => removeLink(pinned, from, to))
                   setSelected(null)
                 }}
+                onToggle={(id, enabled) => edit(setStepEnabled(draft, id, enabled))}
+                onChangeColor={(id, color) => edit(setStepColor(draft, skillOf(id), color))}
                 onAdd={(skill, position) => {
-                  reshape((pinned) => addStep(pinned, skill, position))
+                  // Its own colour from the start: the first no other custom step wears.
+                  reshape((pinned) => addStep(pinned, skill, position, 'advisory', nextWorkflowStepColor(Object.values(stepColors(pinned)))))
                   setSelected({ type: 'node', id: customNodeId(skill) })
                 }}
                 canUndo={history.past.length > 0}

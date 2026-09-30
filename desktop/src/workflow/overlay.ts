@@ -16,6 +16,14 @@ import { DEFAULT_LINKS, DEFAULT_WORKFLOW, nodeIdForSkill } from './defaultFlow'
  * link into it is allowed: it is never reached, and the editor says so
  * (`unreachableSteps`).
  *
+ * A STEP CAN BE TURNED OFF (`disabled`, node ids), built-in or custom, and stays on
+ * the canvas, greyed, with its links: turning it back on restores the flow as it was.
+ * The skills are served the flow WITHOUT it (`servedWorkflow`): its node is dropped,
+ * and a link into it leads to whatever it led to instead, so turning commit off makes
+ * start suggest pr. Start is the one step that cannot be turned off: a ticket is
+ * started by it, and every other step runs in the worktree it opens. The field is
+ * optional, and left out when empty: a row written before it reads as all steps on.
+ *
  * VERSION 1 (a line: each step placed `before` a built-in, its links derived from its
  * place) is still read, and upgraded on the way in (`toOverlay`): its composed links
  * become explicit ones. The one thing that does not survive is a SPLIT default link
@@ -29,6 +37,12 @@ import { DEFAULT_LINKS, DEFAULT_WORKFLOW, nodeIdForSkill } from './defaultFlow'
 export interface WorkflowOverlayStep {
   skill: string
   mode: WorkflowMode
+  /**
+   * Its card's ground on the canvas, a `#RRGGBB`: display only, the skills never see it.
+   * Which colours are offered is the design system's (`WORKFLOW_STEP_COLORS`, none of them
+   * the built-in steps' plain ground); a step without one is handed one by the editor.
+   */
+  color?: string
 }
 
 export interface WorkflowOverlayLink {
@@ -51,6 +65,8 @@ export interface WorkflowOverlay {
   kinds: Record<string, WorkflowLinkKind>
   /** Top-left corner of a card on the canvas, by node id. A card without one is laid out. */
   positions: Record<string, WorkflowPosition>
+  /** The steps turned off, by node id, in the order they were. Absent: none. */
+  disabled?: string[]
 }
 
 export const EMPTY_OVERLAY: WorkflowOverlay = { version: 2, steps: [], links: [], kinds: {}, positions: {} }
@@ -90,6 +106,20 @@ export function isBuiltInNodeId(id: string): boolean {
 /** The ids /magic:start and /magic:plan have in the flow. */
 export const START_NODE_ID = nodeIdForSkill('magic-start')
 export const PLAN_NODE_ID = nodeIdForSkill('magic-plan')
+
+/** Whether a step may be turned off: any step but start, which the whole flow runs from. */
+export function canDisable(id: string): boolean {
+  return id !== START_NODE_ID
+}
+
+/** The steps an overlay turns off, as a set. */
+function disabledOf(overlay: WorkflowOverlay): Set<string> {
+  return new Set(overlay.disabled ?? [])
+}
+
+export function isStepDisabled(overlay: WorkflowOverlay, id: string): boolean {
+  return disabledOf(overlay).has(id)
+}
 
 /** Whether the model refuses `auto` on this link: starting a ticket always opens a new agent. */
 export function isLinkIntoStart(link: Pick<WorkflowLink, 'to'>): boolean {
@@ -133,11 +163,57 @@ export function composeWorkflow(overlay: WorkflowOverlay): Workflow {
   }
 }
 
+/**
+ * The flow the skills are served: `composeWorkflow`, without the steps turned off.
+ *
+ * A link into a step that is off is carried through it, to every step that one leads
+ * to (through further steps that are off, too), and the links leaving a step that is
+ * off go with it. The carried link keeps the outcome it was taken on, since that is
+ * about the step it leaves from, and is `auto` only when both the links it replaces
+ * were: the admin never said "chain" about the pair. A link the flow already has
+ * between the same two steps, or back to the step it leaves from, is not added.
+ */
+export function servedWorkflow(overlay: WorkflowOverlay): Workflow {
+  const flow = composeWorkflow(overlay)
+  const off = disabledOf(overlay)
+  if (!flow.nodes.some((node) => off.has(node.id))) return flow
+
+  const kept = flow.links.filter((link) => !off.has(link.from) && !off.has(link.to))
+  const pairs = new Set(kept.map((link) => linkKey(link.from, link.to)))
+  const links = [...kept]
+  // Where a step that is off leads, as links out of the first live steps past it.
+  const through = (id: string, kind: WorkflowLinkKind, walked: Set<string>): { to: string; kind: WorkflowLinkKind }[] =>
+    flow.links.filter((link) => link.from === id).flatMap((link) => {
+      const joined: WorkflowLinkKind = kind === 'auto' && link.kind === 'auto' ? 'auto' : 'suggest'
+      if (!off.has(link.to)) return [{ to: link.to, kind: joined }]
+      if (walked.has(link.to)) return []
+      return through(link.to, joined, new Set([...walked, link.to]))
+    })
+  for (const link of flow.links) {
+    if (off.has(link.from) || !off.has(link.to)) continue
+    for (const next of through(link.to, link.kind, new Set([link.to]))) {
+      const key = linkKey(link.from, next.to)
+      if (next.to === link.from || pairs.has(key)) continue
+      pairs.add(key)
+      links.push(link.outcome === undefined
+        ? { from: link.from, to: next.to, kind: next.kind }
+        : { from: link.from, to: next.to, kind: next.kind, outcome: link.outcome })
+    }
+  }
+  return {
+    ...flow,
+    entry: flow.entry.filter((id) => !off.has(id)),
+    nodes: flow.nodes.filter((node) => !off.has(node.id)),
+    links,
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Shapes, and the upgrade from v1.
 // ---------------------------------------------------------------------------
 
 const isMode = (value: unknown): value is WorkflowMode => value === 'blocking' || value === 'advisory'
+const isColor = (value: unknown): value is string => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
 const isKind = (value: unknown): value is WorkflowLinkKind => value === 'auto' || value === 'suggest'
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value)
@@ -166,7 +242,8 @@ export function isOverlay(value: unknown): value is WorkflowOverlay {
   if (!isRecord(value) || value.version !== 2) return false
   if (!Array.isArray(value.steps) || !Array.isArray(value.links)) return false
   const stepsOk = value.steps.every((step) =>
-    isRecord(step) && typeof step.skill === 'string' && step.skill.length > 0 && isMode(step.mode),
+    isRecord(step) && typeof step.skill === 'string' && step.skill.length > 0 && isMode(step.mode) &&
+    (step.color === undefined || isColor(step.color)),
   )
   const linksOk = value.links.every((link) =>
     isRecord(link) &&
@@ -178,7 +255,9 @@ export function isOverlay(value: unknown): value is WorkflowOverlay {
   const positionsOk = isRecord(value.positions) && Object.values(value.positions).every((position) =>
     isRecord(position) && Number.isFinite(position.x) && Number.isFinite(position.y),
   )
-  return stepsOk && linksOk && kindsOk(value.kinds) && positionsOk
+  const disabledOk = value.disabled === undefined ||
+    (Array.isArray(value.disabled) && value.disabled.every((id) => typeof id === 'string'))
+  return stepsOk && linksOk && kindsOk(value.kinds) && positionsOk && disabledOk
 }
 
 /** The node ids of a v1 overlay's line, in order. */
@@ -256,6 +335,8 @@ export type WorkflowProblem =
   | { code: 'self-link'; nodeId: string }
   /** Two links between the same two steps. `nodeId` is where they leave from. */
   | { code: 'duplicate-link'; nodeId: string; to: string }
+  /** Start turned off: every other step runs from it. */
+  | { code: 'start-disabled'; nodeId: string }
   /** Anything else the composed flow fails on (model.ts's own rules). */
   | { code: 'invalid'; message: string }
 
@@ -264,7 +345,12 @@ export type WorkflowProblem =
  * Each problem that belongs to a step names it, so the editor can centre the view on it.
  */
 export function problems(overlay: WorkflowOverlay): WorkflowProblem[] {
-  return problemsOf(composeWorkflow(overlay))
+  const found = problemsOf(composeWorkflow(overlay))
+  if (found.length > 0) return found
+  const off = disabledOf(overlay)
+  if (off.has(START_NODE_ID)) return [{ code: 'start-disabled', nodeId: START_NODE_ID }]
+  // What the skills get must hold too: a step carried through one that is off is a new link.
+  return validateWorkflow(servedWorkflow(overlay)).map((message) => ({ code: 'invalid' as const, message }))
 }
 
 function problemsOf(workflow: Workflow): WorkflowProblem[] {
@@ -297,10 +383,9 @@ function problemsOf(workflow: Workflow): WorkflowProblem[] {
 export function resolveOverlay(value: unknown): { overlay: WorkflowOverlay; workflow: Workflow } | { error: string } {
   const overlay = toOverlay(value)
   if (!overlay) return { error: 'unknown shape' }
-  const workflow = composeWorkflow(overlay)
-  const found = problemsOf(workflow)
+  const found = problems(overlay)
   if (found.length > 0) return { error: found.map((p) => (p.code === 'invalid' ? p.message : `${p.code} ${p.nodeId}`)).join('; ') }
-  return { overlay, workflow }
+  return { overlay, workflow: servedWorkflow(overlay) }
 }
 
 /**
@@ -312,6 +397,13 @@ export function unreachableSteps(overlay: WorkflowOverlay): string[] {
   return overlay.steps.map((step) => customNodeId(step.skill)).filter((id) => !reached.has(id))
 }
 
+/** The same list, in any order: "are the same steps off". */
+function sameDisabled(a: WorkflowOverlay, b: WorkflowOverlay): boolean {
+  const one = disabledOf(a)
+  const other = disabledOf(b)
+  return one.size === other.size && [...one].every((id) => other.has(id))
+}
+
 const samePosition = (a: WorkflowPosition | undefined, b: WorkflowPosition | undefined) =>
   !!a && !!b && a.x === b.x && a.y === b.y
 
@@ -321,12 +413,13 @@ const samePosition = (a: WorkflowPosition | undefined, b: WorkflowPosition | und
  */
 export function sameOverlay(a: WorkflowOverlay, b: WorkflowOverlay): boolean {
   if (a.steps.length !== b.steps.length || a.links.length !== b.links.length) return false
-  const stepsSame = a.steps.every((step, i) => step.skill === b.steps[i].skill && step.mode === b.steps[i].mode)
+  const stepsSame = a.steps.every((step, i) =>
+    step.skill === b.steps[i].skill && step.mode === b.steps[i].mode && step.color === b.steps[i].color)
   const linksSame = a.links.every((link, i) => {
     const other = b.links[i]
     return link.from === other.from && link.to === other.to && link.kind === other.kind && link.outcome === other.outcome
   })
-  if (!stepsSame || !linksSame) return false
+  if (!stepsSame || !linksSame || !sameDisabled(a, b)) return false
   const kinds = Object.keys(a.kinds)
   if (kinds.length !== Object.keys(b.kinds).length || !kinds.every((key) => a.kinds[key] === b.kinds[key])) return false
   const ids = Object.keys(a.positions)
@@ -342,44 +435,49 @@ function rounded({ x, y }: WorkflowPosition): WorkflowPosition {
   return { x: Math.round(x), y: Math.round(y) }
 }
 
-/** Add a custom step, linked to nothing yet, with its card at `position`. */
-export function addStep(overlay: WorkflowOverlay, skill: string, position: WorkflowPosition, mode: WorkflowMode = 'advisory'): WorkflowOverlay {
+/** Add a custom step, linked to nothing yet, with its card at `position`, wearing `color` if given. */
+export function addStep(
+  overlay: WorkflowOverlay, skill: string, position: WorkflowPosition, mode: WorkflowMode = 'advisory', color?: string,
+): WorkflowOverlay {
   return {
     ...overlay,
-    steps: [...overlay.steps, { skill, mode }],
+    steps: [...overlay.steps, color === undefined ? { skill, mode } : { skill, mode, color }],
     positions: { ...overlay.positions, [customNodeId(skill)]: rounded(position) },
   }
+}
+
+/** A `disabled` list, left out of the overlay when it is empty. */
+function withDisabled(overlay: WorkflowOverlay, disabled: string[]): WorkflowOverlay {
+  const { disabled: _was, ...rest } = overlay
+  return disabled.length > 0 ? { ...rest, disabled } : rest
 }
 
 /** Remove a custom step, its links and its place (built-in ones are not in the overlay, so they cannot be). */
 export function removeStep(overlay: WorkflowOverlay, skill: string): WorkflowOverlay {
   const id = customNodeId(skill)
   const { [id]: _gone, ...positions } = overlay.positions
-  return {
+  return withDisabled({
     ...overlay,
     steps: overlay.steps.filter((s) => s.skill !== skill),
     links: overlay.links.filter((link) => link.from !== id && link.to !== id),
     positions,
-  }
+  }, (overlay.disabled ?? []).filter((off) => off !== id))
+}
+
+/** Turn a step on or off, built-in or custom. Start stays on: the overlay comes back unchanged. */
+export function setStepEnabled(overlay: WorkflowOverlay, id: string, enabled: boolean): WorkflowOverlay {
+  if (!canDisable(id) || isStepDisabled(overlay, id) === !enabled) return overlay
+  const disabled = overlay.disabled ?? []
+  return withDisabled(overlay, enabled ? disabled.filter((off) => off !== id) : [...disabled, id])
 }
 
 export function setStepMode(overlay: WorkflowOverlay, skill: string, mode: WorkflowMode): WorkflowOverlay {
   return { ...overlay, steps: overlay.steps.map((s) => (s.skill === skill ? { ...s, mode } : s)) }
 }
 
-/** Point a custom step at another skill, keeping its place and its links. */
-export function setStepSkill(overlay: WorkflowOverlay, skill: string, next: string): WorkflowOverlay {
-  if (skill === next) return overlay
-  const from = customNodeId(skill)
-  const to = customNodeId(next)
-  const rename = (id: string) => (id === from ? to : id)
-  const positions = Object.fromEntries(Object.entries(overlay.positions).map(([id, at]) => [rename(id), at]))
-  return {
-    ...overlay,
-    steps: overlay.steps.map((s) => (s.skill === skill ? { ...s, skill: next } : s)),
-    links: overlay.links.map((link) => ({ ...link, from: rename(link.from), to: rename(link.to) })),
-    positions,
-  }
+/** Its card's ground. Which colours are allowed is the editor's to offer, not this module's. */
+export function setStepColor(overlay: WorkflowOverlay, skill: string, color: string): WorkflowOverlay {
+  return { ...overlay, steps: overlay.steps.map((s) => (s.skill === skill ? { ...s, color } : s)) }
 }
 
 /**
@@ -442,14 +540,14 @@ export function pinPositions(overlay: WorkflowOverlay, drawn: Readonly<Record<st
   return changed ? { ...overlay, positions } : overlay
 }
 
-/** What is stored: the overlay's own fields only, positions of steps it still has. */
+/** What is stored: the overlay's own fields only, positions and switches of steps it still has. */
 export function cleanOverlay(overlay: WorkflowOverlay): WorkflowOverlay {
   const ids = new Set(composeWorkflow(overlay).nodes.map((node) => node.id))
-  return {
+  return withDisabled({
     version: 2,
-    steps: overlay.steps.map(({ skill, mode }) => ({ skill, mode })),
+    steps: overlay.steps.map(({ skill, mode, color }) => (color === undefined ? { skill, mode } : { skill, mode, color })),
     links: overlay.links.map(({ from, to, kind, outcome }) => (outcome === undefined ? { from, to, kind } : { from, to, kind, outcome })),
     kinds: { ...overlay.kinds },
     positions: Object.fromEntries(Object.entries(overlay.positions).filter(([id]) => ids.has(id)).map(([id, at]) => [id, rounded(at)])),
-  }
+  }, [...disabledOf(overlay)].filter((id) => ids.has(id) && canDisable(id)))
 }

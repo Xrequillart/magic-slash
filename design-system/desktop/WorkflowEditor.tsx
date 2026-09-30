@@ -82,14 +82,16 @@ export interface WorkflowEditorProps {
 
   /** What the inspector shows for `selected`. */
   target: WorkflowInspectorTarget | null
-  /** What a step may run, for the picker and the inspector alike. */
+  /** What a step may run, for the dock's picker. */
   skills: WorkflowSkillOption[]
-  onChangeSkill: WorkflowInspectorProps['onChangeSkill']
   onChangeMode: WorkflowInspectorProps['onChangeMode']
   onRemove: WorkflowInspectorProps['onRemove']
   onChangeKind: WorkflowInspectorProps['onChangeKind']
   onChangeOutcome: WorkflowInspectorProps['onChangeOutcome']
   onRemoveLink: WorkflowInspectorProps['onRemoveLink']
+  /** A step's switch, on its card or in the inspector: turn it on (`true`) or off. */
+  onToggle: (id: string, enabled: boolean) => void
+  onChangeColor: WorkflowInspectorProps['onChangeColor']
 
   /** A skill was picked off the dock's "+": add it there, the middle of the view. */
   onAdd: (skill: string, position: { x: number; y: number }) => void
@@ -136,12 +138,13 @@ export function WorkflowEditor({
   focusRequest = null,
   target,
   skills,
-  onChangeSkill,
   onChangeMode,
   onRemove,
   onChangeKind,
   onChangeOutcome,
   onRemoveLink,
+  onToggle,
+  onChangeColor,
   onAdd,
   canUndo,
   canRedo,
@@ -214,6 +217,7 @@ export function WorkflowEditor({
             positions={positions}
             onMove={readOnly ? undefined : onMove}
             onConnect={readOnly ? undefined : onConnect}
+            onToggle={readOnly ? undefined : onToggle}
             focusRequest={focusRequest}
             // The dock has no close button: the title bar's, top right, is the way out.
             dock={readOnly ? { labels: labels.dock } : {
@@ -258,16 +262,16 @@ export function WorkflowEditor({
             <div key={panelKey} className="ms-wfe-swap">
               <WorkflowInspector
                 target={panel}
-                skills={skills}
                 labels={labels.inspector}
                 readOnly={readOnly}
                 ground="raised"
-                onChangeSkill={onChangeSkill}
                 onChangeMode={onChangeMode}
                 onRemove={onRemove}
                 onChangeKind={onChangeKind}
                 onChangeOutcome={onChangeOutcome}
                 onRemoveLink={onRemoveLink}
+                onToggle={readOnly ? undefined : onToggle}
+                onChangeColor={readOnly ? undefined : onChangeColor}
                 onClose={() => onSelect(null)}
               />
             </div>

@@ -355,7 +355,7 @@ export type {
   WorkflowCanvasNodeMode,
 } from './workflowLayout'
 // Where each card is drawn: the editor pins them there before an edit to the links.
-export { workflowPositions } from './workflowLayout'
+export { workflowCardWidths, workflowPositions } from './workflowLayout'
 // The dock and the full-screen editor draw a canvas, so they are xyflow's too.
 export { WorkflowDock } from './WorkflowDock'
 export type { WorkflowDockLabels, WorkflowDockProps } from './WorkflowDock'

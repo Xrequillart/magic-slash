@@ -19,12 +19,12 @@ const CUSTOM = {
 }
 
 // The editor's marks: a built-in step a problem names, a blocking custom step with a
-// warning, an advisory one. Editable, but with nothing to report to: marks only.
+// warning, an advisory one turned off. Editable, but with nothing to report to: marks only.
 const MARKS = {
   nodes: [
     EDIT_NODES[0],
     EDIT_NODES[2],
-    { id: 'custom:changelog', label: 'Changelog', skill: 'changelog', outcomes: [], mode: 'advisory' as const },
+    { id: 'custom:changelog', label: 'Changelog', skill: 'changelog', outcomes: [], mode: 'advisory' as const, disabled: true },
   ],
   links: [
     { from: EDIT_NODES[0].id, to: EDIT_NODES[2].id, kind: 'suggest' as const },
@@ -34,7 +34,7 @@ const MARKS = {
 }
 
 const PROPS: PropRow[] = [
-  { name: 'data.node', type: 'WorkflowCanvasNode', required: true, description: 'The step. Its label and skill head the card, each outcome gets a row and a port whose handle id is the outcome’s name. `locked`, `mode`, `warning` and `problem` add the editor’s marks.' },
+  { name: 'data.node', type: 'WorkflowCanvasNode', required: true, description: 'The step. Its label and skill head the card, each outcome gets a row and a port whose handle id is the outcome’s name. `disabled`, `alwaysOn`, `mode`, `warning` and `problem` add the editor’s marks.' },
   { name: 'data.selected', type: 'boolean', description: 'Drawn with a ring in the accent. Set by the editable canvas from its `selected` prop, never by xyflow.' },
   { name: 'data.labels', type: 'WorkflowNodeLabels', description: 'The lock’s tooltip and the two modes’ words. The editable canvas passes them from its own labels; without them neither mark is drawn.' },
 ]
@@ -72,10 +72,10 @@ export function WorkflowNodeEntry({ theme, onOpen }: { theme: DesktopTheme; onOp
 
       <EntrySection
         title="The editor’s marks"
-        note="On the editable canvas only. A built-in step wears a lock and cannot be removed; a custom step wears its mode; a warning is a badge whose tooltip says it; a step a problem names wears a red border. The read-only canvas draws none of them."
+        note="On the editable canvas only. Every step wears its switch, an eye open or shut, greyed on start; a step turned off is greyed, its links faded; a custom step wears its mode; a warning is a badge whose tooltip says it; a step a problem names wears a red border. The read-only canvas draws none of them."
       >
         <Stage theme={theme}>
-          <Specimen label="locked with a problem, blocking with a warning, advisory">
+          <Specimen label="built in with a problem, blocking with a warning, advisory, turned off">
             <WorkflowCanvas nodes={MARKS.nodes} links={MARKS.links} entry={MARKS.entry} labels={EDIT_LABELS} editable className="h-[240px]" />
           </Specimen>
         </Stage>

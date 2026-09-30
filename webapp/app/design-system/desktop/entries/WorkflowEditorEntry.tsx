@@ -18,6 +18,7 @@ const PROPS: PropRow[] = [
   { name: 'nodes · links · entry · positions', type: 'WorkflowCanvasNode[] · WorkflowCanvasLink[] · string[] · Record<id, {x, y}>', required: true, description: 'The flow, as WorkflowCanvas draws it. A card without a position is laid out; a moved one stays where it was left.' },
   { name: 'selected · onSelect · target', type: 'WorkflowCanvasSelection | null · (selection) => void · WorkflowInspectorTarget | null', required: true, description: 'The selection, and what the floating inspector shows for it. The inspector is only drawn while something is selected; its X and a press on the ground both report null.' },
   { name: 'onMove · onConnect', type: '(id, position) => void · (from, to, outcome?) => void', required: true, description: 'A card was dragged and let go; a link was drawn out of a port, the outcome being the row it left from.' },
+  { name: 'onToggle', type: '(id, enabled: boolean) => void', required: true, description: 'A step’s eye was pressed, on its card or in the inspector: turn it on or off. Start’s is greyed (alwaysOn).' },
   { name: 'onAdd', type: '(skill: string, position: {x, y}) => void', required: true, description: 'A skill was picked off the dock’s +. The position is the middle of the view: the step lands where the admin is looking, linked to nothing.' },
   { name: 'canUndo · canRedo · onUndo · onRedo', type: 'boolean · () => void', required: true, description: 'The history is the caller’s. The keys are too: ⌘Z is bound by the app, not here.' },
   { name: 'problems · onFocusProblem', type: 'WorkflowProblemItem[] · (nodeId) => void', required: true, description: 'The dock’s red badge, and its menu of problems.' },
@@ -129,16 +130,6 @@ function EditorSpecimen() {
         focusRequest={focus}
         target={target}
         skills={skills}
-        onChangeSkill={(id, skill) => {
-          const next = `custom:${skill}`
-          const rename = (x: string) => (x === id ? next : x)
-          edit({
-            ...flow,
-            nodes: flow.nodes.map((n) => (n.id === id ? { ...n, id: next, label: skill, skill, warning: undefined } : n)),
-            links: flow.links.map((l) => ({ ...l, from: rename(l.from), to: rename(l.to) })),
-          })
-          setSelected({ type: 'node', id: next })
-        }}
         onChangeMode={(id, mode) => edit({ ...flow, nodes: flow.nodes.map((n) => (n.id === id ? { ...n, mode } : n)) })}
         onRemove={(id) => {
           edit({ ...flow, nodes: flow.nodes.filter((n) => n.id !== id), links: flow.links.filter((l) => l.from !== id && l.to !== id) })
@@ -150,6 +141,8 @@ function EditorSpecimen() {
           edit({ ...flow, links: flow.links.filter((l) => l.from !== from || l.to !== to) })
           setSelected(null)
         }}
+        onChangeColor={(id, color) => edit({ ...flow, nodes: flow.nodes.map((n) => (n.id === id ? { ...n, color } : n)) })}
+        onToggle={(id, enabled) => edit({ ...flow, nodes: flow.nodes.map((n) => (n.id === id ? { ...n, disabled: !enabled } : n)) })}
         onAdd={(skill, position) => {
           const id = `custom:${skill}`
           edit({

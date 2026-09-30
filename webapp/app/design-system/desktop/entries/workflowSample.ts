@@ -85,9 +85,10 @@ export function loopSubset(ids: string[]): Subset {
 
 /**
  * A REPOSITORY'S OWN FLOW, as the workflow editor draws it: the default six steps,
- * locked, with one custom step (`lint`, blocking) drawn between start and commit and
+ * built in, with one custom step (`lint`, blocking) drawn between start and commit and
  * chained from start on its own. The default links are all still there: they are locked.
- * `lint` carries a warning and `plan` a problem, so the specimens show both.
+ * `lint` carries a warning, `plan` a problem and `done` is turned off, so the specimens
+ * show all three.
  *
  * The problem is a real rule of the model: a link into start cannot be automatic, since
  * starting a ticket always opens a new agent. The sample breaks it on purpose.
@@ -95,11 +96,15 @@ export function loopSubset(ids: string[]): Subset {
 export const EDIT_LABELS: WorkflowCanvasLabels = {
   ...SAMPLE_LABELS,
   edit: 'Edit',
-  locked: 'Built-in step, locked',
-  blocking: 'Blocking',
-  advisory: 'Advisory',
+  disable: 'Turn off this step',
+  enable: 'Turn on this step',
+  alwaysOn: 'Start cannot be turned off: every other step runs from it',
+  off: 'Turned off',
+  blocking: 'Stops on failure',
+  advisory: 'Goes on on failure',
 }
 
+export const LINT_DESCRIPTION = 'Runs the linters on the files the ticket changed, and fixes what they can fix on their own.'
 export const LINT_WARNING = 'lint is not installed on this machine, so this step is skipped here.'
 export const START_PROBLEM = 'A link into Start cannot be automatic: starting a ticket always opens a new agent.'
 
@@ -107,9 +112,9 @@ const locked = (n: WorkflowCanvasNode): WorkflowCanvasNode => ({ ...n, locked: t
 
 export const EDIT_NODES: WorkflowCanvasNode[] = [
   { ...locked(SAMPLE_NODES[0]), problem: true },
-  locked(SAMPLE_NODES[1]),
-  { id: 'custom:lint', label: 'Lint', skill: 'lint', outcomes: [], mode: 'blocking', warning: LINT_WARNING },
-  ...SAMPLE_NODES.slice(2).map(locked),
+  { ...locked(SAMPLE_NODES[1]), alwaysOn: true },
+  { id: 'custom:lint', label: 'Lint', skill: 'lint', outcomes: [], mode: 'blocking', color: '#6366F1', warning: LINT_WARNING },
+  ...SAMPLE_NODES.slice(2).map(locked).map((n) => (n.id === 'done' ? { ...n, disabled: true } : n)),
 ]
 
 /** The default links, plan → start turned auto (the problem), and the two drawn around lint. */
@@ -145,18 +150,22 @@ export const PICKER_LABELS: WorkflowSkillPickerLabels = {
 export const INSPECTOR_LABELS: WorkflowInspectorLabels = {
   title: 'Selection',
   empty: 'Select a step or a link to edit it.',
-  skill: 'Skill',
-  mode: 'Mode',
+  mode: 'If this step fails',
+  color: 'Colour',
   kind: 'Chaining',
   outcome: 'Taken on',
-  blocking: 'Blocking: a failure stops the flow',
-  advisory: 'Advisory: reports and goes on',
+  blocking: 'Stop the chain',
+  advisory: 'Carry on anyway',
   auto: 'Automatic',
   suggest: 'Suggested',
   remove: 'Remove step',
-  builtIn: 'Built-in step, locked. It cannot be removed or changed.',
-  sources: SOURCES,
-  inWorkflow: 'In the workflow',
+  removeRow: 'Remove from the workflow',
+  removeHint: 'Its links go with it.',
+  builtIn: 'Built-in step: it cannot be removed or replaced, only turned off.',
+  disable: 'Turn off this step',
+  enable: 'Turn on this step',
+  alwaysOn: 'Start cannot be turned off: every other step runs from it',
+  offHint: 'Turned off: the skills skip it, and the steps before it lead straight to the ones after it.',
   removeLink: 'Remove the link',
   anyOutcome: 'Whatever the outcome',
   defaultLink: 'Default link: it cannot be removed, only its chaining changes.',

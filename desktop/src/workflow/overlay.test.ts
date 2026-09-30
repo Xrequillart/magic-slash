@@ -4,8 +4,8 @@ import { buildWorkflowPayload } from './payload'
 import type { WorkflowOverlay } from './overlay'
 import {
   EMPTY_OVERLAY, addLink, addStep, cleanOverlay, composeWorkflow, customNodeId, isDefaultLink, isOverlay, moveNode, pinPositions,
-  problems, removeLink, removeStep, resolveOverlay, sameOverlay, setLinkKind, setLinkOutcome, setStepMode, setStepSkill, toOverlay,
-  unreachableSteps,
+  problems, removeLink, removeStep, resolveOverlay, sameOverlay, servedWorkflow, setLinkKind, setLinkOutcome, setStepColor, setStepEnabled, setStepMode,
+  toOverlay, unreachableSteps,
 } from './overlay'
 
 const CHECK = customNodeId('check')
@@ -85,12 +85,11 @@ describe('editing', () => {
     expect(overlay).toEqual(EMPTY_OVERLAY)
   })
 
-  it('changes a step\'s mode and skill, keeping its links and its place', () => {
-    const overlay = setStepMode(setStepSkill(withCheck(), 'check', 'lint'), 'lint', 'blocking')
-    const lint = customNodeId('lint')
-    expect(overlay.steps).toEqual([{ skill: 'lint', mode: 'blocking' }])
-    expect(overlay.links).toEqual([{ from: 'start', to: lint, kind: 'suggest' }, { from: lint, to: 'commit', kind: 'suggest' }])
-    expect(overlay.positions).toEqual({ [lint]: AT })
+  it('changes a step\'s mode, keeping its links and its place', () => {
+    const overlay = setStepMode(withCheck(), 'check', 'blocking')
+    expect(overlay.steps).toEqual([{ skill: 'check', mode: 'blocking' }])
+    expect(overlay.links).toEqual(withCheck().links)
+    expect(overlay.positions).toEqual({ [CHECK]: AT })
   })
 
   it('moves any card, a built-in one included, to whole pixels', () => {
@@ -210,5 +209,77 @@ describe('payload then', () => {
         then: [{ from: b, to: a, kind: 'suggest', outcome: null, skill: 'a', then: [] }],
       }],
     })
+  })
+})
+
+describe('turning a step off', () => {
+  it('serves the flow without it, its links carried through to what it led to', () => {
+    const overlay = setStepEnabled(EMPTY_OVERLAY, 'commit', false)
+    expect(overlay.disabled).toEqual(['commit'])
+    const flow = servedWorkflow(overlay)
+    expect(flow.nodes.map((node) => node.id)).not.toContain('commit')
+    expect(flow.links).toContainEqual({ from: 'start', to: 'pr', kind: 'suggest' })
+    expect(flow.links.some((link) => link.from === 'commit' || link.to === 'commit')).toBe(false)
+    // The editor still draws it, with its links.
+    expect(composeWorkflow(overlay).nodes.map((node) => node.id)).toContain('commit')
+    expect(problems(overlay)).toEqual([])
+  })
+
+  it('keeps the outcome of the link carried, and chains only when both links did', () => {
+    let overlay = setStepEnabled(EMPTY_OVERLAY, 'resolve', false)
+    expect(servedWorkflow(overlay).links).toContainEqual({ from: 'pr', to: 'done', kind: 'suggest', outcome: 'review_comments' })
+    overlay = setLinkKind(overlay, 'resolve', 'done', 'auto')
+    expect(servedWorkflow(overlay).links).toContainEqual({ from: 'pr', to: 'done', kind: 'auto', outcome: 'review_comments' })
+  })
+
+  it('walks through several steps that are off, custom ones included', () => {
+    let overlay = setStepEnabled(withCheck(), CHECK, false)
+    overlay = setStepEnabled(overlay, 'commit', false)
+    const links = servedWorkflow(overlay).links
+    expect(links).toContainEqual({ from: 'start', to: 'pr', kind: 'suggest' })
+    expect(links.filter((link) => link.from === 'start' && link.to === 'pr')).toHaveLength(1)
+  })
+
+  it('drops plan from the entry, and never turns start off', () => {
+    expect(servedWorkflow(setStepEnabled(EMPTY_OVERLAY, 'plan', false)).entry).toEqual(['start'])
+    expect(setStepEnabled(EMPTY_OVERLAY, 'start', false)).toBe(EMPTY_OVERLAY)
+    expect(problems({ ...EMPTY_OVERLAY, disabled: ['start'] })).toEqual([{ code: 'start-disabled', nodeId: 'start' }])
+  })
+
+  it('turns back on to the overlay it was, and follows a step removed', () => {
+    const off = setStepEnabled(withCheck(), CHECK, false)
+    expect(setStepEnabled(off, CHECK, true)).toEqual(withCheck())
+    expect(removeStep(off, 'check').disabled).toBeUndefined()
+  })
+
+  it('is part of what is saved, and compared', () => {
+    const off = setStepEnabled(EMPTY_OVERLAY, 'done', false)
+    expect(sameOverlay(off, EMPTY_OVERLAY)).toBe(false)
+    expect(sameOverlay({ ...EMPTY_OVERLAY, disabled: [] }, EMPTY_OVERLAY)).toBe(true)
+    expect(cleanOverlay(off).disabled).toEqual(['done'])
+    expect(cleanOverlay({ ...EMPTY_OVERLAY, disabled: ['nope'] }).disabled).toBeUndefined()
+    expect(isOverlay(off)).toBe(true)
+    expect(isOverlay({ ...EMPTY_OVERLAY, disabled: [1] })).toBe(false)
+    const resolved = resolveOverlay(off)
+    expect('workflow' in resolved && resolved.workflow.nodes.map((node) => node.id)).not.toContain('done')
+  })
+
+  it('gives a skill that is off no node in the payload', () => {
+    const flow = servedWorkflow(setStepEnabled(EMPTY_OVERLAY, 'commit', false))
+    expect(buildWorkflowPayload('r', { workflow: flow, source: 'repository' }, 'magic-commit').node).toBeNull()
+    expect(buildWorkflowPayload('r', { workflow: flow, source: 'repository' }, 'magic-start').links.map((link) => link.skill)).toEqual(['magic-pr'])
+  })
+})
+
+describe('a step\'s colour', () => {
+  it('is kept, saved and compared, and never reaches the skills', () => {
+    const coloured = setStepColor(withCheck(), 'check', '#6366F1')
+    expect(coloured.steps[0].color).toBe('#6366F1')
+    expect(sameOverlay(coloured, withCheck())).toBe(false)
+    expect(cleanOverlay(coloured).steps[0]).toEqual({ skill: 'check', mode: 'advisory', color: '#6366F1' })
+    expect(addStep(EMPTY_OVERLAY, 'lint', AT, 'advisory', '#EF4444').steps[0].color).toBe('#EF4444')
+    expect(isOverlay(coloured)).toBe(true)
+    expect(isOverlay(setStepColor(withCheck(), 'check', 'red'))).toBe(false)
+    expect(JSON.stringify(servedWorkflow(coloured))).not.toContain('#6366F1')
   })
 })

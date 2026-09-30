@@ -437,7 +437,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   canvasminimap: [],
   // The editor around the canvas. None of the three draws the canvas: the page arranges
   // them side by side, and each is its own region of it.
-  workflowinspector: ['banner', 'button', 'buttonicon', 'card', 'icon', 'select', 'text'],
+  workflowinspector: ['banner', 'button', 'buttonicon', 'card', 'icon', 'select', 'settingscard', 'text'],
   workflowskillpicker: ['menu'],
   workflowproblems: ['icon', 'text'],
   workfloweditor: ['apptitlebar', 'workflowcanvas', 'workflowinspector', 'workflowskillpicker', 'banner'],

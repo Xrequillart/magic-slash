@@ -22,7 +22,7 @@ const PROPS: PropRow[] = [
   { name: 'dock', type: 'WorkflowDockProps', description: 'The editor’s dock, floating at the bottom centre. Drawn inside the flow, since its zoom and its + read the flow’s store.' },
   { name: 'frameless · legend', type: 'boolean · "top-left" | "bottom-left"', description: 'A canvas that IS the screen: no border, no corners, and the legend out of the corner the editor’s title takes.' },
   { name: 'focusRequest', type: '{ id: string; n: number } | null', description: 'Centres the view on a node, keeping the zoom unless it is too far out to read. Bump `n` to centre on the same node again.' },
-  { name: 'WorkflowCanvasNode.locked · mode · warning · problem', type: 'boolean · "blocking" | "advisory" · string · boolean', description: 'What the editor draws on a card: a lock on a built-in step, a custom step’s mode, a warning badge whose tooltip is the warning, and a red border for a step a problem names. `labels.locked`, `blocking` and `advisory` are the words they need.' },
+  { name: 'WorkflowCanvasNode.disabled · alwaysOn · mode · warning · problem', type: 'boolean · boolean · "blocking" | "advisory" · string · boolean', description: 'What the editor draws on a card: its switch, an eye open or shut (greyed on alwaysOn), a step turned off greyed with its links faded, a custom step’s mode, a warning badge whose tooltip is the warning, and a red border for a step a problem names. `labels.disable`, `enable`, `alwaysOn`, `off`, `blocking` and `advisory` are the words they need; `onToggle` is what the switch calls.' },
 ]
 
 function EditButtonSpecimen() {

@@ -4,9 +4,10 @@ import { DEFAULT_WORKFLOW } from '../../../workflow/defaultFlow'
 import {
   EMPTY_OVERLAY, addLink, addStep, composeWorkflow, customNodeId, isLinkIntoStart, problems, sameOverlay, setLinkKind,
 } from '../../../workflow/overlay'
+import { WORKFLOW_STEP_COLORS, nextWorkflowStepColor, workflowStepColor } from '@ds/desktop/palette'
 import type { ListingEntry } from '../../hooks/useSkills'
 import {
-  folderSkillsOf, problemNodeIds, skillDisplayName, skillOptions, stepHints, workflowCanvasData,
+  folderSkillsOf, modeHasEffect, problemNodeIds, skillDescription, skillDisplayName, skillOptions, stepColors, stepHints, workflowCanvasData,
 } from './workflowCanvasData'
 
 /**
@@ -120,6 +121,11 @@ describe('workflowCanvasData, editing', () => {
     expect(stepHints(flow, 'resolve')).toEqual([])
   })
 
+  it('says a mode matters only with an automatic link out of the step', () => {
+    expect(modeHasEffect(composeWorkflow(withLint), lint)).toBe(false)
+    expect(modeHasEffect(composeWorkflow(setLinkKind(withLint, lint, 'commit', 'auto')), lint)).toBe(true)
+  })
+
   it('knows a link into start', () => {
     expect(isLinkIntoStart({ to: 'start' })).toBe(true)
     expect(isLinkIntoStart({ to: 'commit' })).toBe(false)
@@ -147,6 +153,18 @@ describe('skillOptions', () => {
     ])
   })
 
+  it('reads a step\'s description off the copy it runs: this repository\'s first', () => {
+    const described: ListingEntry[] = [
+      entry('shared', 'custom', { description: 'Home copy.' }),
+      entry('shared', 'repo', { origin: 'web', description: 'Repo copy.' }),
+      entry('shared', 'repo', { origin: 'api', description: 'Other repo.' }),
+    ]
+    expect(skillDescription(described, 'web', 'shared')).toBe('Repo copy.')
+    expect(skillDescription(described, 'api', 'shared')).toBe('Other repo.')
+    expect(skillDescription(described, 'mobile', 'shared')).toBe('Home copy.')
+    expect(skillDescription(entries, 'web', 'lint')).toBeUndefined()
+  })
+
   it('greys the skills already in the workflow', () => {
     const options = skillOptions(entries, 'web', ['lint'])
     expect(options.find((o) => o.name === 'lint')?.disabled).toBe(true)
@@ -167,5 +185,25 @@ describe('folderSkillsOf and sameOverlay', () => {
     expect(sameOverlay(a, EMPTY_OVERLAY)).toBe(false)
     const at = { x: 0, y: 0 }
     expect(sameOverlay(addStep(EMPTY_OVERLAY, 'lint', at), addStep(EMPTY_OVERLAY, 'lint', at, 'blocking'))).toBe(false)
+  })
+})
+
+describe('stepColors', () => {
+  it('gives every custom step a colour of the palette, never the built-in steps\' plain ground', () => {
+    const lint = customNodeId('lint')
+    const check = customNodeId('check')
+    const overlay = addStep(addStep(EMPTY_OVERLAY, 'lint', { x: 0, y: 0 }, 'advisory', '#ec4899'), 'check', { x: 0, y: 0 })
+    const colors = stepColors(overlay)
+    expect(colors[lint]).toBe('#EC4899')
+    expect(WORKFLOW_STEP_COLORS).toContain(colors[check])
+    const data = workflowCanvasData(composeWorkflow(overlay), { colors })
+    expect(data.nodes.find((node) => node.id === lint)?.color).toBe('#EC4899')
+    expect(data.nodes.filter((node) => !node.id.startsWith('custom:')).every((node) => node.color === undefined)).toBe(true)
+  })
+
+  it('hands a new step the first colour nobody wears', () => {
+    expect(nextWorkflowStepColor([])).toBe(WORKFLOW_STEP_COLORS[0])
+    expect(nextWorkflowStepColor([WORKFLOW_STEP_COLORS[0]])).toBe(WORKFLOW_STEP_COLORS[1])
+    expect(workflowStepColor('#123456', 2)).toBe(WORKFLOW_STEP_COLORS[2])
   })
 })

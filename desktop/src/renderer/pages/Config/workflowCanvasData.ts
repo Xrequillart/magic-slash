@@ -1,7 +1,8 @@
 import type { WorkflowCanvasLink, WorkflowCanvasNode, WorkflowSkillOption } from '@ds/desktop'
+import { workflowStepColor } from '@ds/desktop/palette'
 import type { Workflow } from '../../../workflow/model'
 import {
-  PLAN_NODE_ID, START_NODE_ID, isBuiltInNodeId, isCustomNodeId, type WorkflowOverlay, type WorkflowProblem,
+  PLAN_NODE_ID, START_NODE_ID, canDisable, customNodeId, isBuiltInNodeId, isCustomNodeId, type WorkflowOverlay, type WorkflowProblem,
 } from '../../../workflow/overlay'
 import type { ListingEntry } from '../../hooks/useSkills'
 
@@ -55,6 +56,15 @@ export interface WorkflowCanvasMarks {
   problems?: readonly string[]
   /** A warning per step, already translated: a badge whose tooltip is the text. */
   warnings?: Readonly<Record<string, string>>
+  /** The steps turned off (the overlay's `disabled`): drawn greyed. */
+  disabled?: readonly string[]
+  /** A custom step's ground, by node id (`stepColors`). */
+  colors?: Readonly<Record<string, string>>
+}
+
+/** Every custom step's ground, by node id: its own, or the one its place hands it (`workflowStepColor`). */
+export function stepColors(overlay: WorkflowOverlay): Record<string, string> {
+  return Object.fromEntries(overlay.steps.map((step, i) => [customNodeId(step.skill), workflowStepColor(step.color, i)]))
 }
 
 /**
@@ -62,7 +72,8 @@ export interface WorkflowCanvasMarks {
  * they are: a link's `outcome` is both the port it leaves from and the label it wears.
  * Only the nodes are mapped, to gain the display name the engine does not carry, and
  * what the editor marks on them: a built-in step is `locked` (the overlay cannot
- * touch it), a custom one wears its `mode`, the only thing about it the admin chose.
+ * remove it), a custom one wears its `mode`, the only thing about it the admin chose,
+ * and every one its switch: `disabled` when it is off, `alwaysOn` on start.
  */
 export function workflowCanvasData(flow: Workflow, marks: WorkflowCanvasMarks = {}): WorkflowCanvasData {
   return {
@@ -75,6 +86,10 @@ export function workflowCanvasData(flow: Workflow, marks: WorkflowCanvasMarks = 
       }
       if (isBuiltInNodeId(node.id)) drawn.locked = true
       if (isCustomNodeId(node.id)) drawn.mode = node.mode
+      const color = isCustomNodeId(node.id) ? marks.colors?.[node.id] : undefined
+      if (color) drawn.color = color
+      if (!canDisable(node.id)) drawn.alwaysOn = true
+      if (marks.disabled?.includes(node.id)) drawn.disabled = true
       if (marks.problems?.includes(node.id)) drawn.problem = true
       const warning = marks.warnings?.[node.id]
       if (warning) drawn.warning = warning
@@ -128,6 +143,15 @@ export function stepHints(flow: Workflow, nodeId: string): WorkflowStepHint[] {
   return hints
 }
 
+/**
+ * Whether a step's mode changes anything: only a link leaving it `auto` is held back
+ * (blocking) or taken anyway (advisory) when it fails. With nothing but suggestions out
+ * of it, the choice has no effect, and the inspector says so.
+ */
+export function modeHasEffect(flow: Workflow, nodeId: string): boolean {
+  return flow.links.some((link) => link.from === nodeId && link.kind === 'auto')
+}
+
 /** Where a listing entry comes from, in the picker's terms. Built-in skills are the line's own. */
 const PICKABLE: readonly WorkflowSkillOption['source'][] = ['custom', 'repo', 'plugin']
 
@@ -161,6 +185,18 @@ export function skillOptions(
   }
   // Grouped by source by the picker itself; within a source, the listing's order.
   return [...byName.values()]
+}
+
+/**
+ * What a custom step's skill says it does, its SKILL.md's `description`, for the
+ * inspector. The copy the step runs is the one `skillOptions` would pick: this
+ * repository's first, then `~/.claude`'s, then a plugin's. A hidden skill still has
+ * one. Undefined when no copy here has a description.
+ */
+export function skillDescription(entries: readonly ListingEntry[], repoName: string, skill: string): string | undefined {
+  const copies = entries.filter((entry) => entry.name === skill && (entry.source !== 'repo' || entry.origin === repoName))
+  const ranked = (['repo', 'custom', 'plugin'] as const).flatMap((source) => copies.filter((entry) => entry.source === source))
+  return ranked.find((entry) => entry.description)?.description
 }
 
 /**

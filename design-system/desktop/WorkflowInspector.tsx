@@ -4,13 +4,13 @@ import { ButtonIcon } from './ButtonIcon'
 import { Card, type CardGround } from './Card'
 import { Icon } from './Icon'
 import { OutputSample } from './OutputSample'
-import { ArrowRight, Lock, Trash, X } from './icons'
+import { ArrowRight, Eye, EyeOff, Trash, X } from './icons'
 import { Select, type SelectOption } from './Select'
 import { SettingsCard, type SettingsCardRow } from './SettingsCard'
 import { SkillIntro } from './SkillIntro'
 import { skillIcon } from './skillIcons'
 import { Text } from './Text'
-import type { WorkflowSkillOption, WorkflowSkillSource } from './WorkflowSkillPicker'
+import { WORKFLOW_STEP_COLORS } from './palette'
 import type { WorkflowCanvasLinkKind, WorkflowCanvasNodeMode } from './workflowLayout'
 
 /**
@@ -19,14 +19,21 @@ import type { WorkflowCanvasLinkKind, WorkflowCanvasNodeMode } from './workflowL
  *
  * THREE SHAPES, one per thing a press on the canvas can select:
  *
- *  - a CUSTOM STEP: the skill it runs (a `Select` over `skills`), its mode, and Remove.
- *    `hints` are facts about where it sits ("runs only when there are review comments"),
+ *  - a CUSTOM STEP: what its skill does (`description`, its SKILL.md's), then its two
+ *    choices as rows of a `SettingsCard`, the way a skill's settings are drawn: its card's
+ *    colour (`WORKFLOW_STEP_COLORS`, never the built-in steps' plain ground) and its mode,
+ *    with `modeNote` under it. Then Remove. The skill it runs is not changed here: a step is its skill, and another
+ *    skill is another step, removed and added. `hints` are facts about where it sits ("runs only when there are review comments"),
  *    drawn as quiet lines under the controls, and `warning` a strip above them;
  *  - a BUILT-IN STEP (`locked`): its name and the `builtIn` sentence, and nothing to
- *    press. The line's six steps are the product's, not the repository's;
+ *    change. The line's six steps are the product's, not the repository's;
  *  - a LINK: from and to, the outcome it is taken on if any, and its kind. A kind the
  *    model refuses there (`disabledKinds`, an auto link into start, say) stays in the
  *    list, greyed, with the link's `hint` saying why.
+ *
+ * EVERY STEP HAS ITS SWITCH, beside its name: the eye its card wears, open or shut
+ * (`onToggle`), greyed on start (`alwaysOn`). A step that is off says what that means
+ * (`labels.offHint`) above its controls.
  *
  * A STEP'S OWN SETTINGS (`settings`), when its skill has any, follow its controls: the
  * repository's settings of that skill, saved as they change.
@@ -47,15 +54,25 @@ import type { WorkflowCanvasLinkKind, WorkflowCanvasNodeMode } from './workflowL
 export interface WorkflowInspectorStep {
   id: string
   label: string
-  /** The skill it runs, as the skills spell it. The `Select`'s value. */
+  /** The skill it runs, as the skills spell it. */
   skill: string
+  /** What the skill does, its SKILL.md's `description`: under its name. */
+  description?: string
   /** Built-in: no controls, the `builtIn` sentence instead. */
   locked?: boolean
+  /** A custom step's card colour, one of `WORKFLOW_STEP_COLORS`: the swatch drawn selected. */
+  color?: string
+  /** Turned off: the switch shows the shut eye, and `labels.offHint` says what it means. */
+  disabled?: boolean
+  /** Start: its switch is greyed, it cannot be turned off. */
+  alwaysOn?: boolean
   mode?: WorkflowCanvasNodeMode
   /** A strip above the controls, already translated. */
   warning?: string
   /** Quiet lines under the controls, already translated. */
   hints?: string[]
+  /** Under the mode's row, what the mode does here: "No automatic link out of it: no effect." */
+  modeNote?: string
   /**
    * The skill's own settings, the ones its repository gives it (Plan: search for
    * duplicates, how to split, what tickets to file), in groups. Drawn under the step's
@@ -119,8 +136,9 @@ export interface WorkflowInspectorLabels {
   /** Nothing selected: "Select a step or a link to edit it." */
   empty: string
   /** The field names. */
-  skill: string
   mode: string
+  /** "Colour", over a custom step's swatches. */
+  color: string
   kind: string
   /** "Taken on", before a conditional link's outcome. */
   outcome: string
@@ -130,12 +148,17 @@ export interface WorkflowInspectorLabels {
   auto: string
   suggest: string
   remove: string
-  /** A locked step's sentence: "Built-in step, locked. It cannot be removed or changed." */
+  /** Remove's row: its name ("Remove from the workflow") and the line under it ("Its links go with it."). `remove` is the button's word. */
+  removeRow?: string
+  removeHint?: string
+  /** A locked step's sentence: "Built-in step: it cannot be removed or replaced." */
   builtIn: string
-  /** A skill's source, as its option's note. */
-  sources: Record<WorkflowSkillSource, string>
-  /** The note on a skill already on the line: "In the workflow". */
-  inWorkflow: string
+  /** The switch's tooltip on a step that is on, off, and on start. */
+  disable: string
+  enable: string
+  alwaysOn: string
+  /** A step that is off, in words: "Turned off: the skills skip it." */
+  offHint: string
   /** A drawn link's Remove. */
   removeLink?: string
   /** The outcome choice meaning "whatever it ended on". */
@@ -152,18 +175,19 @@ export interface WorkflowInspectorLabels {
 
 export interface WorkflowInspectorProps {
   target: WorkflowInspectorTarget | null
-  /** What a custom step may run. The step's own skill need not be in it: the trigger still names it. */
-  skills: WorkflowSkillOption[]
   labels: WorkflowInspectorLabels
   /** Every control disabled, Remove hidden. */
   readOnly?: boolean
-  onChangeSkill?: (nodeId: string, skill: string) => void
   onChangeMode?: (nodeId: string, mode: WorkflowCanvasNodeMode) => void
   onRemove?: (nodeId: string) => void
   onChangeKind?: (from: string, to: string, kind: WorkflowCanvasLinkKind) => void
   /** A drawn link's outcome, or none (`undefined`: whatever the source ended on). */
   onChangeOutcome?: (from: string, to: string, outcome: string | undefined) => void
   onRemoveLink?: (from: string, to: string) => void
+  /** A custom step's card colour, one of `WORKFLOW_STEP_COLORS`. */
+  onChangeColor?: (nodeId: string, color: string) => void
+  /** A step's switch: turn it on (`true`) or off. Greyed without it. */
+  onToggle?: (nodeId: string, enabled: boolean) => void
   /** The corner X. Not drawn without it. */
   onClose?: () => void
   /** `raised` where the panel floats over something, the canvas: opaque, not the page's frost. */
@@ -177,15 +201,15 @@ const KINDS: WorkflowCanvasLinkKind[] = ['suggest', 'auto']
 
 export function WorkflowInspector({
   target,
-  skills,
   labels,
   readOnly = false,
-  onChangeSkill,
   onChangeMode,
   onRemove,
   onChangeKind,
   onChangeOutcome,
   onRemoveLink,
+  onToggle,
+  onChangeColor,
   onClose,
   ground = 'surface',
   className = '',
@@ -201,12 +225,12 @@ export function WorkflowInspector({
         ) : target.type === 'node' ? (
           <StepPanel
             step={target.step}
-            skills={skills}
             labels={labels}
             readOnly={readOnly}
-            onChangeSkill={onChangeSkill}
             onChangeMode={onChangeMode}
             onRemove={onRemove}
+            onToggle={onToggle}
+            onChangeColor={onChangeColor}
           />
         ) : (
           <LinkPanel
@@ -225,79 +249,98 @@ export function WorkflowInspector({
 
 function StepPanel({
   step,
-  skills,
   labels,
   readOnly,
-  onChangeSkill,
   onChangeMode,
   onRemove,
+  onToggle,
+  onChangeColor,
 }: {
   step: WorkflowInspectorStep
-  skills: WorkflowSkillOption[]
   labels: WorkflowInspectorLabels
   readOnly: boolean
-  onChangeSkill?: WorkflowInspectorProps['onChangeSkill']
   onChangeMode?: WorkflowInspectorProps['onChangeMode']
   onRemove?: WorkflowInspectorProps['onRemove']
+  onToggle?: WorkflowInspectorProps['onToggle']
+  onChangeColor?: WorkflowInspectorProps['onChangeColor']
 }) {
-  // A skill already on the line stays listed and greyed, except the step's own.
-  const skillOptions: SelectOption[] = skills.map((skill) => ({
-    value: skill.name,
-    label: skill.name,
-    hint: skill.disabled && skill.name !== step.skill ? labels.inWorkflow : labels.sources[skill.source],
-    disabled: skill.disabled && skill.name !== step.skill,
-  }))
   const modeOptions: SelectOption[] = MODES.map((mode) => ({ value: mode, label: labels[mode] }))
 
   return (
     <>
       <div className="flex items-center gap-2.5 pr-6">
-        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+        <span
+          className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${step.color ? '' : 'bg-accent/10 text-accent'}`}
+          style={step.color ? { backgroundColor: `${step.color}33`, color: step.color } : undefined}
+        >
           <Icon glyph={skillIcon(step.skill)} size="md" tone="inherit" />
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
           <Text size="sm" weight="bold" className="truncate" title={step.label}>{step.label}</Text>
           <code className="truncate font-mono text-[10px] leading-4 text-text-secondary" title={step.skill}>{step.skill}</code>
         </span>
-        {step.locked && <Icon glyph={Lock} size="sm" tone="muted" className="flex-shrink-0" />}
+        <ButtonIcon
+          icon={step.disabled ? EyeOff : Eye}
+          title={step.alwaysOn ? labels.alwaysOn : step.disabled ? labels.enable : labels.disable}
+          onClick={() => onToggle?.(step.id, !!step.disabled)}
+          disabled={readOnly || step.alwaysOn || !onToggle}
+          tone="ghost"
+          size="sm"
+        />
       </div>
 
+      {step.description && <Text size="xs" tone="secondary" className="whitespace-pre-line">{step.description}</Text>}
       {step.warning && <Banner variant="warning" layout="stacked">{step.warning}</Banner>}
+      {step.disabled && <Text size="xs" tone="secondary">{labels.offHint}</Text>}
 
       {step.locked ? (
         <Text size="xs" tone="secondary">{labels.builtIn}</Text>
       ) : (
         <>
-          <Field label={labels.skill}>
-            <Select
-              value={step.skill}
-              options={skillOptions}
-              onChange={(skill) => onChangeSkill?.(step.id, skill)}
-              placeholder={step.skill}
-              disabled={readOnly || !onChangeSkill}
-              ariaLabel={labels.skill}
-              size="md"
-            />
-          </Field>
-          <Field label={labels.mode}>
-            <Select
-              value={step.mode ?? 'advisory'}
-              options={modeOptions}
-              onChange={(mode) => onChangeMode?.(step.id, mode as WorkflowCanvasNodeMode)}
-              disabled={readOnly || !onChangeMode}
-              ariaLabel={labels.mode}
-              size="md"
-              fit
-            />
-          </Field>
+          {/* The step's own choices, as rows like any skill's settings: a SettingsCard. */}
+          <SettingsCard
+            rows={[
+              {
+                id: 'color',
+                label: labels.color,
+                layout: 'stacked',
+                control: {
+                  kind: 'swatches',
+                  colors: WORKFLOW_STEP_COLORS,
+                  // Vivid over deep, a hue per column.
+                  columns: WORKFLOW_STEP_COLORS.length / 2,
+                  value: step.color,
+                  onChange: (color) => onChangeColor?.(step.id, color),
+                  label: labels.color,
+                  disabled: readOnly || !onChangeColor,
+                },
+              },
+              {
+                id: 'mode',
+                label: labels.mode,
+                layout: 'stacked',
+                note: step.modeNote,
+                control: {
+                  kind: 'select',
+                  value: step.mode ?? 'advisory',
+                  options: modeOptions,
+                  onChange: (mode) => onChangeMode?.(step.id, mode as WorkflowCanvasNodeMode),
+                  disabled: readOnly || !onChangeMode,
+                  ariaLabel: labels.mode,
+                  size: 'md',
+                },
+              },
+              !readOnly && onRemove && {
+                id: 'remove',
+                label: labels.removeRow ?? labels.remove,
+                hint: labels.removeHint,
+                control: { kind: 'button', children: labels.remove, icon: Trash, tone: 'danger', size: 'sm', onClick: () => onRemove(step.id) },
+              },
+            ]}
+          />
           {step.hints?.map((hint) => (
             <Text key={hint} size="2xs" tone="secondary">{hint}</Text>
           ))}
-          {!readOnly && onRemove && (
-            <Button tone="danger" size="sm" icon={Trash} onClick={() => onRemove(step.id)} className="self-start">
-              {labels.remove}
-            </Button>
-          )}
         </>
       )}
 

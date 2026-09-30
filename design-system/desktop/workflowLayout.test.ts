@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest'
 import {
   layoutWorkflow,
   orthogonalPath,
+  workflowCardWidth,
   workflowPositions,
   workflowNodeHeight,
+  WORKFLOW_NODE_MAX_WIDTH,
+  WORKFLOW_NODE_MIN_WIDTH,
   WORKFLOW_NODE_WIDTH,
   type WorkflowCanvasLink,
   type WorkflowCanvasNode,
@@ -195,5 +198,30 @@ describe('workflowPositions', () => {
     const layout = layoutWorkflow(nodes, links, ['a'])
     const { routes } = workflowPositions(nodes, links, ['a'], { b: layout.positions.b, c: layout.positions.c })
     expect(routes).toEqual(layout.routes)
+  })
+})
+
+describe('workflowCardWidth', () => {
+  const card = (label: string, extra: Partial<WorkflowCanvasNode> = {}): WorkflowCanvasNode =>
+    ({ id: label, label, skill: label, outcomes: [], ...extra })
+
+  it('follows its words, between the narrowest and the widest card', () => {
+    expect(workflowCardWidth(card('PR'))).toBe(WORKFLOW_NODE_MIN_WIDTH)
+    const long = workflowCardWidth(card('a-custom-skill-name'))
+    expect(long).toBeGreaterThan(WORKFLOW_NODE_MIN_WIDTH)
+    expect(long).toBeLessThan(WORKFLOW_NODE_MAX_WIDTH)
+    expect(workflowCardWidth(card('x'.repeat(200)))).toBe(WORKFLOW_NODE_MAX_WIDTH)
+  })
+
+  it('makes room for the mode plate', () => {
+    const node = card('a-custom-skill-named-at-length', { mode: 'advisory' })
+    expect(workflowCardWidth(node, { advisory: 'Goes on on failure' })).toBeGreaterThan(workflowCardWidth(node))
+  })
+
+  it('puts the next column past the widest card of the one before', () => {
+    const nodes = [card('a'.repeat(40)), card('b')]
+    const widths = { [nodes[0].id]: 300, [nodes[1].id]: 210 }
+    const { positions } = layoutWorkflow(nodes, [{ from: nodes[0].id, to: nodes[1].id, kind: 'suggest' }], [nodes[0].id], widths)
+    expect(positions[nodes[1].id].x).toBe(300 + 80)
   })
 })

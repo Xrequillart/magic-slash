@@ -1,7 +1,8 @@
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
 
+import { ButtonIcon } from './ButtonIcon'
 import { Icon } from './Icon'
-import { Lock, TriangleAlert } from './icons'
+import { Eye, EyeOff, TriangleAlert } from './icons'
 import { skillIcon } from './skillIcons'
 import { Text } from './Text'
 import {
@@ -38,11 +39,20 @@ import {
  * Its heights are `workflowLayout.ts`'s: `h-14` header, `h-6` a row, `pb-2` under the
  * rows. Change one side and the columns start overlapping.
  *
- * WHAT THE EDITOR NEEDS TO SEE, on the header's right: a lock on a built-in step (it
- * cannot be removed, so it should not look like it could), a custom step's mode as a
- * small plate, and a warning badge whose tooltip is the warning. A step named by a
- * problem wears a red border; the selected step a ring in the accent. None of it is drawn
- * unless the node says so, so the read-only canvas looks exactly as it did.
+ * WHAT THE EDITOR NEEDS TO SEE, on the header's right: the step's switch, an eye open
+ * or shut, on every step, built-in or custom (`onToggle`; start's is drawn greyed, it
+ * cannot be turned off: `alwaysOn`), a custom step's mode as a small plate, and a warning
+ * badge whose tooltip is the warning. A step named by a problem wears a red border; the
+ * selected step a ring in the accent. None of it is drawn unless the node says so, so
+ * the read-only canvas looks exactly as it did.
+ *
+ * A CUSTOM STEP WEARS ITS COLOUR (`color`): the ground tinted with it, over the card's own
+ * opaque one so links still do not show through, the border and the glyph's tile in it
+ * too. The built-in steps keep the plain ground, which is why no colour offered is it.
+ *
+ * A STEP TURNED OFF (`disabled`) is drawn greyed, dashed border, everything faded but its
+ * switch, which is how it is turned back on. The read-only canvas draws the shut eye as a
+ * plain mark (`off`), with nothing to press.
  *
  * LINKS ARE DRAWN FROM THE PORTS, in the editor (`connectable`): dragged out of an
  * outcome's row, a link is taken only on that outcome; out of the "When done" row,
@@ -53,8 +63,12 @@ import {
 
 /** The words the card draws beside a node's own, translated by the caller. */
 export interface WorkflowNodeLabels {
-  /** The lock's tooltip and accessible name: "Built-in step, locked". */
-  locked: string
+  /** The switch's tooltip and accessible name, on a step that is on: "Turn off". */
+  disable: string
+  /** On a step that is off: "Turn on". */
+  enable: string
+  /** On start, whose switch is greyed: "Start cannot be turned off". */
+  alwaysOn: string
   /** A custom step's mode, on its plate. */
   blocking: string
   advisory: string
@@ -64,8 +78,12 @@ export interface WorkflowNodeData extends Record<string, unknown> {
   node: WorkflowCanvasNode
   /** Drawn with the selection ring. The editable canvas sets it; the read-only one never does. */
   selected?: boolean
-  /** Needed only when the node carries `locked` or `mode`; without them neither mark is drawn. */
+  /** The editor's words: without them, no switch and no mode plate are drawn. */
   labels?: WorkflowNodeLabels
+  /** The switch was pressed: turn the step on (`true`) or off. Without it, the switch is drawn greyed. */
+  onToggle?: (id: string, enabled: boolean) => void
+  /** READ-ONLY CANVAS. The shut eye's tooltip on a step that is off: "Turned off". */
+  off?: string
   /** Its ports start and take links: the editor's canvas, when it may draw them. */
   connectable?: boolean
   /** The "whatever it ended on" row's word: "When done". */
@@ -127,7 +145,7 @@ const MODE_TONES: Record<WorkflowCanvasNodeMode, string> = {
 }
 
 export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
-  const { node, selected = false, labels, connectable = false, anyExit = '', ports } = data
+  const { node, selected = false, labels, onToggle, off, connectable = false, anyExit = '', ports } = data
   // A used port wears its link's stroke (`workflowCanvas.css`).
   const used = (handle: string) => (ports?.[handle] ? `ms-wf-port-${ports[handle]}` : undefined)
   const exits = workflowExitRows(node)
@@ -135,13 +153,24 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
     ? node.problem ? FRAMES.selectedProblem : FRAMES.selected
     : node.problem ? FRAMES.problem : FRAMES.rest
   const mode = !node.locked && node.mode && labels ? node.mode : null
+  // Everything but the switch fades on a step that is off: the switch is the way back.
+  const faded = node.disabled ? 'opacity-20' : ''
+  const offMark = node.disabled && !labels && off
+  // The tint over the opaque ground, and the border in it while no state claims the border.
+  const tint = node.color
+    ? {
+        backgroundImage: `linear-gradient(${node.color}29, ${node.color}29)`,
+        ...(!selected && !node.problem ? { borderColor: `${node.color}80` } : {}),
+      }
+    : undefined
 
   return (
-    // `h-full w-full`: the node's box is set by the canvas (`WORKFLOW_NODE_WIDTH`,
+    // `h-full w-full`: the node's box is set by the canvas (`workflowCardWidth`,
     // `workflowNodeHeight`), and the card fills it rather than sizing itself a second time.
     <div
-      className={`relative h-full w-full rounded-xl border bg-bg-secondary text-ink shadow-sm ${frame}`}
+      className={`relative h-full w-full rounded-xl border bg-bg-secondary text-ink shadow-sm ${frame}${node.disabled ? ' border-dashed' : ''}`}
       aria-current={selected ? 'true' : undefined}
+      style={tint}
     >
       <Handle type="source" position={Position.Bottom} id={WORKFLOW_VERTICAL_HANDLES.down.source} style={DOWN_LANE} className="ms-wf-lane" isConnectable={false} />
       <Handle type="target" position={Position.Top} id={WORKFLOW_VERTICAL_HANDLES.down.target} style={DOWN_LANE} className="ms-wf-lane" isConnectable={false} />
@@ -152,10 +181,13 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
         className="relative flex h-14 items-center gap-2.5 border-b border-line px-3"
       >
         <Handle type="target" position={Position.Left} id={WORKFLOW_TARGET_HANDLE} isConnectable={connectable} className={used(WORKFLOW_TARGET_HANDLE)} />
-        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+        <span
+          className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${node.color ? '' : 'bg-accent/10 text-accent'} ${faded}`}
+          style={node.color ? { backgroundColor: `${node.color}33`, color: node.color } : undefined}
+        >
           <Icon glyph={skillIcon(node.skill)} size="md" tone="inherit" />
         </span>
-        <span className="flex min-w-0 flex-1 flex-col">
+        <span className={`flex min-w-0 flex-1 flex-col ${faded}`}>
           <Text size="sm" weight="bold" className="truncate" title={node.label}>
             {node.label}
           </Text>
@@ -163,7 +195,7 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
             {node.skill}
           </code>
         </span>
-        {(node.warning || (node.locked && labels) || mode) && (
+        {(node.warning || labels || offMark || mode) && (
           <span className="flex flex-shrink-0 flex-col items-end gap-1">
             <span className="flex items-center gap-1">
               {node.warning && (
@@ -176,14 +208,28 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
                   <Icon glyph={TriangleAlert} size="xs" tone="inherit" />
                 </span>
               )}
-              {node.locked && labels && (
-                <span role="img" aria-label={labels.locked} title={labels.locked} className="flex h-5 w-5 items-center justify-center text-icon-muted">
-                  <Icon glyph={Lock} size="xs" tone="inherit" />
+              {labels && (
+                // `nodrag` and the stopped click: pressing the switch neither drags the card
+                // nor selects it.
+                <span className="nodrag nopan flex" onClick={(event) => event.stopPropagation()}>
+                  <ButtonIcon
+                    icon={node.disabled ? EyeOff : Eye}
+                    title={node.alwaysOn ? labels.alwaysOn : node.disabled ? labels.enable : labels.disable}
+                    onClick={() => onToggle?.(node.id, !!node.disabled)}
+                    disabled={node.alwaysOn || !onToggle}
+                    tone="ghost"
+                    size="xs"
+                  />
+                </span>
+              )}
+              {offMark && (
+                <span role="img" aria-label={off} title={off} className="flex h-5 w-5 items-center justify-center text-icon-muted">
+                  <Icon glyph={EyeOff} size="xs" tone="inherit" />
                 </span>
               )}
             </span>
             {mode && labels && (
-              <span className={`rounded-md border px-1 text-[9px] font-medium leading-[14px] ${MODE_TONES[mode]}`}>
+              <span className={`rounded-md border px-1 text-[9px] font-medium leading-[14px] ${MODE_TONES[mode]} ${faded}`}>
                 {labels[mode]}
               </span>
             )}
@@ -192,7 +238,7 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
         <Handle type="target" position={Position.Right} id={WORKFLOW_SIDE_TARGET_HANDLE} className="ms-wf-lane" isConnectable={false} />
       </div>
 
-      <ul className="pb-2">
+      <ul className={`pb-2 ${faded}`}>
         {exits.map((exit) => (
           <li key={exit} className="relative flex h-6 items-center justify-end pl-3 pr-4">
             {exit === WORKFLOW_ANY_EXIT ? (

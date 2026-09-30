@@ -35,8 +35,17 @@ export interface WorkflowCanvasNode {
   skill: string
   /** What the skill can end on. Each one gets a port a conditional link leaves from. */
   outcomes: string[]
-  /** A built-in step: drawn with a lock, and the editor offers no way to remove it. */
+  /** A built-in step: the editor offers no way to remove it, nor to change what it runs. */
   locked?: boolean
+  /** Turned off: drawn greyed, its links faded. The skills skip it. */
+  disabled?: boolean
+  /** The one step that cannot be turned off (start): its switch is drawn, greyed. */
+  alwaysOn?: boolean
+  /**
+   * A custom step's ground, a `#RRGGBB` tinted over the card's own (`WORKFLOW_STEP_COLORS`).
+   * Left out on the built-in steps, which wear the plain ground.
+   */
+  color?: string
   /** A custom step's mode, drawn on its card. Left out on the built-in steps. */
   mode?: WorkflowCanvasNodeMode
   /** Something worth knowing about the step, already translated: a badge, and this as its tooltip. */
@@ -66,6 +75,9 @@ export interface WorkflowCanvasLink {
  * frame until this was passed.
  */
 export const WORKFLOW_NODE_WIDTH = 224
+/** A card's width follows its words, between these two. Past the widest, they truncate. */
+export const WORKFLOW_NODE_MIN_WIDTH = 210
+export const WORKFLOW_NODE_MAX_WIDTH = 360
 const WORKFLOW_NODE_HEADER = 56
 const WORKFLOW_NODE_ROW = 24
 const WORKFLOW_NODE_FOOT = 8
@@ -111,6 +123,73 @@ export function workflowExitOf(node: Pick<WorkflowCanvasNode, 'outcomes'>, outco
 export function workflowOutcomeOfExit(node: Pick<WorkflowCanvasNode, 'outcomes'>, exit: string | null | undefined): string | undefined {
   if (!exit || exit === WORKFLOW_ANY_EXIT || node.outcomes.length === 1) return undefined
   return node.outcomes.includes(exit) ? exit : undefined
+}
+
+/** The words a card draws besides its node's own, which its width has to hold too. */
+export interface WorkflowCardWords {
+  /** The "whatever it ended on" row: "When done". */
+  anyExit?: string
+  /** A custom step's mode plate. */
+  blocking?: string
+  advisory?: string
+}
+
+/** Every card's width, by id: `workflowCardWidth` for each. */
+export type WorkflowCardWidths = Readonly<Record<string, number>>
+
+// The faces the card is set in (`WorkflowNode`): the label in `Text`'s, the skill and
+// the outcomes in the mono one `CommandChip` uses.
+const SANS = "'Cera Pro', -apple-system, BlinkMacSystemFont, system-ui, sans-serif"
+const MONO = "'SF Mono', Monaco, monospace"
+const LABEL_FONT = `700 14px ${SANS}`
+const CODE_FONT = `400 10px ${MONO}`
+const EXIT_FONT = `italic 400 10px ${SANS}`
+const PLATE_FONT = `500 9px ${SANS}`
+
+let measurer: CanvasRenderingContext2D | null | undefined
+/**
+ * How wide `text` is set in `font`, in canvas pixels. Measured off a 2D canvas where
+ * there is a document; estimated from its length where there is none (the test suite),
+ * which is all a layout test needs.
+ */
+function textWidth(text: string, font: string): number {
+  if (measurer === undefined) {
+    measurer = typeof document === 'undefined' ? null : document.createElement('canvas').getContext('2d')
+  }
+  if (!measurer) return text.length * parseFloat(font.replace(/^.*?(\d+)px.*$/, '$1')) * 0.6
+  measurer.font = font
+  return measurer.measureText(text).width
+}
+
+/**
+ * WHAT A CARD'S WORDS NEED, between `WORKFLOW_NODE_MIN_WIDTH` and `WORKFLOW_NODE_MAX_WIDTH`:
+ * the header (its padding, the skill's glyph, the label or the skill folder, whichever is
+ * wider, and the marks on its right) or the widest exit row, whichever is wider. The
+ * sums are `WorkflowNode`'s classes spelled in pixels; change one side and the words
+ * start truncating early, or the card grows past them. A few pixels spare: a web font
+ * still loading is measured in its fallback.
+ */
+export function workflowCardWidth(node: WorkflowCanvasNode, words: WorkflowCardWords = {}): number {
+  const SPARE = 6
+  const BORDER = 2
+  // px-3, the 32px glyph and its gap-2.5 on the left, px-3 on the right.
+  const headerChrome = 12 + 32 + 10 + 12
+  const title = Math.max(textWidth(node.label, LABEL_FONT), textWidth(node.skill, CODE_FONT))
+  // The switch and a warning (20px each, gap-1), over the mode plate (px-1 and its border).
+  const badges = 20 + (node.warning ? 24 : 0)
+  const modeWord = node.mode ? words[node.mode] : undefined
+  const plate = modeWord ? textWidth(modeWord, PLATE_FONT) + 10 : 0
+  const header = headerChrome + title + 10 + Math.max(badges, plate)
+  // pl-3 and pr-4 around each row's word.
+  const rows = workflowExitRows(node).map((exit) =>
+    12 + 16 + (exit === WORKFLOW_ANY_EXIT ? textWidth(words.anyExit ?? '', EXIT_FONT) : textWidth(exit, CODE_FONT)),
+  )
+  const width = Math.ceil(Math.max(header, ...rows) + BORDER + SPARE)
+  return Math.min(WORKFLOW_NODE_MAX_WIDTH, Math.max(WORKFLOW_NODE_MIN_WIDTH, width))
+}
+
+export function workflowCardWidths(nodes: WorkflowCanvasNode[], words: WorkflowCardWords = {}): Record<string, number> {
+  return Object.fromEntries(nodes.map((node) => [node.id, workflowCardWidth(node, words)]))
 }
 
 /** A card's height, from its rows. */
@@ -180,6 +259,7 @@ export function layoutWorkflow(
   nodes: WorkflowCanvasNode[],
   links: WorkflowCanvasLink[],
   entry: string[],
+  widths: WorkflowCardWidths = {},
 ): WorkflowLayout {
   const index = new Map(nodes.map((node, i) => [node.id, i]))
   // Links to or from a node that is not drawn are dropped here rather than crashing
@@ -256,14 +336,21 @@ export function layoutWorkflow(
     col.reduce((sum, node) => sum + workflowCardHeight(node), 0) + ROW_GAP * (col.length - 1)
   const tallest = Math.max(0, ...columns.map((col) => (col ? heightOf(col) : 0)))
 
+  // A column is as wide as its widest card, the cards flush left in it.
+  const widthOf = (node: WorkflowCanvasNode) => widths[node.id] ?? WORKFLOW_NODE_WIDTH
   const positions: Record<string, { x: number; y: number }> = {}
-  columns.forEach((col, layer) => {
-    if (!col) return
+  let x = 0
+  columns.forEach((col) => {
+    if (!col) {
+      x += WORKFLOW_NODE_WIDTH + WORKFLOW_COLUMN_GAP
+      return
+    }
     let y = (tallest - heightOf(col)) / 2
     for (const node of col) {
-      positions[node.id] = { x: layer * (WORKFLOW_NODE_WIDTH + WORKFLOW_COLUMN_GAP), y }
+      positions[node.id] = { x, y }
       y += workflowCardHeight(node) + ROW_GAP
     }
+    x += Math.max(...col.map(widthOf)) + WORKFLOW_COLUMN_GAP
   })
 
   // Two ends in one column can only be two steps of one loop: a link between columns
@@ -319,15 +406,17 @@ export function orthogonalPath(points: [number, number][], radius = 12): string 
  *
  * Exported for the editor too: before an edit to the links, it pins every card still
  * laid out at the place it is drawn at, so that a new link never reshuffles the columns
- * under the admin's eyes.
+ * under the admin's eyes. It has to pass the `widths` the canvas draws with
+ * (`workflowCardWidths`, with the same words), or it pins them somewhere else.
  */
 export function workflowPositions(
   nodes: WorkflowCanvasNode[],
   links: WorkflowCanvasLink[],
   entry: string[],
   stored: Readonly<Record<string, { x: number; y: number }>> = {},
+  widths: WorkflowCardWidths = {},
 ): Pick<WorkflowLayout, 'positions' | 'routes'> {
-  const layout = layoutWorkflow(nodes, links, entry)
+  const layout = layoutWorkflow(nodes, links, entry, widths)
   const positions: WorkflowLayout['positions'] = {}
   const moved = new Set<string>()
   for (const node of nodes) {

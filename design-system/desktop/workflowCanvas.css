@@ -118,6 +118,11 @@
   fill: none;
 }
 
+/* Into or out of a step turned off: still there, never taken. */
+.ms-workflow-canvas .ms-wf-edge-muted {
+  opacity: 0.15;
+}
+
 
 /*
  * THE EDITABLE CANVAS. A card and a link are pressed to select them, so both say so;

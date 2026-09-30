@@ -48,6 +48,8 @@ export interface WorkflowEdgeData extends Record<string, unknown> {
   route: WorkflowLinkRoute
   /** Drawn heavier, with a halo in the accent: the link the editor's inspector is showing. */
   selected?: boolean
+  /** Faded: a link into or out of a step that is turned off, which the skills never take. */
+  muted?: boolean
 }
 
 export type WorkflowEdgeType = Edge<WorkflowEdgeData, 'workflow'>
@@ -103,9 +105,9 @@ export function WorkflowEdge({
       <BaseEdge
         id={id}
         path={path}
-        className={`ms-wf-edge-${kind}${data?.selected ? ' ms-wf-edge-selected' : ''}`}
+        className={`ms-wf-edge-${kind}${data?.selected ? ' ms-wf-edge-selected' : ''}${data?.muted ? ' ms-wf-edge-muted' : ''}`}
       />
-      {kind === 'auto' && (
+      {kind === 'auto' && !data?.muted && (
         <circle r={3} className="ms-wf-pulse">
           <animateMotion dur="2.4s" repeatCount="indefinite" path={path} />
         </circle>
@@ -114,7 +116,7 @@ export function WorkflowEdge({
         <EdgeLabelRenderer>
           <code
             style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
-            className={`nodrag nopan pointer-events-none absolute rounded-md border bg-bg-secondary px-1.5 py-0.5 font-mono text-[10px] leading-4 ${LABEL_TONES[kind]}`}
+            className={`nodrag nopan pointer-events-none absolute rounded-md border bg-bg-secondary px-1.5 py-0.5 font-mono text-[10px] leading-4 ${LABEL_TONES[kind]}${data.muted ? ' opacity-20' : ''}`}
           >
             {data.outcome}
           </code>
