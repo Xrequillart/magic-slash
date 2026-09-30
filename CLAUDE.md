@@ -64,7 +64,7 @@ npm run desktop:package  # Package for macOS (.dmg, .zip)
 
 - **Commits**: conventional commits (commitlint), format `type(scope): subject`
   - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`, `build`, `revert`
-  - Scopes: `start`, `continue`, `commit`, `pr`, `review`, `resolve`, `done`, `plan`, `install`, `docs`, `deps`, `ci`, `readme`, `landing`, `slides`, `community`, `desktop`
+  - Scopes: `start`, `continue`, `commit`, `pr`, `review`, `resolve`, `done`, `plan`, `install`, `docs`, `deps`, `ci`, `readme`, `landing`, `slides`, `community`, `desktop`, `skills`
   - Subject: lower-case, no trailing period, max 100 characters
 - **Node**: v20 (see `.nvmrc`)
 - **Formatting**: UTF-8, LF, 2-space indentation (see `.editorconfig`)

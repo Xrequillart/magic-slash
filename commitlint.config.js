@@ -38,6 +38,7 @@ module.exports = {
         'landing',
         'community',
         'desktop',
+        'skills',
       ],
     ],
     'subject-case': [2, 'always', 'lower-case'],
