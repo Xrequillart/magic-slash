@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   Trash2, AlertTriangle, Plus, ArrowLeft, Building2, Lock, FolderOpen,
   Ticket, Settings2, Languages, GitBranch, FolderGit2, Workflow,
@@ -25,10 +25,18 @@ import {
   TabStrip,
   Text,
   WorkflowCanvas,
+  WorkflowInspector,
+  WorkflowProblems,
+  WorkflowSkillPicker,
   skillIcon,
   type IconComponent,
   type SettingsCardRow,
   type WorkflowCanvasLabels,
+  type WorkflowCanvasSelection,
+  type WorkflowInspectorLabels,
+  type WorkflowInspectorTarget,
+  type WorkflowProblemItem,
+  type WorkflowSkillPickerLabels,
 } from '@ds/desktop'
 import { LANGUAGES } from '../../languages'
 import { TabSweep } from '../../components/TabSweep'
@@ -47,11 +55,19 @@ import {
   PLAN_SPLITTING_MODES,
   PLAN_ACCEPTANCE_CRITERIA_FORMATS,
   type PlanSettingsInput,
+  type SkillShareResult,
 } from '../../../types'
 import { resolveReviewLanguage, resolveSpecLanguage, resolveTicketLanguage } from '../../../languages'
 import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../../../tracker'
 import type { ResolvedWorkflow } from '../../../workflow/model'
-import { workflowCanvasData, type WorkflowCanvasData } from './workflowCanvasData'
+import {
+  EMPTY_OVERLAY, composeWorkflow, customNodeId, insertStep, isLinkIntoStart, problems, removeStep, sameOverlay, setLinkKind,
+  setStepMode, setStepSkill, type WorkflowOverlay, type WorkflowProblem,
+} from '../../../workflow/overlay'
+import type { ListingEntry } from '../../hooks/useSkills'
+import {
+  folderSkillsOf, problemNodeIds, skillDisplayName, skillOptions, stepHints, workflowCanvasData,
+} from './workflowCanvasData'
 
 interface RepoPageProps {
   repoName: string
@@ -343,69 +359,556 @@ function generateCommitExample(format: string, style: string, includeTicketId: b
 
 /**
  * THE WORKFLOW TAB: the flow this repository's skills follow, drawn on the design
- * system's canvas. Read-only: nothing edits a flow yet.
+ * system's canvas, and its editor for whoever may change it (the repository's owner,
+ * or an admin of its organization: `readOnly` is RepoPage's, which mirrors RLS).
  *
- * Asked for on mount (`config:getRepositoryWorkflow`), not pushed: the tab shows what
- * `GET /workflow` would answer a skill running in this repository right now, and
- * re-asks each time the tab is opened. A push channel would be plumbing for an edit
- * that no screen can make.
+ * WHAT IS EDITED IS THE OVERLAY, not the flow: the steps and link kinds added to the
+ * default line (workflow/overlay.ts). Two copies of it are kept, the one saved and the
+ * draft, and everything drawn is `composeWorkflow(draft)`, so the canvas shows the
+ * flow the skills would get if Save were pressed now. `problems(draft)`, the same judge
+ * the main process saves with, lists what stands in the way, and Save stays disabled
+ * until the list is empty and the draft differs from what is saved.
  *
- * A component of its own, at module scope, because it owns a fetch: RepoPage's state
- * is the repository's settings, and this is not one of them.
+ * PUSHED AS WELL AS ASKED FOR. Loaded on mount, and reloaded whenever the main process
+ * says this repository's workflow changed (`onWorkflowChanged`: a save from another
+ * window, or from a teammate over Realtime). A change that lands on unsaved edits does
+ * not clobber them: a banner says so and offers the reload. A change announced while
+ * our own save is in flight is looked at once the save has answered, never dropped.
+ *
+ * SAVED AGAINST A REVISION. The saved overlay comes with the revision of its row, and
+ * a save sends it back: when a teammate saved in the meantime the backend refuses
+ * (`conflict`), nothing is overwritten, and the draft stays until the editor reloads.
+ * The revision is also how the echo of our own save is told from a teammate's change:
+ * reading the workflow again after it finds the revision the save returned.
+ *
+ * A SKILL ONLY THE EDITOR HAS. A custom step runs a skill by name, and a skill (or a
+ * command) that lives only in the editor's `~/.claude` is missing for every teammate.
+ * After a save, the ones this save added are offered for a copy into the repository's
+ * `.claude`. A copy is not shared yet either: the card's warning follows it until it is
+ * committed and pushed (`skills:repoSkillStatus`), and so does a skill the editor
+ * created in the repository themselves. Recomputed on load, after every save and copy,
+ * and when the window comes back to the front, so a commit or a push made in a
+ * terminal clears it, and a declined copy does not quietly forget it.
+ *
+ * READ-ONLY MEMBERS see the same canvas, still selectable so the inspector can say how
+ * each step and link runs, with every control disabled, no "+", and no Save bar.
+ *
+ * A component of its own, at module scope, because it owns a fetch and an editor's
+ * state: RepoPage's state is the repository's settings, and this is not one of them.
  */
-function WorkflowPanel({ repoName }: { repoName: string }) {
+function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boolean }) {
   const t = useT()
-  // null while loading. The canvas data is mapped once, when the flow arrives.
+  // null while loading. `saved` is what the backend holds, `source` whether it is the
+  // repository's own flow or the default (the header's hint).
   const [loaded, setLoaded] = useState<
-    { source: ResolvedWorkflow['source']; data: WorkflowCanvasData } | 'error' | null
+    { saved: WorkflowOverlay; revision: string | null; source: ResolvedWorkflow['source'] } | 'error' | null
   >(null)
+  const [draft, setDraft] = useState<WorkflowOverlay>(EMPTY_OVERLAY)
+  const [selected, setSelected] = useState<WorkflowCanvasSelection | null>(null)
+  const [focus, setFocus] = useState<{ id: string; n: number } | null>(null)
+  const [picker, setPicker] = useState<{ slot: number; anchor: HTMLElement } | null>(null)
+  const [entries, setEntries] = useState<ListingEntry[]>([])
+  // The custom steps' skills teammates don't have yet, and how far each one got: in the
+  // editor's `~/.claude` only (`missing`), or in the checkout, not yet on the remote.
+  const [unshared, setUnshared] = useState<Record<string, SkillShareResult>>({})
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<
+    { kind: 'denied' } | { kind: 'conflict' } | { kind: 'failed'; message: string } | null
+  >(null)
+  // What the backend refused a save on. The same judge as `problems(draft)`, so this is
+  // a safety net for a build skew; it is dropped at the next edit.
+  const [refused, setRefused] = useState<WorkflowProblem[] | null>(null)
+  const [stale, setStale] = useState(false)
+  const [copyOffer, setCopyOffer] = useState<string[] | null>(null)
+  const [copying, setCopying] = useState(false)
+
+  const saved = loaded && loaded !== 'error' ? loaded.saved : EMPTY_OVERLAY
+  const revision = loaded && loaded !== 'error' ? loaded.revision : null
+  // Read by the change listener, which is subscribed once per repository and would
+  // otherwise judge "unsaved edits" against the state of the render it was made in.
+  // `adopt` also sets the first two at once, for a change judged before the next render.
+  const savedRef = useRef(saved)
+  const revisionRef = useRef(revision)
+  const draftRef = useRef(draft)
+  const savingRef = useRef(false)
+  // A change announced while our save was in flight, to look at once it has answered.
+  const changedDuringSaveRef = useRef(false)
+  savedRef.current = saved
+  revisionRef.current = revision
+  draftRef.current = draft
+  // Bumped on every repository switch: an answer for the previous one is dropped.
+  const generation = useRef(0)
+
+  const fetchWorkflow = useCallback(async () => {
+    const [stored, resolved] = await Promise.all([
+      window.electronAPI.config.getRepositoryWorkflowOverlay(repoName),
+      window.electronAPI.config.getRepositoryWorkflow(repoName),
+    ])
+    return { overlay: stored.overlay, revision: stored.revision, source: resolved.source }
+  }, [repoName])
+
+  /**
+   * Where each of the overlay's folder skills stands for teammates, keeping the ones to
+   * warn about. Resolves to those only the editor's `~/.claude` has, the copy candidates.
+   * A skill nobody here has (not in `~/.claude`, not in the repository) is someone
+   * else's, and nothing this machine can say about it.
+   */
+  const refreshUnshared = useCallback(async (overlay: WorkflowOverlay): Promise<string[]> => {
+    const at = generation.current
+    const checks = await Promise.all(folderSkillsOf(overlay).map(async (skill): Promise<[string, SkillShareResult][]> => {
+      try {
+        const [home, share] = await Promise.all([
+          window.electronAPI.skills.homeHasSkill(skill),
+          window.electronAPI.skills.repoSkillStatus(repoName, skill),
+        ])
+        if (share.status === 'shared') return []
+        if ((share.status === 'missing' || share.status === 'unknown') && !home) return []
+        return [[skill, share]]
+      } catch {
+        return []
+      }
+    }))
+    const next = Object.fromEntries(checks.flat())
+    if (at === generation.current) setUnshared(next)
+    return Object.keys(next).filter((skill) => next[skill].status === 'missing')
+  }, [repoName])
+
+  const adopt = useCallback((
+    next: { overlay: WorkflowOverlay; revision: string | null; source: ResolvedWorkflow['source'] },
+  ) => {
+    savedRef.current = next.overlay
+    revisionRef.current = next.revision
+    setLoaded({ saved: next.overlay, revision: next.revision, source: next.source })
+    setDraft(next.overlay)
+    setRefused(null)
+    setStale(false)
+    // The version a conflict was about is now the one on screen.
+    setSaveError((was) => (was?.kind === 'conflict' ? null : was))
+    return refreshUnshared(next.overlay)
+  }, [refreshUnshared])
+
+  // Stable, so the canvas does not rebuild its "+" buttons on every render of the tab.
+  const openPicker = useCallback((slot: number, anchor: HTMLElement) => setPicker({ slot, anchor }), [])
 
   useEffect(() => {
-    let live = true
+    const at = ++generation.current
     setLoaded(null)
-    window.electronAPI.config.getRepositoryWorkflow(repoName).then(
-      (next) => { if (live) setLoaded({ source: next.source, data: workflowCanvasData(next.workflow) }) },
+    setSelected(null)
+    setSaveError(null)
+    setUnshared({})
+    changedDuringSaveRef.current = false
+    fetchWorkflow().then(
+      (next) => { if (at === generation.current) void adopt(next) },
       (error) => {
         console.error('Failed to load the repository workflow:', error)
-        if (live) setLoaded('error')
+        if (at === generation.current) setLoaded('error')
       },
+    )
+  }, [fetchWorkflow, adopt])
+
+  // A commit or a push made in a terminal changes the warnings without telling us: look
+  // again when the window comes back to the front. Debounced, as focus and visibility
+  // usually fire together.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const recheck = () => {
+      if (document.visibilityState !== 'visible') return
+      clearTimeout(timer)
+      timer = setTimeout(() => { void refreshUnshared(savedRef.current) }, 300)
+    }
+    window.addEventListener('focus', recheck)
+    document.addEventListener('visibilitychange', recheck)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('focus', recheck)
+      document.removeEventListener('visibilitychange', recheck)
+    }
+  }, [refreshUnshared])
+
+  // The skills a step may run. Read once per repository: the Skills page is where they
+  // change, and leaving this tab for it remounts the panel on the way back.
+  useEffect(() => {
+    let live = true
+    window.electronAPI.skills.listingEntries().then(
+      (listing: { entries: ListingEntry[] }) => { if (live) setEntries(listing.entries) },
+      () => { /* no listing: the picker says there is nothing to add */ },
     )
     return () => { live = false }
   }, [repoName])
 
-  const resolved = loaded === 'error' ? null : loaded
+  /** Read the workflow again after a change was announced, and judge what came back. */
+  const followChange = useCallback(() => {
+    const at = generation.current
+    fetchWorkflow().then((next) => {
+      if (at !== generation.current) return
+      // The revision already held: nothing new, such as the echo of our own save.
+      if (next.revision === revisionRef.current) return
+      const dirty = !sameOverlay(draftRef.current, savedRef.current)
+      // Nothing of ours to lose, or it is what we drafted anyway: take it.
+      if (!dirty || sameOverlay(next.overlay, draftRef.current)) void adopt(next)
+      else if (sameOverlay(next.overlay, savedRef.current)) {
+        // Saved again as it was: the draft still edits the same flow, at its new revision.
+        revisionRef.current = next.revision
+        setLoaded({ saved: next.overlay, revision: next.revision, source: next.source })
+      } else setStale(true)
+    }, (error) => console.error('Failed to reload the repository workflow:', error))
+  }, [fetchWorkflow, adopt])
+
+  useEffect(() => {
+    const off = window.electronAPI.config.onWorkflowChanged((change) => {
+      if (change.name !== repoName) return
+      // Our own save answers first; what changed is looked at once it has (save's
+      // `finally`), when the revision it returned tells its echo from a teammate's save.
+      if (savingRef.current) {
+        changedDuringSaveRef.current = true
+        return
+      }
+      followChange()
+    })
+    return () => { off() }
+  }, [repoName, followChange])
+
+  const reload = () => {
+    const at = generation.current
+    fetchWorkflow().then(
+      (next) => { if (at === generation.current) void adopt(next) },
+      (error) => console.error('Failed to reload the repository workflow:', error),
+    )
+  }
+
+  const flow = useMemo(() => composeWorkflow(draft), [draft])
+  const found = useMemo(() => problems(draft), [draft])
+  const shown = useMemo(() => (found.length > 0 ? found : (refused ?? [])), [found, refused])
+  const dirty = !sameOverlay(draft, saved)
+
+  const labelOf = (id: string) => {
+    const node = flow.nodes.find((n) => n.id === id)
+    return node ? skillDisplayName(node.skill) : id
+  }
+  const skillOf = (id: string) => flow.nodes.find((n) => n.id === id)?.skill ?? id
+
+  const data = useMemo(() => {
+    const warningOf = ({ status, branch }: SkillShareResult): string => {
+      switch (status) {
+        case 'missing': return t('repo.workflow.warning.onlyHome')
+        case 'uncommitted': return t('repo.workflow.warning.uncommitted')
+        case 'unpushed': return branch
+          ? t('repo.workflow.warning.unpushed', { branch: `origin/${branch}` })
+          : t('repo.workflow.warning.unpushedNoRemote')
+        default: return t('repo.workflow.warning.noFolder')
+      }
+    }
+    const warnings = Object.fromEntries(
+      Object.entries(unshared).map(([skill, share]) => [customNodeId(skill), warningOf(share)]),
+    )
+    return workflowCanvasData(flow, { problems: problemNodeIds(shown), warnings })
+  }, [flow, shown, unshared, t])
+
+  const skills = useMemo(
+    () => skillOptions(entries, repoName, flow.nodes.map((node) => node.skill)),
+    [entries, repoName, flow],
+  )
+
+  const problemItems: WorkflowProblemItem[] = shown.map((problem, i) => {
+    switch (problem.code) {
+      case 'duplicate-skill':
+        return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.duplicate', { skill: problem.skill }) }
+      case 'auto-into-start':
+        return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.autoIntoStart', { from: labelOf(problem.nodeId) }) }
+      default:
+        return { id: `${problem.code}-${i}`, message: t('repo.workflow.problem.invalid', { message: problem.message }) }
+    }
+  })
+
+  const focusOn = (id: string) => {
+    setSelected({ type: 'node', id })
+    setFocus((was) => ({ id, n: (was?.n ?? 0) + 1 }))
+  }
+
+  /**
+   * Every edit goes through here: a refusal is about the draft it was made on. A
+   * conflict is not, it is about the version under the draft, and only a reload
+   * settles it: it stays.
+   */
+  const edit = (next: WorkflowOverlay) => {
+    setDraft(next)
+    setRefused(null)
+    setSaveError((was) => (was?.kind === 'conflict' ? was : null))
+  }
+
+  const target: WorkflowInspectorTarget | null = (() => {
+    if (!selected) return null
+    if (selected.type === 'node') {
+      const node = data.nodes.find((n) => n.id === selected.id)
+      if (!node) return null
+      const hints = stepHints(flow, node.id).map((hint) => t(
+        hint === 'on-review-comments' ? 'repo.workflow.hint.reviewComments' : 'repo.workflow.hint.skippedFromStart',
+      ))
+      return {
+        type: 'node',
+        step: { ...node, hints: hints.length > 0 ? hints : undefined },
+      }
+    }
+    const link = flow.links.find((l) => l.from === selected.from && l.to === selected.to)
+    if (!link) return null
+    // Links leaving a custom step need no word: the protocol applies them like any other.
+    const intoStart = isLinkIntoStart(link)
+    return {
+      type: 'link',
+      link: {
+        from: link.from,
+        to: link.to,
+        fromLabel: labelOf(link.from),
+        toLabel: labelOf(link.to),
+        kind: link.kind,
+        outcome: link.outcome,
+        disabledKinds: intoStart ? ['auto'] : undefined,
+        hint: intoStart ? t('repo.workflow.hint.intoStart') : undefined,
+      },
+    }
+  })()
+
+  const save = async () => {
+    const previous = saved
+    setSaving(true)
+    savingRef.current = true
+    setSaveError(null)
+    try {
+      const result = await window.electronAPI.config.saveRepositoryWorkflow(repoName, draft, revisionRef.current)
+      switch (result.status) {
+        case 'saved': {
+          // null is the default flow, which the editor edits as an empty overlay.
+          const missing = adopt({
+            overlay: result.overlay ?? EMPTY_OVERLAY,
+            revision: result.revision,
+            source: result.workflow.source,
+          })
+          showToast(t('repo.workflow.saved'))
+          // Offered once, for the steps this save added: an older one already had its
+          // chance, and keeps its warning instead of a dialog at every save.
+          const added = (await missing).filter((skill) => !previous.steps.some((step) => step.skill === skill))
+          if (added.length > 0) setCopyOffer(added)
+          break
+        }
+        case 'invalid':
+          setRefused(result.problems)
+          break
+        case 'denied':
+          setSaveError({ kind: 'denied' })
+          break
+        // A teammate saved first. The draft stays; the banner offers their version.
+        case 'conflict':
+          setSaveError({ kind: 'conflict' })
+          break
+        case 'failed':
+          setSaveError({ kind: 'failed', message: result.message })
+          break
+      }
+    } catch (error) {
+      setSaveError({ kind: 'failed', message: error instanceof Error ? error.message : String(error) })
+    } finally {
+      setSaving(false)
+      savingRef.current = false
+      if (changedDuringSaveRef.current) {
+        changedDuringSaveRef.current = false
+        followChange()
+      }
+    }
+  }
+
+  const copyToRepo = async (list: string[]) => {
+    setCopying(true)
+    const copied: string[] = []
+    for (const skill of list) {
+      try {
+        await window.electronAPI.skills.copyToRepo(repoName, skill)
+        copied.push(skill)
+      } catch (error) {
+        showToast(t('repo.workflow.copy.failed', { skill, message: error instanceof Error ? error.message : String(error) }), 'error')
+      }
+    }
+    if (copied.length > 0) showToast(t('repo.workflow.copy.done', { skills: copied.join(', ') }))
+    setCopying(false)
+    setCopyOffer(null)
+    void refreshUnshared(savedRef.current)
+  }
+
+  const source = loaded && loaded !== 'error' ? loaded.source : null
   // Memoised so the canvas does not rebuild its nodes on every render of the page.
   const labels = useMemo<WorkflowCanvasLabels>(() => ({
     canvas: t('repo.workflow.canvas', { name: repoName }),
     minimap: t('repo.workflow.minimap'),
     auto: t('repo.workflow.auto'),
     suggest: t('repo.workflow.suggest'),
+    insert: t('repo.workflow.insert'),
+    locked: t('repo.workflow.locked'),
+    blocking: t('repo.workflow.blocking'),
+    advisory: t('repo.workflow.advisory'),
   }), [t, repoName])
+  const sources = useMemo(() => ({
+    custom: t('repo.workflow.source.custom'),
+    repo: t('repo.workflow.source.repo'),
+    plugin: t('repo.workflow.source.plugin'),
+  }), [t])
+  const pickerLabels: WorkflowSkillPickerLabels = {
+    title: t('repo.workflow.picker.title'),
+    empty: t('repo.workflow.picker.empty'),
+    inWorkflow: t('repo.workflow.inWorkflow'),
+    sources,
+  }
+  const inspectorLabels: WorkflowInspectorLabels = {
+    title: t('repo.workflow.inspector.title'),
+    empty: readOnly ? t('repo.workflow.inspector.emptyReadOnly') : t('repo.workflow.inspector.empty'),
+    skill: t('repo.workflow.inspector.skill'),
+    mode: t('repo.workflow.inspector.mode'),
+    kind: t('repo.workflow.inspector.kind'),
+    outcome: t('repo.workflow.inspector.outcome'),
+    blocking: t('repo.workflow.inspector.blocking'),
+    advisory: t('repo.workflow.inspector.advisory'),
+    auto: t('repo.workflow.inspector.auto'),
+    suggest: t('repo.workflow.inspector.suggest'),
+    remove: t('repo.workflow.inspector.remove'),
+    builtIn: t('repo.workflow.inspector.builtIn'),
+    sources,
+    inWorkflow: t('repo.workflow.inWorkflow'),
+  }
 
   return (
     <div className="flex flex-col gap-4">
       <SectionHeader
         icon={Workflow}
         title={t('repo.workflow.section')}
-        hint={resolved
-          ? (resolved.source === 'repository' ? t('repo.workflow.sourceRepository') : t('repo.workflow.sourceDefault'))
+        hint={source
+          ? (source === 'repository' ? t('repo.workflow.sourceRepository') : t('repo.workflow.sourceDefault'))
           : undefined}
-        description={`${t('repo.workflow.intro')} ${t('repo.workflow.navigation')}`}
+        description={[
+          t('repo.workflow.intro'),
+          readOnly ? t('repo.workflow.readOnlyHint') : t('repo.workflow.editHint'),
+          t('repo.workflow.navigation'),
+        ].join(' ')}
         spacing="none"
       />
       {loaded === 'error' ? (
         <Banner variant="danger" icon={AlertTriangle}>{t('repo.workflow.loadError')}</Banner>
-      ) : resolved ? (
-        // A fixed height: the canvas fills its box, and a settings pane has no height of
-        // its own to give it. Tall enough for a custom flow's loop, stacked in one column,
-        // at the fitted zoom, short enough to leave the header on screen.
-        <WorkflowCanvas
-          nodes={resolved.data.nodes}
-          links={resolved.data.links}
-          entry={resolved.data.entry}
-          labels={labels}
-          className="h-[520px]"
-        />
+      ) : loaded ? (
+        <>
+          {saveError?.kind === 'conflict' && (
+            <Banner
+              variant="warning"
+              hint={t('repo.workflow.conflictHint')}
+              actions={[{ label: t('repo.workflow.reload'), onClick: reload }]}
+            >
+              {t('repo.workflow.conflict')}
+            </Banner>
+          )}
+          {/* The conflict banner already says it, with the same Reload. */}
+          {stale && saveError?.kind !== 'conflict' && (
+            <Banner
+              variant="info"
+              hint={t('repo.workflow.changedElsewhereHint')}
+              actions={[{ label: t('repo.workflow.reload'), onClick: reload }]}
+            >
+              {t('repo.workflow.changedElsewhere')}
+            </Banner>
+          )}
+          {saveError?.kind === 'denied' && (
+            <Banner variant="danger" icon={Lock} hint={t('repo.workflow.deniedHint')}>{t('repo.workflow.denied')}</Banner>
+          )}
+          {saveError?.kind === 'failed' && (
+            <Banner variant="danger" icon={AlertTriangle} hint={saveError.message}>{t('repo.workflow.saveFailed')}</Banner>
+          )}
+          <WorkflowProblems
+            problems={problemItems}
+            onFocus={focusOn}
+            labels={{
+              title: problemItems.length === 1
+                ? t('repo.workflow.problems.one')
+                : t('repo.workflow.problems.other', { count: problemItems.length }),
+              show: t('repo.workflow.problems.show'),
+            }}
+          />
+          {/* The Save bar sits ABOVE the canvas: the canvas is 520px tall, and a bar
+              under it would be off screen on a laptop while the edits it saves are not. */}
+          {!readOnly && (
+            <div className="flex items-center justify-end gap-2">
+              {dirty && <Text size="xs" tone="secondary" className="mr-auto">{t('repo.workflow.unsaved')}</Text>}
+              <Button tone="ghost" size="sm" disabled={!dirty || saving} onClick={() => edit(saved)}>
+                {t('repo.workflow.discard')}
+              </Button>
+              <Button tone="accent" size="sm" busy={saving} disabled={!dirty || shown.length > 0} onClick={save}>
+                {t('common.save')}
+              </Button>
+            </div>
+          )}
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_18rem]">
+            {/* A fixed height: the canvas fills its box, and a settings pane has no height
+                of its own to give it. `editable` for everyone, since it is what makes a
+                card selectable; a read-only member gets no "+" (no `onInsert`). */}
+            <WorkflowCanvas
+              nodes={data.nodes}
+              links={data.links}
+              entry={data.entry}
+              labels={labels}
+              className="h-[520px]"
+              editable
+              selected={selected}
+              onSelect={setSelected}
+              onInsert={readOnly ? undefined : openPicker}
+              focusRequest={focus}
+            />
+            <WorkflowInspector
+              target={target}
+              skills={skills}
+              labels={inspectorLabels}
+              readOnly={readOnly}
+              className="self-start"
+              onChangeSkill={(id, skill) => {
+                edit(setStepSkill(draft, skillOf(id), skill))
+                setSelected({ type: 'node', id: customNodeId(skill) })
+              }}
+              onChangeMode={(id, mode) => edit(setStepMode(draft, skillOf(id), mode))}
+              onRemove={(id) => {
+                edit(removeStep(draft, skillOf(id)))
+                setSelected(null)
+              }}
+              onChangeKind={(from, to, kind) => edit(setLinkKind(draft, from, to, kind))}
+            />
+          </div>
+          <WorkflowSkillPicker
+            open={picker !== null}
+            onClose={() => setPicker(null)}
+            anchor={picker?.anchor ?? null}
+            skills={skills}
+            labels={pickerLabels}
+            onPick={(skill) => {
+              if (!picker) return
+              edit(insertStep(draft, picker.slot, skill))
+              focusOn(customNodeId(skill))
+            }}
+          />
+          <Modal
+            isOpen={copyOffer !== null}
+            onClose={() => setCopyOffer(null)}
+            title={t('repo.workflow.copy.title')}
+            footer={
+              <>
+                <Button tone="ghost" disabled={copying} onClick={() => setCopyOffer(null)}>
+                  {t('repo.workflow.copy.decline')}
+                </Button>
+                <Button tone="accent" busy={copying} onClick={() => copyOffer && copyToRepo(copyOffer)}>
+                  {t('repo.workflow.copy.confirm')}
+                </Button>
+              </>
+            }
+          >
+            <Text size="sm" className="block">
+              {copyOffer && copyOffer.length === 1
+                ? t('repo.workflow.copy.body.one', { skills: copyOffer.join(', ') })
+                : t('repo.workflow.copy.body.other', { skills: (copyOffer ?? []).join(', ') })}
+            </Text>
+            <Text size="sm" tone="secondary" className="mt-2 block">{t('repo.workflow.copy.commit')}</Text>
+          </Modal>
+        </>
       ) : (
         <div className="flex h-[520px] items-center justify-center">
           <Loader variant="spin" label={t('repo.workflow.loading')} />
@@ -1528,7 +2031,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {/* Mounted only while its tab is shown, which TabSweep's `tab ===` already
           guarantees: the canvas listens for the space bar on the whole document. */}
-      {tab === 'workflow' && <WorkflowPanel repoName={repoName} />}
+      {tab === 'workflow' && <WorkflowPanel repoName={repoName} readOnly={readOnly} />}
 
       {tab === 'plan' && (
         <div className="flex flex-col gap-6">
