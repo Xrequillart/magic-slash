@@ -29,6 +29,25 @@ export function isSafeSegment(name: unknown): name is string {
     && !name.startsWith('.')
 }
 
+/** The longest repository key or skill name a request from the renderer may carry. */
+const MAX_REQUEST_FIELD = 256
+
+/**
+ * The `keys` of a renderer payload, checked at the IPC boundary: null unless `payload`
+ * is an object whose every one of them is a non-empty string of at most
+ * MAX_REQUEST_FIELD characters. Only those keys are returned.
+ */
+export function stringFieldsOf<K extends string>(payload: unknown, keys: readonly K[]): Record<K, string> | null {
+  if (!payload || typeof payload !== 'object') return null
+  const out = {} as Record<K, string>
+  for (const key of keys) {
+    const value = (payload as Record<string, unknown>)[key]
+    if (typeof value !== 'string' || value.length === 0 || value.length > MAX_REQUEST_FIELD) return null
+    out[key] = value
+  }
+  return out
+}
+
 /** A skill found under a root's `.claude`, the root being a home directory or a repository. */
 export type SkillSource =
   /** `.claude/skills/<dir>`, a folder with a SKILL.md. */
@@ -153,6 +172,35 @@ function isWithin(parent: string, child: string): boolean {
 }
 
 /**
+ * Create `dir` (a folder below `repoPath`) one level at a time, and make sure each level,
+ * existing or just made, resolves inside the repository: a `.claude`, `.claude/skills`
+ * or command folder that is a symlink leading out of the checkout would have the copy
+ * written outside it. A level is checked before the next one is made, so a refusal
+ * leaves nothing outside. A symlink staying inside the repository is fine.
+ */
+function ensureDirInside(repoPath: string, dir: string): void {
+  const realRoot = fs.realpathSync(repoPath)
+  let current = repoPath
+  for (const segment of path.relative(repoPath, dir).split(path.sep).filter(Boolean)) {
+    current = path.join(current, segment)
+    if (!taken(current)) {
+      try { fs.mkdirSync(current) } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+      }
+    }
+    const shown = path.relative(repoPath, current).split(path.sep).join('/')
+    let real: string
+    try {
+      real = fs.realpathSync(current)
+    } catch {
+      throw new Error(`"${shown}" in the repository is a broken symlink`)
+    }
+    if (!isWithin(realRoot, real)) throw new Error(`"${shown}" in the repository links outside it`)
+    if (!isDirectory(real)) throw new Error(`"${shown}" in the repository is not a folder`)
+  }
+}
+
+/**
  * Copy `<from>` into `<to>`, `to` not existing yet. `root` is the real path of the
  * skill being copied: a symlink resolving inside it is recreated as the same relative
  * link (so the copy is self-contained), one resolving outside it is refused, since it
@@ -188,8 +236,9 @@ function copyTree(from: string, to: string, root: string): void {
  * `.claude/skills/<dir>`, a command into `.claude/commands/<same relative path>`.
  * Throws, with a message fit for the interface, when the name cannot be a skill of
  * ours, the skill is not there, the repository is not on disk, the repository already
- * has it (never overwritten: it may be a colleague's version), or the skill links
- * outside itself. Returns where the copy landed.
+ * has it (never overwritten: it may be a colleague's version), the skill links
+ * outside itself, or the repository's `.claude` folders lead outside the repository.
+ * Returns where the copy landed.
  *
  * All or nothing: the copy is assembled next to the destination and moved into place,
  * so a refusal halfway leaves nothing behind.
@@ -207,7 +256,7 @@ export function copySkillToRepo(home: string, repoPath: string, name: string): S
   // The skill folder or command file itself may be a symlink (installed from a
   // checkout): what it resolves to is the skill, and the bound its own links stay within.
   const real = fs.realpathSync(source.path)
-  fs.mkdirSync(path.dirname(dest.path), { recursive: true })
+  ensureDirInside(repoPath, path.dirname(dest.path))
   const staging = `${dest.path}.copying-${process.pid}-${Date.now()}`
   try {
     if (source.kind === 'skill') {

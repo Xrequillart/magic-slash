@@ -73,6 +73,21 @@ describe('skillShareStatus', () => {
     expect(await skillShareStatus(gitRunner(repo), SKILL)).toEqual({ status: 'shared', branch: 'main' })
   })
 
+  it('is unpushed again when a shared skill is edited and committed, until pushed', async () => {
+    git('remote', 'set-head', 'origin', 'main')
+    write(`${SKILL}/SKILL.md`, 'x')
+    git('add', '.')
+    git('commit', '-q', '-m', 'skill')
+    git('push', '-q')
+    expect(await skillShareStatus(gitRunner(repo), SKILL)).toEqual({ status: 'shared', branch: 'main' })
+    write(`${SKILL}/SKILL.md`, 'edited')
+    git('commit', '-q', '-am', 'edit')
+    // Still on the remote ref, but not as it is here.
+    expect(await skillShareStatus(gitRunner(repo), SKILL)).toEqual({ status: 'unpushed', branch: 'main' })
+    git('push', '-q')
+    expect(await skillShareStatus(gitRunner(repo), SKILL)).toEqual({ status: 'shared', branch: 'main' })
+  })
+
   it('looks at the configured development branch when origin has it', async () => {
     git('remote', 'set-head', 'origin', 'main')
     git('push', '-q', 'origin', 'main:develop')
@@ -121,6 +136,7 @@ describe('skillShareStatus', () => {
     }, SKILL, 'develop')
     expect(status).toEqual({ status: 'shared', branch: 'trunk' })
     expect(calls.some((args) => args[0] === 'fetch')).toBe(false)
-    expect(calls.at(-1)).toEqual(['cat-file', '-e', `refs/remotes/origin/trunk:./${SKILL}`])
+    expect(calls.at(-2)).toEqual(['cat-file', '-e', `refs/remotes/origin/trunk:./${SKILL}`])
+    expect(calls.at(-1)).toEqual(['diff', '--quiet', 'refs/remotes/origin/trunk', 'HEAD', '--', SKILL])
   })
 })

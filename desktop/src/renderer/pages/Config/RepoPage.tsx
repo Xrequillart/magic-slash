@@ -496,6 +496,10 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
     setSelected(null)
     setSaveError(null)
     setUnshared({})
+    // An offer is about the previous repository's skills: accepting it here would copy
+    // them into this one.
+    setCopyOffer(null)
+    setCopying(false)
     changedDuringSaveRef.current = false
     fetchWorkflow().then(
       (next) => { if (at === generation.current) void adopt(next) },
@@ -553,6 +557,10 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
       } else setStale(true)
     }, (error) => console.error('Failed to reload the repository workflow:', error))
   }, [fetchWorkflow, adopt])
+  // The current repository's, for a save that settles after a switch: its own closure
+  // would read the previous repository's workflow into this panel.
+  const followChangeRef = useRef(followChange)
+  followChangeRef.current = followChange
 
   useEffect(() => {
     const off = window.electronAPI.config.onWorkflowChanged((change) => {
@@ -670,11 +678,17 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
 
   const save = async () => {
     const previous = saved
+    // The write completes whatever happens meanwhile, but once the panel shows another
+    // repository its answer is not about what is on screen: adopted, it would put this
+    // repository's flow, banners and copy offer into that one's editor.
+    const at = generation.current
+    const current = () => at === generation.current
     setSaving(true)
     savingRef.current = true
     setSaveError(null)
     try {
       const result = await window.electronAPI.config.saveRepositoryWorkflow(repoName, draft, revisionRef.current)
+      if (!current()) return
       switch (result.status) {
         case 'saved': {
           // null is the default flow, which the editor edits as an empty overlay.
@@ -687,7 +701,7 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
           // Offered once, for the steps this save added: an older one already had its
           // chance, and keeps its warning instead of a dialog at every save.
           const added = (await missing).filter((skill) => !previous.steps.some((step) => step.skill === skill))
-          if (added.length > 0) setCopyOffer(added)
+          if (added.length > 0 && current()) setCopyOffer(added)
           break
         }
         case 'invalid':
@@ -705,18 +719,22 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
           break
       }
     } catch (error) {
-      setSaveError({ kind: 'failed', message: error instanceof Error ? error.message : String(error) })
+      if (current()) setSaveError({ kind: 'failed', message: error instanceof Error ? error.message : String(error) })
     } finally {
       setSaving(false)
       savingRef.current = false
+      // After a switch, a change held back meanwhile is the repository now on screen's.
       if (changedDuringSaveRef.current) {
         changedDuringSaveRef.current = false
-        followChange()
+        followChangeRef.current()
       }
     }
   }
 
   const copyToRepo = async (list: string[]) => {
+    // As for a save: the copies complete, what they report is dropped after a switch.
+    const at = generation.current
+    const current = () => at === generation.current
     setCopying(true)
     const copied: string[] = []
     for (const skill of list) {
@@ -724,9 +742,10 @@ function WorkflowPanel({ repoName, readOnly }: { repoName: string; readOnly: boo
         await window.electronAPI.skills.copyToRepo(repoName, skill)
         copied.push(skill)
       } catch (error) {
-        showToast(t('repo.workflow.copy.failed', { skill, message: error instanceof Error ? error.message : String(error) }), 'error')
+        if (current()) showToast(t('repo.workflow.copy.failed', { skill, message: error instanceof Error ? error.message : String(error) }), 'error')
       }
     }
+    if (!current()) return
     if (copied.length > 0) showToast(t('repo.workflow.copy.done', { skills: copied.join(', ') }))
     setCopying(false)
     setCopyOffer(null)

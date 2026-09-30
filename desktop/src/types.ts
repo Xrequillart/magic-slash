@@ -2910,8 +2910,8 @@ export type RepositoryWorkflowSaveResult =
  * (`skills:repoSkillStatus`, see main/skill-share-status.ts):
  *  - missing:     the repository has no such skill or command
  *  - uncommitted: in the checkout, untracked or changed since HEAD
- *  - unpushed:    committed, not on `origin/<branch>` as last fetched
- *  - shared:      on `origin/<branch>`
+ *  - unpushed:    committed, not on `origin/<branch>` as last fetched, or different there
+ *  - shared:      on `origin/<branch>`, as it is at HEAD
  *  - unknown:     the repository has no local folder (or no git) on this machine
  * `branch` is the remote development branch looked at, when one resolved.
  */

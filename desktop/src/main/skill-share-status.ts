@@ -9,9 +9,10 @@ import type { SkillShareResult } from '../types'
  *
  *   - `missing`: the repository has no such skill
  *   - `uncommitted`: in the working tree, untracked or changed since HEAD
- *   - `unpushed`: committed, and not on the remote development branch as far as the
- *     local remote-tracking ref knows (never fetched: that is the user's call)
- *   - `shared`: on that remote ref
+ *   - `unpushed`: committed, and not on the remote development branch, or different
+ *     there, as far as the local remote-tracking ref knows (never fetched: that is the
+ *     user's call)
+ *   - `shared`: on that remote ref, as it is at HEAD
  *   - `unknown`: nothing to look at on this machine (no local folder, no git)
  *
  * The decision is `skillShareStatus`, over an injected git runner, so it is tested on a
@@ -69,6 +70,10 @@ export async function skillShareStatus(
   const branch = await remoteBranch(run, configuredBranch)
   if (!branch) return { status: 'unpushed' }
   // `./` makes the path relative to the cwd, which may be below the repository's root.
-  const onRemote = await run(['cat-file', '-e', `refs/remotes/origin/${branch}:./${relPath}`])
-  return onRemote.ok ? { status: 'shared', branch } : { status: 'unpushed', branch }
+  const remoteRef = `refs/remotes/origin/${branch}`
+  if (!(await run(['cat-file', '-e', `${remoteRef}:./${relPath}`])).ok) return { status: 'unpushed', branch }
+  // Present there is not enough: an edit committed and not pushed differs from it. The
+  // pathspec is relative to the cwd too; a failure to compare counts as a difference.
+  const same = await run(['diff', '--quiet', remoteRef, 'HEAD', '--', relPath])
+  return same.ok ? { status: 'shared', branch } : { status: 'unpushed', branch }
 }

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { existsSync, lstatSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { copySkillToRepo, findSkillSource, hasSkillIn, isSafeSegment, relativePathOf, skillInRepo } from './skill-copy'
+import { copySkillToRepo, findSkillSource, hasSkillIn, isSafeSegment, relativePathOf, skillInRepo, stringFieldsOf } from './skill-copy'
 
 let base: string
 let home: string
@@ -31,6 +31,20 @@ describe('isSafeSegment', () => {
     for (const bad of ['', '.', '..', '.hidden', '../x', 'a/b', 'a\\b', 'plugin:x', 'a\0b', 42, null]) {
       expect(isSafeSegment(bad)).toBe(false)
     }
+  })
+})
+
+describe('stringFieldsOf', () => {
+  it('returns just the asked keys of a payload whose keys are all sensible strings', () => {
+    expect(stringFieldsOf({ repoName: 'app', skill: 'check', extra: 1 }, ['repoName', 'skill']))
+      .toEqual({ repoName: 'app', skill: 'check' })
+  })
+
+  it('answers null for anything else', () => {
+    for (const bad of [null, undefined, 'check', 42, [], {}, { skill: '' }, { skill: 42 }, { skill: 'x'.repeat(257) }]) {
+      expect(stringFieldsOf(bad, ['skill'])).toBeNull()
+    }
+    expect(stringFieldsOf({ skill: 'check' }, ['repoName', 'skill'])).toBeNull()
   })
 })
 
@@ -179,6 +193,33 @@ describe('copySkillToRepo', () => {
     write(join(repo, '.claude/commands/check.md'), 'theirs')
     expect(() => copySkillToRepo(home, repo, 'check')).toThrow(/already has/)
     expect(existsSync(join(repo, '.claude/skills/check'))).toBe(false)
+  })
+
+  it('refuses a repository whose .claude links outside it, writing nothing there', () => {
+    write(join(home, '.claude/skills/check/SKILL.md'), 'x')
+    write(join(home, '.claude/commands/deploy.md'), 'x')
+    mkdirSync(join(base, 'elsewhere'))
+    symlinkSync(join(base, 'elsewhere'), join(repo, '.claude'))
+    expect(() => copySkillToRepo(home, repo, 'check')).toThrow(/links outside/)
+    expect(() => copySkillToRepo(home, repo, 'deploy')).toThrow(/links outside/)
+    expect(readdirSync(join(base, 'elsewhere'))).toEqual([])
+  })
+
+  it('refuses a repository whose .claude/skills links outside it', () => {
+    write(join(home, '.claude/skills/check/SKILL.md'), 'x')
+    mkdirSync(join(base, 'elsewhere'))
+    mkdirSync(join(repo, '.claude'))
+    symlinkSync(join(base, 'elsewhere'), join(repo, '.claude/skills'))
+    expect(() => copySkillToRepo(home, repo, 'check')).toThrow(/links outside/)
+    expect(readdirSync(join(base, 'elsewhere'))).toEqual([])
+  })
+
+  it('copies through a .claude symlink that stays inside the repository', () => {
+    write(join(home, '.claude/skills/check/SKILL.md'), 'skill')
+    mkdirSync(join(repo, 'config/claude'), { recursive: true })
+    symlinkSync('./config/claude', join(repo, '.claude'))
+    copySkillToRepo(home, repo, 'check')
+    expect(readFileSync(join(repo, 'config/claude/skills/check/SKILL.md'), 'utf8')).toBe('skill')
   })
 
   it('never overwrites whatever sits where the copy would land', () => {
