@@ -6,7 +6,7 @@ import { buildWorkflowPayload } from './payload'
 import type { WorkflowOverlay } from './overlay'
 import { EMPTY_OVERLAY, addLink, addStep, composeWorkflow, customNodeId, setLinkKind, setStepMode } from './overlay'
 import {
-  CHAINING, CHAIN_BROKEN, CUSTOM_PURPOSE, NEXT_STEP_LINE, PURPOSES, SKILL_CONTEXT_HEADING, buildSkillContext,
+  CHAINING, CHAIN_BROKEN, CUSTOM_PURPOSE, NEXT_STEP_LINE, PURPOSES, SKILL_CONTEXT_HEADING, THEN_LINE, buildSkillContext,
 } from './skillContext'
 import type { WorkflowLanguage } from './skillContext'
 
@@ -60,6 +60,22 @@ describe('buildSkillContext', () => {
     expect(text).toContain("➡️  J'enchaîne avec /plugin:lint, comme le prévoit le workflow de ce repository.")
   })
 
+  it('shows what follows a suggested custom target, since typing it injects nothing', () => {
+    // check-types → lint (suggest), lint → pr: lint's own successor rides under its line.
+    const o = setLinkKind(addLink(overlay(), LINT, 'pr'), CHECK, LINT, 'suggest')
+    const text = contextFor(o)!
+    expect(text).toContain("   • Run /plugin:lint to run this repository's custom step\n     ↳ then run /magic:pr to create a Pull Request")
+    expect(contextFor(o, 'check-types', 'fr')!).toContain('     ↳ puis lance /magic:pr pour créer une Pull Request')
+  })
+
+  it('names a custom step by its own command, even when it is called magic-something', () => {
+    const MAGIC_FOO = customNodeId('magic-foo')
+    const o = addLink(addStep(overlay(), 'magic-foo', AT), CHECK, MAGIC_FOO)
+    const text = contextFor(o)!
+    expect(text).toContain("   • Run /magic-foo to run this repository's custom step")
+    expect(text).not.toContain('/magic:foo')
+  })
+
   it('never chains into magic-start, whatever the link says', () => {
     let o = addLink(addStep(EMPTY_OVERLAY, 'check-types', AT), CHECK, 'start')
     o = setLinkKind(o, CHECK, 'start', 'auto')
@@ -97,7 +113,7 @@ describe('the messages the context borrows from workflow.md', () => {
   const protocol = readFileSync(join(__dirname, '..', '..', '..', 'skills', 'magic-start', 'references', 'workflow.md'), 'utf-8')
 
   it.each(['en', 'fr'] as const)('appear verbatim in the protocol (%s)', (lang) => {
-    for (const template of [NEXT_STEP_LINE[lang], CHAINING[lang], CHAIN_BROKEN[lang]]) {
+    for (const template of [NEXT_STEP_LINE[lang], CHAINING[lang], CHAIN_BROKEN[lang], THEN_LINE[lang]]) {
       expect(protocol).toContain(`\`\`\`text\n${template}\n\`\`\``)
     }
     for (const [skill, purpose] of Object.entries(PURPOSES[lang])) {
