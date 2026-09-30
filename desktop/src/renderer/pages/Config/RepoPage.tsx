@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Trash2, AlertTriangle, Plus, ArrowLeft, Building2, Lock, FolderOpen, Upload,
+  Trash2, AlertTriangle, Plus, ArrowLeft, Building2, Lock, FolderOpen, Upload, Github, Jira,
   Ticket, Settings2, Puzzle, GitBranch, FolderGit2, Workflow,
 } from '@ds/desktop/icons'
 import { useAuth } from '../../hooks/useAuth'
@@ -148,6 +148,12 @@ const TRACKER_MODE_LABELS: Record<(typeof TRACKER_MODES)[number], MessageKey> = 
   jira: 'repo.tracker.modeJira',
 }
 
+/** Each tracker's own mark, before its name in the picker and on its trigger. */
+const TRACKER_MODE_ICONS: Record<(typeof TRACKER_MODES)[number], IconComponent> = {
+  github: Github,
+  jira: Jira,
+}
+
 
 
 const PLAN_SPLITTING_LABELS: Record<(typeof PLAN_SPLITTING_MODES)[number], MessageKey> = {
@@ -238,6 +244,11 @@ function enumControl<T extends string>(
     width: SELECT_WIDTH,
     ariaLabel,
   }
+}
+
+/** `enumControl`'s select, each option wearing its value's glyph. */
+function withIcons<T extends string>(control: ReturnType<typeof enumControl<T>>, icons: Record<T, IconComponent>) {
+  return { ...control, options: control.options.map((option) => ({ ...option, icon: icons[option.value as T] })) }
 }
 
 /**
@@ -2725,14 +2736,14 @@ export function RepoPage({ repoName }: RepoPageProps) {
               label: t('repo.tracker.mode'),
               hint: t('repo.tracker.modeHelp'),
               disabled: readOnly,
-              control: enumControl(
+              control: withIcons(enumControl(
                 t,
                 trackerModeVal,
                 TRACKER_MODES,
                 TRACKER_MODE_LABELS,
                 (mode) => handlePlanSettingChange('tracker', mode === 'github' ? 'github' : 'jira'),
                 t('repo.tracker.mode'),
-              ),
+              ), TRACKER_MODE_ICONS),
             },
             // Only reachable in Jira mode, because it is a question about a CHOICE: with
             // GitHub alone there is nothing to ask about. On means `ask`, off means the
