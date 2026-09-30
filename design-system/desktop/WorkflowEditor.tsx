@@ -80,8 +80,11 @@ export interface WorkflowEditorLabels {
 const HISTORY_MAX_HEIGHT = `calc(100% - 16px - ${6 + 15 + CANVAS_MINIMAP_SIZE.height + 12}px)`
 
 export interface WorkflowEditorHistory {
-  /** The button's tooltip: "History". */
+  /** The button's word: "History". */
   label: string
+  /** After it, when the flow last changed: "Updated 2 h ago". */
+  detail?: string
+  detailTitle?: string
   open: boolean
   onToggle: () => void
   panel: Omit<WorkflowHistoryProps, 'onClose' | 'ground' | 'className'>
@@ -274,7 +277,7 @@ export function WorkflowEditor({
             onToggle={readOnly ? undefined : onToggle}
             focusRequest={focusRequest}
             repositories={repositories}
-            history={history ? { label: history.label, active: history.open, onClick: history.onToggle } : undefined}
+            history={history ? { label: history.label, detail: history.detail, detailTitle: history.detailTitle, active: history.open, onClick: history.onToggle } : undefined}
             // The dock has no close button: the title bar's, top right, is the way out.
             dock={readOnly ? { labels: labels.dock } : {
               labels: labels.dock,

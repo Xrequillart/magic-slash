@@ -725,6 +725,7 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.workflow.editor.repository': 'Repository',
   'repo.workflow.editor.back': 'Revenir à la configuration',
   'repo.workflow.history.button': 'Historique',
+  'repo.workflow.history.updated': 'Mis à jour {when}',
   'repo.workflow.history.title': 'Historique',
   'repo.workflow.history.loading': 'Chargement de l’historique',
   'repo.workflow.history.empty': 'Aucune modification enregistrée pour l’instant. Chaque enregistrement du workflow et chaque changement des réglages de start apparaîtront ici.',

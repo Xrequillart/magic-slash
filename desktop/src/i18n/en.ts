@@ -761,6 +761,7 @@ export const en = {
   'repo.workflow.editor.repository': 'Repository',
   'repo.workflow.editor.back': 'Back to settings',
   'repo.workflow.history.button': 'History',
+  'repo.workflow.history.updated': 'Updated {when}',
   'repo.workflow.history.title': 'History',
   'repo.workflow.history.loading': 'Loading the history',
   'repo.workflow.history.empty': 'No change recorded yet. Every save of the workflow and every change of the start settings will show here.',

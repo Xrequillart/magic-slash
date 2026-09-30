@@ -169,6 +169,7 @@ function EditorSpecimen() {
         positions={flow.positions}
         history={{
           label: 'History',
+          detail: 'Updated 12 min ago',
           open: historyOpen,
           onToggle: () => {
             if (!historyOpen) setSelected(null)

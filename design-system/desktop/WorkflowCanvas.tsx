@@ -125,6 +125,10 @@ export interface WorkflowCanvasRepositories {
 export interface WorkflowCanvasHistory {
   /** Its word, beside its mark: "History". */
   label: string
+  /** After the word, quieter: when the flow last changed, "Updated 2 h ago". */
+  detail?: string
+  /** The full date, as the detail's tooltip. */
+  detailTitle?: string
   active: boolean
   onClick: () => void
 }
@@ -453,6 +457,12 @@ export function WorkflowCanvas({
             >
               <Icon glyph={History} size="sm" tone="inherit" className={history.active ? 'text-accent' : 'text-text-secondary'} />
               {history.label}
+              {history.detail && (
+                <>
+                  <span aria-hidden="true" className="h-3.5 w-px bg-line" />
+                  <span className="text-text-secondary" title={history.detailTitle}>{history.detail}</span>
+                </>
+              )}
             </button>
           )}
           <div className="flex h-7 items-center gap-3 rounded-lg border border-line bg-bg-secondary px-2.5">

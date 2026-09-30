@@ -1068,19 +1068,31 @@ function WorkflowPanel({
     repo: t('repo.workflow.source.repo'),
     plugin: t('repo.workflow.source.plugin'),
   }
-  // Who changed the flow and its start settings, and when. Read while the panel is open,
-  // again after a save of either: `revision` moves with the flow's row, `startVersion`
-  // with the repository's start column.
-  const changeLog = useWorkflowHistory(repoName, editing && historyOpen, `${revision ?? ''}|${startVersion}`)
+  // Who changed the flow and its start settings, and when. Read as soon as the editor
+  // opens, since the button beside the picker says when the last change was, and again
+  // after a save of either: `revision` moves with the flow's row, `startVersion` with the
+  // repository's start column.
+  const changeLog = useWorkflowHistory(repoName, editing, `${revision ?? ''}|${startVersion}`)
+  // The relative dates move on while the editor stays open: "2 min ago" must not stick.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!editing) return
+    setNow(Date.now())
+    const timer = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(timer)
+  }, [editing])
   // A selection opens the inspector, which takes the history's place.
   useEffect(() => {
     if (selected) setHistoryOpen(false)
   }, [selected])
+  const historyEntries = useMemo(
+    () => (changeLog.read && !changeLog.read.failed ? buildWorkflowHistory(changeLog.read.events) : []),
+    [changeLog.read],
+  )
   const historyItems = useMemo<WorkflowHistoryItem[]>(() => {
     const read = changeLog.read
     if (!read || read.failed) return []
-    const now = Date.now()
-    return buildWorkflowHistory(read.events).map((entry) => ({
+    return historyEntries.map((entry) => ({
       id: entry.id,
       actor: entry.actorId ? planAuthor(entry.actorId, read.emailByAuthor) : t('plans.history.formerMember'),
       avatar: { src: (entry.actorId && read.avatarByAuthor[entry.actorId]) || null, alt: '' },
@@ -1089,9 +1101,15 @@ function WorkflowPanel({
       dateTitle: new Date(entry.at).toLocaleString(),
       changes: entry.changes.map((change) => workflowChangeLabel(t, change)),
     }))
-  }, [changeLog.read, t])
+  }, [changeLog.read, historyEntries, now, t])
+  // The newest entry is the last change: the entries are newest first.
+  const lastChange = historyEntries[0]?.at
   const historyProp: WorkflowEditorHistory = {
     label: t('repo.workflow.history.button'),
+    detail: lastChange === undefined ? undefined : t('repo.workflow.history.updated', {
+      when: now - lastChange < 60_000 ? t('relative.justNow') : t('relative.ago', { time: formatTimestamp(lastChange, now, t) }),
+    }),
+    detailTitle: lastChange === undefined ? undefined : new Date(lastChange).toLocaleString(),
     open: historyOpen,
     onToggle: () => {
       if (!historyOpen) setSelected(null)
