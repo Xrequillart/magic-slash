@@ -7,6 +7,7 @@ import { WorkflowCanvas, type WorkflowCanvasLabels, type WorkflowCanvasRepositor
 import type { WorkflowDockLabels } from './WorkflowDock'
 import { WorkflowInspector, type WorkflowInspectorLabels, type WorkflowInspectorProps, type WorkflowInspectorTarget } from './WorkflowInspector'
 import type { WorkflowProblemItem } from './WorkflowProblems'
+import { WorkflowHistory, type WorkflowHistoryProps } from './WorkflowHistory'
 import { WorkflowSkillPicker, type WorkflowSkillOption, type WorkflowSkillPickerLabels } from './WorkflowSkillPicker'
 import type { WorkflowCanvasLink, WorkflowCanvasNode } from './workflowLayout'
 
@@ -23,6 +24,9 @@ import type { WorkflowCanvasLink, WorkflowCanvasNode } from './workflowLayout'
  *    a link opens it, a press on the ground or its X closes it;
  *  - top left, beside the legend, the REPOSITORY PICKER (`repositories`), when there are
  *    others to go to: which flow is edited is the caller's, the picker only asks;
+ *  - right of it, the HISTORY button (`history`): who changed the flow and its start
+ *    settings, and when (`WorkflowHistory`), in the inspector's place on the right while it
+ *    is open. Which of the two shows is the caller's: it closes one as it opens the other;
  *  - at the bottom centre, the DOCK (`WorkflowDock`): add a step, undo and redo, the
  *    zoom, the problems, discard, save, close.
  *
@@ -67,12 +71,25 @@ export interface WorkflowEditorLabels {
   back: string
 }
 
+export interface WorkflowEditorHistory {
+  /** The button's tooltip: "History". */
+  label: string
+  open: boolean
+  onToggle: () => void
+  panel: Omit<WorkflowHistoryProps, 'onClose' | 'ground' | 'className'>
+}
+
 export interface WorkflowEditorProps {
   /** In the middle of the title bar: "Editing the workflow of magic-slash". */
   title: string
   /** The picker left of the canvas's legend, to edit another repository's flow. Not drawn without it. */
   repositories?: WorkflowCanvasRepositories
   labels: WorkflowEditorLabels
+  /**
+   * The history button and its panel. Not drawn without it. The panel's content is
+   * `WorkflowHistory`'s props, its X is `onToggle`.
+   */
+  history?: WorkflowEditorHistory
 
   nodes: WorkflowCanvasNode[]
   links: WorkflowCanvasLink[]
@@ -130,6 +147,7 @@ export function WorkflowEditor({
   title,
   repositories,
   labels,
+  history,
   nodes,
   links,
   entry,
@@ -227,6 +245,7 @@ export function WorkflowEditor({
             onToggle={readOnly ? undefined : onToggle}
             focusRequest={focusRequest}
             repositories={repositories}
+            history={history ? { label: history.label, active: history.open, onClick: history.onToggle } : undefined}
             // The dock has no close button: the title bar's, top right, is the way out.
             dock={readOnly ? { labels: labels.dock } : {
               labels: labels.dock,
@@ -262,7 +281,13 @@ export function WorkflowEditor({
           </div>
         )}
 
-        {panel && (
+        {history?.open && (
+          <div className="ms-wfe-panel absolute right-4 top-4 max-h-[calc(100%-10.5rem)] w-[30rem] overflow-y-auto rounded-xl shadow-2xl">
+            <WorkflowHistory {...history.panel} ground="raised" onClose={history.onToggle} />
+          </div>
+        )}
+
+        {panel && !history?.open && (
           <div
             ref={panelRef}
             className={`ms-wfe-panel absolute right-4 top-4 max-h-[calc(100%-10.5rem)] w-[27rem] overflow-y-auto rounded-xl shadow-2xl ${open ? '' : 'ms-wfe-panel-leaving'}`.trim()}

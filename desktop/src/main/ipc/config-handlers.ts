@@ -42,9 +42,9 @@ import { getGitHubAuthStatus } from '../github'
 import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '../config/defaults'
 import {
-  AGENT_SORT_MODES, codeSyntaxTheme, DEFAULT_CODE_SYNTAX, DEFAULT_CODE_FONT_SIZE, isValidAgentSort,
+  AGENT_SORT_MODES, EMPTY_WORKFLOW_HISTORY, codeSyntaxTheme, DEFAULT_CODE_SYNTAX, DEFAULT_CODE_FONT_SIZE, isValidAgentSort,
   cleanQuickSettings, cleanSidebarPages, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidTheme,
-  type CodeSample, type Config, type FilePreviewResult, type ChangedLines, type RepositoryWorkflowOverlay, type RepositoryWorkflowSaveResult,
+  type CodeSample, type Config, type FilePreviewResult, type ChangedLines, type RepositoryWorkflowOverlay, type RepositoryWorkflowSaveResult, type WorkflowHistoryRead,
 } from '../../types'
 import { applyLanguage, applyTheme, currentTheme } from '../appearance'
 import { CODE_SAMPLES } from '../code-sample'
@@ -73,6 +73,7 @@ import {
 import { ensureHydrated } from '../store/hydrate'
 import { hydrateWorkflows, overlayForRepo, revisionForRepo, setWorkflow, workflowForRepo } from '../workflow/workflows'
 import { notifyWorkflowsChanged } from '../workflow/notify'
+import { listWorkflowHistory } from '../cloud/workflowHistory'
 import { EMPTY_OVERLAY, cleanOverlay, isOverlay, problems, sameOverlay } from '../../workflow/overlay'
 import { getStore, isStoreConflict, isStoreForbidden } from '../store/Store'
 import {
@@ -777,6 +778,17 @@ export function setupConfigHandlers() {
     return repoId
       ? { overlay: overlayForRepo(repoId), revision: revisionForRepo(repoId) }
       : { overlay: EMPTY_OVERLAY, revision: null }
+  })
+
+  // Who changed the repository's workflow, or its /magic:start settings, and when:
+  // `settings_events`, read under the reader's own RLS. READ ONLY, like the plans'
+  // history: the audit trigger writes it, never the app. A repository with no cloud id
+  // has no history yet, which is an empty one, not a failure.
+  ipcMain.handle('config:getRepositoryWorkflowHistory', async (_event, payload: unknown): Promise<WorkflowHistoryRead> => {
+    const name = repoNameOf(payload, 'workflow history')
+    await ensureHydrated()
+    const repoId = repoIdOf(name)
+    return repoId ? listWorkflowHistory(repoId) : EMPTY_WORKFLOW_HISTORY
   })
 
   // Save a repository's workflow from the editor. Judged here with the rules the

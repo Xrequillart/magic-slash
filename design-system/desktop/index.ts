@@ -343,7 +343,7 @@ export type { ToggleButtonProps, ToggleButtonSize } from './ToggleButton'
 // rule 1). Its data types are exported too, since a caller maps its own model onto
 // them; the layout and the handle ids stay inside the folder.
 export { WorkflowCanvas } from './WorkflowCanvas'
-export type { WorkflowCanvasLabels, WorkflowCanvasProps, WorkflowCanvasRepositories, WorkflowCanvasSelection } from './WorkflowCanvas'
+export type { WorkflowCanvasHistory, WorkflowCanvasLabels, WorkflowCanvasProps, WorkflowCanvasRepositories, WorkflowCanvasSelection } from './WorkflowCanvas'
 export { WorkflowNode } from './WorkflowNode'
 export type { WorkflowNodeData, WorkflowNodeLabels, WorkflowNodeType } from './WorkflowNode'
 export { WorkflowEdge } from './WorkflowEdge'
@@ -362,7 +362,9 @@ export { workflowCardWidths, workflowPositions } from './workflowLayout'
 export { WorkflowDock } from './WorkflowDock'
 export type { WorkflowDockLabels, WorkflowDockProps } from './WorkflowDock'
 export { WorkflowEditor } from './WorkflowEditor'
-export type { WorkflowEditorBanner, WorkflowEditorLabels, WorkflowEditorProps } from './WorkflowEditor'
+export type { WorkflowEditorBanner, WorkflowEditorHistory, WorkflowEditorLabels, WorkflowEditorProps } from './WorkflowEditor'
+export { WorkflowHistory } from './WorkflowHistory'
+export type { WorkflowHistoryItem, WorkflowHistoryLabels, WorkflowHistoryProps } from './WorkflowHistory'
 // The editor around the canvas: no xyflow in any of them.
 export { WorkflowInspector } from './WorkflowInspector'
 export type {

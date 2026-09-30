@@ -37,7 +37,9 @@ import {
   type WorkflowCanvasLabels,
   type WorkflowCanvasSelection,
   type WorkflowEditorBanner,
+  type WorkflowEditorHistory,
   type WorkflowEditorLabels,
+  type WorkflowHistoryItem,
   type WorkflowInspectorIntro,
   type WorkflowInspectorSettings,
   type WorkflowInspectorTarget,
@@ -72,6 +74,10 @@ import {
   unreachableSteps, type WorkflowOverlay, type WorkflowProblem,
 } from '../../../workflow/overlay'
 import type { ListingEntry } from '../../hooks/useSkills'
+import { useWorkflowHistory } from '../../hooks/useWorkflowHistory'
+import { buildWorkflowHistory, type StartSettingKey, type StartSettingValue, type WorkflowHistoryChange } from '../../utils/workflowHistory'
+import { planAuthor } from '../../utils/planRows'
+import { formatTimestamp } from '../../components/agent-info-sidebar/utils'
 import {
   folderSkillsOf, modeHasEffect, problemNodeIds, skillDescription, stepColors, skillDisplayName, skillOptions, stepHints, workflowCanvasData,
 } from './workflowCanvasData'
@@ -313,6 +319,60 @@ const START_EXECUTION_LABEL: Record<(typeof START_EXECUTION_MODES)[number], Mess
 const START_CRITIC_ITERATIONS = { min: 0, max: 5, fallback: 3 }
 const START_CRITIC_SCORE = { min: 1, max: 10, fallback: 8 }
 
+/** Each /magic:start setting's name, for the workflow history's lines. */
+const START_SETTING_LABEL: Record<StartSettingKey, MessageKey> = {
+  exploration: 'repo.start.exploration',
+  plan: 'repo.start.plan',
+  planReview: 'repo.start.planReview',
+  planApproval: 'repo.start.planApproval',
+  execution: 'repo.start.execution',
+  simplify: 'repo.start.simplify',
+  criticIterations: 'repo.start.criticIterations',
+  criticMinScore: 'repo.start.criticMinScore',
+}
+
+/** A start setting's value in words: on or off, the mode's label, or the number itself. */
+function startValueLabel(t: Translate, setting: StartSettingKey, value: StartSettingValue): string {
+  if (typeof value === 'boolean') return t(value ? 'repo.workflow.history.on' : 'repo.workflow.history.off')
+  if (typeof value === 'number') return String(value)
+  const labels: Record<string, MessageKey> = setting === 'exploration' ? START_EXPLORATION_LABEL : setting === 'execution' ? START_EXECUTION_LABEL : {}
+  return Object.hasOwn(labels, value) ? t(labels[value]) : value
+}
+
+/** One change of a workflow history entry, as the sentence the panel lists under it. */
+function workflowChangeLabel(t: Translate, change: WorkflowHistoryChange): string {
+  const name = skillDisplayName
+  const kind = (value: 'auto' | 'suggest') => t(value === 'auto' ? 'repo.workflow.inspector.auto' : 'repo.workflow.inspector.suggest')
+  switch (change.kind) {
+    case 'step-added': return t('repo.workflow.history.stepAdded', { step: name(change.node) })
+    case 'step-removed': return t('repo.workflow.history.stepRemoved', { step: name(change.node) })
+    case 'step-mode':
+      return t(change.mode === 'blocking' ? 'repo.workflow.history.stepBlocking' : 'repo.workflow.history.stepAdvisory', { step: name(change.node) })
+    case 'step-color': return t('repo.workflow.history.stepColor', { step: name(change.node) })
+    case 'step-enabled':
+      return t(change.enabled ? 'repo.workflow.history.stepOn' : 'repo.workflow.history.stepOff', { step: name(change.node) })
+    case 'link-added':
+      return t('repo.workflow.history.linkAdded', { from: name(change.from), to: name(change.to), kind: kind(change.linkKind) })
+    case 'link-removed': return t('repo.workflow.history.linkRemoved', { from: name(change.from), to: name(change.to) })
+    case 'link-kind': return t('repo.workflow.history.linkKind', { from: name(change.from), to: name(change.to), kind: kind(change.linkKind) })
+    case 'link-outcome':
+      return change.outcome === undefined
+        ? t('repo.workflow.history.linkAnyOutcome', { from: name(change.from), to: name(change.to) })
+        : t('repo.workflow.history.linkOutcome', { from: name(change.from), to: name(change.to), outcome: change.outcome })
+    case 'moved':
+      return change.count === 1
+        ? t('repo.workflow.history.moved.one')
+        : t('repo.workflow.history.moved.other', { count: change.count })
+    case 'unreadable': return t('repo.workflow.history.unreadable')
+    case 'start':
+      return t('repo.workflow.history.start', {
+        setting: t(START_SETTING_LABEL[change.setting]),
+        from: startValueLabel(t, change.setting, change.from),
+        to: startValueLabel(t, change.setting, change.to),
+      })
+  }
+}
+
 const REVIEW_MODES = ['ask', 'post'] as const
 const REVIEW_MODE_LABEL: Record<(typeof REVIEW_MODES)[number], MessageKey> = {
   ask: 'repo.review.modeAsk',
@@ -463,6 +523,7 @@ function WorkflowPanel({
   openEditor,
   readOnly,
   stepSettings,
+  startVersion,
 }: {
   repoName: string
   /** Every configured repository, for the editor's picker. */
@@ -472,6 +533,8 @@ function WorkflowPanel({
   readOnly: boolean
   /** A step's own settings, by the skill it runs, for the inspector. RepoPage's, which holds them. */
   stepSettings: Readonly<Record<string, WorkflowStepConfig>>
+  /** The repository's /magic:start settings, serialised: the history reads again when they change. */
+  startVersion: string
 }) {
   const t = useT()
   const windowFullScreen = useIsFullScreen()
@@ -506,6 +569,8 @@ function WorkflowPanel({
   const [stale, setStale] = useState(false)
   const [copyOffer, setCopyOffer] = useState<string[] | null>(null)
   const [copying, setCopying] = useState(false)
+  // The history panel, in the inspector's place: opening one closes the other.
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   const saved = loaded && loaded !== 'error' ? loaded.saved : EMPTY_OVERLAY
   const revision = loaded && loaded !== 'error' ? loaded.revision : null
@@ -936,6 +1001,7 @@ function WorkflowPanel({
     setSelected(null)
     setDraft(savedRef.current)
     setHistory(EMPTY_HISTORY)
+    setHistoryOpen(false)
     setRefused(null)
     setSaveError(null)
     setStale(false)
@@ -956,6 +1022,7 @@ function WorkflowPanel({
       event.preventDefault()
       event.stopPropagation()
       if (selected) setSelected(null)
+      else if (historyOpen) setHistoryOpen(false)
       else requestClose()
       return
     }
@@ -1001,6 +1068,52 @@ function WorkflowPanel({
     repo: t('repo.workflow.source.repo'),
     plugin: t('repo.workflow.source.plugin'),
   }
+  // Who changed the flow and its start settings, and when. Read while the panel is open,
+  // again after a save of either: `revision` moves with the flow's row, `startVersion`
+  // with the repository's start column.
+  const changeLog = useWorkflowHistory(repoName, editing && historyOpen, `${revision ?? ''}|${startVersion}`)
+  // A selection opens the inspector, which takes the history's place.
+  useEffect(() => {
+    if (selected) setHistoryOpen(false)
+  }, [selected])
+  const historyItems = useMemo<WorkflowHistoryItem[]>(() => {
+    const read = changeLog.read
+    if (!read || read.failed) return []
+    const now = Date.now()
+    return buildWorkflowHistory(read.events).map((entry) => ({
+      id: entry.id,
+      actor: entry.actorId ? planAuthor(entry.actorId, read.emailByAuthor) : t('plans.history.formerMember'),
+      avatar: { src: (entry.actorId && read.avatarByAuthor[entry.actorId]) || null, alt: '' },
+      action: t(entry.scope === 'start' ? 'repo.workflow.history.editedStart' : 'repo.workflow.history.editedWorkflow'),
+      date: t('relative.ago', { time: formatTimestamp(entry.at, now, t) }),
+      dateTitle: new Date(entry.at).toLocaleString(),
+      changes: entry.changes.map((change) => workflowChangeLabel(t, change)),
+    }))
+  }, [changeLog.read, t])
+  const historyProp: WorkflowEditorHistory = {
+    label: t('repo.workflow.history.button'),
+    open: historyOpen,
+    onToggle: () => {
+      if (!historyOpen) setSelected(null)
+      setHistoryOpen(!historyOpen)
+    },
+    panel: {
+      state: changeLog.read === null ? 'loading' : changeLog.read.failed ? 'failed' : 'ready',
+      items: historyItems,
+      truncated: changeLog.read?.truncated ?? false,
+      onRetry: changeLog.retry,
+      labels: {
+        title: t('repo.workflow.history.title'),
+        close: t('common.close'),
+        loading: t('repo.workflow.history.loading'),
+        empty: t('repo.workflow.history.empty'),
+        failed: t('repo.workflow.history.failed'),
+        retry: t('common.retry'),
+        truncated: t('repo.workflow.history.truncated'),
+      },
+    },
+  }
+
   const editorLabels: WorkflowEditorLabels = {
     canvas: labels,
     back: t('repo.workflow.editor.back'),
@@ -1129,6 +1242,7 @@ function WorkflowPanel({
                   label: t('repo.workflow.editor.repository'),
                 } : undefined}
                 labels={editorLabels}
+                history={historyProp}
                 nodes={data.nodes}
                 links={data.links}
                 entry={data.entry}
@@ -2914,7 +3028,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {/* Mounted only while its tab is shown, which TabSweep's `tab ===` already
           guarantees: the canvas listens for the space bar on the whole document. */}
-      {tab === 'workflow' && <WorkflowPanel repoName={repoName} repositories={repositoryOptions} openEditor={openEditor} readOnly={readOnly} stepSettings={stepSettings} />}
+      {tab === 'workflow' && <WorkflowPanel repoName={repoName} repositories={repositoryOptions} openEditor={openEditor} readOnly={readOnly} stepSettings={stepSettings} startVersion={JSON.stringify(repo?.start ?? {})} />}
 
       {tab === 'annex' && (
         <div className="flex flex-col gap-6">

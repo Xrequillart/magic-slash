@@ -3,7 +3,7 @@ import type { AvatarSourceResult, AvatarWriteResult } from '../avatar'
 import type { UsernameCheckResult, UsernameSaveResult } from '../username'
 import type { ResolvedWorkflow } from '../workflow/model'
 import type { WorkflowOverlay } from '../workflow/overlay'
-import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanLiveChange, PlanOverview, PlanPresence, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata, RepositoryWorkflowOverlay, RepositoryWorkflowSaveResult, SkillShareResult, WorkflowChange } from '../types'
+import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanLiveChange, PlanOverview, PlanPresence, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata, RepositoryWorkflowOverlay, RepositoryWorkflowSaveResult, SkillShareResult, WorkflowChange, WorkflowHistoryRead } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -182,6 +182,13 @@ const configApi = {
    */
   getRepositoryWorkflowOverlay: (name: string): Promise<RepositoryWorkflowOverlay> =>
     ipcRenderer.invoke('config:getRepositoryWorkflowOverlay', { name }),
+
+  /**
+   * Who changed the repository's workflow or its /magic:start settings, and when, newest
+   * first. READ ONLY: the database's audit trigger writes it, nothing here can.
+   */
+  getRepositoryWorkflowHistory: (name: string): Promise<WorkflowHistoryRead> =>
+    ipcRenderer.invoke('config:getRepositoryWorkflowHistory', { name }),
 
   /**
    * Save the repository's workflow. An empty overlay puts it back on the default flow.

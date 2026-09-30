@@ -6,7 +6,9 @@ import {
   Background, BackgroundVariant, Panel, ReactFlow, useReactFlow, type Connection, type Edge, type IsValidConnection, type Node, type NodeChange, type OnConnectEnd,
 } from '@xyflow/react'
 
+import { ButtonIcon } from './ButtonIcon'
 import { CanvasMinimap } from './CanvasMinimap'
+import { History } from './icons'
 import { Select, type SelectOption } from './Select'
 import { Text } from './Text'
 import { WorkflowDock, type WorkflowDockProps } from './WorkflowDock'
@@ -78,7 +80,8 @@ import {
  *    the dock reads the flow's store, so the canvas draws it inside the flow.
  *
  * `repositories` puts a picker left of the legend, as tall as it and on the same plate:
- * the editor's way over to another repository's flow. Data, like the rest.
+ * the editor's way over to another repository's flow. `history`, a button right of it,
+ * opens the flow's history. Data, like the rest.
  */
 
 /** What the editor needs the inspector to show: a step, or the link between two. */
@@ -116,6 +119,14 @@ export interface WorkflowCanvasRepositories {
   onChange: (value: string) => void
   /** The picker's accessible name: "Repository". */
   label: string
+}
+
+/** The button right of the picker that opens the flow's history. `active` while it is open. */
+export interface WorkflowCanvasHistory {
+  /** Its tooltip and accessible name: "History". */
+  label: string
+  active: boolean
+  onClick: () => void
 }
 
 export interface WorkflowCanvasProps {
@@ -156,6 +167,8 @@ export interface WorkflowCanvasProps {
   legend?: 'top-left' | 'bottom-left'
   /** The picker left of the legend. Not drawn without it. */
   repositories?: WorkflowCanvasRepositories
+  /** The history button, right of the picker. Not drawn without it. */
+  history?: WorkflowCanvasHistory
   /** The minimap in the corner. On by default; off for a canvas that is an illustration of a flow, not a place to move around. */
   minimap?: boolean
 }
@@ -200,6 +213,7 @@ export function WorkflowCanvas({
   legend = 'top-left',
   scrollPans = true,
   repositories,
+  history,
   minimap = true,
 }: WorkflowCanvasProps) {
   // Where a card is being dragged to, until it is let go and the caller has its place.
@@ -424,6 +438,19 @@ export function WorkflowCanvas({
               width={REPOSITORIES_WIDTH}
               floating
             />
+          )}
+          {/* On the legend's plate, as tall as it: three plates in a row, one ground. */}
+          {history && (
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-bg-secondary">
+              <ButtonIcon
+                icon={History}
+                title={history.label}
+                onClick={history.onClick}
+                active={history.active}
+                tone="ghost"
+                size="sm"
+              />
+            </div>
           )}
           <div className="flex h-7 items-center gap-3 rounded-lg border border-line bg-bg-secondary px-2.5">
             {LINK_KINDS.map((kind) => (

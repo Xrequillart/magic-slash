@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from 'react'
 import {
   WorkflowEditor,
+  type WorkflowHistoryItem,
   type WorkflowCanvasLink, type WorkflowCanvasNode, type WorkflowCanvasSelection, type WorkflowEditorLabels, type WorkflowInspectorTarget,
   type WorkflowProblemItem,
 } from '@ds/desktop'
@@ -20,9 +21,32 @@ const SAMPLE_REPOSITORIES = [
   { value: 'infra', label: 'infra', color: '#f59e0b' },
 ]
 
+const NO_FACE = { src: null, alt: '' }
+
+const SAMPLE_HISTORY: WorkflowHistoryItem[] = [
+  {
+    id: 'h3', actor: 'camille@example.com', avatar: NO_FACE, action: 'changed the start settings',
+    date: '12 min ago', changes: ['Plan approval: on → off', 'Minimum score: 8 → 9'],
+  },
+  {
+    id: 'h2', actor: 'alex@example.com', avatar: NO_FACE, action: 'edited the workflow',
+    date: '2 h ago', changes: ['Added the Lint step', 'Commit → PR: Automatic'],
+  },
+  {
+    id: 'h1', actor: 'alex@example.com', avatar: NO_FACE, action: 'edited the workflow',
+    date: '3 d ago', changes: ['Turned off Resolve', 'Moved 2 cards on the canvas'],
+  },
+]
+
+const HISTORY_LABELS = {
+  title: 'History', close: 'Close', loading: 'Loading the history', empty: 'No change recorded yet.',
+  failed: 'Couldn’t load the history.', retry: 'Retry', truncated: 'Only the latest changes are shown.',
+}
+
 const PROPS: PropRow[] = [
   { name: 'nodes · links · entry · positions', type: 'WorkflowCanvasNode[] · WorkflowCanvasLink[] · string[] · Record<id, {x, y}>', required: true, description: 'The flow, as WorkflowCanvas draws it. A card without a position is laid out; a moved one stays where it was left.' },
   { name: 'selected · onSelect · target', type: 'WorkflowCanvasSelection | null · (selection) => void · WorkflowInspectorTarget | null', required: true, description: 'The selection, and what the floating inspector shows for it. The inspector is only drawn while something is selected; its X and a press on the ground both report null.' },
+  { name: 'history', type: 'WorkflowEditorHistory', description: 'The button right of the repository picker, and the panel it opens in the inspector’s place: who changed the flow and its start settings, and when, each save with what it changed (WorkflowHistory). Which of the history and the inspector shows is the caller’s. Not drawn without it.' },
   { name: 'repositories', type: 'WorkflowCanvasRepositories', description: 'A picker left of the legend, as tall as it, to edit another repository’s flow. The editor only reports the choice: switching is the caller’s. Not drawn without it.' },
   { name: 'onMove · onConnect', type: '(id, position) => void · (from, to, outcome?) => void', required: true, description: 'A card was dragged and let go; a link was drawn out of a port, the outcome being the row it left from.' },
   { name: 'onToggle', type: '(id, enabled: boolean) => void', required: true, description: 'A step’s eye was pressed, on its card or in the inspector: turn it on or off. Start’s is greyed (alwaysOn).' },
@@ -62,6 +86,8 @@ function EditorSpecimen() {
   const [history, setHistory] = useState<{ past: Flow[]; future: Flow[] }>({ past: [], future: [] })
   const [saved, setSaved] = useState<Flow>(initial)
   const [selected, setSelected] = useState<WorkflowCanvasSelection | null>(null)
+  // The history panel takes the inspector's place: opening one closes the other.
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [focus, setFocus] = useState<{ id: string; n: number } | null>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   // The picker only: the flow stays the same whichever repository it says.
@@ -129,8 +155,20 @@ function EditorSpecimen() {
         links={flow.links}
         entry={SAMPLE_ENTRY}
         positions={flow.positions}
+        history={{
+          label: 'History',
+          open: historyOpen,
+          onToggle: () => {
+            if (!historyOpen) setSelected(null)
+            setHistoryOpen(!historyOpen)
+          },
+          panel: { state: 'ready', items: SAMPLE_HISTORY, labels: HISTORY_LABELS },
+        }}
         selected={selected}
-        onSelect={setSelected}
+        onSelect={(next) => {
+          setSelected(next)
+          if (next) setHistoryOpen(false)
+        }}
         onMove={(id, position) => edit({ ...flow, positions: { ...flow.positions, [id]: position } })}
         onConnect={(from, to, outcome) => {
           edit({ ...flow, links: [...flow.links, outcome ? { from, to, kind: 'suggest', outcome } : { from, to, kind: 'suggest' }] })

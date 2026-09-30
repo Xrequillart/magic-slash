@@ -2923,6 +2923,39 @@ export interface RepositoryWorkflowOverlay {
 }
 
 /**
+ * One change to a repository's workflow or to its /magic:start settings, as the audit
+ * trigger recorded it (`settings_events`, 20260801110000 and 20260930090000). `before` and
+ * `after` are the raw jsonb: the stored overlay (null when there was no row, the default
+ * flow) or the `start` column. Untrusted: the renderer parses them before drawing anything.
+ */
+export interface WorkflowHistoryEvent {
+  id: string
+  scope: 'workflow' | 'start'
+  before: unknown
+  after: unknown
+  /** Absent once the actor's account is deleted, or for a change made outside the app. */
+  actorId?: string
+  occurredAt: string
+}
+
+/**
+ * A repository's workflow history (`config:getRepositoryWorkflowHistory`), newest first,
+ * with its people resolved the way a plan history's are. `truncated`: the oldest events
+ * were not read. `failed`: the read did not happen, not a flow nobody changed.
+ */
+export interface WorkflowHistoryRead {
+  events: WorkflowHistoryEvent[]
+  emailByAuthor: Record<string, string>
+  avatarByAuthor: Record<string, string>
+  truncated: boolean
+  failed: boolean
+}
+
+export const EMPTY_WORKFLOW_HISTORY: WorkflowHistoryRead = {
+  events: [], emailByAuthor: {}, avatarByAuthor: {}, truncated: false, failed: false,
+}
+
+/**
  * What saving a repository's workflow came to (`config:saveRepositoryWorkflow`).
  *  - saved:    stored, and served from now on. `workflow` is what the skills now get,
  *              `overlay` what the editor keeps editing (null when it went back to the

@@ -443,7 +443,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   workflowinspector: ['banner', 'button', 'buttonicon', 'card', 'icon', 'select', 'settingscard', 'text'],
   workflowskillpicker: ['menu'],
   workflowproblems: ['icon', 'text'],
-  workfloweditor: ['apptitlebar', 'workflowcanvas', 'workflowinspector', 'workflowskillpicker', 'banner'],
+  workfloweditor: ['apptitlebar', 'workflowcanvas', 'workflowinspector', 'workflowskillpicker', 'banner', 'timelineline', 'emptystate'],
 }
 
 /** The graph as `EntryHeader` wants it: an id and the label to print on the chip. */
@@ -480,7 +480,7 @@ export function usedByOf(id: EntryId): { id: EntryId; label: string }[] {
  * NOTHING IS PINNED. Move a component's drawing and its tier moves with it on the next
  * render, which is the whole point: the rail cannot fall behind the folder.
  */
-const TIER_NAMES = ['Foundation', 'Primary', 'Secondary', 'Tertiary', 'Quaternary', 'Quinary']
+const TIER_NAMES = ['Foundation', 'Primary', 'Secondary', 'Tertiary', 'Quaternary', 'Quinary', 'Senary']
 
 const TIER_NOTES = [
   'Draws itself. Depends on nothing.',
@@ -489,6 +489,7 @@ const TIER_NOTES = [
   'A whole region of a page.',
   'A whole side of the window, regions arranged in it.',
   'A column with those sides arranged in it.',
+  'A whole screen, everything else floating on it.',
 ]
 
 /**
