@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'
-import { execFileSync } from 'child_process'
+import * as http from 'http'
+import { execFile, execFileSync } from 'child_process'
 
 // configureClaudeHooks resolves ~/.claude at import time, so the mock is hoisted and
 // the path computed without touching the filesystem.
@@ -559,6 +560,141 @@ describe('the pending-question hooks', () => {
     expect(remaining.some((c) => c.includes('/question'))).toBe(false)
     // The user's own hook is untouched — the filter is by marker, not by event.
     expect(remaining).toContain('mine.sh')
+  })
+})
+
+describe('the custom skill context hook', () => {
+  const postSkillHooks = (): Hook[] =>
+    ((readSettings().hooks.PostToolUse as Hook[]) ?? []).filter((h) => h.matcher === 'Skill')
+  const command = () => postSkillHooks()[0].hooks![0].command!
+  const PAYLOAD = JSON.stringify({ hook_event_name: 'PostToolUse', tool_name: 'Skill', cwd: '/tmp/api', tool_input: { skill: 'check-types' } })
+
+  /**
+   * Run the hook asynchronously, stdout captured: the fake app below lives in this
+   * process, so the synchronous `run` would block the very event loop it answers on.
+   */
+  function runAsync(env: Record<string, string>): Promise<string> {
+    // Stripped rather than set to undefined, which a child would inherit as the string
+    // "undefined": the tests run inside an app terminal as often as not.
+    const { MAGIC_SLASH_PORT: _port, MAGIC_SLASH_TERMINAL_ID: _id, ...inherited } = process.env
+    return new Promise((resolve, reject) => {
+      const child = execFile('/bin/sh', ['-c', command()], {
+        env: { ...inherited, HOME: TMP_HOME, ...env },
+      }, (error, stdout) => (error ? reject(error) : resolve(stdout)))
+      // A hook that finds no port exits without reading stdin; that EPIPE is the
+      // harness's, not the hook's (see `run` above).
+      child.stdin?.on('error', () => {})
+      child.stdin?.end(PAYLOAD)
+    })
+  }
+
+  type FakeApp = { port: string; received: { url?: string; method?: string; body: string }[] }
+
+  /** A stand-in for the app, for the length of `body`: records what it is sent, answers what the test says. */
+  async function withApp(answer: (res: http.ServerResponse) => void, body: (app: FakeApp) => Promise<void>) {
+    const received: FakeApp['received'] = []
+    const server = http.createServer((req, res) => {
+      const chunks: Buffer[] = []
+      req.on('data', (c: Buffer) => chunks.push(c))
+      req.on('end', () => {
+        received.push({ url: req.url, method: req.method, body: Buffer.concat(chunks).toString('utf-8') })
+        answer(res)
+      })
+    })
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const port = String((server.address() as { port: number }).port)
+    try {
+      await body({ port, received })
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()))
+    }
+  }
+
+  const HOOK_JSON = JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: 'Magic Slash workflow context: check-types' } })
+  const answerHookJson = (res: http.ServerResponse) => {
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(HOOK_JSON)
+  }
+  const answerStatus = (status: number, text = '') => (res: http.ServerResponse) => {
+    res.writeHead(status)
+    res.end(text)
+  }
+
+  it('is installed once, on PostToolUse, scoped to the Skill tool', () => {
+    configureClaudeHooks()
+    configureClaudeHooks()
+    expect(postSkillHooks()).toHaveLength(1)
+    expect(command()).toContain('/workflow/context')
+    expect(command()).toContain('magic-slash-desktop')
+  })
+
+  // Its stdout is the context Claude Code injects; silencing it would inject nothing.
+  it('never sends its stdout to /dev/null', () => {
+    configureClaudeHooks()
+    expect(command()).not.toMatch(/(^|[^2])>\s*\/dev\/null/)
+    expect(command()).toContain('curl -sf --max-time 2 -X POST --data-binary @-')
+  })
+
+  it('leaves the PreToolUse telemetry hook on the Skill tool as it was', () => {
+    configureClaudeHooks()
+    expect(skillHooks()).toHaveLength(1)
+    expect(skillHooks()[0].hooks![0].command).toContain('pending-skills.ndjson')
+    expect(skillHooks()[0].hooks![0].command).not.toContain('/workflow/context')
+  })
+
+  it('is removed by removeClaudeHooks', () => {
+    configureClaudeHooks()
+    removeClaudeHooks()
+    const remaining = Object.values(readSettings().hooks ?? {})
+      .flatMap((entries) => (entries as Hook[]).flatMap((h) => h.hooks!.map((x) => x.command!)))
+    expect(remaining.some((c) => c.includes('/workflow/context'))).toBe(false)
+  })
+
+  it('adds no permission: hooks never prompt', () => {
+    configureClaudeHooks()
+    const allow: string[] = readSettings().permissions.allow
+    expect(allow.some((p) => p.includes('workflow/context') || p.includes('--data-binary'))).toBe(false)
+  })
+
+  it('POSTs its stdin to the app and prints the answer, from the app\'s own terminal', async () => {
+    configureClaudeHooks()
+    await withApp(answerHookJson, async (app) => {
+      expect(await runAsync({ MAGIC_SLASH_PORT: app.port })).toBe(HOOK_JSON)
+      expect(app.received).toEqual([{ url: '/workflow/context', method: 'POST', body: PAYLOAD }])
+    })
+  })
+
+  // A plain `claude` session has no MAGIC_SLASH_PORT: the published port file is how a
+  // magic skill finds the app there, and how this hook does too.
+  it('finds the app through the published port file outside the app', async () => {
+    configureClaudeHooks()
+    await withApp(answerHookJson, async (app) => {
+      fs.mkdirSync(path.join(TMP_HOME, '.config', 'magic-slash'), { recursive: true })
+      fs.writeFileSync(path.join(TMP_HOME, '.config', 'magic-slash', 'port'), app.port)
+      expect(await runAsync({})).toBe(HOOK_JSON)
+      expect(app.received).toHaveLength(1)
+    })
+  })
+
+  // An app that predates the route answers 404 "Not found"; printed, that would be a
+  // hook output that is not JSON after every Skill call.
+  it('prints nothing when the app answers an error', async () => {
+    configureClaudeHooks()
+    await withApp(answerStatus(404, 'Not found'), async (app) => {
+      expect(await runAsync({ MAGIC_SLASH_PORT: app.port })).toBe('')
+    })
+  })
+
+  it('prints nothing on a 204, and nothing with no app at all', async () => {
+    configureClaudeHooks()
+    let closedPort = ''
+    await withApp(answerStatus(204), async (app) => {
+      expect(await runAsync({ MAGIC_SLASH_PORT: app.port })).toBe('')
+      closedPort = app.port
+    })
+    // No port anywhere, then a port nobody listens on: both exit 0, silently.
+    expect(await runAsync({})).toBe('')
+    expect(await runAsync({ MAGIC_SLASH_PORT: closedPort })).toBe('')
   })
 })
 

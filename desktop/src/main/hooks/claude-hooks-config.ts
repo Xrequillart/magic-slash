@@ -29,6 +29,9 @@ const STATUSLINE_DEFAULT_PATH = path.join(STABLE_CONFIG_DIR, 'statusline-default
 // time rather than baking in the path of whoever installed the app.
 const SPOOL_DIR_RELATIVE = '.config/magic-slash'
 const SKILL_SPOOL_RELATIVE = `${SPOOL_DIR_RELATIVE}/pending-skills.ndjson`
+// The port the running app publishes (status-server.ts, publishPort), relative for the
+// same reason. The stable dir, as the skills' own port lookup reads it.
+const PORT_FILE_RELATIVE = `${SPOOL_DIR_RELATIVE}/port`
 
 
 /**
@@ -597,6 +600,64 @@ function getQuestionHookConfig(
   }
 }
 
+/**
+ * Hands a custom skill its workflow context the moment the model invokes it (#333).
+ *
+ * A PostToolUse hook on the Skill tool: it fires once Claude Code has loaded the
+ * skill, and what it prints as `hookSpecificOutput.additionalContext` reaches the
+ * model before the skill's body. The app decides everything (see POST
+ * /workflow/context in status-server.ts and workflow/skillContext.ts): for a custom
+ * skill placed on a node of its repository's flow it answers the hook JSON, and for
+ * any other skill, magic ones included, an empty 204. So this command's stdout is not
+ * noise to silence like every other hook's here: it IS the injected context, and it
+ * must never be redirected to /dev/null.
+ *
+ * WHY THE GUARD DIFFERS FROM THE OTHER HOOKS
+ * ---------------------------------------------------------------------------
+ * The status and question hooks need MAGIC_SLASH_TERMINAL_ID: they report on an agent
+ * of the app, and a terminal the app did not spawn has none. This one reports on
+ * nothing. It asks the app about a repository, as a magic skill does when it reads
+ * `/workflow` from any terminal, so it finds the port the same way the skills do:
+ * `$MAGIC_SLASH_PORT` inside the app, else the port file the app publishes. A custom
+ * skill run in a plain `claude` session then ends on its flow's next step exactly as a
+ * magic skill run there would.
+ *
+ * WHY `-f`
+ * ---------------------------------------------------------------------------
+ * An app that predates the route answers 404 with a "Not found" body, and without
+ * `-f` curl would print it: a hook stdout that is not JSON, shown after every Skill
+ * call in every session until the app is updated. `-f` prints nothing on an HTTP
+ * error, which Claude Code reads as a hook with nothing to say. `--max-time 2` for
+ * the reason given on the question hooks (a socket that accepts and never answers),
+ * and `|| true` so that a closed app, refusing the connection, is a no-op too.
+ *
+ * WHY NO magic-* FILTER HERE, UNLIKE THE TELEMETRY HOOK
+ * ---------------------------------------------------------------------------
+ * The telemetry hook filters in jq because what it keeps is written down. This one
+ * sends every skill's name, and must: a custom skill is exactly what it is for. The
+ * name only travels to 127.0.0.1, where the route answers from the in-memory flow
+ * and records nothing: no spool, no telemetry, no log line, no Supabase write.
+ *
+ * NO PERMISSION ENTRY
+ * ---------------------------------------------------------------------------
+ * Hooks are run by Claude Code itself, not through the Bash tool, so they are never
+ * matched against the allowlist and never prompt. MAGIC_SLASH_BASE_PERMISSIONS is
+ * deliberately left as it is: a grant for this command would approve nothing, and
+ * would widen every session for it.
+ */
+function getCustomSkillContextHookConfig(): HookConfig {
+  const portFile = `"$HOME/${PORT_FILE_RELATIVE}"`
+  const command = `PORT="\${MAGIC_SLASH_PORT:-$(cat ${portFile} 2>/dev/null)}"; [ -n "$PORT" ] && curl -sf --max-time 2 -X POST --data-binary @- "http://127.0.0.1:$PORT/workflow/context" || true # ${MAGIC_SLASH_HOOK_MARKER}`
+
+  return {
+    matcher: 'Skill',
+    hooks: [{
+      type: 'command',
+      command
+    }]
+  }
+}
+
 function isMagicSlashHook(hookConfig: HookConfig): boolean {
   return hookConfig.hooks?.some(h => h.command?.includes(MAGIC_SLASH_HOOK_MARKER)) ?? false
 }
@@ -671,6 +732,10 @@ export function configureClaudeHooks(options?: { atlassian?: boolean }): void {
     //   - the typed slash command, which never reaches a tool call.
     settings.hooks.PreToolUse!.push(getSkillHookConfig())
     settings.hooks.UserPromptSubmit!.push(getPromptSkillHookConfig())
+
+    // A custom skill's workflow context, on the same Skill tool, AFTER it is loaded:
+    // PostToolUse, so what it injects lands before the skill's body (see the builder).
+    settings.hooks.PostToolUse!.push(getCustomSkillContextHookConfig())
 
     // Pending questions, for the menu bar panel. Five more ADDITIONAL entries on
     // events already hooked above — pushed, never assigned, or the state reporting

@@ -3,7 +3,7 @@ import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupRepoHandlers } from './ipc/repo-handlers'
 import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
-import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback } from './hooks/status-server'
+import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setCustomSkillContextProvider, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback } from './hooks/status-server'
 import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion } from './questions/pending-questions'
 import { answerPendingQuestion } from './questions/answer-question'
 import { recordSkillInvocation } from './usage/skill-invocations'
@@ -26,6 +26,7 @@ import { archiveLegacyConfig } from './config/legacy-cleanup'
 import { expandPath } from './config/validation'
 import { resolveRepoIds } from '../repoMatch'
 import { buildWorkflowPayload } from '../workflow/payload'
+import { buildSkillContext } from '../workflow/skillContext'
 import { workflowForRepo } from './workflow/workflows'
 import { readAgents } from './config/agents'
 import { TrayManager } from './tray/tray-manager'
@@ -875,6 +876,17 @@ async function initializeHooksAndSessions() {
     setWorkflowProvider((path: string | null, skill: string | null) => {
       const { repoId, key } = repoForPath(path)
       return buildWorkflowPayload(key ?? null, workflowForRepo(repoId), skill)
+    })
+    // The workflow context of a custom skill the model just invoked (#333): the same
+    // lookup as /workflow above, from the skill's name alone, so a custom step finds its
+    // node exactly as a magic skill does. A path matching no repository gets the default
+    // flow, which has no custom step, so the answer there is null and the skill runs
+    // untouched; so does a magic skill, which reads /workflow itself. The messages
+    // follow the repository's discussion language, the one its magic skills speak.
+    setCustomSkillContextProvider((cwd: string, skill: string) => {
+      const { repositories, repoId, key } = repoForPath(cwd)
+      const language = key && repositories[key].languages?.discussion === 'fr' ? 'fr' : 'en'
+      return buildSkillContext(buildWorkflowPayload(key ?? null, workflowForRepo(repoId), skill), language)
     })
     setWorktreeFilesWriter((files: string[], path: string | null, repo: string | null) => {
       const { repositories, repoId, key: keyForPath } = repoForPath(path)

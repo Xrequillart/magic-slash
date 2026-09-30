@@ -25,6 +25,7 @@ import {
   setConfigProvider,
   setAgentProvider,
   setWorkflowProvider,
+  setCustomSkillContextProvider,
   setWorktreeFilesWriter,
   setSkillCallback,
   setQuestionCallback,
@@ -262,6 +263,91 @@ describe('read-back endpoints', () => {
       expect(body).toBe('null')
       expect(error).toHaveBeenCalled()
       error.mockRestore()
+    })
+  })
+
+  describe('POST /workflow/context', () => {
+    const hookInput = (skill: unknown, cwd: unknown = '/tmp/api-PROJ-1') =>
+      JSON.stringify({ hook_event_name: 'PostToolUse', tool_name: 'Skill', cwd, tool_input: { skill }, tool_response: { success: true } })
+
+    let calls: [string, string][] = []
+    let skillCalls: string[] = []
+
+    beforeEach(() => {
+      calls = []
+      skillCalls = []
+      setCustomSkillContextProvider((cwd, skill) => {
+        calls.push([cwd, skill])
+        return skill === 'check-types' ? 'Magic Slash workflow context: check-types' : null
+      })
+      setSkillCallback((_id, skill) => skillCalls.push(skill))
+    })
+
+    it('answers the hook JSON carrying the context of a custom skill on a node', async () => {
+      const { status, body } = await httpPost('/workflow/context', hookInput('check-types'))
+      expect(status).toBe(200)
+      expect(JSON.parse(body)).toEqual({
+        hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: 'Magic Slash workflow context: check-types' },
+      })
+      expect(calls).toEqual([['/tmp/api-PROJ-1', 'check-types']])
+    })
+
+    it('drops a leading slash from the skill name', async () => {
+      const { status } = await httpPost('/workflow/context', hookInput('/check-types'))
+      expect(status).toBe(200)
+      expect(calls).toEqual([['/tmp/api-PROJ-1', 'check-types']])
+    })
+
+    // An empty body is an empty hook stdout: the skill runs as if the app were not
+    // there. Anything else (`null`, `OK`) would be a malformed hook output.
+    it('answers 204 with no body when the provider has nothing to say', async () => {
+      const { status, body } = await httpPost('/workflow/context', hookInput('magic-commit'))
+      expect(status).toBe(204)
+      expect(body).toBe('')
+    })
+
+    it('answers 204 without asking the provider for a body it cannot use', async () => {
+      for (const body of ['', 'not json', 'null', '[]', hookInput(42), hookInput(''), hookInput('/'), hookInput('check-types', null), JSON.stringify({ cwd: '/tmp/api' })]) {
+        const res = await httpPost('/workflow/context', body)
+        expect({ body, status: res.status, text: res.body }).toEqual({ body, status: 204, text: '' })
+      }
+      expect(calls).toEqual([])
+    })
+
+    it('answers 204 when the provider throws, and logs nothing that names the skill', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      setCustomSkillContextProvider(() => {
+        throw new Error('boom')
+      })
+      try {
+        const { status, body } = await httpPost('/workflow/context', hookInput('acme-secret-deploy'))
+        expect(status).toBe(204)
+        expect(body).toBe('')
+        const logged = [...error.mock.calls, ...log.mock.calls, ...warn.mock.calls].flat().map(String).join(' ')
+        expect(logged).not.toContain('acme-secret-deploy')
+      } finally {
+        error.mockRestore()
+        log.mockRestore()
+        warn.mockRestore()
+      }
+    })
+
+    it('never reaches the skill telemetry callback', async () => {
+      await httpPost('/workflow/context', hookInput('check-types'))
+      await httpPost('/workflow/context', hookInput('magic-commit'))
+      expect(skillCalls).toEqual([])
+    })
+
+    it('refuses a body over 256KB without asking the provider', async () => {
+      const huge = hookInput(`check-types${' '.repeat(300 * 1024)}`)
+      // The server drops the connection once the cap is crossed, which curl turns into
+      // an empty stdout just like a 204: either is "nothing injected".
+      const res = await httpPost('/workflow/context', huge).catch(() => ({ status: 0, body: '' }))
+      expect([0, 204]).toContain(res.status)
+      expect(res.body).toBe('')
+      expect(calls).toEqual([])
     })
   })
 
