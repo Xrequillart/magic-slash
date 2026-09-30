@@ -16,9 +16,9 @@ it is, not on a flow: even a custom flow with a review node gets no next step ou
 
 Each repository follows a workflow: a graph of skills saying what may run after what. Magic Slash
 Desktop serves it. Its built-in steps are always today's cycle written down (plan, start, commit,
-pr, resolve, done); a repository may add **custom steps** between them, skills of its own that are
-not `magic-*` (`check-types`, or `plugin:foo` for a plugin skill). A repository that added none
-gets the default flow.
+pr, resolve, done); a repository may add **custom steps**, skills of its own that are not
+`magic-*` (`check-types`, or `plugin:foo` for a plugin skill), and link them to any step, built-in
+or custom. A repository that added none gets the default flow.
 
 A custom skill knows nothing of this protocol: it does not read `/workflow`, does not record a run
 and does not say what comes next. The `magic-*` skill before it carries its hand-offs instead, in
@@ -117,7 +117,7 @@ Here the repository runs its own `check-types` skill right after each commit, th
 | `link.kind: auto` | The next skill runs in this same session once this one is done (§4, step 5). It still asks its own questions. A link into `magic-start` is never `auto`. |
 | `link.outcome` | The link applies only when this skill ended on that outcome. `null` or absent: it applies whatever the outcome. A link leaving a custom step never has one. |
 | `link.skill` | The target's skill: `magic-<name>` for a built-in step, the skill's own name (`check-types`, `plugin:foo`) for a custom one. |
-| `link.then` | For a custom target, the links leaving that custom step, nested the same way through consecutive custom steps down to the next built-in step. `[]` for a built-in target. |
+| `link.then` | For a custom target, the links leaving that custom step, nested the same way through consecutive custom steps down to the next built-in step. `[]` for a built-in target, and for a custom step already on that path (custom steps can loop). |
 | `node.id` | `plan`, `start`, `commit`… for a built-in step, `custom:<skill>` for a custom one. A custom node is `required: false`, with no `outcomes` and no `provides`. |
 | `node.mode: blocking` | If this skill fails, its `auto` link is broken: the next skill is only suggested, with the reason. |
 | `node.mode: advisory` | A failure is reported, but an `auto` link is still followed. |
