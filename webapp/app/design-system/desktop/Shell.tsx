@@ -52,6 +52,7 @@ import { TrackerBadgeEntry } from './entries/TrackerBadgeEntry'
 import { CopyButtonEntry } from './entries/CopyButtonEntry'
 import { CommandChipEntry } from './entries/CommandChipEntry'
 import { ChipInputEntry } from './entries/ChipInputEntry'
+import { ColorSwatchesEntry } from './entries/ColorSwatchesEntry'
 import { StickyBarEntry } from './entries/StickyBarEntry'
 import { MetaBlockEntry } from './entries/MetaBlockEntry'
 import { CommentCardEntry } from './entries/CommentCardEntry'
@@ -230,6 +231,7 @@ const ENTRIES: Record<
   copybutton: CopyButtonEntry,
   commandchip: CommandChipEntry,
   chipinput: ChipInputEntry,
+  colorswatches: ColorSwatchesEntry,
   stickybar: StickyBarEntry,
   metablock: MetaBlockEntry,
   commentcard: CommentCardEntry,

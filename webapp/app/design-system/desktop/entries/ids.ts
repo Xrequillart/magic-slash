@@ -72,6 +72,7 @@ export type EntryId =
   | 'copybutton'
   | 'commandchip'
   | 'chipinput'
+  | 'colorswatches'
   | 'stickybar'
   | 'metablock'
   | 'commentcard'
@@ -210,6 +211,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   copybutton: 'CopyButton',
   commandchip: 'CommandChip',
   chipinput: 'ChipInput',
+  colorswatches: 'ColorSwatches',
   stickybar: 'StickyBar',
   metablock: 'MetaBlock',
   commentcard: 'CommentCard',
@@ -369,7 +371,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   fieldtable: ['button', 'text'],
   factlist: ['status', 'text'],
   languagecard: ['card', 'settingrow', 'text'],
-  settingrow: ['button', 'buttonicon', 'chipinput', 'icon', 'input', 'livepill', 'select', 'stepper', 'switch', 'text'],
+  settingrow: ['button', 'buttonicon', 'chipinput', 'colorswatches', 'icon', 'input', 'livepill', 'select', 'stepper', 'switch', 'text'],
   settingscard: ['banner', 'card', 'settingrow', 'text'],
   disclosurecard: ['card', 'icon', 'settingrow', 'text'],
   healthcard: ['banner', 'card', 'icon', 'loader', 'repairlist', 'settingrow', 'text'],
@@ -390,6 +392,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   copybutton: ['buttonicon'],
   commandchip: ['copybutton', 'icon'],
   chipinput: ['button', 'icon', 'input', 'text'],
+  colorswatches: [],
   stickybar: [],
   metablock: ['text'],
   commentcard: ['card', 'text'],
@@ -613,6 +616,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   copybutton: 'A string onto the clipboard, and the tick that says so',
   commandchip: 'A command you are meant to type',
   chipinput: 'A set of words the reader builds',
+  colorswatches: 'One colour picked among a few',
   stickybar: 'An opaque band pinned to the top of a pane',
   metablock: 'One field of a metadata column',
   commentcard: 'One turn in a conversation',

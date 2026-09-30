@@ -115,3 +115,59 @@ export const REPO_COLOR_CHOICES = [
  * the tile you just chose is the one directly above, in the same column.
  */
 export const REPO_QUICK_COLORS = REPO_COLOR_CHOICES.slice(0, 6)
+
+/**
+ * The grounds a CUSTOM step's card can wear on the workflow canvas, tinted over the
+ * card's own opaque ground.
+ *
+ * NO NEUTRAL IN IT, on purpose: the built-in steps wear the plain ground, and a custom
+ * step that could too would stop reading as one. Slate is left out for the same reason.
+ *
+ * Twenty-two: eleven hues of `REPO_COLOR_CHOICES`, spectrum order, each in its vivid and
+ * its deep tone, so a picker eleven wide shows the two tones of a hue one above the
+ * other, the way the repository colour grid does.
+ */
+export const WORKFLOW_STEP_COLORS = [
+  // Vivid
+  '#EF4444', // red
+  '#F97316', // orange
+  '#EAB308', // yellow
+  '#84CC16', // lime
+  '#10B981', // emerald
+  '#06B6D4', // cyan
+  '#0EA5E9', // sky
+  '#3B82F6', // blue
+  '#6366F1', // indigo
+  '#A855F7', // purple
+  '#EC4899', // pink
+  // Deep
+  '#B91C1C', // red
+  '#C2410C', // orange
+  '#A16207', // yellow
+  '#4D7C0F', // lime
+  '#047857', // emerald
+  '#0E7490', // cyan
+  '#0369A1', // sky
+  '#1D4ED8', // blue
+  '#4338CA', // indigo
+  '#7E22CE', // purple
+  '#BE185D', // pink
+]
+
+/**
+ * The ground a custom step wears: its own when it is one of `WORKFLOW_STEP_COLORS`,
+ * otherwise one handed out by its place among the custom steps (a step saved before
+ * steps had colours, or a colour hand-written outside the palette). Never none.
+ */
+export function workflowStepColor(stored: string | undefined, index: number): string {
+  const own = stored?.toUpperCase()
+  if (own && WORKFLOW_STEP_COLORS.includes(own)) return own
+  return WORKFLOW_STEP_COLORS[index % WORKFLOW_STEP_COLORS.length]
+}
+
+/** A new step's ground: the first colour no other custom step wears, or the next in turn. */
+export function nextWorkflowStepColor(taken: readonly string[]): string {
+  const used = new Set(taken.map((color) => color.toUpperCase()))
+  return WORKFLOW_STEP_COLORS.find((color) => !used.has(color))
+    ?? WORKFLOW_STEP_COLORS[taken.length % WORKFLOW_STEP_COLORS.length]
+}

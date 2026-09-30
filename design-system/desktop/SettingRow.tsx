@@ -2,6 +2,7 @@ import { Button, type ButtonProps } from './Button'
 import { ButtonIcon, type ButtonIconProps } from './ButtonIcon'
 import { Icon } from './Icon'
 import { ChipInput, type ChipInputProps } from './ChipInput'
+import { ColorSwatches, type ColorSwatchesProps } from './ColorSwatches'
 import { Input, type InputProps } from './Input'
 import { Kbd, type KbdProps } from './Kbd'
 import { LivePill, type LivePillProps } from './LivePill'
@@ -92,6 +93,8 @@ export type SettingRowControl =
    * being read on is "Active now", and there is nothing to set on it.
    */
   | ({ kind: 'live' } & LivePillProps)
+  /** A COLOUR TO PICK, among a few: `ColorSwatches`. Best `stacked`, a row of them is wide. */
+  | ({ kind: 'swatches' } & ColorSwatchesProps)
 
 /**
  * WHERE THE CONTROL SITS — beside the label, or under it.
@@ -239,6 +242,8 @@ export function SettingRow({
       <Kbd key={index} {...one} />
     ) : one.kind === 'live' ? (
       <LivePill key={index} {...one} />
+    ) : one.kind === 'swatches' ? (
+      <ColorSwatches key={index} {...one} />
     ) : (
       <Switch key={index} {...one} />
     ),
