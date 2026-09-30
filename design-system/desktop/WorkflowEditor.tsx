@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type AnimationEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type AnimationEvent } from 'react'
 
 import { AppTitleBar } from './AppTitleBar'
 import { Banner, type BannerVariant } from './Banner'
@@ -185,6 +185,11 @@ export function WorkflowEditor({
   const panel = target ?? exiting
   // One key per thing selected, so a new selection replays the swap and a re-render does not.
   const panelKey = !panel ? '' : panel.type === 'node' ? `node:${panel.step.id}` : `link:${panel.link.from}>${panel.link.to}`
+  // The panel scrolls, and outlives its selection: a new one starts back at the top.
+  const panelRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (panelRef.current) panelRef.current.scrollTop = 0
+  }, [panelKey])
 
   const onRootAnimationEnd = (event: AnimationEvent<HTMLDivElement>) => {
     if (leaving && event.target === event.currentTarget && event.animationName === 'ms-wfe-leave') onLeft?.()
@@ -256,6 +261,7 @@ export function WorkflowEditor({
 
         {panel && (
           <div
+            ref={panelRef}
             className={`ms-wfe-panel absolute right-4 top-4 max-h-[calc(100%-10.5rem)] w-[27rem] overflow-y-auto rounded-xl shadow-2xl ${open ? '' : 'ms-wfe-panel-leaving'}`.trim()}
             onAnimationEnd={(event) => { if (event.animationName === 'ms-wfe-panel-out' && !open) setExiting(null) }}
           >
