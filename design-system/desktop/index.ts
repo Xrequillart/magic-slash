@@ -339,9 +339,11 @@ export type { ToggleButtonProps, ToggleButtonSize } from './ToggleButton'
 // rule 1). Its data types are exported too, since a caller maps its own model onto
 // them; the layout and the handle ids stay inside the folder.
 export { WorkflowCanvas } from './WorkflowCanvas'
-export type { WorkflowCanvasLabels, WorkflowCanvasProps } from './WorkflowCanvas'
-export { WorkflowNode } from './WorkflowNode'
-export type { WorkflowNodeData, WorkflowNodeType } from './WorkflowNode'
+export type { WorkflowCanvasLabels, WorkflowCanvasProps, WorkflowCanvasSelection } from './WorkflowCanvas'
+export { WorkflowInsertNode, WorkflowNode } from './WorkflowNode'
+export type {
+  WorkflowInsertNodeData, WorkflowInsertNodeType, WorkflowNodeData, WorkflowNodeLabels, WorkflowNodeType,
+} from './WorkflowNode'
 export { WorkflowEdge } from './WorkflowEdge'
 export type { WorkflowEdgeData, WorkflowEdgeType } from './WorkflowEdge'
 export { CanvasMinimap } from './CanvasMinimap'
@@ -350,7 +352,19 @@ export type {
   WorkflowCanvasLink,
   WorkflowCanvasLinkKind,
   WorkflowCanvasNode,
+  WorkflowCanvasNodeMode,
 } from './workflowLayout'
+// The editor around the canvas: no xyflow in any of them.
+export { WorkflowInspector } from './WorkflowInspector'
+export type {
+  WorkflowInspectorLabels, WorkflowInspectorLink, WorkflowInspectorProps, WorkflowInspectorStep, WorkflowInspectorTarget,
+} from './WorkflowInspector'
+export { WorkflowSkillPicker } from './WorkflowSkillPicker'
+export type {
+  WorkflowSkillOption, WorkflowSkillPickerLabels, WorkflowSkillPickerProps, WorkflowSkillSource,
+} from './WorkflowSkillPicker'
+export { WorkflowProblems } from './WorkflowProblems'
+export type { WorkflowProblemItem, WorkflowProblemsLabels, WorkflowProblemsProps } from './WorkflowProblems'
 export { skillIcon } from './skillIcons'
 // Icons are imported from `@ds/desktop/icons` directly rather than through here: an
 // app pulls dozens of them per file, and routing that through the component barrel

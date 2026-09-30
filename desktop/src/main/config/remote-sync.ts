@@ -21,6 +21,11 @@ import { hydrateWorkflows } from '../workflow/workflows'
 //    knows nothing about, and a rename or an org move changes which repos are
 //    visible at all. Reconstructing that from one row would be guesswork.
 //
+//  - repository_workflows: reloaded too, on their own (refreshWorkflows). A flow is
+//    not part of the config, so the config reload's "nothing changed" early return
+//    would swallow a flow-only change; and a repo shared or unshared changes which
+//    flows are visible, so the repositories reload refreshes them as well.
+//
 // This module never writes to the store. Everything here came FROM the database.
 // ---------------------------------------------------------------------------
 
@@ -37,6 +42,8 @@ export interface RemoteSyncEmitters {
   onConfigChanged: (config: Config) => void
   /** A repository reload landed: re-run the local path validation. */
   onRepositoriesReloaded: () => void
+  /** These repositories' workflows changed: the interface reads them again. */
+  onWorkflowsChanged: (repoIds: string[]) => void
 }
 
 let emitters: RemoteSyncEmitters | null = null
@@ -163,8 +170,11 @@ async function runRefresh(): Promise<void> {
     if (!hasConfigCache()) return
     const prev = readConfig()
     // The repositories' workflows ride the same reload, in parallel and whether or not
-    // the config itself moved: nothing else would ever refresh them. Never rejects.
-    const [next] = await Promise.all([hydrateConfig(), hydrateWorkflows()])
+    // the config itself moved: nothing else would ever refresh them. Never rejects, and
+    // serialized with refreshWorkflows' loads by the loader itself.
+    const [next, workflowsChanged] = await Promise.all([hydrateConfig(), hydrateWorkflows()])
+    // Before the config's own early return: a flow can move while the config did not.
+    if (workflowsChanged.length > 0) emitters?.onWorkflowsChanged(workflowsChanged)
     // Same object means hydrateConfig discarded its load — either it failed, or a
     // local edit landed mid-flight and is the fresher value. Nothing was adopted.
     if (next === prev) return
@@ -178,6 +188,37 @@ async function runRefresh(): Promise<void> {
       refreshQueued = false
       scheduleRemoteRefresh()
     }
+  }
+}
+
+/**
+ * Reload the repositories' workflows alone, for a change to `repository_workflows`.
+ * The event's payload is ignored, like the repositories': RLS decides what is
+ * visible, and the reload reads exactly that. Tells the interface which flows moved.
+ *
+ * Not debounced (flows are saved one click at a time). Never two loads at once either,
+ * but that is the loader's rule, not this function's: hydrateWorkflows serializes every
+ * caller, this one and the config reload's alike, so an event landing mid-load is
+ * answered by a read that starts after it.
+ *
+ * Events landing together share that follow-up load, and the first refresh waiting on
+ * it is the one that reports it: the others would only tell the interface twice.
+ */
+let awaitedLoad: Promise<string[]> | null = null
+
+export async function refreshWorkflows(): Promise<void> {
+  // Before hydration, the workflows are loaded with the config anyway.
+  if (!hasConfigCache()) return
+  const load = hydrateWorkflows()
+  if (load === awaitedLoad) return
+  awaitedLoad = load
+  try {
+    const changed = await load
+    if (changed.length > 0) emitters?.onWorkflowsChanged(changed)
+  } catch (error) {
+    console.error('[remote-sync] workflow refresh failed:', error)
+  } finally {
+    if (awaitedLoad === load) awaitedLoad = null
   }
 }
 

@@ -1,4 +1,7 @@
-import type { WorkflowCanvasLabels, WorkflowCanvasLink, WorkflowCanvasNode } from '@ds/desktop'
+import type {
+  WorkflowCanvasLabels, WorkflowCanvasLink, WorkflowCanvasNode, WorkflowInspectorLabels, WorkflowProblemItem, WorkflowProblemsLabels,
+  WorkflowSkillOption, WorkflowSkillPickerLabels,
+} from '@ds/desktop'
 
 /**
  * The default workflow, as the four canvas entries draw it.
@@ -77,4 +80,99 @@ export function sampleSubset(ids: string[]): Subset {
 /** The same, out of the custom loop flow. */
 export function loopSubset(ids: string[]): Subset {
   return subset(LOOP_NODES, LOOP_LINKS, ids)
+}
+
+/**
+ * THE EDITABLE LINE, as the workflow editor draws a repository's own flow: the default
+ * six steps, locked, with one custom step (`lint`, blocking) between start and commit,
+ * chained from start on its own. Line order, since the editable canvas reads `nodes` as
+ * the line. `lint` carries a warning and `plan` a problem, so the specimens show both.
+ *
+ * The problem is a real rule of the model: a link into start cannot be automatic, since
+ * starting a ticket always opens a new agent. The sample breaks it on purpose.
+ */
+export const EDIT_LABELS: WorkflowCanvasLabels = {
+  ...SAMPLE_LABELS,
+  insert: 'Add a step here',
+  locked: 'Built-in step, locked',
+  blocking: 'Blocking',
+  advisory: 'Advisory',
+}
+
+export const LINT_WARNING = 'lint is not installed on this machine, so this step is skipped here.'
+export const START_PROBLEM = 'A link into Start cannot be automatic: starting a ticket always opens a new agent.'
+
+const locked = (n: WorkflowCanvasNode): WorkflowCanvasNode => ({ ...n, locked: true })
+
+export const EDIT_NODES: WorkflowCanvasNode[] = [
+  { ...locked(SAMPLE_NODES[0]), problem: true },
+  locked(SAMPLE_NODES[1]),
+  { id: 'custom:lint', label: 'Lint', skill: 'lint', outcomes: [], mode: 'blocking', warning: LINT_WARNING },
+  ...SAMPLE_NODES.slice(2).map(locked),
+]
+
+/** The kinds the sample overrides, keyed `from>to` like the app's overlay. Anything else suggests. */
+export const EDIT_KINDS: Record<string, WorkflowCanvasLink['kind']> = {
+  'plan>start': 'auto',
+  'start>custom:lint': 'auto',
+  'pr>resolve': 'auto',
+}
+
+/**
+ * The links of a line: one per pair of neighbours. PR keeps its outcome on the hop out
+ * of it, the way the app splits the default pr to resolve link.
+ */
+export function lineLinks(nodes: WorkflowCanvasNode[], kinds: Record<string, WorkflowCanvasLink['kind']>): WorkflowCanvasLink[] {
+  return nodes.slice(1).map((to, i) => {
+    const from = nodes[i]
+    const link: WorkflowCanvasLink = { from: from.id, to: to.id, kind: kinds[`${from.id}>${to.id}`] ?? 'suggest' }
+    if (from.id === 'pr') link.outcome = 'review_comments'
+    return link
+  })
+}
+
+export const EDIT_LINKS: WorkflowCanvasLink[] = lineLinks(EDIT_NODES, EDIT_KINDS)
+
+/** What a repository could add, from the three places a skill comes from. `lint` is on the line already. */
+export const SAMPLE_SKILLS: WorkflowSkillOption[] = [
+  { name: 'lint', source: 'custom', disabled: true },
+  { name: 'changelog', source: 'custom' },
+  { name: 'security-scan', source: 'repo' },
+  { name: 'design-check', source: 'repo' },
+  { name: 'docs:sync', source: 'plugin' },
+]
+
+const SOURCES = { custom: 'Your skills', repo: 'This repository', plugin: 'Plugins' }
+
+export const PICKER_LABELS: WorkflowSkillPickerLabels = {
+  title: 'Add a step',
+  empty: 'No skill to add. Create one in the Skills page first.',
+  inWorkflow: 'In the workflow',
+  sources: SOURCES,
+}
+
+export const INSPECTOR_LABELS: WorkflowInspectorLabels = {
+  title: 'Selection',
+  empty: 'Select a step or a link to edit it.',
+  skill: 'Skill',
+  mode: 'Mode',
+  kind: 'Chaining',
+  outcome: 'Taken on',
+  blocking: 'Blocking: a failure stops the flow',
+  advisory: 'Advisory: reports and goes on',
+  auto: 'Automatic',
+  suggest: 'Suggested',
+  remove: 'Remove step',
+  builtIn: 'Built-in step, locked. It cannot be removed or changed.',
+  sources: SOURCES,
+  inWorkflow: 'In the workflow',
+}
+
+export const SAMPLE_PROBLEMS: WorkflowProblemItem[] = [
+  { id: 'auto-into-start', message: START_PROBLEM, nodeId: 'plan' },
+]
+
+export const PROBLEMS_LABELS: WorkflowProblemsLabels = {
+  title: '1 problem to fix before saving',
+  show: 'Show on the canvas',
 }

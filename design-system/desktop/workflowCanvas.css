@@ -86,6 +86,28 @@
   fill: rgb(var(--c-text-secondary) / 0.7);
 }
 
+/*
+ * THE EDITABLE CANVAS. A card and a link are pressed to select them, so both say so;
+ * the selected link is heavier and haloed in the accent, whichever of the two strokes
+ * it is. The editor's "+" nodes are not steps: the minimap leaves them out.
+ */
+.ms-workflow-canvas.ms-wf-editable .react-flow__node-workflow,
+.ms-workflow-canvas.ms-wf-editable .react-flow__edge {
+  cursor: pointer;
+}
+.ms-workflow-canvas .ms-wf-edge-selected {
+  stroke-width: 3;
+  filter: drop-shadow(0 0 3px rgb(var(--c-accent) / 0.55));
+}
+.ms-workflow-canvas .react-flow__minimap-node.ms-wf-mini-hidden {
+  display: none;
+}
+.ms-workflow-canvas .react-flow__node-workflow:focus-visible {
+  outline: 2px solid rgb(var(--c-accent));
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
 /* The dot travelling along an `auto` link. */
 .ms-workflow-canvas .ms-wf-pulse {
   fill: rgb(var(--c-accent));

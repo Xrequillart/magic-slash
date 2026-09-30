@@ -11,7 +11,7 @@ import { loadSession } from './session-store'
 // machine — stayed invisible to a running app until its next launch. These
 // channels close that gap.
 //
-// Two tables, and therefore TWO channels rather than one channel with two
+// Three tables, and therefore THREE channels rather than one channel with three
 // bindings. Realtime fails the whole JOIN when any binding is rejected, so a
 // problem with one table (a migration not yet applied, a policy change) would
 // otherwise take the other down with it — and the subscribe watchdog below would
@@ -20,15 +20,18 @@ import { loadSession } from './session-store'
 //
 //   'user-settings'     public.user_settings, filter user_id=eq.<uid>
 //   'user-repositories' public.repositories, NO filter
+//   'user-workflows'    public.repository_workflows, NO filter
 //
-// The repositories channel is unfiltered because no filter can express what the
+// The repositories and workflows channels are unfiltered because no filter can express what the
 // app actually wants — "my personal repos OR those of any org I belong to". The
 // table's RLS already expresses exactly that, and Realtime enforces the same
 // policies on the socket, so the stream is correctly scoped without a filter;
 // dropping the filter costs a few events for repos of a non-active org, which
-// the config read filters out anyway (CloudStore.fetchRepositories).
+// the config read filters out anyway (CloudStore.fetchRepositories). A workflow row
+// is visible exactly when its repository is (the same test, in its policy), so the
+// same holds there.
 //
-// Both channels are USER-scoped, not org-scoped: they must survive an org switch,
+// All three channels are USER-scoped, not org-scoped: they must survive an org switch,
 // and they must work for a user with no membership at all.
 // ---------------------------------------------------------------------------
 
@@ -38,6 +41,8 @@ export interface UserSyncHandlers {
   onSettingsRow: (row: UserSettingsRow) => void
   /** A repository row changed. Carries nothing: the consumer reloads. */
   onRepositoriesChanged: () => void
+  /** A repository's workflow row changed. Carries nothing either: the consumer reloads. */
+  onWorkflowsChanged: () => void
   /**
    * A channel (re)reached SUBSCRIBED. Events that occurred while the socket was
    * down are NOT replayed, so this is the only signal that the local copy may
@@ -55,6 +60,7 @@ export function setUserSyncHandlers(next: UserSyncHandlers | null): void {
 
 let settingsChannel: RealtimeChannel | null = null
 let repositoriesChannel: RealtimeChannel | null = null
+let workflowsChannel: RealtimeChannel | null = null
 let activeClient: SupabaseClient | null = null
 let subscribedUserId: string | null = null
 let authListenerUnsub: (() => void) | null = null
@@ -68,6 +74,13 @@ const SUBSCRIBE_DEADLINE_MS = 15_000
 let subscribeWatchdog: ReturnType<typeof setTimeout> | null = null
 /** Names of the channels that have reported SUBSCRIBED for the current user. */
 const live = new Set<string>()
+/** How many channels a full subscription is. The watchdog waits for all of them. */
+const CHANNEL_COUNT = 3
+
+/** The channels currently open, whichever they are. */
+function openChannels(): RealtimeChannel[] {
+  return [settingsChannel, repositoriesChannel, workflowsChannel].filter((c): c is RealtimeChannel => c !== null)
+}
 
 function clearSubscribeWatchdog(): void {
   if (subscribeWatchdog) {
@@ -80,8 +93,8 @@ function armSubscribeWatchdog(userId: string): void {
   clearSubscribeWatchdog()
   subscribeWatchdog = setTimeout(() => {
     subscribeWatchdog = null
-    // Both channels landed, or we already moved on to another user? Nothing to do.
-    if (live.size === 2 || subscribedUserId !== userId) return
+    // Every channel landed, or we already moved on to another user? Nothing to do.
+    if (live.size === CHANNEL_COUNT || subscribedUserId !== userId) return
     console.warn('[settings-realtime] channels never fully subscribed — tearing down so the next connectivity check retries')
     void stopUserSyncRealtime()
   }, SUBSCRIBE_DEADLINE_MS)
@@ -102,7 +115,7 @@ export function getActiveSyncUserId(): string | null {
 function ensureTokenReapply(client: SupabaseClient): void {
   if (authListenerUnsub) return
   const { data } = client.auth.onAuthStateChange((_event, session) => {
-    if (session?.access_token && (settingsChannel || repositoriesChannel)) {
+    if (session?.access_token && openChannels().length > 0) {
       client.realtime.setAuth(session.access_token)
     }
   })
@@ -123,7 +136,7 @@ function handleStatus(name: string, status: string): void {
   }
   if (live.has(name)) return
   live.add(name)
-  if (live.size === 2) clearSubscribeWatchdog()
+  if (live.size === CHANNEL_COUNT) clearSubscribeWatchdog()
   // The socket is live and RLS-authorized: anything that changed while it was
   // down was never delivered, so ask the consumer to reconcile.
   handlers?.onResubscribed()
@@ -147,6 +160,13 @@ function handleRepositoriesChange(): void {
   handlers?.onRepositoriesChanged()
 }
 
+function handleWorkflowsChange(): void {
+  // Payload-blind for the repositories' reason, and because the payload of a DELETE
+  // under RLS is not guaranteed to say which repo it was: reload, and let the reload
+  // say what moved.
+  handlers?.onWorkflowsChanged()
+}
+
 // Serialize all start/stop operations, for the same reason as the org-agents
 // channel: several callers can trigger a start, and each awaits getAuthedClient
 // before touching module state — without a lock two of them interleave across
@@ -161,7 +181,7 @@ function withLock<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /**
- * Subscribe to the signed-in user's settings and repository changes. Idempotent
+ * Subscribe to the signed-in user's settings, repository and workflow changes. Idempotent
  * for the same user; a different user tears the old channels down first. Degrades
  * to a no-op when cloud is unavailable / logged out. Serialized against every
  * other start/stop call (see withLock).
@@ -207,6 +227,15 @@ async function startInternal(userId: string): Promise<void> {
       )
       .subscribe((status: string) => handleStatus('user-repositories', status))
 
+    workflowsChannel = client
+      .channel('user-workflows')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'repository_workflows' },
+        handleWorkflowsChange,
+      )
+      .subscribe((status: string) => handleStatus('user-workflows', status))
+
     armSubscribeWatchdog(userId)
   } catch (error) {
     // subscribe() throws when the socket can't even be created. Release the slot
@@ -234,8 +263,7 @@ async function stopInternal(): Promise<void> {
     authListenerUnsub = null
   }
   if (activeClient) {
-    for (const channel of [settingsChannel, repositoriesChannel]) {
-      if (!channel) continue
+    for (const channel of openChannels()) {
       try {
         await activeClient.removeChannel(channel)
       } catch (error) {
@@ -245,5 +273,6 @@ async function stopInternal(): Promise<void> {
   }
   settingsChannel = null
   repositoriesChannel = null
+  workflowsChannel = null
   activeClient = null
 }

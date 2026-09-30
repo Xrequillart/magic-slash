@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Config } from '../../types'
 import type { UserSettingsRow } from '../store/user-settings-mapper'
-import type { Store } from '../store/Store'
+import type { Store, StoredWorkflow } from '../store/Store'
 import { setStore, NOOP_STORE } from '../store/Store'
 
 // hydrate.ts reaches Electron through appearance.ts, so only the one function
@@ -13,9 +13,11 @@ vi.mock('../store/hydrate', () => ({
 
 import { applyAppearanceFromConfig } from '../store/hydrate'
 import { hydrateConfig, readConfig, resetConfigCache } from './config'
+import { overlayForRepo, resetWorkflowsCache, revisionForRepo } from '../workflow/workflows'
 import {
   addConfigChangeListener,
   applyRemoteSettingsRow,
+  refreshWorkflows,
   resetRemoteSync,
   scheduleRemoteRefresh,
   setRemoteSyncEmitters,
@@ -74,6 +76,11 @@ const storeLoading = (loadConfig: Store['loadConfig']): Store => ({ ...NOOP_STOR
 let pushed: Config[]
 let repositoriesReloaded: number
 let changes: ConfigChange[]
+let workflowsChanged: string[][]
+
+const OVERLAY = { version: 1, steps: [{ skill: 'check', mode: 'advisory', before: 'commit' }], kinds: {} }
+/** OVERLAY as loadRepositoryWorkflows returns it, at a revision. */
+const row = (revision = 'rev-1', definition: unknown = OVERLAY) => ({ definition, revision })
 
 /** Seed the real config cache with a known config, as hydration would. */
 const seed = async (config: Partial<Config> = {}): Promise<void> => {
@@ -85,13 +92,16 @@ beforeEach(() => {
   vi.clearAllMocks()
   resetConfigCache()
   resetRemoteSync()
+  resetWorkflowsCache()
   setStore(NOOP_STORE)
+  workflowsChanged = []
   pushed = []
   repositoriesReloaded = 0
   changes = []
   setRemoteSyncEmitters({
     onConfigChanged: (config) => pushed.push(config),
     onRepositoriesReloaded: () => { repositoriesReloaded++ },
+    onWorkflowsChanged: (repoIds) => { workflowsChanged.push(repoIds) },
   })
   // Registered after resetRemoteSync, which clears listeners.
   addConfigChangeListener((change) => changes.push(change))
@@ -258,5 +268,75 @@ describe('scheduleRemoteRefresh', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('workflow changes', () => {
+  it('reports a flow that moved on a reload whose config was discarded', async () => {
+    vi.useFakeTimers()
+    try {
+      await seed()
+      setStore({ ...NOOP_STORE, loadConfig: async () => { throw new Error('offline') }, loadRepositoryWorkflows: async () => ({ r1: row() }) })
+
+      scheduleRemoteRefresh()
+      await vi.advanceTimersByTimeAsync(200)
+
+      // The config early return must not swallow it: a flow is not part of the config.
+      expect(pushed).toEqual([])
+      expect(workflowsChanged).toEqual([['r1']])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('refreshWorkflows reports the flows that moved, and nothing when none did', async () => {
+    await seed()
+    setStore({ ...NOOP_STORE, loadRepositoryWorkflows: async () => ({ r1: row() }) })
+    await refreshWorkflows()
+    await refreshWorkflows()
+    expect(workflowsChanged).toEqual([['r1']])
+    expect(pushed).toEqual([])
+  })
+
+  it('never loads beside a reload: a refresh mid-load waits for one follow-up read, reported once', async () => {
+    vi.useFakeTimers()
+    try {
+      await seed()
+      const parked: ((value: Record<string, StoredWorkflow>) => void)[] = []
+      const load = vi.fn(() => new Promise<Record<string, StoredWorkflow>>((resolve) => { parked.push(resolve) }))
+      setStore({ ...storeLoading(async () => ({ version: '1.0.0', repositories: {} } as Config)), loadRepositoryWorkflows: load })
+
+      scheduleRemoteRefresh()
+      await vi.advanceTimersByTimeAsync(200)
+      expect(load).toHaveBeenCalledTimes(1)
+
+      // Two events while the reload's read is out: no second read beside it.
+      const first = refreshWorkflows()
+      const second = refreshWorkflows()
+      expect(load).toHaveBeenCalledTimes(1)
+
+      parked[0]({ r1: row('rev-1') })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(load).toHaveBeenCalledTimes(2)
+      const edited = { ...OVERLAY, steps: [{ ...OVERLAY.steps[0], mode: 'blocking' }] }
+      parked[1]({ r1: row('rev-2', edited) })
+      await Promise.all([first, second])
+
+      expect(load).toHaveBeenCalledTimes(2)
+      // The reload reports its read, the refreshes the follow-up's, once between them.
+      expect(workflowsChanged).toEqual([['r1'], ['r1']])
+      expect(overlayForRepo('r1')).toEqual(edited)
+      expect(revisionForRepo('r1')).toBe('rev-2')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('refreshWorkflows does nothing while the cache is still cold', async () => {
+    const load = vi.fn(async () => ({ r1: row() }))
+    setStore({ ...NOOP_STORE, loadRepositoryWorkflows: load })
+    await refreshWorkflows()
+    expect(load).not.toHaveBeenCalled()
+    expect(workflowsChanged).toEqual([])
   })
 })

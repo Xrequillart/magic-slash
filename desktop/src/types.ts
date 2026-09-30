@@ -1,3 +1,6 @@
+import type { ResolvedWorkflow } from './workflow/model'
+import type { WorkflowOverlay, WorkflowProblem } from './workflow/overlay'
+
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
 export type AggregatedReviewStatus = 'approved' | 'changes-requested' | 'commented' | 'pending'
@@ -2870,6 +2873,65 @@ export interface PlanLinkEvent {
  */
 export const PLAN_STATUSES = ['planning', 'planned', 'in_progress', 'done', 'abandoned'] as const
 export type PlanStatus = (typeof PLAN_STATUSES)[number]
+
+/**
+ * What the workflow editor starts from (`config:getRepositoryWorkflowOverlay`): the
+ * repository's stored overlay, and the revision of the row it came from (null: no row,
+ * the default flow). The revision goes back with the save, so a flow someone else
+ * changed in the meantime is not overwritten.
+ */
+export interface RepositoryWorkflowOverlay {
+  overlay: WorkflowOverlay
+  revision: string | null
+}
+
+/**
+ * What saving a repository's workflow came to (`config:saveRepositoryWorkflow`).
+ *  - saved:    stored, and served from now on. `workflow` is what the skills now get,
+ *              `overlay` what the editor keeps editing (null when it went back to the
+ *              default flow, which is also what an empty overlay saves as), `revision`
+ *              the one the next save is based on.
+ *  - invalid:  refused before any write; `problems` says why, step by step.
+ *  - denied:   the backend refused it: only the repository's owner, or an admin of its
+ *              organization, may edit its workflow.
+ *  - conflict: someone else saved this workflow since the editor read it. Nothing was
+ *              written; the editor keeps its draft and offers to reload theirs.
+ *  - failed:   no answer (offline, a repository without a cloud id yet): nothing changed.
+ */
+export type RepositoryWorkflowSaveResult =
+  | { status: 'saved'; workflow: ResolvedWorkflow; overlay: WorkflowOverlay | null; revision: string | null }
+  | { status: 'invalid'; problems: WorkflowProblem[] }
+  | { status: 'denied' }
+  | { status: 'conflict' }
+  | { status: 'failed'; message: string }
+
+/**
+ * How far a repository's copy of a skill has reached its members
+ * (`skills:repoSkillStatus`, see main/skill-share-status.ts):
+ *  - missing:     the repository has no such skill or command
+ *  - uncommitted: in the checkout, untracked or changed since HEAD
+ *  - unpushed:    committed, not on `origin/<branch>` as last fetched, or different there
+ *  - shared:      on `origin/<branch>`, as it is at HEAD
+ *  - unknown:     the repository has no local folder (or no git) on this machine
+ * `branch` is the remote development branch looked at, when one resolved.
+ */
+export type SkillShareStatus = 'missing' | 'uncommitted' | 'unpushed' | 'shared' | 'unknown'
+
+export interface SkillShareResult {
+  status: SkillShareStatus
+  branch?: string
+}
+
+/**
+ * A repository's workflow changed (`workflow:changed`): saved from this app, or from
+ * elsewhere and reached us over Realtime. `name` is its config key, or null when the
+ * repository is no longer in the config. The payload names the repository only: read
+ * the workflow again.
+ */
+export interface WorkflowChange {
+  repoId: string
+  name: string | null
+}
 
 /** What the database made of a status change. */
 export type PlanStatusUpdateResult =

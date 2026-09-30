@@ -1,5 +1,6 @@
 import type { ResolvedWorkflow, Workflow, WorkflowLinkKind, WorkflowNode } from './model'
 import { nodeForSkill, outgoingLinks } from './model'
+import { isCustomNodeId } from './overlay'
 
 /**
  * The body of `GET /workflow`, as the skills read it at Step 0.
@@ -16,6 +17,12 @@ export interface WorkflowPayloadLink {
   kind: WorkflowLinkKind
   outcome: string | null
   skill: string | null
+  /**
+   * What follows the target when it is a custom step, empty otherwise. A custom skill
+   * does not read `/workflow`, so the magic skill before it carries its hand-offs,
+   * through any further custom steps, down to the next built-in one.
+   */
+  then: WorkflowPayloadLink[]
 }
 
 export interface WorkflowPayload {
@@ -28,6 +35,18 @@ export interface WorkflowPayload {
   links: WorkflowPayloadLink[]
 }
 
+function payloadLinks(workflow: Workflow, nodeId: string): WorkflowPayloadLink[] {
+  return outgoingLinks(workflow, nodeId).map((link) => ({
+    from: link.from,
+    to: link.to,
+    kind: link.kind,
+    outcome: link.outcome ?? null,
+    skill: workflow.nodes.find((n) => n.id === link.to)?.skill ?? null,
+    // The line has no cycle, so the walk ends at the next built-in step or the end.
+    then: isCustomNodeId(link.to) ? payloadLinks(workflow, link.to) : [],
+  }))
+}
+
 export function buildWorkflowPayload(
   repository: string | null,
   resolved: ResolvedWorkflow,
@@ -35,14 +54,6 @@ export function buildWorkflowPayload(
 ): WorkflowPayload {
   const { workflow, source } = resolved
   const node = skill ? nodeForSkill(workflow, skill) : null
-  const links = node
-    ? outgoingLinks(workflow, node.id).map((link) => ({
-        from: link.from,
-        to: link.to,
-        kind: link.kind,
-        outcome: link.outcome ?? null,
-        skill: workflow.nodes.find((n) => n.id === link.to)?.skill ?? null,
-      }))
-    : []
+  const links = node ? payloadLinks(workflow, node.id) : []
   return { repository, source, workflow, node, links }
 }

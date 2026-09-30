@@ -7,7 +7,8 @@ import { reconcilePlanSpecs } from '../store/plan-sync'
 import { flushPendingArchives } from '../store/pending-archives'
 import { drainSkillSpool } from '../usage/skill-spool'
 import { migrateConfig } from '../config/migrate'
-import { applyRemoteSettingsRow, scheduleRemoteRefresh, setRemoteSyncEmitters } from '../config/remote-sync'
+import { applyRemoteSettingsRow, refreshWorkflows, scheduleRemoteRefresh, setRemoteSyncEmitters } from '../config/remote-sync'
+import { notifyWorkflowsChanged } from '../workflow/notify'
 import { recordAppInstallation } from '../app-installation'
 import { validateAllRepoPaths } from '../config/repo-validation'
 import { readConfig } from '../config/config'
@@ -89,17 +90,24 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
   setRemoteSyncEmitters({
     onConfigChanged: (config) => getMainWindow()?.webContents.send('config:changed', config),
     onRepositoriesReloaded: () => emitInvalidRepos(),
+    // Sent to every window, like a save from this app (config:saveRepositoryWorkflow).
+    onWorkflowsChanged: (repoIds) => notifyWorkflowsChanged(repoIds),
   })
 
   setUserSyncHandlers({
     onSettingsRow: (row) => applyRemoteSettingsRow(row),
     onRepositoriesChanged: () => scheduleRemoteRefresh(),
+    // A flow saved elsewhere. Its own reload: the config reload would find the config
+    // unchanged and stop there. A repository reload refreshes the flows too, since
+    // sharing a repo changes which of them are visible.
+    onWorkflowsChanged: () => void refreshWorkflows(),
     // A (re)subscription is the only hint that events were missed: nothing is
     // replayed, so a sleep, a network drop or a token refresh leaves the local
     // copy silently behind. This also covers the FIRST join, which is not waste:
     // hydration runs before the channels open, and a change landing in that gap
-    // would otherwise go unseen until the next launch. Both channels joining at
-    // once collapses into one reload via the debounce.
+    // would otherwise go unseen until the next launch. Every channel joining at
+    // once collapses into one reload via the debounce, and that reload covers the
+    // flows as well.
     onResubscribed: () => scheduleRemoteRefresh(),
   })
 

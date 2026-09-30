@@ -1,9 +1,10 @@
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
 
 import { Icon } from './Icon'
+import { Lock, Plus, TriangleAlert } from './icons'
 import { skillIcon } from './skillIcons'
 import { Text } from './Text'
-import type { WorkflowCanvasNode } from './workflowLayout'
+import type { WorkflowCanvasNode, WorkflowCanvasNodeMode } from './workflowLayout'
 
 /**
  * ONE STEP OF A WORKFLOW, AS A CARD ON THE CANVAS: the skill's glyph and name, and a
@@ -29,10 +30,29 @@ import type { WorkflowCanvasNode } from './workflowLayout'
  *
  * Its heights are `workflowLayout.ts`'s: `h-14` header, `h-6` a row, `pb-2` under the
  * rows. Change one side and the columns start overlapping.
+ *
+ * WHAT THE EDITOR NEEDS TO SEE, on the header's right: a lock on a built-in step (it
+ * cannot be removed, so it should not look like it could), a custom step's mode as a
+ * small plate, and a warning badge whose tooltip is the warning. A step named by a
+ * problem wears a red border; the selected step a ring in the accent. None of it is drawn
+ * unless the node says so, so the read-only canvas looks exactly as it did.
  */
+
+/** The words the card draws beside a node's own, translated by the caller. */
+export interface WorkflowNodeLabels {
+  /** The lock's tooltip and accessible name: "Built-in step, locked". */
+  locked: string
+  /** A custom step's mode, on its plate. */
+  blocking: string
+  advisory: string
+}
 
 export interface WorkflowNodeData extends Record<string, unknown> {
   node: WorkflowCanvasNode
+  /** Drawn with the selection ring. The editable canvas sets it; the read-only one never does. */
+  selected?: boolean
+  /** Needed only when the node carries `locked` or `mode`; without them neither mark is drawn. */
+  labels?: WorkflowNodeLabels
 }
 
 export type WorkflowNodeType = Node<WorkflowNodeData, 'workflow'>
@@ -73,15 +93,34 @@ const SELF_LANE = { left: '88%' }
 const DOWN_LANE = { left: '38%' }
 const UP_LANE = { left: '62%' }
 
+/** Spelled in full, per state, so Tailwind finds every class. The problem's red border stays under a selection. */
+const FRAMES = {
+  rest: 'border-line-strong',
+  problem: 'border-red ring-2 ring-red/25',
+  selected: 'border-accent ring-2 ring-accent/40',
+  selectedProblem: 'border-red ring-2 ring-accent/40',
+} as const
+
+/** A custom step's plate: `blocking` in the accent, because it can stop the flow; `advisory` neutral. */
+const MODE_TONES: Record<WorkflowCanvasNodeMode, string> = {
+  blocking: 'border-accent/40 text-accent',
+  advisory: 'border-line-strong text-text-secondary',
+}
+
 export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
-  const { node } = data
+  const { node, selected = false, labels } = data
   const hasOutcomes = node.outcomes.length > 0
+  const frame = selected
+    ? node.problem ? FRAMES.selectedProblem : FRAMES.selected
+    : node.problem ? FRAMES.problem : FRAMES.rest
+  const mode = !node.locked && node.mode && labels ? node.mode : null
 
   return (
     // `h-full w-full`: the node's box is set by the canvas (`WORKFLOW_NODE_WIDTH`,
     // `workflowNodeHeight`), and the card fills it rather than sizing itself a second time.
     <div
-      className="relative h-full w-full rounded-xl border border-line-strong bg-bg-secondary text-ink shadow-sm"
+      className={`relative h-full w-full rounded-xl border bg-bg-secondary text-ink shadow-sm ${frame}`}
+      aria-current={selected ? 'true' : undefined}
     >
       <Handle type="source" position={Position.Bottom} id={WORKFLOW_VERTICAL_HANDLES.down.source} style={DOWN_LANE} className="ms-wf-lane" isConnectable={false} />
       <Handle type="target" position={Position.Top} id={WORKFLOW_VERTICAL_HANDLES.down.target} style={DOWN_LANE} className="ms-wf-lane" isConnectable={false} />
@@ -103,6 +142,32 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
             {node.skill}
           </code>
         </span>
+        {(node.warning || (node.locked && labels) || mode) && (
+          <span className="flex flex-shrink-0 flex-col items-end gap-1">
+            <span className="flex items-center gap-1">
+              {node.warning && (
+                <span
+                  role="img"
+                  aria-label={node.warning}
+                  title={node.warning}
+                  className="flex h-5 w-5 items-center justify-center rounded-md bg-orange/15 text-orange"
+                >
+                  <Icon glyph={TriangleAlert} size="xs" tone="inherit" />
+                </span>
+              )}
+              {node.locked && labels && (
+                <span role="img" aria-label={labels.locked} title={labels.locked} className="flex h-5 w-5 items-center justify-center text-icon-muted">
+                  <Icon glyph={Lock} size="xs" tone="inherit" />
+                </span>
+              )}
+            </span>
+            {mode && labels && (
+              <span className={`rounded-md border px-1 text-[9px] font-medium leading-[14px] ${MODE_TONES[mode]}`}>
+                {labels[mode]}
+              </span>
+            )}
+          </span>
+        )}
         <Handle type="source" position={Position.Right} id={WORKFLOW_DEFAULT_HANDLE} isConnectable={false} />
         <Handle type="target" position={Position.Right} id={WORKFLOW_SIDE_TARGET_HANDLE} className="ms-wf-lane" isConnectable={false} />
       </div>
@@ -120,5 +185,44 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
         </ul>
       )}
     </div>
+  )
+}
+
+/**
+ * THE EDITOR'S "+", as a node of its own: a round button in a gap of the line, where a
+ * step would be inserted. Placed by `workflowInsertSlots` (its centre) and drawn by
+ * `WorkflowCanvas` only while it is editable.
+ *
+ * A NODE AND NOT AN EDGE LABEL, because the two ends of the line have no link to hang
+ * a label from, and one mechanism for every slot keeps them in step. It carries no
+ * handle, is never focused by xyflow (the button inside is the stop on the keyboard's
+ * path), and `nodrag nopan` keeps a press on it from panning the ground.
+ *
+ * The button hands its own element back with the slot, so the caller can hang the
+ * skill picker off it.
+ */
+export interface WorkflowInsertNodeData extends Record<string, unknown> {
+  slot: number
+  /** The button's accessible name and tooltip: "Add a step here". */
+  label: string
+  onInsert: (slot: number, anchor: HTMLElement) => void
+}
+
+export type WorkflowInsertNodeType = Node<WorkflowInsertNodeData, 'insert'>
+
+/** The button's diameter, in canvas pixels. The canvas centres the node on its slot with it. */
+export const WORKFLOW_INSERT_SIZE = 22
+
+export function WorkflowInsertNode({ data }: NodeProps<WorkflowInsertNodeType>) {
+  return (
+    <button
+      type="button"
+      aria-label={data.label}
+      title={data.label}
+      onClick={(event) => data.onInsert(data.slot, event.currentTarget)}
+      className="nodrag nopan flex h-full w-full items-center justify-center rounded-full border border-line-strong bg-bg-secondary text-icon shadow-sm transition-colors hover:border-accent hover:bg-accent hover:text-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      <Icon glyph={Plus} size="xs" tone="inherit" />
+    </button>
   )
 }

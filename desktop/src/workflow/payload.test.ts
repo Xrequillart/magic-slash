@@ -12,13 +12,13 @@ describe('buildWorkflowPayload', () => {
     expect(payload.workflow.id).toBe('default')
     expect(payload.node?.id).toBe('pr')
     expect(payload.links).toEqual([
-      { from: 'pr', to: 'resolve', kind: 'auto', outcome: 'review_comments', skill: 'magic-resolve' },
+      { from: 'pr', to: 'resolve', kind: 'auto', outcome: 'review_comments', skill: 'magic-resolve', then: [] },
     ])
   })
 
   it('spells an unconditional link\'s outcome as null', () => {
     const payload = buildWorkflowPayload(null, DEFAULT, 'magic-commit')
-    expect(payload.links).toEqual([{ from: 'commit', to: 'pr', kind: 'suggest', outcome: null, skill: 'magic-pr' }])
+    expect(payload.links).toEqual([{ from: 'commit', to: 'pr', kind: 'suggest', outcome: null, skill: 'magic-pr', then: [] }])
   })
 
   it('has no node and no links for a skill outside the flow, or none named', () => {

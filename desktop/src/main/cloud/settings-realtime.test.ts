@@ -4,7 +4,7 @@ import type { UserSettingsRow } from '../store/user-settings-mapper'
 // Mock the authed client + session store so the module exercises only its own
 // lifecycle logic (no network, no socket). Unlike the org-agents harness this one
 // hands out a DISTINCT channel object per name, because the whole point here is
-// that the two tables live on two independent channels.
+// that the three tables live on three independent channels.
 const h = vi.hoisted(() => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const makeChannel = (name: string): any => {
@@ -58,6 +58,7 @@ import {
 
 let settingsRows: UserSettingsRow[]
 let repositoriesChanges: number
+let workflowsChanges: number
 let resubscribes: number
 
 /** The status callback a given channel was subscribed with. */
@@ -68,10 +69,11 @@ const statusCb = (name: string): ((s: string) => void) =>
 const changeCb = (name: string): ((payload: unknown) => void) =>
   h.state.channels.get(name).on.mock.calls[0][2]
 
-/** Drive both channels to SUBSCRIBED, as a healthy join would. */
-const subscribeBoth = (): void => {
+/** Drive every channel to SUBSCRIBED, as a healthy join would. */
+const subscribeAll = (): void => {
   statusCb('user-settings')('SUBSCRIBED')
   statusCb('user-repositories')('SUBSCRIBED')
+  statusCb('user-workflows')('SUBSCRIBED')
 }
 
 beforeEach(async () => {
@@ -80,10 +82,12 @@ beforeEach(async () => {
   h.state.token = 'access-token'
   settingsRows = []
   repositoriesChanges = 0
+  workflowsChanges = 0
   resubscribes = 0
   setUserSyncHandlers({
     onSettingsRow: (row) => settingsRows.push(row),
     onRepositoriesChanged: () => { repositoriesChanges++ },
+    onWorkflowsChanged: () => { workflowsChanges++ },
     onResubscribed: () => { resubscribes++ },
   })
   // Ensure clean channels between tests.
@@ -91,12 +95,13 @@ beforeEach(async () => {
 })
 
 describe('startUserSyncRealtime', () => {
-  it('authorizes the socket then opens both channels with their bindings', async () => {
+  it('authorizes the socket then opens every channel with its bindings', async () => {
     await startUserSyncRealtime('user-1')
 
     expect(h.state.client.realtime.setAuth).toHaveBeenCalledWith('access-token')
     expect(h.state.client.channel).toHaveBeenCalledWith('user-settings')
     expect(h.state.client.channel).toHaveBeenCalledWith('user-repositories')
+    expect(h.state.client.channel).toHaveBeenCalledWith('user-workflows')
 
     // Settings are filtered to the caller's own row — a bandwidth optimization on
     // top of the own-rows RLS, not the security boundary.
@@ -110,6 +115,12 @@ describe('startUserSyncRealtime', () => {
     expect(h.state.channels.get('user-repositories').on).toHaveBeenCalledWith(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'repositories' },
+      expect.any(Function),
+    )
+    // Workflows neither: a row is visible exactly when its repository is (RLS).
+    expect(h.state.channels.get('user-workflows').on).toHaveBeenCalledWith(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'repository_workflows' },
       expect.any(Function),
     )
     expect(getActiveSyncUserId()).toBe('user-1')
@@ -135,7 +146,7 @@ describe('startUserSyncRealtime', () => {
   it('is a no-op when already subscribed for the same user', async () => {
     await startUserSyncRealtime('user-1')
     await startUserSyncRealtime('user-1')
-    expect(h.state.client.channel).toHaveBeenCalledTimes(2) // two channels, once
+    expect(h.state.client.channel).toHaveBeenCalledTimes(3) // three channels, once
   })
 
   it('serializes concurrent starts so no channel is orphaned', async () => {
@@ -143,7 +154,7 @@ describe('startUserSyncRealtime', () => {
       startUserSyncRealtime('user-1'),
       startUserSyncRealtime('user-1'),
     ])
-    expect(h.state.client.channel).toHaveBeenCalledTimes(2)
+    expect(h.state.client.channel).toHaveBeenCalledTimes(3)
     expect(getActiveSyncUserId()).toBe('user-1')
   })
 
@@ -158,7 +169,7 @@ describe('startUserSyncRealtime', () => {
     await startUserSyncRealtime('user-1')
     await startUserSyncRealtime('user-2')
 
-    expect(h.state.client.removeChannel).toHaveBeenCalledTimes(2)
+    expect(h.state.client.removeChannel).toHaveBeenCalledTimes(3)
     expect(h.state.channels.get('user-settings').on).toHaveBeenCalledWith(
       'postgres_changes',
       expect.objectContaining({ filter: 'user_id=eq.user-2' }),
@@ -197,20 +208,28 @@ describe('event forwarding', () => {
     expect(repositoriesChanges).toBe(2)
   })
 
+  it('reports workflow changes without inspecting the payload', async () => {
+    await startUserSyncRealtime('user-1')
+    changeCb('user-workflows')({ eventType: 'UPDATE', new: { repo_id: 'r1' } })
+    changeCb('user-workflows')({ eventType: 'DELETE', old: {} })
+    expect(workflowsChanges).toBe(2)
+    expect(repositoriesChanges).toBe(0)
+  })
+
   it('reports a resubscription per channel join, and not again while it stays up', async () => {
     await startUserSyncRealtime('user-1')
-    subscribeBoth()
-    expect(resubscribes).toBe(2)
+    subscribeAll()
+    expect(resubscribes).toBe(3)
 
     // A repeat SUBSCRIBED with no intervening drop is not a new join.
     statusCb('user-settings')('SUBSCRIBED')
-    expect(resubscribes).toBe(2)
+    expect(resubscribes).toBe(3)
 
     // A drop and a genuine rejoin is: events during the outage were never
     // delivered, so the consumer has to reconcile.
     statusCb('user-settings')('CHANNEL_ERROR')
     statusCb('user-settings')('SUBSCRIBED')
-    expect(resubscribes).toBe(3)
+    expect(resubscribes).toBe(4)
   })
 })
 
@@ -229,13 +248,14 @@ describe('subscribe watchdog', () => {
     }
   })
 
-  it('tears down when only ONE channel manages to subscribe', async () => {
+  it('tears down when only SOME of the channels manage to subscribe', async () => {
     // Half a subscription is not a working sync: releasing the slot lets the next
     // connectivity check retry both, instead of leaving one table silently dead.
     vi.useFakeTimers()
     try {
       await startUserSyncRealtime('user-1')
       statusCb('user-settings')('SUBSCRIBED')
+      statusCb('user-repositories')('SUBSCRIBED')
 
       await vi.advanceTimersByTimeAsync(15_000)
       expect(getActiveSyncUserId()).toBeNull()
@@ -244,11 +264,11 @@ describe('subscribe watchdog', () => {
     }
   })
 
-  it('keeps both live channels past the deadline', async () => {
+  it('keeps every live channel past the deadline', async () => {
     vi.useFakeTimers()
     try {
       await startUserSyncRealtime('user-1')
-      subscribeBoth()
+      subscribeAll()
 
       await vi.advanceTimersByTimeAsync(15_000)
       expect(getActiveSyncUserId()).toBe('user-1')
@@ -277,11 +297,11 @@ describe('subscribe watchdog', () => {
 })
 
 describe('stopUserSyncRealtime', () => {
-  it('removes both channels, unsubscribes the auth listener, and clears the user', async () => {
+  it('removes every channel, unsubscribes the auth listener, and clears the user', async () => {
     await startUserSyncRealtime('user-1')
     await stopUserSyncRealtime()
 
-    expect(h.state.client.removeChannel).toHaveBeenCalledTimes(2)
+    expect(h.state.client.removeChannel).toHaveBeenCalledTimes(3)
     expect(h.authSubscription.unsubscribe).toHaveBeenCalled()
     expect(getActiveSyncUserId()).toBeNull()
   })

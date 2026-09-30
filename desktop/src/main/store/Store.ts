@@ -1,3 +1,4 @@
+import type { WorkflowOverlay } from '../../workflow/overlay'
 import type { AccountSettings, AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, OrgSharedConfig, OrgAgent, PlanSession, PlanSessionRef, PlanSpecInput, PlanTicketsInput, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
 
 /**
@@ -51,6 +52,16 @@ export type AvatarWriteOutcome =
   | { ok: false; reason: 'offline' }
 
 /**
+ * A `repository_workflows` row as loaded. `revision` is its `updated_at`, verbatim as
+ * the backend wrote it: an opaque token that a save hands back to say which version it
+ * was based on, never parsed or compared as a date.
+ */
+export interface StoredWorkflow {
+  definition: unknown
+  revision: string
+}
+
+/**
  * The single persistence contract for config, agents and history. The Supabase
  * database is the single source of truth — there is deliberately NO local JSON
  * persistence behind any implementation of this interface. Callers keep an
@@ -89,12 +100,27 @@ export interface Store {
   setRepositoryPath(id: string, path: string | null): Promise<void>
   /**
    * The custom workflows of the repos visible to the caller, repo id → the stored
-   * definition, unvalidated (main/workflow/workflows.ts decides whether it is usable).
-   * A repo absent from the record follows the default flow. Read-only: editing a
-   * flow is out of scope in v1. Never rejects: a failed read is `null`, kept apart
-   * from `{}` (no rows), so a refresh that fails leaves the last loaded flows alone.
+   * definition, unvalidated (main/workflow/workflows.ts decides whether it is usable),
+   * and the row's revision. A repo absent from the record follows the default flow.
+   * Never rejects: a failed read is `null`, kept apart from `{}` (no rows), so a
+   * refresh that fails leaves the last loaded flows alone.
    */
-  loadRepositoryWorkflows(): Promise<Record<string, unknown> | null>
+  loadRepositoryWorkflows(): Promise<Record<string, StoredWorkflow> | null>
+  /**
+   * Store a repo's workflow overlay (workflow/overlay.ts), or delete it when null, which
+   * puts the repo back on the default flow. Resolves to the row's new revision (null
+   * once there is no row).
+   *
+   * OPTIMISTIC: `expectedRevision` is the revision the editor started from (null: it saw
+   * no row, the default flow). A row that moved since, created, edited or deleted by
+   * someone else, rejects with a StoreConflictError instead of being overwritten; the
+   * one exception is a delete finding the row already gone, which is what it wanted.
+   * Who may write is RLS's call (the repo's owner, or an admin of its org): a refusal
+   * rejects with a StoreForbiddenError, any other failure with a plain Error. Unlike
+   * the reads, this one does reject, because the editor that called it has to tell a
+   * saved flow from one that is not.
+   */
+  saveRepositoryWorkflow(repoId: string, overlay: WorkflowOverlay | null, expectedRevision: string | null): Promise<string | null>
 
   loadAgents(): Promise<Agent[]>
   /** Upsert the caller's agents. Never destructive: an absent agent is left alone. */
@@ -324,6 +350,40 @@ export interface Store {
 // ---------------------------------------------------------------------------
 
 /**
+ * A write the backend refused on permission grounds (RLS, or a guard trigger), rather
+ * than one that failed. Recognised by `code`, which survives where `instanceof` may not
+ * (a mocked module, a re-thrown copy): see isStoreForbidden.
+ */
+export class StoreForbiddenError extends Error {
+  readonly code = 'forbidden'
+  constructor(message: string) {
+    super(message)
+    this.name = 'StoreForbiddenError'
+  }
+}
+
+export function isStoreForbidden(error: unknown): boolean {
+  return !!error && typeof error === 'object' && (error as { code?: unknown }).code === 'forbidden'
+}
+
+/**
+ * A write that lost a race: the row it was based on changed since it was read (an
+ * optimistic save, see Store.saveRepositoryWorkflow). Nothing was written. Recognised
+ * by `code`, like StoreForbiddenError: see isStoreConflict.
+ */
+export class StoreConflictError extends Error {
+  readonly code = 'conflict'
+  constructor(message: string) {
+    super(message)
+    this.name = 'StoreConflictError'
+  }
+}
+
+export function isStoreConflict(error: unknown): boolean {
+  return !!error && typeof error === 'object' && (error as { code?: unknown }).code === 'conflict'
+}
+
+/**
  * A do-nothing store used before the real store is wired and in unit tests. It
  * keeps every persistence call a safe no-op and reports the backend as
  * unauthorized so nothing accidentally believes it is connected.
@@ -338,6 +398,7 @@ export const NOOP_STORE: Store = {
   async setRepositoryRemoteUrl() { return false },
   async setRepositoryPath() { /* no-op */ },
   async loadRepositoryWorkflows() { return {} },
+  async saveRepositoryWorkflow() { return null },
   async loadAgents() { return [] },
   async saveAgents() { /* no-op */ },
   async archiveAgent() { /* no-op */ },

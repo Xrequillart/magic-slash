@@ -43,7 +43,7 @@ import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '.
 import {
   AGENT_SORT_MODES, codeSyntaxTheme, DEFAULT_CODE_SYNTAX, DEFAULT_CODE_FONT_SIZE, isValidAgentSort,
   cleanQuickSettings, cleanSidebarPages, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidTheme,
-  type CodeSample, type Config, type FilePreviewResult, type ChangedLines,
+  type CodeSample, type Config, type FilePreviewResult, type ChangedLines, type RepositoryWorkflowOverlay, type RepositoryWorkflowSaveResult,
 } from '../../types'
 import { applyLanguage, applyTheme, currentTheme } from '../appearance'
 import { CODE_SAMPLES } from '../code-sample'
@@ -70,7 +70,10 @@ import {
   getLastCommand
 } from '../config/command-history'
 import { ensureHydrated } from '../store/hydrate'
-import { workflowForRepo } from '../workflow/workflows'
+import { hydrateWorkflows, overlayForRepo, revisionForRepo, setWorkflow, workflowForRepo } from '../workflow/workflows'
+import { notifyWorkflowsChanged } from '../workflow/notify'
+import { EMPTY_OVERLAY, isOverlay, problems, sameOverlay, type WorkflowOverlay } from '../../workflow/overlay'
+import { getStore, isStoreConflict, isStoreForbidden } from '../store/Store'
 import {
   computeVisibleRanges, countShikiRows, numberShikiLines, renderRows, splitShikiLines, ROW_MARKER,
 } from './hunkView'
@@ -255,6 +258,33 @@ export function annotateAgainstDiff(
     if (ranges) changesOnlyHtml = renderRows(splitShikiLines(annotated), ranges, totalLines)
   } catch { /* the full rendering stands on its own */ }
   return { highlightedHtml: annotated, changesOnlyHtml, changedLines }
+}
+
+/** The `name` of a `{ name }` payload, checked at the boundary. */
+function repoNameOf(payload: unknown, what: string): string {
+  const name = payload && typeof payload === 'object' ? (payload as { name?: unknown }).name : undefined
+  if (typeof name !== 'string') {
+    throw new Error(`Invalid ${what} repository: expected a config key, got ${typeof name}.`)
+  }
+  return name
+}
+
+/** The cloud id of the repository at config key `name`, or null. `hasOwn`: see below. */
+function repoIdOf(name: string): string | null {
+  const repositories = readConfig().repositories
+  return Object.hasOwn(repositories, name) ? repositories[name].id ?? null : null
+}
+
+/**
+ * Just the overlay's own fields, so nothing else a caller put on the object reaches
+ * the database. Shape already checked by isOverlay.
+ */
+function cleanOverlay(overlay: WorkflowOverlay): WorkflowOverlay {
+  return {
+    version: 1,
+    steps: overlay.steps.map(({ skill, mode, before }) => ({ skill, mode, before })),
+    kinds: { ...overlay.kinds },
+  }
 }
 
 const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico'])
@@ -719,8 +749,8 @@ export function setupConfigHandlers() {
   })
 
   // The flow a repository's skills follow, for the Workflow tab of its settings. Read
-  // on the tab's mount and not pushed: the tab is read-only, and a flow that changes
-  // while it is open (nothing edits one yet) shows up on the next visit.
+  // on the tab's mount, and again on `workflow:changed`, which is pushed whenever a
+  // flow moves: saved from here, or from elsewhere and reached us over Realtime.
   //
   // Keyed by NAME because that is what the renderer holds, and resolved to the id here
   // because the workflows cache is keyed by id. A name matching no repository, or one
@@ -730,14 +760,71 @@ export function setupConfigHandlers() {
   // answered with the default flow. `hasOwn` keeps a key like `constructor` from
   // resolving through the prototype.
   ipcMain.handle('config:getRepositoryWorkflow', async (_event, payload: unknown) => {
-    const name = payload && typeof payload === 'object' ? (payload as { name?: unknown }).name : undefined
-    if (typeof name !== 'string') {
-      throw new Error(`Invalid workflow repository: expected a config key, got ${typeof name}.`)
-    }
+    const name = repoNameOf(payload, 'workflow')
     await ensureHydrated()
-    const repositories = readConfig().repositories
-    const repoId = Object.hasOwn(repositories, name) ? repositories[name].id ?? null : null
-    return workflowForRepo(repoId)
+    return workflowForRepo(repoIdOf(name))
+  })
+
+  // What the editor starts from: the repository's stored overlay, only what was ADDED
+  // to the default line (workflow/overlay.ts). The empty overlay for a repository on
+  // the default flow, or one with an unusable definition (which is served the default).
+  // With the revision of its row, which the save hands back: an unusable row has one
+  // too, so the first save from the editor replaces it rather than colliding with it.
+  ipcMain.handle('config:getRepositoryWorkflowOverlay', async (_event, payload: unknown): Promise<RepositoryWorkflowOverlay> => {
+    const name = repoNameOf(payload, 'workflow')
+    await ensureHydrated()
+    const repoId = repoIdOf(name)
+    return repoId
+      ? { overlay: overlayForRepo(repoId), revision: revisionForRepo(repoId) }
+      : { overlay: EMPTY_OVERLAY, revision: null }
+  })
+
+  // Save a repository's workflow from the editor. Judged here with the rules the
+  // loader applies (problems), so the database never holds a flow this build would
+  // then refuse to serve; an overlay that adds nothing deletes the row instead, which
+  // is the default flow. Who may save is the database's call (RLS: the owner, or an
+  // admin of the repo's org), answered as `denied` so the editor can say so.
+  //
+  // OPTIMISTIC: `expectedRevision` is the revision the editor's draft was based on, and
+  // the store writes only if the row is still at it. Otherwise `conflict`, and nothing
+  // is written: two admins saving at once, the second learns of the first instead of
+  // erasing it. The cache is reloaded before answering, so the editor's Reload reads
+  // the winning version even if its Realtime echo has not arrived yet.
+  //
+  // On success the cache is updated at once (setWorkflow, the loader's own judge) and
+  // every window told, without waiting for this write's Realtime echo, whose reload
+  // then finds nothing new. A malformed call is rejected at the boundary, like the
+  // read above; an overlay that is well formed but wrong is `invalid`.
+  ipcMain.handle('config:saveRepositoryWorkflow', async (_event, payload: unknown): Promise<RepositoryWorkflowSaveResult> => {
+    const name = repoNameOf(payload, 'workflow')
+    const raw = (payload as { overlay?: unknown }).overlay
+    if (!isOverlay(raw)) throw new Error('Invalid workflow: not an overlay.')
+    const expectedRevision = (payload as { expectedRevision?: unknown }).expectedRevision
+    if (expectedRevision !== null && typeof expectedRevision !== 'string') throw new Error('Invalid workflow: not a revision.')
+    const found = problems(raw)
+    if (found.length > 0) return { status: 'invalid', problems: found }
+
+    await ensureHydrated()
+    const repoId = repoIdOf(name)
+    // A repository without a cloud id has no row to hang a flow on (yet).
+    if (!repoId) return { status: 'failed', message: `Repository "${name}" is not in the cloud yet.` }
+
+    const overlay = sameOverlay(raw, EMPTY_OVERLAY) ? null : cleanOverlay(raw)
+    let revision: string | null
+    try {
+      revision = await getStore().saveRepositoryWorkflow(repoId, overlay, expectedRevision)
+    } catch (error) {
+      if (isStoreForbidden(error)) return { status: 'denied' }
+      if (isStoreConflict(error)) {
+        notifyWorkflowsChanged(await hydrateWorkflows())
+        return { status: 'conflict' }
+      }
+      console.error('[workflow] save failed:', error)
+      return { status: 'failed', message: error instanceof Error ? error.message : String(error) }
+    }
+    setWorkflow(repoId, overlay, revision)
+    notifyWorkflowsChanged([repoId])
+    return { status: 'saved', workflow: workflowForRepo(repoId), overlay, revision }
   })
 
   // GitHub CLI auth status for DISPLAY only (`gh auth status`). No token stored.

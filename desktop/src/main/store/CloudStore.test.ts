@@ -1980,6 +1980,151 @@ describe('updateRepository', () => {
   })
 })
 
+describe('loadRepositoryWorkflows', () => {
+  it('returns each row\'s definition with its updated_at as the revision', async () => {
+    const OVERLAY = { version: 1, steps: [], kinds: {} }
+    const { client, calls } = makeClient({
+      repository_workflows: { data: [{ repo_id: 'r1', definition: OVERLAY, updated_at: '2026-09-30T10:00:00.123456+00:00' }], error: null },
+    })
+    h.state.client = client
+
+    expect(await new CloudStore().loadRepositoryWorkflows()).toEqual({
+      r1: { definition: OVERLAY, revision: '2026-09-30T10:00:00.123456+00:00' },
+    })
+    expect(calls.find((c) => c.table === 'repository_workflows' && c.method === 'select')?.args[0]).toBe('repo_id, definition, updated_at')
+  })
+
+  it('answers null on a failed read', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { client } = makeClient({ repository_workflows: { data: null, error: { message: 'offline' } } })
+    h.state.client = client
+    expect(await new CloudStore().loadRepositoryWorkflows()).toBeNull()
+  })
+})
+
+describe('saveRepositoryWorkflow', () => {
+  const OVERLAY = { version: 1 as const, steps: [{ skill: 'check', mode: 'advisory' as const, before: 'commit' }], kinds: {} }
+  const has = (calls: RecordedCall[], method: string, ...args: unknown[]) =>
+    calls.some((c) => c.table === 'repository_workflows' && c.method === method && args.every((a, i) => c.args[i] === a))
+
+  describe('with no row expected (the default flow)', () => {
+    it('inserts, never upserts, and resolves to the new revision', async () => {
+      const { client, inserts, calls } = makeClient({ repository_workflows: { data: [{ repo_id: 'r1', updated_at: 't1' }], error: null } })
+      h.state.client = client
+
+      expect(await new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, null)).toBe('t1')
+
+      expect(inserts.repository_workflows[0]).toEqual({ repo_id: 'r1', definition: OVERLAY })
+      expect(has(calls, 'upsert')).toBe(false)
+    })
+
+    it('rejects as a conflict when someone created the row meanwhile (23505)', async () => {
+      const { client } = makeClient({ repository_workflows: { data: null, error: { code: '23505', message: 'duplicate key' } } })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, null)).rejects.toMatchObject({ code: 'conflict' })
+    })
+
+    it('rejects as forbidden on a 42501, and when the insert returns no row', async () => {
+      const denied = makeClient({ repository_workflows: { data: null, error: { code: '42501', message: 'rls' } } })
+      h.state.client = denied.client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, null)).rejects.toMatchObject({ code: 'forbidden' })
+
+      const empty = makeClient({ repository_workflows: { data: [], error: null } })
+      h.state.client = empty.client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, null)).rejects.toMatchObject({ code: 'forbidden' })
+    })
+
+    it('rejects any other failure as a plain error', async () => {
+      const { client } = makeClient({ repository_workflows: { data: null, error: { code: '08006', message: 'offline' } } })
+      h.state.client = client
+      const failure = await new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, null).catch((e) => e)
+      expect(failure).toBeInstanceOf(Error)
+      expect(failure.code).toBeUndefined()
+    })
+
+    it('has nothing to write going back to the default when there is still no row', async () => {
+      const { client, calls } = makeClient({ repository_workflows: { data: [], error: null } })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', null, null)).resolves.toBeNull()
+      expect(has(calls, 'delete')).toBe(false)
+    })
+
+    it('rejects going back to the default as a conflict when a row appeared since', async () => {
+      const { client, calls } = makeClient({ repository_workflows: { data: [{ updated_at: 't9' }], error: null } })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', null, null)).rejects.toMatchObject({ code: 'conflict' })
+      expect(has(calls, 'delete')).toBe(false)
+    })
+  })
+
+  describe('with a row expected at a revision', () => {
+    it('updates only the row still at that revision, and resolves to the new one', async () => {
+      const { client, updates, calls } = makeClient({ repository_workflows: { data: [{ repo_id: 'r1', updated_at: 't2' }], error: null } })
+      h.state.client = client
+
+      expect(await new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, 't1')).toBe('t2')
+
+      expect(updates.repository_workflows[0]).toEqual({ definition: OVERLAY })
+      expect(has(calls, 'eq', 'repo_id', 'r1')).toBe(true)
+      expect(has(calls, 'eq', 'updated_at', 't1')).toBe(true)
+      expect(has(calls, 'upsert')).toBe(false)
+    })
+
+    it('rejects as a conflict when the update matched nothing because the row moved on', async () => {
+      const { client } = makeClient({ repository_workflows: [{ data: [], error: null }, { data: [{ updated_at: 't9' }], error: null }] })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, 't1')).rejects.toMatchObject({ code: 'conflict' })
+    })
+
+    it('rejects as a conflict when the update matched nothing because the row was deleted', async () => {
+      const { client } = makeClient({ repository_workflows: [{ data: [], error: null }, { data: [], error: null }] })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, 't1')).rejects.toMatchObject({ code: 'conflict' })
+    })
+
+    it('rejects as forbidden when the update matched nothing and the row is still at our revision', async () => {
+      const { client } = makeClient({ repository_workflows: [{ data: [], error: null }, { data: [{ updated_at: 't1' }], error: null }] })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, 't1')).rejects.toMatchObject({ code: 'forbidden' })
+    })
+
+    it('rejects as forbidden on a 42501', async () => {
+      const { client } = makeClient({ repository_workflows: { data: null, error: { code: '42501', message: 'rls' } } })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', OVERLAY, 't1')).rejects.toMatchObject({ code: 'forbidden' })
+    })
+
+    it('deletes the row still at that revision on null, which is the default flow', async () => {
+      const { client, calls } = makeClient({ repository_workflows: { data: [{ repo_id: 'r1' }], error: null } })
+      h.state.client = client
+
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', null, 't1')).resolves.toBeNull()
+
+      expect(has(calls, 'delete')).toBe(true)
+      expect(has(calls, 'eq', 'repo_id', 'r1')).toBe(true)
+      expect(has(calls, 'eq', 'updated_at', 't1')).toBe(true)
+    })
+
+    it('takes a delete that matched nothing as done when the row is already gone', async () => {
+      const { client } = makeClient({ repository_workflows: [{ data: [], error: null }, { data: [], error: null }] })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', null, 't1')).resolves.toBeNull()
+    })
+
+    it('rejects a delete that matched nothing as a conflict when the row moved on', async () => {
+      const { client } = makeClient({ repository_workflows: [{ data: [], error: null }, { data: [{ updated_at: 't9' }], error: null }] })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', null, 't1')).rejects.toMatchObject({ code: 'conflict' })
+    })
+
+    it('rejects a delete that matched nothing as forbidden when the row is still at our revision', async () => {
+      const { client } = makeClient({ repository_workflows: [{ data: [], error: null }, { data: [{ updated_at: 't1' }], error: null }] })
+      h.state.client = client
+      await expect(new CloudStore().saveRepositoryWorkflow('r1', null, 't1')).rejects.toMatchObject({ code: 'forbidden' })
+    })
+  })
+})
+
 describe('createRepository / setRepositoryRemoteUrl', () => {
   it('writes the clone address on creation, so it round-trips as remote_url', async () => {
     const { client, inserts } = makeClient({

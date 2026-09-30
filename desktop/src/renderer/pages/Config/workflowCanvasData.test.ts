@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import { DEFAULT_WORKFLOW } from '../../../workflow/defaultFlow'
-import { skillDisplayName, workflowCanvasData } from './workflowCanvasData'
+import {
+  EMPTY_OVERLAY, composeWorkflow, customNodeId, insertStep, isLinkIntoStart, lineOf, problems, sameOverlay, setLinkKind,
+} from '../../../workflow/overlay'
+import type { ListingEntry } from '../../hooks/useSkills'
+import {
+  folderSkillsOf, problemNodeIds, skillDisplayName, skillOptions, stepHints, workflowCanvasData,
+} from './workflowCanvasData'
 
 /**
  * The Workflow tab draws whatever this mapping hands the canvas, so it is held to the
@@ -51,5 +57,110 @@ describe('skillDisplayName', () => {
 
   it('names a custom skill after its folder', () => {
     expect(skillDisplayName('design-check')).toBe('Design Check')
+  })
+})
+
+/**
+ * The editor's marks: what the Workflow tab draws on a card once it can be edited. The
+ * overlay is placed by slot, the way a "+" on the canvas places it.
+ */
+describe('workflowCanvasData, editing', () => {
+  const slotBefore = (overlay: typeof EMPTY_OVERLAY, id: string) => lineOf(overlay).indexOf(id)
+  const withLint = insertStep(EMPTY_OVERLAY, slotBefore(EMPTY_OVERLAY, 'commit'), 'lint', 'blocking')
+  const lint = customNodeId('lint')
+
+  it('locks every built-in step and gives a custom one its mode', () => {
+    const data = workflowCanvasData(composeWorkflow(withLint))
+    for (const node of data.nodes) {
+      if (node.id === lint) {
+        expect(node.locked).toBeUndefined()
+        expect(node.mode).toBe('blocking')
+      } else {
+        expect(node.locked, node.id).toBe(true)
+        expect(node.mode, node.id).toBeUndefined()
+      }
+    }
+  })
+
+  it('marks the steps a problem names, and warns the ones it is told to', () => {
+    const twice = insertStep(withLint, 0, 'magic-commit')
+    const found = problems(twice)
+    const data = workflowCanvasData(composeWorkflow(twice), {
+      problems: problemNodeIds(found),
+      warnings: { [lint]: 'only here' },
+    })
+    const byId = Object.fromEntries(data.nodes.map((node) => [node.id, node]))
+    expect(byId[customNodeId('magic-commit')].problem).toBe(true)
+    expect(byId.commit.problem).toBeUndefined()
+    expect(byId[lint].warning).toBe('only here')
+    expect(byId[lint].problem).toBeUndefined()
+  })
+
+  it('names no step for a problem about the whole flow', () => {
+    expect(problemNodeIds([{ code: 'invalid', message: 'x' }])).toEqual([])
+  })
+
+  it('says a step after pr runs only on review comments', () => {
+    const overlay = insertStep(EMPTY_OVERLAY, slotBefore(EMPTY_OVERLAY, 'resolve'), 'triage')
+    expect(stepHints(composeWorkflow(overlay), customNodeId('triage'))).toEqual(['on-review-comments'])
+  })
+
+  it('says a step between plan and start is skipped from start', () => {
+    const overlay = insertStep(EMPTY_OVERLAY, slotBefore(EMPTY_OVERLAY, 'start'), 'refine')
+    expect(stepHints(composeWorkflow(overlay), customNodeId('refine'))).toEqual(['skipped-from-start'])
+  })
+
+  it('says nothing of a plain step, nor of a built-in one', () => {
+    const flow = composeWorkflow(withLint)
+    expect(stepHints(flow, lint)).toEqual([])
+    expect(stepHints(flow, 'resolve')).toEqual([])
+  })
+
+  it('knows a link into start', () => {
+    expect(isLinkIntoStart({ to: 'start' })).toBe(true)
+    expect(isLinkIntoStart({ to: 'commit' })).toBe(false)
+  })
+})
+
+describe('skillOptions', () => {
+  const entry = (name: string, source: ListingEntry['source'], extra: Partial<ListingEntry> = {}): ListingEntry =>
+    ({ name, text: '', source, mode: 'full', ...extra })
+  const entries: ListingEntry[] = [
+    entry('magic-commit', 'built-in'),
+    entry('lint', 'custom'),
+    entry('shared', 'custom'),
+    entry('shared', 'repo', { origin: 'web' }),
+    entry('other-repo', 'repo', { origin: 'api' }),
+    entry('secret', 'custom', { mode: 'hidden' }),
+    entry('plug:check', 'plugin', { origin: 'plug' }),
+  ]
+
+  it('lists the custom, repository and plugin skills, never a built-in, another repo\'s or a hidden one', () => {
+    expect(skillOptions(entries, 'web', []).map((o) => [o.name, o.source])).toEqual([
+      ['lint', 'custom'],
+      ['shared', 'repo'],
+      ['plug:check', 'plugin'],
+    ])
+  })
+
+  it('greys the skills already in the workflow', () => {
+    const options = skillOptions(entries, 'web', ['lint'])
+    expect(options.find((o) => o.name === 'lint')?.disabled).toBe(true)
+    expect(options.find((o) => o.name === 'plug:check')?.disabled).toBe(false)
+  })
+})
+
+describe('folderSkillsOf and sameOverlay', () => {
+  it('leaves plugin skills out of the ones a teammate may miss', () => {
+    const overlay = insertStep(insertStep(EMPTY_OVERLAY, 1, 'lint'), 1, 'plug:check')
+    expect(folderSkillsOf(overlay)).toEqual(['lint'])
+  })
+
+  it('ignores the order kinds were written in', () => {
+    const a = setLinkKind(setLinkKind(EMPTY_OVERLAY, 'start', 'commit', 'auto'), 'commit', 'pr', 'auto')
+    const b = setLinkKind(setLinkKind(EMPTY_OVERLAY, 'commit', 'pr', 'auto'), 'start', 'commit', 'auto')
+    expect(sameOverlay(a, b)).toBe(true)
+    expect(sameOverlay(a, EMPTY_OVERLAY)).toBe(false)
+    expect(sameOverlay(insertStep(EMPTY_OVERLAY, 1, 'lint'), insertStep(EMPTY_OVERLAY, 1, 'lint', 'blocking'))).toBe(false)
   })
 })
