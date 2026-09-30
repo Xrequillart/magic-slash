@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.105.3] - 2026-09-30
+
+### Added
+
+- **Desktop**: Move the workflow edit button under the tab description and drop the settings canvas minimap
+- **Desktop**: Describe what magic:start will do from the repository's start settings
+
 ## [0.105.2] - 2026-09-30
 
 ### Added
@@ -3538,6 +3545,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.105.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.3
 [0.105.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.2
 [0.105.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.1
 [0.105.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.0

@@ -28,7 +28,7 @@ import { sidebarPageOrder, type SidebarPageId } from '../../types'
  * THE APP'S BUILD, spelled here because this is the app. The version the column draws
  * is a literal that moves at release, not a value fetched from anywhere.
  */
-const APP_VERSION = 'v0.105.2'
+const APP_VERSION = 'v0.105.3'
 
 /**
  * The ⌘/Ctrl shortcuts that open a page overlay, keyed by `KeyboardEvent.key`.
