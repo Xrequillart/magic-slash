@@ -14,6 +14,7 @@ import {
   GitCommitHorizontal,
   GitPullRequest,
   Lock,
+  Upload,
   MessageSquare,
   ScanSearch,
   Search,
@@ -419,6 +420,7 @@ export function RepositoryForm({
   const coAuthor = repo.commit.coAuthor ?? DEFAULTS.coAuthor
   const includeTicketId = repo.commit.includeTicketId ?? DEFAULTS.includeTicketId
   const allowOnProtectedBranch = repo.commit.allowOnProtectedBranch ?? DEFAULTS.allowOnProtectedBranch
+  const pushAfterCommit = repo.commit.pushAfterCommit ?? DEFAULTS.pushAfterCommit
 
   const commitMode = repo.resolve.commitMode ?? DEFAULTS.resolveCommitMode
   const useCommitConfig = repo.resolve.useCommitConfig ?? DEFAULTS.resolveUseCommitConfig
@@ -1132,6 +1134,7 @@ export function RepositoryForm({
             format: commitFormat,
             style: commitStyle,
             allowOnProtectedBranch,
+            pushAfterCommit,
             developmentBranch: repo.branches.development ?? '',
             coAuthor,
             includeTicketId,
@@ -1204,6 +1207,17 @@ export function RepositoryForm({
               label={t('repo.commit.protectedBranch')}
               checked={allowOnProtectedBranch}
               onChange={(allowOnProtectedBranch) => setCommit({ allowOnProtectedBranch })}
+            />
+          </SettingRow>
+          <SettingRow
+            icon={Upload}
+            label={t('repo.commit.push')}
+            description={pushAfterCommit ? t('repo.commit.pushHelpOn') : t('repo.commit.pushHelpOff')}
+          >
+            <Toggle
+              label={t('repo.commit.push')}
+              checked={pushAfterCommit}
+              onChange={(pushAfterCommit) => setCommit({ pushAfterCommit })}
             />
           </SettingRow>
         </SettingsCard>

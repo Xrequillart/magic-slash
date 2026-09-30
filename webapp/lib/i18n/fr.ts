@@ -667,6 +667,7 @@ export const fr: Record<keyof typeof en, string> = {
     'Committer directement sur {branches} est permis, mais il demande confirmation.',
   'repo.commit.step.protectedBlock':
     'Ne commite jamais sur {branches} : il déplace d’abord le travail sur une nouvelle branche.',
+  'repo.commit.step.push': 'Pousse la branche juste après le commit.',
   'repo.commit.tail.coAuthor': 'Claude ajouté en co-auteur',
   'repo.commit.tail.ticketId': 'id du ticket ajouté au message',
   'repo.commit.languageHelp': 'Langue des messages de commit',
@@ -685,6 +686,9 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.commit.coAuthorHelp': 'Ajouter Claude comme co-auteur des commits',
   'repo.commit.ticketId': 'Inclure l’ID du ticket',
   'repo.commit.ticketIdHelp': 'Ajouter l’ID du ticket lu dans le nom de la branche',
+  'repo.commit.push': 'Pousser après le commit',
+  'repo.commit.pushHelpOn': '/magic:commit pousse la branche dès que le commit est fait',
+  'repo.commit.pushHelpOff': 'Le commit reste local jusqu’à ce que vous le poussiez, ou que /magic:pr le fasse',
   'repo.commit.protectedBranch': 'Commits sur les branches principales',
   'repo.commit.protectedBranchHelpOn':
     'Autorisés sur main, master, develop et la branche de dev de ce dépôt — /magic:commit demande confirmation',

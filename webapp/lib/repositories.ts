@@ -73,6 +73,8 @@ export interface RepoCommit {
   /** Allow committing straight onto main/master/develop. True (the default) still
    *  makes /magic:commit ask; false makes it branch off first. */
   allowOnProtectedBranch?: boolean
+  /** Push the branch right after committing. False (the default) leaves it local. */
+  pushAfterCommit?: boolean
 }
 
 export interface RepoResolve {
@@ -482,6 +484,7 @@ export const DEFAULTS = {
   coAuthor: true,
   includeTicketId: false,
   allowOnProtectedBranch: true,
+  pushAfterCommit: false,
   resolveCommitMode: 'new',
   resolveUseCommitConfig: true,
   resolveStyle: 'single-line',
