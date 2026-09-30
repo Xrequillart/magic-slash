@@ -79,11 +79,14 @@ const EXPECTED: { family: string; anchor: string; layout: string; features: stri
   {
     family: 'configuration',
     anchor: 'configuration',
-    layout: 'rows',
+    layout: 'cards',
     features: [
+      // The workflow opens the family, wide; three pairs; the launch modes close it, wide.
+      'repoWorkflow',
       'multiRepo',
       'commitFormat',
       'pullRequests',
+      'commitGuards',
       // The profile reads BEFORE the languages: who the app is talking to comes before
       // which language it says it in.
       'profile',
@@ -243,7 +246,9 @@ describe('FEATURE_FAMILIES', () => {
       const family = FEATURE_FAMILIES.find((candidate) => candidate.id === expected.family)
       expect(family?.layout, expected.family).toBe(expected.layout)
     }
-    expect(FEATURE_FAMILIES.filter((family) => family.layout === 'cards')).toHaveLength(1)
+    // Two now: the skills, and the conventions, which traded three settings windows for
+    // a bento of cards each showing the one thing it claims.
+    expect(FEATURE_FAMILIES.filter((family) => family.layout === 'cards')).toHaveLength(2)
     // And the same for the other loud shape. A showcase card is a full-width surface
     // carrying artwork; a second family taking it would double the page's height for
     // rows that have no artwork to put on a plate.
@@ -290,7 +295,9 @@ describe('FEATURE_FAMILIES', () => {
     const full = FEATURE_FAMILIES.flatMap((family) =>
       family.features.filter((feature) => feature.span === 'full').map((feature) => feature.id),
     )
-    expect(full).toEqual(['plan', 'done'])
+    // And in the conventions grid, the workflow that opens it and the launch modes that
+    // close it, around three pairs.
+    expect(full).toEqual(['plan', 'done', 'repoWorkflow', 'profile', 'languages', 'permissionModes'])
   })
 
   it('sets no card width on a family that draws rows', () => {
@@ -419,12 +426,14 @@ describe('FEATURE_FAMILIES', () => {
       'prComments',
       'prWatchCard',
       'repoCard',
-      'reposSettings',
-      'commitConfig',
-      'prConfig',
+      'workflowZoom',
+      'repoStack',
+      'commitFormats',
+      'prDescription',
+      'commitGuards',
       'profileArt',
       'languagesArt',
-      'launchModes',
+      'launchModesMenu',
       'resolvedThreads',
       'reviewDrawer',
       'reviewThreads',
@@ -457,7 +466,8 @@ describe('FEATURE_FAMILIES', () => {
     const drawn = EVERY_FEATURE.filter(({ feature }) => feature.visual).map(
       ({ family, feature }) => `${family}/${feature.id}`,
     )
-    const rowVisuals = drawn.filter((entry) => !entry.startsWith('workflow/'))
+    const cardFamilies = FEATURE_FAMILIES.filter((family) => family.layout === 'cards').map((family) => `${family.id}/`)
+    const rowVisuals = drawn.filter((entry) => !cardFamilies.some((prefix) => entry.startsWith(prefix)))
     expect(rowVisuals).toEqual([
       'desktop/plans',
       'desktop/tasks',
@@ -475,16 +485,6 @@ describe('FEATURE_FAMILIES', () => {
       'insights/devServer',
       'insights/pullRequest',
       'insights/prComments',
-      // The configuration family's opening row, drawn for the reason `desktop/tasks` is:
-      // its claim is about a screen, so the screen is under it.
-      'configuration/multiRepo',
-      'configuration/commitFormat',
-      'configuration/pullRequests',
-      // The profile and the languages row are a pair, and they are drawn as one: two
-      // showcase cards, one over the other, with the same plate under each mark.
-      'configuration/profile',
-      'configuration/languages',
-      'configuration/permissionModes',
     ])
 
     // And the SHAPE each of them takes, pinned separately because it is a different
@@ -495,6 +495,7 @@ describe('FEATURE_FAMILIES', () => {
     const shapes = EVERY_FEATURE.filter(({ feature }) => feature.visual).map(
       ({ feature }) => feature.shape ?? 'block',
     )
+    // Six: four rows, and the profile and the languages cards of the conventions grid.
     expect(shapes.filter((shape) => shape === 'showcase')).toHaveLength(6)
   })
 

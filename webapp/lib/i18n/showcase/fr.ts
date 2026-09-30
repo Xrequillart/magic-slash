@@ -709,12 +709,13 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   'site.features.workflowsDesc': 'Les chaînes de commandes qui portent une tâche entière.',
   'site.features.desktopTitle': 'Fonctionnalités',
   'site.features.desktopDesc': 'Jusqu’à douze agents à la fois, chacun dans son worktree.',
-  'site.features.multiRepoTitle': 'Plusieurs dépôts',
+  'site.features.multiRepoTitle':
+    'Un dépôt, une configuration',
   'site.features.multiRepoDesc':
-    'Un dépôt GitHub, une configuration Magic Slash. L’administrateur de l’organisation la règle — format de commit, langues, pull requests, tickets, conventions de code — et chaque membre qui rejoint l’équipe en hérite aussitôt. Elle se change à tout moment, et les skills /magic: l’utilisent et la respectent à la lettre.',
+    'Chaque dépôt GitHub garde ses propres réglages. L’admin de l’organisation les fixe une fois, et chaque membre qui arrive en hérite.',
   'site.features.configurationTitle': 'Vos conventions',
   'site.features.configurationDesc':
-    'Format de commit, langues, modèles, pull requests, conventions de code, tickets… Une organisation, un dépôt, une configuration pour toute l’équipe.',
+    'Votre workflow, votre format de commit, vos pull requests, vos langues. Réglés une fois par dépôt, partagés par toute l’équipe, suivis à la lettre par chaque skill.',
   'site.features.integrationsTitle': 'GitHub et Jira',
   'site.features.integrationsDesc':
     'Tickets, issues et pull requests, lus et écrits sur place.',
@@ -1029,7 +1030,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
     'À la création de la PR, un commentaire avec son lien est posté sur l’issue ou le ticket Jira — et le ticket avance sur son board.',
   // Voir la note du catalogue anglais.
   'site.launchModes.plan': 'Plan',
-  'site.launchModes.planHelp': 'Lecture seule — Claude explore et analyse, mais ne modifie jamais rien',
+  'site.launchModes.planHelp': 'Lecture seule : Claude explore et analyse, mais ne modifie jamais rien',
   'site.launchModes.default': 'Standard',
   'site.launchModes.defaultHelp': 'Claude demande votre accord pour chaque action sensible',
   'site.launchModes.acceptEdits': 'Modifications acceptées',
@@ -1040,7 +1041,7 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
     'Approuve automatiquement la plupart des actions selon les listes d’autorisations configurées',
   'site.launchModes.bypass': 'Bypass',
   'site.launchModes.bypassHelp':
-    'Aucune vérification de permission — réservé aux environnements isolés',
+    'Aucune vérification de permission, réservé aux environnements isolés',
   'site.startCard.ticket': 'Ticket lu, dépôt identifié',
   'site.startCard.worktree': 'Worktree créé sur une nouvelle branche',
   'site.startCard.deps': 'Dépendances installées',
@@ -1102,19 +1103,37 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   // La famille configuration.
   'site.features.commitFormatTitle': 'Le format de commit que vous utilisez',
   'site.features.commitFormatDesc':
-    'Conventional, Angular, Gitmoji ou forme libre, sur une ligne ou avec un corps, Claude en co-auteur ou non, l’ID du ticket dans le message ou non — et la règle qui décide si un commit peut tomber sur main. Réglé une fois par dépôt, puis /magic:commit s’y tient.',
+    'Conventional, Angular, Gitmoji ou forme libre, sur une ligne ou avec un corps, l’ID du ticket dans le message ou non. /magic:commit écrit chaque message de cette façon.',
   'site.features.pullRequestsTitle': 'La pull request, à votre façon',
   'site.features.pullRequestsDesc':
-    'Le lien vers le ticket dans la description, les comptes de test pour les relecteurs, le modèle de PR du dépôt, un commentaire posté sur le ticket à l’ouverture, et la CI et la review surveillées jusqu’au vert. Réglé une fois par dépôt, puis /magic:pr s’y tient.',
+    'Votre modèle de PR rempli, le ticket lié, les comptes de test indiqués, et la CI surveillée jusqu’au vert. /magic:pr s’y tient à chaque pull request.',
   'site.features.languagesTitle': 'Une langue par surface',
   'site.features.languagesDesc':
-    'Une langue pour les commits, une pour les pull requests, une pour les commentaires postés sur les tickets, une pour la spec et les tickets que /magic:plan rédige — et celle de la discussion avec Claude, qui n’est lue que par vous. Chacune se choisit à part, par dépôt.',
+    'Une pour les commits, une pour les pull requests, une pour les tickets, une pour parler avec Claude. Chacune se choisit à part, par dépôt.',
   'site.features.permissionModesTitle': 'Jusqu’où un agent peut aller',
   'site.features.permissionModesDesc':
     'Plan, standard, accept edits, auto ou bypass : ce qu’un agent fait avant de vous demander.',
+  // The "Your conventions" cards (`lib/features.ts`) and their drawings (`ConventionsArt`).
+  'site.features.repoWorkflowTitle': 'Un workflow par dépôt',
+  'site.features.repoWorkflowDesc': 'Dessinez l’ordre que suivent vos skills. Glissez les vôtres entre deux étapes, éteignez celles qui ne vous servent pas, et choisissez ce qui s’enchaîne tout seul et ce qui est seulement proposé. Chaque skill /magic: lit le flux et prend le chemin que vous avez tracé.',
+  'site.features.commitGuardsTitle': 'Main reste protégée',
+  'site.features.commitGuardsDesc': '/magic:commit demande avant de committer sur main, master ou develop, ou déplace le travail sur une nouvelle branche de lui-même. Et si vous le voulez, il pousse la branche dès le commit fait.',
+  'site.convArt.workflowCanvas': 'Le workflow par défaut',
+  'site.convArt.workflowAuto': 'Enchaînement automatique',
+  'site.convArt.workflowSuggest': 'Suggéré',
+  'site.convArt.workflowAnyExit': 'À la fin',
+  'site.convArt.commits': 'Commits de la branche',
+  'site.convArt.checksPassed': 'Checks au vert',
+  'site.convArt.openPr': 'Ouvrir sur GitHub',
+  'site.convArt.branches': 'Branches et push',
+  'site.convArt.protectedLabel': 'Commits sur les branches principales',
+  'site.convArt.protectedHint': 'Bloqués : /magic:commit déplace le travail sur une nouvelle branche',
+  'site.convArt.pushLabel': 'Pousser après le commit',
+  'site.convArt.pushHintOn': 'La branche est poussée dès le commit fait',
+  'site.convArt.pushHintOff': 'Le commit reste local jusqu’à ce que vous le poussiez',
   'site.features.profileTitle': 'Comment il vous parle',
   'site.features.profileDesc':
-    'Juste après l’inscription, un court formulaire d’onboarding apprend à Claude Code qui vous êtes : votre prénom, votre rôle, votre niveau technique, le ton que vous voulez et vos langues. Chaque skill le lit avant de vous répondre, pour que la réponse arrive à la profondeur où vous lisez. Modifiable à tout moment depuis les réglages.',
+    'Un court onboarding apprend à Claude Code qui vous êtes : votre prénom, votre rôle, votre niveau technique, le ton que vous voulez. Chaque skill le lit avant de vous répondre.',
 
   // La famille insights.
   // Le dessin de la sidebar d’info — `InfoSidebarMockup`, avec les libellés de l’app.

@@ -3,8 +3,15 @@
 import type { FeatureVisual } from '@/lib/features'
 import { AgentsSidebarMockup } from './AgentsSidebarMockup'
 import { ContextCardMockup } from './ContextCardMockup'
+import {
+  CommitFormatsArt,
+  CommitGuardsArt,
+  LaunchModesMenuArt,
+  PrDescriptionArt,
+  WorkflowZoomArt,
+} from './ConventionsArt'
 import { LanguagesArt } from './LanguagesArt'
-import { LaunchModesGrid } from './LaunchModesGrid'
+import { ProfileArt } from './ProfileArt'
 import { MacNotificationMockup } from './MacNotificationMockup'
 import { MenuBarMockup } from './MenuBarMockup'
 import { PlanModalMockup } from './PlanModalMockup'
@@ -13,17 +20,15 @@ import {
   CommitCompleteArt,
   ContinuePencilArt,
   DoneApprovedArt,
+  FoldersCroppedArt,
   PlanSketchArt,
   PrClimbArt,
   ResolvePuzzleArt,
   ReviewSearchArt,
   StartLiftoffArt,
 } from './FeatureArt'
-import { ProfileArt } from './ProfileArt'
 import { PullRequestCardMockup } from './PullRequestCardMockup'
 import { DevServerMockup, RepoCardMockup } from './RepoCardMockup'
-import { CommitConfigMockup, PRConfigMockup } from './RepoConfigMockup'
-import { ReposSettingsMockup } from './ReposSettingsMockup'
 import { ReviewDrawerMockup } from './ReviewDrawerMockup'
 import { SkillsModalMockup } from './SkillsModalMockup'
 import { SplitViewMockup } from './SplitViewMockup'
@@ -68,12 +73,15 @@ export const VISUALS: Record<FeatureVisual, () => React.ReactElement> = {
   prComments: PRCommentsMockup,
   prWatchCard: PrClimbArt,
   repoCard: RepoCardMockup,
-  reposSettings: ReposSettingsMockup,
-  commitConfig: CommitConfigMockup,
-  prConfig: PRConfigMockup,
+  // The "Your conventions" cards: see `ConventionsArt`.
+  workflowZoom: WorkflowZoomArt,
+  repoStack: FoldersCroppedArt,
+  commitFormats: CommitFormatsArt,
+  prDescription: PrDescriptionArt,
+  commitGuards: CommitGuardsArt,
   profileArt: ProfileArt,
   languagesArt: LanguagesArt,
-  launchModes: LaunchModesGrid,
+  launchModesMenu: LaunchModesMenuArt,
   resolvedThreads: ResolvePuzzleArt,
   reviewDrawer: ReviewDrawerMockup,
   reviewThreads: ReviewSearchArt,

@@ -422,6 +422,20 @@ export function FeaturesContent() {
                             {t(feature.caption)}
                           </p>
                         ) : null}
+                      {feature.shape === 'showcase' && feature.visual ? (
+                        // A SHOWCASE IN THE GRID: the integrations' white card, copy on
+                        // the left and a plate on the right, for a card whose drawing is
+                        // a mark rather than a screen (the profile, the languages).
+                        <ShowcaseCard
+                          title={titleOf(feature.title, t)}
+                          description={t(feature.description)}
+                          art={(() => {
+                            const Visual = VISUALS[feature.visual]
+                            return <Visual />
+                          })()}
+                          className={feature.span === 'full' ? 'sm:col-span-2' : undefined}
+                        />
+                      ) : (
                       <ToneCard
                         // Cycled by POSITION unless the row asks for a ground by name.
                         // A tone is normally a surface in a family, not a skill's
@@ -439,7 +453,9 @@ export function FeaturesContent() {
                         // rendering rule rather than a fact about the command, so it
                         // belongs here; `span` and `visual` are the facts, and this
                         // reads them.
-                        layout={feature.span === 'full' && feature.visual ? 'beside' : 'stacked'}
+                        // A full card that asks for `block` keeps the drawing under its
+                        // copy: the workflow canvas needs the card's whole width.
+                        layout={feature.span === 'full' && feature.visual && feature.shape !== 'block' ? 'beside' : 'stacked'}
                         // `sm:col-span-2` and not `col-span-2`: below `sm` the grid is
                         // a single column, where spanning two tracks that do not exist
                         // is at best a no-op and at worst an overflow. The flex
@@ -463,6 +479,7 @@ export function FeaturesContent() {
                           return <Visual />
                         })()}
                       </ToneCard>
+                      )}
                       </Fragment>
                     ))}
                   </div>

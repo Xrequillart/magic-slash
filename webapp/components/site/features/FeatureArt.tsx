@@ -78,6 +78,19 @@ function FeatureArt({ src }: { src: string }) {
   )
 }
 
+/**
+ * "One repository, one configuration": files and folders filed away, each in its place.
+ * CROPPED AT THE BOTTOM, unlike the others: drawn taller than its box and cut by the
+ * card's own bottom edge, so the figure stands in the card rather than floating in it.
+ */
+export function FoldersCroppedArt() {
+  return (
+    <div className="flex h-60 justify-center overflow-hidden px-7 pt-2">
+      <img src="/img/illustration-folders.svg" alt="" aria-hidden className="h-80 w-auto max-w-none self-start" />
+    </div>
+  )
+}
+
 /** `plan` — somebody at a desk, sketching, with a lightbulb over their head. */
 export function PlanSketchArt() {
   return <FeatureArt src="/img/illustration-sketch.svg" />

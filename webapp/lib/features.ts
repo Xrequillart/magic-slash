@@ -405,6 +405,10 @@ export type FeaturePlateFit = 'inset' | 'bleed'
  * answers is a real one: a capability with nothing to photograph, in a family where
  * everything else is a screen. On a row with a visual it changes nothing, since `block` is
  * what an omitted shape already means.
+ *
+ * ON A FULL-WIDTH CARD, `block` STACKS: the visual under the copy rather than beside it,
+ * for a drawing that needs the card's whole width (the workflow canvas). Without it, a
+ * full card with a visual puts the two side by side.
  */
 export type FeatureShape = 'block' | 'showcase' | 'card'
 
@@ -435,12 +439,14 @@ export type FeatureVisual =
   | 'menuBar'
   | 'planModal'
   | 'tasksModal'
-  | 'reposSettings'
-  | 'commitConfig'
-  | 'prConfig'
+  | 'workflowZoom'
+  | 'repoStack'
+  | 'commitFormats'
+  | 'prDescription'
+  | 'commitGuards'
   | 'profileArt'
   | 'languagesArt'
-  | 'launchModes'
+  | 'launchModesMenu'
   | 'ticketCard'
   | 'usageCard'
 
@@ -994,86 +1000,87 @@ export const FEATURE_FAMILIES: readonly FeatureFamily[] = [
     anchor: 'configuration',
     title: 'site.features.configurationTitle',
     intro: 'site.features.configurationDesc',
-    layout: 'rows',
+    // A BENTO OF TONE CARDS NOW, the skills grid's own shape, where it was rows carrying
+    // three whole settings windows. Each card shows the one thing its sentence claims,
+    // drawn from the app's design system (`ConventionsArt`) or one of the site's
+    // illustrations: a zoom on the workflow, a commit list in four formats, folders. One wide card to
+    // open on the workflow, three pairs, one wide card to close on the launch modes.
+    layout: 'cards',
     features: [
       {
-        // THE FAMILY'S OPENING CLAIM, drawn — the same call `tasks` makes at the top of
-        // the desktop family. "One GitHub repository is one configuration, and the
-        // organization owns it" is a sentence about a SCREEN: the Settings modal open
-        // on Repositories, with a personal section and the organization's under it.
-        // So the row promotes itself to a block with that screen redrawn beneath it,
-        // and the four rows after it stay the compact inventory they were.
+        // THE FAMILY'S OPENING CLAIM, and its newest: a repository draws its own flow.
+        // A zoom on the default one (start, commit, pr, resolve) on the editor's own
+        // canvas, wide and STACKED (`shape: 'block'`), since a flow needs the card's
+        // whole width and a panel beside the copy would be a third of it.
+        id: 'repoWorkflow',
+        icon: 'GitBranch',
+        title: 'site.features.repoWorkflowTitle',
+        description: 'site.features.repoWorkflowDesc',
+        span: 'full',
+        shape: 'block',
+        visual: 'workflowZoom',
+      },
+      {
         id: 'multiRepo',
         icon: 'Layers',
         title: 'site.features.multiRepoTitle',
         description: 'site.features.multiRepoDesc',
-        visual: 'reposSettings',
+        visual: 'repoStack',
       },
       {
-        // A BLOCK, like the row above it: the claim is about a settings tab, so the tab
-        // is drawn under it — and the four formats the select offers are tabled under
-        // the drawing, since a closed select shows one of them.
         id: 'commitFormat',
         icon: 'GitCommitHorizontal',
         title: 'site.features.commitFormatTitle',
         description: 'site.features.commitFormatDesc',
-        visual: 'commitConfig',
+        visual: 'commitFormats',
       },
       {
-        // THE PULL REQUEST'S OWN ROW, beside the commit's, and drawn the same way: the
-        // Pull Request tab of the same page, with the five things it configures listed
-        // under the drawing. `GitPullRequest` is in the union through the `pr`
-        // command's icon.
         id: 'pullRequests',
         icon: 'GitPullRequest',
         title: 'site.features.pullRequestsTitle',
         description: 'site.features.pullRequestsDesc',
-        visual: 'prConfig',
+        visual: 'prDescription',
       },
       {
-        // THE LANGUAGES ROW'S TWIN, and built as one on purpose: same `showcase` shape,
-        // same plate, same 96px mark centred on it. The two are a pair — who the app is
-        // talking to, and which language it says it in — and a pair reads as one only if
-        // both halves are drawn the same way.
-        //
-        // IT SITS ABOVE `languages`, which is the other half of that: who is being
-        // spoken to comes before which language it is said in. Read the other way round,
-        // the profile arrives as an afterthought to a settings list it is in fact the
-        // premise of.
-        //
-        // IT WAS A BARE HEADING, and the reason it could not stay one is the pairing. The
-        // onboarding form is a six-step wizard and the profile itself is a markdown file,
-        // so there is no screen to reproduce here — which is why this row spent a long
-        // time as the one heading in the family with nothing under it, and read as a
-        // footnote to its neighbour rather than its equal. `profileArt` answers with a
-        // sign rather than a surface; see the note in that file.
+        // The commit guard rail and the push after commit: two switches of the Commit
+        // tab's Branches card, which are the two things /magic:commit decides about the
+        // branch rather than about the message.
+        id: 'commitGuards',
+        icon: 'ShieldCheck',
+        title: 'site.features.commitGuardsTitle',
+        description: 'site.features.commitGuardsDesc',
+        visual: 'commitGuards',
+      },
+      {
+        // The profile before the languages: who the app is talking to comes before
+        // which language it says it in.
+        // SHOWCASE, like the integrations' "Configured at startup": copy on the left, the
+        // mark on a white tile on our own plate. Full width, a showcase needs the row.
         id: 'profile',
         icon: 'UserRound',
         title: 'site.features.profileTitle',
         description: 'site.features.profileDesc',
-        visual: 'profileArt',
+        span: 'full',
         shape: 'showcase',
+        visual: 'profileArt',
       },
       {
-        // SHOWCASE, the quieter of the two shapes: the sentence lists the five surfaces
-        // a language is set on, and the art is one glyph beside it rather than a tab
-        // that would list them again.
         id: 'languages',
         icon: 'Languages',
         title: 'site.features.languagesTitle',
         description: 'site.features.languagesDesc',
-        visual: 'languagesArt',
+        span: 'full',
         shape: 'showcase',
+        visual: 'languagesArt',
       },
       {
-        // A BLOCK WITH NO WINDOW IN IT: the visual is the five launch modes, two to a
-        // row, each with the app's own help line. The setting is one select in the
-        // Claude Code tab, and a drawing of it would show one mode out of five.
+        // The closing wide card, beside: the five modes as the picker lists them.
         id: 'permissionModes',
         icon: 'ShieldCheck',
         title: 'site.features.permissionModesTitle',
         description: 'site.features.permissionModesDesc',
-        visual: 'launchModes',
+        span: 'full',
+        visual: 'launchModesMenu',
       },
     ],
   },

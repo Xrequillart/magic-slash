@@ -36,9 +36,10 @@ export function ProfileArt() {
   return (
     <div
       aria-hidden
-      className="flex h-full min-h-44 items-center justify-center overflow-hidden rounded-xl bg-tone-mist px-6 py-6"
+      // The integrations' plate (`LogoPlate`): our own ground, the mark on a white tile.
+      className="flex h-full min-h-44 items-center justify-center overflow-hidden rounded-xl bg-plate-magic p-6"
     >
-      <span className="flex h-24 w-24 items-center justify-center rounded-full bg-white shadow-card">
+      <span className="flex h-24 w-24 items-center justify-center rounded-2xl bg-white shadow-lift">
         <MessageCircleHeart
           className="h-12 w-12 text-accent"
           strokeWidth={1.5}

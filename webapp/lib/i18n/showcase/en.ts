@@ -1405,15 +1405,16 @@ export const showcaseEn = {
   'site.features.workflowsDesc': 'The chains of commands that carry a whole task.',
   'site.features.desktopTitle': 'Features',
   'site.features.desktopDesc': 'Up to twelve agents at once, each in its own worktree.',
-  'site.features.multiRepoTitle': 'Several repositories',
+  'site.features.multiRepoTitle':
+    'One repository, one configuration',
   // The row is drawn (`ReposSettingsMockup`), so the line under it carries the whole
   // claim: one repository is one configuration, the organization's admin owns it, a
   // member inherits it, and the skills follow it.
   'site.features.multiRepoDesc':
-    'One GitHub repository, one Magic Slash configuration. The organization’s administrator sets it — commit format, languages, pull requests, tickets, code conventions — and every member who joins the team inherits it at once. It can be changed at any time, and the /magic: skills use it and follow it to the letter.',
+    'Each GitHub repository keeps its own settings. The organization’s admin sets them once, and every member who joins inherits them.',
   'site.features.configurationTitle': 'Your conventions',
   'site.features.configurationDesc':
-    'Commit format, languages, templates, pull requests, code conventions, tickets… One organization, one repository, one configuration for the whole team.',
+    'Your workflow, your commit format, your pull requests, your languages. Set once per repository, shared by the whole team, followed to the letter by every skill.',
   'site.features.integrationsTitle': 'GitHub and Jira',
   'site.features.integrationsDesc':
     'Tickets, issues and pull requests, read and written in place.',
@@ -1862,7 +1863,7 @@ export const showcaseEn = {
   // the app's own help line. Four of the five names are the same word in French, hence
   // their lines in `i18n.test.ts`.
   'site.launchModes.plan': 'Plan',
-  'site.launchModes.planHelp': 'Read-only — Claude explores and analyzes but never modifies anything',
+  'site.launchModes.planHelp': 'Read-only: Claude explores and analyzes but never modifies anything',
   'site.launchModes.default': 'Standard',
   'site.launchModes.defaultHelp': 'Claude asks permission for every sensitive action',
   'site.launchModes.acceptEdits': 'Accept Edits',
@@ -1870,7 +1871,7 @@ export const showcaseEn = {
   'site.launchModes.auto': 'Auto',
   'site.launchModes.autoHelp': 'Auto-approves most actions based on configured allowlists',
   'site.launchModes.bypass': 'Bypass',
-  'site.launchModes.bypassHelp': 'No permission checks — for sandboxed environments only',
+  'site.launchModes.bypassHelp': 'No permission checks, for sandboxed environments only',
   'site.startCard.ticket': 'Ticket read, repository resolved',
   'site.startCard.worktree': 'Worktree created on a new branch',
   'site.startCard.deps': 'Dependencies installed',
@@ -1941,19 +1942,37 @@ export const showcaseEn = {
   // "Your conventions" pair, and the first row is that grid's "Several repositories".
   'site.features.commitFormatTitle': 'The commit format you use',
   'site.features.commitFormatDesc':
-    'Conventional, Angular, Gitmoji or free form, one line or with a body, Claude as co-author or not, the ticket id in the message or not — and the rule that decides whether a commit may land on main. Set once per repository, then /magic:commit keeps to it.',
+    'Conventional, Angular, Gitmoji or free form, one line or with a body, the ticket id in the message or not. /magic:commit writes every message that way.',
   'site.features.pullRequestsTitle': 'The pull request, your way',
   'site.features.pullRequestsDesc':
-    'The ticket linked from the description, the test accounts reviewers need, the repository’s own PR template, a comment posted on the ticket when it opens, and the CI and the review watched until green. Set once per repository, then /magic:pr keeps to it.',
+    'Your PR template filled in, the ticket linked, the test accounts pointed out, and the CI watched until green. /magic:pr keeps to it on every pull request.',
   'site.features.languagesTitle': 'A language per surface',
   'site.features.languagesDesc':
-    'One language for the commits, one for the pull requests, one for the comments posted on tickets, one for the spec and the tickets /magic:plan writes — and the one you talk to Claude in, which nobody else reads. Each is chosen on its own, per repository.',
+    'One for the commits, one for the pull requests, one for the tickets, one for talking with Claude. Each is chosen on its own, per repository.',
   'site.features.permissionModesTitle': 'How far an agent may go',
   'site.features.permissionModesDesc':
     'Plan, standard, accept edits, auto or bypass: how much an agent does before it asks you.',
+  // The "Your conventions" cards (`lib/features.ts`) and their drawings (`ConventionsArt`).
+  'site.features.repoWorkflowTitle': 'A workflow per repository',
+  'site.features.repoWorkflowDesc': 'Draw the order your skills follow. Slot your own skills between two steps, switch off the ones you don’t use, and choose what chains on its own and what is only suggested. Every /magic: skill reads the flow and takes the path you drew.',
+  'site.features.commitGuardsTitle': 'Main stays guarded',
+  'site.features.commitGuardsDesc': '/magic:commit asks before committing on main, master or develop, or moves the work to a new branch on its own. And if you want, it pushes the branch as soon as the commit is made.',
+  'site.convArt.workflowCanvas': 'The default workflow',
+  'site.convArt.workflowAuto': 'Automatic chaining',
+  'site.convArt.workflowSuggest': 'Suggested',
+  'site.convArt.workflowAnyExit': 'When done',
+  'site.convArt.commits': 'Commits on this branch',
+  'site.convArt.checksPassed': 'Checks passed',
+  'site.convArt.openPr': 'Open on GitHub',
+  'site.convArt.branches': 'Branches and push',
+  'site.convArt.protectedLabel': 'Commits on main branches',
+  'site.convArt.protectedHint': 'Blocked: /magic:commit moves the work to a new branch',
+  'site.convArt.pushLabel': 'Push after commit',
+  'site.convArt.pushHintOn': 'The branch is pushed as soon as the commit is made',
+  'site.convArt.pushHintOff': 'The commit stays local until you push it',
   'site.features.profileTitle': 'How it talks to you',
   'site.features.profileDesc':
-    'Right after you sign up, a short onboarding form teaches Claude Code who you are: your first name, your role, your technical level, the tone you want and your languages. Every skill reads it before answering, so an answer arrives at the depth you read at. Editable any time from the settings.',
+    'A short onboarding tells Claude Code who you are: your first name, your role, your technical level, the tone you want. Every skill reads it before answering.',
 
   // The insights family. The agent-panel row's description is the homepage band's own
   // paragraph, which already names the panel's contents one by one.
