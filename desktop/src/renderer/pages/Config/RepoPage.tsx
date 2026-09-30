@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Trash2, AlertTriangle, Plus, ArrowLeft, Building2, Lock, FolderOpen,
+  Trash2, AlertTriangle, Plus, ArrowLeft, Building2, Lock, FolderOpen, Upload,
   Ticket, Settings2, Puzzle, GitBranch, FolderGit2, Workflow,
 } from '@ds/desktop/icons'
 import { useAuth } from '../../hooks/useAuth'
@@ -1632,6 +1632,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
   // Absent means permitted — the same fallback the skill applies, so an untouched
   // repo reads the same on both sides.
   const allowOnProtectedBranchVal = commitSettings.allowOnProtectedBranch !== undefined ? commitSettings.allowOnProtectedBranch : true
+  // Absent means off, as the skill reads it: a push is never started by default.
+  const pushAfterCommitVal = commitSettings.pushAfterCommit === true
   const resolveCommitModeVal = resolveSettings.commitMode || 'new'
   const resolveUseCommitConfigVal = resolveSettings.useCommitConfig !== undefined ? resolveSettings.useCommitConfig : true
   const resolveStyleVal = resolveSettings.style || 'single-line'
@@ -2066,6 +2068,18 @@ export function RepoPage({ repoName }: RepoPageProps) {
           onChange: (next: boolean) => handleCommitSettingChange('allowOnProtectedBranch', next),
           label: t('repo.commit.protectedBranch'),
         },
+      }, {
+        id: 'pushAfterCommit',
+        icon: Upload,
+        label: t('repo.commit.push'),
+        hint: pushAfterCommitVal ? t('repo.commit.pushHelpOn') : t('repo.commit.pushHelpOff'),
+        disabled: readOnly,
+        control: {
+          kind: 'switch' as const,
+          checked: pushAfterCommitVal,
+          onChange: (next: boolean) => handleCommitSettingChange('pushAfterCommit', next),
+          label: t('repo.commit.push'),
+        },
       }],
     },
     languagesGroup([langRow('commit', t('repo.langs.commit'), t('repo.commit.languageHelp'))]),
@@ -2324,6 +2338,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
         format: formatVal,
         style: styleVal,
         allowOnProtectedBranch: allowOnProtectedBranchVal,
+        pushAfterCommit: pushAfterCommitVal,
         developmentBranch: branchSettings.development || '',
         coAuthor: coAuthorVal,
         includeTicketId: includeTicketIdVal,

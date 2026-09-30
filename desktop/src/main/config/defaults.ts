@@ -60,7 +60,9 @@ export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keyword
     includeTicketId: true,
     // Permitted by default: an update must not silently take away the ability to
     // commit on develop. The guard still speaks up — it asks first (see types.ts).
-    allowOnProtectedBranch: true
+    allowOnProtectedBranch: true,
+    // Off by default: pushing is outward-facing, the user turns it on.
+    pushAfterCommit: false
   },
   resolve: {
     commitMode: 'new',

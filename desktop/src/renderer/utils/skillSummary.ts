@@ -202,6 +202,8 @@ export interface CommitSummaryInput {
   developmentBranch: string
   coAuthor: boolean
   includeTicketId: boolean
+  /** Pushes right after committing. Absent reads as off, the default. */
+  pushAfterCommit?: boolean
 }
 
 export function commitSummary(input: CommitSummaryInput): SkillSummary {
@@ -222,6 +224,7 @@ export function commitSummary(input: CommitSummaryInput): SkillSummary {
       vars: { branches: branches.join(', ') },
     },
   ]
+  if (input.pushAfterCommit) steps.push({ key: 'repo.commit.step.push' })
 
   const tail: SkillSummaryStep[] = []
   if (input.coAuthor) tail.push({ key: 'repo.commit.tail.coAuthor' })

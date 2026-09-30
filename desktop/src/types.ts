@@ -1154,6 +1154,12 @@ export interface RepositoryConfig {
      * branch first. See skills/magic-commit/SKILL.md step 4.6.
      */
     allowOnProtectedBranch?: boolean
+    /**
+     * Push the branch right after the commit (`git push`, setting its upstream on the
+     * first push). Defaults to FALSE: a push is outward-facing, so it is never a thing
+     * an update starts doing on its own. See skills/magic-commit/SKILL.md step 6.2.
+     */
+    pushAfterCommit?: boolean
   }
   resolve?: {
     commitMode?: string        // 'new' | 'amend' | 'ask'
@@ -3272,6 +3278,8 @@ export interface OrgSharedConfig {
      *  the DB function projects the whole `commit` object, so a team's protection
      *  rule reaches its members rather than being re-decided per machine. */
     allowOnProtectedBranch?: boolean
+    /** See RepositoryConfig['commit']. Inherited the same way. */
+    pushAfterCommit?: boolean
   }
   pullRequest?: {
     autoLinkTickets?: boolean

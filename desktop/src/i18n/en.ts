@@ -814,6 +814,7 @@ export const en = {
     'Committing straight onto {branches} is allowed, but it asks you first.',
   'repo.commit.step.protectedBlock':
     'Never commits onto {branches}: it moves the work to a new branch first.',
+  'repo.commit.step.push': 'Pushes the branch right after committing.',
   'repo.commit.tail.coAuthor': 'Claude added as co-author',
   'repo.commit.tail.ticketId': 'ticket id added to the message',
   'repo.commit.languageHelp': 'Language used for commit messages',
@@ -831,6 +832,9 @@ export const en = {
   'repo.commit.coAuthorHelp': 'Add Claude as co-author in commits',
   'repo.commit.ticketId': 'Include Ticket ID',
   'repo.commit.ticketIdHelp': 'Add ticket ID from branch name in commit message',
+  'repo.commit.push': 'Push after commit',
+  'repo.commit.pushHelpOn': '/magic:commit pushes the branch as soon as the commit is made',
+  'repo.commit.pushHelpOff': 'The commit stays local until you push it, or /magic:pr does',
   'repo.commit.protectedBranch': 'Commits on main branches',
   'repo.commit.protectedBranchHelpOn':
     'Allowed on main, master, develop and this repo’s development branch — /magic:commit asks first',

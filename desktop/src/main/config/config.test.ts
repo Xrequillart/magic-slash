@@ -381,6 +381,13 @@ describe('updateRepositoryCommitSettings', () => {
     expect(readConfig().repositories.api.commit?.allowOnProtectedBranch).toBe(true)
   })
 
+  it('persists pushAfterCommit in both directions', () => {
+    expect(updateRepositoryCommitSettings('api', { pushAfterCommit: true })
+      .repositories.api.commit?.pushAfterCommit).toBe(true)
+    updateRepositoryCommitSettings('api', { pushAfterCommit: false })
+    expect(readConfig().repositories.api.commit?.pushAfterCommit).toBe(false)
+  })
+
   it('leaves the other commit settings alone', () => {
     updateRepositoryCommitSettings('api', { format: 'gitmoji', coAuthor: true })
     updateRepositoryCommitSettings('api', { allowOnProtectedBranch: false })

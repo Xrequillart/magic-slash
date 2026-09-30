@@ -173,6 +173,10 @@
             "allowOnProtectedBranch": {
               "type": "boolean",
               "description": "Allow committing directly on main/master/develop. Defaults to true; /magic:commit asks first. False makes the skill branch off instead."
+            },
+            "pushAfterCommit": {
+              "type": "boolean",
+              "description": "Push the branch right after committing (setting its upstream on the first push). Defaults to false."
             }
           },
           "additionalProperties": false,
