@@ -81,7 +81,9 @@ ATTENTION POINTS:
 - {point}
 ```
 
-## Auto-fix loop (max 3 iterations)
+## Auto-fix loop
+
+`MAX_ITERATIONS` is `$START_CRITIC_ITERATIONS` and `MIN_SCORE` is `$START_CRITIC_MIN_SCORE`, from SKILL.md Step 0.6: 3 and 8 unless the repository says otherwise. With `MAX_ITERATIONS` at 0, the critic scores once and nothing is fixed.
 
 ```
 iteration = 0
@@ -105,9 +107,9 @@ LOOP:
          ONLY the rubric provided. Do not modify any file."
      Parse the agent's response → score, axis_results, positive_points, attention_points
 
-  3. IF score >= 8 → EXIT loop
+  3. IF score >= MIN_SCORE → EXIT loop
 
-  4. IF iteration >= 3 → EXIT loop (display summary with current score)
+  4. IF iteration >= MAX_ITERATIONS → EXIT loop (display summary with current score)
 
   5. Regression check (skip when iteration == 0):
      Compare axis_results to prev_axis_states.
@@ -134,6 +136,7 @@ LOOP:
      - The current score
      - The selected attention point (from step 7)
      - The user-facing iteration number: iteration + 1 (1-indexed for display; internal counter is 0-indexed)
+     - The iteration budget, MAX_ITERATIONS, as `{max}`
 
   9. Launch a fix Agent with:
      - The worktree path

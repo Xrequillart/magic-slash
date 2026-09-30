@@ -786,6 +786,34 @@ Choix (1/2/3) :
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
+## MSG_PLAN_AUTO_APPROVED
+
+### en
+
+```text
+✅ Plan approval is off for this repository: starting the implementation.
+```
+
+### fr
+
+```text
+✅ La validation du plan est désactivée pour ce repository : je lance l'implémentation.
+```
+
+## MSG_NO_PLAN
+
+### en
+
+```text
+📝 This repository skips the plan: implementing straight from the ticket, with one agent.
+```
+
+### fr
+
+```text
+📝 Ce repository se passe de plan : j'implémente directement depuis le ticket, avec un seul agent.
+```
+
 ## MSG_PROGRESS_SOLO
 
 ### en
@@ -1063,13 +1091,13 @@ Repli en mode `reference` : le résumé pointera vers la source documentée à l
 ### en
 
 ```text
-🔧 Confidence: {confidence_score}/10 — fixing: {attention_point}... (iteration {n}/3)
+🔧 Confidence: {confidence_score}/10 — fixing: {attention_point}... (iteration {n}/{max})
 ```
 
 ### fr
 
 ```text
-🔧 Confiance : {confidence_score}/10 — correction : {attention_point}... (itération {n}/3)
+🔧 Confiance : {confidence_score}/10 — correction : {attention_point}... (itération {n}/{max})
 ```
 
 ## MSG_SIMPLIFY

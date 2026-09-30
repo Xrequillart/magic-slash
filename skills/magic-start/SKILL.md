@@ -122,6 +122,27 @@ Read `.repositories.<name>.pullRequest.testAccounts` from config. Default: `"off
 
 Keep the mode and source **per repo**, keyed by config key (e.g. `api → reference`, `web → off`) — a fullstack ticket resolves them once per repo, never once for the ticket. Do not collapse them into a single `$TA_MODE` / `$TA_SOURCE` pair: on a multi-repo start the second repo would overwrite the first. Step 5.5.1 re-reads the pair for the repo it is currently describing. If a repo's mode is `off` (the default) or any value other than `reference` / `inline`, Step 5.5.1 skips test-account resolution for that repo entirely. Otherwise it reads `references/test-accounts.md`.
 
+### 0.6: Read the start settings (execute after repo is identified in step 3)
+
+Read `.repositories.<name>.start` from config, `<name>` being the config key Step 3 resolved (Step 0.5's rule). Every field is optional, and an unset field is this skill's behaviour before these settings existed:
+
+| Field | Values | Default | Read in |
+| --- | --- | --- | --- |
+| `exploration` | `auto`, `always`, `never` | `auto` | Step 5.1 |
+| `plan` | boolean | `true` | Step 5.2 |
+| `planReview` | boolean | `true` | Step 5.2.3 |
+| `planApproval` | boolean | `true` | Step 5.3 |
+| `execution` | `auto`, `solo`, `multi` | `auto` | Step 5.2.5 |
+| `simplify` | boolean | `true` | Step 5.4.5 |
+| `criticIterations` | integer, 0 to 5 | `3` | Step 5.5.2 |
+| `criticMinScore` | integer, 1 to 10 | `8` | Step 5.5.2 |
+
+A value outside these (a typo in a hand-edited config) is its default. Keep the eight values as `$START_*` for Step 5.
+
+**Multi-repo**: the run is one plan and one implementation across the repos, so it takes ONE value per field, the most thorough of the repos' values: a boolean is `true` when any repo says `true`; `exploration` is `always` when any repo says so, `never` only when every repo does, `auto` otherwise; `execution` is the first repo's (Step 3 order); `criticIterations` and `criticMinScore` are the highest of the repos'. A repo that asks for more care is never given less because a sibling asks for less.
+
+These settings change which of Step 5's phases run and how the critic loop ends. They change nothing else: the skill's questions, guards and outputs stay exactly as written.
+
 ## Step 1: Detect ticket type
 
 Analyze `$ARGUMENTS`:
@@ -394,11 +415,15 @@ Run it in each worktree, and mention the deletion to the user if the file was th
 
 ### 5.1: Codebase exploration (conditional)
 
+`$START_EXPLORATION` (Step 0.6) decides first: `always` explores, whatever the ticket; `never` skips straight to step 5.2, whatever the ticket (including a full-stack one or one with a design brief). Only `auto`, the default, runs the rule below.
+
 Decide whether codebase exploration is needed with `references/sub-agents.md` §5.1. Skip exploration only when ALL its skip conditions hold (exact files named, precise self-contained criteria, localized change). Require it when ANY of its conditions holds, including a full-stack task or an existing design brief; then launch an `Explore` agent with the prompt that section describes, and use its summary for step 5.2.
 
 **If exploration is skipped**: Proceed directly to step 5.2, building the implementation plan from the ticket information alone.
 
 ### 5.2: Create implementation plan
+
+**When `$START_PLAN` is `false`** (Step 0.6), there is no plan: skip steps 5.2, 5.2.3, 5.2.5 and 5.3, display `MSG_NO_PLAN`, and go to step 5.4A (solo mode, the only one without a plan to split). The solo agent receives, in place of the plan, the ticket's goal and its acceptance criteria as the list of what to do.
 
 Read the matching plan template from `references/plan-template-{type}-{lang}.md`:
 - `{type}`: `single` or `fullstack`
@@ -410,11 +435,15 @@ The template carries a design-context section (`### Design context` / `### Conte
 
 ### 5.2.3: Plan review (via sub-agent)
 
+Skipped when `$START_PLAN_REVIEW` is `false` (Step 0.6): the plan goes on as written.
+
 Launch an `Agent` to review the implementation plan. Build its prompt from `references/sub-agents.md` §5.2.3: what to provide (including the design brief when it exists) and the review axes. The agent returns actionable suggestions, or states the plan looks good.
 
 Integrate pertinent suggestions into the plan before proceeding. Do not blindly apply all suggestions — use judgment to filter out noise.
 
 ### 5.2.5: Dispatcher (execution strategy)
+
+`$START_EXECUTION` (Step 0.6) decides first: `solo` is Solo, whatever the plan; `multi` is Multi-agent whenever the plan has at least two steps that can run independently (Solo when it has not: there is nothing to split). Only `auto`, the default, runs the rule below.
 
 Analyze the plan to choose between **Solo** and **Multi-agent**, applying the decision rules of `references/sub-agents.md` §5.2.5 in priority order (multiple repos, or a single repo with more than 8 files and parallelizable steps, means Multi-agent; Solo otherwise).
 
@@ -427,7 +456,7 @@ Use `AskUserQuestion` with `MSG_APPROVAL` as the question text and the following
 - Option 2: Request modifications to the plan
 - Option 3: Reject and stop
 
-Never start implementation without explicit user approval.
+Never start implementation without explicit user approval, unless the repository turned it off: when `$START_PLAN_APPROVAL` is `false` (Step 0.6), do not ask. Display the plan and the strategy as usual, then `MSG_PLAN_AUTO_APPROVED`, and go to step 5.4. The user chose that in the repository's settings; it is not a reason to skip anything else.
 
 - **Approve** → Step 5.4
 - **Modifications** → Adjust plan based on feedback, present again, re-request approval
@@ -446,6 +475,8 @@ Launch an `Agent` with: ticket summary (ID, title, 2-3 sentence goal), acceptanc
 Display `MSG_PROGRESS_MULTI`. Use the `Agent` tool to launch subagents in parallel, building each prompt from `references/sub-agents.md` §5.4B (ticket summary, acceptance criteria, assigned plan steps, worktree path, design brief when it exists, constraints: no commits). After all subagents complete, review each one's changes, check for conflicts and fix integration issues, as that section lists.
 
 ### 5.4.5: Simplify pass (via sub-agent)
+
+When `$START_SIMPLIFY` is `false` (Step 0.6), still collect the changed files (step 1 of `references/sub-agents.md` §5.4.5, which Step 5.5.3 reuses), then skip the rest of this step silently.
 
 After implementation completes (step 5.4), run a simplification pass **only on the files changed during this task**. Read `references/sub-agents.md` §5.4.5 and follow it: it collects the changed files (reused by Step 5.5.3), skips silently when none changed, displays `MSG_SIMPLIFY` and launches the `/simplify` agent on the changed files only.
 
@@ -475,7 +506,7 @@ Otherwise, read `references/test-accounts.md` (the copy inside **this** skill's 
 
 The confidence evaluation is performed by an **independent critic agent** — a separate sub-agent that has no knowledge of the implementation plan, the implementation conversation, or the decisions made along the way. This prevents self-serving bias: the agent that wrote the code must not be the one grading it.
 
-Read `references/confidence-evaluation.md` and follow it. It holds what the critic receives and must not receive, the evaluation rubric (passed verbatim to the critic), the design fidelity guards, the expected output format, and the auto-fix loop (max 3 iterations, exit at a score of 8 or more).
+Read `references/confidence-evaluation.md` and follow it. It holds what the critic receives and must not receive, the evaluation rubric (passed verbatim to the critic), the design fidelity guards, the expected output format, and the auto-fix loop, which runs at most `$START_CRITIC_ITERATIONS` fix iterations (3 by default; 0 means the critic scores once and nothing is fixed) and exits at a score of `$START_CRITIC_MIN_SCORE` or more (8 by default), both from Step 0.6.
 
 #### 5.5.3: Display final summary
 
