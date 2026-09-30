@@ -1,7 +1,7 @@
 import { quickLaunchRepo } from '../quickLaunchRepo'
 import { useEffect, useCallback, useRef, useMemo, useState } from 'react'
-import { AlertTriangle, FolderGit2, ListTodo, NotebookPen, RotateCcw, Sparkles, FolderOpen } from '@ds/desktop/icons'
-import { Loader } from '@ds/desktop'
+import { FolderGit2, ListTodo, NotebookPen, RotateCcw, Sparkles, FolderOpen } from '@ds/desktop/icons'
+import { ConfirmDialog, Loader } from '@ds/desktop'
 import { REASON_META, buildRepoSetup, needsRepoSetup } from './utils/repoSetup'
 import type { InvalidRepo } from '../preload'
 import { useStore } from './store'
@@ -604,48 +604,19 @@ export function App() {
       {/* Toast Notifications */}
       <ToastContainer />
 
-      {/* Global Close Agent Confirmation Modal */}
+      {/* Global Close Agent Confirmation Modal. Enter and Escape are answered above. */}
       {closeAgentModal && !skipArchiveConfirm && (
-        <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-modal-backdrop"
-          onClick={closeCloseAgentModal}
-        >
-          <div
-            className="bg-bg-secondary border border-line rounded-xl mx-4 max-w-sm animate-modal-content"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center gap-3 px-5 pt-5 pb-4">
-              <div className="p-2 bg-yellow/10 rounded-lg">
-                <AlertTriangle className="w-4 h-4 text-yellow" />
-              </div>
-              <h3 className="text-base font-semibold">{t('app.closeAgent.title')}</h3>
-            </div>
-
-            {/* Body */}
-            <div className="px-5 pb-5">
-              <p className="text-text-secondary text-sm mb-4">
-                {t('app.closeAgent.body')}
-              </p>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={closeCloseAgentModal}
-                  className="flex-1 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  ref={confirmCloseButtonRef}
-                  onClick={handleCloseAgent}
-                  className="flex-1 px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all focus:outline-none"
-                >
-                  {t('app.closeAgent.confirm')}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title={t('app.closeAgent.title')}
+          body={t('app.closeAgent.body')}
+          confirmLabel={t('app.closeAgent.confirm')}
+          cancelLabel={t('common.cancel')}
+          onConfirm={handleCloseAgent}
+          onCancel={closeCloseAgentModal}
+          confirmRef={confirmCloseButtonRef}
+          backdropClassName="animate-modal-backdrop"
+          className="animate-modal-content"
+        />
       )}
 
       {/* Profile Onboarding Wizard */}
