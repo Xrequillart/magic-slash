@@ -123,6 +123,9 @@ export type EntryId =
   | 'workflownode'
   | 'workflowedge'
   | 'canvasminimap'
+  | 'workflowinspector'
+  | 'workflowskillpicker'
+  | 'workflowproblems'
 
 export const ENTRY_LABELS: Record<EntryId, string> = {
   colors: 'Colours',
@@ -241,6 +244,9 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   workflownode: 'WorkflowNode',
   workflowedge: 'WorkflowEdge',
   canvasminimap: 'CanvasMinimap',
+  workflowinspector: 'WorkflowInspector',
+  workflowskillpicker: 'WorkflowSkillPicker',
+  workflowproblems: 'WorkflowProblems',
 }
 
 /**
@@ -424,6 +430,11 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   // this folder inside either.
   workflowedge: [],
   canvasminimap: [],
+  // The editor around the canvas. None of the three draws the canvas: the page arranges
+  // them side by side, and each is its own region of it.
+  workflowinspector: ['banner', 'button', 'card', 'icon', 'select', 'text'],
+  workflowskillpicker: ['menu'],
+  workflowproblems: ['icon', 'text'],
 }
 
 /** The graph as `EntryHeader` wants it: an id and the label to print on the chip. */
@@ -625,4 +636,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   workflownode: 'One step, and a port for every way it ends',
   workflowedge: 'What runs next, on its own or only offered',
   canvasminimap: 'Where the view is, on a canvas bigger than it',
+  workflowinspector: 'What is selected on the canvas, and what it can become',
+  workflowskillpicker: 'Which skill a new step runs',
+  workflowproblems: 'Why the workflow cannot be saved yet',
 }
