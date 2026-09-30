@@ -1,11 +1,12 @@
 import { Banner, type BannerVariant } from './Banner'
-import { Button } from './Button'
 import { ButtonIcon } from './ButtonIcon'
 import { Card, type CardGround } from './Card'
 import { Icon } from './Icon'
 import { OutputSample } from './OutputSample'
-import { ArrowRight, Eye, EyeOff, Trash, X } from './icons'
-import { Select, type SelectOption } from './Select'
+import './workflowCanvas.css'
+
+import { Eye, EyeOff, Trash, X } from './icons'
+import type { SelectOption } from './Select'
 import { SettingsCard, type SettingsCardRow } from './SettingsCard'
 import { SkillIntro } from './SkillIntro'
 import { skillIcon } from './skillIcons'
@@ -159,8 +160,10 @@ export interface WorkflowInspectorLabels {
   alwaysOn: string
   /** A step that is off, in words: "Turned off: the skills skip it." */
   offHint: string
-  /** A drawn link's Remove. */
+  /** A drawn link's Remove: the button's word, its row's name ("Remove from the workflow") and the line under it. */
   removeLink?: string
+  removeLinkRow?: string
+  removeLinkHint?: string
   /** The outcome choice meaning "whatever it ended on". */
   anyOutcome?: string
   /** A default link's sentence: "Default link: it cannot be removed, only its kind changes." */
@@ -400,64 +403,87 @@ function LinkPanel({
   return (
     <>
       <div className="flex min-w-0 items-center gap-2 pr-6">
-        <Text size="sm" weight="bold" className="truncate" title={link.fromLabel}>{link.fromLabel}</Text>
-        <Icon glyph={ArrowRight} size="sm" tone="muted" className="flex-shrink-0" />
-        <Text size="sm" weight="bold" className="truncate" title={link.toLabel}>{link.toLabel}</Text>
+        <Text size="sm" weight="bold" className="min-w-0 flex-shrink truncate" title={link.fromLabel}>{link.fromLabel}</Text>
+        <LinkTrail kind={link.kind} />
+        <Text size="sm" weight="bold" className="min-w-0 flex-shrink truncate" title={link.toLabel}>{link.toLabel}</Text>
       </div>
 
-      {outcomeChoice ? (
-        <Field label={labels.outcome}>
-          <Select
-            value={link.outcome ?? ''}
-            options={outcomeOptions}
-            // "Whatever it ended on" is the Select's cleared state, `''`.
-            clearLabel={labels.anyOutcome}
-            placeholder={labels.anyOutcome}
-            onChange={(outcome) => onChangeOutcome?.(link.from, link.to, outcome === '' ? undefined : outcome)}
-            disabled={readOnly || !onChangeOutcome}
-            ariaLabel={labels.outcome}
-            size="md"
-            fit
-          />
-        </Field>
-      ) : link.outcome && (
-        <div className="flex items-center gap-1.5">
-          <Text size="2xs" tone="secondary">{labels.outcome}</Text>
-          <code className="rounded-md border border-line-strong px-1.5 py-0.5 font-mono text-[10px] leading-4 text-text-secondary">
-            {link.outcome}
-          </code>
-        </div>
-      )}
-
-      <Field label={labels.kind}>
-        <Select
-          value={link.kind}
-          options={kindOptions}
-          onChange={(kind) => onChangeKind?.(link.from, link.to, kind as WorkflowCanvasLinkKind)}
-          disabled={readOnly || !onChangeKind}
-          ariaLabel={labels.kind}
-          size="md"
-          fit
-        />
-      </Field>
-      {link.hint && <Text size="2xs" tone="secondary">{link.hint}</Text>}
-      {link.locked && labels.defaultLink && <Text size="2xs" tone="secondary">{labels.defaultLink}</Text>}
-      {!link.locked && !readOnly && onRemoveLink && (
-        <Button tone="danger" size="sm" icon={Trash} onClick={() => onRemoveLink(link.from, link.to)} className="self-start">
-          {labels.removeLink ?? labels.remove}
-        </Button>
-      )}
+      {/* The link's choices, as rows like a step's: a SettingsCard. */}
+      <SettingsCard
+        rows={[
+          outcomeChoice ? {
+            id: 'outcome',
+            label: labels.outcome,
+            layout: 'stacked',
+            control: {
+              kind: 'select',
+              value: link.outcome ?? '',
+              options: outcomeOptions,
+              // "Whatever it ended on" is the Select's cleared state, `''`.
+              clearLabel: labels.anyOutcome,
+              placeholder: labels.anyOutcome,
+              onChange: (outcome) => onChangeOutcome?.(link.from, link.to, outcome === '' ? undefined : outcome),
+              disabled: readOnly || !onChangeOutcome,
+              ariaLabel: labels.outcome,
+              size: 'md',
+            },
+          } : link.outcome !== undefined && {
+            // A default link's outcome is the product's: said, not offered.
+            id: 'outcome',
+            label: labels.outcome,
+            note: link.outcome,
+          },
+          {
+            id: 'kind',
+            label: labels.kind,
+            layout: 'stacked',
+            note: link.hint,
+            control: {
+              kind: 'select',
+              value: link.kind,
+              options: kindOptions,
+              onChange: (kind) => onChangeKind?.(link.from, link.to, kind as WorkflowCanvasLinkKind),
+              disabled: readOnly || !onChangeKind,
+              ariaLabel: labels.kind,
+              size: 'md',
+            },
+          },
+          !link.locked && !readOnly && onRemoveLink && {
+            id: 'remove',
+            label: labels.removeLinkRow ?? labels.removeLink ?? labels.remove,
+            hint: labels.removeLinkHint,
+            control: {
+              kind: 'button',
+              children: labels.removeLink ?? labels.remove,
+              icon: Trash,
+              tone: 'danger',
+              size: 'sm',
+              onClick: () => onRemoveLink(link.from, link.to),
+            },
+          },
+        ]}
+        note={link.locked ? labels.defaultLink : undefined}
+      />
     </>
   )
 }
 
-/** A field's name over its control. Private: the controls are this panel's own. */
-function Field({ label, children }: { label: string; children: JSX.Element }) {
+/**
+ * THE LINK ITSELF, between its two names: a used port, the stroke, a used port, as the
+ * canvas draws them, and the pulse running along it when it is `auto`. The rules are the
+ * canvas's own (`workflowCanvas.css`, `.ms-wf-trail`), so it is the same link to the pixel.
+ * Decoration: the names beside it already say what it joins.
+ */
+function LinkTrail({ kind }: { kind: WorkflowCanvasLinkKind }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <Text size="2xs" weight="medium" tone="secondary">{label}</Text>
-      {children}
-    </div>
+    <span aria-hidden="true" className="ms-wf-trail flex min-w-10 flex-1 items-center">
+      <span className={`ms-wf-trail-port ms-wf-port-${kind}`} />
+      <svg className="h-[13px] min-w-0 flex-1 overflow-visible">
+        <line x1="0" y1="50%" x2="100%" y2="50%" className={`ms-wf-edge-${kind}`} />
+        {kind === 'auto' && <circle r={3} cy="50%" className="ms-wf-pulse" />}
+      </svg>
+      <span className={`ms-wf-trail-port ms-wf-port-${kind}`} />
+    </span>
   )
 }
 

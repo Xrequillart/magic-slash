@@ -65,7 +65,8 @@
   border-radius: 9999px;
   background: transparent;
 }
-.ms-workflow-canvas .react-flow__handle::after {
+.ms-workflow-canvas .react-flow__handle::after,
+.ms-wf-trail-port::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -84,17 +85,21 @@
  * ringed in the link's colour, the accent for `auto`, neutral grey for `suggest`. A port with links of both kinds wears `auto`'s, the one that acts.
  */
 .ms-workflow-canvas .react-flow__handle.ms-wf-port-auto::after,
-.ms-workflow-canvas .react-flow__handle.ms-wf-port-suggest::after {
+.ms-workflow-canvas .react-flow__handle.ms-wf-port-suggest::after,
+.ms-wf-trail-port.ms-wf-port-auto::after,
+.ms-wf-trail-port.ms-wf-port-suggest::after {
   width: 13px;
   height: 13px;
   border-width: 2px;
   background: rgb(var(--c-bg-secondary));
 }
-.ms-workflow-canvas .react-flow__handle.ms-wf-port-auto::after {
+.ms-workflow-canvas .react-flow__handle.ms-wf-port-auto::after,
+.ms-wf-trail-port.ms-wf-port-auto::after {
   border-style: solid;
   border-color: rgb(var(--c-accent));
 }
-.ms-workflow-canvas .react-flow__handle.ms-wf-port-suggest::after {
+.ms-workflow-canvas .react-flow__handle.ms-wf-port-suggest::after,
+.ms-wf-trail-port.ms-wf-port-suggest::after {
   border-style: solid;
   border-color: rgb(var(--c-text-secondary) / 0.7);
 }
@@ -105,14 +110,16 @@
 }
 
 /* `auto`: solid, in the accent, a little heavier than a suggestion. */
-.ms-workflow-canvas .ms-wf-edge-auto {
+.ms-workflow-canvas .ms-wf-edge-auto,
+.ms-wf-trail .ms-wf-edge-auto {
   stroke: rgb(var(--c-accent));
   stroke-width: 2;
   fill: none;
 }
 
 /* `suggest`: solid, neutral and still. Offered, not taken. */
-.ms-workflow-canvas .ms-wf-edge-suggest {
+.ms-workflow-canvas .ms-wf-edge-suggest,
+.ms-wf-trail .ms-wf-edge-suggest {
   stroke: rgb(var(--c-text-secondary) / 0.7);
   stroke-width: 1.5;
   fill: none;
@@ -144,14 +151,38 @@
 }
 
 /* The dot travelling along an `auto` link. */
-.ms-workflow-canvas .ms-wf-pulse {
+.ms-workflow-canvas .ms-wf-pulse,
+.ms-wf-trail .ms-wf-pulse {
   fill: rgb(var(--c-accent));
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ms-workflow-canvas .ms-wf-pulse {
+  .ms-workflow-canvas .ms-wf-pulse,
+  .ms-wf-trail .ms-wf-pulse {
     display: none;
   }
+}
+
+/*
+ * THE LINK OUTSIDE THE CANVAS: the inspector's header, "Commit ●───● PR", drawn with the
+ * canvas's own rules. Not a copy of them: every rule above that paints a used port, a
+ * stroke or the pulse names `.ms-wf-trail` too, so a link looks the same in both places
+ * for as long as there is one set of rules. What is only the trail's is here: the port's
+ * box (a canvas port's is xyflow's handle) and the pulse's run along a straight line,
+ * the canvas's `animateMotion`, 2.4s, at a constant pace, as CSS.
+ */
+.ms-wf-trail-port {
+  position: relative;
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+}
+@keyframes ms-wf-trail-pulse {
+  from { cx: 0; }
+  to { cx: 100%; }
+}
+.ms-wf-trail .ms-wf-pulse {
+  animation: ms-wf-trail-pulse 2.4s linear infinite;
 }
 
 .ms-workflow-canvas .react-flow__minimap {

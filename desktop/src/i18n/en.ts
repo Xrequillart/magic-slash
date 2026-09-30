@@ -755,6 +755,8 @@ export const en = {
   'repo.workflow.dock.fit': 'Recenter on the workflow',
   'repo.workflow.dock.close': 'Close the editor (Esc)',
   'repo.workflow.inspector.removeLink': 'Remove the link',
+  'repo.workflow.inspector.removeLinkRow': 'Remove from the workflow',
+  'repo.workflow.inspector.removeLinkHint': 'The two steps stay, unlinked.',
   'repo.workflow.inspector.anyOutcome': 'Whatever the outcome',
   'repo.workflow.inspector.defaultLink': 'Default link: it cannot be removed, only its chaining changes.',
   'repo.workflow.inspector.settings': 'Settings',

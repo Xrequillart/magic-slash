@@ -974,6 +974,8 @@ function WorkflowPanel({
       alwaysOn: t('repo.workflow.alwaysOn'),
       offHint: t('repo.workflow.inspector.offHint'),
       removeLink: t('repo.workflow.inspector.removeLink'),
+      removeLinkRow: t('repo.workflow.inspector.removeLinkRow'),
+      removeLinkHint: t('repo.workflow.inspector.removeLinkHint'),
       anyOutcome: t('repo.workflow.inspector.anyOutcome'),
       defaultLink: t('repo.workflow.inspector.defaultLink'),
       close: t('repo.workflow.inspector.close'),

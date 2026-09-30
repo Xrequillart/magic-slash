@@ -167,6 +167,8 @@ export const INSPECTOR_LABELS: WorkflowInspectorLabels = {
   alwaysOn: 'Start cannot be turned off: every other step runs from it',
   offHint: 'Turned off: the skills skip it, and the steps before it lead straight to the ones after it.',
   removeLink: 'Remove the link',
+  removeLinkRow: 'Remove from the workflow',
+  removeLinkHint: 'The two steps stay, unlinked.',
   anyOutcome: 'Whatever the outcome',
   defaultLink: 'Default link: it cannot be removed, only its chaining changes.',
   close: 'Close',

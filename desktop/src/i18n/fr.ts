@@ -719,6 +719,8 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.workflow.dock.fit': 'Recentrer sur le workflow',
   'repo.workflow.dock.close': 'Fermer l’éditeur (Échap)',
   'repo.workflow.inspector.removeLink': 'Retirer le lien',
+  'repo.workflow.inspector.removeLinkRow': 'Retirer du workflow',
+  'repo.workflow.inspector.removeLinkHint': 'Les deux étapes restent, sans lien entre elles.',
   'repo.workflow.inspector.anyOutcome': 'Quelle que soit l’issue',
   'repo.workflow.inspector.defaultLink': 'Lien par défaut : il ne peut pas être retiré, seul son enchaînement change.',
   'repo.workflow.inspector.settings': 'Réglages',
