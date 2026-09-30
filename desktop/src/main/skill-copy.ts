@@ -29,20 +29,18 @@ export function isSafeSegment(name: unknown): name is string {
     && !name.startsWith('.')
 }
 
-/** The longest repository key or skill name a request from the renderer may carry. */
-const MAX_REQUEST_FIELD = 256
-
 /**
  * The `keys` of a renderer payload, checked at the IPC boundary: null unless `payload`
- * is an object whose every one of them is a non-empty string of at most
- * MAX_REQUEST_FIELD characters. Only those keys are returned.
+ * is an object whose every one of them is a non-empty string. Only those keys are
+ * returned. No length cap: a skill name is whatever its frontmatter says, the picker
+ * lists it as is, and it is only ever matched against names found on disk.
  */
 export function stringFieldsOf<K extends string>(payload: unknown, keys: readonly K[]): Record<K, string> | null {
   if (!payload || typeof payload !== 'object') return null
   const out = {} as Record<K, string>
   for (const key of keys) {
     const value = (payload as Record<string, unknown>)[key]
-    if (typeof value !== 'string' || value.length === 0 || value.length > MAX_REQUEST_FIELD) return null
+    if (typeof value !== 'string' || value.length === 0) return null
     out[key] = value
   }
   return out

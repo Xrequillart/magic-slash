@@ -41,7 +41,7 @@ describe('stringFieldsOf', () => {
   })
 
   it('answers null for anything else', () => {
-    for (const bad of [null, undefined, 'check', 42, [], {}, { skill: '' }, { skill: 42 }, { skill: 'x'.repeat(257) }]) {
+    for (const bad of [null, undefined, 'check', 42, [], {}, { skill: '' }, { skill: 42 }]) {
       expect(stringFieldsOf(bad, ['skill'])).toBeNull()
     }
     expect(stringFieldsOf({ skill: 'check' }, ['repoName', 'skill'])).toBeNull()
