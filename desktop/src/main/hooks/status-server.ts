@@ -74,6 +74,14 @@ type AgentProvider = (terminalId: string) => unknown
  */
 type WorkflowProvider = (path: string | null, skill: string | null) => unknown
 /**
+ * The workflow context of a CUSTOM skill the model just invoked (#333), or null for
+ * anything else: a magic skill (it reads `/workflow` itself), a skill in no flow, a
+ * path matching no repository. `cwd` is the session's working directory, `skill` the
+ * name the Skill tool was called with (`check-types`, `plugin:foo`). See
+ * workflow/skillContext.ts for the text, main/index.ts for the lookup.
+ */
+type CustomSkillContextProvider = (cwd: string, skill: string) => string | null
+/**
  * `path` is the working directory the skill is in (a repo or one of its
  * worktrees) and is the reliable identifier; `repo` is the legacy name, kept for
  * skills that have not been updated.
@@ -139,6 +147,7 @@ let skillCallback: SkillCallback | null = null
 let configProvider: ConfigProvider | null = null
 let agentProvider: AgentProvider | null = null
 let workflowProvider: WorkflowProvider | null = null
+let customSkillContextProvider: CustomSkillContextProvider | null = null
 let worktreeFilesWriter: WorktreeFilesWriter | null = null
 let prUrlCallback: PRUrlCallback | null = null
 let specPathCallback: SpecPathCallback | null = null
@@ -255,6 +264,43 @@ export function setWorkflowProvider(provider: WorkflowProvider) {
   workflowProvider = provider
 }
 
+export function setCustomSkillContextProvider(provider: CustomSkillContextProvider) {
+  customSkillContextProvider = provider
+}
+
+/**
+ * The context `POST /workflow/context` injects for the Skill tool payload in `body`,
+ * or null when it injects nothing.
+ *
+ * Every failure is a null, and deliberately a silent one: the caller is a hook on the
+ * critical path of a skill that is starting, and the only useful thing to do with a
+ * body it cannot read is to leave that skill exactly as it would have run without the
+ * app. Nothing here logs, and not only because there is nothing to act on: the body
+ * names a skill that may be the user's employer's own, and a log line is a place it
+ * would outlive the request.
+ */
+function customSkillContextFor(body: string): string | null {
+  if (!customSkillContextProvider) return null
+  let payload: unknown
+  try {
+    payload = JSON.parse(body)
+  } catch {
+    return null
+  }
+  const { cwd, tool_input: input } = (payload ?? {}) as { cwd?: unknown; tool_input?: { skill?: unknown } | null }
+  const raw = input?.skill
+  if (typeof cwd !== 'string' || !cwd || typeof raw !== 'string') return null
+  // Claude Code passes the bare name (`check-types`, `plugin:foo`); a leading slash is
+  // what a model copying a command line would add, and never part of a node's skill.
+  const skill = raw.trim().replace(/^\/+/, '')
+  if (!skill) return null
+  try {
+    return customSkillContextProvider(cwd, skill) || null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Answer a read-only route with what its provider returns, as JSON. No provider
  * (a nullish answer) or a throwing one both answer 200 with `fallback`,
@@ -275,7 +321,7 @@ export function setWorktreeFilesWriter(writer: WorktreeFilesWriter) {
   worktreeFilesWriter = writer
 }
 
-// Read the full request body (used by the POST /usage and POST /question routes)
+// Read the full request body (used by the POST /usage, /question and /workflow/context routes)
 function readRequestBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
@@ -813,6 +859,31 @@ export function startStatusServer(): Promise<number> {
           // Read-only: the agent/task metadata for a given terminal id (terminalId === agent.id).
           const terminalId = url.searchParams.get('id')
           sendProvided(res, '/agent', null, () => (terminalId ? agentProvider?.(terminalId) : null))
+        } else if (url.pathname === '/workflow/context') {
+          // The PostToolUse hook on the Skill tool POSTs its stdin here, and whatever
+          // this answers IS the hook's stdout, which Claude Code parses as the hook's
+          // JSON (see getCustomSkillContextHookConfig in claude-hooks-config.ts). Two
+          // answers only: 200 with the hook JSON carrying a custom skill's workflow
+          // context, or 204 with no body for everything else. An empty stdout is a
+          // hook that had nothing to say; anything else that is not the hook JSON
+          // (sendProvided's `null`, an "OK") would be a malformed hook output shown in
+          // every session, for every skill, magic or not.
+          //
+          // No telemetry, no usage and no skill callback here: the body names a skill
+          // that is not necessarily ours, and this route only answers with it.
+          // An oversized or aborted body is nothing to inject, and nothing worth logging.
+          readRequestBody(req)
+            .then(customSkillContextFor, () => null)
+            .then((context) => {
+              if (!context) {
+                res.writeHead(204)
+                res.end()
+                return
+              }
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: context } }))
+            })
+          return
         } else if (url.pathname === '/workflow') {
           // Read-only: the workflow the calling skill's repository follows, centred on
           // that skill's node, so it can compute its next steps (#328). `null` when no
