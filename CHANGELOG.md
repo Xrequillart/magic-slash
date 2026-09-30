@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.105.0] - 2026-09-30
+
+### Added
+
+- **Desktop**: Draw the agent archive confirmation with a design system dialog
+- **Webapp**: Rework the conventions family of the features page as a card grid
+- **Desktop**: Let the workflow canvas leave its minimap out
+- **Desktop**: Show the github and jira marks in the tracker picker
+- **Desktop**: Draw the selected link in the inspector and lay its choices out as settings rows
+- **Webapp**: Add the push-after-commit toggle to repository settings
+- **Commit**: Push right after committing when the repository asks for it
+- **Desktop**: Add a push-after-commit setting to the commit step
+- **Desktop**: Turn workflow steps off, colour custom steps and size cards to their words
+- **Desktop**: Add a colour swatches control and the workflow step palette to the design system
+- **Desktop**: Expose a skill's own description in the skills listing
+- **Desktop**: Inject the workflow context when the model invokes a custom skill
+- **Desktop**: Move skill and language settings onto the workflow steps
+- **Start**: Let a repository set the plan, simplify and critic phases
+- **Desktop**: Store per-repository settings for /magic:start
+- **Desktop**: Edit the repository workflow as a graph, full screen
+- **Skills**: Let the skills hand over to a repository's custom steps
+- **Desktop**: Edit a repository's workflow from its settings
+- **Desktop**: Show the workflow editor components in the design-system showcase
+- **Desktop**: Make the workflow canvas editable, with an inspector, a picker and a problems list
+- **Desktop**: Save repository workflows safely, sync them live and share their skills
+- **Desktop**: Let the owner or an org admin write a repository's workflow
+- **Desktop**: Compose a repository's workflow from custom steps added to the default line
+- **Desktop**: Show a repository's workflow on a canvas in its settings
+- **Desktop**: Show the workflow canvas components in the design-system showcase
+- **Desktop**: Add the workflow canvas, node, edge and minimap to the design system
+- **Skills**: Read the workflow at step 0 and compute every cycle skill's next step from it
+- **Desktop**: Serve the workflow of the calling skill's repository on the local api
+- **Desktop**: Read each repository's workflow from supabase and cache it in the main process
+- **Desktop**: Add the workflow model and a default flow derived from the skills list
+
+### Changed
+
+- **Desktop**: Add the confirm dialog to the design system showcase
+- **Skills**: Let a custom skill own its hand-off when the app injects its context
+- **Skills**: Let custom steps link to any step in the workflow protocol
+- **Ci**: Allow the skills scope in commitlint
+- **Desktop**: Show the six-step default flow in the canvas specimens and comments
+- **Review**: Take review out of the default workflow cycle
+- **Deps**: Add @xyflow/react to the design system and resolve it in the webapp
+
+### Fixed
+
+- **Webapp**: Escape the quotes in the colour swatches showcase
+- **Pr**: Address review feedback for 333
+- **Desktop**: Close menus on a press outside them over a canvas
+- **Pr**: Address review feedback for 330
+- **Pr**: Address review feedback for 329
+- **Pr**: Address review feedback for 328
+
 ## [0.104.0] - 2026-09-29
 
 ### Added
@@ -3472,6 +3526,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.105.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.0
 [0.104.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.104.0
 [0.103.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.103.0
 [0.102.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.102.1
