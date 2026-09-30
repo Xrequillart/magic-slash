@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.105.2] - 2026-09-30
+
+### Added
+
+- **Desktop**: Switch repository from the workflow editor and name its way back to settings
+
 ## [0.105.1] - 2026-09-30
 
 ### Fixed
@@ -3532,6 +3538,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.105.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.2
 [0.105.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.1
 [0.105.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.0
 [0.104.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.104.0
