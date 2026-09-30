@@ -37,7 +37,8 @@ import {
  * (`self`, over its own corner).
  *
  * Drawn by `WorkflowCanvas` through xyflow's `edgeTypes`; all it knows arrives in
- * `data`.
+ * `data`. On the editable canvas a link is pressed to select it (xyflow's wide invisible
+ * stroke takes the click), and the selected one is drawn heavier, in either kind.
  */
 
 export interface WorkflowEdgeData extends Record<string, unknown> {
@@ -51,6 +52,8 @@ export interface WorkflowEdgeData extends Record<string, unknown> {
    * two canvases on one page (the showcase) never reference each other's defs.
    */
   markerId: string
+  /** Drawn heavier, with a halo in the accent: the link the editor's inspector is showing. */
+  selected?: boolean
 }
 
 export type WorkflowEdgeType = Edge<WorkflowEdgeData, 'workflow'>
@@ -106,7 +109,7 @@ export function WorkflowEdge({
       <BaseEdge
         id={id}
         path={path}
-        className={`ms-wf-edge-${kind}`}
+        className={`ms-wf-edge-${kind}${data?.selected ? ' ms-wf-edge-selected' : ''}`}
         markerEnd={data ? `url(#${data.markerId}-${kind})` : undefined}
       />
       {kind === 'auto' && (

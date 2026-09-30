@@ -31,6 +31,9 @@ export function CanvasMinimap({ label }: CanvasMinimapProps) {
       zoomable
       position="bottom-right"
       nodeBorderRadius={6}
+      // The editable canvas's "+" buttons are nodes too; they are not steps, and the
+      // stylesheet hides a node carrying this class.
+      nodeClassName={(node) => (node.type === 'insert' ? 'ms-wf-mini-hidden' : '')}
       style={SIZE}
     />
   )
