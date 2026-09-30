@@ -76,6 +76,12 @@ vi.mock('../claude-models', () => ({
   listClaudeModels: vi.fn().mockResolvedValue([]),
 }))
 
+// Reaches the Supabase client, which the root suite does not install (CI runs on the root
+// node_modules only): the module would fail to resolve before a single test ran.
+vi.mock('../cloud/workflowHistory', () => ({
+  listWorkflowHistory: vi.fn(),
+}))
+
 // Mutable reference for execFileSync so individual tests can override it
 const mockExecFileSync: Mock<() => Buffer> = vi.fn()
 
