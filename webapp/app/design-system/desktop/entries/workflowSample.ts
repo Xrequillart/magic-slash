@@ -95,7 +95,6 @@ export function loopSubset(ids: string[]): Subset {
  */
 export const EDIT_LABELS: WorkflowCanvasLabels = {
   ...SAMPLE_LABELS,
-  edit: 'Edit',
   disable: 'Turn off this step',
   enable: 'Turn on this step',
   alwaysOn: 'Start cannot be turned off: every other step runs from it',

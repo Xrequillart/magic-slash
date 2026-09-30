@@ -20,11 +20,8 @@ export interface CanvasMinimapProps {
   label: string
 }
 
-/**
- * Small enough to leave the corner to the graph, big enough to find a node in. Exported
- * for what sits above it in the same corner: the canvas's Edit button.
- */
-export const CANVAS_MINIMAP_SIZE = { width: 168, height: 112 }
+/** Small enough to leave the corner to the graph, big enough to find a node in. */
+const CANVAS_MINIMAP_SIZE = { width: 168, height: 112 }
 
 export function CanvasMinimap({ label }: CanvasMinimapProps) {
   return (

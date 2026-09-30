@@ -6,9 +6,7 @@ import {
   Background, BackgroundVariant, Panel, ReactFlow, useReactFlow, type Connection, type Edge, type IsValidConnection, type Node, type NodeChange, type OnConnectEnd,
 } from '@xyflow/react'
 
-import { Button } from './Button'
-import { CanvasMinimap, CANVAS_MINIMAP_SIZE } from './CanvasMinimap'
-import { Pencil } from './icons'
+import { CanvasMinimap } from './CanvasMinimap'
 import { Select, type SelectOption } from './Select'
 import { Text } from './Text'
 import { WorkflowDock, type WorkflowDockProps } from './WorkflowDock'
@@ -81,9 +79,6 @@ import {
  *
  * `repositories` puts a picker left of the legend, as tall as it and on the same plate:
  * the editor's way over to another repository's flow. Data, like the rest.
- *
- * READ-ONLY, `onEdit` puts an Edit button in the corner above the minimap: the way into
- * the full-screen editor.
  */
 
 /** What the editor needs the inspector to show: a step, or the link between two. */
@@ -101,8 +96,6 @@ export interface WorkflowCanvasLabels {
   suggest: string
   /** The last row of a card without exactly one outcome, the way out whatever it ended on: "When done". */
   anyExit?: string
-  /** WITH `onEdit` ONLY. The button above the minimap: "Edit". */
-  edit?: string
   /** EDITABLE ONLY. A card's switch, on a step that is on, off, and on start: "Turn off", "Turn on", "Start cannot be turned off". */
   disable?: string
   enable?: string
@@ -149,8 +142,6 @@ export interface WorkflowCanvasProps {
   onToggle?: (id: string, enabled: boolean) => void
   /** Centre the view on `id`, again each time `n` changes. */
   focusRequest?: { id: string; n: number } | null
-  /** The Edit button above the minimap, and what it opens. Not drawn without it. */
-  onEdit?: () => void
   /** The editor's dock, floating at the bottom centre. Not drawn without it. */
   dock?: WorkflowDockProps
   /** No border, no rounded corners: a canvas that IS the screen, the full-screen editor's. */
@@ -190,9 +181,6 @@ const FOCUS_DURATION = 300
 /** The repository picker's width, and its list's: a name, not a sentence. */
 const REPOSITORIES_WIDTH = 208
 
-/** The Edit button clears the minimap: its height, xyflow's 15px panel margin, and a gap. */
-const EDIT_OFFSET = { marginBottom: CANVAS_MINIMAP_SIZE.height + 15 + 8 }
-
 export function WorkflowCanvas({
   nodes,
   links,
@@ -207,7 +195,6 @@ export function WorkflowCanvas({
   onConnect,
   onToggle,
   focusRequest = null,
-  onEdit,
   dock,
   frameless = false,
   legend = 'top-left',
@@ -450,11 +437,6 @@ export function WorkflowCanvas({
           </div>
         </Panel>
         {minimap && <CanvasMinimap label={labels.minimap} />}
-        {onEdit && (
-          <Panel position="bottom-right" style={EDIT_OFFSET}>
-            <Button tone="solid" size="sm" icon={Pencil} onClick={onEdit}>{labels.edit ?? ''}</Button>
-          </Panel>
-        )}
         {dock && (
           <Panel position="bottom-center">
             <WorkflowDock {...dock} />

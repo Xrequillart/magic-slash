@@ -1,11 +1,10 @@
 'use client'
 
-import { useState } from 'react'
 import { WorkflowCanvas } from '@ds/desktop'
 import type { DesktopTheme } from '@/lib/desktopTheme'
 import { EntryHeader, EntrySection, PropsTable, Snippet, Specimen, Stage, type PropRow } from '../parts'
 import { usesOf } from './ids'
-import { EDIT_LABELS, EDIT_LINKS, EDIT_NODES, SAMPLE_ENTRY, SAMPLE_LABELS, SAMPLE_LINKS, SAMPLE_NODES } from './workflowSample'
+import { SAMPLE_ENTRY, SAMPLE_LABELS, SAMPLE_LINKS, SAMPLE_NODES } from './workflowSample'
 
 const PROPS: PropRow[] = [
   { name: 'nodes', type: 'WorkflowCanvasNode[]', required: true, description: 'The steps: id, label, skill folder and outcomes. Drawn as WorkflowNode cards.' },
@@ -14,7 +13,7 @@ const PROPS: PropRow[] = [
   { name: 'labels', type: 'WorkflowCanvasLabels', required: true, description: 'Every word the canvas draws or announces, translated by the caller: its accessible name, the minimap’s, and the legend’s two strokes.' },
   { name: 'className', type: 'string', description: 'The box. A height is required: the canvas fills its parent, and a parent with no height is a canvas zero pixels tall.' },
   { name: 'positions', type: 'Record<id, { x, y }>', description: 'Where each card was left. A card missing from it is laid out; the links of a moved card become plain curves.' },
-  { name: 'onEdit', type: '() => void', description: 'Read-only: an Edit button in the corner above the minimap (`labels.edit`), the way into WorkflowEditor.' },
+  { name: 'minimap', type: 'boolean', fallback: 'true', description: 'The minimap in the corner. Off for the read-only canvas of a repository’s settings, and for a canvas that illustrates a flow.' },
   { name: 'editable', type: 'boolean', fallback: 'false', description: 'Turns the editor on: cards and links can be pressed, and cards take the keyboard. Off, the canvas is the read-only one above, unchanged.' },
   { name: 'selected · onSelect', type: 'WorkflowCanvasSelection | null · (selection) => void', description: 'Controlled selection: { type: "node", id } or { type: "link", from, to }. A press on a card or a link reports it, a press on the ground reports null. xyflow’s own selection stays off.' },
   { name: 'onMove', type: '(id, position) => void', description: 'Editable: cards drag, and this reports where one was let go. Nothing drags without it.' },
@@ -24,23 +23,6 @@ const PROPS: PropRow[] = [
   { name: 'focusRequest', type: '{ id: string; n: number } | null', description: 'Centres the view on a node, keeping the zoom unless it is too far out to read. Bump `n` to centre on the same node again.' },
   { name: 'WorkflowCanvasNode.disabled · alwaysOn · mode · warning · problem', type: 'boolean · boolean · "blocking" | "advisory" · string · boolean', description: 'What the editor draws on a card: its switch, an eye open or shut (greyed on alwaysOn), a step turned off greyed with its links faded, a custom step’s mode, a warning badge whose tooltip is the warning, and a red border for a step a problem names. `labels.disable`, `enable`, `alwaysOn`, `off`, `blocking` and `advisory` are the words they need; `onToggle` is what the switch calls.' },
 ]
-
-function EditButtonSpecimen() {
-  const [pressed, setPressed] = useState(0)
-  return (
-    <div className="flex flex-col gap-2">
-      <WorkflowCanvas
-        nodes={EDIT_NODES}
-        links={EDIT_LINKS}
-        entry={SAMPLE_ENTRY}
-        labels={EDIT_LABELS}
-        className="h-[520px]"
-        onEdit={() => setPressed((n) => n + 1)}
-      />
-      {pressed > 0 && <p className="text-xs text-muted">Edit pressed {pressed}×: the app opens WorkflowEditor here.</p>}
-    </div>
-  )
-}
 
 export function WorkflowCanvasEntry({ theme, onOpen }: { theme: DesktopTheme; onOpen?: (id: string) => void }) {
   return (
@@ -73,17 +55,6 @@ export function WorkflowCanvasEntry({ theme, onOpen }: { theme: DesktopTheme; on
         </p>
       </EntrySection>
 
-      <EntrySection
-        title="With its Edit button"
-        note="The Workflow tab of a repository: the canvas read-only, and an Edit button above the minimap that opens WorkflowEditor over the whole window. The flow is a repository’s own: a custom Lint step drawn between Start and Commit."
-      >
-        <Stage theme={theme}>
-          <Specimen label="the Workflow tab, read-only, with the way into the editor">
-            <EditButtonSpecimen />
-          </Specimen>
-        </Stage>
-      </EntrySection>
-
       <EntrySection title="Props">
         <PropsTable rows={PROPS} />
         <Snippet>{`import { WorkflowCanvas } from '@ds/desktop'
@@ -94,17 +65,6 @@ export function WorkflowCanvasEntry({ theme, onOpen }: { theme: DesktopTheme; on
   entry={data.entry}
   labels={labels}
   className="h-[520px]"
-/>
-
-// The tab: read-only, with the way into the editor.
-<WorkflowCanvas
-  nodes={data.nodes}
-  links={data.links}
-  entry={data.entry}
-  labels={labels}
-  positions={saved.positions}
-  className="h-[520px]"
-  onEdit={() => setEditing(true)}
 />`}</Snippet>
       </EntrySection>
     </article>

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Trash2, AlertTriangle, Plus, ArrowLeft, Building2, Lock, FolderOpen, Upload, Github, Jira,
-  Ticket, Settings2, Puzzle, GitBranch, FolderGit2, Workflow,
+  Ticket, Settings2, Puzzle, GitBranch, FolderGit2, Workflow, Pencil,
 } from '@ds/desktop/icons'
 import { useAuth } from '../../hooks/useAuth'
 import { useConfig } from '../../hooks/useConfig'
@@ -396,8 +396,9 @@ interface WorkflowStepConfig {
  * change it (the repository's owner, or an admin of its organization: `readOnly` is
  * RepoPage's, which mirrors RLS).
  *
- * THE TAB ONLY SHOWS. The canvas in the tab is read-only, with an Edit button above its
- * minimap; everything that changes the flow happens in the editor, which covers the
+ * THE TAB ONLY SHOWS. The canvas in the tab is read-only, with no minimap, and an Edit
+ * button under the section's description; everything that changes the flow happens in
+ * the editor, which covers the
  * whole window (`WorkflowEditor`, in a fixed layer over the app and its settings
  * overlay). A read-only member gets the same button, as Open, and the same editor with
  * nothing to change: the inspector still says how each step and link runs.
@@ -987,14 +988,13 @@ function WorkflowPanel({
     auto: t('repo.workflow.auto'),
     suggest: t('repo.workflow.suggest'),
     anyExit: t('repo.workflow.anyExit'),
-    edit: readOnly ? t('repo.workflow.open') : t('repo.workflow.edit'),
     disable: t('repo.workflow.disable'),
     enable: t('repo.workflow.enable'),
     alwaysOn: t('repo.workflow.alwaysOn'),
     off: t('repo.workflow.off'),
     blocking: t('repo.workflow.blocking'),
     advisory: t('repo.workflow.advisory'),
-  }), [t, repoName, readOnly])
+  }), [t, repoName])
   const sources = {
     custom: t('repo.workflow.source.custom'),
     repo: t('repo.workflow.source.repo'),
@@ -1087,6 +1087,13 @@ function WorkflowPanel({
         ].join(' ')}
         spacing="none"
       />
+      {loaded && loaded !== 'error' && !editing && (
+        <div>
+          <Button tone="solid" size="sm" icon={Pencil} onClick={() => setEditing(true)}>
+            {readOnly ? t('repo.workflow.open') : t('repo.workflow.edit')}
+          </Button>
+        </div>
+      )}
       {/* Reached from another repository's editor, whose layer is gone: the window stays
           covered while this flow loads, rather than flashing the settings between the two. */}
       {editing && !loaded && createPortal(<div className="fixed inset-0 z-[55] bg-bg" />, document.body)}
@@ -1094,7 +1101,7 @@ function WorkflowPanel({
         <Banner variant="danger" icon={AlertTriangle}>{t('repo.workflow.loadError')}</Banner>
       ) : loaded ? (
         <>
-          {/* Read-only: what is saved, and the way into the editor. A fixed height, since the
+          {/* Read-only: what is saved; the Edit button above is the way into the editor. A fixed height, since the
               canvas fills its box and a settings pane has none to give it. Not mounted while
               the editor is open: a canvas listens for Space on the whole document. */}
           {!editing && (
@@ -1107,7 +1114,7 @@ function WorkflowPanel({
               className="h-[520px]"
               // The wheel scrolls the settings page, not the canvas: dragging still pans.
               scrollPans={false}
-              onEdit={() => setEditing(true)}
+              minimap={false}
             />
           )}
           {editing && createPortal(

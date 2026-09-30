@@ -348,7 +348,7 @@ export { WorkflowNode } from './WorkflowNode'
 export type { WorkflowNodeData, WorkflowNodeLabels, WorkflowNodeType } from './WorkflowNode'
 export { WorkflowEdge } from './WorkflowEdge'
 export type { WorkflowEdgeData, WorkflowEdgeType } from './WorkflowEdge'
-export { CANVAS_MINIMAP_SIZE, CanvasMinimap } from './CanvasMinimap'
+export { CanvasMinimap } from './CanvasMinimap'
 export type { CanvasMinimapProps } from './CanvasMinimap'
 export type {
   WorkflowCanvasLink,
