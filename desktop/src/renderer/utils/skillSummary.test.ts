@@ -8,7 +8,9 @@ import {
   resolveSummary,
   reviewSummary,
   shortGitHubTarget,
+  startSummary,
   type PlanSummaryInput,
+  type StartSummaryInput,
   type SkillSummary,
 } from './skillSummary'
 
@@ -325,6 +327,59 @@ describe('reviewSummary', () => {
   })
 })
 
+const START: StartSummaryInput = {
+  exploration: 'auto',
+  plan: true,
+  planReview: true,
+  planApproval: true,
+  execution: 'auto',
+  simplify: true,
+  criticIterations: 3,
+  criticMinScore: 8,
+}
+
+describe('startSummary', () => {
+  it('walks the default run, from exploration to the critic', () => {
+    const summary = startSummary(START)
+    expect(keys(summary)).toEqual([
+      'repo.start.step.exploreAuto',
+      'repo.start.step.planReviewed',
+      'repo.start.step.approvalOn',
+      'repo.start.step.executionAuto',
+      'repo.start.step.simplify',
+      'repo.start.step.criticLoop',
+    ])
+    expect(summary.steps.at(-1)?.vars).toEqual({ iterations: '3', score: '8' })
+  })
+
+  it('says one line in place of the plan, its review, its approval and the dispatcher', () => {
+    expect(keys(startSummary({ ...START, plan: false, execution: 'multi' }))).toEqual([
+      'repo.start.step.exploreAuto',
+      'repo.start.step.noPlan',
+      'repo.start.step.simplify',
+      'repo.start.step.criticLoop',
+    ])
+  })
+
+  it('drops the simplify line when the pass is off', () => {
+    expect(keys(startSummary({ ...START, simplify: false }))).not.toContain('repo.start.step.simplify')
+  })
+
+  it('tells a critic that only scores from one that sends the work back', () => {
+    expect(startSummary({ ...START, criticIterations: 0 }).steps.at(-1)).toEqual({ key: 'repo.start.step.criticScoreOnly' })
+    expect(startSummary({ ...START, criticIterations: 1, criticMinScore: 7 }).steps.at(-1)).toEqual({
+      key: 'repo.start.step.criticOnce',
+      vars: { score: '7' },
+    })
+  })
+
+  it('reads unknown modes as auto', () => {
+    const summary = startSummary({ ...START, exploration: 'wild', execution: 'wild' })
+    expect(keys(summary)).toContain('repo.start.step.exploreAuto')
+    expect(keys(summary)).toContain('repo.start.step.executionAuto')
+  })
+})
+
 describe('every line a setting can produce', () => {
   /** Every summary reachable by flipping one setting at a time, and then all of them. */
   const ALL: SkillSummary[] = [
@@ -375,6 +430,25 @@ describe('every line a setting can produce', () => {
         ),
       ),
     ),
+    ...['auto', 'always', 'never'].flatMap((exploration) =>
+      ['auto', 'solo', 'multi'].flatMap((execution) =>
+        [true, false].flatMap((flag) =>
+          [0, 1, 3].map((criticIterations) =>
+            startSummary({
+              exploration,
+              plan: flag,
+              planReview: flag,
+              planApproval: !flag,
+              execution,
+              simplify: flag,
+              criticIterations,
+              criticMinScore: 8,
+            }),
+          ),
+        ),
+      ),
+    ),
+    startSummary({ ...START, planReview: false, planApproval: false }),
     ...['new', 'amend', 'ask'].flatMap((commitMode) =>
       [true, false].flatMap((useCommitConfig) =>
         [true, false].flatMap((replyToComments) =>

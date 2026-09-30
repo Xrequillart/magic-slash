@@ -52,6 +52,7 @@ import {
   planSummary,
   prSummary,
   resolveSummary,
+  startSummary,
   reviewSummary,
   type SkillSummary,
 } from '../../utils/skillSummary'
@@ -2416,7 +2417,16 @@ export function RepoPage({ repoName }: RepoPageProps) {
       settings: planStepSettings,
     },
     'magic-start': {
-      intro: introOf('start', { steps: [], tail: [] }),
+      intro: introOf('start', startSummary({
+        exploration: startExplorationVal,
+        plan: startPlanVal,
+        planReview: startPlanReviewVal,
+        planApproval: startPlanApprovalVal,
+        execution: startExecutionVal,
+        simplify: startSimplifyVal,
+        criticIterations: startIterationsVal,
+        criticMinScore: startMinScoreVal,
+      })),
       settings: startStepSettings,
     },
     'magic-commit': {

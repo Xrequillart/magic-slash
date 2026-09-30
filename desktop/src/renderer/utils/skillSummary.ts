@@ -344,3 +344,65 @@ export function resolveSummary(input: ResolveSummaryInput): SkillSummary {
 
   return { steps, tail: [] }
 }
+
+export interface StartSummaryInput {
+  /** 'auto' | 'always' | 'never' — unknown values read as 'auto'. */
+  exploration: string
+  plan: boolean
+  planReview: boolean
+  planApproval: boolean
+  /** 'auto' | 'solo' | 'multi' — unknown values read as 'auto'. */
+  execution: string
+  simplify: boolean
+  /** How many times the critic may send the work back; 0 scores it once. */
+  criticIterations: number
+  /** The score out of 10 the work is accepted at. */
+  criticMinScore: number
+}
+
+const START_EXPLORATION_STEPS: Record<string, MessageKey> = {
+  auto: 'repo.start.step.exploreAuto',
+  always: 'repo.start.step.exploreAlways',
+  never: 'repo.start.step.exploreNever',
+}
+
+const START_EXECUTION_STEPS: Record<string, MessageKey> = {
+  auto: 'repo.start.step.executionAuto',
+  solo: 'repo.start.step.executionSolo',
+  multi: 'repo.start.step.executionMulti',
+}
+
+/**
+ * DESKTOP ONLY, unlike the others: the webapp's repository form has no Start settings,
+ * so its twin has nothing to summarise.
+ */
+export function startSummary(input: StartSummaryInput): SkillSummary {
+  const steps: SkillSummaryStep[] = [
+    { key: START_EXPLORATION_STEPS[input.exploration] ?? START_EXPLORATION_STEPS.auto },
+  ]
+
+  // Without a plan the skill skips its review, its approval and the dispatcher, and
+  // codes alone from the ticket (skills/magic-start/SKILL.md step 5.2): one line says it.
+  if (input.plan) {
+    steps.push(
+      { key: input.planReview ? 'repo.start.step.planReviewed' : 'repo.start.step.planUnreviewed' },
+      { key: input.planApproval ? 'repo.start.step.approvalOn' : 'repo.start.step.approvalOff' },
+      { key: START_EXECUTION_STEPS[input.execution] ?? START_EXECUTION_STEPS.auto },
+    )
+  } else {
+    steps.push({ key: 'repo.start.step.noPlan' })
+  }
+
+  if (input.simplify) steps.push({ key: 'repo.start.step.simplify' })
+
+  const score = String(input.criticMinScore)
+  if (input.criticIterations <= 0) {
+    steps.push({ key: 'repo.start.step.criticScoreOnly' })
+  } else if (input.criticIterations === 1) {
+    steps.push({ key: 'repo.start.step.criticOnce', vars: { score } })
+  } else {
+    steps.push({ key: 'repo.start.step.criticLoop', vars: { score, iterations: String(input.criticIterations) } })
+  }
+
+  return { steps, tail: [] }
+}
