@@ -148,6 +148,8 @@ export interface WorkflowCanvasProps {
   scrollPans?: boolean
   /** Where the legend sits. Top left unless the corner is taken, as the editor's title takes it. */
   legend?: 'top-left' | 'bottom-left'
+  /** The minimap in the corner. On by default; off for a canvas that is an illustration of a flow, not a place to move around. */
+  minimap?: boolean
 }
 
 const NODE_TYPES = { workflow: WorkflowNode }
@@ -190,6 +192,7 @@ export function WorkflowCanvas({
   frameless = false,
   legend = 'top-left',
   scrollPans = true,
+  minimap = true,
 }: WorkflowCanvasProps) {
   // Where a card is being dragged to, until it is let go and the caller has its place.
   const [dragged, setDragged] = useState<Record<string, { x: number; y: number }>>({})
@@ -413,7 +416,7 @@ export function WorkflowCanvas({
             ))}
           </div>
         </Panel>
-        <CanvasMinimap label={labels.minimap} />
+        {minimap && <CanvasMinimap label={labels.minimap} />}
         {onEdit && (
           <Panel position="bottom-right" style={EDIT_OFFSET}>
             <Button tone="solid" size="sm" icon={Pencil} onClick={onEdit}>{labels.edit ?? ''}</Button>
