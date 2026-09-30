@@ -29,6 +29,6 @@ Read by `SKILL.md` Step 5.5.3, to populate every placeholder of `MSG_FINAL_SUMMA
   | `magic-commit` (single repo) | `   • Run /magic:commit to create a commit` | `   • Lance /magic:commit pour créer un commit` |
   | `magic-commit` (full-stack) | `   • Run /magic:commit in each worktree to create commits` | `   • Lance /magic:commit dans chaque worktree pour créer les commits` |
   | `magic-pr` | `   • Run /magic:pr to create a Pull Request` | `   • Lance /magic:pr pour créer une Pull Request` |
-  | any other skill | `MSG_WORKFLOW_NEXT_STEP_LINE` (`references/workflow.md` §7) | same |
+  | any other skill, a custom step included | `MSG_WORKFLOW_NEXT_STEP_LINE` (`references/workflow.md` §7), then its `then` lines (§4, step 3) | same |
 
   A link to `magic-commit` is followed by one bullet per `suggest` link **leaving the commit node** in the graph that is unconditional or on outcome `committed` (the outcome a commit ends on when it succeeds; for the default flow, `/magic:pr`), never a commit link on another outcome: committing and opening the Pull Request are one gesture once the implementation is done, and the summary has always named both. Never list the same skill twice. With no selected link, `{next_steps}` is empty and the block keeps only the "Test the changes" bullet.
