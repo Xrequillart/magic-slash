@@ -177,6 +177,9 @@ interface RepositoryRow {
   pull_request: RepositoryConfig['pullRequest'] | null
   resolve: RepositoryConfig['resolve'] | null
   review: RepositoryConfig['review'] | null
+  // Optional, with `plan`'s warning below: the select names it, so a database that has
+  // not run 20260930130000 fails the whole query. Deploy the migration before the clients.
+  start?: RepositoryConfig['start'] | null
   issues: RepositoryConfig['issues'] | null
   // Optional because the mapper must tolerate the key being absent as well as
   // null, both meaning "nothing chosen" — which resolves to the shipped defaults.
@@ -689,6 +692,7 @@ export class CloudStore implements Store {
     if (patch.pullRequest !== undefined) row.pull_request = patch.pullRequest ?? {}
     if (patch.resolve !== undefined) row.resolve = patch.resolve ?? {}
     if (patch.review !== undefined) row.review = patch.review ?? {}
+    if (patch.start !== undefined) row.start = patch.start ?? {}
     if (patch.issues !== undefined) row.issues = patch.issues ?? {}
     if (patch.plan !== undefined) row.plan = patch.plan ?? {}
     if (patch.jira !== undefined) row.jira = patch.jira ?? {}
@@ -712,6 +716,7 @@ export class CloudStore implements Store {
       pullRequest: row.pull_request ?? undefined,
       resolve: row.resolve ?? undefined,
       review: row.review ?? undefined,
+      start: row.start ?? undefined,
       issues: row.issues ?? undefined,
       plan: row.plan ?? undefined,
       jira: row.jira ?? undefined,
@@ -771,6 +776,7 @@ export class CloudStore implements Store {
         pullRequest: r.pullRequest,
         resolve: r.resolve,
         review: r.review,
+        start: r.start,
         issues: r.issues,
         plan: r.plan,
         jira: r.jira,
@@ -794,7 +800,7 @@ export class CloudStore implements Store {
     const [reposRes, pathsRes] = await Promise.all([
       ctx.client
         .from('repositories')
-        .select('id, owner_id, org_id, name, keywords, color, languages, commit, pull_request, resolve, review, issues, plan, jira, branches, worktree_files, remote_url'),
+        .select('id, owner_id, org_id, name, keywords, color, languages, commit, pull_request, resolve, review, start, issues, plan, jira, branches, worktree_files, remote_url'),
       ctx.client.from('repository_paths').select('repo_id, path'),
     ])
     if (reposRes.error || !reposRes.data) return []
@@ -837,6 +843,7 @@ export class CloudStore implements Store {
       pull_request: repo.pullRequest ?? {},
       resolve: repo.resolve ?? {},
       review: repo.review ?? {},
+      start: repo.start ?? {},
       issues: repo.issues ?? {},
       plan: repo.plan ?? {},
       jira: repo.jira ?? {},
@@ -1039,6 +1046,7 @@ export class CloudStore implements Store {
         pull_request: repo.pullRequest ?? {},
         resolve: repo.resolve ?? {},
         review: repo.review ?? {},
+        start: repo.start ?? {},
         issues: repo.issues ?? {},
         plan: repo.plan ?? {},
         jira: repo.jira ?? {},

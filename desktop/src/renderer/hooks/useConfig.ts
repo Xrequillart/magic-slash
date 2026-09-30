@@ -72,6 +72,12 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  const updateRepositoryStartSettings = useCallback(async (name: string, settings: Partial<NonNullable<RepositoryConfig['start']>>) => {
+    const result = await window.electronAPI.config.updateRepositoryStartSettings(name, settings)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   const updateRepositoryReviewSettings = useCallback(async (name: string, settings: Partial<NonNullable<RepositoryConfig['review']>>) => {
     const result = await window.electronAPI.config.updateRepositoryReviewSettings(name, settings)
     setConfig(result.config)
@@ -316,6 +322,7 @@ export function useConfig() {
     updateRepositoryCommitSettings,
     updateRepositoryResolveSettings,
     updateRepositoryReviewSettings,
+    updateRepositoryStartSettings,
     updateRepositoryPullRequestSettings,
     updateRepositoryIssuesSettings,
     updateRepositoryJiraSettings,

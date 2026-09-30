@@ -1190,7 +1190,37 @@ export interface RepositoryConfig {
      * See skills/magic-review/SKILL.md step 8.
      */
     mode?: string              // 'ask' | 'post'
+  }  /**
+   * /magic:start's settings: which of its phases run, and how hard its critic is to
+   * satisfy. Every field unset is today's behaviour. See skills/magic-start/SKILL.md
+   * Step 5, where each one is read.
+   */
+  start?: {
+    /**
+     * Explore the codebase before the plan (Step 5.1):
+     * - 'auto'   when the ticket is broad enough to need it. The default.
+     * - 'always' every time; 'never' never.
+     */
+    exploration?: string       // 'auto' | 'always' | 'never'
+    /** Write an implementation plan (Step 5.2). Off, the agent implements straight from the ticket. True by default. */
+    plan?: boolean
+    /** Have a sub-agent review the plan (Step 5.2.3). Only with a plan. True by default. */
+    planReview?: boolean
+    /** Ask the user to approve the plan before any code (Step 5.3). Only with a plan. True by default. */
+    planApproval?: boolean
+    /**
+     * Who implements (Step 5.2.5): 'auto' lets the dispatcher choose (the default), 'solo'
+     * is always one agent, 'multi' splits across agents whenever the plan allows it.
+     */
+    execution?: string         // 'auto' | 'solo' | 'multi'
+    /** Run /simplify on the changed files after implementing (Step 5.4.5). True by default. */
+    simplify?: boolean
+    /** How many times the critic may send the work back for fixes (Step 5.5.2), 0 to 5. 3 by default. */
+    criticIterations?: number
+    /** The critic's score, out of 10, at which the work is accepted (Step 5.5.2), 1 to 10. 8 by default. */
+    criticMinScore?: number
   }
+
   pullRequest?: {
     autoLinkTickets?: boolean
     watchCI?: boolean            // true = watch checks + review feedback after creating the PR
@@ -1311,6 +1341,7 @@ export interface StoredRepository {
   pullRequest?: RepositoryConfig['pullRequest']
   resolve?: RepositoryConfig['resolve']
   review?: RepositoryConfig['review']
+  start?: RepositoryConfig['start']
   issues?: RepositoryConfig['issues']
   plan?: RepositoryConfig['plan']
   jira?: RepositoryConfig['jira']

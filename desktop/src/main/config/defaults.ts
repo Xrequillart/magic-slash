@@ -75,6 +75,16 @@ export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keyword
     confidenceScore: true,
     mode: 'ask'
   },
+  start: {
+    exploration: 'auto',
+    plan: true,
+    planReview: true,
+    planApproval: true,
+    execution: 'auto',
+    simplify: true,
+    criticIterations: 3,
+    criticMinScore: 8
+  },
   pullRequest: {
     autoLinkTickets: true,
     watchCI: true,

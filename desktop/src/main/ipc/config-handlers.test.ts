@@ -27,6 +27,7 @@ vi.mock('../config/config', () => ({
   updateRepositoryCommitSettings: vi.fn(),
   updateRepositoryResolveSettings: vi.fn(),
   updateRepositoryReviewSettings: vi.fn(),
+  updateRepositoryStartSettings: vi.fn(),
   updateRepositoryPullRequestSettings: vi.fn(),
   updateRepositoryIssuesSettings: vi.fn(),
   updateRepositoryBranchSettings: vi.fn(),

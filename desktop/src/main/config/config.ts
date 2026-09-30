@@ -48,6 +48,7 @@ function applySetting<T extends Record<string, unknown>>(
 const isOneOf = (allowed: readonly string[]) => (v: unknown) => typeof v === 'string' && allowed.includes(v)
 const isBool = (v: unknown) => typeof v === 'boolean'
 const isString = (v: unknown) => typeof v === 'string'
+const isIntIn = (min: number, max: number) => (v: unknown) => Number.isInteger(v) && (v as number) >= min && (v as number) <= max
 const isStringArray = (v: unknown) => Array.isArray(v) && v.every((item) => typeof item === 'string')
 
 /**
@@ -238,6 +239,7 @@ function persistRepoIdentity(name: string): void {
       pullRequest: repo.pullRequest,
       resolve: repo.resolve,
       review: repo.review,
+      start: repo.start,
       issues: repo.issues,
       plan: repo.plan,
       jira: repo.jira,
@@ -453,6 +455,7 @@ export function addRepository(name: string, repoPath: string, keywords: string[]
       pullRequest: repo.pullRequest,
       resolve: repo.resolve,
       review: repo.review,
+      start: repo.start,
       issues: repo.issues,
       plan: repo.plan,
       jira: repo.jira,
@@ -616,6 +619,32 @@ export function updateRepositoryResolveSettings(name: string, settings: Settings
 
   if (Object.keys(resolve).length === 0) {
     delete config.repositories[name].resolve
+  }
+
+  setConfigCache(config)
+  persistRepoIdentity(name)
+  return config
+}
+
+export function updateRepositoryStartSettings(name: string, settings: SettingsInput<NonNullable<RepositoryConfig['start']>>): Config {
+  const config = readConfig()
+  if (!config.repositories || !config.repositories[name]) {
+    throw new Error(`Repository '${name}' not found`)
+  }
+
+  const start = config.repositories[name].start = config.repositories[name].start || {}
+
+  applySetting(start, 'exploration', settings.exploration, isOneOf(['auto', 'always', 'never']))
+  applySetting(start, 'plan', settings.plan, isBool)
+  applySetting(start, 'planReview', settings.planReview, isBool)
+  applySetting(start, 'planApproval', settings.planApproval, isBool)
+  applySetting(start, 'execution', settings.execution, isOneOf(['auto', 'solo', 'multi']))
+  applySetting(start, 'simplify', settings.simplify, isBool)
+  applySetting(start, 'criticIterations', settings.criticIterations, isIntIn(0, 5))
+  applySetting(start, 'criticMinScore', settings.criticMinScore, isIntIn(1, 10))
+
+  if (Object.keys(start).length === 0) {
+    delete config.repositories[name].start
   }
 
   setConfigCache(config)

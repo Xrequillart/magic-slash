@@ -24,6 +24,7 @@ import {
   updateRepositoryPlanSettings,
   updateRepositoryPullRequestSettings,
   updateRepositoryReviewSettings,
+  updateRepositoryStartSettings,
   updateUsageLogsEnabled,
 } from './config'
 
@@ -725,5 +726,38 @@ describe('updateRepositoryPlanSettings', () => {
   it('throws on an unknown repository', () => {
     expect(() => updateRepositoryPlanSettings('nope', { tracker: 'jira' }))
       .toThrow("Repository 'nope' not found")
+  })
+})
+
+describe('updateRepositoryStartSettings', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  it('persists every setting', () => {
+    updateRepositoryStartSettings('api', {
+      exploration: 'always', plan: false, planReview: false, planApproval: false,
+      execution: 'solo', simplify: false, criticIterations: 0, criticMinScore: 6,
+    })
+    expect(readConfig().repositories.api.start).toEqual({
+      exploration: 'always', plan: false, planReview: false, planApproval: false,
+      execution: 'solo', simplify: false, criticIterations: 0, criticMinScore: 6,
+    })
+  })
+
+  it('ignores a value the skill does not know, or a count out of its range', () => {
+    updateRepositoryStartSettings('api', { execution: 'swarm', criticIterations: 9, criticMinScore: 0.5 as number })
+    expect(readConfig().repositories.api.start).toBeUndefined()
+  })
+
+  it('drops a setting reset to its default', () => {
+    updateRepositoryStartSettings('api', { simplify: false })
+    updateRepositoryStartSettings('api', { simplify: null as unknown as boolean })
+    expect(readConfig().repositories.api.start).toBeUndefined()
   })
 })
