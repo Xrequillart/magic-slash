@@ -198,13 +198,15 @@ export function Menu({
       close()
     }
 
-    document.addEventListener('mousedown', onPointerDown)
+    // CAPTURED, not bubbled: a press on a canvas's ground never bubbles up here (xyflow's
+    // pan handler stops it), and the panel stayed open over a board clicked all around it.
+    document.addEventListener('mousedown', onPointerDown, true)
     document.addEventListener('keydown', onKeyDown)
     window.addEventListener('resize', close)
     // capture: catches a scroll on any ancestor, not only on the window.
     window.addEventListener('scroll', onScroll, true)
     return () => {
-      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('mousedown', onPointerDown, true)
       document.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('resize', close)
       window.removeEventListener('scroll', onScroll, true)

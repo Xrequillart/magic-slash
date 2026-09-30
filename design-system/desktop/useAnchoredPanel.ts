@@ -116,14 +116,16 @@ export function useAnchoredPanel(open: boolean, close: () => void, width?: numbe
       close()
     }
 
-    document.addEventListener('mousedown', onPointerDown)
+    // CAPTURED, not bubbled: a press on a canvas's ground never bubbles up here (xyflow's
+    // pan handler stops it), and the panel stayed open over a board clicked all around it.
+    document.addEventListener('mousedown', onPointerDown, true)
     document.addEventListener('keydown', onKeyDown)
     window.addEventListener('resize', close)
     // capture: a scroll on ANY ancestor moves the trigger and leaves the panel behind,
     // and scroll does not bubble.
     window.addEventListener('scroll', onScroll, true)
     return () => {
-      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('mousedown', onPointerDown, true)
       document.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('resize', close)
       window.removeEventListener('scroll', onScroll, true)
