@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type AnimationEvent } fro
 
 import { AppTitleBar } from './AppTitleBar'
 import { Banner, type BannerVariant } from './Banner'
+import { CANVAS_MINIMAP_SIZE } from './CanvasMinimap'
 import { ArrowLeft } from './icons'
 import { WorkflowCanvas, type WorkflowCanvasLabels, type WorkflowCanvasRepositories, type WorkflowCanvasSelection } from './WorkflowCanvas'
 import type { WorkflowDockLabels } from './WorkflowDock'
@@ -70,6 +71,13 @@ export interface WorkflowEditorLabels {
   /** The title bar's way out, beside its arrow: "Back to settings". Its tooltip is `dock.close`. */
   back: string
 }
+
+/**
+ * The history panel's tallest: from its top (`top-4`) down to a gap above the canvas's
+ * minimap, bottom right, so a long history scrolls instead of covering it. The minimap sits
+ * xyflow's 15px panel margin in from the canvas, itself 6px in from this box.
+ */
+const HISTORY_MAX_HEIGHT = `calc(100% - 16px - ${6 + 15 + CANVAS_MINIMAP_SIZE.height + 12}px)`
 
 export interface WorkflowEditorHistory {
   /** The button's tooltip: "History". */
@@ -212,6 +220,27 @@ export function WorkflowEditor({
     if (panelRef.current) panelRef.current.scrollTop = 0
   }, [panelKey])
 
+  // A press anywhere but on the history, or on the button that toggles it, closes it: the
+  // canvas, a card, the dock, the title bar. On pointerdown, captured, so a drag that
+  // starts on the canvas closes it too, and nothing under it can swallow the press first.
+  const historyRef = useRef<HTMLDivElement>(null)
+  const historyOpen = history?.open ?? false
+  const closeHistory = useRef<(() => void) | undefined>(undefined)
+  closeHistory.current = history?.onToggle
+  useEffect(() => {
+    if (!historyOpen) return
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Element | null
+      if (!target || historyRef.current?.contains(target)) return
+      if (target.closest('[data-wf-history-toggle]')) return
+      // A menu or a dialog portalled over the editor is not "outside": it is on top.
+      if (target.closest('[role="menu"], [role="listbox"], [role="dialog"]')) return
+      closeHistory.current?.()
+    }
+    document.addEventListener('pointerdown', onPointerDown, true)
+    return () => document.removeEventListener('pointerdown', onPointerDown, true)
+  }, [historyOpen])
+
   const onRootAnimationEnd = (event: AnimationEvent<HTMLDivElement>) => {
     if (leaving && event.target === event.currentTarget && event.animationName === 'ms-wfe-leave') onLeft?.()
   }
@@ -282,8 +311,12 @@ export function WorkflowEditor({
         )}
 
         {history?.open && (
-          <div className="ms-wfe-panel absolute right-4 top-4 max-h-[calc(100%-10.5rem)] w-[30rem] overflow-y-auto rounded-xl shadow-2xl">
-            <WorkflowHistory {...history.panel} ground="raised" onClose={history.onToggle} />
+          <div
+            ref={historyRef}
+            className="ms-wfe-panel absolute right-4 top-4 flex w-[30rem] flex-col rounded-xl shadow-2xl"
+            style={{ maxHeight: HISTORY_MAX_HEIGHT }}
+          >
+            <WorkflowHistory {...history.panel} ground="raised" onClose={history.onToggle} className="flex min-h-0 flex-col" />
           </div>
         )}
 

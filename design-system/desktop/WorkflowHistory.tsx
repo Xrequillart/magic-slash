@@ -76,8 +76,9 @@ export function WorkflowHistory({
 }: WorkflowHistoryProps) {
   return (
     <section aria-label={labels.title} className={className}>
-      <Card padding="regular" ground={ground} className="relative flex flex-col gap-3">
-        <div className="flex items-center gap-2 pr-6">
+      {/* A column that fits the box it is given: the heading stays, the list scrolls. */}
+      <Card padding="regular" ground={ground} className="relative flex min-h-0 flex-col gap-3">
+        <div className="flex flex-shrink-0 items-center gap-2 pr-6">
           <Icon glyph={History} size="sm" tone="muted" className="flex-shrink-0" />
           <Text size="sm" weight="bold">{labels.title}</Text>
         </div>
@@ -96,34 +97,32 @@ export function WorkflowHistory({
         ) : items.length === 0 ? (
           <EmptyState icon={History}>{labels.empty}</EmptyState>
         ) : (
-          <>
-            <div className="-mx-2">
-              {items.map((item, i) => (
-                <TimelineLine
-                  key={item.id}
-                  actor={item.actor}
-                  avatar={item.avatar}
-                  action={item.action}
-                  badge={item.badge}
-                  date={item.date}
-                  dateTitle={item.dateTitle}
-                  first={i === 0}
-                  last={i === items.length - 1}
-                >
-                  {item.changes.length > 0 && (
-                    <ul className="flex flex-col gap-0.5">
-                      {item.changes.map((change, j) => (
-                        <li key={j}>
-                          <Text size="xs" tone="secondary" className="block">{change}</Text>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </TimelineLine>
-              ))}
-            </div>
-            {truncated && <Text size="xs" tone="secondary">{labels.truncated}</Text>}
-          </>
+          <div className="-mx-2 min-h-0 overflow-y-auto">
+            {items.map((item, i) => (
+              <TimelineLine
+                key={item.id}
+                actor={item.actor}
+                avatar={item.avatar}
+                action={item.action}
+                badge={item.badge}
+                date={item.date}
+                dateTitle={item.dateTitle}
+                first={i === 0}
+                last={i === items.length - 1}
+              >
+                {item.changes.length > 0 && (
+                  <ul className="flex flex-col gap-0.5">
+                    {item.changes.map((change, j) => (
+                      <li key={j}>
+                        <Text size="xs" tone="secondary" className="block">{change}</Text>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </TimelineLine>
+            ))}
+            {truncated && <Text size="xs" tone="secondary" className="block px-2">{labels.truncated}</Text>}
+          </div>
         )}
       </Card>
     </section>

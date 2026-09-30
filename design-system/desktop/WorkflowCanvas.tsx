@@ -6,8 +6,8 @@ import {
   Background, BackgroundVariant, Panel, ReactFlow, useReactFlow, type Connection, type Edge, type IsValidConnection, type Node, type NodeChange, type OnConnectEnd,
 } from '@xyflow/react'
 
-import { ButtonIcon } from './ButtonIcon'
 import { CanvasMinimap } from './CanvasMinimap'
+import { Icon } from './Icon'
 import { History } from './icons'
 import { Select, type SelectOption } from './Select'
 import { Text } from './Text'
@@ -123,7 +123,7 @@ export interface WorkflowCanvasRepositories {
 
 /** The button right of the picker that opens the flow's history. `active` while it is open. */
 export interface WorkflowCanvasHistory {
-  /** Its tooltip and accessible name: "History". */
+  /** Its word, beside its mark: "History". */
   label: string
   active: boolean
   onClick: () => void
@@ -439,18 +439,21 @@ export function WorkflowCanvas({
               floating
             />
           )}
-          {/* On the legend's plate, as tall as it: three plates in a row, one ground. */}
+          {/* The picker's plate, as tall as it and worded like it: three plates in a row, one
+              ground. `data-wf-history-toggle`: the editor's click-outside leaves it alone. */}
           {history && (
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-bg-secondary">
-              <ButtonIcon
-                icon={History}
-                title={history.label}
-                onClick={history.onClick}
-                active={history.active}
-                tone="ghost"
-                size="sm"
-              />
-            </div>
+            <button
+              type="button"
+              onClick={history.onClick}
+              aria-pressed={history.active}
+              data-wf-history-toggle=""
+              className={`flex h-7 flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border bg-bg-secondary px-2.5 text-xs text-ink transition-colors ${
+                history.active ? 'border-accent/40' : 'border-line hover:border-accent'
+              }`}
+            >
+              <Icon glyph={History} size="sm" tone="inherit" className={history.active ? 'text-accent' : 'text-text-secondary'} />
+              {history.label}
+            </button>
           )}
           <div className="flex h-7 items-center gap-3 rounded-lg border border-line bg-bg-secondary px-2.5">
             {LINK_KINDS.map((kind) => (

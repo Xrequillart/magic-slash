@@ -36,6 +36,18 @@ const SAMPLE_HISTORY: WorkflowHistoryItem[] = [
     id: 'h1', actor: 'alex@example.com', avatar: NO_FACE, action: 'edited the workflow',
     date: '3 d ago', changes: ['Turned off Resolve', 'Moved 2 cards on the canvas'],
   },
+  {
+    id: 'h0', actor: 'camille@example.com', avatar: NO_FACE, action: 'edited the workflow',
+    date: '1 wk ago', changes: ['Added the Changelog step', 'Linked PR → Changelog (Suggested)', 'Changelog: carries on after a failure'],
+  },
+  {
+    id: 'h-1', actor: 'alex@example.com', avatar: NO_FACE, action: 'changed the start settings',
+    date: '2 wk ago', changes: ['Execution mode: Automatic → Always one agent', 'Critic iterations: 3 → 2'],
+  },
+  {
+    id: 'h-2', actor: 'camille@example.com', avatar: NO_FACE, action: 'edited the workflow',
+    date: '3 wk ago', changes: ['Added the Lint step', 'Linked Commit → Lint (Suggested)', 'Moved 4 cards on the canvas'],
+  },
 ]
 
 const HISTORY_LABELS = {
