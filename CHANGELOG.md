@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.105.4] - 2026-09-30
+
+### Added
+
+- **Desktop**: Show who changed a repository's workflow and start settings, and when
+- **Desktop**: Word the workflow history button, close its panel on an outside press and keep it above the minimap
+- **Desktop**: Show when the workflow last changed beside its history button
+
+### Changed
+
+- **Desktop**: Mock the workflow history read in the config handlers suite
+
+### Fixed
+
+- **Desktop**: Stop reopening the workflow editor when coming back to the workflow tab
+
 ## [0.105.3] - 2026-09-30
 
 ### Added
@@ -3545,6 +3561,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.105.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.4
 [0.105.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.3
 [0.105.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.2
 [0.105.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.1
