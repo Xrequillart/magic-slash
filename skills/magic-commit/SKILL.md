@@ -225,6 +225,7 @@ The config was already loaded in Step 0.2. Extract these parameters (repo config
 | Co-Author | `.repositories.<name>.commit.coAuthor` | `false` |
 | Include Ticket ID | `.repositories.<name>.commit.includeTicketId` | `false` |
 | Allow commits on a main branch | `.repositories.<name>.commit.allowOnProtectedBranch` | `true` |
+| Push after commit | `.repositories.<name>.commit.pushAfterCommit` | `false` |
 | Development branch | `.repositories.<name>.branches.development` | *(none)* |
 
 ### 4.2: Apply the style
@@ -369,6 +370,35 @@ This curl notifies Magic Slash Desktop so it can update its UI. Without it, the 
 ```bash
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&status=committed&type=coder" > /dev/null 2>&1 || true
 ```
+
+### 6.2: Push (only when `pushAfterCommit` is `true`)
+
+`pushAfterCommit` false or absent — the default — means **no push**: skip this step. The
+commit stays local, as it always has.
+
+When it is `true`, push once, after the LAST commit of this repository (on an atomic split,
+after the whole series, never once per commit):
+
+```bash
+BRANCH="$(git branch --show-current)"
+if git rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
+  git push
+else
+  git push -u origin "$BRANCH"
+fi
+```
+
+Prepend `$NODE_PREFIX` if set: a pre-push hook runs with it. A detached HEAD (empty
+`BRANCH`) is not pushed: say so with `MSG_PUSH_FAILED` and carry on.
+
+- Success: display `MSG_PUSH_SUCCESS`.
+- Failure (rejected, no remote, auth, a pre-push hook): display `MSG_PUSH_FAILED` with git's
+  own reason. **Never force-push, never pull or rebase to make it go through**: the commit is
+  made and stays made, and reconciling with the remote is the user's call. The run's outcome
+  is still `committed` (Step 7.5).
+
+In a multi-repo run, push each worktree after its own commits, and list each push in
+`MSG_MULTI_REPO_FINAL`.
 
 ---
 

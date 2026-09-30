@@ -86,6 +86,34 @@ Commit created: {hash_and_message}
 Commit cree : {hash_and_message}
 ```
 
+## MSG_PUSH_SUCCESS
+
+### en
+
+```text
+Pushed {branch} to {remote}.
+```
+
+### fr
+
+```text
+{branch} pousse sur {remote}.
+```
+
+## MSG_PUSH_FAILED
+
+### en
+
+```text
+The commit is made, but the push failed: {reason}. Nothing was forced: push it yourself once this is sorted.
+```
+
+### fr
+
+```text
+Le commit est fait, mais le push a echoue : {reason}. Rien n'a ete force : poussez vous-meme une fois le probleme regle.
+```
+
 ## MSG_HOOK_AUTO_FIX
 
 ### en
