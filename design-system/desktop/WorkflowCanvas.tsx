@@ -9,7 +9,7 @@ import {
 
 import { CanvasMinimap } from './CanvasMinimap'
 import { Icon } from './Icon'
-import { ChevronDown, Ellipsis } from './icons'
+import { ArrowLeft, ChevronDown, Ellipsis } from './icons'
 import { Menu, type MenuItem } from './Menu'
 import { Select, type SelectOption } from './Select'
 import { Text } from './Text'
@@ -98,6 +98,9 @@ import {
  *
  * STICKY NOTES (`stickies`) are cards of free text, written on the card (`onChangeStickyText`),
  * display only like frames, resized the same way, and carried by a frame like a card.
+ *
+ * `back` puts the way out first in that corner, left of everything: the editor's return
+ * to the settings, as a plate like the others.
  *
  * `repositories` puts a picker left of the legend, as tall as it and on the same plate:
  * the editor's way over to another repository's flow. `history`, a button right of it,
@@ -232,6 +235,8 @@ export interface WorkflowCanvasProps {
   scrollPans?: boolean
   /** Where the legend sits. Top left unless the corner is taken, as the editor's title takes it. */
   legend?: 'top-left' | 'bottom-left'
+  /** The way out, first in the legend's corner, left of the picker. Not drawn without it. */
+  back?: { label: string; title?: string; onClick: () => void }
   /** The picker left of the legend. Not drawn without it. */
   repositories?: WorkflowCanvasRepositories
   /** The history button, right of the picker. Not drawn without it. */
@@ -289,6 +294,7 @@ export function WorkflowCanvas({
   frameless = false,
   legend = 'top-left',
   scrollPans = true,
+  back,
   repositories,
   actions,
   minimap = true,
@@ -687,6 +693,17 @@ export function WorkflowCanvas({
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.5} />
         <Panel position={legend} className="flex items-center gap-2">
+          {back && (
+            <button
+              type="button"
+              onClick={back.onClick}
+              title={back.title}
+              className="flex h-7 flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-bg-secondary px-2.5 text-xs text-ink transition-colors hover:border-accent"
+            >
+              <Icon glyph={ArrowLeft} size="sm" tone="inherit" className="text-text-secondary" />
+              {back.label}
+            </button>
+          )}
           {/* `md` is `h-7`, and so is the legend: the two plates line up edge to edge. */}
           {repositories && (
             <Select

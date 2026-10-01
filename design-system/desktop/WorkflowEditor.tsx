@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type AnimationEvent } fro
 import { AppTitleBar } from './AppTitleBar'
 import { Banner, type BannerVariant } from './Banner'
 import { CANVAS_MINIMAP_SIZE } from './CanvasMinimap'
-import { ArrowLeft, CopyPlus, History, RotateCcw } from './icons'
+import { CopyPlus, History, RotateCcw } from './icons'
 import { WorkflowCanvas, type WorkflowCanvasLabels, type WorkflowCanvasRepositories, type WorkflowCanvasSelection } from './WorkflowCanvas'
 import type { WorkflowDockLabels } from './WorkflowDock'
 import { WorkflowInspector, type WorkflowInspectorLabels, type WorkflowInspectorProps, type WorkflowInspectorTarget } from './WorkflowInspector'
@@ -20,12 +20,12 @@ import type { WorkflowCanvasLink, WorkflowCanvasNode } from './workflowLayout'
  * edges, with everything else floating on it.
  *
  *  - the title bar is `AppTitleBar` itself, so the window is still dragged by it and the
- *    traffic lights keep their corner (`trafficLightGutter`) while the editor covers the app.
- *    Its left end, past the traffic lights, is the way out, named (`labels.back`): the settings are where it goes;
+ *    traffic lights keep their corner (`trafficLightGutter`) while the editor covers the app;
  *  - top centre, the banners: a conflict, a change made elsewhere, a refused save;
  *  - on the right, the INSPECTOR, only while something is selected. A press on a card or
  *    a link opens it, a press on the ground or its X closes it;
- *  - top left, beside the legend, the REPOSITORY PICKER (`repositories`), when there are
+ *  - top left, first, the way out (`labels.back`): the settings are where it goes;
+ *  - right of it, beside the legend, the REPOSITORY PICKER (`repositories`), when there are
  *    others to go to: which flow is edited is the caller's, the picker only asks;
  *  - right of it, the ACTIONS dropdown (`labels.actions`), saying when the flow last changed. Its rows: the HISTORY (`history`): who changed the flow and its start
  *    settings, and when (`WorkflowHistory`), in the inspector's place on the right while it
@@ -78,7 +78,7 @@ export interface WorkflowEditorLabels {
   inspector: WorkflowInspectorLabels
   picker: WorkflowSkillPickerLabels
   dock: WorkflowDockLabels
-  /** The title bar's way out, beside its arrow: "Back to settings". Its tooltip is `dock.close`. */
+  /** The way out, top left of the canvas beside its arrow: "Back to settings". Its tooltip is `dock.close`. */
   back: string
   /** The actions dropdown's word, and its menu's accessible name: "More actions". */
   actions?: string
@@ -315,7 +315,6 @@ export function WorkflowEditor({
       <AppTitleBar
         trafficLightGutter={trafficLightGutter}
         titles={[{ id: 'workflow', label: title }]}
-        back={{ label: labels.back, title: labels.dock.close ?? '', onClick: onClose, icon: ArrowLeft }}
         className="ms-wfe-bar flex-shrink-0"
       />
       {/* 6px in from the window on every side: the canvas is framed, not bled. */}
@@ -341,6 +340,7 @@ export function WorkflowEditor({
             onConnect={readOnly ? undefined : onConnect}
             onToggle={readOnly ? undefined : onToggle}
             focusRequest={focusRequest}
+            back={{ label: labels.back, title: labels.dock.close, onClick: onClose }}
             repositories={repositories}
             actions={history || duplicate || reset ? {
               label: labels.actions ?? history?.label ?? '',
@@ -360,7 +360,7 @@ export function WorkflowEditor({
                 else if (id === 'reset') reset?.onClick()
               },
             } : undefined}
-            // The dock has no close button: the title bar's, top right, is the way out.
+            // The dock has no close button: the back plate, top left, is the way out.
             dock={readOnly ? { labels: labels.dock } : {
               labels: labels.dock,
               onAdd: (anchor, position) => setPicker({ anchor, position }),
