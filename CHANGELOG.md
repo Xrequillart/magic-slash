@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.107.1] - 2026-10-01
+
+### Added
+
+- **Desktop**: List a workflow link's from and to as rows in its inspector
+
 ## [0.107.0] - 2026-10-01
 
 ### Added
@@ -3637,6 +3643,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.107.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.107.1
 [0.107.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.107.0
 [0.106.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.106.0
 [0.105.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.9
