@@ -65,6 +65,22 @@ describe('workflow protocol shipped with the skills', () => {
     expect(source).toContain('`/workflow/next`')
   })
 
+  // A skill names its outcome from its own table, and the app matches it against the outcomes
+  // its node declares (defaultFlow.ts). Renamed on one side only, no link would ever apply, and
+  // nothing would say so: the skill would simply end on its own closing text.
+  it.each(CYCLE_SKILLS)('%s/SKILL.md ends on the outcomes its node declares', (skill) => {
+    const source = readFileSync(skillFile(skill, 'SKILL.md'), 'utf-8')
+    const table = source.split('| Result of this run | Outcome |')[1]
+    expect(table).toBeDefined()
+    const rows = table.split('\n').slice(2).filter((line) => line.startsWith('|'))
+    const cells = rows.map((row) => row.split('|').at(-2)!.trim())
+    // A row is an outcome (`committed`), `failed`, or "none: …", where the skill asks nothing.
+    const outcomes = cells.filter((cell) => cell.startsWith('`')).map((cell) => cell.match(/^`([^`]+)`/)![1])
+    expect(outcomes).toContain('failed')
+    const node = DEFAULT_WORKFLOW.nodes.find((n) => n.skill === skill)!
+    expect(outcomes.filter((outcome) => outcome !== 'failed').sort()).toEqual([...node.outcomes].sort())
+  })
+
   it('keeps the side skills out of the protocol', () => {
     const side = shippedSkills().filter((skill) => !CYCLE_SKILLS.includes(skill))
     // The three side doors today; the list is derived so that a new one is held out too.
