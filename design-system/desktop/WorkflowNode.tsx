@@ -29,6 +29,12 @@ import {
  * A PORT IN USE SAYS SO: bigger, and ringed in the stroke of the link plugged into it
  * (`ports`): the accent for an automatic one, grey for a suggestion.
  *
+ * A LINKED OUTCOME WEARS A PLATE (`linked`), tinted in its link's stroke and running from
+ * the word to the card's right edge, into the port: the row and its dot read as one
+ * thing, the link's start. Pressing it traces the link (`onTrace`): the plate lights up
+ * (`traced`), and so do the link and the port it lands on (`tracedPorts`), on whichever
+ * card that is. Lit on the read-only canvas too, which is where a flow is read.
+ *
  * THE GROUND IS OPAQUE (`bg-bg-secondary`), unlike most of this folder's translucent
  * surfaces: a link running under a card must not show through it.
  *
@@ -90,6 +96,14 @@ export interface WorkflowNodeData extends Record<string, unknown> {
   anyExit?: string
   /** The ports a link is plugged into, by handle id, and the kind of that link: drawn in its stroke. */
   ports?: Readonly<Record<string, WorkflowCanvasLinkKind>>
+  /** The exit rows a link leaves from, and its kind (`auto` wins): drawn as a plate into the port. */
+  linked?: Readonly<Record<string, WorkflowCanvasLinkKind>>
+  /** The exit row whose links are traced, lit. */
+  traced?: string
+  /** The ports a traced link lands on, by handle id, lit in its stroke. */
+  tracedPorts?: Readonly<Record<string, WorkflowCanvasLinkKind>>
+  /** A linked row was pressed: trace its links, or stop if they already are. */
+  onTrace?: (id: string, exit: string) => void
 }
 
 export type WorkflowNodeType = Node<WorkflowNodeData, 'workflow'>
@@ -138,6 +152,18 @@ const FRAMES = {
   selectedProblem: 'border-red ring-2 ring-accent/40',
 } as const
 
+/** A linked row's plate, at rest and traced, per kind. Spelled in full so Tailwind finds every class. */
+const EXIT_PLATES: Record<WorkflowCanvasLinkKind, { rest: string; traced: string }> = {
+  auto: {
+    rest: 'bg-accent/10 text-accent hover:bg-accent/20',
+    traced: 'bg-accent/25 text-accent ring-1 ring-inset ring-accent/60',
+  },
+  suggest: {
+    rest: 'bg-text-secondary/10 text-text-secondary hover:bg-text-secondary/20',
+    traced: 'bg-text-secondary/25 text-ink ring-1 ring-inset ring-text-secondary/60',
+  },
+}
+
 /** A custom step's plate: `blocking` in the accent, because it can stop the flow; `advisory` neutral. */
 const MODE_TONES: Record<WorkflowCanvasNodeMode, string> = {
   blocking: 'border-accent/40 text-accent',
@@ -145,9 +171,13 @@ const MODE_TONES: Record<WorkflowCanvasNodeMode, string> = {
 }
 
 export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
-  const { node, selected = false, labels, onToggle, off, connectable = false, anyExit = '', ports } = data
-  // A used port wears its link's stroke (`workflowCanvas.css`).
-  const used = (handle: string) => (ports?.[handle] ? `ms-wf-port-${ports[handle]}` : undefined)
+  const { node, selected = false, labels, onToggle, off, connectable = false, anyExit = '', ports, linked, traced, tracedPorts, onTrace } = data
+  // A used port wears its link's stroke (`workflowCanvas.css`), and a traced one lights up.
+  const used = (handle: string) => {
+    const lit = tracedPorts?.[handle]
+    const kind = lit ?? ports?.[handle]
+    return kind ? `ms-wf-port-${kind}${lit ? ' ms-wf-port-traced' : ''}` : undefined
+  }
   const exits = workflowExitRows(node)
   const frame = selected
     ? node.problem ? FRAMES.selectedProblem : FRAMES.selected
@@ -164,8 +194,11 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
       }
     : undefined
 
+  // A lane is invisible, but where a traced link lands on one, its dot is shown lit.
+  const lane = (handle: string) => (tracedPorts?.[handle] ? `ms-wf-lane ${used(handle)}` : 'ms-wf-lane')
+
   if (node.note !== undefined) {
-    return <NoteCard node={node} frame={frame} selected={selected} tint={tint} connectable={connectable} used={used} />
+    return <NoteCard node={node} frame={frame} selected={selected} tint={tint} connectable={connectable} used={used} lane={lane} />
   }
 
   return (
@@ -177,10 +210,10 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
       style={tint}
     >
       <Handle type="source" position={Position.Bottom} id={WORKFLOW_VERTICAL_HANDLES.down.source} style={DOWN_LANE} className="ms-wf-lane" isConnectable={false} />
-      <Handle type="target" position={Position.Top} id={WORKFLOW_VERTICAL_HANDLES.down.target} style={DOWN_LANE} className="ms-wf-lane" isConnectable={false} />
+      <Handle type="target" position={Position.Top} id={WORKFLOW_VERTICAL_HANDLES.down.target} style={DOWN_LANE} className={lane(WORKFLOW_VERTICAL_HANDLES.down.target)} isConnectable={false} />
       <Handle type="source" position={Position.Top} id={WORKFLOW_VERTICAL_HANDLES.up.source} style={UP_LANE} className="ms-wf-lane" isConnectable={false} />
-      <Handle type="target" position={Position.Bottom} id={WORKFLOW_VERTICAL_HANDLES.up.target} style={UP_LANE} className="ms-wf-lane" isConnectable={false} />
-      <Handle type="target" position={Position.Top} id={WORKFLOW_SELF_TARGET_HANDLE} style={SELF_LANE} className="ms-wf-lane" isConnectable={false} />
+      <Handle type="target" position={Position.Bottom} id={WORKFLOW_VERTICAL_HANDLES.up.target} style={UP_LANE} className={lane(WORKFLOW_VERTICAL_HANDLES.up.target)} isConnectable={false} />
+      <Handle type="target" position={Position.Top} id={WORKFLOW_SELF_TARGET_HANDLE} style={SELF_LANE} className={lane(WORKFLOW_SELF_TARGET_HANDLE)} isConnectable={false} />
       <div
         className="relative flex h-14 items-center gap-2.5 border-b border-line px-3"
       >
@@ -239,22 +272,44 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
             )}
           </span>
         )}
-        <Handle type="target" position={Position.Right} id={WORKFLOW_SIDE_TARGET_HANDLE} className="ms-wf-lane" isConnectable={false} />
+        <Handle type="target" position={Position.Right} id={WORKFLOW_SIDE_TARGET_HANDLE} className={lane(WORKFLOW_SIDE_TARGET_HANDLE)} isConnectable={false} />
       </div>
 
       <ul className={`pb-2 ${faded}`}>
-        {exits.map((exit) => (
-          <li key={exit} className="relative flex h-6 items-center justify-end pl-3 pr-4">
-            {exit === WORKFLOW_ANY_EXIT ? (
-              <Text size="2xs" tone="secondary" className="truncate italic" title={anyExit}>{anyExit}</Text>
-            ) : (
-              <code className="truncate font-mono text-[10px] leading-4 text-text-secondary" title={exit}>
-                {exit}
-              </code>
-            )}
-            <Handle type="source" position={Position.Right} id={exit} isConnectable={connectable} className={used(exit)} />
-          </li>
-        ))}
+        {exits.map((exit) => {
+          const word = exit === WORKFLOW_ANY_EXIT ? (
+            <Text size="2xs" tone="inherit" className="truncate italic" title={anyExit}>{anyExit}</Text>
+          ) : (
+            <code className="truncate font-mono text-[10px] leading-4" title={exit}>
+              {exit}
+            </code>
+          )
+          const kind = linked?.[exit]
+          return (
+            <li key={exit} className="relative flex h-6 items-center justify-end pl-3 pr-4">
+              {kind ? (
+                // Out to the card's edge (`-mr-4` over the row's `pr-4`), where the port sits:
+                // the plate runs into the dot. `nodrag` and the stopped click: pressing it
+                // neither drags the card nor selects it. `pointer-events-auto`: a read-only
+                // card takes no pointer, and this plate still has to.
+                <button
+                  type="button"
+                  aria-pressed={traced === exit}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onTrace?.(node.id, exit)
+                  }}
+                  className={`nodrag nopan pointer-events-auto -mr-4 flex h-5 min-w-0 cursor-pointer items-center rounded-l-md pl-1.5 pr-4 transition-colors ${EXIT_PLATES[kind][traced === exit ? 'traced' : 'rest']}`}
+                >
+                  {word}
+                </button>
+              ) : (
+                <span className="flex min-w-0 text-text-secondary">{word}</span>
+              )}
+              <Handle type="source" position={Position.Right} id={exit} isConnectable={connectable} className={used(exit)} />
+            </li>
+          )
+        })}
       </ul>
     </div>
   )
@@ -268,13 +323,14 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
  * Its text is `node.note`; an empty one shows `node.label` instead, quieter: the caller's
  * "Empty note".
  */
-function NoteCard({ node, frame, selected, tint, connectable, used }: {
+function NoteCard({ node, frame, selected, tint, connectable, used, lane }: {
   node: WorkflowCanvasNode
   frame: string
   selected: boolean
   tint?: { backgroundImage: string; borderColor?: string }
   connectable: boolean
   used: (handle: string) => string | undefined
+  lane: (handle: string) => string
 }) {
   const text = node.note ?? ''
   return (
@@ -283,10 +339,10 @@ function NoteCard({ node, frame, selected, tint, connectable, used }: {
       aria-current={selected ? 'true' : undefined}
       style={tint}
     >
-      <Handle type="target" position={Position.Top} id={WORKFLOW_VERTICAL_HANDLES.down.target} style={DOWN_LANE} className="ms-wf-lane" isConnectable={false} />
-      <Handle type="target" position={Position.Bottom} id={WORKFLOW_VERTICAL_HANDLES.up.target} style={UP_LANE} className="ms-wf-lane" isConnectable={false} />
-      <Handle type="target" position={Position.Top} id={WORKFLOW_SELF_TARGET_HANDLE} style={SELF_LANE} className="ms-wf-lane" isConnectable={false} />
-      <Handle type="target" position={Position.Right} id={WORKFLOW_SIDE_TARGET_HANDLE} className="ms-wf-lane" isConnectable={false} />
+      <Handle type="target" position={Position.Top} id={WORKFLOW_VERTICAL_HANDLES.down.target} style={DOWN_LANE} className={lane(WORKFLOW_VERTICAL_HANDLES.down.target)} isConnectable={false} />
+      <Handle type="target" position={Position.Bottom} id={WORKFLOW_VERTICAL_HANDLES.up.target} style={UP_LANE} className={lane(WORKFLOW_VERTICAL_HANDLES.up.target)} isConnectable={false} />
+      <Handle type="target" position={Position.Top} id={WORKFLOW_SELF_TARGET_HANDLE} style={SELF_LANE} className={lane(WORKFLOW_SELF_TARGET_HANDLE)} isConnectable={false} />
+      <Handle type="target" position={Position.Right} id={WORKFLOW_SIDE_TARGET_HANDLE} className={lane(WORKFLOW_SIDE_TARGET_HANDLE)} isConnectable={false} />
       <Handle type="target" position={Position.Left} id={WORKFLOW_TARGET_HANDLE} isConnectable={connectable} className={used(WORKFLOW_TARGET_HANDLE)} />
       <span
         className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${node.color ? '' : 'bg-accent/10 text-accent'}`}

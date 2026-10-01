@@ -1,4 +1,4 @@
-import { BaseEdge, EdgeLabelRenderer, getStraightPath, type Edge, type EdgeProps } from '@xyflow/react'
+import { BaseEdge, getStraightPath, type Edge, type EdgeProps } from '@xyflow/react'
 
 import { orthogonalPath, type WorkflowCanvasLinkKind, type WorkflowLinkRoute } from './workflowLayout'
 
@@ -23,13 +23,10 @@ import { orthogonalPath, type WorkflowCanvasLinkKind, type WorkflowLinkRoute } f
  * `prefers-reduced-motion`, which leaves the weight (see `workflowCanvas.css`, where
  * the strokes are painted from the theme's roles).
  *
- * A CONDITIONAL LINK CARRIES ITS OUTCOME'S NAME, on a plate at its middle, as the
- * skills spell it. The port it leaves from names it too; the label is what keeps a
- * link readable where it arrives, far from that port. ALWAYS AT THE MIDDLE, whatever
- * the route and however many links leave the same step: each one leaves from its own
- * port, so each has its own middle. A link that skips a column (pr → resolve over
- * review) has its middle over the card it skips, so the plate is raised above the
- * cards rather than hidden under them.
+ * NO LABEL ON THE LINE: a plate on every conditional link cluttered the canvas more than
+ * it helped. The outcome a link is taken on is the row it leaves from, which wears a
+ * plate of its own running into its port (`WorkflowNode`); pressing that row traces the
+ * link (`traced`) and lights the port it lands on.
  *
  * THE STEPS OF A LOOP (a custom flow's review ⇄ resolve, say) are stacked in one
  * column by `workflowLayout.ts`, and the links between them are straight verticals in the gap
@@ -46,14 +43,18 @@ import { orthogonalPath, type WorkflowCanvasLinkKind, type WorkflowLinkRoute } f
 
 export interface WorkflowEdgeData extends Record<string, unknown> {
   kind: WorkflowCanvasLinkKind
-  /** The outcome the link is taken on, drawn as its label. Absent on an unconditional link. */
-  outcome?: string
+  /** The row of its source card it leaves from: an outcome, or the "whatever it ended on" one. */
+  exit?: string
   /** Across columns, or up / down between two steps of a loop stacked in one column. */
   route: WorkflowLinkRoute
   /** Drawn heavier, with a halo in the accent: the link the editor's inspector is showing. */
   selected?: boolean
   /** Faded: a link into or out of a step that is turned off, which the skills never take. */
   muted?: boolean
+  /** Drawn heavier, haloed in its own stroke: a link out of the outcome row the user pressed. */
+  traced?: boolean
+  /** Faded while another outcome's links are traced, so those read alone. */
+  dimmed?: boolean
 }
 
 export type WorkflowEdgeType = Edge<WorkflowEdgeData, 'workflow'>
@@ -64,12 +65,6 @@ const DETOUR = 28
 /** Square corners, on every route: see the note at the top. */
 const CORNER = 0
 
-/** Spelled in full, per kind, so Tailwind finds every class. */
-const LABEL_TONES: Record<WorkflowCanvasLinkKind, string> = {
-  auto: 'border-accent/40 text-accent',
-  suggest: 'border-line-strong text-text-secondary',
-}
-
 export function WorkflowEdge({
   id,
   sourceX,
@@ -79,54 +74,34 @@ export function WorkflowEdge({
   data,
 }: EdgeProps<WorkflowEdgeType>) {
   const kind = data?.kind ?? 'suggest'
-  let path: string, labelX: number, labelY: number
+  let path: string
   const route = data?.route ?? 'forward'
   if (route === 'side') {
     // Down or up the gap on the column's right, clear of every card between the two.
     const x = Math.max(sourceX, targetX) + DETOUR
     path = orthogonalPath([[sourceX, sourceY], [x, sourceY], [x, targetY], [targetX, targetY]], CORNER)
-    labelX = x
-    labelY = (sourceY + targetY) / 2
   } else if (route === 'self') {
     // Out of the port, up past the card's top, and down into its corner: a loop of its
     // own. Tighter than a `side` detour, so the two never share the gap's vertical.
     const x = sourceX + DETOUR / 2
     const top = targetY - DETOUR / 2
     path = orthogonalPath([[sourceX, sourceY], [x, sourceY], [x, top], [targetX, top], [targetX, targetY]], CORNER)
-    labelX = x
-    labelY = (sourceY + top) / 2
   } else if (route !== 'forward') {
-    [path, labelX, labelY] = getStraightPath({ sourceX, sourceY, targetX, targetY })
+    [path] = getStraightPath({ sourceX, sourceY, targetX, targetY })
   } else {
-    // Across, then up or down in the middle of the way, then across again. The label sits
-    // on that vertical, halfway: the middle of the link.
+    // Across, then up or down in the middle of the way, then across again.
     const x = (sourceX + targetX) / 2
     path = orthogonalPath([[sourceX, sourceY], [x, sourceY], [x, targetY], [targetX, targetY]], CORNER)
-    labelX = x
-    labelY = (sourceY + targetY) / 2
   }
 
+  const state = `${data?.selected ? ' ms-wf-edge-selected' : ''}${data?.muted ? ' ms-wf-edge-muted' : ''}${data?.traced ? ' ms-wf-edge-traced' : ''}${data?.dimmed ? ' ms-wf-edge-dimmed' : ''}`
   return (
     <>
-      <BaseEdge
-        id={id}
-        path={path}
-        className={`ms-wf-edge-${kind}${data?.selected ? ' ms-wf-edge-selected' : ''}${data?.muted ? ' ms-wf-edge-muted' : ''}`}
-      />
+      <BaseEdge id={id} path={path} className={`ms-wf-edge-${kind}${state}`} />
       {kind === 'auto' && !data?.muted && (
-        <circle r={3} className="ms-wf-pulse">
+        <circle r={3} className={`ms-wf-pulse${data?.dimmed ? ' ms-wf-edge-dimmed' : ''}`}>
           <animateMotion dur="2.4s" repeatCount="indefinite" path={path} />
         </circle>
-      )}
-      {data?.outcome && (
-        <EdgeLabelRenderer>
-          <code
-            style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
-            className={`nodrag nopan pointer-events-none absolute z-[1001] rounded-md border bg-bg-secondary px-1.5 py-0.5 font-mono text-[10px] leading-4 ${LABEL_TONES[kind]}${data.muted ? ' opacity-20' : ''}`}
-          >
-            {data.outcome}
-          </code>
-        </EdgeLabelRenderer>
       )}
     </>
   )

@@ -192,13 +192,35 @@
 }
 
 /*
- * Outcome labels ABOVE the cards. xyflow stacks them under the nodes, and a column gap
- * is narrower than `changes_requested`: under the cards, the ends of a label were cut
- * off by the two cards it sits between. On top, the plate overlaps a card's edge and
- * stays whole.
+ * A TRACED LINK, out of the outcome row the user pressed: heavier, haloed in its own
+ * stroke, every other link faded behind it. The port it lands on fills in that stroke
+ * and wears the same halo, a lane's too, invisible the rest of the time.
  */
-.ms-workflow-canvas .react-flow__edgelabel-renderer {
-  z-index: 1001;
+.ms-workflow-canvas .ms-wf-edge-traced {
+  stroke-width: 3;
+}
+.ms-workflow-canvas .ms-wf-edge-auto.ms-wf-edge-traced {
+  filter: drop-shadow(0 0 3px rgb(var(--c-accent) / 0.55));
+}
+.ms-workflow-canvas .ms-wf-edge-suggest.ms-wf-edge-traced {
+  stroke: rgb(var(--c-text-secondary));
+  filter: drop-shadow(0 0 3px rgb(var(--c-text-secondary) / 0.45));
+}
+.ms-workflow-canvas .ms-wf-edge-dimmed {
+  opacity: 0.2;
+  transition: opacity 160ms ease-out;
+}
+.ms-workflow-canvas .react-flow__handle.ms-wf-lane.ms-wf-port-traced {
+  opacity: 1;
+}
+.ms-workflow-canvas .react-flow__handle.ms-wf-port-traced.ms-wf-port-auto::after {
+  background: rgb(var(--c-accent));
+  box-shadow: 0 0 0 4px rgb(var(--c-accent) / 0.25);
+}
+.ms-workflow-canvas .react-flow__handle.ms-wf-port-traced.ms-wf-port-suggest::after {
+  background: rgb(var(--c-text-secondary));
+  border-color: rgb(var(--c-text-secondary));
+  box-shadow: 0 0 0 4px rgb(var(--c-text-secondary) / 0.25);
 }
 
 /*
@@ -299,8 +321,7 @@
 .ms-wfe-stage .react-flow__node-workflow:nth-child(n + 9) { --ms-wfe-i: 8; }
 
 /* The links once their cards are there, and the corners' furniture last. */
-.ms-wfe-stage .react-flow__edges,
-.ms-wfe-stage .react-flow__edgelabel-renderer {
+.ms-wfe-stage .react-flow__edges {
   animation: ms-wfe-fade-in 420ms ease-out 520ms both;
 }
 .ms-wfe-stage .react-flow__minimap,

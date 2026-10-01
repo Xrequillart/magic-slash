@@ -32,7 +32,8 @@ const DETOUR_ENTRY = ['build']
 
 const PROPS: PropRow[] = [
   { name: 'data.kind', type: "'auto' | 'suggest'", required: true, description: 'auto: a solid accent line with a dot travelling along it (hidden under reduced motion). suggest: a grey line, lighter, standing still.' },
-  { name: 'data.outcome', type: 'string', description: 'The outcome the link is taken on, drawn on a plate at its middle. Absent on an unconditional link.' },
+  { name: 'data.traced', type: 'boolean', description: 'Heavier, haloed in its own stroke: a link out of the outcome row the user pressed. The link carries no label; the row it leaves from names its outcome.' },
+  { name: 'data.dimmed', type: 'boolean', description: 'Faded while another outcome’s links are traced.' },
   { name: 'data.route', type: "'forward' | 'down' | 'up' | 'side' | 'self'", required: true, description: 'Across columns, left to right, as a curve. Between two neighbouring steps of a loop stacked in one column, a straight line down or up. Past a card between its ends, a detour down the column’s right gap (side). From a step to itself, a loop over its own corner (self).' },
 ]
 

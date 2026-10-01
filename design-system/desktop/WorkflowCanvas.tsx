@@ -60,6 +60,12 @@ import {
  * the whole document, so a canvas left mounted in a hidden tab would still take the
  * space bar from the page around it.
  *
+ * PRESSING A LINKED OUTCOME TRACES ITS LINKS, on either canvas: the outcome's plate, the
+ * links out of it and the ports they land on light up, and every other link fades.
+ * Pressing it again, or the ground, lets go. Read-only, the trace is the canvas's own
+ * state. Editable, it follows the selection: pressing an outcome selects its (first)
+ * link, which opens it in the inspector, and a selected link traces its outcome.
+ *
  * EDITABLE, ON REQUEST (`editable`), and the read-only canvas above is what you get
  * without it, to the pixel. Editable, the canvas still owns nothing: it reports and the
  * caller decides.
@@ -242,6 +248,38 @@ export function WorkflowCanvas({
   const [actionsOpen, setActionsOpen] = useState(false)
   // Where a card is being dragged to, until it is let go and the caller has its place.
   const [dragged, setDragged] = useState<Record<string, { x: number; y: number }>>({})
+  // The outcome row whose links are traced, see above.
+  const [traced, setTraced] = useState<{ node: string; exit: string } | null>(null)
+  const select = editable ? onSelect : undefined
+  // In the editor, a trace IS the selection of a link: pressing an outcome opens its first
+  // link in the inspector, and selecting a link (from the line, or the inspector's own
+  // way there) traces the outcome it leaves from. Anything else selected lets go.
+  const onTrace = useCallback((node: string, exit: string) => {
+    if (traced?.node === node && traced.exit === exit) {
+      setTraced(null)
+      select?.(null)
+      return
+    }
+    setTraced({ node, exit })
+    const from = nodes.find((n) => n.id === node)
+    const link = from && links.find((l) => l.from === node && workflowExitOf(from, l.outcome) === exit)
+    if (link) select?.({ type: 'link', from: link.from, to: link.to })
+  }, [traced, select, nodes, links])
+  const selectedFrom = selected?.type === 'link' ? selected.from : null
+  const selectedTo = selected?.type === 'link' ? selected.to : null
+  useEffect(() => {
+    if (!editable) return
+    const from = nodes.find((n) => n.id === selectedFrom)
+    const exits = from
+      ? links.filter((l) => l.from === selectedFrom && l.to === selectedTo).map((l) => workflowExitOf(from, l.outcome))
+      : []
+    // A selection names two cards, and several outcomes of one may lead to the other: the
+    // one pressed (an outcome's row, or the line itself) stays traced, the first otherwise.
+    setTraced((was) => {
+      if (!from || exits.length === 0) return null
+      return was?.node === from.id && exits.includes(was.exit) ? was : { node: from.id, exit: exits[0] }
+    })
+  }, [editable, selectedFrom, selectedTo, links, nodes])
 
   // The layout depends on the flow and the stored places alone, so selecting or
   // re-rendering never redoes it.
@@ -311,6 +349,8 @@ export function WorkflowCanvas({
               : WORKFLOW_TARGET_HANDLE,
           }
       const id = `${link.from}-${link.to}-${i}`
+      // Traced from the row it leaves, whatever route it takes from there.
+      const isTraced = traced?.node === link.from && traced.exit === port
       const isSelected = editable && selected?.type === 'link' && selected.from === link.from && selected.to === link.to
       return [{
         id,
@@ -319,40 +359,64 @@ export function WorkflowCanvas({
         ...handles,
         type: 'workflow',
         data: {
-          kind: link.kind, outcome: link.outcome, route,
+          kind: link.kind, route, exit: port,
           ...(isSelected ? { selected: true } : {}),
           ...(from.disabled || byId.get(link.to)!.disabled ? { muted: true } : {}),
+          ...(isTraced ? { traced: true } : traced ? { dimmed: true } : {}),
         },
         ...(editable ? { ariaLabel: `${from.label} → ${byId.get(link.to)!.label}` } : {}),
       }]
     })
 
     // Which ports a link is plugged into, and the stroke they then wear: `auto` wins.
-    const ports = new Map<string, Record<string, WorkflowCanvasLinkKind>>()
-    const plug = (nodeId: string, handle: string | null | undefined, kind: WorkflowCanvasLinkKind) => {
+    // Likewise the rows a link leaves from (its port, even when a loop's link leaves by a
+    // lane), and the ports a traced link lands on.
+    type Ports = Map<string, Record<string, WorkflowCanvasLinkKind>>
+    const ports: Ports = new Map(), linked: Ports = new Map(), lit: Ports = new Map()
+    const plug = (into: Ports, nodeId: string, handle: string | null | undefined, kind: WorkflowCanvasLinkKind) => {
       if (!handle) return
-      const own = ports.get(nodeId) ?? {}
+      const own = into.get(nodeId) ?? {}
       if (own[handle] !== 'auto') own[handle] = kind
-      ports.set(nodeId, own)
+      into.set(nodeId, own)
     }
     for (const edge of flowEdges) {
       const kind = edge.data?.kind ?? 'suggest'
-      plug(edge.source, edge.sourceHandle, kind)
-      plug(edge.target, edge.targetHandle, kind)
+      plug(ports, edge.source, edge.sourceHandle, kind)
+      plug(ports, edge.target, edge.targetHandle, kind)
+      if (edge.data?.traced) plug(lit, edge.target, edge.targetHandle, kind)
     }
-    for (const node of flowNodes) node.data = { ...node.data, ports: ports.get(node.id) }
+    for (const link of links) {
+      const from = byId.get(link.from)
+      if (from && byId.has(link.to)) plug(linked, link.from, workflowExitOf(from, link.outcome), link.kind)
+    }
+    for (const node of flowNodes) {
+      node.data = {
+        ...node.data,
+        ports: ports.get(node.id),
+        linked: linked.get(node.id),
+        tracedPorts: lit.get(node.id),
+        onTrace,
+        ...(traced?.node === node.id ? { traced: traced.exit } : {}),
+      }
+    }
 
     return { flowNodes, flowEdges }
-  }, [nodes, links, layout, widths, dragged, labels, editable, selected, onConnect, onToggle])
+  }, [nodes, links, layout, widths, dragged, labels, editable, selected, onConnect, onToggle, traced, onTrace])
 
-  const select = editable ? onSelect : undefined
   const onNodeClick = useCallback((_: unknown, node: Node) => {
     if (node.type === 'workflow') select?.({ type: 'node', id: node.id })
   }, [select])
   const onEdgeClick = useCallback((_: unknown, edge: Edge) => {
+    // The line pressed, and not merely its two cards: its own outcome is the one traced.
+    const exit = (edge.data as WorkflowEdgeType['data'])?.exit
+    if (exit) setTraced({ node: edge.source, exit })
     select?.({ type: 'link', from: edge.source, to: edge.target })
   }, [select])
-  const onPaneClick = useCallback(() => select?.(null), [select])
+  // The ground lets go of a trace on either canvas, and of the selection in the editor.
+  const onPaneClick = useCallback(() => {
+    setTraced(null)
+    select?.(null)
+  }, [select])
 
   // xyflow moves nothing on its own with controlled nodes: the card follows the pointer
   // here, and lands where the caller says once it is let go.
@@ -448,7 +512,7 @@ export function WorkflowCanvas({
         edgesFocusable={false}
         onNodeClick={select ? onNodeClick : undefined}
         onEdgeClick={select ? onEdgeClick : undefined}
-        onPaneClick={select ? onPaneClick : undefined}
+        onPaneClick={onPaneClick}
         panOnScroll={scrollPans}
         zoomOnScroll={scrollPans}
         preventScrolling={scrollPans}
