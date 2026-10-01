@@ -628,6 +628,17 @@ describe('the custom skill context hook', () => {
     expect(command()).toContain('magic-slash-desktop')
   })
 
+  // A command typed by hand never reaches the Skill tool: the prompt is the only place to see it.
+  it('is installed once on UserPromptSubmit too, with no matcher', () => {
+    configureClaudeHooks()
+    configureClaudeHooks()
+    const onPrompt = ((readSettings().hooks.UserPromptSubmit as Hook[]) ?? [])
+      .filter((h) => h.hooks!.some((x) => x.command!.includes('/workflow/context')))
+    expect(onPrompt).toHaveLength(1)
+    expect(onPrompt[0].matcher).toBeUndefined()
+    expect(onPrompt[0].hooks![0].command).toBe(command())
+  })
+
   // Its stdout is the context Claude Code injects; silencing it would inject nothing.
   it('never sends its stdout to /dev/null', () => {
     configureClaudeHooks()

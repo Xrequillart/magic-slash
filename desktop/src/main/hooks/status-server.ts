@@ -279,7 +279,38 @@ export function setCustomSkillContextProvider(provider: CustomSkillContextProvid
  * names a skill that may be the user's employer's own, and a log line is a place it
  * would outlive the request.
  */
-function customSkillContextFor(body: string): string | null {
+/** The hook events that hand a custom skill its context, and so the one the answer names. */
+type SkillContextEvent = 'PostToolUse' | 'UserPromptSubmit'
+
+/**
+ * The skill a hook's stdin is about, and the event it came from.
+ *
+ * Two ways in. The model invoking the skill: a PostToolUse on the Skill tool, whose
+ * `tool_input.skill` is the bare name. The user typing it: a UserPromptSubmit whose
+ * `prompt` OPENS on the command (`/check-types`, `/plugin:foo args`). Claude Code
+ * expands a typed command itself, without the Skill tool, so without this second way
+ * a custom skill run by hand would end on nothing, whatever its outcomes and links.
+ * A prompt that only mentions a command further in is discussing it, not running it.
+ */
+function skillOfHookInput(payload: unknown): { cwd: string; skill: string; event: SkillContextEvent } | null {
+  const { cwd, hook_event_name: eventName, tool_input: input, prompt } = (payload ?? {}) as {
+    cwd?: unknown; hook_event_name?: unknown; tool_input?: { skill?: unknown } | null; prompt?: unknown
+  }
+  if (typeof cwd !== 'string' || !cwd) return null
+  if (eventName === 'UserPromptSubmit') {
+    if (typeof prompt !== 'string') return null
+    const typed = prompt.match(/^\s*\/([A-Za-z0-9][A-Za-z0-9:_-]*)(?=\s|$)/)
+    return typed ? { cwd, skill: typed[1], event: 'UserPromptSubmit' } : null
+  }
+  const raw = input?.skill
+  if (typeof raw !== 'string') return null
+  // Claude Code passes the bare name (`check-types`, `plugin:foo`); a leading slash is
+  // what a model copying a command line would add, and never part of a node's skill.
+  const skill = raw.trim().replace(/^\/+/, '')
+  return skill ? { cwd, skill, event: 'PostToolUse' } : null
+}
+
+function customSkillContextFor(body: string): { context: string; event: SkillContextEvent } | null {
   if (!customSkillContextProvider) return null
   let payload: unknown
   try {
@@ -287,15 +318,11 @@ function customSkillContextFor(body: string): string | null {
   } catch {
     return null
   }
-  const { cwd, tool_input: input } = (payload ?? {}) as { cwd?: unknown; tool_input?: { skill?: unknown } | null }
-  const raw = input?.skill
-  if (typeof cwd !== 'string' || !cwd || typeof raw !== 'string') return null
-  // Claude Code passes the bare name (`check-types`, `plugin:foo`); a leading slash is
-  // what a model copying a command line would add, and never part of a node's skill.
-  const skill = raw.trim().replace(/^\/+/, '')
-  if (!skill) return null
+  const found = skillOfHookInput(payload)
+  if (!found) return null
   try {
-    return customSkillContextProvider(cwd, skill) || null
+    const context = customSkillContextProvider(found.cwd, found.skill)
+    return context ? { context, event: found.event } : null
   } catch {
     return null
   }
@@ -860,7 +887,8 @@ export function startStatusServer(): Promise<number> {
           const terminalId = url.searchParams.get('id')
           sendProvided(res, '/agent', null, () => (terminalId ? agentProvider?.(terminalId) : null))
         } else if (url.pathname === '/workflow/context') {
-          // The PostToolUse hook on the Skill tool POSTs its stdin here, and whatever
+          // The PostToolUse hook on the Skill tool, and the UserPromptSubmit one for a
+          // command typed by hand, POST their stdin here, and whatever
           // this answers IS the hook's stdout, which Claude Code parses as the hook's
           // JSON (see getCustomSkillContextHookConfig in claude-hooks-config.ts). Two
           // answers only: 200 with the hook JSON carrying a custom skill's workflow
@@ -874,14 +902,14 @@ export function startStatusServer(): Promise<number> {
           // An oversized or aborted body is nothing to inject, and nothing worth logging.
           readRequestBody(req)
             .then(customSkillContextFor, () => null)
-            .then((context) => {
-              if (!context) {
+            .then((found) => {
+              if (!found) {
                 res.writeHead(204)
                 res.end()
                 return
               }
               res.writeHead(200, { 'Content-Type': 'application/json' })
-              res.end(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: context } }))
+              res.end(JSON.stringify({ hookSpecificOutput: { hookEventName: found.event, additionalContext: found.context } }))
             })
           return
         } else if (url.pathname === '/workflow') {

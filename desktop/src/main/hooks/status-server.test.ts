@@ -292,6 +292,32 @@ describe('read-back endpoints', () => {
       expect(calls).toEqual([['/tmp/api-PROJ-1', 'check-types']])
     })
 
+    describe('for a command typed by hand (UserPromptSubmit)', () => {
+      const promptInput = (prompt: string, cwd = '/tmp/api-PROJ-1') =>
+        JSON.stringify({ hook_event_name: 'UserPromptSubmit', cwd, prompt })
+
+      it('reads the command the prompt opens on, and answers for that event', async () => {
+        const { status, body } = await httpPost('/workflow/context', promptInput('  /check-types src/ --strict'))
+        expect(status).toBe(200)
+        expect(JSON.parse(body)).toEqual({
+          hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: 'Magic Slash workflow context: check-types' },
+        })
+        expect(calls).toEqual([['/tmp/api-PROJ-1', 'check-types']])
+      })
+
+      it('keeps a plugin prefix, which is part of the skill\'s name', async () => {
+        await httpPost('/workflow/context', promptInput('/plugin:lint'))
+        expect(calls).toEqual([['/tmp/api-PROJ-1', 'plugin:lint']])
+      })
+
+      it('says nothing for a prompt that only mentions a command, or none', async () => {
+        for (const prompt of ['please run /check-types', 'hello', '/', '']) {
+          expect((await httpPost('/workflow/context', promptInput(prompt))).status).toBe(204)
+        }
+        expect(calls).toEqual([])
+      })
+    })
+
     it('drops a leading slash from the skill name', async () => {
       const { status } = await httpPost('/workflow/context', hookInput('/check-types'))
       expect(status).toBe(200)

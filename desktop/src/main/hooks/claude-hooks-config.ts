@@ -645,12 +645,22 @@ function getQuestionHookConfig(
  * deliberately left as it is: a grant for this command would approve nothing, and
  * would widen every session for it.
  */
-function getCustomSkillContextHookConfig(): HookConfig {
+/**
+ * WHY TWO EVENTS
+ * ---------------------------------------------------------------------------
+ * The Skill tool only fires when the MODEL invokes a skill. A user typing `/check-types`
+ * is the other path (see getPromptSkillHookConfig): Claude Code expands the command
+ * itself and no tool call happens, so the same command is also registered on
+ * UserPromptSubmit, with no matcher, and the app reads the command off the prompt. It
+ * answers 204 for any prompt that does not open on a custom step's command, so an
+ * ordinary message costs one local request and injects nothing.
+ */
+function getCustomSkillContextHookConfig(event: 'PostToolUse' | 'UserPromptSubmit' = 'PostToolUse'): HookConfig {
   const portFile = `"$HOME/${PORT_FILE_RELATIVE}"`
   const command = `PORT="\${MAGIC_SLASH_PORT:-$(cat ${portFile} 2>/dev/null)}"; [ -n "$PORT" ] && curl -sf --max-time 2 -X POST --data-binary @- "http://127.0.0.1:$PORT/workflow/context" || true # ${MAGIC_SLASH_HOOK_MARKER}`
 
   return {
-    matcher: 'Skill',
+    ...(event === 'PostToolUse' ? { matcher: 'Skill' } : {}),
     hooks: [{
       type: 'command',
       command
@@ -736,6 +746,8 @@ export function configureClaudeHooks(options?: { atlassian?: boolean }): void {
     // A custom skill's workflow context, on the same Skill tool, AFTER it is loaded:
     // PostToolUse, so what it injects lands before the skill's body (see the builder).
     settings.hooks.PostToolUse!.push(getCustomSkillContextHookConfig())
+    // And on the prompt, for a custom skill typed by hand, which never reaches the Skill tool.
+    settings.hooks.UserPromptSubmit!.push(getCustomSkillContextHookConfig('UserPromptSubmit'))
 
     // Pending questions, for the menu bar panel. Five more ADDITIONAL entries on
     // events already hooked above — pushed, never assigned, or the state reporting
