@@ -131,9 +131,8 @@ export function ToggleButton({
     : glyph
       ? <Icon glyph={glyph} size={shape.icon} tone="inherit" />
       : null
-  // ON IS THE THEME'S ACCENT. The showcase site's brand blue was tried for a moment
-  // and put back — the colour question is open, and until it is settled the tiles wear
-  // what every other lit control in the app wears.
+  // ON IS THE THEME'S ACCENT, the app's blue: the tiles wear what every other lit
+  // control in the app wears, switches included.
   const ground = flag
     ? checked
       ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg'
