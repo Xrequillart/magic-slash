@@ -5,7 +5,7 @@ import { Button } from './Button'
 import { ButtonIcon } from './ButtonIcon'
 import { Menu } from './Menu'
 import { Icon } from './Icon'
-import { CircleAlert, LocateFixed, Plus, Redo2, Shapes, SquareDashed, StickyNote, Undo2, X, ZoomIn, ZoomOut } from './icons'
+import { CircleAlert, LocateFixed, Plus, Redo2, Save, Shapes, SquareDashed, StickyNote, Undo2, X, ZoomIn, ZoomOut } from './icons'
 import type { WorkflowProblemItem } from './WorkflowProblems'
 
 /**
@@ -217,10 +217,10 @@ export function WorkflowDock({
         <>
           <Divider />
           {onDiscard && (
-            <Button tone="ghost" size="md" disabled={!dirty || saving} onClick={onDiscard}>{labels.discard}</Button>
+            <Button tone="ghost" size="md" icon={X} disabled={!dirty || saving} onClick={onDiscard}>{labels.discard}</Button>
           )}
           {onSave && (
-            <Button tone="accent" size="md" busy={saving} disabled={!dirty || !canSave} onClick={onSave}>{labels.save}</Button>
+            <Button tone="accent" size="md" icon={Save} busy={saving} disabled={!dirty || !canSave} onClick={onSave}>{labels.save}</Button>
           )}
         </>
       )}
