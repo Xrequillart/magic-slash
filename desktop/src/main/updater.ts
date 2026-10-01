@@ -55,7 +55,7 @@ function forceCloseAllWindows() {
 }
 
 export type UpdateStatus =
-  | { type: 'checking' }
+  | { type: 'checking'; manual?: boolean }
   | { type: 'available'; version: string }
   | { type: 'not-available' }
   | { type: 'downloading'; progress: number }
@@ -69,6 +69,10 @@ export let isUpdating = false
 // (and the sidebar row's retry) would kick off a second one on top of it.
 let downloadInFlight = false
 let currentPhase: 'check' | 'download' | 'install' = 'check'
+// Whether the check under way is one somebody asked for. Only those take the window
+// to say "checking": the startup check runs behind the launch splash and stays silent
+// unless it finds something.
+let manualCheck = false
 let mainWindow: BrowserWindow | null = null
 let currentStatus: UpdateStatus = { type: 'not-available' }
 let statusListeners: Array<(status: UpdateStatus) => void> = []
@@ -103,7 +107,7 @@ export function setupAutoUpdater() {
 
   // Event handlers
   autoUpdater.on('checking-for-update', () => {
-    sendStatus({ type: 'checking' })
+    sendStatus({ type: 'checking', manual: manualCheck })
   })
 
   // A brief state now that autoDownload is on: electron-updater emits this and goes
@@ -235,11 +239,14 @@ export function setUpdaterMainWindow(window: BrowserWindow) {
  * IPC caller.
  */
 export async function checkForUpdates() {
+  manualCheck = true
   try {
     return await autoUpdater.checkForUpdates()
   } catch (err) {
     console.error('[Updater] Check failed:', err)
     return null
+  } finally {
+    manualCheck = false
   }
 }
 

@@ -61,7 +61,7 @@ const PROPS: PropRow[] = [
     type: 'string',
     required: true,
     description:
-      'Spelled by the caller — “v0.96.2”. Drawn verbatim, for the reason Sidebar’s version line and UpdateDialog both give: which prefix a version wears is not this dialog’s question.',
+      'Spelled by the caller — “v0.96.2”. Drawn verbatim, for the reason Sidebar’s version line gives: which prefix a version wears is not this dialog’s question.',
   },
   {
     name: 'date',
@@ -210,7 +210,7 @@ export function WhatsNewDialogEntry({
 /**
  * The dialog, opened into the section rather than over the page.
  *
- * `portalTo` on a div inside the `Stage` is `UpdateDialogEntry`'s arrangement and it is
+ * `portalTo` on a div inside the `Stage` is the arrangement the update dialog's entry used, and it is
  * here for the same two reasons: the theme's `--c-*` variables are on the stage rather
  * than on `:root`, so a panel portalled to the body would resolve none of them — and a
  * gallery that took over the whole window to show one component would be a worse

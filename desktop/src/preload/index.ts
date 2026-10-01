@@ -587,7 +587,7 @@ const shellApi = {
 
 // Update status type
 export type UpdateStatus =
-  | { type: 'checking' }
+  | { type: 'checking'; manual?: boolean }
   | { type: 'available'; version: string }
   | { type: 'not-available' }
   | { type: 'downloading'; progress: number }

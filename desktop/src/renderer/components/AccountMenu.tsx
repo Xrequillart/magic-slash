@@ -108,10 +108,10 @@ export function AccountMenu({ anchor }: { anchor: HTMLElement | null }) {
        * after it is the answer rather than whatever the last check left behind. Three
        * ways it can go, and each gets its own ending:
        *
-       *  * an update is there — `UpdateOverlay` is mounted at the app's root and has
-       *    been listening on the status channel the whole time, so the dialog is
-       *    already coming up. The menu closes to get out of its way.
-       *  * there is none — the row stops spinning and says so once. Silence was the
+       *  * an update is there — `UpdateModal` is mounted at the app's root and has
+       *    been listening on the status channel the whole time, so its splash has
+       *    held the window since the check began. The menu closes behind it.
+       *  * there is none — the splash leaves, and the row says so once. Silence was the
        *    first version and it reads as a button that did nothing.
        *  * it failed — the same, in red.
        */

@@ -648,12 +648,12 @@ export function App() {
           pending payload when the user closes it, so it comes back on its own. */}
       {!showRepoWizard && <WhatsNewModal />}
 
-      {/* The update flow, from the release found at launch to the relaunch. It holds
-          the screen for the whole of it, so it is drawn last and over everything. */}
+      {/* The update flow, from a check or the release found at launch to the relaunch.
+          A splash that takes the window for the whole of it, so it is drawn last. */}
       <UpdateModal />
 
-      {/* What is left of the overlay: the confetti, and the one failure that has to
-          take the window on its own — a restart that did not happen. */}
+      {/* What is left of the overlay: the one failure that has to take the window on
+          its own, a restart that did not happen. */}
       <UpdateOverlay />
     </div>
   )

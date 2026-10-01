@@ -2290,11 +2290,11 @@ export const fr: Record<keyof typeof en, string> = {
   'terminalView.scrollToBottom': 'Aller en bas',
   'terminalView.dropFiles': 'Déposez des fichiers ici',
 
-  // ── Dialogue de mise à jour ──────────────────────────────────────────────
-  'update.available': 'Mise à jour disponible',
+  // ── Splash de mise à jour ────────────────────────────────────────────────
+  'update.checking': 'Recherche de mises à jour…',
   'update.downloading': 'Téléchargement de la nouvelle version…',
-  'update.ready': 'Mise à jour prête',
-  'update.restartingIn': 'Redémarrage dans {seconds} s…',
+  'update.downloadingVersion': 'Téléchargement de Magic Slash v{version}',
+  'update.restartingIn': 'Magic Slash va redémarrer dans {seconds}…',
   'update.failed': 'Téléchargement échoué',
   'update.retry': 'Réessayer',
 

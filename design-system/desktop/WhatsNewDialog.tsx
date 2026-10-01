@@ -112,7 +112,7 @@ export interface WhatsNewDialogProps {
   title: string
   /**
    * The version, SPELLED BY THE CALLER — "v0.96.2". Verbatim, for the reason `Sidebar`'s
-   * own version line and `UpdateDialog` both give: which prefix a version wears is not
+   * own version line gives: which prefix a version wears is not
    * this dialog's question.
    */
   version: string

@@ -117,7 +117,7 @@ import { SelectIconEntry } from './entries/SelectIconEntry'
 import { AppTitleBarEntry } from './entries/AppTitleBarEntry'
 import { SidebarEntry } from './entries/SidebarEntry'
 import { ConfirmDialogEntry } from './entries/ConfirmDialogEntry'
-import { UpdateDialogEntry } from './entries/UpdateDialogEntry'
+import { UpdateSplashEntry } from './entries/UpdateSplashEntry'
 import { WhatsNewDialogEntry } from './entries/WhatsNewDialogEntry'
 import { ToggleButtonEntry } from './entries/ToggleButtonEntry'
 import { StepperEntry } from './entries/StepperEntry'
@@ -192,7 +192,7 @@ const ENTRIES: Record<
   menusidebaritem: MenuSidebarItemEntry,
   sidebar: SidebarEntry,
   apptitlebar: AppTitleBarEntry,
-  updatedialog: UpdateDialogEntry,
+  updatesplash: UpdateSplashEntry,
   confirmdialog: ConfirmDialogEntry,
   whatsnewdialog: WhatsNewDialogEntry,
   togglebutton: ToggleButtonEntry,

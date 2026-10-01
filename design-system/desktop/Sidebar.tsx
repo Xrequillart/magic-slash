@@ -47,7 +47,7 @@ import type { IconComponent } from './types'
  * AND THERE IS NO SLOT LEFT. The foot used to be a `ReactNode` for the update flow, on the
  * grounds that a folder which cannot import the app cannot own something that talks to
  * Electron. Half of that was true and the half that mattered was not: the DRAWING was
- * never the IPC's. The update is a dialog now — `UpdateDialog`, in this folder, over the
+ * never the IPC's. The update is a splash now — `UpdateSplash`, in this folder, over the
  * whole window rather than under this column — and nothing hangs beneath the usage card,
  * so every prop this component takes is data.
  */

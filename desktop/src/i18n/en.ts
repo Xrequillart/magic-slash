@@ -2462,11 +2462,11 @@ export const en = {
   'terminalView.scrollToBottom': 'Scroll to bottom',
   'terminalView.dropFiles': 'Drop files here',
 
-  // ── Update dialog ────────────────────────────────────────────────────────
-  'update.available': 'Update available',
+  // ── Update splash ────────────────────────────────────────────────────────
+  'update.checking': 'Checking for updates…',
   'update.downloading': 'Downloading the new version…',
-  'update.ready': 'Update ready',
-  'update.restartingIn': 'Restarting in {seconds}s…',
+  'update.downloadingVersion': 'Downloading Magic Slash v{version}',
+  'update.restartingIn': 'Magic Slash will restart in {seconds}…',
   'update.failed': 'Download failed',
   'update.retry': 'Try again',
 

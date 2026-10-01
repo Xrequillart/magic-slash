@@ -114,7 +114,7 @@ export type EntryId =
   | 'menusidebaritem'
   | 'sidebar'
   | 'apptitlebar'
-  | 'updatedialog'
+  | 'updatesplash'
   | 'confirmdialog'
   | 'whatsnewdialog'
   | 'togglebutton'
@@ -157,7 +157,7 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   menusidebaritem: 'MenuSidebarItem',
   sidebar: 'Sidebar',
   apptitlebar: 'AppTitleBar',
-  updatedialog: 'UpdateDialog',
+  updatesplash: 'UpdateSplash',
   confirmdialog: 'ConfirmDialog',
   whatsnewdialog: 'WhatsNewDialog',
   togglebutton: 'ToggleButton',
@@ -349,7 +349,7 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   setupstatuscard: ['card', 'buttonicon', 'icon', 'loader', 'text'],
   themegrid: ['card'],
   themepreviewgrid: ['icon', 'text'],
-  updatedialog: ['modal', 'card', 'icon', 'progress', 'text'],
+  updatesplash: [],
   confirmdialog: ['modal', 'card', 'icon', 'button', 'text'],
   whatsnewdialog: ['modal', 'button', 'text'],
   text: [],
@@ -558,7 +558,7 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   titleagentcard: 'Who an agent is, in four facts',
   menusidebaritem: 'One row that takes you somewhere',
   sidebar: 'The whole left column, and it knows nothing',
-  updatedialog: 'The app, about to become a newer app',
+  updatesplash: 'The app, about to become a newer app',
   confirmdialog: 'A question, and its two answers',
   accountcard: 'Who is signed in, and what you can do about it',
   whatsnewdialog: 'What the version you just installed brought',
