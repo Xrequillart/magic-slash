@@ -23,7 +23,9 @@ import path from 'node:path'
 
 export type ChangelogItem = { component: string | null; text: string }
 export type ChangelogCategory = { type: string; items: ChangelogItem[] }
-export type ChangelogVersion = { version: string; date: string; categories: ChangelogCategory[] }
+/** A picture at the head of a release: a big feature's banner. */
+export type ChangelogBanner = { src: string; alt: string }
+export type ChangelogVersion = { version: string; date: string; banner?: ChangelogBanner; categories: ChangelogCategory[] }
 
 /**
  * Where CHANGELOG.md might be, relative to the process's working directory.
@@ -55,6 +57,18 @@ function readChangelog(): string | null {
  *
  * Ported from the browser parser in `docs/documentation.html`, same three headings and
  * the same `**component**:` convention, so the rendering is unchanged.
+ *
+ * A BANNER is an image line between the version heading and its first category:
+ *
+ *   ## [0.106.0] - 2026-10-02
+ *
+ *   ![The workflow editor](https://github.com/user-attachments/assets/…)
+ *
+ * or the `<img … src="…" alt="…" />` tag GitHub's editor writes when an image is dropped
+ * into it. Either gives a `user-attachments` URL. The GitHub release copies the
+ * section as it is (`release.yml`), so the desktop's What's New reads the same image out of
+ * the release HTML. Absolute `http(s)` URLs only: a relative path would resolve against
+ * this site and against GitHub differently. The first one wins.
  */
 export function parseChangelog(raw: string): ChangelogVersion[] {
   const versions: ChangelogVersion[] = []
@@ -70,6 +84,12 @@ export function parseChangelog(raw: string): ChangelogVersion[] {
       continue
     }
     if (!version) continue
+
+    const banner = !category && !version.banner ? parseBanner(line) : null
+    if (banner) {
+      version.banner = banner
+      continue
+    }
 
     const categoryMatch = line.match(/^### (Added|Changed|Fixed)/)
     if (categoryMatch) {
@@ -89,6 +109,16 @@ export function parseChangelog(raw: string): ChangelogVersion[] {
   }
 
   return versions
+}
+
+/** A banner line: `![alt](https://…)`, or an `<img>` tag with an `https` `src`. Null for anything else. */
+function parseBanner(line: string): ChangelogBanner | null {
+  const markdown = line.match(/^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)(?:\s+"[^"]*")?\)\s*$/)
+  if (markdown) return { src: markdown[2], alt: markdown[1].trim() }
+  if (!/^<img\s[^>]*>\s*$/i.test(line.trim())) return null
+  const attribute = (name: string) => line.match(new RegExp(`\\s${name}\\s*=\\s*"([^"]*)"`, 'i'))?.[1]
+  const src = attribute('src')
+  return src && /^https?:\/\//.test(src) ? { src, alt: (attribute('alt') ?? '').trim() } : null
 }
 
 /** Every released version, newest first. Empty when the file could not be found. */

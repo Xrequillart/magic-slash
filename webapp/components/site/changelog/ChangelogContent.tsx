@@ -373,6 +373,20 @@ export function ChangelogContent({ versions }: { versions: ChangelogVersion[] })
                     </div>
 
                     <div>
+                      {/* THE RELEASE'S BANNER, when it has one: a big feature's picture,
+                          from the image line under its heading in `CHANGELOG.md`. Above the
+                          entries, the width of the column, and the alt text is the file's.
+                          A plain `<img>`: it is hosted on GitHub, and `next/image` would
+                          need that host allowed for an optimisation one picture per
+                          release does not need. */}
+                      {version.banner && (
+                        <img
+                          src={version.banner.src}
+                          alt={version.banner.alt}
+                          loading={index < 3 ? 'eager' : 'lazy'}
+                          className="mb-8 w-full rounded-2xl border border-hairline"
+                        />
+                      )}
                       {/* `gap-6` between categories against `gap-2` between entries: three
                           groups of one-line items only read as three groups if the space
                           between them is several times the space inside them.
