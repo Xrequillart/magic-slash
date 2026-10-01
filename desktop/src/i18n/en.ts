@@ -882,6 +882,8 @@ export const en = {
   'repo.workflow.inspector.removeLink': 'Remove the link',
   'repo.workflow.inspector.removeLinkRow': 'Remove from the workflow',
   'repo.workflow.inspector.removeLinkHint': 'The two steps stay, unlinked.',
+  'repo.workflow.inspector.linkFrom': 'From',
+  'repo.workflow.inspector.linkTo': 'To',
   'repo.workflow.inspector.anyOutcome': 'Whatever the outcome',
   'repo.workflow.inspector.defaultLink': 'Default link: resetting the workflow brings it back if removed.',
   'repo.workflow.inspector.settings': 'Settings',

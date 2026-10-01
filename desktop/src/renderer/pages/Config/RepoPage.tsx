@@ -1314,6 +1314,8 @@ function WorkflowPanel({
       color: t('repo.workflow.inspector.color'),
       kind: t('repo.workflow.inspector.kind'),
       outcome: t('repo.workflow.inspector.outcome'),
+      linkFrom: t('repo.workflow.inspector.linkFrom'),
+      linkTo: t('repo.workflow.inspector.linkTo'),
       blocking: t('repo.workflow.inspector.blocking'),
       advisory: t('repo.workflow.inspector.advisory'),
       auto: t('repo.workflow.inspector.auto'),

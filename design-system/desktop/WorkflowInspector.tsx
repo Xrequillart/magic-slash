@@ -187,6 +187,9 @@ export interface WorkflowInspectorLabels {
   kind: string
   /** "Taken on", before a conditional link's outcome. */
   outcome: string
+  /** A link's two ends, as rows: "From" and "To". No row without them. */
+  linkFrom?: string
+  linkTo?: string
   /** The two modes and the two kinds, as the options read. */
   blocking: string
   advisory: string
@@ -569,6 +572,8 @@ function LinkPanel({
       {/* The link's choices, as rows like a step's: a SettingsCard. */}
       <SettingsCard
         rows={[
+          !!labels.linkFrom && { id: 'from', label: labels.linkFrom, note: link.fromLabel },
+          !!labels.linkTo && { id: 'to', label: labels.linkTo, note: link.toLabel },
           outcomeChoice && {
             id: 'outcome',
             label: labels.outcome,

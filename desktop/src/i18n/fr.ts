@@ -846,6 +846,8 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.workflow.inspector.removeLink': 'Retirer le lien',
   'repo.workflow.inspector.removeLinkRow': 'Retirer du workflow',
   'repo.workflow.inspector.removeLinkHint': 'Les deux étapes restent, sans lien entre elles.',
+  'repo.workflow.inspector.linkFrom': 'Entrée',
+  'repo.workflow.inspector.linkTo': 'Sortie',
   'repo.workflow.inspector.anyOutcome': 'Quelle que soit l’issue',
   'repo.workflow.inspector.defaultLink': 'Lien par défaut : réinitialiser le workflow le remet s’il a été retiré.',
   'repo.workflow.inspector.settings': 'Réglages',
