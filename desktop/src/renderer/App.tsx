@@ -36,6 +36,7 @@ import FilePreviewPanel from './components/FilePreviewPanel'
 import PRCommentsPanel from './components/pr-comments/PRCommentsPanel'
 import { useT, type MessageKey } from './i18n'
 import { BTN_PRIMARY } from './theme/controls'
+import { dismissSplash } from './utils/splash'
 
 /**
  * The app's four page overlays, in the order the sidebar's top group lists them — which
@@ -134,6 +135,12 @@ export function App() {
     didLandRef.current = true
     setActiveTerminal(first.id)
   }, [flatVisualOrder, rightPaneTerminalIds, setActiveTerminal])
+
+  // The launch splash stands in for the loading screen: it leaves once the config
+  // has landed, on the app or on its error screen.
+  useEffect(() => {
+    if (!configLoading) dismissSplash()
+  }, [configLoading])
 
   // Check if user profile exists on mount
   useEffect(() => {

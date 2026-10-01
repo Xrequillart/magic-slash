@@ -9,6 +9,7 @@ import { LoginScreen } from './LoginScreen'
 import { showToast, dismissToast } from './Toast'
 import { useT } from '../i18n'
 import { BTN_PRIMARY } from '../theme/controls'
+import { dismissSplash } from '../utils/splash'
 
 function FullScreen({ children }: { children: ReactNode }) {
   return (
@@ -114,6 +115,14 @@ export function AppGate({ children }: { children: ReactNode }) {
   const clearTerminals = useStore((s) => s.clearTerminals)
 
   useOfflineToast(status, everOk, recheck)
+
+  // The launch splash stands in for the checking screen. When the gate lets the app
+  // through, the app dismisses it once its config is in; when it blocks (sign-in,
+  // no cloud, offline cold start), the gate does, since nothing else will load.
+  const showsApp = status === 'ok' || (status === 'unreachable' && everOk)
+  useEffect(() => {
+    if (status !== 'checking' && !showsApp) dismissSplash()
+  }, [status, showsApp])
 
   // Losing the session drops the terminal state. The store outlives this gate
   // (it is a module singleton, and children only unmount), so the next account
