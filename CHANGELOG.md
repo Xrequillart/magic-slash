@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.105.5] - 2026-10-01
+
+### Added
+
+- **Desktop**: Let custom workflow steps declare outcomes, read from their skill frontmatter
+- **Desktop**: Gather the workflow history, duplicate and reset under a more actions menu
+
 ## [0.105.4] - 2026-09-30
 
 ### Added
@@ -3561,6 +3568,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.105.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.5
 [0.105.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.4
 [0.105.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.3
 [0.105.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.2
