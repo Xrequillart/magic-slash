@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.107.0] - 2026-10-01
+
+### Added
+
+- **Desktop**: Show the update flow on the launch splash instead of a dialog
+- **Desktop**: Have a custom workflow step ask /workflow/next like a magic one
+- **Skills**: Let the app decide what follows a cycle skill
+
+### Changed
+
+- **Skills**: Hold each cycle skill's outcome table to its node's outcomes
+- **Desktop**: Stop reading v1 workflow overlays
+
 ## [0.106.0] - 2026-10-01
 
 ### Added
@@ -3624,6 +3637,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.107.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.107.0
 [0.106.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.106.0
 [0.105.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.9
 [0.105.8]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.8
