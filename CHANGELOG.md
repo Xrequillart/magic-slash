@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.105.6] - 2026-10-01
+
+### Added
+
+- **Desktop**: Take a workflow link on several outcomes and end a flow on a note
+- **Desktop**: Hand a custom skill its workflow context when it is typed by hand
+
 ## [0.105.5] - 2026-10-01
 
 ### Added
@@ -3568,6 +3575,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.105.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.6
 [0.105.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.5
 [0.105.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.4
 [0.105.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.3
