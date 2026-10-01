@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.105.9] - 2026-10-01
+
+### Added
+
+- **Desktop**: Show a release's banner image in what's new, from its lasting github address
+- **Landing**: Show a release's banner image at the head of its changelog entry
+- **Desktop**: Add a toolbox to the workflow editor, with frames that carry their cards and sticky notes
+- **Desktop**: Let the workflow editor remove built-in steps and default links, and add them back from the dock
+- **Desktop**: Make each workflow outcome its own link, with its own kind
+
+### Changed
+
+- **Docs**: Add the introducing workflows banner to 0.105.0
+
+### Fixed
+
+- **Desktop**: Keep a custom step's workflow links on their row when it gains an outcome
+
 ## [0.105.8] - 2026-10-01
 
 ### Added
@@ -3591,6 +3609,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.105.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.9
 [0.105.8]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.8
 [0.105.7]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.7
 [0.105.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.6
