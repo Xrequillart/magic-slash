@@ -4,7 +4,7 @@ import { buildWorkflowPayload } from './payload'
 import type { WorkflowOverlay } from './overlay'
 import {
   EMPTY_OVERLAY, addLink, addStep, cleanOverlay, composeWorkflow, customNodeId, isDefaultLink, isOverlay, moveNode, pinPositions,
-  normalizeOutcomes, outcomeProblem, parseOutcomesField, problems, removeLink, removeStep, resolveOverlay, sameOverlay, servedWorkflow, setLinkKind, setLinkOutcome,
+  canRemoveStep, normalizeOutcomes, outcomeProblem, removeNode, restoreStep, parseOutcomesField, problems, removeLink, removeStep, resolveOverlay, sameOverlay, servedWorkflow, setLinkKind, setLinkOutcome,
   setStepColor, setStepEnabled, setStepMode, setStepOutcomes,
   addNote, nextNoteId, noteNodeId, removeNote, setNoteText, toOverlay, unreachableSteps,
 } from './overlay'
@@ -75,11 +75,49 @@ describe('editing', () => {
     expect(problems(addLink(withCheck(), 'commit', 'commit'))).toEqual([])
   })
 
-  it('removes a drawn link, never a default one', () => {
+  it('removes a drawn link, and takes a default one off', () => {
     const overlay = removeLink(withCheck(), 'start', CHECK)
     expect(overlay.links).toEqual([{ from: CHECK, to: 'commit', kind: 'suggest' }])
     expect(isDefaultLink('start', 'commit')).toBe(true)
-    expect(composeWorkflow(removeLink(overlay, 'start', 'commit')).links).toContainEqual({ from: 'start', to: 'commit', kind: 'suggest' })
+    const off = removeLink(setLinkKind(overlay, 'start', 'commit', 'auto'), 'start', 'commit')
+    expect(composeWorkflow(off).links).not.toContainEqual(expect.objectContaining({ from: 'start', to: 'commit' }))
+    expect(off.kinds).toEqual({})
+    expect(cleanOverlay(off).removedLinks).toEqual(['start>commit'])
+    // A default link on an outcome is that outcome's: pr → resolve on review_comments.
+    expect(removeLink(EMPTY_OVERLAY, 'pr', 'resolve').removedLinks).toBeUndefined()
+    expect(removeLink(EMPTY_OVERLAY, 'pr', 'resolve', 'review_comments').removedLinks).toEqual(['pr>resolve'])
+    // Taken off, the pair may be drawn again, as a link of the overlay's own.
+    const redrawn = addLink(off, 'start', 'commit')
+    expect(redrawn.links).toContainEqual({ from: 'start', to: 'commit', kind: 'suggest' })
+    expect(problems(redrawn)).toEqual([])
+    expect(setLinkKind(redrawn, 'start', 'commit', 'auto').kinds).toEqual({})
+  })
+
+  it('takes a built-in step off the canvas with all its links, and puts it back unlinked', () => {
+    const overlay = removeNode(addLink(withCheck(), 'commit', CHECK), 'commit')
+    const flow = composeWorkflow(overlay)
+    expect(flow.nodes.map((node) => node.id)).not.toContain('commit')
+    expect(flow.links.some((link) => link.from === 'commit' || link.to === 'commit')).toBe(false)
+    expect(problems(overlay)).toEqual([])
+    expect(overlay.positions).not.toHaveProperty('commit')
+    const back = restoreStep(overlay, 'commit', { x: 400.4, y: 100 })
+    expect(composeWorkflow(back).nodes.map((node) => node.id)).toContain('commit')
+    expect(composeWorkflow(back).links.some((link) => link.from === 'commit' || link.to === 'commit')).toBe(false)
+    expect(back.positions.commit).toEqual({ x: 400, y: 100 })
+    expect(unreachableSteps(back)).toContain('commit')
+    // Its default links can be drawn again, by hand.
+    expect(composeWorkflow(addLink(back, 'start', 'commit')).links).toContainEqual({ from: 'start', to: 'commit', kind: 'suggest' })
+  })
+
+  it('never takes start off, and resets to every built-in step and default link', () => {
+    expect(canRemoveStep('start')).toBe(false)
+    expect(removeNode(EMPTY_OVERLAY, 'start')).toBe(EMPTY_OVERLAY)
+    const plan = removeNode(EMPTY_OVERLAY, 'plan')
+    expect(composeWorkflow(plan).entry).toEqual(['start'])
+    expect(problems(plan)).toEqual([])
+    expect(composeWorkflow(EMPTY_OVERLAY)).toEqual(composeWorkflow(cleanOverlay(EMPTY_OVERLAY)))
+    expect(sameOverlay(plan, EMPTY_OVERLAY)).toBe(false)
+    expect(isOverlay(cleanOverlay(plan))).toBe(true)
   })
 
   it('sets a drawn link\'s kind in place', () => {

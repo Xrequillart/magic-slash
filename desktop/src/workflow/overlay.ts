@@ -24,6 +24,13 @@ import { DEFAULT_LINKS, DEFAULT_WORKFLOW, nodeIdForSkill } from './defaultFlow'
  * started by it, and every other step runs in the worktree it opens. The field is
  * optional, and left out when empty: a row written before it reads as all steps on.
  *
+ * A BUILT-IN STEP CAN BE TAKEN OFF THE CANVAS (`removed`, node ids), start excepted, and so
+ * can a default link (`removedLinks`, `from>to` keys). The default flow itself never
+ * changes: the overlay only says what of it this repository left out, so a reset (the empty
+ * overlay) brings every built-in step and default link back. A built-in step taken off goes
+ * with every link it had, and comes back through the dock's "+" on its own, unlinked, like
+ * any step added: its default links stay in `removedLinks` until drawn again.
+ *
  * VERSION 1 (a line: each step placed `before` a built-in, its links derived from its
  * place) is still read, and upgraded on the way in (`toOverlay`): its composed links
  * become explicit ones. The one thing that does not survive is a SPLIT default link
@@ -151,6 +158,10 @@ export interface WorkflowOverlay {
   positions: Record<string, WorkflowPosition>
   /** The steps turned off, by node id, in the order they were. Absent: none. */
   disabled?: string[]
+  /** The built-in steps taken off the canvas, by node id. Absent: none. Never start. */
+  removed?: string[]
+  /** The default links taken off, by `linkKey`. Absent: none. */
+  removedLinks?: string[]
 }
 
 export const EMPTY_OVERLAY: WorkflowOverlay = { version: 2, steps: [], links: [], kinds: {}, positions: {} }
@@ -230,13 +241,40 @@ export function isLinkIntoStart(link: Pick<WorkflowLink, 'to'>): boolean {
   return link.to === START_NODE_ID
 }
 
-/** The default link `from → to`, if the default flow has one. Locked: never removed, only its kind changes. */
+/** The default link `from → to`, if the default flow has one. Its outcome is the product's; it may be taken off. */
 function defaultLink(from: string, to: string): WorkflowLink | undefined {
   return DEFAULT_LINKS.find((link) => link.from === from && link.to === to)
 }
 
 export function isDefaultLink(from: string, to: string): boolean {
   return defaultLink(from, to) !== undefined
+}
+
+/** The built-in steps an overlay takes off the canvas, as a set. */
+function removedOf(overlay: WorkflowOverlay): Set<string> {
+  return new Set(overlay.removed ?? [])
+}
+
+/** Whether a step may be taken off the canvas: any custom one, any built-in one but start. */
+export function canRemoveStep(id: string): boolean {
+  return isCustomNodeId(id) || (isBuiltInNodeId(id) && id !== START_NODE_ID)
+}
+
+/**
+ * The default link `from → to` as this overlay keeps it: absent when it was taken off, or
+ * when one of its two steps was. A drawn link between the same two steps is then the
+ * overlay's own, like any other.
+ */
+function liveDefaultLink(overlay: WorkflowOverlay, from: string, to: string): WorkflowLink | undefined {
+  const base = defaultLink(from, to)
+  if (!base || (overlay.removedLinks ?? []).includes(linkKey(from, to))) return undefined
+  const removed = removedOf(overlay)
+  return removed.has(from) || removed.has(to) ? undefined : base
+}
+
+/** Whether `from → to` is a default link this overlay still has: its outcome is the product's, not the admin's. */
+export function isLiveDefaultLink(overlay: WorkflowOverlay, from: string, to: string): boolean {
+  return liveDefaultLink(overlay, from, to) !== undefined
 }
 
 function customNode(step: WorkflowOverlayStep): WorkflowNode {
@@ -323,15 +361,16 @@ function outcomeKey(link: Pick<WorkflowLink, 'from' | 'to' | 'outcome'>): string
  * at all.
  */
 export function composeWorkflow(overlay: WorkflowOverlay): Workflow {
-  const links = DEFAULT_LINKS.map((link) => {
+  const removed = removedOf(overlay)
+  const links = DEFAULT_LINKS.filter((link) => isLiveDefaultLink(overlay, link.from, link.to)).map((link) => {
     const kind = overlay.kinds[linkKey(link.from, link.to)]
     return kind ? { ...link, kind } : link
   })
   return {
     id: 'repository',
-    entry: DEFAULT_WORKFLOW.entry,
+    entry: DEFAULT_WORKFLOW.entry.filter((id) => !removed.has(id)),
     // A skill placed twice is reported by problems(), not dropped here.
-    nodes: [...DEFAULT_WORKFLOW.nodes, ...overlay.steps.map(customNode)],
+    nodes: [...DEFAULT_WORKFLOW.nodes.filter((node) => !removed.has(node.id)), ...overlay.steps.map(customNode)],
     links: [...links, ...splitLinks(overlay.links).map(({ from, to, kind, outcome }) =>
       (outcome === undefined ? { from, to, kind } : { from, to, kind, outcome }))],
     ...((overlay.notes ?? []).length > 0
@@ -444,9 +483,9 @@ export function isOverlay(value: unknown): value is WorkflowOverlay {
     isRecord(note) && typeof note.id === 'string' && /^[a-z0-9_-]{1,32}$/i.test(note.id) &&
     typeof note.text === 'string' && note.text.length <= NOTE_MAX_LENGTH &&
     (note.color === undefined || isColor(note.color))))
-  const disabledOk = value.disabled === undefined ||
-    (Array.isArray(value.disabled) && value.disabled.every((id) => typeof id === 'string'))
-  return stepsOk && linksOk && notesOk && kindsOk(value.kinds) && positionsOk && disabledOk
+  const idsOk = (ids: unknown) => ids === undefined || (Array.isArray(ids) && ids.every((id) => typeof id === 'string'))
+  return stepsOk && linksOk && notesOk && kindsOk(value.kinds) && positionsOk &&
+    idsOk(value.disabled) && idsOk(value.removed) && idsOk(value.removedLinks)
 }
 
 /** The node ids of a v1 overlay's line, in order. */
@@ -591,18 +630,25 @@ export function resolveOverlay(value: unknown): { overlay: WorkflowOverlay; work
  * just added has no link yet), and the editor says so on its card.
  */
 export function unreachableSteps(overlay: WorkflowOverlay): string[] {
-  const reached = new Set(composeWorkflow(overlay).links.filter((l) => l.from !== l.to).map((l) => l.to))
+  const flow = composeWorkflow(overlay)
+  const reached = new Set(flow.links.filter((l) => l.from !== l.to).map((l) => l.to))
   return [
+    // A built-in step a ticket starts from is reached by starting it.
+    ...flow.nodes.filter((node) => isBuiltInNodeId(node.id) && !flow.entry.includes(node.id)).map((node) => node.id),
     ...overlay.steps.map((step) => customNodeId(step.skill)),
     ...(overlay.notes ?? []).map((note) => noteNodeId(note.id)),
   ].filter((id) => !reached.has(id))
 }
 
-/** The same list, in any order: "are the same steps off". */
-function sameDisabled(a: WorkflowOverlay, b: WorkflowOverlay): boolean {
-  const one = disabledOf(a)
-  const other = disabledOf(b)
+/** Two id lists that say the same, in any order: "are the same steps off". */
+function sameIds(a: readonly string[] = [], b: readonly string[] = []): boolean {
+  const one = new Set(a)
+  const other = new Set(b)
   return one.size === other.size && [...one].every((id) => other.has(id))
+}
+
+function sameDisabled(a: WorkflowOverlay, b: WorkflowOverlay): boolean {
+  return sameIds(a.disabled, b.disabled) && sameIds(a.removed, b.removed) && sameIds(a.removedLinks, b.removedLinks)
 }
 
 const samePosition = (a: WorkflowPosition | undefined, b: WorkflowPosition | undefined) =>
@@ -667,7 +713,41 @@ function withDisabled(overlay: WorkflowOverlay, disabled: string[]): WorkflowOve
   return disabled.length > 0 ? { ...rest, disabled } : rest
 }
 
-/** Remove a custom step, its links and its place (built-in ones are not in the overlay, so they cannot be). */
+/**
+ * Take a step off the canvas, by node id: a custom one is removed (`removeStep`), a built-in
+ * one is `removed`, with every link it had, its default ones included, and its place. Start
+ * stays: the overlay comes back unchanged.
+ */
+export function removeNode(overlay: WorkflowOverlay, id: string): WorkflowOverlay {
+  if (!canRemoveStep(id)) return overlay
+  if (isCustomNodeId(id)) return removeStep(overlay, id.slice(CUSTOM_PREFIX.length))
+  if (removedOf(overlay).has(id)) return overlay
+  const { [id]: _gone, ...positions } = overlay.positions
+  const touching = DEFAULT_LINKS.filter((link) => link.from === id || link.to === id).map((link) => linkKey(link.from, link.to))
+  const kinds = Object.fromEntries(Object.entries(overlay.kinds).filter(([key]) => !touching.includes(key)))
+  return withDisabled({
+    ...overlay,
+    links: overlay.links.filter((link) => link.from !== id && link.to !== id),
+    kinds,
+    positions,
+    removed: [...(overlay.removed ?? []), id],
+    removedLinks: [...new Set([...(overlay.removedLinks ?? []), ...touching])],
+  }, (overlay.disabled ?? []).filter((off) => off !== id))
+}
+
+/** Put a built-in step taken off back on the canvas, at `position`, unlinked: see the header. */
+export function restoreStep(overlay: WorkflowOverlay, id: string, position: WorkflowPosition): WorkflowOverlay {
+  if (!removedOf(overlay).has(id)) return overlay
+  const { removed: _was, ...rest } = overlay
+  const removed = (overlay.removed ?? []).filter((one) => one !== id)
+  return {
+    ...rest,
+    ...(removed.length > 0 ? { removed } : {}),
+    positions: { ...overlay.positions, [id]: rounded(position) },
+  }
+}
+
+/** Remove a custom step, its links and its place. */
 export function removeStep(overlay: WorkflowOverlay, skill: string): WorkflowOverlay {
   const id = customNodeId(skill)
   const { [id]: _gone, ...positions } = overlay.positions
@@ -763,7 +843,7 @@ export function setNoteColor(overlay: WorkflowOverlay, nodeId: string, color: st
  * since that one already applies on every outcome.
  */
 export function canAddLink(links: readonly Pick<WorkflowLink, 'from' | 'to' | 'outcome'>[], from: string, to: string, outcome?: string): boolean {
-  if (isDefaultLink(from, to) || isNoteNodeId(from)) return false
+  if (isNoteNodeId(from)) return false
   const between = links.filter((link) => link.from === from && link.to === to)
   return outcome === undefined ? between.length === 0 : !between.some((link) => link.outcome === undefined || link.outcome === outcome)
 }
@@ -775,13 +855,23 @@ export function canAddLink(links: readonly Pick<WorkflowLink, 'from' | 'to' | 'o
  * linked to itself, to run again (a check retried on `tests_failed`, say).
  */
 export function addLink(overlay: WorkflowOverlay, from: string, to: string, outcome?: string): WorkflowOverlay {
-  if (!canAddLink(overlay.links, from, to, outcome)) return overlay
+  // Judged against the whole flow: a default link still there counts as one drawn.
+  if (!canAddLink(composeWorkflow(overlay).links, from, to, outcome)) return overlay
   const link: WorkflowOverlayLink = outcome === undefined ? { from, to, kind: 'suggest' } : { from, to, kind: 'suggest', outcome }
   return { ...overlay, links: [...overlay.links, link] }
 }
 
-/** Remove the drawn link `from → to` on `outcome` (none: the one taken whatever the outcome). A default link is locked. */
+/**
+ * Remove the link `from → to` on `outcome` (none: the one taken whatever the outcome). A
+ * default one is taken off (`removedLinks`), its kind override with it.
+ */
 export function removeLink(overlay: WorkflowOverlay, from: string, to: string, outcome?: string): WorkflowOverlay {
+  const base = liveDefaultLink(overlay, from, to)
+  if (base && base.outcome === outcome) {
+    const key = linkKey(from, to)
+    const { [key]: _was, ...kinds } = overlay.kinds
+    return { ...overlay, kinds, removedLinks: [...(overlay.removedLinks ?? []), key] }
+  }
   return { ...overlay, links: overlay.links.filter((link) => !isLink(link, from, to, outcome)) }
 }
 
@@ -790,8 +880,8 @@ export function removeLink(overlay: WorkflowOverlay, from: string, to: string, o
  * drawn one's in place, that link's alone (`outcome`, none: the one taken whatever the outcome).
  */
 export function setLinkKind(overlay: WorkflowOverlay, from: string, to: string, kind: WorkflowLinkKind, outcome?: string): WorkflowOverlay {
-  const base = defaultLink(from, to)
-  if (base) {
+  const base = liveDefaultLink(overlay, from, to)
+  if (base && base.outcome === outcome) {
     const { [linkKey(from, to)]: _was, ...kinds } = overlay.kinds
     return { ...overlay, kinds: base.kind === kind ? kinds : { ...kinds, [linkKey(from, to)]: kind } }
   }
@@ -807,8 +897,8 @@ export function setLinkOutcome(
   overlay: WorkflowOverlay, from: string, to: string, was: string | undefined, now: string | undefined,
 ): WorkflowOverlay {
   if (was === now) return overlay
-  const others = overlay.links.filter((link) => !isLink(link, from, to, was))
-  if (others.length === overlay.links.length || !canAddLink(others, from, to, now)) return overlay
+  const others = composeWorkflow(overlay).links.filter((link) => !isLink(link, from, to, was))
+  if (!overlay.links.some((link) => isLink(link, from, to, was)) || !canAddLink(others, from, to, now)) return overlay
   return { ...overlay, links: overlay.links.map((link) => (isLink(link, from, to, was) ? withLinkOutcome(link, now) : link)) }
 }
 
@@ -836,9 +926,14 @@ export function pinPositions(overlay: WorkflowOverlay, drawn: Readonly<Record<st
 /** What is stored: the overlay's own fields only, positions and switches of steps it still has. */
 export function cleanOverlay(overlay: WorkflowOverlay): WorkflowOverlay {
   const ids = cardIds(overlay)
+  const removed = [...removedOf(overlay)].filter((id) => isBuiltInNodeId(id) && id !== START_NODE_ID)
+  const removedLinks = [...new Set(overlay.removedLinks ?? [])].filter((key) => DEFAULT_LINKS.some((link) => linkKey(link.from, link.to) === key))
+  const kinds = Object.fromEntries(Object.entries(overlay.kinds).filter(([key]) => !removedLinks.includes(key)))
   const notes = (overlay.notes ?? []).map(({ id, text, color }) => (color === undefined ? { id, text: normalizeNote(text) } : { id, text: normalizeNote(text), color }))
   return withDisabled(withNotes({
     version: 2,
+    ...(removed.length > 0 ? { removed } : {}),
+    ...(removedLinks.length > 0 ? { removedLinks } : {}),
     steps: overlay.steps.map(({ skill, mode, color, outcomes }) => {
       const step: WorkflowOverlayStep = color === undefined ? { skill, mode } : { skill, mode, color }
       if (outcomes && outcomes.length > 0) step.outcomes = [...outcomes]
@@ -846,7 +941,7 @@ export function cleanOverlay(overlay: WorkflowOverlay): WorkflowOverlay {
     }),
     // One link per outcome, written as `outcome`: the field every build reads.
     links: splitLinks(overlay.links),
-    kinds: { ...overlay.kinds },
+    kinds,
     positions: Object.fromEntries(Object.entries(overlay.positions).filter(([id]) => ids.has(id)).map(([id, at]) => [id, rounded(at)])),
   }, notes), [...disabledOf(overlay)].filter((id) => ids.has(id) && canDisable(id)))
 }

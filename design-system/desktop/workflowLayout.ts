@@ -35,7 +35,7 @@ export interface WorkflowCanvasNode {
   skill: string
   /** What the skill can end on. Each one gets a port a conditional link leaves from. */
   outcomes: string[]
-  /** A built-in step: the editor offers no way to remove it, nor to change what it runs. */
+  /** A built-in step: what it runs is the product's. Its eye takes it off the canvas, where a custom step's turns it off. */
   locked?: boolean
   /** Turned off: drawn greyed, its links faded. The skills skip it. */
   disabled?: boolean

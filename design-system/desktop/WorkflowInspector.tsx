@@ -61,7 +61,7 @@ export interface WorkflowInspectorStep {
   skill: string
   /** What the skill does, its SKILL.md's `description`: under its name. */
   description?: string
-  /** Built-in: no controls, the `builtIn` sentence instead. */
+  /** Built-in: the `builtIn` sentence in place of the controls, and Remove unless it is `alwaysOn`. */
   locked?: boolean
   /** A custom step's card colour, one of `WORKFLOW_STEP_COLORS`: the swatch drawn selected. */
   color?: string
@@ -140,7 +140,7 @@ export interface WorkflowInspectorLink {
   disabledKinds?: WorkflowCanvasLinkKind[]
   /** Why, or anything else worth a line under the kind. Already translated. */
   hint?: string
-  /** A default link: it cannot be removed, nor its outcome changed. */
+  /** A default link: its outcome is the product's, not changed here. It may still be removed. */
   locked?: boolean
   /** A drawn link's choice of outcome: what its source can end on. Empty or absent: no choice. */
   outcomes?: string[]
@@ -178,8 +178,12 @@ export interface WorkflowInspectorLabels {
   /** Remove's row: its name ("Remove from the workflow") and the line under it ("Its links go with it."). `remove` is the button's word. */
   removeRow?: string
   removeHint?: string
-  /** A locked step's sentence: "Built-in step: it cannot be removed or replaced." */
+  /** A locked step's sentence: "Built-in step: what it runs cannot change." */
   builtIn: string
+  /** A built-in step's eye, which takes it off the canvas: "Remove from the canvas". `disable` without it. */
+  hide?: string
+  /** A built-in step's Remove row: its line under the name ("The + in the dock puts it back, unlinked."). `removeHint` without it. */
+  removeBuiltInHint?: string
   /** The switch's tooltip on a step that is on, off, and on start. */
   disable: string
   enable: string
@@ -352,7 +356,7 @@ function StepPanel({
         </span>
         <ButtonIcon
           icon={step.disabled ? EyeOff : Eye}
-          title={step.alwaysOn ? labels.alwaysOn : step.disabled ? labels.enable : labels.disable}
+          title={step.alwaysOn ? labels.alwaysOn : step.disabled ? labels.enable : (step.locked && labels.hide) || labels.disable}
           onClick={() => onToggle?.(step.id, !!step.disabled)}
           disabled={readOnly || step.alwaysOn || !onToggle}
           tone="ghost"
@@ -365,7 +369,19 @@ function StepPanel({
       {step.disabled && <Text size="xs" tone="secondary">{labels.offHint}</Text>}
 
       {step.locked ? (
-        <Text size="xs" tone="secondary">{labels.builtIn}</Text>
+        <>
+          <Text size="xs" tone="secondary">{labels.builtIn}</Text>
+          {!readOnly && onRemove && !step.alwaysOn && (
+            <SettingsCard
+              rows={[{
+                id: 'remove',
+                label: labels.removeRow ?? labels.remove,
+                hint: labels.removeBuiltInHint ?? labels.removeHint,
+                control: { kind: 'button', children: labels.remove, icon: Trash, tone: 'danger', size: 'sm', onClick: () => onRemove(step.id) },
+              }]}
+            />
+          )}
+        </>
       ) : (
         <>
           {/* The step's own choices, as rows like any skill's settings: a SettingsCard. */}
@@ -552,7 +568,7 @@ function LinkPanel({
               size: 'md',
             },
           },
-          !link.locked && !readOnly && onRemoveLink && {
+          !readOnly && onRemoveLink && {
             id: 'remove',
             label: labels.removeLinkRow ?? labels.removeLink ?? labels.remove,
             hint: labels.removeLinkHint,

@@ -145,8 +145,13 @@ describe('skillOptions', () => {
     entry('plug:check', 'plugin', { origin: 'plug' }),
   ]
 
-  it('lists the custom, repository and plugin skills, never a built-in, another repo\'s or a hidden one', () => {
+  it('lists the built-in steps but start, then the custom, repository and plugin skills, never another repo\'s or a hidden one', () => {
     expect(skillOptions(entries, 'web', []).map((o) => [o.name, o.source])).toEqual([
+      ['magic-plan', 'builtin'],
+      ['magic-commit', 'builtin'],
+      ['magic-pr', 'builtin'],
+      ['magic-resolve', 'builtin'],
+      ['magic-done', 'builtin'],
       ['lint', 'custom'],
       ['shared', 'repo'],
       ['plug:check', 'plugin'],
@@ -169,6 +174,10 @@ describe('skillOptions', () => {
     const options = skillOptions(entries, 'web', ['lint'])
     expect(options.find((o) => o.name === 'lint')?.disabled).toBe(true)
     expect(options.find((o) => o.name === 'plug:check')?.disabled).toBe(false)
+    // A built-in step on the canvas is greyed; one taken off is offered, by its name.
+    const builtIn = skillOptions(entries, 'web', ['magic-pr'])
+    expect(builtIn.find((o) => o.name === 'magic-pr')?.disabled).toBe(true)
+    expect(builtIn.find((o) => o.name === 'magic-commit')).toMatchObject({ label: 'Commit', disabled: false })
   })
 })
 

@@ -68,16 +68,28 @@ describe('diffOverlays', () => {
     ])
   })
 
-  it('says the outcomes a link is taken on, whichever field holds them', () => {
+  it('says a second outcome leading to the same step is a link of its own, whichever field holds it', () => {
     const before = overlay({
       steps: [{ skill: 'x', mode: 'advisory', outcomes: ['ok', 'ko'] }],
       links: [{ from: 'custom:x', to: 'pr', kind: 'suggest', outcome: 'ok' }],
     })
     const after = overlay({ ...before, links: [{ from: 'custom:x', to: 'pr', kind: 'suggest', outcomes: ['ok', 'ko'] }] })
-    expect(diffOverlays(before, after)).toEqual([{ kind: 'link-outcome', from: 'x', to: 'magic-pr', outcome: 'ok, ko' }])
+    expect(diffOverlays(before, after)).toEqual([{ kind: 'link-added', from: 'x', to: 'magic-pr', linkKind: 'suggest' }])
     // The stored form of the same single outcome is no change.
     const same = overlay({ ...before, links: [{ from: 'custom:x', to: 'pr', kind: 'suggest', outcomes: ['ok'] }] })
     expect(diffOverlays(before, same)).toEqual([])
+  })
+
+  it('reports a built-in step taken off and put back, and a default link taken off, without their links', () => {
+    const off = overlay({ removed: ['commit'], removedLinks: ['start>commit', 'commit>pr', 'resolve>done'] })
+    expect(diffOverlays(overlay({}), off)).toEqual([
+      { kind: 'step-removed', node: 'magic-commit' },
+      { kind: 'link-removed', from: 'magic-resolve', to: 'magic-done' },
+    ])
+    expect(diffOverlays(off, overlay({ removedLinks: off.removedLinks }))).toEqual([{ kind: 'step-added', node: 'magic-commit' }])
+    expect(diffOverlays(overlay({ removedLinks: ['resolve>done'] }), overlay({}))).toEqual([
+      { kind: 'link-added', from: 'magic-resolve', to: 'magic-done', linkKind: 'suggest' },
+    ])
   })
 
   it('names an end note by what it says, and its links with it', () => {

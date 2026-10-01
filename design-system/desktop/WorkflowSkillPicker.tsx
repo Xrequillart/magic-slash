@@ -1,5 +1,6 @@
 import { Menu, type MenuGroup, type MenuItem } from './Menu'
 import { FolderGit2, Plus, Puzzle, Sparkles, StickyNote } from './icons'
+import { skillIcon } from './skillIcons'
 import type { IconComponent } from './types'
 
 /**
@@ -11,8 +12,9 @@ import type { IconComponent } from './types'
  * owns `open` and hands over the element to hang from: the "+" the canvas passes back to
  * `onInsert`.
  *
- * GROUPED BY WHERE THE SKILL COMES FROM, in a fixed order: the user's own skills, then the
- * repository's, then the plugins'. A group with nothing in it is not drawn. Within a
+ * GROUPED BY WHERE THE SKILL COMES FROM, in a fixed order: the built-in steps (the product's
+ * own, each with its glyph, offered once taken off the canvas), the user's own skills, then
+ * the repository's, then the plugins'. A group with nothing in it is not drawn. Within a
  * group, the order given.
  *
  * A SKILL ALREADY IN THE WORKFLOW IS SHOWN AND GREYED, with `labels.inWorkflow` as its
@@ -24,13 +26,15 @@ import type { IconComponent } from './types'
  * reading "No skills" would be a choice that refuses, where there is no choice at all.
  */
 
-export type WorkflowSkillSource = 'custom' | 'repo' | 'plugin'
+export type WorkflowSkillSource = 'builtin' | 'custom' | 'repo' | 'plugin'
 
 /** One skill a step may run. Shared with `WorkflowInspector`, whose picker lists the same. */
 export interface WorkflowSkillOption {
   /** The skill's name as the skills spell it: `lint`, `plugin:x`. What `onPick` hands back. */
   name: string
   source: WorkflowSkillSource
+  /** What the row reads, when not the name: a built-in step's display name ("Commit"). */
+  label?: string
   /** Already on the line: drawn greyed, and it cannot be picked. */
   disabled?: boolean
 }
@@ -42,8 +46,8 @@ export interface WorkflowSkillPickerLabels {
   empty: string
   /** The quiet note on a skill already in the workflow: "In the workflow". */
   inWorkflow: string
-  /** Each group's heading. */
-  sources: Record<WorkflowSkillSource, string>
+  /** Each group's heading. The built-in group is not drawn without its own. */
+  sources: Record<Exclude<WorkflowSkillSource, 'builtin'>, string> & { builtin?: string }
   /** The row that adds an end note instead of a step, and its quiet hint. Not drawn without `onPickNote`. */
   note?: string
   noteHint?: string
@@ -64,8 +68,8 @@ export interface WorkflowSkillPickerProps {
 }
 
 /** The groups' order, and the mark each row wears. */
-const SOURCES: WorkflowSkillSource[] = ['custom', 'repo', 'plugin']
-const SOURCE_ICONS: Record<WorkflowSkillSource, IconComponent> = {
+const SOURCES: WorkflowSkillSource[] = ['builtin', 'custom', 'repo', 'plugin']
+const SOURCE_ICONS: Record<Exclude<WorkflowSkillSource, 'builtin'>, IconComponent> = {
   custom: Sparkles,
   repo: FolderGit2,
   plugin: Puzzle,
@@ -88,12 +92,12 @@ export function WorkflowSkillPicker({ open, onClose, anchor, skills, onPick, onP
       .filter((skill) => skill.source === source)
       .map((skill): MenuItem => ({
         id: skill.name,
-        label: skill.name,
-        icon: SOURCE_ICONS[source],
+        label: skill.label ?? skill.name,
+        icon: source === 'builtin' ? skillIcon(skill.name) : SOURCE_ICONS[source],
         disabled: skill.disabled,
         hint: skill.disabled ? labels.inWorkflow : undefined,
       })),
-  })).filter((group) => group.items.length > 0)]
+  })).filter((group) => group.items.length > 0 && group.label !== undefined)]
 
   return (
     <Menu

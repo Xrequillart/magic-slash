@@ -1,5 +1,6 @@
 import type { WorkflowCanvasLink, WorkflowCanvasNode, WorkflowSkillOption } from '@ds/desktop'
 import { workflowStepColor } from '@ds/desktop/palette'
+import { DEFAULT_WORKFLOW } from '../../../workflow/defaultFlow'
 import type { Workflow } from '../../../workflow/model'
 import {
   PLAN_NODE_ID, START_NODE_ID, canDisable, customNodeId, isBuiltInNodeId, isCustomNodeId, noteNodeId, type WorkflowOverlay, type WorkflowProblem,
@@ -174,8 +175,10 @@ const PICKABLE: readonly WorkflowSkillOption['source'][] = ['custom', 'repo', 'p
 /**
  * The skills a custom step may run, for the picker and the inspector's `Select`.
  *
- * Out of the listing Claude Code injects (`skills:listingEntries`), minus:
- *  - the built-in skills, which are already in the flow and cannot be placed twice;
+ * The built-in steps first, by their display name: one taken off the canvas is put back
+ * from here (start never leaves it, so it is not offered). Then, out of the listing Claude
+ * Code injects (`skills:listingEntries`), minus:
+ *  - the built-in skills, offered above;
  *  - the OTHER repositories' skills, which do not exist in this one;
  *  - `hidden` entries (`disable-model-invocation`, an `off` override): the protocol
  *    chains a step by having Claude invoke it, which is exactly what they forbid.
@@ -189,6 +192,9 @@ export function skillOptions(
   repoName: string,
   inWorkflow: readonly string[],
 ): WorkflowSkillOption[] {
+  const builtIn: WorkflowSkillOption[] = DEFAULT_WORKFLOW.nodes
+    .filter((node) => node.id !== START_NODE_ID)
+    .map((node) => ({ name: node.skill, source: 'builtin', label: skillDisplayName(node.skill), disabled: inWorkflow.includes(node.skill) }))
   const byName = new Map<string, WorkflowSkillOption>()
   for (const source of PICKABLE) {
     for (const entry of entries) {
@@ -200,7 +206,7 @@ export function skillOptions(
     }
   }
   // Grouped by source by the picker itself; within a source, the listing's order.
-  return [...byName.values()]
+  return [...builtIn, ...byName.values()]
 }
 
 /**

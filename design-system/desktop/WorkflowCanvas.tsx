@@ -124,6 +124,8 @@ export interface WorkflowCanvasLabels {
   disable?: string
   enable?: string
   alwaysOn?: string
+  /** EDITABLE ONLY. A built-in step's eye, which takes it off the canvas: "Remove from the canvas". */
+  hide?: string
   /** READ-ONLY ONLY. The shut eye on a step that is off: "Turned off". */
   off?: string
   /** EDITABLE ONLY. A custom step's mode, on its card's plate. */
@@ -306,7 +308,7 @@ export function WorkflowCanvas({
     const byId = new Map(nodes.map((node) => [node.id, node]))
     const nodeLabels: WorkflowNodeLabels | undefined = editable
       ? {
-          disable: labels.disable ?? '', enable: labels.enable ?? '', alwaysOn: labels.alwaysOn ?? '',
+          disable: labels.disable ?? '', enable: labels.enable ?? '', alwaysOn: labels.alwaysOn ?? '', hide: labels.hide,
           blocking: labels.blocking ?? '', advisory: labels.advisory ?? '',
         }
       : undefined

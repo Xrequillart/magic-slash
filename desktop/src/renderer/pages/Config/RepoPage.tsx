@@ -70,14 +70,15 @@ import { resolveReviewLanguage, resolveSpecLanguage, resolveTicketLanguage } fro
 import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../../../tracker'
 import type { ResolvedWorkflow } from '../../../workflow/model'
 import {
-  EMPTY_OVERLAY, addLink, addStep, cleanOverlay, composeWorkflow, customNodeId, isCustomNodeId, isDefaultLink, isLinkIntoStart, moveNode,
-  outcomeProblem, OUTCOME_MAX_LENGTH, pinPositions, problems, removeLink, removeStep, sameOverlay, setLinkKind, setLinkOutcome, setStepColor, setStepOutcomes,
+  EMPTY_OVERLAY, addLink, addStep, canRemoveStep, cleanOverlay, composeWorkflow, customNodeId, isBuiltInNodeId, isCustomNodeId, isLiveDefaultLink, isLinkIntoStart, moveNode,
+  removeNode, restoreStep,
+  outcomeProblem, OUTCOME_MAX_LENGTH, pinPositions, problems, removeLink, sameOverlay, setLinkKind, setLinkOutcome, setStepColor, setStepOutcomes,
   addNote, isNoteNodeId, nextNoteId, noteNodeId, removeNote, setNoteColor, setNoteText, setStepEnabled, setStepMode,
   unreachableSteps, type WorkflowOverlay, type WorkflowProblem,
 } from '../../../workflow/overlay'
 import type { ListingEntry } from '../../hooks/useSkills'
 import { useWorkflowHistory } from '../../hooks/useWorkflowHistory'
-import { buildWorkflowHistory, type StartSettingKey, type StartSettingValue, type WorkflowHistoryChange } from '../../utils/workflowHistory'
+import { buildWorkflowHistory, skillOfNode, type StartSettingKey, type StartSettingValue, type WorkflowHistoryChange } from '../../utils/workflowHistory'
 import { planAuthor } from '../../utils/planRows'
 import { formatTimestamp } from '../../components/agent-info-sidebar/utils'
 import { useModalExit } from '../../hooks/useModalExit'
@@ -881,10 +882,9 @@ function WorkflowPanel({
     if (!selected) return
     if (selected.type === 'node') {
       if (isNoteNodeId(selected.id)) reshape((pinned) => removeNote(pinned, selected.id))
-      else if (!isCustomNodeId(selected.id)) return
-      else reshape((pinned) => removeStep(pinned, skillOf(selected.id)))
+      else if (!canRemoveStep(selected.id)) return
+      else reshape((pinned) => removeNode(pinned, selected.id))
     } else {
-      if (isDefaultLink(selected.from, selected.to)) return
       reshape((pinned) => removeLink(pinned, selected.from, selected.to, selected.outcome))
     }
     setSelected(null)
@@ -931,7 +931,7 @@ function WorkflowPanel({
     if (!link) return null
     // Links leaving a custom step need no word: the protocol applies them like any other.
     const intoStart = isLinkIntoStart(link)
-    const locked = isDefaultLink(link.from, link.to)
+    const locked = isLiveDefaultLink(draft, link.from, link.to)
     return {
       type: 'link',
       link: {
@@ -1188,6 +1188,7 @@ function WorkflowPanel({
     suggest: t('repo.workflow.suggest'),
     anyExit: t('repo.workflow.anyExit'),
     disable: t('repo.workflow.disable'),
+    hide: t('repo.workflow.hide'),
     enable: t('repo.workflow.enable'),
     alwaysOn: t('repo.workflow.alwaysOn'),
     off: t('repo.workflow.off'),
@@ -1195,6 +1196,7 @@ function WorkflowPanel({
     advisory: t('repo.workflow.advisory'),
   }), [t, repoName])
   const sources = {
+    builtin: t('repo.workflow.source.builtin'),
     custom: t('repo.workflow.source.custom'),
     repo: t('repo.workflow.source.repo'),
     plugin: t('repo.workflow.source.plugin'),
@@ -1290,6 +1292,8 @@ function WorkflowPanel({
       removeRow: t('repo.workflow.inspector.removeRow'),
       removeHint: t('repo.workflow.inspector.removeHint'),
       builtIn: t('repo.workflow.inspector.builtIn'),
+      hide: t('repo.workflow.hide'),
+      removeBuiltInHint: t('repo.workflow.inspector.removeBuiltInHint'),
       disable: t('repo.workflow.disable'),
       enable: t('repo.workflow.enable'),
       alwaysOn: t('repo.workflow.alwaysOn'),
@@ -1442,7 +1446,7 @@ function WorkflowPanel({
                 skills={skills}
                 onChangeMode={(id, mode) => edit(setStepMode(draft, skillOf(id), mode))}
                 onRemove={(id) => {
-                  reshape((pinned) => (isNoteNodeId(id) ? removeNote(pinned, id) : removeStep(pinned, skillOf(id))))
+                  reshape((pinned) => (isNoteNodeId(id) ? removeNote(pinned, id) : removeNode(pinned, id)))
                   setSelected(null)
                 }}
                 onChangeKind={(from, to, kind, outcome) => edit(setLinkKind(draft, from, to, kind, outcome))}
@@ -1457,7 +1461,13 @@ function WorkflowPanel({
                   reshape((pinned) => removeLink(pinned, from, to, outcome))
                   setSelected(null)
                 }}
-                onToggle={(id, enabled) => edit(setStepEnabled(draft, id, enabled))}
+                onToggle={(id, enabled) => {
+                  // A built-in step's eye takes it off the canvas; the dock's "+" puts it back.
+                  // One turned off by a build of before is turned back on like any other.
+                  if (enabled || !isBuiltInNodeId(id)) return edit(setStepEnabled(draft, id, enabled))
+                  reshape((pinned) => removeNode(pinned, id))
+                  if (selected?.type === 'node' && selected.id === id) setSelected(null)
+                }}
                 onChangeColor={(id, color) => edit(isNoteNodeId(id) ? setNoteColor(draft, id, color) : setStepColor(draft, skillOf(id), color))}
                 onChangeStepOutcomes={(id, outcomes) => reshape((pinned) => setStepOutcomes(pinned, skillOf(id), outcomes))}
                 validateStepOutcome={(value, outcomes) => {
@@ -1465,6 +1475,13 @@ function WorkflowPanel({
                   return problem && t(`repo.workflow.inspector.outcomeError.${problem}`, { max: OUTCOME_MAX_LENGTH })
                 }}
                 onAdd={(skill, position) => {
+                  // A built-in step taken off comes back where the "+" puts a new one, unlinked.
+                  const builtIn = draft.removed?.find((id) => skillOfNode(id) === skill)
+                  if (builtIn) {
+                    reshape((pinned) => restoreStep(pinned, builtIn, position))
+                    setSelected({ type: 'node', id: builtIn })
+                    return
+                  }
                   // Its own colour from the start: the first no other custom step wears.
                   // Its outcomes from the start too, when its SKILL.md declares them.
                   reshape((pinned) => addStep(

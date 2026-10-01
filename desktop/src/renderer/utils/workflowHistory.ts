@@ -97,7 +97,10 @@ function overlayOf(value: unknown): WorkflowOverlay | null {
   return value === null || value === undefined ? EMPTY_OVERLAY : toOverlay(value)
 }
 
-export function diffOverlays(before: WorkflowOverlay, after: WorkflowOverlay): WorkflowHistoryChange[] {
+export function diffOverlays(stored: WorkflowOverlay, next: WorkflowOverlay): WorkflowHistoryChange[] {
+  // As the editor reads them: a link stored on several outcomes is one link per outcome.
+  const before = toOverlay(stored) ?? stored
+  const after = toOverlay(next) ?? next
   const changes: WorkflowHistoryChange[] = []
   // A link's end that is a note is named by what it says (`note:<text>`, see `endOf`).
   const texts = new Map([...(before.notes ?? []), ...(after.notes ?? [])].map((note) => [noteNodeId(note.id), note.text]))
@@ -148,28 +151,64 @@ export function diffOverlays(before: WorkflowOverlay, after: WorkflowOverlay): W
     }
   }
 
+  // Built-in steps taken off the canvas, or put back: by their skill, like a custom one.
+  const wasRemoved = new Set(before.removed ?? [])
+  const isRemoved = new Set(after.removed ?? [])
+  for (const id of isRemoved) if (!wasRemoved.has(id)) { changes.push({ kind: 'step-removed', node: skillOfNode(id) }); gone.add(id) }
+  for (const id of wasRemoved) if (!isRemoved.has(id)) { changes.push({ kind: 'step-added', node: skillOfNode(id) }); gone.add(id) }
+
   const wasOff = new Set(before.disabled ?? [])
   const isOff = new Set(after.disabled ?? [])
   for (const id of isOff) if (!wasOff.has(id) && !gone.has(id)) changes.push({ kind: 'step-enabled', node: skillOfNode(id), enabled: false })
   for (const id of wasOff) if (!isOff.has(id) && !gone.has(id)) changes.push({ kind: 'step-enabled', node: skillOfNode(id), enabled: true })
 
   const touchesGone = (link: Pick<WorkflowOverlayLink, 'from' | 'to'>) => gone.has(link.from) || gone.has(link.to)
-  const oldLinks = new Map(before.links.map((link) => [linkKey(link.from, link.to), link]))
-  const newLinks = new Map(after.links.map((link) => [linkKey(link.from, link.to), link]))
+  // One link per outcome: two outcomes leading to the same step are two links. A pair
+  // linked once before and once after, on another outcome, is that link given an outcome.
+  const keyOf = (link: WorkflowOverlayLink) => `${linkKey(link.from, link.to)}|${linkOutcomesOf(link).join(',')}`
+  const oldLinks = new Map(before.links.map((link) => [keyOf(link), link]))
+  const newLinks = new Map(after.links.map((link) => [keyOf(link), link]))
+  const added = [...newLinks].filter(([key, link]) => !oldLinks.has(key) && !touchesGone(link)).map(([, link]) => link)
+  const dropped = [...oldLinks].filter(([key, link]) => !newLinks.has(key) && !touchesGone(link)).map(([, link]) => link)
+  const samePair = (a: WorkflowOverlayLink, b: WorkflowOverlayLink) => a.from === b.from && a.to === b.to
+  const rekeyed = new Set<WorkflowOverlayLink>()
   for (const [key, link] of newLinks) {
-    const was = oldLinks.get(key)
     const ends = { from: endOf(link.from), to: endOf(link.to) }
-    if (!was) {
-      if (!touchesGone(link)) changes.push({ kind: 'link-added', ...ends, linkKind: link.kind })
+    const was = oldLinks.get(key)
+    if (was) {
+      if (was.kind !== link.kind) changes.push({ kind: 'link-kind', ...ends, linkKind: link.kind })
       continue
     }
-    if (was.kind !== link.kind) changes.push({ kind: 'link-kind', ...ends, linkKind: link.kind })
-    const outcomesWere = linkOutcomesOf(was).join(', ')
-    const outcomesNow = linkOutcomesOf(link).join(', ')
-    if (outcomesWere !== outcomesNow) changes.push({ kind: 'link-outcome', ...ends, ...(outcomesNow ? { outcome: outcomesNow } : {}) })
+    if (touchesGone(link)) continue
+    const from = dropped.filter((other) => samePair(other, link))
+    if (from.length === 1 && added.filter((other) => samePair(other, link)).length === 1) {
+      rekeyed.add(from[0])
+      if (from[0].kind !== link.kind) changes.push({ kind: 'link-kind', ...ends, linkKind: link.kind })
+      const outcome = linkOutcomesOf(link).join(', ')
+      changes.push({ kind: 'link-outcome', ...ends, ...(outcome ? { outcome } : {}) })
+      continue
+    }
+    changes.push({ kind: 'link-added', ...ends, linkKind: link.kind })
   }
-  for (const [key, link] of oldLinks) {
-    if (!newLinks.has(key) && !touchesGone(link)) changes.push({ kind: 'link-removed', from: endOf(link.from), to: endOf(link.to) })
+  for (const link of dropped) {
+    if (!rekeyed.has(link)) changes.push({ kind: 'link-removed', from: endOf(link.from), to: endOf(link.to) })
+  }
+
+  // Default links taken off, or back, when not with a step that came or went.
+  const linksWere = new Set(before.removedLinks ?? [])
+  const linksAre = new Set(after.removedLinks ?? [])
+  const defaultEnds = (key: string) => {
+    const [from, to] = key.split('>')
+    return { from, to }
+  }
+  for (const key of linksAre) {
+    const ends = defaultEnds(key)
+    if (!linksWere.has(key) && !touchesGone(ends)) changes.push({ kind: 'link-removed', from: skillOfNode(ends.from), to: skillOfNode(ends.to) })
+  }
+  for (const key of linksWere) {
+    const ends = defaultEnds(key)
+    const kind = DEFAULT_LINKS.find((link) => linkKey(link.from, link.to) === key)?.kind
+    if (!linksAre.has(key) && !touchesGone(ends) && kind) changes.push({ kind: 'link-added', from: skillOfNode(ends.from), to: skillOfNode(ends.to), linkKind: kind })
   }
 
   // A default link's kind. Absent from `kinds` is the default's own kind, which the

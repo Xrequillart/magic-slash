@@ -75,6 +75,11 @@ export interface WorkflowNodeLabels {
   enable: string
   /** On start, whose switch is greyed: "Start cannot be turned off". */
   alwaysOn: string
+  /**
+   * On a built-in step that is on (`locked`), whose eye takes it off the canvas rather than
+   * turning it off: "Remove from the canvas". `disable` without it.
+   */
+  hide?: string
   /** A custom step's mode, on its plate. */
   blocking: string
   advisory: string
@@ -251,7 +256,7 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
                 <span className="nodrag nopan flex" onClick={(event) => event.stopPropagation()}>
                   <ButtonIcon
                     icon={node.disabled ? EyeOff : Eye}
-                    title={node.alwaysOn ? labels.alwaysOn : node.disabled ? labels.enable : labels.disable}
+                    title={node.alwaysOn ? labels.alwaysOn : node.disabled ? labels.enable : (node.locked && labels.hide) || labels.disable}
                     onClick={() => onToggle?.(node.id, !!node.disabled)}
                     disabled={node.alwaysOn || !onToggle}
                     tone="ghost"
