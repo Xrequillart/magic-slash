@@ -5,7 +5,7 @@ import type { WorkflowOverlay } from './overlay'
 import {
   EMPTY_OVERLAY, addLink, addStep, cleanOverlay, composeWorkflow, customNodeId, isDefaultLink, isOverlay, moveNode, pinPositions,
   normalizeOutcomes, outcomeProblem, parseOutcomesField, problems, removeLink, removeStep, resolveOverlay, sameOverlay, servedWorkflow, setLinkKind, setLinkOutcome,
-  setLinkOutcomes, setStepColor, setStepEnabled, setStepMode, setStepOutcomes,
+  setStepColor, setStepEnabled, setStepMode, setStepOutcomes,
   addNote, nextNoteId, noteNodeId, removeNote, setNoteText, toOverlay, unreachableSteps,
 } from './overlay'
 
@@ -54,10 +54,10 @@ describe('editing', () => {
 
   it('draws a link from an outcome\'s port, and changes or drops its outcome', () => {
     let overlay = addLink(addStep(EMPTY_OVERLAY, 'check', AT), 'pr', CHECK, 'ci_green')
-    expect(overlay.links).toEqual([{ from: 'pr', to: CHECK, kind: 'suggest', outcomes: ['ci_green'] }])
-    overlay = setLinkOutcome(overlay, 'pr', CHECK, 'pr_created')
-    expect(overlay.links[0].outcomes).toEqual(['pr_created'])
-    overlay = setLinkOutcome(overlay, 'pr', CHECK, undefined)
+    expect(overlay.links).toEqual([{ from: 'pr', to: CHECK, kind: 'suggest', outcome: 'ci_green' }])
+    overlay = setLinkOutcome(overlay, 'pr', CHECK, 'ci_green', 'pr_created')
+    expect(overlay.links[0].outcome).toEqual('pr_created')
+    overlay = setLinkOutcome(overlay, 'pr', CHECK, 'pr_created', undefined)
     expect(overlay.links).toEqual([{ from: 'pr', to: CHECK, kind: 'suggest' }])
   })
 
@@ -69,9 +69,9 @@ describe('editing', () => {
 
   it('links a step to itself, to run it again', () => {
     const overlay = addLink(setStepOutcomes(withCheck(), 'check', ['tests_failed']), CHECK, CHECK, 'tests_failed')
-    expect(overlay.links).toContainEqual({ from: CHECK, to: CHECK, kind: 'suggest', outcomes: ['tests_failed'] })
+    expect(overlay.links).toContainEqual({ from: CHECK, to: CHECK, kind: 'suggest', outcome: 'tests_failed' })
     expect(problems(overlay)).toEqual([])
-    expect(problems(setLinkKind(overlay, CHECK, CHECK, 'auto'))).toEqual([])
+    expect(problems(setLinkKind(overlay, CHECK, CHECK, 'auto', 'tests_failed'))).toEqual([])
     expect(problems(addLink(withCheck(), 'commit', 'commit'))).toEqual([])
   })
 
@@ -297,10 +297,10 @@ describe('a custom step\'s outcomes', () => {
   it('reach the composed node, so a link out of it may be taken on one', () => {
     const o = setStepOutcomes(withCheck(), 'check', ['tests_passed', 'tests_failed'])
     expect(composeWorkflow(o).nodes.find((node) => node.id === CHECK)?.outcomes).toEqual(['tests_passed', 'tests_failed'])
-    const conditioned = setLinkOutcome(o, CHECK, 'commit', 'tests_passed')
+    const conditioned = setLinkOutcome(o, CHECK, 'commit', undefined, 'tests_passed')
     expect(problems(conditioned)).toEqual([])
     // Without the declaration, the same link is on an outcome the step does not have.
-    expect(problems(setLinkOutcome(withCheck(), CHECK, 'commit', 'tests_passed'))).not.toEqual([])
+    expect(problems(setLinkOutcome(withCheck(), CHECK, 'commit', undefined, 'tests_passed'))).not.toEqual([])
   })
 
   it('are kept, saved, compared and checked for shape', () => {
@@ -321,7 +321,7 @@ describe('a custom step\'s outcomes', () => {
   })
 
   it('keep a link whose outcome is withdrawn, taken whatever the outcome', () => {
-    const o = setLinkOutcome(setStepOutcomes(withCheck(), 'check', ['ok', 'ko']), CHECK, 'commit', 'ko')
+    const o = setLinkOutcome(setStepOutcomes(withCheck(), 'check', ['ok', 'ko']), CHECK, 'commit', undefined, 'ko')
     const after = setStepOutcomes(o, 'check', ['ok'])
     expect(after.links.find((link) => link.from === CHECK && link.to === 'commit')).toEqual({ from: CHECK, to: 'commit', kind: 'suggest' })
     expect(problems(after)).toEqual([])
@@ -358,41 +358,63 @@ describe('parseOutcomesField', () => {
   })
 })
 
-describe('a link on several outcomes', () => {
+describe('several outcomes leading to the same step', () => {
   const ready = () => setStepOutcomes(withCheck(), 'check', ['ok', 'warn', 'ko'])
+  // check → commit on `ok` and on `warn`: two links.
+  const two = () => addLink(setLinkOutcome(ready(), CHECK, 'commit', undefined, 'ok'), CHECK, 'commit', 'warn')
 
-  it('is one link of the flow per outcome, and no duplicate', () => {
-    const o = setLinkOutcomes(ready(), CHECK, 'commit', ['ok', 'warn'])
-    const out = composeWorkflow(o).links.filter((link) => link.from === CHECK && link.to === 'commit')
-    expect(out).toEqual([
+  it('are a link each, served as they are, with no duplicate', () => {
+    const o = two()
+    expect(o.links.filter((link) => link.from === CHECK)).toEqual([
+      { from: CHECK, to: 'commit', kind: 'suggest', outcome: 'ok' },
+      { from: CHECK, to: 'commit', kind: 'suggest', outcome: 'warn' },
+    ])
+    expect(composeWorkflow(o).links.filter((link) => link.from === CHECK && link.to === 'commit')).toEqual([
       { from: CHECK, to: 'commit', kind: 'suggest', outcome: 'ok' },
       { from: CHECK, to: 'commit', kind: 'suggest', outcome: 'warn' },
     ])
     expect(problems(o)).toEqual([])
-  })
-
-  it('grows when drawn again from another outcome\'s port', () => {
-    let o = addLink(removeLink(ready(), CHECK, 'commit'), CHECK, 'commit', 'ok')
-    o = addLink(o, CHECK, 'commit', 'warn')
-    expect(o.links.find((link) => link.from === CHECK)?.outcomes).toEqual(['ok', 'warn'])
-    // From the "whatever it ended on" port, or on one it already has: unchanged.
-    expect(addLink(o, CHECK, 'commit')).toBe(o)
+    // Not the same outcome twice, nor one beside a link taken whatever the outcome.
     expect(addLink(o, CHECK, 'commit', 'ok')).toBe(o)
+    expect(addLink(o, CHECK, 'commit')).toBe(o)
+    const whatever = withCheck()
+    expect(addLink(whatever, CHECK, 'commit', 'ok')).toBe(whatever)
   })
 
-  it('is stored as `outcome` for one outcome, `outcomes` for several, and read back either way', () => {
-    const one = cleanOverlay(setLinkOutcomes(ready(), CHECK, 'commit', ['ok']))
-    expect(one.links.find((link) => link.from === CHECK)).toEqual({ from: CHECK, to: 'commit', kind: 'suggest', outcome: 'ok' })
-    const two = cleanOverlay(setLinkOutcomes(ready(), CHECK, 'commit', ['ok', 'ko']))
-    expect(two.links.find((link) => link.from === CHECK)).toEqual({ from: CHECK, to: 'commit', kind: 'suggest', outcomes: ['ok', 'ko'] })
-    expect(isOverlay(two)).toBe(true)
-    // The stored form and the edited one say the same thing.
-    expect(sameOverlay(one, setLinkOutcomes(ready(), CHECK, 'commit', ['ok']))).toBe(true)
+  it('each have their own kind, and are removed one at a time', () => {
+    const o = setLinkKind(two(), CHECK, 'commit', 'auto', 'warn')
+    expect(o.links.filter((link) => link.from === CHECK).map((link) => link.kind)).toEqual(['suggest', 'auto'])
+    expect(removeLink(o, CHECK, 'commit', 'ok').links.filter((link) => link.from === CHECK)).toEqual([
+      { from: CHECK, to: 'commit', kind: 'auto', outcome: 'warn' },
+    ])
   })
 
-  it('loses the outcomes the step no longer declares', () => {
-    const o = setStepOutcomes(setLinkOutcomes(ready(), CHECK, 'commit', ['ok', 'ko']), 'check', ['ok', 'warn'])
-    expect(o.links.find((link) => link.from === CHECK)?.outcomes).toEqual(['ok'])
+  it('move from one outcome to another free one only', () => {
+    const o = two()
+    expect(setLinkOutcome(o, CHECK, 'commit', 'warn', 'ok')).toBe(o)
+    expect(setLinkOutcome(o, CHECK, 'commit', 'warn', undefined)).toBe(o)
+    expect(setLinkOutcome(o, CHECK, 'commit', 'warn', 'ko').links.map((link) => link.outcome)).toContain('ko')
+  })
+
+  it('read a link of before taken on several outcomes as one link per outcome, each with its kind', () => {
+    const stored = { ...ready(), links: [{ from: CHECK, to: 'commit', kind: 'auto', outcomes: ['ok', 'ko'] }] }
+    expect(isOverlay(stored)).toBe(true)
+    const read = toOverlay(stored)!
+    expect(read.links).toEqual([
+      { from: CHECK, to: 'commit', kind: 'auto', outcome: 'ok' },
+      { from: CHECK, to: 'commit', kind: 'auto', outcome: 'ko' },
+    ])
+    expect(cleanOverlay(stored as WorkflowOverlay).links).toEqual(read.links)
+  })
+
+  it('are untouched when the step gains an outcome', () => {
+    const o = two()
+    expect(setStepOutcomes(o, 'check', ['ok', 'warn', 'ko', 'skipped']).links).toEqual(o.links)
+  })
+
+  it('lose the link on an outcome withdrawn when the two steps stay linked otherwise', () => {
+    const o = setStepOutcomes(two(), 'check', ['ok', 'ko'])
+    expect(o.links.filter((link) => link.from === CHECK)).toEqual([{ from: CHECK, to: 'commit', kind: 'suggest', outcome: 'ok' }])
   })
 })
 

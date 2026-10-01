@@ -138,7 +138,7 @@ function EditorSpecimen() {
       const node = flow.nodes.find((n) => n.id === selected.id)
       return node ? { type: 'node', step: node } : null
     }
-    const link = flow.links.find((l) => l.from === selected.from && l.to === selected.to)
+    const link = flow.links.find((l) => l.from === selected.from && l.to === selected.to && l.outcome === selected.outcome)
     if (!link) return null
     const intoStart = link.to === 'start'
     const locked = isSampleDefaultLink(link.from, link.to)
@@ -152,12 +152,14 @@ function EditorSpecimen() {
         hint: intoStart ? 'Starting a ticket always opens a new agent, so this link can only be suggested.' : undefined,
         locked,
         outcomes: locked ? undefined : flow.nodes.find((n) => n.id === link.from)?.outcomes,
+        takenOutcomes: flow.links.filter((l) => l !== link && l.from === link.from && l.to === link.to).map((l) => l.outcome ?? ''),
       },
     }
   })()
 
-  const mapLinks = (from: string, to: string, change: (link: WorkflowCanvasLink) => WorkflowCanvasLink) =>
-    flow.links.map((link) => (link.from === from && link.to === to ? change(link) : link))
+  // One link per outcome: `outcome` names it among those between the same two steps.
+  const mapLinks = (from: string, to: string, outcome: string | undefined, change: (link: WorkflowCanvasLink) => WorkflowCanvasLink) =>
+    flow.links.map((link) => (link.from === from && link.to === to && link.outcome === outcome ? change(link) : link))
 
   return (
     <div ref={stageRef} className="h-[640px] overflow-hidden rounded-xl border border-line">
@@ -187,7 +189,7 @@ function EditorSpecimen() {
         onMove={(id, position) => edit({ ...flow, positions: { ...flow.positions, [id]: position } })}
         onConnect={(from, to, outcome) => {
           edit({ ...flow, links: [...flow.links, outcome ? { from, to, kind: 'suggest', outcome } : { from, to, kind: 'suggest' }] })
-          setSelected({ type: 'link', from, to })
+          setSelected({ type: 'link', from, to, outcome })
         }}
         focusRequest={focus}
         target={target}
@@ -197,10 +199,13 @@ function EditorSpecimen() {
           edit({ ...flow, nodes: flow.nodes.filter((n) => n.id !== id), links: flow.links.filter((l) => l.from !== id && l.to !== id) })
           setSelected(null)
         }}
-        onChangeKind={(from, to, kind) => edit({ ...flow, links: mapLinks(from, to, (l) => ({ ...l, kind })) })}
-        onChangeOutcomes={(from, to, outcomes) => edit({ ...flow, links: mapLinks(from, to, ({ outcome: _was, ...l }) => (outcomes[0] ? { ...l, outcome: outcomes[0] } : l)) })}
-        onRemoveLink={(from, to) => {
-          edit({ ...flow, links: flow.links.filter((l) => l.from !== from || l.to !== to) })
+        onChangeKind={(from, to, kind, outcome) => edit({ ...flow, links: mapLinks(from, to, outcome, (l) => ({ ...l, kind })) })}
+        onChangeOutcome={(from, to, was, now) => {
+          edit({ ...flow, links: mapLinks(from, to, was, ({ outcome: _was, ...l }) => (now ? { ...l, outcome: now } : l)) })
+          setSelected({ type: 'link', from, to, outcome: now })
+        }}
+        onRemoveLink={(from, to, outcome) => {
+          edit({ ...flow, links: flow.links.filter((l) => l.from !== from || l.to !== to || l.outcome !== outcome) })
           setSelected(null)
         }}
         onChangeColor={(id, color) => edit({ ...flow, nodes: flow.nodes.map((n) => (n.id === id ? { ...n, color } : n)) })}

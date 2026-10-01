@@ -45,6 +45,8 @@ export interface WorkflowEdgeData extends Record<string, unknown> {
   kind: WorkflowCanvasLinkKind
   /** The row of its source card it leaves from: an outcome, or the "whatever it ended on" one. */
   exit?: string
+  /** The outcome it is taken on, none whatever it ended on: what a press on it selects. */
+  outcome?: string
   /** Across columns, or up / down between two steps of a loop stacked in one column. */
   route: WorkflowLinkRoute
   /** Drawn heavier, with a halo in the accent: the link the editor's inspector is showing. */

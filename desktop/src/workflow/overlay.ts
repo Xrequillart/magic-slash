@@ -67,21 +67,23 @@ export interface WorkflowOverlayNote {
   color?: string
 }
 
+/**
+ * A drawn link: ONE outcome of `from` (or none, whatever it ended on) leading to `to`.
+ * Two outcomes of a step leading to the same step are two links, each with its own kind:
+ * turning one `auto` leaves the other as it was.
+ */
 export interface WorkflowOverlayLink {
   from: string
   to: string
   kind: WorkflowLinkKind
+  /** Taken only when `from` ended on this. Absent: whatever the outcome. */
+  outcome?: string
   /**
-   * Taken only when `from` ended on one of these. Absent or empty: whatever the outcome.
-   * What the editor holds and writes through `setLinkOutcomes`.
+   * READ ONLY: a link taken on several outcomes, as a build of before stored it. Split into
+   * one link per outcome on the way in (`toOverlay`) and on the way out (`cleanOverlay`),
+   * so the editor never holds one.
    */
   outcomes?: string[]
-  /**
-   * The same thing, stored for ONE outcome: how every link was written before a link
-   * could be taken on several, and how `cleanOverlay` still writes one on a single
-   * outcome, so an older app keeps reading it. Read through `linkOutcomesOf`, never alone.
-   */
-  outcome?: string
 }
 
 /** The outcomes a link is taken on, whichever field holds them. Empty: whatever the outcome. */
@@ -90,10 +92,29 @@ export function linkOutcomesOf(link: Pick<WorkflowOverlayLink, 'outcome' | 'outc
   return link.outcome === undefined ? [] : [link.outcome]
 }
 
-/** A link with `outcomes` as its one field for them, left out when empty. */
-function withLinkOutcomes(link: WorkflowOverlayLink, outcomes: readonly string[]): WorkflowOverlayLink {
+/** A link on `outcome` (none: whatever the outcome), its other fields kept. */
+function withLinkOutcome(link: WorkflowOverlayLink, outcome: string | undefined): WorkflowOverlayLink {
   const { outcome: _one, outcomes: _many, ...rest } = link
-  return outcomes.length > 0 ? { ...rest, outcomes: [...outcomes] } : rest
+  return outcome === undefined ? rest : { ...rest, outcome }
+}
+
+/** Every link on one outcome at most: one taken on several becomes one per outcome, in order. */
+function splitLinks(links: readonly WorkflowOverlayLink[]): WorkflowOverlayLink[] {
+  const out: WorkflowOverlayLink[] = []
+  for (const link of links) {
+    const { from, to, kind } = link
+    const outcomes = linkOutcomesOf(link)
+    if (outcomes.length === 0) out.push({ from, to, kind })
+    for (const outcome of outcomes) {
+      if (!out.some((l) => l.from === from && l.to === to && l.outcome === outcome)) out.push({ from, to, kind, outcome })
+    }
+  }
+  return out
+}
+
+/** Whether `link` is the one drawn `from → to` on `outcome` (none: the one taken whatever the outcome). */
+function isLink(link: WorkflowOverlayLink, from: string, to: string, outcome: string | undefined): boolean {
+  return link.from === from && link.to === to && link.outcome === outcome
 }
 
 /** The longest end note: a few lines, read at the end of a run. */
@@ -289,16 +310,6 @@ export function parseOutcomesField(raw: string | undefined): string[] | undefine
   return outcomes.length > 0 ? outcomes : undefined
 }
 
-/**
- * A drawn link as the flow's links: one, or one per outcome it is taken on. The skills
- * read a link per outcome, as they always have; two of them between the same two steps
- * never both apply, since a run ends on one outcome.
- */
-function toLinks(link: WorkflowOverlayLink): WorkflowLink[] {
-  const { from, to, kind } = link
-  const outcomes = linkOutcomesOf(link)
-  return outcomes.length === 0 ? [{ from, to, kind }] : outcomes.map((outcome) => ({ from, to, kind, outcome }))
-}
 
 /** One link of the flow: its two ends and the outcome it is taken on. */
 function outcomeKey(link: Pick<WorkflowLink, 'from' | 'to' | 'outcome'>): string {
@@ -321,7 +332,8 @@ export function composeWorkflow(overlay: WorkflowOverlay): Workflow {
     entry: DEFAULT_WORKFLOW.entry,
     // A skill placed twice is reported by problems(), not dropped here.
     nodes: [...DEFAULT_WORKFLOW.nodes, ...overlay.steps.map(customNode)],
-    links: [...links, ...overlay.links.flatMap(toLinks)],
+    links: [...links, ...splitLinks(overlay.links).map(({ from, to, kind, outcome }) =>
+      (outcome === undefined ? { from, to, kind } : { from, to, kind, outcome }))],
     ...((overlay.notes ?? []).length > 0
       ? { notes: (overlay.notes ?? []).map((note) => ({ id: noteNodeId(note.id), text: note.text })) }
       : {}),
@@ -494,7 +506,7 @@ function upgradeV1(overlay: WorkflowOverlayV1): WorkflowOverlay {
 
 /** A stored definition as a v2 overlay (a v1 upgraded), or null when it is neither. */
 export function toOverlay(value: unknown): WorkflowOverlay | null {
-  if (isOverlay(value)) return value
+  if (isOverlay(value)) return { ...value, links: splitLinks(value.links) }
   if (isOverlayV1(value)) return upgradeV1(value)
   return null
 }
@@ -684,13 +696,20 @@ export function setStepColor(overlay: WorkflowOverlay, skill: string, color: str
 }
 
 /**
- * What a custom step can end on. A link out of it loses the outcomes no longer declared,
- * and one left with none is kept, taken whatever the outcome from now on: the admin
- * removed an outcome, not a link.
+ * What a custom step can end on. Adding one changes no link. A link on an outcome no
+ * longer declared is kept, taken whatever the outcome from now on (the admin removed an
+ * outcome, not a link), unless its two steps are linked otherwise already: it then goes.
  */
 export function setStepOutcomes(overlay: WorkflowOverlay, skill: string, outcomes: readonly string[]): WorkflowOverlay {
   const declared = normalizeOutcomes(outcomes)
   const id = customNodeId(skill)
+  const kept = overlay.links.filter((link) => link.from !== id || link.outcome === undefined || declared.includes(link.outcome))
+  const links: WorkflowOverlayLink[] = []
+  for (const link of overlay.links) {
+    if (kept.includes(link)) links.push(link)
+    else if (!kept.some((other) => other.from === link.from && other.to === link.to) &&
+      !links.some((other) => other.from === link.from && other.to === link.to)) links.push(withLinkOutcome(link, undefined))
+  }
   return {
     ...overlay,
     steps: overlay.steps.map((s) => {
@@ -698,11 +717,7 @@ export function setStepOutcomes(overlay: WorkflowOverlay, skill: string, outcome
       const { outcomes: _was, ...rest } = s
       return declared.length > 0 ? { ...rest, outcomes: declared } : rest
     }),
-    links: overlay.links.map((link) => {
-      const outcomes = linkOutcomesOf(link)
-      if (link.from !== id || outcomes.every((outcome) => declared.includes(outcome))) return link
-      return withLinkOutcomes(link, outcomes.filter((outcome) => declared.includes(outcome)))
-    }),
+    links,
   }
 }
 
@@ -743,52 +758,58 @@ export function setNoteColor(overlay: WorkflowOverlay, nodeId: string, color: st
 }
 
 /**
+ * Whether a link `from → to` on `outcome` may be drawn: not a default pair, nothing out
+ * of a note, not the same link twice, and never beside one taken whatever the outcome,
+ * since that one already applies on every outcome.
+ */
+export function canAddLink(links: readonly Pick<WorkflowLink, 'from' | 'to' | 'outcome'>[], from: string, to: string, outcome?: string): boolean {
+  if (isDefaultLink(from, to) || isNoteNodeId(from)) return false
+  const between = links.filter((link) => link.from === from && link.to === to)
+  return outcome === undefined ? between.length === 0 : !between.some((link) => link.outcome === undefined || link.outcome === outcome)
+}
+
+/**
  * Link `from` to `to`, a suggestion until the admin says otherwise, taken on `outcome`
- * when one is given. A link that already exists between the two, default or drawn, is
- * not added: the overlay comes back unchanged. A step may be linked to itself, to run
- * again (a check retried on `tests_failed`, say).
+ * when one is given. Each outcome is a link of its own, with its own kind. A link
+ * `canAddLink` refuses is not added: the overlay comes back unchanged. A step may be
+ * linked to itself, to run again (a check retried on `tests_failed`, say).
  */
 export function addLink(overlay: WorkflowOverlay, from: string, to: string, outcome?: string): WorkflowOverlay {
-  if (isDefaultLink(from, to) || isNoteNodeId(from)) return overlay
-  const existing = overlay.links.find((link) => link.from === from && link.to === to)
-  if (existing) {
-    // Drawn again from another outcome's port: the link is taken on that one too. One
-    // taken whatever the outcome already covers it.
-    const outcomes = linkOutcomesOf(existing)
-    if (outcome === undefined || outcomes.length === 0 || outcomes.includes(outcome)) return overlay
-    return setLinkOutcomes(overlay, from, to, [...outcomes, outcome])
-  }
-  const link: WorkflowOverlayLink = outcome === undefined ? { from, to, kind: 'suggest' } : { from, to, kind: 'suggest', outcomes: [outcome] }
+  if (!canAddLink(overlay.links, from, to, outcome)) return overlay
+  const link: WorkflowOverlayLink = outcome === undefined ? { from, to, kind: 'suggest' } : { from, to, kind: 'suggest', outcome }
   return { ...overlay, links: [...overlay.links, link] }
 }
 
-/** Remove a drawn link. A default link is locked: the overlay comes back unchanged. */
-export function removeLink(overlay: WorkflowOverlay, from: string, to: string): WorkflowOverlay {
-  return { ...overlay, links: overlay.links.filter((link) => link.from !== from || link.to !== to) }
+/** Remove the drawn link `from → to` on `outcome` (none: the one taken whatever the outcome). A default link is locked. */
+export function removeLink(overlay: WorkflowOverlay, from: string, to: string, outcome?: string): WorkflowOverlay {
+  return { ...overlay, links: overlay.links.filter((link) => !isLink(link, from, to, outcome)) }
 }
 
-/** The kind of a link: a default one's as an override (dropped when back to its own), a drawn one's in place. */
-export function setLinkKind(overlay: WorkflowOverlay, from: string, to: string, kind: WorkflowLinkKind): WorkflowOverlay {
+/**
+ * The kind of a link: a default one's as an override (dropped when back to its own), a
+ * drawn one's in place, that link's alone (`outcome`, none: the one taken whatever the outcome).
+ */
+export function setLinkKind(overlay: WorkflowOverlay, from: string, to: string, kind: WorkflowLinkKind, outcome?: string): WorkflowOverlay {
   const base = defaultLink(from, to)
   if (base) {
     const { [linkKey(from, to)]: _was, ...kinds } = overlay.kinds
     return { ...overlay, kinds: base.kind === kind ? kinds : { ...kinds, [linkKey(from, to)]: kind } }
   }
-  return { ...overlay, links: overlay.links.map((link) => (link.from === from && link.to === to ? { ...link, kind } : link)) }
+  return { ...overlay, links: overlay.links.map((link) => (isLink(link, from, to, outcome) ? { ...link, kind } : link)) }
 }
 
-/** The outcomes a drawn link is taken on, none being whatever it ended on. A default link keeps its own. */
-export function setLinkOutcomes(overlay: WorkflowOverlay, from: string, to: string, outcomes: readonly string[]): WorkflowOverlay {
-  const unique = outcomes.filter((outcome, i) => outcomes.indexOf(outcome) === i)
-  return {
-    ...overlay,
-    links: overlay.links.map((link) => (link.from === from && link.to === to ? withLinkOutcomes(link, unique) : link)),
-  }
-}
-
-/** One outcome, or none (`undefined`): `setLinkOutcomes` for a single one. */
-export function setLinkOutcome(overlay: WorkflowOverlay, from: string, to: string, outcome: string | undefined): WorkflowOverlay {
-  return setLinkOutcomes(overlay, from, to, outcome === undefined ? [] : [outcome])
+/**
+ * Move a drawn link from outcome `was` to `now` (either none: whatever the outcome). A
+ * default link keeps its own, and a move onto a link that `canAddLink` would refuse is not
+ * made: the overlay comes back unchanged.
+ */
+export function setLinkOutcome(
+  overlay: WorkflowOverlay, from: string, to: string, was: string | undefined, now: string | undefined,
+): WorkflowOverlay {
+  if (was === now) return overlay
+  const others = overlay.links.filter((link) => !isLink(link, from, to, was))
+  if (others.length === overlay.links.length || !canAddLink(others, from, to, now)) return overlay
+  return { ...overlay, links: overlay.links.map((link) => (isLink(link, from, to, was) ? withLinkOutcome(link, now) : link)) }
 }
 
 /** Leave a card at `position`. Any step, built-in ones included: where a card sits is not what it does. */
@@ -823,13 +844,8 @@ export function cleanOverlay(overlay: WorkflowOverlay): WorkflowOverlay {
       if (outcomes && outcomes.length > 0) step.outcomes = [...outcomes]
       return step
     }),
-    // One outcome is written as `outcome`, the field an older app reads; several as `outcomes`.
-    links: overlay.links.map((link) => {
-      const { from, to, kind } = link
-      const outcomes = linkOutcomesOf(link)
-      if (outcomes.length === 0) return { from, to, kind }
-      return outcomes.length === 1 ? { from, to, kind, outcome: outcomes[0] } : { from, to, kind, outcomes: [...outcomes] }
-    }),
+    // One link per outcome, written as `outcome`: the field every build reads.
+    links: splitLinks(overlay.links),
     kinds: { ...overlay.kinds },
     positions: Object.fromEntries(Object.entries(overlay.positions).filter(([id]) => ids.has(id)).map(([id, at]) => [id, rounded(at)])),
   }, notes), [...disabledOf(overlay)].filter((id) => ids.has(id) && canDisable(id)))

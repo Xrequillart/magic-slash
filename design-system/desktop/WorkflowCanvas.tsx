@@ -80,8 +80,9 @@ import {
  *  - with `onConnect`, links are DRAWN out of a card's ports onto another card's left
  *    port: `onConnect(from, to, outcome)`, the outcome being the row it left from, none
  *    from the header. A card may be linked to itself, by dropping the link on its own
- *    left port or back on the card. A second link between the same two cards cannot be
- *    drawn.
+ *    left port or back on the card. Each outcome is a link of its own, selected on its
+ *    own: two outcomes may lead to the same card, but the same outcome only once, and
+ *    never beside a link taken whatever the outcome (`canDraw`).
  *  - `focusRequest` centres the view on a node, keeping the zoom unless it is too far
  *    out to read. A request is `{ id, n }`: bump `n` to centre on the same node again.
  *  - `dock` floats the editor's `WorkflowDock` at the bottom centre. Data, not a node:
@@ -93,10 +94,21 @@ import {
  * repository. Data, like the rest.
  */
 
-/** What the editor needs the inspector to show: a step, or the link between two. */
+/** What the editor needs the inspector to show: a step, or one link, its two ends and the outcome it is taken on. */
 export type WorkflowCanvasSelection =
   | { type: 'node'; id: string }
-  | { type: 'link'; from: string; to: string }
+  | { type: 'link'; from: string; to: string; outcome?: string }
+
+/** Whether a link `from → to` on `outcome` may be drawn beside `links`: see the header. */
+function canDraw(links: readonly WorkflowCanvasLink[], from: string, to: string, outcome: string | undefined): boolean {
+  const between = links.filter((link) => link.from === from && link.to === to)
+  return outcome === undefined ? between.length === 0 : !between.some((link) => link.outcome === undefined || link.outcome === outcome)
+}
+
+/** A selection naming this link. */
+function linkSelection(link: WorkflowCanvasLink): WorkflowCanvasSelection {
+  return link.outcome === undefined ? { type: 'link', from: link.from, to: link.to } : { type: 'link', from: link.from, to: link.to, outcome: link.outcome }
+}
 
 export interface WorkflowCanvasLabels {
   /** The canvas's accessible name: "Workflow of magic-slash". */
@@ -263,23 +275,18 @@ export function WorkflowCanvas({
     setTraced({ node, exit })
     const from = nodes.find((n) => n.id === node)
     const link = from && links.find((l) => l.from === node && workflowExitOf(from, l.outcome) === exit)
-    if (link) select?.({ type: 'link', from: link.from, to: link.to })
+    if (link) select?.(linkSelection(link))
   }, [traced, select, nodes, links])
   const selectedFrom = selected?.type === 'link' ? selected.from : null
   const selectedTo = selected?.type === 'link' ? selected.to : null
+  const selectedOutcome = selected?.type === 'link' ? selected.outcome : undefined
   useEffect(() => {
     if (!editable) return
     const from = nodes.find((n) => n.id === selectedFrom)
-    const exits = from
-      ? links.filter((l) => l.from === selectedFrom && l.to === selectedTo).map((l) => workflowExitOf(from, l.outcome))
-      : []
-    // A selection names two cards, and several outcomes of one may lead to the other: the
-    // one pressed (an outcome's row, or the line itself) stays traced, the first otherwise.
-    setTraced((was) => {
-      if (!from || exits.length === 0) return null
-      return was?.node === from.id && exits.includes(was.exit) ? was : { node: from.id, exit: exits[0] }
-    })
-  }, [editable, selectedFrom, selectedTo, links, nodes])
+    const link = links.find((l) => l.from === selectedFrom && l.to === selectedTo && l.outcome === selectedOutcome)
+    // The selected link traces the row it leaves from.
+    setTraced(from && link ? { node: from.id, exit: workflowExitOf(from, link.outcome) } : null)
+  }, [editable, selectedFrom, selectedTo, selectedOutcome, links, nodes])
 
   // The layout depends on the flow and the stored places alone, so selecting or
   // re-rendering never redoes it.
@@ -348,10 +355,12 @@ export function WorkflowCanvas({
               : route === 'self' ? WORKFLOW_SELF_TARGET_HANDLE
               : WORKFLOW_TARGET_HANDLE,
           }
-      const id = `${link.from}-${link.to}-${i}`
+      // Named after the link itself, not its place in the list: an edit elsewhere keeps every other edge as it is.
+      const id = `${link.from}>${link.to}|${link.outcome ?? ''}`
       // Traced from the row it leaves, whatever route it takes from there.
       const isTraced = traced?.node === link.from && traced.exit === port
-      const isSelected = editable && selected?.type === 'link' && selected.from === link.from && selected.to === link.to
+      const isSelected = editable && selected?.type === 'link' && selected.from === link.from && selected.to === link.to &&
+        selected.outcome === link.outcome
       return [{
         id,
         source: link.from,
@@ -359,7 +368,7 @@ export function WorkflowCanvas({
         ...handles,
         type: 'workflow',
         data: {
-          kind: link.kind, route, exit: port,
+          kind: link.kind, route, exit: port, outcome: link.outcome,
           ...(isSelected ? { selected: true } : {}),
           ...(from.disabled || byId.get(link.to)!.disabled ? { muted: true } : {}),
           ...(isTraced ? { traced: true } : traced ? { dimmed: true } : {}),
@@ -408,9 +417,9 @@ export function WorkflowCanvas({
   }, [select])
   const onEdgeClick = useCallback((_: unknown, edge: Edge) => {
     // The line pressed, and not merely its two cards: its own outcome is the one traced.
-    const exit = (edge.data as WorkflowEdgeType['data'])?.exit
-    if (exit) setTraced({ node: edge.source, exit })
-    select?.({ type: 'link', from: edge.source, to: edge.target })
+    const data = edge.data as WorkflowEdgeType['data']
+    if (data?.exit) setTraced({ node: edge.source, exit: data.exit })
+    select?.(linkSelection({ from: edge.source, to: edge.target, kind: data?.kind ?? 'suggest', outcome: data?.outcome }))
   }, [select])
   // The ground lets go of a trace on either canvas, and of the selection in the editor.
   const onPaneClick = useCallback(() => {
@@ -466,14 +475,17 @@ export function WorkflowCanvas({
       if (!start || Math.hypot(point.clientX - start.x, point.clientY - start.y) < SELF_LINK_TRAVEL) return
     }
     const [from, to] = state.fromHandle.type === 'source' ? [state.fromNode.id, other] : [other, state.fromNode.id]
-    if (links.some((link) => link.from === from && link.to === to)) return
     const source = nodes.find((node) => node.id === from)
     const handle = state.fromHandle.type === 'source' ? state.fromHandle.id : null
-    connect(from, to, source ? workflowOutcomeOfExit(source, handle) : undefined)
+    const outcome = source ? workflowOutcomeOfExit(source, handle) : undefined
+    if (!canDraw(links, from, to, outcome)) return
+    connect(from, to, outcome)
   }, [connect, links, nodes])
-  const isValidConnection = useCallback<IsValidConnection>((connection) =>
-    !links.some((link) => link.from === connection.source && link.to === connection.target),
-  [links])
+  const isValidConnection = useCallback<IsValidConnection>((connection) => {
+    const source = nodes.find((node) => node.id === connection.source)
+    const outcome = source ? workflowOutcomeOfExit(source, connection.sourceHandle) : undefined
+    return canDraw(links, connection.source, connection.target, outcome)
+  }, [links, nodes])
 
   // Enter or Space on a focused card selects it. xyflow's own key handling selects only
   // what `elementsSelectable` allows, which is nothing here: the selection is the caller's.

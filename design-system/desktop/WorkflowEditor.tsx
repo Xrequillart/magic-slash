@@ -136,7 +136,7 @@ export interface WorkflowEditorProps {
   onChangeMode: WorkflowInspectorProps['onChangeMode']
   onRemove: WorkflowInspectorProps['onRemove']
   onChangeKind: WorkflowInspectorProps['onChangeKind']
-  onChangeOutcomes: WorkflowInspectorProps['onChangeOutcomes']
+  onChangeOutcome: WorkflowInspectorProps['onChangeOutcome']
   onChangeNoteText?: WorkflowInspectorProps['onChangeNoteText']
   onRemoveLink: WorkflowInspectorProps['onRemoveLink']
   /** A step's switch, on its card or in the inspector: turn it on (`true`) or off. */
@@ -197,7 +197,7 @@ export function WorkflowEditor({
   onChangeMode,
   onRemove,
   onChangeKind,
-  onChangeOutcomes,
+  onChangeOutcome,
   onChangeNoteText,
   onRemoveLink,
   onToggle,
@@ -383,7 +383,7 @@ export function WorkflowEditor({
                 onChangeMode={onChangeMode}
                 onRemove={onRemove}
                 onChangeKind={onChangeKind}
-                onChangeOutcomes={onChangeOutcomes}
+                onChangeOutcome={onChangeOutcome}
                 onChangeNoteText={readOnly ? undefined : onChangeNoteText}
                 onRemoveLink={onRemoveLink}
                 onToggle={readOnly ? undefined : onToggle}

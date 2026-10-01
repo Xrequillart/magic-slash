@@ -180,9 +180,9 @@ function thenLines(links: WorkflowPayloadLink[], lang: WorkflowLanguage, depth =
 }
 
 /**
- * The payload's links, one per target. A link drawn on several outcomes is served as one
- * link per outcome (overlay.ts, `toLinks`), and one line per outcome would offer the same
- * command twice: they are put back together here, in the order they came. `outcomes` is
+ * The payload's links, one per target and kind. Each outcome leading to a step is a link
+ * of its own (overlay.ts), and one line per outcome would offer the same command twice:
+ * those of one kind are put back together here, in the order they came. `outcomes` is
  * null when one of them applies whatever the outcome, which then covers them all.
  */
 function grouped<L extends WorkflowPayloadLink>(links: L[]): { link: L; outcomes: string[] | null }[] {

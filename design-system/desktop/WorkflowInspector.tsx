@@ -142,10 +142,13 @@ export interface WorkflowInspectorLink {
   hint?: string
   /** A default link: it cannot be removed, nor its outcome changed. */
   locked?: boolean
-  /** A drawn link's choice of outcomes: what its source can end on. Empty or absent: no choice. */
+  /** A drawn link's choice of outcome: what its source can end on. Empty or absent: no choice. */
   outcomes?: string[]
-  /** Of those, the ones it is taken on. Empty or absent: whatever the source ended on. */
-  selectedOutcomes?: string[]
+  /**
+   * Of those, the ones another link between the same two steps already takes: listed,
+   * greyed, never picked. `''` stands for "whatever the outcome".
+   */
+  takenOutcomes?: string[]
   /** It leads to an end note: shown, never followed, so its kind is not offered. */
   toNote?: boolean
 }
@@ -222,12 +225,13 @@ export interface WorkflowInspectorProps {
   readOnly?: boolean
   onChangeMode?: (nodeId: string, mode: WorkflowCanvasNodeMode) => void
   onRemove?: (nodeId: string) => void
-  onChangeKind?: (from: string, to: string, kind: WorkflowCanvasLinkKind) => void
-  /** The outcomes a drawn link is taken on, the whole new list; none is whatever the source ended on. */
-  onChangeOutcomes?: (from: string, to: string, outcomes: string[]) => void
+  /** A link's kind. `outcome` names the link: two outcomes of a step leading to one step are two links. */
+  onChangeKind?: (from: string, to: string, kind: WorkflowCanvasLinkKind, outcome?: string) => void
+  /** A drawn link moved from outcome `was` to `now`; none is whatever the source ended on. */
+  onChangeOutcome?: (from: string, to: string, was: string | undefined, now: string | undefined) => void
   /** What an end note says, handed over once its field is left. */
   onChangeNoteText?: (nodeId: string, text: string) => void
-  onRemoveLink?: (from: string, to: string) => void
+  onRemoveLink?: (from: string, to: string, outcome?: string) => void
   /** A custom step's card colour, one of `WORKFLOW_STEP_COLORS`. */
   onChangeColor?: (nodeId: string, color: string) => void
   /** A custom step's outcomes, the whole new list. The row is read-only without it. */
@@ -254,7 +258,7 @@ export function WorkflowInspector({
   onChangeMode,
   onRemove,
   onChangeKind,
-  onChangeOutcomes,
+  onChangeOutcome,
   onChangeNoteText,
   onRemoveLink,
   onToggle,
@@ -300,7 +304,7 @@ export function WorkflowInspector({
             labels={labels}
             readOnly={readOnly}
             onChangeKind={onChangeKind}
-            onChangeOutcomes={onChangeOutcomes}
+            onChangeOutcome={onChangeOutcome}
             onRemoveLink={onRemoveLink}
           />
         )}
@@ -474,22 +478,24 @@ function LinkPanel({
   labels,
   readOnly,
   onChangeKind,
-  onChangeOutcomes,
+  onChangeOutcome,
   onRemoveLink,
 }: {
   link: WorkflowInspectorLink
   labels: WorkflowInspectorLabels
   readOnly: boolean
   onChangeKind?: WorkflowInspectorProps['onChangeKind']
-  onChangeOutcomes?: WorkflowInspectorProps['onChangeOutcomes']
+  onChangeOutcome?: WorkflowInspectorProps['onChangeOutcome']
   onRemoveLink?: WorkflowInspectorProps['onRemoveLink']
 }) {
   const outcomeChoice = !link.locked && (link.outcomes?.length ?? 0) > 0
-  const chosen = link.selectedOutcomes ?? []
-  // One switch per outcome the source declares: a link may be taken on several of them.
-  const toggle = (outcome: string, on: boolean) => onChangeOutcomes?.(
-    link.from, link.to, on ? [...chosen, outcome] : chosen.filter((one) => one !== outcome),
-  )
+  // One outcome per link, `''` for whatever it ended on: the others' are greyed.
+  const current = link.outcome ?? ''
+  const outcomeOptions: SelectOption[] = ['', ...(link.outcomes ?? [])].map((value) => ({
+    value,
+    label: value === '' ? (labels.anyOutcome ?? '') : value,
+    disabled: value !== current && (link.takenOutcomes?.includes(value) ?? false),
+  }))
   const kindOptions: SelectOption[] = KINDS.map((kind) => ({
     value: kind,
     label: labels[kind],
@@ -510,20 +516,17 @@ function LinkPanel({
           outcomeChoice && {
             id: 'outcome',
             label: labels.outcome,
-            note: chosen.length === 0 ? labels.anyOutcome : undefined,
-          },
-          ...(outcomeChoice ? (link.outcomes ?? []).map((outcome) => ({
-            id: `outcome:${outcome}`,
-            label: outcome,
+            layout: 'stacked',
             control: {
-              kind: 'switch' as const,
-              checked: chosen.includes(outcome),
-              onChange: (on: boolean) => toggle(outcome, on),
-              label: outcome,
-              size: 'sm' as const,
-              disabled: readOnly || !onChangeOutcomes,
+              kind: 'select',
+              value: current,
+              options: outcomeOptions,
+              onChange: (value) => onChangeOutcome?.(link.from, link.to, link.outcome, value === '' ? undefined : value),
+              disabled: readOnly || !onChangeOutcome,
+              ariaLabel: labels.outcome,
+              size: 'md',
             },
-          })) : []),
+          },
           !outcomeChoice && link.outcome !== undefined && {
             // A default link's outcome is the product's: said, not offered.
             id: 'outcome',
@@ -543,7 +546,7 @@ function LinkPanel({
               kind: 'select',
               value: link.kind,
               options: kindOptions,
-              onChange: (kind) => onChangeKind?.(link.from, link.to, kind as WorkflowCanvasLinkKind),
+              onChange: (kind) => onChangeKind?.(link.from, link.to, kind as WorkflowCanvasLinkKind, link.outcome),
               disabled: readOnly || !onChangeKind,
               ariaLabel: labels.kind,
               size: 'md',
@@ -559,7 +562,7 @@ function LinkPanel({
               icon: Trash,
               tone: 'danger',
               size: 'sm',
-              onClick: () => onRemoveLink(link.from, link.to),
+              onClick: () => onRemoveLink(link.from, link.to, link.outcome),
             },
           },
         ]}

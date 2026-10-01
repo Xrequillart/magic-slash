@@ -71,7 +71,7 @@ import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../
 import type { ResolvedWorkflow } from '../../../workflow/model'
 import {
   EMPTY_OVERLAY, addLink, addStep, cleanOverlay, composeWorkflow, customNodeId, isCustomNodeId, isDefaultLink, isLinkIntoStart, moveNode,
-  outcomeProblem, OUTCOME_MAX_LENGTH, pinPositions, problems, removeLink, removeStep, sameOverlay, setLinkKind, setLinkOutcomes, linkOutcomesOf, setStepColor, setStepOutcomes,
+  outcomeProblem, OUTCOME_MAX_LENGTH, pinPositions, problems, removeLink, removeStep, sameOverlay, setLinkKind, setLinkOutcome, setStepColor, setStepOutcomes,
   addNote, isNoteNodeId, nextNoteId, noteNodeId, removeNote, setNoteColor, setNoteText, setStepEnabled, setStepMode,
   unreachableSteps, type WorkflowOverlay, type WorkflowProblem,
 } from '../../../workflow/overlay'
@@ -885,7 +885,7 @@ function WorkflowPanel({
       else reshape((pinned) => removeStep(pinned, skillOf(selected.id)))
     } else {
       if (isDefaultLink(selected.from, selected.to)) return
-      reshape((pinned) => removeLink(pinned, selected.from, selected.to))
+      reshape((pinned) => removeLink(pinned, selected.from, selected.to, selected.outcome))
     }
     setSelected(null)
   }
@@ -927,7 +927,7 @@ function WorkflowPanel({
         },
       }
     }
-    const link = flow.links.find((l) => l.from === selected.from && l.to === selected.to)
+    const link = flow.links.find((l) => l.from === selected.from && l.to === selected.to && l.outcome === selected.outcome)
     if (!link) return null
     // Links leaving a custom step need no word: the protocol applies them like any other.
     const intoStart = isLinkIntoStart(link)
@@ -941,8 +941,10 @@ function WorkflowPanel({
         toLabel: labelOf(link.to),
         kind: link.kind,
         outcome: link.outcome,
-        // A drawn link's outcomes are the overlay's: the flow has one link per outcome.
-        selectedOutcomes: locked ? undefined : linkOutcomesOf(draft.links.find((l) => l.from === link.from && l.to === link.to) ?? {}),
+        // The outcomes its siblings (the other links between the same two steps) take: one each.
+        takenOutcomes: locked ? undefined : flow.links
+          .filter((l) => l !== link && l.from === link.from && l.to === link.to)
+          .map((l) => l.outcome ?? ''),
         disabledKinds: intoStart ? ['auto'] : undefined,
         hint: intoStart ? t('repo.workflow.hint.intoStart') : undefined,
         locked,
@@ -1433,7 +1435,7 @@ function WorkflowPanel({
                 onMove={(id, position) => reshape((pinned) => moveNode(pinned, id, position))}
                 onConnect={(from, to, outcome) => {
                   reshape((pinned) => addLink(pinned, from, to, outcome))
-                  setSelected({ type: 'link', from, to })
+                  setSelected({ type: 'link', from, to, outcome })
                 }}
                 focusRequest={focus}
                 target={target}
@@ -1443,11 +1445,16 @@ function WorkflowPanel({
                   reshape((pinned) => (isNoteNodeId(id) ? removeNote(pinned, id) : removeStep(pinned, skillOf(id))))
                   setSelected(null)
                 }}
-                onChangeKind={(from, to, kind) => edit(setLinkKind(draft, from, to, kind))}
-                onChangeOutcomes={(from, to, outcomes) => edit(setLinkOutcomes(draft, from, to, outcomes))}
+                onChangeKind={(from, to, kind, outcome) => edit(setLinkKind(draft, from, to, kind, outcome))}
+                onChangeOutcome={(from, to, was, now) => {
+                  const next = setLinkOutcome(draft, from, to, was, now)
+                  edit(next)
+                  // The selection follows the link onto its new outcome.
+                  if (next !== draft) setSelected({ type: 'link', from, to, outcome: now })
+                }}
                 onChangeNoteText={(id, text) => edit(setNoteText(draft, id, text))}
-                onRemoveLink={(from, to) => {
-                  reshape((pinned) => removeLink(pinned, from, to))
+                onRemoveLink={(from, to, outcome) => {
+                  reshape((pinned) => removeLink(pinned, from, to, outcome))
                   setSelected(null)
                 }}
                 onToggle={(id, enabled) => edit(setStepEnabled(draft, id, enabled))}

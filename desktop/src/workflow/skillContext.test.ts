@@ -4,7 +4,7 @@ import { join } from 'path'
 import { DEFAULT_WORKFLOW } from './defaultFlow'
 import { buildWorkflowPayload } from './payload'
 import type { WorkflowOverlay } from './overlay'
-import { EMPTY_OVERLAY, addLink, addStep, composeWorkflow, customNodeId, setLinkKind, setLinkOutcome, setLinkOutcomes, setStepMode, setStepOutcomes, addNote, noteNodeId } from './overlay'
+import { EMPTY_OVERLAY, addLink, addStep, composeWorkflow, customNodeId, setLinkKind, setLinkOutcome, setStepMode, setStepOutcomes, addNote, noteNodeId } from './overlay'
 import {
   CHAINING, CHAIN_BROKEN, CUSTOM_PURPOSE, NEXT_STEP_LINE, PURPOSES, SKILL_CONTEXT_HEADING, NOTE_LINE, THEN_LINE, THEN_NOTE_LINE, THEN_NOTE_ON_LINE, THEN_ON_LINE, buildSkillContext,
 } from './skillContext'
@@ -86,7 +86,7 @@ describe('buildSkillContext', () => {
 
   it('has the model pick one of the step\'s declared outcomes, and conditions each link on its own', () => {
     let o = setStepOutcomes(overlay(), 'check-types', ['clean', 'type_errors'])
-    o = setLinkOutcome(o, CHECK, 'pr', 'clean')
+    o = setLinkOutcome(o, CHECK, 'pr', undefined, 'clean')
     const text = contextFor(o)!
     expect(text).toContain('the ONE of `clean`, `type_errors` that describes how the skill ended')
     expect(text).toContain('- `/magic:pr` (`magic-pr`), suggest, only on outcome `clean`: create a Pull Request.')
@@ -97,14 +97,14 @@ describe('buildSkillContext', () => {
 
   it('says which outcome a `then` link waits for under a suggested custom target', () => {
     let o = setLinkKind(addLink(overlay(), LINT, 'pr'), CHECK, LINT, 'suggest')
-    o = setLinkOutcome(setStepOutcomes(o, 'plugin:lint', ['clean']), LINT, 'pr', 'clean')
+    o = setLinkOutcome(setStepOutcomes(o, 'plugin:lint', ['clean']), LINT, 'pr', undefined, 'clean')
     expect(contextFor(o)!).toContain('     ↳ on clean, then run /magic:pr to create a Pull Request')
     expect(contextFor(o, 'check-types', 'fr')!).toContain('     ↳ sur clean, puis lance /magic:pr pour créer une Pull Request')
   })
 
   it('offers a link drawn on several outcomes once, with all of them', () => {
     let o = setStepOutcomes(overlay(), 'check-types', ['clean', 'warnings', 'type_errors'])
-    o = setLinkOutcomes(o, CHECK, 'pr', ['clean', 'warnings'])
+    o = addLink(setLinkOutcome(o, CHECK, 'pr', undefined, 'clean'), CHECK, 'pr', 'warnings')
     const text = contextFor(o)!
     expect(text).toContain('- `/magic:pr` (`magic-pr`), suggest, only on outcome `clean` or `warnings`: create a Pull Request.')
     expect(text.match(/Run \/magic:pr/g)).toHaveLength(1)
@@ -112,7 +112,7 @@ describe('buildSkillContext', () => {
 
   it('joins the outcomes of a `then` line the same way', () => {
     let o = setLinkKind(addLink(overlay(), LINT, 'pr'), CHECK, LINT, 'suggest')
-    o = setLinkOutcomes(setStepOutcomes(o, 'plugin:lint', ['clean', 'fixed']), LINT, 'pr', ['clean', 'fixed'])
+    o = addLink(setLinkOutcome(setStepOutcomes(o, 'plugin:lint', ['clean', 'fixed']), LINT, 'pr', undefined, 'clean'), LINT, 'pr', 'fixed')
     expect(contextFor(o)!).toContain('     ↳ on clean or fixed, then run /magic:pr to create a Pull Request')
     expect(contextFor(o, 'check-types', 'fr')!).toContain('     ↳ sur clean ou fixed, puis lance /magic:pr pour créer une Pull Request')
   })
