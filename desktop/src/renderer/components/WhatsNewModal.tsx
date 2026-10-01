@@ -67,6 +67,41 @@ interface Release {
  * string comes from a network response — reading it as a document rather than pattern
  * matching it is also what keeps the scripts in it inert.
  */
+/**
+ * The release's BANNER: the first image before the stop rule, which is the image line
+ * `CHANGELOG.md` puts under a version heading (`webapp/lib/changelog.ts` reads the same
+ * line for the site).
+ *
+ * ITS ORIGINAL URL, not the one GitHub drew. GitHub proxies an outside image through camo
+ * (the original is in `data-canonical-src`), and draws an uploaded one as
+ * `private-user-images.githubusercontent.com/…-<uuid>.png?jwt=…`, signed for five minutes,
+ * while these notes are kept and shown at the next launch. The upload's own address,
+ * `github.com/user-attachments/assets/<uuid>`, answers anyone and signs afresh on every
+ * load, so it is rebuilt from the uuid. `https` only: the app's CSP allows nothing else.
+ */
+/** An uploaded image's lasting address, from the signed one GitHub drew; any other URL as it is. */
+function uploadAddress(url: string): string {
+  if (!/^https:\/\/private-user-images\.githubusercontent\.com\//.test(url)) return url
+  const uuid = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.[a-z0-9]+(?:\?|$)/i.exec(url)?.[1]
+  return uuid ? `https://github.com/user-attachments/assets/${uuid}` : url
+}
+
+function releaseBanner(html: string): { src: string; alt: string } | undefined {
+  const body = new DOMParser().parseFromString(html, 'text/html').body
+  const stop = /installation|full changelog/i
+  for (const node of Array.from(body.children)) {
+    if (/^H[1-3]$/.test(node.tagName) && stop.test(node.textContent || '')) return undefined
+    // Past the first list, an image is an entry's, not the release's.
+    if (node.tagName === 'UL' || node.tagName === 'OL') return undefined
+    const img = node.tagName === 'IMG' ? node : node.querySelector('img')
+    if (!img) continue
+    const candidates = [img.getAttribute('data-canonical-src'), img.getAttribute('src'), img.closest('a')?.getAttribute('href')]
+    const src = candidates.map((url) => url && uploadAddress(url)).find((url): url is string => !!url && url.startsWith('https://'))
+    return src ? { src, alt: (img.getAttribute('alt') || '').trim() } : undefined
+  }
+  return undefined
+}
+
 function parseRelease(html: string, t: Translate): WhatsNewCategory[] {
   const body = new DOMParser().parseFromString(html, 'text/html').body
   const stop = /installation|full changelog/i
@@ -225,6 +260,7 @@ export function WhatsNewModal() {
     () => (release ? parseRelease(release.releaseNotes, t) : []),
     [release, t],
   )
+  const banner = useMemo(() => (release ? releaseBanner(release.releaseNotes) : undefined), [release])
 
   if (!mounted || !release) return null
 
@@ -234,6 +270,7 @@ export function WhatsNewModal() {
       version={`v${release.version}`}
       date={formatReleaseDate(release.releaseDate, locale)}
       categories={categories}
+      banner={banner}
       closeLabel={t('common.close')}
       onClose={handleClose}
       // The app's keyframes, which is the one thing the design system cannot supply: they

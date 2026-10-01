@@ -1,4 +1,4 @@
-import type { AnimationEvent } from 'react'
+import { useState, type AnimationEvent } from 'react'
 import { ButtonIcon } from './ButtonIcon'
 import { X } from './icons'
 import { Modal } from './Modal'
@@ -131,6 +131,13 @@ export interface WhatsNewDialogProps {
   closeLabel: string
   /** What the cross, Escape and a click on the ground all call. */
   onClose: () => void
+  /**
+   * A BANNER for this release, a big feature's picture: drawn full-bleed in the cover's
+   * place, as tall as its own proportions (capped). Absent, or failing to load, the cover is
+   * `WhatsNewArt` as ever. The URL is the release's own (an image on GitHub), so the alt
+   * text arrives from it too.
+   */
+  banner?: { src: string; alt: string }
   /** The caller's enter and exit animation — see `Modal`, which owns neither. */
   backdropClassName?: string
   className?: string
@@ -144,6 +151,7 @@ export function WhatsNewDialog({
   version,
   date,
   categories,
+  banner,
   closeLabel,
   onClose,
   backdropClassName,
@@ -151,6 +159,9 @@ export function WhatsNewDialog({
   onAnimationEnd,
   portalTo,
 }: WhatsNewDialogProps) {
+  // The picture that would not load, so the cover falls back to the drawing rather than a hole.
+  const [broken, setBroken] = useState<string | null>(null)
+  const picture = banner && banner.src !== broken ? banner : null
   return (
     <Modal
       labelledBy="whats-new-title"
@@ -195,15 +206,28 @@ export function WhatsNewDialog({
           fit exactly, the art's own box touches both edges — the sheet of paper at the
           top and the desk at the bottom land ON the seams, which reads as a picture that
           was cropped to fit rather than one that was placed. */}
-      <div className="relative flex h-60 items-center justify-center bg-release-paper px-5 py-5">
-        <WhatsNewArt aria-hidden className="h-full w-auto text-release-ink" />
+      <div className={`relative flex items-center justify-center bg-release-paper ${picture ? '' : 'h-60 px-5 py-5'}`}>
+        {picture ? (
+          // Full-bleed and its own height, up to the drawing's band and a half: a banner is a
+          // picture made for this slot, and a cropped one would be cut where its maker did not.
+          <img
+            src={picture.src}
+            alt={picture.alt}
+            onError={() => setBroken(picture.src)}
+            className="block max-h-[22.5rem] w-full object-cover"
+          />
+        ) : (
+          <WhatsNewArt aria-hidden className="h-full w-auto text-release-ink" />
+        )}
         {/* `paper`, which is the tone `ButtonIcon` has for exactly this: a control on one
             of the app's fixed-light surfaces. The theme's own `text-icon` is mixed
             against the theme's ground, so on `midnight` a `neutral` or `ghost` cross here
             would be a pale mark on white — the one control in the dialog, invisible. This
             tone is mixed from `release-ink` instead, the same fixed near-black the
             drawing beside it is in. */}
-        <div className="absolute right-3 top-3">
+        {/* On a banner the cross sits on a photograph, whatever its colours: a paper plate
+            under it keeps it the drawing's own dark mark on white. */}
+        <div className={`absolute right-3 top-3 ${picture ? 'rounded-lg bg-release-paper/85 shadow-sm' : ''}`.trim()}>
           <ButtonIcon icon={X} title={closeLabel} onClick={onClose} tone="paper" />
         </div>
       </div>
