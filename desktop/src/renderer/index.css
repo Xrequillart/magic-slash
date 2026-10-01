@@ -51,16 +51,16 @@
    written on <html> by applyTheme() from the registry in src/themes.ts, which
    is the single source — keep these in step with its `dark` entry. */
 :root {
-  --c-bg: 10 10 11;
-  --c-bg-secondary: 20 20 22;
-  --c-bg-tertiary: 28 28 31;
+  --c-bg: 11 12 14;
+  --c-bg-secondary: 21 22 25;
+  --c-bg-tertiary: 29 31 35;
   --c-window-wash: rgba(0, 0, 0, 0.3);
 
   --c-ink: 255 255 255;
-  --c-text-secondary: 161 161 170;
+  --c-text-secondary: 160 164 174;
   --c-on-brand: 255 255 255;
-  --c-icon: 138 138 146;
-  --c-icon-muted: 101 101 106;
+  --c-icon: 137 141 151;
+  --c-icon-muted: 100 104 113;
 
   --c-surface-subtle: rgba(255, 255, 255, 0.04);
   --c-surface: rgba(255, 255, 255, 0.06);
@@ -72,7 +72,7 @@
   --c-line-field: rgba(255, 255, 255, 0.08);
   --c-line: rgba(255, 255, 255, 0.1);
   --c-line-strong: rgba(255, 255, 255, 0.15);
-  --c-border: 39 39 42;
+  --c-border: 40 42 47;
 
   --c-accent: 0 122 252;
   --c-accent-hover: 51 149 253;
