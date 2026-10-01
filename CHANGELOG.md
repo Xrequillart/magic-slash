@@ -70,6 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.105.0] - 2026-09-30
 
+![Introducing workflows](https://github.com/user-attachments/assets/d3095f25-6f67-4806-b43b-114c27e60141)
+
 ### Added
 
 - **Desktop**: Draw the agent archive confirmation with a design system dialog
