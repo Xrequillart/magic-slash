@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.106.0] - 2026-10-01
+
+### Added
+
+- **Desktop**: Move the workflow editor's back button beside the repository picker
+- **Desktop**: Retune the themes around the new blue, with graphite in place of espresso
+- **Desktop**: Move the organization dialogs and the invitation wizard into the design system
+- **Desktop**: Make #007afc the desktop's accent blue in every theme
+- **Desktop**: Open the app on a splash where the rabbit hops off once it is ready
+- **Desktop**: Add save and cross icons to the workflow editor's save and discard buttons
+
+### Changed
+
+- **Desktop**: Note that the toggle button's on state is the app's blue accent
+
 ## [0.105.9] - 2026-10-01
 
 ### Added
@@ -3609,6 +3624,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.106.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.106.0
 [0.105.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.9
 [0.105.8]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.8
 [0.105.7]: https://github.com/xrequillart/magic-slash/releases/tag/v0.105.7
