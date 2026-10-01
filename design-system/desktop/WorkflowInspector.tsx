@@ -232,6 +232,8 @@ export interface WorkflowInspectorProps {
   onChangeColor?: (nodeId: string, color: string) => void
   /** A custom step's outcomes, the whole new list. The row is read-only without it. */
   onChangeStepOutcomes?: (nodeId: string, outcomes: string[]) => void
+  /** What is wrong with an outcome typed into a custom step's table, translated; see `OutcomeTable`. */
+  validateStepOutcome?: (draft: string, outcomes: readonly string[]) => string | undefined
   /** A step's switch: turn it on (`true`) or off. Greyed without it. */
   onToggle?: (nodeId: string, enabled: boolean) => void
   /** The corner X. Not drawn without it. */
@@ -258,6 +260,7 @@ export function WorkflowInspector({
   onToggle,
   onChangeColor,
   onChangeStepOutcomes,
+  validateStepOutcome,
   onClose,
   ground = 'surface',
   className = '',
@@ -289,6 +292,7 @@ export function WorkflowInspector({
             onToggle={onToggle}
             onChangeColor={onChangeColor}
             onChangeOutcomes={onChangeStepOutcomes}
+            validateOutcome={validateStepOutcome}
           />
         ) : (
           <LinkPanel
@@ -314,6 +318,7 @@ function StepPanel({
   onToggle,
   onChangeColor,
   onChangeOutcomes,
+  validateOutcome,
 }: {
   step: WorkflowInspectorStep
   labels: WorkflowInspectorLabels
@@ -323,6 +328,7 @@ function StepPanel({
   onToggle?: WorkflowInspectorProps['onToggle']
   onChangeColor?: WorkflowInspectorProps['onChangeColor']
   onChangeOutcomes?: WorkflowInspectorProps['onChangeStepOutcomes']
+  validateOutcome?: WorkflowInspectorProps['validateStepOutcome']
 }) {
   const outcomesEditable = !readOnly && !!onChangeOutcomes
   const modeOptions: SelectOption[] = MODES.map((mode) => ({ value: mode, label: labels[mode] }))
@@ -402,6 +408,7 @@ function StepPanel({
                   onChange: (outcomes) => onChangeOutcomes?.(step.id, outcomes),
                   labels: labels.outcomesTable,
                   details: step.outcomeLinks,
+                  validate: validateOutcome,
                   id: `wf-outcomes-${step.id}`,
                   disabled: !outcomesEditable,
                 },

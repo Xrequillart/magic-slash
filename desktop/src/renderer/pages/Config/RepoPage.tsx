@@ -71,7 +71,7 @@ import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../
 import type { ResolvedWorkflow } from '../../../workflow/model'
 import {
   EMPTY_OVERLAY, addLink, addStep, cleanOverlay, composeWorkflow, customNodeId, isCustomNodeId, isDefaultLink, isLinkIntoStart, moveNode,
-  pinPositions, problems, removeLink, removeStep, sameOverlay, setLinkKind, setLinkOutcomes, linkOutcomesOf, setStepColor, setStepOutcomes,
+  outcomeProblem, OUTCOME_MAX_LENGTH, pinPositions, problems, removeLink, removeStep, sameOverlay, setLinkKind, setLinkOutcomes, linkOutcomesOf, setStepColor, setStepOutcomes,
   addNote, isNoteNodeId, nextNoteId, noteNodeId, removeNote, setNoteColor, setNoteText, setStepEnabled, setStepMode,
   unreachableSteps, type WorkflowOverlay, type WorkflowProblem,
 } from '../../../workflow/overlay'
@@ -1309,6 +1309,8 @@ function WorkflowPanel({
         placeholder: t('repo.workflow.inspector.outcomesPlaceholder'),
         add: t('repo.workflow.inspector.outcomesAdd'),
         remove: t('repo.workflow.inspector.outcomesRemove'),
+        rules: t('repo.workflow.inspector.outcomesRules'),
+        rulesHint: t('repo.workflow.inspector.outcomesRulesHint', { max: OUTCOME_MAX_LENGTH }),
       },
       noteText: t('repo.workflow.note.text'),
       notePlaceholder: t('repo.workflow.note.placeholder'),
@@ -1451,6 +1453,10 @@ function WorkflowPanel({
                 onToggle={(id, enabled) => edit(setStepEnabled(draft, id, enabled))}
                 onChangeColor={(id, color) => edit(isNoteNodeId(id) ? setNoteColor(draft, id, color) : setStepColor(draft, skillOf(id), color))}
                 onChangeStepOutcomes={(id, outcomes) => reshape((pinned) => setStepOutcomes(pinned, skillOf(id), outcomes))}
+                validateStepOutcome={(value, outcomes) => {
+                  const problem = outcomeProblem(value, outcomes)
+                  return problem && t(`repo.workflow.inspector.outcomeError.${problem}`, { max: OUTCOME_MAX_LENGTH })
+                }}
                 onAdd={(skill, position) => {
                   // Its own colour from the start: the first no other custom step wears.
                   // Its outcomes from the start too, when its SKILL.md declares them.

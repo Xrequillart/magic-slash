@@ -233,6 +233,34 @@ export function isOutcomeName(value: unknown): value is string {
   return typeof value === 'string' && value !== FAILED_OUTCOME && /^[a-z][a-z0-9_-]{0,39}$/.test(value)
 }
 
+/** The longest name an outcome may have, `isOutcomeName`'s `{0,39}` plus its first letter. */
+export const OUTCOME_MAX_LENGTH = 40
+
+/** An outcome as typed, spelled the way a step stores it. */
+function outcomeSpelling(raw: string): string {
+  // `Tests passed` is meant as `tests_passed`: the skills' spelling, not a refusal.
+  return raw.trim().toLowerCase().replace(/\s+/g, '_')
+}
+
+/** Why a typed outcome cannot be added, the first rule it breaks; undefined when it can. */
+export type OutcomeProblem = 'start' | 'chars' | 'length' | 'failed' | 'duplicate'
+
+/**
+ * What stops `raw` from joining `declared`, read after the spelling a step stores, so
+ * `Tests passed` is no problem: `normalizeOutcomes` would keep it. The editor says it
+ * before adding, where `normalizeOutcomes` would only drop it without a word.
+ */
+export function outcomeProblem(raw: string, declared: readonly string[]): OutcomeProblem | undefined {
+  const value = outcomeSpelling(raw)
+  if (!value) return undefined
+  if (value === FAILED_OUTCOME) return 'failed'
+  if (!/^[a-z]/.test(value)) return 'start'
+  if (!/^[a-z0-9_-]*$/.test(value)) return 'chars'
+  if (value.length > OUTCOME_MAX_LENGTH) return 'length'
+  if (declared.includes(value)) return 'duplicate'
+  return undefined
+}
+
 /**
  * A list of outcomes as a step stores it: trimmed and lower-cased, the unusable ones
  * dropped, each once, in the order given.
@@ -240,8 +268,7 @@ export function isOutcomeName(value: unknown): value is string {
 export function normalizeOutcomes(values: readonly string[]): string[] {
   const out: string[] = []
   for (const raw of values) {
-    // `Tests passed` is meant as `tests_passed`: the skills' spelling, not a refusal.
-    const value = raw.trim().toLowerCase().replace(/\s+/g, '_')
+    const value = outcomeSpelling(raw)
     if (isOutcomeName(value) && !out.includes(value)) out.push(value)
   }
   return out

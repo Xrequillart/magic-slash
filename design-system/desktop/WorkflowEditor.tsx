@@ -143,6 +143,7 @@ export interface WorkflowEditorProps {
   onToggle: (id: string, enabled: boolean) => void
   onChangeColor: WorkflowInspectorProps['onChangeColor']
   onChangeStepOutcomes?: WorkflowInspectorProps['onChangeStepOutcomes']
+  validateStepOutcome?: WorkflowInspectorProps['validateStepOutcome']
 
   /** A skill was picked off the dock's "+": add it there, the middle of the view. */
   onAdd: (skill: string, position: { x: number; y: number }) => void
@@ -202,6 +203,7 @@ export function WorkflowEditor({
   onToggle,
   onChangeColor,
   onChangeStepOutcomes,
+  validateStepOutcome,
   onAdd,
   onAddNote,
   canUndo,
@@ -387,6 +389,7 @@ export function WorkflowEditor({
                 onToggle={readOnly ? undefined : onToggle}
                 onChangeColor={readOnly ? undefined : onChangeColor}
                 onChangeStepOutcomes={readOnly ? undefined : onChangeStepOutcomes}
+                validateStepOutcome={validateStepOutcome}
                 onClose={() => onSelect(null)}
               />
             </div>

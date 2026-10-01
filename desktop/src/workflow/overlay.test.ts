@@ -4,7 +4,7 @@ import { buildWorkflowPayload } from './payload'
 import type { WorkflowOverlay } from './overlay'
 import {
   EMPTY_OVERLAY, addLink, addStep, cleanOverlay, composeWorkflow, customNodeId, isDefaultLink, isOverlay, moveNode, pinPositions,
-  normalizeOutcomes, parseOutcomesField, problems, removeLink, removeStep, resolveOverlay, sameOverlay, servedWorkflow, setLinkKind, setLinkOutcome,
+  normalizeOutcomes, outcomeProblem, parseOutcomesField, problems, removeLink, removeStep, resolveOverlay, sameOverlay, servedWorkflow, setLinkKind, setLinkOutcome,
   setLinkOutcomes, setStepColor, setStepEnabled, setStepMode, setStepOutcomes,
   addNote, nextNoteId, noteNodeId, removeNote, setNoteText, toOverlay, unreachableSteps,
 } from './overlay'
@@ -335,6 +335,18 @@ describe('parseOutcomesField', () => {
     expect(parseOutcomesField(undefined)).toBeUndefined()
     expect(parseOutcomesField('')).toBeUndefined()
     expect(parseOutcomesField('[failed]')).toBeUndefined()
+  })
+
+  it('say why a typed one cannot be added, after the spelling a step stores', () => {
+    expect(outcomeProblem(' Tests Passed ', [])).toBeUndefined()
+    expect(outcomeProblem('', [])).toBeUndefined()
+    expect(outcomeProblem('Failed', [])).toBe('failed')
+    expect(outcomeProblem('1st', [])).toBe('start')
+    expect(outcomeProblem('_ok', [])).toBe('start')
+    expect(outcomeProblem('ok!', [])).toBe('chars')
+    expect(outcomeProblem('é', [])).toBe('start')
+    expect(outcomeProblem(`a${'b'.repeat(40)}`, [])).toBe('length')
+    expect(outcomeProblem('tests passed', ['tests_passed'])).toBe('duplicate')
   })
 })
 
