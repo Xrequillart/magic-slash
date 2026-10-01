@@ -71,9 +71,10 @@ import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../
 import type { ResolvedWorkflow } from '../../../workflow/model'
 import {
   EMPTY_OVERLAY, addLink, addStep, canRemoveStep, cleanOverlay, composeWorkflow, customNodeId, isBuiltInNodeId, isCustomNodeId, isLiveDefaultLink, isLinkIntoStart, moveNode,
-  removeNode, restoreStep,
+  removeNode, restoreStep, addFrame, frameNodeId, isFrameNodeId, moveNodes, removeFrame, setFrame, FRAME_MIN_SIZE,
+  addSticky, isStickyNodeId, nextStickyId, removeSticky, setSticky, stickyNodeId, STICKY_MIN_SIZE, STICKY_SIZE,
   outcomeProblem, OUTCOME_MAX_LENGTH, pinPositions, problems, removeLink, sameOverlay, setLinkKind, setLinkOutcome, setStepColor, setStepOutcomes,
-  addNote, isNoteNodeId, nextNoteId, noteNodeId, removeNote, setNoteColor, setNoteText, setStepEnabled, setStepMode,
+  addNote, isNoteNodeId, nextFrameId, nextNoteId, noteNodeId, removeNote, setNoteColor, setNoteText, setStepEnabled, setStepMode,
   unreachableSteps, type WorkflowOverlay, type WorkflowProblem,
 } from '../../../workflow/overlay'
 import type { ListingEntry } from '../../hooks/useSkills'
@@ -367,6 +368,12 @@ function workflowChangeLabel(t: Translate, change: WorkflowHistoryChange): strin
     case 'note-added': return t('repo.workflow.history.noteAdded', { note: change.text })
     case 'note-removed': return t('repo.workflow.history.noteRemoved', { note: change.text })
     case 'note-text': return t('repo.workflow.history.noteText', { before: change.before, after: change.after })
+    case 'sticky-added': return t('repo.workflow.history.stickyAdded')
+    case 'sticky-removed': return t('repo.workflow.history.stickyRemoved', { text: change.text || t('repo.workflow.sticky.empty') })
+    case 'sticky-text': return t('repo.workflow.history.stickyText', { text: change.text || t('repo.workflow.sticky.empty') })
+    case 'frame-added': return t('repo.workflow.history.frameAdded', { frame: change.title || t('repo.workflow.frame.untitled') })
+    case 'frame-removed': return t('repo.workflow.history.frameRemoved', { frame: change.title || t('repo.workflow.frame.untitled') })
+    case 'frame-title': return t('repo.workflow.history.frameTitle', { before: change.before || t('repo.workflow.frame.untitled'), after: change.after || t('repo.workflow.frame.untitled') })
     case 'link-outcome':
       return change.outcome === undefined
         ? t('repo.workflow.history.linkAnyOutcome', { from: name(change.from), to: name(change.to) })
@@ -811,6 +818,17 @@ function WorkflowPanel({
     return workflowCanvasData(flow, { problems: problemNodeIds(shown), warnings, disabled: draft.disabled, colors: stepColors(draft), emptyNote: t('repo.workflow.note.empty') })
   }, [flow, shown, unshared, unreachable, draft, t])
 
+  // The frames as the canvas draws them, by their node ids.
+  const frames = useMemo(
+    () => (draft.frames ?? []).map((frame) => ({ ...frame, id: frameNodeId(frame.id) })),
+    [draft.frames],
+  )
+
+  const stickies = useMemo(
+    () => (draft.stickies ?? []).map((sticky) => ({ ...sticky, id: stickyNodeId(sticky.id) })),
+    [draft.stickies],
+  )
+
   // Where every card is drawn right now: what an edit to the links pins them at.
   const drawn = useMemo(
     () => workflowPositions(data.nodes, data.links, data.entry, draft.positions, workflowCardWidths(data.nodes, {
@@ -881,7 +899,9 @@ function WorkflowPanel({
   const removeSelection = () => {
     if (!selected) return
     if (selected.type === 'node') {
-      if (isNoteNodeId(selected.id)) reshape((pinned) => removeNote(pinned, selected.id))
+      if (isFrameNodeId(selected.id)) edit(removeFrame(draft, selected.id))
+      else if (isStickyNodeId(selected.id)) edit(removeSticky(draft, selected.id))
+      else if (isNoteNodeId(selected.id)) reshape((pinned) => removeNote(pinned, selected.id))
       else if (!canRemoveStep(selected.id)) return
       else reshape((pinned) => removeNode(pinned, selected.id))
     } else {
@@ -892,6 +912,14 @@ function WorkflowPanel({
 
   const target: WorkflowInspectorTarget | null = (() => {
     if (!selected) return null
+    if (selected.type === 'node' && isStickyNodeId(selected.id)) {
+      const sticky = stickies.find((one) => one.id === selected.id)
+      return sticky ? { type: 'sticky', sticky } : null
+    }
+    if (selected.type === 'node' && isFrameNodeId(selected.id)) {
+      const frame = frames.find((f) => f.id === selected.id)
+      return frame ? { type: 'frame', frame } : null
+    }
     if (selected.type === 'node') {
       const node = data.nodes.find((n) => n.id === selected.id)
       if (!node) return null
@@ -1189,6 +1217,8 @@ function WorkflowPanel({
     anyExit: t('repo.workflow.anyExit'),
     disable: t('repo.workflow.disable'),
     hide: t('repo.workflow.hide'),
+    untitledFrame: t('repo.workflow.frame.untitled'),
+    stickyPlaceholder: t('repo.workflow.sticky.placeholder'),
     enable: t('repo.workflow.enable'),
     alwaysOn: t('repo.workflow.alwaysOn'),
     off: t('repo.workflow.off'),
@@ -1324,6 +1354,16 @@ function WorkflowPanel({
       removeNoteRow: t('repo.workflow.note.removeRow'),
       removeNoteHint: t('repo.workflow.note.removeHint'),
       noteLink: t('repo.workflow.note.link'),
+      frame: t('repo.workflow.frame.title'),
+      frameTitle: t('repo.workflow.frame.name'),
+      frameTitlePlaceholder: t('repo.workflow.frame.placeholder'),
+      frameBorder: t('repo.workflow.frame.border'),
+      frameBackground: t('repo.workflow.frame.background'),
+      removeFrameRow: t('repo.workflow.frame.removeRow'),
+      removeFrameHint: t('repo.workflow.frame.removeHint'),
+      sticky: t('repo.workflow.sticky.title'),
+      stickyHint: t('repo.workflow.sticky.hint'),
+      removeStickyRow: t('repo.workflow.sticky.removeRow'),
       detectRow: t('repo.workflow.inspector.detectRow'),
       detect: t('repo.workflow.inspector.detect'),
       detectHint: t('repo.workflow.inspector.detectHint'),
@@ -1331,6 +1371,11 @@ function WorkflowPanel({
     dock: {
       dock: t('repo.workflow.dock.label'),
       add: t('repo.workflow.dock.add'),
+      tools: t('repo.workflow.dock.tools'),
+      frame: t('repo.workflow.frame.title'),
+      frameHint: t('repo.workflow.frame.addHint'),
+      sticky: t('repo.workflow.sticky.title'),
+      stickyHint: t('repo.workflow.sticky.addHint'),
       undo: t('repo.workflow.dock.undo'),
       redo: t('repo.workflow.dock.redo'),
       zoomIn: t('repo.workflow.dock.zoomIn'),
@@ -1402,6 +1447,8 @@ function WorkflowPanel({
               entry={data.entry}
               labels={labels}
               positions={draft.positions}
+              frames={frames}
+              stickies={stickies}
               className="h-[520px]"
               // The wheel scrolls the settings page, not the canvas: dragging still pans.
               scrollPans={false}
@@ -1436,7 +1483,29 @@ function WorkflowPanel({
                 positions={draft.positions}
                 selected={selected}
                 onSelect={setSelected}
-                onMove={(id, position) => reshape((pinned) => moveNode(pinned, id, position))}
+                // A frame hands the cards it carried with it: one edit, one undo.
+                onMove={(id, position, carried) => reshape((pinned) => moveNodes(moveNode(pinned, id, position), carried ?? {}))}
+                frames={frames}
+                frameMinSize={FRAME_MIN_SIZE}
+                onResizeBox={(id, box) => edit(isStickyNodeId(id) ? setSticky(draft, id, box) : setFrame(draft, id, box))}
+                stickies={stickies}
+                stickyMinSize={STICKY_MIN_SIZE}
+                onAddSticky={(centre) => {
+                  const id = stickyNodeId(nextStickyId(draft))
+                  const color = nextWorkflowStepColor((draft.stickies ?? []).map((sticky) => sticky.color))
+                  edit(addSticky(draft, { x: centre.x - STICKY_SIZE.width / 2, y: centre.y - STICKY_SIZE.height / 2 }, color))
+                  setSelected({ type: 'node', id })
+                }}
+                onChangeStickyText={(id, text) => edit(setSticky(draft, id, { text }))}
+                onChangeSticky={(id, change) => edit(setSticky(draft, id, change))}
+                onAddFrame={(centre) => {
+                  const id = frameNodeId(nextFrameId(draft))
+                  const color = nextWorkflowStepColor((draft.frames ?? []).map((frame) => frame.border))
+                  const size = { width: 480, height: 300 }
+                  edit(addFrame(draft, { x: centre.x - size.width / 2, y: centre.y - size.height / 2, ...size }, color, color))
+                  setSelected({ type: 'node', id })
+                }}
+                onChangeFrame={(id, change) => edit(setFrame(draft, id, change))}
                 onConnect={(from, to, outcome) => {
                   reshape((pinned) => addLink(pinned, from, to, outcome))
                   setSelected({ type: 'link', from, to, outcome })
@@ -1446,7 +1515,9 @@ function WorkflowPanel({
                 skills={skills}
                 onChangeMode={(id, mode) => edit(setStepMode(draft, skillOf(id), mode))}
                 onRemove={(id) => {
-                  reshape((pinned) => (isNoteNodeId(id) ? removeNote(pinned, id) : removeNode(pinned, id)))
+                  if (isFrameNodeId(id)) edit(removeFrame(draft, id))
+                  else if (isStickyNodeId(id)) edit(removeSticky(draft, id))
+                  else reshape((pinned) => (isNoteNodeId(id) ? removeNote(pinned, id) : removeNode(pinned, id)))
                   setSelected(null)
                 }}
                 onChangeKind={(from, to, kind, outcome) => edit(setLinkKind(draft, from, to, kind, outcome))}

@@ -10,6 +10,8 @@ import { WorkflowInspector, type WorkflowInspectorLabels, type WorkflowInspector
 import type { WorkflowProblemItem } from './WorkflowProblems'
 import { WorkflowHistory, type WorkflowHistoryProps } from './WorkflowHistory'
 import { WorkflowSkillPicker, type WorkflowSkillOption, type WorkflowSkillPickerLabels } from './WorkflowSkillPicker'
+import type { WorkflowCanvasFrame } from './WorkflowFrame'
+import type { WorkflowCanvasSticky } from './WorkflowSticky'
 import type { WorkflowCanvasLink, WorkflowCanvasNode } from './workflowLayout'
 
 /**
@@ -33,6 +35,11 @@ import type { WorkflowCanvasLink, WorkflowCanvasNode } from './workflowLayout'
  *    the caller's;
  *  - at the bottom centre, the DOCK (`WorkflowDock`): add a step, undo and redo, the
  *    zoom, the problems, discard, save, close.
+ *
+ * THE TOOLBOX, beside the "+", adds what is not a step: a FRAME (`onAddFrame`), a titled box
+ * grouping cards, at the middle of the view. Selected, it opens in the inspector (its title,
+ * its two colours, Remove), and it is resized from its edges (`onResizeBox`); and a STICKY
+ * NOTE (`onAddSticky`), free text written on the card, its colour and Remove in the inspector.
  *
  * A NEW STEP LANDS WHERE THE ADMIN IS LOOKING. The dock's "+" opens the skill picker off
  * its button, and the skill picked comes back to `onAdd` with the canvas point at the
@@ -125,7 +132,20 @@ export interface WorkflowEditorProps {
   positions?: Readonly<Record<string, { x: number; y: number }>>
   selected: WorkflowCanvasSelection | null
   onSelect: (selection: WorkflowCanvasSelection | null) => void
-  onMove: (id: string, position: { x: number; y: number }) => void
+  onMove: (id: string, position: { x: number; y: number }, carried?: Record<string, { x: number; y: number }>) => void
+  /** The frames, under the cards. */
+  frames?: WorkflowCanvasFrame[]
+  frameMinSize?: { width: number; height: number }
+  onResizeBox?: (id: string, box: { x: number; y: number; width: number; height: number }) => void
+  /** The toolbox's frame row was picked: add a frame centred on that point. No toolbox without it. */
+  onAddFrame?: (centre: { x: number; y: number }) => void
+  stickies?: WorkflowCanvasSticky[]
+  stickyMinSize?: { width: number; height: number }
+  /** The toolbox's sticky note row was picked: add one centred on that point. */
+  onAddSticky?: (centre: { x: number; y: number }) => void
+  onChangeStickyText?: (id: string, text: string) => void
+  onChangeSticky?: WorkflowInspectorProps['onChangeSticky']
+  onChangeFrame?: WorkflowInspectorProps['onChangeFrame']
   onConnect: (from: string, to: string, outcome?: string) => void
   focusRequest?: { id: string; n: number } | null
 
@@ -190,6 +210,16 @@ export function WorkflowEditor({
   selected,
   onSelect,
   onMove,
+  frames,
+  frameMinSize,
+  onResizeBox,
+  onAddFrame,
+  onChangeFrame,
+  stickies,
+  stickyMinSize,
+  onAddSticky,
+  onChangeStickyText,
+  onChangeSticky,
   onConnect,
   focusRequest = null,
   target,
@@ -244,7 +274,8 @@ export function WorkflowEditor({
   }, [open])
   const panel = target ?? exiting
   // One key per thing selected, so a new selection replays the swap and a re-render does not.
-  const panelKey = !panel ? '' : panel.type === 'node' ? `node:${panel.step.id}` : `link:${panel.link.from}>${panel.link.to}`
+  const panelKey = !panel ? '' : panel.type === 'node' ? `node:${panel.step.id}`
+    : panel.type === 'frame' ? `frame:${panel.frame.id}` : panel.type === 'sticky' ? `sticky:${panel.sticky.id}` : `link:${panel.link.from}>${panel.link.to}|${panel.link.outcome ?? ''}`
   // The panel scrolls, and outlives its selection: a new one starts back at the top.
   const panelRef = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
@@ -301,6 +332,12 @@ export function WorkflowEditor({
             onSelect={onSelect}
             positions={positions}
             onMove={readOnly ? undefined : onMove}
+            frames={frames}
+            frameMinSize={frameMinSize}
+            onResizeBox={readOnly ? undefined : onResizeBox}
+            stickies={stickies}
+            stickyMinSize={stickyMinSize}
+            onChangeStickyText={readOnly ? undefined : onChangeStickyText}
             onConnect={readOnly ? undefined : onConnect}
             onToggle={readOnly ? undefined : onToggle}
             focusRequest={focusRequest}
@@ -327,6 +364,8 @@ export function WorkflowEditor({
             dock={readOnly ? { labels: labels.dock } : {
               labels: labels.dock,
               onAdd: (anchor, position) => setPicker({ anchor, position }),
+              onAddFrame,
+              onAddSticky,
               canUndo,
               canRedo,
               onUndo,
@@ -385,6 +424,8 @@ export function WorkflowEditor({
                 onChangeKind={onChangeKind}
                 onChangeOutcome={onChangeOutcome}
                 onChangeNoteText={readOnly ? undefined : onChangeNoteText}
+                onChangeFrame={readOnly ? undefined : onChangeFrame}
+                onChangeSticky={readOnly ? undefined : onChangeSticky}
                 onRemoveLink={onRemoveLink}
                 onToggle={readOnly ? undefined : onToggle}
                 onChangeColor={readOnly ? undefined : onChangeColor}

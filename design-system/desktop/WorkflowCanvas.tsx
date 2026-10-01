@@ -4,6 +4,7 @@ import './workflowCanvas.css'
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import {
   Background, BackgroundVariant, Panel, ReactFlow, useReactFlow, type Connection, type Edge, type IsValidConnection, type Node, type NodeChange, type OnConnectEnd,
+  type ResizeParams,
 } from '@xyflow/react'
 
 import { CanvasMinimap } from './CanvasMinimap'
@@ -14,6 +15,8 @@ import { Select, type SelectOption } from './Select'
 import { Text } from './Text'
 import { WorkflowDock, type WorkflowDockProps } from './WorkflowDock'
 import { WorkflowEdge, type WorkflowEdgeType } from './WorkflowEdge'
+import { WorkflowFrame, type WorkflowCanvasFrame, type WorkflowFrameType } from './WorkflowFrame'
+import { WorkflowSticky, type WorkflowCanvasSticky, type WorkflowStickyType } from './WorkflowSticky'
 import {
   WORKFLOW_SELF_TARGET_HANDLE, WORKFLOW_SIDE_TARGET_HANDLE, WORKFLOW_TARGET_HANDLE, WORKFLOW_VERTICAL_HANDLES,
   WorkflowNode, type WorkflowNodeLabels, type WorkflowNodeType,
@@ -88,6 +91,14 @@ import {
  *  - `dock` floats the editor's `WorkflowDock` at the bottom centre. Data, not a node:
  *    the dock reads the flow's store, so the canvas draws it inside the flow.
  *
+ * FRAMES (`frames`) are titled boxes drawn under everything, to group cards. Display only:
+ * no port, no link. Dragged, a frame CARRIES THE CARDS WHOLLY INSIDE IT when the drag
+ * starts, and `onMove` hands their new places with its own (`carried`), as one move.
+ * Selected, it is resized from its edges (`onResizeBox`), and carries nothing then.
+ *
+ * STICKY NOTES (`stickies`) are cards of free text, written on the card (`onChangeStickyText`),
+ * display only like frames, resized the same way, and carried by a frame like a card.
+ *
  * `repositories` puts a picker left of the legend, as tall as it and on the same plate:
  * the editor's way over to another repository's flow. `history`, a button right of it,
  * opens the flow's history, and `duplicate`, after it, copies the flow onto another
@@ -126,6 +137,10 @@ export interface WorkflowCanvasLabels {
   alwaysOn?: string
   /** EDITABLE ONLY. A built-in step's eye, which takes it off the canvas: "Remove from the canvas". */
   hide?: string
+  /** What a frame with no title yet reads: "Untitled frame". */
+  untitledFrame?: string
+  /** What an empty sticky note reads: "Write something…". */
+  stickyPlaceholder?: string
   /** READ-ONLY ONLY. The shut eye on a step that is off: "Turned off". */
   off?: string
   /** EDITABLE ONLY. A custom step's mode, on its card's plate. */
@@ -182,8 +197,23 @@ export interface WorkflowCanvasProps {
   onSelect?: (selection: WorkflowCanvasSelection | null) => void
   /** Where each card was left, by id. A card missing from it is laid out. */
   positions?: Readonly<Record<string, { x: number; y: number }>>
-  /** A card was dragged and let go there. Editable only; nothing drags without it. */
-  onMove?: (id: string, position: { x: number; y: number }) => void
+  /**
+   * A card or a frame was dragged and let go there. A frame hands the places of the cards it
+   * carried too (`carried`, by id). Editable only; nothing drags without it.
+   */
+  onMove?: (id: string, position: { x: number; y: number }, carried?: Record<string, { x: number; y: number }>) => void
+  /** The frames, drawn under the cards. Their ids are their node ids (`frame:f1`). */
+  frames?: WorkflowCanvasFrame[]
+  /** A frame or a sticky note was resized and let go: its new box. Editable only; nothing is resized without it. */
+  onResizeBox?: (id: string, box: { x: number; y: number; width: number; height: number }) => void
+  /** A frame's smallest box. */
+  frameMinSize?: { width: number; height: number }
+  /** The sticky notes, over the frames. Their ids are their node ids (`sticky:s1`). */
+  stickies?: WorkflowCanvasSticky[]
+  /** A sticky note's smallest box. */
+  stickyMinSize?: { width: number; height: number }
+  /** A sticky note's text, once its field is left. Editable only; read-only text without it. */
+  onChangeStickyText?: (id: string, text: string) => void
   /** A link was drawn, out of `outcome`'s port (none: the header's). Editable only; nothing connects without it. */
   onConnect?: (from: string, to: string, outcome?: string) => void
   /** A card's switch was pressed: turn it on (`true`) or off. Editable only; the switches are greyed without it. */
@@ -211,7 +241,7 @@ export interface WorkflowCanvasProps {
   minimap?: boolean
 }
 
-const NODE_TYPES = { workflow: WorkflowNode }
+const NODE_TYPES = { workflow: WorkflowNode, frame: WorkflowFrame, sticky: WorkflowSticky }
 const EDGE_TYPES = { workflow: WorkflowEdge }
 
 /** The two strokes, in the order the legend reads them. Also the labels' keys. */
@@ -248,6 +278,12 @@ export function WorkflowCanvas({
   onMove,
   onConnect,
   onToggle,
+  frames = [],
+  onResizeBox,
+  frameMinSize,
+  stickies = [],
+  stickyMinSize,
+  onChangeStickyText,
   focusRequest = null,
   dock,
   frameless = false,
@@ -262,6 +298,10 @@ export function WorkflowCanvas({
   const [actionsOpen, setActionsOpen] = useState(false)
   // Where a card is being dragged to, until it is let go and the caller has its place.
   const [dragged, setDragged] = useState<Record<string, { x: number; y: number }>>({})
+  // A frame's box while it is resized, until it is let go and the caller has it.
+  const [sized, setSized] = useState<Record<string, ResizeParams>>({})
+  // The frame being dragged, where it started, and the cards it carries from where they started.
+  const carry = useRef<{ id: string; start: { x: number; y: number }; cards: Record<string, { x: number; y: number }> } | null>(null)
   // The outcome row whose links are traced, see above.
   const [traced, setTraced] = useState<{ node: string; exit: string } | null>(null)
   const select = editable ? onSelect : undefined
@@ -303,6 +343,22 @@ export function WorkflowCanvas({
     }]))
     return { layout, centres }
   }, [nodes, links, entry, stored, widths])
+
+  // A frame being resized: its box comes from `onBoxResize`, not from xyflow's moves.
+  const resizing = useRef<string | null>(null)
+  const resizeBox = editable ? onResizeBox : undefined
+  const onBoxResize = useCallback((id: string, box: ResizeParams) => {
+    resizing.current = id
+    setSized((was) => ({ ...was, [id]: box }))
+  }, [])
+  const onBoxResizeEnd = useCallback((id: string, box: ResizeParams) => {
+    resizing.current = null
+    resizeBox?.(id, { x: box.x, y: box.y, width: box.width, height: box.height })
+    setSized((was) => {
+      const { [id]: _gone, ...rest } = was
+      return rest
+    })
+  }, [resizeBox])
 
   const { flowNodes, flowEdges } = useMemo(() => {
     const byId = new Map(nodes.map((node) => [node.id, node]))
@@ -411,11 +467,61 @@ export function WorkflowCanvas({
       }
     }
 
-    return { flowNodes, flowEdges }
-  }, [nodes, links, layout, widths, dragged, labels, editable, selected, onConnect, onToggle, traced, onTrace])
+    // The frames, first and lowest: under the links and the cards.
+    const resizable = editable && !!onResizeBox
+    const frameNodes: WorkflowFrameType[] = frames.map((frame) => {
+      const box = sized[frame.id]
+      const at = dragged[frame.id] ?? (box ? { x: box.x, y: box.y } : { x: frame.x, y: frame.y })
+      const width = box?.width ?? frame.width
+      const height = box?.height ?? frame.height
+      return {
+        id: frame.id,
+        type: 'frame',
+        position: at,
+        width,
+        height,
+        measured: { width, height },
+        zIndex: -1,
+        data: {
+          frame,
+          untitled: labels.untitledFrame,
+          selected: editable && selected?.type === 'node' && selected.id === frame.id,
+          ...(resizable ? { onResize: onBoxResize, onResizeEnd: onBoxResizeEnd, minWidth: frameMinSize?.width, minHeight: frameMinSize?.height } : {}),
+        },
+        ...(editable ? { ariaLabel: frame.title || labels.untitledFrame } : {}),
+      }
+    })
+
+    // The sticky notes, over the frames, among the cards.
+    const writable = editable ? onChangeStickyText : undefined
+    const stickyNodes: WorkflowStickyType[] = stickies.map((sticky) => {
+      const box = sized[sticky.id]
+      const at = dragged[sticky.id] ?? (box ? { x: box.x, y: box.y } : { x: sticky.x, y: sticky.y })
+      const width = box?.width ?? sticky.width
+      const height = box?.height ?? sticky.height
+      return {
+        id: sticky.id,
+        type: 'sticky',
+        position: at,
+        width,
+        height,
+        measured: { width, height },
+        data: {
+          sticky,
+          placeholder: labels.stickyPlaceholder,
+          selected: editable && selected?.type === 'node' && selected.id === sticky.id,
+          onChangeText: writable,
+          ...(resizable ? { onResize: onBoxResize, onResizeEnd: onBoxResizeEnd, minWidth: stickyMinSize?.width, minHeight: stickyMinSize?.height } : {}),
+        },
+        ...(editable ? { ariaLabel: sticky.text || labels.stickyPlaceholder } : {}),
+      }
+    })
+
+    return { flowNodes: [...frameNodes, ...stickyNodes, ...flowNodes] as (WorkflowNodeType | WorkflowFrameType | WorkflowStickyType)[], flowEdges }
+  }, [nodes, links, layout, widths, dragged, sized, frames, stickies, labels, editable, selected, onConnect, onToggle, traced, onTrace, onResizeBox, onBoxResize, onBoxResizeEnd, frameMinSize, stickyMinSize, onChangeStickyText])
 
   const onNodeClick = useCallback((_: unknown, node: Node) => {
-    if (node.type === 'workflow') select?.({ type: 'node', id: node.id })
+    if (node.type === 'workflow' || node.type === 'frame' || node.type === 'sticky') select?.({ type: 'node', id: node.id })
   }, [select])
   const onEdgeClick = useCallback((_: unknown, edge: Edge) => {
     // The line pressed, and not merely its two cards: its own outcome is the one traced.
@@ -433,18 +539,57 @@ export function WorkflowCanvas({
   // here, and lands where the caller says once it is let go.
   const move = editable ? onMove : undefined
   const onNodesChange = useCallback((changes: NodeChange[]) => {
-    const moves = changes.filter((change) => change.type === 'position' && change.position)
+    // A frame being resized moves by its box (`onBoxResize`), not by these.
+    const moves = changes.filter((change) => change.type === 'position' && change.position && change.id !== resizing.current)
     if (moves.length === 0) return
     setDragged((was) => {
       const next = { ...was }
-      for (const change of moves) if (change.type === 'position' && change.position) next[change.id] = change.position
+      for (const change of moves) {
+        if (change.type !== 'position' || !change.position) continue
+        next[change.id] = change.position
+        // A frame drags the cards it carries by as much as it moved.
+        const carried = carry.current
+        if (carried?.id !== change.id) continue
+        const dx = change.position.x - carried.start.x
+        const dy = change.position.y - carried.start.y
+        for (const [id, at] of Object.entries(carried.cards)) next[id] = { x: at.x + dx, y: at.y + dy }
+      }
       return next
     })
   }, [])
+  const onNodeDragStart = useCallback((_: unknown, node: Node) => {
+    if (node.type !== 'frame') return
+    const frame = frames.find((f) => f.id === node.id)
+    if (!frame) return
+    // What it carries: the cards wholly inside its box, where they sit now.
+    const inside = (id: string) => {
+      const at = layout.positions[id]
+      const card = nodes.find((n) => n.id === id)
+      if (!at || !card) return false
+      return at.x >= frame.x && at.y >= frame.y &&
+        at.x + widths[id] <= frame.x + frame.width && at.y + workflowCardHeight(card) <= frame.y + frame.height
+    }
+    const within = (box: { x: number; y: number; width: number; height: number }) =>
+      box.x >= frame.x && box.y >= frame.y && box.x + box.width <= frame.x + frame.width && box.y + box.height <= frame.y + frame.height
+    const cards = Object.fromEntries([
+      ...nodes.filter((n) => inside(n.id)).map((n) => [n.id, layout.positions[n.id]] as const),
+      ...stickies.filter(within).map((sticky) => [sticky.id, { x: sticky.x, y: sticky.y }] as const),
+    ])
+    carry.current = { id: node.id, start: { x: frame.x, y: frame.y }, cards }
+  }, [frames, stickies, layout, nodes, widths])
   const onNodeDragStop = useCallback((_: unknown, node: Node) => {
-    move?.(node.id, node.position)
+    const carried = carry.current?.id === node.id ? carry.current : null
+    carry.current = null
+    const dx = carried ? node.position.x - carried.start.x : 0
+    const dy = carried ? node.position.y - carried.start.y : 0
+    const cards = carried
+      ? Object.fromEntries(Object.entries(carried.cards).map(([id, at]) => [id, { x: at.x + dx, y: at.y + dy }]))
+      : undefined
+    move?.(node.id, node.position, cards && Object.keys(cards).length > 0 ? cards : undefined)
     setDragged((was) => {
-      const { [node.id]: _gone, ...rest } = was
+      const rest = { ...was }
+      delete rest[node.id]
+      for (const id of Object.keys(cards ?? {})) delete rest[id]
       return rest
     })
   }, [move])
@@ -514,6 +659,7 @@ export function WorkflowCanvas({
         nodesDraggable={!!move}
         nodesConnectable={!!connect}
         onNodesChange={move ? onNodesChange : undefined}
+        onNodeDragStart={move ? onNodeDragStart : undefined}
         onNodeDragStop={move ? onNodeDragStop : undefined}
         onConnect={connect ? onConnectLink : undefined}
         onConnectStart={connect ? onConnectStart : undefined}

@@ -147,6 +147,55 @@ export interface WorkflowPosition {
   y: number
 }
 
+/**
+ * A FRAME: a titled box drawn on the canvas around cards, to group them ("Checks before
+ * the PR"). Display only, like a card's place: the skills never see it, and it holds
+ * nothing. What sits inside its box is what moves with it, judged when it is dragged.
+ * Its own colours, a border and a ground, are the admin's.
+ */
+export interface WorkflowOverlayFrame {
+  /** Unique among the frames (`f1`, `f2`…). Its node id on the canvas is `frame:<id>`. */
+  id: string
+  title: string
+  /** `#RRGGBB`, its border and title. */
+  border: string
+  /** `#RRGGBB`, its ground, drawn tinted. */
+  background: string
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/**
+ * A STICKY NOTE: a card of free text on the canvas, written on the card itself. Display only,
+ * like a frame: no port, no link, nothing the skills read. A frame carries it like a card.
+ */
+export interface WorkflowOverlaySticky {
+  /** Unique among the stickies (`s1`, `s2`…). Its node id on the canvas is `sticky:<id>`. */
+  id: string
+  text: string
+  /** `#RRGGBB`, its paper, drawn tinted. */
+  color: string
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** The longest sticky note: a few paragraphs. */
+export const STICKY_TEXT_MAX_LENGTH = 2000
+
+/** A sticky note's smallest box, and the one it is added with. */
+export const STICKY_MIN_SIZE = { width: 140, height: 90 }
+export const STICKY_SIZE = { width: 240, height: 180 }
+
+/** The longest frame title: a heading, not a note. */
+export const FRAME_TITLE_MAX_LENGTH = 80
+
+/** A frame's smallest box: room for its title, and for a card. */
+export const FRAME_MIN_SIZE = { width: 160, height: 100 }
+
 export interface WorkflowOverlay {
   version: 2
   steps: WorkflowOverlayStep[]
@@ -162,6 +211,10 @@ export interface WorkflowOverlay {
   removed?: string[]
   /** The default links taken off, by `linkKey`. Absent: none. */
   removedLinks?: string[]
+  /** The frames drawn on the canvas, bottom first. Absent: none. */
+  frames?: WorkflowOverlayFrame[]
+  /** The sticky notes on the canvas, bottom first. Absent: none. */
+  stickies?: WorkflowOverlaySticky[]
 }
 
 export const EMPTY_OVERLAY: WorkflowOverlay = { version: 2, steps: [], links: [], kinds: {}, positions: {} }
@@ -196,6 +249,44 @@ export function noteNodeId(id: string): string {
 
 export function isNoteNodeId(id: string): boolean {
   return id.startsWith(NOTE_PREFIX)
+}
+
+/** Frames have their own id space too: `frame:f1` is never a card. */
+const FRAME_PREFIX = 'frame:'
+
+export function frameNodeId(id: string): string {
+  return `${FRAME_PREFIX}${id}`
+}
+
+export function isFrameNodeId(id: string): boolean {
+  return id.startsWith(FRAME_PREFIX)
+}
+
+/** The id the next frame added gets: the first `f<k>` no frame has. */
+export function nextFrameId(overlay: WorkflowOverlay): string {
+  const taken = new Set((overlay.frames ?? []).map((frame) => frame.id))
+  let k = 1
+  while (taken.has(`f${k}`)) k++
+  return `f${k}`
+}
+
+/** Sticky notes have their own id space too: `sticky:s1`. */
+const STICKY_PREFIX = 'sticky:'
+
+export function stickyNodeId(id: string): string {
+  return `${STICKY_PREFIX}${id}`
+}
+
+export function isStickyNodeId(id: string): boolean {
+  return id.startsWith(STICKY_PREFIX)
+}
+
+/** The id the next sticky note added gets: the first `s<k>` none has. */
+export function nextStickyId(overlay: WorkflowOverlay): string {
+  const taken = new Set((overlay.stickies ?? []).map((sticky) => sticky.id))
+  let k = 1
+  while (taken.has(`s${k}`)) k++
+  return `s${k}`
 }
 
 /** The id the next note added gets: the first `n<k>` no note has. */
@@ -483,8 +574,17 @@ export function isOverlay(value: unknown): value is WorkflowOverlay {
     isRecord(note) && typeof note.id === 'string' && /^[a-z0-9_-]{1,32}$/i.test(note.id) &&
     typeof note.text === 'string' && note.text.length <= NOTE_MAX_LENGTH &&
     (note.color === undefined || isColor(note.color))))
+  const framesOk = value.frames === undefined || (Array.isArray(value.frames) && value.frames.every((frame) =>
+    isRecord(frame) && typeof frame.id === 'string' && /^[a-z0-9_-]{1,32}$/i.test(frame.id) &&
+    typeof frame.title === 'string' && frame.title.length <= FRAME_TITLE_MAX_LENGTH &&
+    isColor(frame.border) && isColor(frame.background) &&
+    [frame.x, frame.y, frame.width, frame.height].every(Number.isFinite)))
+  const stickiesOk = value.stickies === undefined || (Array.isArray(value.stickies) && value.stickies.every((sticky) =>
+    isRecord(sticky) && typeof sticky.id === 'string' && /^[a-z0-9_-]{1,32}$/i.test(sticky.id) &&
+    typeof sticky.text === 'string' && sticky.text.length <= STICKY_TEXT_MAX_LENGTH && isColor(sticky.color) &&
+    [sticky.x, sticky.y, sticky.width, sticky.height].every(Number.isFinite)))
   const idsOk = (ids: unknown) => ids === undefined || (Array.isArray(ids) && ids.every((id) => typeof id === 'string'))
-  return stepsOk && linksOk && notesOk && kindsOk(value.kinds) && positionsOk &&
+  return stepsOk && linksOk && notesOk && framesOk && stickiesOk && kindsOk(value.kinds) && positionsOk &&
     idsOk(value.disabled) && idsOk(value.removed) && idsOk(value.removedLinks)
 }
 
@@ -673,7 +773,22 @@ export function sameOverlay(a: WorkflowOverlay, b: WorkflowOverlay): boolean {
     return link.from === other.from && link.to === other.to && link.kind === other.kind &&
       sameOutcomes(linkOutcomesOf(link), linkOutcomesOf(other))
   })
-  if (!stepsSame || !linksSame || !notesSame || !sameDisabled(a, b)) return false
+  const framesA = a.frames ?? []
+  const framesB = b.frames ?? []
+  const framesSame = framesA.length === framesB.length && framesA.every((frame, i) => {
+    const other = framesB[i]
+    return frame.id === other.id && frame.title === other.title && frame.border === other.border &&
+      frame.background === other.background && frame.x === other.x && frame.y === other.y &&
+      frame.width === other.width && frame.height === other.height
+  })
+  const stickiesA = a.stickies ?? []
+  const stickiesB = b.stickies ?? []
+  const stickiesSame = stickiesA.length === stickiesB.length && stickiesA.every((sticky, i) => {
+    const other = stickiesB[i]
+    return sticky.id === other.id && sticky.text === other.text && sticky.color === other.color &&
+      sticky.x === other.x && sticky.y === other.y && sticky.width === other.width && sticky.height === other.height
+  })
+  if (!stepsSame || !linksSame || !notesSame || !framesSame || !stickiesSame || !sameDisabled(a, b)) return false
   const kinds = Object.keys(a.kinds)
   if (kinds.length !== Object.keys(b.kinds).length || !kinds.every((key) => a.kinds[key] === b.kinds[key])) return false
   const ids = Object.keys(a.positions)
@@ -902,9 +1017,111 @@ export function setLinkOutcome(
   return { ...overlay, links: overlay.links.map((link) => (isLink(link, from, to, was) ? withLinkOutcome(link, now) : link)) }
 }
 
+/** A frame's title as stored: one line, its spaces collapsed, trimmed and capped. */
+export function normalizeFrameTitle(value: string): string {
+  return value.replace(/\s+/g, ' ').trim().slice(0, FRAME_TITLE_MAX_LENGTH)
+}
+
+/** A `frames` list, left out of the overlay when it is empty. */
+function withFrames(overlay: WorkflowOverlay, frames: WorkflowOverlayFrame[]): WorkflowOverlay {
+  const { frames: _was, ...rest } = overlay
+  return frames.length > 0 ? { ...rest, frames } : rest
+}
+
+type Box = WorkflowPosition & { width: number; height: number }
+
+/** A box in whole pixels, never under `min`. */
+function boxed(box: Box, min: { width: number; height: number }): Box {
+  return {
+    x: Math.round(box.x),
+    y: Math.round(box.y),
+    width: Math.max(min.width, Math.round(box.width)),
+    height: Math.max(min.height, Math.round(box.height)),
+  }
+}
+
+/** A frame's box, never under `FRAME_MIN_SIZE`. */
+function framedBox(box: Box): Box {
+  return boxed(box, FRAME_MIN_SIZE)
+}
+
+/** A sticky note's text as stored: its lines kept, trailing spaces and extra blank lines gone, capped. */
+export function normalizeStickyText(value: string): string {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.replace(/[ \t]+$/, ''))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, STICKY_TEXT_MAX_LENGTH)
+}
+
+/** A `stickies` list, left out of the overlay when it is empty. */
+function withStickies(overlay: WorkflowOverlay, stickies: WorkflowOverlaySticky[]): WorkflowOverlay {
+  const { stickies: _was, ...rest } = overlay
+  return stickies.length > 0 ? { ...rest, stickies } : rest
+}
+
+/** Add a sticky note with its top-left corner at `position`, on top of the others. Its id is `nextStickyId`'s. */
+export function addSticky(overlay: WorkflowOverlay, position: WorkflowPosition, color: string, text = ''): WorkflowOverlay {
+  const sticky: WorkflowOverlaySticky = {
+    id: nextStickyId(overlay), text: normalizeStickyText(text), color, ...boxed({ ...position, ...STICKY_SIZE }, STICKY_MIN_SIZE),
+  }
+  return withStickies(overlay, [...(overlay.stickies ?? []), sticky])
+}
+
+/** Remove a sticky note, by its node id. */
+export function removeSticky(overlay: WorkflowOverlay, nodeId: string): WorkflowOverlay {
+  return withStickies(overlay, (overlay.stickies ?? []).filter((sticky) => stickyNodeId(sticky.id) !== nodeId))
+}
+
+/** Change a sticky note, by its node id: its text, colour or box. */
+export function setSticky(
+  overlay: WorkflowOverlay, nodeId: string,
+  change: Partial<Pick<WorkflowOverlaySticky, 'text' | 'color' | 'x' | 'y' | 'width' | 'height'>>,
+): WorkflowOverlay {
+  return withStickies(overlay, (overlay.stickies ?? []).map((sticky) => {
+    if (stickyNodeId(sticky.id) !== nodeId) return sticky
+    const next = { ...sticky, ...change }
+    return { ...next, text: normalizeStickyText(next.text), ...boxed(next, STICKY_MIN_SIZE) }
+  }))
+}
+
+/** Add a frame over `box`, on top of the others. Its id is `nextFrameId`'s: the caller can select it. */
+export function addFrame(
+  overlay: WorkflowOverlay, box: WorkflowPosition & { width: number; height: number }, border: string, background: string, title = '',
+): WorkflowOverlay {
+  const frame: WorkflowOverlayFrame = { id: nextFrameId(overlay), title: normalizeFrameTitle(title), border, background, ...framedBox(box) }
+  return withFrames(overlay, [...(overlay.frames ?? []), frame])
+}
+
+/** Remove a frame, by its node id. The cards inside stay where they are. */
+export function removeFrame(overlay: WorkflowOverlay, nodeId: string): WorkflowOverlay {
+  return withFrames(overlay, (overlay.frames ?? []).filter((frame) => frameNodeId(frame.id) !== nodeId))
+}
+
+/** Change a frame, by its node id: its title, colours or box. */
+export function setFrame(
+  overlay: WorkflowOverlay, nodeId: string,
+  change: Partial<Pick<WorkflowOverlayFrame, 'title' | 'border' | 'background' | 'x' | 'y' | 'width' | 'height'>>,
+): WorkflowOverlay {
+  return withFrames(overlay, (overlay.frames ?? []).map((frame) => {
+    if (frameNodeId(frame.id) !== nodeId) return frame
+    const next = { ...frame, ...change }
+    return { ...next, title: normalizeFrameTitle(next.title), ...framedBox(next) }
+  }))
+}
+
 /** Leave a card at `position`. Any step, built-in ones included: where a card sits is not what it does. */
 export function moveNode(overlay: WorkflowOverlay, id: string, position: WorkflowPosition): WorkflowOverlay {
+  if (isFrameNodeId(id)) return setFrame(overlay, id, position)
+  if (isStickyNodeId(id)) return setSticky(overlay, id, position)
   return { ...overlay, positions: { ...overlay.positions, [id]: rounded(position) } }
+}
+
+/** Leave several cards (frames included) where they were let go, as one edit: a frame and what it carried. */
+export function moveNodes(overlay: WorkflowOverlay, moves: Readonly<Record<string, WorkflowPosition>>): WorkflowOverlay {
+  return Object.entries(moves).reduce((was, [id, position]) => moveNode(was, id, position), overlay)
 }
 
 /**
@@ -930,8 +1147,14 @@ export function cleanOverlay(overlay: WorkflowOverlay): WorkflowOverlay {
   const removedLinks = [...new Set(overlay.removedLinks ?? [])].filter((key) => DEFAULT_LINKS.some((link) => linkKey(link.from, link.to) === key))
   const kinds = Object.fromEntries(Object.entries(overlay.kinds).filter(([key]) => !removedLinks.includes(key)))
   const notes = (overlay.notes ?? []).map(({ id, text, color }) => (color === undefined ? { id, text: normalizeNote(text) } : { id, text: normalizeNote(text), color }))
+  const frames = (overlay.frames ?? []).map(({ id, title, border, background, x, y, width, height }) =>
+    ({ id, title: normalizeFrameTitle(title), border, background, ...framedBox({ x, y, width, height }) }))
+  const stickies = (overlay.stickies ?? []).map(({ id, text, color, x, y, width, height }) =>
+    ({ id, text: normalizeStickyText(text), color, ...boxed({ x, y, width, height }, STICKY_MIN_SIZE) }))
   return withDisabled(withNotes({
     version: 2,
+    ...(frames.length > 0 ? { frames } : {}),
+    ...(stickies.length > 0 ? { stickies } : {}),
     ...(removed.length > 0 ? { removed } : {}),
     ...(removedLinks.length > 0 ? { removedLinks } : {}),
     steps: overlay.steps.map(({ skill, mode, color, outcomes }) => {

@@ -4,7 +4,7 @@ import { buildWorkflowPayload } from './payload'
 import type { WorkflowOverlay } from './overlay'
 import {
   EMPTY_OVERLAY, addLink, addStep, cleanOverlay, composeWorkflow, customNodeId, isDefaultLink, isOverlay, moveNode, pinPositions,
-  canRemoveStep, normalizeOutcomes, outcomeProblem, removeNode, restoreStep, parseOutcomesField, problems, removeLink, removeStep, resolveOverlay, sameOverlay, servedWorkflow, setLinkKind, setLinkOutcome,
+  addFrame, addSticky, isStickyNodeId, nextStickyId, removeSticky, setSticky, stickyNodeId, STICKY_MIN_SIZE, STICKY_SIZE, canRemoveStep, frameNodeId, FRAME_MIN_SIZE, isFrameNodeId, moveNodes, nextFrameId, removeFrame, setFrame, normalizeOutcomes, outcomeProblem, removeNode, restoreStep, parseOutcomesField, problems, removeLink, removeStep, resolveOverlay, sameOverlay, servedWorkflow, setLinkKind, setLinkOutcome,
   setStepColor, setStepEnabled, setStepMode, setStepOutcomes,
   addNote, nextNoteId, noteNodeId, removeNote, setNoteText, toOverlay, unreachableSteps,
 } from './overlay'
@@ -498,5 +498,69 @@ describe('an end note', () => {
   it('reaches the skills as the link\'s note, with no skill and no then', () => {
     const payload = buildWorkflowPayload('r', { workflow: servedWorkflow(withNote()), source: 'repository' }, 'check')
     expect(payload.links).toContainEqual({ from: CHECK, to: N1, kind: 'suggest', outcome: 'ko', skill: null, note: 'Open a ticket', then: [] })
+  })
+})
+
+describe('a frame', () => {
+  const box = { x: 10.4, y: 20, width: 400, height: 260 }
+  const framed = () => addFrame(withCheck(), box, '#6366F1', '#22C55E', '  Checks   before the PR ')
+
+  it('is added with its own id, a whole box and a one-line title', () => {
+    const o = framed()
+    expect(o.frames).toEqual([{ id: 'f1', title: 'Checks before the PR', border: '#6366F1', background: '#22C55E', x: 10, y: 20, width: 400, height: 260 }])
+    expect(nextFrameId(o)).toBe('f2')
+    expect(isFrameNodeId(frameNodeId('f1'))).toBe(true)
+    expect(isOverlay(cleanOverlay(o))).toBe(true)
+    expect(sameOverlay(cleanOverlay(o), o)).toBe(true)
+  })
+
+  it('is never seen by the skills', () => {
+    expect(composeWorkflow(framed())).toEqual(composeWorkflow(withCheck()))
+    expect(JSON.stringify(servedWorkflow(framed()))).not.toContain('f1')
+  })
+
+  it('is renamed, recoloured, resized never under its smallest, moved and removed', () => {
+    const id = frameNodeId('f1')
+    let o = setFrame(framed(), id, { title: 'Lint', border: '#EF4444', width: 10, height: 10 })
+    expect(o.frames![0]).toMatchObject({ title: 'Lint', border: '#EF4444', width: FRAME_MIN_SIZE.width, height: FRAME_MIN_SIZE.height })
+    // Moved with the cards it carried, as one edit.
+    o = moveNodes(o, { [id]: { x: 100, y: 200 }, [CHECK]: { x: 120.6, y: 240 } })
+    expect(o.frames![0]).toMatchObject({ x: 100, y: 200 })
+    expect(o.positions[CHECK]).toEqual({ x: 121, y: 240 })
+    expect(sameOverlay(o, framed())).toBe(false)
+    // Removed, the cards inside stay.
+    const gone = removeFrame(o, id)
+    expect(gone).not.toHaveProperty('frames')
+    expect(gone.positions[CHECK]).toEqual({ x: 121, y: 240 })
+  })
+
+  it('is refused for a malformed shape', () => {
+    const o = framed()
+    expect(isOverlay({ ...o, frames: [{ ...o.frames![0], border: 'red' }] })).toBe(false)
+    expect(isOverlay({ ...o, frames: [{ ...o.frames![0], width: 'wide' }] })).toBe(false)
+  })
+})
+
+describe('a sticky note', () => {
+  const stuck = () => addSticky(withCheck(), { x: 10.6, y: 20 }, '#F59E0B', 'Ask QA  \n\n\n\nbefore merging ')
+
+  it('is added at its size, with its lines kept and tidied', () => {
+    const o = stuck()
+    expect(o.stickies).toEqual([{ id: 's1', text: 'Ask QA\n\nbefore merging', color: '#F59E0B', x: 11, y: 20, ...STICKY_SIZE }])
+    expect(nextStickyId(o)).toBe('s2')
+    expect(isStickyNodeId(stickyNodeId('s1'))).toBe(true)
+    expect(isOverlay(cleanOverlay(o))).toBe(true)
+    expect(sameOverlay(cleanOverlay(o), o)).toBe(true)
+    expect(composeWorkflow(o)).toEqual(composeWorkflow(withCheck()))
+  })
+
+  it('is rewritten, recoloured, resized never under its smallest, moved and removed', () => {
+    const id = stickyNodeId('s1')
+    let o = setSticky(stuck(), id, { text: 'Done', color: '#22C55E', width: 1, height: 1 })
+    expect(o.stickies![0]).toMatchObject({ text: 'Done', color: '#22C55E', ...STICKY_MIN_SIZE })
+    o = moveNodes(o, { [id]: { x: 300, y: 400 } })
+    expect(o.stickies![0]).toMatchObject({ x: 300, y: 400 })
+    expect(removeSticky(o, id)).not.toHaveProperty('stickies')
+    expect(isOverlay({ ...o, stickies: [{ ...o.stickies![0], color: 'yellow' }] })).toBe(false)
   })
 })

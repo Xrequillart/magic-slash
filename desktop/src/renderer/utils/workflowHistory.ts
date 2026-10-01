@@ -32,6 +32,14 @@ export type WorkflowHistoryChange =
   | { kind: 'note-added'; text: string }
   | { kind: 'note-removed'; text: string }
   | { kind: 'note-text'; before: string; after: string }
+  /** A frame, by its title: empty when it has none. Its moves and colours are not told. */
+  | { kind: 'frame-added'; title: string }
+  | { kind: 'frame-removed'; title: string }
+  | { kind: 'frame-title'; before: string; after: string }
+  /** A sticky note, by its first line. Its moves and colour are not told. */
+  | { kind: 'sticky-added' }
+  | { kind: 'sticky-removed'; text: string }
+  | { kind: 'sticky-text'; text: string }
   | { kind: 'moved'; count: number }
   /** A stored value this build cannot read: something changed, what is not known. */
   | { kind: 'unreadable' }
@@ -156,6 +164,25 @@ export function diffOverlays(stored: WorkflowOverlay, next: WorkflowOverlay): Wo
   const isRemoved = new Set(after.removed ?? [])
   for (const id of isRemoved) if (!wasRemoved.has(id)) { changes.push({ kind: 'step-removed', node: skillOfNode(id) }); gone.add(id) }
   for (const id of wasRemoved) if (!isRemoved.has(id)) { changes.push({ kind: 'step-added', node: skillOfNode(id) }); gone.add(id) }
+
+  const oldFrames = new Map((before.frames ?? []).map((frame) => [frame.id, frame]))
+  const newFrames = new Map((after.frames ?? []).map((frame) => [frame.id, frame]))
+  for (const [id, frame] of newFrames) {
+    const was = oldFrames.get(id)
+    if (!was) changes.push({ kind: 'frame-added', title: frame.title })
+    else if (was.title !== frame.title) changes.push({ kind: 'frame-title', before: was.title, after: frame.title })
+  }
+  for (const [id, frame] of oldFrames) if (!newFrames.has(id)) changes.push({ kind: 'frame-removed', title: frame.title })
+
+  const firstLine = (text: string) => text.split('\n')[0].slice(0, 60)
+  const oldStickies = new Map((before.stickies ?? []).map((sticky) => [sticky.id, sticky]))
+  const newStickies = new Map((after.stickies ?? []).map((sticky) => [sticky.id, sticky]))
+  for (const [id, sticky] of newStickies) {
+    const was = oldStickies.get(id)
+    if (!was) changes.push({ kind: 'sticky-added' })
+    else if (was.text !== sticky.text) changes.push({ kind: 'sticky-text', text: firstLine(sticky.text) })
+  }
+  for (const [id, sticky] of oldStickies) if (!newStickies.has(id)) changes.push({ kind: 'sticky-removed', text: firstLine(sticky.text) })
 
   const wasOff = new Set(before.disabled ?? [])
   const isOff = new Set(after.disabled ?? [])

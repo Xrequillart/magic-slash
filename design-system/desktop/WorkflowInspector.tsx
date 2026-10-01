@@ -6,7 +6,7 @@ import { OutputSample } from './OutputSample'
 import './workflowCanvas.css'
 
 import { useEffect, useState, type KeyboardEvent } from 'react'
-import { Eye, EyeOff, Sparkles, StickyNote, Trash, X } from './icons'
+import { Eye, EyeOff, Sparkles, SquareDashed, StickyNote, Trash, X } from './icons'
 import type { OutcomeTableLabels } from './OutcomeTable'
 import type { SelectOption } from './Select'
 import { SettingsCard, type SettingsCardRow } from './SettingsCard'
@@ -153,9 +153,27 @@ export interface WorkflowInspectorLink {
   toNote?: boolean
 }
 
+/** A frame on the canvas: its title and its two colours. Display only, nothing about running. */
+export interface WorkflowInspectorFrame {
+  id: string
+  title: string
+  border: string
+  background: string
+}
+
 export type WorkflowInspectorTarget =
   | { type: 'node'; step: WorkflowInspectorStep }
   | { type: 'link'; link: WorkflowInspectorLink }
+  | { type: 'frame'; frame: WorkflowInspectorFrame }
+  | { type: 'sticky'; sticky: WorkflowInspectorSticky }
+
+/** A sticky note: its colour. Its text is written on the card. */
+export interface WorkflowInspectorSticky {
+  id: string
+  color: string
+  /** Its first line, as the panel's heading. */
+  text: string
+}
 
 export interface WorkflowInspectorLabels {
   /** The panel's accessible name: "Selection". */
@@ -212,6 +230,18 @@ export interface WorkflowInspectorLabels {
   noteHint?: string
   removeNoteRow?: string
   removeNoteHint?: string
+  /** A frame's panel: its heading ("Frame"), its title field and prompt, its two colours, and Remove's row. */
+  frame?: string
+  frameTitle?: string
+  frameTitlePlaceholder?: string
+  frameBorder?: string
+  frameBackground?: string
+  removeFrameRow?: string
+  removeFrameHint?: string
+  /** A sticky note's panel: its heading ("Sticky note"), the line saying where its text is written, and Remove's row. */
+  sticky?: string
+  stickyHint?: string
+  removeStickyRow?: string
   /** A link into a note, in place of its kind: "Shown when the step ends here, never run." */
   noteLink?: string
   /** The corner X, with `onClose`. */
@@ -233,6 +263,10 @@ export interface WorkflowInspectorProps {
   onChangeKind?: (from: string, to: string, kind: WorkflowCanvasLinkKind, outcome?: string) => void
   /** A drawn link moved from outcome `was` to `now`; none is whatever the source ended on. */
   onChangeOutcome?: (from: string, to: string, was: string | undefined, now: string | undefined) => void
+  /** A sticky note's colour. */
+  onChangeSticky?: (id: string, change: { color: string }) => void
+  /** A frame's title (handed over once its field is left) or one of its colours. */
+  onChangeFrame?: (id: string, change: { title?: string; border?: string; background?: string }) => void
   /** What an end note says, handed over once its field is left. */
   onChangeNoteText?: (nodeId: string, text: string) => void
   onRemoveLink?: (from: string, to: string, outcome?: string) => void
@@ -264,6 +298,8 @@ export function WorkflowInspector({
   onChangeKind,
   onChangeOutcome,
   onChangeNoteText,
+  onChangeFrame,
+  onChangeSticky,
   onRemoveLink,
   onToggle,
   onChangeColor,
@@ -281,6 +317,10 @@ export function WorkflowInspector({
         )}
         {!target ? (
           <Text size="xs" tone="secondary">{labels.empty}</Text>
+        ) : target.type === 'sticky' ? (
+          <StickyPanel sticky={target.sticky} labels={labels} readOnly={readOnly} onRemove={onRemove} onChange={onChangeSticky} />
+        ) : target.type === 'frame' ? (
+          <FramePanel frame={target.frame} labels={labels} readOnly={readOnly} onRemove={onRemove} onChange={onChangeFrame} />
         ) : target.type === 'node' && target.step.note !== undefined ? (
           <NotePanel
             step={target.step}
@@ -696,6 +736,141 @@ function NotePanel({
             label: labels.removeNoteRow ?? labels.removeRow ?? labels.remove,
             hint: labels.removeNoteHint,
             control: { kind: 'button', children: labels.remove, icon: Trash, tone: 'danger', size: 'sm', onClick: () => onRemove(step.id) },
+          },
+        ]}
+      />
+    </>
+  )
+}
+
+function FramePanel({
+  frame,
+  labels,
+  readOnly,
+  onRemove,
+  onChange,
+}: {
+  frame: WorkflowInspectorFrame
+  labels: WorkflowInspectorLabels
+  readOnly: boolean
+  onRemove?: WorkflowInspectorProps['onRemove']
+  onChange?: WorkflowInspectorProps['onChangeFrame']
+}) {
+  const [draft, setDraft] = useState(frame.title)
+  // A title changed elsewhere (undo, a reload, another frame selected) is the one to show.
+  useEffect(() => setDraft(frame.title), [frame.title, frame.id])
+  const commit = () => {
+    if (draft.trim() !== frame.title.trim()) onChange?.(frame.id, { title: draft })
+  }
+  const editable = !readOnly && !!onChange
+  const swatches = (id: 'border' | 'background', label: string) => ({
+    id,
+    label,
+    layout: 'stacked' as const,
+    control: {
+      kind: 'swatches' as const,
+      colors: WORKFLOW_STEP_COLORS,
+      columns: WORKFLOW_STEP_COLORS.length / 2,
+      value: frame[id],
+      onChange: (color: string) => onChange?.(frame.id, { [id]: color }),
+      label,
+      disabled: !editable,
+    },
+  })
+
+  return (
+    <>
+      <div className="flex items-center gap-2.5 pr-6">
+        <span
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border-2"
+          style={{ borderColor: frame.border, backgroundColor: `${frame.background}33`, color: frame.border }}
+        >
+          <Icon glyph={SquareDashed} size="md" tone="inherit" />
+        </span>
+        <Text size="sm" weight="bold" className="min-w-0 flex-1 truncate" title={frame.title || labels.frame}>{frame.title || (labels.frame ?? '')}</Text>
+      </div>
+      <SettingsCard
+        rows={[
+          {
+            id: 'title',
+            label: labels.frameTitle ?? '',
+            layout: 'stacked',
+            control: {
+              kind: 'input',
+              value: draft,
+              onChange: setDraft,
+              onBlur: commit,
+              onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => {
+                if (event.key !== 'Enter') return
+                event.preventDefault()
+                commit()
+              },
+              placeholder: labels.frameTitlePlaceholder,
+              disabled: !editable,
+              size: 'md',
+              className: 'w-full min-w-0',
+            },
+          },
+          swatches('border', labels.frameBorder ?? ''),
+          swatches('background', labels.frameBackground ?? ''),
+          !readOnly && onRemove && {
+            id: 'remove',
+            label: labels.removeFrameRow ?? labels.removeRow ?? labels.remove,
+            hint: labels.removeFrameHint,
+            control: { kind: 'button', children: labels.remove, icon: Trash, tone: 'danger', size: 'sm', onClick: () => onRemove(frame.id) },
+          },
+        ]}
+      />
+    </>
+  )
+}
+
+function StickyPanel({
+  sticky,
+  labels,
+  readOnly,
+  onRemove,
+  onChange,
+}: {
+  sticky: WorkflowInspectorSticky
+  labels: WorkflowInspectorLabels
+  readOnly: boolean
+  onRemove?: WorkflowInspectorProps['onRemove']
+  onChange?: WorkflowInspectorProps['onChangeSticky']
+}) {
+  const heading = sticky.text.split('\n')[0] || (labels.sticky ?? '')
+  return (
+    <>
+      <div className="flex items-center gap-2.5 pr-6">
+        <span
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg"
+          style={{ backgroundColor: `${sticky.color}33`, color: sticky.color }}
+        >
+          <Icon glyph={StickyNote} size="md" tone="inherit" />
+        </span>
+        <Text size="sm" weight="bold" className="min-w-0 flex-1 truncate" title={heading}>{heading}</Text>
+      </div>
+      {labels.stickyHint && <Text size="xs" tone="secondary">{labels.stickyHint}</Text>}
+      <SettingsCard
+        rows={[
+          {
+            id: 'color',
+            label: labels.color,
+            layout: 'stacked',
+            control: {
+              kind: 'swatches',
+              colors: WORKFLOW_STEP_COLORS,
+              columns: WORKFLOW_STEP_COLORS.length / 2,
+              value: sticky.color,
+              onChange: (color) => onChange?.(sticky.id, { color }),
+              label: labels.color,
+              disabled: readOnly || !onChange,
+            },
+          },
+          !readOnly && onRemove && {
+            id: 'remove',
+            label: labels.removeStickyRow ?? labels.removeRow ?? labels.remove,
+            control: { kind: 'button', children: labels.remove, icon: Trash, tone: 'danger', size: 'sm', onClick: () => onRemove(sticky.id) },
           },
         ]}
       />

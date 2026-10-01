@@ -5,14 +5,16 @@ import { Button } from './Button'
 import { ButtonIcon } from './ButtonIcon'
 import { Menu } from './Menu'
 import { Icon } from './Icon'
-import { CircleAlert, LocateFixed, Plus, Redo2, Undo2, X, ZoomIn, ZoomOut } from './icons'
+import { CircleAlert, LocateFixed, Plus, Redo2, Shapes, SquareDashed, StickyNote, Undo2, X, ZoomIn, ZoomOut } from './icons'
 import type { WorkflowProblemItem } from './WorkflowProblems'
 
 /**
  * THE EDITOR'S DOCK: a floating bar at the bottom centre of the canvas, holding what
  * the editor does to the whole flow rather than to what is selected.
  *
- * Left to right: add a step, undo and redo, the zoom, the problems, and the draft's
+ * Left to right: add a step, the toolbox (what the canvas holds besides steps: a frame, a
+ * sticky note),
+ * undo and redo, the zoom, the problems, and the draft's
  * fate (discard, save), then a close button when the caller has one to give. The selection's own controls are the inspector's, which is
  * why nothing here needs one.
  *
@@ -34,6 +36,14 @@ export interface WorkflowDockLabels {
   /** The bar's accessible name: "Workflow tools". */
   dock: string
   add: string
+  /** The toolbox button's tooltip and its menu's title: "Tools". Its rows' words below. */
+  tools?: string
+  /** The toolbox's frame row, and its quiet hint: "Frame", "Group steps under a title". */
+  frame?: string
+  frameHint?: string
+  /** The toolbox's sticky note row, and its quiet hint: "Sticky note", "Free text on the canvas". */
+  sticky?: string
+  stickyHint?: string
   undo: string
   redo: string
   zoomIn: string
@@ -52,6 +62,10 @@ export interface WorkflowDockProps {
   labels: WorkflowDockLabels
   /** The "+": its button, and the canvas point at the middle of the view. No "+" without it. */
   onAdd?: (anchor: HTMLElement, position: { x: number; y: number }) => void
+  /** The toolbox's frame row was picked: the canvas point at the middle of the view. No toolbox without it. */
+  onAddFrame?: (centre: { x: number; y: number }) => void
+  /** The toolbox's sticky note row was picked: the canvas point at the middle of the view. */
+  onAddSticky?: (centre: { x: number; y: number }) => void
   canUndo?: boolean
   canRedo?: boolean
   onUndo?: () => void
@@ -80,6 +94,8 @@ const CARD_HALF = { x: 112, y: 29 }
 export function WorkflowDock({
   labels,
   onAdd,
+  onAddFrame,
+  onAddSticky,
   canUndo = false,
   canRedo = false,
   onUndo,
@@ -96,6 +112,8 @@ export function WorkflowDock({
   const { zoomIn, zoomOut, fitView, screenToFlowPosition } = useReactFlow()
   const addRef = useRef<HTMLButtonElement>(null)
   const problemsRef = useRef<HTMLButtonElement>(null)
+  const toolsRef = useRef<HTMLButtonElement>(null)
+  const [toolsOpen, setToolsOpen] = useState(false)
   const [problemsOpen, setProblemsOpen] = useState(false)
   const barRef = useRef<HTMLDivElement>(null)
 
@@ -107,6 +125,10 @@ export function WorkflowDock({
     const centre = screenToFlowPosition({ x: pane.left + pane.width / 2, y: pane.top + pane.height / 2 })
     onAdd(button, { x: centre.x - CARD_HALF.x, y: centre.y - CARD_HALF.y })
   }
+  const viewCentre = () => {
+    const pane = barRef.current?.closest('.react-flow')?.getBoundingClientRect()
+    return pane ? screenToFlowPosition({ x: pane.left + pane.width / 2, y: pane.top + pane.height / 2 }) : null
+  }
 
   return (
     <div
@@ -115,12 +137,40 @@ export function WorkflowDock({
       aria-label={labels.dock}
       className="nodrag nopan flex items-center gap-1 rounded-2xl border border-line bg-bg-secondary p-1.5 shadow-lg"
     >
-      {onAdd && (
+      {onAdd && <ButtonIcon ref={addRef} icon={Plus} title={labels.add} onClick={add} tone="solid" size="lg" />}
+      {(onAddFrame || onAddSticky) && (
         <>
-          <ButtonIcon ref={addRef} icon={Plus} title={labels.add} onClick={add} tone="solid" size="lg" />
-          <Divider />
+          <ButtonIcon
+            ref={toolsRef}
+            icon={Shapes}
+            title={labels.tools ?? ''}
+            onClick={() => setToolsOpen((open) => !open)}
+            tone="ghost"
+            size="lg"
+            aria-haspopup="menu"
+            aria-expanded={toolsOpen}
+          />
+          <Menu
+            open={toolsOpen}
+            onClose={() => setToolsOpen(false)}
+            anchor={toolsRef.current}
+            label={labels.tools ?? ''}
+            header={{ title: labels.tools ?? '', icon: Shapes }}
+            groups={[{ items: [
+              ...(onAddFrame ? [{ id: 'frame', label: labels.frame ?? '', icon: SquareDashed, hint: labels.frameHint }] : []),
+              ...(onAddSticky ? [{ id: 'sticky', label: labels.sticky ?? '', icon: StickyNote, hint: labels.stickyHint }] : []),
+            ] }]}
+            onSelect={(item) => {
+              const centre = viewCentre()
+              if (!centre) return
+              if (item.id === 'frame') onAddFrame?.(centre)
+              else if (item.id === 'sticky') onAddSticky?.(centre)
+            }}
+            width={260}
+          />
         </>
       )}
+      {(onAdd || onAddFrame || onAddSticky) && <Divider />}
       {(onUndo || onRedo) && (
         <>
           <ButtonIcon icon={Undo2} title={labels.undo} onClick={() => onUndo?.()} disabled={!canUndo} tone="ghost" size="lg" />

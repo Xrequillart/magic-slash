@@ -92,6 +92,23 @@ describe('diffOverlays', () => {
     ])
   })
 
+  it('reports a frame added, renamed and removed, by its title, and not its moves', () => {
+    const frame = { id: 'f1', title: '', border: '#6366F1', background: '#6366F1', x: 0, y: 0, width: 300, height: 200 }
+    expect(diffOverlays(overlay({}), overlay({ frames: [frame] }))).toEqual([{ kind: 'frame-added', title: '' }])
+    expect(diffOverlays(overlay({ frames: [frame] }), overlay({ frames: [{ ...frame, title: 'Checks', x: 40 }] }))).toEqual([
+      { kind: 'frame-title', before: '', after: 'Checks' },
+    ])
+    expect(diffOverlays(overlay({ frames: [{ ...frame, title: 'Checks' }] }), overlay({}))).toEqual([{ kind: 'frame-removed', title: 'Checks' }])
+  })
+
+  it('reports a sticky note added, rewritten and removed, by its first line', () => {
+    const sticky = { id: 's1', text: '', color: '#F59E0B', x: 0, y: 0, width: 240, height: 180 }
+    expect(diffOverlays(overlay({}), overlay({ stickies: [sticky] }))).toEqual([{ kind: 'sticky-added' }])
+    const written = { ...sticky, text: 'Ask QA\nbefore merging' }
+    expect(diffOverlays(overlay({ stickies: [sticky] }), overlay({ stickies: [{ ...written, x: 50 }] }))).toEqual([{ kind: 'sticky-text', text: 'Ask QA' }])
+    expect(diffOverlays(overlay({ stickies: [written] }), overlay({}))).toEqual([{ kind: 'sticky-removed', text: 'Ask QA' }])
+  })
+
   it('names an end note by what it says, and its links with it', () => {
     const before = overlay({ steps: [{ skill: 'x', mode: 'advisory' }], notes: [{ id: 'n1', text: 'Open a ticket' }] })
     const edited = overlay({ ...before, notes: [{ id: 'n1', text: 'Open a Jira ticket' }], links: [{ from: 'custom:x', to: 'note:n1', kind: 'suggest' }] })
