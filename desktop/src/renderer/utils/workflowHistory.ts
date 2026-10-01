@@ -1,6 +1,6 @@
 import { DEFAULT_LINKS, DEFAULT_WORKFLOW } from '../../workflow/defaultFlow'
 import type { WorkflowLinkKind, WorkflowMode } from '../../workflow/model'
-import { EMPTY_OVERLAY, customNodeId, isCustomNodeId, linkKey, toOverlay, type WorkflowOverlay, type WorkflowOverlayLink } from '../../workflow/overlay'
+import { EMPTY_OVERLAY, customNodeId, isCustomNodeId, isNoteNodeId, linkKey, linkOutcomesOf, noteNodeId, toOverlay, type WorkflowOverlay, type WorkflowOverlayLink } from '../../workflow/overlay'
 import type { WorkflowHistoryEvent } from '../../types'
 
 /**
@@ -26,7 +26,12 @@ export type WorkflowHistoryChange =
   | { kind: 'link-added'; from: string; to: string; linkKind: WorkflowLinkKind }
   | { kind: 'link-removed'; from: string; to: string }
   | { kind: 'link-kind'; from: string; to: string; linkKind: WorkflowLinkKind }
+  /** `outcome`: the outcomes it is now taken on, comma-separated; absent for whatever the outcome. */
   | { kind: 'link-outcome'; from: string; to: string; outcome?: string }
+  /** An end note, by what it says: a note has no other name. */
+  | { kind: 'note-added'; text: string }
+  | { kind: 'note-removed'; text: string }
+  | { kind: 'note-text'; before: string; after: string }
   | { kind: 'moved'; count: number }
   /** A stored value this build cannot read: something changed, what is not known. */
   | { kind: 'unreadable' }
@@ -94,6 +99,9 @@ function overlayOf(value: unknown): WorkflowOverlay | null {
 
 export function diffOverlays(before: WorkflowOverlay, after: WorkflowOverlay): WorkflowHistoryChange[] {
   const changes: WorkflowHistoryChange[] = []
+  // A link's end that is a note is named by what it says (`note:<text>`, see `endOf`).
+  const texts = new Map([...(before.notes ?? []), ...(after.notes ?? [])].map((note) => [noteNodeId(note.id), note.text]))
+  const endOf = (id: string) => (isNoteNodeId(id) ? `note:${texts.get(id) ?? ''}` : skillOfNode(id))
   const oldSteps = new Map(before.steps.map((step) => [step.skill, step]))
   const newSteps = new Map(after.steps.map((step) => [step.skill, step]))
   // The nodes that came or went: their links and their card go with them, and saying
@@ -124,6 +132,22 @@ export function diffOverlays(before: WorkflowOverlay, after: WorkflowOverlay): W
     }
   }
 
+  const oldNotes = new Map((before.notes ?? []).map((note) => [note.id, note]))
+  const newNotes = new Map((after.notes ?? []).map((note) => [note.id, note]))
+  for (const [id, note] of newNotes) {
+    const was = oldNotes.get(id)
+    if (!was) {
+      changes.push({ kind: 'note-added', text: note.text })
+      gone.add(noteNodeId(id))
+    } else if (was.text !== note.text) changes.push({ kind: 'note-text', before: was.text, after: note.text })
+  }
+  for (const [id, note] of oldNotes) {
+    if (!newNotes.has(id)) {
+      changes.push({ kind: 'note-removed', text: note.text })
+      gone.add(noteNodeId(id))
+    }
+  }
+
   const wasOff = new Set(before.disabled ?? [])
   const isOff = new Set(after.disabled ?? [])
   for (const id of isOff) if (!wasOff.has(id) && !gone.has(id)) changes.push({ kind: 'step-enabled', node: skillOfNode(id), enabled: false })
@@ -134,16 +158,18 @@ export function diffOverlays(before: WorkflowOverlay, after: WorkflowOverlay): W
   const newLinks = new Map(after.links.map((link) => [linkKey(link.from, link.to), link]))
   for (const [key, link] of newLinks) {
     const was = oldLinks.get(key)
-    const ends = { from: skillOfNode(link.from), to: skillOfNode(link.to) }
+    const ends = { from: endOf(link.from), to: endOf(link.to) }
     if (!was) {
       if (!touchesGone(link)) changes.push({ kind: 'link-added', ...ends, linkKind: link.kind })
       continue
     }
     if (was.kind !== link.kind) changes.push({ kind: 'link-kind', ...ends, linkKind: link.kind })
-    if (was.outcome !== link.outcome) changes.push({ kind: 'link-outcome', ...ends, outcome: link.outcome })
+    const outcomesWere = linkOutcomesOf(was).join(', ')
+    const outcomesNow = linkOutcomesOf(link).join(', ')
+    if (outcomesWere !== outcomesNow) changes.push({ kind: 'link-outcome', ...ends, ...(outcomesNow ? { outcome: outcomesNow } : {}) })
   }
   for (const [key, link] of oldLinks) {
-    if (!newLinks.has(key) && !touchesGone(link)) changes.push({ kind: 'link-removed', from: skillOfNode(link.from), to: skillOfNode(link.to) })
+    if (!newLinks.has(key) && !touchesGone(link)) changes.push({ kind: 'link-removed', from: endOf(link.from), to: endOf(link.to) })
   }
 
   // A default link's kind. Absent from `kinds` is the default's own kind, which the

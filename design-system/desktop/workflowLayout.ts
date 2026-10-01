@@ -52,6 +52,11 @@ export interface WorkflowCanvasNode {
   warning?: string
   /** The step is named by a problem that blocks saving: drawn with an error ring. */
   problem?: boolean
+  /**
+   * AN END NOTE, not a step: what it says. A card with no port out (nothing leaves a note),
+   * no switch and no mode, its text in the header's place. `outcomes` is empty on it.
+   */
+  note?: string
 }
 
 export interface WorkflowCanvasLink {
@@ -106,7 +111,9 @@ const ROW_GAP = 72
  */
 export const WORKFLOW_ANY_EXIT = 'default'
 
-export function workflowExitRows(node: Pick<WorkflowCanvasNode, 'outcomes'>): string[] {
+export function workflowExitRows(node: Pick<WorkflowCanvasNode, 'outcomes' | 'note'>): string[] {
+  // Nothing leaves an end note: no row, no port.
+  if (node.note !== undefined) return []
   return node.outcomes.length === 1 ? node.outcomes : [...node.outcomes, WORKFLOW_ANY_EXIT]
 }
 
@@ -145,6 +152,7 @@ const LABEL_FONT = `700 14px ${SANS}`
 const CODE_FONT = `400 10px ${MONO}`
 const EXIT_FONT = `italic 400 10px ${SANS}`
 const PLATE_FONT = `500 9px ${SANS}`
+const NOTE_FONT = `400 12px ${SANS}`
 
 let measurer: CanvasRenderingContext2D | null | undefined
 /**
@@ -172,6 +180,12 @@ function textWidth(text: string, font: string): number {
 export function workflowCardWidth(node: WorkflowCanvasNode, words: WorkflowCardWords = {}): number {
   const SPARE = 6
   const BORDER = 2
+  if (node.note !== undefined) {
+    // Its text on two lines at most: half its width, past the glyph, wraps it in two.
+    const chrome = 12 + 32 + 10 + 12
+    const width = Math.ceil(chrome + textWidth(node.note || node.label, NOTE_FONT) / 2 + 24 + BORDER + SPARE)
+    return Math.min(WORKFLOW_NODE_MAX_WIDTH, Math.max(WORKFLOW_NODE_MIN_WIDTH, width))
+  }
   // px-3, the 32px glyph and its gap-2.5 on the left, px-3 on the right.
   const headerChrome = 12 + 32 + 10 + 12
   const title = Math.max(textWidth(node.label, LABEL_FONT), textWidth(node.skill, CODE_FONT))
@@ -193,7 +207,7 @@ export function workflowCardWidths(nodes: WorkflowCanvasNode[], words: WorkflowC
 }
 
 /** A card's height, from its rows. */
-export function workflowCardHeight(node: Pick<WorkflowCanvasNode, 'outcomes'>): number {
+export function workflowCardHeight(node: Pick<WorkflowCanvasNode, 'outcomes' | 'note'>): number {
   return workflowNodeHeight(workflowExitRows(node).length)
 }
 

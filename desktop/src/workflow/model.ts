@@ -38,6 +38,16 @@ export interface WorkflowNode {
   provides: string[]
 }
 
+/**
+ * An end note: a line shown to the user when a link reaches it, for what no skill does.
+ * Not a node: no skill runs it, nothing leaves it, and a skill never finds itself in one.
+ */
+export interface WorkflowNote {
+  /** `note:<id>`, in its own id space, so a link names it like a node. */
+  id: string
+  text: string
+}
+
 export interface WorkflowLink {
   from: string
   to: string
@@ -52,6 +62,8 @@ export interface Workflow {
   entry: string[]
   nodes: WorkflowNode[]
   links: WorkflowLink[]
+  /** The end notes links may lead to. Absent: none. */
+  notes?: WorkflowNote[]
 }
 
 /** A repository's flow, and whether it is the repository's own or the default. */
@@ -94,11 +106,18 @@ export function validateWorkflow(flow: Workflow): string[] {
     if (!nodes.has(id)) errors.push(`entry "${id}" is not a node`)
   }
 
+  const notes = new Set<string>()
+  for (const note of flow.notes ?? []) {
+    if (nodes.has(note.id) || notes.has(note.id)) errors.push(`duplicate note id "${note.id}"`)
+    else notes.add(note.id)
+  }
+
   for (const link of flow.links) {
     const from = nodes.get(link.from)
     const to = nodes.get(link.to)
-    if (!from) errors.push(`link from unknown node "${link.from}"`)
-    if (!to) errors.push(`link to unknown node "${link.to}"`)
+    if (notes.has(link.from)) errors.push(`link from note "${link.from}": nothing leaves an end note`)
+    else if (!from) errors.push(`link from unknown node "${link.from}"`)
+    if (!to && !notes.has(link.to)) errors.push(`link to unknown node "${link.to}"`)
     if (from && link.outcome !== undefined && !from.outcomes.includes(link.outcome)) {
       errors.push(`link ${link.from} → ${link.to} is on outcome "${link.outcome}", which "${link.from}" does not declare`)
     }
@@ -203,6 +222,10 @@ export function isWorkflow(value: unknown): value is Workflow {
         (link.kind === 'auto' || link.kind === 'suggest') &&
         (link.outcome === undefined || typeof link.outcome === 'string')
       )
-    })
+    }) &&
+    (flow.notes === undefined || (Array.isArray(flow.notes) && flow.notes.every((n) => {
+      const note = n as Record<string, unknown> | null
+      return !!note && typeof note.id === 'string' && typeof note.text === 'string'
+    })))
   )
 }

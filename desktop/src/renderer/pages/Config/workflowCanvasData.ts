@@ -2,7 +2,7 @@ import type { WorkflowCanvasLink, WorkflowCanvasNode, WorkflowSkillOption } from
 import { workflowStepColor } from '@ds/desktop/palette'
 import type { Workflow } from '../../../workflow/model'
 import {
-  PLAN_NODE_ID, START_NODE_ID, canDisable, customNodeId, isBuiltInNodeId, isCustomNodeId, type WorkflowOverlay, type WorkflowProblem,
+  PLAN_NODE_ID, START_NODE_ID, canDisable, customNodeId, isBuiltInNodeId, isCustomNodeId, noteNodeId, type WorkflowOverlay, type WorkflowProblem,
 } from '../../../workflow/overlay'
 import type { ListingEntry } from '../../hooks/useSkills'
 
@@ -60,11 +60,18 @@ export interface WorkflowCanvasMarks {
   disabled?: readonly string[]
   /** A custom step's ground, by node id (`stepColors`). */
   colors?: Readonly<Record<string, string>>
+  /** What an end note with no text yet says on its card: "Empty note". */
+  emptyNote?: string
 }
 
 /** Every custom step's ground, by node id: its own, or the one its place hands it (`workflowStepColor`). */
 export function stepColors(overlay: WorkflowOverlay): Record<string, string> {
-  return Object.fromEntries(overlay.steps.map((step, i) => [customNodeId(step.skill), workflowStepColor(step.color, i)]))
+  const notes = overlay.notes ?? []
+  return Object.fromEntries([
+    ...overlay.steps.map((step, i) => [customNodeId(step.skill), workflowStepColor(step.color, i)]),
+    // A note's own colour, else the next one along after the steps': two notes added in a row differ.
+    ...notes.map((note, i) => [noteNodeId(note.id), workflowStepColor(note.color, overlay.steps.length + i)]),
+  ])
 }
 
 /**
@@ -94,7 +101,16 @@ export function workflowCanvasData(flow: Workflow, marks: WorkflowCanvasMarks = 
       const warning = marks.warnings?.[node.id]
       if (warning) drawn.warning = warning
       return drawn
-    }),
+    }).concat((flow.notes ?? []).map((note) => {
+      // An end note is a card too, with no port out: `note` is what tells the canvas so.
+      const drawn: WorkflowCanvasNode = { id: note.id, label: note.text || (marks.emptyNote ?? ''), skill: '', outcomes: [], note: note.text }
+      const color = marks.colors?.[note.id]
+      if (color) drawn.color = color
+      if (marks.problems?.includes(note.id)) drawn.problem = true
+      const warning = marks.warnings?.[note.id]
+      if (warning) drawn.warning = warning
+      return drawn
+    })),
     links: flow.links,
     entry: flow.entry,
   }

@@ -1,5 +1,5 @@
 import { Menu, type MenuGroup, type MenuItem } from './Menu'
-import { FolderGit2, Plus, Puzzle, Sparkles } from './icons'
+import { FolderGit2, Plus, Puzzle, Sparkles, StickyNote } from './icons'
 import type { IconComponent } from './types'
 
 /**
@@ -44,6 +44,9 @@ export interface WorkflowSkillPickerLabels {
   inWorkflow: string
   /** Each group's heading. */
   sources: Record<WorkflowSkillSource, string>
+  /** The row that adds an end note instead of a step, and its quiet hint. Not drawn without `onPickNote`. */
+  note?: string
+  noteHint?: string
 }
 
 export interface WorkflowSkillPickerProps {
@@ -53,6 +56,8 @@ export interface WorkflowSkillPickerProps {
   anchor: HTMLElement | null
   skills: WorkflowSkillOption[]
   onPick: (name: string) => void
+  /** The end note row was picked. Without it, the menu offers skills only. */
+  onPickNote?: () => void
   labels: WorkflowSkillPickerLabels
   /** Where to portal. `document.body` unless the theme is scoped, see `Menu`. */
   portalTo?: HTMLElement | null
@@ -69,8 +74,15 @@ const SOURCE_ICONS: Record<WorkflowSkillSource, IconComponent> = {
 /** Wide enough for a plugin's `name:skill` and the note beside it. */
 const WIDTH = 280
 
-export function WorkflowSkillPicker({ open, onClose, anchor, skills, onPick, labels, portalTo }: WorkflowSkillPickerProps) {
-  const groups: MenuGroup[] = SOURCES.map((source) => ({
+/** The end note row's id: no skill is called that, since a skill name has no space. */
+const NOTE_ROW = 'end note'
+
+export function WorkflowSkillPicker({ open, onClose, anchor, skills, onPick, onPickNote, labels, portalTo }: WorkflowSkillPickerProps) {
+  // First, and on its own: a note is not a skill, and is always there to add.
+  const noteGroup: MenuGroup[] = onPickNote && labels.note
+    ? [{ items: [{ id: NOTE_ROW, label: labels.note, icon: StickyNote, hint: labels.noteHint }] }]
+    : []
+  const groups: MenuGroup[] = [...noteGroup, ...SOURCES.map((source) => ({
     label: labels.sources[source],
     items: skills
       .filter((skill) => skill.source === source)
@@ -81,7 +93,7 @@ export function WorkflowSkillPicker({ open, onClose, anchor, skills, onPick, lab
         disabled: skill.disabled,
         hint: skill.disabled ? labels.inWorkflow : undefined,
       })),
-  })).filter((group) => group.items.length > 0)
+  })).filter((group) => group.items.length > 0)]
 
   return (
     <Menu
@@ -91,7 +103,7 @@ export function WorkflowSkillPicker({ open, onClose, anchor, skills, onPick, lab
       label={labels.title}
       header={{ title: labels.title, subtitle: skills.length === 0 ? labels.empty : undefined, icon: Plus }}
       groups={groups}
-      onSelect={(item) => onPick(item.id)}
+      onSelect={(item) => (item.id === NOTE_ROW ? onPickNote?.() : onPick(item.id))}
       width={WIDTH}
       portalTo={portalTo}
     />

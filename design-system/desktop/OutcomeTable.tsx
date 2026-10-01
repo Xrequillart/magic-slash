@@ -85,15 +85,15 @@ export function OutcomeTable({
           <tbody>
             {items.map((item) => (
               <tr key={item} className="border-t border-line">
-                <td className="truncate px-2.5 py-1.5">
+                <td className="px-2.5 py-1.5">
                   {/* `<code>`: the name is the skills', spelled exactly as they read it. */}
-                  <code className="font-mono text-[11px] text-ink" title={item}>{item}</code>
+                  <code className="block truncate font-mono text-[11px] text-ink" title={item}>{item}</code>
                 </td>
-                <td className="truncate px-2.5 py-1.5">
+                <td className="truncate px-2.5 py-1.5 align-top">
                   <Text size="2xs" tone="secondary">{details[item] ?? ''}</Text>
                 </td>
                 {!disabled && (
-                  <td className="px-1 py-1 text-right">
+                  <td className="px-1 py-1 text-right align-top">
                     <ButtonIcon icon={Trash} title={`${labels.remove} ${item}`} tone="ghost" size="sm" onClick={() => onChange(items.filter((one) => one !== item))} />
                   </td>
                 )}
@@ -118,3 +118,4 @@ export function OutcomeTable({
     </div>
   )
 }
+

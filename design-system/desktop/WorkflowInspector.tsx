@@ -5,7 +5,8 @@ import { Icon } from './Icon'
 import { OutputSample } from './OutputSample'
 import './workflowCanvas.css'
 
-import { Eye, EyeOff, Sparkles, Trash, X } from './icons'
+import { useEffect, useState, type KeyboardEvent } from 'react'
+import { Eye, EyeOff, Sparkles, StickyNote, Trash, X } from './icons'
 import type { OutcomeTableLabels } from './OutcomeTable'
 import type { SelectOption } from './Select'
 import { SettingsCard, type SettingsCardRow } from './SettingsCard'
@@ -85,6 +86,11 @@ export interface WorkflowInspectorStep {
    * as one press that replaces them. Absent when the file says nothing or says the same.
    */
   detectedOutcomes?: string[]
+  /**
+   * AN END NOTE, not a step: what it says. Its panel is the text, the colour and Remove,
+   * and nothing about running: no switch, no mode, no outcome.
+   */
+  note?: string
   /** By outcome, what leaves the step on it, already counted and translated: "2 links". */
   outcomeLinks?: Readonly<Record<string, string>>
   /**
@@ -136,8 +142,12 @@ export interface WorkflowInspectorLink {
   hint?: string
   /** A default link: it cannot be removed, nor its outcome changed. */
   locked?: boolean
-  /** A drawn link's choice of outcome: what its source can end on. Empty or absent: no choice. */
+  /** A drawn link's choice of outcomes: what its source can end on. Empty or absent: no choice. */
   outcomes?: string[]
+  /** Of those, the ones it is taken on. Empty or absent: whatever the source ended on. */
+  selectedOutcomes?: string[]
+  /** It leads to an end note: shown, never followed, so its kind is not offered. */
+  toNote?: boolean
 }
 
 export type WorkflowInspectorTarget =
@@ -189,6 +199,14 @@ export interface WorkflowInspectorLabels {
   detectRow?: string
   detect?: string
   detectHint?: string
+  /** An end note's panel: its field's name, its prompt, the line under it, and Remove's row. */
+  noteText?: string
+  notePlaceholder?: string
+  noteHint?: string
+  removeNoteRow?: string
+  removeNoteHint?: string
+  /** A link into a note, in place of its kind: "Shown when the step ends here, never run." */
+  noteLink?: string
   /** The corner X, with `onClose`. */
   close?: string
   /** The heading over a step's settings: "Settings". */
@@ -205,13 +223,15 @@ export interface WorkflowInspectorProps {
   onChangeMode?: (nodeId: string, mode: WorkflowCanvasNodeMode) => void
   onRemove?: (nodeId: string) => void
   onChangeKind?: (from: string, to: string, kind: WorkflowCanvasLinkKind) => void
-  /** A drawn link's outcome, or none (`undefined`: whatever the source ended on). */
-  onChangeOutcome?: (from: string, to: string, outcome: string | undefined) => void
+  /** The outcomes a drawn link is taken on, the whole new list; none is whatever the source ended on. */
+  onChangeOutcomes?: (from: string, to: string, outcomes: string[]) => void
+  /** What an end note says, handed over once its field is left. */
+  onChangeNoteText?: (nodeId: string, text: string) => void
   onRemoveLink?: (from: string, to: string) => void
   /** A custom step's card colour, one of `WORKFLOW_STEP_COLORS`. */
   onChangeColor?: (nodeId: string, color: string) => void
   /** A custom step's outcomes, the whole new list. The row is read-only without it. */
-  onChangeOutcomes?: (nodeId: string, outcomes: string[]) => void
+  onChangeStepOutcomes?: (nodeId: string, outcomes: string[]) => void
   /** A step's switch: turn it on (`true`) or off. Greyed without it. */
   onToggle?: (nodeId: string, enabled: boolean) => void
   /** The corner X. Not drawn without it. */
@@ -232,11 +252,12 @@ export function WorkflowInspector({
   onChangeMode,
   onRemove,
   onChangeKind,
-  onChangeOutcome,
+  onChangeOutcomes,
+  onChangeNoteText,
   onRemoveLink,
   onToggle,
   onChangeColor,
-  onChangeOutcomes,
+  onChangeStepOutcomes,
   onClose,
   ground = 'surface',
   className = '',
@@ -249,6 +270,15 @@ export function WorkflowInspector({
         )}
         {!target ? (
           <Text size="xs" tone="secondary">{labels.empty}</Text>
+        ) : target.type === 'node' && target.step.note !== undefined ? (
+          <NotePanel
+            step={target.step}
+            labels={labels}
+            readOnly={readOnly}
+            onRemove={onRemove}
+            onChangeColor={onChangeColor}
+            onChangeText={onChangeNoteText}
+          />
         ) : target.type === 'node' ? (
           <StepPanel
             step={target.step}
@@ -258,7 +288,7 @@ export function WorkflowInspector({
             onRemove={onRemove}
             onToggle={onToggle}
             onChangeColor={onChangeColor}
-            onChangeOutcomes={onChangeOutcomes}
+            onChangeOutcomes={onChangeStepOutcomes}
           />
         ) : (
           <LinkPanel
@@ -266,7 +296,7 @@ export function WorkflowInspector({
             labels={labels}
             readOnly={readOnly}
             onChangeKind={onChangeKind}
-            onChangeOutcome={onChangeOutcome}
+            onChangeOutcomes={onChangeOutcomes}
             onRemoveLink={onRemoveLink}
           />
         )}
@@ -292,7 +322,7 @@ function StepPanel({
   onRemove?: WorkflowInspectorProps['onRemove']
   onToggle?: WorkflowInspectorProps['onToggle']
   onChangeColor?: WorkflowInspectorProps['onChangeColor']
-  onChangeOutcomes?: WorkflowInspectorProps['onChangeOutcomes']
+  onChangeOutcomes?: WorkflowInspectorProps['onChangeStepOutcomes']
 }) {
   const outcomesEditable = !readOnly && !!onChangeOutcomes
   const modeOptions: SelectOption[] = MODES.map((mode) => ({ value: mode, label: labels[mode] }))
@@ -437,18 +467,22 @@ function LinkPanel({
   labels,
   readOnly,
   onChangeKind,
-  onChangeOutcome,
+  onChangeOutcomes,
   onRemoveLink,
 }: {
   link: WorkflowInspectorLink
   labels: WorkflowInspectorLabels
   readOnly: boolean
   onChangeKind?: WorkflowInspectorProps['onChangeKind']
-  onChangeOutcome?: WorkflowInspectorProps['onChangeOutcome']
+  onChangeOutcomes?: WorkflowInspectorProps['onChangeOutcomes']
   onRemoveLink?: WorkflowInspectorProps['onRemoveLink']
 }) {
   const outcomeChoice = !link.locked && (link.outcomes?.length ?? 0) > 0
-  const outcomeOptions: SelectOption[] = (link.outcomes ?? []).map((outcome) => ({ value: outcome, label: outcome }))
+  const chosen = link.selectedOutcomes ?? []
+  // One switch per outcome the source declares: a link may be taken on several of them.
+  const toggle = (outcome: string, on: boolean) => onChangeOutcomes?.(
+    link.from, link.to, on ? [...chosen, outcome] : chosen.filter((one) => one !== outcome),
+  )
   const kindOptions: SelectOption[] = KINDS.map((kind) => ({
     value: kind,
     label: labels[kind],
@@ -466,29 +500,34 @@ function LinkPanel({
       {/* The link's choices, as rows like a step's: a SettingsCard. */}
       <SettingsCard
         rows={[
-          outcomeChoice ? {
+          outcomeChoice && {
             id: 'outcome',
             label: labels.outcome,
-            layout: 'stacked',
+            note: chosen.length === 0 ? labels.anyOutcome : undefined,
+          },
+          ...(outcomeChoice ? (link.outcomes ?? []).map((outcome) => ({
+            id: `outcome:${outcome}`,
+            label: outcome,
             control: {
-              kind: 'select',
-              value: link.outcome ?? '',
-              options: outcomeOptions,
-              // "Whatever it ended on" is the Select's cleared state, `''`.
-              clearLabel: labels.anyOutcome,
-              placeholder: labels.anyOutcome,
-              onChange: (outcome) => onChangeOutcome?.(link.from, link.to, outcome === '' ? undefined : outcome),
-              disabled: readOnly || !onChangeOutcome,
-              ariaLabel: labels.outcome,
-              size: 'md',
+              kind: 'switch' as const,
+              checked: chosen.includes(outcome),
+              onChange: (on: boolean) => toggle(outcome, on),
+              label: outcome,
+              size: 'sm' as const,
+              disabled: readOnly || !onChangeOutcomes,
             },
-          } : link.outcome !== undefined && {
+          })) : []),
+          !outcomeChoice && link.outcome !== undefined && {
             // A default link's outcome is the product's: said, not offered.
             id: 'outcome',
             label: labels.outcome,
             note: link.outcome,
           },
-          {
+          link.toNote ? {
+            id: 'kind',
+            label: labels.kind,
+            note: labels.noteLink,
+          } : {
             id: 'kind',
             label: labels.kind,
             layout: 'stacked',
@@ -542,3 +581,98 @@ function LinkTrail({ kind }: { kind: WorkflowCanvasLinkKind }) {
   )
 }
 
+
+/**
+ * AN END NOTE'S PANEL: what it says, its colour, and Remove. Nothing about running, since a
+ * note runs nothing. The text is a textarea that keeps its own draft and is handed over
+ * when the field is left, or on ⌘Enter: one edit for the history, not one per keystroke.
+ */
+function NotePanel({
+  step,
+  labels,
+  readOnly,
+  onRemove,
+  onChangeColor,
+  onChangeText,
+}: {
+  step: WorkflowInspectorStep
+  labels: WorkflowInspectorLabels
+  readOnly: boolean
+  onRemove?: WorkflowInspectorProps['onRemove']
+  onChangeColor?: WorkflowInspectorProps['onChangeColor']
+  onChangeText?: WorkflowInspectorProps['onChangeNoteText']
+}) {
+  const saved = step.note ?? ''
+  const [draft, setDraft] = useState(saved)
+  // A text changed elsewhere (undo, a reload, another note selected) is the one to show.
+  useEffect(() => setDraft(saved), [saved, step.id])
+  const commit = () => {
+    if (draft.trim() !== saved.trim()) onChangeText?.(step.id, draft)
+  }
+  const editable = !readOnly && !!onChangeText
+
+  return (
+    <>
+      <div className="flex items-center gap-2.5 pr-6">
+        <span
+          className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${step.color ? '' : 'bg-accent/10 text-accent'}`}
+          style={step.color ? { backgroundColor: `${step.color}33`, color: step.color } : undefined}
+        >
+          <Icon glyph={StickyNote} size="md" tone="inherit" />
+        </span>
+        <Text size="sm" weight="bold" className="min-w-0 flex-1 truncate" title={step.label}>{step.label}</Text>
+      </div>
+      {step.warning && <Banner variant="warning" layout="stacked">{step.warning}</Banner>}
+      <SettingsCard
+        rows={[
+          {
+            id: 'text',
+            label: labels.noteText ?? '',
+            hint: labels.noteHint,
+            layout: 'stacked',
+            control: {
+              kind: 'input',
+              // A textarea: a note may take a few lines. Enter breaks the line, ⌘Enter hands it over.
+              multiline: true,
+              rows: 4,
+              resize: 'vertical',
+              value: draft,
+              onChange: setDraft,
+              onBlur: commit,
+              onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => {
+                if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return
+                event.preventDefault()
+                commit()
+              },
+              placeholder: labels.notePlaceholder,
+              disabled: !editable,
+              size: 'md',
+              // The width is the caller's: the stacked row is a flex, and the field fills it.
+              className: 'w-full min-w-0',
+            },
+          },
+          {
+            id: 'color',
+            label: labels.color,
+            layout: 'stacked',
+            control: {
+              kind: 'swatches',
+              colors: WORKFLOW_STEP_COLORS,
+              columns: WORKFLOW_STEP_COLORS.length / 2,
+              value: step.color,
+              onChange: (color) => onChangeColor?.(step.id, color),
+              label: labels.color,
+              disabled: readOnly || !onChangeColor,
+            },
+          },
+          !readOnly && onRemove && {
+            id: 'remove',
+            label: labels.removeNoteRow ?? labels.removeRow ?? labels.remove,
+            hint: labels.removeNoteHint,
+            control: { kind: 'button', children: labels.remove, icon: Trash, tone: 'danger', size: 'sm', onClick: () => onRemove(step.id) },
+          },
+        ]}
+      />
+    </>
+  )
+}

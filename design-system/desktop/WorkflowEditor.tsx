@@ -136,15 +136,18 @@ export interface WorkflowEditorProps {
   onChangeMode: WorkflowInspectorProps['onChangeMode']
   onRemove: WorkflowInspectorProps['onRemove']
   onChangeKind: WorkflowInspectorProps['onChangeKind']
-  onChangeOutcome: WorkflowInspectorProps['onChangeOutcome']
+  onChangeOutcomes: WorkflowInspectorProps['onChangeOutcomes']
+  onChangeNoteText?: WorkflowInspectorProps['onChangeNoteText']
   onRemoveLink: WorkflowInspectorProps['onRemoveLink']
   /** A step's switch, on its card or in the inspector: turn it on (`true`) or off. */
   onToggle: (id: string, enabled: boolean) => void
   onChangeColor: WorkflowInspectorProps['onChangeColor']
-  onChangeOutcomes?: WorkflowInspectorProps['onChangeOutcomes']
+  onChangeStepOutcomes?: WorkflowInspectorProps['onChangeStepOutcomes']
 
   /** A skill was picked off the dock's "+": add it there, the middle of the view. */
   onAdd: (skill: string, position: { x: number; y: number }) => void
+  /** The picker's end note row was picked: add a note there. Without it, the picker offers skills only. */
+  onAddNote?: (position: { x: number; y: number }) => void
   canUndo: boolean
   canRedo: boolean
   onUndo: () => void
@@ -193,12 +196,14 @@ export function WorkflowEditor({
   onChangeMode,
   onRemove,
   onChangeKind,
-  onChangeOutcome,
+  onChangeOutcomes,
+  onChangeNoteText,
   onRemoveLink,
   onToggle,
   onChangeColor,
-  onChangeOutcomes,
+  onChangeStepOutcomes,
   onAdd,
+  onAddNote,
   canUndo,
   canRedo,
   onUndo,
@@ -376,11 +381,12 @@ export function WorkflowEditor({
                 onChangeMode={onChangeMode}
                 onRemove={onRemove}
                 onChangeKind={onChangeKind}
-                onChangeOutcome={onChangeOutcome}
+                onChangeOutcomes={onChangeOutcomes}
+                onChangeNoteText={readOnly ? undefined : onChangeNoteText}
                 onRemoveLink={onRemoveLink}
                 onToggle={readOnly ? undefined : onToggle}
                 onChangeColor={readOnly ? undefined : onChangeColor}
-                onChangeOutcomes={readOnly ? undefined : onChangeOutcomes}
+                onChangeStepOutcomes={readOnly ? undefined : onChangeStepOutcomes}
                 onClose={() => onSelect(null)}
               />
             </div>
@@ -397,6 +403,9 @@ export function WorkflowEditor({
           onPick={(skill) => {
             if (picker) onAdd(skill, picker.position)
           }}
+          onPickNote={onAddNote && (() => {
+            if (picker) onAddNote(picker.position)
+          })}
         />
       </div>
     </div>

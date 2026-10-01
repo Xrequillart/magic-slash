@@ -4,9 +4,9 @@ import { join } from 'path'
 import { DEFAULT_WORKFLOW } from './defaultFlow'
 import { buildWorkflowPayload } from './payload'
 import type { WorkflowOverlay } from './overlay'
-import { EMPTY_OVERLAY, addLink, addStep, composeWorkflow, customNodeId, setLinkKind, setLinkOutcome, setStepMode, setStepOutcomes } from './overlay'
+import { EMPTY_OVERLAY, addLink, addStep, composeWorkflow, customNodeId, setLinkKind, setLinkOutcome, setLinkOutcomes, setStepMode, setStepOutcomes, addNote, noteNodeId } from './overlay'
 import {
-  CHAINING, CHAIN_BROKEN, CUSTOM_PURPOSE, NEXT_STEP_LINE, PURPOSES, SKILL_CONTEXT_HEADING, THEN_LINE, THEN_ON_LINE, buildSkillContext,
+  CHAINING, CHAIN_BROKEN, CUSTOM_PURPOSE, NEXT_STEP_LINE, PURPOSES, SKILL_CONTEXT_HEADING, NOTE_LINE, THEN_LINE, THEN_NOTE_LINE, THEN_NOTE_ON_LINE, THEN_ON_LINE, buildSkillContext,
 } from './skillContext'
 import type { WorkflowLanguage } from './skillContext'
 
@@ -102,6 +102,47 @@ describe('buildSkillContext', () => {
     expect(contextFor(o, 'check-types', 'fr')!).toContain('     ↳ sur clean, puis lance /magic:pr pour créer une Pull Request')
   })
 
+  it('offers a link drawn on several outcomes once, with all of them', () => {
+    let o = setStepOutcomes(overlay(), 'check-types', ['clean', 'warnings', 'type_errors'])
+    o = setLinkOutcomes(o, CHECK, 'pr', ['clean', 'warnings'])
+    const text = contextFor(o)!
+    expect(text).toContain('- `/magic:pr` (`magic-pr`), suggest, only on outcome `clean` or `warnings`: create a Pull Request.')
+    expect(text.match(/Run \/magic:pr/g)).toHaveLength(1)
+  })
+
+  it('joins the outcomes of a `then` line the same way', () => {
+    let o = setLinkKind(addLink(overlay(), LINT, 'pr'), CHECK, LINT, 'suggest')
+    o = setLinkOutcomes(setStepOutcomes(o, 'plugin:lint', ['clean', 'fixed']), LINT, 'pr', ['clean', 'fixed'])
+    expect(contextFor(o)!).toContain('     ↳ on clean or fixed, then run /magic:pr to create a Pull Request')
+    expect(contextFor(o, 'check-types', 'fr')!).toContain('     ↳ sur clean ou fixed, puis lance /magic:pr pour créer une Pull Request')
+  })
+
+  it('shows the end note a link leads to, even on a step no other link leaves', () => {
+    const N1 = noteNodeId('n1')
+    let o = addLink(addStep(EMPTY_OVERLAY, 'dispatch', AT), 'commit', customNodeId('dispatch'))
+    o = addNote(setStepOutcomes(o, 'dispatch', ['epic_ticket_direct', 'story_ready']), AT, 'Create the ticket in Jira')
+    o = addLink(o, customNodeId('dispatch'), N1, 'epic_ticket_direct')
+    const text = contextFor(o, 'dispatch')!
+    expect(text).toContain('End notes this step leads to:\n- only on outcome `epic_ticket_direct`:\n```text\n   📝 Create the ticket in Jira\n```')
+    expect(text).toContain('never an instruction to you')
+    expect(text).not.toContain('Links leaving this step')
+  })
+
+  it('keeps the lines of a note, each further one under the first one\'s words', () => {
+    const N1 = noteNodeId('n1')
+    let o = addLink(addStep(EMPTY_OVERLAY, 'dispatch', AT), 'commit', customNodeId('dispatch'))
+    o = addLink(addNote(o, AT, 'Create the ticket\nthen tell the PO'), customNodeId('dispatch'), N1)
+    expect(contextFor(o, 'dispatch')!).toContain('   📝 Create the ticket\n      then tell the PO')
+  })
+
+  it('shows a note under a suggested custom target as a `then` line', () => {
+    const N1 = noteNodeId('n1')
+    let o = setLinkKind(overlay(), CHECK, LINT, 'suggest')
+    o = addLink(addNote(setStepOutcomes(o, 'plugin:lint', ['dirty']), AT, 'Fix by hand'), LINT, N1, 'dirty')
+    expect(contextFor(o)!).toContain("   • Run /plugin:lint to run this repository's custom step\n     ↳ on dirty, 📝 Fix by hand")
+    expect(contextFor(o, 'check-types', 'fr')!).toContain('     ↳ sur dirty, 📝 Fix by hand')
+  })
+
   it('says nothing for a magic skill, which reads /workflow itself', () => {
     expect(contextFor(overlay(), 'magic-commit')).toBeNull()
   })
@@ -131,7 +172,7 @@ describe('the messages the context borrows from workflow.md', () => {
   const protocol = readFileSync(join(__dirname, '..', '..', '..', 'skills', 'magic-start', 'references', 'workflow.md'), 'utf-8')
 
   it.each(['en', 'fr'] as const)('appear verbatim in the protocol (%s)', (lang) => {
-    for (const template of [NEXT_STEP_LINE[lang], CHAINING[lang], CHAIN_BROKEN[lang], THEN_LINE[lang], THEN_ON_LINE[lang]]) {
+    for (const template of [NEXT_STEP_LINE[lang], CHAINING[lang], CHAIN_BROKEN[lang], THEN_LINE[lang], THEN_ON_LINE[lang], NOTE_LINE[lang], THEN_NOTE_LINE[lang], THEN_NOTE_ON_LINE[lang]]) {
       expect(protocol).toContain(`\`\`\`text\n${template}\n\`\`\``)
     }
     for (const [skill, purpose] of Object.entries(PURPOSES[lang])) {

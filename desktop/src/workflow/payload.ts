@@ -18,6 +18,11 @@ export interface WorkflowPayloadLink {
   outcome: string | null
   skill: string | null
   /**
+   * The text of the end note the link leads to, `skill` being null then; null for a link
+   * to a step. Such a link is never followed: when it applies, the note is shown.
+   */
+  note: string | null
+  /**
    * What follows the target when it is a custom step, empty otherwise. A custom skill
    * does not read `/workflow`, so the magic skill before it carries its hand-offs,
    * through any further custom steps, down to the next built-in one. A custom step
@@ -43,6 +48,7 @@ function payloadLinks(workflow: Workflow, nodeId: string, walked: ReadonlySet<st
     kind: link.kind,
     outcome: link.outcome ?? null,
     skill: workflow.nodes.find((n) => n.id === link.to)?.skill ?? null,
+    note: workflow.notes?.find((n) => n.id === link.to)?.text ?? null,
     // The walk ends at a built-in step, a dead end, or a custom step it already went through.
     then: isCustomNodeId(link.to) && !walked.has(link.to) ? payloadLinks(workflow, link.to, new Set([...walked, link.to])) : [],
   }))

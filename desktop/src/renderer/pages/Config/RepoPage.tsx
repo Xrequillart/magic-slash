@@ -71,7 +71,8 @@ import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../
 import type { ResolvedWorkflow } from '../../../workflow/model'
 import {
   EMPTY_OVERLAY, addLink, addStep, cleanOverlay, composeWorkflow, customNodeId, isCustomNodeId, isDefaultLink, isLinkIntoStart, moveNode,
-  pinPositions, problems, removeLink, removeStep, sameOverlay, setLinkKind, setLinkOutcome, setStepColor, setStepOutcomes, setStepEnabled, setStepMode,
+  pinPositions, problems, removeLink, removeStep, sameOverlay, setLinkKind, setLinkOutcomes, linkOutcomesOf, setStepColor, setStepOutcomes,
+  addNote, isNoteNodeId, nextNoteId, noteNodeId, removeNote, setNoteColor, setNoteText, setStepEnabled, setStepMode,
   unreachableSteps, type WorkflowOverlay, type WorkflowProblem,
 } from '../../../workflow/overlay'
 import type { ListingEntry } from '../../hooks/useSkills'
@@ -343,7 +344,8 @@ function startValueLabel(t: Translate, setting: StartSettingKey, value: StartSet
 
 /** One change of a workflow history entry, as the sentence the panel lists under it. */
 function workflowChangeLabel(t: Translate, change: WorkflowHistoryChange): string {
-  const name = skillDisplayName
+  // A note's end is `note:<text>` (workflowHistory's `endOf`): it is named by what it says.
+  const name = (id: string) => (isNoteNodeId(id) ? `« ${id.slice('note:'.length)} »` : skillDisplayName(id))
   const kind = (value: 'auto' | 'suggest') => t(value === 'auto' ? 'repo.workflow.inspector.auto' : 'repo.workflow.inspector.suggest')
   switch (change.kind) {
     case 'step-added': return t('repo.workflow.history.stepAdded', { step: name(change.node) })
@@ -361,6 +363,9 @@ function workflowChangeLabel(t: Translate, change: WorkflowHistoryChange): strin
       return t('repo.workflow.history.linkAdded', { from: name(change.from), to: name(change.to), kind: kind(change.linkKind) })
     case 'link-removed': return t('repo.workflow.history.linkRemoved', { from: name(change.from), to: name(change.to) })
     case 'link-kind': return t('repo.workflow.history.linkKind', { from: name(change.from), to: name(change.to), kind: kind(change.linkKind) })
+    case 'note-added': return t('repo.workflow.history.noteAdded', { note: change.text })
+    case 'note-removed': return t('repo.workflow.history.noteRemoved', { note: change.text })
+    case 'note-text': return t('repo.workflow.history.noteText', { before: change.before, after: change.after })
     case 'link-outcome':
       return change.outcome === undefined
         ? t('repo.workflow.history.linkAnyOutcome', { from: name(change.from), to: name(change.to) })
@@ -778,7 +783,10 @@ function WorkflowPanel({
 
   const labelOf = (id: string) => {
     const node = flow.nodes.find((n) => n.id === id)
-    return node ? skillDisplayName(node.skill) : id
+    if (node) return skillDisplayName(node.skill)
+    // A note is named by what it says.
+    const note = flow.notes?.find((n) => n.id === id)
+    return note ? (note.text ? `« ${note.text} »` : t('repo.workflow.note.empty')) : id
   }
   const skillOf = (id: string) => flow.nodes.find((n) => n.id === id)?.skill ?? id
 
@@ -799,7 +807,7 @@ function WorkflowPanel({
     for (const id of unreachable) {
       warnings[id] = warnings[id] ? `${t('repo.workflow.warning.unreachable')} ${warnings[id]}` : t('repo.workflow.warning.unreachable')
     }
-    return workflowCanvasData(flow, { problems: problemNodeIds(shown), warnings, disabled: draft.disabled, colors: stepColors(draft) })
+    return workflowCanvasData(flow, { problems: problemNodeIds(shown), warnings, disabled: draft.disabled, colors: stepColors(draft), emptyNote: t('repo.workflow.note.empty') })
   }, [flow, shown, unshared, unreachable, draft, t])
 
   // Where every card is drawn right now: what an edit to the links pins them at.
@@ -821,6 +829,8 @@ function WorkflowPanel({
         return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.duplicate', { skill: problem.skill }) }
       case 'auto-into-start':
         return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.autoIntoStart', { from: labelOf(problem.nodeId) }) }
+      case 'empty-note':
+        return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.emptyNote') }
       case 'start-disabled':
         return { id: problem.code, nodeId: problem.nodeId, message: t('repo.workflow.problem.startDisabled') }
       case 'self-link':
@@ -870,8 +880,9 @@ function WorkflowPanel({
   const removeSelection = () => {
     if (!selected) return
     if (selected.type === 'node') {
-      if (!isCustomNodeId(selected.id)) return
-      reshape((pinned) => removeStep(pinned, skillOf(selected.id)))
+      if (isNoteNodeId(selected.id)) reshape((pinned) => removeNote(pinned, selected.id))
+      else if (!isCustomNodeId(selected.id)) return
+      else reshape((pinned) => removeStep(pinned, skillOf(selected.id)))
     } else {
       if (isDefaultLink(selected.from, selected.to)) return
       reshape((pinned) => removeLink(pinned, selected.from, selected.to))
@@ -884,12 +895,15 @@ function WorkflowPanel({
     if (selected.type === 'node') {
       const node = data.nodes.find((n) => n.id === selected.id)
       if (!node) return null
+      // An end note: its text, its colour, Remove. Nothing about running.
+      if (node.note !== undefined) return { type: 'node', step: { ...node, label: t('repo.workflow.note.title'), note: node.note } }
       const hints = stepHints(flow, node.id).map((hint) => t(
         hint === 'on-review-comments' ? 'repo.workflow.hint.reviewComments' : 'repo.workflow.hint.skippedFromStart',
       ))
       const config = stepSettings[node.skill]
       const custom = isCustomNodeId(node.id)
-      const declared = draft.steps.find((step) => customNodeId(step.skill) === node.id)?.outcomes ?? []
+      const own = draft.steps.find((step) => customNodeId(step.skill) === node.id)
+      const declared = own?.outcomes ?? []
       const detected = custom ? skillOutcomes(entries, repoName, node.skill) : undefined
       const sameAsFile = !!detected && detected.length === declared.length && detected.every((o, i) => o === declared[i])
       return {
@@ -927,10 +941,13 @@ function WorkflowPanel({
         toLabel: labelOf(link.to),
         kind: link.kind,
         outcome: link.outcome,
+        // A drawn link's outcomes are the overlay's: the flow has one link per outcome.
+        selectedOutcomes: locked ? undefined : linkOutcomesOf(draft.links.find((l) => l.from === link.from && l.to === link.to) ?? {}),
         disabledKinds: intoStart ? ['auto'] : undefined,
         hint: intoStart ? t('repo.workflow.hint.intoStart') : undefined,
         locked,
         outcomes: locked ? undefined : flow.nodes.find((n) => n.id === link.from)?.outcomes,
+        toNote: isNoteNodeId(link.to) || undefined,
       },
     }
   })()
@@ -1253,6 +1270,8 @@ function WorkflowPanel({
       empty: t('repo.workflow.picker.empty'),
       inWorkflow: t('repo.workflow.inWorkflow'),
       sources,
+      note: t('repo.workflow.note.add'),
+      noteHint: t('repo.workflow.note.addHint'),
     },
     inspector: {
       title: t('repo.workflow.inspector.title'),
@@ -1291,6 +1310,12 @@ function WorkflowPanel({
         add: t('repo.workflow.inspector.outcomesAdd'),
         remove: t('repo.workflow.inspector.outcomesRemove'),
       },
+      noteText: t('repo.workflow.note.text'),
+      notePlaceholder: t('repo.workflow.note.placeholder'),
+      noteHint: t('repo.workflow.note.hint'),
+      removeNoteRow: t('repo.workflow.note.removeRow'),
+      removeNoteHint: t('repo.workflow.note.removeHint'),
+      noteLink: t('repo.workflow.note.link'),
       detectRow: t('repo.workflow.inspector.detectRow'),
       detect: t('repo.workflow.inspector.detect'),
       detectHint: t('repo.workflow.inspector.detectHint'),
@@ -1413,18 +1438,19 @@ function WorkflowPanel({
                 skills={skills}
                 onChangeMode={(id, mode) => edit(setStepMode(draft, skillOf(id), mode))}
                 onRemove={(id) => {
-                  reshape((pinned) => removeStep(pinned, skillOf(id)))
+                  reshape((pinned) => (isNoteNodeId(id) ? removeNote(pinned, id) : removeStep(pinned, skillOf(id))))
                   setSelected(null)
                 }}
                 onChangeKind={(from, to, kind) => edit(setLinkKind(draft, from, to, kind))}
-                onChangeOutcome={(from, to, outcome) => edit(setLinkOutcome(draft, from, to, outcome))}
+                onChangeOutcomes={(from, to, outcomes) => edit(setLinkOutcomes(draft, from, to, outcomes))}
+                onChangeNoteText={(id, text) => edit(setNoteText(draft, id, text))}
                 onRemoveLink={(from, to) => {
                   reshape((pinned) => removeLink(pinned, from, to))
                   setSelected(null)
                 }}
                 onToggle={(id, enabled) => edit(setStepEnabled(draft, id, enabled))}
-                onChangeColor={(id, color) => edit(setStepColor(draft, skillOf(id), color))}
-                onChangeOutcomes={(id, outcomes) => reshape((pinned) => setStepOutcomes(pinned, skillOf(id), outcomes))}
+                onChangeColor={(id, color) => edit(isNoteNodeId(id) ? setNoteColor(draft, id, color) : setStepColor(draft, skillOf(id), color))}
+                onChangeStepOutcomes={(id, outcomes) => reshape((pinned) => setStepOutcomes(pinned, skillOf(id), outcomes))}
                 onAdd={(skill, position) => {
                   // Its own colour from the start: the first no other custom step wears.
                   // Its outcomes from the start too, when its SKILL.md declares them.
@@ -1433,6 +1459,11 @@ function WorkflowPanel({
                     skillOutcomes(entries, repoName, skill),
                   ))
                   setSelected({ type: 'node', id: customNodeId(skill) })
+                }}
+                onAddNote={(position) => {
+                  const id = noteNodeId(nextNoteId(draft))
+                  reshape((pinned) => addNote(pinned, position, '', nextWorkflowStepColor(Object.values(stepColors(pinned)))))
+                  setSelected({ type: 'node', id })
                 }}
                 canUndo={history.past.length > 0}
                 canRedo={history.future.length > 0}

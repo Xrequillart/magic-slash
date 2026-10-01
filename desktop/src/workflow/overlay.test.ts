@@ -5,7 +5,8 @@ import type { WorkflowOverlay } from './overlay'
 import {
   EMPTY_OVERLAY, addLink, addStep, cleanOverlay, composeWorkflow, customNodeId, isDefaultLink, isOverlay, moveNode, pinPositions,
   normalizeOutcomes, parseOutcomesField, problems, removeLink, removeStep, resolveOverlay, sameOverlay, servedWorkflow, setLinkKind, setLinkOutcome,
-  setStepColor, setStepEnabled, setStepMode, setStepOutcomes, toOverlay, unreachableSteps,
+  setLinkOutcomes, setStepColor, setStepEnabled, setStepMode, setStepOutcomes,
+  addNote, nextNoteId, noteNodeId, removeNote, setNoteText, toOverlay, unreachableSteps,
 } from './overlay'
 
 const CHECK = customNodeId('check')
@@ -53,9 +54,9 @@ describe('editing', () => {
 
   it('draws a link from an outcome\'s port, and changes or drops its outcome', () => {
     let overlay = addLink(addStep(EMPTY_OVERLAY, 'check', AT), 'pr', CHECK, 'ci_green')
-    expect(overlay.links).toEqual([{ from: 'pr', to: CHECK, kind: 'suggest', outcome: 'ci_green' }])
+    expect(overlay.links).toEqual([{ from: 'pr', to: CHECK, kind: 'suggest', outcomes: ['ci_green'] }])
     overlay = setLinkOutcome(overlay, 'pr', CHECK, 'pr_created')
-    expect(overlay.links[0].outcome).toBe('pr_created')
+    expect(overlay.links[0].outcomes).toEqual(['pr_created'])
     overlay = setLinkOutcome(overlay, 'pr', CHECK, undefined)
     expect(overlay.links).toEqual([{ from: 'pr', to: CHECK, kind: 'suggest' }])
   })
@@ -188,10 +189,10 @@ describe('payload then', () => {
     overlay = addLink(addLink(addLink(overlay, 'start', a), a, b), b, 'commit')
     const payload = buildWorkflowPayload('r', { workflow: composeWorkflow(overlay), source: 'repository' }, 'magic-start')
     expect(payload.links).toContainEqual({
-      from: 'start', to: a, kind: 'suggest', outcome: null, skill: 'a',
+      from: 'start', to: a, kind: 'suggest', outcome: null, skill: 'a', note: null,
       then: [{
-        from: a, to: b, kind: 'suggest', outcome: null, skill: 'b',
-        then: [{ from: b, to: 'commit', kind: 'suggest', outcome: null, skill: 'magic-commit', then: [] }],
+        from: a, to: b, kind: 'suggest', outcome: null, skill: 'b', note: null,
+        then: [{ from: b, to: 'commit', kind: 'suggest', outcome: null, skill: 'magic-commit', note: null, then: [] }],
       }],
     })
   })
@@ -203,10 +204,10 @@ describe('payload then', () => {
     overlay = addLink(addLink(addLink(overlay, 'commit', a), a, b), b, a)
     const payload = buildWorkflowPayload('r', { workflow: composeWorkflow(overlay), source: 'repository' }, 'magic-commit')
     expect(payload.links).toContainEqual({
-      from: 'commit', to: a, kind: 'suggest', outcome: null, skill: 'a',
+      from: 'commit', to: a, kind: 'suggest', outcome: null, skill: 'a', note: null,
       then: [{
-        from: a, to: b, kind: 'suggest', outcome: null, skill: 'b',
-        then: [{ from: b, to: a, kind: 'suggest', outcome: null, skill: 'a', then: [] }],
+        from: a, to: b, kind: 'suggest', outcome: null, skill: 'b', note: null,
+        then: [{ from: b, to: a, kind: 'suggest', outcome: null, skill: 'a', note: null, then: [] }],
       }],
     })
   })
@@ -334,5 +335,88 @@ describe('parseOutcomesField', () => {
     expect(parseOutcomesField(undefined)).toBeUndefined()
     expect(parseOutcomesField('')).toBeUndefined()
     expect(parseOutcomesField('[failed]')).toBeUndefined()
+  })
+})
+
+describe('a link on several outcomes', () => {
+  const ready = () => setStepOutcomes(withCheck(), 'check', ['ok', 'warn', 'ko'])
+
+  it('is one link of the flow per outcome, and no duplicate', () => {
+    const o = setLinkOutcomes(ready(), CHECK, 'commit', ['ok', 'warn'])
+    const out = composeWorkflow(o).links.filter((link) => link.from === CHECK && link.to === 'commit')
+    expect(out).toEqual([
+      { from: CHECK, to: 'commit', kind: 'suggest', outcome: 'ok' },
+      { from: CHECK, to: 'commit', kind: 'suggest', outcome: 'warn' },
+    ])
+    expect(problems(o)).toEqual([])
+  })
+
+  it('grows when drawn again from another outcome\'s port', () => {
+    let o = addLink(removeLink(ready(), CHECK, 'commit'), CHECK, 'commit', 'ok')
+    o = addLink(o, CHECK, 'commit', 'warn')
+    expect(o.links.find((link) => link.from === CHECK)?.outcomes).toEqual(['ok', 'warn'])
+    // From the "whatever it ended on" port, or on one it already has: unchanged.
+    expect(addLink(o, CHECK, 'commit')).toBe(o)
+    expect(addLink(o, CHECK, 'commit', 'ok')).toBe(o)
+  })
+
+  it('is stored as `outcome` for one outcome, `outcomes` for several, and read back either way', () => {
+    const one = cleanOverlay(setLinkOutcomes(ready(), CHECK, 'commit', ['ok']))
+    expect(one.links.find((link) => link.from === CHECK)).toEqual({ from: CHECK, to: 'commit', kind: 'suggest', outcome: 'ok' })
+    const two = cleanOverlay(setLinkOutcomes(ready(), CHECK, 'commit', ['ok', 'ko']))
+    expect(two.links.find((link) => link.from === CHECK)).toEqual({ from: CHECK, to: 'commit', kind: 'suggest', outcomes: ['ok', 'ko'] })
+    expect(isOverlay(two)).toBe(true)
+    // The stored form and the edited one say the same thing.
+    expect(sameOverlay(one, setLinkOutcomes(ready(), CHECK, 'commit', ['ok']))).toBe(true)
+  })
+
+  it('loses the outcomes the step no longer declares', () => {
+    const o = setStepOutcomes(setLinkOutcomes(ready(), CHECK, 'commit', ['ok', 'ko']), 'check', ['ok', 'warn'])
+    expect(o.links.find((link) => link.from === CHECK)?.outcomes).toEqual(['ok'])
+  })
+})
+
+describe('an end note', () => {
+  const N1 = noteNodeId('n1')
+  const withNote = () => addLink(addNote(setStepOutcomes(withCheck(), 'check', ['ok', 'ko']), AT, 'Open a ticket'), CHECK, N1, 'ko')
+
+  it('is a card of its own a link may lead to, never a node of the flow', () => {
+    const o = withNote()
+    expect(o.notes).toEqual([{ id: 'n1', text: 'Open a ticket' }])
+    const flow = composeWorkflow(o)
+    expect(flow.notes).toEqual([{ id: N1, text: 'Open a ticket' }])
+    expect(flow.nodes.map((node) => node.id)).not.toContain(N1)
+    expect(flow.links).toContainEqual({ from: CHECK, to: N1, kind: 'suggest', outcome: 'ko' })
+    expect(problems(o)).toEqual([])
+    expect(isOverlay(cleanOverlay(o))).toBe(true)
+  })
+
+  it('has nothing leaving it, cannot be turned off, and must say something', () => {
+    const o = withNote()
+    expect(addLink(o, N1, 'pr')).toBe(o)
+    expect(setStepEnabled(o, N1, false)).toBe(o)
+    expect(problems(setNoteText(o, N1, '  '))).toEqual([{ code: 'empty-note', nodeId: N1 }])
+  })
+
+  it('is one trimmed line, takes the next free id, and goes with its links and place', () => {
+    let o = setNoteText(withNote(), N1, '  Open a   ticket\n\n\n\n in Jira  ')
+    expect(o.notes?.[0].text).toBe('Open a ticket\n\nin Jira')
+    expect(nextNoteId(o)).toBe('n2')
+    o = removeNote(o, N1)
+    expect(o).not.toHaveProperty('notes')
+    expect(o.links.some((link) => link.to === N1)).toBe(false)
+    expect(o.positions[N1]).toBeUndefined()
+  })
+
+  it('is reached or warned about, and compared', () => {
+    const lonely = addNote(withCheck(), AT, 'Nobody reads me')
+    expect(unreachableSteps(lonely)).toContain(N1)
+    expect(unreachableSteps(withNote())).not.toContain(N1)
+    expect(sameOverlay(withNote(), setNoteText(withNote(), N1, 'Other'))).toBe(false)
+  })
+
+  it('reaches the skills as the link\'s note, with no skill and no then', () => {
+    const payload = buildWorkflowPayload('r', { workflow: servedWorkflow(withNote()), source: 'repository' }, 'check')
+    expect(payload.links).toContainEqual({ from: CHECK, to: N1, kind: 'suggest', outcome: 'ko', skill: null, note: 'Open a ticket', then: [] })
   })
 })

@@ -198,7 +198,7 @@ function EditorSpecimen() {
           setSelected(null)
         }}
         onChangeKind={(from, to, kind) => edit({ ...flow, links: mapLinks(from, to, (l) => ({ ...l, kind })) })}
-        onChangeOutcome={(from, to, outcome) => edit({ ...flow, links: mapLinks(from, to, ({ outcome: _was, ...l }) => (outcome ? { ...l, outcome } : l)) })}
+        onChangeOutcomes={(from, to, outcomes) => edit({ ...flow, links: mapLinks(from, to, ({ outcome: _was, ...l }) => (outcomes[0] ? { ...l, outcome: outcomes[0] } : l)) })}
         onRemoveLink={(from, to) => {
           edit({ ...flow, links: flow.links.filter((l) => l.from !== from || l.to !== to) })
           setSelected(null)

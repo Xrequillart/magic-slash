@@ -52,12 +52,66 @@ export interface WorkflowOverlayStep {
   outcomes?: string[]
 }
 
+/**
+ * AN END NOTE: a card of the canvas that is not a skill, a line to show the user when a
+ * link reaches it ("Create the ticket in Jira"). What to do next when no skill does it.
+ * Any step's link, on any outcome, may lead to one, several may lead to the same, and
+ * nothing leaves one: it is where that way through the flow ends. Shown, never followed:
+ * it cannot chain anything, whatever the kind of the link into it.
+ */
+export interface WorkflowOverlayNote {
+  /** Unique among the notes (`n1`, `n2`…). Its node id is `note:<id>`. */
+  id: string
+  text: string
+  /** Its card's ground, as a custom step's. */
+  color?: string
+}
+
 export interface WorkflowOverlayLink {
   from: string
   to: string
   kind: WorkflowLinkKind
-  /** Taken only when `from` ended on this outcome. Absent: whatever the outcome. */
+  /**
+   * Taken only when `from` ended on one of these. Absent or empty: whatever the outcome.
+   * What the editor holds and writes through `setLinkOutcomes`.
+   */
+  outcomes?: string[]
+  /**
+   * The same thing, stored for ONE outcome: how every link was written before a link
+   * could be taken on several, and how `cleanOverlay` still writes one on a single
+   * outcome, so an older app keeps reading it. Read through `linkOutcomesOf`, never alone.
+   */
   outcome?: string
+}
+
+/** The outcomes a link is taken on, whichever field holds them. Empty: whatever the outcome. */
+export function linkOutcomesOf(link: Pick<WorkflowOverlayLink, 'outcome' | 'outcomes'>): string[] {
+  if (link.outcomes && link.outcomes.length > 0) return link.outcomes
+  return link.outcome === undefined ? [] : [link.outcome]
+}
+
+/** A link with `outcomes` as its one field for them, left out when empty. */
+function withLinkOutcomes(link: WorkflowOverlayLink, outcomes: readonly string[]): WorkflowOverlayLink {
+  const { outcome: _one, outcomes: _many, ...rest } = link
+  return outcomes.length > 0 ? { ...rest, outcomes: [...outcomes] } : rest
+}
+
+/** The longest end note: a few lines, read at the end of a run. */
+export const NOTE_MAX_LENGTH = 500
+
+/**
+ * A note's text as it is stored: its lines kept, each trimmed and its spaces collapsed,
+ * no more than one blank line in a row, the whole trimmed and capped. Empty when there is
+ * nothing left.
+ */
+export function normalizeNote(value: string): string {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.replace(/[ \t]+/g, ' ').trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, NOTE_MAX_LENGTH)
 }
 
 export interface WorkflowPosition {
@@ -68,6 +122,8 @@ export interface WorkflowPosition {
 export interface WorkflowOverlay {
   version: 2
   steps: WorkflowOverlayStep[]
+  /** The end notes, in the order they were added. Absent: none. */
+  notes?: WorkflowOverlayNote[]
   links: WorkflowOverlayLink[]
   kinds: Record<string, WorkflowLinkKind>
   /** Top-left corner of a card on the canvas, by node id. A card without one is laid out. */
@@ -99,6 +155,25 @@ export function isCustomNodeId(id: string): boolean {
   return id.startsWith(CUSTOM_PREFIX)
 }
 
+/** End notes have their own id space too: `note:n1` is never a step. */
+const NOTE_PREFIX = 'note:'
+
+export function noteNodeId(id: string): string {
+  return `${NOTE_PREFIX}${id}`
+}
+
+export function isNoteNodeId(id: string): boolean {
+  return id.startsWith(NOTE_PREFIX)
+}
+
+/** The id the next note added gets: the first `n<k>` no note has. */
+export function nextNoteId(overlay: WorkflowOverlay): string {
+  const taken = new Set((overlay.notes ?? []).map((note) => note.id))
+  let k = 1
+  while (taken.has(`n${k}`)) k++
+  return `n${k}`
+}
+
 export function linkKey(from: string, to: string): string {
   return `${from}>${to}`
 }
@@ -116,7 +191,8 @@ export const PLAN_NODE_ID = nodeIdForSkill('magic-plan')
 
 /** Whether a step may be turned off: any step but start, which the whole flow runs from. */
 export function canDisable(id: string): boolean {
-  return id !== START_NODE_ID
+  // A note runs nothing, so there is nothing to turn off: remove it instead.
+  return id !== START_NODE_ID && !isNoteNodeId(id)
 }
 
 /** The steps an overlay turns off, as a set. */
@@ -186,8 +262,20 @@ export function parseOutcomesField(raw: string | undefined): string[] | undefine
   return outcomes.length > 0 ? outcomes : undefined
 }
 
-function toLink({ from, to, kind, outcome }: WorkflowOverlayLink): WorkflowLink {
-  return outcome === undefined ? { from, to, kind } : { from, to, kind, outcome }
+/**
+ * A drawn link as the flow's links: one, or one per outcome it is taken on. The skills
+ * read a link per outcome, as they always have; two of them between the same two steps
+ * never both apply, since a run ends on one outcome.
+ */
+function toLinks(link: WorkflowOverlayLink): WorkflowLink[] {
+  const { from, to, kind } = link
+  const outcomes = linkOutcomesOf(link)
+  return outcomes.length === 0 ? [{ from, to, kind }] : outcomes.map((outcome) => ({ from, to, kind, outcome }))
+}
+
+/** One link of the flow: its two ends and the outcome it is taken on. */
+function outcomeKey(link: Pick<WorkflowLink, 'from' | 'to' | 'outcome'>): string {
+  return `${linkKey(link.from, link.to)}|${link.outcome ?? ''}`
 }
 
 /**
@@ -206,8 +294,17 @@ export function composeWorkflow(overlay: WorkflowOverlay): Workflow {
     entry: DEFAULT_WORKFLOW.entry,
     // A skill placed twice is reported by problems(), not dropped here.
     nodes: [...DEFAULT_WORKFLOW.nodes, ...overlay.steps.map(customNode)],
-    links: [...links, ...overlay.links.map(toLink)],
+    links: [...links, ...overlay.links.flatMap(toLinks)],
+    ...((overlay.notes ?? []).length > 0
+      ? { notes: (overlay.notes ?? []).map((note) => ({ id: noteNodeId(note.id), text: note.text })) }
+      : {}),
   }
+}
+
+/** Every card's node id, the notes' included: what a position or a link may name. */
+function cardIds(overlay: WorkflowOverlay): Set<string> {
+  const flow = composeWorkflow(overlay)
+  return new Set([...flow.nodes.map((node) => node.id), ...(flow.notes ?? []).map((note) => note.id)])
 }
 
 /**
@@ -226,7 +323,7 @@ export function servedWorkflow(overlay: WorkflowOverlay): Workflow {
   if (!flow.nodes.some((node) => off.has(node.id))) return flow
 
   const kept = flow.links.filter((link) => !off.has(link.from) && !off.has(link.to))
-  const pairs = new Set(kept.map((link) => linkKey(link.from, link.to)))
+  const pairs = new Set(kept.map(outcomeKey))
   const links = [...kept]
   // Where a step that is off leads, as links out of the first live steps past it.
   const through = (id: string, kind: WorkflowLinkKind, walked: Set<string>): { to: string; kind: WorkflowLinkKind }[] =>
@@ -239,7 +336,7 @@ export function servedWorkflow(overlay: WorkflowOverlay): Workflow {
   for (const link of flow.links) {
     if (off.has(link.from) || !off.has(link.to)) continue
     for (const next of through(link.to, link.kind, new Set([link.to]))) {
-      const key = linkKey(link.from, next.to)
+      const key = outcomeKey({ from: link.from, to: next.to, outcome: link.outcome })
       if (next.to === link.from || pairs.has(key)) continue
       pairs.add(key)
       links.push(link.outcome === undefined
@@ -298,14 +395,19 @@ export function isOverlay(value: unknown): value is WorkflowOverlay {
     typeof link.from === 'string' &&
     typeof link.to === 'string' &&
     isKind(link.kind) &&
-    (link.outcome === undefined || typeof link.outcome === 'string'),
+    (link.outcome === undefined || typeof link.outcome === 'string') &&
+    (link.outcomes === undefined || (Array.isArray(link.outcomes) && link.outcomes.every((o) => typeof o === 'string'))),
   )
   const positionsOk = isRecord(value.positions) && Object.values(value.positions).every((position) =>
     isRecord(position) && Number.isFinite(position.x) && Number.isFinite(position.y),
   )
+  const notesOk = value.notes === undefined || (Array.isArray(value.notes) && value.notes.every((note) =>
+    isRecord(note) && typeof note.id === 'string' && /^[a-z0-9_-]{1,32}$/i.test(note.id) &&
+    typeof note.text === 'string' && note.text.length <= NOTE_MAX_LENGTH &&
+    (note.color === undefined || isColor(note.color))))
   const disabledOk = value.disabled === undefined ||
     (Array.isArray(value.disabled) && value.disabled.every((id) => typeof id === 'string'))
-  return stepsOk && linksOk && kindsOk(value.kinds) && positionsOk && disabledOk
+  return stepsOk && linksOk && notesOk && kindsOk(value.kinds) && positionsOk && disabledOk
 }
 
 /** The node ids of a v1 overlay's line, in order. */
@@ -385,6 +487,8 @@ export type WorkflowProblem =
   | { code: 'duplicate-link'; nodeId: string; to: string }
   /** Start turned off: every other step runs from it. */
   | { code: 'start-disabled'; nodeId: string }
+  /** An end note with nothing to say. */
+  | { code: 'empty-note'; nodeId: string }
   /** Anything else the composed flow fails on (model.ts's own rules). */
   | { code: 'invalid'; message: string }
 
@@ -414,10 +518,14 @@ function problemsOf(workflow: Workflow): WorkflowProblem[] {
   const pairs = new Set<string>()
   for (const link of workflow.links) {
     if (link.from === link.to) found.push({ code: 'self-link', nodeId: link.from })
-    const key = linkKey(link.from, link.to)
+    // Per outcome: one drawn link taken on two outcomes is two links of the flow.
+    const key = outcomeKey(link)
     if (pairs.has(key)) found.push({ code: 'duplicate-link', nodeId: link.from, to: link.to })
     pairs.add(key)
     if (isLinkIntoStart(link) && link.kind === 'auto') found.push({ code: 'auto-into-start', nodeId: link.from })
+  }
+  for (const note of workflow.notes ?? []) {
+    if (!note.text.trim()) found.push({ code: 'empty-note', nodeId: note.id })
   }
   if (found.length > 0) return found
   // The editor's own terms come first; the model's rules catch the rest.
@@ -442,7 +550,10 @@ export function resolveOverlay(value: unknown): { overlay: WorkflowOverlay; work
  */
 export function unreachableSteps(overlay: WorkflowOverlay): string[] {
   const reached = new Set(composeWorkflow(overlay).links.filter((l) => l.from !== l.to).map((l) => l.to))
-  return overlay.steps.map((step) => customNodeId(step.skill)).filter((id) => !reached.has(id))
+  return [
+    ...overlay.steps.map((step) => customNodeId(step.skill)),
+    ...(overlay.notes ?? []).map((note) => noteNodeId(note.id)),
+  ].filter((id) => !reached.has(id))
 }
 
 /** The same list, in any order: "are the same steps off". */
@@ -465,11 +576,16 @@ export function sameOverlay(a: WorkflowOverlay, b: WorkflowOverlay): boolean {
   const stepsSame = a.steps.every((step, i) =>
     step.skill === b.steps[i].skill && step.mode === b.steps[i].mode && step.color === b.steps[i].color &&
     sameOutcomes(step.outcomes, b.steps[i].outcomes))
+  const notesA = a.notes ?? []
+  const notesB = b.notes ?? []
+  const notesSame = notesA.length === notesB.length &&
+    notesA.every((note, i) => note.id === notesB[i].id && note.text === notesB[i].text && note.color === notesB[i].color)
   const linksSame = a.links.every((link, i) => {
     const other = b.links[i]
-    return link.from === other.from && link.to === other.to && link.kind === other.kind && link.outcome === other.outcome
+    return link.from === other.from && link.to === other.to && link.kind === other.kind &&
+      sameOutcomes(linkOutcomesOf(link), linkOutcomesOf(other))
   })
-  if (!stepsSame || !linksSame || !sameDisabled(a, b)) return false
+  if (!stepsSame || !linksSame || !notesSame || !sameDisabled(a, b)) return false
   const kinds = Object.keys(a.kinds)
   if (kinds.length !== Object.keys(b.kinds).length || !kinds.every((key) => a.kinds[key] === b.kinds[key])) return false
   const ids = Object.keys(a.positions)
@@ -538,8 +654,9 @@ export function setStepColor(overlay: WorkflowOverlay, skill: string, color: str
 }
 
 /**
- * What a custom step can end on. A link out of it on an outcome no longer declared is kept,
- * taken whatever the outcome from now on: the admin removed an outcome, not a link.
+ * What a custom step can end on. A link out of it loses the outcomes no longer declared,
+ * and one left with none is kept, taken whatever the outcome from now on: the admin
+ * removed an outcome, not a link.
  */
 export function setStepOutcomes(overlay: WorkflowOverlay, skill: string, outcomes: readonly string[]): WorkflowOverlay {
   const declared = normalizeOutcomes(outcomes)
@@ -552,11 +669,47 @@ export function setStepOutcomes(overlay: WorkflowOverlay, skill: string, outcome
       return declared.length > 0 ? { ...rest, outcomes: declared } : rest
     }),
     links: overlay.links.map((link) => {
-      if (link.from !== id || link.outcome === undefined || declared.includes(link.outcome)) return link
-      const { outcome: _gone, ...rest } = link
-      return rest
+      const outcomes = linkOutcomesOf(link)
+      if (link.from !== id || outcomes.every((outcome) => declared.includes(outcome))) return link
+      return withLinkOutcomes(link, outcomes.filter((outcome) => declared.includes(outcome)))
     }),
   }
+}
+
+/** Add an end note with its card at `position`. Its id is `nextNoteId`'s: the caller can select it. */
+export function addNote(overlay: WorkflowOverlay, position: WorkflowPosition, text = '', color?: string): WorkflowOverlay {
+  const id = nextNoteId(overlay)
+  const note: WorkflowOverlayNote = color === undefined ? { id, text: normalizeNote(text) } : { id, text: normalizeNote(text), color }
+  return {
+    ...overlay,
+    notes: [...(overlay.notes ?? []), note],
+    positions: { ...overlay.positions, [noteNodeId(id)]: rounded(position) },
+  }
+}
+
+/** A `notes` list, left out of the overlay when it is empty. */
+function withNotes(overlay: WorkflowOverlay, notes: WorkflowOverlayNote[]): WorkflowOverlay {
+  const { notes: _was, ...rest } = overlay
+  return notes.length > 0 ? { ...rest, notes } : rest
+}
+
+/** Remove a note (by its node id), the links into it and its place. */
+export function removeNote(overlay: WorkflowOverlay, nodeId: string): WorkflowOverlay {
+  const { [nodeId]: _gone, ...positions } = overlay.positions
+  return withNotes({
+    ...overlay,
+    links: overlay.links.filter((link) => link.from !== nodeId && link.to !== nodeId),
+    positions,
+  }, (overlay.notes ?? []).filter((note) => noteNodeId(note.id) !== nodeId))
+}
+
+/** What a note says, one trimmed line. */
+export function setNoteText(overlay: WorkflowOverlay, nodeId: string, text: string): WorkflowOverlay {
+  return withNotes(overlay, (overlay.notes ?? []).map((note) => (noteNodeId(note.id) === nodeId ? { ...note, text: normalizeNote(text) } : note)))
+}
+
+export function setNoteColor(overlay: WorkflowOverlay, nodeId: string, color: string): WorkflowOverlay {
+  return withNotes(overlay, (overlay.notes ?? []).map((note) => (noteNodeId(note.id) === nodeId ? { ...note, color } : note)))
 }
 
 /**
@@ -565,9 +718,16 @@ export function setStepOutcomes(overlay: WorkflowOverlay, skill: string, outcome
  * and a step linked to itself are not added: the overlay comes back unchanged.
  */
 export function addLink(overlay: WorkflowOverlay, from: string, to: string, outcome?: string): WorkflowOverlay {
-  if (from === to || isDefaultLink(from, to)) return overlay
-  if (overlay.links.some((link) => link.from === from && link.to === to)) return overlay
-  const link: WorkflowOverlayLink = outcome === undefined ? { from, to, kind: 'suggest' } : { from, to, kind: 'suggest', outcome }
+  if (from === to || isDefaultLink(from, to) || isNoteNodeId(from)) return overlay
+  const existing = overlay.links.find((link) => link.from === from && link.to === to)
+  if (existing) {
+    // Drawn again from another outcome's port: the link is taken on that one too. One
+    // taken whatever the outcome already covers it.
+    const outcomes = linkOutcomesOf(existing)
+    if (outcome === undefined || outcomes.length === 0 || outcomes.includes(outcome)) return overlay
+    return setLinkOutcomes(overlay, from, to, [...outcomes, outcome])
+  }
+  const link: WorkflowOverlayLink = outcome === undefined ? { from, to, kind: 'suggest' } : { from, to, kind: 'suggest', outcomes: [outcome] }
   return { ...overlay, links: [...overlay.links, link] }
 }
 
@@ -586,16 +746,18 @@ export function setLinkKind(overlay: WorkflowOverlay, from: string, to: string, 
   return { ...overlay, links: overlay.links.map((link) => (link.from === from && link.to === to ? { ...link, kind } : link)) }
 }
 
-/** The outcome a drawn link is taken on, or none (`undefined`). A default link keeps its own. */
-export function setLinkOutcome(overlay: WorkflowOverlay, from: string, to: string, outcome: string | undefined): WorkflowOverlay {
+/** The outcomes a drawn link is taken on, none being whatever it ended on. A default link keeps its own. */
+export function setLinkOutcomes(overlay: WorkflowOverlay, from: string, to: string, outcomes: readonly string[]): WorkflowOverlay {
+  const unique = outcomes.filter((outcome, i) => outcomes.indexOf(outcome) === i)
   return {
     ...overlay,
-    links: overlay.links.map((link) => {
-      if (link.from !== from || link.to !== to) return link
-      const { outcome: _was, ...rest } = link
-      return outcome === undefined ? rest : { ...rest, outcome }
-    }),
+    links: overlay.links.map((link) => (link.from === from && link.to === to ? withLinkOutcomes(link, unique) : link)),
   }
+}
+
+/** One outcome, or none (`undefined`): `setLinkOutcomes` for a single one. */
+export function setLinkOutcome(overlay: WorkflowOverlay, from: string, to: string, outcome: string | undefined): WorkflowOverlay {
+  return setLinkOutcomes(overlay, from, to, outcome === undefined ? [] : [outcome])
 }
 
 /** Leave a card at `position`. Any step, built-in ones included: where a card sits is not what it does. */
@@ -611,9 +773,9 @@ export function moveNode(overlay: WorkflowOverlay, id: string, position: Workflo
 export function pinPositions(overlay: WorkflowOverlay, drawn: Readonly<Record<string, WorkflowPosition>>): WorkflowOverlay {
   const positions = { ...overlay.positions }
   let changed = false
-  for (const node of composeWorkflow(overlay).nodes) {
-    if (positions[node.id] || !drawn[node.id]) continue
-    positions[node.id] = rounded(drawn[node.id])
+  for (const id of cardIds(overlay)) {
+    if (positions[id] || !drawn[id]) continue
+    positions[id] = rounded(drawn[id])
     changed = true
   }
   return changed ? { ...overlay, positions } : overlay
@@ -621,16 +783,23 @@ export function pinPositions(overlay: WorkflowOverlay, drawn: Readonly<Record<st
 
 /** What is stored: the overlay's own fields only, positions and switches of steps it still has. */
 export function cleanOverlay(overlay: WorkflowOverlay): WorkflowOverlay {
-  const ids = new Set(composeWorkflow(overlay).nodes.map((node) => node.id))
-  return withDisabled({
+  const ids = cardIds(overlay)
+  const notes = (overlay.notes ?? []).map(({ id, text, color }) => (color === undefined ? { id, text: normalizeNote(text) } : { id, text: normalizeNote(text), color }))
+  return withDisabled(withNotes({
     version: 2,
     steps: overlay.steps.map(({ skill, mode, color, outcomes }) => {
       const step: WorkflowOverlayStep = color === undefined ? { skill, mode } : { skill, mode, color }
       if (outcomes && outcomes.length > 0) step.outcomes = [...outcomes]
       return step
     }),
-    links: overlay.links.map(({ from, to, kind, outcome }) => (outcome === undefined ? { from, to, kind } : { from, to, kind, outcome })),
+    // One outcome is written as `outcome`, the field an older app reads; several as `outcomes`.
+    links: overlay.links.map((link) => {
+      const { from, to, kind } = link
+      const outcomes = linkOutcomesOf(link)
+      if (outcomes.length === 0) return { from, to, kind }
+      return outcomes.length === 1 ? { from, to, kind, outcome: outcomes[0] } : { from, to, kind, outcomes: [...outcomes] }
+    }),
     kinds: { ...overlay.kinds },
     positions: Object.fromEntries(Object.entries(overlay.positions).filter(([id]) => ids.has(id)).map(([id, at]) => [id, rounded(at)])),
-  }, [...disabledOf(overlay)].filter((id) => ids.has(id) && canDisable(id)))
+  }, notes), [...disabledOf(overlay)].filter((id) => ids.has(id) && canDisable(id)))
 }

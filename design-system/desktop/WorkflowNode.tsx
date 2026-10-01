@@ -2,7 +2,7 @@ import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
 
 import { ButtonIcon } from './ButtonIcon'
 import { Icon } from './Icon'
-import { Eye, EyeOff, TriangleAlert } from './icons'
+import { Eye, EyeOff, StickyNote, TriangleAlert } from './icons'
 import { skillIcon } from './skillIcons'
 import { Text } from './Text'
 import {
@@ -164,6 +164,10 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
       }
     : undefined
 
+  if (node.note !== undefined) {
+    return <NoteCard node={node} frame={frame} selected={selected} tint={tint} connectable={connectable} used={used} />
+  }
+
   return (
     // `h-full w-full`: the node's box is set by the canvas (`workflowCardWidth`,
     // `workflowNodeHeight`), and the card fills it rather than sizing itself a second time.
@@ -252,6 +256,62 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+/**
+ * AN END NOTE'S CARD: one header-high plate, its text where a step's name goes, two lines
+ * at most (the inspector shows the rest). Links come in on the left like a step's, and
+ * nothing goes out: there is no row and no source port. The loop lanes are drawn all the
+ * same, invisible, since a link INTO a note may still be routed down or up a column.
+ * Its text is `node.note`; an empty one shows `node.label` instead, quieter: the caller's
+ * "Empty note".
+ */
+function NoteCard({ node, frame, selected, tint, connectable, used }: {
+  node: WorkflowCanvasNode
+  frame: string
+  selected: boolean
+  tint?: { backgroundImage: string; borderColor?: string }
+  connectable: boolean
+  used: (handle: string) => string | undefined
+}) {
+  const text = node.note ?? ''
+  return (
+    <div
+      className={`relative flex h-full w-full items-center gap-2.5 rounded-xl border bg-bg-secondary px-3 text-ink shadow-sm ${frame}`}
+      aria-current={selected ? 'true' : undefined}
+      style={tint}
+    >
+      <Handle type="target" position={Position.Top} id={WORKFLOW_VERTICAL_HANDLES.down.target} style={DOWN_LANE} className="ms-wf-lane" isConnectable={false} />
+      <Handle type="target" position={Position.Bottom} id={WORKFLOW_VERTICAL_HANDLES.up.target} style={UP_LANE} className="ms-wf-lane" isConnectable={false} />
+      <Handle type="target" position={Position.Top} id={WORKFLOW_SELF_TARGET_HANDLE} style={SELF_LANE} className="ms-wf-lane" isConnectable={false} />
+      <Handle type="target" position={Position.Right} id={WORKFLOW_SIDE_TARGET_HANDLE} className="ms-wf-lane" isConnectable={false} />
+      <Handle type="target" position={Position.Left} id={WORKFLOW_TARGET_HANDLE} isConnectable={connectable} className={used(WORKFLOW_TARGET_HANDLE)} />
+      <span
+        className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${node.color ? '' : 'bg-accent/10 text-accent'}`}
+        style={node.color ? { backgroundColor: `${node.color}33`, color: node.color } : undefined}
+      >
+        <Icon glyph={StickyNote} size="md" tone="inherit" />
+      </span>
+      <Text
+        size="xs"
+        tone={text ? undefined : 'secondary'}
+        className={`line-clamp-2 min-w-0 flex-1 leading-4 ${text ? '' : 'italic'}`}
+        title={text || node.label}
+      >
+        {text || node.label}
+      </Text>
+      {node.warning && (
+        <span
+          role="img"
+          aria-label={node.warning}
+          title={node.warning}
+          className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md bg-orange/15 text-orange"
+        >
+          <Icon glyph={TriangleAlert} size="xs" tone="inherit" />
+        </span>
+      )}
     </div>
   )
 }

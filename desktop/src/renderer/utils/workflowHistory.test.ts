@@ -68,6 +68,28 @@ describe('diffOverlays', () => {
     ])
   })
 
+  it('says the outcomes a link is taken on, whichever field holds them', () => {
+    const before = overlay({
+      steps: [{ skill: 'x', mode: 'advisory', outcomes: ['ok', 'ko'] }],
+      links: [{ from: 'custom:x', to: 'pr', kind: 'suggest', outcome: 'ok' }],
+    })
+    const after = overlay({ ...before, links: [{ from: 'custom:x', to: 'pr', kind: 'suggest', outcomes: ['ok', 'ko'] }] })
+    expect(diffOverlays(before, after)).toEqual([{ kind: 'link-outcome', from: 'x', to: 'magic-pr', outcome: 'ok, ko' }])
+    // The stored form of the same single outcome is no change.
+    const same = overlay({ ...before, links: [{ from: 'custom:x', to: 'pr', kind: 'suggest', outcomes: ['ok'] }] })
+    expect(diffOverlays(before, same)).toEqual([])
+  })
+
+  it('names an end note by what it says, and its links with it', () => {
+    const before = overlay({ steps: [{ skill: 'x', mode: 'advisory' }], notes: [{ id: 'n1', text: 'Open a ticket' }] })
+    const edited = overlay({ ...before, notes: [{ id: 'n1', text: 'Open a Jira ticket' }], links: [{ from: 'custom:x', to: 'note:n1', kind: 'suggest' }] })
+    expect(diffOverlays(before, edited)).toEqual([
+      { kind: 'note-text', before: 'Open a ticket', after: 'Open a Jira ticket' },
+      { kind: 'link-added', from: 'x', to: 'note:Open a Jira ticket', linkKind: 'suggest' },
+    ])
+    expect(diffOverlays(before, overlay({ steps: before.steps }))).toEqual([{ kind: 'note-removed', text: 'Open a ticket' }])
+  })
+
   it('reads a default link back to its own kind when its override is dropped', () => {
     const before = overlay({ kinds: { 'commit>pr': 'suggest' } })
     const [change] = diffOverlays(before, EMPTY_OVERLAY)
