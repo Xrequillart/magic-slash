@@ -14,9 +14,8 @@ import { EMPTY_OVERLAY, resolveOverlay, sameOverlay } from '../../workflow/overl
  * is not.
  *
  * What is stored is an overlay (workflow/overlay.ts): the steps and links an admin added
- * to the default flow. A v1 overlay (the line of before) is upgraded here, so the cache
- * and the editor only ever hold a v2. It is judged once, when it lands in the cache — loaded or saved, both
- * through `accept` — so a definition this build does not understand costs a warning
+ * to the default flow. It is judged once, when it lands in the cache — loaded or saved,
+ * both through `accept` — so a definition this build does not understand costs a warning
  * and its repository follows the default flow, instead of breaking a skill.
  */
 

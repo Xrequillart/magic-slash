@@ -169,20 +169,10 @@ describe('hydrateWorkflows', () => {
     expect(await hydrateWorkflows()).toEqual([])
   })
 
-  it('upgrades a v1 row (the line of before) into the graph the editor edits', async () => {
+  it('serves the default flow for a v1 row: no build writes one, none is stored', async () => {
     withStoredWorkflows({ 'repo-1': { version: 1, steps: [{ skill: 'check', mode: 'advisory', before: 'commit' }], kinds: {} } })
     await hydrateWorkflows()
-    expect(workflowForRepo('repo-1').source).toBe('repository')
-    expect(overlayForRepo('repo-1')).toEqual({
-      version: 2,
-      steps: [{ skill: 'check', mode: 'advisory' }],
-      links: [
-        { from: 'start', to: 'custom:check', kind: 'suggest' },
-        { from: 'custom:check', to: 'commit', kind: 'suggest' },
-      ],
-      kinds: {},
-      positions: {},
-    })
+    expect(workflowForRepo('repo-1').source).toBe('default')
   })
 
   it('reports nothing when the read fails', async () => {

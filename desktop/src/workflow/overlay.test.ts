@@ -196,24 +196,13 @@ describe('shapes', () => {
     expect(isOverlay({ ...EMPTY_OVERLAY, positions: { plan: { x: 'a', y: 0 } } })).toBe(false)
   })
 
-  it('upgrades a v1 line: its composed links made explicit, a split default link back', () => {
-    const v1 = { version: 1, steps: [{ skill: 'check', mode: 'blocking', before: 'resolve' }], kinds: { 'pr>custom:check': 'suggest' } }
-    expect(toOverlay(v1)).toEqual({
-      version: 2,
-      steps: [{ skill: 'check', mode: 'blocking' }],
-      links: [
-        { from: 'pr', to: CHECK, kind: 'suggest', outcome: 'review_comments' },
-        { from: CHECK, to: 'resolve', kind: 'auto' },
-      ],
-      kinds: {},
-      positions: {},
-    })
-    expect(toOverlay({ version: 1, steps: [{ skill: 'x', mode: 'advisory', before: 'nowhere' }], kinds: {} })).toBeNull()
+  it('refuses a v1 line: no build writes one, none is stored', () => {
+    expect(toOverlay({ version: 1, steps: [{ skill: 'check', mode: 'blocking', before: 'resolve' }], kinds: {} })).toBeNull()
   })
 
-  it('resolves a usable overlay, v1 or v2, and reports an unusable one', () => {
+  it('resolves a usable overlay and reports an unusable one', () => {
     expect('workflow' in resolveOverlay(withCheck())).toBe(true)
-    expect('workflow' in resolveOverlay({ version: 1, steps: [], kinds: {} })).toBe(true)
+    expect('error' in resolveOverlay({ version: 1, steps: [], kinds: {} })).toBe(true)
     expect('error' in resolveOverlay(addStep(EMPTY_OVERLAY, 'magic-pr', AT))).toBe(true)
     expect('error' in resolveOverlay({ nope: true })).toBe(true)
   })

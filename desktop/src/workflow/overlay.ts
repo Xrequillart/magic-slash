@@ -31,12 +31,6 @@ import { DEFAULT_LINKS, DEFAULT_WORKFLOW, nodeIdForSkill } from './defaultFlow'
  * with every link it had, and comes back through the dock's "+" on its own, unlinked, like
  * any step added: its default links stay in `removedLinks` until drawn again.
  *
- * VERSION 1 (a line: each step placed `before` a built-in, its links derived from its
- * place) is still read, and upgraded on the way in (`toOverlay`): its composed links
- * become explicit ones. The one thing that does not survive is a SPLIT default link
- * (`start → X → commit` had no `start → commit`): default links are always there now.
- * Nothing writes a v1 any more.
- *
  * Pure, like model.ts: the main process composes it for `GET /workflow`, the
  * renderer edits it, and both run the same code.
  */
@@ -86,8 +80,9 @@ export interface WorkflowOverlayLink {
   /** Taken only when `from` ended on this. Absent: whatever the outcome. */
   outcome?: string
   /**
-   * READ ONLY: a link taken on several outcomes, as a build of before stored it. Split into
-   * one link per outcome on the way in (`toOverlay`) and on the way out (`cleanOverlay`),
+   * READ ONLY: a link taken on several outcomes, as 0.105.6 to 0.105.8 stored it. No row
+   * holds one any more, but past revisions in the history do, and can be restored. Split
+   * into one link per outcome on the way in (`toOverlay`) and on the way out (`cleanOverlay`),
    * so the editor never holds one.
    */
   outcomes?: string[]
@@ -218,13 +213,6 @@ export interface WorkflowOverlay {
 }
 
 export const EMPTY_OVERLAY: WorkflowOverlay = { version: 2, steps: [], links: [], kinds: {}, positions: {} }
-
-/** The line of before, as stored until the canvas became a graph. Read, never written. */
-interface WorkflowOverlayV1 {
-  version: 1
-  steps: { skill: string; mode: WorkflowMode; before: string | null }[]
-  kinds: Record<string, WorkflowLinkKind>
-}
 
 /**
  * Custom steps live in their own id space, so a skill named `commit`, `magic-foo`
@@ -522,7 +510,7 @@ export function servedWorkflow(overlay: WorkflowOverlay): Workflow {
 }
 
 // ---------------------------------------------------------------------------
-// Shapes, and the upgrade from v1.
+// Shapes.
 // ---------------------------------------------------------------------------
 
 const isMode = (value: unknown): value is WorkflowMode => value === 'blocking' || value === 'advisory'
@@ -533,18 +521,6 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 function kindsOk(kinds: unknown): boolean {
   return isRecord(kinds) && Object.values(kinds).every(isKind)
-}
-
-function isOverlayV1(value: unknown): value is WorkflowOverlayV1 {
-  if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.steps)) return false
-  const stepsOk = value.steps.every((step) =>
-    isRecord(step) &&
-    typeof step.skill === 'string' &&
-    step.skill.length > 0 &&
-    isMode(step.mode) &&
-    (step.before === null || (typeof step.before === 'string' && isBuiltInNodeId(step.before))),
-  )
-  return stepsOk && kindsOk(value.kinds)
 }
 
 /**
@@ -588,66 +564,9 @@ export function isOverlay(value: unknown): value is WorkflowOverlay {
     idsOk(value.disabled) && idsOk(value.removed) && idsOk(value.removedLinks)
 }
 
-/** The node ids of a v1 overlay's line, in order. */
-function lineOfV1(overlay: WorkflowOverlayV1): string[] {
-  const line: string[] = []
-  for (const builtIn of BUILT_IN_LINE) {
-    for (const step of overlay.steps) if (step.before === builtIn) line.push(customNodeId(step.skill))
-    line.push(builtIn)
-  }
-  for (const step of overlay.steps) if (step.before === null) line.push(customNodeId(step.skill))
-  return line
-}
-
-/**
- * The links a v1 line composed to. Splitting a default link `A → B` with custom steps
- * kept its kind on every hop and its outcome on the FIRST hop only; before the first
- * built-in and after the last, a hop was a suggestion. `kinds` applied on top.
- */
-function linksOfV1(overlay: WorkflowOverlayV1): WorkflowLink[] {
-  const line = lineOfV1(overlay)
-  const links: WorkflowLink[] = []
-  let opener: string | null = null
-  let split: WorkflowLink | undefined
-  for (let i = 0; i < line.length - 1; i++) {
-    const from = line[i]
-    const to = line[i + 1]
-    if (isBuiltInNodeId(from)) {
-      opener = from
-      const next = line.slice(i + 1).find(isBuiltInNodeId)
-      split = next ? defaultLink(from, next) : undefined
-    }
-    const inherited = opener !== null ? split : undefined
-    const link: WorkflowLink = { from, to, kind: overlay.kinds[linkKey(from, to)] ?? inherited?.kind ?? 'suggest' }
-    if (inherited?.outcome !== undefined && from === opener) link.outcome = inherited.outcome
-    links.push(link)
-  }
-  return links
-}
-
-/** A v1 line as a v2 graph: its composed links made explicit. No positions: it is laid out. */
-function upgradeV1(overlay: WorkflowOverlayV1): WorkflowOverlay {
-  const links: WorkflowOverlayLink[] = []
-  const kinds: Record<string, WorkflowLinkKind> = {}
-  for (const link of linksOfV1(overlay)) {
-    const base = defaultLink(link.from, link.to)
-    if (!base) links.push(link)
-    else if (base.kind !== link.kind) kinds[linkKey(link.from, link.to)] = link.kind
-  }
-  return {
-    version: 2,
-    steps: overlay.steps.map(({ skill, mode }) => ({ skill, mode })),
-    links,
-    kinds,
-    positions: {},
-  }
-}
-
-/** A stored definition as a v2 overlay (a v1 upgraded), or null when it is neither. */
+/** A stored definition as the editor holds it (one link per outcome), or null when it is not an overlay. */
 export function toOverlay(value: unknown): WorkflowOverlay | null {
-  if (isOverlay(value)) return { ...value, links: splitLinks(value.links) }
-  if (isOverlayV1(value)) return upgradeV1(value)
-  return null
+  return isOverlay(value) ? { ...value, links: splitLinks(value.links) } : null
 }
 
 // ---------------------------------------------------------------------------
@@ -714,7 +633,7 @@ function problemsOf(workflow: Workflow): WorkflowProblem[] {
 }
 
 /**
- * A stored definition, upgraded and composed, or an error when it cannot be used (the
+ * A stored definition, read and composed, or an error when it cannot be used (the
  * default is then served).
  */
 export function resolveOverlay(value: unknown): { overlay: WorkflowOverlay; workflow: Workflow } | { error: string } {
