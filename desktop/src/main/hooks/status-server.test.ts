@@ -294,6 +294,16 @@ describe('read-back endpoints', () => {
     })
   })
 
+  it('hands an empty outcome over as one: a custom step that ended on none of its own', async () => {
+    const calls: unknown[][] = []
+    setWorkflowNextProvider((...args) => {
+      calls.push(args)
+      return { lines: [], chain: null }
+    })
+    await httpGet('/workflow/next?path=/tmp/api&skill=check-types&outcome=&reason=')
+    expect(calls).toEqual([['/tmp/api', 'check-types', '', '']])
+  })
+
   describe('POST /workflow/context', () => {
     const hookInput = (skill: unknown, cwd: unknown = '/tmp/api-PROJ-1') =>
       JSON.stringify({ hook_event_name: 'PostToolUse', tool_name: 'Skill', cwd, tool_input: { skill }, tool_response: { success: true } })

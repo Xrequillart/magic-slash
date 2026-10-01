@@ -933,14 +933,16 @@ export function startStatusServer(): Promise<number> {
           sendProvided(res, '/workflow', null, () => workflowProvider?.(path, skill))
         } else if (url.pathname === '/workflow/next') {
           // Read-only: what the calling skill shows and chains into, now that it ended on
-          // `outcome`. Nothing to show (no provider, no outcome, a throwing provider) is
-          // the empty answer, which leaves the skill on its own closing text.
+          // `outcome`. An empty `outcome` is a custom step that ended on none of its own:
+          // only the links taken whatever the outcome apply. Nothing to show (no provider,
+          // no outcome at all, a throwing provider) is the empty answer, which leaves the
+          // skill on its own closing text.
           const path = url.searchParams.get('path')
           const skill = url.searchParams.get('skill')
           const outcome = url.searchParams.get('outcome')
           const reason = url.searchParams.get('reason') ?? ''
           sendProvided(res, '/workflow/next', { lines: [], chain: null }, () =>
-            (outcome ? workflowNextProvider?.(path, skill, outcome, reason) : null))
+            (outcome !== null ? workflowNextProvider?.(path, skill, outcome, reason) : null))
         } else if (url.pathname === '/config/worktree-files') {
           // Write: persist a repo's worktreeFiles to the cloud store (the one config mutation
           // skills perform). Kept as GET+query to match the other curl-friendly write routes.

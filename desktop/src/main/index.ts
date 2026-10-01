@@ -889,12 +889,10 @@ async function initializeHooksAndSessions() {
     // lookup as /workflow above, from the skill's name alone, so a custom step finds its
     // node exactly as a magic skill does. A path matching no repository gets the default
     // flow, which has no custom step, so the answer there is null and the skill runs
-    // untouched; so does a magic skill, which reads /workflow itself. The messages
-    // follow the repository's discussion language, the one its magic skills speak.
+    // untouched; so does a magic skill, which asks /workflow/next itself.
     setCustomSkillContextProvider((cwd: string, skill: string) => {
-      const { repositories, repoId, key } = repoForPath(cwd)
-      const language = key && repositories[key].languages?.discussion === 'fr' ? 'fr' : 'en'
-      return buildSkillContext(buildWorkflowPayload(key ?? null, workflowForRepo(repoId), skill), language)
+      const { repoId, key } = repoForPath(cwd)
+      return buildSkillContext(buildWorkflowPayload(key ?? null, workflowForRepo(repoId), skill))
     })
     setWorktreeFilesWriter((files: string[], path: string | null, repo: string | null) => {
       const { repositories, repoId, key: keyForPath } = repoForPath(path)

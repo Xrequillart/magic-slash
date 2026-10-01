@@ -1,13 +1,15 @@
 import type { WorkflowPayload } from './payload'
 import { isLinkIntoStart } from './overlay'
-import type { NoteLink, SkilledLink, WorkflowLanguage } from './skillContext'
+import type { NoteLink, SkilledLink, WorkflowLanguage } from './messages'
 import {
   CHAINING, CHAIN_BROKEN, NEXT_STEP_LINE, NOTE_LINE,
   commandFor, fill, grouped, hasSkill, isNoteLink, isShown, purposeFor, safeNote, thenLines,
-} from './skillContext'
+} from './messages'
 
 /**
- * The body of `GET /workflow/next`: what a magic skill shows, and follows, once it is done.
+ * The body of `GET /workflow/next`: what a step shows, and follows, once it is done. A magic
+ * skill asks for it by its protocol (workflow.md §2), a custom one by the context the app
+ * injects when it is invoked (skillContext.ts).
  *
  * WHY THE APP DECIDES
  * ---------------------------------------------------------------------------
@@ -66,7 +68,8 @@ function suggestionText(link: SkilledLink, lang: WorkflowLanguage): string {
 /**
  * What follows the skill `payload` is centred on, now that it ended on `outcome`.
  *
- * A link applies when it carries no outcome or this one. `failed` (with `reason`) keeps
+ * A link applies when it carries no outcome or this one; an empty `outcome` (a custom step
+ * that ended on none of its own) matches only the former. `failed` (with `reason`) keeps
  * only the unconditional `auto` links: a step that failed shows its error, not a way
  * forward. Of the `auto` links that apply, the first is the chain, unless it leads into
  * start (a new agent, never opened behind the user's back) or the step is `blocking` and

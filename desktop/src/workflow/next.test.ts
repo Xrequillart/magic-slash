@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { DEFAULT_WORKFLOW } from './defaultFlow'
 import { buildWorkflowPayload } from './payload'
 import type { WorkflowOverlay } from './overlay'
-import { EMPTY_OVERLAY, addLink, addNote, addStep, customNodeId, noteNodeId, servedWorkflow, setLinkKind, setNoteText, setStepMode } from './overlay'
+import { EMPTY_OVERLAY, addLink, addNote, addStep, customNodeId, noteNodeId, servedWorkflow, setLinkKind, setLinkOutcome, setNoteText, setStepMode, setStepOutcomes } from './overlay'
 import { buildWorkflowNext } from './next'
 
 const CHECK = customNodeId('check-types')
@@ -111,3 +111,48 @@ describe('buildWorkflowNext on a custom flow', () => {
     expect(next.lines.map((l) => [l.skill, l.broken])).toEqual([['b', null]])
   })
 })
+
+describe('buildWorkflowNext from a custom step', () => {
+  const LINT = customNodeId('plugin:lint')
+  /** commit → check-types; check-types → pr (suggest), check-types → lint (suggest). */
+  const fromCheck = () => {
+    const o = addStep(addStep(EMPTY_OVERLAY, 'check-types', AT), 'plugin:lint', AT)
+    return addLink(addLink(addLink(o, 'commit', CHECK), CHECK, 'pr'), CHECK, LINT)
+  }
+  const nextFrom = (o: WorkflowOverlay, outcome: string, lang: 'en' | 'fr' = 'en') => nextOf('check-types', outcome, { lang }, served(o))
+
+  it('takes only the unconditional links on an empty outcome', () => {
+    let o = setStepOutcomes(fromCheck(), 'check-types', ['clean'])
+    o = setLinkOutcome(o, CHECK, 'pr', undefined, 'clean')
+    expect(nextFrom(o, '').lines.map((l) => l.command)).toEqual(['/plugin:lint'])
+    expect(nextFrom(o, 'clean').lines.map((l) => l.command)).toEqual(['/magic:pr', '/plugin:lint'])
+  })
+
+  it('names a custom step by its own command, even when it is called magic-something', () => {
+    const o = addLink(addStep(fromCheck(), 'magic-foo', AT), CHECK, customNodeId('magic-foo'))
+    const line = nextFrom(o, '').lines.find((l) => l.skill === 'magic-foo')
+    expect(line?.text).toBe("   • Run /magic-foo to run this repository's custom step")
+  })
+
+  it('says which outcome a `then` line waits for, several joined', () => {
+    let o = addLink(fromCheck(), LINT, 'pr')
+    o = setStepOutcomes(o, 'plugin:lint', ['clean', 'fixed'])
+    o = addLink(setLinkOutcome(o, LINT, 'pr', undefined, 'clean'), LINT, 'pr', 'fixed')
+    expect(nextFrom(o, '').lines.find((l) => l.skill === 'plugin:lint')?.text)
+      .toBe("   • Run /plugin:lint to run this repository's custom step\n     ↳ on clean or fixed, then run /magic:pr to create a Pull Request")
+    expect(nextFrom(o, '', 'fr').lines.find((l) => l.skill === 'plugin:lint')?.text)
+      .toContain('     ↳ sur clean ou fixed, puis lance /magic:pr pour créer une Pull Request')
+  })
+
+  it('keeps the lines of a note, and shows a note under a suggested custom target', () => {
+    let o = addNote(fromCheck(), AT, 'Create the ticket\nthen tell the PO')
+    o = addLink(o, CHECK, noteNodeId('n1'))
+    expect(nextFrom(o, '').lines[0].text).toBe('   📝 Create the ticket\n      then tell the PO')
+
+    let p = addNote(setStepOutcomes(fromCheck(), 'plugin:lint', ['dirty']), AT, 'Fix by hand')
+    p = addLink(p, LINT, noteNodeId('n1'), 'dirty')
+    expect(nextFrom(p, '').lines.find((l) => l.skill === 'plugin:lint')?.text)
+      .toBe("   • Run /plugin:lint to run this repository's custom step\n     ↳ on dirty, 📝 Fix by hand")
+  })
+})
+
