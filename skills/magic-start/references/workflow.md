@@ -119,10 +119,10 @@ Here the repository runs its own `check-types` skill right after each commit, th
 | --- | --- |
 | `link.kind: suggest` | Offered to the user as a command line (§7). Nothing runs on its own. |
 | `link.kind: auto` | The next skill runs in this same session once this one is done (§4, step 5). It still asks its own questions. A link into `magic-start` is never `auto`. |
-| `link.outcome` | The link applies only when this skill ended on that outcome. `null` or absent: it applies whatever the outcome. A link leaving a custom step never has one. |
+| `link.outcome` | The link applies only when this skill ended on that outcome. `null` or absent: it applies whatever the outcome. A link leaving a custom step has one only when the repository declared outcomes for that step. |
 | `link.skill` | The target's skill: `magic-<name>` for a built-in step, the skill's own name (`check-types`, `plugin:foo`) for a custom one. |
 | `link.then` | For a custom target, the links leaving that custom step, nested the same way through consecutive custom steps down to the next built-in step. `[]` for a built-in target, and for a custom step already on that path (custom steps can loop). Rendered under a suggested custom target (§4, step 3), and applied after a chained one only when it received no workflow context of its own (§4, step 5). |
-| `node.id` | `plan`, `start`, `commit`… for a built-in step, `custom:<skill>` for a custom one. A custom node is `required: false`, with no `outcomes` and no `provides`. |
+| `node.id` | `plan`, `start`, `commit`… for a built-in step, `custom:<skill>` for a custom one. A custom node is `required: false`, with no `provides`, and the `outcomes` the repository declared for it (often none). |
 | `node.mode: blocking` | If this skill fails, its `auto` link is broken: the next skill is only suggested, with the reason. |
 | `node.mode: advisory` | A failure is reported, but an `auto` link is still followed. |
 | `node.required` | The node is not meant to be skipped. Informational: the skill shows it, nothing enforces it, and it never makes a skill refuse to run. |
@@ -153,7 +153,8 @@ where its closing message carries `{next_steps}`. The sequence is always this on
    - an `auto` link that may not be followed (step 5) becomes a suggestion line, preceded by
      `MSG_WORKFLOW_CHAIN_BROKEN` with the reason
    - a custom target shown as a suggestion is followed, right under its line, by one
-     `MSG_WORKFLOW_THEN_LINE` per link of its `then` (and so on down any nested `then`), all as
+     `MSG_WORKFLOW_THEN_LINE` per link of its `then` (`MSG_WORKFLOW_THEN_ON_LINE` for one that
+     carries an outcome; and so on down any nested `then`), all as
      suggestions whatever their kind: a custom step run by hand chains into nothing, so the user
      sees what comes after it
    - an empty selection renders nothing: the skill's own closing text stays, word for word
@@ -181,8 +182,10 @@ where its closing message carries `{next_steps}`. The sequence is always this on
    or followed its own links, and this session applies **no** `then` for it. If it is not (an
    older app), this session applies that link's `then` exactly as the custom step would have,
    with steps 1 to 5: its outcome is `failed` (with the reason) if
-   it stopped on an error or reported that its check failed, none otherwise; every `then` link
-   applies (none carries an outcome), and a `failed` one keeps only the `auto` links. Render them
+   it stopped on an error; otherwise, when its node in `workflow.nodes` declares `outcomes`, the
+   one of them that describes how it ended, and none when none fits or it declares none (then a
+   check it reported as failed is `failed` too). A `then` link applies when it carries no outcome
+   or the one picked, and a `failed` one keeps only the `auto` links with no outcome. Render them
    right after the custom skill's own output, with the custom node's `mode` deciding a failure
    (`blocking` breaks its `auto` link into a suggestion with the reason, `advisory` reports the
    failure and still chains), and follow at most one `auto` link, recursing the same way when
@@ -266,6 +269,23 @@ nesting.
 
 ```text
      ↳ puis lance {skill} pour {purpose}
+```
+
+### MSG_WORKFLOW_THEN_ON_LINE
+
+In place of `MSG_WORKFLOW_THEN_LINE` for a `then` link that carries an `outcome`: it is taken only
+when the custom step ends on `{outcome}`.
+
+#### en
+
+```text
+     ↳ on {outcome}, then run {skill} to {purpose}
+```
+
+#### fr
+
+```text
+     ↳ sur {outcome}, puis lance {skill} pour {purpose}
 ```
 
 ### MSG_WORKFLOW_CHAINING

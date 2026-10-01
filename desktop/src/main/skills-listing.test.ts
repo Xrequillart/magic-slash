@@ -104,6 +104,17 @@ describe('collectListingEntries', () => {
     ])
   })
 
+  it('reads the outcomes a skill declares, as a flow or a block list', () => {
+    skill(join(home, '.claude/skills/check'), 'name: check\ndescription: Checks.\noutcomes: [tests_passed, tests_failed]')
+    skill(join(home, '.claude/skills/lint'), 'name: lint\ndescription: Lints.\noutcomes:\n  - clean\n  - dirty')
+    skill(join(home, '.claude/skills/plain'), 'name: plain\ndescription: Nothing declared.')
+    const { entries } = collectListingEntries({ home, repos: [], builtIn: [] })
+    const byName = Object.fromEntries(entries.map((entry) => [entry.name, entry]))
+    expect(byName.check.outcomes).toEqual(['tests_passed', 'tests_failed'])
+    expect(byName.lint.outcomes).toEqual(['clean', 'dirty'])
+    expect(byName.plain).not.toHaveProperty('outcomes')
+  })
+
   it('reports the budget settings the user changed', () => {
     write(join(home, '.claude/settings.json'), JSON.stringify({ skillListingBudgetFraction: 0.02, skillListingMaxDescChars: 800 }))
     const { settings } = collectListingEntries({ home, repos: [], builtIn: [], env: { SLASH_COMMAND_TOOL_CHAR_BUDGET: '12000' } })

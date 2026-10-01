@@ -62,6 +62,12 @@ export const THEN_LINE: Record<WorkflowLanguage, string> = {
   fr: '     ↳ puis lance {skill} pour {purpose}',
 }
 
+/** §7, MSG_WORKFLOW_THEN_ON_LINE, verbatim: a `then` link taken only on one outcome of the custom target. */
+export const THEN_ON_LINE: Record<WorkflowLanguage, string> = {
+  en: '     ↳ on {outcome}, then run {skill} to {purpose}',
+  fr: '     ↳ sur {outcome}, puis lance {skill} pour {purpose}',
+}
+
 /** §7, the `{purpose}` table, verbatim. A target missing here is a custom step. */
 export const PURPOSES: Record<WorkflowLanguage, Record<string, string>> = {
   en: {
@@ -120,7 +126,9 @@ function hasSkill(link: WorkflowPayloadLink): link is SkilledLink {
  */
 function thenLines(links: WorkflowPayloadLink[], lang: WorkflowLanguage, depth = 0): string[] {
   return links.filter(hasSkill).flatMap((link) => [
-    '  '.repeat(depth) + fill(THEN_LINE[lang], commandFor(link), purposeFor(link, lang)),
+    '  '.repeat(depth) + (link.outcome === null
+      ? fill(THEN_LINE[lang], commandFor(link), purposeFor(link, lang))
+      : fill(THEN_ON_LINE[lang], commandFor(link), purposeFor(link, lang)).replace('{outcome}', link.outcome)),
     ...thenLines(link.then, lang, depth + 1),
   ])
 }
@@ -128,6 +136,8 @@ function thenLines(links: WorkflowPayloadLink[], lang: WorkflowLanguage, depth =
 function fill(template: string, skill: string, purpose = '{purpose}'): string {
   return template.replace('{skill}', skill).replace('{purpose}', purpose)
 }
+
+const code = (value: string) => `\`${value}\``
 
 /** A text fence, so the leading spaces of a suggestion line survive the model reading it. */
 function fenced(text: string): string {
@@ -154,6 +164,7 @@ export function buildSkillContext(payload: WorkflowPayload, lang: WorkflowLangua
   if (links.length === 0) return null
 
   const repository = payload.repository ? `\`${payload.repository}\`` : 'this repository'
+  const outcomes = node.outcomes
   const blocking = node.mode === 'blocking'
 
   const linkLines = links.flatMap((link) => {
@@ -163,8 +174,9 @@ export function buildSkillContext(payload: WorkflowPayload, lang: WorkflowLangua
     // a suggestion, whatever the flow says (§4, step 5).
     const kind = isLinkIntoStart(link) ? 'suggest' : link.kind
     const suggestion = [fill(NEXT_STEP_LINE[lang], command, purpose), ...thenLines(link.then, lang)].join('\n')
+    const on = link.outcome === null ? '' : `, only on outcome ${code(link.outcome)}`
     const lines = [
-      `- \`${command}\` (\`${link.skill}\`), ${kind}: ${purpose}.`,
+      `- \`${command}\` (\`${link.skill}\`), ${kind}${on}: ${purpose}.`,
       '  As a suggestion:',
       fenced(suggestion),
     ]
@@ -186,8 +198,12 @@ export function buildSkillContext(payload: WorkflowPayload, lang: WorkflowLangua
     '',
     `The skill \`${node.skill}\` is step \`${node.id}\` of ${repository}'s Magic Slash workflow. This context comes from Magic Slash Desktop, not from the skill, and it changes nothing about the skill itself: do the skill's own job exactly as it is written, every step, question and check included. What follows applies only ONCE the skill has finished.`,
     '',
-    '1. Pick the outcome. If the skill stopped on an error it could not resolve, or reported that its check failed, its outcome is `failed`, with the reason in one line. Otherwise it has no outcome.',
-    '2. Select the links. Every link below applies (a link leaving a custom step carries no outcome). A `failed` outcome keeps only the `auto` links: a step that failed shows its error, not a way forward.',
+    outcomes.length === 0
+      ? '1. Pick the outcome. If the skill stopped on an error it could not resolve, or reported that its check failed, its outcome is `failed`, with the reason in one line. Otherwise it has no outcome.'
+      : `1. Pick the outcome. If the skill stopped on an error it could not resolve, its outcome is \`failed\`, with the reason in one line. Otherwise it is the ONE of ${outcomes.map(code).join(', ')} that describes how the skill ended, judged from what it actually did and reported (a check that ran and found problems is the outcome saying so, not \`failed\`); when none of them fits, it has no outcome. Say which one in one short line, before the next steps.`,
+    outcomes.length === 0
+      ? '2. Select the links. Every link below applies (none is conditioned on an outcome). A `failed` outcome keeps only the `auto` links: a step that failed shows its error, not a way forward.'
+      : '2. Select the links. A link with no outcome applies whatever the outcome; a link on an outcome applies only when the skill ended on that one. A `failed` outcome, or no outcome, matches only the links with no outcome, and `failed` keeps only the `auto` ones among them: a step that failed shows its error, not a way forward.',
     `3. Render the selected links right after the skill's own output, each with the exact text given for it (these are the flow's messages, in the repository's discussion language). ${failure}`,
     `4. Follow at most one \`auto\` link, the first that applies, with the Skill tool, in this same session, passing the context already resolved (ticket ID, PR number): a built-in target by its \`magic-<name>\` skill, a custom one by its own name. Any other \`auto\` link is rendered as a suggestion. Never chain into \`magic-start\`: it is only ever suggested.`,
     '5. A chained `magic-*` skill reads its own flow. A chained custom skill receives its own workflow context when it is invoked, so do not apply what follows it yourself. A suggestion is different: it is run by hand and gets no context, so a suggested custom target keeps the `then` lines given under it.',

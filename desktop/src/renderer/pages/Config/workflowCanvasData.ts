@@ -200,6 +200,16 @@ export function skillDescription(entries: readonly ListingEntry[], repoName: str
 }
 
 /**
+ * What a custom step's skill says it can end on, its SKILL.md's `outcomes:`, from the
+ * copy `skillDescription` reads. Undefined when that copy declares none.
+ */
+export function skillOutcomes(entries: readonly ListingEntry[], repoName: string, skill: string): string[] | undefined {
+  const copies = entries.filter((entry) => entry.name === skill && (entry.source !== 'repo' || entry.origin === repoName))
+  const ranked = (['repo', 'custom', 'plugin'] as const).flatMap((source) => copies.filter((entry) => entry.source === source))
+  return ranked.find((entry) => entry.outcomes && entry.outcomes.length > 0)?.outcomes
+}
+
+/**
  * The custom steps' skills that live in a file of ours (`~/.claude` or the repository's
  * `.claude`, as a skill folder or a command), i.e. the ones a teammate may be missing.
  * A plugin skill (`plugin:x`) comes with its plugin, so it is never one of them.

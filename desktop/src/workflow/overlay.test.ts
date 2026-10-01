@@ -4,8 +4,8 @@ import { buildWorkflowPayload } from './payload'
 import type { WorkflowOverlay } from './overlay'
 import {
   EMPTY_OVERLAY, addLink, addStep, cleanOverlay, composeWorkflow, customNodeId, isDefaultLink, isOverlay, moveNode, pinPositions,
-  problems, removeLink, removeStep, resolveOverlay, sameOverlay, servedWorkflow, setLinkKind, setLinkOutcome, setStepColor, setStepEnabled, setStepMode,
-  toOverlay, unreachableSteps,
+  normalizeOutcomes, parseOutcomesField, problems, removeLink, removeStep, resolveOverlay, sameOverlay, servedWorkflow, setLinkKind, setLinkOutcome,
+  setStepColor, setStepEnabled, setStepMode, setStepOutcomes, toOverlay, unreachableSteps,
 } from './overlay'
 
 const CHECK = customNodeId('check')
@@ -281,5 +281,58 @@ describe('a step\'s colour', () => {
     expect(isOverlay(coloured)).toBe(true)
     expect(isOverlay(setStepColor(withCheck(), 'check', 'red'))).toBe(false)
     expect(JSON.stringify(servedWorkflow(coloured))).not.toContain('#6366F1')
+  })
+})
+
+describe('a custom step\'s outcomes', () => {
+  it('reach the composed node, so a link out of it may be taken on one', () => {
+    const o = setStepOutcomes(withCheck(), 'check', ['tests_passed', 'tests_failed'])
+    expect(composeWorkflow(o).nodes.find((node) => node.id === CHECK)?.outcomes).toEqual(['tests_passed', 'tests_failed'])
+    const conditioned = setLinkOutcome(o, CHECK, 'commit', 'tests_passed')
+    expect(problems(conditioned)).toEqual([])
+    // Without the declaration, the same link is on an outcome the step does not have.
+    expect(problems(setLinkOutcome(withCheck(), CHECK, 'commit', 'tests_passed'))).not.toEqual([])
+  })
+
+  it('are kept, saved, compared and checked for shape', () => {
+    const o = setStepOutcomes(withCheck(), 'check', ['ok'])
+    expect(sameOverlay(o, withCheck())).toBe(false)
+    expect(cleanOverlay(o).steps[0]).toEqual({ skill: 'check', mode: 'advisory', outcomes: ['ok'] })
+    expect(isOverlay(o)).toBe(true)
+    expect(isOverlay({ ...o, steps: [{ ...o.steps[0], outcomes: ['Not Valid'] }] })).toBe(false)
+    expect(isOverlay({ ...o, steps: [{ ...o.steps[0], outcomes: ['failed'] }] })).toBe(false)
+    // Back to none: the field goes, and the overlay reads as it did.
+    expect(sameOverlay(setStepOutcomes(o, 'check', []), withCheck())).toBe(true)
+    expect(setStepOutcomes(o, 'check', []).steps[0]).not.toHaveProperty('outcomes')
+  })
+
+  it('start with what addStep is given', () => {
+    expect(addStep(EMPTY_OVERLAY, 'lint', AT, 'advisory', undefined, ['clean', 'dirty']).steps[0].outcomes).toEqual(['clean', 'dirty'])
+    expect(addStep(EMPTY_OVERLAY, 'lint', AT).steps[0]).not.toHaveProperty('outcomes')
+  })
+
+  it('keep a link whose outcome is withdrawn, taken whatever the outcome', () => {
+    const o = setLinkOutcome(setStepOutcomes(withCheck(), 'check', ['ok', 'ko']), CHECK, 'commit', 'ko')
+    const after = setStepOutcomes(o, 'check', ['ok'])
+    expect(after.links.find((link) => link.from === CHECK && link.to === 'commit')).toEqual({ from: CHECK, to: 'commit', kind: 'suggest' })
+    expect(problems(after)).toEqual([])
+  })
+
+  it('are spelled the skills\' way: lower snake_case, each once, never `failed`', () => {
+    expect(normalizeOutcomes([' Tests Passed ', 'tests_passed', 'failed', '', '1st', 'ok-ish'])).toEqual(['tests_passed', 'ok-ish'])
+  })
+})
+
+describe('parseOutcomesField', () => {
+  it('reads a flow list, a block list and a bare line', () => {
+    expect(parseOutcomesField('[tests_passed, "tests_failed"]')).toEqual(['tests_passed', 'tests_failed'])
+    expect(parseOutcomesField('- clean - dirty')).toEqual(['clean', 'dirty'])
+    expect(parseOutcomesField('clean, dirty')).toEqual(['clean', 'dirty'])
+  })
+
+  it('is undefined when nothing usable is declared', () => {
+    expect(parseOutcomesField(undefined)).toBeUndefined()
+    expect(parseOutcomesField('')).toBeUndefined()
+    expect(parseOutcomesField('[failed]')).toBeUndefined()
   })
 })

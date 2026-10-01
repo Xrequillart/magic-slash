@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import { parseOutcomesField } from '../workflow/overlay'
 
 /**
  * WHAT CLAUDE CODE PUTS IN ITS SKILL LISTING, read off the disk for the Skills page gauge.
@@ -38,6 +39,11 @@ export interface ListingEntry {
   mode: ListingMode
   /** The repository or plugin it comes from, when there is one. */
   origin?: string
+  /**
+   * What the skill says it can end on, from its frontmatter's `outcomes:` (a Magic Slash
+   * field, which Claude Code ignores). A workflow step added on it starts with these.
+   */
+  outcomes?: string[]
 }
 
 export interface ListingSettings {
@@ -155,6 +161,7 @@ function entryFrom(
   const base = fm.name || fallbackName
   const name = prefix ? `${prefix}:${base}` : base
   const text = [fm.description, fm.when_to_use].filter((s) => s && s.length > 0).join(' ')
+  const outcomes = parseOutcomesField(fm.outcomes)
   return {
     name,
     text,
@@ -163,6 +170,7 @@ function entryFrom(
     // An override may name a plugin skill with or without its `plugin:` prefix.
     mode: overrides[name] === undefined ? modeFor(fm, base, overrides) : modeFor(fm, name, overrides),
     ...(origin ? { origin } : {}),
+    ...(outcomes ? { outcomes } : {}),
   }
 }
 

@@ -43,6 +43,13 @@ export interface WorkflowOverlayStep {
    * the built-in steps' plain ground); a step without one is handed one by the editor.
    */
   color?: string
+  /**
+   * What the skill can end on (`tests_passed`, `tests_failed`), declared by the admin or
+   * read off its SKILL.md's `outcomes:` frontmatter when the step was added. A link out of
+   * the step may be taken on one of them only. Absent or empty: the step ends on nothing
+   * in particular, and every link leaving it applies.
+   */
+  outcomes?: string[]
 }
 
 export interface WorkflowOverlayLink {
@@ -136,7 +143,47 @@ export function isDefaultLink(from: string, to: string): boolean {
 }
 
 function customNode(step: WorkflowOverlayStep): WorkflowNode {
-  return { id: customNodeId(step.skill), skill: step.skill, mode: step.mode, required: false, outcomes: [], provides: [] }
+  return { id: customNodeId(step.skill), skill: step.skill, mode: step.mode, required: false, outcomes: step.outcomes ?? [], provides: [] }
+}
+
+/**
+ * The one outcome a custom step may not declare: a skill that stopped on an error ends on
+ * `failed` whatever it declares, and its step's mode decides what that does to the chain.
+ */
+export const FAILED_OUTCOME = 'failed'
+
+/** Whether a string may name an outcome: the skills' own spelling, `snake_case`, a word or a few. */
+export function isOutcomeName(value: unknown): value is string {
+  return typeof value === 'string' && value !== FAILED_OUTCOME && /^[a-z][a-z0-9_-]{0,39}$/.test(value)
+}
+
+/**
+ * A list of outcomes as a step stores it: trimmed and lower-cased, the unusable ones
+ * dropped, each once, in the order given.
+ */
+export function normalizeOutcomes(values: readonly string[]): string[] {
+  const out: string[] = []
+  for (const raw of values) {
+    // `Tests passed` is meant as `tests_passed`: the skills' spelling, not a refusal.
+    const value = raw.trim().toLowerCase().replace(/\s+/g, '_')
+    if (isOutcomeName(value) && !out.includes(value)) out.push(value)
+  }
+  return out
+}
+
+/**
+ * The `outcomes:` of a SKILL.md's frontmatter, as `parseFrontmatterFields` hands it over:
+ * a flow list (`[tests_passed, tests_failed]`), a block list (its `- ` items joined on one
+ * line) or a bare comma-separated line. Undefined when it names no usable outcome.
+ */
+export function parseOutcomesField(raw: string | undefined): string[] | undefined {
+  const value = raw?.trim()
+  if (!value) return undefined
+  const parts = value.startsWith('[') && value.endsWith(']')
+    ? value.slice(1, -1).split(',')
+    : value.startsWith('-') ? value.split(/(?:^|\s)-\s+/) : value.split(',')
+  const outcomes = normalizeOutcomes(parts.map((part) => part.trim().replace(/^(['"])(.*)\1$/, '$2')))
+  return outcomes.length > 0 ? outcomes : undefined
 }
 
 function toLink({ from, to, kind, outcome }: WorkflowOverlayLink): WorkflowLink {
@@ -243,7 +290,8 @@ export function isOverlay(value: unknown): value is WorkflowOverlay {
   if (!Array.isArray(value.steps) || !Array.isArray(value.links)) return false
   const stepsOk = value.steps.every((step) =>
     isRecord(step) && typeof step.skill === 'string' && step.skill.length > 0 && isMode(step.mode) &&
-    (step.color === undefined || isColor(step.color)),
+    (step.color === undefined || isColor(step.color)) &&
+    (step.outcomes === undefined || (Array.isArray(step.outcomes) && step.outcomes.every(isOutcomeName))),
   )
   const linksOk = value.links.every((link) =>
     isRecord(link) &&
@@ -413,8 +461,10 @@ const samePosition = (a: WorkflowPosition | undefined, b: WorkflowPosition | und
  */
 export function sameOverlay(a: WorkflowOverlay, b: WorkflowOverlay): boolean {
   if (a.steps.length !== b.steps.length || a.links.length !== b.links.length) return false
+  const sameOutcomes = (x: string[] = [], y: string[] = []) => x.length === y.length && x.every((o, i) => o === y[i])
   const stepsSame = a.steps.every((step, i) =>
-    step.skill === b.steps[i].skill && step.mode === b.steps[i].mode && step.color === b.steps[i].color)
+    step.skill === b.steps[i].skill && step.mode === b.steps[i].mode && step.color === b.steps[i].color &&
+    sameOutcomes(step.outcomes, b.steps[i].outcomes))
   const linksSame = a.links.every((link, i) => {
     const other = b.links[i]
     return link.from === other.from && link.to === other.to && link.kind === other.kind && link.outcome === other.outcome
@@ -435,13 +485,20 @@ function rounded({ x, y }: WorkflowPosition): WorkflowPosition {
   return { x: Math.round(x), y: Math.round(y) }
 }
 
-/** Add a custom step, linked to nothing yet, with its card at `position`, wearing `color` if given. */
+/**
+ * Add a custom step, linked to nothing yet, with its card at `position`, wearing `color` if
+ * given, and ending on `outcomes` if any (what its SKILL.md declares).
+ */
 export function addStep(
   overlay: WorkflowOverlay, skill: string, position: WorkflowPosition, mode: WorkflowMode = 'advisory', color?: string,
+  outcomes: readonly string[] = [],
 ): WorkflowOverlay {
+  const declared = normalizeOutcomes(outcomes)
+  const step: WorkflowOverlayStep = color === undefined ? { skill, mode } : { skill, mode, color }
+  if (declared.length > 0) step.outcomes = declared
   return {
     ...overlay,
-    steps: [...overlay.steps, color === undefined ? { skill, mode } : { skill, mode, color }],
+    steps: [...overlay.steps, step],
     positions: { ...overlay.positions, [customNodeId(skill)]: rounded(position) },
   }
 }
@@ -478,6 +535,28 @@ export function setStepMode(overlay: WorkflowOverlay, skill: string, mode: Workf
 /** Its card's ground. Which colours are allowed is the editor's to offer, not this module's. */
 export function setStepColor(overlay: WorkflowOverlay, skill: string, color: string): WorkflowOverlay {
   return { ...overlay, steps: overlay.steps.map((s) => (s.skill === skill ? { ...s, color } : s)) }
+}
+
+/**
+ * What a custom step can end on. A link out of it on an outcome no longer declared is kept,
+ * taken whatever the outcome from now on: the admin removed an outcome, not a link.
+ */
+export function setStepOutcomes(overlay: WorkflowOverlay, skill: string, outcomes: readonly string[]): WorkflowOverlay {
+  const declared = normalizeOutcomes(outcomes)
+  const id = customNodeId(skill)
+  return {
+    ...overlay,
+    steps: overlay.steps.map((s) => {
+      if (s.skill !== skill) return s
+      const { outcomes: _was, ...rest } = s
+      return declared.length > 0 ? { ...rest, outcomes: declared } : rest
+    }),
+    links: overlay.links.map((link) => {
+      if (link.from !== id || link.outcome === undefined || declared.includes(link.outcome)) return link
+      const { outcome: _gone, ...rest } = link
+      return rest
+    }),
+  }
 }
 
 /**
@@ -545,7 +624,11 @@ export function cleanOverlay(overlay: WorkflowOverlay): WorkflowOverlay {
   const ids = new Set(composeWorkflow(overlay).nodes.map((node) => node.id))
   return withDisabled({
     version: 2,
-    steps: overlay.steps.map(({ skill, mode, color }) => (color === undefined ? { skill, mode } : { skill, mode, color })),
+    steps: overlay.steps.map(({ skill, mode, color, outcomes }) => {
+      const step: WorkflowOverlayStep = color === undefined ? { skill, mode } : { skill, mode, color }
+      if (outcomes && outcomes.length > 0) step.outcomes = [...outcomes]
+      return step
+    }),
     links: overlay.links.map(({ from, to, kind, outcome }) => (outcome === undefined ? { from, to, kind } : { from, to, kind, outcome })),
     kinds: { ...overlay.kinds },
     positions: Object.fromEntries(Object.entries(overlay.positions).filter(([id]) => ids.has(id)).map(([id, at]) => [id, rounded(at)])),

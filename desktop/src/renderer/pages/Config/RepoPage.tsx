@@ -71,7 +71,7 @@ import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../
 import type { ResolvedWorkflow } from '../../../workflow/model'
 import {
   EMPTY_OVERLAY, addLink, addStep, cleanOverlay, composeWorkflow, customNodeId, isCustomNodeId, isDefaultLink, isLinkIntoStart, moveNode,
-  pinPositions, problems, removeLink, removeStep, sameOverlay, setLinkKind, setLinkOutcome, setStepColor, setStepEnabled, setStepMode,
+  pinPositions, problems, removeLink, removeStep, sameOverlay, setLinkKind, setLinkOutcome, setStepColor, setStepOutcomes, setStepEnabled, setStepMode,
   unreachableSteps, type WorkflowOverlay, type WorkflowProblem,
 } from '../../../workflow/overlay'
 import type { ListingEntry } from '../../hooks/useSkills'
@@ -81,7 +81,7 @@ import { planAuthor } from '../../utils/planRows'
 import { formatTimestamp } from '../../components/agent-info-sidebar/utils'
 import { useModalExit } from '../../hooks/useModalExit'
 import {
-  folderSkillsOf, modeHasEffect, problemNodeIds, skillDescription, stepColors, skillDisplayName, skillOptions, stepHints, workflowCanvasData,
+  folderSkillsOf, modeHasEffect, problemNodeIds, skillDescription, skillOutcomes, stepColors, skillDisplayName, skillOptions, stepHints, workflowCanvasData,
 } from './workflowCanvasData'
 
 interface RepoPageProps {
@@ -351,6 +351,10 @@ function workflowChangeLabel(t: Translate, change: WorkflowHistoryChange): strin
     case 'step-mode':
       return t(change.mode === 'blocking' ? 'repo.workflow.history.stepBlocking' : 'repo.workflow.history.stepAdvisory', { step: name(change.node) })
     case 'step-color': return t('repo.workflow.history.stepColor', { step: name(change.node) })
+    case 'step-outcomes':
+      return change.outcomes.length === 0
+        ? t('repo.workflow.history.stepNoOutcomes', { step: name(change.node) })
+        : t('repo.workflow.history.stepOutcomes', { step: name(change.node), outcomes: change.outcomes.join(', ') })
     case 'step-enabled':
       return t(change.enabled ? 'repo.workflow.history.stepOn' : 'repo.workflow.history.stepOff', { step: name(change.node) })
     case 'link-added':
@@ -884,11 +888,24 @@ function WorkflowPanel({
         hint === 'on-review-comments' ? 'repo.workflow.hint.reviewComments' : 'repo.workflow.hint.skippedFromStart',
       ))
       const config = stepSettings[node.skill]
+      const custom = isCustomNodeId(node.id)
+      const declared = draft.steps.find((step) => customNodeId(step.skill) === node.id)?.outcomes ?? []
+      const detected = custom ? skillOutcomes(entries, repoName, node.skill) : undefined
+      const sameAsFile = !!detected && detected.length === declared.length && detected.every((o, i) => o === declared[i])
       return {
         type: 'node',
         step: {
           ...node,
-          description: isCustomNodeId(node.id) ? skillDescription(entries, repoName, node.skill) : undefined,
+          description: custom ? skillDescription(entries, repoName, node.skill) : undefined,
+          outcomes: custom ? declared : undefined,
+          detectedOutcomes: detected && !sameAsFile ? detected : undefined,
+          // What removing an outcome costs: the links that leave on it.
+          outcomeLinks: custom ? Object.fromEntries(declared.map((outcome) => {
+            const count = flow.links.filter((link) => link.from === node.id && link.outcome === outcome).length
+            return [outcome, count === 0
+              ? t('repo.workflow.inspector.outcomesLinks.none')
+              : count === 1 ? t('repo.workflow.inspector.outcomesLinks.one') : t('repo.workflow.inspector.outcomesLinks.other', { count })]
+          })) : undefined,
           hints: hints.length > 0 ? hints : undefined,
           modeNote: isCustomNodeId(node.id) && !modeHasEffect(flow, node.id) ? t('repo.workflow.hint.modeNoEffect') : undefined,
           settings: config?.settings,
@@ -1264,6 +1281,19 @@ function WorkflowPanel({
       close: t('repo.workflow.inspector.close'),
       settings: t('repo.workflow.inspector.settings'),
       settingsHint: t('repo.workflow.inspector.settingsHint'),
+      outcomes: t('repo.workflow.inspector.outcomes'),
+      outcomesHint: t('repo.workflow.inspector.outcomesHint'),
+      outcomesTable: {
+        outcome: t('repo.workflow.inspector.outcomesColumn'),
+        links: t('repo.workflow.inspector.outcomesLinksColumn'),
+        empty: t('repo.workflow.inspector.outcomesEmpty'),
+        placeholder: t('repo.workflow.inspector.outcomesPlaceholder'),
+        add: t('repo.workflow.inspector.outcomesAdd'),
+        remove: t('repo.workflow.inspector.outcomesRemove'),
+      },
+      detectRow: t('repo.workflow.inspector.detectRow'),
+      detect: t('repo.workflow.inspector.detect'),
+      detectHint: t('repo.workflow.inspector.detectHint'),
     },
     dock: {
       dock: t('repo.workflow.dock.label'),
@@ -1394,9 +1424,14 @@ function WorkflowPanel({
                 }}
                 onToggle={(id, enabled) => edit(setStepEnabled(draft, id, enabled))}
                 onChangeColor={(id, color) => edit(setStepColor(draft, skillOf(id), color))}
+                onChangeOutcomes={(id, outcomes) => reshape((pinned) => setStepOutcomes(pinned, skillOf(id), outcomes))}
                 onAdd={(skill, position) => {
                   // Its own colour from the start: the first no other custom step wears.
-                  reshape((pinned) => addStep(pinned, skill, position, 'advisory', nextWorkflowStepColor(Object.values(stepColors(pinned)))))
+                  // Its outcomes from the start too, when its SKILL.md declares them.
+                  reshape((pinned) => addStep(
+                    pinned, skill, position, 'advisory', nextWorkflowStepColor(Object.values(stepColors(pinned))),
+                    skillOutcomes(entries, repoName, skill),
+                  ))
                   setSelected({ type: 'node', id: customNodeId(skill) })
                 }}
                 canUndo={history.past.length > 0}

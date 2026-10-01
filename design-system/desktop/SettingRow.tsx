@@ -6,6 +6,7 @@ import { ColorSwatches, type ColorSwatchesProps } from './ColorSwatches'
 import { Input, type InputProps } from './Input'
 import { Kbd, type KbdProps } from './Kbd'
 import { LivePill, type LivePillProps } from './LivePill'
+import { OutcomeTable, type OutcomeTableProps } from './OutcomeTable'
 import { Select, type SelectProps } from './Select'
 import { Stepper, type StepperProps } from './Stepper'
 import { Switch, type SwitchProps } from './Switch'
@@ -82,6 +83,8 @@ export type SettingRowControl =
    */
   | ({ kind: 'buttonIcon' } & ButtonIconProps)
   | ({ kind: 'chips' } & ChipInputProps)
+  /** A WORKFLOW STEP'S OUTCOMES, a row each: `OutcomeTable`. Stacked, it is a table. */
+  | ({ kind: 'outcomes' } & OutcomeTableProps)
   /**
    * A CHORD, READ AND NOT SET: the Shortcuts page's rows, where the value is the keys
    * themselves and there is nothing to change. `Kbd` rather than text in a control's
@@ -238,6 +241,8 @@ export function SettingRow({
       <ButtonIcon key={index} size="md" {...one} />
     ) : one.kind === 'chips' ? (
       <ChipInput key={index} {...one} />
+    ) : one.kind === 'outcomes' ? (
+      <OutcomeTable key={index} {...one} />
     ) : one.kind === 'kbd' ? (
       <Kbd key={index} {...one} />
     ) : one.kind === 'live' ? (

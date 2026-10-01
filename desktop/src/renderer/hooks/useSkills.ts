@@ -44,6 +44,8 @@ export interface ListingEntry {
   source: 'built-in' | 'custom' | 'repo' | 'plugin'
   mode: 'full' | 'name-only' | 'hidden'
   origin?: string
+  /** The frontmatter's `outcomes:`: what a workflow step on this skill starts able to end on. */
+  outcomes?: string[]
 }
 
 export interface ListingSettings {

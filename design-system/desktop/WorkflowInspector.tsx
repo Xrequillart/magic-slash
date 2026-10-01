@@ -5,7 +5,8 @@ import { Icon } from './Icon'
 import { OutputSample } from './OutputSample'
 import './workflowCanvas.css'
 
-import { Eye, EyeOff, Trash, X } from './icons'
+import { Eye, EyeOff, Sparkles, Trash, X } from './icons'
+import type { OutcomeTableLabels } from './OutcomeTable'
 import type { SelectOption } from './Select'
 import { SettingsCard, type SettingsCardRow } from './SettingsCard'
 import { SkillIntro } from './SkillIntro'
@@ -74,6 +75,18 @@ export interface WorkflowInspectorStep {
   hints?: string[]
   /** Under the mode's row, what the mode does here: "No automatic link out of it: no effect." */
   modeNote?: string
+  /**
+   * A custom step's outcomes, as the admin declared them: one port each on its card, and
+   * what a link out of it may be taken on. Built-in steps have theirs, and no such row.
+   */
+  outcomes?: string[]
+  /**
+   * What its SKILL.md's `outcomes:` declares, when that differs from `outcomes`: offered
+   * as one press that replaces them. Absent when the file says nothing or says the same.
+   */
+  detectedOutcomes?: string[]
+  /** By outcome, what leaves the step on it, already counted and translated: "2 links". */
+  outcomeLinks?: Readonly<Record<string, string>>
   /**
    * The skill's own settings, the ones its repository gives it (Plan: search for
    * duplicates, how to split, what tickets to file), in groups. Drawn under the step's
@@ -168,6 +181,14 @@ export interface WorkflowInspectorLabels {
   anyOutcome?: string
   /** A default link's sentence: "Default link: it cannot be removed, only its kind changes." */
   defaultLink?: string
+  /** A custom step's outcomes row: its name and the line under it, then its table's words. */
+  outcomes?: string
+  outcomesHint?: string
+  outcomesTable?: OutcomeTableLabels
+  /** The row offering the SKILL.md's outcomes: its name, the button's word, and the line under it, with `{outcomes}` filled. */
+  detectRow?: string
+  detect?: string
+  detectHint?: string
   /** The corner X, with `onClose`. */
   close?: string
   /** The heading over a step's settings: "Settings". */
@@ -189,6 +210,8 @@ export interface WorkflowInspectorProps {
   onRemoveLink?: (from: string, to: string) => void
   /** A custom step's card colour, one of `WORKFLOW_STEP_COLORS`. */
   onChangeColor?: (nodeId: string, color: string) => void
+  /** A custom step's outcomes, the whole new list. The row is read-only without it. */
+  onChangeOutcomes?: (nodeId: string, outcomes: string[]) => void
   /** A step's switch: turn it on (`true`) or off. Greyed without it. */
   onToggle?: (nodeId: string, enabled: boolean) => void
   /** The corner X. Not drawn without it. */
@@ -213,6 +236,7 @@ export function WorkflowInspector({
   onRemoveLink,
   onToggle,
   onChangeColor,
+  onChangeOutcomes,
   onClose,
   ground = 'surface',
   className = '',
@@ -234,6 +258,7 @@ export function WorkflowInspector({
             onRemove={onRemove}
             onToggle={onToggle}
             onChangeColor={onChangeColor}
+            onChangeOutcomes={onChangeOutcomes}
           />
         ) : (
           <LinkPanel
@@ -258,6 +283,7 @@ function StepPanel({
   onRemove,
   onToggle,
   onChangeColor,
+  onChangeOutcomes,
 }: {
   step: WorkflowInspectorStep
   labels: WorkflowInspectorLabels
@@ -266,7 +292,9 @@ function StepPanel({
   onRemove?: WorkflowInspectorProps['onRemove']
   onToggle?: WorkflowInspectorProps['onToggle']
   onChangeColor?: WorkflowInspectorProps['onChangeColor']
+  onChangeOutcomes?: WorkflowInspectorProps['onChangeOutcomes']
 }) {
+  const outcomesEditable = !readOnly && !!onChangeOutcomes
   const modeOptions: SelectOption[] = MODES.map((mode) => ({ value: mode, label: labels[mode] }))
 
   return (
@@ -331,6 +359,33 @@ function StepPanel({
                   disabled: readOnly || !onChangeMode,
                   ariaLabel: labels.mode,
                   size: 'md',
+                },
+              },
+              !!labels.outcomes && !!labels.outcomesTable && {
+                id: 'outcomes',
+                label: labels.outcomes,
+                hint: labels.outcomesHint,
+                layout: 'stacked',
+                control: {
+                  kind: 'outcomes',
+                  items: step.outcomes ?? [],
+                  onChange: (outcomes) => onChangeOutcomes?.(step.id, outcomes),
+                  labels: labels.outcomesTable,
+                  details: step.outcomeLinks,
+                  id: `wf-outcomes-${step.id}`,
+                  disabled: !outcomesEditable,
+                },
+              },
+              outcomesEditable && !!step.detectedOutcomes && !!labels.detect && {
+                id: 'detect',
+                label: labels.detectRow ?? labels.detect,
+                hint: labels.detectHint?.replace('{outcomes}', step.detectedOutcomes.join(', ')),
+                control: {
+                  kind: 'button',
+                  children: labels.detect,
+                  icon: Sparkles,
+                  size: 'sm',
+                  onClick: () => onChangeOutcomes?.(step.id, step.detectedOutcomes ?? []),
                 },
               },
               !readOnly && onRemove && {

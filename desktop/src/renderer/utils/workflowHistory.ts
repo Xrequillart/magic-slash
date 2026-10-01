@@ -21,6 +21,7 @@ export type WorkflowHistoryChange =
   | { kind: 'step-removed'; node: string }
   | { kind: 'step-mode'; node: string; mode: WorkflowMode }
   | { kind: 'step-color'; node: string }
+  | { kind: 'step-outcomes'; node: string; outcomes: string[] }
   | { kind: 'step-enabled'; node: string; enabled: boolean }
   | { kind: 'link-added'; from: string; to: string; linkKind: WorkflowLinkKind }
   | { kind: 'link-removed'; from: string; to: string }
@@ -109,6 +110,11 @@ export function diffOverlays(before: WorkflowOverlay, after: WorkflowOverlay): W
     if (was.mode !== step.mode) changes.push({ kind: 'step-mode', node: skill, mode: step.mode })
     if (was.color !== step.color && was.color !== undefined && step.color !== undefined) {
       changes.push({ kind: 'step-color', node: skill })
+    }
+    const outcomesBefore = was.outcomes ?? []
+    const outcomesAfter = step.outcomes ?? []
+    if (outcomesBefore.length !== outcomesAfter.length || outcomesBefore.some((outcome, i) => outcome !== outcomesAfter[i])) {
+      changes.push({ kind: 'step-outcomes', node: skill, outcomes: outcomesAfter })
     }
   }
   for (const skill of oldSteps.keys()) {
