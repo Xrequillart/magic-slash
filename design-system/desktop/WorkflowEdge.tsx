@@ -1,8 +1,6 @@
-import { BaseEdge, EdgeLabelRenderer, getBezierPath, getStraightPath, type Edge, type EdgeProps } from '@xyflow/react'
+import { BaseEdge, EdgeLabelRenderer, getStraightPath, type Edge, type EdgeProps } from '@xyflow/react'
 
-import {
-  orthogonalPath, WORKFLOW_COLUMN_GAP, WORKFLOW_NODE_WIDTH, type WorkflowCanvasLinkKind, type WorkflowLinkRoute,
-} from './workflowLayout'
+import { orthogonalPath, type WorkflowCanvasLinkKind, type WorkflowLinkRoute } from './workflowLayout'
 
 /**
  * ONE LINK OF A WORKFLOW: what may run after a step, and whether it does so on its own.
@@ -14,6 +12,11 @@ import {
  *  - `suggest` is a grey line, standing still. It is offered at the end of the run and
  *    happens only if the user says so.
  *
+ * EVERY LINK IS DRAWN IN STRAIGHT SEGMENTS WITH SQUARE CORNERS, never a curve: out of
+ * its port, along to the middle of the gap, up or down, and on into the next card. A
+ * reader follows a right angle more easily than a bezier, the more so where several
+ * links leave one step.
+ *
  * Both are solid, a choice of the product's. So colour does not carry the difference
  * alone: the weight and the moving dot do too, which is what a
  * reader who cannot tell the two apart by hue goes by. The dot stops under
@@ -22,10 +25,11 @@ import {
  *
  * A CONDITIONAL LINK CARRIES ITS OUTCOME'S NAME, on a plate at its middle, as the
  * skills spell it. The port it leaves from names it too; the label is what keeps a
- * link readable where it arrives, far from that port. A link that skips a column
- * (pr → resolve over review, in a custom flow that has one) would have its middle on
- * the card it skips, where the plate reads as part of that card: its label sits in the
- * first gap instead, next to the port it leaves from.
+ * link readable where it arrives, far from that port. ALWAYS AT THE MIDDLE, whatever
+ * the route and however many links leave the same step: each one leaves from its own
+ * port, so each has its own middle. A link that skips a column (pr → resolve over
+ * review) has its middle over the card it skips, so the plate is raised above the
+ * cards rather than hidden under them.
  *
  * THE STEPS OF A LOOP (a custom flow's review ⇄ resolve, say) are stacked in one
  * column by `workflowLayout.ts`, and the links between them are straight verticals in the gap
@@ -57,6 +61,9 @@ export type WorkflowEdgeType = Edge<WorkflowEdgeData, 'workflow'>
 /** How far a detour stands off the cards it goes round, in canvas pixels. */
 const DETOUR = 28
 
+/** Square corners, on every route: see the note at the top. */
+const CORNER = 0
+
 /** Spelled in full, per kind, so Tailwind finds every class. */
 const LABEL_TONES: Record<WorkflowCanvasLinkKind, string> = {
   auto: 'border-accent/40 text-accent',
@@ -69,8 +76,6 @@ export function WorkflowEdge({
   sourceY,
   targetX,
   targetY,
-  sourcePosition,
-  targetPosition,
   data,
 }: EdgeProps<WorkflowEdgeType>) {
   const kind = data?.kind ?? 'suggest'
@@ -79,7 +84,7 @@ export function WorkflowEdge({
   if (route === 'side') {
     // Down or up the gap on the column's right, clear of every card between the two.
     const x = Math.max(sourceX, targetX) + DETOUR
-    path = orthogonalPath([[sourceX, sourceY], [x, sourceY], [x, targetY], [targetX, targetY]])
+    path = orthogonalPath([[sourceX, sourceY], [x, sourceY], [x, targetY], [targetX, targetY]], CORNER)
     labelX = x
     labelY = (sourceY + targetY) / 2
   } else if (route === 'self') {
@@ -87,17 +92,18 @@ export function WorkflowEdge({
     // own. Tighter than a `side` detour, so the two never share the gap's vertical.
     const x = sourceX + DETOUR / 2
     const top = targetY - DETOUR / 2
-    path = orthogonalPath([[sourceX, sourceY], [x, sourceY], [x, top], [targetX, top], [targetX, targetY]])
+    path = orthogonalPath([[sourceX, sourceY], [x, sourceY], [x, top], [targetX, top], [targetX, targetY]], CORNER)
     labelX = x
     labelY = (sourceY + top) / 2
   } else if (route !== 'forward') {
     [path, labelX, labelY] = getStraightPath({ sourceX, sourceY, targetX, targetY })
   } else {
-    [path, labelX, labelY] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition })
-    if (targetX - sourceX > WORKFLOW_NODE_WIDTH + WORKFLOW_COLUMN_GAP * 1.5) {
-      labelX = sourceX + WORKFLOW_COLUMN_GAP / 2
-      labelY = sourceY
-    }
+    // Across, then up or down in the middle of the way, then across again. The label sits
+    // on that vertical, halfway: the middle of the link.
+    const x = (sourceX + targetX) / 2
+    path = orthogonalPath([[sourceX, sourceY], [x, sourceY], [x, targetY], [targetX, targetY]], CORNER)
+    labelX = x
+    labelY = (sourceY + targetY) / 2
   }
 
   return (
@@ -116,7 +122,7 @@ export function WorkflowEdge({
         <EdgeLabelRenderer>
           <code
             style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
-            className={`nodrag nopan pointer-events-none absolute rounded-md border bg-bg-secondary px-1.5 py-0.5 font-mono text-[10px] leading-4 ${LABEL_TONES[kind]}${data.muted ? ' opacity-20' : ''}`}
+            className={`nodrag nopan pointer-events-none absolute z-[1001] rounded-md border bg-bg-secondary px-1.5 py-0.5 font-mono text-[10px] leading-4 ${LABEL_TONES[kind]}${data.muted ? ' opacity-20' : ''}`}
           >
             {data.outcome}
           </code>
