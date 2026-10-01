@@ -3,8 +3,8 @@ import { readdirSync, readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 import { DEFAULT_WORKFLOW } from '../workflow/defaultFlow'
 
-// Every cycle skill reads its workflow at Step 0 and computes its next step from it, following
-// one protocol: `references/workflow.md`. That file is COPIED into each cycle skill rather than
+// Every cycle skill asks the app what follows it once it is done, following one protocol:
+// `references/workflow.md`. That file is COPIED into each cycle skill rather than
 // shared, because the skills updater installs `skills/<skill>/**` and nothing else, so a shared
 // folder would never reach a user's machine. Six copies of one protocol drift the moment one
 // is edited alone, and the drift is silent: each skill still reads a plausible protocol, just
@@ -59,11 +59,10 @@ describe('workflow protocol shipped with the skills', () => {
     }
   })
 
-  it.each(CYCLE_SKILLS)('%s/SKILL.md points at the protocol and the /workflow read', (skill) => {
+  it.each(CYCLE_SKILLS)('%s/SKILL.md points at the protocol and its /workflow/next call', (skill) => {
     const source = readFileSync(skillFile(skill, 'SKILL.md'), 'utf-8')
     expect(source).toContain('references/workflow.md')
-    // Backticked, so that the path above (which contains "/workflow") cannot satisfy it alone.
-    expect(source).toContain('`/workflow`')
+    expect(source).toContain('`/workflow/next`')
   })
 
   it('keeps the side skills out of the protocol', () => {

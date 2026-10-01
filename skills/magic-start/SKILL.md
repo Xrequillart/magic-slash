@@ -60,7 +60,7 @@ unactionable and say so rather than inventing a change for it.
 - `references/sub-agents.md`: Exploration criteria and prompt, plan review axes, multi-agent prompt contents, and the simplify pass. Read in Steps 5.1, 5.2.3, 5.4B and 5.4.5.
 - `references/confidence-evaluation.md`: Critic inputs, evaluation rubric, design fidelity guards, output format and the auto-fix loop. Read in Step 5.5.2, on every run that reaches it.
 - `references/final-summary-placeholders.md`: Source of every `MSG_FINAL_SUMMARY` placeholder, and the wording of `{next_steps}`. Read in Step 5.5.3.
-- `references/workflow.md`: The workflow protocol, shared byte for byte by every cycle skill: the Step 0 `/workflow` read, what its fields mean, and how the end of the skill picks its next step. Read §2 in Step 0.1, on every run; read §4 in Step 5.5.3, or wherever the run ends.
+- `references/workflow.md`: The workflow protocol, shared byte for byte by every cycle skill: how the end of the skill asks the app (`/workflow/next`) what follows, and shows or chains into it. Read §2 in Step 5.5.3, or wherever the run ends.
 
 ## Step 0: Configuration
 
@@ -85,8 +85,6 @@ fi
 ```
 
 If `APP_NOT_RUNNING`, the app is not running and the cloud config is unreachable: display `MSG_APP_NOT_RUNNING` and stop. Never proceed on a guessed config.
-
-Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-start`, from the same `$PWD` (the worktree Step 4 creates later changes nothing: the app resolves either path to the same repository). An unreachable app fails the same way: `APP_NOT_RUNNING` means `MSG_APP_NOT_RUNNING` and stop, with no fallback. `WORKFLOW_UNAVAILABLE` (a running app that does not serve `/workflow`) is not a failure: there is no workflow next step, and the skill carries on as written. Keep the graph, this skill's node and its possible next steps in context for Step 5.5.3. The flow changes nothing in between: every step, question and guard below runs as written.
 
 ### 0.2: Determine language
 
@@ -512,21 +510,21 @@ Read `references/confidence-evaluation.md` and follow it. It holds what the crit
 
 Display `MSG_FINAL_SUMMARY` (or `MSG_FINAL_SUMMARY_FULLSTACK` for multi-repo). Populate **all** placeholders, reading `references/final-summary-placeholders.md` for the source of each one, including the fullstack-only ones. When Step 2.4 ended on a blocker the user chose to start anyway, or on an unresolvable one, prepend that blocker to `{attention_points}`: the critic never saw it.
 
-`{next_steps}` comes from the workflow (`references/workflow.md` §4), with this outcome table:
+`{next_steps}` comes from the workflow: pick the outcome with this table, then ask the app what follows, as `references/workflow.md` §2 says (the worktree resolves to its repository, so either directory will do):
 
 | Result of this run | Outcome |
 | --- | --- |
 | The implementation reached this summary | `implemented` |
-| The user rejected the plan (Step 5.3), or chose "stop here" at the dependency gate (Step 2.4, which Step 6 still records as `failed`) | none: no link, since the user stopped rather than the skill failing |
+| The user rejected the plan (Step 5.3), or chose "stop here" at the dependency gate (Step 2.4, which Step 6 still records as `failed`) | none: nothing to ask, since the user stopped rather than the skill failing |
 | The run stopped on an error it could not resolve | `failed`, with the reason |
 
-The wording of each line, and why a link to `magic-commit` also names what follows the commit, are in `references/final-summary-placeholders.md`. For the default flow this renders `/magic:commit` then `/magic:pr`.
+The wording of each line, and why a line for `magic-commit` also names what follows the commit, are in `references/final-summary-placeholders.md`. For the default flow this renders `/magic:commit` then `/magic:pr`.
 
-Then Step 6. An `auto` link is followed only after Step 6 has recorded the run.
+Then Step 6. A `chain` is followed only after Step 6 has recorded the run.
 
 ## Step 6: Record the run
 
-**Always run this, as the very last thing of this skill's own work — including when the workflow stopped early.** Only the `auto` link Step 5.5.3 selected, if any, comes after it (`references/workflow.md` §4).
+**Always run this, as the very last thing of this skill's own work — including when the workflow stopped early.** Only the `chain` Step 5.5.3 got, if any, comes after it (`references/workflow.md` §2).
 
 Magic Slash opened a run record when this skill started. This closes it. Without it the run stays open and is counted as *abandoned*, so finished work disappears from the usage statistics.
 

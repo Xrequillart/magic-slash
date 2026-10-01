@@ -95,12 +95,12 @@ Nettoyage manuel : git worktree remove --force {WORKTREE_PATH}
 
 ## MSG_DONE_SUMMARY
 
-`{next_steps}` (both summaries) is empty for the default flow, which has no link after `done`: the
+`{next_steps}` (both summaries) is empty for the default flow, which has nothing after `done`: the
 closing line follows the ticket or cleanup lines exactly as it always has. When the workflow
-selects a `suggest` link (SKILL.md Step 6), `{next_steps}` is `💡 Next step:` (fr: `💡 Prochaine
-étape :`), one `MSG_WORKFLOW_NEXT_STEP_LINE` per link (`references/workflow.md` §7), and a blank
-line. When an `auto` link will be followed, it is `MSG_WORKFLOW_CHAINING` and a blank line, and the
-closing line is dropped: this agent is not done yet.
+returns lines (SKILL.md Step 6), `{next_steps}` is `💡 Next step:` (fr: `💡 Prochaine étape :`),
+the `text` of each line (`references/workflow.md` §2), and a blank line. When it returns a `chain`,
+the closing line is dropped: this agent is not done yet, and the chain's `text` is shown when it
+is followed, after the run is recorded.
 
 ### en
 

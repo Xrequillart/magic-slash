@@ -59,7 +59,7 @@ unactionable and say so rather than inventing a change for it.
 - `references/spec-file-setup.md`: the commands that exclude `.magic/` from git and create the spec file, with how to derive `{SLUG}`, then why each part is there (the `cd {REPO_PATH}`, the newline guard on `info/exclude`, the timestamp in the filename). Read §1 in Step 2.4 and run its blocks, on every run; read §2-§3 only before changing a command or when the spec or the exclusion lands in the wrong place.
 - `references/duplicate-search.md`: the duplicate search call and scope per tracker, the Jira query, and what to display and write for each outcome. Read in Step 3.3, only when `plan.duplicateCheck` is `true`.
 - `references/framing-jira-fields.md`: how the Jira required fields Step 2.3 could not fill are asked in the framing batch, the overflow rule, and how their answers are recorded. Read in Step 4, only when Step 2.3 handed forward `must_ask_fields`.
-- `references/workflow.md`: the workflow protocol, shared byte for byte by every cycle skill: the Step 0 `/workflow` read, what its fields mean, and how the end of the skill picks its next step. Read §2 in Step 0.1, on every run; read §4 in Step 8.
+- `references/workflow.md`: the workflow protocol, shared byte for byte by every cycle skill: how the end of the skill asks the app (`/workflow/next`) what follows, and shows or chains into it. Read §2 in Step 8.
 - `references/metadata-contract.md`: the desktop metadata calls and the reasons behind each, plus the full contract and every field this skill never sends. Read §1 in Step 2.5, §2 in Step 6.1, §3 in Step 7.1 and §4 in Step 7.2, and run the block each holds; read §5-§6 only when a call's shape is in doubt or before changing one.
 
 ## Step 0: Configuration
@@ -76,13 +76,6 @@ migration and must not be read.
 
 Keep the config in memory: `$CONFIG_FILE` is a temp file that does not survive into a later bash
 block.
-
-Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-plan`. An
-unreachable app fails the same way, `APP_NOT_RUNNING` meaning `MSG_APP_NOT_RUNNING` and stop, with
-no fallback. `WORKFLOW_UNAVAILABLE` (a running app that does not serve `/workflow`) is not a
-failure: there is no workflow next step, and the skill carries on as written. Keep the
-graph, this skill's node and its possible next steps in context for Step 8. The flow changes
-nothing between here and Step 8: every step, question and guard below runs as written.
 
 ### 0.2: Determine the three languages
 
@@ -445,27 +438,24 @@ never succeeded — the two are independent, and a list of tickets is worth havi
 
 ## Step 8: Next step
 
-Pick the outcome and the links as `references/workflow.md` §4 says, with this table:
+Pick the outcome with this table, then ask the app what follows, as `references/workflow.md` §2 says:
 
 | Result of this run | Outcome |
 | --- | --- |
 | Step 7 created the tickets | `planned` |
-| The user chose to stop at Step 6, or the idea was abandoned | none: no link, no `MSG_NEXT_STEPS` |
+| The user chose to stop at Step 6, or the idea was abandoned | none: nothing to ask, no `MSG_NEXT_STEPS` |
 | A Step 2.3 refusal, or a tracker write that failed | `failed` |
 
-On `planned`, display `MSG_NEXT_STEPS`. Its `{next_steps}` is built from the links selected on
-`planned` (those with outcome `planned` and the unconditional ones):
+On `planned`, display `MSG_NEXT_STEPS`. Its `{next_steps}` is built from the answer's `lines`:
 
-- a selected link to `magic-start` renders the `/magic:start <TICKET-ID>` line, in this skill's
-  words (`references/messages.md`, `MSG_NEXT_STEPS`), once, first. The default flow has exactly
-  this link, so it renders the message as it always has. That link is **never** followed on its
-  own, even when a payload marks it `auto`: see below.
-- any other selected link adds its line under it, in `MSG_WORKFLOW_NEXT_STEP_LINE` wording
-  (`references/workflow.md` §7).
-- with no link selected (`node: null`, `WORKFLOW_UNAVAILABLE`, or a flow with no link leaving
-  plan on `planned`), there is no workflow next step: `MSG_NEXT_STEPS` drops its header and
-  `{next_steps}`, and keeps this skill's own closing text, the "close this agent" paragraph and
-  the spec path note.
+- a line whose `skill` is `magic-start` renders the `/magic:start <TICKET-ID>` line, in this
+  skill's words (`references/messages.md`, `MSG_NEXT_STEPS`), once, first. The default flow has
+  exactly this line, so it renders the message as it always has. The app never chains plan into
+  start, and this skill never does either: see below.
+- any other line adds its `text` under it.
+- with no line (an older app, or a flow with nothing after plan on `planned`), there is no
+  workflow next step: `MSG_NEXT_STEPS` drops its header and `{next_steps}`, and keeps this
+  skill's own closing text, the "close this agent" paragraph and the spec path note.
 
 On an epic breakdown, offer the **first story**, not the epic: an epic is not something anyone
 checks out a branch for.
@@ -479,15 +469,15 @@ belongs in a **new** one. That line is not a courtesy: `references/metadata-cont
 why. It is also why plan never chains into start: this session has nothing left to do, and the
 implementation begins in a fresh agent, in a worktree.
 
-Then Step 9. An `auto` link to any skill other than `magic-start` is followed only after Step 9 has
-recorded the run (`references/workflow.md` §4, steps 4 and 5).
+Then Step 9. A `chain` is followed only after Step 9 has recorded the run (`references/workflow.md`
+§2, steps 4 and 5).
 
 ## Step 9: Record the run
 
 **Always run this, as the very last thing of this skill's own work — including when the workflow stopped early**, on a
 Step 2.3 refusal (`MSG_JIRA_NOT_CONFIGURED`, or a Jira project that does not resolve) as much as on
-a completed creation. Only an `auto` link Step 8 selected, if any, comes after it
-(`references/workflow.md` §4), and never one to `/magic:start`.
+a completed creation. Only the `chain` Step 8 got, if any, comes after it
+(`references/workflow.md` §2), and never one to `/magic:start`.
 
 Magic Slash opened a run record when this skill started. This closes it. Without it the run stays
 open and is counted as *abandoned*, so finished work disappears from the usage statistics.

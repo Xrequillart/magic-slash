@@ -24,7 +24,7 @@ import {
   getServerPort,
   setConfigProvider,
   setAgentProvider,
-  setWorkflowProvider,
+  setWorkflowProvider, setWorkflowNextProvider,
   setCustomSkillContextProvider,
   setWorktreeFilesWriter,
   setSkillCallback,
@@ -261,6 +261,34 @@ describe('read-back endpoints', () => {
       const { status, body } = await httpGet('/workflow?path=/tmp/api&skill=magic-pr')
       expect(status).toBe(200)
       expect(body).toBe('null')
+      expect(error).toHaveBeenCalled()
+      error.mockRestore()
+    })
+  })
+
+  describe('GET /workflow/next', () => {
+    it('hands the path, skill, outcome and reason to the provider and returns its answer', async () => {
+      const calls: unknown[][] = []
+      setWorkflowNextProvider((...args) => {
+        calls.push(args)
+        return { lines: [], chain: { skill: 'magic-resolve', command: '/magic:resolve', text: 'go' } }
+      })
+      const { status, body } = await httpGet(`/workflow/next?path=${encodeURIComponent('/tmp/api')}&skill=magic-pr&outcome=failed&reason=${encodeURIComponent('push refused')}`)
+      expect(status).toBe(200)
+      expect(JSON.parse(body).chain.skill).toBe('magic-resolve')
+      expect(calls).toEqual([['/tmp/api', 'magic-pr', 'failed', 'push refused']])
+    })
+
+    it('answers nothing to show without an outcome, or when the provider throws', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const calls: unknown[] = []
+      setWorkflowNextProvider((...args) => {
+        calls.push(args)
+        throw new Error('boom')
+      })
+      expect(JSON.parse((await httpGet('/workflow/next?skill=magic-pr')).body)).toEqual({ lines: [], chain: null })
+      expect(calls).toEqual([])
+      expect(JSON.parse((await httpGet('/workflow/next?skill=magic-pr&outcome=ci_green')).body)).toEqual({ lines: [], chain: null })
       expect(error).toHaveBeenCalled()
       error.mockRestore()
     })

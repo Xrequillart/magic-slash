@@ -23,9 +23,9 @@ export interface WorkflowPayloadLink {
    */
   note: string | null
   /**
-   * What follows the target when it is a custom step, empty otherwise. A custom skill
-   * does not read `/workflow`, so the magic skill before it carries its hand-offs,
-   * through any further custom steps, down to the next built-in one. A custom step
+   * What follows the target when it is a custom step, empty otherwise, through any
+   * further custom steps down to the next built-in one: shown under a suggested custom
+   * target, so the user sees where it leads before typing it. A custom step
    * already on the way there is not walked again: custom steps can loop now.
    */
   then: WorkflowPayloadLink[]

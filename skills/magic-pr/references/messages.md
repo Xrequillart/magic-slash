@@ -520,16 +520,16 @@ Displayed in Step 6.5, immediately after the PR is created — before the ticket
 
 Two variants. Use **watch** when `pullRequest.watchCI` is `true` (Step 7.4 follows), **manual** when it is `false`.
 
-- `{review_feedback_line}` (watch): the first wording when the workflow has an `auto` link from
-  this node on `review_comments` or with no outcome (the default flow does), the second otherwise:
+- `{review_feedback_line}` (watch): the first wording when the workflow chains on
+  `review_comments` (the app's answer has a `chain`; the default flow does), the second otherwise:
   - en: `Review feedback from bots or humans gets addressed automatically` /
     `Review feedback from bots or humans gets reported, with the next step to run`
   - fr: `Les retours de review (bots ou humains) sont traités automatiquement` /
     `Les retours de review (bots ou humains) sont signalés, avec la prochaine étape à lancer`
-- `{next_steps}` (manual): one numbered line per `suggest` link the workflow selected on
-  `pr_created` (SKILL.md Step 8.5), in `MSG_WORKFLOW_NEXT_STEP_LINE` wording
-  (`references/workflow.md` §7) without its bullet. The lines after it are this skill's own and
-  keep counting from where `{next_steps}` stopped. The default flow has no link on
+- `{next_steps}` (manual): one numbered line per line the workflow returned on `pr_created`
+  (SKILL.md Step 8.5), its `text` (`references/workflow.md` §2) without its bullet. The lines
+  after it are this skill's own and keep counting from where `{next_steps}` stopped. The default
+  flow has nothing on
   `pr_created`, so for it `{next_steps}` is empty and the list starts at this skill's own lines,
   numbered from 1.
 
@@ -825,20 +825,20 @@ Je m'arrête ici plutôt que de pousser une correction au hasard.
 
 ## MSG_REVIEW_COMMENTS_FOUND
 
-Displayed in Step 7.4.5. Two variants, chosen by the workflow read in Step 0.0 and by nothing else:
-**chain** when it has an `auto` link from this node on `review_comments` or with no outcome (the default flow does,
-to `magic-resolve`, so `{skill}` is `/magic:resolve`), **suggest** otherwise. The suggest variant
+Displayed in Step 7.4.5. Two variants, chosen by the app's answer for `review_comments` and by
+nothing else: **chain** when it has a `chain` (the default flow does, to `magic-resolve`, so
+`{skill}` is `/magic:resolve`), **suggest** otherwise. The suggest variant
 never says the comments are being addressed, because nothing is.
 
-`{chain_line}` (chain) depends on the link's target. When it is `magic-resolve`, the skill that
+`{chain_line}` (chain) depends on the chain's target. When it is `magic-resolve`, the skill that
 addresses review comments: `Addressing them now via /magic:resolve...` (fr: `Je les traite
 maintenant via /magic:resolve...`), today's line. Any other target may address nothing, so the line
 only says where the run goes: `Handing over to {skill}, as this repository's workflow says. It may
 not address them.` (fr: `Je passe la main à {skill}, comme le prévoit le workflow de ce repository.
 Il ne les traitera peut-être pas.`).
 
-`{next_steps}` (suggest) holds one `MSG_WORKFLOW_NEXT_STEP_LINE` (`references/workflow.md` §7) per
-suggested link. With none, replace the `Next step` header and `{next_steps}` with one line:
+`{next_steps}` (suggest) holds the `text` of each line of the answer (`references/workflow.md` §2).
+With none, replace the `Next step` header and `{next_steps}` with one line:
 `They are yours to address when you are ready.` (fr: `À toi de les traiter quand tu veux.`).
 
 ### en — chain
@@ -912,9 +912,9 @@ Traite-les toi-même, ou lance /magic:resolve.
 
 ## MSG_NEXT_STEPS
 
-Displayed in Step 8.5 after `MSG_CI_ALL_GREEN`, only when the workflow declares a link on
-`ci_green` (the default flow does not, so a default user never sees it). `{next_steps}` holds one
-`MSG_WORKFLOW_NEXT_STEP_LINE` (`references/workflow.md` §7) per link.
+Displayed in Step 8.5 after `MSG_CI_ALL_GREEN`, only when the workflow returns lines on
+`ci_green` (the default flow does not, so a default user never sees it). `{next_steps}` holds the
+`text` of each line (`references/workflow.md` §2).
 
 ### en
 

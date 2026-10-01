@@ -725,15 +725,15 @@ La spec reste dans {spec_path}, dans le checkout principal. `/magic:start` crée
 worktree, où une spec non trackée ne suit pas — c'est donc là qu'il faut la lire.
 ```
 
-> `{next_steps}` comes from the links the workflow selected on `planned` (SKILL.md Step 8). A link
-> to `magic-start` opens it with this line:
+> `{next_steps}` comes from the lines the workflow returned on `planned` (SKILL.md Step 8). A line
+> for `magic-start` opens it with this line:
 >
 > - en: `  /magic:start {first_ticket_id}    — start the {first_ticket_scope}`
 > - fr: `  /magic:start {first_ticket_id}    — attaquer {first_ticket_scope}`
 >
-> then one `MSG_WORKFLOW_NEXT_STEP_LINE` (`references/workflow.md` §7) per other link the
-> workflow selected. The default flow has the start link and no other, so the block reads as it
-> always has. With no link selected at all, drop the `💡 Next step` header (fr: `💡 Prochaine
+> then the `text` of every other line the workflow returned (`references/workflow.md` §2). The
+> default flow has the start line and no other, so the block reads as it always has. With no line
+> at all, drop the `💡 Next step` header (fr: `💡 Prochaine
 > étape`) and `{next_steps}` with it: the message opens on the "planning agent is done"
 > paragraph, and the rest is unchanged.
 >

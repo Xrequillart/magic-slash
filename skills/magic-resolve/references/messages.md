@@ -562,9 +562,9 @@ encore été affiché.
 
 ## MSG_SUMMARY
 
-`{next_steps}` holds one numbered line per link the workflow selected (SKILL.md Step 9), numbered
+`{next_steps}` holds one numbered line per line the workflow returned (SKILL.md Step 9), numbered
 from 1 in `{IF_RE_REQUEST_OK}` and from 2 in `{IF_RE_REQUEST_FAIL}`. For the default flow it is
-the `/magic:done` line, `Run /magic:done once the PR is merged`. With no link,
+the `/magic:done` line, `Run /magic:done once the PR is merged`. With no line,
 drop `{IF_RE_REQUEST_OK}` entirely, and keep only its own first line in `{IF_RE_REQUEST_FAIL}`.
 
 ### en

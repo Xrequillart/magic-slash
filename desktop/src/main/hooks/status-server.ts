@@ -74,8 +74,15 @@ type AgentProvider = (terminalId: string) => unknown
  */
 type WorkflowProvider = (path: string | null, skill: string | null) => unknown
 /**
+ * What follows a magic skill once it is done: the lines to show and the one skill to
+ * chain into, for the `outcome` its own table picked (`failed` with `reason` when it
+ * stopped on an error). Same `path` and `skill` as WorkflowProvider. See
+ * workflow/next.ts for the rules, main/index.ts for the lookup.
+ */
+type WorkflowNextProvider = (path: string | null, skill: string | null, outcome: string, reason: string) => unknown
+/**
  * The workflow context of a CUSTOM skill the model just invoked (#333), or null for
- * anything else: a magic skill (it reads `/workflow` itself), a skill in no flow, a
+ * anything else: a magic skill (it asks `/workflow/next` itself), a skill in no flow, a
  * path matching no repository. `cwd` is the session's working directory, `skill` the
  * name the Skill tool was called with (`check-types`, `plugin:foo`). See
  * workflow/skillContext.ts for the text, main/index.ts for the lookup.
@@ -147,6 +154,7 @@ let skillCallback: SkillCallback | null = null
 let configProvider: ConfigProvider | null = null
 let agentProvider: AgentProvider | null = null
 let workflowProvider: WorkflowProvider | null = null
+let workflowNextProvider: WorkflowNextProvider | null = null
 let customSkillContextProvider: CustomSkillContextProvider | null = null
 let worktreeFilesWriter: WorktreeFilesWriter | null = null
 let prUrlCallback: PRUrlCallback | null = null
@@ -262,6 +270,10 @@ export function setAgentProvider(provider: AgentProvider) {
 
 export function setWorkflowProvider(provider: WorkflowProvider) {
   workflowProvider = provider
+}
+
+export function setWorkflowNextProvider(provider: WorkflowNextProvider) {
+  workflowNextProvider = provider
 }
 
 export function setCustomSkillContextProvider(provider: CustomSkillContextProvider) {
@@ -919,6 +931,16 @@ export function startStatusServer(): Promise<number> {
           const path = url.searchParams.get('path')
           const skill = url.searchParams.get('skill')
           sendProvided(res, '/workflow', null, () => workflowProvider?.(path, skill))
+        } else if (url.pathname === '/workflow/next') {
+          // Read-only: what the calling skill shows and chains into, now that it ended on
+          // `outcome`. Nothing to show (no provider, no outcome, a throwing provider) is
+          // the empty answer, which leaves the skill on its own closing text.
+          const path = url.searchParams.get('path')
+          const skill = url.searchParams.get('skill')
+          const outcome = url.searchParams.get('outcome')
+          const reason = url.searchParams.get('reason') ?? ''
+          sendProvided(res, '/workflow/next', { lines: [], chain: null }, () =>
+            (outcome ? workflowNextProvider?.(path, skill, outcome, reason) : null))
         } else if (url.pathname === '/config/worktree-files') {
           // Write: persist a repo's worktreeFiles to the cloud store (the one config mutation
           // skills perform). Kept as GET+query to match the other curl-friendly write routes.

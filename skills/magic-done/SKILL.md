@@ -39,7 +39,7 @@ unactionable and say so rather than inventing a change for it.
 ## References
 
 - `references/messages.md` — All user-facing message templates (EN/FR)
-- `references/workflow.md` — The workflow protocol, shared byte for byte by every cycle skill: the Step 0 `/workflow` read, what its fields mean, and how the end of the skill picks its next step. Read §2 in Step 0, on every run; read §4 in Step 6.
+- `references/workflow.md` — The workflow protocol, shared byte for byte by every cycle skill: how the end of the skill asks the app (`/workflow/next`) what follows, and shows or chains into it. Read §2 in Step 6.
 
 > The steps below must be executed in order because each one depends on the previous result — for example, cleanup must only happen after confirming the merge, and the Jira transition must happen before the summary so it can reflect the actual state.
 
@@ -103,8 +103,6 @@ fi
 Display **MSG_APP_NOT_RUNNING** (see `references/messages.md`).
 
 #### Read the workflow
-
-Then read `references/workflow.md` §2 and run its block, with `<skill>` set to `magic-done`. An unreachable app fails the same way: `APP_NOT_RUNNING` means **MSG_APP_NOT_RUNNING** and stop, with no fallback. `WORKFLOW_UNAVAILABLE` (a running app that does not serve `/workflow`) is not a failure: there is no workflow next step, and the skill carries on as written. Keep the graph, this skill's node and its possible next steps in context for Step 6. The flow changes nothing in between: every step below runs as written, in order.
 
 ## Step 1: Extract the ticket ID
 
@@ -339,15 +337,15 @@ Display a summary based on `.languages.discussion`. The summary must reflect wha
 
 Display **MSG_DONE_SUMMARY** (see `references/messages.md`) based on `.languages.discussion`, replacing the dynamic fields from the table above.
 
-Its `{next_steps}` comes from the workflow (`references/workflow.md` §4), with this outcome table:
+Its `{next_steps}` comes from the workflow: pick the outcome with this table, then ask the app what follows, as `references/workflow.md` §2 says:
 
 | Result of this run | Outcome |
 | --- | --- |
 | The merge was confirmed and the summary is reached | `done` |
-| The PR is not merged (`MSG_PR_NOT_MERGED`) | none: no link |
+| The PR is not merged (`MSG_PR_NOT_MERGED`) | none: nothing to ask |
 | The run stopped on an error it could not resolve | `failed`, with the reason |
 
-The default flow has no link after `done`, so `{next_steps}` is empty and the summary ends on its closing line, as it always has. An `auto` link is followed only after Step 8 has recorded the run.
+The default flow has nothing after `done`, so `{next_steps}` is empty and the summary ends on its closing line, as it always has. A `chain` is followed only after Step 8 has recorded the run.
 
 ## Step 7: Multi-repo summary (if applicable)
 
@@ -361,7 +359,7 @@ Display **MSG_DONE_SUMMARY_FULLSTACK** (see `references/messages.md`) based on `
 
 ## Step 8: Record the run
 
-**Always run this, as the very last thing of this skill's own work — including when the workflow stopped early.** Only the `auto` link Step 6 selected, if any, comes after it (`references/workflow.md` §4).
+**Always run this, as the very last thing of this skill's own work — including when the workflow stopped early.** Only the `chain` Step 6 got, if any, comes after it (`references/workflow.md` §2).
 
 Magic Slash opened a run record when this skill started. This closes it. Without it the run stays open and is counted as *abandoned*, so finished work disappears from the usage statistics.
 

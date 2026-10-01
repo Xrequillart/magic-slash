@@ -87,8 +87,6 @@ fi
 
 If the config could not be read, the app is not running: display **`MSG_APP_NOT_RUNNING`** and stop. Never proceed on a guessed config.
 
-Then read the workflow: `references/workflow.md` §2, with `<skill>` set to `magic-resolve`. An unreachable app fails the same way: `APP_NOT_RUNNING` means **`MSG_APP_NOT_RUNNING`** and stop, with no fallback. `WORKFLOW_UNAVAILABLE` (a running app that does not serve `/workflow`) is not a failure: there is no workflow next step, and the skill carries on as written. Keep the graph, this skill's node and its possible next steps in context for Step 9. The flow changes nothing in between: every step, question and guard below runs as written, whether the user typed `/magic:resolve` or `/magic:pr` chained into it. This node is the resolve node every time it runs, including when `/magic:pr` chains into it again from a later invocation, and carries nothing from the pass before.
-
 #### Check `gh` CLI availability
 
 Step 7 (reply to comments) and Step 7.5 (re-request review) rely on the GitHub CLI (`gh`) to post threaded replies and re-request reviews — these operations are not supported by any MCP tool. Detecting `gh` early avoids discovering this limitation late in the workflow when all fixes are already applied.
@@ -157,7 +155,7 @@ The config was already dumped in Step 0.3. Before proceeding, resolve the curren
 
 Read `references/resolve-config.md` and run its bash block. It resolves `$REPO_KEY` and echoes every `RESOLVE_*` value. The echoes are functionally required: each Bash call runs in a fresh shell, so carry the echoed values forward from that output. Steps 5.5, 6, 7 and 7.5 reference these captured values. The file also holds the table of variables, config paths and defaults.
 
-> **Multi-repo**: Re-run this step for each worktree before its resolve cycle (Step 0.6), since each repo may have its own resolve config. Re-run the workflow read (`references/workflow.md` §2) there as well, from the worktree's `$PWD`, so that worktree's Step 9 next steps come from its own repository's payload.
+> **Multi-repo**: Re-run this step for each worktree before its resolve cycle (Step 0.6), since each repo may have its own resolve config.
 
 ## Step 1: Detect the ticket and worktree
 
@@ -460,15 +458,15 @@ Display **`MSG_SUMMARY`**, substituting `{TICKET-ID}`, `{count}` (resolved/skipp
 
 Use the conditional blocks `{IF_RESOLVED}...{/IF_RESOLVED}`, `{IF_SKIPPED}...{/IF_SKIPPED}`, `{IF_RE_REQUEST_OK}...{/IF_RE_REQUEST_OK}`, and `{IF_RE_REQUEST_FAIL}...{/IF_RE_REQUEST_FAIL}` as documented in the message template.
 
-`{next_steps}`, inside `{IF_RE_REQUEST_OK}` and `{IF_RE_REQUEST_FAIL}`, comes from the workflow (`references/workflow.md` §4), with this outcome table:
+`{next_steps}`, inside `{IF_RE_REQUEST_OK}` and `{IF_RE_REQUEST_FAIL}`, comes from the workflow: pick the outcome with this table, then ask the app what follows, as `references/workflow.md` §2 says (in multi-repo mode, once per repository, from its worktree):
 
 | Result of this run | Outcome |
 | --- | --- |
 | The run reached this summary (fixes pushed, or every comment already addressed, `MSG_NO_CHANGES`) | `resolved` |
-| No unresolved comment was found (`MSG_NO_COMMENTS`), or the user chose not to go on | none: no link |
+| No unresolved comment was found (`MSG_NO_COMMENTS`), or the user chose not to go on | none: nothing to ask |
 | The run stopped on an error it could not resolve | `failed`, with the reason |
 
-Each selected `suggest` link is one numbered line. A link to `magic-done` reads `Run /magic:done once the PR is merged` (fr: `Lance /magic:done une fois la PR mergée`), which is what the default flow renders; any other target uses `MSG_WORKFLOW_NEXT_STEP_LINE` (`references/workflow.md` §7). An `auto` link is not followed here: only after Step 11 has recorded the run. When this skill was chained from `/magic:pr`, that session carries on with its own watch once this skill is done: the summary still shows the next step, and `/magic:pr` alone decides what happens after.
+Each line is one numbered line, its `text` without the leading bullet. A line whose `skill` is `magic-done` reads `Run /magic:done once the PR is merged` (fr: `Lance /magic:done une fois la PR mergée`), which is what the default flow renders. A `chain` is not followed here: only after Step 11 has recorded the run. When this skill was chained from `/magic:pr`, that session carries on with its own watch once this skill is done: the summary still shows the next step, and `/magic:pr` alone decides what happens after.
 
 `{IF_RESOLVED}` carries one line per resolved comment, with the same `{fix_summary}` posted in its thread. This is the terminal's copy of the run and it is not capped by `$RESOLVE_REPLY_VERBOSITY` — a summary only you read costs a reviewer nothing. It is also what makes a `minimal` reply safe to prefer: the detail is not lost, it is just not published.
 
@@ -480,7 +478,7 @@ If you resolved comments in multiple worktrees, display **`MSG_MULTI_REPO_FINAL`
 
 ## Step 11: Record the run
 
-**Always run this, as the very last thing of this skill's own work — including when the workflow stopped early.** Only the `auto` link Step 9 selected, if any, comes after it (`references/workflow.md` §4).
+**Always run this, as the very last thing of this skill's own work — including when the workflow stopped early.** Only the `chain` Step 9 got, if any, comes after it (`references/workflow.md` §2).
 
 Magic Slash opened a run record when this skill started. This closes it. Without it the run stays open and is counted as *abandoned*, so finished work disappears from the usage statistics.
 
@@ -497,7 +495,7 @@ printf '{"type":"end","skill":"magic-resolve","agentId":"%s","outcome":"success"
 ## References
 
 - `references/messages.md` — All bilingual message templates (EN/FR). Read relevant sections as needed (not the whole file at once).
-- `references/workflow.md` — The workflow protocol, shared byte for byte by every cycle skill: the Step 0 `/workflow` read, what its fields mean, and how the end of the skill picks its next step. Read §2 in Step 0.0, on every run; read §4 in Step 9.
+- `references/workflow.md` — The workflow protocol, shared byte for byte by every cycle skill: how the end of the skill asks the app (`/workflow/next`) what follows, and shows or chains into it. Read §2 in Step 9.
 - `references/node-setup.md` — Node.js version manager detection. Read before any Node.js-dependent command (Step 0.1).
 - `references/resolve-config.md`: every resolve parameter and what each value does, plus the bash block that pins them and the variable table. Read in Step 0.7, on every run.
 - `references/multi-repo.md`: the commands for Steps 0.3 to 0.5 and the multi-repo partial failure handling. Read in Step 0.3, only when Step 0.2 found a ticket ID, and again when a worktree fails during its cycle.

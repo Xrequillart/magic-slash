@@ -22,59 +22,60 @@ import { nodeIdForSkill } from './defaultFlow'
  *
  * WHY THE TEXT IS THE PROTOCOL, SPELLED OUT
  * ---------------------------------------------------------------------------
- * A magic skill carries `references/workflow.md` and reads it; a custom skill has no
- * such file. Everything it needs from §4 of that protocol is therefore restated here,
- * with the links of THIS node already resolved (command, kind, purpose) and every
- * message already in the repository's discussion language, so the model has nothing
- * to look up. The message strings are copied verbatim from §7, and skillContext.test.ts
- * reads workflow.md to hold them to it: two wordings of one hand-off, in the same
- * session, is exactly what the default flow is meant to rule out.
+ * A magic skill asks `GET /workflow/next` once it is done (next.ts); a custom skill is
+ * the user's own and asks nothing. Everything it needs to pick its outcome and hand
+ * over is therefore spelled out here, with the links of THIS node already resolved
+ * (command, kind, purpose) and every message already in the repository's discussion
+ * language, so the model has nothing to look up. The messages below are the only copy:
+ * next.ts renders a magic skill's next steps with the same ones, since two wordings of
+ * one hand-off, in the same session, is exactly what the default flow is meant to rule
+ * out.
  *
  * Pure: the route and the hook only move this string around.
  */
 
 export type WorkflowLanguage = 'en' | 'fr'
 
-/** The first line of the context. Stable: workflow.md §4 tells a parent skill to look for it. */
+/** The first line of the context. Stable: skills of before look for it, to know a custom step handed over itself. */
 export const SKILL_CONTEXT_HEADING = 'Magic Slash workflow context:'
 
-/** §7, MSG_WORKFLOW_NEXT_STEP_LINE, verbatim. */
+/** A suggested next step. */
 export const NEXT_STEP_LINE: Record<WorkflowLanguage, string> = {
   en: '   • Run {skill} to {purpose}',
   fr: '   • Lance {skill} pour {purpose}',
 }
 
-/** §7, MSG_WORKFLOW_CHAINING, verbatim. */
+/** Said right before chaining into the next step. */
 export const CHAINING: Record<WorkflowLanguage, string> = {
   en: "➡️  Continuing with {skill}, as this repository's workflow says.",
   fr: "➡️  J'enchaîne avec {skill}, comme le prévoit le workflow de ce repository.",
 }
 
-/** §7, MSG_WORKFLOW_CHAIN_BROKEN, verbatim, both lines. */
+/** An auto link a failure stopped, both lines. */
 export const CHAIN_BROKEN: Record<WorkflowLanguage, string> = {
   en: '⚠️  {skill} would normally follow on its own, but this step failed: {reason}\nRun it yourself once the problem is fixed.',
   fr: "⚠️  {skill} devait s'enchaîner tout seul, mais cette étape a échoué : {reason}\nLance-le toi-même une fois le problème réglé.",
 }
 
-/** §7, MSG_WORKFLOW_THEN_LINE, verbatim: one per `then` link under a suggested custom target. */
+/** One per `then` link under a suggested custom target. */
 export const THEN_LINE: Record<WorkflowLanguage, string> = {
   en: '     ↳ then run {skill} to {purpose}',
   fr: '     ↳ puis lance {skill} pour {purpose}',
 }
 
-/** §7, MSG_WORKFLOW_THEN_ON_LINE, verbatim: a `then` link taken only on one outcome of the custom target. */
+/** A `then` link taken only on one outcome of the custom target. */
 export const THEN_ON_LINE: Record<WorkflowLanguage, string> = {
   en: '     ↳ on {outcome}, then run {skill} to {purpose}',
   fr: '     ↳ sur {outcome}, puis lance {skill} pour {purpose}',
 }
 
-/** §7, MSG_WORKFLOW_NOTE_LINE, verbatim: a selected link that leads to an end note. */
+/** A selected link that leads to an end note. */
 export const NOTE_LINE: Record<WorkflowLanguage, string> = {
   en: '   📝 {note}',
   fr: '   📝 {note}',
 }
 
-/** §7, MSG_WORKFLOW_THEN_NOTE_LINE and MSG_WORKFLOW_THEN_NOTE_ON_LINE, verbatim: a `then` link to an end note. */
+/** A `then` link to an end note, under a suggested custom target. */
 export const THEN_NOTE_LINE: Record<WorkflowLanguage, string> = {
   en: '     ↳ then 📝 {note}',
   fr: '     ↳ puis 📝 {note}',
@@ -87,7 +88,7 @@ export const THEN_NOTE_ON_LINE: Record<WorkflowLanguage, string> = {
 /** How several outcomes of one link read in a `then` line: `a or b`. */
 const OR: Record<WorkflowLanguage, string> = { en: ' or ', fr: ' ou ' }
 
-/** §7, the `{purpose}` table, verbatim. A target missing here is a custom step. */
+/** What each built-in target is for, the `{purpose}` of a line. A target missing here is a custom step. */
 export const PURPOSES: Record<WorkflowLanguage, Record<string, string>> = {
   en: {
     'magic-plan': 'turn an idea into tickets',
@@ -109,42 +110,42 @@ export const PURPOSES: Record<WorkflowLanguage, Record<string, string>> = {
   },
 }
 
-/** §7, the table's last row: any other skill. */
+/** The `{purpose}` of any other skill: a custom step. */
 export const CUSTOM_PURPOSE: Record<WorkflowLanguage, string> = {
   en: "run this repository's custom step",
   fr: "lancer l'étape custom de ce repository",
 }
 
-type SkilledLink = WorkflowPayloadLink & { skill: string }
-type NoteLink = WorkflowPayloadLink & { note: string }
+export type SkilledLink = WorkflowPayloadLink & { skill: string }
+export type NoteLink = WorkflowPayloadLink & { note: string }
 /** What a context offers: a step to run, or an end note to show. */
-type ShownLink = SkilledLink | NoteLink
+export type ShownLink = SkilledLink | NoteLink
 
-function isNoteLink(link: ShownLink): link is NoteLink {
+export function isNoteLink(link: ShownLink): link is NoteLink {
   return typeof link.note === 'string'
 }
 
 /**
- * `/magic:pr` for a built-in target, `/check-types` or `/plugin:foo` for any other (§7).
+ * `/magic:pr` for a built-in target, `/check-types` or `/plugin:foo` for any other.
  * Decided by the target NODE, never by the skill's name: nothing stops a repository from
  * naming its own skill `magic-foo`, and reading the prefix would hand the user
  * `/magic:foo`, a command for a skill that does not exist.
  */
-function commandFor(link: SkilledLink): string {
+export function commandFor(link: SkilledLink): string {
   return isCustomNodeId(link.to) ? `/${link.skill}` : `/magic:${nodeIdForSkill(link.skill)}`
 }
 
-/** The target's line of the §7 table, by the same node test as `commandFor`. */
-function purposeFor(link: SkilledLink, lang: WorkflowLanguage): string {
+/** The target's `{purpose}`, by the same node test as `commandFor`. */
+export function purposeFor(link: SkilledLink, lang: WorkflowLanguage): string {
   return (isCustomNodeId(link.to) ? undefined : PURPOSES[lang][link.skill]) ?? CUSTOM_PURPOSE[lang]
 }
 
-function hasSkill(link: WorkflowPayloadLink): link is SkilledLink {
+export function hasSkill(link: WorkflowPayloadLink): link is SkilledLink {
   return typeof link.skill === 'string'
 }
 
 /** A link to a step with a skill, or to an end note: anything else cannot be offered. */
-function isShown(link: WorkflowPayloadLink): link is ShownLink {
+export function isShown(link: WorkflowPayloadLink): link is ShownLink {
   return typeof link.skill === 'string' || typeof link.note === 'string'
 }
 
@@ -152,18 +153,18 @@ function isShown(link: WorkflowPayloadLink): link is ShownLink {
  * A note is free text: a fence of its own inside it would close the one it is shown in.
  * A note of several lines keeps them, each further one under the first one's words.
  */
-function safeNote(note: string, indent = '      '): string {
+export function safeNote(note: string, indent = '      '): string {
   return note.replace(/`{3,}/g, "'''").replace(/\n/g, `\n${indent}`)
 }
 
 /**
- * The `then` lines under a suggested custom target (§4, step 3), one per link, one level
+ * The `then` lines under a suggested custom target, one per link, one level
  * deeper per nesting, all suggestions whatever their kind. A suggestion is run by hand:
  * typed, the target gets its own context from the prompt hook, but these lines are what
  * the user reads BEFORE typing it, and all an older app's session ever gets. The walk
  * is bounded by the payload itself, which stops at a custom step already on the path.
  */
-function thenLines(links: WorkflowPayloadLink[], lang: WorkflowLanguage, depth = 0): string[] {
+export function thenLines(links: WorkflowPayloadLink[], lang: WorkflowLanguage, depth = 0): string[] {
   return grouped(links.filter(isShown)).flatMap(({ link, outcomes }) => {
     const on = outcomes === null ? null : outcomes.join(OR[lang])
     if (isNoteLink(link)) {
@@ -185,7 +186,7 @@ function thenLines(links: WorkflowPayloadLink[], lang: WorkflowLanguage, depth =
  * those of one kind are put back together here, in the order they came. `outcomes` is
  * null when one of them applies whatever the outcome, which then covers them all.
  */
-function grouped<L extends WorkflowPayloadLink>(links: L[]): { link: L; outcomes: string[] | null }[] {
+export function grouped<L extends WorkflowPayloadLink>(links: L[]): { link: L; outcomes: string[] | null }[] {
   const groups: { link: L; outcomes: string[] | null }[] = []
   for (const link of links) {
     const group = groups.find((g) => g.link.to === link.to && g.link.kind === link.kind)
@@ -195,7 +196,7 @@ function grouped<L extends WorkflowPayloadLink>(links: L[]): { link: L; outcomes
   return groups
 }
 
-function fill(template: string, skill: string, purpose = '{purpose}'): string {
+export function fill(template: string, skill: string, purpose = '{purpose}'): string {
   return template.replace('{skill}', skill).replace('{purpose}', purpose)
 }
 
@@ -210,7 +211,7 @@ function fenced(text: string): string {
  * The context for the skill `payload` is centred on, or null when there is nothing
  * to say.
  *
- * Null for a built-in node: a magic skill reads `/workflow` itself, and a second
+ * Null for a built-in node: a magic skill asks `/workflow/next` itself, and a second
  * copy of its next steps would have it render them twice. Null for no node (a skill
  * in no flow, or a path that matches no repository and so gets the default flow,
  * which has no custom step): the skill is left exactly as it is. Null for a custom
@@ -235,7 +236,7 @@ export function buildSkillContext(payload: WorkflowPayload, lang: WorkflowLangua
     const command = commandFor(link)
     const purpose = purposeFor(link, lang)
     // Starting a ticket opens a new agent in a worktree, so a link into it is only ever
-    // a suggestion, whatever the flow says (§4, step 5).
+    // a suggestion, whatever the flow says.
     const kind = isLinkIntoStart(link) ? 'suggest' : link.kind
     const suggestion = [fill(NEXT_STEP_LINE[lang], command, purpose), ...thenLines(link.then, lang)].join('\n')
     const on = taken === null ? '' : `, only on outcome ${taken.map(code).join(' or ')}`

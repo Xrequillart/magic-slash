@@ -3,7 +3,7 @@ import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupRepoHandlers } from './ipc/repo-handlers'
 import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
-import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setCustomSkillContextProvider, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback } from './hooks/status-server'
+import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setWorkflowNextProvider, setCustomSkillContextProvider, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback } from './hooks/status-server'
 import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion } from './questions/pending-questions'
 import { answerPendingQuestion } from './questions/answer-question'
 import { recordSkillInvocation } from './usage/skill-invocations'
@@ -27,6 +27,7 @@ import { expandPath } from './config/validation'
 import { resolveRepoIds } from '../repoMatch'
 import { buildWorkflowPayload } from '../workflow/payload'
 import { buildSkillContext } from '../workflow/skillContext'
+import { buildWorkflowNext } from '../workflow/next'
 import { workflowForRepo } from './workflow/workflows'
 import { readAgents } from './config/agents'
 import { TrayManager } from './tray/tray-manager'
@@ -876,6 +877,13 @@ async function initializeHooksAndSessions() {
     setWorkflowProvider((path: string | null, skill: string | null) => {
       const { repoId, key } = repoForPath(path)
       return buildWorkflowPayload(key ?? null, workflowForRepo(repoId), skill)
+    })
+    // What a magic skill shows and chains into once it is done, in the repository's
+    // discussion language: the rules of workflow/next.ts on the same flow as /workflow.
+    setWorkflowNextProvider((path: string | null, skill: string | null, outcome: string, reason: string) => {
+      const { repositories, repoId, key } = repoForPath(path)
+      const lang = key && repositories[key].languages?.discussion === 'fr' ? 'fr' : 'en'
+      return buildWorkflowNext(buildWorkflowPayload(key ?? null, workflowForRepo(repoId), skill), outcome, { reason, lang })
     })
     // The workflow context of a custom skill the model just invoked (#333): the same
     // lookup as /workflow above, from the skill's name alone, so a custom step finds its

@@ -158,9 +158,9 @@ Commits crees pour {TICKET-ID} : {commit_list}
 
 ## MSG_NEXT_STEPS
 
-Displayed once at the end of the run (SKILL.md Step 7.5), only when the workflow selected a link.
-`{next_steps}` holds one `MSG_WORKFLOW_NEXT_STEP_LINE` per link (`references/workflow.md` §7): for
-the default flow, `   • Run /magic:pr to create a Pull Request`.
+Displayed once at the end of the run (SKILL.md Step 7.5), only when the workflow returned lines.
+`{next_steps}` holds the `text` of each line (`references/workflow.md` §2): for the default flow,
+`   • Run /magic:pr to create a Pull Request`.
 
 ### en
 

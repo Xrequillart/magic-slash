@@ -1,13 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'fs'
-import { join } from 'path'
 import { DEFAULT_WORKFLOW } from './defaultFlow'
 import { buildWorkflowPayload } from './payload'
 import type { WorkflowOverlay } from './overlay'
 import { EMPTY_OVERLAY, addLink, addStep, composeWorkflow, customNodeId, setLinkKind, setLinkOutcome, setStepMode, setStepOutcomes, addNote, noteNodeId } from './overlay'
-import {
-  CHAINING, CHAIN_BROKEN, CUSTOM_PURPOSE, NEXT_STEP_LINE, PURPOSES, SKILL_CONTEXT_HEADING, NOTE_LINE, THEN_LINE, THEN_NOTE_LINE, THEN_NOTE_ON_LINE, THEN_ON_LINE, buildSkillContext,
-} from './skillContext'
+import { SKILL_CONTEXT_HEADING, buildSkillContext } from './skillContext'
 import type { WorkflowLanguage } from './skillContext'
 
 const CHECK = customNodeId('check-types')
@@ -162,28 +158,5 @@ describe('buildSkillContext', () => {
   it('says nothing for a custom step with no link leaving it', () => {
     const o = addLink(addStep(EMPTY_OVERLAY, 'check-types', AT), 'commit', CHECK)
     expect(contextFor(o)).toBeNull()
-  })
-})
-
-// The context restates the protocol's messages for a skill that does not carry the
-// protocol. A wording edited in workflow.md and not here would give one session two
-// wordings of the same hand-off, so every string the builder uses must be found there.
-describe('the messages the context borrows from workflow.md', () => {
-  const protocol = readFileSync(join(__dirname, '..', '..', '..', 'skills', 'magic-start', 'references', 'workflow.md'), 'utf-8')
-
-  it.each(['en', 'fr'] as const)('appear verbatim in the protocol (%s)', (lang) => {
-    for (const template of [NEXT_STEP_LINE[lang], CHAINING[lang], CHAIN_BROKEN[lang], THEN_LINE[lang], THEN_ON_LINE[lang], NOTE_LINE[lang], THEN_NOTE_LINE[lang], THEN_NOTE_ON_LINE[lang]]) {
-      expect(protocol).toContain(`\`\`\`text\n${template}\n\`\`\``)
-    }
-    for (const [skill, purpose] of Object.entries(PURPOSES[lang])) {
-      expect(protocol).toMatch(new RegExp(`\\| \`${skill}\` \\|(?:[^|\\n]*\\|)? ${purpose.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\|`))
-    }
-    expect(protocol).toContain(` ${CUSTOM_PURPOSE[lang]} |`)
-  })
-
-  it('covers every purpose the protocol lists', () => {
-    const rows = [...protocol.matchAll(/^\| `(magic-[a-z-]+)` \|/gm)].map((m) => m[1])
-    expect(Object.keys(PURPOSES.en).sort()).toEqual(rows.sort())
-    expect(Object.keys(PURPOSES.fr).sort()).toEqual(rows.sort())
   })
 })

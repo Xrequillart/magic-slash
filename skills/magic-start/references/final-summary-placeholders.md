@@ -22,13 +22,13 @@ Read by `SKILL.md` Step 5.5.3, to populate every placeholder of `MSG_FINAL_SUMMA
 - `{interaction}` — summary of how the backend and frontend changes interact (e.g., new API endpoints consumed by the frontend); derive from the cross-repo interactions noted in the step 5.1 exploration and the actual changes made
 
 **Next steps** (both messages):
-- `{next_steps}` — the workflow's next steps, computed at the end of the run as `references/workflow.md` §4 says, from the links Step 0.1 read. The "Test the changes" bullet above it is this skill's own and always stays. Each selected link renders as one bullet, in these words:
+- `{next_steps}` — the workflow's next steps, the `lines` the app returned at the end of the run (`references/workflow.md` §2). The "Test the changes" bullet above it is this skill's own and always stays. Each line renders as one bullet, in these words:
 
-  | Link to | en | fr |
+  | Line for | en | fr |
   | --- | --- | --- |
   | `magic-commit` (single repo) | `   • Run /magic:commit to create a commit` | `   • Lance /magic:commit pour créer un commit` |
   | `magic-commit` (full-stack) | `   • Run /magic:commit in each worktree to create commits` | `   • Lance /magic:commit dans chaque worktree pour créer les commits` |
   | `magic-pr` | `   • Run /magic:pr to create a Pull Request` | `   • Lance /magic:pr pour créer une Pull Request` |
-  | any other skill, a custom step included | `MSG_WORKFLOW_NEXT_STEP_LINE` (`references/workflow.md` §7), then its `then` lines (§4, step 3) | same |
+  | any other skill, a custom step included, or a note | its `text`, as is | same |
 
-  A link to `magic-commit` is followed by one bullet per `suggest` link **leaving the commit node** in the graph that is unconditional or on outcome `committed` (the outcome a commit ends on when it succeeds; for the default flow, `/magic:pr`), never a commit link on another outcome: committing and opening the Pull Request are one gesture once the implementation is done, and the summary has always named both. Never list the same skill twice. With no selected link, `{next_steps}` is empty and the block keeps only the "Test the changes" bullet.
+  A line for `magic-commit` is followed by one bullet per line of **what follows a commit**: ask the app again, as `references/workflow.md` §2 says, with `<skill>` set to `magic-commit` and `<outcome>` to `committed` (the outcome a commit ends on when it succeeds; for the default flow, `/magic:pr`), and render its `lines` in the words above. Never follow its `chain`: that is the commit's to take, once there is one. Committing and opening the Pull Request are one gesture once the implementation is done, and the summary has always named both. Never list the same skill twice. With no line, `{next_steps}` is empty and the block keeps only the "Test the changes" bullet.
