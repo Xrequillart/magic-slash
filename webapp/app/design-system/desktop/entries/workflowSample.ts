@@ -17,8 +17,9 @@ import type {
  * the shape a team that reviews every PR might give its own repository.
  */
 
+// Built-in steps, `locked` as the app draws them: a single outcome stands for "whatever it ended on".
 const node = (id: string, label: string, outcomes: string[]): WorkflowCanvasNode => ({
-  id, label, skill: `magic-${id}`, outcomes,
+  id, label, skill: `magic-${id}`, outcomes, locked: true,
 })
 
 export const SAMPLE_NODES: WorkflowCanvasNode[] = [

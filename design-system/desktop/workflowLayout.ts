@@ -103,32 +103,39 @@ const ROW_GAP = 72
  * leaves from the row it is taken on.
  *
  *  - each OUTCOME the skill declares is a row, and a link conditioned on it leaves there;
- *  - a link taken WHATEVER the outcome leaves from the last row, `WORKFLOW_ANY_EXIT`,
- *    drawn on every card that has not exactly one outcome (a custom step has none, PR has
- *    three);
- *  - a card with EXACTLY ONE outcome has no such row: whatever it ended on is that
- *    outcome, so its one row carries its unconditional links too.
+ *  - a link taken WHATEVER the outcome leaves from the last row, `WORKFLOW_ANY_EXIT`;
+ *  - a BUILT-IN card (`locked`) with EXACTLY ONE outcome has no such row: whatever it
+ *    ended on is that outcome, so its one row carries its unconditional links too. Only a
+ *    built-in one, whose outcomes never change: on a custom step, adding a first or a
+ *    second outcome would move every link it has from one row to another.
  */
 export const WORKFLOW_ANY_EXIT = 'default'
 
-export function workflowExitRows(node: Pick<WorkflowCanvasNode, 'outcomes' | 'note'>): string[] {
+type ExitNode = Pick<WorkflowCanvasNode, 'outcomes' | 'locked'>
+
+/** Whether a card's one outcome stands for "whatever it ended on", see above. */
+function singleExit(node: ExitNode): boolean {
+  return !!node.locked && node.outcomes.length === 1
+}
+
+export function workflowExitRows(node: ExitNode & Pick<WorkflowCanvasNode, 'note'>): string[] {
   // Nothing leaves an end note: no row, no port.
   if (node.note !== undefined) return []
-  return node.outcomes.length === 1 ? node.outcomes : [...node.outcomes, WORKFLOW_ANY_EXIT]
+  return singleExit(node) ? node.outcomes : [...node.outcomes, WORKFLOW_ANY_EXIT]
 }
 
 /** The row a link leaves `node` from: its outcome's, or the "whatever it ended on" one. */
-export function workflowExitOf(node: Pick<WorkflowCanvasNode, 'outcomes'>, outcome: string | undefined): string {
+export function workflowExitOf(node: ExitNode, outcome: string | undefined): string {
   if (outcome !== undefined && node.outcomes.includes(outcome)) return outcome
-  return node.outcomes.length === 1 ? node.outcomes[0] : WORKFLOW_ANY_EXIT
+  return singleExit(node) ? node.outcomes[0] : WORKFLOW_ANY_EXIT
 }
 
 /**
  * The outcome a link drawn out of `exit` is taken on: none from the "whatever" row, and
- * none from the one row of a single-outcome card either, since it stands for the same.
+ * none from the one row of a single-outcome built-in card either, since it stands for the same.
  */
-export function workflowOutcomeOfExit(node: Pick<WorkflowCanvasNode, 'outcomes'>, exit: string | null | undefined): string | undefined {
-  if (!exit || exit === WORKFLOW_ANY_EXIT || node.outcomes.length === 1) return undefined
+export function workflowOutcomeOfExit(node: ExitNode, exit: string | null | undefined): string | undefined {
+  if (!exit || exit === WORKFLOW_ANY_EXIT || singleExit(node)) return undefined
   return node.outcomes.includes(exit) ? exit : undefined
 }
 
@@ -207,7 +214,7 @@ export function workflowCardWidths(nodes: WorkflowCanvasNode[], words: WorkflowC
 }
 
 /** A card's height, from its rows. */
-export function workflowCardHeight(node: Pick<WorkflowCanvasNode, 'outcomes' | 'note'>): number {
+export function workflowCardHeight(node: Pick<WorkflowCanvasNode, 'outcomes' | 'note' | 'locked'>): number {
   return workflowNodeHeight(workflowExitRows(node).length)
 }
 

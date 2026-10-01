@@ -4,6 +4,10 @@ import {
   layoutWorkflow,
   orthogonalPath,
   workflowCardWidth,
+  workflowExitOf,
+  workflowExitRows,
+  workflowOutcomeOfExit,
+  WORKFLOW_ANY_EXIT,
   workflowPositions,
   workflowNodeHeight,
   WORKFLOW_NODE_MAX_WIDTH,
@@ -223,5 +227,26 @@ describe('workflowCardWidth', () => {
     const widths = { [nodes[0].id]: 300, [nodes[1].id]: 210 }
     const { positions } = layoutWorkflow(nodes, [{ from: nodes[0].id, to: nodes[1].id, kind: 'suggest' }], [nodes[0].id], widths)
     expect(positions[nodes[1].id].x).toBe(300 + 80)
+  })
+})
+
+describe('the ways out of a card', () => {
+  const custom = (outcomes: string[]) => ({ outcomes })
+
+  it('keep a custom step\'s links on their row while it gains outcomes', () => {
+    // A link taken whatever the outcome stays on the "whatever" row at 0, 1 and 2 outcomes.
+    for (const outcomes of [[], ['ok'], ['ok', 'ko']]) {
+      expect(workflowExitRows(custom(outcomes))).toEqual([...outcomes, WORKFLOW_ANY_EXIT])
+      expect(workflowExitOf(custom(outcomes), undefined)).toBe(WORKFLOW_ANY_EXIT)
+    }
+    // And one drawn from its only outcome's row is taken on that outcome.
+    expect(workflowOutcomeOfExit(custom(['ok']), 'ok')).toBe('ok')
+  })
+
+  it('let a built-in step\'s one outcome stand for whatever it ended on', () => {
+    const commit = { outcomes: ['committed'], locked: true }
+    expect(workflowExitRows(commit)).toEqual(['committed'])
+    expect(workflowExitOf(commit, undefined)).toBe('committed')
+    expect(workflowOutcomeOfExit(commit, 'committed')).toBeUndefined()
   })
 })
