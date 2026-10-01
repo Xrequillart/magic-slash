@@ -164,8 +164,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       lineStrong: 'rgba(255, 255, 255, 0.15)',
       borderRgb: '39 39 42',
 
-      accentRgb: '99 102 241',
-      accentHoverRgb: '129 140 248',
+      accentRgb: '0 122 252',
+      accentHoverRgb: '51 149 253',
       purpleRgb: '168 85 247',
       greenRgb: '34 197 94',
       redRgb: '239 68 68',
@@ -227,8 +227,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       lineStrong: 'rgba(255, 255, 255, 0.17)',
       borderRgb: '38 47 74',
 
-      accentRgb: '129 140 248',
-      accentHoverRgb: '165 180 252',
+      accentRgb: '0 122 252',
+      accentHoverRgb: '51 149 253',
       purpleRgb: '192 132 252',
       greenRgb: '52 211 153',
       redRgb: '248 113 113',
@@ -290,8 +290,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       lineStrong: 'rgba(255, 240, 225, 0.17)',
       borderRgb: '61 49 41',
 
-      accentRgb: '129 140 248',
-      accentHoverRgb: '165 180 252',
+      accentRgb: '0 122 252',
+      accentHoverRgb: '51 149 253',
       purpleRgb: '192 132 252',
       greenRgb: '52 211 153',
       redRgb: '248 113 113',
@@ -358,8 +358,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       lineStrong: 'rgba(255, 255, 255, 0.85)',
       borderRgb: '212 212 216',
 
-      accentRgb: '147 157 255',
-      accentHoverRgb: '186 193 255',
+      accentRgb: '77 163 255',
+      accentHoverRgb: '133 192 255',
       purpleRgb: '216 180 254',
       greenRgb: '74 222 128',
       redRgb: '255 123 123',
@@ -421,8 +421,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       lineStrong: 'rgba(0, 0, 0, 0.2)',
       borderRgb: '228 228 231',
 
-      accentRgb: '79 70 229',
-      accentHoverRgb: '67 56 202',
+      accentRgb: '0 122 252',
+      accentHoverRgb: '0 104 214',
       purpleRgb: '147 51 234',
       greenRgb: '21 128 61',
       redRgb: '220 38 38',
@@ -482,8 +482,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       lineStrong: 'rgba(15, 23, 42, 0.21)',
       borderRgb: '203 213 225',
 
-      accentRgb: '67 56 202',
-      accentHoverRgb: '55 48 163',
+      accentRgb: '0 122 252',
+      accentHoverRgb: '0 104 214',
       purpleRgb: '126 34 206',
       greenRgb: '21 128 61',
       redRgb: '220 38 38',
@@ -545,8 +545,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       borderRgb: '226 214 195',
 
       // The accent stays the product's indigo: it is brand, not decoration.
-      accentRgb: '79 70 229',
-      accentHoverRgb: '67 56 202',
+      accentRgb: '0 122 252',
+      accentHoverRgb: '0 104 214',
       purpleRgb: '126 34 206',
       greenRgb: '21 115 71',
       redRgb: '185 28 28',
@@ -610,8 +610,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       lineStrong: 'rgba(0, 0, 0, 0.85)',
       borderRgb: '82 82 82',
 
-      accentRgb: '49 46 129',
-      accentHoverRgb: '30 27 75',
+      accentRgb: '0 88 184',
+      accentHoverRgb: '0 65 138',
       purpleRgb: '88 28 135',
       greenRgb: '20 83 45',
       redRgb: '153 27 27',

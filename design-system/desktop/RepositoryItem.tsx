@@ -166,8 +166,8 @@ export function RepositoryItem({
             only thing on the row that is about THIS app, so it takes this app's
             colour. The fallback is the theme's own — an undefined variable makes the
             whole `color-mix` invalid, and a chip with no plate at all is a worse
-            failure than a slightly wrong indigo. */}
-        {agents && <Label size="sm" color="rgb(var(--c-accent, 99 102 241))">{agents}</Label>}
+            failure than a slightly wrong blue. */}
+        {agents && <Label size="sm" color="rgb(var(--c-accent, 0 122 252))">{agents}</Label>}
       </div>
 
       <Icon

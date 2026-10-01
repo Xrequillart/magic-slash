@@ -728,7 +728,7 @@ function LiquidSwitch({ checked, onChange, label, size = 'sm', disabled }: Drawn
            off a hue as the knob travels, which needs a hue, and the app's accent is
            `rgb(var(--c-accent))` with no hue to reach for. So the ramp becomes a
            `color-mix` between two ends and the ON end is picked up as `currentColor`
-           — which is how the same component draws the desktop's indigo and whatever
+           — which is how the same component draws the desktop's accent and whatever
            the theme registry swaps in next, without this file naming either.
 
            IT HAS TO BE SET ON THE BUTTON AND NOT INHERITED. A `<button>` takes

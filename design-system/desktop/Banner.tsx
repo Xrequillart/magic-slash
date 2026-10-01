@@ -156,7 +156,7 @@ const TONES: Record<BannerVariant, BannerTone> = {
   // else while this is here. A variant that named no icon would be a variant with no
   // opinion — though this is the one tone whose callers nearly always bring their own,
   // because a mode is a specific thing and `TicketPlus` says which.
-  accent: { fill: 'bg-accent/10', accent: 'text-accent', edge: 'border-accent/20', plate: 'bg-accent/15', value: 'rgb(var(--c-accent, 99 102 241))', icon: MousePointerClick },
+  accent: { fill: 'bg-accent/10', accent: 'text-accent', edge: 'border-accent/20', plate: 'bg-accent/15', value: 'rgb(var(--c-accent, 0 122 252))', icon: MousePointerClick },
 }
 
 /**

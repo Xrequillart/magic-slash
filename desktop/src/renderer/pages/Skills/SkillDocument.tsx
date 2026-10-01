@@ -26,7 +26,7 @@ import { useT } from '../../i18n'
 /** A skill's origin, as `Label` wants it: a value, never a class. */
 const SOURCE_COLOR = {
   repo: 'rgb(var(--c-blue, 59 130 246))',
-  builtIn: 'rgb(var(--c-accent, 99 102 241))',
+  builtIn: 'rgb(var(--c-accent, 0 122 252))',
 }
 
 /** Split a SKILL.md into its YAML frontmatter and the markdown that follows. */

@@ -105,7 +105,7 @@ function fallbackListing(skills: SkillInfo[], repoSkills: RepoSkillInfo[]): List
  * asking for a colour that is not in the table and getting the neutral ground.
  */
 const SOURCE_COLOR: Record<string, string> = {
-  'built-in': 'rgb(var(--c-accent, 99 102 241))',
+  'built-in': 'rgb(var(--c-accent, 0 122 252))',
   repo: 'rgb(var(--c-blue, 59 130 246))',
   custom: 'rgb(var(--c-green, 34 197 94))',
   plugin: 'rgb(var(--c-purple, 168 85 247))',
