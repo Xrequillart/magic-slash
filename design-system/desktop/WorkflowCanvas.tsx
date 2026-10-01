@@ -1,14 +1,15 @@
 import '@xyflow/react/dist/base.css'
 import './workflowCanvas.css'
 
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import {
   Background, BackgroundVariant, Panel, ReactFlow, useReactFlow, type Connection, type Edge, type IsValidConnection, type Node, type NodeChange, type OnConnectEnd,
 } from '@xyflow/react'
 
 import { CanvasMinimap } from './CanvasMinimap'
 import { Icon } from './Icon'
-import { History } from './icons'
+import { ChevronDown, Ellipsis } from './icons'
+import { Menu, type MenuItem } from './Menu'
 import { Select, type SelectOption } from './Select'
 import { Text } from './Text'
 import { WorkflowDock, type WorkflowDockProps } from './WorkflowDock'
@@ -81,7 +82,8 @@ import {
  *
  * `repositories` puts a picker left of the legend, as tall as it and on the same plate:
  * the editor's way over to another repository's flow. `history`, a button right of it,
- * opens the flow's history. Data, like the rest.
+ * opens the flow's history, and `duplicate`, after it, copies the flow onto another
+ * repository. Data, like the rest.
  */
 
 /** What the editor needs the inspector to show: a step, or the link between two. */
@@ -121,16 +123,26 @@ export interface WorkflowCanvasRepositories {
   label: string
 }
 
-/** The button right of the picker that opens the flow's history. `active` while it is open. */
-export interface WorkflowCanvasHistory {
-  /** Its word, beside its mark: "History". */
+/**
+ * The dropdown right of the picker: the flow's actions (its history, a copy onto another
+ * repository, a reset to the default). `active` while one of them has a panel open, the
+ * history's. Which rows there are, and what each does, is the caller's.
+ */
+export interface WorkflowCanvasActions {
+  /** Its word, beside its mark: "More actions". */
   label: string
   /** After the word, quieter: when the flow last changed, "Updated 2 h ago". */
   detail?: string
   /** The full date, as the detail's tooltip. */
   detailTitle?: string
   active: boolean
-  onClick: () => void
+  /** The menu's rows, in order. */
+  items: MenuItem[]
+  onSelect: (id: string) => void
+  /** Names the menu for a screen reader: "Workflow actions". */
+  menuLabel: string
+  /** Where the menu portals. `document.body` unless the theme is scoped, see `Menu`. */
+  portalTo?: HTMLElement | null
 }
 
 export interface WorkflowCanvasProps {
@@ -172,7 +184,8 @@ export interface WorkflowCanvasProps {
   /** The picker left of the legend. Not drawn without it. */
   repositories?: WorkflowCanvasRepositories
   /** The history button, right of the picker. Not drawn without it. */
-  history?: WorkflowCanvasHistory
+  /** The actions dropdown, right of the picker. Not drawn without it. */
+  actions?: WorkflowCanvasActions
   /** The minimap in the corner. On by default; off for a canvas that is an illustration of a flow, not a place to move around. */
   minimap?: boolean
 }
@@ -217,9 +230,12 @@ export function WorkflowCanvas({
   legend = 'top-left',
   scrollPans = true,
   repositories,
-  history,
+  actions,
   minimap = true,
 }: WorkflowCanvasProps) {
+  // The actions dropdown hangs off its trigger.
+  const actionsRef = useRef<HTMLButtonElement>(null)
+  const [actionsOpen, setActionsOpen] = useState(false)
   // Where a card is being dragged to, until it is let go and the caller has its place.
   const [dragged, setDragged] = useState<Record<string, { x: number; y: number }>>({})
 
@@ -445,25 +461,39 @@ export function WorkflowCanvas({
           )}
           {/* The picker's plate, as tall as it and worded like it: three plates in a row, one
               ground. `data-wf-history-toggle`: the editor's click-outside leaves it alone. */}
-          {history && (
-            <button
-              type="button"
-              onClick={history.onClick}
-              aria-pressed={history.active}
-              data-wf-history-toggle=""
-              className={`flex h-7 flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border bg-bg-secondary px-2.5 text-xs text-ink transition-colors ${
-                history.active ? 'border-accent/40' : 'border-line hover:border-accent'
-              }`}
-            >
-              <Icon glyph={History} size="sm" tone="inherit" className={history.active ? 'text-accent' : 'text-text-secondary'} />
-              {history.label}
-              {history.detail && (
-                <>
-                  <span aria-hidden="true" className="h-3.5 w-px bg-line" />
-                  <span className="text-text-secondary" title={history.detailTitle}>{history.detail}</span>
-                </>
-              )}
-            </button>
+          {actions && (
+            <>
+              <button
+                ref={actionsRef}
+                type="button"
+                onClick={() => setActionsOpen((was) => !was)}
+                aria-haspopup="menu"
+                aria-expanded={actionsOpen}
+                data-wf-history-toggle=""
+                className={`flex h-7 flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border bg-bg-secondary px-2.5 text-xs text-ink transition-colors ${
+                  actions.active || actionsOpen ? 'border-accent/40' : 'border-line hover:border-accent'
+                }`}
+              >
+                <Icon glyph={Ellipsis} size="sm" tone="inherit" className={actions.active ? 'text-accent' : 'text-text-secondary'} />
+                {actions.label}
+                {actions.detail && (
+                  <>
+                    <span aria-hidden="true" className="h-3.5 w-px bg-line" />
+                    <span className="text-text-secondary" title={actions.detailTitle}>{actions.detail}</span>
+                  </>
+                )}
+                <Icon glyph={ChevronDown} size="sm" tone="inherit" className={`text-text-secondary transition-transform ${actionsOpen ? 'rotate-180' : ''}`} />
+              </button>
+              <Menu
+                open={actionsOpen}
+                onClose={() => setActionsOpen(false)}
+                anchor={actionsRef.current}
+                label={actions.menuLabel}
+                groups={[{ items: actions.items }]}
+                onSelect={(item) => actions.onSelect(item.id)}
+                portalTo={actions.portalTo}
+              />
+            </>
           )}
           <div className="flex h-7 items-center gap-3 rounded-lg border border-line bg-bg-secondary px-2.5">
             {LINK_KINDS.map((kind) => (

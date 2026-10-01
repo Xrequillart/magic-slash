@@ -21,6 +21,7 @@ import {
   EmptyState,
   Loader,
   RepoPageHeader,
+  RepositorySelector,
   SectionHeader,
   SettingsCard,
   SkillIntro as DsSkillIntro,
@@ -69,7 +70,7 @@ import { resolveReviewLanguage, resolveSpecLanguage, resolveTicketLanguage } fro
 import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../../../tracker'
 import type { ResolvedWorkflow } from '../../../workflow/model'
 import {
-  EMPTY_OVERLAY, addLink, addStep, composeWorkflow, customNodeId, isCustomNodeId, isDefaultLink, isLinkIntoStart, moveNode,
+  EMPTY_OVERLAY, addLink, addStep, cleanOverlay, composeWorkflow, customNodeId, isCustomNodeId, isDefaultLink, isLinkIntoStart, moveNode,
   pinPositions, problems, removeLink, removeStep, sameOverlay, setLinkKind, setLinkOutcome, setStepColor, setStepEnabled, setStepMode,
   unreachableSteps, type WorkflowOverlay, type WorkflowProblem,
 } from '../../../workflow/overlay'
@@ -78,6 +79,7 @@ import { useWorkflowHistory } from '../../hooks/useWorkflowHistory'
 import { buildWorkflowHistory, type StartSettingKey, type StartSettingValue, type WorkflowHistoryChange } from '../../utils/workflowHistory'
 import { planAuthor } from '../../utils/planRows'
 import { formatTimestamp } from '../../components/agent-info-sidebar/utils'
+import { useModalExit } from '../../hooks/useModalExit'
 import {
   folderSkillsOf, modeHasEffect, problemNodeIds, skillDescription, stepColors, skillDisplayName, skillOptions, stepHints, workflowCanvasData,
 } from './workflowCanvasData'
@@ -584,6 +586,14 @@ function WorkflowPanel({
   const [copying, setCopying] = useState(false)
   // The history panel, in the inspector's place: opening one closes the other.
   const [historyOpen, setHistoryOpen] = useState(false)
+  // Duplicating the flow onto another repository: the picker, then, when that one has a
+  // flow of its own, the question whether to replace it.
+  const [duplicateOpen, setDuplicateOpen] = useState(false)
+  const [duplicateTarget, setDuplicateTarget] = useState<{ name: string; revision: string | null } | null>(null)
+  const [duplicating, setDuplicating] = useState(false)
+  // Back to the default flow, once confirmed: saved at once, unsaved edits dropped with it.
+  const [resetPrompt, setResetPrompt] = useState(false)
+  const duplicateExit = useModalExit(duplicateOpen)
 
   const saved = loaded && loaded !== 'error' ? loaded.saved : EMPTY_OVERLAY
   const revision = loaded && loaded !== 'error' ? loaded.revision : null
@@ -665,6 +675,9 @@ function WorkflowPanel({
     // them into this one.
     setCopyOffer(null)
     setCopying(false)
+    setDuplicateOpen(false)
+    setDuplicateTarget(null)
+    setResetPrompt(false)
     changedDuringSaveRef.current = false
     fetchWorkflow().then(
       (next) => { if (at === generation.current) void adopt(next) },
@@ -905,7 +918,8 @@ function WorkflowPanel({
     }
   })()
 
-  const save = async () => {
+  /** Save `overlay` (the draft, unless a reset sends the empty one) as this repository's flow. */
+  const save = async (overlay: WorkflowOverlay = draft) => {
     const previous = saved
     // The write completes whatever happens meanwhile, but once the panel shows another
     // repository its answer is not about what is on screen: adopted, it would put this
@@ -916,7 +930,7 @@ function WorkflowPanel({
     savingRef.current = true
     setSaveError(null)
     try {
-      const result = await window.electronAPI.config.saveRepositoryWorkflow(repoName, draft, revisionRef.current)
+      const result = await window.electronAPI.config.saveRepositoryWorkflow(repoName, overlay, revisionRef.current)
       if (!current()) return
       switch (result.status) {
         case 'saved': {
@@ -998,6 +1012,65 @@ function WorkflowPanel({
     setSwitchTo(null)
   }
 
+  /**
+   * Write the flow on screen (the draft, unsaved edits included: what is copied is what is
+   * seen) as `name`'s, against the revision its row was read at. The other repository's
+   * editor is not open, so nothing there is adopted: its own panel reads it on mount, and
+   * a window that has it open hears of it through `onWorkflowChanged`.
+   */
+  const duplicateTo = async (name: string, targetRevision: string | null) => {
+    setDuplicating(true)
+    try {
+      const result = await window.electronAPI.config.saveRepositoryWorkflow(name, cleanOverlay(draft), targetRevision)
+      switch (result.status) {
+        case 'saved':
+          showToast(t('repo.workflow.duplicate.done', { name }), 'success', {
+            actions: [{ label: t('repo.workflow.duplicate.open'), onClick: () => switchRepository(name) }],
+          })
+          break
+        case 'denied':
+          showToast(t('repo.workflow.duplicate.denied', { name }), 'error')
+          break
+        case 'conflict':
+          showToast(t('repo.workflow.duplicate.conflict', { name }), 'error')
+          break
+        case 'invalid':
+          showToast(t('repo.workflow.duplicate.invalid', { name }), 'error')
+          break
+        case 'failed':
+          showToast(t('repo.workflow.duplicate.failed', { name, message: result.message }), 'error')
+          break
+      }
+    } catch (error) {
+      showToast(t('repo.workflow.duplicate.failed', { name, message: error instanceof Error ? error.message : String(error) }), 'error')
+    } finally {
+      setDuplicating(false)
+      setDuplicateTarget(null)
+    }
+  }
+  /** A repository picked: replace its flow at once when it follows the default, ask first when it has its own. */
+  const pickDuplicateTarget = async (name: string) => {
+    setDuplicateOpen(false)
+    try {
+      const [stored, resolved] = await Promise.all([
+        window.electronAPI.config.getRepositoryWorkflowOverlay(name),
+        window.electronAPI.config.getRepositoryWorkflow(name),
+      ])
+      if (resolved.source === 'repository') setDuplicateTarget({ name, revision: stored.revision })
+      else void duplicateTo(name, stored.revision)
+    } catch (error) {
+      showToast(t('repo.workflow.duplicate.failed', { name, message: error instanceof Error ? error.message : String(error) }), 'error')
+    }
+  }
+  const openDuplicate = () => {
+    // A flow the backend would refuse is not worth copying: the problems say why.
+    if (shown.length > 0) {
+      showToast(t('repo.workflow.duplicate.hasProblems'), 'error')
+      return
+    }
+    setDuplicateOpen(true)
+  }
+
   /** Out of the editor, the draft dropped: the tab shows what is saved. It plays its exit first. */
   const leave = () => {
     setClosePrompt(false)
@@ -1026,7 +1099,16 @@ function WorkflowPanel({
   const keysRef = useRef<(event: KeyboardEvent) => void>(() => {})
   keysRef.current = (event) => {
     // The dialogs answer their own keys, and so do the menus and the fields.
-    if (closePrompt || copyOffer !== null || leavingEditor) return
+    if (closePrompt || copyOffer !== null || duplicateTarget !== null || resetPrompt || leavingEditor) return
+    // The repository picker answers nothing but Escape, which closes it.
+    if (duplicateOpen) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        event.stopPropagation()
+        setDuplicateOpen(false)
+      }
+      return
+    }
     if (document.querySelector('[role="menu"], [role="listbox"]')) return
     const el = event.target as HTMLElement | null
     if (el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))) return
@@ -1148,6 +1230,7 @@ function WorkflowPanel({
   const editorLabels: WorkflowEditorLabels = {
     canvas: labels,
     back: t('repo.workflow.editor.back'),
+    actions: t('repo.workflow.actions'),
     picker: {
       title: t('repo.workflow.picker.title'),
       empty: t('repo.workflow.picker.empty'),
@@ -1274,6 +1357,16 @@ function WorkflowPanel({
                 } : undefined}
                 labels={editorLabels}
                 history={historyProp}
+                duplicate={repositories.length > 1 ? {
+                  label: t('repo.workflow.duplicate.button'),
+                  onClick: openDuplicate,
+                } : undefined}
+                reset={readOnly ? undefined : {
+                  label: t('repo.workflow.reset.button'),
+                  // Nothing saved but the default, and nothing drafted: nothing to reset.
+                  disabled: saving || (source !== 'repository' && sameOverlay(draft, EMPTY_OVERLAY)),
+                  onClick: () => setResetPrompt(true),
+                }}
                 nodes={data.nodes}
                 links={data.links}
                 entry={data.entry}
@@ -1315,7 +1408,7 @@ function WorkflowPanel({
                 dirty={dirty}
                 saving={saving}
                 canSave={shown.length === 0}
-                onSave={save}
+                onSave={() => { void save() }}
                 onDiscard={() => edit(saved)}
                 onClose={requestClose}
                 banners={banners}
@@ -1361,6 +1454,66 @@ function WorkflowPanel({
                 : t('repo.workflow.copy.body.other', { skills: (copyOffer ?? []).join(', ') })}
             </Text>
             <Text size="sm" tone="secondary" className="mt-2 block">{t('repo.workflow.copy.commit')}</Text>
+          </Modal>
+          <Modal
+            isOpen={resetPrompt}
+            onClose={() => { if (!saving) setResetPrompt(false) }}
+            title={t('repo.workflow.reset.title', { name: repoName })}
+            footer={
+              <>
+                <Button tone="ghost" disabled={saving} onClick={() => setResetPrompt(false)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  tone="danger"
+                  busy={saving}
+                  onClick={async () => {
+                    setSelected(null)
+                    await save(EMPTY_OVERLAY)
+                    setResetPrompt(false)
+                  }}
+                >
+                  {t('repo.workflow.reset.confirm')}
+                </Button>
+              </>
+            }
+          >
+            <Text size="sm" className="block">{t('repo.workflow.reset.body')}</Text>
+          </Modal>
+          {duplicateExit.mounted && (
+            <RepositorySelector
+              title={t('repo.workflow.duplicate.title', { name: repoName })}
+              closeLabel={t('common.close')}
+              emptyLabel={t('repo.workflow.duplicate.empty')}
+              repos={repositories.filter((option) => option.value !== repoName).map((option) => ({
+                path: option.value,
+                name: option.label,
+                color: option.color,
+                attached: false,
+              }))}
+              onClose={() => setDuplicateOpen(false)}
+              onToggle={(name) => { void pickDuplicateTarget(name) }}
+              backdropClassName={duplicateExit.closing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop'}
+              className={duplicateExit.closing ? 'animate-modal-content-out' : 'animate-modal-content'}
+              onAnimationEnd={duplicateExit.onExitAnimationEnd}
+            />
+          )}
+          <Modal
+            isOpen={duplicateTarget !== null}
+            onClose={() => { if (!duplicating) setDuplicateTarget(null) }}
+            title={t('repo.workflow.duplicate.replace.title', { name: duplicateTarget?.name ?? '' })}
+            footer={
+              <>
+                <Button tone="ghost" disabled={duplicating} onClick={() => setDuplicateTarget(null)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button tone="danger" busy={duplicating} onClick={() => duplicateTarget && duplicateTo(duplicateTarget.name, duplicateTarget.revision)}>
+                  {t('repo.workflow.duplicate.replace.confirm')}
+                </Button>
+              </>
+            }
+          >
+            <Text size="sm" className="block">{t('repo.workflow.duplicate.replace.body', { name: duplicateTarget?.name ?? '', from: repoName })}</Text>
           </Modal>
         </>
       ) : (

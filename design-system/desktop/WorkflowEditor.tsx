@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type AnimationEvent } fro
 import { AppTitleBar } from './AppTitleBar'
 import { Banner, type BannerVariant } from './Banner'
 import { CANVAS_MINIMAP_SIZE } from './CanvasMinimap'
-import { ArrowLeft } from './icons'
+import { ArrowLeft, CopyPlus, History, RotateCcw } from './icons'
 import { WorkflowCanvas, type WorkflowCanvasLabels, type WorkflowCanvasRepositories, type WorkflowCanvasSelection } from './WorkflowCanvas'
 import type { WorkflowDockLabels } from './WorkflowDock'
 import { WorkflowInspector, type WorkflowInspectorLabels, type WorkflowInspectorProps, type WorkflowInspectorTarget } from './WorkflowInspector'
@@ -25,9 +25,12 @@ import type { WorkflowCanvasLink, WorkflowCanvasNode } from './workflowLayout'
  *    a link opens it, a press on the ground or its X closes it;
  *  - top left, beside the legend, the REPOSITORY PICKER (`repositories`), when there are
  *    others to go to: which flow is edited is the caller's, the picker only asks;
- *  - right of it, the HISTORY button (`history`): who changed the flow and its start
+ *  - right of it, the ACTIONS dropdown (`labels.actions`), saying when the flow last changed. Its rows: the HISTORY (`history`): who changed the flow and its start
  *    settings, and when (`WorkflowHistory`), in the inspector's place on the right while it
- *    is open. Which of the two shows is the caller's: it closes one as it opens the other;
+ *    is open, which of the two shows being the caller's (it closes one as it opens the
+ *    other); DUPLICATE (`duplicate`), a copy of this flow onto another repository; and RESET
+ *    (`reset`), back to the default flow. What the last two do, confirmations included, is
+ *    the caller's;
  *  - at the bottom centre, the DOCK (`WorkflowDock`): add a step, undo and redo, the
  *    zoom, the problems, discard, save, close.
  *
@@ -70,6 +73,8 @@ export interface WorkflowEditorLabels {
   dock: WorkflowDockLabels
   /** The title bar's way out, beside its arrow: "Back to settings". Its tooltip is `dock.close`. */
   back: string
+  /** The actions dropdown's word, and its menu's accessible name: "More actions". */
+  actions?: string
 }
 
 /**
@@ -90,6 +95,14 @@ export interface WorkflowEditorHistory {
   panel: Omit<WorkflowHistoryProps, 'onClose' | 'ground' | 'className'>
 }
 
+/** One row of the actions dropdown, past the history's. */
+export interface WorkflowEditorAction {
+  label: string
+  /** Greyed, and never fires: "already the default flow". */
+  disabled?: boolean
+  onClick: () => void
+}
+
 export interface WorkflowEditorProps {
   /** In the middle of the title bar: "Editing the workflow of magic-slash". */
   title: string
@@ -101,6 +114,10 @@ export interface WorkflowEditorProps {
    * `WorkflowHistory`'s props, its X is `onToggle`.
    */
   history?: WorkflowEditorHistory
+  /** The dropdown's "copy onto another repository" row. Not drawn without it. */
+  duplicate?: WorkflowEditorAction
+  /** The dropdown's "back to the default flow" row, in red. Not drawn without it. */
+  reset?: WorkflowEditorAction
 
   nodes: WorkflowCanvasNode[]
   links: WorkflowCanvasLink[]
@@ -159,6 +176,8 @@ export function WorkflowEditor({
   repositories,
   labels,
   history,
+  duplicate,
+  reset,
   nodes,
   links,
   entry,
@@ -277,7 +296,24 @@ export function WorkflowEditor({
             onToggle={readOnly ? undefined : onToggle}
             focusRequest={focusRequest}
             repositories={repositories}
-            history={history ? { label: history.label, detail: history.detail, detailTitle: history.detailTitle, active: history.open, onClick: history.onToggle } : undefined}
+            actions={history || duplicate || reset ? {
+              label: labels.actions ?? history?.label ?? '',
+              detail: history?.detail,
+              detailTitle: history?.detailTitle,
+              active: history?.open ?? false,
+              menuLabel: labels.actions ?? history?.label ?? '',
+              portalTo,
+              items: [
+                ...(history ? [{ id: 'history', label: history.label, icon: History }] : []),
+                ...(duplicate ? [{ id: 'duplicate', label: duplicate.label, icon: CopyPlus, disabled: duplicate.disabled }] : []),
+                ...(reset ? [{ id: 'reset', label: reset.label, icon: RotateCcw, tone: 'danger' as const, disabled: reset.disabled }] : []),
+              ],
+              onSelect: (id) => {
+                if (id === 'history') history?.onToggle()
+                else if (id === 'duplicate') duplicate?.onClick()
+                else if (id === 'reset') reset?.onClick()
+              },
+            } : undefined}
             // The dock has no close button: the title bar's, top right, is the way out.
             dock={readOnly ? { labels: labels.dock } : {
               labels: labels.dock,
