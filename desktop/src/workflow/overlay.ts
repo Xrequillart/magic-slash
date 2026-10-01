@@ -508,7 +508,10 @@ export type WorkflowProblem =
   | { code: 'duplicate-skill'; nodeId: string; skill: string }
   /** A link into /magic:start is auto: starting a ticket always opens a new agent. */
   | { code: 'auto-into-start'; nodeId: string }
-  /** A step linked to itself. */
+  /**
+   * A step linked to itself, `auto` and whatever it ended on: it would run again on its
+   * own, every time, forever. Taken on an outcome, or offered, a self link is a retry.
+   */
   | { code: 'self-link'; nodeId: string }
   /** Two links between the same two steps. `nodeId` is where they leave from. */
   | { code: 'duplicate-link'; nodeId: string; to: string }
@@ -544,7 +547,7 @@ function problemsOf(workflow: Workflow): WorkflowProblem[] {
   }
   const pairs = new Set<string>()
   for (const link of workflow.links) {
-    if (link.from === link.to) found.push({ code: 'self-link', nodeId: link.from })
+    if (link.from === link.to && link.kind === 'auto' && link.outcome === undefined) found.push({ code: 'self-link', nodeId: link.from })
     // Per outcome: one drawn link taken on two outcomes is two links of the flow.
     const key = outcomeKey(link)
     if (pairs.has(key)) found.push({ code: 'duplicate-link', nodeId: link.from, to: link.to })
@@ -741,11 +744,12 @@ export function setNoteColor(overlay: WorkflowOverlay, nodeId: string, color: st
 
 /**
  * Link `from` to `to`, a suggestion until the admin says otherwise, taken on `outcome`
- * when one is given. A link that already exists between the two, default or drawn,
- * and a step linked to itself are not added: the overlay comes back unchanged.
+ * when one is given. A link that already exists between the two, default or drawn, is
+ * not added: the overlay comes back unchanged. A step may be linked to itself, to run
+ * again (a check retried on `tests_failed`, say).
  */
 export function addLink(overlay: WorkflowOverlay, from: string, to: string, outcome?: string): WorkflowOverlay {
-  if (from === to || isDefaultLink(from, to) || isNoteNodeId(from)) return overlay
+  if (isDefaultLink(from, to) || isNoteNodeId(from)) return overlay
   const existing = overlay.links.find((link) => link.from === from && link.to === to)
   if (existing) {
     // Drawn again from another outcome's port: the link is taken on that one too. One

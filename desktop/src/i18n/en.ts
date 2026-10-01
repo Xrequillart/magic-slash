@@ -864,7 +864,7 @@ export const en = {
   'repo.workflow.inspector.close': 'Close',
   'repo.workflow.warning.unreachable': 'No link comes into this step, so it never runs. Draw one to it from the step it should follow; the links out of it do not count.',
   'repo.workflow.problem.startDisabled': 'Start is turned off: every other step runs from it, so it has to stay on.',
-  'repo.workflow.problem.selfLink': '{step} is linked to itself: a step cannot chain into itself.',
+  'repo.workflow.problem.selfLink': '{step} runs itself again on its own whatever it ends on: it would never stop. Take this link on an outcome, or make it a suggestion.',
   'repo.workflow.problem.duplicateLink': '{from} and {to} are linked twice.',
   'repo.langs.commit': 'Commit Language',
   'repo.langs.pullRequest': 'Pull Request Language',

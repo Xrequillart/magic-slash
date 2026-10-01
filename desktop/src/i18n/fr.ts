@@ -828,7 +828,7 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.workflow.inspector.close': 'Fermer',
   'repo.workflow.warning.unreachable': 'Aucun lien n’arrive sur cette étape, elle ne s’exécutera donc jamais. Tirez-en un vers elle depuis l’étape qu’elle doit suivre : les liens qui en partent ne comptent pas.',
   'repo.workflow.problem.startDisabled': 'Start est désactivée : toutes les autres étapes en partent, elle doit rester active.',
-  'repo.workflow.problem.selfLink': '{step} est reliée à elle-même : une étape ne peut pas s’enchaîner sur elle-même.',
+  'repo.workflow.problem.selfLink': '{step} se relance automatiquement quelle que soit sa fin : elle tournerait sans fin. Prenez ce lien sur un output, ou passez-le en suggestion.',
   'repo.workflow.problem.duplicateLink': '{from} et {to} sont reliées deux fois.',
   'repo.langs.commit': 'Langue des commits',
   'repo.langs.pullRequest': 'Langue des pull requests',

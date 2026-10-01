@@ -61,11 +61,18 @@ describe('editing', () => {
     expect(overlay.links).toEqual([{ from: 'pr', to: CHECK, kind: 'suggest' }])
   })
 
-  it('draws no second link between two steps, no default one again, and none from a step to itself', () => {
+  it('draws no second link between two steps, nor a default one again', () => {
     const overlay = withCheck()
     expect(addLink(overlay, 'start', CHECK)).toBe(overlay)
     expect(addLink(overlay, 'commit', 'pr')).toBe(overlay)
-    expect(addLink(overlay, CHECK, CHECK)).toBe(overlay)
+  })
+
+  it('links a step to itself, to run it again', () => {
+    const overlay = addLink(setStepOutcomes(withCheck(), 'check', ['tests_failed']), CHECK, CHECK, 'tests_failed')
+    expect(overlay.links).toContainEqual({ from: CHECK, to: CHECK, kind: 'suggest', outcomes: ['tests_failed'] })
+    expect(problems(overlay)).toEqual([])
+    expect(problems(setLinkKind(overlay, CHECK, CHECK, 'auto'))).toEqual([])
+    expect(problems(addLink(withCheck(), 'commit', 'commit'))).toEqual([])
   })
 
   it('removes a drawn link, never a default one', () => {
@@ -129,9 +136,10 @@ describe('problems', () => {
     expect(problems(setLinkKind(EMPTY_OVERLAY, 'plan', 'start', 'auto'))).toEqual([{ code: 'auto-into-start', nodeId: 'plan' }])
   })
 
-  it('refuses what only a hand-written overlay can hold: a self link, two links between the same steps', () => {
+  it('refuses a step that reruns itself on its own whatever it ended on, and two links between the same steps', () => {
     const base = addStep(EMPTY_OVERLAY, 'check', AT)
-    expect(problems({ ...base, links: [{ from: CHECK, to: CHECK, kind: 'suggest' }] })).toEqual([{ code: 'self-link', nodeId: CHECK }])
+    expect(problems({ ...base, links: [{ from: CHECK, to: CHECK, kind: 'suggest' }] })).toEqual([])
+    expect(problems({ ...base, links: [{ from: CHECK, to: CHECK, kind: 'auto' }] })).toEqual([{ code: 'self-link', nodeId: CHECK }])
     expect(problems({ ...base, links: [{ from: 'commit', to: 'pr', kind: 'auto' }] }))
       .toEqual([{ code: 'duplicate-link', nodeId: 'commit', to: 'pr' }])
   })
@@ -322,6 +330,18 @@ describe('a custom step\'s outcomes', () => {
   it('are spelled the skills\' way: lower snake_case, each once, never `failed`', () => {
     expect(normalizeOutcomes([' Tests Passed ', 'tests_passed', 'failed', '', '1st', 'ok-ish'])).toEqual(['tests_passed', 'ok-ish'])
   })
+
+  it('say why a typed one cannot be added, after the spelling a step stores', () => {
+    expect(outcomeProblem(' Tests Passed ', [])).toBeUndefined()
+    expect(outcomeProblem('', [])).toBeUndefined()
+    expect(outcomeProblem('Failed', [])).toBe('failed')
+    expect(outcomeProblem('1st', [])).toBe('start')
+    expect(outcomeProblem('_ok', [])).toBe('start')
+    expect(outcomeProblem('ok!', [])).toBe('chars')
+    expect(outcomeProblem('é', [])).toBe('start')
+    expect(outcomeProblem(`a${'b'.repeat(40)}`, [])).toBe('length')
+    expect(outcomeProblem('tests passed', ['tests_passed'])).toBe('duplicate')
+  })
 })
 
 describe('parseOutcomesField', () => {
@@ -335,18 +355,6 @@ describe('parseOutcomesField', () => {
     expect(parseOutcomesField(undefined)).toBeUndefined()
     expect(parseOutcomesField('')).toBeUndefined()
     expect(parseOutcomesField('[failed]')).toBeUndefined()
-  })
-
-  it('say why a typed one cannot be added, after the spelling a step stores', () => {
-    expect(outcomeProblem(' Tests Passed ', [])).toBeUndefined()
-    expect(outcomeProblem('', [])).toBeUndefined()
-    expect(outcomeProblem('Failed', [])).toBe('failed')
-    expect(outcomeProblem('1st', [])).toBe('start')
-    expect(outcomeProblem('_ok', [])).toBe('start')
-    expect(outcomeProblem('ok!', [])).toBe('chars')
-    expect(outcomeProblem('é', [])).toBe('start')
-    expect(outcomeProblem(`a${'b'.repeat(40)}`, [])).toBe('length')
-    expect(outcomeProblem('tests passed', ['tests_passed'])).toBe('duplicate')
   })
 })
 

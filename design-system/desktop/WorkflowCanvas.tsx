@@ -73,8 +73,9 @@ import {
  *    the caller keeps them (a card without one is laid out, `workflowPositions`).
  *  - with `onConnect`, links are DRAWN out of a card's ports onto another card's left
  *    port: `onConnect(from, to, outcome)`, the outcome being the row it left from, none
- *    from the header. A second link between the same two cards, or a card to itself,
- *    cannot be drawn.
+ *    from the header. A card may be linked to itself, by dropping the link on its own
+ *    left port or back on the card. A second link between the same two cards cannot be
+ *    drawn.
  *  - `focusRequest` centres the view on a node, keeping the zoom unless it is too far
  *    out to read. A request is `{ id, n }`: bump `n` to centre on the same node again.
  *  - `dock` floats the editor's `WorkflowDock` at the bottom centre. Data, not a node:
@@ -207,6 +208,9 @@ const FIT_VIEW = { padding: 0.12, maxZoom: 1, minZoom: 0.55 }
 /** Centring on a node never leaves the view further out than this: a problem is read, not spotted. */
 const FOCUS_MIN_ZOOM = 0.8
 const FOCUS_DURATION = 300
+
+/** How far, in screen pixels, a link must be dragged before letting it go on its own card links the card to itself. */
+const SELF_LINK_TRAVEL = 40
 
 /** The repository picker's width, and its list's: a name, not a sentence. */
 const REPOSITORIES_WIDTH = 208
@@ -371,6 +375,12 @@ export function WorkflowCanvas({
   }, [move])
 
   const connect = editable ? onConnect : undefined
+  // Where the pointer was when a link started being drawn, to tell a self link from a click.
+  const connectStart = useRef<{ x: number; y: number } | null>(null)
+  const onConnectStart = useCallback((event: MouseEvent | TouchEvent) => {
+    const point = 'touches' in event ? event.touches[0] : event
+    connectStart.current = point ? { x: point.clientX, y: point.clientY } : null
+  }, [])
   const onConnectLink = useCallback((connection: Connection) => {
     const from = nodes.find((node) => node.id === connection.source)
     if (!from || !connection.target) return
@@ -384,7 +394,13 @@ export function WorkflowCanvas({
     const point = 'changedTouches' in event ? event.changedTouches[0] : event
     const card = document.elementFromPoint(point.clientX, point.clientY)?.closest('.react-flow__node-workflow')
     const other = card?.getAttribute('data-id')
-    if (!other || other === state.fromNode.id) return
+    if (!other) return
+    // Back on its own card: a self link, but only once the pointer has travelled. A port
+    // pressed and let go where it was is a click, and lands on its own card too.
+    if (other === state.fromNode.id) {
+      const start = connectStart.current
+      if (!start || Math.hypot(point.clientX - start.x, point.clientY - start.y) < SELF_LINK_TRAVEL) return
+    }
     const [from, to] = state.fromHandle.type === 'source' ? [state.fromNode.id, other] : [other, state.fromNode.id]
     if (links.some((link) => link.from === from && link.to === to)) return
     const source = nodes.find((node) => node.id === from)
@@ -392,7 +408,6 @@ export function WorkflowCanvas({
     connect(from, to, source ? workflowOutcomeOfExit(source, handle) : undefined)
   }, [connect, links, nodes])
   const isValidConnection = useCallback<IsValidConnection>((connection) =>
-    connection.source !== connection.target &&
     !links.some((link) => link.from === connection.source && link.to === connection.target),
   [links])
 
@@ -423,6 +438,7 @@ export function WorkflowCanvas({
         onNodesChange={move ? onNodesChange : undefined}
         onNodeDragStop={move ? onNodeDragStop : undefined}
         onConnect={connect ? onConnectLink : undefined}
+        onConnectStart={connect ? onConnectStart : undefined}
         onConnectEnd={connect ? onConnectEnd : undefined}
         isValidConnection={isValidConnection}
         connectionRadius={28}
