@@ -202,6 +202,10 @@ export { ModalHeader, MODAL_HEADER_HEIGHT } from './ModalHeader'
 export type { ModalHeaderProps } from './ModalHeader'
 export { OutputSample } from './OutputSample'
 export type { OutputSampleProps } from './OutputSample'
+export { InvitationWizard } from './InvitationWizard'
+export type { InvitationWizardField, InvitationWizardProps, InvitationWizardRepo, InvitationWizardStep } from './InvitationWizard'
+export { OrganizationDialog } from './OrganizationDialog'
+export type { OrganizationDialogKind, OrganizationDialogProps } from './OrganizationDialog'
 export { OrganizationCard } from './OrganizationCard'
 export type {
   OrganizationCardInvitation,

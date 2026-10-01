@@ -11,6 +11,7 @@ const PROPS: PropRow[] = [
   { name: 'confirmLabel · cancelLabel', type: 'string', required: true, description: 'The two answers, cancel first. Each takes half the row.' },
   { name: 'onConfirm · onCancel', type: '() => void', required: true, description: 'The answers. A press on the dimmed ground is onCancel too. Enter and Escape are the caller’s to bind.' },
   { name: 'tone', type: '"warning" | "danger"', fallback: '"warning"', description: 'How serious the question is, drawn by the mark: the yellow triangle for what can be taken back, the red one for what cannot.' },
+  { name: 'busy', type: 'boolean', description: 'The answer is out: the confirm button spins and stops answering.' },
   { name: 'confirmRef', type: 'Ref<HTMLButtonElement>', description: 'The confirm button, for the caller to focus when the dialog opens, so Enter visibly means yes.' },
   { name: 'backdropClassName · className · onAnimationEnd · portalTo', type: 'string · string · (e) => void · HTMLElement | null', description: 'Passed straight to Modal: the caller’s animation, and where a drawing of the app portals it.' },
 ]

@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { Mail, ChevronLeft, ChevronRight, X, Check, Download, Folder, FolderOpen, Loader2 } from '@ds/desktop/icons'
-import { Input } from '@ds/desktop'
+import { InvitationWizard, type InvitationWizardRepo, type InvitationWizardStep } from '@ds/desktop'
 import { useAuth } from '../hooks/useAuth'
 import { useOrg } from '../hooks/useOrg'
+import { useDialog } from '../hooks/useDialog'
 import { useConfig } from '../hooks/useConfig'
 import { useT, type Translate } from '../i18n'
 import { isCloneErrorCode } from '../../types'
@@ -53,12 +53,6 @@ interface RowState {
   error?: string
 }
 
-const TOTAL_STEPS = 3
-
-/** The row's two action buttons, which differ only in icon and label. */
-const ROW_ACTION =
-  'flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-accent border border-accent/20 rounded-lg hover:bg-accent/10 transition-all disabled:opacity-40'
-
 /**
  * What to show for a failed clone.
  *
@@ -74,112 +68,57 @@ function cloneErrorMessage(error: unknown, t: Translate): string {
   return isCloneErrorCode(unwrapped) ? t(unwrapped) : unwrapped || t('repoSetup.error')
 }
 
-interface OrgRepoBindRowProps {
-  row: OrgRepoRow
-  state?: RowState
-  onLink: () => void
-  onClone: () => void
-  onConfirm: (folderPath: string) => void
-  onCancel: () => void
-}
-
 /**
- * One repository of the organization, with the folder it is bound to on this
- * machine — or the yellow "no folder yet" state and the button to bind one.
- *
- * Local to this wizard on purpose: the launch modal's row answers a different
- * question ("which of your repositories are broken"), and merging the two would
- * make each one carry the other's states.
+ * One repository of the organization as the wizard's row draws it: the folder it is
+ * bound to on this machine, or the "no folder yet" state and the buttons to bind one.
  */
-function OrgRepoBindRow({ row, state = {}, onLink, onClone, onConfirm, onCancel }: OrgRepoBindRowProps) {
-  const t = useT()
+function repoRow(
+  row: OrgRepoRow,
+  state: RowState,
+  t: Translate,
+  actions: { onLink: () => void; onClone: () => void; onConfirm: (folderPath: string) => void; onCancel: () => void },
+): InvitationWizardRepo {
   const pending = state.pending
   // Only offered for a repo that is BOTH clonable and absent. A repo already on
   // disk gets "Link folder" alone: cloning it again would either fail on a
   // non-empty folder or leave the user with a second, unrelated checkout.
   const canClone = !!row.remoteUrl && !row.path
-
-  return (
-    <div className="px-3 py-2 bg-surface border border-line-field rounded-lg">
-      <div className="flex items-center gap-2">
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium truncate">{row.displayName}</div>
-          {row.path ? (
-            <div className="text-xs text-text-secondary/50 truncate">{row.path}</div>
-          ) : (
-            // The same state the launch modal names, from the same table — one
-            // vocabulary and one tone for "no folder on this machine".
-            <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-[11px] rounded-full bg-yellow/10 text-yellow">
-              <FolderOpen className="w-3 h-3" />
-              {t(REASON_META['no-local-path'].labelKey)}
-            </span>
-          )}
-          {canClone && (
-            // Show what Clone will actually fetch. The address is contributed by
-            // whichever teammate first had the repo on disk, so the person about
-            // to run `git clone` on it is entitled to see it beforehand rather
-            // than discover it in their shell history afterwards.
-            <div className="text-[11px] text-text-secondary/50 truncate mt-0.5">{row.remoteUrl}</div>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          {canClone && (
-            <button onClick={onClone} disabled={!!state.busy} className={ROW_ACTION}>
-              {state.busy === 'clone'
-                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />{t('invite.wizard.cloning')}</>
-                : <><Download className="w-3.5 h-3.5" />{t('invite.wizard.clone')}</>}
-            </button>
-          )}
-          <button onClick={onLink} disabled={!!state.busy} className={ROW_ACTION}>
-            {state.busy === 'link'
-              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              : <><FolderOpen className="w-3.5 h-3.5" />{t(row.path ? 'invite.wizard.changeFolder' : 'invite.wizard.linkFolder')}</>}
-          </button>
-        </div>
-      </div>
-
-      {/* Name mismatch — a question, never a wall: the user can link anyway. */}
-      {pending && (
-        <div className="mt-2 px-3 py-2 bg-yellow/10 border border-yellow/20 rounded-lg text-xs text-yellow">
-          <p>
-            {pending.kind === 'belongs-to-other'
-              ? t('invite.wizard.belongsToOther', { folder: repoBasename(pending.path), name: pending.otherRepoName })
-              : t('invite.wizard.mismatchWarning', { folder: repoBasename(pending.path), name: row.displayName })}
-          </p>
-          <div className="flex items-center gap-2 mt-2">
-            <button
-              onClick={() => onConfirm(pending.path)}
-              className="px-2.5 py-1 font-medium bg-yellow/15 hover:bg-yellow/25 rounded-lg transition-colors"
-            >
-              {t('invite.wizard.linkAnyway')}
-            </button>
-            <button
-              onClick={onCancel}
-              className="px-2.5 py-1 text-text-secondary hover:text-ink transition-colors"
-            >
-              {t('common.cancel')}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Added, but the main process flagged the folder — yellow, not red. */}
-      {state.warning && (
-        <div className="mt-2 px-3 py-2 bg-yellow/10 border border-yellow/20 rounded-lg text-xs text-yellow">
-          {state.warning}
-        </div>
-      )}
-
-      {/* A verdict and a failure are alternatives, so they share one block. */}
-      {(state.reason || state.error) && (
-        <div className="mt-2 px-3 py-2 bg-red/10 border border-red/20 rounded-lg text-xs text-red">
-          {state.reason
-            ? t('invite.wizard.linkInvalid', { reason: t(REASON_META[state.reason].labelKey) })
-            : state.error}
-        </div>
-      )}
-    </div>
-  )
+  return {
+    id: row.key,
+    name: row.displayName,
+    path: row.path || undefined,
+    // The same state the launch modal names, from the same table: one vocabulary
+    // for "no folder on this machine".
+    missingLabel: t(REASON_META['no-local-path'].labelKey),
+    clone: canClone && row.remoteUrl ? {
+      label: t('invite.wizard.clone'),
+      busyLabel: t('invite.wizard.cloning'),
+      remoteUrl: row.remoteUrl,
+      busy: state.busy === 'clone',
+      onClick: actions.onClone,
+    } : undefined,
+    link: {
+      label: t(row.path ? 'invite.wizard.changeFolder' : 'invite.wizard.linkFolder'),
+      busy: state.busy === 'link',
+      onClick: actions.onLink,
+    },
+    busy: !!state.busy,
+    // Name mismatch: a question, never a wall. The user can link anyway.
+    pending: pending ? {
+      message: pending.kind === 'belongs-to-other'
+        ? t('invite.wizard.belongsToOther', { folder: repoBasename(pending.path), name: pending.otherRepoName })
+        : t('invite.wizard.mismatchWarning', { folder: repoBasename(pending.path), name: row.displayName }),
+      confirmLabel: t('invite.wizard.linkAnyway'),
+      cancelLabel: t('common.cancel'),
+      onConfirm: () => actions.onConfirm(pending.path),
+      onCancel: actions.onCancel,
+    } : undefined,
+    warning: state.warning,
+    // A verdict and a failure are alternatives, so they share one note.
+    error: state.reason
+      ? t('invite.wizard.linkInvalid', { reason: t(REASON_META[state.reason].labelKey) })
+      : state.error,
+  }
 }
 
 /**
@@ -194,7 +133,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
   const { config, loadConfig, addRepository, updateRepository } = useConfig()
   const t = useT()
 
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState<InvitationWizardStep>(1)
   const [token, setToken] = useState(initialToken)
   const [isNewAccount, setIsNewAccount] = useState(true)
   const [email, setEmail] = useState('')
@@ -229,14 +168,8 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
       .catch(() => setCloneDestinationState(null))
   }, [step, cloneDestination])
 
-  useEffect(() => {
-    if (!isOpen) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); onClose() }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
+  // Escape, and the enter and exit animation.
+  const dialog = useDialog(isOpen, onClose)
 
   // Step 1 → 2: authenticate then accept the invitation (membership + inherit config).
   const handleAcceptInvitation = useCallback(async () => {
@@ -439,225 +372,65 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
     }
   }, [busy, loadConfig, t])
 
-  if (!isOpen) return null
+  if (!dialog.mounted) return null
 
   return (
-    <div
-      // z-56 like `Modal`, and for its reason: this opens from the account page, which
-      // lives inside `ControlCenter`'s panel at 55. See the note on that component.
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-[56] animate-modal-backdrop"
-      onClick={onClose}
-    >
-      <div
-        className="bg-bg-secondary border border-line rounded-xl w-full max-w-md mx-4 animate-modal-content"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-accent/10 rounded-lg">
-              <Mail className="w-4 h-4 text-accent" />
-            </div>
-            <h3 className="text-base font-semibold">{t('invite.wizard.title')}</h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 text-text-secondary hover:text-ink hover:bg-surface-strong rounded-lg transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Step indicator */}
-        <div className="flex items-center gap-1.5 px-5 pb-4">
-          {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-            <div
-              key={i}
-              className={`h-1 flex-1 rounded-full transition-colors ${i + 1 <= step ? 'bg-accent' : 'bg-surface-strong'}`}
-            />
-          ))}
-        </div>
-
-        {/* Content */}
-        <div className="px-5 pb-5 min-h-[220px]">
-          {step === 1 && (
-            <div className="space-y-3">
-              <div>
-                <div className="text-sm font-medium mb-1">{t('invite.wizard.acceptTitle')}</div>
-                <div className="text-xs text-text-secondary/50 mb-3">
-                  {t('invite.wizard.acceptHelp')}
-                </div>
-              </div>
-              <Input
-                value={token}
-                onChange={setToken}
-                placeholder={t('invite.wizard.tokenPlaceholder')}
-                autoFocus
-                mono
-                className="w-full"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setIsNewAccount(true)}
-                  className={`flex-1 px-3 py-1.5 text-xs rounded-lg border transition-all ${isNewAccount ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-surface border-line-field text-text-secondary hover:text-ink'}`}
-                >
-                  {t('invite.wizard.newAccount')}
-                </button>
-                <button
-                  onClick={() => setIsNewAccount(false)}
-                  className={`flex-1 px-3 py-1.5 text-xs rounded-lg border transition-all ${!isNewAccount ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-surface border-line-field text-text-secondary hover:text-ink'}`}
-                >
-                  {t('invite.wizard.existingAccount')}
-                </button>
-              </div>
-              <Input
-                type="email"
-                value={email}
-                onChange={setEmail}
-                placeholder={t('invite.wizard.emailPlaceholder')}
-                className="w-full"
-              />
-              <Input
-                type="password"
-                value={password}
-                onChange={setPassword}
-                placeholder={t('invite.wizard.passwordPlaceholder')}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleAcceptInvitation() }}
-                className="w-full"
-              />
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="space-y-3">
-              <div>
-                <div className="text-sm font-medium mb-1">{t('invite.wizard.orgReposTitle')}</div>
-                <div className="text-xs text-text-secondary/50 mb-3">
-                  {t('invite.wizard.orgReposHelp')}
-                </div>
-              </div>
-
-              {/* Where clones land. Shown before the rows because it applies to
-                  all of them, and changeable here because otherwise the "chosen
-                  once, remembered after" half of the flow has no way in. */}
-              {cloneDestination && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-surface border border-line-field rounded-lg">
-                  <Folder className="w-3.5 h-3.5 text-icon flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[11px] text-text-secondary/60">{t('invite.wizard.cloneDestination')}</div>
-                    <div className="text-xs truncate" title={cloneDestination}>{cloneDestination}</div>
-                  </div>
-                  <button
-                    onClick={handleChangeDestination}
-                    className="px-2.5 py-1 text-xs font-medium text-accent border border-accent/20 rounded-lg hover:bg-accent/10 transition-all flex-shrink-0"
-                  >
-                    {t('invite.wizard.changeDestination')}
-                  </button>
-                </div>
-              )}
-
-              {/* Scrollable, so an org with twenty repositories stays usable */}
-              <div className="space-y-1.5 max-h-[40vh] overflow-y-auto">
-                {orgRows.length === 0 && addedRows.length === 0 && (
-                  <div className="px-3 py-2 bg-surface border border-line-field rounded-lg text-xs text-text-secondary">
-                    {t('invite.wizard.noOrgRepos')}
-                  </div>
-                )}
-                {[...orgRows, ...addedRows].map((row) => (
-                  <OrgRepoBindRow
-                    key={row.key}
-                    row={row}
-                    state={rowStates[row.key]}
-                    onLink={() => handleLinkFolder(row)}
-                    onClone={() => handleClone(row)}
-                    onConfirm={(folderPath) => bindFolder(row.key, folderPath)}
-                    onCancel={() => handleCancelPending(row.key)}
-                  />
-                ))}
-              </div>
-
-              <button
-                onClick={handleAddOtherRepo}
-                disabled={busy}
-                className="w-full flex items-center justify-center gap-2 py-3 text-sm border border-dashed border-line-strong rounded-lg text-text-secondary hover:border-accent/40 hover:text-ink transition-colors disabled:opacity-40"
-              >
-                <Folder className="w-4 h-4" />
-                {t('invite.wizard.addOtherRepo')}
-              </button>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="flex flex-col items-center justify-center text-center py-8 space-y-3">
-              <div className="p-3 bg-green/10 rounded-full">
-                <Check className="w-6 h-6 text-green" />
-              </div>
-              <div className="text-sm font-medium">{t('invite.wizard.doneTitle')}</div>
-              <div className="text-xs text-text-secondary/60">
-                {orgName ? t('invite.wizard.doneNamed', { name: orgName }) : t('invite.wizard.doneFallback')}
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div className="mt-3 px-3 py-2 bg-red/10 border border-red/20 rounded-lg text-xs text-red">
-              {error}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between px-5 pb-5">
-          <div>
-            {step === 2 && (
-              <button
-                onClick={() => setStep(1)}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                {t('common.back')}
-              </button>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {step < 3 && (
-              <button
-                onClick={onClose}
-                className="px-3 py-1.5 text-xs font-medium text-text-secondary/50 hover:text-text-secondary transition-colors"
-              >
-                {t('common.skip')}
-              </button>
-            )}
-            {step === 1 && (
-              <button
-                onClick={handleAcceptInvitation}
-                disabled={busy}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-accent border border-accent/20 rounded-lg hover:bg-accent/10 transition-all disabled:opacity-40"
-              >
-                {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <>{t('invite.wizard.accept')}<ChevronRight className="w-3.5 h-3.5" /></>}
-              </button>
-            )}
-            {step === 2 && (
-              <button
-                onClick={handleFinishRepos}
-                disabled={busy}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
-              >
-                {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><ChevronRight className="w-3.5 h-3.5" />{t('invite.wizard.continue')}</>}
-              </button>
-            )}
-            {step === 3 && (
-              <button
-                onClick={onClose}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all"
-              >
-                <Check className="w-3.5 h-3.5" />
-                {t('common.done')}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+    <InvitationWizard
+      step={step}
+      title={t('invite.wizard.title')}
+      closeTitle={t('modal.closeEsc')}
+      accept={{
+        title: t('invite.wizard.acceptTitle'),
+        help: t('invite.wizard.acceptHelp'),
+        token: { value: token, onChange: setToken, placeholder: t('invite.wizard.tokenPlaceholder') },
+        account: {
+          ariaLabel: t('invite.wizard.acceptTitle'),
+          isNew: isNewAccount,
+          onChange: setIsNewAccount,
+          newLabel: t('invite.wizard.newAccount'),
+          existingLabel: t('invite.wizard.existingAccount'),
+        },
+        email: { value: email, onChange: setEmail, placeholder: t('invite.wizard.emailPlaceholder') },
+        password: { value: password, onChange: setPassword, placeholder: t('invite.wizard.passwordPlaceholder') },
+      }}
+      repos={{
+        title: t('invite.wizard.orgReposTitle'),
+        help: t('invite.wizard.orgReposHelp'),
+        // Where clones land, changeable here because otherwise the "chosen once,
+        // remembered after" half of the flow has no way in.
+        destination: cloneDestination ? {
+          label: t('invite.wizard.cloneDestination'),
+          path: cloneDestination,
+          changeLabel: t('invite.wizard.changeDestination'),
+          onChange: handleChangeDestination,
+        } : undefined,
+        empty: t('invite.wizard.noOrgRepos'),
+        rows: [...orgRows, ...addedRows].map((row) => repoRow(row, rowStates[row.key] ?? {}, t, {
+          onLink: () => handleLinkFolder(row),
+          onClone: () => handleClone(row),
+          onConfirm: (folderPath) => bindFolder(row.key, folderPath),
+          onCancel: () => handleCancelPending(row.key),
+        })),
+        addOther: { label: t('invite.wizard.addOtherRepo'), onClick: handleAddOtherRepo, disabled: busy },
+      }}
+      done={{
+        title: t('invite.wizard.doneTitle'),
+        body: orgName ? t('invite.wizard.doneNamed', { name: orgName }) : t('invite.wizard.doneFallback'),
+      }}
+      error={error ?? undefined}
+      labels={{
+        back: t('common.back'),
+        skip: t('common.skip'),
+        accept: t('invite.wizard.accept'),
+        continue: t('invite.wizard.continue'),
+        done: t('common.done'),
+      }}
+      busy={busy}
+      onBack={() => setStep(1)}
+      onAccept={handleAcceptInvitation}
+      onContinue={handleFinishRepos}
+      onClose={onClose}
+      {...dialog.motion}
+    />
   )
 }

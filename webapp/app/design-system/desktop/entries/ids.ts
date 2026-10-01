@@ -87,6 +87,8 @@ export type EntryId =
   | 'sectionheader'
   | 'profilecard'
   | 'organizationcard'
+  | 'organizationdialog'
+  | 'invitationwizard'
   | 'scriptcard'
   | 'repositorycard'
   | 'item'
@@ -228,6 +230,8 @@ export const ENTRY_LABELS: Record<EntryId, string> = {
   sectionheader: 'SectionHeader',
   profilecard: 'ProfileCard',
   organizationcard: 'OrganizationCard',
+  organizationdialog: 'OrganizationDialog',
+  invitationwizard: 'InvitationWizard',
   scriptcard: 'ScriptCard',
   repositorycard: 'RepositoryCard',
   item: 'Item',
@@ -410,6 +414,8 @@ export const ENTRY_USES: Record<EntryId, EntryId[]> = {
   sectionheader: ['button', 'icon', 'text'],
   profilecard: ['fieldtable', 'text'],
   organizationcard: ['card', 'avatar', 'button', 'buttonicon', 'icon', 'loader', 'select', 'status', 'text'],
+  organizationdialog: ['modal', 'modalheader', 'input', 'select', 'button', 'text'],
+  invitationwizard: ['modal', 'modalheader', 'card', 'input', 'tabstrip', 'status', 'banner', 'emptystate', 'button', 'icon', 'text'],
   scriptcard: ['button', 'loader', 'icon', 'text'],
   repositorycard: ['card', 'headerrepocard', 'branchcard', 'uncommittedchangescard', 'commitcard'],
   // `Item` holds a ground and a shape and draws nothing: the rows inside it are the
@@ -636,6 +642,8 @@ export const ENTRY_NOTES: Record<EntryId, string> = {
   sectionheader: 'What the thing under it is',
   profilecard: 'Who the human is, as the skills read it',
   organizationcard: 'One organization, and everyone in it',
+  organizationdialog: 'Create, join, or invite into one',
+  invitationwizard: 'From an invitation to your folders',
   scriptcard: 'A process still alive on your machine',
   repositorycard: 'One repository, and everything happening to it',
   sidebaragentcoderinfo: 'The right column, and the agent in it',

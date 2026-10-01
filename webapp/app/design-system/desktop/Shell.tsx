@@ -18,6 +18,8 @@ import { CardEntry } from './entries/CardEntry'
 import { KbdEntry } from './entries/KbdEntry'
 import { SelectEntry } from './entries/SelectEntry'
 import { OrganizationCardEntry } from './entries/OrganizationCardEntry'
+import { OrganizationDialogEntry } from './entries/OrganizationDialogEntry'
+import { InvitationWizardEntry } from './entries/InvitationWizardEntry'
 import { FactListEntry } from './entries/FactListEntry'
 import { LanguageCardEntry } from './entries/LanguageCardEntry'
 import { SettingRowEntry } from './entries/SettingRowEntry'
@@ -207,6 +209,8 @@ const ENTRIES: Record<
   kbd: KbdEntry,
   select: SelectEntry,
   organizationcard: OrganizationCardEntry,
+  organizationdialog: OrganizationDialogEntry,
+  invitationwizard: InvitationWizardEntry,
   factlist: FactListEntry,
   languagecard: LanguageCardEntry,
   settingrow: SettingRowEntry,

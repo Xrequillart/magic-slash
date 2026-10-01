@@ -1,12 +1,12 @@
 import { useState, useCallback, useMemo } from 'react'
-import { Cloud, Users, Mail, Loader2, Building2, AlertTriangle, Archive, Plus, UserPlus } from '@ds/desktop/icons'
+import { Cloud, Users, Loader2, Building2, Plus, UserPlus } from '@ds/desktop/icons'
 import { useAuth } from '../../hooks/useAuth'
 import { useOrg } from '../../hooks/useOrg'
 import { useMemberAvatars } from '../../hooks/useMemberAvatars'
+import { useDialog } from '../../hooks/useDialog'
 import { useStore } from '../../store'
-import { Modal } from '../../components/Modal'
-import { RoleSelect, roleOptions } from './RoleSelect'
-import { Input, OrganizationCard, SectionHeader, TabStrip } from '@ds/desktop'
+import { roleOptions } from './RoleSelect'
+import { ConfirmDialog, OrganizationCard, OrganizationDialog, SectionHeader, TabStrip } from '@ds/desktop'
 import { TabSweep } from '../../components/TabSweep'
 import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
@@ -110,6 +110,15 @@ export function OrgPage() {
   const [showJoin, setShowJoin] = useState(false)
   const [joinToken, setJoinToken] = useState('')
   const [joining, setJoining] = useState(false)
+
+  const closeInvite = useCallback(() => setInviteOrg(null), [])
+  const closeCreate = useCallback(() => setShowCreate(false), [])
+  const closeJoin = useCallback(() => setShowJoin(false), [])
+  const inviteDialog = useDialog(inviteOrg !== null, closeInvite)
+  const createDialog = useDialog(showCreate, closeCreate)
+  const joinDialog = useDialog(showJoin, closeJoin)
+  const closeArchive = useCallback(() => setArchiveOrgTarget(null), [])
+  const archiveDialog = useDialog(archiveOrgTarget !== null, closeArchive)
 
   // Which organization's card is open. In the store rather than in this
   // component: the settings rail lists the organizations as well, and the two
@@ -410,164 +419,67 @@ export function OrgPage() {
         </>
       )}
 
-      {/* Invite a member */}
-      <Modal
-        isOpen={inviteOrg !== null}
-        onClose={() => setInviteOrg(null)}
-        title={inviteOrg ? t('org.inviteModal.title', { name: inviteOrg.name }) : t('org.inviteModal.titleFallback')}
-        footer={
-          <>
-            <button
-              onClick={() => setInviteOrg(null)}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              onClick={handleInvite}
-              disabled={inviting || !inviteEmail.trim()}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
-            >
-              {inviting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
-              {t('org.inviteModal.send')}
-            </button>
-          </>
-        }
-      >
-        <div className="space-y-3">
-          <p className="text-xs text-text-secondary/60">
-            {t('org.inviteModal.help')}
-          </p>
-          <Input
-            type="email"
-            value={inviteEmail}
-            onChange={setInviteEmail}
-            placeholder={t('org.inviteModal.emailPlaceholder')}
-            autoFocus
-            onKeyDown={(e) => { if (e.key === 'Enter') handleInvite() }}
-            className="w-full"
-          />
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-secondary/60">{t('org.colRole')}</span>
-            <RoleSelect value={inviteRole} onChange={setInviteRole} />
-          </div>
-        </div>
-      </Modal>
+      {inviteDialog.mounted && (
+        <OrganizationDialog
+          kind="invite"
+          title={inviteOrg ? t('org.inviteModal.title', { name: inviteOrg.name }) : t('org.inviteModal.titleFallback')}
+          help={t('org.inviteModal.help')}
+          field={{ value: inviteEmail, onChange: setInviteEmail, placeholder: t('org.inviteModal.emailPlaceholder') }}
+          role={{
+            label: t('org.colRole'),
+            value: inviteRole,
+            options: roleOptions(t),
+            onChange: (role) => setInviteRole(role as MembershipRole),
+          }}
+          submit={{ label: t('org.inviteModal.send'), onClick: handleInvite, busy: inviting, disabled: !inviteEmail.trim() }}
+          cancelLabel={t('common.cancel')}
+          onCancel={closeInvite}
+          closeTitle={t('modal.closeEsc')}
+          {...inviteDialog.motion}
+        />
+      )}
 
-      {/* Create an organization */}
-      <Modal
-        isOpen={showCreate}
-        onClose={() => setShowCreate(false)}
-        title={t('org.create')}
-        footer={
-          <>
-            <button
-              onClick={() => setShowCreate(false)}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              onClick={handleCreate}
-              disabled={creating || !createName.trim()}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
-            >
-              {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-              {t('org.createModal.submit')}
-            </button>
-          </>
-        }
-      >
-        <div className="space-y-2">
-          <p className="text-xs text-text-secondary/60">
-            {t('org.createModal.help')}
-          </p>
-          <Input
-            value={createName}
-            onChange={setCreateName}
-            placeholder={t('org.createModal.namePlaceholder')}
-            autoFocus
-            onKeyDown={(e) => { if (e.key === 'Enter') handleCreate() }}
-            className="w-full"
-          />
-        </div>
-      </Modal>
+      {createDialog.mounted && (
+        <OrganizationDialog
+          kind="create"
+          title={t('org.create')}
+          help={t('org.createModal.help')}
+          field={{ value: createName, onChange: setCreateName, placeholder: t('org.createModal.namePlaceholder') }}
+          submit={{ label: t('org.createModal.submit'), onClick: handleCreate, busy: creating, disabled: !createName.trim() }}
+          cancelLabel={t('common.cancel')}
+          onCancel={closeCreate}
+          closeTitle={t('modal.closeEsc')}
+          {...createDialog.motion}
+        />
+      )}
 
-      {/* Join an organization */}
-      <Modal
-        isOpen={showJoin}
-        onClose={() => setShowJoin(false)}
-        title={t('org.join')}
-        footer={
-          <>
-            <button
-              onClick={() => setShowJoin(false)}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              onClick={handleJoin}
-              disabled={joining || !joinToken.trim()}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
-            >
-              {joining ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
-              {t('org.joinModal.submit')}
-            </button>
-          </>
-        }
-      >
-        <div className="space-y-2">
-          <p className="text-xs text-text-secondary/60">
-            {t('org.joinModal.help')}
-          </p>
-          <Input
-            value={joinToken}
-            onChange={setJoinToken}
-            placeholder={t('org.joinModal.tokenPlaceholder')}
-            autoFocus
-            onKeyDown={(e) => { if (e.key === 'Enter') handleJoin() }}
-            className="w-full"
-          />
-        </div>
-      </Modal>
+      {joinDialog.mounted && (
+        <OrganizationDialog
+          kind="join"
+          title={t('org.join')}
+          help={t('org.joinModal.help')}
+          field={{ value: joinToken, onChange: setJoinToken, placeholder: t('org.joinModal.tokenPlaceholder') }}
+          submit={{ label: t('org.joinModal.submit'), onClick: handleJoin, busy: joining, disabled: !joinToken.trim() }}
+          cancelLabel={t('common.cancel')}
+          onCancel={closeJoin}
+          closeTitle={t('modal.closeEsc')}
+          {...joinDialog.motion}
+        />
+      )}
 
-      {/* Archive organization (danger) */}
-      <Modal
-        isOpen={archiveOrgTarget !== null}
-        onClose={() => setArchiveOrgTarget(null)}
-        title={t('org.archive')}
-        footer={
-          <>
-            <button
-              onClick={() => setArchiveOrgTarget(null)}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              onClick={handleArchive}
-              disabled={archiving}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-red hover:bg-red/80 rounded-lg transition-all disabled:opacity-40"
-            >
-              {archiving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />}
-              {t('org.archive')}
-            </button>
-          </>
-        }
-      >
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-red/10 rounded-lg flex-shrink-0">
-            <AlertTriangle className="w-4 h-4 text-red" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm text-ink">{t('org.archiveModal.confirm', { name: archiveOrgTarget?.name ?? t('org.archiveModal.thisOrganization') })}</p>
-            <p className="text-xs text-text-secondary/60">
-              {t('org.archiveModal.body')}
-            </p>
-          </div>
-        </div>
-      </Modal>
+      {archiveDialog.mounted && (
+        <ConfirmDialog
+          tone="danger"
+          title={t('org.archiveModal.confirm', { name: archiveOrgTarget?.name ?? t('org.archiveModal.thisOrganization') })}
+          body={t('org.archiveModal.body')}
+          confirmLabel={t('org.archive')}
+          cancelLabel={t('common.cancel')}
+          busy={archiving}
+          onConfirm={handleArchive}
+          onCancel={closeArchive}
+          {...archiveDialog.motion}
+        />
+      )}
     </div>
   )
 }

@@ -43,6 +43,8 @@ export interface ConfirmDialogProps {
   onCancel: () => void
   /** How serious the question is, drawn by the mark. `warning` unless it cannot be undone. */
   tone?: ConfirmDialogTone
+  /** The answer is out: the confirm button spins and stops answering. */
+  busy?: boolean
   /** The confirm button, for the caller to focus when the dialog opens. */
   confirmRef?: Ref<HTMLButtonElement>
   /** The caller's enter and exit animation: see `Modal`, which owns neither. */
@@ -67,6 +69,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   tone = 'warning',
+  busy,
   confirmRef,
   backdropClassName,
   className = '',
@@ -94,7 +97,7 @@ export function ConfirmDialog({
         <Text size="sm" tone="secondary">{body}</Text>
         <div className="flex gap-2">
           <Button tone="neutral" size="sm" onClick={onCancel} className="flex-1">{cancelLabel}</Button>
-          <Button ref={confirmRef} tone="danger" size="sm" onClick={onConfirm} className="flex-1">{confirmLabel}</Button>
+          <Button ref={confirmRef} tone="danger" size="sm" busy={busy} onClick={onConfirm} className="flex-1">{confirmLabel}</Button>
         </div>
       </Card>
     </Modal>
