@@ -109,7 +109,7 @@ export function ContextAgentCard({
     // vertical padding stays small — matching the full card's would undo the point of
     // folding it.
     return (
-      <Card padding="compact" className="flex items-center gap-2">
+      <Card ground="raised" padding="compact" className="flex items-center gap-2">
         <Label tone="claude-code">Claude Code</Label>
         {/* Capped at a third of the row so the bar does not span the whole card;
             `ml-auto` groups it with the percent and the button. */}
@@ -125,7 +125,7 @@ export function ContextAgentCard({
   return (
     // `gap-2`, the sidebar column's own spacing: a gap sits between children only, so
     // it also skips the blocks that render nothing.
-    <Card className={`flex flex-col gap-2 ${className}`.trim()}>
+    <Card ground="raised" className={`flex flex-col gap-2 ${className}`.trim()}>
       {/* WHAT IS RUNNING, in one phrase: Claude Code, on this model. The model was
           pinned to the far right once — a pill at the other end of the row from the
           thing it qualifies, with the fold button as its only neighbour, which made it

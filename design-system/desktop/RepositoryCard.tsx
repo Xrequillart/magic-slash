@@ -80,7 +80,7 @@ export function RepositoryCard({
   className = '',
 }: RepositoryCardProps) {
   return (
-    <Card className={`flex flex-col gap-2 ${className}`.trim()}>
+    <Card ground="raised" className={`flex flex-col gap-2 ${className}`.trim()}>
       <HeaderRepoCard {...header} />
       {activity}
       {branch && <BranchCard {...branch} />}

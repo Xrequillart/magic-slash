@@ -66,7 +66,7 @@ export function TitleAgentCard({
      * picker is an absolutely positioned panel that hangs BELOW this row, and a card
      * that clipped its own children would cut the menu off at the first option.
      */
-    <Card className={className}>
+    <Card ground="raised" className={className}>
       <div className="flex items-center justify-between mb-3 gap-2">
         {ticket ? <Label {...ticket} size="sm" /> : <span />}
         {status && <Status {...status} />}

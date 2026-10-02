@@ -101,7 +101,7 @@ export function UsageClaudeCodeCard({
   const hasLimits = limits.length > 0
 
   return (
-    <Card padding="tight" className={className}>
+    <Card ground="raised" padding="tight" className={className}>
       {collapsed ? (
         <div className="flex items-center justify-between gap-1.5">
           {hasLimits ? (
