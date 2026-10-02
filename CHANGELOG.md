@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.110.0] - 2026-10-02
+
+### Added
+
+- **Desktop**: List the jira, github and slack mcp servers under settings connections
+
+### Changed
+
+- **Landing**: Refresh the skill icons on the site
+- **Skills**: Refresh the skill icons and add one for magic-action
+- **Skills**: Bump the hidden magic-action skill in the release checklist
+
+### Fixed
+
+- **Desktop**: Draw the settings row logo tile at the account card size
+
 ## [0.109.0] - 2026-10-02
 
 ### Added
@@ -3665,6 +3681,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.110.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.110.0
 [0.109.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.109.0
 [0.108.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.108.0
 [0.107.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.107.1
