@@ -13,7 +13,8 @@ import type { McpServerState } from '../../../types'
  * is the only one to know about a connector of the user's claude.ai account.
  *
  *  - `connected-claude-ai`: a claude.ai connector to the service answers. Claude Code hands
- *    it to every session, so nothing is offered: a second server would be the same Slack twice.
+ *    it to every session, so nothing is installed over it: a second server would be the same
+ *    Slack twice. One the app already added is offered for removal, if it is optional.
  *  - `connected`:  the server the app added answers.
  *  - `needs-auth`: declared, never signed in. Sign-in happens in Claude Code (`/mcp`).
  *  - `failed`:     declared, unreachable; `detail` says why.
@@ -38,8 +39,10 @@ export function mcpServerView({ required, status, health }: McpServerState): Mcp
   const ours = status.state !== 'missing'
   const removable = ours && !required ? 'remove' : null
   if (health?.state === 'connected') {
-    return health.source === 'claude-ai' && !ours
-      ? { state: 'connected-claude-ai', action: null }
+    // A claude.ai connector answering is what the agent uses, even beside a server of
+    // ours still to sign in to: that one is a duplicate, offered for removal.
+    return health.source === 'claude-ai'
+      ? { state: 'connected-claude-ai', action: removable }
       : { state: 'connected', action: removable }
   }
   if (status.state === 'legacy') return { state: 'legacy', action: 'reinstall' }

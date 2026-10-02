@@ -201,8 +201,14 @@ describe('parseMcpList', () => {
 describe('healthFor', () => {
   const report = (lines: string) => ({ checkedAt: 0, ok: true, servers: parseMcpList(lines) })
 
-  it('prefers the server registered under the id', () => {
-    expect(healthFor('slack', report(MCP_LIST))).toMatchObject({ name: 'slack', state: 'needs-auth' })
+  it('prefers a connected server to the one registered under the id', () => {
+    expect(healthFor('slack', report(MCP_LIST))).toMatchObject({ name: 'claude.ai Slack', source: 'claude-ai', state: 'connected' })
+    expect(healthFor('atlassian', report(MCP_LIST))).toMatchObject({ name: 'atlassian', state: 'connected' })
+  })
+
+  it('prefers the server registered under the id when none is connected', () => {
+    const lines = MCP_LIST.split('\n').filter((line) => !line.startsWith('claude.ai Slack')).join('\n')
+    expect(healthFor('slack', report(lines))).toMatchObject({ name: 'slack', state: 'needs-auth' })
   })
 
   it('falls back on a claude.ai connector to the same service', () => {
@@ -240,7 +246,7 @@ describe('slack, the optional server', () => {
     vi.mocked(runInLoginShell).mockResolvedValueOnce({ ok: true, stdout: MCP_LIST, stderr: '' })
     const report = await checkMcpHealth()
     expect(lastMcpHealth()).toBe(report)
-    expect(mcpServerStates({ atlassian: false, github: false })[0].health).toMatchObject({ name: 'slack', state: 'needs-auth' })
+    expect(mcpServerStates({ atlassian: false, github: false })[0].health).toMatchObject({ name: 'claude.ai Slack', state: 'connected' })
   })
 
   it('lists the servers of the enabled integrations first, then the optional ones', () => {

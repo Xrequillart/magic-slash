@@ -17,6 +17,10 @@ describe('mcpServerView', () => {
     expect(view('missing', health('connected', 'claude-ai'))).toEqual({ state: 'connected-claude-ai', action: null })
   })
 
+  it('reads a connected claude.ai connector over a server of its own, offering to remove the duplicate', () => {
+    expect(view('configured', health('connected', 'claude-ai'))).toEqual({ state: 'connected-claude-ai', action: 'remove' })
+  })
+
   it('says a server of its own is connected, or still to sign in to', () => {
     expect(view('configured', health('connected'))).toEqual({ state: 'connected', action: 'remove' })
     expect(view('configured', health('needs-auth'))).toEqual({ state: 'needs-auth', action: 'remove' })

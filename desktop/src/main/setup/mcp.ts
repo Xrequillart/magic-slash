@@ -312,19 +312,26 @@ function hostOf(url: string): string | null {
 }
 
 /**
- * The health of the server Claude Code uses for `id`: the one registered under that name
- * when there is one, else a claude.ai connector to the same service (same host), else any
- * other server at it. Null when the report has none of them.
+ * The health of the server Claude Code uses for `id`. Candidates, in order: the one
+ * registered under that name, a claude.ai connector to the same service (same host), any
+ * other server at it. The first CONNECTED one wins, else the first of them.
+ *
+ * Connected first, because the agent reaches the service through any server that answers:
+ * a `slack` of this machine still to sign in to, next to a claude.ai Slack that is
+ * connected, is a Slack the skills can use, and `/mcp` shows it connected. Reading the
+ * one under the name alone painted "Sign-in needed" over a working Slack.
  */
 export function healthFor(id: McpServerId, report: McpHealthReport | null): McpServerHealth | null {
   if (!report) return null
   const definition = definitionOf(id)
   const host = definition ? hostOf(definition.url) : null
   const sameHost = (server: McpServerHealth) => !!host && hostOf(server.target) === host
-  return report.servers.find((server) => server.name === id)
-    ?? report.servers.find((server) => server.source === 'claude-ai' && sameHost(server))
-    ?? report.servers.find(sameHost)
-    ?? null
+  const candidates = [
+    ...report.servers.filter((server) => server.name === id),
+    ...report.servers.filter((server) => server.name !== id && server.source === 'claude-ai' && sameHost(server)),
+    ...report.servers.filter((server) => server.name !== id && server.source !== 'claude-ai' && sameHost(server)),
+  ]
+  return candidates.find((server) => server.state === 'connected') ?? candidates[0] ?? null
 }
 
 /**
