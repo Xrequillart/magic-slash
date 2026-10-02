@@ -1783,10 +1783,16 @@ export interface WorkflowSettings {
   chainLimit?: number
   /** A chain into a skill this machine does not have: held back, or stepped over. */
   missingSkill?: WorkflowMissingSkill
+  /**
+   * Carry out the repository's actions (a Slack message once the PR is created). On unless
+   * the person turns it off: an action speaks through their own MCP servers, in their name,
+   * and a link into one asks first unless the admin made it automatic.
+   */
+  runActions?: boolean
 }
 
 /** What an absent field means. Five in a row is more than the default flow ever chains, and a loop never gets past it. */
-export const DEFAULT_WORKFLOW_SETTINGS: Required<WorkflowSettings> = { confirmChain: 'never', chainLimit: 5, missingSkill: 'stop' }
+export const DEFAULT_WORKFLOW_SETTINGS: Required<WorkflowSettings> = { confirmChain: 'never', chainLimit: 5, missingSkill: 'stop', runActions: true }
 
 export function isValidWorkflowConfirmChain(value: unknown): value is WorkflowConfirmChain {
   return typeof value === 'string' && (WORKFLOW_CONFIRM_CHAINS as readonly string[]).includes(value)
@@ -1806,6 +1812,7 @@ export function resolveWorkflowSettings(settings: WorkflowSettings | undefined):
     confirmChain: isValidWorkflowConfirmChain(settings?.confirmChain) ? settings.confirmChain : DEFAULT_WORKFLOW_SETTINGS.confirmChain,
     chainLimit: isValidWorkflowChainLimit(settings?.chainLimit) ? settings.chainLimit : DEFAULT_WORKFLOW_SETTINGS.chainLimit,
     missingSkill: isValidWorkflowMissingSkill(settings?.missingSkill) ? settings.missingSkill : DEFAULT_WORKFLOW_SETTINGS.missingSkill,
+    runActions: typeof settings?.runActions === 'boolean' ? settings.runActions : DEFAULT_WORKFLOW_SETTINGS.runActions,
   }
 }
 
@@ -3586,7 +3593,14 @@ export interface PrerequisiteStatus {
   docsUrl: string | null
 }
 
-export type McpServerId = 'atlassian' | 'github'
+/**
+ * `atlassian` and `github` back an integration and are provisioned on their own; `slack` is
+ * OPTIONAL, added only when the user asks (the workflow's Slack actions use it).
+ */
+export type McpServerId = 'atlassian' | 'github' | 'slack'
+
+/** The servers no integration requires: shown with their health, never repaired behind the user's back. */
+export const OPTIONAL_MCP_SERVER_IDS: readonly McpServerId[] = ['slack']
 
 export interface McpServerStatus {
   id: McpServerId
@@ -3602,10 +3616,50 @@ export interface McpServerStatus {
   command?: string | null
 }
 
+/**
+ * One server as `claude mcp list` reports it, after it asked each one for its health.
+ *
+ * - `connected`  — answered.
+ * - `needs-auth` — registered, but the user has not signed in yet (`/mcp` in a session).
+ * - `failed`     — registered and unreachable; `detail` says why.
+ * - `unknown`    — a line this build does not know how to read.
+ */
+export interface McpServerHealth {
+  /** As the CLI prints it: `atlassian`, or `claude.ai Slack` for a connector. */
+  name: string
+  /** `claude-ai`: a connector of the user's claude.ai account, which Claude Code exposes in every session. */
+  source: 'claude-code' | 'claude-ai'
+  /** The URL, or the command of a stdio server. */
+  target: string
+  state: 'connected' | 'needs-auth' | 'failed' | 'unknown'
+  detail?: string
+}
+
+/** The last health check, kept until the next one: the check costs seconds. */
+export interface McpHealthReport {
+  /** Epoch ms. */
+  checkedAt: number
+  /** False when `claude mcp list` could not run at all (no CLI, timeout): `servers` is then empty. */
+  ok: boolean
+  servers: McpServerHealth[]
+}
+
+/**
+ * An optional server as the app shows it: what the registry says, and what the last
+ * health check said about it or about a claude.ai connector to the same service.
+ */
+export interface OptionalMcpServerState {
+  id: McpServerId
+  status: McpServerStatus
+  /** The health of the server Claude Code will actually use for it, or null before any check. */
+  health: McpServerHealth | null
+}
+
 export interface SetupStatus {
   prerequisites: PrerequisiteStatus[]
   /** Whether Homebrew is available, i.e. whether one-click installs are offered. */
   homebrew: boolean
+  /** The servers an integration needs. The optional ones are not here: see OptionalMcpServerState. */
   mcpServers: McpServerStatus[]
   integrations: { github: boolean; atlassian: boolean }
   /** False until the user has been asked once — drives the first-run wizard. */

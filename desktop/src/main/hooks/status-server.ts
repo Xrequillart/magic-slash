@@ -81,6 +81,12 @@ type WorkflowProvider = (path: string | null, skill: string | null) => unknown
  */
 type WorkflowNextProvider = (path: string | null, skill: string | null, outcome: string, reason: string) => unknown
 /**
+ * One action of the flow the calling skill's repository follows, by its node id
+ * (`action:a1`): what the hidden `magic-action` skill carries out. Same `path` as
+ * WorkflowProvider; null when the repository has no such action. See workflow/actions.ts.
+ */
+type WorkflowActionProvider = (path: string | null, id: string) => unknown
+/**
  * The workflow context of a CUSTOM skill the model just invoked (#333), or null for
  * anything else: a magic skill (it asks `/workflow/next` itself), a skill in no flow, a
  * path matching no repository. `cwd` is the session's working directory, `skill` the
@@ -155,6 +161,7 @@ let configProvider: ConfigProvider | null = null
 let agentProvider: AgentProvider | null = null
 let workflowProvider: WorkflowProvider | null = null
 let workflowNextProvider: WorkflowNextProvider | null = null
+let workflowActionProvider: WorkflowActionProvider | null = null
 let customSkillContextProvider: CustomSkillContextProvider | null = null
 let worktreeFilesWriter: WorktreeFilesWriter | null = null
 let prUrlCallback: PRUrlCallback | null = null
@@ -274,6 +281,10 @@ export function setWorkflowProvider(provider: WorkflowProvider) {
 
 export function setWorkflowNextProvider(provider: WorkflowNextProvider) {
   workflowNextProvider = provider
+}
+
+export function setWorkflowActionProvider(provider: WorkflowActionProvider) {
+  workflowActionProvider = provider
 }
 
 export function setCustomSkillContextProvider(provider: CustomSkillContextProvider) {
@@ -953,8 +964,16 @@ export function startStatusServer(): Promise<number> {
           const skill = url.searchParams.get('skill')
           const outcome = url.searchParams.get('outcome')
           const reason = url.searchParams.get('reason') ?? ''
-          sendProvided(res, '/workflow/next', { lines: [], chain: null }, () =>
+          sendProvided(res, '/workflow/next', { lines: [], chain: null, actions: [] }, () =>
             (outcome !== null ? workflowNextProvider?.(path, skill, outcome, reason) : null))
+        } else if (url.pathname === '/workflow/action') {
+          // Read-only: one action of the repository's flow, for `magic-action` to carry out.
+          // Read from here rather than handed over by the calling skill, so the admin's words
+          // reach the agent as they were saved. `null` when there is no such action, which
+          // the skill reads as nothing to do.
+          const path = url.searchParams.get('path')
+          const id = url.searchParams.get('id')
+          sendProvided(res, '/workflow/action', null, () => (id ? workflowActionProvider?.(path, id) : null))
         } else if (url.pathname === '/config/worktree-files') {
           // Write: persist a repo's worktreeFiles to the cloud store (the one config mutation
           // skills perform). Kept as GET+query to match the other curl-friendly write routes.

@@ -361,6 +361,7 @@ export type { WorkflowEdgeData, WorkflowEdgeType } from './WorkflowEdge'
 export { CanvasMinimap } from './CanvasMinimap'
 export type { CanvasMinimapProps } from './CanvasMinimap'
 export type {
+  WorkflowCanvasAction,
   WorkflowCanvasLink,
   WorkflowCanvasLinkKind,
   WorkflowCanvasNode,

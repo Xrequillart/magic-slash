@@ -3,7 +3,7 @@ import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupRepoHandlers } from './ipc/repo-handlers'
 import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
-import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setWorkflowNextProvider, setCustomSkillContextProvider, setUserPromptListener, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback } from './hooks/status-server'
+import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setWorkflowNextProvider, setWorkflowActionProvider, setCustomSkillContextProvider, setUserPromptListener, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback } from './hooks/status-server'
 import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion } from './questions/pending-questions'
 import { answerPendingQuestion } from './questions/answer-question'
 import { recordSkillInvocation } from './usage/skill-invocations'
@@ -27,7 +27,7 @@ import { expandPath } from './config/validation'
 import { resolveRepoIds } from '../repoMatch'
 import { buildWorkflowPayload } from '../workflow/payload'
 import { buildSkillContext } from '../workflow/skillContext'
-import { applyChainPolicy, buildWorkflowNext } from '../workflow/next'
+import { applyActionPolicy, applyChainPolicy, buildWorkflowNext } from '../workflow/next'
 import { ChainCounter } from '../workflow/chainCounter'
 import { hasSkillIn } from './skill-copy'
 import { resolveWorkflowSettings } from '../types'
@@ -897,7 +897,7 @@ async function initializeHooksAndSessions() {
       const payloadOf = (name: string | null) => buildWorkflowPayload(key ?? null, flow, name)
       const settings = resolveWorkflowSettings(config.workflow)
       const repoPath = key && repositories[key].path ? expandPath(repositories[key].path) : null
-      const next = applyChainPolicy(buildWorkflowNext(payloadOf(skill), outcome, { reason, lang }), {
+      const next = applyChainPolicy(applyActionPolicy(buildWorkflowNext(payloadOf(skill), outcome, { reason, lang }), settings.runActions, lang), {
         confirm: settings.confirmChain,
         chained: path ? chains.count(path) : 0,
         limit: settings.chainLimit,
@@ -909,6 +909,14 @@ async function initializeHooksAndSessions() {
       }, lang)
       if (next.chain && path) chains.chained(path)
       return next
+    })
+    // One action of the repository's flow, for `magic-action`: the flow the skills are
+    // served, so an action only a step turned off led to is still found (it is a card of
+    // the flow, whatever reaches it). The repository's key comes along for the message.
+    setWorkflowActionProvider((path: string | null, id: string) => {
+      const { repoId, key } = repoForPath(path)
+      const action = workflowForRepo(repoId).workflow.actions?.find((one) => one.id === id)
+      return action ? { ...action, repository: key ?? null } : null
     })
     // The workflow context of a custom skill the model just invoked (#333): the same
     // lookup as /workflow above, from the skill's name alone, so a custom step finds its

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Avatar } from './Avatar'
+import { ChevronRight } from './icons'
 import { Icon } from './Icon'
 import { Loader } from './Loader'
 import { Text } from './Text'
@@ -44,6 +45,18 @@ export interface MenuItem {
    * to be read and the first to be given up: the label truncates only after this has.
    */
   hint?: string
+  /**
+   * A SECOND LINE UNDER THE LABEL, quieter, saying what the row is for: a choice between
+   * kinds of things ("End note", "Slack action") reads at its words, not at its name. It
+   * wraps rather than truncates, since it is read in full or not at all.
+   */
+  description?: string
+  /**
+   * The row opens a further level rather than acting: a chevron on its right says so. The
+   * menu stays down when it is picked (`keepOpen` is implied), and what the next level shows
+   * is the caller's, who swaps the groups.
+   */
+  submenu?: boolean
   /**
    * `danger` paints the row red on hover rather than at rest. AT REST AND NOT BEFORE,
    * because a permanently red row in a list of grey ones is a warning nobody is
@@ -264,7 +277,7 @@ export function Menu({
                 onSelect={() => {
                   if (item.disabled || item.loading) return
                   onSelect(item)
-                  if (!item.keepOpen) close()
+                  if (!item.keepOpen && !item.submenu) close()
                 }}
               />
             ))}
@@ -306,7 +319,7 @@ function Row({ item, onSelect }: { item: MenuItem; onSelect: () => void }) {
       role="menuitem"
       onClick={onSelect}
       disabled={item.disabled || item.loading}
-      className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-left transition-colors ${
+      className={`flex w-full ${item.description ? 'items-start py-2' : 'items-center py-1.5'} gap-2.5 px-3 text-left transition-colors ${
         item.disabled
           ? 'cursor-default opacity-40'
           : item.loading
@@ -323,11 +336,21 @@ function Row({ item, onSelect }: { item: MenuItem; onSelect: () => void }) {
       {item.loading ? (
         <Loader variant="spin" size="xs" tone="inherit" className="flex-shrink-0" />
       ) : item.icon ? (
-        <Icon glyph={item.icon} size="xs" tone="inherit" className="flex-shrink-0" />
+        <Icon glyph={item.icon} size={item.description ? 'sm' : 'xs'} tone="inherit" className={`flex-shrink-0${item.description ? ' mt-px' : ''}`} />
       ) : null}
-      <Text size="xs" tone="inherit" className="min-w-0 flex-1 truncate">{item.label}</Text>
+      {item.description ? (
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <Text size="xs" weight="medium" tone="inherit" className="truncate">{item.label}</Text>
+          <Text size="2xs" tone="inherit" className="opacity-60">{item.description}</Text>
+        </span>
+      ) : (
+        <Text size="xs" tone="inherit" className="min-w-0 flex-1 truncate">{item.label}</Text>
+      )}
       {item.hint && (
         <Text size="2xs" tone="inherit" className="flex-shrink-0 opacity-50">{item.hint}</Text>
+      )}
+      {item.submenu && (
+        <Icon glyph={ChevronRight} size="xs" tone="inherit" className={`flex-shrink-0 opacity-60${item.description ? ' mt-1' : ''}`} />
       )}
     </button>
   )

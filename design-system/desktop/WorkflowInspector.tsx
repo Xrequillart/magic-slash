@@ -5,8 +5,9 @@ import { Icon } from './Icon'
 import { OutputSample } from './OutputSample'
 import './workflowCanvas.css'
 
-import { useEffect, useState, type KeyboardEvent } from 'react'
-import { Eye, EyeOff, Sparkles, SquareDashed, StickyNote, Trash, X } from './icons'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { Button } from './Button'
+import { Eye, EyeOff, MessageSquare, Sparkles, SquareDashed, StickyNote, Trash, X } from './icons'
 import type { OutcomeTableLabels } from './OutcomeTable'
 import type { SelectOption } from './Select'
 import { SettingsCard, type SettingsCardRow } from './SettingsCard'
@@ -14,7 +15,7 @@ import { SkillIntro } from './SkillIntro'
 import { skillIcon } from './skillIcons'
 import { Text } from './Text'
 import { WORKFLOW_STEP_COLORS } from './palette'
-import type { WorkflowCanvasLinkKind, WorkflowCanvasNodeMode } from './workflowLayout'
+import type { WorkflowCanvasAction, WorkflowCanvasLinkKind, WorkflowCanvasNodeMode } from './workflowLayout'
 
 /**
  * WHAT IS SELECTED ON THE WORKFLOW CANVAS, and what can be done to it: the editor's side
@@ -91,6 +92,11 @@ export interface WorkflowInspectorStep {
    * and nothing about running: no switch, no mode, no outcome.
    */
   note?: string
+  /**
+   * AN ACTION, not a step: where it posts and what it tells the agent. Its panel is the
+   * channel, the instruction with its variables, the colour and Remove.
+   */
+  action?: WorkflowCanvasAction
   /** By outcome, what leaves the step on it, already counted and translated: "2 links". */
   outcomeLinks?: Readonly<Record<string, string>>
   /**
@@ -151,6 +157,8 @@ export interface WorkflowInspectorLink {
   takenOutcomes?: string[]
   /** It leads to an end note: shown, never followed, so its kind is not offered. */
   toNote?: boolean
+  /** It leads to an action: its kind reads as "run on its own" or "ask first" (`actionAuto`, `actionSuggest`). */
+  toAction?: boolean
 }
 
 /** A frame on the canvas: its title and its two colours. Display only, nothing about running. */
@@ -233,6 +241,22 @@ export interface WorkflowInspectorLabels {
   noteHint?: string
   removeNoteRow?: string
   removeNoteHint?: string
+  /**
+   * An action's panel: its channel's field and prompt, its instruction's field, prompt and
+   * line under it (who it runs as), the variables' heading and line, and Remove's row.
+   */
+  actionChannel?: string
+  actionChannelPlaceholder?: string
+  actionPrompt?: string
+  actionPromptPlaceholder?: string
+  actionHint?: string
+  actionVariables?: string
+  actionVariablesHint?: string
+  removeActionRow?: string
+  removeActionHint?: string
+  /** A link into an action, its two kinds as they read there: "Run on its own", "Ask first". */
+  actionAuto?: string
+  actionSuggest?: string
   /** A frame's panel: its heading ("Frame"), its title field and prompt, its two colours, and Remove's row. */
   frame?: string
   frameTitle?: string
@@ -272,6 +296,10 @@ export interface WorkflowInspectorProps {
   onChangeFrame?: (id: string, change: { title?: string; border?: string; background?: string }) => void
   /** What an end note says, handed over once its field is left. */
   onChangeNoteText?: (nodeId: string, text: string) => void
+  /** Where an action posts or what it says, handed over once its field is left (or a variable inserted). */
+  onChangeAction?: (nodeId: string, change: { channel?: string; prompt?: string }) => void
+  /** The names an action's instruction may use, offered as chips that insert `{name}`. */
+  actionVariables?: readonly string[]
   onRemoveLink?: (from: string, to: string, outcome?: string) => void
   /** A custom step's card colour, one of `WORKFLOW_STEP_COLORS`. */
   onChangeColor?: (nodeId: string, color: string) => void
@@ -301,6 +329,8 @@ export function WorkflowInspector({
   onChangeKind,
   onChangeOutcome,
   onChangeNoteText,
+  onChangeAction,
+  actionVariables = [],
   onChangeFrame,
   onChangeSticky,
   onRemoveLink,
@@ -324,6 +354,16 @@ export function WorkflowInspector({
           <StickyPanel sticky={target.sticky} labels={labels} readOnly={readOnly} onRemove={onRemove} onChange={onChangeSticky} />
         ) : target.type === 'frame' ? (
           <FramePanel frame={target.frame} labels={labels} readOnly={readOnly} onRemove={onRemove} onChange={onChangeFrame} />
+        ) : target.type === 'node' && target.step.action !== undefined ? (
+          <ActionPanel
+            step={target.step}
+            action={target.step.action}
+            labels={labels}
+            readOnly={readOnly}
+            variables={actionVariables}
+            onRemove={onRemove}
+            onChange={onChangeAction}
+          />
         ) : target.type === 'node' && target.step.note !== undefined ? (
           <NotePanel
             step={target.step}
@@ -557,7 +597,7 @@ function LinkPanel({
   }))
   const kindOptions: SelectOption[] = KINDS.map((kind) => ({
     value: kind,
-    label: labels[kind],
+    label: (link.toAction ? (kind === 'auto' ? labels.actionAuto : labels.actionSuggest) : undefined) ?? labels[kind],
     disabled: kind !== link.kind && (link.disabledKinds?.includes(kind) ?? false),
   }))
 
@@ -740,6 +780,149 @@ function NotePanel({
             id: 'remove',
             label: labels.removeNoteRow ?? labels.removeRow ?? labels.remove,
             hint: labels.removeNoteHint,
+            control: { kind: 'button', children: labels.remove, icon: Trash, tone: 'danger', size: 'sm', onClick: () => onRemove(step.id) },
+          },
+        ]}
+      />
+    </>
+  )
+}
+
+/**
+ * AN ACTION'S PANEL: where it posts, what it tells the agent, the variables that
+ * instruction may use, its colour, and Remove. Nothing about running here: whether it runs
+ * on its own or asks first is the link into it, and whether it runs at all is each
+ * member's (`labels.actionHint` says so). Both fields keep their own draft and hand it
+ * over when left: one edit for the history. A variable chip inserts `{name}` where the
+ * caret last was in the instruction, and hands the result over at once.
+ */
+function ActionPanel({
+  step,
+  action,
+  labels,
+  readOnly,
+  variables,
+  onRemove,
+  onChange,
+}: {
+  step: WorkflowInspectorStep
+  action: WorkflowCanvasAction
+  labels: WorkflowInspectorLabels
+  readOnly: boolean
+  variables: readonly string[]
+  onRemove?: WorkflowInspectorProps['onRemove']
+  onChange?: WorkflowInspectorProps['onChangeAction']
+}) {
+  const [channel, setChannel] = useState(action.channel)
+  const [prompt, setPrompt] = useState(action.prompt)
+  // Changed elsewhere (undo, a reload, another action selected): that is the one to show.
+  useEffect(() => setChannel(action.channel), [action.channel, step.id])
+  useEffect(() => setPrompt(action.prompt), [action.prompt, step.id])
+  // Where the caret was in the instruction when it was last left, for a chip to insert at.
+  const caret = useRef<number | null>(null)
+  const editable = !readOnly && !!onChange
+  const commitChannel = () => {
+    if (channel.trim() !== action.channel.trim()) onChange?.(step.id, { channel })
+  }
+  const commitPrompt = () => {
+    if (prompt.trim() !== action.prompt.trim()) onChange?.(step.id, { prompt })
+  }
+  const insert = (name: string) => {
+    const at = caret.current ?? prompt.length
+    const token = `{${name}}`
+    const next = prompt.slice(0, at) + token + prompt.slice(at)
+    caret.current = at + token.length
+    setPrompt(next)
+    onChange?.(step.id, { prompt: next })
+  }
+
+  return (
+    <>
+      <div className="flex items-center gap-2.5 pr-6">
+        <span
+          className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${step.color ? '' : 'bg-accent/10 text-accent'}`}
+          style={step.color ? { backgroundColor: `${step.color}33`, color: step.color } : undefined}
+        >
+          <Icon glyph={MessageSquare} size="md" tone="inherit" />
+        </span>
+        <Text size="sm" weight="bold" className="min-w-0 flex-1 truncate" title={step.label}>{step.label}</Text>
+      </div>
+      {step.warning && <Banner variant="warning" layout="stacked">{step.warning}</Banner>}
+      {labels.actionHint && <Text size="xs" tone="secondary">{labels.actionHint}</Text>}
+      {/* `onSelect` bubbles in React: the caret of the textarea inside, wherever it moves. */}
+      <div
+        className="contents"
+        onSelect={(event) => {
+          const field = event.target as HTMLTextAreaElement
+          if (field.tagName === 'TEXTAREA') caret.current = field.selectionStart
+        }}
+      >
+        <SettingsCard
+          rows={[
+            {
+              id: 'channel',
+              label: labels.actionChannel ?? '',
+              layout: 'stacked',
+              control: {
+                kind: 'input',
+                value: channel,
+                onChange: setChannel,
+                onBlur: commitChannel,
+                onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => {
+                  if (event.key !== 'Enter') return
+                  event.preventDefault()
+                  commitChannel()
+                },
+                placeholder: labels.actionChannelPlaceholder,
+                disabled: !editable,
+                size: 'md',
+                className: 'w-full min-w-0',
+              },
+            },
+            {
+              id: 'prompt',
+              label: labels.actionPrompt ?? '',
+              layout: 'stacked',
+              control: {
+                kind: 'input',
+                multiline: true,
+                rows: 5,
+                resize: 'vertical',
+                value: prompt,
+                onChange: setPrompt,
+                onBlur: commitPrompt,
+                onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => {
+                  if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return
+                  event.preventDefault()
+                  commitPrompt()
+                },
+                placeholder: labels.actionPromptPlaceholder,
+                disabled: !editable,
+                size: 'md',
+                className: 'w-full min-w-0',
+              },
+            },
+          ]}
+        />
+      </div>
+      {variables.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {labels.actionVariables && <Text size="xs" weight="bold">{labels.actionVariables}</Text>}
+          {labels.actionVariablesHint && <Text size="xs" tone="secondary">{labels.actionVariablesHint}</Text>}
+          <div className="flex flex-wrap gap-1">
+            {variables.map((name) => (
+              <Button key={name} size="xs" tone="neutral" disabled={!editable} onClick={() => insert(name)}>{`{${name}}`}</Button>
+            ))}
+          </div>
+        </div>
+      )}
+      <SettingsCard
+        rows={[
+          // No colour: an action wears its service's own mark, on the plain ground.
+          !readOnly && onRemove && {
+            id: 'remove',
+            label: labels.removeActionRow ?? labels.removeRow ?? labels.remove,
+            hint: labels.removeActionHint,
             control: { kind: 'button', children: labels.remove, icon: Trash, tone: 'danger', size: 'sm', onClick: () => onRemove(step.id) },
           },
         ]}

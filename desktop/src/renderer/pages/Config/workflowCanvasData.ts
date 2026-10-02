@@ -63,11 +63,14 @@ export interface WorkflowCanvasMarks {
   colors?: Readonly<Record<string, string>>
   /** What an end note with no text yet says on its card: "Empty note". */
   emptyNote?: string
+  /** What an action with no channel nor instruction yet says on its card: "Slack message to write". */
+  emptyAction?: string
 }
 
 /** Every custom step's ground, by node id: its own, or the one its place hands it (`workflowStepColor`). */
 export function stepColors(overlay: WorkflowOverlay): Record<string, string> {
   const notes = overlay.notes ?? []
+  // No action here: it has no colour, its card wears its service's mark.
   return Object.fromEntries([
     ...overlay.steps.map((step, i) => [customNodeId(step.skill), workflowStepColor(step.color, i)]),
     // A note's own colour, else the next one along after the steps': two notes added in a row differ.
@@ -109,6 +112,14 @@ export function workflowCanvasData(flow: Workflow, marks: WorkflowCanvasMarks = 
       if (color) drawn.color = color
       if (marks.problems?.includes(note.id)) drawn.problem = true
       const warning = marks.warnings?.[note.id]
+      if (warning) drawn.warning = warning
+      return drawn
+    })).concat((flow.actions ?? []).map((action) => {
+      // An action is a card like a note, no port out: `action` is what tells the canvas so.
+      const { type, channel, prompt } = action
+      const drawn: WorkflowCanvasNode = { id: action.id, label: marks.emptyAction ?? '', skill: '', outcomes: [], action: { type, channel, prompt } }
+      if (marks.problems?.includes(action.id)) drawn.problem = true
+      const warning = marks.warnings?.[action.id]
       if (warning) drawn.warning = warning
       return drawn
     })),

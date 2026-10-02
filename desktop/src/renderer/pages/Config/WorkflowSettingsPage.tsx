@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Workflow } from '@ds/desktop/icons'
+import { Megaphone, Workflow } from '@ds/desktop/icons'
 import { SectionHeader, SettingsCard } from '@ds/desktop'
 import { useConfig } from '../../hooks/useConfig'
 import { useT, type MessageKey } from '../../i18n'
@@ -18,6 +18,11 @@ import {
  * in a row, and what to do with a step whose skill they do not have. The main process
  * applies these to every answer of `/workflow/next` (`applyChainPolicy`), so a session
  * started from a plain terminal follows them too, as long as the app runs.
+ *
+ * ACTIONS ARE ON UNTIL TURNED OFF. A repository's action (a Slack message once the PR is
+ * created) runs through this person's own MCP servers and speaks in their name, so they can
+ * turn them off here: `applyActionPolicy` then holds every action back, and says so in one
+ * line where one was held.
  */
 
 /** Keys rather than labels: module scope is evaluated once at import, so a `t()` here would pin the boot language. */
@@ -37,7 +42,7 @@ export function WorkflowSettingsPage() {
   const { config, updateWorkflowSettings } = useConfig()
   const stored = resolveWorkflowSettings(config?.workflow)
   const [settings, setSettings] = useState(stored)
-  useEffect(() => setSettings(stored), [stored.confirmChain, stored.chainLimit, stored.missingSkill])
+  useEffect(() => setSettings(stored), [stored.confirmChain, stored.chainLimit, stored.missingSkill, stored.runActions])
 
   // Optimistic, then reverted on failure: the shape every write in Settings uses.
   const change = async (patch: WorkflowSettings) => {
@@ -98,6 +103,24 @@ export function WorkflowSettingsPage() {
                 onChange: (next) => change({ missingSkill: next as WorkflowMissingSkill }),
                 ariaLabel: t('settings.workflow.missing.label'),
                 width: SELECT_WIDTH,
+              },
+            },
+          ]}
+        />
+      </div>
+      <div>
+        <SectionHeader icon={Megaphone} title={t('settings.workflow.actions.section')} />
+        <SettingsCard
+          rows={[
+            {
+              id: 'workflowRunActions',
+              label: t('settings.workflow.actions.label'),
+              hint: t('settings.workflow.actions.help'),
+              control: {
+                kind: 'switch',
+                checked: settings.runActions,
+                onChange: (next) => change({ runActions: next }),
+                label: t('settings.workflow.actions.label'),
               },
             },
           ]}

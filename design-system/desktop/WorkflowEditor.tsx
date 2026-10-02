@@ -158,6 +158,9 @@ export interface WorkflowEditorProps {
   onChangeKind: WorkflowInspectorProps['onChangeKind']
   onChangeOutcome: WorkflowInspectorProps['onChangeOutcome']
   onChangeNoteText?: WorkflowInspectorProps['onChangeNoteText']
+  onChangeAction?: WorkflowInspectorProps['onChangeAction']
+  /** The names an action's instruction may use: the inspector's chips. */
+  actionVariables?: WorkflowInspectorProps['actionVariables']
   onRemoveLink: WorkflowInspectorProps['onRemoveLink']
   /** A step's switch, on its card or in the inspector: turn it on (`true`) or off. */
   onToggle: (id: string, enabled: boolean) => void
@@ -169,6 +172,8 @@ export interface WorkflowEditorProps {
   onAdd: (skill: string, position: { x: number; y: number }) => void
   /** The picker's end note row was picked: add a note there. Without it, the picker offers skills only. */
   onAddNote?: (position: { x: number; y: number }) => void
+  /** The picker's Slack action row was picked: add an action there. Without it, no such row. */
+  onAddAction?: (position: { x: number; y: number }) => void
   canUndo: boolean
   canRedo: boolean
   onUndo: () => void
@@ -229,6 +234,8 @@ export function WorkflowEditor({
   onChangeKind,
   onChangeOutcome,
   onChangeNoteText,
+  onChangeAction,
+  actionVariables,
   onRemoveLink,
   onToggle,
   onChangeColor,
@@ -236,6 +243,7 @@ export function WorkflowEditor({
   validateStepOutcome,
   onAdd,
   onAddNote,
+  onAddAction,
   canUndo,
   canRedo,
   onUndo,
@@ -424,6 +432,8 @@ export function WorkflowEditor({
                 onChangeKind={onChangeKind}
                 onChangeOutcome={onChangeOutcome}
                 onChangeNoteText={readOnly ? undefined : onChangeNoteText}
+                onChangeAction={readOnly ? undefined : onChangeAction}
+                actionVariables={actionVariables}
                 onChangeFrame={readOnly ? undefined : onChangeFrame}
                 onChangeSticky={readOnly ? undefined : onChangeSticky}
                 onRemoveLink={onRemoveLink}
@@ -449,6 +459,9 @@ export function WorkflowEditor({
           }}
           onPickNote={onAddNote && (() => {
             if (picker) onAddNote(picker.position)
+          })}
+          onPickAction={onAddAction && (() => {
+            if (picker) onAddAction(picker.position)
           })}
         />
       </div>

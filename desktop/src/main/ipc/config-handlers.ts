@@ -651,17 +651,19 @@ export function setupConfigHandlers() {
     return { config }
   })
 
-  // Settings → Workflow: any of its three fields, each checked against its own list.
+  // Settings → Workflow: any of its fields, each checked against its own list.
   ipcMain.handle('config:setWorkflowSettings', async (_event, patch: unknown) => {
-    const { confirmChain, chainLimit, missingSkill } = (patch ?? {}) as Record<string, unknown>
+    const { confirmChain, chainLimit, missingSkill, runActions } = (patch ?? {}) as Record<string, unknown>
     if (confirmChain !== undefined && !isValidWorkflowConfirmChain(confirmChain)) throw new Error(`Invalid workflow confirmChain: '${String(confirmChain)}'`)
     if (chainLimit !== undefined && !isValidWorkflowChainLimit(chainLimit)) throw new Error(`Invalid workflow chainLimit: '${String(chainLimit)}'`)
     if (missingSkill !== undefined && !isValidWorkflowMissingSkill(missingSkill)) throw new Error(`Invalid workflow missingSkill: '${String(missingSkill)}'`)
+    if (runActions !== undefined && typeof runActions !== 'boolean') throw new Error(`Invalid workflow runActions: '${String(runActions)}'`)
     const config = readConfig()
     const next: WorkflowSettings = { ...config.workflow }
     if (confirmChain !== undefined) next.confirmChain = confirmChain
     if (chainLimit !== undefined) next.chainLimit = chainLimit
     if (missingSkill !== undefined) next.missingSkill = missingSkill
+    if (runActions !== undefined) next.runActions = runActions
     config.workflow = next
     writeConfig(config)
     return { config }

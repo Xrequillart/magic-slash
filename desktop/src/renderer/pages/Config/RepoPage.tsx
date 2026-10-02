@@ -76,7 +76,9 @@ import {
   outcomeProblem, OUTCOME_MAX_LENGTH, pinPositions, problems, removeLink, sameOverlay, setLinkKind, setLinkOutcome, setStepColor, setStepOutcomes,
   addNote, isNoteNodeId, nextFrameId, nextNoteId, noteNodeId, removeNote, setNoteColor, setNoteText, setStepEnabled, setStepMode,
   copyCard, pasteCard, unreachableSteps, type WorkflowClip, type WorkflowOverlay, type WorkflowProblem,
+  actionNodeId, addAction, isActionNodeId, nextActionId, removeAction, setAction,
 } from '../../../workflow/overlay'
+import { ACTION_VARIABLES } from '../../../workflow/actions'
 import type { ListingEntry } from '../../hooks/useSkills'
 import { useWorkflowHistory } from '../../hooks/useWorkflowHistory'
 import { buildWorkflowHistory, skillOfNode, type StartSettingKey, type StartSettingValue, type WorkflowHistoryChange } from '../../utils/workflowHistory'
@@ -347,7 +349,8 @@ function startValueLabel(t: Translate, setting: StartSettingKey, value: StartSet
 /** One change of a workflow history entry, as the sentence the panel lists under it. */
 function workflowChangeLabel(t: Translate, change: WorkflowHistoryChange): string {
   // A note's end is `note:<text>` (workflowHistory's `endOf`): it is named by what it says.
-  const name = (id: string) => (isNoteNodeId(id) ? `« ${id.slice('note:'.length)} »` : skillDisplayName(id))
+  const name = (id: string) => (isNoteNodeId(id) ? `« ${id.slice('note:'.length)} »`
+    : isActionNodeId(id) ? `« ${id.slice('action:'.length)} »` : skillDisplayName(id))
   const kind = (value: 'auto' | 'suggest') => t(value === 'auto' ? 'repo.workflow.inspector.auto' : 'repo.workflow.inspector.suggest')
   switch (change.kind) {
     case 'step-added': return t('repo.workflow.history.stepAdded', { step: name(change.node) })
@@ -368,6 +371,9 @@ function workflowChangeLabel(t: Translate, change: WorkflowHistoryChange): strin
     case 'note-added': return t('repo.workflow.history.noteAdded', { note: change.text })
     case 'note-removed': return t('repo.workflow.history.noteRemoved', { note: change.text })
     case 'note-text': return t('repo.workflow.history.noteText', { before: change.before, after: change.after })
+    case 'action-added': return t('repo.workflow.history.actionAdded', { action: change.text })
+    case 'action-removed': return t('repo.workflow.history.actionRemoved', { action: change.text })
+    case 'action-changed': return t('repo.workflow.history.actionChanged', { before: change.before, after: change.after })
     case 'sticky-added': return t('repo.workflow.history.stickyAdded')
     case 'sticky-removed': return t('repo.workflow.history.stickyRemoved', { text: change.text || t('repo.workflow.sticky.empty') })
     case 'sticky-text': return t('repo.workflow.history.stickyText', { text: change.text || t('repo.workflow.sticky.empty') })
@@ -798,7 +804,11 @@ function WorkflowPanel({
     if (node) return skillDisplayName(node.skill)
     // A note is named by what it says.
     const note = flow.notes?.find((n) => n.id === id)
-    return note ? (note.text ? `« ${note.text} »` : t('repo.workflow.note.empty')) : id
+    if (note) return note.text ? `« ${note.text} »` : t('repo.workflow.note.empty')
+    // An action by where it posts, else by what it says.
+    const action = flow.actions?.find((a) => a.id === id)
+    if (action) return action.channel ? `Slack ${action.channel}` : t('repo.workflow.action.title')
+    return id
   }
   const skillOf = (id: string) => flow.nodes.find((n) => n.id === id)?.skill ?? id
 
@@ -819,7 +829,7 @@ function WorkflowPanel({
     for (const id of unreachable) {
       warnings[id] = warnings[id] ? `${t('repo.workflow.warning.unreachable')} ${warnings[id]}` : t('repo.workflow.warning.unreachable')
     }
-    return workflowCanvasData(flow, { problems: problemNodeIds(shown), warnings, disabled: draft.disabled, colors: stepColors(draft), emptyNote: t('repo.workflow.note.empty') })
+    return workflowCanvasData(flow, { problems: problemNodeIds(shown), warnings, disabled: draft.disabled, colors: stepColors(draft), emptyNote: t('repo.workflow.note.empty'), emptyAction: t('repo.workflow.action.empty') })
   }, [flow, shown, unshared, unreachable, draft, t])
 
   // The frames as the canvas draws them, by their node ids.
@@ -854,6 +864,8 @@ function WorkflowPanel({
         return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.autoIntoStart', { from: labelOf(problem.nodeId) }) }
       case 'empty-note':
         return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.emptyNote') }
+      case 'empty-action':
+        return { id: `${problem.code}-${problem.nodeId}`, nodeId: problem.nodeId, message: t('repo.workflow.problem.emptyAction') }
       case 'start-disabled':
         return { id: problem.code, nodeId: problem.nodeId, message: t('repo.workflow.problem.startDisabled') }
       case 'self-link':
@@ -906,6 +918,7 @@ function WorkflowPanel({
       if (isFrameNodeId(selected.id)) edit(removeFrame(draft, selected.id))
       else if (isStickyNodeId(selected.id)) edit(removeSticky(draft, selected.id))
       else if (isNoteNodeId(selected.id)) reshape((pinned) => removeNote(pinned, selected.id))
+      else if (isActionNodeId(selected.id)) reshape((pinned) => removeAction(pinned, selected.id))
       else if (!canRemoveStep(selected.id)) return
       else reshape((pinned) => removeNode(pinned, selected.id))
     } else {
@@ -919,7 +932,7 @@ function WorkflowPanel({
     if (selected?.type !== 'node') return
     const clip = copyCard(draft, selected.id, drawn[selected.id])
     if (clip) clipRef.current = clip
-    else if (!isFrameNodeId(selected.id) && !isStickyNodeId(selected.id) && !isNoteNodeId(selected.id)) {
+    else if (!isFrameNodeId(selected.id) && !isStickyNodeId(selected.id) && !isNoteNodeId(selected.id) && !isActionNodeId(selected.id)) {
       showToast(t('repo.workflow.clipboard.stepRefused'), 'error')
     }
   }
@@ -927,7 +940,7 @@ function WorkflowPanel({
   const paste = () => {
     const clip = clipRef.current
     if (!clip) return
-    const pasted = pasteCard(clip.type === 'note' ? pinPositions(draft, drawn) : draft, clip)
+    const pasted = pasteCard(clip.type === 'note' || clip.type === 'action' ? pinPositions(draft, drawn) : draft, clip)
     edit(pasted.overlay)
     clipRef.current = pasted.clip
     setSelected({ type: 'node', id: pasted.id })
@@ -948,6 +961,8 @@ function WorkflowPanel({
       if (!node) return null
       // An end note: its text, its colour, Remove. Nothing about running.
       if (node.note !== undefined) return { type: 'node', step: { ...node, label: t('repo.workflow.note.title'), note: node.note } }
+      // An action: where it posts, what it says, its colour, Remove. Whether it runs is the link's, and each member's.
+      if (node.action !== undefined) return { type: 'node', step: { ...node, label: t('repo.workflow.action.title'), action: node.action } }
       const hints = stepHints(flow, node.id).map((hint) => t(
         hint === 'on-review-comments' ? 'repo.workflow.hint.reviewComments' : 'repo.workflow.hint.skippedFromStart',
       ))
@@ -997,10 +1012,11 @@ function WorkflowPanel({
           .filter((l) => l !== link && l.from === link.from && l.to === link.to)
           .map((l) => l.outcome ?? ''),
         disabledKinds: intoStart ? ['auto'] : undefined,
-        hint: intoStart ? t('repo.workflow.hint.intoStart') : undefined,
         locked,
         outcomes: locked ? undefined : flow.nodes.find((n) => n.id === link.from)?.outcomes,
         toNote: isNoteNodeId(link.to) || undefined,
+        toAction: isActionNodeId(link.to) || undefined,
+        hint: intoStart ? t('repo.workflow.hint.intoStart') : isActionNodeId(link.to) ? t('repo.workflow.action.linkHint') : undefined,
       },
     }
   })()
@@ -1337,7 +1353,12 @@ function WorkflowPanel({
       inWorkflow: t('repo.workflow.inWorkflow'),
       sources,
       note: t('repo.workflow.note.add'),
-      noteHint: t('repo.workflow.note.addHint'),
+      noteDescription: t('repo.workflow.note.addHint'),
+      action: t('repo.workflow.action.add'),
+      actionDescription: t('repo.workflow.action.addHint'),
+      skills: t('repo.workflow.picker.skills'),
+      skillsDescription: t('repo.workflow.picker.skillsHint'),
+      back: t('repo.workflow.picker.back'),
     },
     inspector: {
       title: t('repo.workflow.inspector.title'),
@@ -1388,6 +1409,17 @@ function WorkflowPanel({
       removeNoteRow: t('repo.workflow.note.removeRow'),
       removeNoteHint: t('repo.workflow.note.removeHint'),
       noteLink: t('repo.workflow.note.link'),
+      actionChannel: t('repo.workflow.action.channel'),
+      actionChannelPlaceholder: t('repo.workflow.action.channelPlaceholder'),
+      actionPrompt: t('repo.workflow.action.prompt'),
+      actionPromptPlaceholder: t('repo.workflow.action.promptPlaceholder'),
+      actionHint: t('repo.workflow.action.hint'),
+      actionVariables: t('repo.workflow.action.variables'),
+      actionVariablesHint: t('repo.workflow.action.variablesHint'),
+      removeActionRow: t('repo.workflow.action.removeRow'),
+      removeActionHint: t('repo.workflow.action.removeHint'),
+      actionAuto: t('repo.workflow.action.kindAuto'),
+      actionSuggest: t('repo.workflow.action.kindSuggest'),
       frame: t('repo.workflow.frame.title'),
       frameTitle: t('repo.workflow.frame.name'),
       frameTitlePlaceholder: t('repo.workflow.frame.placeholder'),
@@ -1551,7 +1583,7 @@ function WorkflowPanel({
                 onRemove={(id) => {
                   if (isFrameNodeId(id)) edit(removeFrame(draft, id))
                   else if (isStickyNodeId(id)) edit(removeSticky(draft, id))
-                  else reshape((pinned) => (isNoteNodeId(id) ? removeNote(pinned, id) : removeNode(pinned, id)))
+                  else reshape((pinned) => (isNoteNodeId(id) ? removeNote(pinned, id) : isActionNodeId(id) ? removeAction(pinned, id) : removeNode(pinned, id)))
                   setSelected(null)
                 }}
                 onChangeKind={(from, to, kind, outcome) => edit(setLinkKind(draft, from, to, kind, outcome))}
@@ -1562,6 +1594,8 @@ function WorkflowPanel({
                   if (next !== draft) setSelected({ type: 'link', from, to, outcome: now })
                 }}
                 onChangeNoteText={(id, text) => edit(setNoteText(draft, id, text))}
+                onChangeAction={(id, change) => reshape((pinned) => setAction(pinned, id, change))}
+                actionVariables={ACTION_VARIABLES}
                 onRemoveLink={(from, to, outcome) => {
                   reshape((pinned) => removeLink(pinned, from, to, outcome))
                   setSelected(null)
@@ -1598,6 +1632,11 @@ function WorkflowPanel({
                 onAddNote={(position) => {
                   const id = noteNodeId(nextNoteId(draft))
                   reshape((pinned) => addNote(pinned, position, '', nextWorkflowStepColor(Object.values(stepColors(pinned)))))
+                  setSelected({ type: 'node', id })
+                }}
+                onAddAction={(position) => {
+                  const id = actionNodeId(nextActionId(draft))
+                  reshape((pinned) => addAction(pinned, position, 'slack'))
                   setSelected({ type: 'node', id })
                 }}
                 canUndo={history.past.length > 0}

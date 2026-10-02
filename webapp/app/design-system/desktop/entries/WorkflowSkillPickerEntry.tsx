@@ -13,7 +13,7 @@ const PROPS: PropRow[] = [
   { name: 'anchor', type: 'HTMLElement | null', required: true, description: 'What it hangs from: the "+" the canvas hands back to `onInsert`.' },
   { name: 'skills', type: 'WorkflowSkillOption[]', required: true, description: 'name, source (custom, repo or plugin) and disabled. Grouped by source in that order; a skill already on the line is greyed with `labels.inWorkflow`, never left out.' },
   { name: 'onPick', type: '(name: string) => void', required: true, description: 'The skill picked. Never fires for a disabled one.' },
-  { name: 'labels', type: 'WorkflowSkillPickerLabels', required: true, description: 'The title, the empty line, the in-workflow note and the three groups’ headings.' },
+  { name: 'labels', type: 'WorkflowSkillPickerLabels', required: true, description: 'The title, the three kinds of the first level and what each is for, the back row, the empty line, the in-workflow note and the skill groups’ headings.' },
   { name: 'portalTo', type: 'HTMLElement | null', description: 'Where to portal, see Menu. This page passes its own stage, where the theme is.' },
 ]
 
@@ -53,6 +53,8 @@ export function WorkflowSkillPickerEntry({ theme, onOpen }: { theme: DesktopThem
               skills={open === 'empty' ? [] : SAMPLE_SKILLS}
               labels={PICKER_LABELS}
               onPick={setPicked}
+              onPickNote={() => setPicked('End note')}
+              onPickAction={() => setPicked('Slack action')}
               portalTo={stageRef.current}
             />
           </div>

@@ -13,6 +13,8 @@
  * validating the same definitions with the same code.
  */
 
+import { isActionType, type WorkflowActionType } from './actions'
+
 export type WorkflowMode = 'blocking' | 'advisory'
 export type WorkflowLinkKind = 'auto' | 'suggest'
 
@@ -48,6 +50,20 @@ export interface WorkflowNote {
   text: string
 }
 
+/**
+ * An action: something done through an MCP server once a step is done (actions.ts). Like an
+ * end note, not a node: no skill of the flow is it, and nothing leaves it.
+ */
+export interface WorkflowAction {
+  /** `action:<id>`, in its own id space, so a link names it like a node. */
+  id: string
+  type: WorkflowActionType
+  /** Where it posts: a Slack channel (`#dev`). Empty: the prompt says where. */
+  channel: string
+  /** The admin's instruction to the agent, `{pr_url}` and its siblings unfilled. */
+  prompt: string
+}
+
 export interface WorkflowLink {
   from: string
   to: string
@@ -64,6 +80,8 @@ export interface Workflow {
   links: WorkflowLink[]
   /** The end notes links may lead to. Absent: none. */
   notes?: WorkflowNote[]
+  /** The actions links may lead to. Absent: none. */
+  actions?: WorkflowAction[]
 }
 
 /** A repository's flow, and whether it is the repository's own or the default. */
@@ -111,11 +129,16 @@ export function validateWorkflow(flow: Workflow): string[] {
     if (nodes.has(note.id) || notes.has(note.id)) errors.push(`duplicate note id "${note.id}"`)
     else notes.add(note.id)
   }
+  // An action ends a way through the flow as a note does: same rules, its own ids.
+  for (const action of flow.actions ?? []) {
+    if (nodes.has(action.id) || notes.has(action.id)) errors.push(`duplicate action id "${action.id}"`)
+    else notes.add(action.id)
+  }
 
   for (const link of flow.links) {
     const from = nodes.get(link.from)
     const to = nodes.get(link.to)
-    if (notes.has(link.from)) errors.push(`link from note "${link.from}": nothing leaves an end note`)
+    if (notes.has(link.from)) errors.push(`link from "${link.from}": nothing leaves an end note or an action`)
     else if (!from) errors.push(`link from unknown node "${link.from}"`)
     if (!to && !notes.has(link.to)) errors.push(`link to unknown node "${link.to}"`)
     if (from && link.outcome !== undefined && !from.outcomes.includes(link.outcome)) {
@@ -226,6 +249,11 @@ export function isWorkflow(value: unknown): value is Workflow {
     (flow.notes === undefined || (Array.isArray(flow.notes) && flow.notes.every((n) => {
       const note = n as Record<string, unknown> | null
       return !!note && typeof note.id === 'string' && typeof note.text === 'string'
+    }))) &&
+    (flow.actions === undefined || (Array.isArray(flow.actions) && flow.actions.every((a) => {
+      const action = a as Record<string, unknown> | null
+      return !!action && typeof action.id === 'string' && isActionType(action.type) &&
+        typeof action.channel === 'string' && typeof action.prompt === 'string'
     })))
   )
 }

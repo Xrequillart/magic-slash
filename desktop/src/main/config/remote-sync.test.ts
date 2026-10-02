@@ -72,6 +72,7 @@ const emptyRow = (): UserSettingsRow => ({
   workflow_confirm_chain: null,
   workflow_chain_limit: null,
   workflow_missing_skill: null,
+  workflow_run_actions: null,
 })
 
 const storeLoading = (loadConfig: Store['loadConfig']): Store => ({ ...NOOP_STORE, loadConfig })

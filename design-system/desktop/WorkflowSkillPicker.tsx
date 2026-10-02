@@ -1,11 +1,16 @@
+import { useEffect, useState } from 'react'
 import { Menu, type MenuGroup, type MenuItem } from './Menu'
-import { FolderGit2, Plus, Puzzle, Sparkles, StickyNote } from './icons'
+import { ChevronLeft, FolderGit2, Plus, Puzzle, Slack, Sparkles, StickyNote } from './icons'
 import { skillIcon } from './skillIcons'
 import type { IconComponent } from './types'
 
 /**
- * WHICH SKILL A NEW STEP RUNS: the menu the workflow editor drops from a "+" on the
- * canvas.
+ * WHAT A "+" ON THE CANVAS ADDS: the menu the workflow editor drops from it.
+ *
+ * TWO LEVELS. The first chooses the KIND of card, each row saying what it is for: an end
+ * note, a Slack action, or a skill. An end note and an action are added as soon as they are
+ * picked. "Skills" opens the second level instead, the skills a step may run, with a row
+ * back at its top. Every opening starts on the first level.
  *
  * `Menu` underneath, so it is anchored, portalled, flips, and closes on Escape, an
  * outside press, a scroll or a pick, exactly like every other menu in the app. The caller
@@ -22,7 +27,7 @@ import type { IconComponent } from './types'
  * for would read as the skill being missing, not as it being used already. `disabled` is
  * the caller's: this component does not know the line.
  *
- * EMPTY, the header says so (`labels.empty`) and there are no rows. A disabled row
+ * NO SKILL TO OFFER, the skills level's header says so (`labels.empty`) and there are no rows. A disabled row
  * reading "No skills" would be a choice that refuses, where there is no choice at all.
  */
 
@@ -40,17 +45,25 @@ export interface WorkflowSkillOption {
 }
 
 export interface WorkflowSkillPickerLabels {
-  /** The menu's accessible name and its header: "Add a step". */
+  /** The menu's accessible name and its header: "Add to the workflow". */
   title: string
-  /** The header's second line when there is no skill to offer. */
+  /** The skills level's header's second line when there is no skill to offer. */
   empty: string
   /** The quiet note on a skill already in the workflow: "In the workflow". */
   inWorkflow: string
-  /** Each group's heading. The built-in group is not drawn without its own. */
+  /** Each group's heading on the skills level. The built-in group is not drawn without its own. */
   sources: Record<Exclude<WorkflowSkillSource, 'builtin'>, string> & { builtin?: string }
-  /** The row that adds an end note instead of a step, and its quiet hint. Not drawn without `onPickNote`. */
+  /** The first level's skills row, and what it says it is for: it opens the skills level. */
+  skills: string
+  skillsDescription: string
+  /** The row back to the first level, at the top of the skills level: "Back". */
+  back: string
+  /** The row that adds an end note, and what it is for. Not drawn without `onPickNote`. */
   note?: string
-  noteHint?: string
+  noteDescription?: string
+  /** The row that adds a Slack action, and what it is for. Not drawn without `onPickAction`. */
+  action?: string
+  actionDescription?: string
 }
 
 export interface WorkflowSkillPickerProps {
@@ -62,6 +75,8 @@ export interface WorkflowSkillPickerProps {
   onPick: (name: string) => void
   /** The end note row was picked. Without it, the menu offers skills only. */
   onPickNote?: () => void
+  /** The Slack action row was picked. Without it, no such row. */
+  onPickAction?: () => void
   labels: WorkflowSkillPickerLabels
   /** Where to portal. `document.body` unless the theme is scoped, see `Menu`. */
   portalTo?: HTMLElement | null
@@ -75,29 +90,53 @@ const SOURCE_ICONS: Record<Exclude<WorkflowSkillSource, 'builtin'>, IconComponen
   plugin: Puzzle,
 }
 
-/** Wide enough for a plugin's `name:skill` and the note beside it. */
-const WIDTH = 280
+/** Wide enough for a plugin's `name:skill` and the note beside it, and for a description on two lines. */
+const WIDTH = 300
 
-/** The end note row's id: no skill is called that, since a skill name has no space. */
+/** The first level's rows' ids: no skill is called that, since a skill name has no space. */
 const NOTE_ROW = 'end note'
+const ACTION_ROW = 'slack action'
+const SKILLS_ROW = 'skills level'
+const BACK_ROW = 'back to kinds'
 
-export function WorkflowSkillPicker({ open, onClose, anchor, skills, onPick, onPickNote, labels, portalTo }: WorkflowSkillPickerProps) {
-  // First, and on its own: a note is not a skill, and is always there to add.
-  const noteGroup: MenuGroup[] = onPickNote && labels.note
-    ? [{ items: [{ id: NOTE_ROW, label: labels.note, icon: StickyNote, hint: labels.noteHint }] }]
-    : []
-  const groups: MenuGroup[] = [...noteGroup, ...SOURCES.map((source) => ({
-    label: labels.sources[source],
-    items: skills
-      .filter((skill) => skill.source === source)
-      .map((skill): MenuItem => ({
-        id: skill.name,
-        label: skill.label ?? skill.name,
-        icon: source === 'builtin' ? skillIcon(skill.name) : SOURCE_ICONS[source],
-        disabled: skill.disabled,
-        hint: skill.disabled ? labels.inWorkflow : undefined,
-      })),
-  })).filter((group) => group.items.length > 0 && group.label !== undefined)]
+export function WorkflowSkillPicker({ open, onClose, anchor, skills, onPick, onPickNote, onPickAction, labels, portalTo }: WorkflowSkillPickerProps) {
+  const [level, setLevel] = useState<'kinds' | 'skills'>('kinds')
+  // Every opening starts on the first level, wherever the last one was left.
+  useEffect(() => {
+    if (!open) setLevel('kinds')
+  }, [open])
+
+  const kinds: MenuGroup[] = [{
+    items: [
+      ...(onPickNote && labels.note ? [{ id: NOTE_ROW, label: labels.note, icon: StickyNote, description: labels.noteDescription }] : []),
+      ...(onPickAction && labels.action ? [{ id: ACTION_ROW, label: labels.action, icon: Slack, description: labels.actionDescription }] : []),
+      { id: SKILLS_ROW, label: labels.skills, icon: Sparkles, description: labels.skillsDescription, submenu: true },
+    ],
+  }]
+
+  const skillGroups: MenuGroup[] = [
+    { items: [{ id: BACK_ROW, label: labels.back, icon: ChevronLeft, keepOpen: true }] },
+    ...SOURCES.map((source) => ({
+      label: labels.sources[source],
+      items: skills
+        .filter((skill) => skill.source === source)
+        .map((skill): MenuItem => ({
+          id: skill.name,
+          label: skill.label ?? skill.name,
+          icon: source === 'builtin' ? skillIcon(skill.name) : SOURCE_ICONS[source],
+          disabled: skill.disabled,
+          hint: skill.disabled ? labels.inWorkflow : undefined,
+        })),
+    })).filter((group) => group.items.length > 0 && group.label !== undefined),
+  ]
+
+  const onSelect = (item: MenuItem) => {
+    if (item.id === SKILLS_ROW) setLevel('skills')
+    else if (item.id === BACK_ROW) setLevel('kinds')
+    else if (item.id === NOTE_ROW) onPickNote?.()
+    else if (item.id === ACTION_ROW) onPickAction?.()
+    else onPick(item.id)
+  }
 
   return (
     <Menu
@@ -105,9 +144,11 @@ export function WorkflowSkillPicker({ open, onClose, anchor, skills, onPick, onP
       onClose={onClose}
       anchor={anchor}
       label={labels.title}
-      header={{ title: labels.title, subtitle: skills.length === 0 ? labels.empty : undefined, icon: Plus }}
-      groups={groups}
-      onSelect={(item) => (item.id === NOTE_ROW ? onPickNote?.() : onPick(item.id))}
+      header={level === 'kinds'
+        ? { title: labels.title, icon: Plus }
+        : { title: labels.skills, subtitle: skills.length === 0 ? labels.empty : undefined, icon: Sparkles }}
+      groups={level === 'kinds' ? kinds : skillGroups}
+      onSelect={onSelect}
       width={WIDTH}
       portalTo={portalTo}
     />

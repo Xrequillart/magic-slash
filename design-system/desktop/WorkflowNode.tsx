@@ -2,11 +2,11 @@ import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
 
 import { ButtonIcon } from './ButtonIcon'
 import { Icon } from './Icon'
-import { Eye, EyeOff, StickyNote, TriangleAlert } from './icons'
+import { Eye, EyeOff, Slack, StickyNote, TriangleAlert } from './icons'
 import { skillIcon } from './skillIcons'
 import { Text } from './Text'
 import {
-  workflowExitRows, WORKFLOW_ANY_EXIT, type WorkflowCanvasLinkKind, type WorkflowCanvasNode, type WorkflowCanvasNodeMode,
+  workflowActionLine, workflowExitRows, WORKFLOW_ANY_EXIT, type WorkflowCanvasLinkKind, type WorkflowCanvasNode, type WorkflowCanvasNodeMode,
 } from './workflowLayout'
 
 /**
@@ -202,7 +202,7 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
   // A lane is invisible, but where a traced link lands on one, its dot is shown lit.
   const lane = (handle: string) => (tracedPorts?.[handle] ? `ms-wf-lane ${used(handle)}` : 'ms-wf-lane')
 
-  if (node.note !== undefined) {
+  if (node.note !== undefined || node.action !== undefined) {
     return <NoteCard node={node} frame={frame} selected={selected} tint={tint} connectable={connectable} used={used} lane={lane} />
   }
 
@@ -326,7 +326,9 @@ export function WorkflowNode({ data }: NodeProps<WorkflowNodeType>) {
  * nothing goes out: there is no row and no source port. The loop lanes are drawn all the
  * same, invisible, since a link INTO a note may still be routed down or up a column.
  * Its text is `node.note`; an empty one shows `node.label` instead, quieter: the caller's
- * "Empty note".
+ * "Empty note". AN ACTION'S CARD is the same plate, its service's mark in place of the note's
+ * glyph, and never a colour of its own, its channel and its instruction's first line as its
+ * text (`workflowActionLine`).
  */
 function NoteCard({ node, frame, selected, tint, connectable, used, lane }: {
   node: WorkflowCanvasNode
@@ -337,7 +339,8 @@ function NoteCard({ node, frame, selected, tint, connectable, used, lane }: {
   used: (handle: string) => string | undefined
   lane: (handle: string) => string
 }) {
-  const text = node.note ?? ''
+  // An action's card is a note's, wearing its own glyph and saying where it posts and what.
+  const text = node.action ? workflowActionLine(node.action) : node.note ?? ''
   return (
     <div
       className={`relative flex h-full w-full items-center gap-2.5 rounded-xl border bg-bg-secondary px-3 text-ink shadow-sm ${frame}`}
@@ -349,12 +352,19 @@ function NoteCard({ node, frame, selected, tint, connectable, used, lane }: {
       <Handle type="target" position={Position.Top} id={WORKFLOW_SELF_TARGET_HANDLE} style={SELF_LANE} className={lane(WORKFLOW_SELF_TARGET_HANDLE)} isConnectable={false} />
       <Handle type="target" position={Position.Right} id={WORKFLOW_SIDE_TARGET_HANDLE} className={lane(WORKFLOW_SIDE_TARGET_HANDLE)} isConnectable={false} />
       <Handle type="target" position={Position.Left} id={WORKFLOW_TARGET_HANDLE} isConnectable={connectable} className={used(WORKFLOW_TARGET_HANDLE)} />
-      <span
-        className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${node.color ? '' : 'bg-accent/10 text-accent'}`}
-        style={node.color ? { backgroundColor: `${node.color}33`, color: node.color } : undefined}
-      >
-        <Icon glyph={StickyNote} size="md" tone="inherit" />
-      </span>
+      {node.action ? (
+        // The service's own mark, in its own colours, on a plain tile: an action has no colour.
+        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-ink/5">
+          <Icon glyph={Slack} size="md" tone="inherit" />
+        </span>
+      ) : (
+        <span
+          className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${node.color ? '' : 'bg-accent/10 text-accent'}`}
+          style={node.color ? { backgroundColor: `${node.color}33`, color: node.color } : undefined}
+        >
+          <Icon glyph={StickyNote} size="md" tone="inherit" />
+        </span>
+      )}
       <Text
         size="xs"
         tone={text ? undefined : 'secondary'}

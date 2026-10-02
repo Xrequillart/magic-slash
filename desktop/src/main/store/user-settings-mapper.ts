@@ -71,6 +71,7 @@ export interface UserSettingsRow {
   workflow_confirm_chain: string | null
   workflow_chain_limit: number | null
   workflow_missing_skill: string | null
+  workflow_run_actions: boolean | null
 }
 
 export const USER_SETTINGS_COLUMNS =
@@ -83,7 +84,7 @@ export const USER_SETTINGS_COLUMNS =
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
   'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
   'language, sync_claude_theme, code_syntax, code_font_size, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, quick_settings_enabled, quick_settings_items, sidebar_order, sidebar_hidden, sidebar_compact, agent_sort, tasks_repo, ' +
-  'plans_repo, workflow_confirm_chain, workflow_chain_limit, workflow_missing_skill'
+  'plans_repo, workflow_confirm_chain, workflow_chain_limit, workflow_missing_skill, workflow_run_actions'
 
 /**
  * Config keys that live in `user_settings`. Stripped from the org-scoped
@@ -194,6 +195,7 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     workflow_confirm_chain: orNull(config.workflow?.confirmChain),
     workflow_chain_limit: orNull(config.workflow?.chainLimit),
     workflow_missing_skill: orNull(config.workflow?.missingSkill),
+    workflow_run_actions: orNull(config.workflow?.runActions),
   }
 }
 
@@ -295,6 +297,7 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   if (isValidWorkflowConfirmChain(row.workflow_confirm_chain)) workflow.confirmChain = row.workflow_confirm_chain
   if (isValidWorkflowChainLimit(row.workflow_chain_limit)) workflow.chainLimit = row.workflow_chain_limit
   if (isValidWorkflowMissingSkill(row.workflow_missing_skill)) workflow.missingSkill = row.workflow_missing_skill
+  if (typeof row.workflow_run_actions === 'boolean') workflow.runActions = row.workflow_run_actions
   if (Object.keys(workflow).length > 0) config.workflow = workflow
 
   // Spotlight is a two-field object; a partial one is fine because withDefaults()

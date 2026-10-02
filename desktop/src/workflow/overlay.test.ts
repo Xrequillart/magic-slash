@@ -8,6 +8,7 @@ import {
   setStepColor, setStepEnabled, setStepMode, setStepOutcomes,
   addNote, nextNoteId, noteNodeId, removeNote, setNoteText, toOverlay, unreachableSteps,
   copyCard, pasteCard, PASTE_OFFSET,
+  actionNodeId, addAction, canAddLink, canDisable, nextActionId, removeAction, setAction,
 } from './overlay'
 
 const CHECK = customNodeId('check')
@@ -225,10 +226,10 @@ describe('payload then', () => {
     overlay = addLink(addLink(addLink(overlay, 'start', a), a, b), b, 'commit')
     const payload = buildWorkflowPayload('r', { workflow: composeWorkflow(overlay), source: 'repository' }, 'magic-start')
     expect(payload.links).toContainEqual({
-      from: 'start', to: a, kind: 'suggest', outcome: null, skill: 'a', note: null,
+      from: 'start', to: a, kind: 'suggest', outcome: null, skill: 'a', note: null, action: null,
       then: [{
-        from: a, to: b, kind: 'suggest', outcome: null, skill: 'b', note: null,
-        then: [{ from: b, to: 'commit', kind: 'suggest', outcome: null, skill: 'magic-commit', note: null, then: [] }],
+        from: a, to: b, kind: 'suggest', outcome: null, skill: 'b', note: null, action: null,
+        then: [{ from: b, to: 'commit', kind: 'suggest', outcome: null, skill: 'magic-commit', note: null, action: null, then: [] }],
       }],
     })
   })
@@ -240,10 +241,10 @@ describe('payload then', () => {
     overlay = addLink(addLink(addLink(overlay, 'commit', a), a, b), b, a)
     const payload = buildWorkflowPayload('r', { workflow: composeWorkflow(overlay), source: 'repository' }, 'magic-commit')
     expect(payload.links).toContainEqual({
-      from: 'commit', to: a, kind: 'suggest', outcome: null, skill: 'a', note: null,
+      from: 'commit', to: a, kind: 'suggest', outcome: null, skill: 'a', note: null, action: null,
       then: [{
-        from: a, to: b, kind: 'suggest', outcome: null, skill: 'b', note: null,
-        then: [{ from: b, to: a, kind: 'suggest', outcome: null, skill: 'a', note: null, then: [] }],
+        from: a, to: b, kind: 'suggest', outcome: null, skill: 'b', note: null, action: null,
+        then: [{ from: b, to: a, kind: 'suggest', outcome: null, skill: 'a', note: null, action: null, then: [] }],
       }],
     })
   })
@@ -487,7 +488,7 @@ describe('an end note', () => {
 
   it('reaches the skills as the link\'s note, with no skill and no then', () => {
     const payload = buildWorkflowPayload('r', { workflow: servedWorkflow(withNote()), source: 'repository' }, 'check')
-    expect(payload.links).toContainEqual({ from: CHECK, to: N1, kind: 'suggest', outcome: 'ko', skill: null, note: 'Open a ticket', then: [] })
+    expect(payload.links).toContainEqual({ from: CHECK, to: N1, kind: 'suggest', outcome: 'ko', skill: null, note: 'Open a ticket', action: null, then: [] })
   })
 })
 
@@ -598,5 +599,59 @@ describe('copyCard / pasteCard', () => {
     expect(copyCard(withCheck(), CHECK)).toBeNull()
     expect(copyCard(withCheck(), 'commit')).toBeNull()
     expect(copyCard(EMPTY_OVERLAY, frameNodeId('f9'))).toBeNull()
+  })
+})
+
+
+describe('actions', () => {
+  const A1 = actionNodeId('a1')
+  const slack = () => addLink(addAction(EMPTY_OVERLAY, AT, 'slack', { channel: ' #Dev Team ', prompt: 'Post {pr_url}  \n\n\n\nthanks' }), 'pr', A1, 'pr_created')
+
+  it('adds one in its own id space, its channel and instruction normalized', () => {
+    const o = slack()
+    expect(o.actions).toEqual([{ id: 'a1', type: 'slack', channel: '#dev-team', prompt: 'Post {pr_url}\n\nthanks' }])
+    expect(o.positions[A1]).toEqual(AT)
+    expect(nextActionId(o)).toBe('a2')
+    expect(canDisable(A1)).toBe(false)
+  })
+
+  it('composes into the flow, linked into like a note and never out of', () => {
+    const flow = composeWorkflow(slack())
+    expect(flow.actions).toEqual([{ id: A1, type: 'slack', channel: '#dev-team', prompt: 'Post {pr_url}\n\nthanks' }])
+    expect(problems(slack())).toEqual([])
+    expect(canAddLink(flow.links, A1, 'done')).toBe(false)
+    const payload = buildWorkflowPayload('r', { workflow: flow, source: 'repository' }, 'magic-pr')
+    expect(payload.links).toContainEqual({ from: 'pr', to: A1, kind: 'suggest', outcome: 'pr_created', skill: null, note: null, action: A1, then: [] })
+  })
+
+  it('is a problem without an instruction, and unreachable without a link', () => {
+    const bare = addAction(EMPTY_OVERLAY, AT)
+    expect(problems(bare)).toEqual([{ code: 'empty-action', nodeId: A1 }])
+    expect(unreachableSteps(setAction(bare, A1, { prompt: 'x' }))).toContain(A1)
+  })
+
+  it('changes, and goes with its links and place', () => {
+    const o = setAction(slack(), A1, { channel: 'qa', prompt: 'Hi' })
+    expect(o.actions?.[0]).toMatchObject({ channel: '#qa', prompt: 'Hi' })
+    const gone = removeAction(o, A1)
+    expect(gone.actions).toBeUndefined()
+    expect(gone.links).toEqual([])
+    expect(gone.positions[A1]).toBeUndefined()
+  })
+
+  it('survives a store round trip, and refuses an unknown type', () => {
+    const o = cleanOverlay(slack())
+    expect(isOverlay(JSON.parse(JSON.stringify(o)))).toBe(true)
+    expect(sameOverlay(toOverlay(JSON.parse(JSON.stringify(o)))!, o)).toBe(true)
+    expect(isOverlay({ ...o, actions: [{ id: 'a1', type: 'email', channel: '', prompt: 'x' }] })).toBe(false)
+  })
+
+  it('is copied and pasted without its links', () => {
+    const clip = copyCard(slack(), A1)!
+    const pasted = pasteCard(slack(), clip)
+    expect(pasted.id).toBe(actionNodeId('a2'))
+    expect(pasted.overlay.actions?.[1]).toMatchObject({ id: 'a2', channel: '#dev-team' })
+    expect(pasted.overlay.positions[pasted.id]).toEqual({ x: AT.x + PASTE_OFFSET, y: AT.y + PASTE_OFFSET })
+    expect(pasted.overlay.links).toHaveLength(1)
   })
 })

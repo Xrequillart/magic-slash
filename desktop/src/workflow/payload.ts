@@ -23,6 +23,12 @@ export interface WorkflowPayloadLink {
    */
   note: string | null
   /**
+   * The action the link leads to (`action:a1`), `skill` and `note` being null then; null
+   * for a link to a step or a note. Such a link is never followed nor shown as a line:
+   * when it applies, the action is handed out to be carried out (next.ts).
+   */
+  action: string | null
+  /**
    * What follows the target when it is a custom step, empty otherwise, through any
    * further custom steps down to the next built-in one: shown under a suggested custom
    * target, so the user sees where it leads before typing it. A custom step
@@ -49,6 +55,7 @@ function payloadLinks(workflow: Workflow, nodeId: string, walked: ReadonlySet<st
     outcome: link.outcome ?? null,
     skill: workflow.nodes.find((n) => n.id === link.to)?.skill ?? null,
     note: workflow.notes?.find((n) => n.id === link.to)?.text ?? null,
+    action: workflow.actions?.some((a) => a.id === link.to) ? link.to : null,
     // The walk ends at a built-in step, a dead end, or a custom step it already went through.
     then: isCustomNodeId(link.to) && !walked.has(link.to) ? payloadLinks(workflow, link.to, new Set([...walked, link.to])) : [],
   }))

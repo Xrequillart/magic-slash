@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { DEFAULT_WORKFLOW } from './defaultFlow'
 import { buildWorkflowPayload } from './payload'
 import type { WorkflowOverlay } from './overlay'
-import { EMPTY_OVERLAY, addLink, addStep, composeWorkflow, customNodeId, setLinkKind, setStepOutcomes, addNote, noteNodeId } from './overlay'
+import { EMPTY_OVERLAY, addLink, addStep, composeWorkflow, customNodeId, setLinkKind, setStepOutcomes, addNote, noteNodeId, addAction, actionNodeId } from './overlay'
 import { SKILL_CONTEXT_HEADING, buildSkillContext } from './skillContext'
 
 const CHECK = customNodeId('check-types')
@@ -76,5 +76,16 @@ describe('buildSkillContext', () => {
   it('says nothing for a custom step with no link leaving it', () => {
     const o = addLink(addStep(EMPTY_OVERLAY, 'check-types', AT), 'commit', CHECK)
     expect(contextFor(o)).toBeNull()
+  })
+})
+
+
+describe('buildSkillContext with actions', () => {
+  it('speaks for a custom step whose only link leads to an action, and says how to run it', () => {
+    let o = addAction(addStep(EMPTY_OVERLAY, 'check-types', AT), AT, 'slack', { prompt: 'Tell #qa' })
+    o = addLink(addLink(o, 'commit', CHECK), CHECK, actionNodeId('a1'))
+    const text = contextFor(o)!
+    expect(text).not.toBeNull()
+    expect(text).toContain('`magic-action`')
   })
 })

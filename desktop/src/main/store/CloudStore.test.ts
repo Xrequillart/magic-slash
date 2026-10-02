@@ -2480,6 +2480,7 @@ describe('user settings', () => {
       workflow_confirm_chain: null,
       workflow_chain_limit: null,
       workflow_missing_skill: null,
+      workflow_run_actions: null,
       atlassian_integration_enabled: null,
       theme: null,
       language: null,

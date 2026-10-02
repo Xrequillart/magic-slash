@@ -57,6 +57,26 @@ export interface WorkflowCanvasNode {
    * no switch and no mode, its text in the header's place. `outcomes` is empty on it.
    */
   note?: string
+  /**
+   * AN ACTION, not a step: what it does once a link reaches it (a Slack message). Drawn like
+   * an end note, no port out, no switch, no mode: its channel and its instruction's first
+   * line in the header's place. `outcomes` is empty on it.
+   */
+  action?: WorkflowCanvasAction
+}
+
+/** What an action card shows. Its type picks the glyph. */
+export interface WorkflowCanvasAction {
+  type: 'slack'
+  /** Where it posts (`#dev`), or empty: the instruction says where. */
+  channel: string
+  prompt: string
+}
+
+/** The one line an action card shows: its channel, then its instruction's first line. */
+export function workflowActionLine(action: WorkflowCanvasAction): string {
+  const first = action.prompt.split('\n')[0].trim()
+  return [action.channel, first].filter(Boolean).join(' · ')
 }
 
 export interface WorkflowCanvasLink {
@@ -118,9 +138,9 @@ function singleExit(node: ExitNode): boolean {
   return !!node.locked && node.outcomes.length === 1
 }
 
-export function workflowExitRows(node: ExitNode & Pick<WorkflowCanvasNode, 'note'>): string[] {
-  // Nothing leaves an end note: no row, no port.
-  if (node.note !== undefined) return []
+export function workflowExitRows(node: ExitNode & Pick<WorkflowCanvasNode, 'note' | 'action'>): string[] {
+  // Nothing leaves an end note or an action: no row, no port.
+  if (node.note !== undefined || node.action !== undefined) return []
   return singleExit(node) ? node.outcomes : [...node.outcomes, WORKFLOW_ANY_EXIT]
 }
 
@@ -187,10 +207,11 @@ function textWidth(text: string, font: string): number {
 export function workflowCardWidth(node: WorkflowCanvasNode, words: WorkflowCardWords = {}): number {
   const SPARE = 6
   const BORDER = 2
-  if (node.note !== undefined) {
+  if (node.note !== undefined || node.action !== undefined) {
     // Its text on two lines at most: half its width, past the glyph, wraps it in two.
     const chrome = 12 + 32 + 10 + 12
-    const width = Math.ceil(chrome + textWidth(node.note || node.label, NOTE_FONT) / 2 + 24 + BORDER + SPARE)
+    const text = node.action ? workflowActionLine(node.action) || node.label : node.note || node.label
+    const width = Math.ceil(chrome + textWidth(text, NOTE_FONT) / 2 + 24 + BORDER + SPARE)
     return Math.min(WORKFLOW_NODE_MAX_WIDTH, Math.max(WORKFLOW_NODE_MIN_WIDTH, width))
   }
   // px-3, the 32px glyph and its gap-2.5 on the left, px-3 on the right.
@@ -214,7 +235,7 @@ export function workflowCardWidths(nodes: WorkflowCanvasNode[], words: WorkflowC
 }
 
 /** A card's height, from its rows. */
-export function workflowCardHeight(node: Pick<WorkflowCanvasNode, 'outcomes' | 'note' | 'locked'>): number {
+export function workflowCardHeight(node: Pick<WorkflowCanvasNode, 'outcomes' | 'note' | 'action' | 'locked'>): number {
   return workflowNodeHeight(workflowExitRows(node).length)
 }
 

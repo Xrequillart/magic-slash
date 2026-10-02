@@ -1,6 +1,9 @@
 import type { Workflow, WorkflowLink, WorkflowLinkKind, WorkflowMode, WorkflowNode } from './model'
 import { validateWorkflow } from './model'
 import { DEFAULT_LINKS, DEFAULT_WORKFLOW, nodeIdForSkill } from './defaultFlow'
+import {
+  ACTION_CHANNEL_MAX_LENGTH, ACTION_PROMPT_MAX_LENGTH, isActionType, normalizeActionPrompt, normalizeSlackChannel, type WorkflowActionType,
+} from './actions'
 
 /**
  * What a repository stores of its workflow: only what the admin ADDED to the default
@@ -66,6 +69,23 @@ export interface WorkflowOverlayNote {
   text: string
   /** Its card's ground, as a custom step's. */
   color?: string
+}
+
+/**
+ * AN ACTION: a card of the canvas that does something through an MCP server once a link
+ * reaches it (actions.ts says what, and who it runs as). Linked into like an end note, and
+ * like one, nothing leaves it: it is carried out, then the flow goes on as if it were not
+ * there. A link into it that is `auto` runs it on its own; a suggestion (the default) asks
+ * first. It has no colour: its card wears its service's own mark.
+ */
+export interface WorkflowOverlayAction {
+  /** Unique among the actions (`a1`, `a2`…). Its node id is `action:<id>`. */
+  id: string
+  type: WorkflowActionType
+  /** Where it posts (`#dev`). Empty: the prompt says where. */
+  channel: string
+  /** The admin's instruction to the agent. */
+  prompt: string
 }
 
 /**
@@ -196,6 +216,8 @@ export interface WorkflowOverlay {
   steps: WorkflowOverlayStep[]
   /** The end notes, in the order they were added. Absent: none. */
   notes?: WorkflowOverlayNote[]
+  /** The actions, in the order they were added. Absent: none. */
+  actions?: WorkflowOverlayAction[]
   links: WorkflowOverlayLink[]
   kinds: Record<string, WorkflowLinkKind>
   /** Top-left corner of a card on the canvas, by node id. A card without one is laid out. */
@@ -237,6 +259,25 @@ export function noteNodeId(id: string): string {
 
 export function isNoteNodeId(id: string): boolean {
   return id.startsWith(NOTE_PREFIX)
+}
+
+/** Actions have their own id space too: `action:a1` is never a step. */
+const ACTION_PREFIX = 'action:'
+
+export function actionNodeId(id: string): string {
+  return `${ACTION_PREFIX}${id}`
+}
+
+export function isActionNodeId(id: string): boolean {
+  return id.startsWith(ACTION_PREFIX)
+}
+
+/** The id the next action added gets: the first `a<k>` no action has. */
+export function nextActionId(overlay: WorkflowOverlay): string {
+  const taken = new Set((overlay.actions ?? []).map((action) => action.id))
+  let k = 1
+  while (taken.has(`a${k}`)) k++
+  return `a${k}`
 }
 
 /** Frames have their own id space too: `frame:f1` is never a card. */
@@ -302,8 +343,9 @@ export const PLAN_NODE_ID = nodeIdForSkill('magic-plan')
 
 /** Whether a step may be turned off: any step but start, which the whole flow runs from. */
 export function canDisable(id: string): boolean {
-  // A note runs nothing, so there is nothing to turn off: remove it instead.
-  return id !== START_NODE_ID && !isNoteNodeId(id)
+  // A note runs nothing, so there is nothing to turn off: remove it instead. An action is
+  // turned off for a person in their settings, and for everyone by removing it.
+  return id !== START_NODE_ID && !isNoteNodeId(id) && !isActionNodeId(id)
 }
 
 /** The steps an overlay turns off, as a set. */
@@ -455,13 +497,18 @@ export function composeWorkflow(overlay: WorkflowOverlay): Workflow {
     ...((overlay.notes ?? []).length > 0
       ? { notes: (overlay.notes ?? []).map((note) => ({ id: noteNodeId(note.id), text: note.text })) }
       : {}),
+    ...((overlay.actions ?? []).length > 0
+      ? { actions: (overlay.actions ?? []).map(({ id, type, channel, prompt }) => ({ id: actionNodeId(id), type, channel, prompt })) }
+      : {}),
   }
 }
 
-/** Every card's node id, the notes' included: what a position or a link may name. */
+/** Every card's node id, the notes' and actions' included: what a position or a link may name. */
 function cardIds(overlay: WorkflowOverlay): Set<string> {
   const flow = composeWorkflow(overlay)
-  return new Set([...flow.nodes.map((node) => node.id), ...(flow.notes ?? []).map((note) => note.id)])
+  return new Set([
+    ...flow.nodes.map((node) => node.id), ...(flow.notes ?? []).map((note) => note.id), ...(flow.actions ?? []).map((action) => action.id),
+  ])
 }
 
 /**
@@ -550,6 +597,10 @@ export function isOverlay(value: unknown): value is WorkflowOverlay {
     isRecord(note) && typeof note.id === 'string' && /^[a-z0-9_-]{1,32}$/i.test(note.id) &&
     typeof note.text === 'string' && note.text.length <= NOTE_MAX_LENGTH &&
     (note.color === undefined || isColor(note.color))))
+  const actionsOk = value.actions === undefined || (Array.isArray(value.actions) && value.actions.every((action) =>
+    isRecord(action) && typeof action.id === 'string' && /^[a-z0-9_-]{1,32}$/i.test(action.id) && isActionType(action.type) &&
+    typeof action.channel === 'string' && action.channel.length <= ACTION_CHANNEL_MAX_LENGTH &&
+    typeof action.prompt === 'string' && action.prompt.length <= ACTION_PROMPT_MAX_LENGTH))
   const framesOk = value.frames === undefined || (Array.isArray(value.frames) && value.frames.every((frame) =>
     isRecord(frame) && typeof frame.id === 'string' && /^[a-z0-9_-]{1,32}$/i.test(frame.id) &&
     typeof frame.title === 'string' && frame.title.length <= FRAME_TITLE_MAX_LENGTH &&
@@ -560,7 +611,7 @@ export function isOverlay(value: unknown): value is WorkflowOverlay {
     typeof sticky.text === 'string' && sticky.text.length <= STICKY_TEXT_MAX_LENGTH && isColor(sticky.color) &&
     [sticky.x, sticky.y, sticky.width, sticky.height].every(Number.isFinite)))
   const idsOk = (ids: unknown) => ids === undefined || (Array.isArray(ids) && ids.every((id) => typeof id === 'string'))
-  return stepsOk && linksOk && notesOk && framesOk && stickiesOk && kindsOk(value.kinds) && positionsOk &&
+  return stepsOk && linksOk && notesOk && actionsOk && framesOk && stickiesOk && kindsOk(value.kinds) && positionsOk &&
     idsOk(value.disabled) && idsOk(value.removed) && idsOk(value.removedLinks)
 }
 
@@ -589,6 +640,8 @@ export type WorkflowProblem =
   | { code: 'start-disabled'; nodeId: string }
   /** An end note with nothing to say. */
   | { code: 'empty-note'; nodeId: string }
+  /** An action with no instruction: nothing to tell the agent. */
+  | { code: 'empty-action'; nodeId: string }
   /** Anything else the composed flow fails on (model.ts's own rules). */
   | { code: 'invalid'; message: string }
 
@@ -627,6 +680,9 @@ function problemsOf(workflow: Workflow): WorkflowProblem[] {
   for (const note of workflow.notes ?? []) {
     if (!note.text.trim()) found.push({ code: 'empty-note', nodeId: note.id })
   }
+  for (const action of workflow.actions ?? []) {
+    if (!action.prompt.trim()) found.push({ code: 'empty-action', nodeId: action.id })
+  }
   if (found.length > 0) return found
   // The editor's own terms come first; the model's rules catch the rest.
   return validateWorkflow(workflow).map((message) => ({ code: 'invalid' as const, message }))
@@ -656,6 +712,7 @@ export function unreachableSteps(overlay: WorkflowOverlay): string[] {
     ...flow.nodes.filter((node) => isBuiltInNodeId(node.id) && !flow.entry.includes(node.id)).map((node) => node.id),
     ...overlay.steps.map((step) => customNodeId(step.skill)),
     ...(overlay.notes ?? []).map((note) => noteNodeId(note.id)),
+    ...(overlay.actions ?? []).map((action) => actionNodeId(action.id)),
   ].filter((id) => !reached.has(id))
 }
 
@@ -687,6 +744,13 @@ export function sameOverlay(a: WorkflowOverlay, b: WorkflowOverlay): boolean {
   const notesB = b.notes ?? []
   const notesSame = notesA.length === notesB.length &&
     notesA.every((note, i) => note.id === notesB[i].id && note.text === notesB[i].text && note.color === notesB[i].color)
+  const actionsA = a.actions ?? []
+  const actionsB = b.actions ?? []
+  const actionsSame = actionsA.length === actionsB.length && actionsA.every((action, i) => {
+    const other = actionsB[i]
+    return action.id === other.id && action.type === other.type && action.channel === other.channel &&
+      action.prompt === other.prompt
+  })
   const linksSame = a.links.every((link, i) => {
     const other = b.links[i]
     return link.from === other.from && link.to === other.to && link.kind === other.kind &&
@@ -707,7 +771,7 @@ export function sameOverlay(a: WorkflowOverlay, b: WorkflowOverlay): boolean {
     return sticky.id === other.id && sticky.text === other.text && sticky.color === other.color &&
       sticky.x === other.x && sticky.y === other.y && sticky.width === other.width && sticky.height === other.height
   })
-  if (!stepsSame || !linksSame || !notesSame || !framesSame || !stickiesSame || !sameDisabled(a, b)) return false
+  if (!stepsSame || !linksSame || !notesSame || !actionsSame || !framesSame || !stickiesSame || !sameDisabled(a, b)) return false
   const kinds = Object.keys(a.kinds)
   if (kinds.length !== Object.keys(b.kinds).length || !kinds.every((key) => a.kinds[key] === b.kinds[key])) return false
   const ids = Object.keys(a.positions)
@@ -872,12 +936,56 @@ export function setNoteColor(overlay: WorkflowOverlay, nodeId: string, color: st
 }
 
 /**
+ * Add an action of `type` with its card at `position`, its channel and instruction still to
+ * write. Its id is `nextActionId`'s: the caller can select it.
+ */
+export function addAction(
+  overlay: WorkflowOverlay, position: WorkflowPosition, type: WorkflowActionType = 'slack',
+  { channel = '', prompt = '' }: { channel?: string; prompt?: string } = {},
+): WorkflowOverlay {
+  const id = nextActionId(overlay)
+  const action: WorkflowOverlayAction = { id, type, channel: normalizeSlackChannel(channel), prompt: normalizeActionPrompt(prompt) }
+  return {
+    ...overlay,
+    actions: [...(overlay.actions ?? []), action],
+    positions: { ...overlay.positions, [actionNodeId(id)]: rounded(position) },
+  }
+}
+
+/** An `actions` list, left out of the overlay when it is empty. */
+function withActions(overlay: WorkflowOverlay, actions: WorkflowOverlayAction[]): WorkflowOverlay {
+  const { actions: _was, ...rest } = overlay
+  return actions.length > 0 ? { ...rest, actions } : rest
+}
+
+/** Remove an action (by its node id), the links into it and its place. */
+export function removeAction(overlay: WorkflowOverlay, nodeId: string): WorkflowOverlay {
+  const { [nodeId]: _gone, ...positions } = overlay.positions
+  return withActions({
+    ...overlay,
+    links: overlay.links.filter((link) => link.from !== nodeId && link.to !== nodeId),
+    positions,
+  }, (overlay.actions ?? []).filter((action) => actionNodeId(action.id) !== nodeId))
+}
+
+/** Change an action, by its node id: where it posts, what it says. */
+export function setAction(
+  overlay: WorkflowOverlay, nodeId: string, change: Partial<Pick<WorkflowOverlayAction, 'channel' | 'prompt'>>,
+): WorkflowOverlay {
+  return withActions(overlay, (overlay.actions ?? []).map((action) => {
+    if (actionNodeId(action.id) !== nodeId) return action
+    const next = { ...action, ...change }
+    return { ...next, channel: normalizeSlackChannel(next.channel), prompt: normalizeActionPrompt(next.prompt) }
+  }))
+}
+
+/**
  * Whether a link `from → to` on `outcome` may be drawn: not a default pair, nothing out
- * of a note, not the same link twice, and never beside one taken whatever the outcome,
+ * of a note or an action, not the same link twice, and never beside one taken whatever the outcome,
  * since that one already applies on every outcome.
  */
 export function canAddLink(links: readonly Pick<WorkflowLink, 'from' | 'to' | 'outcome'>[], from: string, to: string, outcome?: string): boolean {
-  if (isNoteNodeId(from)) return false
+  if (isNoteNodeId(from) || isActionNodeId(from)) return false
   const between = links.filter((link) => link.from === from && link.to === to)
   return outcome === undefined ? between.length === 0 : !between.some((link) => link.outcome === undefined || link.outcome === outcome)
 }
@@ -1040,6 +1148,7 @@ export type WorkflowClip =
   | { type: 'frame'; frame: Omit<WorkflowOverlayFrame, 'id'> }
   | { type: 'sticky'; sticky: Omit<WorkflowOverlaySticky, 'id'> }
   | { type: 'note'; text: string; color?: string; position: WorkflowPosition }
+  | { type: 'action'; action: Omit<WorkflowOverlayAction, 'id'>; position: WorkflowPosition }
 
 /** How far a pasted card lands from the one it copies, down and right, so both stay visible. */
 export const PASTE_OFFSET = 24
@@ -1070,6 +1179,13 @@ export function copyCard(overlay: WorkflowOverlay, nodeId: string, drawn?: Workf
       ? { type: 'note', text: note.text, position: rounded(position) }
       : { type: 'note', text: note.text, color: note.color, position: rounded(position) }
   }
+  if (isActionNodeId(nodeId)) {
+    const found = (overlay.actions ?? []).find((one) => actionNodeId(one.id) === nodeId)
+    const position = overlay.positions[nodeId] ?? drawn
+    if (!found || !position) return null
+    const { id: _id, ...action } = found
+    return { type: 'action', action, position: rounded(position) }
+  }
   return null
 }
 
@@ -1099,6 +1215,15 @@ export function pasteCard(overlay: WorkflowOverlay, clip: WorkflowClip): { overl
       ]),
       id: stickyNodeId(id),
       clip: { type: 'sticky', sticky },
+    }
+  }
+  if (clip.type === 'action') {
+    const position = shift(clip.position)
+    const { type, ...fields } = clip.action
+    return {
+      overlay: addAction(overlay, position, type, fields),
+      id: actionNodeId(nextActionId(overlay)),
+      clip: { ...clip, position },
     }
   }
   const position = shift(clip.position)
@@ -1148,7 +1273,9 @@ export function cleanOverlay(overlay: WorkflowOverlay): WorkflowOverlay {
     ({ id, title: normalizeFrameTitle(title), border, background, ...framedBox({ x, y, width, height }) }))
   const stickies = (overlay.stickies ?? []).map(({ id, text, color, x, y, width, height }) =>
     ({ id, text: normalizeStickyText(text), color, ...boxed({ x, y, width, height }, STICKY_MIN_SIZE) }))
-  return withDisabled(withNotes({
+  const actions = (overlay.actions ?? []).map(({ id, type, channel, prompt }): WorkflowOverlayAction =>
+    ({ id, type, channel: normalizeSlackChannel(channel), prompt: normalizeActionPrompt(prompt) }))
+  return withDisabled(withActions(withNotes({
     version: 2,
     ...(frames.length > 0 ? { frames } : {}),
     ...(stickies.length > 0 ? { stickies } : {}),
@@ -1163,5 +1290,5 @@ export function cleanOverlay(overlay: WorkflowOverlay): WorkflowOverlay {
     links: splitLinks(overlay.links),
     kinds,
     positions: Object.fromEntries(Object.entries(overlay.positions).filter(([id]) => ids.has(id)).map(([id, at]) => [id, rounded(at)])),
-  }, notes), [...disabledOf(overlay)].filter((id) => ids.has(id) && canDisable(id)))
+  }, notes), actions), [...disabledOf(overlay)].filter((id) => ids.has(id) && canDisable(id)))
 }

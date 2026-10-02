@@ -1,6 +1,7 @@
 import type { WorkflowPayloadLink } from './payload'
 import { isCustomNodeId } from './overlay'
 import { nodeIdForSkill } from './defaultFlow'
+import type { WorkflowActionType } from './actions'
 
 /**
  * How the workflow words what follows a step: the messages, in each language a
@@ -30,6 +31,23 @@ export const CHAIN_BROKEN: Record<WorkflowLanguage, string> = {
   en: '⚠️  {skill} would normally follow on its own, but this step failed: {reason}\nRun it yourself once the problem is fixed.',
   fr: "⚠️  {skill} devait s'enchaîner tout seul, mais cette étape a échoué : {reason}\nLance-le toi-même une fois le problème réglé.",
 }
+
+/** Said right before an action runs. `{where}` is ACTION_WHERE's, or nothing when the action names no channel. */
+export const ACTION_RUNNING: Record<WorkflowLanguage, Record<WorkflowActionType, string>> = {
+  en: { slack: "📣  Posting on Slack{where}, as this repository's workflow says." },
+  fr: { slack: "📣  J'envoie un message Slack{where}, comme le prévoit le workflow de ce repository." },
+}
+
+export const ACTION_WHERE: Record<WorkflowLanguage, string> = { en: ' in {channel}', fr: ' dans {channel}' }
+
+/** Shown in place of the actions a person has not turned on: once per answer, whatever their number. */
+export const ACTIONS_OFF: Record<WorkflowLanguage, string> = {
+  en: "ℹ️  This repository's workflow has an action here ({types}). It did not run, as your settings say: turn \"Run the repository's actions\" back on in Settings → Workflow to let it.",
+  fr: "ℹ️  Le workflow de ce repository prévoit une action ici ({types}). Elle n'a pas été lancée, comme le prévoient tes réglages : réactive « Lancer les actions du dépôt » dans Réglages → Workflow pour qu'elle le soit.",
+}
+
+/** What an action type is called in a line. */
+export const ACTION_TYPE_NAMES: Record<WorkflowActionType, string> = { slack: 'Slack' }
 
 /** One per `then` link under a suggested custom target. */
 /** A chain the user's settings held back: its target is not installed on this machine. */

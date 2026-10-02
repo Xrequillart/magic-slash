@@ -1,6 +1,6 @@
 import { DEFAULT_LINKS, DEFAULT_WORKFLOW } from '../../workflow/defaultFlow'
 import type { WorkflowLinkKind, WorkflowMode } from '../../workflow/model'
-import { EMPTY_OVERLAY, customNodeId, isCustomNodeId, isNoteNodeId, linkKey, linkOutcomesOf, noteNodeId, toOverlay, type WorkflowOverlay, type WorkflowOverlayLink } from '../../workflow/overlay'
+import { EMPTY_OVERLAY, actionNodeId, customNodeId, isActionNodeId, isCustomNodeId, isNoteNodeId, linkKey, linkOutcomesOf, noteNodeId, toOverlay, type WorkflowOverlay, type WorkflowOverlayLink } from '../../workflow/overlay'
 import type { WorkflowHistoryEvent } from '../../types'
 
 /**
@@ -32,6 +32,10 @@ export type WorkflowHistoryChange =
   | { kind: 'note-added'; text: string }
   | { kind: 'note-removed'; text: string }
   | { kind: 'note-text'; before: string; after: string }
+  /** An action, by where it posts and its instruction's first line (`actionText`). */
+  | { kind: 'action-added'; text: string }
+  | { kind: 'action-removed'; text: string }
+  | { kind: 'action-changed'; before: string; after: string }
   /** A frame, by its title: empty when it has none. Its moves and colours are not told. */
   | { kind: 'frame-added'; title: string }
   | { kind: 'frame-removed'; title: string }
@@ -105,6 +109,11 @@ function overlayOf(value: unknown): WorkflowOverlay | null {
   return value === null || value === undefined ? EMPTY_OVERLAY : toOverlay(value)
 }
 
+/** How the history names an action: where it posts, then its instruction's first line. */
+function actionText(action: { channel: string; prompt: string }): string {
+  return [action.channel, action.prompt.split('\n')[0].trim()].filter(Boolean).join(' · ')
+}
+
 export function diffOverlays(stored: WorkflowOverlay, next: WorkflowOverlay): WorkflowHistoryChange[] {
   // As the editor reads them: a link stored on several outcomes is one link per outcome.
   const before = toOverlay(stored) ?? stored
@@ -112,7 +121,10 @@ export function diffOverlays(stored: WorkflowOverlay, next: WorkflowOverlay): Wo
   const changes: WorkflowHistoryChange[] = []
   // A link's end that is a note is named by what it says (`note:<text>`, see `endOf`).
   const texts = new Map([...(before.notes ?? []), ...(after.notes ?? [])].map((note) => [noteNodeId(note.id), note.text]))
-  const endOf = (id: string) => (isNoteNodeId(id) ? `note:${texts.get(id) ?? ''}` : skillOfNode(id))
+  // An action's, by `actionText` (`action:<text>`).
+  const actionTexts = new Map([...(before.actions ?? []), ...(after.actions ?? [])].map((action) => [actionNodeId(action.id), actionText(action)]))
+  const endOf = (id: string) => (isNoteNodeId(id) ? `note:${texts.get(id) ?? ''}`
+    : isActionNodeId(id) ? `action:${actionTexts.get(id) ?? ''}` : skillOfNode(id))
   const oldSteps = new Map(before.steps.map((step) => [step.skill, step]))
   const newSteps = new Map(after.steps.map((step) => [step.skill, step]))
   // The nodes that came or went: their links and their card go with them, and saying
@@ -156,6 +168,24 @@ export function diffOverlays(stored: WorkflowOverlay, next: WorkflowOverlay): Wo
     if (!newNotes.has(id)) {
       changes.push({ kind: 'note-removed', text: note.text })
       gone.add(noteNodeId(id))
+    }
+  }
+
+  const oldActions = new Map((before.actions ?? []).map((action) => [action.id, action]))
+  const newActions = new Map((after.actions ?? []).map((action) => [action.id, action]))
+  for (const [id, action] of newActions) {
+    const was = oldActions.get(id)
+    if (!was) {
+      changes.push({ kind: 'action-added', text: actionText(action) })
+      gone.add(actionNodeId(id))
+    } else if (was.channel !== action.channel || was.prompt !== action.prompt) {
+      changes.push({ kind: 'action-changed', before: actionText(was), after: actionText(action) })
+    }
+  }
+  for (const [id, action] of oldActions) {
+    if (!newActions.has(id)) {
+      changes.push({ kind: 'action-removed', text: actionText(action) })
+      gone.add(actionNodeId(id))
     }
   }
 

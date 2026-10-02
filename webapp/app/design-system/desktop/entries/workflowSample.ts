@@ -141,10 +141,17 @@ export const SAMPLE_SKILLS: WorkflowSkillOption[] = [
 const SOURCES = { custom: 'Your skills', repo: 'This repository', plugin: 'Plugins' }
 
 export const PICKER_LABELS: WorkflowSkillPickerLabels = {
-  title: 'Add a step',
+  title: 'Add to the workflow',
   empty: 'No skill to add. Create one in the Skills page first.',
   inWorkflow: 'In the workflow',
   sources: SOURCES,
+  skills: 'Skills',
+  skillsDescription: 'A step that runs a skill: a built-in one, yours, the repository’s or a plugin’s.',
+  back: 'Back',
+  note: 'End note',
+  noteDescription: 'A line shown once a step is done, for what no skill does: “Create the ticket in Jira”.',
+  action: 'Slack action',
+  actionDescription: 'Post a message on Slack once a step is done, such as the PR’s link once it is created.',
 }
 
 export const INSPECTOR_LABELS: WorkflowInspectorLabels = {

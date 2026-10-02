@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { DEFAULT_WORKFLOW } from './defaultFlow'
 import { buildWorkflowPayload } from './payload'
 import type { WorkflowOverlay } from './overlay'
-import { EMPTY_OVERLAY, addLink, addNote, addStep, customNodeId, noteNodeId, servedWorkflow, setLinkKind, setLinkOutcome, setNoteText, setStepMode, setStepOutcomes } from './overlay'
-import { applyChainPolicy, buildWorkflowNext, type ChainPolicy } from './next'
+import { EMPTY_OVERLAY, actionNodeId, addAction, addLink, addNote, addStep, customNodeId, noteNodeId, servedWorkflow, setLinkKind, setLinkOutcome, setNoteText, setStepMode, setStepOutcomes } from './overlay'
+import { applyActionPolicy, applyChainPolicy, buildWorkflowNext, type ChainPolicy } from './next'
 
 const CHECK = customNodeId('check-types')
 const AT = { x: 0, y: 0 }
@@ -18,6 +18,7 @@ describe('buildWorkflowNext on the default flow', () => {
     expect(nextOf('magic-commit', 'committed')).toEqual({
       lines: [{ kind: 'suggest', skill: 'magic-pr', command: '/magic:pr', broken: null, text: '   • Run /magic:pr to create a Pull Request' }],
       chain: null,
+      actions: [],
     })
   })
 
@@ -31,16 +32,17 @@ describe('buildWorkflowNext on the default flow', () => {
       chain: {
         skill: 'magic-resolve', command: '/magic:resolve', text: "➡️  Continuing with /magic:resolve, as this repository's workflow says.", custom: false, confirm: false,
       },
+      actions: [],
     })
-    expect(nextOf('magic-pr', 'ci_green')).toEqual({ lines: [], chain: null })
+    expect(nextOf('magic-pr', 'ci_green')).toEqual({ lines: [], chain: null, actions: [] })
   })
 
   it('drops the suggestions of a failed step', () => {
-    expect(nextOf('magic-commit', 'failed', { reason: 'hook refused' })).toEqual({ lines: [], chain: null })
+    expect(nextOf('magic-commit', 'failed', { reason: 'hook refused' })).toEqual({ lines: [], chain: null, actions: [] })
   })
 
   it('has nothing for a skill outside the flow', () => {
-    expect(nextOf('magic-review', 'done')).toEqual({ lines: [], chain: null })
+    expect(nextOf('magic-review', 'done')).toEqual({ lines: [], chain: null, actions: [] })
   })
 
   it('never chains plan into start, whatever the flow says', () => {
@@ -212,5 +214,65 @@ describe('applyChainPolicy', () => {
       '⏭️  /check-types is not installed on this machine: skipped, as your settings say.',
       '⏭️  /magic:pr is not installed on this machine: skipped, as your settings say.',
     ])
+  })
+})
+
+
+describe('actions', () => {
+  const A1 = actionNodeId('a1')
+  const A2 = actionNodeId('a2')
+  /** pr → a Slack action on pr_created. */
+  const slack = (kind?: 'auto') => {
+    let o = addAction(EMPTY_OVERLAY, AT, 'slack', { channel: 'dev', prompt: 'PR {pr_title} is up: {pr_url}' })
+    o = addLink(o, 'pr', A1, 'pr_created')
+    return kind ? setLinkKind(o, 'pr', A1, kind, 'pr_created') : o
+  }
+
+  it('hands out the action a link on the outcome leads to, asked first while it is a suggestion', () => {
+    expect(nextOf('magic-pr', 'pr_created', {}, served(slack())).actions).toEqual([
+      { id: A1, type: 'slack', text: "📣  Posting on Slack in #dev, as this repository's workflow says.", confirm: true },
+    ])
+    expect(nextOf('magic-pr', 'pr_created', {}, served(slack('auto'))).actions[0].confirm).toBe(false)
+  })
+
+  it('shows it as no line, and keeps the chain', () => {
+    const next = nextOf('magic-pr', 'review_comments', {}, served(addLink(slack(), 'pr', A1, 'review_comments')))
+    expect(next.lines).toEqual([])
+    expect(next.chain?.skill).toBe('magic-resolve')
+    expect(next.actions.map((a) => a.id)).toEqual([A1])
+  })
+
+  it('runs nothing on another outcome, nor on a failure', () => {
+    expect(nextOf('magic-pr', 'ci_green', {}, served(slack())).actions).toEqual([])
+    const always = addLink(addAction(EMPTY_OVERLAY, AT, 'slack', { prompt: 'x' }), 'commit', A1)
+    expect(nextOf('magic-commit', 'committed', {}, served(always)).actions).toHaveLength(1)
+    expect(nextOf('magic-commit', 'failed', { reason: 'hook' }, served(always)).actions).toEqual([])
+  })
+
+  it('hands out several in the flow order', () => {
+    let o = addAction(addAction(EMPTY_OVERLAY, AT, 'slack', { prompt: 'one' }), AT, 'slack', { prompt: 'two' })
+    o = setLinkKind(addLink(addLink(o, 'pr', A2), 'pr', A1, 'pr_created'), 'pr', A1, 'auto', 'pr_created')
+    const next = nextOf('magic-pr', 'pr_created', { lang: 'fr' }, served(o))
+    expect(next.actions.map((a) => [a.id, a.confirm])).toEqual([[A2, true], [A1, false]])
+    expect(next.actions[0].text).toBe("📣  J'envoie un message Slack, comme le prévoit le workflow de ce repository.")
+  })
+
+  it('keeps the actions through the chain policy', () => {
+    const next = nextOf('magic-pr', 'pr_created', {}, served(slack()))
+    const payloadOf = (skill: string) => buildWorkflowPayload('api', { workflow: served(slack()), source: 'repository' }, skill)
+    expect(applyChainPolicy(next, { confirm: 'always', chained: 0, limit: 0, missing: 'stop', installed: () => true, payloadOf }).actions).toEqual(next.actions)
+  })
+
+  it('holds them back for a person who turned actions off, saying so once', () => {
+    const next = nextOf('magic-pr', 'pr_created', {}, served(slack()))
+    expect(applyActionPolicy(next, true)).toBe(next)
+    const off = applyActionPolicy(next, false)
+    expect(off.actions).toEqual([])
+    expect(off.lines).toEqual([{
+      kind: 'note', skill: null, command: null, broken: null,
+      text: 'ℹ️  This repository\'s workflow has an action here (Slack). It did not run, as your settings say: turn "Run the repository\'s actions" back on in Settings → Workflow to let it.',
+    }])
+    const none = nextOf('magic-commit', 'committed')
+    expect(applyActionPolicy(none, false)).toBe(none)
   })
 })

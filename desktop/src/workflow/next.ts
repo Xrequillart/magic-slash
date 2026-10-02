@@ -1,8 +1,9 @@
 import type { WorkflowPayload } from './payload'
 import { isCustomNodeId, isLinkIntoStart } from './overlay'
 import type { NoteLink, SkilledLink, WorkflowLanguage } from './messages'
+import type { WorkflowActionType } from './actions'
 import {
-  CHAINING, CHAIN_BROKEN, CHAIN_LIMIT, CHAIN_MISSING, CHAIN_SKIPPED, CUSTOM_PURPOSE, NEXT_STEP_LINE, NOTE_LINE, PURPOSES,
+  ACTIONS_OFF, ACTION_RUNNING, ACTION_TYPE_NAMES, ACTION_WHERE, CHAINING, CHAIN_BROKEN, CHAIN_LIMIT, CHAIN_MISSING, CHAIN_SKIPPED, CUSTOM_PURPOSE, NEXT_STEP_LINE, NOTE_LINE, PURPOSES,
   commandFor, fill, grouped, hasSkill, isNoteLink, isShown, purposeFor, safeNote, thenLines,
 } from './messages'
 
@@ -56,14 +57,33 @@ export interface WorkflowNextChain {
   confirm: boolean
 }
 
+/**
+ * An action to carry out once the run is recorded, before the chain: the hidden
+ * `magic-action` skill reads it by `id` from the app and does it (actions.ts).
+ */
+export interface WorkflowNextAction {
+  /** Its node id (`action:a1`), what `magic-action` is invoked with. */
+  id: string
+  type: WorkflowActionType
+  /** What to say right before running it. */
+  text: string
+  /** Ask the user first: the link into it is a suggestion, not `auto`. */
+  confirm: boolean
+}
+
 export interface WorkflowNext {
   /** Notes first, then suggestions, in the flow's order. Empty: the skill keeps its own closing text. */
   lines: WorkflowNextLine[]
   /** The one link to follow on its own, once the run is recorded. */
   chain: WorkflowNextChain | null
+  /**
+   * What to do through an MCP server first, in the flow's order. Never on a failure: an
+   * action reports what a step did, and a step that failed did nothing to report.
+   */
+  actions: WorkflowNextAction[]
 }
 
-export const NO_NEXT: WorkflowNext = { lines: [], chain: null }
+export const NO_NEXT: WorkflowNext = { lines: [], chain: null, actions: [] }
 
 function suggestionText(link: SkilledLink, lang: WorkflowLanguage): string {
   return [fill(NEXT_STEP_LINE[lang], commandFor(link), purposeFor(link, lang)), ...thenLines(link.then, lang)].join('\n')
@@ -116,7 +136,40 @@ export function buildWorkflowNext(
     if (lines.some((line) => line.command === command)) continue
     lines.push({ kind: 'suggest', skill: link.skill, command, broken, text: broken ? `${broken}\n${text}` : text })
   }
-  return { lines, chain }
+  return { lines, chain, actions: failed ? [] : actionsOf(payload, outcome, lang) }
+}
+
+/**
+ * The actions the links that apply lead to, once each. An action reached on two outcomes
+ * is asked about unless one of the links into it that apply is `auto`.
+ */
+function actionsOf(payload: WorkflowPayload, outcome: string, lang: WorkflowLanguage): WorkflowNextAction[] {
+  const out: WorkflowNextAction[] = []
+  for (const link of payload.links) {
+    if (link.action === null || (link.outcome !== null && link.outcome !== outcome)) continue
+    const action = payload.workflow.actions?.find((one) => one.id === link.action)
+    if (!action) continue
+    const known = out.find((one) => one.id === action.id)
+    if (known) {
+      if (link.kind === 'auto') known.confirm = false
+      continue
+    }
+    const where = action.channel ? ACTION_WHERE[lang].replace('{channel}', action.channel) : ''
+    out.push({ id: action.id, type: action.type, text: ACTION_RUNNING[lang][action.type].replace('{where}', where), confirm: link.kind !== 'auto' })
+  }
+  return out
+}
+
+/**
+ * What the person's own settings do to the actions the flow hands out: with actions turned
+ * off (they are on by default), none runs, and one line says there was something to run
+ * and where to turn it back on.
+ */
+export function applyActionPolicy(next: WorkflowNext, enabled: boolean, lang: WorkflowLanguage = 'en'): WorkflowNext {
+  if (enabled || next.actions.length === 0) return next
+  const types = [...new Set(next.actions.map((action) => ACTION_TYPE_NAMES[action.type]))].join(', ')
+  const off: WorkflowNextLine = { kind: 'note', skill: null, command: null, broken: null, text: ACTIONS_OFF[lang].replace('{types}', types) }
+  return { ...next, lines: [...next.lines, off], actions: [] }
 }
 
 /**
@@ -184,5 +237,5 @@ export function applyChainPolicy(next: WorkflowNext, policy: ChainPolicy, lang: 
     chain = null
   }
   if (chain && (policy.confirm === 'always' || (policy.confirm === 'custom' && chain.custom))) chain = { ...chain, confirm: true }
-  return { lines, chain }
+  return { ...next, lines, chain }
 }
