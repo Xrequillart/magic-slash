@@ -1,6 +1,7 @@
 import { Button, type ButtonProps } from './Button'
 import { ButtonIcon, type ButtonIconProps } from './ButtonIcon'
 import { Icon } from './Icon'
+import { AVATAR_SIZES } from './avatarSizes'
 import { ChipInput, type ChipInputProps } from './ChipInput'
 import { ColorSwatches, type ColorSwatchesProps } from './ColorSwatches'
 import { Input, type InputProps } from './Input'
@@ -119,7 +120,7 @@ export type SettingRowControl =
 export type SettingRowLayout = 'inline' | 'stacked'
 
 /**
- * A LOGO TILE AT THE HEAD OF THE ROW, as tall as the name and its help line: what the row IS, where
+ * A LOGO TILE AT THE HEAD OF THE ROW, at the size of `AccountCard`'s service tile: what the row IS, where
  * `icon` says what kind of setting it is. Built for the sessions on Security & Access,
  * where a row is a device and its logo names it before the words do.
  *
@@ -274,18 +275,19 @@ export function SettingRow({
         {/* `min-w-0` so a long help line wraps instead of pushing the control off the
             card — a row may carry more than one of them. */}
         <div className="flex min-w-0 items-stretch gap-3">
-          {/* 40px: the name's line and the help line under it, so the tile is as tall as
-              the row's text. FIXED AND NOT STRETCHED: a square that stretches to its row
-              feeds its own width back into the text's wrapping, and the loop only stops
-              when the tile is as wide as the card. */}
+          {/* `AVATAR_SIZES.lg`, the rung `AccountCard` draws a service tile at: the Slack row
+              under the Jira card on Connections wears the same tile, so the two logos are
+              one size. FIXED AND NOT STRETCHED: a square that stretches to its row feeds its
+              own width back into the text's wrapping, and the loop only stops when the tile
+              is as wide as the card. */}
           {mark && (
             <span
               role="img"
               aria-label={mark.title}
               title={mark.title}
-              className="flex h-10 w-10 shrink-0 items-center justify-center self-center rounded-xl bg-surface-strong p-2 text-ink"
+              className={`${AVATAR_SIZES.lg.box} flex shrink-0 items-center justify-center self-center rounded-xl bg-surface-strong text-ink`}
             >
-              <mark.glyph className="h-full w-full" />
+              <Icon glyph={mark.glyph} size={AVATAR_SIZES.lg.glyph} tone="inherit" />
             </span>
           )}
           <div className="min-w-0 self-center">
