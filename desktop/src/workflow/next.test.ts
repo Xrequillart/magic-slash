@@ -3,7 +3,7 @@ import { DEFAULT_WORKFLOW } from './defaultFlow'
 import { buildWorkflowPayload } from './payload'
 import type { WorkflowOverlay } from './overlay'
 import { EMPTY_OVERLAY, addLink, addNote, addStep, customNodeId, noteNodeId, servedWorkflow, setLinkKind, setLinkOutcome, setNoteText, setStepMode, setStepOutcomes } from './overlay'
-import { buildWorkflowNext } from './next'
+import { applyChainPolicy, buildWorkflowNext, type ChainPolicy } from './next'
 
 const CHECK = customNodeId('check-types')
 const AT = { x: 0, y: 0 }
@@ -28,7 +28,9 @@ describe('buildWorkflowNext on the default flow', () => {
   it('chains pr into resolve on review comments, and offers nothing on ci_green', () => {
     expect(nextOf('magic-pr', 'review_comments')).toEqual({
       lines: [],
-      chain: { skill: 'magic-resolve', command: '/magic:resolve', text: "➡️  Continuing with /magic:resolve, as this repository's workflow says." },
+      chain: {
+        skill: 'magic-resolve', command: '/magic:resolve', text: "➡️  Continuing with /magic:resolve, as this repository's workflow says.", custom: false, confirm: false,
+      },
     })
     expect(nextOf('magic-pr', 'ci_green')).toEqual({ lines: [], chain: null })
   })
@@ -59,7 +61,9 @@ describe('buildWorkflowNext on a custom flow', () => {
 
   it('chains into a custom step by its own name', () => {
     const next = nextOf('magic-commit', 'committed', {}, served(withCheck()))
-    expect(next.chain).toEqual({ skill: 'check-types', command: '/check-types', text: "➡️  Continuing with /check-types, as this repository's workflow says." })
+    expect(next.chain).toEqual({
+      skill: 'check-types', command: '/check-types', text: "➡️  Continuing with /check-types, as this repository's workflow says.", custom: true, confirm: false,
+    })
     expect(next.lines.map((l) => l.command)).toEqual(['/magic:pr'])
   })
 
@@ -156,3 +160,57 @@ describe('buildWorkflowNext from a custom step', () => {
   })
 })
 
+
+describe('applyChainPolicy', () => {
+  /** commit → check-types (auto) → pr (auto). */
+  const flow = served(setLinkKind(setLinkKind(addLink(addLink(addStep(EMPTY_OVERLAY, 'check-types', AT), 'commit', CHECK), CHECK, 'pr'), 'commit', CHECK, 'auto'), CHECK, 'pr', 'auto'))
+  const payloadOf = (skill: string) => buildWorkflowPayload('api', { workflow: flow, source: 'repository' }, skill)
+  const fromCommit = () => buildWorkflowNext(payloadOf('magic-commit'), 'committed')
+  const policy = (change: Partial<ChainPolicy> = {}): ChainPolicy => ({
+    confirm: 'never', chained: 0, limit: 0, missing: 'stop', installed: () => true, payloadOf, ...change,
+  })
+
+  it('leaves the chain alone by default', () => {
+    expect(fromCommit().chain?.skill).toBe('check-types')
+    expect(applyChainPolicy(fromCommit(), policy())).toEqual(fromCommit())
+  })
+
+  it('asks first before every chain, or only before one into a custom step', () => {
+    expect(applyChainPolicy(fromCommit(), policy({ confirm: 'always' })).chain?.confirm).toBe(true)
+    expect(applyChainPolicy(fromCommit(), policy({ confirm: 'custom' })).chain?.confirm).toBe(true)
+    const intoPr = buildWorkflowNext(payloadOf('check-types'), '')
+    expect(intoPr.chain?.skill).toBe('magic-pr')
+    expect(applyChainPolicy(intoPr, policy({ confirm: 'custom' })).chain?.confirm).toBe(false)
+    expect(applyChainPolicy(intoPr, policy({ confirm: 'always' })).chain?.confirm).toBe(true)
+  })
+
+  it('holds a chain back once the limit is reached, as a suggestion saying why', () => {
+    expect(applyChainPolicy(fromCommit(), policy({ limit: 3, chained: 2 })).chain?.skill).toBe('check-types')
+    const held = applyChainPolicy(fromCommit(), policy({ limit: 3, chained: 3 }))
+    expect(held.chain).toBeNull()
+    const line = held.lines.find((one) => one.command === '/check-types')
+    expect(line).toMatchObject({ kind: 'suggest', skill: 'check-types' })
+    expect(line?.text).toContain('3 steps already chained in a row')
+  })
+
+  it('holds a chain into a skill this machine does not have', () => {
+    const held = applyChainPolicy(fromCommit(), policy({ installed: (skill) => skill !== 'check-types' }), 'fr')
+    expect(held.chain).toBeNull()
+    expect(held.lines.find((one) => one.command === '/check-types')?.text).toContain("/check-types devait s'enchaîner tout seul, mais il n'est pas installé")
+  })
+
+  it('or steps over it, to what follows that step on any outcome', () => {
+    const next = applyChainPolicy(fromCommit(), policy({ missing: 'skip', installed: (skill) => skill !== 'check-types' }))
+    expect(next.lines.find((one) => one.kind === 'note')?.text).toContain('/check-types is not installed on this machine: skipped')
+    expect(next.chain?.skill).toBe('magic-pr')
+  })
+
+  it('steps over every missing step in a row', () => {
+    const next = applyChainPolicy(fromCommit(), policy({ missing: 'skip', installed: (skill) => !['check-types', 'magic-pr'].includes(skill) }))
+    expect(next.chain).toBeNull()
+    expect(next.lines.filter((one) => one.kind === 'note').map((one) => one.text)).toEqual([
+      '⏭️  /check-types is not installed on this machine: skipped, as your settings say.',
+      '⏭️  /magic:pr is not installed on this machine: skipped, as your settings say.',
+    ])
+  })
+})

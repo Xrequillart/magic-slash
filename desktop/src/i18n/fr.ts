@@ -100,6 +100,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.tab.splitView': 'Vue divisée',
   'settings.tab.profile': 'Profil',
   'settings.tab.agents': 'Sessions',
+  'settings.tab.workflow': 'Workflow',
   'settings.tab.codeReviews': 'Code et reviews',
   'settings.tab.shortcuts': 'Raccourcis',
   'settings.tab.about': 'À propos',
@@ -1448,6 +1449,22 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.agents.archive.section': 'Archivage',
   'settings.agents.archive.confirm.label': 'Confirmer avant d’archiver',
   'settings.agents.archive.confirm.help': 'Demander avant que ⌘W ou le bouton de la barre de titre archive une session. Désactivé, la session est archivée tout de suite.',
+
+  // ── Réglages → Workflow ──────────────────────────────────────────────────
+  'settings.workflow.section': 'Enchaînement automatique',
+  'settings.workflow.confirm.label': 'Demander avant d’enchaîner',
+  'settings.workflow.confirm.help': 'Quand une étape se termine sur un lien automatique, le skill suivant démarre tout seul. Ces réglages sont les vôtres, sur tous les dépôts : le workflow, lui, appartient au dépôt.',
+  'settings.workflow.confirm.never': 'Jamais',
+  'settings.workflow.confirm.custom': 'Avant une étape custom',
+  'settings.workflow.confirm.always': 'Toujours',
+  'settings.workflow.limit.label': 'Étapes enchaînées d’affilée',
+  'settings.workflow.limit.help': 'Combien d’étapes peuvent se suivre toutes seules avant que la suivante vous attende. Envoyer un message remet le compte à zéro.',
+  'settings.workflow.limit.option': '{count} étapes',
+  'settings.workflow.limit.none': 'Sans limite',
+  'settings.workflow.missing.label': 'Skill absent de cette machine',
+  'settings.workflow.missing.help': 'Quand l’étape suivante lance un skill custom que vous n’avez pas, par exemple un skill qu’un collègue garde dans son propre ~/.claude.',
+  'settings.workflow.missing.stop': 'M’arrêter et me prévenir',
+  'settings.workflow.missing.skip': 'Sauter cette étape',
 
   // ── Réglages → Code et reviews ───────────────────────────────────────────
   'settings.code.section': 'Code',

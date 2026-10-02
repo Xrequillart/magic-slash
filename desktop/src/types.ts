@@ -1762,6 +1762,53 @@ export function isValidCodeFontSize(value: unknown): value is number {
   return typeof value === 'number' && (CODE_FONT_SIZES as readonly number[]).includes(value)
 }
 
+/**
+ * Settings → Workflow: how far a repository's flow may run on its own on THIS person's
+ * machine. The flow is the repository's, shared by its members; these are the person's,
+ * applied by `applyChainPolicy` (workflow/next.ts) to every chain `/workflow/next` hands out.
+ */
+export const WORKFLOW_CONFIRM_CHAINS = ['never', 'custom', 'always'] as const
+export type WorkflowConfirmChain = (typeof WORKFLOW_CONFIRM_CHAINS)[number]
+
+/** How many steps may chain in a row, with no prompt typed in between. 0 = no limit. */
+export const WORKFLOW_CHAIN_LIMITS = [3, 5, 10, 0] as const
+
+export const WORKFLOW_MISSING_SKILLS = ['stop', 'skip'] as const
+export type WorkflowMissingSkill = (typeof WORKFLOW_MISSING_SKILLS)[number]
+
+export interface WorkflowSettings {
+  /** Ask before a chain: never (what it always did), before one into a custom step, or always. */
+  confirmChain?: WorkflowConfirmChain
+  /** One of WORKFLOW_CHAIN_LIMITS. */
+  chainLimit?: number
+  /** A chain into a skill this machine does not have: held back, or stepped over. */
+  missingSkill?: WorkflowMissingSkill
+}
+
+/** What an absent field means. Five in a row is more than the default flow ever chains, and a loop never gets past it. */
+export const DEFAULT_WORKFLOW_SETTINGS: Required<WorkflowSettings> = { confirmChain: 'never', chainLimit: 5, missingSkill: 'stop' }
+
+export function isValidWorkflowConfirmChain(value: unknown): value is WorkflowConfirmChain {
+  return typeof value === 'string' && (WORKFLOW_CONFIRM_CHAINS as readonly string[]).includes(value)
+}
+
+export function isValidWorkflowChainLimit(value: unknown): value is number {
+  return typeof value === 'number' && (WORKFLOW_CHAIN_LIMITS as readonly number[]).includes(value)
+}
+
+export function isValidWorkflowMissingSkill(value: unknown): value is WorkflowMissingSkill {
+  return typeof value === 'string' && (WORKFLOW_MISSING_SKILLS as readonly string[]).includes(value)
+}
+
+/** Every field resolved: the stored value when valid, the default otherwise. */
+export function resolveWorkflowSettings(settings: WorkflowSettings | undefined): Required<WorkflowSettings> {
+  return {
+    confirmChain: isValidWorkflowConfirmChain(settings?.confirmChain) ? settings.confirmChain : DEFAULT_WORKFLOW_SETTINGS.confirmChain,
+    chainLimit: isValidWorkflowChainLimit(settings?.chainLimit) ? settings.chainLimit : DEFAULT_WORKFLOW_SETTINGS.chainLimit,
+    missingSkill: isValidWorkflowMissingSkill(settings?.missingSkill) ? settings.missingSkill : DEFAULT_WORKFLOW_SETTINGS.missingSkill,
+  }
+}
+
 /** The languages Settings → Code & reviews previews a palette in (main/code-sample.ts). */
 export const CODE_SAMPLE_LANGUAGES = [
   { id: 'ts', label: 'TypeScript' },
@@ -1866,6 +1913,8 @@ export interface Config {
   codeSyntax?: CodeSyntaxChoice
   /** Code's size in pixels. Absent = DEFAULT_CODE_FONT_SIZE. Follows the account too. */
   codeFontSize?: number
+  /** Settings → Workflow. Absent fields = DEFAULT_WORKFLOW_SETTINGS. Follows the account. */
+  workflow?: WorkflowSettings
   splitEnabled?: boolean
   splitActive?: boolean
   /** Where a new agent opens while the window is split. Absent = `focused`. */

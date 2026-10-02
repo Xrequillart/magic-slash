@@ -32,6 +32,24 @@ export const CHAIN_BROKEN: Record<WorkflowLanguage, string> = {
 }
 
 /** One per `then` link under a suggested custom target. */
+/** A chain the user's settings held back: its target is not installed on this machine. */
+export const CHAIN_MISSING: Record<WorkflowLanguage, string> = {
+  en: "⚠️  {skill} would normally follow on its own, but it is not installed on this machine.\nGet it, or run it yourself once it is installed.",
+  fr: "⚠️  {skill} devait s'enchaîner tout seul, mais il n'est pas installé sur cette machine.\nRécupère-le, ou lance-le toi-même une fois installé.",
+}
+
+/** A chain whose target is not installed, stepped over as the user's settings say. */
+export const CHAIN_SKIPPED: Record<WorkflowLanguage, string> = {
+  en: "⏭️  {skill} is not installed on this machine: skipped, as your settings say.",
+  fr: "⏭️  {skill} n'est pas installé sur cette machine : étape sautée, comme le prévoient tes réglages.",
+}
+
+/** A chain held back because enough steps already followed on their own in a row. */
+export const CHAIN_LIMIT: Record<WorkflowLanguage, string> = {
+  en: "⏸️  {skill} would normally follow on its own, but {count} steps already chained in a row.\nRun it yourself to carry on.",
+  fr: "⏸️  {skill} devait s'enchaîner tout seul, mais {count} étapes se sont déjà enchaînées d'affilée.\nLance-le toi-même pour continuer.",
+}
+
 export const THEN_LINE: Record<WorkflowLanguage, string> = {
   en: '     ↳ then run {skill} to {purpose}',
   fr: '     ↳ puis lance {skill} pour {purpose}',

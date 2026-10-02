@@ -122,6 +122,7 @@ export const en = {
   'settings.tab.splitView': 'Split view',
   'settings.tab.profile': 'Profile',
   'settings.tab.agents': 'Sessions',
+  'settings.tab.workflow': 'Workflow',
   'settings.tab.codeReviews': 'Code & reviews',
   'settings.tab.shortcuts': 'Shortcuts',
   'settings.tab.about': 'About',
@@ -1488,6 +1489,22 @@ export const en = {
   'settings.agents.archive.section': 'Archiving',
   'settings.agents.archive.confirm.label': 'Confirm before archiving',
   'settings.agents.archive.confirm.help': 'Ask before ⌘W or the title bar button archives a session. Off, the session is archived at once.',
+
+  // ── Settings → Workflow ──────────────────────────────────────────────────
+  'settings.workflow.section': 'Automatic chaining',
+  'settings.workflow.confirm.label': 'Ask before chaining',
+  'settings.workflow.confirm.help': 'When a step ends on an automatic link, the next skill starts on its own. These settings are yours, on every repository: the workflow itself is the repository’s.',
+  'settings.workflow.confirm.never': 'Never',
+  'settings.workflow.confirm.custom': 'Before a custom step',
+  'settings.workflow.confirm.always': 'Always',
+  'settings.workflow.limit.label': 'Steps chained in a row',
+  'settings.workflow.limit.help': 'How many steps may follow each other on their own before the next one waits for you. Sending a message starts the count again.',
+  'settings.workflow.limit.option': '{count} steps',
+  'settings.workflow.limit.none': 'No limit',
+  'settings.workflow.missing.label': 'Skill missing on this machine',
+  'settings.workflow.missing.help': 'When the next step runs a custom skill you don’t have, such as one a teammate keeps in their own ~/.claude.',
+  'settings.workflow.missing.stop': 'Stop and tell me',
+  'settings.workflow.missing.skip': 'Skip that step',
 
   // ── Settings → Code & reviews ────────────────────────────────────────────
   'settings.code.section': 'Code',

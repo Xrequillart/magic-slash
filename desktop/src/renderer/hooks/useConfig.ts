@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useStore } from '../store'
-import type { AgentSortMode, CodeSyntaxChoice, Config, LaunchMode, QuickSettingId, SidebarPageId, SplitNewAgentPane, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId } from '../../types'
+import type { AgentSortMode, CodeSyntaxChoice, Config, LaunchMode, QuickSettingId, SidebarPageId, SplitNewAgentPane, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId, WorkflowSettings } from '../../types'
 
 export function useConfig() {
   const { config, configLoading, configError, setConfig, setConfigLoading, setConfigError } = useStore()
@@ -232,6 +232,12 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  const updateWorkflowSettings = useCallback(async (patch: WorkflowSettings) => {
+    const result = await window.electronAPI.config.setWorkflowSettings(patch)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   // The size code is set in; CodeView reads it straight off the config.
   const updateCodeFontSize = useCallback(async (size: number) => {
     const result = await window.electronAPI.config.setCodeFontSize(size)
@@ -341,6 +347,7 @@ export function useConfig() {
     updateCodeFontSize,
     updateDefaultModel,
     updateConfirmAgentArchive,
+    updateWorkflowSettings,
     updateSplitNewAgentPane,
     updateQuickLaunch,
     updateQuickSettings,

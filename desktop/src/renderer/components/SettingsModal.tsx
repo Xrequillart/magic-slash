@@ -11,6 +11,7 @@ import { ApplicationPage } from '../pages/Config/ApplicationPage'
 import { AppearancePage } from '../pages/Config/AppearancePage'
 import { ClaudeCodePage } from '../pages/Config/ClaudeCodePage'
 import { CodeReviewsPage } from '../pages/Config/CodeReviewsPage'
+import { WorkflowSettingsPage } from '../pages/Config/WorkflowSettingsPage'
 import { ConnectionsPage } from '../pages/Config/ConnectionsPage'
 import { LanguagePage } from '../pages/Config/LanguagePage'
 import { NotificationsPage } from '../pages/Config/NotificationsPage'
@@ -30,6 +31,7 @@ import {
   Building2,
   CircleUserRound,
   CodeXml,
+  Workflow,
   Info,
   Keyboard,
   Languages,
@@ -84,6 +86,7 @@ export type SettingsTab =
   | 'claude-code'
   | 'application'
   | 'agents'
+  | 'workflow'
   | 'code-reviews'
   | 'split-view'
   | 'quick-launch'
@@ -134,6 +137,7 @@ const GROUPS: { id: string; labelKey: MessageKey; pages: SettingsPageEntry[] }[]
     pages: [
       { id: 'application', labelKey: 'settings.tab.application', icon: AppWindow },
       { id: 'agents', labelKey: 'settings.tab.agents', icon: Bot },
+      { id: 'workflow', labelKey: 'settings.tab.workflow', icon: Workflow },
       { id: 'code-reviews', labelKey: 'settings.tab.codeReviews', icon: CodeXml },
       { id: 'split-view', labelKey: 'settings.tab.splitView', icon: SquareSplitHorizontal },
       { id: 'quick-launch', labelKey: 'settings.tab.quickLaunch', icon: TextCursorInput },
@@ -260,6 +264,7 @@ export function SettingsModal() {
           {tab === 'claude-code' && <ClaudeCodePage />}
           {tab === 'application' && <ApplicationPage />}
           {tab === 'agents' && <AgentsPage />}
+          {tab === 'workflow' && <WorkflowSettingsPage />}
           {tab === 'code-reviews' && <CodeReviewsPage />}
           {tab === 'split-view' && <SplitViewPage />}
           {tab === 'quick-launch' && <QuickLaunchPage />}

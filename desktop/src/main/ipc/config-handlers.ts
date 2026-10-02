@@ -45,6 +45,7 @@ import {
   AGENT_SORT_MODES, EMPTY_WORKFLOW_HISTORY, codeSyntaxTheme, DEFAULT_CODE_SYNTAX, DEFAULT_CODE_FONT_SIZE, isValidAgentSort,
   cleanQuickSettings, cleanSidebarPages, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidTheme,
   type CodeSample, type Config, type FilePreviewResult, type ChangedLines, type RepositoryWorkflowOverlay, type RepositoryWorkflowSaveResult, type WorkflowHistoryRead,
+  isValidWorkflowChainLimit, isValidWorkflowConfirmChain, isValidWorkflowMissingSkill, type WorkflowSettings,
 } from '../../types'
 import { applyLanguage, applyTheme, currentTheme } from '../appearance'
 import { CODE_SAMPLES } from '../code-sample'
@@ -646,6 +647,22 @@ export function setupConfigHandlers() {
     if (typeof enabled !== 'boolean') throw new Error('Invalid confirmAgentArchive value: must be a boolean')
     const config = readConfig()
     config.confirmAgentArchive = enabled
+    writeConfig(config)
+    return { config }
+  })
+
+  // Settings → Workflow: any of its three fields, each checked against its own list.
+  ipcMain.handle('config:setWorkflowSettings', async (_event, patch: unknown) => {
+    const { confirmChain, chainLimit, missingSkill } = (patch ?? {}) as Record<string, unknown>
+    if (confirmChain !== undefined && !isValidWorkflowConfirmChain(confirmChain)) throw new Error(`Invalid workflow confirmChain: '${String(confirmChain)}'`)
+    if (chainLimit !== undefined && !isValidWorkflowChainLimit(chainLimit)) throw new Error(`Invalid workflow chainLimit: '${String(chainLimit)}'`)
+    if (missingSkill !== undefined && !isValidWorkflowMissingSkill(missingSkill)) throw new Error(`Invalid workflow missingSkill: '${String(missingSkill)}'`)
+    const config = readConfig()
+    const next: WorkflowSettings = { ...config.workflow }
+    if (confirmChain !== undefined) next.confirmChain = confirmChain
+    if (chainLimit !== undefined) next.chainLimit = chainLimit
+    if (missingSkill !== undefined) next.missingSkill = missingSkill
+    config.workflow = next
     writeConfig(config)
     return { config }
   })

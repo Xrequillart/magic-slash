@@ -1,8 +1,8 @@
 import type { WorkflowPayload } from './payload'
-import { isLinkIntoStart } from './overlay'
+import { isCustomNodeId, isLinkIntoStart } from './overlay'
 import type { NoteLink, SkilledLink, WorkflowLanguage } from './messages'
 import {
-  CHAINING, CHAIN_BROKEN, NEXT_STEP_LINE, NOTE_LINE,
+  CHAINING, CHAIN_BROKEN, CHAIN_LIMIT, CHAIN_MISSING, CHAIN_SKIPPED, CUSTOM_PURPOSE, NEXT_STEP_LINE, NOTE_LINE, PURPOSES,
   commandFor, fill, grouped, hasSkill, isNoteLink, isShown, purposeFor, safeNote, thenLines,
 } from './messages'
 
@@ -50,6 +50,10 @@ export interface WorkflowNextChain {
   command: string
   /** What to say right before invoking it. */
   text: string
+  /** A custom step's skill, rather than a magic one. */
+  custom: boolean
+  /** Ask the user before invoking it (`applyChainPolicy`, from their settings). */
+  confirm: boolean
 }
 
 export interface WorkflowNext {
@@ -104,7 +108,7 @@ export function buildWorkflowNext(
     const auto = link.kind === 'auto' && !isLinkIntoStart(link) && !autoSeen
     if (auto) autoSeen = true
     if (auto && !(failed && node.mode === 'blocking')) {
-      chain = { skill: link.skill, command, text: fill(CHAINING[lang], command) }
+      chain = { skill: link.skill, command, text: fill(CHAINING[lang], command), custom: isCustomNodeId(link.to), confirm: false }
       continue
     }
     const broken = auto ? fill(CHAIN_BROKEN[lang], command).replace('{reason}', reason.trim() || FAILED) : null
@@ -112,5 +116,73 @@ export function buildWorkflowNext(
     if (lines.some((line) => line.command === command)) continue
     lines.push({ kind: 'suggest', skill: link.skill, command, broken, text: broken ? `${broken}\n${text}` : text })
   }
+  return { lines, chain }
+}
+
+/**
+ * What the user's own settings (Settings → Workflow) do to a chain the flow hands out. The
+ * flow is the repository's, shared by its members; these are the person's: how far they
+ * let it run on its own on their machine.
+ */
+export interface ChainPolicy {
+  /** Ask before every chain, before one into a custom step only, or never. */
+  confirm: 'never' | 'custom' | 'always'
+  /** Steps already chained in a row, with no prompt typed in between, and how many are allowed (0: no limit). */
+  chained: number
+  limit: number
+  /** A chain into a skill this machine does not have: hold it back (`stop`), or step over it (`skip`). */
+  missing: 'stop' | 'skip'
+  /** Whether the skill a chain invokes is installed here. */
+  installed: (skill: string) => boolean
+  /** The payload centred on `skill`, for `skip` to read what follows the step it steps over. */
+  payloadOf: (skill: string) => WorkflowPayload
+}
+
+/** How many missing steps in a row `skip` steps over before it gives up: a flow of missing skills is a broken flow. */
+const MAX_SKIPS = 5
+
+/** A chain turned back into a line: the reason it was held, then the suggestion it would have been. */
+function heldLine(chain: WorkflowNextChain, reason: string, lang: WorkflowLanguage): WorkflowNextLine {
+  const purpose = (chain.custom ? undefined : PURPOSES[lang][chain.skill]) ?? CUSTOM_PURPOSE[lang]
+  return { kind: 'suggest', skill: chain.skill, command: chain.command, broken: null, text: `${reason}\n${fill(NEXT_STEP_LINE[lang], chain.command, purpose)}` }
+}
+
+/** A held chain's line, in place of a plain suggestion of the same command: the reason is what matters. */
+function withHeld(lines: WorkflowNextLine[], held: WorkflowNextLine): WorkflowNextLine[] {
+  return [...lines.filter((line) => line.command !== held.command), held]
+}
+
+/** Lines appended once each: a command already shown is not shown twice. */
+function withLines(lines: WorkflowNextLine[], more: WorkflowNextLine[]): WorkflowNextLine[] {
+  return more.reduce((all, line) => (line.command && all.some((one) => one.command === line.command) ? all : [...all, line]), lines)
+}
+
+/**
+ * Apply `policy` to what `buildWorkflowNext` answered. In this order, since each one can
+ * only make the next one moot: a chain into a skill that is not installed is held, or
+ * stepped over to whatever follows that step on any outcome; one over the limit is held;
+ * what is left is asked first when the user wants to be asked. A held chain becomes a
+ * suggestion carrying why, so the user still sees where the flow was going.
+ */
+export function applyChainPolicy(next: WorkflowNext, policy: ChainPolicy, lang: WorkflowLanguage = 'en'): WorkflowNext {
+  let { lines, chain } = next
+  const skipped = new Set<string>()
+  while (chain && !policy.installed(chain.skill)) {
+    if (policy.missing === 'stop' || skipped.size >= MAX_SKIPS || skipped.has(chain.skill)) {
+      lines = withHeld(lines, heldLine(chain, fill(CHAIN_MISSING[lang], chain.command), lang))
+      chain = null
+      break
+    }
+    skipped.add(chain.skill)
+    const note: WorkflowNextLine = { kind: 'note', skill: null, command: null, broken: null, text: fill(CHAIN_SKIPPED[lang], chain.command) }
+    const after = buildWorkflowNext(policy.payloadOf(chain.skill), '', { lang })
+    lines = withLines([...lines, note], after.lines)
+    chain = after.chain
+  }
+  if (chain && policy.limit > 0 && policy.chained >= policy.limit) {
+    lines = withHeld(lines, heldLine(chain, fill(CHAIN_LIMIT[lang], chain.command).replace('{count}', String(policy.chained)), lang))
+    chain = null
+  }
+  if (chain && (policy.confirm === 'always' || (policy.confirm === 'custom' && chain.custom))) chain = { ...chain, confirm: true }
   return { lines, chain }
 }

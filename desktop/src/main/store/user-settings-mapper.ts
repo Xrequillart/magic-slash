@@ -1,5 +1,5 @@
 import type { Config, SpotlightConfig } from '../../types'
-import { cleanQuickSettings, cleanSidebarPages, isValidAgentSort, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidTheme } from '../../types'
+import { cleanQuickSettings, cleanSidebarPages, isValidAgentSort, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidTheme, isValidWorkflowChainLimit, isValidWorkflowConfirmChain, isValidWorkflowMissingSkill } from '../../types'
 import { isValidAgentType, isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 
 // ---------------------------------------------------------------------------
@@ -68,6 +68,9 @@ export interface UserSettingsRow {
   agent_sort: string | null
   tasks_repo: string | null
   plans_repo: string | null
+  workflow_confirm_chain: string | null
+  workflow_chain_limit: number | null
+  workflow_missing_skill: string | null
 }
 
 export const USER_SETTINGS_COLUMNS =
@@ -80,7 +83,7 @@ export const USER_SETTINGS_COLUMNS =
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
   'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
   'language, sync_claude_theme, code_syntax, code_font_size, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, quick_settings_enabled, quick_settings_items, sidebar_order, sidebar_hidden, sidebar_compact, agent_sort, tasks_repo, ' +
-  'plans_repo'
+  'plans_repo, workflow_confirm_chain, workflow_chain_limit, workflow_missing_skill'
 
 /**
  * Config keys that live in `user_settings`. Stripped from the org-scoped
@@ -129,6 +132,7 @@ export const SETTINGS_KEYS = [
   'syncClaudeTheme',
   'codeSyntax',
   'codeFontSize',
+  'workflow',
 ] as const
 
 /** `undefined` (key absent from Config) → `null` (column unset). */
@@ -187,6 +191,9 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     agent_sort: orNull(config.agentSort),
     tasks_repo: orNull(config.tasksRepo),
     plans_repo: orNull(config.plansRepo),
+    workflow_confirm_chain: orNull(config.workflow?.confirmChain),
+    workflow_chain_limit: orNull(config.workflow?.chainLimit),
+    workflow_missing_skill: orNull(config.workflow?.missingSkill),
   }
 }
 
@@ -281,6 +288,14 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   if (isSet(row.pr_reviews_poll_interval_ms)) prReviews.pollIntervalMs = row.pr_reviews_poll_interval_ms
   if (isSet(row.pr_reviews_auto_launch_skills)) prReviews.autoLaunchSkills = row.pr_reviews_auto_launch_skills
   if (Object.keys(prReviews).length > 0) config.prReviews = prReviews
+
+  // Re-validated like the enums above: a choice a newer build offers and this one does not
+  // reads as unset, i.e. DEFAULT_WORKFLOW_SETTINGS, never as a policy this build cannot apply.
+  const workflow: NonNullable<Config['workflow']> = {}
+  if (isValidWorkflowConfirmChain(row.workflow_confirm_chain)) workflow.confirmChain = row.workflow_confirm_chain
+  if (isValidWorkflowChainLimit(row.workflow_chain_limit)) workflow.chainLimit = row.workflow_chain_limit
+  if (isValidWorkflowMissingSkill(row.workflow_missing_skill)) workflow.missingSkill = row.workflow_missing_skill
+  if (Object.keys(workflow).length > 0) config.workflow = workflow
 
   // Spotlight is a two-field object; a partial one is fine because withDefaults()
   // merges DEFAULT_SPOTLIGHT under whatever is present.

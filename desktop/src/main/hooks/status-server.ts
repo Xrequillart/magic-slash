@@ -280,6 +280,13 @@ export function setCustomSkillContextProvider(provider: CustomSkillContextProvid
   customSkillContextProvider = provider
 }
 
+/** Told the `cwd` of every prompt the user sends: what starts the workflow's chain count again (chainCounter.ts). */
+let userPromptListener: ((cwd: string) => void) | null = null
+
+export function setUserPromptListener(listener: (cwd: string) => void) {
+  userPromptListener = listener
+}
+
 /**
  * The context `POST /workflow/context` injects for the Skill tool payload in `body`,
  * or null when it injects nothing.
@@ -329,6 +336,11 @@ function customSkillContextFor(body: string): { context: string; event: SkillCon
     payload = JSON.parse(body)
   } catch {
     return null
+  }
+  // Every prompt, a command or not, reaches this route through the UserPromptSubmit hook.
+  const { cwd, hook_event_name: eventName } = (payload ?? {}) as { cwd?: unknown; hook_event_name?: unknown }
+  if (eventName === 'UserPromptSubmit' && typeof cwd === 'string' && cwd) {
+    try { userPromptListener?.(cwd) } catch { /* never in the way of the skill */ }
   }
   const found = skillOfHookInput(payload)
   if (!found) return null
