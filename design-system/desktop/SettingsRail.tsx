@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { SearchField } from './FilterBar'
 import { Icon } from './Icon'
 import { MenuSidebarItem } from './MenuSidebarItem'
-import { SETTINGS_RAIL_WIDTH } from './modalSizes'
+import { SETTINGS_RAIL_SEARCH_WIDTH, SETTINGS_RAIL_WIDTH } from './modalSizes'
 import { Text } from './Text'
 import type { IconComponent } from './types'
 
@@ -42,6 +42,14 @@ import type { IconComponent } from './types'
  * THE ARROWS WALK THE RESULTS FROM THE BOX, and Enter picks the lit one, so a reader who
  * typed never has to reach for the pointer. Escape clears the box before it closes the
  * window — `FilterBar`'s rule, and its box.
+ *
+ * WHILE THE SEARCH IS IN USE — the box focused, or holding a query — THE RAIL WIDENS over
+ * the page (`SETTINGS_RAIL_SEARCH_WIDTH`) and the page dims under it: the reader is
+ * looking through the list, not at the page, and a result's name and page fit on their
+ * lines at that width. The rail keeps its slot at `SETTINGS_RAIL_WIDTH`, so the page does
+ * not reflow. PICKING A RESULT ENDS THE SEARCH: the box empties and lets go of the focus,
+ * the rail folds back, and the page the reader asked for is there undimmed. So does a
+ * click on the dimmed page.
  */
 
 export interface SettingsRailSearchResult {
@@ -105,9 +113,28 @@ export interface SettingsRailProps {
   className?: string
 }
 
+/** `bg-surface-sunken-soft`, as a layer over an opaque ground. */
+const SUNKEN_LAYER = 'linear-gradient(var(--c-surface-sunken-soft), var(--c-surface-sunken-soft))'
+
 export function SettingsRail({ groups, activeKey, onSelect, ariaLabel, search, topInset, className = '' }: SettingsRailProps) {
   const searching = !!search && search.value.trim() !== ''
   const results = searching ? search.results : []
+
+  // In use: the box has the focus, or holds a query. See the note at the top.
+  const [focused, setFocused] = useState(false)
+  const open = focused || searching
+  const box = useRef<HTMLDivElement>(null)
+
+  /** The search over: the box emptied and let go of, so the rail folds back. */
+  const end = () => {
+    search?.onChange('')
+    box.current?.querySelector('input')?.blur()
+    setFocused(false)
+  }
+  const pick = (key: string) => {
+    search?.onPick(key)
+    end()
+  }
 
   // Which result the arrows have lit. Back to the best match on every keystroke: a new
   // query is a new list, and a cursor carried over would point at whatever happened to
@@ -129,76 +156,105 @@ export function SettingsRail({ groups, activeKey, onSelect, ariaLabel, search, t
     } else if (event.key === 'Enter') {
       event.preventDefault()
       const picked = results[Math.min(cursor, results.length - 1)]
-      if (picked) search.onPick(picked.key)
+      if (picked) pick(picked.key)
     }
   }
 
   return (
-    <nav
-      aria-label={ariaLabel}
-      className={`flex shrink-0 flex-col bg-surface-sunken-soft ${className}`.trim()}
-      style={{ width: SETTINGS_RAIL_WIDTH, ...(topInset ? { paddingTop: topInset } : {}) }}
-    >
-      {/* The box stays put and the list scrolls under it: a query is typed at the top, and
-          a long list of results should not carry the box away with it. */}
-      {search && (
-        <div className="shrink-0 px-2 pt-3">
-          <SearchField
-            search={{
-              value: search.value,
-              onChange: search.onChange,
-              placeholder: search.placeholder,
-              clearLabel: search.clearLabel,
+    // The slot keeps the rail's resting width; the rail itself widens over the page.
+    <div className={`relative shrink-0 ${className}`.trim()} style={{ width: SETTINGS_RAIL_WIDTH }}>
+      {/* The page dimmed under the widened rail. Past the slot's right edge and as wide as
+          the window: the panel's `overflow-hidden` cuts it at the panel's edge. A press on
+          it ends the search, the way a press outside a menu closes it. */}
+      <div
+        aria-hidden
+        onMouseDown={open ? end : undefined}
+        className={`absolute inset-y-0 left-full z-10 w-screen bg-black/40 transition-opacity duration-200 ease-out motion-reduce:transition-none ${
+          open ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+      />
+      <nav
+        aria-label={ariaLabel}
+        className={`absolute inset-y-0 left-0 z-20 flex flex-col bg-bg-secondary transition-[width] duration-200 ease-out motion-reduce:transition-none ${
+          open ? 'shadow-2xl' : ''
+        }`}
+        style={{
+          width: open ? SETTINGS_RAIL_SEARCH_WIDTH : SETTINGS_RAIL_WIDTH,
+          // The sunken tint is translucent, and a rail widened over the page would show the
+          // page through it: so the panel's own ground under it, and the tint as a layer.
+          backgroundImage: SUNKEN_LAYER,
+          ...(topInset ? { paddingTop: topInset } : {}),
+        }}
+      >
+        {/* The box stays put and the list scrolls under it: a query is typed at the top, and
+            a long list of results should not carry the box away with it. */}
+        {search && (
+          <div
+            ref={box}
+            className="shrink-0 px-2 pt-3"
+            onFocus={() => setFocused(true)}
+            // Focus moving between the box and its own clear button is still the search.
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false)
             }}
-            onKeyDown={onKeyDown}
-          />
-        </div>
-      )}
-
-      <div ref={list} className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
-        {searching ? (
-          results.length === 0 ? (
-            <Text size="xs" tone="secondary" className="block px-2 pt-1 opacity-50">
-              {search.emptyLabel}
-            </Text>
-          ) : (
-            <div role="listbox" aria-label={search.placeholder} className="flex flex-col gap-0.5">
-              {results.map((result, index) => (
-                <SearchResultRow
-                  key={result.key}
-                  result={result}
-                  index={index}
-                  lit={index === cursor}
-                  onHover={() => setCursor(index)}
-                  onPick={() => search.onPick(result.key)}
-                />
-              ))}
-            </div>
-          )
-        ) : (
-          groups.map(({ id, label, rows }, index) => (
-            <div key={id} role="group" aria-label={label} className={`flex flex-col gap-0.5 ${index === 0 ? '' : 'mt-4'}`}>
-              {/* The sidebar's list caption, to the class: `pl-2` puts the word on the same
-                  line as the rows' own icons, which sit at `px-2` inside this `px-2` column. */}
-              {label && (
-                <div aria-hidden className="pl-2 pt-1 pb-1.5 text-xs text-text-secondary/50 uppercase tracking-wider">
-                  {label}
-                </div>
-              )}
-              {rows.map((row) => (
-                <MenuSidebarItem
-                  key={row.key}
-                  label={row.label}
-                  icon={row.icon}
-                  active={row.key === activeKey}
-                  onClick={() => onSelect(row.key)}
-                />
-              ))}
-            </div>
-          ))
+          >
+            <SearchField
+              search={{
+                value: search.value,
+                onChange: search.onChange,
+                placeholder: search.placeholder,
+                clearLabel: search.clearLabel,
+              }}
+              onKeyDown={onKeyDown}
+            />
+          </div>
         )}
-      </div>
-    </nav>
+
+        <div ref={list} className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
+          {searching ? (
+            results.length === 0 ? (
+              <Text size="xs" tone="secondary" className="block px-2 pt-1 opacity-50">
+                {search.emptyLabel}
+              </Text>
+            ) : (
+              <div role="listbox" aria-label={search.placeholder} className="flex flex-col gap-0.5">
+                {results.map((result, index) => (
+                  <SearchResultRow
+                    key={result.key}
+                    result={result}
+                    index={index}
+                    lit={index === cursor}
+                    onHover={() => setCursor(index)}
+                    onPick={() => pick(result.key)}
+                  />
+                ))}
+              </div>
+            )
+          ) : (
+            groups.map(({ id, label, rows }, index) => (
+              <div key={id} role="group" aria-label={label} className={`flex flex-col gap-0.5 ${index === 0 ? '' : 'mt-4'}`}>
+                {/* The sidebar's list caption, to the class: `pl-2` puts the word on the same
+                    line as the rows' own icons, which sit at `px-2` inside this `px-2` column. */}
+                {label && (
+                  <div aria-hidden className="pl-2 pt-1 pb-1.5 text-xs text-text-secondary/50 uppercase tracking-wider">
+                    {label}
+                  </div>
+                )}
+                {rows.map((row) => (
+                  <MenuSidebarItem
+                    key={row.key}
+                    label={row.label}
+                    icon={row.icon}
+                    active={row.key === activeKey}
+                    onClick={() => onSelect(row.key)}
+                  />
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+      </nav>
+    </div>
   )
 }
 

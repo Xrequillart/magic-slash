@@ -232,8 +232,7 @@ export function SettingsModal() {
             const where = t(home.labelKey)
             return { key, label, context: option ? `${where} · ${option}` : where, icon: home.icon }
           }),
-          // The query stays in the box: a reader comparing two results goes back to the
-          // list for the second one, and it should still be there.
+          // Picking ends the search: the rail empties the box and folds back (`SettingsRail`).
           onPick: (key) => {
             const picked = items[Number(key)]
             if (!picked) return

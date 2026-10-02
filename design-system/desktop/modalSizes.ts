@@ -94,6 +94,13 @@ export const PAGE_MODAL_WIDTH: Record<PageModalSize, string> = {
 export const SETTINGS_RAIL_WIDTH = 224
 
 /**
+ * The same rail while its search is in use: wide enough for a setting's name and its page
+ * on one line each, which at 224 are cut. It widens OVER the page rather than pushing it,
+ * so the panel keeps its width and the page under it does not reflow for a search.
+ */
+export const SETTINGS_RAIL_SEARCH_WIDTH = 360
+
+/**
  * The column panel with that rail beside it: the rail, then exactly the column it has
  * always been. The rail is added and not carved out of the column, so every page that
  * was measured for the column still fits it to the pixel.
