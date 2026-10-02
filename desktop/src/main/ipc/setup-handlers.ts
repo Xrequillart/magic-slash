@@ -1,10 +1,10 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import type { McpHealthReport, McpServerId, OptionalMcpServerState, PrerequisiteId, SetupStatus } from '../../types'
+import type { McpHealthReport, McpServerId, McpServerState, PrerequisiteId, SetupStatus } from '../../types'
 import { getSetupStatus } from '../setup/status'
-import { checkMcpHealth, lastMcpHealth, optionalMcpServerStates, provisionMcpServer, removeMcpServer } from '../setup/mcp'
+import { checkMcpHealth, lastMcpHealth, mcpServerStates, provisionMcpServer, removeMcpServer } from '../setup/mcp'
 import { installPrerequisite } from '../setup/installers'
 import { updateSkills } from '../skills-updater'
-import { setIntegration } from '../config/config'
+import { readConfig, setIntegration } from '../config/config'
 import { configureClaudeHooks } from '../hooks/claude-hooks-config'
 
 /**
@@ -33,16 +33,17 @@ export function setupSetupHandlers(getMainWindow: () => BrowserWindow | null) {
   })
 
   /**
-   * The optional servers (Slack), with the health the last check found. Instant: it reads
-   * the registry and the cached report, never `claude mcp list`.
+   * The servers of the Connections tab (Atlassian and GitHub when their integration is on,
+   * then Slack), with the health the last check found. Instant: it reads the registry and
+   * the cached report, never `claude mcp list`.
    */
-  ipcMain.handle('setup:getOptionalMcp', async (): Promise<{ servers: OptionalMcpServerState[]; report: McpHealthReport | null }> =>
-    ({ servers: optionalMcpServerStates(), report: lastMcpHealth() }))
+  ipcMain.handle('setup:getMcpServers', async (): Promise<{ servers: McpServerState[]; report: McpHealthReport | null }> =>
+    ({ servers: mcpServerStates(readConfig().integrations), report: lastMcpHealth() }))
 
   /** Ask every server for its health (`claude mcp list`): seconds, so only on the user's Check. */
-  ipcMain.handle('setup:checkMcpHealth', async (): Promise<{ servers: OptionalMcpServerState[]; report: McpHealthReport }> => {
+  ipcMain.handle('setup:checkMcpHealth', async (): Promise<{ servers: McpServerState[]; report: McpHealthReport }> => {
     const report = await checkMcpHealth()
-    return { servers: optionalMcpServerStates(report), report }
+    return { servers: mcpServerStates(readConfig().integrations, report), report }
   })
 
   /**

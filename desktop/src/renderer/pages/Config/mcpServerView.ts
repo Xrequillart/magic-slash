@@ -1,8 +1,12 @@
-import type { OptionalMcpServerState } from '../../../types'
+import type { McpServerState } from '../../../types'
 
 /**
- * What the Application tab says about an optional MCP server (Slack), and what it offers
- * to do about it: the reading half of `McpServersCard`, pure so the root suite can hold it.
+ * What the Connections tab says about an MCP server, and what it offers to do about it:
+ * the reading half of `McpServersCard`, pure so the root suite can hold it.
+ *
+ * A REQUIRED server (Atlassian, GitHub) is never offered Remove: the skills need it, and
+ * the launch would only add it back. What it can be offered is Install when it is missing,
+ * and Reinstall over an entry of the user's (the old stdio GitHub server).
  *
  * Two sources, and the health check wins when it has spoken: the registry (~/.claude.json)
  * only says a server is DECLARED, while `claude mcp list` says whether it answers, and it
@@ -30,9 +34,9 @@ export interface McpServerView {
   claudeAi?: boolean
 }
 
-export function mcpServerView({ status, health }: OptionalMcpServerState): McpServerView {
+export function mcpServerView({ required, status, health }: McpServerState): McpServerView {
   const ours = status.state !== 'missing'
-  const removable = ours ? 'remove' : null
+  const removable = ours && !required ? 'remove' : null
   if (health?.state === 'connected') {
     return health.source === 'claude-ai' && !ours
       ? { state: 'connected-claude-ai', action: null }
@@ -40,10 +44,10 @@ export function mcpServerView({ status, health }: OptionalMcpServerState): McpSe
   }
   if (status.state === 'legacy') return { state: 'legacy', action: 'reinstall' }
   if (health?.state === 'needs-auth' || health?.state === 'failed') {
-    const view: McpServerView = { state: health.state, action: ours ? 'remove' : 'install' }
+    const view: McpServerView = { state: health.state, action: ours ? removable : 'install' }
     if (health.detail) view.detail = health.detail
     if (health.source === 'claude-ai' && !ours) view.claudeAi = true
     return view
   }
-  return ours ? { state: 'installed', action: 'remove' } : { state: 'missing', action: 'install' }
+  return ours ? { state: 'installed', action: removable } : { state: 'missing', action: 'install' }
 }

@@ -3,7 +3,6 @@ import { BarChart3, Lightbulb, MonitorSmartphone, PanelLeft } from '@ds/desktop/
 import { DisclosureCard, SectionHeader, SettingsCard } from '@ds/desktop'
 import { TelemetryHealthCard } from './TelemetryHealthCard'
 import { SetupHealthCard } from './SetupHealthCard'
-import { McpServersCard } from './McpServersCard'
 import { SidebarPagesModal } from './SidebarPagesModal'
 import { useToggleRow } from './ToggleRow'
 import { useStore } from '../../store'
@@ -136,9 +135,6 @@ export function ApplicationPage() {
     <div className="flex flex-col gap-8">
       {/* Machine setup (prerequisites, MCP servers, integrations) */}
       <SetupHealthCard />
-
-      {/* Optional MCP servers (Slack): installed and checked on request */}
-      <McpServersCard />
 
       {/* Background App Section */}
       <div>

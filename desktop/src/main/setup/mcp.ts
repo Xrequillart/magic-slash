@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import type { McpHealthReport, McpServerHealth, McpServerId, McpServerStatus, OptionalMcpServerState } from '../../types'
+import type { McpHealthReport, McpServerHealth, McpServerId, McpServerState, McpServerStatus } from '../../types'
 import { OPTIONAL_MCP_SERVER_IDS } from '../../types'
 import { runInLoginShell, which } from './shell-exec'
 
@@ -294,7 +294,18 @@ export function healthFor(id: McpServerId, report: McpHealthReport | null): McpS
     ?? null
 }
 
-/** The optional servers, each with its registry state and its last known health. */
-export function optionalMcpServerStates(report: McpHealthReport | null = lastReport): OptionalMcpServerState[] {
-  return OPTIONAL_MCP_SERVER_IDS.map((id) => ({ id, status: mcpServerStatus(id), health: healthFor(id, report) }))
+/**
+ * Every server the Connections tab lists, each with its registry state and its last known
+ * health: the ones an ENABLED integration needs first, then the optional ones. A server
+ * whose integration is off (Atlassian) is left out, since nothing on this machine uses it.
+ */
+export function mcpServerStates(
+  integrations: { github?: boolean; atlassian?: boolean } | undefined,
+  report: McpHealthReport | null = lastReport,
+): McpServerState[] {
+  const required = MCP_DEFINITIONS
+    .filter((d) => (d.integration === 'github' ? integrations?.github !== false : integrations?.atlassian !== false))
+    .map((d) => ({ id: d.id, required: true }))
+  const optional = OPTIONAL_MCP_SERVER_IDS.map((id) => ({ id, required: false }))
+  return [...required, ...optional].map(({ id, required }) => ({ id, required, status: mcpServerStatus(id), health: healthFor(id, report) }))
 }

@@ -3645,11 +3645,13 @@ export interface McpHealthReport {
 }
 
 /**
- * An optional server as the app shows it: what the registry says, and what the last
+ * A server as the Connections tab shows it: what the registry says, and what the last
  * health check said about it or about a claude.ai connector to the same service.
  */
-export interface OptionalMcpServerState {
+export interface McpServerState {
   id: McpServerId
+  /** An enabled integration needs it (Atlassian, GitHub): the app adds it at launch, and never offers to take it off. */
+  required: boolean
   status: McpServerStatus
   /** The health of the server Claude Code will actually use for it, or null before any check. */
   health: McpServerHealth | null
@@ -3659,7 +3661,7 @@ export interface SetupStatus {
   prerequisites: PrerequisiteStatus[]
   /** Whether Homebrew is available, i.e. whether one-click installs are offered. */
   homebrew: boolean
-  /** The servers an integration needs. The optional ones are not here: see OptionalMcpServerState. */
+  /** The servers an integration needs. The optional ones are not here: see McpServerState. */
   mcpServers: McpServerStatus[]
   integrations: { github: boolean; atlassian: boolean }
   /** False until the user has been asked once — drives the first-run wizard. */

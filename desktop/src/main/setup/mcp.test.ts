@@ -22,7 +22,7 @@ vi.mock('./shell-exec', () => ({
   resolveShell: () => '/bin/sh',
 }))
 
-import { mcpServerStatus, allMcpServerStatuses, ensureMcpServers, MCP_DEFINITIONS, checkMcpHealth, healthFor, lastMcpHealth, optionalMcpServerStates, parseMcpList, provisionMcpServer } from './mcp'
+import { mcpServerStatus, allMcpServerStatuses, ensureMcpServers, MCP_DEFINITIONS, checkMcpHealth, healthFor, lastMcpHealth, mcpServerStates, parseMcpList, provisionMcpServer } from './mcp'
 import { runInLoginShell, which } from './shell-exec'
 
 const CLAUDE_JSON = path.join(TMP_HOME, '.claude.json')
@@ -214,14 +214,19 @@ describe('slack, the optional server', () => {
 
   it('reads as configured at its URL, whatever its oauth block', () => {
     writeClaudeJson({ mcpServers: { slack: { type: 'http', url: 'https://mcp.slack.com/mcp', oauth: { clientId: 'x', callbackPort: 3118 } } } })
-    expect(optionalMcpServerStates(null)).toEqual([{ id: 'slack', status: { id: 'slack', state: 'configured', url: 'https://mcp.slack.com/mcp' }, health: null }])
+    expect(mcpServerStates({ atlassian: false, github: false }, null)).toEqual([{ id: 'slack', required: false, status: { id: 'slack', state: 'configured', url: 'https://mcp.slack.com/mcp' }, health: null }])
   })
 
   it('keeps the last check for the next read', async () => {
     vi.mocked(runInLoginShell).mockResolvedValueOnce({ ok: true, stdout: MCP_LIST, stderr: '' })
     const report = await checkMcpHealth()
     expect(lastMcpHealth()).toBe(report)
-    expect(optionalMcpServerStates()[0].health).toMatchObject({ name: 'slack', state: 'needs-auth' })
+    expect(mcpServerStates({ atlassian: false, github: false })[0].health).toMatchObject({ name: 'slack', state: 'needs-auth' })
+  })
+
+  it('lists the servers of the enabled integrations first, then the optional ones', () => {
+    expect(mcpServerStates(undefined, null).map((s) => [s.id, s.required])).toEqual([['atlassian', true], ['github', true], ['slack', false]])
+    expect(mcpServerStates({ atlassian: false }, null).map((s) => s.id)).toEqual(['github', 'slack'])
   })
 
   it('reports a check that could not run', async () => {
