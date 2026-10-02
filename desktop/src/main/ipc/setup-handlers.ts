@@ -1,7 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import type { McpServerId, PrerequisiteId, SetupStatus } from '../../types'
+import type { McpHealthReport, McpServerId, OptionalMcpServerState, PrerequisiteId, SetupStatus } from '../../types'
 import { getSetupStatus } from '../setup/status'
-import { provisionMcpServer, removeMcpServer } from '../setup/mcp'
+import { checkMcpHealth, lastMcpHealth, optionalMcpServerStates, provisionMcpServer, removeMcpServer } from '../setup/mcp'
 import { installPrerequisite } from '../setup/installers'
 import { updateSkills } from '../skills-updater'
 import { setIntegration } from '../config/config'
@@ -15,7 +15,7 @@ import { configureClaudeHooks } from '../hooks/claude-hooks-config'
  * launch-time provisioning is still running must not end up with a broken config.
  */
 
-const MCP_IDS: McpServerId[] = ['atlassian', 'github']
+const MCP_IDS: McpServerId[] = ['atlassian', 'github', 'slack']
 const PREREQUISITE_IDS: PrerequisiteId[] = ['claude', 'node', 'git', 'jq', 'gh']
 
 export function setupSetupHandlers(getMainWindow: () => BrowserWindow | null) {
@@ -30,6 +30,19 @@ export function setupSetupHandlers(getMainWindow: () => BrowserWindow | null) {
   ipcMain.handle('setup:removeMcp', async (_event, { id }: { id: McpServerId }) => {
     if (!MCP_IDS.includes(id)) return { ok: false, error: `unknown MCP server: ${id}` }
     return removeMcpServer(id)
+  })
+
+  /**
+   * The optional servers (Slack), with the health the last check found. Instant: it reads
+   * the registry and the cached report, never `claude mcp list`.
+   */
+  ipcMain.handle('setup:getOptionalMcp', async (): Promise<{ servers: OptionalMcpServerState[]; report: McpHealthReport | null }> =>
+    ({ servers: optionalMcpServerStates(), report: lastMcpHealth() }))
+
+  /** Ask every server for its health (`claude mcp list`): seconds, so only on the user's Check. */
+  ipcMain.handle('setup:checkMcpHealth', async (): Promise<{ servers: OptionalMcpServerState[]; report: McpHealthReport }> => {
+    const report = await checkMcpHealth()
+    return { servers: optionalMcpServerStates(report), report }
   })
 
   /**

@@ -22,7 +22,7 @@ vi.mock('./shell-exec', () => ({
   resolveShell: () => '/bin/sh',
 }))
 
-import { mcpServerStatus, allMcpServerStatuses, ensureMcpServers, MCP_DEFINITIONS } from './mcp'
+import { mcpServerStatus, allMcpServerStatuses, ensureMcpServers, MCP_DEFINITIONS, checkMcpHealth, healthFor, lastMcpHealth, optionalMcpServerStates, parseMcpList, provisionMcpServer } from './mcp'
 import { runInLoginShell, which } from './shell-exec'
 
 const CLAUDE_JSON = path.join(TMP_HOME, '.claude.json')
@@ -134,5 +134,98 @@ describe('ensureMcpServers', () => {
     const { provisioned, errors } = await ensureMcpServers({ github: true, atlassian: true })
     expect(provisioned).toEqual([])
     expect(errors).toEqual([])
+  })
+})
+
+
+// Lines as Claude Code 2.x prints them, copied from a real `claude mcp list` (2026-10-02).
+const MCP_LIST = [
+  'Checking MCP server health…',
+  '',
+  'claude.ai Claude Docs: https://api.anthropic.com/v1/pages/mcp - ✔ Connected',
+  'claude.ai Atlassian MCP: https://mcp.atlassian.com/v2/mcp - ! Needs authentication',
+  'claude.ai Snowflake: https://pt66918.eu-west-3.aws.snowflakecomputing.com - ✘ Failed to connect — HTTP 406: Error POSTing to endpoint',
+  'claude.ai Slack: https://mcp.slack.com/mcp - ✔ Connected',
+  'strava-mcp: https://mcp.strava.com/mcp (HTTP) - ✔ Connected',
+  'atlassian: https://mcp.atlassian.com/v1/mcp (HTTP) - ✔ Connected',
+  'github: https://api.githubcopilot.com/mcp/ (HTTP) - ✘ Failed to connect — Incompatible auth server: does not support dynamic client registration',
+  'slack: https://mcp.slack.com/mcp (HTTP) - ! Needs authentication',
+  'local: npx -y some-server --flag - x (stdio) - ✔ Connected',
+].join('\n')
+
+describe('parseMcpList', () => {
+  const servers = parseMcpList(MCP_LIST)
+
+  it('reads every server line and nothing else', () => {
+    expect(servers.map((s) => s.name)).toEqual([
+      'claude.ai Claude Docs', 'claude.ai Atlassian MCP', 'claude.ai Snowflake', 'claude.ai Slack', 'strava-mcp', 'atlassian', 'github', 'slack', 'local',
+    ])
+  })
+
+  it('tells a claude.ai connector from a server of this machine, and drops the transport', () => {
+    expect(servers.find((s) => s.name === 'claude.ai Slack')).toEqual({ name: 'claude.ai Slack', source: 'claude-ai', target: 'https://mcp.slack.com/mcp', state: 'connected' })
+    expect(servers.find((s) => s.name === 'atlassian')).toEqual({ name: 'atlassian', source: 'claude-code', target: 'https://mcp.atlassian.com/v1/mcp', state: 'connected' })
+  })
+
+  it('reads a sign-in still to do and a failure with its reason', () => {
+    expect(servers.find((s) => s.name === 'slack')).toMatchObject({ state: 'needs-auth' })
+    expect(servers.find((s) => s.name === 'github')).toMatchObject({
+      state: 'failed', detail: 'Incompatible auth server: does not support dynamic client registration',
+    })
+  })
+
+  it('keeps a stdio command whole, dashes included', () => {
+    expect(servers.find((s) => s.name === 'local')).toMatchObject({ target: 'npx -y some-server --flag - x', state: 'connected' })
+  })
+})
+
+describe('healthFor', () => {
+  const report = (lines: string) => ({ checkedAt: 0, ok: true, servers: parseMcpList(lines) })
+
+  it('prefers the server registered under the id', () => {
+    expect(healthFor('slack', report(MCP_LIST))).toMatchObject({ name: 'slack', state: 'needs-auth' })
+  })
+
+  it('falls back on a claude.ai connector to the same service', () => {
+    const lines = MCP_LIST.split('\n').filter((line) => !line.startsWith('slack:')).join('\n')
+    expect(healthFor('slack', report(lines))).toMatchObject({ name: 'claude.ai Slack', source: 'claude-ai', state: 'connected' })
+  })
+
+  it('is null before any check, and when nothing serves it', () => {
+    expect(healthFor('slack', null)).toBeNull()
+    expect(healthFor('slack', report('atlassian: https://mcp.atlassian.com/v1/mcp (HTTP) - ✔ Connected'))).toBeNull()
+  })
+})
+
+describe('slack, the optional server', () => {
+  it('is never provisioned at launch', async () => {
+    await ensureMcpServers({ github: true, atlassian: true })
+    const commands = vi.mocked(runInLoginShell).mock.calls.map(([command]) => command)
+    expect(commands.some((command) => command.includes('slack'))).toBe(false)
+    expect(allMcpServerStatuses().map((s) => s.id)).not.toContain('slack')
+  })
+
+  it('is added with the client Slack signs in, since it has no dynamic registration', async () => {
+    await provisionMcpServer('slack')
+    expect(vi.mocked(runInLoginShell).mock.calls.map(([command]) => command)).toContain(
+      'claude mcp add slack --scope user --transport http --client-id 1601185624273.8899143856786 --callback-port 3118 https://mcp.slack.com/mcp',
+    )
+  })
+
+  it('reads as configured at its URL, whatever its oauth block', () => {
+    writeClaudeJson({ mcpServers: { slack: { type: 'http', url: 'https://mcp.slack.com/mcp', oauth: { clientId: 'x', callbackPort: 3118 } } } })
+    expect(optionalMcpServerStates(null)).toEqual([{ id: 'slack', status: { id: 'slack', state: 'configured', url: 'https://mcp.slack.com/mcp' }, health: null }])
+  })
+
+  it('keeps the last check for the next read', async () => {
+    vi.mocked(runInLoginShell).mockResolvedValueOnce({ ok: true, stdout: MCP_LIST, stderr: '' })
+    const report = await checkMcpHealth()
+    expect(lastMcpHealth()).toBe(report)
+    expect(optionalMcpServerStates()[0].health).toMatchObject({ name: 'slack', state: 'needs-auth' })
+  })
+
+  it('reports a check that could not run', async () => {
+    vi.mocked(which).mockResolvedValueOnce(null)
+    expect(await checkMcpHealth()).toMatchObject({ ok: false, servers: [] })
   })
 })

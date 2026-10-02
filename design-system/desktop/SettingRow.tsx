@@ -8,6 +8,7 @@ import { Kbd, type KbdProps } from './Kbd'
 import { LivePill, type LivePillProps } from './LivePill'
 import { OutcomeTable, type OutcomeTableProps } from './OutcomeTable'
 import { Select, type SelectProps } from './Select'
+import { Status, type StatusProps } from './Status'
 import { Stepper, type StepperProps } from './Stepper'
 import { Switch, type SwitchProps } from './Switch'
 import { Text } from './Text'
@@ -96,6 +97,12 @@ export type SettingRowControl =
    * being read on is "Active now", and there is nothing to set on it.
    */
   | ({ kind: 'live' } & LivePillProps)
+  /**
+   * A STATE OF SOMETHING OUTSIDE THE APP, read and not set: an MCP server "Connected" or
+   * "Sign-in needed". `Status` in its plate, beside the button that acts on it. A state
+   * that changes nothing when pressed, so no `options`.
+   */
+  | ({ kind: 'status' } & Omit<StatusProps, 'options' | 'value' | 'onSelect'>)
   /** A COLOUR TO PICK, among a few: `ColorSwatches`. Best `stacked`, a row of them is wide. */
   | ({ kind: 'swatches' } & ColorSwatchesProps)
 
@@ -247,6 +254,8 @@ export function SettingRow({
       <Kbd key={index} {...one} />
     ) : one.kind === 'live' ? (
       <LivePill key={index} {...one} />
+    ) : one.kind === 'status' ? (
+      <Status key={index} strength="soft" {...one} />
     ) : one.kind === 'swatches' ? (
       <ColorSwatches key={index} {...one} />
     ) : (
