@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.108.0] - 2026-10-02
+
+### Added
+
+- **Desktop**: Add workflow settings to confirm, cap and skip automatic chaining
+- **Desktop**: Copy and paste frames, sticky notes and end notes in the workflow editor
+
+### Changed
+
+- **Desktop**: Drop the shadow under the ink button
+- **Desktop**: Drop the shadow under the primary button
+- **Landing**: Add account, custom skills and team questions to the faq
+- **Landing**: Answer whether the workflow runs outside the app in the faq
+
 ## [0.107.1] - 2026-10-01
 
 ### Added
@@ -3643,6 +3657,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.108.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.108.0
 [0.107.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.107.1
 [0.107.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.107.0
 [0.106.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.106.0
