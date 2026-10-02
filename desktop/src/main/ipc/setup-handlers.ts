@@ -1,8 +1,9 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import type { McpHealthReport, McpServerId, McpServerState, PrerequisiteId, SetupStatus } from '../../types'
+import type { GhCliStatus, McpHealthReport, McpServerId, McpServerState, PrerequisiteId, SetupStatus } from '../../types'
 import { getSetupStatus } from '../setup/status'
 import { checkMcpHealth, lastMcpHealth, mcpServerStates, provisionMcpServer, removeMcpServer } from '../setup/mcp'
 import { installPrerequisite } from '../setup/installers'
+import { checkGhCli } from '../setup/cli'
 import { updateSkills } from '../skills-updater'
 import { readConfig, setIntegration } from '../config/config'
 import { configureClaudeHooks } from '../hooks/claude-hooks-config'
@@ -45,6 +46,9 @@ export function setupSetupHandlers(getMainWindow: () => BrowserWindow | null) {
     const report = await checkMcpHealth()
     return { servers: mcpServerStates(readConfig().integrations, report), report }
   })
+
+  /** Is `gh` installed and logged in: the GitHub MCP server signs in with its token. */
+  ipcMain.handle('setup:checkGhCli', async (): Promise<GhCliStatus> => checkGhCli())
 
   /**
    * Install a prerequisite, streaming its output to the panel.

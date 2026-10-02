@@ -3657,6 +3657,17 @@ export interface McpServerState {
   health: McpServerHealth | null
 }
 
+/** What the Connections tab's CLI row found of `gh`, the GitHub MCP server's sign-in. */
+export interface GhCliStatus {
+  checkedAt: number
+  installed: boolean
+  /** `2.62.0`, or null when absent or unreadable. */
+  version: string | null
+  /** `gh auth status` passes for github.com: `gh auth token` has a token to hand the MCP server. */
+  loggedIn: boolean
+  account: string | null
+}
+
 export interface SetupStatus {
   prerequisites: PrerequisiteStatus[]
   /** Whether Homebrew is available, i.e. whether one-click installs are offered. */

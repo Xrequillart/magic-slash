@@ -1,3 +1,4 @@
+import { CliToolsCard } from './CliToolsCard'
 import { JiraAccountSection } from './JiraAccountSection'
 import { McpServersCard } from './McpServersCard'
 
@@ -21,12 +22,14 @@ import { McpServersCard } from './McpServersCard'
  * sit here too, under their own section with the optional ones (Slack): to the user
  * each is one more service this machine is linked to. The required ones are also
  * repaired from Application → Machine setup, whose verdict is "can the skills run".
+ * Last come the CLIs: `gh` is how the GitHub MCP server signs in, so it is checked here.
  */
 export function ConnectionsPage() {
   return (
     <div className="flex flex-col gap-8">
       <JiraAccountSection />
       <McpServersCard />
+      <CliToolsCard />
     </div>
   )
 }
