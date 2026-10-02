@@ -57,6 +57,12 @@ const LANDING_COMMANDS = 'webapp/lib/commands.ts'
 // should be on the landing but is not still fails below.
 const OFF_CYCLE_SKILLS = ['magic-plan-change']
 
+// The skills nobody types: shipped, installed, reported missing and removed like any
+// other, but never a command (launcher, landing) nor a tile (TRACKED_SKILLS). `magic-action`
+// is invoked by the skill that reached a workflow action, never by the user, and its own
+// SKILL.md keeps it out of the `/` menu. Mirrors HIDDEN_SKILLS in desktop/src/workflow/skills.ts.
+const HIDDEN_SKILLS = ['magic-action']
+
 // The tile rows that spell their own column count out as a Tailwind literal. The number
 // is the length of an array the row already maps over, so nothing connects the two: add a
 // skill, forget the class, and the row silently wraps one tile onto a second line.
@@ -161,7 +167,7 @@ function commandSkills(relativePath: string): string[] {
 
 /**
  * What a list is expected to hold: every shipped skill, minus the ones it is allowed to
- * leave out. Only the landing row sets `omits`, see OFF_CYCLE_SKILLS.
+ * leave out: the landing row its OFF_CYCLE_SKILLS, the command and tile rows HIDDEN_SKILLS.
  */
 const LISTS: { where: string; read: () => string[]; omits?: string[] }[] = [
   {
@@ -181,10 +187,12 @@ const LISTS: { where: string; read: () => string[]; omits?: string[] }[] = [
   {
     where: `${DESKTOP_TILES} TRACKED_SKILLS`,
     read: () => trackedSkills(DESKTOP_TILES),
+    omits: HIDDEN_SKILLS,
   },
   {
     where: `${WEBAPP_TILES} TRACKED_SKILLS`,
     read: () => trackedSkills(WEBAPP_TILES),
+    omits: HIDDEN_SKILLS,
   },
   {
     where: 'install/uninstall.sh removal loop',
@@ -193,11 +201,12 @@ const LISTS: { where: string; read: () => string[]; omits?: string[] }[] = [
   {
     where: `${LAUNCHER_COMMANDS} COMMANDS`,
     read: () => commandSkills(LAUNCHER_COMMANDS),
+    omits: HIDDEN_SKILLS,
   },
   {
     where: `${LANDING_COMMANDS} COMMANDS`,
     read: () => commandSkills(LANDING_COMMANDS),
-    omits: OFF_CYCLE_SKILLS,
+    omits: [...OFF_CYCLE_SKILLS, ...HIDDEN_SKILLS],
   },
 ]
 
@@ -231,7 +240,7 @@ describe('the shipped skill list, in the eight places that duplicate it', () => 
   it('keeps the landing exception to skills that actually ship', () => {
     // An exception naming a skill that was renamed or removed would excuse nothing and
     // mislead whoever reads it next, so it has to stay pointed at a real folder.
-    for (const skill of OFF_CYCLE_SKILLS) expect(shippedSkills()).toContain(skill)
+    for (const skill of [...OFF_CYCLE_SKILLS, ...HIDDEN_SKILLS]) expect(shippedSkills()).toContain(skill)
   })
 
   it('excludes the evals folder, which is not a skill', () => {
@@ -256,7 +265,7 @@ describe('the shipped skill list, in the eight places that duplicate it', () => 
     { file: WEBAPP_TILES, prefix: '/magic:' },
   ])('labels every $file tile after the skill it reports', ({ file, prefix }) => {
     const pairs = trackedPairs(file)
-    expect(pairs.length).toBe(shippedSkills().length)
+    expect(pairs.length).toBe(shippedSkills().filter((skill) => !HIDDEN_SKILLS.includes(skill)).length)
     for (const { skill, label } of pairs) {
       expect(label).toBe(`${prefix}${skill.replace(/^magic-/, '')}`)
     }
@@ -266,7 +275,7 @@ describe('the shipped skill list, in the eight places that duplicate it', () => 
     // Asserted as a literal rather than by parsing the class list: Tailwind only emits a
     // class it can see spelled out, so `grid-cols-${n}` built at runtime would not exist
     // in the CSS at all. The literal IS the contract, so the literal is what is checked.
-    expect(read(file)).toContain(`grid-cols-${shippedSkills().length}`)
+    expect(read(file)).toContain(`grid-cols-${shippedSkills().filter((skill) => !HIDDEN_SKILLS.includes(skill)).length}`)
   })
 
   it('names every shipped skill in the uninstall.sh listing it prints to the user', () => {

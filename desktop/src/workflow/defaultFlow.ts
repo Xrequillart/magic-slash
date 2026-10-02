@@ -1,5 +1,5 @@
 import type { Workflow, WorkflowLink, WorkflowNode } from './model'
-import { SIDE_SKILLS, SKILLS } from './skills'
+import { HIDDEN_SKILLS, SIDE_SKILLS, SKILLS } from './skills'
 
 /**
  * The flow every repository follows until it has one of its own: today's cycle,
@@ -47,7 +47,7 @@ export const DEFAULT_WORKFLOW: Workflow = {
   entry: ['plan', 'start'],
   // A cycle skill missing from TRAITS is left out rather than invented: the test
   // suite fails on it, the running app does not.
-  nodes: SKILLS.filter((skill) => !SIDE_SKILLS.includes(skill)).flatMap((skill) => {
+  nodes: SKILLS.filter((skill) => !SIDE_SKILLS.includes(skill) && !HIDDEN_SKILLS.includes(skill)).flatMap((skill) => {
     const id = nodeIdForSkill(skill)
     const traits = TRAITS[id]
     return traits ? [{ id, skill, ...traits }] : []

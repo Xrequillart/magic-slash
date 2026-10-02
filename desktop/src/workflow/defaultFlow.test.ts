@@ -3,7 +3,7 @@ import { existsSync } from 'fs'
 import { join } from 'path'
 import { DEFAULT_LINKS, DEFAULT_WORKFLOW, nodeIdForSkill } from './defaultFlow'
 import { resolveNext, validateWorkflow } from './model'
-import { SIDE_SKILLS, SKILLS } from './skills'
+import { HIDDEN_SKILLS, SIDE_SKILLS, SKILLS } from './skills'
 
 const REPO_ROOT = join(__dirname, '..', '..', '..')
 
@@ -13,7 +13,7 @@ describe('DEFAULT_WORKFLOW', () => {
   })
 
   it('has a node for every skill of the cycle — none dropped for want of traits', () => {
-    const cycle = SKILLS.filter((skill) => !SIDE_SKILLS.includes(skill))
+    const cycle = SKILLS.filter((skill) => !SIDE_SKILLS.includes(skill) && !HIDDEN_SKILLS.includes(skill))
     expect(DEFAULT_WORKFLOW.nodes.map((n) => n.skill)).toEqual(cycle)
   })
 

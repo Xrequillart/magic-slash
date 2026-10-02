@@ -1,7 +1,7 @@
 ---
 name: magic:commit
 description: This skill should be used when the user says "commit", "je suis pret a committer", "on commit", "create a commit", "faire un commit", "committer les changements", "save my changes", "enregistrer mes changements", "pret a committer", "ready to commit", or indicates they want to save their current changes as a commit.
-allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, AskUserQuestion
+allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, Skill, AskUserQuestion
 ---
 
 # magic-slash v0.108.0 - /commit

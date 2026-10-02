@@ -1,7 +1,7 @@
 ---
 name: magic:done
 description: This skill should be used when the user says "the PR is merged", "la PR est mergée", "close the ticket", "fermer le ticket", "finalize the task", "finaliser la tâche", "task is done", "tâche terminée", "mark as done", "marquer comme terminé", or indicates the PR has already been merged and they want to close out the task. Do NOT use this skill if the user just finished coding and wants to create a PR — use /magic:pr instead.
-allowed-tools: Bash(*), AskUserQuestion, mcp__github__*, mcp__atlassian__*
+allowed-tools: Bash(*), Skill, AskUserQuestion, mcp__github__*, mcp__atlassian__*
 ---
 
 # magic-slash v0.108.0 - /done

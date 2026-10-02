@@ -7,7 +7,7 @@
  * holds every copy to the folders under `skills/`). Pure, no node import, so a
  * renderer may import it too.
  */
-export const SKILLS = ['magic-plan', 'magic-plan-change', 'magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done']
+export const SKILLS = ['magic-plan', 'magic-plan-change', 'magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done', 'magic-action']
 
 /**
  * Side doors off the cycle rather than steps of it: /magic:plan-change reworks a
@@ -18,3 +18,11 @@ export const SKILLS = ['magic-plan', 'magic-plan-change', 'magic-start', 'magic-
  * "suggested" them after every step would be noise.
  */
 export const SIDE_SKILLS = ['magic-plan-change', 'magic-continue', 'magic-review']
+
+/**
+ * Shipped, but never typed by the user nor offered as a step: `magic-action` carries out a
+ * workflow's actions (workflow/actions.ts), invoked by the skill that reached one. Its
+ * SKILL.md says `user-invocable: false`, so it stays out of the `/` menu, and it is no node
+ * of any flow: an action is a card of its own.
+ */
+export const HIDDEN_SKILLS = ['magic-action']

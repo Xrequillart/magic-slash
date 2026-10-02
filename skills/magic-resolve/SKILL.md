@@ -2,7 +2,7 @@
 name: magic:resolve
 description: This skill should be used when the user says "resolve", "résoudre", "fix review comments", "corriger les commentaires", "address feedback", "traiter les retours", "fix the review", "corriger la review", "apply review changes", "appliquer les corrections", or indicates they want to address code review feedback on a pull request.
 argument-hint: <TICKET-ID> (optional)
-allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__github__*
+allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Skill, AskUserQuestion, mcp__github__*
 ---
 
 # magic-slash v0.108.0 - /resolve

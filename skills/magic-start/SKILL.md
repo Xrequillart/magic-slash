@@ -2,7 +2,7 @@
 name: magic:start
 description: This skill should be used when the user mentions a ticket ID like "PROJ-123", "#456", says "start", "commencer", "travailler sur", "je vais bosser sur", "begin work on", "work on ticket", "work on issue", "démarre", "démarrer", or indicates they want to start working on a specific task.
 argument-hint: <TICKET-ID>
-allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, WebFetch, Agent, AskUserQuestion, mcp__atlassian__*, mcp__github__*
+allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, WebFetch, Agent, Skill, AskUserQuestion, mcp__atlassian__*, mcp__github__*
 ---
 
 # magic-slash v0.108.0 - /start

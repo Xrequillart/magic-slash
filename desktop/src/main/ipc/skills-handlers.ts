@@ -13,7 +13,7 @@ import { gitRunner, skillShareStatus, type SkillShareResult } from '../skill-sha
 /** A skill directory name, as `skills:import` creates one. */
 const SKILL_NAME = /^[a-z0-9-]+$/
 
-const BUILT_IN_SKILLS = ['magic-plan', 'magic-plan-change', 'magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done']
+const BUILT_IN_SKILLS = ['magic-plan', 'magic-plan-change', 'magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done', 'magic-action']
 
 interface SkillInfo {
   name: string
