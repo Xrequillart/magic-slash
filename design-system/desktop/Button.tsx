@@ -137,15 +137,16 @@ export const BUTTON_TONES: readonly ButtonTone[] = [
 ]
 
 /**
- * THE SHADOW IS ON THE FILLED TONES ONLY, and that is the whole of what makes this
- * button look like an object rather than a rectangle of colour.
+ * THE SHADOW IS ON `ink` ONLY. `accent` had one too, tinted purple, and it went: the
+ * primary is flat, a plate of the brand colour and nothing under it, which is the art
+ * direction. Its colour already makes it the loudest thing on a card; a glow under it was
+ * a second way of saying so.
  *
  * A shadow under a TRANSLUCENT plate is a shadow under a hole: `bg-ink/5` lets the
  * ground through, so the dark it casts and the dark it shows are the same dark and the
- * control reads as smudged rather than as lifted. `accent` and `ink` are opaque, so they
- * can cast one — and it is TINTED with the plate's own colour rather than black, which is
- * the difference between a button that glows and a button that has been cut out and
- * dropped on the page.
+ * control reads as smudged rather than as lifted. `ink` is opaque, so it can cast one,
+ * TINTED with the plate's own colour rather than black: the difference between a button
+ * that glows and a button that has been cut out and dropped on the page.
  *
  * IT DOES NOT MOVE ON HOVER. The shadow is a property of the button at REST — what says
  * it is an object sitting on the page rather than a rectangle painted on it — and every
@@ -234,7 +235,7 @@ const INK_HOVER =
   'hover:bg-[color:color-mix(in_srgb,rgb(var(--c-ink)),rgb(var(--c-bg))_12%)]'
 
 const TONES: Record<ButtonTone, string> = {
-  accent: `bg-accent text-on-brand shadow-md shadow-accent/30 hover:bg-accent-hover ${RING}`,
+  accent: `bg-accent text-on-brand hover:bg-accent-hover ${RING}`,
   neutral: `bg-ink/5 text-ink hover:bg-ink/10 ${RING}`,
   ghost: `text-text-secondary hover:bg-ink/10 hover:text-ink ${RING}`,
   danger: `bg-red/10 text-red hover:bg-red/20 ${RING}`,

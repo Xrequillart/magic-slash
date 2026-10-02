@@ -204,8 +204,8 @@ export function ButtonEntry({
       </EntrySection>
 
       <EntrySection
-        title="The shadow is on the filled tones only, and it does not move"
-        note="A shadow under a translucent plate is a shadow under a hole: bg-ink/5 lets the ground through, so the dark it casts and the dark it shows are the same dark. accent and ink are opaque, so they can cast one — tinted with the plate's own colour rather than black, which is the difference between a button that glows and one that has been cut out and dropped on the page. It belongs to the button at rest and stays put: the hover is one rule for all seven tones, a step of ground. accent has a token for it, ink is mixed a step towards the background because it has none, and the translucent tones step their own opacity."
+        title="The shadow is on ink only, and it does not move"
+        note="accent is flat: a plate of the brand colour with nothing under it, which is the art direction, since its colour already makes it the loudest thing on a card. A shadow under a translucent plate is a shadow under a hole: bg-ink/5 lets the ground through, so the dark it casts and the dark it shows are the same dark. ink is opaque, so it can cast one, tinted with the plate's own colour rather than black, which is the difference between a button that glows and one that has been cut out and dropped on the page. It belongs to the button at rest and stays put: the hover is one rule for all seven tones, a step of ground. accent has a token for it, ink is mixed a step towards the background because it has none, and the translucent tones step their own opacity."
       >
         <Stage theme={theme} className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-4">
@@ -213,14 +213,14 @@ export function ButtonEntry({
               Hover me
             </Button>
             <Button tone="ink" size="lg">
-              And me
+              Shadow here
             </Button>
             <Button tone="neutral" size="lg">
-              No shadow here
+              Nor here
             </Button>
           </div>
           <span className="font-mono text-[10px] leading-relaxed text-text-secondary">
-            the ground steps on all three · the shadow under the first two does not
+            the ground steps on all three · only ink casts a shadow, and it does not move
           </span>
         </Stage>
       </EntrySection>
