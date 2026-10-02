@@ -46,12 +46,13 @@ const STATE_TONE: Record<McpServerViewState, StatusTone> = {
   missing: 'neutral',
 }
 
-const NAMES: Record<McpServerId, string> = { atlassian: 'Atlassian', github: 'GitHub', slack: 'Slack' }
+/** Exported for the settings search, which lists one row per server from it. */
+export const MCP_SERVER_NAMES: Record<McpServerId, string> = { atlassian: 'Atlassian', github: 'GitHub', slack: 'Slack' }
 
 /** The service's own logo at the head of the row: the row IS that service. */
 const MARKS: Record<McpServerId, IconComponent> = { atlassian: Jira, github: Github, slack: Slack }
 
-const HINTS: Record<McpServerId, MessageKey> = {
+export const MCP_SERVER_HINTS: Record<McpServerId, MessageKey> = {
   atlassian: 'settings.connections.mcp.atlassian.hint',
   github: 'settings.connections.mcp.github.hint',
   slack: 'settings.connections.mcp.slack.hint',
@@ -123,8 +124,8 @@ export function McpServersCard() {
       <SettingsCard
         rows={servers.map((server) => {
           const view = mcpServerView(server)
-          const name = NAMES[server.id]
-          const hint = HINTS[server.id]
+          const name = MCP_SERVER_NAMES[server.id]
+          const hint = MCP_SERVER_HINTS[server.id]
           const controls: SettingRowControl[] = [{ kind: 'status', label: t(STATE_LABEL[view.state]), tone: STATE_TONE[view.state] }]
           if (view.action) {
             controls.push({

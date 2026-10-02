@@ -180,7 +180,7 @@ export function SettingsModal() {
       SETTINGS_CATALOGUE.map((entry, index) => ({
         key: String(index),
         entry,
-        label: t(entry.labelKey),
+        label: 'label' in entry ? entry.label : t(entry.labelKey),
         help: entry.helpKey ? t(entry.helpKey) : '',
         options: entry.options?.(t) ?? [],
         page: t((PAGES.find((page) => page.id === entry.tab) ?? PAGES[0]).labelKey),

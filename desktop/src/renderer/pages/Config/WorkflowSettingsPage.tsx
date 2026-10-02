@@ -26,13 +26,13 @@ import {
  */
 
 /** Keys rather than labels: module scope is evaluated once at import, so a `t()` here would pin the boot language. */
-const CONFIRM_LABEL: Record<WorkflowConfirmChain, MessageKey> = {
+export const CONFIRM_LABEL: Record<WorkflowConfirmChain, MessageKey> = {
   never: 'settings.workflow.confirm.never',
   custom: 'settings.workflow.confirm.custom',
   always: 'settings.workflow.confirm.always',
 }
 
-const MISSING_LABEL: Record<WorkflowMissingSkill, MessageKey> = {
+export const MISSING_LABEL: Record<WorkflowMissingSkill, MessageKey> = {
   stop: 'settings.workflow.missing.stop',
   skip: 'settings.workflow.missing.skip',
 }

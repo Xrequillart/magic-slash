@@ -2,11 +2,13 @@ import type { MessageKey, Translate } from '../i18n'
 import { LEVEL_LABEL_KEYS, ROLE_LABEL_KEYS, STYLE_LABEL_KEYS } from '../i18n'
 import { LANGUAGES } from '../languages'
 import { THEMES, THEME_IDS } from '../theme'
-import { CODE_FONT_SIZES, CODE_SYNTAX_FAMILIES, CODE_SYNTAX_FAMILY_IDS } from '../../types'
+import { CODE_FONT_SIZES, CODE_SYNTAX_FAMILIES, CODE_SYNTAX_FAMILY_IDS, WORKFLOW_CHAIN_LIMITS, type McpServerId } from '../../types'
 import { AGENT_TYPE_OPTIONS, LAUNCH_MODE_OPTIONS, SORT_LABEL } from '../pages/Config/AgentsPage'
 import { PR_WATCHER_INTERVAL_LABEL } from '../pages/Config/CodeReviewsPage'
+import { MCP_SERVER_HINTS, MCP_SERVER_NAMES } from '../pages/Config/McpServersCard'
 import { SPOTLIGHT_OPTIONS } from '../pages/Config/QuickLaunchPage'
 import { CHORDS } from '../pages/Config/ShortcutsPage'
+import { CONFIRM_LABEL, MISSING_LABEL } from '../pages/Config/WorkflowSettingsPage'
 import type { SettingsTab } from './SettingsModal'
 
 /** Translates a list of keys — the shape most option tables come in. */
@@ -21,7 +23,8 @@ const LAUNCH_MODES = keys(LAUNCH_MODE_OPTIONS.map(({ labelKey }) => labelKey))
  * and mounting the other sixteen to read their text would be every round trip they make
  * on mount — the org roster, the Jira status, the Claude spend — for a keystroke. So the
  * catalogue is written down, once, here. The price is that a new row has to be added
- * below to be findable; a row that is not is still on its page, just not in the results.
+ * below to be findable — and `settingsCatalogue.test.ts` fails until it is, or until the
+ * label is declared as not being a setting there.
  *
  * `labelKey` IS ALSO HOW THE ROW IS FOUND ON ARRIVAL: the modal looks for the element
  * carrying that exact text on the page it opened and outlines the row around it. Which is
@@ -34,9 +37,8 @@ const LAUNCH_MODES = keys(LAUNCH_MODE_OPTIONS.map(({ labelKey }) => labelKey))
  * a select is findable the day it ships. Same for the shortcuts page's chords (`CHORDS`),
  * appended at the end.
  */
-export interface SettingsSearchEntry {
+export type SettingsSearchEntry = {
   tab: SettingsTab
-  labelKey: MessageKey
   helpKey?: MessageKey
   /**
    * WHAT THE SETTING CAN BE SET TO — a select's choices, a picker's tiles — so « dracula »
@@ -45,7 +47,15 @@ export interface SettingsSearchEntry {
    * syntax family, a language named in itself, a chord).
    */
   options?: (t: Translate) => string[]
-}
+} & (
+  | { labelKey: MessageKey }
+  /**
+   * A NAME THAT IS NEVER TRANSLATED, for a row the page labels with one: a service's own
+   * name (« GitHub », « Slack ») on the Connections tab. Same contract as `labelKey`: it
+   * is the exact text the page renders as the row's name.
+   */
+  | { label: string }
+)
 
 export const SETTINGS_CATALOGUE: readonly SettingsSearchEntry[] = [
   // ── Account ──
@@ -84,6 +94,16 @@ export const SETTINGS_CATALOGUE: readonly SettingsSearchEntry[] = [
 
   // ── Connections ──
   { tab: 'connections', labelKey: 'jira.section', helpKey: 'jira.notConnectedHint' },
+  { tab: 'connections', labelKey: 'settings.connections.mcp.section' },
+  // One per server, from the card's own table: a server added there is findable the day it ships.
+  ...(Object.keys(MCP_SERVER_NAMES) as McpServerId[]).map((id) => ({
+    tab: 'connections' as const,
+    label: MCP_SERVER_NAMES[id],
+    helpKey: MCP_SERVER_HINTS[id],
+    options: () => (id === 'atlassian' ? ['Jira', 'MCP'] : ['MCP']),
+  })),
+  { tab: 'connections', labelKey: 'settings.connections.cli.section' },
+  { tab: 'connections', label: 'GitHub CLI', helpKey: 'settings.connections.cli.gh.hint', options: () => ['gh'] },
 
   // ── Security ──
   { tab: 'security', labelKey: 'security.current' },
@@ -147,6 +167,11 @@ export const SETTINGS_CATALOGUE: readonly SettingsSearchEntry[] = [
   { tab: 'application', labelKey: 'settings.application.setup.title' },
   {
     tab: 'application',
+    labelKey: 'settings.application.setup.integrations.title',
+    options: keys(['setup.wizard.integrations.both', 'setup.wizard.integrations.githubOnly']),
+  },
+  {
+    tab: 'application',
     labelKey: 'settings.application.background.autoStartLabel',
     helpKey: 'settings.application.background.autoStartHelp',
   },
@@ -203,6 +228,30 @@ export const SETTINGS_CATALOGUE: readonly SettingsSearchEntry[] = [
     labelKey: 'settings.agents.archive.confirm.label',
     helpKey: 'settings.agents.archive.confirm.help',
   },
+
+  // ── Workflow ──
+  {
+    tab: 'workflow',
+    labelKey: 'settings.workflow.confirm.label',
+    helpKey: 'settings.workflow.confirm.help',
+    options: keys(Object.values(CONFIRM_LABEL)),
+  },
+  {
+    tab: 'workflow',
+    labelKey: 'settings.workflow.limit.label',
+    helpKey: 'settings.workflow.limit.help',
+    options: (t) =>
+      WORKFLOW_CHAIN_LIMITS.map((count) =>
+        count === 0 ? t('settings.workflow.limit.none') : t('settings.workflow.limit.option', { count }),
+      ),
+  },
+  {
+    tab: 'workflow',
+    labelKey: 'settings.workflow.missing.label',
+    helpKey: 'settings.workflow.missing.help',
+    options: keys(Object.values(MISSING_LABEL)),
+  },
+  { tab: 'workflow', labelKey: 'settings.workflow.actions.label', helpKey: 'settings.workflow.actions.help' },
 
   // ── Code & reviews ──
   {
@@ -287,5 +336,6 @@ export const SETTINGS_CATALOGUE: readonly SettingsSearchEntry[] = [
 
   // ── Shortcuts ── the page's own list.
   ...CHORDS.map(([labelKey, helpKey]) => ({ tab: 'shortcuts' as const, labelKey, helpKey })),
+  { tab: 'shortcuts', labelKey: 'settings.shortcuts.quickLaunch', helpKey: 'settings.shortcuts.help.quickLaunch' },
 ]
 
