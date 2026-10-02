@@ -24,11 +24,7 @@ import { sidebarPageOrder, type SidebarPageId } from '../../types'
  * saying where each padding came from, and it had already fallen behind — it still
  * shows the `Team` row this app replaced with `Plans`. Both now render the one
  * component.
- *
- * THE APP'S BUILD, spelled here because this is the app. The version the column draws
- * is a literal that moves at release, not a value fetched from anywhere.
  */
-const APP_VERSION = 'v0.110.2'
 
 /**
  * The ⌘/Ctrl shortcuts that open a page overlay, keyed by `KeyboardEvent.key`.
@@ -359,7 +355,6 @@ export function Sidebar() {
         /* Claude usage card — opt-out: shown unless explicitly disabled. The CARD is the
            column's; this is only where its numbers come from. */
         usage={usageCardEnabled ? usageCard : undefined}
-        version={APP_VERSION}
       />
     </>
   )

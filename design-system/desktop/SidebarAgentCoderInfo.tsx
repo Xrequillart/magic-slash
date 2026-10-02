@@ -179,7 +179,7 @@ export function SidebarAgentCoderInfo({
             /* `space-y-4` and not a flex gap: this column is a plain stack of blocks and
                margins are all it needs. The planner's column, where the spec has to GROW
                into the height left over, is the one that needs a flex column. */
-            <div className="p-4 space-y-4">
+            <div className="px-2 pb-2 space-y-4">
               {usage && <ContextAgentCard {...usage} />}
               {ticket && <TitleAgentCard {...ticket} />}
               {/* `space-y-3` and not the column's own `space-y-4`: the repository cards are

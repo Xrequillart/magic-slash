@@ -28,7 +28,7 @@ import type { IconComponent } from './types'
  * to the same colour it does in Electron.
  *
  * SO EVERY STRING ARRIVES TRANSLATED and every number arrives computed. "AGENTS", the
- * attention count, the pane chip, the empty line, the version: all of them are the
+ * attention count, the pane chip, the empty line: all of them are the
  * caller's. The one rule this component keeps for itself is the one that is about
  * DRAWING rather than about meaning — the attention banner hides itself at zero, so a
  * calm list stays calm.
@@ -180,9 +180,6 @@ export interface SidebarProps {
   emptyLabel?: string
   /** The account's rate limits, under the scroll. Absent when the reader switched it off. */
   usage?: UsageClaudeCodeCardProps
-  /** The build, spelled by the caller — "v0.94.2". Drawn verbatim, because which
-   *  prefix a version wears is not this column's question. */
-  version?: string
   /** Folded away: it slides out by its own width rather than unmounting, so the
    *  agents are where they were when it comes back. */
   collapsed?: boolean
@@ -203,7 +200,6 @@ export function Sidebar({
   lists,
   emptyLabel,
   usage,
-  version,
   collapsed = false,
   compact = false,
   className = '',
@@ -221,7 +217,7 @@ export function Sidebar({
           the order the work happens in — you plan something, then you pick it up, and
           the reference material is for doing so. This column would have no way to know
           that, so it does not try. */}
-      <MenuSidebar ariaLabel={menuAriaLabel} className="px-2 pt-3" items={menu} compact={compact} />
+      <MenuSidebar ariaLabel={menuAriaLabel} className="px-2" items={menu} compact={compact} />
 
       <nav
         aria-label={listsAriaLabel}
@@ -267,14 +263,6 @@ export function Sidebar({
       </nav>
 
       {usage && !compact && <UsageClaudeCodeCard {...usage} />}
-
-      {version && !compact && (
-        // `pt-1`: the usage card above carries its own bottom margin, and the pair
-        // used to add up to a blank row between the card and the number.
-        <div className="px-4 pt-1 pb-2 text-xs text-text-secondary flex items-center justify-start gap-2">
-          <span className="opacity-60">{version}</span>
-        </div>
-      )}
     </div>
   )
 }

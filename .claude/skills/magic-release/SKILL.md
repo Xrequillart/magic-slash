@@ -129,27 +129,7 @@ Remplace par :
 
 Ces 10 titres sont le cas ou un remplacement en masse est legitime — un `Edit` par fichier marche aussi. Dans les deux cas, applique la regle « comment editer les fichiers » ci-dessus : pas de `sed -i`, et un script `python3` qui `assert` sur chaque fichier si tu regroupes.
 
-### 4.2 : desktop/src/renderer/components/Sidebar.tsx
-
-Cherche la version affichee dans le footer de la sidebar en utilisant un pattern regex generique (meme approche que l'etape 3.1) :
-
-**Pattern principal** : Cherche `v[0-9]+\.[0-9]+\.[0-9]+` dans la zone footer du fichier (pres des liens Docs/Changelog/GitHub).
-
-**Cascade de recherche** :
-
-1. **Regex dans le footer** : Cherche le pattern `v[0-9]+\.[0-9]+\.[0-9]+` dans les 40 dernieres lignes du fichier (zone footer). Si une seule correspondance est trouvee, remplace-la par `vX.Y.Z`.
-2. **Regex globale avec contexte** : Si le pattern n'est pas trouve dans le footer, cherche dans tout le fichier. Si plusieurs correspondances existent, utilise le contexte environnant (presence de `opacity`, `Docs`, `Changelog`, ou `Footer` a proximite) pour identifier la bonne occurrence.
-3. **Demande a l'utilisateur** : Si aucune correspondance n'est trouvee ou si l'ambiguite ne peut etre resolue, utilise `AskUserQuestion` pour demander :
-
-```text
-Le pattern de version (v[0-9]+.[0-9]+.[0-9]+) n'a pas ete trouve dans Sidebar.tsx, ou plusieurs occurrences ambigues existent.
-
-Pouvez-vous indiquer la ligne ou se trouve la version a mettre a jour dans desktop/src/renderer/components/Sidebar.tsx ?
-```
-
-**IMPORTANT** : Ne cherche PAS un className exact comme `opacity-60` — le style CSS peut changer a tout moment. Utilise uniquement le pattern de version et le contexte structurel (footer).
-
-### 4.3 : webapp/lib/desktopRelease.ts
+### 4.2 : webapp/lib/desktopRelease.ts
 
 C'est la reference contre laquelle la webapp decide si une machine est a jour : le
 back-office (liste Users, fiche user, page Fleet) et la page `/application` la
@@ -302,12 +282,6 @@ for f in skills/magic-plan/SKILL.md skills/magic-plan-change/SKILL.md skills/mag
     ERRORS=$((ERRORS+1))
   fi
 done && \
-if grep -q "vX.Y.Z" desktop/src/renderer/components/Sidebar.tsx; then
-  echo "  OK  desktop/src/renderer/components/Sidebar.tsx"
-else
-  echo "  ERREUR  desktop/src/renderer/components/Sidebar.tsx - version X.Y.Z NON trouvee"
-  ERRORS=$((ERRORS+1))
-fi && \
 if grep -q "LATEST_DESKTOP_VERSION = 'X.Y.Z'" webapp/lib/desktopRelease.ts; then
   echo "  OK  webapp/lib/desktopRelease.ts"
 else
@@ -339,7 +313,6 @@ Resume des modifications pour la version X.Y.Z :
   skills/magic-resolve/SKILL.md                 v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-done/SKILL.md                    v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-action/SKILL.md                  v{VERSION_ACTUELLE} -> vX.Y.Z
-  desktop/src/renderer/components/Sidebar.tsx    v{VERSION_ACTUELLE} -> vX.Y.Z
   webapp/lib/desktopRelease.ts                  {VERSION_ACTUELLE} -> X.Y.Z
   CHANGELOG.md                                  Nouvelle section ajoutee
 ```
@@ -383,7 +356,6 @@ git add package.json desktop/package.json README.md \
   skills/magic-continue/SKILL.md \
   skills/magic-commit/SKILL.md skills/magic-pr/SKILL.md skills/magic-review/SKILL.md \
   skills/magic-resolve/SKILL.md skills/magic-done/SKILL.md skills/magic-action/SKILL.md \
-  desktop/src/renderer/components/Sidebar.tsx \
   webapp/lib/desktopRelease.ts CHANGELOG.md
 ```
 

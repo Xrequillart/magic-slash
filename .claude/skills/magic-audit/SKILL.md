@@ -442,7 +442,6 @@ echo "---"
 echo "desktop/package.json: $(jq -r .version desktop/package.json)"
 echo "README.md: $(grep -Eo '"version": *"[^"]+"' README.md | head -1 | sed 's/.*"version": *"//;s/"//')"
 echo "docs/documentation.html count: $(grep -c "\"version\": \"$ROOT_VERSION\"" docs/documentation.html)"
-echo "Sidebar.tsx: $(grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+' desktop/src/renderer/components/Sidebar.tsx | head -1)"
 for f in skills/*/SKILL.md; do
   V=$(grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+' "$f" | head -1)
   echo "$f: $V"

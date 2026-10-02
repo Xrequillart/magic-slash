@@ -99,9 +99,9 @@ export function useSidebarUsageCard({ enabled }: { enabled: boolean }): UsageCla
   }
 
   return {
-    // `mb-1`: the version line below carries 8px of its own padding, and 8+8 put this card
-    // most of a blank row above the number it sits on.
-    className: 'mx-2 mb-1',
+    // 8px from the window's foot, the column's own side padding: it is the last thing in
+    // the sidebar, so it sits in the corner the same distance from both edges.
+    className: 'mx-2 mb-2',
     account: accountLabel,
     limits,
     thresholds: LIMIT_THRESHOLDS,

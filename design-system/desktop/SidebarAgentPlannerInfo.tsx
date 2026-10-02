@@ -79,7 +79,7 @@ export function SidebarAgentPlannerInfo({
           collapses. See `SidebarAgentCoderInfo`'s note on the two boxes. */}
       <div className={`flex flex-col h-full ${TEXT_FACE}`} style={{ width }}>
         <div className="flex-1 min-h-0 overflow-hidden">
-          <div className="p-4 flex flex-col gap-4 h-full min-h-0">
+          <div className="px-2 pb-2 flex flex-col gap-4 h-full min-h-0">
             {usage && <ContextAgentCard {...usage} />}
             <SpecCard {...spec} />
           </div>

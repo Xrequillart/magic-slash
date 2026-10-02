@@ -293,7 +293,11 @@ export function AppTitleBar({
 
   return (
     <div
-      className={`bg-surface-sunken select-none flex items-center justify-between px-3 relative ${className}`}
+      // THE SIDES ARE THE SIDEBARS', and both are the agent list's `px-2`: the right-hand
+      // panel uses it too, so the last control (the account) ends on the edge its cards
+      // end on. Beside the traffic lights the left stays `pl-3`, which is what
+      // TRAFFIC_LIGHT_GUTTER is measured against.
+      className={`bg-surface-sunken select-none flex items-center justify-between ${trafficLightGutter ? 'pl-3' : 'pl-2'} pr-2 relative ${className}`}
       // The height as the exported number rather than as `h-10`, so `PageModal` and this
       // bar cannot drift apart: it lays itself out against exactly this value.
       style={{ height: TITLE_BAR_HEIGHT, WebkitAppRegion: 'drag' } as CSSProperties}

@@ -99,7 +99,7 @@ const noop = () => undefined
  *
  * EVERYTHING ELSE SETS NO WEIGHT IN THE APP, so it sets none here: the titlebar's agent
  * title and its Archive pill (`AppTitleBar.tsx`), the AGENTS label
- * (Sidebar.tsx:326), the version line (Sidebar.tsx:429), the usage card's own labels and
+ * (Sidebar.tsx:326), the usage card's own labels and
  * reset countdowns (SidebarUsageCard.tsx:40-44), the file and commit rows
  * (RepositoryCard.tsx:207, :237), the ticket description (AgentIdentityFields.tsx:114),
  * the session heading and the duration (UsageCard.tsx:99, :167) and the add-repository
@@ -142,7 +142,7 @@ const noop = () => undefined
  *      resolve its `--c-*` tokens inside a window this file already painted.
  *
  *      THE FOOTER IS HERE, unlike the `/features` zoom which cuts it: the real
- *      `UsageClaudeCodeCard` with the account's two limits, and the version line.
+ *      `UsageClaudeCodeCard` with the account's two limits.
  *
  *   3. THE TERMINAL — `TerminalView.tsx`. `w-full h-full bg-surface-sunken p-2`
  *      (TerminalView.tsx:394), 8px of uniform padding and xterm transparent on top of it,
@@ -241,12 +241,6 @@ const noop = () => undefined
  * only thing that differs from the default is the middle column's share.
  */
 const WINDOW = { width: 1280, height: 800 } as const
-
-/**
- * The version the footer prints. A literal, bumped at release like the app's own — see
- * `APP_VERSION` in `Sidebar.tsx`, which holds the same string the same way.
- */
-const VERSION = 'v0.96.2'
 
 /**
  * THE AGENT ON SCREEN, and the same invented project every other drawing on this site
@@ -505,7 +499,7 @@ export function AppWindowMockup() {
         {/* ── 2. THE LEFT SIDEBAR ────────────────────────────────────────────────── */}
         {/* THE APP'S OWN `Sidebar`, imported from `@ds/desktop`. It used to be ninety
             lines of redrawing here — the menu, the AGENTS header, the attention banner,
-            five rows, the usage card and the version line, each padding copied out of
+            five rows and the usage card, each padding copied out of
             `Sidebar.tsx` with a comment saying which line it came from. It had drifted
             exactly the way `features/AgentsSidebarMockup.tsx` had: a `Team` row the app
             replaced with `Plans`, and a build number four releases behind.
@@ -597,7 +591,6 @@ export function AppWindowMockup() {
               emptyLabel: t('site.usageCard.empty'),
               emptyHint: t('site.usageCard.emptyHint'),
             }}
-            version={VERSION}
           />
         </AppGround>
 

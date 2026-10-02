@@ -224,7 +224,7 @@ export function UsageClaudeCodeCardEntry({
         <Snippet>{`import { UsageClaudeCodeCard } from '@ds/desktop'
 
 <UsageClaudeCodeCard
-  className="mx-2 mb-1"
+  className="mx-2 mb-2"
   account={accountLabel}
   limits={limits}
   thresholds={LIMIT_THRESHOLDS}

@@ -118,12 +118,6 @@ const PROPS: PropRow[] = [
       'There is no agent at all, anywhere — centred in the space the lists would fill. Distinct from a list’s emptyHint, which is one empty zone beside a full one.',
   },
   {
-    name: 'version',
-    type: 'string',
-    description:
-      'The build, spelled by the caller — “v0.94.2”. Drawn verbatim, because which prefix a version wears is not this column’s question.',
-  },
-  {
     name: 'collapsed',
     type: 'boolean',
     fallback: 'false',
@@ -179,7 +173,7 @@ export function SidebarEntry({
 
       <EntrySection
         title="No store, no translator, no clock"
-        note="Hand it arrays and it draws them. Every string arrives translated and every number arrives computed — “AGENTS”, the attention count, the empty line, the version. The one rule it keeps for itself is about drawing rather than meaning: the attention banner hides itself at zero, so a calm list stays calm. Press a row."
+        note="Hand it arrays and it draws them. Every string arrives translated and every number arrives computed — “AGENTS”, the attention count, the empty line. The one rule it keeps for itself is about drawing rather than meaning: the attention banner hides itself at zero, so a calm list stays calm. Press a row."
       >
         <Stage theme={theme} className="flex items-start gap-8">
           <Column>
@@ -189,7 +183,6 @@ export function SidebarEntry({
               listsAriaLabel="Agents"
               lists={[list()]}
               usage={{ ...USAGE, collapsed: usageCollapsed, onToggle: () => setUsageCollapsed(c => !c) }}
-              version="v0.94.2"
             />
           </Column>
           <span className="font-mono text-[10px] text-text-secondary">
@@ -204,7 +197,7 @@ export function SidebarEntry({
       >
         <Stage theme={theme}>
           <Snippet>{`// on the showcase site, inside an AppGround that paints the app's theme
-<Sidebar menu={PAGES} lists={[{ label: 'Agents', agents: AGENTS }]} version="v0.94.2" />`}</Snippet>
+<Sidebar menu={PAGES} lists={[{ label: 'Agents', agents: AGENTS }]} />`}</Snippet>
         </Stage>
       </EntrySection>
 
@@ -227,7 +220,6 @@ export function SidebarEntry({
                   emptyHint: 'Drop agents here',
                 }),
               ]}
-              version="v0.94.2"
             />
           </Column>
           <span className="font-mono text-[10px] text-text-secondary">
@@ -242,7 +234,7 @@ export function SidebarEntry({
       >
         <Stage theme={theme} className="flex items-start gap-8">
           <Column>
-            <Sidebar menu={MENU} lists={[list({ agents: GROUPED })]} version="v0.94.2" />
+            <Sidebar menu={MENU} lists={[list({ agents: GROUPED })]} />
           </Column>
           <Snippet>{`{ id, name, state, heading: { label: 'checkout', color } }`}</Snippet>
         </Stage>
@@ -254,7 +246,7 @@ export function SidebarEntry({
       >
         <Stage theme={theme} className="flex items-start gap-8">
           <Column>
-            <Sidebar compact menu={MENU} lists={[list({ agents: [...GROUPED, { id: 'idle', name: 'onboarding copy', state: 'idle' }] })]} version="v0.94.2" />
+            <Sidebar compact menu={MENU} lists={[list({ agents: [...GROUPED, { id: 'idle', name: 'onboarding copy', state: 'idle' }] })]} />
           </Column>
           <Snippet>{`<Sidebar compact menu={…} lists={…} />`}</Snippet>
         </Stage>
@@ -269,7 +261,6 @@ export function SidebarEntry({
   menu={[plans, tasks, skills, accountEntry]}
   lists={[{ id: 'agents', label: t('sidebar.agents'), actions, agents: rows }]}
   usage={usageCardEnabled ? usageCard : undefined}
-  version="v0.94.2"
 />`}</Snippet>
         <p className="max-w-2xl text-xs leading-relaxed text-muted">
           The app’s own <code>Sidebar.tsx</code> is now the other half and nothing else:
