@@ -49,6 +49,11 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
     if (opensInTerminal(text)) setDisplayMode(id, 'terminal')
   }, [terminal.id, setDisplayMode])
 
+  // The ESC byte, which is what the TUI reads as Escape: it interrupts the turn.
+  const interrupt = useCallback(() => {
+    void window.electronAPI.terminal.write(terminal.id, '\x1b')
+  }, [terminal.id])
+
   // The menu bar panel's own path: the same token check, the same paced keystrokes.
   const answer = useCallback((choice: MenuBarAnswer) => {
     if (!question) return
@@ -88,6 +93,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
             working={terminal.state === 'working'}
             waiting={terminal.state === 'waiting'}
             onSend={send}
+            onInterrupt={interrupt}
             onShowTerminal={() => setDisplayMode(terminal.id, 'terminal')}
             autoFocus={isFocused}
             highlight={highlight}

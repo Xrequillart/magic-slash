@@ -61,6 +61,8 @@ export interface ChatViewProps {
   waiting?: boolean
   /** `attachments` are file paths, in the order they were added. */
   onSend: (text: string, attachments: string[]) => void
+  /** Escape while `working`: stops the turn, as Escape does in the terminal. */
+  onInterrupt?: () => void
   /** Opens the system's file picker; answers the chosen paths. Absent: no paperclip. */
   onPickFiles?: () => Promise<string[]>
   /**
@@ -106,7 +108,7 @@ function hasFiles(e: DragEvent): boolean {
 const STICK_PX = 48
 
 export function ChatView({
-  entries, working, waiting, onSend, onShowTerminal, labels, autoFocus, highlight,
+  entries, working, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
   question, onAnswer, answering, commands = [], highlightLines, onPickFiles, resolveFile,
 }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -264,6 +266,13 @@ export function ChatView({
         if (chosen) pick(chosen)
         return
       }
+    }
+    // Escape stops the agent at work, as in the terminal. Only once the menu has had
+    // its Escape: the one that closes it must not also cut the turn short.
+    if (event.key === 'Escape' && working && onInterrupt) {
+      event.preventDefault()
+      onInterrupt()
+      return
     }
     // The history walks only from an empty box or from a prompt it brought back
     // untouched: an arrow in text being written moves the caret, as it should.
