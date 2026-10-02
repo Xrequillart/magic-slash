@@ -175,7 +175,7 @@ export type SiteNavRow = {
  *
  * HERE RATHER THAN IN A `lib/desktopPage.ts`, and that is a judgement rather than an
  * omission: `lib/workflow.ts` and `lib/faq.ts` own their paths because they own their
- * pages' DATA — five steps, twelve questions — and a component should not have to know
+ * pages' DATA — five steps, fifteen questions — and a component should not have to know
  * the site's URL shape to link to them. `/desktop` has no such data. Its copy is
  * `site.desktop.*`, the family the homepage band brought with it, and its composition is
  * the component. So the path lives with the menu that names it, and `siteNav.test.ts`

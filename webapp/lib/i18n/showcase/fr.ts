@@ -1363,6 +1363,10 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   'site.faq.platforms.a':
     'L’app de bureau est une application macOS native, universelle Intel et Apple Silicon. Les commandes, elles, sont des skills Claude Code : elles fonctionnent partout où Claude Code fonctionne — macOS, Linux, et Windows via WSL 2.',
 
+  'site.faq.account.q': 'Faut-il un compte ?',
+  'site.faq.account.a':
+    'Oui, un compte Magic Slash, créé depuis l’app avec un e-mail et un mot de passe. Votre configuration, vos sessions et votre historique vivent dans le cloud de votre organisation plutôt que dans un fichier sur votre machine : c’est ce qui permet de retrouver la même installation sur un second ordinateur, ou chez un collègue.',
+
   'site.faq.trackers.q': 'Est-ce compatible avec GitHub Issues, ou seulement Jira ?',
   'site.faq.trackers.a':
     'Les deux, nativement, et le choix se fait dépôt par dépôt. Une clé Jira comme <code>PROJ-123</code> passe par le serveur MCP Atlassian ; un numéro comme <code>#456</code> est cherché comme issue GitHub dans les dépôts que vous avez configurés.',
@@ -1382,6 +1386,14 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   'site.faq.workflow.q': 'Le workflow fonctionne-t-il en dehors de l’app ?',
   'site.faq.workflow.a':
     'Oui, tant que l’app tourne, même fenêtre fermée avec seulement son icône dans la barre des menus. Lancez <code>claude</code> dans n’importe quel terminal, depuis un dépôt configuré dans Magic Slash : chaque skill demande à l’app quelle étape suit. Deux conditions : avoir ouvert l’app une première fois, c’est à ce moment qu’elle installe ses hooks, puis démarrer votre session Claude Code après. Seul le suivi agent par agent reste propre à l’app.',
+
+  'site.faq.customSkills.q': 'Puis-je ajouter mes propres skills au workflow ?',
+  'site.faq.customSkills.a':
+    'Oui. Dans l’éditeur de workflow d’un dépôt, tout skill que Claude Code voit devient une étape : un des vôtres, un du <code>.claude</code> du dépôt, ou celui d’un plugin. Tracez des liens depuis ses outputs, enchaînés automatiquement ou seulement suggérés. Quand un skill n’existe que sur votre machine, l’app vous prévient et propose de le copier dans le dépôt, pour que vos collègues l’aient aussi.',
+
+  'site.faq.team.q': 'Mon équipe peut-elle partager la même configuration ?',
+  'site.faq.team.a':
+    'Oui. Invitez vos collègues dans votre organisation avec un lien, puis partagez-y un dépôt : chaque membre récupère ses réglages et son workflow. Seuls le propriétaire du dépôt ou un admin de l’organisation peuvent modifier le workflow, et chaque enregistrement apparaît dans son historique.',
 
   'site.faq.credentials.q': 'Où sont stockés mes identifiants ?',
   'site.faq.credentials.a':

@@ -2194,7 +2194,7 @@ export const showcaseEn = {
   //
   // KEYED BY SUBJECT (`site.faq.<subject>.{q,a}`) rather than by position. The doc
   // catalogue this replaces was `site.doc.<section>.<n>`, positional because 675
-  // paragraphs of prose have no stable identity but their place in the document. Twelve
+  // paragraphs of prose have no stable identity but their place in the document. Fifteen
   // questions do: each one is ABOUT something, the page's order is `QUESTIONS` in
   // `lib/faq.ts` rather than the numbering here, and a question that gets reordered or
   // dropped should not renumber the ten around it.
@@ -2208,14 +2208,14 @@ export const showcaseEn = {
   // BAND ⑧ IS BACK, and it is not the one that was cut. That band WAS the FAQ — five
   // questions and nothing else, on a page with no FAQ to send anyone to. This one is a
   // WINDOW onto `/faq`: the five questions that stop a reader pressing the download
-  // button, beside a title, a line and a button out to the other seven. `HOME_QUESTION_IDS`
+  // button, beside a title, a line and a button out to the other ten. `HOME_QUESTION_IDS`
   // in `lib/faq.ts` says which five and why.
   //
   // ITS OWN THREE KEYS, not `site.faq.title` and `site.faq.lead` — the band and the page
   // are two surfaces, and sharing copy between two surfaces is the mistake
   // `site.finalCta.*` exists to have fixed. "Frequently asked questions" is an `h1` over
-  // twelve rows; a band arriving after five screens of product can be warmer than that,
-  // and its line has to account for showing five of the twelve.
+  // fifteen rows; a band arriving after five screens of product can be warmer than that,
+  // and its line has to account for showing five of the fifteen.
   'site.homeFaq.title': 'Still wondering.',
   'site.homeFaq.subtitle':
     'The five we get asked before anyone installs it. Commit formats, credentials, updates, uninstalling — the rest is on the FAQ.',
@@ -2245,6 +2245,10 @@ export const showcaseEn = {
   'site.faq.platforms.a':
     'The desktop app is a native macOS build, universal for Intel and Apple Silicon. The commands themselves are Claude Code skills, so they run wherever Claude Code does — macOS, Linux, and Windows through WSL 2.',
 
+  'site.faq.account.q': 'Do I need an account?',
+  'site.faq.account.a':
+    'Yes, a Magic Slash account, created from the app with an email and a password. Your configuration, your sessions and your history live in your organization’s cloud rather than in a file on your machine, which is what lets a second computer, or a teammate, pick up the same setup.',
+
   'site.faq.trackers.q': 'Does it work with GitHub Issues, or only Jira?',
   'site.faq.trackers.a':
     'Both, natively, and you pick which one per repository. A Jira key like <code>PROJ-123</code> goes through the Atlassian MCP server; a number like <code>#456</code> is looked up as a GitHub issue across the repositories you configured.',
@@ -2264,6 +2268,14 @@ export const showcaseEn = {
   'site.faq.workflow.q': 'Does the workflow run outside the app?',
   'site.faq.workflow.a':
     'Yes, as long as the app is running, even with its window closed and only its menu bar icon showing. Start <code>claude</code> in any terminal, from a repository configured in Magic Slash, and each skill asks the app which step comes next. Two conditions: open the app once first, since that is when it installs its hooks, and start your Claude Code session after that. Only the per-agent tracking stays in the app.',
+
+  'site.faq.customSkills.q': 'Can I add my own skills to the workflow?',
+  'site.faq.customSkills.a':
+    'Yes. In a repository’s workflow editor, any skill Claude Code can see becomes a step: one of yours, one in the repository’s <code>.claude</code>, or a plugin’s. Draw links from its outcomes, chained automatically or only suggested. When a skill exists only on your machine, the app warns you and offers to copy it into the repository, so your teammates have it too.',
+
+  'site.faq.team.q': 'Can my team share the same setup?',
+  'site.faq.team.a':
+    'Yes. Invite your colleagues into your organization with a link, then share a repository with it: every member gets its settings and its workflow. Only the repository’s owner or an admin of the organization can change the workflow, and every save shows in its history.',
 
   'site.faq.credentials.q': 'Where are my credentials stored?',
   'site.faq.credentials.a':

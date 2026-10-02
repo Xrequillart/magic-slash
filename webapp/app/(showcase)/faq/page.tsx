@@ -4,14 +4,14 @@ import { FaqContent } from '@/components/site/faq/FaqContent'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
 
 /**
- * magic-slash.io/faq — the twelve questions people actually ask.
+ * magic-slash.io/faq — the fifteen questions people actually ask.
  *
  * A SERVER COMPONENT whose only job is the `metadata`, with the page in a client
  * component next door: the rows need `useT()` for their copy and `useState` for their
  * open state, and `metadata` cannot be exported from a `'use client'` module. The same
  * split `/features` and `/changelog` make.
  *
- * WHAT IS ON THE PAGE IS NOT DECIDED HERE. `lib/faq.ts` is the source of truth — twelve
+ * WHAT IS ON THE PAGE IS NOT DECIDED HERE. `lib/faq.ts` is the source of truth — fifteen
  * rows in reading order — and `FaqContent` renders it with a `.map()`. A new question is
  * a row in that module and a pair of catalogue entries; there is deliberately nothing to
  * edit in this file or in the markup.

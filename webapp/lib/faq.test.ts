@@ -10,7 +10,7 @@ import { showcaseFr } from './i18n/showcase/fr'
  * `lib/faq.ts` may import nothing but `./i18n` — see the note on that file. THIS TEST
  * EXISTING IS WHAT KEEPS THAT TRUE: add a `react`, a `next/*` or a `lucide-react` import
  * over there and this fails to RESOLVE rather than shipping a page that drags a bundle
- * into a list of twelve strings.
+ * into a list of fifteen strings.
  *
  * The other half of its job is the one a type cannot do here. `tsc` never runs on
  * `webapp/` in CI (`.github/workflows/ci.yml` typechecks `desktop/` only), so the
@@ -84,7 +84,7 @@ describe('the FAQ page', () => {
     expect(new Set(HOME_QUESTION_IDS).size).toBe(HOME_QUESTION_IDS.length)
 
     // The band is a WINDOW onto the page, so it may not be the whole of it: five out of
-    // twelve is what its own copy promises ("the rest is on the FAQ"), and a band that
+    // fifteen is what its own copy promises ("the rest is on the FAQ"), and a band that
     // showed every question would make the button under it a lie.
     expect(HOME_QUESTIONS.length).toBeLessThan(QUESTIONS.length)
   })
