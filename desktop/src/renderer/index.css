@@ -54,7 +54,6 @@
   --c-bg: 11 12 14;
   --c-bg-secondary: 21 22 25;
   --c-bg-tertiary: 29 31 35;
-  --c-window-wash: rgba(0, 0, 0, 0.3);
 
   --c-ink: 255 255 255;
   --c-text-secondary: 160 164 174;
@@ -97,16 +96,16 @@
 
 body {
   font-family: "Cera Pro", -apple-system, BlinkMacSystemFont, sans-serif;
-  /* Painted over the native window vibrancy, so it is a wash, not a fill. */
-  background: var(--c-window-wash);
+  /* The theme's own ground, opaque: the window has no vibrancy behind it any more. */
+  background: rgb(var(--c-bg));
   color: rgb(var(--c-ink));
   line-height: 1.6;
   overflow: hidden;
 }
 
 /* THE QUICK-SETTINGS BLUR. The sheet under the title bar (`ControlCenter`, in the design
-   system) cannot blur its own backdrop: measured, a `backdrop-filter` in this transparent
-   vibrancy window renders a blur so slight that text stays legible under it at any radius.
+   system) cannot blur its own backdrop: measured, a `backdrop-filter` in the transparent
+   vibrancy window the app had then rendered a blur so slight that text stays legible under it at any radius.
    So the sheet puts `data-control-center` on <html> while it is down and the app blurs its
    own body — everything below the title bar, the bar itself left sharp because the button
    that closes the sheet is on it.

@@ -40,7 +40,7 @@ import { AgentStateAggregator } from './tray/agent-state-aggregator'
 import { destroyPopover, hidePopover, resizePopover } from './windows/popover-window'
 import { hideQuickLaunch, resizeQuickLaunch, destroyQuickLaunch } from './windows/quick-launch-window'
 import { reRegisterSpotlightShortcut } from './spotlight-shortcut'
-import { initAppearance, appearanceArguments, applyZoom, onLanguageChanged, setZoomWindow, stepZoom } from './appearance'
+import { initAppearance, appearanceArguments, applyZoom, onLanguageChanged, setZoomWindow, stepZoom, currentTheme, themeBackground, setThemedWindow } from './appearance'
 import { t } from './i18n'
 import { setupProfileHandlers } from './ipc/profile-handlers'
 import { setupUsageHandlers } from './ipc/usage-handlers'
@@ -215,9 +215,12 @@ function createWindow() {
     // in. Vertical centring in whatever bar happens to be underneath is not a property
     // anybody was missing.
     trafficLightPosition: { x: 16, y: 12 },
-    transparent: true,
-    vibrancy: 'fullscreen-ui',
-    visualEffectState: 'active',
+    // OPAQUE, in the theme's own ground. It sat on macOS's blurred `fullscreen-ui`
+    // vibrancy once, under a translucent wash per theme; every panel has since grown a
+    // ground of its own, the blur showed through nowhere it helped, and it made the same
+    // theme look different on every desktop picture. The colour is set here too, not
+    // only by the page, so the window never flashes another one before the first paint.
+    backgroundColor: themeBackground(currentTheme()),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       // Hands the preload the current theme, so the renderer paints in it from
@@ -238,6 +241,7 @@ function createWindow() {
   // The interface scale applies to this window only — the popover and quick
   // launch are sized for their content.
   setZoomWindow(mainWindow)
+  setThemedWindow(mainWindow)
 
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show()
@@ -644,8 +648,8 @@ app.whenReady().then(async () => {
   // connectivity gate). Nothing is persisted locally.
   setStore(new CloudStore())
 
-  // Before any window: the stored theme drives the traffic lights and the macOS
-  // vibrancy material, which are decided at creation time.
+  // Before any window: the stored theme drives the traffic lights and the window's
+  // ground, which are decided at creation time.
   initAppearance()
 
   // Create custom menu (removes Cmd+W close window behavior)

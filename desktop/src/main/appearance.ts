@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { BrowserWindow, nativeTheme } from 'electron'
 import { syncClaudeTheme } from './claude-theme'
+import { THEMES } from '../themes'
 import { CONFIG_DIR } from './config/config'
 import { currentLanguage, setLanguage } from './i18n'
 import { clampZoom, DEFAULT_LANGUAGE, DEFAULT_THEME, DEFAULT_ZOOM, isValidLanguage, isValidTheme, nextZoom, THEME_APPEARANCE, type LanguageId, type ThemeId } from '../types'
@@ -18,8 +19,8 @@ import { clampZoom, DEFAULT_LANGUAGE, DEFAULT_THEME, DEFAULT_ZOOM, isValidLangua
  * directory, same idea as cloud-session.enc) and read before anything is shown.
  *
  * The main process has to know them anyway, not just the renderer:
- * `nativeTheme.themeSource` colours the traffic lights and picks the macOS
- * vibrancy material behind a transparent window, the zoom factor belongs to a
+ * `nativeTheme.themeSource` colours the traffic lights, the main window's ground is
+ * painted natively in the theme (see `themeBackground`), the zoom factor belongs to a
  * window's webContents, and the menus, the tray and the notifications are
  * composed here with no renderer involved.
  *
@@ -108,6 +109,23 @@ export function appearanceArguments(): string[] {
   ]
 }
 
+/**
+ * The theme's ground as the hex BrowserWindow wants: `bgRgb`, the same channels the
+ * page paints `body` with, so the native ground and the page are one colour.
+ */
+export function themeBackground(theme: ThemeId): string {
+  const [r, g, b] = THEMES[theme].tokens.bgRgb.split(' ').map(Number)
+  return `#${[r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('')}`
+}
+
+let themedWindow: BrowserWindow | null = null
+
+/** Register the window whose native ground follows the theme. */
+export function setThemedWindow(win: BrowserWindow): void {
+  themedWindow = win
+  win.on('closed', () => { if (themedWindow === win) themedWindow = null })
+}
+
 /** Register the window the interface scale applies to. */
 export function setZoomWindow(win: BrowserWindow): void {
   zoomWindow = win
@@ -134,6 +152,7 @@ export function applyTheme(preference: unknown): ThemeId {
   const changed = theme !== currentTheme_
   currentTheme_ = theme
   nativeTheme.themeSource = THEME_APPEARANCE[theme]
+  if (themedWindow && !themedWindow.isDestroyed()) themedWindow.setBackgroundColor(themeBackground(theme))
   persist()
   // Claude Code in the terminal panes follows along. Unconditionally, not only
   // when `changed`: this also runs when the setting itself is toggled, where the

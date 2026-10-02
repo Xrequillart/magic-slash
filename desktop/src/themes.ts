@@ -29,9 +29,6 @@ export interface ThemeTokens {
   bgRgb: string
   bgSecondaryRgb: string
   bgTertiaryRgb: string
-  /** Wash painted over the native window vibrancy by `body`. */
-  windowWash: string
-
   // Text
   /** Primary text — what `text-white` used to be. */
   inkRgb: string
@@ -144,7 +141,6 @@ export const THEMES: Record<ThemeId, Theme> = {
       bgRgb: '11 12 14',
       bgSecondaryRgb: '21 22 25',
       bgTertiaryRgb: '29 31 35',
-      windowWash: 'rgba(0, 0, 0, 0.3)',
 
       inkRgb: '255 255 255',
       textSecondaryRgb: '160 164 174',
@@ -205,7 +201,6 @@ export const THEMES: Record<ThemeId, Theme> = {
       bgRgb: '7 16 31',
       bgSecondaryRgb: '12 24 45',
       bgTertiaryRgb: '18 33 59',
-      windowWash: 'rgba(4, 10, 22, 0.45)',
 
       inkRgb: '234 242 252',
       textSecondaryRgb: '142 162 192',
@@ -268,7 +263,6 @@ export const THEMES: Record<ThemeId, Theme> = {
       bgRgb: '32 33 36',
       bgSecondaryRgb: '41 42 46',
       bgTertiaryRgb: '50 52 57',
-      windowWash: 'rgba(24, 25, 27, 0.4)',
 
       inkRgb: '238 239 242',
       textSecondaryRgb: '172 175 183',
@@ -333,7 +327,6 @@ export const THEMES: Record<ThemeId, Theme> = {
       bgTertiaryRgb: '18 18 18',
       // Nearly opaque: the window's vibrancy lets the desktop through, and
       // whatever is behind it eats exactly the contrast this theme exists for.
-      windowWash: 'rgba(0, 0, 0, 0.92)',
 
       inkRgb: '255 255 255',
       // Not a muted grey: secondary text still has to clear a comfortable ratio.
@@ -399,7 +392,6 @@ export const THEMES: Record<ThemeId, Theme> = {
       bgRgb: '255 255 255',
       bgSecondaryRgb: '250 250 249',
       bgTertiaryRgb: '244 244 245',
-      windowWash: 'rgba(255, 255, 255, 0.62)',
 
       inkRgb: '24 24 27',
       textSecondaryRgb: '82 82 91',
@@ -462,7 +454,6 @@ export const THEMES: Record<ThemeId, Theme> = {
       bgRgb: '238 246 255',
       bgSecondaryRgb: '246 250 255',
       bgTertiaryRgb: '228 239 252',
-      windowWash: 'rgba(238, 246, 255, 0.72)',
 
       inkRgb: '12 27 48',
       textSecondaryRgb: '64 86 116',
@@ -523,7 +514,6 @@ export const THEMES: Record<ThemeId, Theme> = {
       bgRgb: '250 246 238',
       bgSecondaryRgb: '246 240 229',
       bgTertiaryRgb: '240 232 217',
-      windowWash: 'rgba(250, 246, 238, 0.72)',
 
       inkRgb: '43 35 26',
       textSecondaryRgb: '109 94 76',
@@ -588,7 +578,6 @@ export const THEMES: Record<ThemeId, Theme> = {
       bgTertiaryRgb: '245 245 245',
       // Nearly opaque, like its dark counterpart: whatever the vibrancy lets
       // through eats exactly the contrast this theme exists for.
-      windowWash: 'rgba(255, 255, 255, 0.95)',
 
       inkRgb: '0 0 0',
       // Near-black, not a muted grey: secondary text has to stay comfortable.
