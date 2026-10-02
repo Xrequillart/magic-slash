@@ -1379,6 +1379,10 @@ export const showcaseFr: Record<keyof typeof showcaseEn, string> = {
   'site.faq.terminal.a':
     'Non. Les huit commandes fonctionnent dans n’importe quel terminal, dans VS Code et dans les IDE JetBrains — partout où tourne Claude Code. L’app apporte ce qu’un terminal ne peut pas : plusieurs agents côte à côte, le suivi en direct de ce que chacun fait, le ticket à côté du code, et une notification quand l’un d’eux a besoin de vous.',
 
+  'site.faq.workflow.q': 'Le workflow fonctionne-t-il en dehors de l’app ?',
+  'site.faq.workflow.a':
+    'Oui, tant que l’app tourne, même fenêtre fermée avec seulement son icône dans la barre des menus. Lancez <code>claude</code> dans n’importe quel terminal, depuis un dépôt configuré dans Magic Slash : chaque skill demande à l’app quelle étape suit. Deux conditions : avoir ouvert l’app une première fois, c’est à ce moment qu’elle installe ses hooks, puis démarrer votre session Claude Code après. Seul le suivi agent par agent reste propre à l’app.',
+
   'site.faq.credentials.q': 'Où sont stockés mes identifiants ?',
   'site.faq.credentials.a':
     'Magic Slash ne détient aucun token. Jira s’authentifie via le serveur MCP Atlassian, en OAuth dans votre navigateur, et GitHub utilise un token personnel conservé dans <code>~/.claude/settings.json</code>, que les skills ne lisent jamais directement. Le pont entre Claude Code et l’app écoute sur <code>127.0.0.1</code>, sur un port tiré au hasard à chaque session : rien n’en est joignable depuis votre réseau.',

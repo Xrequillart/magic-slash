@@ -1211,7 +1211,7 @@ export function Badge({
  *   2. A `div` FOR THE TRIGGER, which is what theirs is — no role, no `aria-expanded`, no
  *      keyboard. Here it is a real `button` inside an `h3`: pressed with Space as well as
  *      Enter, announced as expanded or collapsed, and giving a screen reader a list of
- *      headings to navigate rather than eleven unnamed rows. The `h3` wraps the button
+ *      headings to navigate rather than twelve unnamed rows. The `h3` wraps the button
  *      instead of replacing it, which is what the ARIA accordion pattern asks for and
  *      costs an element with no styles on it.
  *

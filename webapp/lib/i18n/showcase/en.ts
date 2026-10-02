@@ -2194,7 +2194,7 @@ export const showcaseEn = {
   //
   // KEYED BY SUBJECT (`site.faq.<subject>.{q,a}`) rather than by position. The doc
   // catalogue this replaces was `site.doc.<section>.<n>`, positional because 675
-  // paragraphs of prose have no stable identity but their place in the document. Eleven
+  // paragraphs of prose have no stable identity but their place in the document. Twelve
   // questions do: each one is ABOUT something, the page's order is `QUESTIONS` in
   // `lib/faq.ts` rather than the numbering here, and a question that gets reordered or
   // dropped should not renumber the ten around it.
@@ -2208,14 +2208,14 @@ export const showcaseEn = {
   // BAND ⑧ IS BACK, and it is not the one that was cut. That band WAS the FAQ — five
   // questions and nothing else, on a page with no FAQ to send anyone to. This one is a
   // WINDOW onto `/faq`: the five questions that stop a reader pressing the download
-  // button, beside a title, a line and a button out to the other six. `HOME_QUESTION_IDS`
+  // button, beside a title, a line and a button out to the other seven. `HOME_QUESTION_IDS`
   // in `lib/faq.ts` says which five and why.
   //
   // ITS OWN THREE KEYS, not `site.faq.title` and `site.faq.lead` — the band and the page
   // are two surfaces, and sharing copy between two surfaces is the mistake
   // `site.finalCta.*` exists to have fixed. "Frequently asked questions" is an `h1` over
-  // eleven rows; a band arriving after five screens of product can be warmer than that,
-  // and its line has to account for showing five of the eleven.
+  // twelve rows; a band arriving after five screens of product can be warmer than that,
+  // and its line has to account for showing five of the twelve.
   'site.homeFaq.title': 'Still wondering.',
   'site.homeFaq.subtitle':
     'The five we get asked before anyone installs it. Commit formats, credentials, updates, uninstalling — the rest is on the FAQ.',
@@ -2260,6 +2260,10 @@ export const showcaseEn = {
   'site.faq.terminal.q': 'Do I have to use the desktop app?',
   'site.faq.terminal.a':
     'No. The eight commands work in any terminal, in VS Code and in the JetBrains IDEs — anywhere Claude Code runs. The app is what adds the parts a terminal cannot: several agents side by side, live tracking of what each one is doing, the ticket beside the code, and a notification when one of them needs you.',
+
+  'site.faq.workflow.q': 'Does the workflow run outside the app?',
+  'site.faq.workflow.a':
+    'Yes, as long as the app is running, even with its window closed and only its menu bar icon showing. Start <code>claude</code> in any terminal, from a repository configured in Magic Slash, and each skill asks the app which step comes next. Two conditions: open the app once first, since that is when it installs its hooks, and start your Claude Code session after that. Only the per-agent tracking stays in the app.',
 
   'site.faq.credentials.q': 'Where are my credentials stored?',
   'site.faq.credentials.a':

@@ -63,9 +63,9 @@ export const FAQ_PATH = '/faq'
  * shared with the deleted `/story`, so retuning the homepage's closing band through them
  * silently rewrote a page nobody had opened. The two surfaces also want different
  * sentences. This page's `title` is "Frequently asked questions", which is what an `h1`
- * over eleven rows should say and is a poor thing to put on a band a reader arrives at
+ * over twelve rows should say and is a poor thing to put on a band a reader arrives at
  * after five screens of product; and its `lead` describes the whole page, where the band
- * has to account for showing five questions out of eleven.
+ * has to account for showing five questions out of twelve.
  *
  * WHAT IS SHARED IS THE QUESTIONS, and only them: see `HOME_QUESTION_IDS`. The band is a
  * window onto this list, not a copy of part of it.
@@ -73,7 +73,7 @@ export const FAQ_PATH = '/faq'
 export const HOME_CHROME = {
   /** The band's `h2`. */
   title: 'site.homeFaq.title',
-  /** The line under it, which is also where the five-out-of-eleven is accounted for. */
+  /** The line under it, which is also where the five-out-of-twelve is accounted for. */
   subtitle: 'site.homeFaq.subtitle',
   /** The button out to this page. */
   cta: 'site.homeFaq.cta',
@@ -93,24 +93,25 @@ type Question = {
 }
 
 /**
- * The eleven questions, TOP TO BOTTOM AS THE PAGE READS THEM.
+ * The twelve questions, TOP TO BOTTOM AS THE PAGE READS THEM.
  *
  * The order is the argument, and it runs from "should I even try this" to "how do I get
  * rid of it" — roughly the order a visitor arrives with them:
  *
  *   1. the two disqualifying questions — is this for me, what does it cost. Someone who
- *      answers no to either has no reason to read the other nine, and burying them
+ *      answers no to either has no reason to read the other ten, and burying them
  *      further down wastes their afternoon and our credibility.
  *   2. what it takes to run — prerequisites, platforms.
  *   3. whether it fits the way they already work — tracker, language, commit format,
- *      terminal versus the app. This is the bulk of the page and the bulk of the doubt.
+ *      terminal versus the app, whether the workflow needs it open. This is the bulk
+ *      of the page and the bulk of the doubt.
  *   4. the two questions asked only once someone is already committed — where the
  *      tokens live, how it updates.
  *   5. how to leave. Last, and present on purpose: a product that hides its uninstall
  *      is telling you something about itself.
  *
  * NOT GROUPED INTO CATEGORIES, which the reference page (`cleanshot.com/faq`) also does
- * not do. Eleven rows fit on a screen and a half collapsed; headings over groups of two
+ * not do. Twelve rows fit on a screen and a half collapsed; headings over groups of two
  * and three would add a level of structure the reader has to read PAST to reach the
  * question they came for. The day this list is thirty rows long is the day it wants
  * categories and a filter, and that is a different page.
@@ -136,6 +137,7 @@ export const QUESTIONS = [
     answer: 'site.faq.commitFormat.a',
   },
   { id: 'terminal', question: 'site.faq.terminal.q', answer: 'site.faq.terminal.a' },
+  { id: 'workflow', question: 'site.faq.workflow.q', answer: 'site.faq.workflow.a' },
   { id: 'credentials', question: 'site.faq.credentials.q', answer: 'site.faq.credentials.a' },
   { id: 'updates', question: 'site.faq.updates.q', answer: 'site.faq.updates.a' },
   { id: 'uninstall', question: 'site.faq.uninstall.q', answer: 'site.faq.uninstall.a' },
@@ -146,7 +148,7 @@ export const QUESTIONS = [
  *
  * NAMED AND NOT SLICED. `QUESTIONS.slice(0, 5)` is the same five rows today and it is
  * the wrong mechanism: the order up there is an ARGUMENT about how a reader arrives at
- * the eleven, and it is expected to move — insert a question at the top and the homepage
+ * the twelve, and it is expected to move — insert a question at the top and the homepage
  * silently drops `trackers` for it, with nothing in either file to say the homepage had
  * an opinion. Naming them is what makes the band survive a reorder of the page, the same
  * call `CARD_TONE_CYCLE` makes about a tone that means something.
@@ -181,7 +183,7 @@ export const HOME_QUESTION_IDS = [
 /**
  * The same five as rows, resolved against `QUESTIONS` — which is what the band maps over.
  *
- * `find` rather than a lookup table, because eleven entries do not want an index, and
+ * `find` rather than a lookup table, because twelve entries do not want an index, and
  * the `!` is safe for a reason a reader can check rather than take on trust: the type of
  * `HOME_QUESTION_IDS` is the union of `QUESTIONS`'s own ids, so an id that is not in the
  * list fails `tsc` at the declaration above. `faq.test.ts` asserts it again for CI, where

@@ -1202,7 +1202,7 @@ export function Gallery() {
             <code className="font-mono text-ink">aria-expanded</code>, no keyboard. Here it is a real{' '}
             <code className="font-mono text-ink">button</code> inside an{' '}
             <code className="font-mono text-ink">h3</code>, so a screen reader gets a list of
-            headings to navigate rather than eleven unnamed rows. Not{' '}
+            headings to navigate rather than twelve unnamed rows. Not{' '}
             <code className="font-mono text-ink">&lt;details&gt;</code> either: a native disclosure
             snaps open, and the ways round that are supported in some of the browsers reading the
             site and not the rest.

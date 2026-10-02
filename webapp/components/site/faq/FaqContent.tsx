@@ -10,7 +10,7 @@ import { HomeSection } from '../home/Shell'
 import { RichText } from '../RichText'
 
 /**
- * The whole of `/faq`: the headline, eleven disclosure rows, and one way out.
+ * The whole of `/faq`: the headline, twelve disclosure rows, and one way out.
  *
  * ── THE SHAPE, AND WHERE IT COMES FROM ──────────────────────────────────────────────
  *
@@ -23,7 +23,7 @@ import { RichText } from '../RichText'
  * level of structure a reader has to get past to reach the question they came with. And
  * every row is COLLAPSED on arrival, so the page opens as a table of contents you can
  * read in a glance rather than as four screens of prose you have to scroll to find out
- * what is on it. Eleven questions is the length that works that way; `lib/faq.ts` says
+ * what is on it. Twelve questions is the length that works that way; `lib/faq.ts` says
  * what happens at thirty.
  *
  * THEIR COLUMN IS 800px AND OURS IS 768 (`max-w-3xl`), which is the one measurement not
@@ -49,7 +49,7 @@ import { RichText } from '../RichText'
  * Product dropdown that used to had already been cut, and the desktop app's only link
  * into it pointed at the changelog section, which is a page of its own now. What it
  * carried has split three ways: the changelog to `/changelog`, the capability inventory
- * to `/features`, and the eleven things people actually ask to here.
+ * to `/features`, and the twelve things people actually ask to here.
  *
  * `site.faq.*` PREDATES THE PAGE. Five of these questions were written as band ⑧ of the
  * homepage, which the rebuild cut; their keys sat in the catalogue unread until there
