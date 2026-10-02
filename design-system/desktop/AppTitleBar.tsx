@@ -161,6 +161,14 @@ export interface TitleBarAction {
   icon?: IconComponent
 }
 
+/** An icon-only control: the mark and its tooltip, which is also its accessible name. */
+export interface TitleBarIconAction {
+  icon: IconComponent
+  /** Translated. Says what the click does. */
+  title: string
+  onClick: () => void
+}
+
 /**
  * WHO IS SIGNED IN, last in the bar — a face and a name on the same plate the archive
  * and the notice wear.
@@ -230,6 +238,12 @@ export interface AppTitleBarProps {
   back?: TitleBarAction
   /** The name, or the two names, in the middle. */
   titles?: TitleBarTitle[]
+  /**
+   * One icon-only control, first in the right-hand group, before the action: the
+   * agent's view (terminal or chat). The mark is what the CLICK does, the way the panel
+   * toggles' marks are, so it changes with the view rather than lighting up.
+   */
+  view?: TitleBarIconAction
   /** The action before the right toggle. */
   action?: TitleBarAction
   /** The toggle for the panel on the right, after the action. */
@@ -267,6 +281,7 @@ export function AppTitleBar({
   leftSwitch,
   back,
   titles = [],
+  view,
   action,
   right,
   settings,
@@ -274,7 +289,7 @@ export function AppTitleBar({
   account,
   className = '',
 }: AppTitleBarProps) {
-  const hasRight = Boolean(action || right || settings || notice || account)
+  const hasRight = Boolean(view || action || right || settings || notice || account)
 
   return (
     <div
@@ -313,6 +328,7 @@ export function AppTitleBar({
 
       {hasRight && (
         <Controls>
+          {view && <ButtonIcon icon={view.icon} title={view.title} onClick={view.onClick} />}
           {action && <Action {...action} />}
           {right && (
             <ButtonIcon

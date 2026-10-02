@@ -7,8 +7,9 @@ import { useT } from '../i18n'
 import { ControlCenterMenu } from './ControlCenterMenu'
 import { AccountMenu, useAccountTitleBarControl } from './AccountMenu'
 import { LoginScreen } from './LoginScreen'
-import { BellOff } from '@ds/desktop/icons'
+import { BellOff, MessageSquare, SquareTerminal } from '@ds/desktop/icons'
 import { useConfig } from '../hooks/useConfig'
+import { resolveDisplayMode } from '../utils/displayMode'
 
 /**
  * THE BAR IS `AppTitleBar` NOW — `@ds/desktop/AppTitleBar.tsx` — and what is left here is
@@ -38,6 +39,7 @@ export function TitleBar() {
   // Per AGENT, not per window: the toggle reports the inspected agent's own state,
   // so switching agents moves this button with them.
   const infoSidebarOpen = useStore(selectInfoSidebarOpen)
+  const setDisplayMode = useStore((s) => s.setDisplayMode)
   const isFullScreen = useIsFullScreen()
   // Absent means never chosen, which is on — the reading the main process makes.
   const { config } = useConfig()
@@ -128,6 +130,11 @@ export function TitleBar() {
       // Closing the agent is offered here, next to the sidebar toggle, because the
       // info sidebar no longer has a header to carry it — and the action belongs
       // to the agent, not to a panel that may be collapsed.
+      // The agent's view, beside its archive: the mark is where the click takes you.
+      view={inspectedTerminal ? (resolveDisplayMode(inspectedTerminal, config) === 'chat'
+        ? { icon: SquareTerminal, title: t('chat.mode.toTerminal'), onClick: () => setDisplayMode(inspectedTerminal.id, 'terminal') }
+        : { icon: MessageSquare, title: t('chat.mode.toChat'), onClick: () => setDisplayMode(inspectedTerminal.id, 'chat') }
+      ) : undefined}
       action={closeableTerminal ? {
         label: t('agentInfo.closeAgent'),
         title: `${t('agentInfo.closeAgent')} ⌘W`,

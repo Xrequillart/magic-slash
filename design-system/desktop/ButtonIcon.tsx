@@ -45,7 +45,7 @@ import type { IconComponent } from './types'
  * other two are the app's real exceptions — removing a repository, and opening one in
  * VS Code, whose blue is the editor's own and not a token.
  */
-export type ButtonIconTone = 'neutral' | 'danger' | 'vscode' | 'ghost' | 'success' | 'solid' | 'paper'
+export type ButtonIconTone = 'neutral' | 'danger' | 'vscode' | 'ghost' | 'success' | 'solid' | 'paper' | 'accent'
 
 /**
  * Three on the shared ladder — `Label`'s and `Status`'s 24 / 28 / 32 — and one below
@@ -171,6 +171,15 @@ const TONES: Record<ButtonIconTone, string> = {
    * not.
    */
   paper: 'bg-release-ink/5 text-release-ink/60 hover:bg-release-ink/10 hover:text-release-ink',
+  /**
+   * THE PRIMARY ACTION, ready to go — the chat's Send once there is something to send.
+   *
+   * `Button`'s `accent`, at this component's size: the one icon-only control in a view
+   * that is the thing to press next. A caller swaps to it when the action becomes
+   * possible and back when it is not, so it never sits lit on a button that would do
+   * nothing (a disabled accent square reads as broken, not as waiting).
+   */
+  accent: 'bg-accent text-on-brand hover:bg-accent-hover',
 }
 
 /**

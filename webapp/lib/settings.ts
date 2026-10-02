@@ -67,6 +67,7 @@ export interface UserSettings {
   defaultModel: string | null
   confirmAgentArchive: boolean | null
   splitNewAgentPane: string | null
+  defaultDisplayMode: string | null
   quickLaunchRepo: string | null
   quickLaunchBackground: boolean | null
   quickLaunchLaunchMode: string | null
@@ -107,6 +108,7 @@ interface UserSettingsRow {
   default_model: string | null
   confirm_agent_archive: boolean | null
   split_new_agent_pane: string | null
+  default_display_mode: string | null
   quick_launch_repo: string | null
   quick_launch_background: boolean | null
   quick_launch_launch_mode: string | null
@@ -118,7 +120,7 @@ interface UserSettingsRow {
 }
 
 const COLUMNS =
-  'theme, sync_claude_theme, code_syntax, code_font_size, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_active, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, quick_settings_enabled, quick_settings_items, sidebar_order, sidebar_hidden, sidebar_compact'
+  'theme, sync_claude_theme, code_syntax, code_font_size, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_active, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, default_display_mode, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, quick_settings_enabled, quick_settings_items, sidebar_order, sidebar_hidden, sidebar_compact'
 
 /** Maps a camelCase field to its column. Also the list of writable fields. */
 const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
@@ -149,6 +151,7 @@ const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
   defaultModel: 'default_model',
   confirmAgentArchive: 'confirm_agent_archive',
   splitNewAgentPane: 'split_new_agent_pane',
+  defaultDisplayMode: 'default_display_mode',
   quickLaunchRepo: 'quick_launch_repo',
   quickLaunchBackground: 'quick_launch_background',
   quickLaunchLaunchMode: 'quick_launch_launch_mode',
@@ -188,6 +191,7 @@ export const EMPTY_SETTINGS: UserSettings = {
   defaultModel: null,
   confirmAgentArchive: null,
   splitNewAgentPane: null,
+  defaultDisplayMode: null,
   quickLaunchRepo: null,
   quickLaunchBackground: null,
   quickLaunchLaunchMode: null,
@@ -228,6 +232,7 @@ function toSettings(row: UserSettingsRow): UserSettings {
     defaultModel: row.default_model,
     confirmAgentArchive: row.confirm_agent_archive,
     splitNewAgentPane: row.split_new_agent_pane,
+    defaultDisplayMode: row.default_display_mode,
     quickLaunchRepo: row.quick_launch_repo,
     quickLaunchBackground: row.quick_launch_background,
     quickLaunchLaunchMode: row.quick_launch_launch_mode,

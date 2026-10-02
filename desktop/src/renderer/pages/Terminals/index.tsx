@@ -4,7 +4,7 @@ import { useTerminals } from '../../hooks/useTerminals'
 import { useOrderedTerminals } from '../../hooks/useOrderedTerminals'
 import { useStore } from '../../store'
 import { DEFAULT_SPLIT_NEW_AGENT_PANE, type InitialPromptMode, type LaunchMetadata } from '../../../types'
-import { TerminalView } from '../../components/TerminalView'
+import { AgentPane } from '../../components/AgentPane'
 import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
 import { BTN_PRIMARY } from '../../theme/controls'
@@ -341,7 +341,7 @@ export function TerminalsPage() {
             >
               {focusedPane === 'primary' && <div className="absolute top-0 left-0 right-0 h-0.5 bg-accent/50 z-10" />}
               {primaryTerminals.map((terminal) => (
-                <TerminalView
+                <AgentPane
                   key={terminal.id}
                   terminal={terminal}
                   isVisible={terminal.id === activeTerminalId}
@@ -359,7 +359,7 @@ export function TerminalsPage() {
               {focusedPane === 'secondary' && secondaryTerminals.length > 0 && <div className="absolute top-0 left-0 right-0 h-0.5 bg-accent/50 z-10" />}
               {secondaryTerminals.length > 0 ? (
                 secondaryTerminals.map((terminal) => (
-                  <TerminalView
+                  <AgentPane
                     key={`split-${terminal.id}`}
                     terminal={terminal}
                     isVisible={terminal.id === splitTerminalId}
@@ -388,7 +388,7 @@ export function TerminalsPage() {
           /* Single pane mode */
           <>
             {terminals.map((terminal) => (
-              <TerminalView
+              <AgentPane
                 key={terminal.id}
                 terminal={terminal}
                 isVisible={terminal.id === activeTerminalId}

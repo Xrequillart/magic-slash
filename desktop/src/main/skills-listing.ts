@@ -44,6 +44,12 @@ export interface ListingEntry {
    * field, which Claude Code ignores). A workflow step added on it starts with these.
    */
   outcomes?: string[]
+  /**
+   * `false` when the skill cannot be typed as a slash command: `user-invocable: false` in
+   * its frontmatter (`magic:action`), or switched `off`. Absent means it can. Read by the
+   * chat's `/` menu, which offers only what typing would run.
+   */
+  userInvocable?: false
 }
 
 export interface ListingSettings {
@@ -162,6 +168,8 @@ function entryFrom(
   const name = prefix ? `${prefix}:${base}` : base
   const text = [fm.description, fm.when_to_use].filter((s) => s && s.length > 0).join(' ')
   const outcomes = parseOutcomesField(fm.outcomes)
+  const override = overrides[name] ?? overrides[base]
+  const userInvocable = fm['user-invocable'] === 'false' || override === 'off' ? false : undefined
   return {
     name,
     text,
@@ -171,6 +179,7 @@ function entryFrom(
     mode: overrides[name] === undefined ? modeFor(fm, base, overrides) : modeFor(fm, name, overrides),
     ...(origin ? { origin } : {}),
     ...(outcomes ? { outcomes } : {}),
+    ...(userInvocable === false ? { userInvocable } : {}),
   }
 }
 

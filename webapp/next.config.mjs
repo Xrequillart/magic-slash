@@ -39,6 +39,9 @@ const nextConfig = {
       // canvas also imports `@xyflow/react/dist/base.css`, and that subpath must land in
       // the same install as the module, or the styles and the code drift apart.
       '@xyflow/react': path.resolve(process.cwd(), 'node_modules/@xyflow/react'),
+      // And the chat view's Markdown (`ChatMarkdown`), same terms again.
+      'react-markdown': path.resolve(process.cwd(), 'node_modules/react-markdown'),
+      'remark-gfm': path.resolve(process.cwd(), 'node_modules/remark-gfm'),
     }
     return config
   },

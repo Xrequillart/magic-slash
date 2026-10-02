@@ -3,8 +3,9 @@ import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupRepoHandlers } from './ipc/repo-handlers'
 import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
+import { setChatListener, watchTranscript } from './chat/transcript-watcher'
 import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setWorkflowNextProvider, setWorkflowActionProvider, setCustomSkillContextProvider, setUserPromptListener, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback } from './hooks/status-server'
-import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion } from './questions/pending-questions'
+import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion, setPendingQuestionListener } from './questions/pending-questions'
 import { answerPendingQuestion } from './questions/answer-question'
 import { recordSkillInvocation } from './usage/skill-invocations'
 import { installShellIntegration } from './hooks/shell-integration'
@@ -556,6 +557,10 @@ function setupTrayHandlers() {
    * The decision itself lives in `answerPendingQuestion` so it can be unit-tested;
    * this handler only supplies the store and the PTY.
    */
+  // The chat view's first read of an agent's question; changes arrive as `terminal:question`.
+  ipcMain.handle('terminal:getQuestion', async (_event, { id }: { id: unknown }) =>
+    (typeof id === 'string' ? getPendingQuestion(id) ?? null : null))
+
   ipcMain.handle('tray:answerQuestion', async (
     _event,
     payload: { id: string; token: string; choice: TrayAnswerChoice },
@@ -769,6 +774,8 @@ async function initializeHooksAndSessions() {
     // Usage stats from the statusLine wrapper — in-memory update + single metadata IPC.
     // Not persisted to disk (see updateTerminalUsageFromHook) since statusLine is high-frequency.
     setUsageCallback((terminalId: string, usage: TerminalUsage) => {
+      // The session's transcript, for the chat view. A no-op when it is the same file.
+      if (usage.transcriptPath) watchTranscript(terminalId, usage.transcriptPath)
       updateTerminalUsageFromHook(terminalId, usage)
       if (mainWindow) {
         mainWindow.webContents.send('terminal:metadata', {
@@ -776,6 +783,14 @@ async function initializeHooksAndSessions() {
           metadata: { usage }
         })
       }
+    })
+
+    setChatListener((terminalId, entries) => {
+      if (mainWindow) mainWindow.webContents.send('terminal:chat', { id: terminalId, entries })
+    })
+    // The question the chat view draws over its composer.
+    setPendingQuestionListener((terminalId, question) => {
+      if (mainWindow) mainWindow.webContents.send('terminal:question', { id: terminalId, question: question ?? null })
     })
 
     // A question an agent is blocked on, from the capture hooks. The payload is

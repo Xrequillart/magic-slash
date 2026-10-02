@@ -1,4 +1,5 @@
 import * as pty from 'node-pty'
+import { unwatchTranscript } from '../chat/transcript-watcher'
 import * as os from 'os'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -393,6 +394,7 @@ export function killTerminal(id: string): void {
     lastActivityTime.delete(id)
     restartTrackers.delete(id)
     clearPendingQuestion(id)
+    unwatchTranscript(id)
   }
 }
 

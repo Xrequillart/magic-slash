@@ -406,3 +406,16 @@ describe('buildPreview', () => {
     expect(buildPreview(buffer)).toBe('Bash(sw_vers)\n  Print macOS version info')
   })
 })
+
+describe('setPendingQuestionListener', () => {
+  it('hears a question arrive and leave', async () => {
+    const { setPendingQuestionListener, setFromAskQuestion, clearPendingQuestion } = await import('./pending-questions')
+    const heard: Array<string | undefined> = []
+    setPendingQuestionListener((_id, q) => heard.push(q?.prompt))
+    setFromAskQuestion('listen-1', { tool_input: { questions: [{ question: 'Which?', options: [{ label: 'A' }] }] } })
+    clearPendingQuestion('listen-1')
+    clearPendingQuestion('listen-1') // nothing left: not heard again
+    setPendingQuestionListener(null)
+    expect(heard).toEqual(['Which?', undefined])
+  })
+})

@@ -3,7 +3,7 @@ import type { AvatarSourceResult, AvatarWriteResult } from '../avatar'
 import type { UsernameCheckResult, UsernameSaveResult } from '../username'
 import type { ResolvedWorkflow } from '../workflow/model'
 import type { WorkflowOverlay } from '../workflow/overlay'
-import type { AccountSettings, AgentSortMode, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, GhCliStatus, McpServerId, McpHealthReport, McpServerState, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanLiveChange, PlanOverview, PlanPresence, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata, RepositoryWorkflowOverlay, RepositoryWorkflowSaveResult, SkillShareResult, WorkflowChange, WorkflowHistoryRead, WorkflowSettings } from '../types'
+import type { AccountSettings, AgentDisplayMode, AgentSortMode, ChatEntry, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, GhCliStatus, McpServerId, McpHealthReport, McpServerState, PrerequisiteId, TrayState, TrayQuestion, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanLiveChange, PlanOverview, PlanPresence, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata, RepositoryWorkflowOverlay, RepositoryWorkflowSaveResult, SkillShareResult, WorkflowChange, WorkflowHistoryRead, WorkflowSettings } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -110,6 +110,9 @@ const configApi = {
     ipcRenderer.invoke('config:setQuickSettings', patch),
   setSidebarPages: (patch: { order?: SidebarPageId[]; hidden?: SidebarPageId[]; compact?: boolean }): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setSidebarPages', patch),
+  setDefaultDisplayMode: (mode: AgentDisplayMode): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setDefaultDisplayMode', { mode }),
+
   setSplitNewAgentPane: (pane: SplitNewAgentPane): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setSplitNewAgentPane', { pane }),
   setDailyDigestEnabled: (enabled: boolean): Promise<{ config: Config }> =>
@@ -306,6 +309,41 @@ const terminalApi = {
 
   relaunchInCwd: (id: string): Promise<string | null> =>
     ipcRenderer.invoke('terminal:relaunchInCwd', { id }),
+
+  updateDisplayMode: (id: string, mode: AgentDisplayMode) =>
+    ipcRenderer.invoke('terminal:updateDisplayMode', { id, mode }),
+
+  // A fenced block of the chat, as shiki HTML in `theme`, or null to draw it plain.
+  highlightCode: (code: string, lang: string | undefined, theme: string): Promise<string | null> =>
+    ipcRenderer.invoke('code:highlight', { code, lang, theme }),
+
+  // The question the agent is blocked on, if any. Answered through `tray.answerQuestion`.
+  getQuestion: (id: string): Promise<TrayQuestion | null> =>
+    ipcRenderer.invoke('terminal:getQuestion', { id }),
+
+  onQuestion: (callback: (data: { id: string; question: TrayQuestion | null }) => void) => {
+    const listener = (_event: IpcRendererEvent, data: { id: string; question: TrayQuestion | null }) => callback(data)
+    ipcRenderer.on('terminal:question', listener)
+    return () => ipcRenderer.removeListener('terminal:question', listener)
+  },
+
+  // The same, as coloured tokens per line, for the chat's diff cards.
+  highlightLines: (code: string, lang: string | undefined, theme: string): Promise<Array<Array<{ content: string; color?: string; fontStyle?: number }>> | null> =>
+    ipcRenderer.invoke('code:highlightLines', { code, lang, theme }),
+
+  // Attachments for a chat message, as paths (see main/chat/attachments.ts).
+  pickChatFiles: (): Promise<string[]> => ipcRenderer.invoke('chat:pickFiles'),
+  savePastedImage: (bytes: Uint8Array, mime: string): Promise<string | null> =>
+    ipcRenderer.invoke('chat:savePastedImage', { bytes, mime }),
+
+  getChat: (id: string): Promise<ChatEntry[]> =>
+    ipcRenderer.invoke('terminal:getChat', { id }),
+
+  onChat: (callback: (data: { id: string; entries: ChatEntry[] }) => void) => {
+    const listener = (_event: IpcRendererEvent, data: { id: string; entries: ChatEntry[] }) => callback(data)
+    ipcRenderer.on('terminal:chat', listener)
+    return () => ipcRenderer.removeListener('terminal:chat', listener)
+  },
 
   // Event listeners
   onData: (callback: (data: { id: string; data: string }) => void) => {

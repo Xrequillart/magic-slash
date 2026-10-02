@@ -1,5 +1,5 @@
 import type { Config, SpotlightConfig } from '../../types'
-import { cleanQuickSettings, cleanSidebarPages, isValidAgentSort, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidTheme, isValidWorkflowChainLimit, isValidWorkflowConfirmChain, isValidWorkflowMissingSkill } from '../../types'
+import { cleanQuickSettings, cleanSidebarPages, isValidAgentSort, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidDisplayMode, isValidTheme, isValidWorkflowChainLimit, isValidWorkflowConfirmChain, isValidWorkflowMissingSkill } from '../../types'
 import { isValidAgentType, isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 
 // ---------------------------------------------------------------------------
@@ -36,6 +36,7 @@ export interface UserSettingsRow {
   split_enabled: boolean | null
   split_active: boolean | null
   split_new_agent_pane: string | null
+  default_display_mode: string | null
   notifications_enabled: boolean | null
   notification_agent_waiting: boolean | null
   notification_agent_completed: boolean | null
@@ -83,7 +84,7 @@ export const USER_SETTINGS_COLUMNS =
   'notification_pr_changes_requested, split_enabled, split_active, pr_reviews_enabled, ' +
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
   'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
-  'language, sync_claude_theme, code_syntax, code_font_size, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, quick_settings_enabled, quick_settings_items, sidebar_order, sidebar_hidden, sidebar_compact, agent_sort, tasks_repo, ' +
+  'language, sync_claude_theme, code_syntax, code_font_size, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, default_display_mode, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, quick_settings_enabled, quick_settings_items, sidebar_order, sidebar_hidden, sidebar_compact, agent_sort, tasks_repo, ' +
   'plans_repo, workflow_confirm_chain, workflow_chain_limit, workflow_missing_skill, workflow_run_actions'
 
 /**
@@ -103,6 +104,7 @@ export const SETTINGS_KEYS = [
   'agentContextMinimized',
   'usageLogsEnabled',
   'infoSidebarOnCreate',
+  'defaultDisplayMode',
   'planSyncEnabled',
   'dailyDigest',
   'notifications',
@@ -160,6 +162,7 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     split_enabled: orNull(config.splitEnabled),
     split_active: orNull(config.splitActive),
     split_new_agent_pane: orNull(config.splitNewAgentPane),
+    default_display_mode: orNull(config.defaultDisplayMode),
     notifications_enabled: orNull(config.notifications?.enabled),
     notification_agent_waiting: orNull(config.notifications?.agentWaiting),
     notification_agent_completed: orNull(config.notifications?.agentCompleted),
@@ -221,6 +224,7 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   if (isSet(row.split_enabled)) config.splitEnabled = row.split_enabled
   if (isSet(row.split_active)) config.splitActive = row.split_active
   if (isValidSplitNewAgentPane(row.split_new_agent_pane)) config.splitNewAgentPane = row.split_new_agent_pane
+  if (isValidDisplayMode(row.default_display_mode)) config.defaultDisplayMode = row.default_display_mode
   if (isSet(row.auto_start_at_login)) config.autoStartAtLogin = row.auto_start_at_login
   if (isValidLaunchMode(row.launch_mode)) config.launchMode = row.launch_mode
   if (isValidQuickLaunchRepo(row.quick_launch_repo)) config.quickLaunchRepo = row.quick_launch_repo

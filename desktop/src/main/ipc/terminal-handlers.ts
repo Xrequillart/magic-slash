@@ -1,5 +1,5 @@
 import os from 'os'
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, dialog } from 'electron'
 // Aliased: `t` is already the local name for a terminal throughout this file.
 import { t as translate } from '../i18n'
 import {
@@ -28,6 +28,7 @@ import {
   archiveAgent,
   readAgents,
   updateAgentInfoSidebar,
+  updateAgentDisplayMode,
   updateAgentSplitPane,
 } from '../config/agents'
 import { addHistoryEntry } from '../config/activity-history'
@@ -37,6 +38,8 @@ import { expandPath } from '../config/validation'
 import { isValidAgentType, isValidLaunchMode, DEFAULT_AGENT_TYPE } from '../config/defaults'
 import { checkRepoPath } from '../config/repo-validation'
 import { ensureHydrated } from '../store/hydrate'
+import { getChatEntries } from '../chat/transcript-watcher'
+import { savePastedImage } from '../chat/attachments'
 import { flushPlanSpec } from '../store/plan-sync'
 import type { HistoryAction, LaunchMetadata } from '../../types'
 
@@ -695,6 +698,7 @@ export function setupTerminalHandlers(
       // Undefined is meaningful here — see Agent.infoSidebarOpen — so it is passed
       // through rather than defaulted on the way out.
       infoSidebarOpen: agentMap.get(t.id)?.infoSidebarOpen,
+      displayMode: agentMap.get(t.id)?.displayMode,
     }))
   })
 
@@ -720,6 +724,28 @@ export function setupTerminalHandlers(
   ipcMain.handle('terminal:updateInfoSidebar', async (_event, { id, open }) => {
     if (typeof id !== 'string' || typeof open !== 'boolean') return
     return updateAgentInfoSidebar(id, open)
+  })
+
+  ipcMain.handle('terminal:updateDisplayMode', async (_event, { id, mode }) => {
+    if (typeof id !== 'string' || (mode !== 'terminal' && mode !== 'chat')) return
+    return updateAgentDisplayMode(id, mode)
+  })
+
+  // Files to attach to a chat message: any kind, several at once. [] when dismissed.
+  ipcMain.handle('chat:pickFiles', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win) return []
+    const result = await dialog.showOpenDialog(win, { properties: ['openFile', 'multiSelections'] })
+    return result.canceled ? [] : result.filePaths
+  })
+
+  // An image pasted into the chat's box, which has no path until it is written down.
+  ipcMain.handle('chat:savePastedImage', async (_event, { bytes, mime }) => savePastedImage(bytes, mime))
+
+  // The chat view's entries so far; later ones arrive as `terminal:chat` events.
+  ipcMain.handle('terminal:getChat', async (_event, { id }) => {
+    if (typeof id !== 'string') return []
+    return getChatEntries(id)
   })
 
   // Get terminal display buffer (for reconnection after refresh)

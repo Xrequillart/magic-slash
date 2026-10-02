@@ -22,7 +22,9 @@
       "react-dom": ["./node_modules/@types/react-dom"],
       "react-dom/*": ["./node_modules/@types/react-dom/*"],
       "lucide-react": ["./node_modules/lucide-react"],
-      "@xyflow/react": ["./node_modules/@xyflow/react"]
+      "@xyflow/react": ["./node_modules/@xyflow/react"],
+      "react-markdown": ["./node_modules/react-markdown"],
+      "remark-gfm": ["./node_modules/remark-gfm"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "../design-system/desktop/**/*.ts", "../design-system/desktop/**/*.tsx", "../design-system/webapp/**/*.ts", "../design-system/webapp/**/*.tsx"],

@@ -10,7 +10,7 @@ import { SELECT_WIDTH } from '../../theme/controls'
 import { showToast } from '../../components/Toast'
 import {
   AGENT_SORT_MODES, DEFAULT_AGENT_SORT,
-  type AgentSortMode, type AgentType, type ClaudeModelOption, type LaunchMode,
+  type AgentDisplayMode, type AgentSortMode, type AgentType, type ClaudeModelOption, type LaunchMode,
 } from '../../../types'
 
 /**
@@ -78,6 +78,23 @@ function NewAgentsSection() {
   const [launchMode, setLaunchMode] = useState<LaunchMode>(config?.launchMode ?? 'default')
   const [model, setModel] = useState(config?.defaultModel ?? CLI_DEFAULT)
   const [showBypassWarning, setShowBypassWarning] = useState(false)
+  const [displayMode, setDisplayMode] = useState<AgentDisplayMode>(config?.defaultDisplayMode ?? 'terminal')
+  const storedDisplayMode = config?.defaultDisplayMode ?? 'terminal'
+  useEffect(() => setDisplayMode(storedDisplayMode), [storedDisplayMode])
+
+  // A FALLBACK, like the info panel's: an agent switched by hand keeps its own view.
+  const chooseDisplayMode = async (next: AgentDisplayMode) => {
+    if (next === displayMode) return
+    const previous = displayMode
+    setDisplayMode(next)
+    try {
+      const result = await window.electronAPI.config.setDefaultDisplayMode(next)
+      setConfig(result.config)
+    } catch (error) {
+      setDisplayMode(previous)
+      showToast(error instanceof Error ? error.message : t('toast.settingUpdateFailed'), 'error')
+    }
+  }
 
   const storedType = config?.defaultAgentType
   const storedMode = config?.launchMode
@@ -210,6 +227,19 @@ function NewAgentsSection() {
               width: SELECT_WIDTH,
             },
           },
+          {
+            id: 'defaultDisplayMode',
+            label: t('settings.displayMode.label'),
+            hint: t('settings.displayMode.help'),
+            control: {
+              kind: 'select',
+              value: displayMode,
+              options: DISPLAY_MODE_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.labelKey) })),
+              onChange: (next) => chooseDisplayMode(next as AgentDisplayMode),
+              ariaLabel: t('settings.displayMode.label'),
+              width: SELECT_WIDTH,
+            },
+          },
           { id: 'infoSidebar', ...infoSidebarRow },
         ]}
         alert={
@@ -228,6 +258,12 @@ function NewAgentsSection() {
     </div>
   )
 }
+
+/** Terminal or chat, for an agent nobody has switched. Exported for the settings search. */
+export const DISPLAY_MODE_OPTIONS: { value: AgentDisplayMode; labelKey: MessageKey }[] = [
+  { value: 'terminal', labelKey: 'settings.displayMode.terminal' },
+  { value: 'chat', labelKey: 'settings.displayMode.chat' },
+]
 
 function ListSection() {
   const t = useT()

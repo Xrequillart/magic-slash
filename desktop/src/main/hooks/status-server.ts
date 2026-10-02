@@ -441,6 +441,7 @@ export function parseStatusLinePayload(body: string): TerminalUsage {
     fiveHourResetsAt: numOrUndef(fiveHour.resets_at),
     sevenDayPercent: numOrUndef(sevenDay.used_percentage),
     sevenDayResetsAt: numOrUndef(sevenDay.resets_at),
+    transcriptPath: typeof data?.transcript_path === 'string' && data.transcript_path ? data.transcript_path : undefined,
   }
 }
 

@@ -57,6 +57,7 @@ const emptyRow = (): UserSettingsRow => ({
   default_model: null,
   confirm_agent_archive: null,
   split_new_agent_pane: null,
+  default_display_mode: null,
   quick_launch_repo: null,
   quick_launch_background: null,
   quick_launch_launch_mode: null,

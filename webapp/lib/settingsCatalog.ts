@@ -73,6 +73,8 @@ export const DEFAULTS = {
   confirmAgentArchive: true,
   // NULL = the pane with the keyboard, what the split always did.
   splitNewAgentPane: 'focused',
+  // NULL = the terminal, what an agent always showed.
+  defaultDisplayMode: 'terminal',
   // NULL = the first repository, what Quick Launch always did.
   quickLaunchRepo: 'first',
   quickLaunchBackground: false,
@@ -205,6 +207,7 @@ export const SETTING_GROUPS: SettingGroup[] = [
       { field: 'defaultModel', label: 'Model' },
       { field: 'confirmAgentArchive', label: 'Confirm before archiving' },
       { field: 'infoSidebarOnCreate', label: 'Info panel open' },
+      { field: 'defaultDisplayMode', label: 'Shown as' },
     ],
   },
   {

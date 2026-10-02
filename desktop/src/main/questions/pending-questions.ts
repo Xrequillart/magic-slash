@@ -33,6 +33,22 @@ import type { TrayQuestion, TrayQuestionOption } from '../../types'
  */
 const pendingQuestions = new Map<string, TrayQuestion>()
 
+/**
+ * Told whenever an agent's pending question changes (set, replaced, cleared), for the
+ * chat view, which draws the question where the conversation is. The tray polls; the
+ * chat is a live view and is pushed to.
+ */
+type QuestionListener = (terminalId: string, question: TrayQuestion | undefined) => void
+let questionListener: QuestionListener | null = null
+
+export function setPendingQuestionListener(listener: QuestionListener | null): void {
+  questionListener = listener
+}
+
+function notify(terminalId: string): void {
+  questionListener?.(terminalId, pendingQuestions.get(terminalId))
+}
+
 /** After half an hour, a question nobody answered is stale by any measure. */
 const QUESTION_TTL_MS = 30 * 60 * 1000
 
@@ -152,6 +168,7 @@ function store(terminalId: string, question: Omit<TrayQuestion, 'token' | 'recei
   // One question per agent: a new one supersedes whatever was there. The agent can
   // only be blocked on its most recent prompt anyway.
   pendingQuestions.set(terminalId, stored)
+  notify(terminalId)
   return stored
 }
 
@@ -285,7 +302,7 @@ export function getPendingQuestion(terminalId: string): TrayQuestion | undefined
 }
 
 export function clearPendingQuestion(terminalId: string): void {
-  pendingQuestions.delete(terminalId)
+  if (pendingQuestions.delete(terminalId)) notify(terminalId)
 }
 
 /**
@@ -344,12 +361,14 @@ export function noteTerminalInput(terminalId: string, data: string): void {
   if (!question) return
   if (question.kind === 'permission') {
     pendingQuestions.delete(terminalId)
+    notify(terminalId)
     return
   }
   if (question.unsupported) return
   // Same token: the question is the same question, only its buttons are gone. A
   // fresh one would make a click read as "already answered" instead.
   pendingQuestions.set(terminalId, { ...question, unsupported: true })
+  notify(terminalId)
 }
 
 export function clearAllPendingQuestions(): void {

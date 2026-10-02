@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { AccountSettings, Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, PlanSession, PlanSessionRef, PlanSpecInput, PlanTicketsInput, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
+import type { AccountSettings, Agent, AgentDisplayMode, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, PlanSession, PlanSessionRef, PlanSpecInput, PlanTicketsInput, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
 import {
   AVATAR_BUCKET,
   AVATAR_CACHE_CONTROL,
@@ -58,7 +58,7 @@ interface AgentRow {
   type: string | null
   repositories: string[]
   metadata: TerminalMetadata & {
-    __app?: { id: string; tsCreate?: number; splitPane?: 'left' | 'right'; infoSidebarOpen?: boolean }
+    __app?: { id: string; tsCreate?: number; splitPane?: 'left' | 'right'; infoSidebarOpen?: boolean; displayMode?: AgentDisplayMode }
   }
 }
 
@@ -1121,6 +1121,7 @@ export class CloudStore implements Store {
           tsCreate: agent.tsCreate,
           splitPane: agent.splitPane,
           infoSidebarOpen: agent.infoSidebarOpen,
+          displayMode: agent.displayMode,
         },
       },
     }
@@ -1165,6 +1166,7 @@ export class CloudStore implements Store {
       // Left undefined when the agent has never been decided about, which is not the
       // same as closed: the renderer resolves undefined to the app setting.
       infoSidebarOpen: app?.infoSidebarOpen,
+      displayMode: app?.displayMode === 'chat' || app?.displayMode === 'terminal' ? app.displayMode : undefined,
     }
   }
 

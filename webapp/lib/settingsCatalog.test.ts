@@ -27,6 +27,7 @@ const EVERY_FIELD: (keyof AdminUserSettings)[] = [
   'defaultModel',
   'confirmAgentArchive',
   'splitNewAgentPane',
+  'defaultDisplayMode',
   'quickLaunchRepo',
   'quickLaunchBackground',
   'quickLaunchLaunchMode',

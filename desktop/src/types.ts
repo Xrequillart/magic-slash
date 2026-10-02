@@ -915,6 +915,58 @@ export interface TerminalUsage {
   sevenDayPercent?: number   // rate_limits.seven_day.used_percentage (0-100)
   sevenDayResetsAt?: number  // rate_limits.seven_day.resets_at (unix epoch seconds)
   updatedAt?: number         // timestamp of last statusline report
+  /**
+   * transcript_path — the session's JSONL, which the chat view renders. Rides on the
+   * statusLine report because it is the one payload every session already sends, and
+   * a new session (`/clear`, a relaunch) announces its new file the same way.
+   */
+  transcriptPath?: string
+}
+
+/**
+ * How an agent's Claude Code session is shown. `terminal` is the TUI itself; `chat`
+ * renders the same session from its transcript, over the same process — so the two are
+ * views, not modes of the session, and switching never restarts anything.
+ */
+export type AgentDisplayMode = 'terminal' | 'chat'
+
+export function isValidDisplayMode(value: unknown): value is AgentDisplayMode {
+  return value === 'terminal' || value === 'chat'
+}
+
+/**
+ * One line of the chat view, built from the transcript (see main/chat/transcript.ts).
+ * A tool call and its result are ONE entry: the result arrives later and updates it.
+ */
+export type ChatEntry =
+  | { kind: 'user'; id: string; text: string }
+  | { kind: 'assistant'; id: string; text: string }
+  /** What a local slash command printed (`/cost`, `/model`, `/mcp`…): Claude Code's, not Claude's. */
+  | { kind: 'notice'; id: string; text: string }
+  | {
+      kind: 'tool'
+      id: string
+      name: string
+      /** The one argument worth reading: the command, the file, the pattern. */
+      summary: string
+      status: 'running' | 'done' | 'error'
+      output?: string
+      /** A file the call changed (Edit, MultiEdit, Write), drawn as a diff card. */
+      diff?: ChatDiff
+    }
+
+/**
+ * What a file edit changed, from Claude Code's own record of it (`toolUseResult`:
+ * `structuredPatch` for an edit, the whole `content` for a file written new).
+ * `lines` are unified-diff lines: a `+`, `-` or ` ` and the text.
+ */
+export interface ChatDiff {
+  path: string
+  added: number
+  removed: number
+  hunks: { oldStart: number; newStart: number; lines: string[] }[]
+  /** Lines were dropped past the cap: the terminal, or the file, has the rest. */
+  truncated?: boolean
 }
 
 // Signed-in Claude account (from ~/.claude.json oauthAccount).
@@ -1034,6 +1086,8 @@ export interface TerminalInfo {
   metadata?: TerminalMetadata
   /** See `Agent.infoSidebarOpen`. Absent = never decided, resolved at read time. */
   infoSidebarOpen?: boolean
+  /** See `Agent.displayMode`. Absent = never decided, resolved at read time. */
+  displayMode?: AgentDisplayMode
 }
 
 /**
@@ -1427,6 +1481,11 @@ export interface Agent {
    * kind of per-agent layout state and has no column either.
    */
   infoSidebarOpen?: boolean
+  /**
+   * Terminal or chat, for THIS agent. Absent reads as `terminal`. Rides in
+   * `metadata.__app` beside `infoSidebarOpen`.
+   */
+  displayMode?: AgentDisplayMode
 }
 
 export type SpotlightShortcut =
@@ -2029,6 +2088,11 @@ export interface Config {
    * existed — and stops governing an agent the moment its own panel is toggled.
    */
   infoSidebarOnCreate?: boolean
+  /**
+   * How an agent nobody has switched is shown: its `Agent.displayMode` wins. Absent
+   * reads as `terminal`, which is what every agent was before the chat view existed.
+   */
+  defaultDisplayMode?: AgentDisplayMode
   /**
    * Whether `/magic:plan` sessions (the spec and the tickets it produced) are
    * uploaded to the cloud. ON by default, like usageLogsEnabled above, so only an

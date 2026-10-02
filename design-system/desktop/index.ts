@@ -17,6 +17,7 @@ export type {
   AppTitleBarProps,
   TitleBarAccount,
   TitleBarAction,
+  TitleBarIconAction,
   TitleBarSwitch,
   TitleBarSwitchOption,
   TitleBarTitle,
@@ -71,6 +72,17 @@ export type { ColorSwatchesProps } from './ColorSwatches'
 export type { ChipInputProps } from './ChipInput'
 export { CommentCard } from './CommentCard'
 export type { CommentCardProps } from './CommentCard'
+export { ChatView } from './ChatView'
+export { ChatMarkdown } from './ChatMarkdown'
+export { ChatDiffCard } from './ChatDiffCard'
+export type { ChatDiffCardProps, ChatDiffData, ChatDiffToken, ChatLineHighlighter } from './ChatDiffCard'
+export { ChatQuestion } from './ChatQuestion'
+export type { ChatQuestionProps, ChatQuestionData, ChatQuestionLabels } from './ChatQuestion'
+export { ChatCommandMenu } from './ChatCommandMenu'
+export { matchCommands } from './chatCommandMatch'
+export type { ChatCommand, ChatCommandMenuProps } from './ChatCommandMenu'
+export type { ChatMarkdownProps, ChatHighlighter } from './ChatMarkdown'
+export type { ChatViewProps, ChatViewEntry, ChatViewLabels } from './ChatView'
 export { CommentBubble, holdsCommentDraft, COMMENT_BUBBLE_PX, COMMENT_BUBBLE_OFFSET_PX } from './CommentBubble'
 export type { CommentBubbleProps } from './CommentBubble'
 export { CommentableLine, COMMENT_GUTTER_PX } from './CommentableLine'

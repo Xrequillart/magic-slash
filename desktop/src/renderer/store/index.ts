@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { ChangedFile, Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo, Org, PRReviewThread } from '../../types'
+import type { AgentDisplayMode, ChangedFile, Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo, Org, PRReviewThread } from '../../types'
 import { reviewFileKey } from '../utils/reviewLayout'
 import {
   commentFileKey, commentFileKeyPrefix,
@@ -493,6 +493,8 @@ interface AppState {
    * `Agent.infoSidebarOpen`.
    */
   setInfoSidebarOpen: (terminalId: string, open: boolean) => void
+  /** Terminal or chat for ONE agent, written through like the panel. See `Agent.displayMode`. */
+  setDisplayMode: (terminalId: string, mode: AgentDisplayMode) => void
   /** Flip the panel for the agent currently being inspected. */
   toggleInfoSidebar: () => void
   toggleLeftSidebar: () => void
@@ -1011,6 +1013,14 @@ export const useStore = create<AppState>()(
           set((state) => ({
             terminals: state.terminals.map((t) =>
               t.id === terminalId ? { ...t, infoSidebarOpen: open } : t
+            ),
+          }))
+        },
+        setDisplayMode: (terminalId, mode) => {
+          window.electronAPI?.terminal.updateDisplayMode(terminalId, mode).catch(() => {})
+          set((state) => ({
+            terminals: state.terminals.map((t) =>
+              t.id === terminalId ? { ...t, displayMode: mode } : t
             ),
           }))
         },

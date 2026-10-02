@@ -104,6 +104,7 @@ export function useTerminals() {
               // Undefined where the agent was never toggled, which is the point: it
               // then follows `config.infoSidebarOnCreate` rather than a stored false.
               infoSidebarOpen: term.infoSidebarOpen,
+              displayMode: term.displayMode,
             }
             addTerminal(terminalInfo)
           }

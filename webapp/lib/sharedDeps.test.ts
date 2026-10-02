@@ -30,7 +30,7 @@ const read = (...parts: string[]) =>
   }
 
 /** Every package the webapp resolves on the design system's behalf. */
-const ALIASED = ['@xyflow/react', 'lucide-react']
+const ALIASED = ['@xyflow/react', 'lucide-react', 'react-markdown', 'remark-gfm']
 
 describe('the dependencies the webapp resolves for the design system', () => {
   const ds = read('design-system', 'package.json').dependencies ?? {}

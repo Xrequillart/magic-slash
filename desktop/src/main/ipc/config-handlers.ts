@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import { execFileSync } from 'child_process'
-import { codeToHtml } from 'shiki'
+import { codeToHtml, codeToTokens } from 'shiki'
 import {
   readConfig,
   writeConfig,
@@ -43,7 +43,7 @@ import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '../config/defaults'
 import {
   AGENT_SORT_MODES, EMPTY_WORKFLOW_HISTORY, codeSyntaxTheme, DEFAULT_CODE_SYNTAX, DEFAULT_CODE_FONT_SIZE, isValidAgentSort,
-  cleanQuickSettings, cleanSidebarPages, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidTheme,
+  cleanQuickSettings, cleanSidebarPages, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidDisplayMode, isValidTheme,
   type CodeSample, type Config, type FilePreviewResult, type ChangedLines, type RepositoryWorkflowOverlay, type RepositoryWorkflowSaveResult, type WorkflowHistoryRead,
   isValidWorkflowChainLimit, isValidWorkflowConfirmChain, isValidWorkflowMissingSkill, type WorkflowSettings,
 } from '../../types'
@@ -214,6 +214,41 @@ export async function highlightNumbered(text: string, mimeHint: string, shikiThe
   const lang = KNOWN_LANGS.has(mimeHint) ? mimeHint : 'text'
   const raw = await codeToHtml(text, { lang, theme: shikiTheme }).catch(() => null)
   return raw ? numberShikiLines(raw) : null
+}
+
+/** Longer than this is not a snippet, and the chat shows it plain. */
+const MAX_SNIPPET = 100_000
+
+/**
+ * A fenced block from the chat view, highlighted, or `null` to draw it plain.
+ *
+ * The language is whatever followed the fence, so it is tried as given (shiki knows
+ * `typescript`, `shell`, `python`…) and falls back to plain text when shiki does not
+ * know it. Shiki escapes the code, which is what makes its HTML safe to inject.
+ */
+export async function highlightSnippet(code: unknown, lang: unknown, shikiTheme: unknown): Promise<string | null> {
+  if (typeof code !== 'string' || code.length > MAX_SNIPPET || typeof shikiTheme !== 'string') return null
+  const wanted = typeof lang === 'string' && /^[a-z0-9+#._-]{1,24}$/i.test(lang) ? lang.toLowerCase() : 'text'
+  return (
+    (await codeToHtml(code, { lang: wanted, theme: shikiTheme }).catch(() => null)) ??
+    (await codeToHtml(code, { lang: 'text', theme: shikiTheme }).catch(() => null))
+  )
+}
+
+/**
+ * Code as coloured tokens, one array per line, or `null` to draw it plain: what the
+ * chat's diff card paints its lines with. Tokens rather than HTML, because the card
+ * lays the lines out itself (a marker and a ground per line), and data needs no
+ * `innerHTML` at all. The language is the file's extension, tried as given.
+ */
+export async function highlightLines(
+  code: unknown, lang: unknown, shikiTheme: unknown,
+): Promise<Array<Array<{ content: string; color?: string; fontStyle?: number }>> | null> {
+  if (typeof code !== 'string' || code.length > MAX_SNIPPET || typeof shikiTheme !== 'string') return null
+  const wanted = typeof lang === 'string' && /^[a-z0-9+#._-]{1,24}$/i.test(lang) ? lang.toLowerCase() : 'text'
+  const run = (l: string) => codeToTokens(code, { lang: l as 'text', theme: shikiTheme })
+  const result = await run(wanted).catch(() => run('text')).catch(() => null)
+  return result ? result.tokens.map((line) => line.map((t) => ({ content: t.content, color: t.color, fontStyle: t.fontStyle }))) : null
 }
 
 /**
@@ -458,6 +493,9 @@ export function setupConfigHandlers() {
   // The palette preview in Settings → Code & reviews: a sample file with a small change
   // over it, highlighted and annotated by the very functions the file preview goes
   // through, so what the settings page shows is what a diff will look like.
+  ipcMain.handle('code:highlight', async (_event, { code, lang, theme }) => highlightSnippet(code, lang, theme))
+  ipcMain.handle('code:highlightLines', async (_event, { code, lang, theme }) => highlightLines(code, lang, theme))
+
   ipcMain.handle('config:codeSample', async (_event, { language }: { language: unknown }): Promise<CodeSample> => {
     const lang = typeof language === 'string' && Object.hasOwn(CODE_SAMPLES, language)
       ? (language as keyof typeof CODE_SAMPLES)
@@ -568,6 +606,15 @@ export function setupConfigHandlers() {
   // What the installed CLI's `/model` offers, for the default-model picker. An empty list
   // means no `claude` on this machine; a rejection, that it did not answer in time.
   ipcMain.handle('claude:listModels', () => listClaudeModels())
+
+  // How an agent nobody has switched is shown. A fallback only: see Agent.displayMode.
+  ipcMain.handle('config:setDefaultDisplayMode', async (_event, { mode }: { mode: unknown }) => {
+    if (!isValidDisplayMode(mode)) throw new Error('Invalid defaultDisplayMode value')
+    const config = readConfig()
+    config.defaultDisplayMode = mode
+    writeConfig(config)
+    return { config }
+  })
 
   ipcMain.handle('config:setSplitNewAgentPane', async (_event, { pane }: { pane: unknown }) => {
     if (!isValidSplitNewAgentPane(pane)) throw new Error('Invalid splitNewAgentPane value')

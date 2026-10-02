@@ -260,6 +260,7 @@ interface AdminUserDetailRpcRow {
   default_model: string | null
   confirm_agent_archive: boolean | null
   split_new_agent_pane: string | null
+  default_display_mode: string | null
   quick_launch_repo: string | null
   quick_launch_background: boolean | null
   quick_launch_launch_mode: string | null
@@ -430,6 +431,7 @@ function toUserDetail(r: AdminUserDetailRpcRow): AdminUserDetail {
       defaultModel: r.default_model,
       confirmAgentArchive: r.confirm_agent_archive,
       splitNewAgentPane: r.split_new_agent_pane,
+      defaultDisplayMode: r.default_display_mode,
       quickLaunchRepo: r.quick_launch_repo,
       quickLaunchBackground: r.quick_launch_background,
       quickLaunchLaunchMode: r.quick_launch_launch_mode,

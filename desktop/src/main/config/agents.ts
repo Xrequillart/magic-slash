@@ -1,4 +1,4 @@
-import type { Agent, TerminalMetadata } from '../../types'
+import type { Agent, AgentDisplayMode, TerminalMetadata } from '../../types'
 import { filterValidRepositories, readConfig } from './config'
 import { expandPath } from './validation'
 import { resolveRepoIds } from '../../repoMatch'
@@ -152,6 +152,7 @@ export function saveAgent(id: string, name: string, repositories: string[], meta
     ...(existingAgent?.infoSidebarOpen !== undefined
       ? { infoSidebarOpen: existingAgent.infoSidebarOpen }
       : {}),
+    ...(existingAgent?.displayMode ? { displayMode: existingAgent.displayMode } : {}),
   }
   filtered.push(agent)
 
@@ -221,6 +222,16 @@ export function updateAgentInfoSidebar(id: string, open: boolean): void {
   const agent = agents.find(a => a.id === id)
   if (agent) {
     agent.infoSidebarOpen = open
+    writeAgents(agents)
+  }
+}
+
+/** Terminal or chat for this agent. Same reasoning as `updateAgentInfoSidebar`. */
+export function updateAgentDisplayMode(id: string, mode: AgentDisplayMode): void {
+  const agents = readAgents()
+  const agent = agents.find(a => a.id === id)
+  if (agent) {
+    agent.displayMode = mode
     writeAgents(agents)
   }
 }
