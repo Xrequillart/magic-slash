@@ -22,7 +22,7 @@ vi.mock('./shell-exec', () => ({
   resolveShell: () => '/bin/sh',
 }))
 
-import { mcpServerStatus, allMcpServerStatuses, ensureMcpServers, MCP_DEFINITIONS, checkMcpHealth, healthFor, lastMcpHealth, mcpServerStates, parseMcpList, provisionMcpServer } from './mcp'
+import { mcpServerStatus, allMcpServerStatuses, ensureMcpServers, GH_TOKEN_HEADERS_HELPER, MCP_DEFINITIONS, checkMcpHealth, healthFor, lastMcpHealth, mcpServerStates, parseMcpList, provisionMcpServer } from './mcp'
 import { runInLoginShell, which } from './shell-exec'
 
 const CLAUDE_JSON = path.join(TMP_HOME, '.claude.json')
@@ -56,9 +56,14 @@ describe('mcpServerStatus', () => {
     expect(mcpServerStatus('atlassian').state).toBe('configured')
   })
 
-  it('reports configured only at the URL this version provisions', () => {
-    writeClaudeJson({ mcpServers: { github: { type: 'http', url: GITHUB_URL } } })
+  it('reports configured only at the URL this version provisions, signing in through gh', () => {
+    writeClaudeJson({ mcpServers: { github: { type: 'http', url: GITHUB_URL, headersHelper: GH_TOKEN_HEADERS_HELPER } } })
     expect(mcpServerStatus('github')).toEqual({ id: 'github', state: 'configured', url: GITHUB_URL })
+  })
+
+  it('reports the OAuth-only GitHub entry of earlier versions as legacy', () => {
+    writeClaudeJson({ mcpServers: { github: { type: 'http', url: GITHUB_URL } } })
+    expect(mcpServerStatus('github')).toMatchObject({ state: 'legacy', url: GITHUB_URL })
   })
 
   it('reports the deprecated stdio GitHub server as legacy, not as configured', () => {
@@ -94,7 +99,9 @@ describe('ensureMcpServers', () => {
     expect(errors).toEqual([])
     const commands = vi.mocked(runInLoginShell).mock.calls.map(([cmd]) => cmd)
     expect(commands).toContain(`claude mcp add atlassian --scope user --transport http ${ATLASSIAN_URL}`)
-    expect(commands).toContain(`claude mcp add github --scope user --transport http ${GITHUB_URL}`)
+    expect(commands).toContain(
+      `claude mcp add-json github '{"type":"http","url":"${GITHUB_URL}","headersHelper":"printf '\\''{\\"Authorization\\":\\"Bearer %s\\"}'\\'' \\"$(gh auth token)\\""}' --scope user`,
+    )
   })
 
   it('skips Atlassian when the integration is off', async () => {
@@ -110,13 +117,25 @@ describe('ensureMcpServers', () => {
     writeClaudeJson({
       mcpServers: {
         atlassian: { type: 'http', url: ATLASSIAN_URL },
-        github: { type: 'http', url: GITHUB_URL },
+        github: { type: 'http', url: GITHUB_URL, headersHelper: GH_TOKEN_HEADERS_HELPER },
       },
     })
     const { provisioned, errors } = await ensureMcpServers({ github: true, atlassian: true })
     expect(provisioned).toEqual([])
     expect(errors).toEqual([])
     expect(runInLoginShell).not.toHaveBeenCalled()
+  })
+
+  it('replaces the OAuth-only GitHub entry of earlier versions, which never connected', async () => {
+    writeClaudeJson({ mcpServers: { github: { type: 'http', url: GITHUB_URL } } })
+    const { provisioned } = await ensureMcpServers({ github: true, atlassian: false })
+    expect(provisioned).toEqual(['github'])
+  })
+
+  it('leaves a GitHub entry with headers of the user alone', async () => {
+    writeClaudeJson({ mcpServers: { github: { type: 'http', url: GITHUB_URL, headers: { Authorization: 'Bearer x' } } } })
+    const { provisioned } = await ensureMcpServers({ github: true, atlassian: false })
+    expect(provisioned).toEqual([])
   })
 
   it('leaves a legacy server alone', async () => {

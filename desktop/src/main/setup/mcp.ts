@@ -9,7 +9,7 @@ import { runInLoginShell, which } from './shell-exec'
  * Configures the MCP servers the skills talk to — the job `install/install.sh`
  * sections 2 and 3 used to do.
  *
- * WHY BOTH SERVERS ARE REMOTE + OAUTH
+ * WHY BOTH SERVERS ARE REMOTE
  * ---------------------------------------------------------------------------
  * Atlassian always was. GitHub was not: the script ran the npm package
  * `@modelcontextprotocol/server-github` over stdio and, to do that, had to prompt for
@@ -17,8 +17,17 @@ import { runInLoginShell, which } from './shell-exec'
  * is deprecated, the token never expired on its own, and a secret typed into a shell
  * prompt is a secret nobody can rotate later because nobody remembers it exists.
  *
- * GitHub's remote server needs no token: Claude Code opens a browser on first use, the
- * grant is revocable from GitHub's settings, and there is no npx process to spawn.
+ * WHY GITHUB SIGNS IN THROUGH `gh` AND NOT OAUTH
+ * ---------------------------------------------------------------------------
+ * Atlassian signs in with OAuth from `/mcp`. GitHub cannot: its OAuth server has no
+ * dynamic client registration, so a bare `claude mcp add` fails at connect with
+ * "Incompatible auth server: does not support dynamic client registration", and it did
+ * for every user until this changed. Instead the server is given a `headersHelper` that
+ * asks `gh auth token` for the bearer at each connection. Nothing is written to
+ * ~/.claude.json but the command, the token is the one `gh auth login` already manages
+ * (and rotates), and the Connections tab checks `gh` on its CLI row.
+ *
+ * One limit: Claude Code only runs a headersHelper in a workspace the user has trusted.
  *
  * WHAT THIS DOES NOT DO
  * ---------------------------------------------------------------------------
@@ -33,10 +42,10 @@ import { runInLoginShell, which } from './shell-exec'
  * No integration needs Slack: only a repository's workflow actions do, and only for the
  * members who turned them on. So it is never provisioned at launch, only from the
  * Install button, and the setup card does not count it as something to repair. Slack's
- * OAuth server has no dynamic client registration (its metadata names no
- * `registration_endpoint`), so a bare `claude mcp add` would fail at sign-in the way the
- * GitHub server does; it is added with the client id and callback port of Slack's own
- * Claude Code plugin, which is what `claude plugin install slack` writes.
+ * OAuth server has no dynamic client registration either (its metadata names no
+ * `registration_endpoint`), but unlike GitHub's it has a client to borrow: it is added
+ * with the client id and callback port of Slack's own Claude Code plugin, which is what
+ * `claude plugin install slack` writes.
  */
 
 /** Claude Code's user-scope MCP registry — the file `claude mcp add --scope user` writes. */
@@ -47,7 +56,12 @@ interface McpDefinition {
   url: string
   /** Which integration toggle governs this server. */
   integration: 'atlassian' | 'github'
+  /** A command printing the request headers as JSON, for a server that signs in without OAuth. */
+  headersHelper?: string
 }
+
+/** The bearer `gh` holds, as the `{"Authorization": …}` object Claude Code expects of a headersHelper. */
+export const GH_TOKEN_HEADERS_HELPER = `printf '{"Authorization":"Bearer %s"}' "$(gh auth token)"`
 
 interface OptionalMcpDefinition {
   id: McpServerId
@@ -60,7 +74,7 @@ export const MCP_DEFINITIONS: McpDefinition[] = [
   { id: 'atlassian', url: 'https://mcp.atlassian.com/v1/mcp', integration: 'atlassian' },
   // GitHub's hosted MCP server. The api.githubcopilot.com host is where GitHub serves
   // it; using it does not require a Copilot subscription, only a GitHub account.
-  { id: 'github', url: 'https://api.githubcopilot.com/mcp/', integration: 'github' },
+  { id: 'github', url: 'https://api.githubcopilot.com/mcp/', integration: 'github', headersHelper: GH_TOKEN_HEADERS_HELPER },
 ]
 
 /** Added on request only: see OPTIONAL SERVERS above. */
@@ -68,12 +82,12 @@ export const OPTIONAL_MCP_DEFINITIONS: OptionalMcpDefinition[] = [
   { id: 'slack', url: 'https://mcp.slack.com/mcp', oauth: { clientId: '1601185624273.8899143856786', callbackPort: 3118 } },
 ]
 
-function definitionOf(id: McpServerId): { id: McpServerId; url: string; oauth?: OptionalMcpDefinition['oauth'] } | undefined {
+function definitionOf(id: McpServerId): { id: McpServerId; url: string; headersHelper?: string; oauth?: OptionalMcpDefinition['oauth'] } | undefined {
   return MCP_DEFINITIONS.find((d) => d.id === id) ?? OPTIONAL_MCP_DEFINITIONS.find((d) => d.id === id)
 }
 
 interface ClaudeJson {
-  mcpServers?: Record<string, { type?: string; url?: string; command?: string; args?: string[] }>
+  mcpServers?: Record<string, { type?: string; url?: string; command?: string; args?: string[]; headers?: Record<string, string>; headersHelper?: string }>
 }
 
 function readClaudeJson(): ClaudeJson {
@@ -101,8 +115,10 @@ export function mcpServerStatus(id: McpServerId): McpServerStatus {
 
   if (!entry) return { id, state: 'missing', url: null }
 
-  // Configured over HTTP at the URL we expect: nothing to do.
-  if (entry.url === definition.url) return { id, state: 'configured', url: entry.url }
+  // Configured over HTTP at the URL we expect, signing in the way we expect: nothing to do.
+  if (entry.url === definition.url && entry.headersHelper === definition.headersHelper) {
+    return { id, state: 'configured', url: entry.url }
+  }
 
   // Configured, but not the way this version provisions it — either the deprecated
   // stdio package, or a URL the user chose themselves. Both are reported rather than
@@ -113,6 +129,17 @@ export function mcpServerStatus(id: McpServerId): McpServerStatus {
     url: entry.url ?? null,
     command: entry.command ?? null,
   }
+}
+
+/**
+ * The entry earlier versions wrote for GitHub: the right URL, left to an OAuth sign-in that
+ * GitHub refuses. It never worked, and it is ours, so it is replaced at launch rather than
+ * left as `legacy` for the user to decide on. An entry with headers of the user's is theirs.
+ */
+function isSupersededEntry(id: McpServerId): boolean {
+  const definition = definitionOf(id)
+  const entry = readClaudeJson().mcpServers?.[id]
+  return !!definition?.headersHelper && !!entry && entry.url === definition.url && !entry.headersHelper && !entry.headers
 }
 
 /** The servers an integration needs. The optional ones are `optionalMcpServerStates`'. */
@@ -141,12 +168,18 @@ export async function provisionMcpServer(id: McpServerId): Promise<{ ok: boolean
   // reason is that there was nothing to remove.
   await runInLoginShell(`claude mcp remove ${id} --scope user`)
 
-  const { ok, stdout, stderr } = await runInLoginShell(
-    `claude mcp add ${id} --scope user --transport http${oauthFlags(definition.oauth)} ${definition.url}`,
-    30_000,
-  )
+  // A headersHelper has no flag on `mcp add`: the entry goes in whole, as JSON.
+  const command = definition.headersHelper
+    ? `claude mcp add-json ${id} ${shellQuote(JSON.stringify({ type: 'http', url: definition.url, headersHelper: definition.headersHelper }))} --scope user`
+    : `claude mcp add ${id} --scope user --transport http${oauthFlags(definition.oauth)} ${definition.url}`
+  const { ok, stdout, stderr } = await runInLoginShell(command, 30_000)
   if (!ok) return { ok: false, error: stderr || stdout || 'claude mcp add failed' }
   return { ok: true }
+}
+
+/** One shell word, whatever it holds: single quotes, each inner one closed, escaped and reopened. */
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`
 }
 
 function oauthFlags(oauth: OptionalMcpDefinition['oauth']): string {
@@ -179,7 +212,7 @@ export async function ensureMcpServers(
     // to on to match the config normalizer (config/config.ts).
     const enabled = definition.integration === 'github' ? integrations?.github !== false : integrations?.atlassian !== false
     if (!enabled) continue
-    if (mcpServerStatus(definition.id).state !== 'missing') continue
+    if (mcpServerStatus(definition.id).state !== 'missing' && !isSupersededEntry(definition.id)) continue
 
     const result = await provisionMcpServer(definition.id)
     if (result.ok) {
