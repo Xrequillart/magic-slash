@@ -24,7 +24,7 @@ Les bumps de version se font avec l'outil `Edit`, un fichier a la fois. Il echou
 - L'adressage `0,/regex/` — le reflexe pour « seulement la premiere occurrence » — est une extension GNU. BSD `sed` ne la connait pas et le fichier ressort **inchange**, sans code d'erreur : meme un `set -e` ne rattrape rien. C'est la panne vecue sur la 0.80.1, ou `package.json`, `desktop/package.json` et `README.md` sont restes sur l'ancienne version jusqu'a la verification de l'etape 6.1.
 - `-i` exige un argument de suffixe explicite (`-i ''`), `\+`, `\?` et `\|` ne sont pas reconnus sans `-E`, et `\n` dans un remplacement ne produit pas un saut de ligne.
 
-Si un remplacement en masse est vraiment plus court a ecrire qu'une serie d'`Edit` — les 9 titres de SKILL.md, par exemple — passe par un court script `python3` plutot que par `sed` : il compte les occurrences, `assert` quand il n'en trouve pas, et se comporte pareil sur macOS et Linux.
+Si un remplacement en masse est vraiment plus court a ecrire qu'une serie d'`Edit` — les 10 titres de SKILL.md, par exemple — passe par un court script `python3` plutot que par `sed` : il compte les occurrences, `assert` quand il n'en trouve pas, et se comporte pareil sur macOS et Linux.
 
 L'etape 6.1 reste le filet de securite et n'est jamais optionnelle, quel que soit l'outil utilise : c'est elle qui transforme un remplacement silencieusement rate en erreur qui bloque la release.
 
@@ -98,9 +98,9 @@ Cherche la ligne contenant `"version":` dans le bloc de configuration JSON du RE
 
 ## Etape 4 : Mettre a jour les skills et l'interface desktop
 
-### 4.1 : Fichiers SKILL.md (9 fichiers)
+### 4.1 : Fichiers SKILL.md (10 fichiers)
 
-Mets a jour le titre de version dans les 9 fichiers de skills :
+Mets a jour le titre de version dans les 10 fichiers de skills :
 
 - `skills/magic-plan/SKILL.md`
 - `skills/magic-plan-change/SKILL.md`
@@ -111,6 +111,7 @@ Mets a jour le titre de version dans les 9 fichiers de skills :
 - `skills/magic-review/SKILL.md`
 - `skills/magic-resolve/SKILL.md`
 - `skills/magic-done/SKILL.md`
+- `skills/magic-action/SKILL.md` (skill cache : son titre est `# magic-slash vX.Y.Z - action`, sans `/`, puisqu'aucune commande ne le lance)
 
 Dans chaque fichier, cherche le titre avec un pattern regex generique (pour eviter les desynchronisations de version) :
 
@@ -126,7 +127,7 @@ Remplace par :
 
 **IMPORTANT** : Ne cherche PAS la version actuelle (`VERSION_ACTUELLE`) dans ces fichiers. Utilise toujours le pattern regex generique ci-dessus pour trouver la ligne, car un fichier peut avoir rate une mise a jour precedente et contenir une version differente.
 
-Ces 9 titres sont le cas ou un remplacement en masse est legitime — un `Edit` par fichier marche aussi. Dans les deux cas, applique la regle « comment editer les fichiers » ci-dessus : pas de `sed -i`, et un script `python3` qui `assert` sur chaque fichier si tu regroupes.
+Ces 10 titres sont le cas ou un remplacement en masse est legitime — un `Edit` par fichier marche aussi. Dans les deux cas, applique la regle « comment editer les fichiers » ci-dessus : pas de `sed -i`, et un script `python3` qui `assert` sur chaque fichier si tu regroupes.
 
 ### 4.2 : desktop/src/renderer/components/Sidebar.tsx
 
@@ -293,7 +294,7 @@ for f in package.json desktop/package.json README.md; do
     ERRORS=$((ERRORS+1))
   fi
 done && \
-for f in skills/magic-plan/SKILL.md skills/magic-plan-change/SKILL.md skills/magic-start/SKILL.md skills/magic-continue/SKILL.md skills/magic-commit/SKILL.md skills/magic-pr/SKILL.md skills/magic-review/SKILL.md skills/magic-resolve/SKILL.md skills/magic-done/SKILL.md; do
+for f in skills/magic-plan/SKILL.md skills/magic-plan-change/SKILL.md skills/magic-start/SKILL.md skills/magic-continue/SKILL.md skills/magic-commit/SKILL.md skills/magic-pr/SKILL.md skills/magic-review/SKILL.md skills/magic-resolve/SKILL.md skills/magic-done/SKILL.md skills/magic-action/SKILL.md; do
   if grep -q "magic-slash vX.Y.Z" "$f"; then
     echo "  OK  $f"
   else
@@ -337,6 +338,7 @@ Resume des modifications pour la version X.Y.Z :
   skills/magic-review/SKILL.md                  v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-resolve/SKILL.md                 v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-done/SKILL.md                    v{VERSION_ACTUELLE} -> vX.Y.Z
+  skills/magic-action/SKILL.md                  v{VERSION_ACTUELLE} -> vX.Y.Z
   desktop/src/renderer/components/Sidebar.tsx    v{VERSION_ACTUELLE} -> vX.Y.Z
   webapp/lib/desktopRelease.ts                  {VERSION_ACTUELLE} -> X.Y.Z
   CHANGELOG.md                                  Nouvelle section ajoutee
@@ -380,7 +382,7 @@ git add package.json desktop/package.json README.md \
   skills/magic-plan/SKILL.md skills/magic-plan-change/SKILL.md skills/magic-start/SKILL.md \
   skills/magic-continue/SKILL.md \
   skills/magic-commit/SKILL.md skills/magic-pr/SKILL.md skills/magic-review/SKILL.md \
-  skills/magic-resolve/SKILL.md skills/magic-done/SKILL.md \
+  skills/magic-resolve/SKILL.md skills/magic-done/SKILL.md skills/magic-action/SKILL.md \
   desktop/src/renderer/components/Sidebar.tsx \
   webapp/lib/desktopRelease.ts CHANGELOG.md
 ```
