@@ -137,30 +137,14 @@ export const BUTTON_TONES: readonly ButtonTone[] = [
 ]
 
 /**
- * THE SHADOW IS ON `ink` ONLY. `accent` had one too, tinted purple, and it went: the
- * primary is flat, a plate of the brand colour and nothing under it, which is the art
- * direction. Its colour already makes it the loudest thing on a card; a glow under it was
- * a second way of saying so.
+ * NO TONE CASTS A SHADOW. `accent` and `ink` each had one, tinted with their own colour,
+ * and both went: a button is a flat plate on the page, which is the art direction. The
+ * filled tones are already the loudest things on a card by their colour alone; a glow
+ * under them was a second way of saying so.
  *
- * A shadow under a TRANSLUCENT plate is a shadow under a hole: `bg-ink/5` lets the
- * ground through, so the dark it casts and the dark it shows are the same dark and the
- * control reads as smudged rather than as lifted. `ink` is opaque, so it can cast one,
- * TINTED with the plate's own colour rather than black: the difference between a button
- * that glows and a button that has been cut out and dropped on the page.
- *
- * IT DOES NOT MOVE ON HOVER. The shadow is a property of the button at REST — what says
- * it is an object sitting on the page rather than a rectangle painted on it — and every
- * tone answers the pointer the same way, with a step of GROUND. A shadow that grew under
- * the cursor was the one thing on this control that behaved differently from the five
- * tones beside it, and on the loudest button of a view it read as a bloom rather than as
- * a response.
- *
- * So the hover is one rule for all seven: the plate goes a step. `accent` has a token for
- * it and takes it; `ink` has none and is mixed (see `INK_HOVER`); the translucent tones
- * step their own opacity, which is what they always did.
- *
- * `shadow-md` and not `shadow-lg` at rest because this ladder starts at 16px, and a large
- * shadow under a small control is a control that appears to be floating off the page.
+ * THE HOVER IS ONE RULE FOR ALL SEVEN: the plate goes a step. `accent` has a token for it
+ * and takes it; `ink` has none and is mixed (see `INK_HOVER`); the translucent tones step
+ * their own opacity, which is what they always did. Nothing else moves under the cursor.
  */
 /**
  * THE FOCUS RING'S COLOUR AND OFFSET TRAVEL WITH THE GROUND, which is why they are here
@@ -239,7 +223,7 @@ const TONES: Record<ButtonTone, string> = {
   neutral: `bg-ink/5 text-ink hover:bg-ink/10 ${RING}`,
   ghost: `text-text-secondary hover:bg-ink/10 hover:text-ink ${RING}`,
   danger: `bg-red/10 text-red hover:bg-red/20 ${RING}`,
-  ink: `bg-ink text-bg shadow-md shadow-ink/20 ${INK_HOVER} ${RING}`,
+  ink: `bg-ink text-bg ${INK_HOVER} ${RING}`,
   solid: `${RAISED_PLATE} text-ink ${RAISED_PLATE_HOVER} ${RING}`,
   overlay:
     'bg-on-brand/15 text-on-brand hover:bg-on-brand/30 focus-visible:ring-on-brand focus-visible:ring-offset-0',
