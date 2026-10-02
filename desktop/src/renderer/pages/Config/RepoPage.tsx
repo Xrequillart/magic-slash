@@ -75,7 +75,7 @@ import {
   addSticky, isStickyNodeId, nextStickyId, removeSticky, setSticky, stickyNodeId, STICKY_MIN_SIZE, STICKY_SIZE,
   outcomeProblem, OUTCOME_MAX_LENGTH, pinPositions, problems, removeLink, sameOverlay, setLinkKind, setLinkOutcome, setStepColor, setStepOutcomes,
   addNote, isNoteNodeId, nextFrameId, nextNoteId, noteNodeId, removeNote, setNoteColor, setNoteText, setStepEnabled, setStepMode,
-  unreachableSteps, type WorkflowOverlay, type WorkflowProblem,
+  copyCard, pasteCard, unreachableSteps, type WorkflowClip, type WorkflowOverlay, type WorkflowProblem,
 } from '../../../workflow/overlay'
 import type { ListingEntry } from '../../hooks/useSkills'
 import { useWorkflowHistory } from '../../hooks/useWorkflowHistory'
@@ -520,8 +520,9 @@ interface WorkflowStepConfig {
  * and when the window comes back to the front, so a commit or a push made in a
  * terminal clears it, and a declined copy does not quietly forget it.
  *
- * THE KEYBOARD, while the editor is open: ⌘Z / ⇧⌘Z, Delete for what is selected, and
- * Escape to deselect, then to leave. Escape stops here, or the settings overlay under the
+ * THE KEYBOARD, while the editor is open: ⌘Z / ⇧⌘Z, Delete for what is selected, ⌘C /
+ * ⌘V for a frame, a sticky note or an end note (a step is refused, in a toast: a skill
+ * runs once in a flow), and Escape to deselect, then to leave. Escape stops here, or the settings overlay under the
  * editor would close with it (its listener is on `window`, this one on `document`).
  *
  * A component of its own, at module scope, because it owns a fetch and an editor's
@@ -586,6 +587,9 @@ function WorkflowPanel({
   const [leavingEditor, setLeavingEditor] = useState(false)
   const [closePrompt, setClosePrompt] = useState(false)
   const [selected, setSelected] = useState<WorkflowCanvasSelection | null>(null)
+  // What ⌘C copied, for ⌘V: the editor's own, never the system clipboard, which a card is
+  // not worth writing to. Each paste moves it onto the card it added.
+  const clipRef = useRef<WorkflowClip | null>(null)
   const [focus, setFocus] = useState<{ id: string; n: number } | null>(null)
   const [entries, setEntries] = useState<ListingEntry[]>([])
   // The custom steps' skills teammates don't have yet, and how far each one got: in the
@@ -910,6 +914,25 @@ function WorkflowPanel({
     setSelected(null)
   }
 
+  /** ⌘C: the selected card into the editor's clipboard. A step says why it cannot be copied. */
+  const copySelection = () => {
+    if (selected?.type !== 'node') return
+    const clip = copyCard(draft, selected.id, drawn[selected.id])
+    if (clip) clipRef.current = clip
+    else if (!isFrameNodeId(selected.id) && !isStickyNodeId(selected.id) && !isNoteNodeId(selected.id)) {
+      showToast(t('repo.workflow.clipboard.stepRefused'), 'error')
+    }
+  }
+  /** ⌘V: a copy of the clipped card, selected. An end note is laid out with the cards, so they are pinned first. */
+  const paste = () => {
+    const clip = clipRef.current
+    if (!clip) return
+    const pasted = pasteCard(clip.type === 'note' ? pinPositions(draft, drawn) : draft, clip)
+    edit(pasted.overlay)
+    clipRef.current = pasted.clip
+    setSelected({ type: 'node', id: pasted.id })
+  }
+
   const target: WorkflowInspectorTarget | null = (() => {
     if (!selected) return null
     if (selected.type === 'node' && isStickyNodeId(selected.id)) {
@@ -1192,6 +1215,15 @@ function WorkflowPanel({
     } else if (mod && event.key.toLowerCase() === 'y') {
       event.preventDefault()
       travel('future')
+    } else if (mod && !event.shiftKey && event.key.toLowerCase() === 'c') {
+      // Text selected on the page is the user's to copy, not a card.
+      if (selected?.type !== 'node' || window.getSelection()?.toString()) return
+      event.preventDefault()
+      copySelection()
+    } else if (mod && !event.shiftKey && event.key.toLowerCase() === 'v') {
+      if (!clipRef.current) return
+      event.preventDefault()
+      paste()
     } else if (!mod && (event.key === 'Delete' || event.key === 'Backspace')) {
       event.preventDefault()
       removeSelection()

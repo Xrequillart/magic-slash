@@ -1031,6 +1031,84 @@ export function setFrame(
   }))
 }
 
+/**
+ * What ⌘C keeps of a card, for ⌘V to add again: a frame, a sticky note or an end note,
+ * whole, where it sat when copied. Never a step: a skill runs once in a flow, so a second
+ * card for it would be a `duplicate-skill` problem, not a copy.
+ */
+export type WorkflowClip =
+  | { type: 'frame'; frame: Omit<WorkflowOverlayFrame, 'id'> }
+  | { type: 'sticky'; sticky: Omit<WorkflowOverlaySticky, 'id'> }
+  | { type: 'note'; text: string; color?: string; position: WorkflowPosition }
+
+/** How far a pasted card lands from the one it copies, down and right, so both stay visible. */
+export const PASTE_OFFSET = 24
+
+/**
+ * The clip of a card, by its node id. Null for a step, and for a card the overlay does
+ * not have. An end note laid out rather than placed has no position of its own: `drawn`
+ * is where it is drawn.
+ */
+export function copyCard(overlay: WorkflowOverlay, nodeId: string, drawn?: WorkflowPosition): WorkflowClip | null {
+  if (isFrameNodeId(nodeId)) {
+    const found = (overlay.frames ?? []).find((frame) => frameNodeId(frame.id) === nodeId)
+    if (!found) return null
+    const { id: _id, ...frame } = found
+    return { type: 'frame', frame }
+  }
+  if (isStickyNodeId(nodeId)) {
+    const found = (overlay.stickies ?? []).find((sticky) => stickyNodeId(sticky.id) === nodeId)
+    if (!found) return null
+    const { id: _id, ...sticky } = found
+    return { type: 'sticky', sticky }
+  }
+  if (isNoteNodeId(nodeId)) {
+    const note = (overlay.notes ?? []).find((one) => noteNodeId(one.id) === nodeId)
+    const position = overlay.positions[nodeId] ?? drawn
+    if (!note || !position) return null
+    return note.color === undefined
+      ? { type: 'note', text: note.text, position: rounded(position) }
+      : { type: 'note', text: note.text, color: note.color, position: rounded(position) }
+  }
+  return null
+}
+
+/**
+ * Add the card a clip holds, `PASTE_OFFSET` from where it was copied, on top of the
+ * others. Hands back its node id, for the caller to select, and the clip moved to it: a
+ * second ⌘V lands one step further rather than on the first paste. An end note comes
+ * without its links, like a note just added.
+ */
+export function pasteCard(overlay: WorkflowOverlay, clip: WorkflowClip): { overlay: WorkflowOverlay; id: string; clip: WorkflowClip } {
+  const shift = ({ x, y }: WorkflowPosition) => ({ x: x + PASTE_OFFSET, y: y + PASTE_OFFSET })
+  if (clip.type === 'frame') {
+    const frame = { ...clip.frame, ...shift(clip.frame) }
+    const id = nextFrameId(overlay)
+    return {
+      overlay: withFrames(overlay, [...(overlay.frames ?? []), { id, ...frame, title: normalizeFrameTitle(frame.title), ...framedBox(frame) }]),
+      id: frameNodeId(id),
+      clip: { type: 'frame', frame },
+    }
+  }
+  if (clip.type === 'sticky') {
+    const sticky = { ...clip.sticky, ...shift(clip.sticky) }
+    const id = nextStickyId(overlay)
+    return {
+      overlay: withStickies(overlay, [
+        ...(overlay.stickies ?? []), { id, ...sticky, text: normalizeStickyText(sticky.text), ...boxed(sticky, STICKY_MIN_SIZE) },
+      ]),
+      id: stickyNodeId(id),
+      clip: { type: 'sticky', sticky },
+    }
+  }
+  const position = shift(clip.position)
+  return {
+    overlay: addNote(overlay, position, clip.text, clip.color),
+    id: noteNodeId(nextNoteId(overlay)),
+    clip: { ...clip, position },
+  }
+}
+
 /** Leave a card at `position`. Any step, built-in ones included: where a card sits is not what it does. */
 export function moveNode(overlay: WorkflowOverlay, id: string, position: WorkflowPosition): WorkflowOverlay {
   if (isFrameNodeId(id)) return setFrame(overlay, id, position)

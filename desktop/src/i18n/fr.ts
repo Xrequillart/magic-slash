@@ -775,6 +775,7 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.workflow.note.add': 'Note de fin',
   'repo.workflow.note.addHint': 'Pas un skill',
   'repo.workflow.note.title': 'Note de fin',
+  'repo.workflow.clipboard.stepRefused': 'Un skill n’apparaît qu’une fois dans un workflow : une étape ne peut donc pas être copiée. Les cadres, post-it et notes de fin, oui.',
   'repo.workflow.note.empty': 'Note vide',
   'repo.workflow.note.text': 'Ce qu’elle dit',
   'repo.workflow.note.placeholder': 'Crée le ticket dans Jira',

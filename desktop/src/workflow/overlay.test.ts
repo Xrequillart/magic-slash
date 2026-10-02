@@ -7,6 +7,7 @@ import {
   addFrame, addSticky, isStickyNodeId, nextStickyId, removeSticky, setSticky, stickyNodeId, STICKY_MIN_SIZE, STICKY_SIZE, canRemoveStep, frameNodeId, FRAME_MIN_SIZE, isFrameNodeId, moveNodes, nextFrameId, removeFrame, setFrame, normalizeOutcomes, outcomeProblem, removeNode, restoreStep, parseOutcomesField, problems, removeLink, removeStep, resolveOverlay, sameOverlay, servedWorkflow, setLinkKind, setLinkOutcome,
   setStepColor, setStepEnabled, setStepMode, setStepOutcomes,
   addNote, nextNoteId, noteNodeId, removeNote, setNoteText, toOverlay, unreachableSteps,
+  copyCard, pasteCard, PASTE_OFFSET,
 } from './overlay'
 
 const CHECK = customNodeId('check')
@@ -551,5 +552,51 @@ describe('a sticky note', () => {
     expect(o.stickies![0]).toMatchObject({ x: 300, y: 400 })
     expect(removeSticky(o, id)).not.toHaveProperty('stickies')
     expect(isOverlay({ ...o, stickies: [{ ...o.stickies![0], color: 'yellow' }] })).toBe(false)
+  })
+})
+
+describe('copyCard / pasteCard', () => {
+  it('pastes a frame whole, offset, under a new id, and the next paste one step further', () => {
+    const framed = setFrame(addFrame(EMPTY_OVERLAY, { x: 0, y: 0, width: 500, height: 320 }, '#112233', '#445566'), frameNodeId('f1'), { title: 'Checks' })
+    const clip = copyCard(framed, frameNodeId('f1'))!
+    const first = pasteCard(framed, clip)
+    expect(first.id).toBe(frameNodeId('f2'))
+    expect(first.overlay.frames?.[1]).toEqual({
+      id: 'f2', title: 'Checks', border: '#112233', background: '#445566', x: PASTE_OFFSET, y: PASTE_OFFSET, width: 500, height: 320,
+    })
+    const second = pasteCard(first.overlay, first.clip)
+    expect(second.id).toBe(frameNodeId('f3'))
+    expect(second.overlay.frames?.[2]).toMatchObject({ x: 2 * PASTE_OFFSET, y: 2 * PASTE_OFFSET })
+  })
+
+  it('pastes a sticky note with its text, colour and size', () => {
+    const stuck = setSticky(addSticky(EMPTY_OVERLAY, { x: 10, y: 10 }, '#abcdef'), stickyNodeId('s1'), { text: 'Ask QA', width: 300, height: 200 })
+    const pasted = pasteCard(stuck, copyCard(stuck, stickyNodeId('s1'))!)
+    expect(pasted.id).toBe(stickyNodeId('s2'))
+    expect(pasted.overlay.stickies?.[1]).toEqual({
+      id: 's2', text: 'Ask QA', color: '#abcdef', x: 10 + PASTE_OFFSET, y: 10 + PASTE_OFFSET, width: 300, height: 200,
+    })
+  })
+
+  it('pastes an end note without the links into it', () => {
+    const noted = addLink(setNoteText(addNote(EMPTY_OVERLAY, AT, '', '#123456'), noteNodeId('n1'), 'Open the ticket'), 'commit', noteNodeId('n1'))
+    const pasted = pasteCard(noted, copyCard(noted, noteNodeId('n1'))!)
+    expect(pasted.id).toBe(noteNodeId('n2'))
+    expect(pasted.overlay.notes?.[1]).toEqual({ id: 'n2', text: 'Open the ticket', color: '#123456' })
+    expect(pasted.overlay.positions[noteNodeId('n2')]).toEqual({ x: AT.x + PASTE_OFFSET, y: AT.y + PASTE_OFFSET })
+    expect(pasted.overlay.links.filter((link) => link.to === noteNodeId('n2'))).toEqual([])
+  })
+
+  it('copies an end note laid out rather than placed from where it is drawn', () => {
+    const { positions: _none, ...rest } = addNote(EMPTY_OVERLAY, AT, 'Done')
+    const unplaced = { ...rest, positions: {} }
+    expect(copyCard(unplaced, noteNodeId('n1'))).toBeNull()
+    expect(copyCard(unplaced, noteNodeId('n1'), { x: 5.4, y: 7.6 })).toEqual({ type: 'note', text: 'Done', position: { x: 5, y: 8 } })
+  })
+
+  it('never copies a step, built-in or custom, nor a card that is not there', () => {
+    expect(copyCard(withCheck(), CHECK)).toBeNull()
+    expect(copyCard(withCheck(), 'commit')).toBeNull()
+    expect(copyCard(EMPTY_OVERLAY, frameNodeId('f9'))).toBeNull()
   })
 })

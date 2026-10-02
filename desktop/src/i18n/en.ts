@@ -811,6 +811,7 @@ export const en = {
   'repo.workflow.note.add': 'End note',
   'repo.workflow.note.addHint': 'Not a skill',
   'repo.workflow.note.title': 'End note',
+  'repo.workflow.clipboard.stepRefused': 'A skill appears only once in a workflow, so a step cannot be copied. Frames, sticky notes and end notes can.',
   'repo.workflow.note.empty': 'Empty note',
   'repo.workflow.note.text': 'What it says',
   'repo.workflow.note.placeholder': 'Create the ticket in Jira',
