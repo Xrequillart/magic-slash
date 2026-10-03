@@ -32,7 +32,7 @@ import type { MenuBarAnswer } from './MenuBarQuestion'
  */
 
 export type ChatViewEntry =
-  | { kind: 'user'; id: string; text: string }
+  | { kind: 'user'; id: string; text: string; at?: number }
   | { kind: 'assistant'; id: string; text: string }
   | { kind: 'notice'; id: string; text: string }
   | { kind: 'tool'; id: string; name: string; summary: string; status: 'running' | 'done' | 'error'; output?: string; diff?: ChatDiffData }
@@ -97,6 +97,8 @@ export interface ChatViewProps {
   codeFontSize?: number
   /** The Claude Code running the session, shown under its mark while nothing is said. */
   claudeCodeVersion?: string
+  /** "Conversation started on…", under the header. Translated and dated by the caller. */
+  startedLabel?: string
   /** What the `/` menu offers. */
   commands?: ChatCommand[]
 }
@@ -124,7 +126,7 @@ const STICK_PX = 48
 export function ChatView({
   entries, working, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
   question, onAnswer, answering, commands = [], highlightLines, onPickFiles, resolveFile,
-  initialDraft, onDraftChange, codeFontSize, claudeCodeVersion,
+  initialDraft, onDraftChange, codeFontSize, claudeCodeVersion, startedLabel,
 }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -371,6 +373,17 @@ export function ChatView({
         className="h-full overflow-y-auto"
       >
         <div className="mx-auto max-w-3xl px-6 pt-6 flex flex-col gap-3" style={{ paddingBottom: dockHeight + DOCK_GAP_PX }}>
+          {/* THE CONVERSATION OPENS ON WHO IS IN IT, once there is one: the empty view says
+              it larger, in the middle, instead. */}
+          {entries.length > 0 && (
+            <div className="flex items-center gap-2.5 pb-3">
+              <ClaudeCode className="h-6 w-6 flex-shrink-0" style={{ color: CLAUDE_CORAL }} />
+              <div className="min-w-0">
+                <ClaudeCodeTitle version={claudeCodeVersion} className="text-sm" />
+                {startedLabel && <p className="text-xs text-text-secondary/70">{startedLabel}</p>}
+              </div>
+            </div>
+          )}
           {entries.map((entry) =>
             entry.kind === 'tool' && entry.diff ? (
               <ChatDiffCard key={entry.id} diff={entry.diff} highlightLines={highlightLines} truncatedLabel={labels.diffTruncated} />
@@ -407,11 +420,7 @@ export function ChatView({
         >
           <ClaudeCode className="h-24 w-24" style={{ color: CLAUDE_CORAL }} />
           <div className="flex flex-col items-center gap-1.5">
-            {/* The product's own name, not a sentence: it is not translated. */}
-            <p className="text-base font-medium text-ink">
-              Claude Code
-              {claudeCodeVersion && <span className="ml-1.5 font-normal text-text-secondary">v{claudeCodeVersion}</span>}
-            </p>
+            <ClaudeCodeTitle version={claudeCodeVersion} className="text-base" />
             <p className="text-sm text-text-secondary/60">{labels.empty}</p>
           </div>
         </div>
@@ -516,6 +525,16 @@ export function ChatView({
         </div>
       )}
     </div>
+  )
+}
+
+/** "Claude Code v2.1.3": the product's own name, not a sentence, so it is not translated. */
+function ClaudeCodeTitle({ version, className }: { version?: string; className: string }) {
+  return (
+    <p className={`font-medium text-ink ${className}`}>
+      Claude Code
+      {version && <span className="ml-1.5 font-normal text-text-secondary">v{version}</span>}
+    </p>
   )
 }
 

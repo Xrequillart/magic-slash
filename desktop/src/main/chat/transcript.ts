@@ -35,7 +35,7 @@ export class ChatTranscript {
 
   /** Returns whether the entries changed. */
   push(line: string): boolean {
-    let data: { type?: string; uuid?: string; isMeta?: boolean; isSidechain?: boolean; content?: unknown; message?: { content?: unknown }; toolUseResult?: unknown }
+    let data: { type?: string; uuid?: string; timestamp?: unknown; isMeta?: boolean; isSidechain?: boolean; content?: unknown; message?: { content?: unknown }; toolUseResult?: unknown }
     try {
       data = JSON.parse(line)
     } catch {
@@ -64,7 +64,12 @@ export class ChatTranscript {
       if (block?.type === 'text' && typeof block.text === 'string') {
         const text = data.type === 'user' ? userText(block.text) : block.text.trim()
         if (!text) return
-        this.entries.push({ kind: data.type as 'user' | 'assistant', id: blockId, text })
+        if (data.type === 'user') {
+          const at = typeof data.timestamp === 'string' ? Date.parse(data.timestamp) : NaN
+          this.entries.push({ kind: 'user', id: blockId, text, ...(Number.isFinite(at) ? { at } : {}) })
+        } else {
+          this.entries.push({ kind: 'assistant', id: blockId, text })
+        }
         changed = true
       } else if (block?.type === 'tool_use' && data.type === 'assistant') {
         const entry: Extract<ChatEntry, { kind: 'tool' }> = {

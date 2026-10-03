@@ -2188,6 +2188,7 @@ export const en = {
   'chat.placeholder': 'Message Claude. Enter to send, Shift+Enter for a new line',
   'chat.send': 'Send',
   'chat.empty': 'Nothing said yet in this session.',
+  'chat.started': 'Conversation started on {date} at {time}',
   'chat.working': 'Claude is working…',
   'chat.waiting': 'Claude needs you in the terminal to carry on.',
   'chat.showTerminal': 'Open the terminal',

@@ -18,6 +18,14 @@ describe('ChatTranscript', () => {
     ])
   })
 
+  it('dates a prompt from its line, and skips a timestamp it cannot read', () => {
+    const t = new ChatTranscript()
+    t.push(line({ type: 'user', uuid: 'u1', timestamp: '2026-10-03T08:00:00.000Z', message: { content: 'Bonjour' } }))
+    t.push(line({ type: 'user', uuid: 'u2', timestamp: 'never', message: { content: 'Encore' } }))
+    expect(t.entries[0]).toMatchObject({ at: Date.parse('2026-10-03T08:00:00.000Z') })
+    expect(t.entries[1]).not.toHaveProperty('at')
+  })
+
   it('folds a tool result into its call', () => {
     const t = new ChatTranscript()
     t.push(line({ type: 'assistant', uuid: 'a', message: { content: [{ type: 'tool_use', id: 'tu1', name: 'Bash', input: { command: 'ls -la\necho' } }] } }))

@@ -941,7 +941,8 @@ export function isValidDisplayMode(value: unknown): value is AgentDisplayMode {
  * A tool call and its result are ONE entry: the result arrives later and updates it.
  */
 export type ChatEntry =
-  | { kind: 'user'; id: string; text: string }
+  /** `at`: when it was sent, epoch ms, from the transcript line. */
+  | { kind: 'user'; id: string; text: string; at?: number }
   | { kind: 'assistant'; id: string; text: string }
   /** What a local slash command printed (`/cost`, `/model`, `/mcp`…): Claude Code's, not Claude's. */
   | { kind: 'notice'; id: string; text: string }

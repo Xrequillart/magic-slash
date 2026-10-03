@@ -3,7 +3,7 @@ import { ChatView, type ChatCommand, type ChatViewEntry, type MenuBarAnswer } fr
 import { DEFAULT_CODE_FONT_SIZE, type TerminalInfo, type TrayQuestion } from '../../types'
 import { builtInCommands, mergeCommands, opensInTerminal, skillCommands } from './chatCommands'
 import { useStore } from '../store'
-import { useT } from '../i18n'
+import { useLocale, useT } from '../i18n'
 import { TerminalView } from './TerminalView'
 import { useCodeAppearance } from '../hooks/useCodeAppearance'
 import { resolveDisplayMode } from '../utils/displayMode'
@@ -86,6 +86,16 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
 
   const showChat = mode === 'chat'
 
+  // When the conversation began: its first prompt's own time.
+  const locale = useLocale()
+  const startedAt = entries.find((e) => e.kind === 'user' && e.at !== undefined)
+  const startedLabel = startedAt?.kind === 'user' && startedAt.at !== undefined
+    ? t('chat.started', {
+      date: new Date(startedAt.at).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }),
+      time: new Date(startedAt.at).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
+    })
+    : undefined
+
   const keepDraft = useCallback((draft: string) => {
     if (draft) drafts.set(terminal.id, draft)
     else drafts.delete(terminal.id)
@@ -121,6 +131,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
             onDraftChange={keepDraft}
             codeFontSize={codeFontSize}
             claudeCodeVersion={terminal.metadata?.usage?.version}
+            startedLabel={startedLabel}
             labels={{
               placeholder: t('chat.placeholder'),
               send: t('chat.send'),
