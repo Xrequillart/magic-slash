@@ -42,7 +42,12 @@ async function ask(): Promise<ClaudeModelOption[]> {
     ])
     return models
       .filter((model) => model.value !== 'default' && isValidModelName(model.value))
-      .map((model) => ({ value: model.value, label: model.displayName, description: model.description }))
+      .map((model) => ({
+        value: model.value,
+        label: model.displayName,
+        description: model.description,
+        resolvedModel: model.resolvedModel,
+      }))
   } finally {
     clearTimeout(timer)
     // Ends the CLI process the session started: it was only ever there to be asked.

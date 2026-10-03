@@ -33,6 +33,7 @@ const PROPS: PropRow[] = [
   { name: 'contextPercent', type: 'number', required: true, description: 'How full the context window is. An agent that has not spoken yet has used 0%, and says so — a dash there appears for the first seconds of every agent and makes a reader wonder what is broken.' },
   { name: 'contextDetail', type: 'string', description: '“42k of 200k tokens”, already built and already translated. Omitted, the line is absent.' },
   { name: 'model', type: 'string', description: 'Printed verbatim, and truncated rather than pushing the fold button off the row.' },
+  { name: 'modelPicker', type: 'ContextAgentModelPicker', description: 'Turns the model chip into a select: the options, `onOpen` to fetch them, `onSelect` with the picked id. Absent, the chip is a plain label.' },
   { name: 'cost', type: 'string', description: 'Already in the reader’s currency format. The card does no arithmetic.' },
   { name: 'duration', type: 'string', description: 'Already formatted.' },
   { name: 'minimized', type: 'boolean', fallback: 'false', description: 'Folded to one line. Owned by the caller — it lives in the config, so it survives an agent switch.' },

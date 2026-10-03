@@ -4,6 +4,7 @@ import { Clock, Cpu, DollarSign, Gauge, Minus, Plus } from './icons'
 import { Label } from './Label'
 import { ProgressBar } from './ProgressBar'
 import { PROGRESS_TEXT, progressTone } from './progressTones'
+import { SelectIcon } from './SelectIcon'
 import { Text } from './Text'
 
 /**
@@ -31,6 +32,36 @@ import { Text } from './Text'
  */
 export const CONTEXT_THRESHOLDS = { warning: 40, danger: 70 }
 
+/** One model the reader's Claude Code offers. `id` is what `onSelect` hands back. */
+export interface ContextAgentModelOption {
+  id: string
+  label: string
+  /** The one the agent is running on: a check after it. */
+  selected?: boolean
+}
+
+/**
+ * THE MODEL AS A CONTROL rather than a reading. Given, the model chip opens the list and a
+ * row switches the running agent to it; absent, the chip is the plain label it always was
+ * (the showcase site draws the card without one).
+ *
+ * The list is fetched when the panel opens — `onOpen` — so a card nobody touches asks the
+ * CLI nothing.
+ */
+export interface ContextAgentModelPicker {
+  options: ContextAgentModelOption[]
+  onOpen: () => void
+  onSelect: (id: string) => void
+  loading?: boolean
+  labels: {
+    /** The chip's tooltip and accessible name — "Change model". */
+    title: string
+    loading: string
+    /** Shown alone when the list came back empty. */
+    empty: string
+  }
+}
+
 export interface ContextAgentCardProps {
   /** 0 to 100. An agent that has not spoken yet has used 0%, and says so. */
   contextPercent: number
@@ -38,6 +69,7 @@ export interface ContextAgentCardProps {
   contextDetail?: string
   /** The model's name, printed verbatim. */
   model?: string
+  modelPicker?: ContextAgentModelPicker
   /** The run's cost, already in the reader's currency format. */
   cost?: string
   /** How long it has taken, already formatted. */
@@ -74,6 +106,7 @@ export function ContextAgentCard({
   contextPercent,
   contextDetail,
   model,
+  modelPicker,
   cost,
   duration,
   transition = true,
@@ -132,10 +165,28 @@ export function ContextAgentCard({
           look like a second control. It reads left to right now. */}
       <div className="flex items-center gap-1.5">
         <Label tone="claude-code">Claude Code</Label>
-        {model && (
-          <Label icon={Cpu} title={model} truncate>
-            {model}
-          </Label>
+        {modelPicker ? (
+          // `!shrink` undoes the trigger's own `flex-shrink-0`: in this row the model's
+          // name is the one thing that gives way, and the field truncates its word.
+          <SelectIcon
+            icon={Cpu}
+            value={model}
+            title={modelPicker.labels.title}
+            groups={[{ label: modelPicker.labels.title, items: modelPicker.options }]}
+            onSelect={(item) => modelPicker.onSelect(item.id)}
+            onOpen={modelPicker.onOpen}
+            loading={modelPicker.loading}
+            loadingLabel={modelPicker.labels.loading}
+            emptyLabel={modelPicker.labels.empty}
+            panelWidth={220}
+            className="min-w-0 !shrink"
+          />
+        ) : (
+          model && (
+            <Label icon={Cpu} title={model} truncate>
+              {model}
+            </Label>
+          )
         )}
         <ButtonIcon
           icon={Minus}

@@ -412,6 +412,7 @@ export function AgentInfoSidebar() {
    * lines down, where it is a condition and not a hook.
    */
   const usageCard = useUsageCard({
+    terminalId: inspectedTerminalId ?? '',
     usage: metadata?.usage ?? {},
     minimized: config?.agentContextMinimized === true,
     onMinimizedChange: setAgentContextMinimized,

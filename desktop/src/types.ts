@@ -1725,6 +1725,11 @@ export interface ClaudeModelOption {
   value: string
   label: string
   description?: string
+  /**
+   * The model id the value stands for (`opus` → `claude-opus-5-5`): what the statusLine
+   * reports as `model.id`, so the one row a running agent is on can be found.
+   */
+  resolvedModel?: string
 }
 
 /**

@@ -183,7 +183,7 @@ export function SidebarAgentCoderInfoEntry({
   collapsed={!isOpen}
   animate={animateWidth}
   emptyLabel={activeTerminal ? undefined : t('agentInfo.noActiveAgent')}
-  usage={useUsageCard({ usage, minimized, onMinimizedChange })}
+  usage={useUsageCard({ terminalId, usage, minimized, onMinimizedChange })}
   ticket={useTicketCard({ metadata, agentId, taskSelection, identity })}
   repositories={paths.map(path => toCoderRepository({ path, gitData, t, … }))}
   addRepository={{ label: t('agentInfo.addRepository'), onClick: openRepoPicker }}
