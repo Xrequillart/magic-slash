@@ -25,6 +25,8 @@ export type MenuBarAnswer =
   | { kind: 'option'; index: number }
   | { kind: 'options'; indexes: number[] }
   | { kind: 'deny' }
+  /** One text answer per question, for a question the app holds (see `ChatQuestion`). */
+  | { kind: 'answers'; answers: string[] }
 
 export interface MenuBarQuestionOption {
   label: string

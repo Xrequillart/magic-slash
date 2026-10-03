@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
-import { answerPendingQuestion, type AnswerDeps } from './answer-question'
+import { answerPendingQuestion, heldAnswers, type AnswerDeps } from './answer-question'
 import type { TrayQuestion } from '../../types'
 
 /**
@@ -218,5 +218,45 @@ describe('answerPendingQuestion', () => {
     const again = await answerPendingQuestion('term-1', 'tok-1', { kind: 'option', index: 2 }, deps(ASK))
     expect(again).toEqual({ ok: true })
     expect(written()).toEqual(['\x1b[B', '\x1b[B', '\r'])
+  })
+})
+
+describe('a held question', () => {
+  const HELD: TrayQuestion = {
+    ...ASK,
+    held: true,
+    questions: [
+      { prompt: 'Which branch?', options: ASK.options },
+      { prompt: 'Which colours?', multiSelect: true, options: MULTI.options },
+    ],
+  }
+
+  it('goes back through the hook, and never to the terminal', async () => {
+    const answerHeld = vi.fn(() => true)
+    const result = await answerPendingQuestion('term-1', 'tok-1', { kind: 'answers', answers: ['main', 'Red, Blue'] }, { ...deps(HELD), answerHeld })
+    expect(result).toEqual({ ok: true })
+    expect(answerHeld).toHaveBeenCalledWith('term-1', 'tok-1', ['main', 'Red, Blue'])
+    expect(write).not.toHaveBeenCalled()
+    expect(clear).toHaveBeenCalledWith('term-1')
+  })
+
+  it('keeps the question when the hook is no longer held', async () => {
+    const result = await answerPendingQuestion('term-1', 'tok-1', { kind: 'answers', answers: ['main', 'Red'] }, { ...deps(HELD), answerHeld: () => false })
+    expect(result).toEqual({ ok: false })
+    expect(clear).not.toHaveBeenCalled()
+  })
+
+  it('reads the panel\'s clicks as text, on a single question only', () => {
+    const single: TrayQuestion = { ...ASK, held: true }
+    expect(heldAnswers(single, { kind: 'option', index: 2 })).toEqual(['staging'])
+    expect(heldAnswers({ ...MULTI, held: true }, { kind: 'options', indexes: [2, 0, 2] })).toEqual(['Red, Blue'])
+    expect(heldAnswers(HELD, { kind: 'option', index: 0 })).toBeNull()
+    expect(heldAnswers(single, { kind: 'option', index: 9 })).toBeNull()
+  })
+
+  it('types no free-text answer into a terminal', async () => {
+    const result = await answerPendingQuestion('term-1', 'tok-1', { kind: 'answers', answers: ['main'] }, deps(ASK))
+    expect(result).toEqual({ ok: false })
+    expect(write).not.toHaveBeenCalled()
   })
 })

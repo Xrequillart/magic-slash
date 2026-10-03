@@ -150,6 +150,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
                 send: t('tray.question.send'),
                 multiHint: t('tray.question.multiHint'),
                 unsupported: t('chat.question.unsupported'),
+                other: t('chat.question.other'),
               },
             }}
           />

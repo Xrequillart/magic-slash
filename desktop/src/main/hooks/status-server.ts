@@ -57,6 +57,12 @@ type UsageCallback = (terminalId: string, usage: TerminalUsage) => void
  * unparsed so the parsing (and its failure modes) live with the question store.
  */
 type QuestionCallback = (terminalId: string, body: string) => void
+/**
+ * The AskUserQuestion hook, which waits on the answer: what it resolves to is the
+ * hook's output, or null for none (Claude Code then shows its own dialog). See
+ * holdAsk in main/questions/pending-questions.ts.
+ */
+type AskCallback = (terminalId: string, body: string) => Promise<string | null>
 /** The agent is no longer blocked — see the clear hooks in claude-hooks-config. */
 type ClearQuestionCallback = (terminalId: string) => void
 /** terminalId is undefined for sessions started outside the app (no agent). */
@@ -155,6 +161,7 @@ let commandEndCallback: CommandEndCallback | null = null
 let repositoriesCallback: RepositoriesCallback | null = null
 let usageCallback: UsageCallback | null = null
 let questionCallback: QuestionCallback | null = null
+let askCallback: AskCallback | null = null
 let clearQuestionCallback: ClearQuestionCallback | null = null
 let skillCallback: SkillCallback | null = null
 let configProvider: ConfigProvider | null = null
@@ -231,6 +238,10 @@ export function setUsageCallback(callback: UsageCallback) {
 
 export function setQuestionCallback(callback: QuestionCallback) {
   questionCallback = callback
+}
+
+export function setAskCallback(callback: AskCallback) {
+  askCallback = callback
 }
 
 export function setClearQuestionCallback(callback: ClearQuestionCallback) {
@@ -620,6 +631,28 @@ export function startStatusServer(): Promise<number> {
             .finally(() => {
               res.writeHead(200)
               res.end('OK')
+            })
+          return
+        } else if (url.pathname === '/question/ask') {
+          // The AskUserQuestion hook, which prints what this answers: the answer when
+          // the app holds the question (the chat answers it), nothing otherwise. The
+          // request may stay open as long as a person takes to answer, by design.
+          //
+          // Never fails loudly either: whatever goes wrong answers an empty 200, and
+          // an empty answer is Claude Code showing its own dialog, as without the app.
+          const terminalId = url.searchParams.get('id')
+          readRequestBody(req)
+            .then(async (body) => {
+              if (!terminalId || terminalId.startsWith('sidebar-') || !body || !askCallback) return ''
+              return (await askCallback(terminalId, body)) ?? ''
+            })
+            .catch((e) => {
+              console.error('[Questions] Failed to handle an ask:', e)
+              return ''
+            })
+            .then((output) => {
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(output)
             })
           return
         } else if (url.pathname === '/question/clear') {

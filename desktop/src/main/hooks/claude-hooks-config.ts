@@ -379,6 +379,8 @@ interface HookConfig {
   hooks: Array<{
     type: string
     command: string
+    /** Seconds before Claude Code gives up on the hook. */
+    timeout?: number
   }>
 }
 
@@ -562,6 +564,34 @@ function getPromptSkillHookConfig(): HookConfig {
       type: 'command',
       command
     }]
+  }
+}
+
+/**
+ * How long the AskUserQuestion hook may wait on a person, in seconds. Past it, Claude
+ * Code drops the hook and shows its own dialog, which is the right way to fail.
+ */
+const ASK_HOOK_TIMEOUT_S = 3600
+
+/**
+ * The AskUserQuestion capture, which may also ANSWER it.
+ *
+ * Same POST as the other captures, to `/question/ask`, but its stdout is the hook's
+ * output rather than noise: when the agent is shown as a chat, the app holds the
+ * request until the user answers there, and answers with `permissionDecision: allow`
+ * and the tool input with its `answers` filled in. Claude Code then shows no dialog
+ * and takes the answer as typed. Otherwise the app answers nothing at once, and the
+ * TUI asks as it always did (see holdAsk in main/questions/pending-questions.ts).
+ *
+ * Hence no `--max-time 2`: the wait is the point. The hook's own `timeout`, and curl's
+ * just under it, bound it; either way an empty output is the TUI's dialog. `-f` keeps
+ * an error page out of stdout, where Claude Code would read it as the hook's answer.
+ */
+function getAskHookConfig(): HookConfig {
+  const command = `[ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ] && curl -sf --max-time ${ASK_HOOK_TIMEOUT_S - 10} -X POST --data-binary @- "http://127.0.0.1:$MAGIC_SLASH_PORT/question/ask?id=$MAGIC_SLASH_TERMINAL_ID" 2>/dev/null || true # ${MAGIC_SLASH_HOOK_MARKER}`
+  return {
+    matcher: 'AskUserQuestion',
+    hooks: [{ type: 'command', command, timeout: ASK_HOOK_TIMEOUT_S }],
   }
 }
 
@@ -767,7 +797,7 @@ export function configureClaudeHooks(options?: { atlassian?: boolean }): void {
     // Capture: the AskUserQuestion tool call (scoped by matcher, since PreToolUse
     // fires on every tool), and Notification, which is how a permission prompt
     // announces itself.
-    settings.hooks.PreToolUse!.push(getQuestionHookConfig('question', { post: true, matcher: 'AskUserQuestion' }))
+    settings.hooks.PreToolUse!.push(getAskHookConfig())
     settings.hooks.Notification!.push(getQuestionHookConfig('question', { post: true }))
     // Clear: the question was answered in the terminal (its PostToolUse), the user
     // moved on to something else, or the turn ended.

@@ -470,13 +470,24 @@ describe('the pending-question hooks', () => {
     hooksFor(event).filter((h) => h.hooks!.some((x) => x.command!.includes(fragment)))
   const captures = (event: string) => matching(event, '/question?id=')
   const clears = (event: string) => matching(event, '/question/clear?id=')
+  const asks = () => matching('PreToolUse', '/question/ask?id=')
 
   it('captures the AskUserQuestion tool call, scoped by matcher', () => {
     configureClaudeHooks()
-    const hooks = captures('PreToolUse')
+    const hooks = asks()
     expect(hooks).toHaveLength(1)
     // Unscoped, this would POST the payload of every single tool call.
     expect(hooks[0].matcher).toBe('AskUserQuestion')
+  })
+
+  // The chat answers through this hook's output, so it waits for a person, and prints.
+  it('lets the AskUserQuestion hook wait on the answer and print it', () => {
+    configureClaudeHooks()
+    const hook = asks()[0].hooks![0] as { command: string; timeout?: number }
+    expect(hook.timeout).toBe(3600)
+    expect(hook.command).toContain('--max-time 3590')
+    expect(hook.command).toContain('curl -sf')
+    expect(hook.command).not.toContain('> /dev/null')
   })
 
   it('captures Notification, which has no tool to match on', () => {
@@ -538,7 +549,7 @@ describe('the pending-question hooks', () => {
     configureClaudeHooks()
     configureClaudeHooks()
     configureClaudeHooks()
-    expect(captures('PreToolUse')).toHaveLength(1)
+    expect(asks()).toHaveLength(1)
     expect(captures('Notification')).toHaveLength(1)
     expect(clears('PostToolUse')).toHaveLength(1)
     expect(clears('UserPromptSubmit')).toHaveLength(1)

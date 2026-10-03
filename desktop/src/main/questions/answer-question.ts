@@ -48,6 +48,11 @@ const inFlight = new Set<string>()
 export interface AnswerDeps {
   /** The question currently pending for this agent, if any. */
   getQuestion: (id: string) => TrayQuestion | undefined
+  /**
+   * Sends the answers back through the agent's held AskUserQuestion hook (see
+   * pending-questions.ts). False when nothing is held under that token any more.
+   */
+  answerHeld?: (id: string, token: string, answers: string[]) => boolean
   /** Writes into the agent's PTY. Returns false when the terminal is gone. */
   write: (id: string, keys: string) => boolean
   /** Drops the pending question once it has been answered. */
@@ -74,6 +79,10 @@ function isAnswerChoice(choice: unknown): choice is TrayAnswerChoice {
   if (typeof choice !== 'object' || choice === null) return false
   const kind = (choice as { kind?: unknown }).kind
   if (kind === 'deny') return true
+  if (kind === 'answers') {
+    const answers = (choice as { answers?: unknown }).answers
+    return Array.isArray(answers) && answers.every((a) => typeof a === 'string')
+  }
   if (kind === 'options') {
     // Emptiness and range are keysFor's call, against the question itself. All this
     // has to guarantee is that iterating the array cannot throw out of the handler.
@@ -101,6 +110,17 @@ export async function answerPendingQuestion(
   if (!question || question.token !== token) {
     console.error(`[Questions] Ignoring a stale answer for ${id}`)
     return { ok: false }
+  }
+
+  // HELD: the hook is waiting for the answer and the TUI shows nothing to type into.
+  if (question.held) {
+    const answers = heldAnswers(question, choice)
+    if (!answers || !deps.answerHeld?.(id, token, answers)) {
+      console.error(`[Questions] Refusing to answer ${id}: the answer does not fit the held question`)
+      return { ok: false }
+    }
+    deps.clear(id)
+    return { ok: true }
   }
 
   const keys = keysFor(question, choice)
@@ -143,4 +163,23 @@ export async function answerPendingQuestion(
 
   deps.clear(id)
   return { ok: true }
+}
+
+/**
+ * A click as the text answers a held question takes, one per question, or `null`.
+ * The panel's one-click answers carry an index into the first question's options,
+ * which only says something when it is the only question.
+ */
+export function heldAnswers(question: TrayQuestion, choice: TrayAnswerChoice): string[] | null {
+  const items = question.questions ?? [{ prompt: question.prompt, options: question.options, multiSelect: question.multiSelect }]
+  if (choice.kind === 'answers') return choice.answers.length === items.length ? choice.answers : null
+  if (items.length !== 1) return null
+  const labels = items[0].options.map((o) => o.label)
+  if (choice.kind === 'option') return labels[choice.index] !== undefined ? [labels[choice.index]] : null
+  if (choice.kind === 'options') {
+    const picked = [...new Set(choice.indexes)].sort((a, b) => a - b).map((i) => labels[i])
+    // Claude Code's own spelling of a multiSelect answer.
+    return picked.length > 0 && picked.every((l) => l !== undefined) ? [picked.join(', ')] : null
+  }
+  return null
 }

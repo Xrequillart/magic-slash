@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import { stripAnsi } from '../../strip-ansi'
-import type { TrayQuestion, TrayQuestionOption } from '../../types'
+import type { TrayQuestion, TrayQuestionItem, TrayQuestionOption } from '../../types'
 
 /**
  * The one question each agent is currently blocked on.
@@ -47,6 +47,38 @@ export function setPendingQuestionListener(listener: QuestionListener | null): v
 
 function notify(terminalId: string): void {
   questionListener?.(terminalId, pendingQuestions.get(terminalId))
+}
+
+/**
+ * THE ASKS THE APP IS HOLDING, by agent: the AskUserQuestion hook's request, kept open.
+ *
+ * While the agent is shown as a chat, its AskUserQuestion hook does not answer at once:
+ * the app holds it, Claude Code waits on it and shows no dialog, and the answer goes
+ * back as the hook's own output (`permissionDecision: allow` with the tool input and
+ * its `answers` filled in). That is what lets the chat answer several questions at
+ * once, or in free text, where typing into the TUI could not.
+ *
+ * Settled exactly once, with the hook's output or with `null`, which RELEASES it: the
+ * hook then prints nothing, and Claude Code shows its own dialog as if no hook had run.
+ * Everything that ends a question releases its hold (an answer, a clear, a newer
+ * question, the TTL), and so does the agent's view flipping to the terminal, where
+ * the TUI's dialog is the one to answer. Verified against Claude Code 2.1.288.
+ */
+interface HeldAsk {
+  token: string
+  /** The tool input as the hook received it, which the answer is sent back inside. */
+  input: Record<string, unknown>
+  /** The questions' own `question` strings, untrimmed: the keys Claude Code reads. */
+  keys: string[]
+  settle: (output: string | null) => void
+}
+const heldAsks = new Map<string, HeldAsk>()
+
+function settleHeld(terminalId: string, output: string | null): void {
+  const held = heldAsks.get(terminalId)
+  if (!held) return
+  heldAsks.delete(terminalId)
+  held.settle(output)
 }
 
 /** After half an hour, a question nobody answered is stale by any measure. */
@@ -162,6 +194,8 @@ export function buildPreview(buffer: string | null | undefined): string | undefi
 }
 
 function store(terminalId: string, question: Omit<TrayQuestion, 'token' | 'receivedAt'>): TrayQuestion {
+  // A newer question ends the one it replaces, held or not.
+  settleHeld(terminalId, null)
   // A fresh token per question, so an answer aimed at the previous one is rejected
   // rather than applied to whatever replaced it.
   const stored: TrayQuestion = { ...question, token: randomUUID(), receivedAt: Date.now() }
@@ -176,34 +210,117 @@ function store(terminalId: string, question: Omit<TrayQuestion, 'token' | 'recei
  * An `AskUserQuestion` tool call, from the `PreToolUse` hook payload
  * (`{ tool_input: { questions: [{ question, header, multiSelect, options }] } }`).
  *
- * `multiSelect` IS answered from the panel — checkboxes and a submit button, on the
- * keystrokes verified in answer-keys.ts. Several questions in one call and the
- * free-text "Other" option are still out of scope: they are stored as `unsupported`
- * rather than dropped, so the panel shows what is being asked and offers "Open agent".
+ * Typed into the TUI (the panel, or a chat that does not hold the hook), one
+ * single- or multiSelect question is answerable, on the keystrokes verified in
+ * answer-keys.ts. Several questions in one call, or one with no option to pick, are
+ * stored as `unsupported` rather than dropped: the card shows what is asked and sends
+ * the user to the agent.
+ *
+ * `hold` is the chat's way round that (see `holdAsk`): the answer goes back through
+ * the hook, so nothing is out of reach and nothing is `unsupported`.
  */
-export function setFromAskQuestion(terminalId: string, payload: unknown): TrayQuestion | null {
-  const toolInput = (payload as { tool_input?: { questions?: unknown } })?.tool_input
-  const questions = toolInput?.questions
-  if (!Array.isArray(questions) || questions.length === 0) return null
-
-  const first = questions[0] as AskQuestion
-  const prompt = asString(first?.question) ?? asString(first?.header)
-  if (!prompt) return null
-
-  const options = parseOptions(first?.options)
-  // Several questions in one call remain out of reach: the TUI walks them one tab at
-  // a time and the panel has a single card, so there is nothing honest to render.
-  const unsupported = questions.length > 1 || options.length === 0
+export function setFromAskQuestion(terminalId: string, payload: unknown, hold = false): TrayQuestion | null {
+  const items = parseAsk(payload)
+  if (!items) return null
+  const first = items[0]
 
   // No refusal is offered on an `ask`: Escape would interrupt the agent rather
   // than answer it. That follows from `kind` alone — see answer-keys.keysFor.
   return store(terminalId, {
     kind: 'ask',
-    prompt,
-    options,
-    ...(first?.multiSelect === true ? { multiSelect: true } : {}),
-    ...(unsupported ? { unsupported: true } : {}),
+    prompt: first.prompt,
+    options: first.options,
+    ...(first.multiSelect ? { multiSelect: true } : {}),
+    questions: items,
+    ...(hold ? { held: true } : typedUnsupported(items) ? { unsupported: true } : {}),
   })
+}
+
+/** Out of reach of the keystrokes: several questions at once, or nothing to pick. */
+function typedUnsupported(items: TrayQuestionItem[]): boolean {
+  return items.length > 1 || items[0].options.length === 0
+}
+
+function parseAsk(payload: unknown): TrayQuestionItem[] | null {
+  const questions = (payload as { tool_input?: { questions?: unknown } })?.tool_input?.questions
+  if (!Array.isArray(questions) || questions.length === 0) return null
+  const items: TrayQuestionItem[] = []
+  for (const raw of questions) {
+    const q = raw as AskQuestion
+    const prompt = asString(q?.question) ?? asString(q?.header)
+    if (!prompt) return null
+    const header = asString(q?.header)
+    items.push({
+      prompt,
+      ...(header && header !== prompt ? { header } : {}),
+      options: parseOptions(q?.options),
+      ...(q?.multiSelect === true ? { multiSelect: true } : {}),
+    })
+  }
+  return items
+}
+
+/**
+ * Stores the ask and HOLDS it: resolves with the hook's output once the user answers
+ * (`answerHeld`), or with `null` once the hold is released, whatever releases it.
+ *
+ * Refuses to hold (answering `null` at once, the question stored as for the TUI) when
+ * a question has no `question` string of its own: an answer is filed under that
+ * string, and one Claude Code cannot match would be an answer lost.
+ */
+export function holdAsk(terminalId: string, payload: unknown): { question: TrayQuestion | null; reply: Promise<string | null> } {
+  const input = (payload as { tool_input?: unknown })?.tool_input
+  const raw = (input as { questions?: unknown } | undefined)?.questions
+  const keys = Array.isArray(raw) ? raw.map((q) => (q as AskQuestion)?.question) : []
+  const holdable = typeof input === 'object' && input !== null && keys.length > 0
+    && keys.every((k): k is string => typeof k === 'string' && k.trim() !== '')
+  const question = setFromAskQuestion(terminalId, payload, holdable)
+  if (!question || !holdable) return { question, reply: Promise.resolve(null) }
+
+  const reply = new Promise<string | null>((settle) => {
+    heldAsks.set(terminalId, { token: question.token, input: input as Record<string, unknown>, keys: keys as string[], settle })
+  })
+  return { question, reply }
+}
+
+/**
+ * Sends the answers back through the held hook, one per question in order. False
+ * when nothing is held under this token, or the answers do not fit the questions.
+ */
+export function answerHeld(terminalId: string, token: string, answers: string[]): boolean {
+  const held = heldAsks.get(terminalId)
+  if (!held || held.token !== token) return false
+  if (answers.length !== held.keys.length || answers.some((a) => typeof a !== 'string' || a.trim() === '')) return false
+  const output = {
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'allow',
+      updatedInput: { ...held.input, answers: Object.fromEntries(held.keys.map((k, i) => [k, answers[i].trim()])) },
+    },
+  }
+  settleHeld(terminalId, JSON.stringify(output))
+  return true
+}
+
+/**
+ * Lets the held hook go without an answer, so Claude Code shows its own dialog: the
+ * agent's view went back to the terminal. The question stays pending, now as one the
+ * TUI is showing, so what the keystrokes cannot drive is `unsupported` again.
+ */
+export function releaseHeld(terminalId: string): void {
+  if (!heldAsks.has(terminalId)) return
+  settleHeld(terminalId, null)
+  const question = pendingQuestions.get(terminalId)
+  if (!question?.held) return
+  const { held: _held, ...rest } = question
+  const items = question.questions ?? [{ prompt: question.prompt, options: question.options }]
+  pendingQuestions.set(terminalId, { ...rest, ...(typedUnsupported(items) ? { unsupported: true } : {}) })
+  notify(terminalId)
+}
+
+/** Whether this agent's AskUserQuestion hook is being held open. */
+export function isHeld(terminalId: string): boolean {
+  return heldAsks.has(terminalId)
 }
 
 /**
@@ -296,12 +413,14 @@ export function getPendingQuestion(terminalId: string): TrayQuestion | undefined
   if (!question) return undefined
   if (Date.now() - question.receivedAt > QUESTION_TTL_MS) {
     pendingQuestions.delete(terminalId)
+    settleHeld(terminalId, null)
     return undefined
   }
   return question
 }
 
 export function clearPendingQuestion(terminalId: string): void {
+  settleHeld(terminalId, null)
   if (pendingQuestions.delete(terminalId)) notify(terminalId)
 }
 
@@ -372,5 +491,6 @@ export function noteTerminalInput(terminalId: string, data: string): void {
 }
 
 export function clearAllPendingQuestions(): void {
+  for (const id of [...heldAsks.keys()]) settleHeld(id, null)
   pendingQuestions.clear()
 }

@@ -131,6 +131,9 @@ export function answerableOptionCount(question: TrayQuestion): number {
  */
 export function keysFor(question: TrayQuestion, choice: TrayAnswerChoice): string[] | null {
   if (question.unsupported) return null
+  // Answers by text only go back through a held hook (answer-question.ts): there is
+  // no keystroke for a free-text answer, nor for several questions at once.
+  if (choice.kind === 'answers') return null
 
   if (choice.kind === 'deny') {
     // Only a permission prompt can be refused: on an AskUserQuestion, Escape

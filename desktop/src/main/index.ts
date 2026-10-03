@@ -4,8 +4,8 @@ import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupRepoHandlers } from './ipc/repo-handlers'
 import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
 import { setChatListener, setInterruptListener, watchTranscript } from './chat/transcript-watcher'
-import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setWorkflowNextProvider, setWorkflowActionProvider, setCustomSkillContextProvider, setUserPromptListener, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback } from './hooks/status-server'
-import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion, setPendingQuestionListener } from './questions/pending-questions'
+import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setAskCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setWorkflowNextProvider, setWorkflowActionProvider, setCustomSkillContextProvider, setUserPromptListener, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback } from './hooks/status-server'
+import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion, setPendingQuestionListener, holdAsk, answerHeld } from './questions/pending-questions'
 import { answerPendingQuestion } from './questions/answer-question'
 import { recordSkillInvocation } from './usage/skill-invocations'
 import { installShellIntegration } from './hooks/shell-integration'
@@ -580,6 +580,7 @@ function setupTrayHandlers() {
     // drops all but one event out of a single burst — see answer-keys.ts.
     const result = await answerPendingQuestion(id, token, choice, {
       getQuestion: getPendingQuestion,
+      answerHeld,
       write: writeToTerminal,
       clear: clearPendingQuestion,
     })
@@ -812,6 +813,34 @@ async function initializeHooksAndSessions() {
       if (question && aggregator) {
         aggregator.update()
       }
+    })
+
+    // Terminal or chat, as the renderer resolves it (renderer/utils/displayMode.ts):
+    // the agent's own choice, else the account's default.
+    const agentDisplayMode = (terminalId: string) =>
+      readAgents().find((a) => a.id === terminalId)?.displayMode ?? readConfig().defaultDisplayMode ?? 'terminal'
+
+    // The AskUserQuestion hook. Held while the agent is shown as a chat, which then
+    // answers it through the hook; answered empty at once otherwise, so the terminal
+    // asks as it always did. Held, the agent is waiting on the user, and says so.
+    setAskCallback(async (terminalId: string, body: string) => {
+      let payload: unknown
+      try {
+        payload = JSON.parse(body)
+      } catch {
+        return null
+      }
+      if (agentDisplayMode(terminalId) !== 'chat') {
+        const question = ingestQuestionPayload(terminalId, body, () => getTerminalBuffer(terminalId))
+        if (question && aggregator) aggregator.update()
+        return null
+      }
+      const { question, reply } = holdAsk(terminalId, payload)
+      if (question) {
+        updateTerminalStateFromHook(terminalId, 'waiting')
+        aggregator?.update()
+      }
+      return reply
     })
 
     setClearQuestionCallback((terminalId: string) => {

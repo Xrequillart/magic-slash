@@ -20,7 +20,7 @@ import {
   relaunchTerminalInResolvedCwd,
   type TerminalMetadata,
 } from '../pty/terminal-manager'
-import { noteTerminalInput, isUserInput } from '../questions/pending-questions'
+import { noteTerminalInput, isUserInput, releaseHeld } from '../questions/pending-questions'
 import { agentNotification, type AgentSubjectInput } from '../notifications/agent-message'
 import { resolveAgentCwd } from '../pty/agent-cwd'
 import {
@@ -728,6 +728,8 @@ export function setupTerminalHandlers(
 
   ipcMain.handle('terminal:updateDisplayMode', async (_event, { id, mode }) => {
     if (typeof id !== 'string' || (mode !== 'terminal' && mode !== 'chat')) return
+    // Back to the terminal: a question the chat was holding is the TUI's to ask now.
+    if (mode === 'terminal') releaseHeld(id)
     return updateAgentDisplayMode(id, mode)
   })
 

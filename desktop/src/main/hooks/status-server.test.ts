@@ -29,6 +29,7 @@ import {
   setWorktreeFilesWriter,
   setSkillCallback,
   setQuestionCallback,
+  setAskCallback,
   setClearQuestionCallback,
   setMetadataCallback,
   setSpecPathCallback,
@@ -784,6 +785,21 @@ describe('read-back endpoints', () => {
       cleared = []
       setQuestionCallback((id, body) => received.push({ id, body }))
       setClearQuestionCallback((id) => cleared.push(id))
+    })
+
+    it('POST /question/ask answers with what the ask resolves to, and nothing on null', async () => {
+      setAskCallback(async (id, body) => (id === 'term-1' ? `{"echo":${body}}` : null))
+      const answered = await httpPost('/question/ask?id=term-1', '{"a":1}')
+      expect(answered).toEqual({ status: 200, body: '{"echo":{"a":1}}' })
+      const released = await httpPost('/question/ask?id=term-2', '{"a":1}')
+      expect(released).toEqual({ status: 200, body: '' })
+    })
+
+    // An empty answer is Claude Code's own dialog: the right way for anything to fail.
+    it('POST /question/ask answers nothing when the ask throws', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      setAskCallback(async () => { throw new Error('boom') })
+      expect(await httpPost('/question/ask?id=term-1', '{}')).toEqual({ status: 200, body: '' })
     })
 
     it('POST /question forwards the raw hook payload, unparsed', async () => {

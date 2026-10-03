@@ -3831,6 +3831,18 @@ export interface TrayQuestionOption {
 }
 
 /**
+ * One of the questions of an `AskUserQuestion` call, which may carry several.
+ * `prompt` is the tool's own `question` text, verbatim: it is the key an answer is
+ * filed under (see `TrayAnswerChoice` `answers`).
+ */
+export interface TrayQuestionItem {
+  prompt: string
+  header?: string
+  options: TrayQuestionOption[]
+  multiSelect?: boolean
+}
+
+/**
  * A question an agent is blocked on, surfaced in the menu bar panel so it can be
  * answered without bringing the app to the front (see main/questions/).
  *
@@ -3862,6 +3874,15 @@ export interface TrayQuestion {
   preview?: string
   receivedAt: number
   unsupported?: boolean
+  /** Every question of an `ask`, the first one included (`prompt` and `options` repeat it). */
+  questions?: TrayQuestionItem[]
+  /**
+   * The app holds the agent's AskUserQuestion hook open: Claude Code shows no dialog of
+   * its own, and the answer goes back through the hook instead of being typed into the
+   * TUI. Every form is answerable then — several questions, a free-text answer. See
+   * main/questions/pending-questions.ts.
+   */
+  held?: boolean
 }
 
 /**
@@ -3877,6 +3898,11 @@ export type TrayAnswerChoice =
   | { kind: 'option'; index: number }
   | { kind: 'options'; indexes: number[] }
   | { kind: 'deny' }
+  /**
+   * One answer per question of a held `ask`, in order: an option's label, several
+   * labels joined by ", " (Claude Code's own spelling for a multiSelect), or free text.
+   */
+  | { kind: 'answers'; answers: string[] }
 
 /**
  * Outcome of `tray:answerQuestion`. `ok: false` always means nothing at all was

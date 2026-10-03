@@ -2108,6 +2108,7 @@ export const fr: Record<keyof typeof en, string> = {
   'chat.attach.drop': 'Déposez pour joindre',
   'chat.command.interactive': 'S’ouvre dans le terminal',
   'chat.question.unsupported': 'Cette question se répond dans le terminal.',
+  'chat.question.other': 'Ou écrivez votre propre réponse…',
   'chat.command.clear': 'Démarrer une nouvelle conversation',
   'chat.command.compact': 'Résumer la conversation pour libérer du contexte',
   'chat.command.context': 'Voir ce qui remplit la fenêtre de contexte',

@@ -177,7 +177,8 @@ export function TrayPopover() {
       preview: agent.pendingQuestion.preview,
       options: agent.pendingQuestion.options,
       multiSelect: agent.pendingQuestion.multiSelect,
-      unsupported: agent.pendingQuestion.unsupported,
+      // Several questions at once only fit the chat's form, even held: the panel has one card.
+      unsupported: agent.pendingQuestion.unsupported || (agent.pendingQuestion.questions?.length ?? 1) > 1,
       onAnswer: choice => answer(agent, choice),
       onOpenAgent: () => window.electronAPI.tray.focusAgent(agent.id),
     },

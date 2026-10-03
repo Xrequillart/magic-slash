@@ -2200,6 +2200,7 @@ export const en = {
   'chat.attach.drop': 'Drop to attach',
   'chat.command.interactive': 'Opens in the terminal',
   'chat.question.unsupported': 'This one has to be answered in the terminal.',
+  'chat.question.other': 'Or type your own answer…',
   'chat.command.clear': 'Start a new conversation',
   'chat.command.compact': 'Summarise the conversation to free up context',
   'chat.command.context': 'Show what fills the context window',
