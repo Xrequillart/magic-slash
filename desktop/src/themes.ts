@@ -62,6 +62,13 @@ export interface ThemeTokens {
   surfaceSunken: string
   /** Same idea, one step quieter (the settings rail). */
   surfaceSunkenSoft: string
+  /**
+   * How far `RAISED_PLATE` (the sidebar cards, the chat composer, the Control Center's
+   * tiles) is lifted from `bgTertiary` towards the ink, as a `color-mix` percentage.
+   * A theme value because the same lift does not read the same on every ground: on
+   * midnight's blue, 9% read as a fog over a much darker sidebar.
+   */
+  plateLift: string
 
   // Borders, faintest to strongest
   lineSubtle: string
@@ -154,6 +161,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       surfaceSunken: 'rgba(0, 0, 0, 0.3)',
       surfaceSunkenSoft: 'rgba(0, 0, 0, 0.2)',
 
+      plateLift: '9%',
+
       lineSubtle: 'rgba(255, 255, 255, 0.05)',
       lineField: 'rgba(255, 255, 255, 0.08)',
       line: 'rgba(255, 255, 255, 0.1)',
@@ -215,6 +224,9 @@ export const THEMES: Record<ThemeId, Theme> = {
       surfaceStrong: 'rgba(255, 255, 255, 0.12)',
       surfaceSunken: 'rgba(2, 7, 18, 0.35)',
       surfaceSunkenSoft: 'rgba(2, 7, 18, 0.22)',
+      // Half of everyone else's: see `plateLift`.
+
+      plateLift: '4%',
 
       lineSubtle: 'rgba(255, 255, 255, 0.06)',
       lineField: 'rgba(255, 255, 255, 0.09)',
@@ -277,6 +289,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       surfaceStrong: 'rgba(255, 255, 255, 0.12)',
       surfaceSunken: 'rgba(18, 19, 21, 0.35)',
       surfaceSunkenSoft: 'rgba(18, 19, 21, 0.22)',
+
+      plateLift: '9%',
 
       lineSubtle: 'rgba(255, 255, 255, 0.06)',
       lineField: 'rgba(255, 255, 255, 0.09)',
@@ -344,6 +358,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       surfaceSunken: 'rgba(0, 0, 0, 0.6)',
       surfaceSunkenSoft: 'rgba(0, 0, 0, 0.45)',
 
+      plateLift: '9%',
+
       // Borders are structure here, not decoration.
       lineSubtle: 'rgba(255, 255, 255, 0.35)',
       lineField: 'rgba(255, 255, 255, 0.55)',
@@ -407,6 +423,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       surfaceSunken: 'rgba(0, 0, 0, 0.05)',
       surfaceSunkenSoft: 'rgba(0, 0, 0, 0.035)',
 
+      plateLift: '9%',
+
       lineSubtle: 'rgba(0, 0, 0, 0.07)',
       lineField: 'rgba(0, 0, 0, 0.12)',
       line: 'rgba(0, 0, 0, 0.14)',
@@ -466,6 +484,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       surfaceStrong: 'rgba(12, 40, 80, 0.09)',
       surfaceSunken: 'rgba(12, 40, 80, 0.055)',
       surfaceSunkenSoft: 'rgba(12, 40, 80, 0.04)',
+
+      plateLift: '9%',
 
       lineSubtle: 'rgba(12, 40, 80, 0.08)',
       lineField: 'rgba(12, 40, 80, 0.13)',
@@ -527,6 +547,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       surfaceStrong: 'rgba(74, 54, 28, 0.09)',
       surfaceSunken: 'rgba(74, 54, 28, 0.055)',
       surfaceSunkenSoft: 'rgba(74, 54, 28, 0.04)',
+
+      plateLift: '9%',
 
       lineSubtle: 'rgba(74, 54, 28, 0.09)',
       lineField: 'rgba(74, 54, 28, 0.14)',
@@ -591,6 +613,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       surfaceStrong: 'rgba(0, 0, 0, 0.14)',
       surfaceSunken: 'rgba(0, 0, 0, 0.07)',
       surfaceSunkenSoft: 'rgba(0, 0, 0, 0.05)',
+
+      plateLift: '9%',
 
       // Borders are structure here, not decoration.
       lineSubtle: 'rgba(0, 0, 0, 0.45)',

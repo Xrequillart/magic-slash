@@ -13,6 +13,9 @@
  * the ink — `color-mix` in the stylesheet, which is theme-aware for free: in a light theme
  * the ink is dark and the lift goes the other way.
  *
+ * HOW FAR it is lifted is the theme's (`--c-plate-lift`, 9% in most): midnight's blue
+ * ground took half that, or the sidebar cards stood out of a much darker sidebar.
+ *
  * SPELLED AS ONE ARBITRARY CLASS and shared by name, because four components draw it —
  * `ToggleButton`'s off state, `Stepper`'s pill, `SelectIcon`'s `solid` tone and `Card`'s
  * `raised` ground — and "the same colour" is a promise only one spelling can keep. The
@@ -22,7 +25,7 @@
  * where the raw variables it does emit.
  */
 export const RAISED_PLATE =
-  'bg-[color:color-mix(in_srgb,rgb(var(--c-bg-tertiary)),rgb(var(--c-ink))_9%)]'
+  'bg-[color:color-mix(in_srgb,rgb(var(--c-bg-tertiary)),rgb(var(--c-ink))_var(--c-plate-lift,9%))]'
 
 /** The hover for anything on `RAISED_PLATE`: a brightness step, never a second colour. */
 export const RAISED_PLATE_HOVER = 'hover:brightness-125'

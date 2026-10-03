@@ -66,6 +66,7 @@
   --c-surface-strong: rgba(255, 255, 255, 0.1);
   --c-surface-sunken: rgba(0, 0, 0, 0.3);
   --c-surface-sunken-soft: rgba(0, 0, 0, 0.2);
+  --c-plate-lift: 9%;
 
   --c-line-subtle: rgba(255, 255, 255, 0.05);
   --c-line-field: rgba(255, 255, 255, 0.08);
