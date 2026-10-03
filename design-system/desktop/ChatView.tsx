@@ -291,8 +291,11 @@ export function ChatView({
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Cmd/Ctrl+arrow switches agents and Alt+arrow jumps the caret: only a bare arrow
+    // is the box's own, for the menu as for the history.
+    const bareArrow = !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey
     if (menuOpen) {
-      const step = event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0
+      const step = !bareArrow ? 0 : event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0
       if (step) {
         event.preventDefault()
         setHighlighted((highlighted + step + matches.length) % matches.length)
@@ -321,7 +324,7 @@ export function ChatView({
     // The history walks only from an empty box or from a prompt it brought back
     // untouched: an arrow in text being written moves the caret, as it should.
     const walking = historyStep !== null && draft === history[history.length - 1 - historyStep]
-    if (event.key === 'ArrowUp' && (draft === '' || walking) && !event.shiftKey) {
+    if (event.key === 'ArrowUp' && (draft === '' || walking) && bareArrow) {
       const next = historyStep === null ? 0 : historyStep + 1
       if (next < history.length) {
         event.preventDefault()
@@ -329,7 +332,7 @@ export function ChatView({
       }
       return
     }
-    if (event.key === 'ArrowDown' && walking && !event.shiftKey) {
+    if (event.key === 'ArrowDown' && walking && bareArrow) {
       event.preventDefault()
       recall(historyStep === 0 ? null : historyStep - 1)
       return
