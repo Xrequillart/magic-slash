@@ -525,6 +525,15 @@ describe('the pending-question hooks', () => {
     }
   })
 
+  // Claude Code's `idle_prompt` comes a minute after any finished turn: the agent is
+  // idle, not blocked, and must not be reported as waiting on the user.
+  it('reports waiting only on the notifications that block on the user', () => {
+    configureClaudeHooks()
+    const waiting = hooksFor('Notification').filter((h) => h.hooks!.some((x) => x.command!.includes('state=waiting')))
+    expect(waiting).toHaveLength(1)
+    expect(waiting[0].matcher).toBe('permission_prompt|elicitation_dialog')
+  })
+
   it('stays one entry per event across repeated configuration', () => {
     configureClaudeHooks()
     configureClaudeHooks()

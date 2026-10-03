@@ -398,6 +398,16 @@ interface ClaudeSettings {
   [key: string]: unknown
 }
 
+/**
+ * The notifications that mean the agent is blocked on the user: a permission prompt, or
+ * an MCP server asking for input. NOT `idle_prompt`, which Claude Code sends a minute
+ * after a turn ends with nothing typed: the agent is done and idle, it needs nobody, and
+ * reporting it as `waiting` turned every finished agent into one calling for the terminal.
+ * A Claude Code too old to match on Notification ignores the matcher and fires on all of
+ * them, as before.
+ */
+const NEEDS_THE_USER = 'permission_prompt|elicitation_dialog'
+
 function getHookConfig(event: string): HookConfig {
   // Use curl to notify our status server
   // The command uses environment variables set by Magic Slash Desktop:
@@ -431,6 +441,7 @@ function getHookConfig(event: string): HookConfig {
   const command = `[ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/status?id=$MAGIC_SLASH_TERMINAL_ID&state=${state}" > /dev/null 2>&1 || true # ${MAGIC_SLASH_HOOK_MARKER}`
 
   return {
+    ...(event === 'Notification' ? { matcher: NEEDS_THE_USER } : {}),
     hooks: [{
       type: 'command',
       command
@@ -717,7 +728,7 @@ export function configureClaudeHooks(options?: { atlassian?: boolean }): void {
       'UserPromptSubmit', // User sends a message → working
       'PreToolUse',       // Before tool use → working
       'PostToolUse',      // After tool use → working
-      'Notification',     // Claude needs attention → waiting
+      'Notification',     // Claude is blocked on the user → waiting
       'Stop',             // Claude finished → idle
       'SessionStart',     // Session started → idle
     ]
