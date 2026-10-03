@@ -1,5 +1,5 @@
 import * as fs from 'fs'
-import type { ChatEntry } from '../../types'
+import type { ChatSnapshot } from '../../types'
 import { ChatTranscript } from './transcript'
 
 /**
@@ -31,7 +31,7 @@ interface Watch {
   listener: (curr: fs.Stats) => void
 }
 
-type ChatListener = (terminalId: string, entries: ChatEntry[]) => void
+type ChatListener = (terminalId: string, chat: ChatSnapshot) => void
 type InterruptListener = (terminalId: string, at: number) => void
 
 const watches = new Map<string, Watch>()
@@ -47,8 +47,13 @@ export function setInterruptListener(listener: InterruptListener): void {
   interruptListener = listener
 }
 
-export function getChatEntries(terminalId: string): ChatEntry[] {
-  return watches.get(terminalId)?.transcript.entries.slice() ?? []
+export function getChatSnapshot(terminalId: string): ChatSnapshot {
+  const transcript = watches.get(terminalId)?.transcript
+  return transcript ? snapshot(transcript) : { entries: [], queue: [] }
+}
+
+function snapshot(transcript: ChatTranscript): ChatSnapshot {
+  return { entries: transcript.entries.slice(), queue: transcript.queue }
 }
 
 export function watchTranscript(terminalId: string, path: string): void {
@@ -120,6 +125,6 @@ function scheduleEmit(terminalId: string, watch: Watch): void {
   if (watch.emitTimer) return
   watch.emitTimer = setTimeout(() => {
     watch.emitTimer = null
-    if (watches.get(terminalId) === watch) chatListener?.(terminalId, watch.transcript.entries.slice())
+    if (watches.get(terminalId) === watch) chatListener?.(terminalId, snapshot(watch.transcript))
   }, EMIT_DEBOUNCE_MS)
 }

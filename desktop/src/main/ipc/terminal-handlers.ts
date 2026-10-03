@@ -38,7 +38,7 @@ import { expandPath } from '../config/validation'
 import { isValidAgentType, isValidLaunchMode, DEFAULT_AGENT_TYPE } from '../config/defaults'
 import { checkRepoPath } from '../config/repo-validation'
 import { ensureHydrated } from '../store/hydrate'
-import { getChatEntries } from '../chat/transcript-watcher'
+import { getChatSnapshot } from '../chat/transcript-watcher'
 import { savePastedImage } from '../chat/attachments'
 import { flushPlanSpec } from '../store/plan-sync'
 import type { HistoryAction, LaunchMetadata } from '../../types'
@@ -744,10 +744,10 @@ export function setupTerminalHandlers(
   // An image pasted into the chat's box, which has no path until it is written down.
   ipcMain.handle('chat:savePastedImage', async (_event, { bytes, mime }) => savePastedImage(bytes, mime))
 
-  // The chat view's entries so far; later ones arrive as `terminal:chat` events.
+  // The chat view's entries and queue so far; later ones arrive as `terminal:chat` events.
   ipcMain.handle('terminal:getChat', async (_event, { id }) => {
-    if (typeof id !== 'string') return []
-    return getChatEntries(id)
+    if (typeof id !== 'string') return { entries: [], queue: [] }
+    return getChatSnapshot(id)
   })
 
   // Get terminal display buffer (for reconnection after refresh)

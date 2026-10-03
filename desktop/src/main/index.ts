@@ -790,8 +790,8 @@ async function initializeHooksAndSessions() {
       }
     })
 
-    setChatListener((terminalId, entries) => {
-      if (mainWindow) mainWindow.webContents.send('terminal:chat', { id: terminalId, entries })
+    setChatListener((terminalId, chat) => {
+      if (mainWindow) mainWindow.webContents.send('terminal:chat', { id: terminalId, ...chat })
     })
     // Escape fires no hook: the transcript is what says the turn stopped, and whatever
     // question it was blocked on went with it.

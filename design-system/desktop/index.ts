@@ -81,6 +81,8 @@ export type { ChatQuestionProps, ChatQuestionData, ChatQuestionItem, ChatQuestio
 export { ChatCommandMenu } from './ChatCommandMenu'
 export { matchCommands } from './chatCommandMatch'
 export type { ChatCommand, ChatCommandMenuProps } from './ChatCommandMenu'
+export { ChatQueueCard } from './ChatQueueCard'
+export type { ChatQueueCardProps, ChatQueuedPromptData } from './ChatQueueCard'
 export type { ChatMarkdownProps, ChatHighlighter } from './ChatMarkdown'
 export type { ChatViewProps, ChatViewEntry, ChatViewLabels } from './ChatView'
 export { CommentBubble, holdsCommentDraft, COMMENT_BUBBLE_PX, COMMENT_BUBBLE_OFFSET_PX } from './CommentBubble'

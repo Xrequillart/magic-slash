@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChatView, type ChatCommand, type ChatViewEntry, type MenuBarAnswer } from '@ds/desktop'
-import { DEFAULT_CODE_FONT_SIZE, type TerminalInfo, type TrayQuestion } from '../../types'
+import { ChatView, type ChatCommand, type MenuBarAnswer } from '@ds/desktop'
+import { DEFAULT_CODE_FONT_SIZE, type ChatSnapshot, type TerminalInfo, type TrayQuestion } from '../../types'
 import { builtInCommands, mergeCommands, opensInTerminal, skillCommands } from './chatCommands'
 import { useStore } from '../store'
 import { useLocale, useT } from '../i18n'
@@ -37,7 +37,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   const t = useT()
   const setDisplayMode = useStore((s) => s.setDisplayMode)
   const mode = useStore((s) => resolveDisplayMode(terminal, s.config))
-  const entries = useChatEntries(terminal.id)
+  const { entries, queue } = useChat(terminal.id)
   const question = usePendingQuestion(terminal.id)
   const [answering, setAnswering] = useState(false)
 
@@ -113,6 +113,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
         <div className="absolute inset-0 z-[5]">
           <ChatView
             entries={entries}
+            queue={queue}
             working={terminal.state === 'working'}
             waiting={terminal.state === 'waiting'}
             onSend={send}
@@ -144,6 +145,11 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
               attach: t('chat.attach'),
               removeAttachment: t('chat.attach.remove'),
               dropFiles: t('chat.attach.drop'),
+              queue: {
+                open: t('chat.queue.open'),
+                title: t('chat.queue.title'),
+                hint: t('chat.queue.hint'),
+              },
               question: {
                 allow: t('tray.question.allow'),
                 deny: t('tray.question.deny'),
@@ -160,27 +166,33 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   )
 }
 
+const EMPTY_CHAT: ChatSnapshot = { entries: [], queue: [] }
+
 /**
- * The agent's chat entries: what the main process has read so far, then every update.
- * The main process sends the whole list each time (it is small, and a list that is
- * replaced cannot drift from the one it came from).
+ * The agent's chat entries and queued prompts: what the main process has read so far,
+ * then every update. The main process sends the whole of both each time (they are
+ * small, and a list that is replaced cannot drift from the one it came from).
  */
-function useChatEntries(terminalId: string): ChatViewEntry[] {
-  const [entries, setEntries] = useState<ChatViewEntry[]>([])
+function useChat(terminalId: string): ChatSnapshot {
+  const [chat, setChat] = useState<ChatSnapshot>(EMPTY_CHAT)
   useEffect(() => {
     let live = true
-    const unsubscribe = window.electronAPI.terminal.onChat(({ id, entries: next }) => {
-      if (id === terminalId) setEntries(next)
+    let pushed = false
+    const unsubscribe = window.electronAPI.terminal.onChat(({ id, entries, queue }) => {
+      if (id !== terminalId) return
+      pushed = true
+      setChat({ entries, queue })
     })
     window.electronAPI.terminal.getChat(terminalId).then((initial) => {
-      if (live) setEntries((current) => (current.length ? current : initial))
+      // A push that landed first is newer than this read.
+      if (live && !pushed) setChat(initial)
     }).catch(() => {})
     return () => {
       live = false
       unsubscribe()
     }
   }, [terminalId])
-  return entries
+  return chat
 }
 
 /** The question the agent is blocked on, kept current by `terminal:question`. */

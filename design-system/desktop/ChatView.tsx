@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type DragEvent, type KeyboardEvent } from 'react'
-import { ArrowUp, ChevronRight, CircleAlert, Check, FileText, Image as ImageIcon, Info, Paperclip, SquareTerminal, Wrench, X } from './icons'
+import { ArrowUp, ChevronRight, CircleAlert, Check, FileText, Image as ImageIcon, Info, ListOrdered, Paperclip, SquareTerminal, Wrench, X } from './icons'
 import { Button } from './Button'
 import { ButtonIcon } from './ButtonIcon'
 import { Loader } from './Loader'
@@ -10,6 +10,7 @@ import { ChatDiffCard, type ChatDiffData, type ChatLineHighlighter } from './Cha
 import { ChatQuestion, type ChatQuestionData, type ChatQuestionLabels } from './ChatQuestion'
 import { ChatCommandMenu } from './ChatCommandMenu'
 import { matchCommands, type ChatCommand } from './chatCommandMatch'
+import { ChatQueueCard, type ChatQueuedPromptData } from './ChatQueueCard'
 import type { MenuBarAnswer } from './MenuBarQuestion'
 
 /**
@@ -26,6 +27,9 @@ import type { MenuBarAnswer } from './MenuBarQuestion'
  * says the agent is blocked, and offers the terminal: something the hooks did not catch.
  *
  * `/` opens the commands Claude Code would offer (see `ChatCommandMenu`).
+ *
+ * What was typed while the agent worked waits in Claude Code's queue: a button beside
+ * Send says how many, and opens the list (see `ChatQueueCard`).
  *
  * Claude's text is rendered as the Markdown it is (see `ChatMarkdown`); what the user
  * typed is shown as typed.
@@ -51,6 +55,12 @@ export interface ChatViewLabels {
   attach: string
   removeAttachment: string
   dropFiles: string
+  queue: {
+    /** The button's name, its tooltip. */
+    open: string
+    title: string
+    hint: string
+  }
   question: Omit<ChatQuestionLabels, 'showTerminal'>
 }
 
@@ -101,6 +111,8 @@ export interface ChatViewProps {
   startedLabel?: string
   /** What the `/` menu offers. */
   commands?: ChatCommand[]
+  /** The prompts Claude Code holds until the turn lets them in, oldest first. */
+  queue?: ChatQueuedPromptData[]
 }
 
 /** What the textarea and its mirror share: anything that moves a glyph must be here. */
@@ -126,7 +138,7 @@ const STICK_PX = 48
 export function ChatView({
   entries, working, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
   question, onAnswer, answering, commands = [], highlightLines, onPickFiles, resolveFile,
-  initialDraft, onDraftChange, codeFontSize, claudeCodeVersion, startedLabel,
+  initialDraft, onDraftChange, codeFontSize, claudeCodeVersion, startedLabel, queue = [],
 }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -145,6 +157,22 @@ export function ChatView({
   const matches = useMemo(() => (query === undefined ? [] : matchCommands(commands, query)), [commands, query])
   const menuOpen = matches.length > 0 && menuClosedFor !== draft
   useEffect(() => setHighlighted(0), [query])
+
+  // THE QUEUE CARD opens on its button and closes on it, on Escape, on a click anywhere
+  // else, and by itself once nothing is left waiting. The `/` menu takes its place
+  // while it is open: one card over the composer at a time.
+  const [queueOpen, setQueueOpen] = useState(false)
+  const queueShown = queueOpen && queue.length > 0 && !menuOpen
+  useEffect(() => { if (queue.length === 0) setQueueOpen(false) }, [queue.length])
+  const composerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!queueShown) return
+    const onPointerDown = (e: PointerEvent) => {
+      if (!composerRef.current?.contains(e.target as Node)) setQueueOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [queueShown])
 
   // A `/name` the menu knows, at the very start: what the mirror colours.
   const typedName = /^\/(\S+)/.exec(draft)?.[1]
@@ -314,8 +342,13 @@ export function ChatView({
         return
       }
     }
-    // Escape stops the agent at work, as in the terminal. Only once the menu has had
-    // its Escape: the one that closes it must not also cut the turn short.
+    if (event.key === 'Escape' && queueShown) {
+      event.preventDefault()
+      setQueueOpen(false)
+      return
+    }
+    // Escape stops the agent at work, as in the terminal. Only once the menu (or the
+    // queue) has had its Escape: the one that closes it must not also cut the turn short.
     if (event.key === 'Escape' && working && onInterrupt) {
       event.preventDefault()
       onInterrupt()
@@ -443,7 +476,13 @@ export function ChatView({
             </div>
           )}
 
-          <div className="relative">
+          <div ref={composerRef} className="relative">
+            {queueShown && (
+              // The `/` menu's place and motion: it rises from the card it belongs to.
+              <div className="absolute inset-x-0 bottom-full z-20 pb-2 animate-fade-in motion-reduce:animate-none">
+                <ChatQueueCard prompts={queue} labels={labels.queue} />
+              </div>
+            )}
             {menuOpen && (
               // Rises into place from the card it belongs to, on opening only: filtering
               // as the name is typed keeps it mounted, so it does not replay.
@@ -516,6 +555,27 @@ export function ChatView({
                   />
                 </div>
                 <ButtonIcon icon={ArrowUp} title={labels.send} onClick={send} tone={ready ? 'accent' : 'solid'} size="md" disabled={!ready} round />
+                {queue.length > 0 && (
+                  <span className="relative flex-shrink-0 animate-fade-in motion-reduce:animate-none">
+                    <ButtonIcon
+                      icon={ListOrdered}
+                      title={labels.queue.open}
+                      onClick={() => {
+                        setQueueOpen(!queueOpen)
+                        inputRef.current?.focus()
+                      }}
+                      tone="solid"
+                      size="md"
+                      active={queueShown}
+                      round
+                    />
+                    {/* How many, on the button's corner: it says there is a queue before it
+                        is opened. */}
+                    <span className="pointer-events-none absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-medium tabular-nums leading-none text-on-brand">
+                      {queue.length}
+                    </span>
+                  </span>
+                )}
               </div>
             </div>
           </div>

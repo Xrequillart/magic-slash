@@ -77,3 +77,33 @@ describe('toolSummary', () => {
     expect(toolSummary(undefined)).toBe('')
   })
 })
+
+describe('ChatTranscript queue', () => {
+  const op = (operation: string, content?: string) => line({ type: 'queue-operation', operation, timestamp: '2026-10-03T08:00:00.000Z', ...(content ? { content } : {}) })
+
+  it('replays the queue operations into what still waits', () => {
+    const t = new ChatTranscript()
+    expect(t.push(op('enqueue', 'first'))).toBe(true)
+    t.push(op('enqueue', 'second'))
+    t.push(op('enqueue', 'third'))
+    expect(t.queue.map((q) => q.text)).toEqual(['first', 'second', 'third'])
+    t.push(op('dequeue'))
+    t.push(op('remove', 'third'))
+    expect(t.queue).toEqual([{ id: 'q1', text: 'second', at: Date.parse('2026-10-03T08:00:00.000Z') }])
+  })
+
+  it('holds Claude Code\'s own items without showing them, so a dequeue takes them first', () => {
+    const t = new ChatTranscript()
+    expect(t.push(op('enqueue', '<task-notification>done</task-notification>'))).toBe(false)
+    t.push(op('enqueue', 'mine'))
+    t.push(op('dequeue'))
+    expect(t.queue.map((q) => q.text)).toEqual(['mine'])
+  })
+
+  it('shows a prompt taken in mid-turn, and not the notifications taken the same way', () => {
+    const t = new ChatTranscript()
+    t.push(line({ type: 'attachment', uuid: 'a1', attachment: { type: 'queued_command', prompt: 'Plus grand ?', commandMode: 'prompt', origin: { kind: 'human' } } }))
+    t.push(line({ type: 'attachment', uuid: 'a2', attachment: { type: 'queued_command', prompt: '<task-notification/>', commandMode: 'task-notification' } }))
+    expect(t.entries).toEqual([{ kind: 'user', id: 'a1', text: 'Plus grand ?' }])
+  })
+})

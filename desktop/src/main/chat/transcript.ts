@@ -1,4 +1,4 @@
-import type { ChatDiff, ChatEntry } from '../../types'
+import type { ChatDiff, ChatEntry, ChatQueuedPrompt } from '../../types'
 import { stripAnsi } from '../../strip-ansi'
 
 /**
@@ -20,6 +20,14 @@ import { stripAnsi } from '../../strip-ansi'
  * context, subagents), thinking blocks, and the system reminders Claude Code wraps
  * around a prompt. The format is Claude Code's, not ours, so every read is defensive:
  * a line it does not understand is skipped, never thrown on.
+ *
+ * THE QUEUE. A prompt typed while the agent works is held by Claude Code, and each move
+ * of that queue is a `queue-operation` line: `enqueue` with the text, `dequeue` when the
+ * turn ends and the head goes in as the next prompt, `remove` with the text when it is
+ * taken mid-turn (it then lands as a `queued_command` attachment) or pulled back to the
+ * input box. Replayed in order, they leave what is still waiting. What Claude Code queues
+ * for itself (task notifications, subagent hand-backs) comes wrapped in a tag and is not
+ * shown: it is not the user's.
  */
 
 /** Long tool outputs are clipped: the chat shows a glimpse, the terminal has the rest. */
@@ -43,18 +51,33 @@ export class ChatTranscript {
    * trace of it: see `settleInterruptedTurn` in terminal-manager.ts.
    */
   interruptedAt: number | null = null
+  /** The prompts still waiting, oldest first. Replaced on every change, never mutated. */
+  queue: ChatQueuedPrompt[] = []
   private readonly tools = new Map<string, Extract<ChatEntry, { kind: 'tool' }>>()
 
   /** Returns whether the entries changed. */
   push(line: string): boolean {
-    let data: { type?: string; uuid?: string; timestamp?: unknown; isMeta?: boolean; isSidechain?: boolean; content?: unknown; message?: { content?: unknown }; toolUseResult?: unknown }
+    let data: { type?: string; uuid?: string; timestamp?: unknown; isMeta?: boolean; isSidechain?: boolean; content?: unknown; message?: { content?: unknown }; toolUseResult?: unknown; operation?: unknown; attachment?: QueuedAttachment }
     try {
       data = JSON.parse(line)
     } catch {
       return false
     }
     if (!data || data.isMeta || data.isSidechain) return false
+    if (data.type === 'queue-operation') return this.moveQueue(data.operation, data.content, data.timestamp)
     const id = data.uuid ?? String(this.entries.length)
+
+    // A queued prompt taken in mid-turn is not written as a user message but as an
+    // attachment: it is still what the user said, at that point of the turn.
+    if (data.type === 'attachment') {
+      const a = data.attachment
+      const human = a?.type === 'queued_command' && a.commandMode === 'prompt' && (!a.origin || a.origin.kind === 'human')
+      const text = human && typeof a.prompt === 'string' ? userText(a.prompt) : ''
+      if (!text) return false
+      const at = typeof data.timestamp === 'string' ? Date.parse(data.timestamp) : NaN
+      this.entries.push({ kind: 'user', id, text, ...(Number.isFinite(at) ? { at } : {}) })
+      return true
+    }
 
     // A local command's output is written two ways, as a user message or as a
     // `system` line of its own; either way it is the command answering, not the user.
@@ -123,7 +146,38 @@ export class ChatTranscript {
     })
     return changed
   }
+
+  /**
+   * Every prompt held, Claude Code's own included: a `dequeue` names none and takes the
+   * head, which may be one of those.
+   */
+  private held: (ChatQueuedPrompt & { own: boolean })[] = []
+  private queued = 0
+
+  private moveQueue(operation: unknown, content: unknown, timestamp: unknown): boolean {
+    if (operation === 'enqueue') {
+      if (typeof content !== 'string' || !content.trim()) return false
+      const at = typeof timestamp === 'string' ? Date.parse(timestamp) : NaN
+      const own = content.trimStart().startsWith('<')
+      this.held = [...this.held, { id: `q${this.queued++}`, text: content.trim(), own, ...(Number.isFinite(at) ? { at } : {}) }]
+    } else if (operation === 'dequeue' && typeof content !== 'string') {
+      this.held = this.held.slice(1)
+    } else if (typeof content === 'string') {
+      const index = this.held.findIndex((q) => q.text === content.trim())
+      if (index >= 0) this.held = [...this.held.slice(0, index), ...this.held.slice(index + 1)]
+    } else {
+      // An operation this does not know, with nothing to say which: whatever was held
+      // went somewhere, and an empty queue is the safer guess than a stale one.
+      this.held = []
+    }
+    const next = this.held.filter((q) => !q.own).map(({ own: _own, ...q }) => q)
+    if (next.length === this.queue.length && next.every((q, i) => q.id === this.queue[i].id)) return false
+    this.queue = next
+    return true
+  }
 }
+
+type QueuedAttachment = { type?: string; prompt?: unknown; commandMode?: string; origin?: { kind?: string } }
 
 /**
  * What the user typed, as they typed it. A slash command is stored expanded into

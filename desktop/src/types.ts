@@ -959,6 +959,23 @@ export type ChatEntry =
     }
 
 /**
+ * A prompt Claude Code holds until the turn at work lets it in: typed while the agent
+ * was busy, in the chat or in the terminal. Read off the transcript's `queue-operation`
+ * lines (see main/chat/transcript.ts). `at`: when it was queued, epoch ms.
+ */
+export interface ChatQueuedPrompt {
+  id: string
+  text: string
+  at?: number
+}
+
+/** What the chat view is drawn from: the conversation, and what waits to join it. */
+export interface ChatSnapshot {
+  entries: ChatEntry[]
+  queue: ChatQueuedPrompt[]
+}
+
+/**
  * What a file edit changed, from Claude Code's own record of it (`toolUseResult`:
  * `structuredPatch` for an edit, the whole `content` for a file written new).
  * `lines` are unified-diff lines: a `+`, `-` or ` ` and the text.
