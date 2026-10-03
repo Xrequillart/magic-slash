@@ -40,6 +40,7 @@ import {
 
 describe('parseStatusLinePayload', () => {
   const fullPayload = JSON.stringify({
+    version: '2.1.3',
     model: { id: 'claude-opus-4-8', display_name: 'Opus 4.8' },
     context_window: {
       total_input_tokens: 140000,
@@ -67,6 +68,7 @@ describe('parseStatusLinePayload', () => {
     expect(usage.durationMs).toBe(754321)
     expect(usage.linesAdded).toBe(120)
     expect(usage.linesRemoved).toBe(45)
+    expect(usage.version).toBe('2.1.3')
   })
 
   it('uses the exact total_input_tokens (not derived from the rounded percentage)', () => {

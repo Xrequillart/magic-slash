@@ -95,6 +95,8 @@ export interface ChatViewProps {
    * preview sets it. Handed down as `--chat-code-size`, which both read.
    */
   codeFontSize?: number
+  /** The Claude Code running the session, shown under its mark while nothing is said. */
+  claudeCodeVersion?: string
   /** What the `/` menu offers. */
   commands?: ChatCommand[]
 }
@@ -122,7 +124,7 @@ const STICK_PX = 48
 export function ChatView({
   entries, working, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
   question, onAnswer, answering, commands = [], highlightLines, onPickFiles, resolveFile,
-  initialDraft, onDraftChange, codeFontSize,
+  initialDraft, onDraftChange, codeFontSize, claudeCodeVersion,
 }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -404,7 +406,14 @@ export function ChatView({
           style={{ bottom: dockHeight }}
         >
           <ClaudeCode className="h-24 w-24" style={{ color: CLAUDE_CORAL }} />
-          <p className="text-sm text-text-secondary/60">{labels.empty}</p>
+          <div className="flex flex-col items-center gap-1.5">
+            {/* The product's own name, not a sentence: it is not translated. */}
+            <p className="text-base font-medium text-ink">
+              Claude Code
+              {claudeCodeVersion && <span className="ml-1.5 font-normal text-text-secondary">v{claudeCodeVersion}</span>}
+            </p>
+            <p className="text-sm text-text-secondary/60">{labels.empty}</p>
+          </div>
         </div>
       )}
 

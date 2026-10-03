@@ -120,6 +120,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
             initialDraft={drafts.get(terminal.id)}
             onDraftChange={keepDraft}
             codeFontSize={codeFontSize}
+            claudeCodeVersion={terminal.metadata?.usage?.version}
             labels={{
               placeholder: t('chat.placeholder'),
               send: t('chat.send'),

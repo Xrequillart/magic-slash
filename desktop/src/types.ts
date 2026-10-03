@@ -921,6 +921,8 @@ export interface TerminalUsage {
    * a new session (`/clear`, a relaunch) announces its new file the same way.
    */
   transcriptPath?: string
+  /** version — the Claude Code running this session, e.g. "2.1.3". */
+  version?: string
 }
 
 /**
