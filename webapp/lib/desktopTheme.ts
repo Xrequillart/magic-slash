@@ -57,6 +57,8 @@ export const DESKTOP_THEMES: Record<DesktopThemeId, DesktopTheme> = {
       '--c-surface-strong': 'rgba(255, 255, 255, 0.1)',
       '--c-surface-sunken': 'rgba(0, 0, 0, 0.3)',
       '--c-surface-sunken-soft': 'rgba(0, 0, 0, 0.2)',
+
+      '--c-plate-lift': '9%',
       '--c-line-subtle': 'rgba(255, 255, 255, 0.05)',
       '--c-line-field': 'rgba(255, 255, 255, 0.08)',
       '--c-line': 'rgba(255, 255, 255, 0.1)',
@@ -91,6 +93,8 @@ export const DESKTOP_THEMES: Record<DesktopThemeId, DesktopTheme> = {
       '--c-surface-strong': 'rgba(255, 255, 255, 0.12)',
       '--c-surface-sunken': 'rgba(2, 7, 18, 0.35)',
       '--c-surface-sunken-soft': 'rgba(2, 7, 18, 0.22)',
+
+      '--c-plate-lift': '4%',
       '--c-line-subtle': 'rgba(255, 255, 255, 0.06)',
       '--c-line-field': 'rgba(255, 255, 255, 0.09)',
       '--c-line': 'rgba(255, 255, 255, 0.12)',
@@ -125,6 +129,8 @@ export const DESKTOP_THEMES: Record<DesktopThemeId, DesktopTheme> = {
       '--c-surface-strong': 'rgba(255, 255, 255, 0.12)',
       '--c-surface-sunken': 'rgba(18, 19, 21, 0.35)',
       '--c-surface-sunken-soft': 'rgba(18, 19, 21, 0.22)',
+
+      '--c-plate-lift': '9%',
       '--c-line-subtle': 'rgba(255, 255, 255, 0.06)',
       '--c-line-field': 'rgba(255, 255, 255, 0.09)',
       '--c-line': 'rgba(255, 255, 255, 0.12)',
@@ -159,6 +165,8 @@ export const DESKTOP_THEMES: Record<DesktopThemeId, DesktopTheme> = {
       '--c-surface-strong': 'rgba(255, 255, 255, 0.2)',
       '--c-surface-sunken': 'rgba(0, 0, 0, 0.6)',
       '--c-surface-sunken-soft': 'rgba(0, 0, 0, 0.45)',
+
+      '--c-plate-lift': '9%',
       '--c-line-subtle': 'rgba(255, 255, 255, 0.35)',
       '--c-line-field': 'rgba(255, 255, 255, 0.55)',
       '--c-line': 'rgba(255, 255, 255, 0.65)',
@@ -193,6 +201,8 @@ export const DESKTOP_THEMES: Record<DesktopThemeId, DesktopTheme> = {
       '--c-surface-strong': 'rgba(0, 0, 0, 0.08)',
       '--c-surface-sunken': 'rgba(0, 0, 0, 0.05)',
       '--c-surface-sunken-soft': 'rgba(0, 0, 0, 0.035)',
+
+      '--c-plate-lift': '9%',
       '--c-line-subtle': 'rgba(0, 0, 0, 0.07)',
       '--c-line-field': 'rgba(0, 0, 0, 0.12)',
       '--c-line': 'rgba(0, 0, 0, 0.14)',
@@ -227,6 +237,8 @@ export const DESKTOP_THEMES: Record<DesktopThemeId, DesktopTheme> = {
       '--c-surface-strong': 'rgba(12, 40, 80, 0.09)',
       '--c-surface-sunken': 'rgba(12, 40, 80, 0.055)',
       '--c-surface-sunken-soft': 'rgba(12, 40, 80, 0.04)',
+
+      '--c-plate-lift': '9%',
       '--c-line-subtle': 'rgba(12, 40, 80, 0.08)',
       '--c-line-field': 'rgba(12, 40, 80, 0.13)',
       '--c-line': 'rgba(12, 40, 80, 0.15)',
@@ -261,6 +273,8 @@ export const DESKTOP_THEMES: Record<DesktopThemeId, DesktopTheme> = {
       '--c-surface-strong': 'rgba(74, 54, 28, 0.09)',
       '--c-surface-sunken': 'rgba(74, 54, 28, 0.055)',
       '--c-surface-sunken-soft': 'rgba(74, 54, 28, 0.04)',
+
+      '--c-plate-lift': '9%',
       '--c-line-subtle': 'rgba(74, 54, 28, 0.09)',
       '--c-line-field': 'rgba(74, 54, 28, 0.14)',
       '--c-line': 'rgba(74, 54, 28, 0.16)',
@@ -295,6 +309,8 @@ export const DESKTOP_THEMES: Record<DesktopThemeId, DesktopTheme> = {
       '--c-surface-strong': 'rgba(0, 0, 0, 0.14)',
       '--c-surface-sunken': 'rgba(0, 0, 0, 0.07)',
       '--c-surface-sunken-soft': 'rgba(0, 0, 0, 0.05)',
+
+      '--c-plate-lift': '9%',
       '--c-line-subtle': 'rgba(0, 0, 0, 0.45)',
       '--c-line-field': 'rgba(0, 0, 0, 0.6)',
       '--c-line': 'rgba(0, 0, 0, 0.7)',
