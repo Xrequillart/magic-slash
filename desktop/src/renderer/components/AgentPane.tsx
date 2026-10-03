@@ -27,6 +27,12 @@ interface AgentPaneProps {
 /** Between the text and the Return that submits it, so the TUI takes the text as typed. */
 const SUBMIT_DELAY_MS = 60
 
+/**
+ * What was being typed in each agent's chat, by terminal id. The chat unmounts when its
+ * agent is left (or its view flipped to the terminal), and the draft has to outlive it.
+ */
+const drafts = new Map<string, string>()
+
 export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   const t = useT()
   const setDisplayMode = useStore((s) => s.setDisplayMode)
@@ -78,6 +84,11 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
 
   const showChat = mode === 'chat'
 
+  const keepDraft = useCallback((draft: string) => {
+    if (draft) drafts.set(terminal.id, draft)
+    else drafts.delete(terminal.id)
+  }, [terminal.id])
+
   return (
     <>
       {/* Hidden, not unmounted, under the chat: `visibility` keeps its box, so the TUI
@@ -104,6 +115,8 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
             onAnswer={answer}
             answering={answering}
             commands={commands}
+            initialDraft={drafts.get(terminal.id)}
+            onDraftChange={keepDraft}
             labels={{
               placeholder: t('chat.placeholder'),
               send: t('chat.send'),

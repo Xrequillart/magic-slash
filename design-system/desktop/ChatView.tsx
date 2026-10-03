@@ -83,6 +83,12 @@ export interface ChatViewProps {
   onAnswer?: (answer: MenuBarAnswer) => void
   /** An answer is being typed into the terminal. */
   answering?: boolean
+  /**
+   * What the composer opens with, and each change to it: the view forgets its draft when
+   * it unmounts, so a caller that wants it back (another agent, then this one) keeps it.
+   */
+  initialDraft?: string
+  onDraftChange?: (draft: string) => void
   /** What the `/` menu offers. */
   commands?: ChatCommand[]
 }
@@ -110,12 +116,16 @@ const STICK_PX = 48
 export function ChatView({
   entries, working, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
   question, onAnswer, answering, commands = [], highlightLines, onPickFiles, resolveFile,
+  initialDraft, onDraftChange,
 }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const mirrorRef = useRef<HTMLDivElement>(null)
   const stickRef = useRef(true)
-  const [draft, setDraft] = useState('')
+  const [draft, setDraft] = useState(initialDraft ?? '')
+  const onDraftChangeRef = useRef(onDraftChange)
+  onDraftChangeRef.current = onDraftChange
+  useEffect(() => onDraftChangeRef.current?.(draft), [draft])
 
   // THE `/` MENU is open while the draft is a slash and a name with no space yet, the
   // way Claude Code's own is, and until Escape closes it for this draft.
@@ -223,6 +233,12 @@ export function ChatView({
     const el = scrollRef.current
     if (el && stickRef.current) el.scrollTop = el.scrollHeight
   }, [entries, working, waiting, question, dockHeight])
+
+  // The caret goes after a draft brought back, to carry on typing it, not before it.
+  useLayoutEffect(() => {
+    const el = inputRef.current
+    if (el) el.selectionStart = el.selectionEnd = el.value.length
+  }, [])
 
   useEffect(() => {
     if (autoFocus) inputRef.current?.focus()
