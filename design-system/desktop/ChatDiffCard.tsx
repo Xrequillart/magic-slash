@@ -89,7 +89,7 @@ export function ChatDiffCard({ diff, highlightLines, truncatedLabel }: ChatDiffC
         <span className="min-w-0 flex-1 truncate font-mono text-xs font-medium text-ink" title={diff.path}>{name}</span>
         <DiffStat additions={diff.added} deletions={diff.removed} />
       </div>
-      <div className="max-h-96 overflow-auto py-1 font-mono text-[11px] leading-[18px]">
+      <div className="max-h-96 overflow-auto py-1 font-mono text-[length:var(--chat-code-size,11px)] leading-[1.6]">
         <table className="w-full border-collapse">
           <tbody>
             {rows.map((row) =>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type DragEvent, type KeyboardEvent } from 'react'
 import { ArrowUp, ChevronRight, CircleAlert, Check, FileText, Image as ImageIcon, Info, Paperclip, SquareTerminal, Wrench, X } from './icons'
 import { Button } from './Button'
 import { ButtonIcon } from './ButtonIcon'
@@ -90,6 +90,11 @@ export interface ChatViewProps {
    */
   initialDraft?: string
   onDraftChange?: (draft: string) => void
+  /**
+   * The size code is set in, in px: the diff cards and the fenced blocks, as the file
+   * preview sets it. Handed down as `--chat-code-size`, which both read.
+   */
+  codeFontSize?: number
   /** What the `/` menu offers. */
   commands?: ChatCommand[]
 }
@@ -117,7 +122,7 @@ const STICK_PX = 48
 export function ChatView({
   entries, working, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
   question, onAnswer, answering, commands = [], highlightLines, onPickFiles, resolveFile,
-  initialDraft, onDraftChange,
+  initialDraft, onDraftChange, codeFontSize,
 }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -349,6 +354,7 @@ export function ChatView({
   return (
     <div
       className="relative h-full bg-surface-sunken"
+      style={codeFontSize ? ({ '--chat-code-size': `${codeFontSize}px` } as CSSProperties) : undefined}
       onDragEnter={onDragEnter}
       onDragOver={(e) => { if (hasFiles(e)) e.preventDefault() }}
       onDragLeave={onDragLeave}

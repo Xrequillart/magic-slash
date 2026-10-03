@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChatView, type ChatCommand, type ChatViewEntry, type MenuBarAnswer } from '@ds/desktop'
-import type { TerminalInfo, TrayQuestion } from '../../types'
+import { DEFAULT_CODE_FONT_SIZE, type TerminalInfo, type TrayQuestion } from '../../types'
 import { builtInCommands, mergeCommands, opensInTerminal, skillCommands } from './chatCommands'
 import { useStore } from '../store'
 import { useT } from '../i18n'
@@ -73,6 +73,8 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
 
   // In the code theme the person chose, like every other block of code in the app.
   const { shikiTheme } = useCodeAppearance()
+  // And in the size the person chose for code (Settings → Code & reviews).
+  const codeFontSize = useStore((s) => s.config?.codeFontSize) ?? DEFAULT_CODE_FONT_SIZE
   const highlight = useCallback(
     (code: string, lang: string | undefined) => window.electronAPI.terminal.highlightCode(code, lang, shikiTheme),
     [shikiTheme]
@@ -117,6 +119,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
             commands={commands}
             initialDraft={drafts.get(terminal.id)}
             onDraftChange={keepDraft}
+            codeFontSize={codeFontSize}
             labels={{
               placeholder: t('chat.placeholder'),
               send: t('chat.send'),

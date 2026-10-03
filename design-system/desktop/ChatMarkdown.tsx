@@ -89,9 +89,9 @@ function CodeBlock({ code, lang, highlight }: { code: string; lang?: string; hig
       )}
       {html ? (
         // Shiki's output: the code escaped, wrapped in coloured spans.
-        <div className={`overflow-x-auto px-3 py-2.5 text-xs leading-relaxed ${SHIKI_RESET}`} dangerouslySetInnerHTML={{ __html: html }} />
+        <div className={`overflow-x-auto px-3 py-2.5 text-[length:var(--chat-code-size,12px)] leading-relaxed ${SHIKI_RESET}`} dangerouslySetInnerHTML={{ __html: html }} />
       ) : (
-        <pre className="m-0 overflow-x-auto px-3 py-2.5 font-mono text-xs leading-relaxed text-ink">{code}</pre>
+        <pre className="m-0 overflow-x-auto px-3 py-2.5 font-mono text-[length:var(--chat-code-size,12px)] leading-relaxed text-ink">{code}</pre>
       )}
     </div>
   )
