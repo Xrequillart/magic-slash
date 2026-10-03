@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.111.2] - 2026-10-03
+
+### Added
+
+- **Desktop**: Open the chat thread on a claude code header with its start time
+- **Desktop**: Show the session's claude code version in an empty chat
+- **Desktop**: Set chat code in the code font size from settings
+- **Desktop**: Show the claude code mark in an empty chat
+
+### Changed
+
+- **Desktop**: Soften the raised plate on the midnight theme
+
+### Fixed
+
+- **Desktop**: Mirror the plate lift in the webapp theme copy
+- **Desktop**: Settle an agent's turn when escape interrupts it
+- **Desktop**: Keep each agent's chat draft across session switches
+- **Desktop**: Report an agent as waiting only when it is blocked on the user
+- **Desktop**: Refit the chat composer height when its width or font settles
+
 ## [0.111.1] - 2026-10-03
 
 ### Added
@@ -3721,6 +3742,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.111.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.2
 [0.111.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.1
 [0.111.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.0
 [0.110.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.110.2
