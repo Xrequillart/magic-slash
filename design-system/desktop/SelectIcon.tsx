@@ -364,7 +364,9 @@ export function SelectIcon({
     <>
       {/* A PILL AND NOT A SQUARE, and it is the one place this parts from the ladder's
           width: the chevron needs room the mark does not. The height and the radius
-          are the rung's own, so it stands level with the buttons beside it. */}
+          are the rung's own, so it stands level with the buttons beside it. A FIELD
+          takes `Label`'s padding and gap: it sits among chips (the context card's model,
+          beside "Claude Code"), and one that stood wider read as a different control. */}
       <button
         ref={triggerRef}
         type="button"
@@ -375,7 +377,7 @@ export function SelectIcon({
         aria-expanded={isOpen}
         aria-controls={isOpen ? panelId : undefined}
         className={`${shape.h} ${round ? 'rounded-full' : shape.radius} inline-flex items-center ${
-          value ? 'justify-between gap-2 px-3' : `justify-center gap-0.5 ${round ? 'px-2.5' : 'px-1.5'}`
+          value ? 'justify-between gap-1.5 px-2' : `justify-center gap-0.5 ${round ? 'px-2.5' : 'px-1.5'}`
         } border-none cursor-pointer transition-colors flex-shrink-0
           ${isOpen ? toneSpec.open : toneSpec.rest} ${className}`}
       >
