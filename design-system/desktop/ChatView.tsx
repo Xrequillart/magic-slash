@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from 'react'
 import { ArrowUp, ChevronRight, CircleAlert, Check, FileText, Image as ImageIcon, Info, Paperclip, SquareTerminal, Wrench, X } from './icons'
 import { Button } from './Button'
 import { ButtonIcon } from './ButtonIcon'
@@ -229,12 +229,30 @@ export function ChatView({
   }, [autoFocus])
 
   // The box grows with what is typed, up to a third of the view.
-  useLayoutEffect(() => {
+  const fitHeight = useCallback(() => {
     const el = inputRef.current
     if (!el) return
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`
-  }, [draft])
+  }, [])
+  useLayoutEffect(fitHeight, [draft, fitHeight])
+  // AND WITH ITS OWN WIDTH, AND THE FONT: at launch the view mounts before the pane has
+  // its final width and before the font is in, and the placeholder measured then wraps
+  // to a second line that would stay until the next keystroke. Only a width change
+  // re-measures, since setting the height fires the observer too.
+  useLayoutEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    let width = el.offsetWidth
+    const observer = new ResizeObserver(() => {
+      if (el.offsetWidth === width) return
+      width = el.offsetWidth
+      fitHeight()
+    })
+    observer.observe(el)
+    document.fonts?.ready.then(fitHeight).catch(() => {})
+    return () => observer.disconnect()
+  }, [fitHeight])
 
   const send = () => {
     const text = draft.trim()
