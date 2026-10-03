@@ -118,6 +118,24 @@ export function updateTerminalStateFromHook(terminalId: string, state: string) {
   }
 }
 
+/**
+ * Escape stopped this agent's turn (the transcript says so, see ChatTranscript): it is
+ * idle again. Claude Code fires no Stop hook on an interrupt, so without this the agent
+ * stays `working` until its next prompt, and the chat says Claude is at work while the
+ * terminal waits for input.
+ *
+ * Answers whether it did. Only a turn that was under way when the interrupt was written: one begun after it (a
+ * prompt sent straight away) is not the one that was stopped.
+ */
+export function settleInterruptedTurn(terminalId: string, at: number): boolean {
+  const terminal = terminals.get(terminalId)
+  // `waiting` too: Escape on a permission prompt refuses it and stops the turn the same way.
+  if (!terminal || (terminal.state !== 'working' && terminal.state !== 'waiting')) return false
+  if (at < (lastActivityTime.get(terminalId) ?? 0)) return false
+  updateTerminalStateFromHook(terminalId, 'idle')
+  return true
+}
+
 // Get the default shell for the current platform
 function getDefaultShell(): string {
   if (process.platform === 'win32') {

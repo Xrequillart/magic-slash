@@ -27,10 +27,22 @@ const MAX_OUTPUT = 4000
 /** A diff card past this many lines is cut, and says so. */
 const MAX_DIFF_LINES = 400
 
+/**
+ * What Claude Code writes, as a user line, when Escape stops a turn ("…by user", or
+ * "…by user for tool use" when a tool was running). Its, not the user's.
+ */
+const INTERRUPTED = /^\[Request interrupted by user[^\]]*\]$/
+
 type Block = { type?: string; text?: string; name?: string; id?: string; input?: Record<string, unknown>; tool_use_id?: string; content?: unknown; is_error?: boolean }
 
 export class ChatTranscript {
   readonly entries: ChatEntry[] = []
+  /**
+   * When the turn the transcript ends on was interrupted (epoch ms), or null when it
+   * ends on anything else. An interrupt fires no Stop hook, so this line is the only
+   * trace of it: see `settleInterruptedTurn` in terminal-manager.ts.
+   */
+  interruptedAt: number | null = null
   private readonly tools = new Map<string, Extract<ChatEntry, { kind: 'tool' }>>()
 
   /** Returns whether the entries changed. */
@@ -57,6 +69,16 @@ export class ChatTranscript {
 
     const content = data.message?.content
     const blocks: Block[] = typeof content === 'string' ? [{ type: 'text', text: content }] : Array.isArray(content) ? content : []
+
+    const interrupt = data.type === 'user' && blocks.find((b) => b?.type === 'text' && typeof b.text === 'string' && INTERRUPTED.test(b.text.trim()))
+    if (interrupt) {
+      const at = typeof data.timestamp === 'string' ? Date.parse(data.timestamp) : NaN
+      this.interruptedAt = Number.isFinite(at) ? at : Date.now()
+      this.entries.push({ kind: 'notice', id, text: interrupt.text!.trim().slice(1, -1) })
+      return true
+    }
+    // Anything else said after it means the session moved on.
+    this.interruptedAt = null
 
     let changed = false
     blocks.forEach((block, i) => {

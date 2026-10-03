@@ -26,6 +26,16 @@ describe('ChatTranscript', () => {
     expect(t.entries[1]).not.toHaveProperty('at')
   })
 
+  it('shows an interrupt as a notice and remembers the turn ended on it', () => {
+    const t = new ChatTranscript()
+    t.push(line({ type: 'user', uuid: 'u1', message: { content: 'Go' } }))
+    t.push(line({ type: 'user', uuid: 'i', timestamp: '2026-10-03T08:00:00.000Z', message: { content: [{ type: 'text', text: '[Request interrupted by user for tool use]' }] } }))
+    expect(t.entries[1]).toEqual({ kind: 'notice', id: 'i', text: 'Request interrupted by user for tool use' })
+    expect(t.interruptedAt).toBe(Date.parse('2026-10-03T08:00:00.000Z'))
+    t.push(line({ type: 'user', uuid: 'u2', message: { content: 'Again' } }))
+    expect(t.interruptedAt).toBeNull()
+  })
+
   it('folds a tool result into its call', () => {
     const t = new ChatTranscript()
     t.push(line({ type: 'assistant', uuid: 'a', message: { content: [{ type: 'tool_use', id: 'tu1', name: 'Bash', input: { command: 'ls -la\necho' } }] } }))

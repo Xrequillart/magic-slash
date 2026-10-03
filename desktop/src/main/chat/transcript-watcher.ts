@@ -32,12 +32,19 @@ interface Watch {
 }
 
 type ChatListener = (terminalId: string, entries: ChatEntry[]) => void
+type InterruptListener = (terminalId: string, at: number) => void
 
 const watches = new Map<string, Watch>()
 let chatListener: ChatListener | null = null
+let interruptListener: InterruptListener | null = null
 
 export function setChatListener(listener: ChatListener): void {
   chatListener = listener
+}
+
+/** Told when a read leaves the transcript ending on an interrupted turn. */
+export function setInterruptListener(listener: InterruptListener): void {
+  interruptListener = listener
 }
 
 export function getChatEntries(terminalId: string): ChatEntry[] {
@@ -98,6 +105,10 @@ function readNew(terminalId: string, watch: Watch): void {
       if (line && watch.transcript.push(line)) changed = true
     }
     if (changed) scheduleEmit(terminalId, watch)
+    // Read on the batch's last state, so a prompt sent right after the interrupt, in
+    // the same read, does not get its turn settled under it.
+    const interruptedAt = watch.transcript.interruptedAt
+    if (changed && interruptedAt !== null) interruptListener?.(terminalId, interruptedAt)
   } catch {
     // Not written yet: the next poll will find it.
   } finally {

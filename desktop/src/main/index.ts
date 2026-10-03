@@ -3,14 +3,14 @@ import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupRepoHandlers } from './ipc/repo-handlers'
 import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
-import { setChatListener, watchTranscript } from './chat/transcript-watcher'
+import { setChatListener, setInterruptListener, watchTranscript } from './chat/transcript-watcher'
 import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setWorkflowNextProvider, setWorkflowActionProvider, setCustomSkillContextProvider, setUserPromptListener, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback } from './hooks/status-server'
 import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion, setPendingQuestionListener } from './questions/pending-questions'
 import { answerPendingQuestion } from './questions/answer-question'
 import { recordSkillInvocation } from './usage/skill-invocations'
 import { installShellIntegration } from './hooks/shell-integration'
 import { configureClaudeHooks, configureStatusLine } from './hooks/claude-hooks-config'
-import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook, writeToTerminal, getTerminalBuffer } from './pty/terminal-manager'
+import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook, settleInterruptedTurn, writeToTerminal, getTerminalBuffer } from './pty/terminal-manager'
 import type { MenuCommand, TerminalMetadata, TerminalUsage, TrayAnswerChoice, TrayAnswerResult, TrayState, TrayUpdate } from '../types'
 import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, checkForUpdates, isUpdating, getUpdateStatus } from './updater'
 import { updateSkills } from './skills-updater'
@@ -791,6 +791,11 @@ async function initializeHooksAndSessions() {
 
     setChatListener((terminalId, entries) => {
       if (mainWindow) mainWindow.webContents.send('terminal:chat', { id: terminalId, entries })
+    })
+    // Escape fires no hook: the transcript is what says the turn stopped, and whatever
+    // question it was blocked on went with it.
+    setInterruptListener((terminalId, at) => {
+      if (settleInterruptedTurn(terminalId, at)) clearPendingQuestion(terminalId)
     })
     // The question the chat view draws over its composer.
     setPendingQuestionListener((terminalId, question) => {
