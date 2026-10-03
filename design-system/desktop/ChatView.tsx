@@ -4,6 +4,7 @@ import { Button } from './Button'
 import { ButtonIcon } from './ButtonIcon'
 import { Loader } from './Loader'
 import { RAISED_PLATE } from './plate'
+import { CLAUDE_CORAL, ClaudeCode } from './brand'
 import { ChatMarkdown, type ChatHighlighter } from './ChatMarkdown'
 import { ChatDiffCard, type ChatDiffData, type ChatLineHighlighter } from './ChatDiffCard'
 import { ChatQuestion, type ChatQuestionData, type ChatQuestionLabels } from './ChatQuestion'
@@ -362,9 +363,6 @@ export function ChatView({
         className="h-full overflow-y-auto"
       >
         <div className="mx-auto max-w-3xl px-6 pt-6 flex flex-col gap-3" style={{ paddingBottom: dockHeight + DOCK_GAP_PX }}>
-          {entries.length === 0 && !working && (
-            <p className="py-16 text-center text-sm text-text-secondary/60">{labels.empty}</p>
-          )}
           {entries.map((entry) =>
             entry.kind === 'tool' && entry.diff ? (
               <ChatDiffCard key={entry.id} diff={entry.diff} highlightLines={highlightLines} truncatedLabel={labels.diffTruncated} />
@@ -391,6 +389,18 @@ export function ChatView({
           )}
         </div>
       </div>
+
+      {/* AN EMPTY SESSION shows Claude Code's mark, centred in what the composer leaves
+          of the pane, not in the pane itself. */}
+      {entries.length === 0 && !working && !question && (
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center justify-center gap-5 px-6 text-center"
+          style={{ bottom: dockHeight }}
+        >
+          <ClaudeCode className="h-24 w-24" style={{ color: CLAUDE_CORAL }} />
+          <p className="text-sm text-text-secondary/60">{labels.empty}</p>
+        </div>
+      )}
 
       {/* The dock lets clicks through everywhere but on what it holds, so the thread under
           its empty margins stays scrollable and selectable. */}
