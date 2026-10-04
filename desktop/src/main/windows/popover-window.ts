@@ -1,6 +1,5 @@
 import { BrowserWindow, screen } from 'electron'
 import { join } from 'path'
-import { appearanceArguments } from '../appearance'
 
 let popoverWindow: BrowserWindow | null = null
 
@@ -52,8 +51,6 @@ export function createPopoverWindow(): BrowserWindow {
     visualEffectState: 'active',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      // Same theme as the main window, from its first frame (see main/theme.ts).
-      additionalArguments: appearanceArguments(),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,

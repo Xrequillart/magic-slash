@@ -1,6 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import { BrowserWindow, nativeTheme } from 'electron'
+import { BrowserWindow, ipcMain, nativeTheme } from 'electron'
 import { syncClaudeTheme } from './claude-theme'
 import { THEMES } from '../themes'
 import { CONFIG_DIR } from './config/config'
@@ -43,7 +43,7 @@ let currentZoom_: number = DEFAULT_ZOOM
 /**
  * Who to tell when the language changes. A local Set rather than a direct call
  * into the menu and tray modules: those import this one (for
- * `appearanceArguments`), and reaching back would close the circle.
+ * `currentTheme`), and reaching back would close the circle.
  */
 const languageListeners = new Set<() => void>()
 
@@ -87,6 +87,12 @@ export function initAppearance(): void {
   // launched in the first seconds should already find its theme on disk. If the
   // cloud then disagrees, hydration calls applyTheme() and this is rewritten.
   syncClaudeTheme(currentTheme_)
+  // Here rather than with the other handlers: it must answer before any window's
+  // preload runs, and a sync request nobody answers blocks that renderer.
+  ipcMain.removeAllListeners('appearance:current')
+  ipcMain.on('appearance:current', (event) => {
+    event.returnValue = currentAppearance()
+  })
 }
 
 export function currentTheme(): ThemeId {
@@ -97,16 +103,25 @@ export function currentZoom(): number {
   return currentZoom_
 }
 
+/** What the renderer needs to paint its first frame, as the preload asks for it. */
+export interface CurrentAppearance {
+  theme: ThemeId
+  zoom: number
+  language: LanguageId
+}
+
 /**
- * Arguments handed to every window's preload, so the renderer knows the
- * appearance synchronously — before its first paint, and without a round trip.
+ * Read SYNCHRONOUSLY by every window's preload (`appearance:current`), so the
+ * renderer knows the appearance before its first paint.
+ *
+ * Asked for rather than handed over as launch arguments, which it once was: a
+ * window's `additionalArguments` are frozen when it is created, so a reload (⌘R, or
+ * the dev server's) repainted the theme the app was LAUNCHED in. The main process
+ * still held the newer one, so picking it again changed nothing here, broadcast
+ * nothing, and the click looked dead until a second, different theme was chosen.
  */
-export function appearanceArguments(): string[] {
-  return [
-    `--magic-theme=${currentTheme_}`,
-    `--magic-zoom=${currentZoom_}`,
-    `--magic-language=${currentLanguage()}`,
-  ]
+function currentAppearance(): CurrentAppearance {
+  return { theme: currentTheme_, zoom: currentZoom_, language: currentLanguage() }
 }
 
 /**

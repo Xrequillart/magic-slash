@@ -40,7 +40,7 @@ import { AgentStateAggregator } from './tray/agent-state-aggregator'
 import { destroyPopover, hidePopover, resizePopover } from './windows/popover-window'
 import { hideQuickLaunch, resizeQuickLaunch, destroyQuickLaunch } from './windows/quick-launch-window'
 import { reRegisterSpotlightShortcut } from './spotlight-shortcut'
-import { initAppearance, appearanceArguments, applyZoom, onLanguageChanged, setZoomWindow, stepZoom, currentTheme, themeBackground, setThemedWindow } from './appearance'
+import { initAppearance, applyZoom, onLanguageChanged, setZoomWindow, stepZoom, currentTheme, themeBackground, setThemedWindow } from './appearance'
 import { t } from './i18n'
 import { setupProfileHandlers } from './ipc/profile-handlers'
 import { setupUsageHandlers } from './ipc/usage-handlers'
@@ -223,9 +223,6 @@ function createWindow() {
     backgroundColor: themeBackground(currentTheme()),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      // Hands the preload the current theme, so the renderer paints in it from
-      // its very first frame instead of flashing the default and correcting.
-      additionalArguments: appearanceArguments(),
       nodeIntegration: false,
       contextIsolation: true,
       backgroundThrottling: false,

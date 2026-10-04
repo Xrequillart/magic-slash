@@ -942,7 +942,7 @@ export function updateSplitActive(active: boolean): Config {
 /**
  * Store the chosen appearance. The cloud is the reference (the theme follows the
  * user from machine to machine); the main process separately mirrors it locally
- * so the next launch can paint before the config has hydrated — see main/theme.ts.
+ * so the next launch can paint before the config has hydrated — see main/appearance.ts.
  */
 export function updateTheme(theme: ThemeId): Config {
   const config = readConfig()

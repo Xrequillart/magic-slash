@@ -1122,18 +1122,22 @@ const orgApi = {
 
 // Expose APIs to renderer
 /**
- * Appearance. `initial` is handed over as a launch argument by the main process
- * (see main/theme.ts) rather than fetched, so the renderer can paint the right
- * theme on its first frame instead of flashing the default and correcting.
+ * Appearance. `initial` is read synchronously from the main process rather than
+ * fetched, so the renderer can paint the right theme on its first frame instead of
+ * flashing the default and correcting. Asked on every load, not frozen into the
+ * window's launch arguments: a reload must paint the theme in force NOW, or it
+ * diverges from the main process (see `currentAppearance` in main/appearance.ts).
  */
-function launchArgument(name: string): string | null {
-  const prefix = `--magic-${name}=`
-  const arg = process.argv.find((a) => a.startsWith(prefix))
-  return arg ? arg.slice(prefix.length) : null
+function currentAppearance(): { theme?: string; zoom?: number; language?: string } {
+  try {
+    return ipcRenderer.sendSync('appearance:current') ?? {}
+  } catch {
+    return {}
+  }
 }
 
 const themeApi = {
-  initial: (): string | null => launchArgument('theme'),
+  initial: (): string | null => currentAppearance().theme ?? null,
 
   onChanged: (callback: (theme: ThemeId) => void) => {
     const listener = (_event: IpcRendererEvent, theme: ThemeId) => callback(theme)
@@ -1149,7 +1153,7 @@ const themeApi = {
  * there is no `set` here.
  */
 const languageApi = {
-  initial: (): string | null => launchArgument('language'),
+  initial: (): string | null => currentAppearance().language ?? null,
 
   onChanged: (callback: (language: LanguageId) => void) => {
     const listener = (_event: IpcRendererEvent, language: LanguageId) => callback(language)
@@ -1164,9 +1168,8 @@ const languageApi = {
  */
 const zoomApi = {
   initial: (): number | null => {
-    const raw = launchArgument('zoom')
-    const value = raw === null ? NaN : Number(raw)
-    return Number.isFinite(value) ? value : null
+    const value = currentAppearance().zoom
+    return typeof value === 'number' && Number.isFinite(value) ? value : null
   },
 
   set: (zoom: number): Promise<number> => ipcRenderer.invoke('appearance:setZoom', { zoom }),
