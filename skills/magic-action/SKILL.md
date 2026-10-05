@@ -6,7 +6,7 @@ argument-hint: <action-id> then key=value context lines
 allowed-tools: Bash(*), mcp__slack__*, mcp__claude_ai_Slack__*
 ---
 
-# magic-slash v0.113.2 - action
+# magic-slash v0.113.3 - action
 
 ## What this is
 

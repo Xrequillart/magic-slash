@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.113.3] - 2026-10-05
+
+### Added
+
+- **Desktop**: Show a loader in the chat while a resumed session loads
+
+### Fixed
+
+- **Desktop**: Keep the session history in creation order when resuming one
+
 ## [0.113.2] - 2026-10-05
 
 ### Added
@@ -3849,6 +3859,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.113.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.113.3
 [0.113.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.113.2
 [0.113.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.113.1
 [0.113.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.113.0
