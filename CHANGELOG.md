@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.112.0] - 2026-10-05
+
+### Added
+
+- **Desktop**: Animate the claude code robot on the empty chat
+- **Desktop**: Cap chat diff cards at 30 lines and grow them into a dialog
+- **Pr**: Leave out the template sections the change does not touch
+- **Desktop**: Show the interface zoom level in the title bar
+
+### Changed
+
+- **Deps**: Bump globals from 17.12.0 to 17.13.0
+- **Deps**: Bump vitest from 5.0.2 to 5.0.3
+- **Deps**: Bump typescript-eslint
+
+### Fixed
+
+- **Desktop**: Paint the spec card on the same plate as the other sidebar cards
+
 ## [0.111.10] - 2026-10-05
 
 ### Added
@@ -3807,6 +3826,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.112.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.112.0
 [0.111.10]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.10
 [0.111.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.9
 [0.111.8]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.8
