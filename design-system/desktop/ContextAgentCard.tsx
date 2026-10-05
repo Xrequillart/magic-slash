@@ -1,6 +1,6 @@
 import { ButtonIcon } from './ButtonIcon'
 import { Card } from './Card'
-import { Clock, Cpu, DollarSign, Gauge, Minus, Plus } from './icons'
+import { Clock, Cpu, DollarSign, Gauge, Minus, Plus, RotateCcw } from './icons'
 import { Label } from './Label'
 import { ProgressBar } from './ProgressBar'
 import { PROGRESS_TEXT, progressTone } from './progressTones'
@@ -62,6 +62,18 @@ export interface ContextAgentModelPicker {
   }
 }
 
+/**
+ * A FRESH CLAUDE CODE in the same agent: what a double Ctrl+C does in the terminal view,
+ * as a button. The agent keeps its terminal, its repositories and its place; the
+ * conversation does not. Absent, there is no button (the showcase site has nothing to
+ * restart).
+ */
+export interface ContextAgentRestart {
+  onRestart: () => void
+  /** The button's tooltip and accessible name — "Restart Claude Code". */
+  label: string
+}
+
 export interface ContextAgentCardProps {
   /** 0 to 100. An agent that has not spoken yet has used 0%, and says so. */
   contextPercent: number
@@ -70,6 +82,7 @@ export interface ContextAgentCardProps {
   /** The model's name, printed verbatim. */
   model?: string
   modelPicker?: ContextAgentModelPicker
+  restart?: ContextAgentRestart
   /** The run's cost, already in the reader's currency format. */
   cost?: string
   /** How long it has taken, already formatted. */
@@ -107,6 +120,7 @@ export function ContextAgentCard({
   contextDetail,
   model,
   modelPicker,
+  restart,
   cost,
   duration,
   transition = true,
@@ -188,11 +202,16 @@ export function ContextAgentCard({
             </Label>
           )
         )}
+        {/* `ml-auto` on the first of the two buttons, so the pair sits together at the
+            end of the row whichever of them is drawn. */}
+        {restart && (
+          <ButtonIcon icon={RotateCcw} title={restart.label} onClick={restart.onRestart} className="ml-auto" />
+        )}
         <ButtonIcon
           icon={Minus}
           title={labels.minimize}
           onClick={() => onMinimizedChange(true)}
-          className="ml-auto"
+          className={restart ? '' : 'ml-auto'}
         />
       </div>
 

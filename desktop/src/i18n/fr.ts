@@ -2224,6 +2224,7 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.context': 'Contexte',
   'agentInfo.tokensOf': '{used} / {total} tokens',
   'agentInfo.model.change': 'Changer de modèle',
+  'agentInfo.restart': 'Relancer Claude Code',
   'agentInfo.model.loading': 'Claude Code liste ses modèles…',
   'agentInfo.model.unavailable': 'Claude Code n’a pas répondu',
   'agentInfo.noActiveAgent': 'Aucune session active',

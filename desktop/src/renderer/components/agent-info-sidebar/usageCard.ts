@@ -127,11 +127,18 @@ export function useUsageCard({
         })
       : undefined
 
+  // The same respawn a double Ctrl+C triggers in the terminal (Claude Code exits, the
+  // agent brings it back), minus the crash budget it would otherwise eat into.
+  const onRestart = useCallback(() => {
+    if (terminalId) void window.electronAPI.terminal.relaunchInCwd(terminalId)
+  }, [terminalId])
+
   return {
     contextPercent: contextPercent ?? 0,
     contextDetail: detail,
     model,
     modelPicker,
+    restart: terminalId ? { onRestart, label: t('agentInfo.restart') } : undefined,
     cost: typeof costUsd === 'number' ? formatUsd(costUsd, locale) : undefined,
     duration: typeof durationMs === 'number' ? formatDuration(durationMs, t) : undefined,
     minimized,

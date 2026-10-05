@@ -2330,6 +2330,7 @@ export const en = {
   'agentInfo.context': 'Context',
   'agentInfo.tokensOf': '{used} / {total} tokens',
   'agentInfo.model.change': 'Change model',
+  'agentInfo.restart': 'Restart Claude Code',
   'agentInfo.model.loading': 'Claude Code is listing its models…',
   'agentInfo.model.unavailable': 'Claude Code did not answer',
   'agentInfo.noActiveAgent': 'No active session',
