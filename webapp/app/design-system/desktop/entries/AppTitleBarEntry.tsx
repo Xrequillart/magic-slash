@@ -64,6 +64,12 @@ const PROPS: PropRow[] = [
       'A standing notice before the quick-settings toggle — “Notifications off”. TitleBarAction’s shape because it is one: a mark and a word on a plate, and a click that does something about it. It says something about the whole app for as long as it is true, and the bar is the one strip on screen for as long as the app is.',
   },
   {
+    name: 'zoom',
+    type: "Omit<TitleBarAction, 'icon'>",
+    description:
+      'The interface scale, between the quick-settings toggle and the account — “125%”. A word with no mark: the number is the whole message. The caller passes it only while the scale is not 100%, and the app spends the click on putting it back.',
+  },
+  {
     name: 'account',
     type: 'TitleBarAccount',
     description:
