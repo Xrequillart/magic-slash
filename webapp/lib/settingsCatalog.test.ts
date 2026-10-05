@@ -38,6 +38,7 @@ const EVERY_FIELD: (keyof AdminUserSettings)[] = [
   'sidebarCompact',
   'agentSort',
   'infoSidebarOnCreate',
+  'chatStickyPrompt',
   'usageCardEnabled',
   'usageCardMinimized',
   'agentContextEnabled',

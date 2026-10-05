@@ -79,6 +79,8 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   const { shikiTheme } = useCodeAppearance()
   // And in the size the person chose for code (Settings → Code & reviews).
   const codeFontSize = useStore((s) => s.config?.codeFontSize) ?? DEFAULT_CODE_FONT_SIZE
+  // On unless turned off (Settings → New sessions).
+  const stickyPrompt = useStore((s) => s.config?.chatStickyPrompt) !== false
   const highlight = useCallback(
     (code: string, lang: string | undefined) => window.electronAPI.terminal.highlightCode(code, lang, shikiTheme),
     [shikiTheme]
@@ -136,6 +138,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
             onDraftChange={keepDraft}
             restoredDraft={restored}
             onDraftRestored={() => setRestored(null)}
+            stickyPrompt={stickyPrompt}
             codeFontSize={codeFontSize}
             claudeCodeVersion={terminal.metadata?.usage?.version}
             startedLabel={startedLabel}

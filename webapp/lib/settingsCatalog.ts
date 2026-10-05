@@ -110,6 +110,7 @@ export interface AdminUserSettings extends UserSettings {
   atlassianIntegrationEnabled: boolean | null
   agentSort: string | null
   infoSidebarOnCreate: boolean | null
+  chatStickyPrompt: boolean | null
 }
 
 /**
@@ -139,6 +140,8 @@ export interface AdminUserSettings extends UserSettings {
  *    ordering hook both read an absent column as. desktop/src/types.ts
  *  * infoSidebarOnCreate — the `!== false` that `selectInfoSidebarOpen` resolves an
  *    undecided agent with, i.e. the panel opens. desktop/src/renderer/store/index.ts
+ *  * chatStickyPrompt — the `!== false` the chat view reads it with, i.e. pinned.
+ *    desktop/src/renderer/components/AgentPane.tsx
  */
 export const SETTING_DEFAULTS: Record<keyof AdminUserSettings, string | number | boolean> = {
   ...DEFAULTS,
@@ -148,6 +151,7 @@ export const SETTING_DEFAULTS: Record<keyof AdminUserSettings, string | number |
   atlassianIntegrationEnabled: false,
   agentSort: 'recent',
   infoSidebarOnCreate: true,
+  chatStickyPrompt: true,
 }
 
 export interface SettingGroup {
@@ -208,6 +212,7 @@ export const SETTING_GROUPS: SettingGroup[] = [
       { field: 'confirmAgentArchive', label: 'Confirm before archiving' },
       { field: 'infoSidebarOnCreate', label: 'Info panel open' },
       { field: 'defaultDisplayMode', label: 'Shown as' },
+      { field: 'chatStickyPrompt', label: 'Prompt pinned in the chat' },
     ],
   },
   {

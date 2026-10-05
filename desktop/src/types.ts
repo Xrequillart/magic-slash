@@ -2119,6 +2119,11 @@ export interface Config {
    */
   defaultDisplayMode?: AgentDisplayMode
   /**
+   * Whether the chat view keeps the prompt of the turn being read pinned at its top.
+   * ON by default, so absent = never touched = pinned, and the gate tests `!== false`.
+   */
+  chatStickyPrompt?: boolean
+  /**
    * Whether `/magic:plan` sessions (the spec and the tickets it produced) are
    * uploaded to the cloud. ON by default, like usageLogsEnabled above, so only an
    * EXPLICIT false opts out.

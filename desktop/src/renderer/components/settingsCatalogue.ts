@@ -226,6 +226,11 @@ export const SETTINGS_CATALOGUE: readonly SettingsSearchEntry[] = [
   },
   {
     tab: 'agents',
+    labelKey: 'settings.chat.stickyPrompt.label',
+    helpKey: 'settings.chat.stickyPrompt.help',
+  },
+  {
+    tab: 'agents',
     labelKey: 'settings.application.infoSidebar.label',
     helpKey: 'settings.application.infoSidebar.help',
   },

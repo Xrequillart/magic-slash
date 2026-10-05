@@ -112,6 +112,8 @@ const configApi = {
     ipcRenderer.invoke('config:setSidebarPages', patch),
   setDefaultDisplayMode: (mode: AgentDisplayMode): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setDefaultDisplayMode', { mode }),
+  setChatStickyPrompt: (sticky: boolean): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setChatStickyPrompt', { sticky }),
 
   setSplitNewAgentPane: (pane: SplitNewAgentPane): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setSplitNewAgentPane', { pane }),

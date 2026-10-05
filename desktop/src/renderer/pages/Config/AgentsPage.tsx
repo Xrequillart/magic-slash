@@ -159,6 +159,17 @@ function NewAgentsSection() {
     errorMessage: t('toast.settingUpdateFailed'),
   })
 
+  const stickyPromptRow = useToggleRow({
+    label: t('settings.chat.stickyPrompt.label'),
+    help: t('settings.chat.stickyPrompt.help'),
+    value: config?.chatStickyPrompt,
+    onChange: async (next) => {
+      const result = await window.electronAPI.config.setChatStickyPrompt(next)
+      setConfig(result.config)
+    },
+    errorMessage: t('toast.settingUpdateFailed'),
+  })
+
   const list = Array.isArray(models) ? models : []
   // The stored model stays offered even when the CLI no longer lists it (a model retired
   // since it was picked, or the list not in yet), so the picker never shows a value it
@@ -240,6 +251,7 @@ function NewAgentsSection() {
               width: SELECT_WIDTH,
             },
           },
+          { id: 'chatStickyPrompt', ...stickyPromptRow },
           { id: 'infoSidebar', ...infoSidebarRow },
         ]}
         alert={

@@ -2491,6 +2491,7 @@ describe('user settings', () => {
       confirm_agent_archive: null,
       split_new_agent_pane: null,
       default_display_mode: null,
+      chat_sticky_prompt: null,
       quick_launch_repo: null,
       quick_launch_background: null,
       quick_launch_launch_mode: null,

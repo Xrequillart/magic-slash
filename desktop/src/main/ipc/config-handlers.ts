@@ -616,6 +616,15 @@ export function setupConfigHandlers() {
     return { config }
   })
 
+  // Whether the chat view pins the prompt of the turn being read. See Config.chatStickyPrompt.
+  ipcMain.handle('config:setChatStickyPrompt', async (_event, { sticky }: { sticky: unknown }) => {
+    if (typeof sticky !== 'boolean') throw new Error('Invalid chatStickyPrompt value: must be a boolean')
+    const config = readConfig()
+    config.chatStickyPrompt = sticky
+    writeConfig(config)
+    return { config }
+  })
+
   ipcMain.handle('config:setSplitNewAgentPane', async (_event, { pane }: { pane: unknown }) => {
     if (!isValidSplitNewAgentPane(pane)) throw new Error('Invalid splitNewAgentPane value')
     const config = readConfig()

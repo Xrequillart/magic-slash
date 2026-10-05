@@ -336,6 +336,8 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.displayMode.help': 'Chaque session garde ensuite la vue que vous lui choisissez, depuis le bouton de la barre de titre',
   'settings.displayMode.terminal': 'Terminal',
   'settings.displayMode.chat': 'Chat',
+  'settings.chat.stickyPrompt.label': 'Garder le prompt en vue dans le chat',
+  'settings.chat.stickyPrompt.help': 'Pendant le défilement, le prompt à l’origine de ce que vous lisez reste épinglé en haut',
   'settings.application.infoSidebar.label': 'Ouvrir le panneau d’informations sur une nouvelle session',
   'settings.application.infoSidebar.help':
     'Chaque session retient ensuite si vous avez laissé son panneau ouvert ou fermé',

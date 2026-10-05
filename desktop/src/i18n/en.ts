@@ -374,6 +374,8 @@ export const en = {
   'settings.displayMode.help': 'Each session then keeps the view you switch it to, from the button in the title bar',
   'settings.displayMode.terminal': 'Terminal',
   'settings.displayMode.chat': 'Chat',
+  'settings.chat.stickyPrompt.label': 'Keep the prompt in sight in the chat',
+  'settings.chat.stickyPrompt.help': 'While you scroll, the prompt behind what you are reading stays pinned at the top',
   'settings.application.infoSidebar.label': 'Open the info panel on a new session',
   'settings.application.infoSidebar.help':
     'Each session then remembers whether you left its panel open or closed',

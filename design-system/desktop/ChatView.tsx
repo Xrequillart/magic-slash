@@ -107,6 +107,8 @@ export interface ChatViewProps {
    */
   restoredDraft?: string | null
   onDraftRestored?: () => void
+  /** Pin the prompt of the turn being read at the top while scrolling. On unless false. */
+  stickyPrompt?: boolean
   /**
    * The size code is set in, in px: the diff cards and the fenced blocks, as the file
    * preview sets it. Handed down as `--chat-code-size`, which both read.
@@ -145,7 +147,7 @@ const STICK_PX = 48
 export function ChatView({
   entries, working, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
   question, onAnswer, answering, commands = [], highlightLines, onPickFiles, resolveFile,
-  initialDraft, onDraftChange, restoredDraft, onDraftRestored, codeFontSize, claudeCodeVersion, startedLabel, queue = [],
+  initialDraft, onDraftChange, restoredDraft, onDraftRestored, stickyPrompt = true, codeFontSize, claudeCodeVersion, startedLabel, queue = [],
 }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -450,9 +452,10 @@ export function ChatView({
                 : entry.kind === 'notice' ? <NoticeLine key={entry.id} text={entry.text} />
                   : <MessageLine key={entry.id} entry={entry} highlight={highlight} />
             )
-            return turn.prompt
+            if (!turn.prompt) return lines
+            return stickyPrompt
               ? <ChatTurn key={turn.prompt.id} prompt={turn.prompt} scrollRef={scrollRef}>{lines}</ChatTurn>
-              : lines
+              : [<MessageLine key={turn.prompt.id} entry={turn.prompt} />, ...lines]
           })}
           {question && onAnswer && (
             <ChatQuestion

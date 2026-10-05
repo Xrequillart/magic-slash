@@ -277,6 +277,7 @@ interface AdminUserDetailRpcRow {
   code_font_size: number | null
   agent_sort: string | null
   info_sidebar_on_create: boolean | null
+  chat_sticky_prompt: boolean | null
 }
 
 interface AdminOrgRpcRow {
@@ -448,6 +449,7 @@ function toUserDetail(r: AdminUserDetailRpcRow): AdminUserDetail {
       codeFontSize: r.code_font_size,
       agentSort: r.agent_sort,
       infoSidebarOnCreate: r.info_sidebar_on_create,
+      chatStickyPrompt: r.chat_sticky_prompt,
     },
   }
 }
