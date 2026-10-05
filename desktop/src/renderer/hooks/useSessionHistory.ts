@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { TitleBarMenu } from '@ds/desktop'
+import { ClaudeCode } from '@ds/desktop/icons'
 import type { ClaudeSessionEntry } from '../../types'
 import { useT } from '../i18n'
 import { showToast } from '../components/Toast'
@@ -60,6 +61,7 @@ export function useSessionHistory(terminalId: string | undefined): TitleBarMenu 
     loading: sessions === 'loading',
     loadingLabel: t('sessions.loading'),
     emptyLabel: t('sessions.empty'),
+    emptyIcon: ClaudeCode,
     panelWidth: 320,
   }
 }

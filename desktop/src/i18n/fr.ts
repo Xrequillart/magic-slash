@@ -2227,7 +2227,7 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.restart': 'Relancer Claude Code',
   'sessions.title': 'Sessions Claude Code',
   'sessions.loading': 'Chargement des sessions…',
-  'sessions.empty': 'Aucune session pour l’instant',
+  'sessions.empty': 'Aucun historique de session',
   'sessions.untitled': 'Session sans titre',
   'sessions.elsewhere': 'Autre machine',
   'sessions.resumeFailed': 'Impossible de reprendre cette session',

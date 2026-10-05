@@ -2333,7 +2333,7 @@ export const en = {
   'agentInfo.restart': 'Restart Claude Code',
   'sessions.title': 'Claude Code sessions',
   'sessions.loading': 'Loading sessions…',
-  'sessions.empty': 'No session yet',
+  'sessions.empty': 'No session history',
   'sessions.untitled': 'Untitled session',
   'sessions.elsewhere': 'Other machine',
   'sessions.resumeFailed': 'Could not resume this session',

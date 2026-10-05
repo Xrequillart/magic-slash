@@ -914,7 +914,10 @@ export function updateTerminalUsageFromHook(terminalId: string, usage: TerminalU
   const transcript = usage.transcriptPath
   if (!transcript) return
   const patch: Partial<TerminalMetadata> = {}
-  const sessions = withSession(terminal.metadata.claudeSessions, transcript, Date.now())
+  // Into the history only once written: Claude Code reports the path from its first
+  // statusline, before anyone has typed a word, and every launch of an agent nobody spoke
+  // to would leave an empty, unresumable row behind. The next report records it.
+  const sessions = fs.existsSync(transcript) ? withSession(terminal.metadata.claudeSessions, transcript, Date.now()) : null
   if (sessions) patch.claudeSessions = sessions
   if (transcript !== terminal.metadata.claudeTranscriptPath && !terminal.retiredTranscripts?.has(transcript)) {
     patch.claudeTranscriptPath = transcript
@@ -962,7 +965,10 @@ export async function listTerminalSessions(terminalId: string): Promise<ClaudeSe
       available,
     }
   }))
-  return entries.sort((a, b) => (b.lastActiveAt ?? b.startedAt) - (a.lastActiveAt ?? a.startedAt))
+  // No file here: a session never written to (recorded before the history waited for the
+  // file), or one written on another machine. Neither has a title or can be resumed here,
+  // and the first kind filled the menu with blank rows.
+  return entries.filter((e) => e.lastActiveAt !== undefined).sort((a, b) => (b.lastActiveAt ?? b.startedAt) - (a.lastActiveAt ?? a.startedAt))
 }
 
 /**

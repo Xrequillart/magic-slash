@@ -195,6 +195,16 @@ export interface SelectIconProps {
   /** Shown alone when there are no groups. Translated. */
   emptyLabel?: string
   /**
+   * A MARK ABOVE `emptyLabel`, which then stands centred in a block of its own rather
+   * than on one quiet line.
+   *
+   * For a menu whose emptiness is a STATE and not a pause: the session history of an
+   * agent nobody has spoken to yet is empty for good until someone does, and a line in
+   * a row's padding there read as a list that had failed to load. Painted in its own
+   * colours, so a brand mark (`ClaudeCode`) stays itself.
+   */
+  emptyIcon?: IconComponent
+  /**
    * FORCES THE PANEL OPEN OR SHUT, taking the state out of this component's hands.
    *
    * `undefined` is the normal case and the default: the control owns whether it is
@@ -262,6 +272,7 @@ export function SelectIcon({
   loading = false,
   loadingLabel,
   emptyLabel,
+  emptyIcon,
   size = 'sm',
   tone = 'neutral',
   panelWidth = DEFAULT_PANEL_WIDTH,
@@ -422,7 +433,11 @@ export function SelectIcon({
             {loading ? (
               <Message panel={panel}>{loadingLabel ?? ''}</Message>
             ) : !hasItems ? (
-              <Message panel={panel}>{emptyLabel ?? ''}</Message>
+              emptyIcon ? (
+                <Placeholder icon={emptyIcon} panel={panel}>{emptyLabel ?? ''}</Placeholder>
+              ) : (
+                <Message panel={panel}>{emptyLabel ?? ''}</Message>
+              )
             ) : (
               groups.map((group, groupIndex) =>
                 group.items.length === 0 ? null : (
@@ -461,6 +476,18 @@ function Message({ children, panel }: { children: string; panel: PanelScale }) {
   return (
     <div className={panel.row}>
       <Text size={panel.text} tone="secondary" className="opacity-50">
+        {children}
+      </Text>
+    </div>
+  )
+}
+
+/** Empty for good: the mark, and the sentence under it, centred. See `emptyIcon`. */
+function Placeholder({ children, icon, panel }: { children: string; icon: IconComponent; panel: PanelScale }) {
+  return (
+    <div className="flex flex-col items-center gap-2 px-4 py-6 text-center">
+      <Icon glyph={icon} size="2xl" tone="inherit" className="flex-shrink-0" />
+      <Text size={panel.text} tone="secondary">
         {children}
       </Text>
     </div>
