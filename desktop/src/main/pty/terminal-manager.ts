@@ -937,8 +937,10 @@ function sessionCwds(terminal: Terminal): string[] {
 }
 
 /**
- * The agent's sessions for the title bar's history, most recently active first. The
- * session it was restored on before the history existed counts too.
+ * The agent's sessions for the title bar's history, newest first by when the agent MET
+ * them, not by their last write: resuming an old session must not move it to the top,
+ * or the list reshuffles under the person using it. The session it was restored on
+ * before the history existed counts too.
  */
 export async function listTerminalSessions(terminalId: string): Promise<ClaudeSessionEntry[]> {
   const terminal = terminals.get(terminalId)
@@ -968,7 +970,7 @@ export async function listTerminalSessions(terminalId: string): Promise<ClaudeSe
   // No file here: a session never written to (recorded before the history waited for the
   // file), or one written on another machine. Neither has a title or can be resumed here,
   // and the first kind filled the menu with blank rows.
-  return entries.filter((e) => e.lastActiveAt !== undefined).sort((a, b) => (b.lastActiveAt ?? b.startedAt) - (a.lastActiveAt ?? a.startedAt))
+  return entries.filter((e) => e.lastActiveAt !== undefined).sort((a, b) => b.startedAt - a.startedAt)
 }
 
 /**
