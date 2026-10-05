@@ -2232,6 +2232,7 @@ export const fr: Record<keyof typeof en, string> = {
   'sessions.elsewhere': 'Autre machine',
   'sessions.resumeFailed': 'Impossible de reprendre cette session',
   'sessions.new': 'Nouvelle session',
+  'chat.resuming': 'Reprise de la session…',
   'sessions.newFailed': 'Impossible de démarrer une nouvelle session',
   'agentInfo.model.loading': 'Claude Code liste ses modèles…',
   'agentInfo.model.unavailable': 'Claude Code n’a pas répondu',

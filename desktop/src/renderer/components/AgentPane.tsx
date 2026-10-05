@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChatView, type ChatCommand, type MenuBarAnswer } from '@ds/desktop'
 import { DEFAULT_CODE_FONT_SIZE, type ChatSnapshot, type TerminalInfo, type TrayQuestion } from '../../types'
 import { builtInCommands, mergeCommands, opensInTerminal, skillCommands } from './chatCommands'
@@ -24,6 +24,9 @@ interface AgentPaneProps {
   isFocused: boolean
 }
 
+/** How long a resume may keep the chat behind its loader before it is shown anyway. */
+const RESUME_TIMEOUT_MS = 20_000
+
 /** Between the text and the Return that submits it, so the TUI takes the text as typed. */
 const SUBMIT_DELAY_MS = 60
 
@@ -37,7 +40,8 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   const t = useT()
   const setDisplayMode = useStore((s) => s.setDisplayMode)
   const mode = useStore((s) => resolveDisplayMode(terminal, s.config))
-  const { entries, queue } = useChat(terminal.id)
+  const { entries, queue, pushes } = useChat(terminal.id)
+  const resuming = useResumeLoader(terminal, pushes)
   const question = usePendingQuestion(terminal.id)
   const [answering, setAnswering] = useState(false)
   const [restored, setRestored] = useState<string | null>(null)
@@ -120,6 +124,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
           <ChatView
             entries={entries}
             queue={queue}
+            loading={resuming}
             working={terminal.state === 'working'}
             waiting={terminal.state === 'waiting'}
             onSend={send}
@@ -148,6 +153,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
               empty: t('chat.empty'),
               greeting: t('chat.greeting'),
               working: t('chat.working'),
+              loading: t('chat.resuming'),
               waiting: t('chat.waiting'),
               showTerminal: t('chat.showTerminal'),
               interactiveCommand: t('chat.command.interactive'),
@@ -181,12 +187,49 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
 const EMPTY_CHAT: ChatSnapshot = { entries: [], queue: [] }
 
 /**
+ * Whether the chat is waiting on a resumed session (see `resumingSessions` in the store).
+ *
+ * THE SWAP IS OVER IN TWO STEPS, in this order: the statusLine names a transcript other
+ * than the one being left (`usage.transcriptPath`, which also starts the main process
+ * watching it), then that transcript's entries arrive as a chat push, a debounce later.
+ * Clearing on the first alone would flash the old conversation for that debounce.
+ */
+function useResumeLoader(terminal: TerminalInfo, pushes: number): boolean {
+  const resuming = useStore((s) => s.resumingSessions[terminal.id])
+  const setResuming = useStore((s) => s.setResumingSession)
+  const transcript = terminal.metadata?.usage?.transcriptPath
+  const armedAt = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (!resuming) {
+      armedAt.current = null
+      return
+    }
+    if (transcript === resuming.from) return
+    if (armedAt.current === null) armedAt.current = pushes
+    else if (pushes > armedAt.current) setResuming(terminal.id, null)
+  }, [resuming, transcript, pushes, terminal.id, setResuming])
+
+  // A session that never reports (Claude Code failed to start, say) must not leave the
+  // chat behind a loader for good: the terminal under it says what happened.
+  useEffect(() => {
+    if (!resuming) return
+    const timer = setTimeout(() => setResuming(terminal.id, null), RESUME_TIMEOUT_MS)
+    return () => clearTimeout(timer)
+  }, [resuming, terminal.id, setResuming])
+
+  return Boolean(resuming)
+}
+
+/**
  * The agent's chat entries and queued prompts: what the main process has read so far,
  * then every update. The main process sends the whole of both each time (they are
  * small, and a list that is replaced cannot drift from the one it came from).
  */
-function useChat(terminalId: string): ChatSnapshot {
+function useChat(terminalId: string): ChatSnapshot & { pushes: number } {
   const [chat, setChat] = useState<ChatSnapshot>(EMPTY_CHAT)
+  // How many pushes have landed: the resume loader waits for one after the swap.
+  const [pushes, setPushes] = useState(0)
   useEffect(() => {
     let live = true
     let pushed = false
@@ -194,6 +237,7 @@ function useChat(terminalId: string): ChatSnapshot {
       if (id !== terminalId) return
       pushed = true
       setChat({ entries, queue })
+      setPushes((n) => n + 1)
     })
     window.electronAPI.terminal.getChat(terminalId).then((initial) => {
       // A push that landed first is newer than this read.
@@ -204,7 +248,7 @@ function useChat(terminalId: string): ChatSnapshot {
       unsubscribe()
     }
   }, [terminalId])
-  return chat
+  return { ...chat, pushes }
 }
 
 /** The question the agent is blocked on, kept current by `terminal:question`. */

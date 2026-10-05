@@ -3,6 +3,7 @@ import type { TitleBarMenu } from '@ds/desktop'
 import { ClaudeCode, Plus } from '@ds/desktop/icons'
 import type { ClaudeSessionEntry } from '../../types'
 import { useT } from '../i18n'
+import { useStore } from '../store'
 import { showToast } from '../components/Toast'
 import { formatTimestamp } from '../components/agent-info-sidebar/utils'
 
@@ -30,12 +31,19 @@ export function useSessionHistory(terminalId: string | undefined): TitleBarMenu 
       .catch(() => setSessions([]))
   }, [terminalId])
 
+  const setResuming = useStore((s) => s.setResumingSession)
   const onSelect = useCallback((transcriptPath: string) => {
     if (!terminalId) return
+    // Read now, before the respawn: the chat's loader waits for the statusLine to name
+    // another transcript than this one.
+    const from = useStore.getState().terminals.find((x) => x.id === terminalId)?.metadata?.usage?.transcriptPath
+    setResuming(terminalId, { from })
     void window.electronAPI.terminal.resumeSession(terminalId, transcriptPath).then((ok) => {
-      if (!ok) showToast(t('sessions.resumeFailed'), 'error')
+      if (ok) return
+      setResuming(terminalId, null)
+      showToast(t('sessions.resumeFailed'), 'error')
     })
-  }, [terminalId, t])
+  }, [terminalId, t, setResuming])
 
   const onNew = useCallback(() => {
     if (!terminalId) return

@@ -57,6 +57,8 @@ export interface ChatViewLabels {
   /** What the empty session's robot says in its speech bubble. */
   greeting: string
   working: string
+  /** Under the loader while `loading`. */
+  loading?: string
   waiting: string
   showTerminal: string
   /** On a command that opens in the terminal, in the `/` menu. */
@@ -137,6 +139,12 @@ export interface ChatViewProps {
   commands?: ChatCommand[]
   /** The prompts Claude Code holds until the turn lets them in, oldest first. */
   queue?: ChatQueuedPromptData[]
+  /**
+   * THE CONVERSATION IS BEING SWAPPED — another session resumed in this pane — and what
+   * is on screen is the one being left. The thread gives way to a loader centred where
+   * the empty view stands, until the caller has the new session's entries.
+   */
+  loading?: boolean
 }
 
 /** What the textarea and its mirror share: anything that moves a glyph must be here. */
@@ -162,7 +170,7 @@ const STICK_PX = 48
 export function ChatView({
   entries, working, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
   question, onAnswer, answering, commands = [], highlightLines, onPickFiles, resolveFile,
-  initialDraft, onDraftChange, restoredDraft, onDraftRestored, stickyPrompt = true, codeFontSize, claudeCodeVersion, startedLabel, queue = [],
+  initialDraft, onDraftChange, restoredDraft, onDraftRestored, stickyPrompt = true, codeFontSize, claudeCodeVersion, startedLabel, queue = [], loading = false,
 }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -444,7 +452,7 @@ export function ChatView({
           const el = e.currentTarget
           stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_PX
         }}
-        className="h-full overflow-y-auto"
+        className={`h-full overflow-y-auto ${loading ? 'invisible' : ''}`}
       >
         <div className="px-6 pt-6 flex flex-col gap-3" style={{ paddingBottom: dockHeight + DOCK_GAP_PX }}>
           {/* THE CONVERSATION OPENS ON WHO IS IN IT, once there is one: the empty view says
@@ -501,7 +509,16 @@ export function ChatView({
 
       {/* AN EMPTY SESSION shows Claude Code's mark, centred in what the composer leaves
           of the pane, not in the pane itself. */}
-      {entries.length === 0 && !working && !question && (
+      {loading && (
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center justify-center gap-3 px-6 text-center"
+          style={{ bottom: dockHeight }}
+        >
+          <Loader variant="wave" size="md" tone="accent" label={labels.loading} />
+          {labels.loading && <p className="text-sm text-text-secondary/60">{labels.loading}</p>}
+        </div>
+      )}
+      {!loading && entries.length === 0 && !working && !question && (
         <div
           className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center justify-center gap-5 px-6 text-center"
           style={{ bottom: dockHeight }}
