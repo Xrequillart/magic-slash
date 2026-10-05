@@ -431,7 +431,7 @@ export function ChatView({
         }}
         className="h-full overflow-y-auto"
       >
-        <div className="mx-auto max-w-3xl px-6 pt-6 flex flex-col gap-3" style={{ paddingBottom: dockHeight + DOCK_GAP_PX }}>
+        <div className="px-6 pt-6 flex flex-col gap-3" style={{ paddingBottom: dockHeight + DOCK_GAP_PX }}>
           {/* THE CONVERSATION OPENS ON WHO IS IN IT, once there is one: the empty view says
               it larger, in the middle, instead. */}
           {entries.length > 0 && (
