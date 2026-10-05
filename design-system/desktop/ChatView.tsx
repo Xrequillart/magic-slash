@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type DragEvent, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { ArrowUp, ChevronRight, CircleAlert, Check, FileText, Image as ImageIcon, Info, ListOrdered, Paperclip, SquareTerminal, Wrench, X } from './icons'
 import { Button } from './Button'
 import { ButtonIcon } from './ButtonIcon'
@@ -286,6 +286,8 @@ export function ChatView({
     inputRef.current?.focus()
   }
 
+  const turns = useMemo(() => groupTurns(entries), [entries])
+
   useLayoutEffect(() => {
     const el = scrollRef.current
     if (el && stickRef.current) el.scrollTop = el.scrollHeight
@@ -439,14 +441,19 @@ export function ChatView({
               </div>
             </div>
           )}
-          {entries.map((entry) =>
-            entry.kind === 'tool' && entry.diff ? (
-              <ChatDiffCard key={entry.id} diff={entry.diff} highlightLines={highlightLines} truncatedLabel={labels.diffTruncated} />
+          {turns.map((turn) => {
+            const lines = turn.entries.map((entry) =>
+              entry.kind === 'tool' && entry.diff ? (
+                <ChatDiffCard key={entry.id} diff={entry.diff} highlightLines={highlightLines} truncatedLabel={labels.diffTruncated} />
+              )
+              : entry.kind === 'tool' ? <ToolLine key={entry.id} entry={entry} />
+                : entry.kind === 'notice' ? <NoticeLine key={entry.id} text={entry.text} />
+                  : <MessageLine key={entry.id} entry={entry} highlight={highlight} />
             )
-            : entry.kind === 'tool' ? <ToolLine key={entry.id} entry={entry} />
-              : entry.kind === 'notice' ? <NoticeLine key={entry.id} text={entry.text} />
-                : <MessageLine key={entry.id} entry={entry} highlight={highlight} />
-          )}
+            return turn.prompt
+              ? <ChatTurn key={turn.prompt.id} prompt={turn.prompt} scrollRef={scrollRef}>{lines}</ChatTurn>
+              : lines
+          })}
           {question && onAnswer && (
             <ChatQuestion
               key={question.token}
@@ -639,6 +646,97 @@ function NoticeLine({ text }: { text: string }) {
       <Info className="mt-0.5 w-3.5 h-3.5 flex-shrink-0 text-icon" />
       <pre className="min-w-0 flex-1 whitespace-pre-wrap break-words font-mono text-[11px] text-text-secondary">{text}</pre>
     </div>
+  )
+}
+
+type ChatUserEntry = Extract<ChatViewEntry, { kind: 'user' }>
+
+/**
+ * The conversation as turns: each prompt with everything that answered it, up to the
+ * next. What came before the first prompt (a notice, a resumed session's tail) has none.
+ */
+function groupTurns(entries: ChatViewEntry[]): { prompt: ChatUserEntry | null; entries: ChatViewEntry[] }[] {
+  const turns: { prompt: ChatUserEntry | null; entries: ChatViewEntry[] }[] = []
+  for (const entry of entries) {
+    if (entry.kind === 'user') turns.push({ prompt: entry, entries: [] })
+    else if (turns.length) turns[turns.length - 1].entries.push(entry)
+    else turns.push({ prompt: null, entries: [entry] })
+  }
+  return turns
+}
+
+/**
+ * One turn, and THE PROMPT THAT STARTED IT KEPT IN SIGHT: once its bubble has scrolled
+ * out at the top, a two-line reminder of it stays pinned there for as long as the turn
+ * fills the view, and the next turn's own pushes it out. Scrolling back up brings the
+ * earlier ones back the same way. A click on it goes back to the bubble, to read it whole.
+ *
+ * The reminder is sticky inside the turn's own box, which is what makes the next turn
+ * push it out rather than slide under it. It takes no room in the flow (a negative margin
+ * of its own measured height, on what follows it): it shows and hides as the bubble goes out and comes back,
+ * and the thread under it must not move when it does.
+ */
+function ChatTurn({ prompt, scrollRef, children }: { prompt: ChatUserEntry; scrollRef: RefObject<HTMLDivElement>; children: ReactNode }) {
+  const bubbleRef = useRef<HTMLDivElement>(null)
+  const pinRef = useRef<HTMLDivElement>(null)
+  const [pinned, setPinned] = useState(false)
+  const [pinHeight, setPinHeight] = useState(0)
+
+  // Read off the geometry on every scroll rather than from an IntersectionObserver: one
+  // only speaks when its target crosses the edge, and a jump (the thread opening at its
+  // end, a click on a reminder) carries a bubble from above the view to below it without
+  // ever crossing, leaving the reminder of a turn not even on screen marked as shown.
+  useEffect(() => {
+    const bubble = bubbleRef.current
+    const root = scrollRef.current
+    if (!bubble || !root) return
+    const update = () => setPinned(bubble.getBoundingClientRect().bottom < root.getBoundingClientRect().top)
+    update()
+    root.addEventListener('scroll', update, { passive: true })
+    return () => root.removeEventListener('scroll', update)
+  }, [scrollRef])
+
+  useLayoutEffect(() => {
+    const el = pinRef.current
+    if (!el) return
+    setPinHeight(el.offsetHeight)
+    const observer = new ResizeObserver(() => setPinHeight(el.offsetHeight))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <section className="relative">
+      <div
+        ref={pinRef}
+        aria-hidden={!pinned}
+        className={`pointer-events-none sticky top-0 z-10 flex justify-end pt-2 pb-4 transition-opacity duration-150 motion-reduce:transition-none ${pinned ? 'opacity-100' : 'opacity-0'}`}
+      >
+        {/* The thread blurs under it, fading out below, as it does under the composer. */}
+        <div
+          aria-hidden
+          className="absolute -inset-x-2.5 inset-y-0 backdrop-blur-md [mask-image:linear-gradient(to_top,transparent,black_16px)]"
+        />
+        <button
+          type="button"
+          tabIndex={pinned ? 0 : -1}
+          onClick={() => bubbleRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })}
+          className={`relative max-w-[80%] overflow-hidden rounded-2xl border border-line ${RAISED_PLATE} px-3.5 py-2 text-left text-sm text-ink shadow-sm ${pinned ? 'pointer-events-auto' : ''}`}
+        >
+          <span aria-hidden className="absolute inset-0 bg-accent/10" />
+          <span className="relative line-clamp-2 whitespace-pre-wrap break-words">{prompt.text}</span>
+        </button>
+      </div>
+      {/* The turn's content is pulled up under the reminder, not the reminder given a
+          negative margin: sticky is held inside the turn by its margin box, and a margin
+          box of no height would ride over the next turn's prompt before leaving. */}
+      <div className="flex flex-col gap-3" style={{ marginTop: -pinHeight }}>
+        <div ref={bubbleRef} className="scroll-mt-3">
+          <MessageLine entry={prompt} />
+        </div>
+        {children}
+      </div>
+    </section>
   )
 }
 
