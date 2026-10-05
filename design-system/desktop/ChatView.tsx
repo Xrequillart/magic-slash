@@ -60,6 +60,10 @@ export interface ChatViewLabels {
   interactiveCommand: string
   /** Under a diff card cut short. */
   diffTruncated: string
+  /** A diff card's foot, past its first lines. `{count}`: the diff's line count. */
+  diffShowAll: string
+  /** The close button of a diff card grown into a dialog. */
+  diffClose: string
   attach: string
   removeAttachment: string
   dropFiles: string
@@ -454,13 +458,13 @@ export function ChatView({
           {turns.map((turn) => {
             const lines = turn.entries.map((entry) =>
               entry.kind === 'tool' && entry.diff ? (
-                <ChatDiffCard key={entry.id} diff={entry.diff} highlightLines={highlightLines} truncatedLabel={labels.diffTruncated} />
+                <ChatDiffCard key={entry.id} diff={entry.diff} highlightLines={highlightLines} truncatedLabel={labels.diffTruncated} showAllLabel={labels.diffShowAll} closeLabel={labels.diffClose} />
               )
               : entry.kind === 'tool' && entry.diffs?.length ? (
                 <div key={entry.id} className="flex flex-col gap-2">
                   <ToolLine entry={entry} />
                   {entry.diffs.map((diff) => (
-                    <ChatDiffCard key={diff.path} diff={diff} highlightLines={highlightLines} truncatedLabel={labels.diffTruncated} />
+                    <ChatDiffCard key={diff.path} diff={diff} highlightLines={highlightLines} truncatedLabel={labels.diffTruncated} showAllLabel={labels.diffShowAll} closeLabel={labels.diffClose} />
                   ))}
                 </div>
               )

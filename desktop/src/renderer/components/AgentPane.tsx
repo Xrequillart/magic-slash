@@ -151,6 +151,8 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
               showTerminal: t('chat.showTerminal'),
               interactiveCommand: t('chat.command.interactive'),
               diffTruncated: t('chat.diff.truncated'),
+              diffShowAll: t('chat.diff.showAll'),
+              diffClose: t('chat.diff.close'),
               attach: t('chat.attach'),
               removeAttachment: t('chat.attach.remove'),
               dropFiles: t('chat.attach.drop'),
