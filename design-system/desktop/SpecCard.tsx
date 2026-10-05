@@ -139,7 +139,7 @@ export function SpecCard({
   return (
     // No `overflow-hidden` on the card: the status picker is an absolutely positioned
     // dropdown and would be clipped by it. The body rounds its own bottom corners instead.
-    <Card padding="none" className={`flex flex-col flex-1 min-h-0 ${className}`.trim()}>
+    <Card ground="raised" padding="none" className={`flex flex-col flex-1 min-h-0 ${className}`.trim()}>
       <div className="p-4 flex-shrink-0">
         <div className="flex items-center justify-between gap-2 mb-3">
           {/* The repository, at the weight `HeaderRepoCard` gives it. The repository cards
