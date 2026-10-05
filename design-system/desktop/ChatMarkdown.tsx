@@ -43,7 +43,7 @@ const PROSE = `text-sm leading-relaxed text-ink
   [&_table]:my-3 [&_table]:w-full [&_table]:border-collapse [&_table]:text-xs
   [&_th]:border [&_th]:border-line [&_th]:bg-surface [&_th]:px-2.5 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-semibold
   [&_td]:border [&_td]:border-line [&_td]:px-2.5 [&_td]:py-1.5
-  [&_:not(pre)>code]:rounded [&_:not(pre)>code]:bg-surface-strong [&_:not(pre)>code]:px-1 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[0.85em]`
+  [&_:not(pre)>code]:rounded [&_:not(pre)>code]:bg-blue/10 [&_:not(pre)>code]:text-blue [&_:not(pre)>code]:px-1 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[0.85em]`
 
 export const ChatMarkdown = memo(function ChatMarkdown({ text, highlight }: ChatMarkdownProps) {
   // Held across renders: a new `pre` each time would be a new component type, and every
