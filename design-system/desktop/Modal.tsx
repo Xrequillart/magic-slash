@@ -1,4 +1,4 @@
-import { useEffect, useState, type AnimationEvent, type ReactNode } from 'react'
+import { useEffect, useState, type AnimationEvent, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 /**
@@ -53,6 +53,12 @@ export interface ModalProps {
   backdropClassName?: string
   /** The panel's width, and the caller's animation. Not the ground, the radius or the z. */
   className?: string
+  /**
+   * The panel's box, for a caller that animates it out of something on the page: a chat
+   * diff card grows into its dialog from where it stood (`ChatDiffCard`). Not for a
+   * width a class can give.
+   */
+  style?: CSSProperties
   /** For a caller driving its own exit: see the app's `useModalExit`. */
   onAnimationEnd?: (event: AnimationEvent<HTMLDivElement>) => void
   /** Names the dialog for a screen reader — the id of whatever heads the panel. */
@@ -96,6 +102,7 @@ export function Modal({
   children,
   backdropClassName = '',
   className = '',
+  style,
   onAnimationEnd,
   labelledBy,
   portalTo,
@@ -135,6 +142,7 @@ export function Modal({
         aria-labelledby={labelledBy}
         onAnimationEnd={onAnimationEnd}
         onClick={(event) => event.stopPropagation()}
+        style={style}
         className={`bg-bg-secondary rounded-2xl shadow-xl ${
           scrollableGround ? 'm-auto' : ''
         } ${className}`.trim()}

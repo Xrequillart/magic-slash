@@ -269,6 +269,15 @@ export interface AppTitleBarProps {
    * long as the app is.
    */
   notice?: TitleBarAction
+  /**
+   * THE INTERFACE SCALE, between the quick-settings toggle and the account — "125%".
+   *
+   * A word with no mark: the number is the whole message, and a magnifier beside it
+   * would only repeat it. The caller passes it only while the scale is not 100%, so the
+   * bar says nothing about a window nobody resized. The click is the caller's, and the
+   * app spends it on putting the scale back.
+   */
+  zoom?: Omit<TitleBarAction, 'icon'>
   /** The account, last in the bar — see `TitleBarAccount`. */
   account?: TitleBarAccount
   /** Margins and placement. Not the height, the ground, or the order of the regions. */
@@ -286,10 +295,11 @@ export function AppTitleBar({
   right,
   settings,
   notice,
+  zoom,
   account,
   className = '',
 }: AppTitleBarProps) {
-  const hasRight = Boolean(view || action || right || settings || notice || account)
+  const hasRight = Boolean(view || action || right || settings || notice || zoom || account)
 
   return (
     <div
@@ -352,6 +362,11 @@ export function AppTitleBar({
               active={settings.open}
               activeTone="ink"
             />
+          )}
+          {zoom && (
+            <Label tone="neutral" title={zoom.title} onClick={zoom.onClick}>
+              {zoom.label}
+            </Label>
           )}
           {account && <Account {...account} />}
         </Controls>

@@ -105,6 +105,7 @@ export interface RepoPullRequest {
   templateCheckboxes?: string
   /** 'concise' | 'normal' | 'detailed' */
   bodyVerbosity?: string
+  hideIrrelevantSections?: boolean
 }
 
 export interface RepoIssues {
@@ -498,6 +499,7 @@ export const DEFAULTS = {
   testAccounts: 'off',
   templateCheckboxes: 'never',
   bodyVerbosity: 'concise',
+  hideIrrelevantSections: true,
   commentOnPR: true,
   // /magic:plan. `issueTypes` is nested, so the level above supplies the prefix here
   // (`issueTypeEpic`) the way the block name does elsewhere; nothing else collides, so

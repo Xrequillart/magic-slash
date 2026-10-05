@@ -265,6 +265,9 @@
             "bodyVerbosity": {
               "type": "string",
               "enum": ["concise", "normal", "detailed"]
+            },
+            "hideIrrelevantSections": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false,

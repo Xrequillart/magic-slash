@@ -2282,6 +2282,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
   // Matched the same way, and for the same reasons, as the line above.
   const bodyVerbosityVal =
     BODY_VERBOSITY_MODES.find((mode) => mode === prSettings.bodyVerbosity) ?? 'concise'
+  // Only the literal `false` turns it off, the way the skill reads it.
+  const hideIrrelevantSectionsVal = prSettings.hideIrrelevantSections !== false
   const commentOnPRVal = issuesSettings.commentOnPR !== undefined ? issuesSettings.commentOnPR : true
   const planTrackerVal = planSettings.tracker || 'ask'
   // Resolved, not read: both keys fall back to the legacy `issues.jiraUrl` /
@@ -2727,6 +2729,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
           control: enumControl(t, bodyVerbosityVal, BODY_VERBOSITY_MODES, BODY_VERBOSITY_LABEL,
             (next) => handlePRSettingChange('bodyVerbosity', next), t('repo.pr.bodyVerbosity')),
         },
+        switchRow('hideIrrelevantSections', t('repo.pr.hideIrrelevantSections'), t('repo.pr.hideIrrelevantSectionsHelp'),
+          hideIrrelevantSectionsVal, (next) => handlePRSettingChange('hideIrrelevantSections', next)),
         switchRow('autoLink', t('repo.pr.autoLink'), t('repo.pr.autoLinkHelp'),
           autoLinkTicketsVal, (next) => handlePRSettingChange('autoLinkTickets', next)),
         {
@@ -2991,6 +2995,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
         watchCI: watchCIVal,
         templateCheckboxes: templateCheckboxesVal,
         bodyVerbosity: bodyVerbosityVal,
+        hideIrrelevantSections: hideIrrelevantSectionsVal,
       })),
       settings: prStepSettings,
     },

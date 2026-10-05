@@ -1117,6 +1117,8 @@ export const en = {
   // be noise on every repository that never opened the setting.
   'repo.pr.tail.bodyNormal': 'writes a longer description, with the reasoning on each bullet',
   'repo.pr.tail.bodyDetailed': 'writes a full description, with no length cap',
+  // Only emitted when the setting is off: leaving out what does not apply is the default.
+  'repo.pr.tail.keepAllSections': 'keeps every section of the PR template, even those the change does not touch',
   'repo.pr.languageHelp': 'Language used for pull request titles and descriptions',
   'repo.pr.autoLink': 'Auto-link Tickets',
   'repo.pr.autoLinkHelp': 'Add Jira/GitHub ticket links in PR description',
@@ -1150,6 +1152,8 @@ export const en = {
   'repo.pr.bodyVerbosityConcise': 'Concise',
   'repo.pr.bodyVerbosityNormal': 'Normal',
   'repo.pr.bodyVerbosityDetailed': 'Detailed',
+  'repo.pr.hideIrrelevantSections': 'Hide sections that do not apply',
+  'repo.pr.hideIrrelevantSectionsHelp': 'Leave out the PR template sections the change does not touch: browsers and breakpoints on a backend-only change, data model and permissions on a front-only one',
 
   'repo.issues.commentLang': 'Ticket Comment Language',
   'repo.issues.commentLangHelp': 'Language of the comments /magic:pr and /magic:done post on the ticket',
@@ -2197,6 +2201,8 @@ export const en = {
   'chat.mode.toTerminal': 'Switch to the terminal view',
   'chat.mode.toChat': 'Switch to the chat view',
   'chat.diff.truncated': 'Cut short here. The rest is in the file.',
+  'chat.diff.showAll': 'Show all {count} lines',
+  'chat.diff.close': 'Close',
   'chat.attach': 'Attach files',
   'chat.attach.remove': 'Remove',
   'chat.attach.drop': 'Drop to attach',

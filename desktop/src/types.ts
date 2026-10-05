@@ -1322,6 +1322,13 @@ export interface RepositoryConfig {
      * that never set one (see mergeOrgSharedConfig).
      */
     bodyVerbosity?: string       // 'concise' | 'normal' | 'detailed'
+    /**
+     * Whether /magic:pr leaves out the sections of the repository's PR template that
+     * the change does not touch (browsers on a backend-only change, data model on a
+     * front-only one) instead of keeping them with an "N/A". Absent means true,
+     * resolved at read time like the two keys above.
+     */
+    hideIrrelevantSections?: boolean
   }
   issues?: {
     commentOnPR?: boolean
@@ -3473,6 +3480,7 @@ export interface OrgSharedConfig {
     testAccountsSource?: string
     templateCheckboxes?: string  // 'never' | 'type' | 'all'
     bodyVerbosity?: string       // 'concise' | 'normal' | 'detailed'
+    hideIrrelevantSections?: boolean
   }
   repoKeywords?: Record<string, string[]>
 }

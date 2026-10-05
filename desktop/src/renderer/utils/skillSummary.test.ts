@@ -181,6 +181,7 @@ describe('prSummary', () => {
     watchCI: true,
     templateCheckboxes: 'never',
     bodyVerbosity: 'concise',
+    hideIrrelevantSections: true,
   }
 
   it('names the tracker the ticket lives in', () => {
@@ -240,6 +241,13 @@ describe('prSummary', () => {
     // reads as the default, which is no line rather than a line naming it.
     expect(prSummary({ ...PR, bodyVerbosity: 'verbose' }).tail).toEqual([])
     expect(prSummary({ ...PR, bodyVerbosity: '' }).tail).toEqual([])
+  })
+
+  it('mentions the template sections only when every one of them is kept', () => {
+    expect(prSummary(PR).tail).toEqual([])
+    expect(prSummary({ ...PR, hideIrrelevantSections: false }).tail).toEqual([
+      { key: 'repo.pr.tail.keepAllSections' },
+    ])
   })
 })
 
@@ -424,6 +432,7 @@ describe('every line a setting can produce', () => {
                 watchCI,
                 templateCheckboxes,
                 bodyVerbosity,
+                hideIrrelevantSections: watchCI,
               }),
             ),
           ),

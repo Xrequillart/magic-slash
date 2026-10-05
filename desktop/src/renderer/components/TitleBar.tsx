@@ -9,7 +9,9 @@ import { AccountMenu, useAccountTitleBarControl } from './AccountMenu'
 import { LoginScreen } from './LoginScreen'
 import { BellOff, MessageSquare, SquareTerminal } from '@ds/desktop/icons'
 import { useConfig } from '../hooks/useConfig'
+import { useZoom } from '../hooks/useZoom'
 import { resolveDisplayMode } from '../utils/displayMode'
+import { DEFAULT_ZOOM } from '../../types'
 
 /**
  * THE BAR IS `AppTitleBar` NOW — `@ds/desktop/AppTitleBar.tsx` — and what is left here is
@@ -95,6 +97,12 @@ export function TitleBar() {
   // opens either one from somewhere else cannot forget to.
   const { account, anchor: accountAnchor, login } = useAccountTitleBarControl()
 
+  // THE INTERFACE SCALE, shown only while it is not 100%: a window nobody resized has
+  // nothing to say about it. Rounded the way Settings → Appearance prints it, which also
+  // absorbs a factor that arrives as 0.9999. The click puts it back.
+  const { zoom, set: setZoom } = useZoom()
+  const zoomPercent = Math.round(zoom * 100)
+
   // One title normally, two when the window is split: the component draws a rule between
   // the pair and dims whichever is not being typed into.
   const titles: TitleBarTitle[] = []
@@ -167,6 +175,11 @@ export function TitleBar() {
         open: quickSettingsOpen,
         title: t('titlebar.quickSettings'),
         onToggle: () => setQuickSettingsOpen(!quickSettingsOpen),
+      } : undefined}
+      zoom={zoomPercent !== 100 ? {
+        label: `${zoomPercent}%`,
+        title: t('settings.appearance.zoomReset'),
+        onClick: () => setZoom(DEFAULT_ZOOM),
       } : undefined}
       // Past the sliders, where the platform keeps its own account: the person, and the
       // sheet of everything they are signed in to.

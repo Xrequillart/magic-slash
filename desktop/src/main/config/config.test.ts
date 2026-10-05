@@ -510,6 +510,28 @@ describe('updateRepositoryPullRequestSettings — bodyVerbosity', () => {
   })
 })
 
+describe('updateRepositoryPullRequestSettings — hideIrrelevantSections', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  it('persists both values and ignores a non-boolean', () => {
+    updateRepositoryPullRequestSettings('api', { hideIrrelevantSections: false })
+    expect(readConfig().repositories.api.pullRequest?.hideIrrelevantSections).toBe(false)
+
+    updateRepositoryPullRequestSettings('api', { hideIrrelevantSections: 'no' as unknown as boolean })
+    expect(readConfig().repositories.api.pullRequest?.hideIrrelevantSections).toBe(false)
+
+    updateRepositoryPullRequestSettings('api', { hideIrrelevantSections: true })
+    expect(readConfig().repositories.api.pullRequest?.hideIrrelevantSections).toBe(true)
+  })
+})
+
 describe('updateRepositoryLanguages — ticket', () => {
   beforeEach(async () => {
     resetConfigCache()
