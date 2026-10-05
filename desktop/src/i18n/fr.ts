@@ -2101,6 +2101,7 @@ export const fr: Record<keyof typeof en, string> = {
   'chat.placeholder': 'Écrivez à Claude. Entrée pour envoyer, Maj+Entrée pour aller à la ligne',
   'chat.send': 'Envoyer',
   'chat.empty': 'Rien n’a encore été dit dans cette session.',
+  'chat.greeting': 'Bonjour !',
   'chat.started': 'Conversation commencée le {date} à {time}',
   'chat.working': 'Claude travaille…',
   'chat.waiting': 'Claude a besoin de vous dans le terminal pour continuer.',

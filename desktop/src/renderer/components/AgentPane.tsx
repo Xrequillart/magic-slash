@@ -146,6 +146,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
               placeholder: t('chat.placeholder'),
               send: t('chat.send'),
               empty: t('chat.empty'),
+              greeting: t('chat.greeting'),
               working: t('chat.working'),
               waiting: t('chat.waiting'),
               showTerminal: t('chat.showTerminal'),

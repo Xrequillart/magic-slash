@@ -5,6 +5,7 @@ import { ButtonIcon } from './ButtonIcon'
 import { Loader } from './Loader'
 import { RAISED_PLATE } from './plate'
 import { CLAUDE_CORAL, ClaudeCode } from './brand'
+import { ClaudeCodeMascot } from './ClaudeCodeMascot'
 import { ChatMarkdown, type ChatHighlighter } from './ChatMarkdown'
 import { ChatDiffCard, type ChatDiffData, type ChatLineHighlighter } from './ChatDiffCard'
 import { ChatInsightCard } from './ChatInsightCard'
@@ -53,6 +54,8 @@ export interface ChatViewLabels {
   placeholder: string
   send: string
   empty: string
+  /** What the empty session's robot says in its speech bubble. */
+  greeting: string
   working: string
   waiting: string
   showTerminal: string
@@ -503,7 +506,7 @@ export function ChatView({
           className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center justify-center gap-5 px-6 text-center"
           style={{ bottom: dockHeight }}
         >
-          <ClaudeCode className="h-24 w-24" style={{ color: CLAUDE_CORAL }} />
+          <ClaudeCodeMascot greeting={labels.greeting} className="h-24 w-24" />
           <div className="flex flex-col items-center gap-1.5">
             <ClaudeCodeTitle version={claudeCodeVersion} className="text-base" />
             <p className="text-sm text-text-secondary/60">{labels.empty}</p>
