@@ -684,6 +684,10 @@ function ChatTurn({ prompt, scrollRef, children }: { prompt: ChatUserEntry; scro
   const pinRef = useRef<HTMLDivElement>(null)
   const [pinned, setPinned] = useState(false)
   const [pinHeight, setPinHeight] = useState(0)
+  // The clamp marks a long wrapped line with an ellipsis, but a cut on a line break may
+  // show none: the reminder keeps the prompt's first two lines and marks the rest itself.
+  const lines = prompt.text.trim().split('\n')
+  const reminder = lines.length > 2 ? `${lines.slice(0, 2).join('\n')}…` : lines.join('\n')
 
   // Read off the geometry on every scroll rather than from an IntersectionObserver: one
   // only speaks when its target crosses the edge, and a jump (the thread opening at its
@@ -724,10 +728,10 @@ function ChatTurn({ prompt, scrollRef, children }: { prompt: ChatUserEntry; scro
           type="button"
           tabIndex={pinned ? 0 : -1}
           onClick={() => bubbleRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })}
-          className={`relative max-w-[80%] overflow-hidden rounded-2xl border border-line ${RAISED_PLATE} px-3.5 py-2 text-left text-sm text-ink shadow-sm ${pinned ? 'pointer-events-auto' : ''}`}
+          className={`relative max-w-[80%] overflow-hidden rounded-2xl border border-line ${RAISED_PLATE} px-3 py-1.5 text-left text-xs text-ink shadow-sm ${pinned ? 'pointer-events-auto' : ''}`}
         >
           <span aria-hidden className="absolute inset-0 bg-accent/10" />
-          <span className="relative line-clamp-2 whitespace-pre-wrap break-words">{prompt.text}</span>
+          <span className="relative line-clamp-2 whitespace-pre-wrap break-words">{reminder}</span>
         </button>
       </div>
       {/* The turn's content is pulled up under the reminder, not the reminder given a
