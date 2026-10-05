@@ -1,6 +1,7 @@
 import { Children, isValidElement, memo, useEffect, useMemo, useState, type ReactElement, type ReactNode } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { ChatTable } from './ChatTable'
 
 /**
  * WHAT CLAUDE WROTE, AS IT MEANT IT — headings, bold, lists, tables, links, inline code,
@@ -40,9 +41,6 @@ const PROSE = `text-sm leading-relaxed text-ink
   [&_a]:text-accent [&_a]:underline [&_a]:hover:text-accent-hover
   [&_blockquote]:border-l-2 [&_blockquote]:border-line-strong [&_blockquote]:pl-3 [&_blockquote]:text-text-secondary
   [&_hr]:my-4 [&_hr]:border-line
-  [&_table]:my-3 [&_table]:w-full [&_table]:border-collapse [&_table]:text-xs
-  [&_th]:border [&_th]:border-line [&_th]:bg-surface [&_th]:px-2.5 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-semibold
-  [&_td]:border [&_td]:border-line [&_td]:px-2.5 [&_td]:py-1.5
   [&_:not(pre)>code]:rounded [&_:not(pre)>code]:bg-blue/10 [&_:not(pre)>code]:text-blue [&_:not(pre)>code]:px-1 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[0.85em]`
 
 export const ChatMarkdown = memo(function ChatMarkdown({ text, highlight }: ChatMarkdownProps) {
@@ -56,6 +54,8 @@ export const ChatMarkdown = memo(function ChatMarkdown({ text, highlight }: Chat
       const lang = code?.props.className?.match(/language-([\w+#.-]+)/)?.[1]
       return <CodeBlock code={String(code?.props.children ?? '').replace(/\n$/, '')} lang={lang} highlight={highlight} />
     },
+    // Tables are cards of their own, framed and rounded like the insights.
+    table: ({ children }) => <ChatTable>{children}</ChatTable>,
     a: ({ href, children }) => (
       <a href={href} target="_blank" rel="noreferrer noopener">{children}</a>
     ),
