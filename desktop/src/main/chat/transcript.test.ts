@@ -36,6 +36,36 @@ describe('ChatTranscript', () => {
     expect(t.interruptedAt).toBeNull()
   })
 
+  it('hands back a prompt nothing has answered, and only that one', () => {
+    const t = new ChatTranscript()
+    t.push(line({ type: 'user', uuid: 'u1', message: { content: 'First' } }))
+    t.push(line({ type: 'assistant', uuid: 'a1', message: { content: [{ type: 'text', text: 'Done' }] } }))
+    expect(t.unanswered).toBeNull()
+    t.push(line({ type: 'user', uuid: 'u2', message: { content: 'Write an essay' } }))
+    t.push(line({ type: 'attachment', uuid: 'x', attachment: { type: 'environment' } }))
+    expect(t.unanswered).toEqual({ ids: ['u2:0'], text: 'Write an essay' })
+    expect(t.dropUnanswered()).toBe('Write an essay')
+    expect(t.entries.map((e) => e.id)).toEqual(['u1:0', 'a1:0'])
+    expect(t.dropUnanswered()).toBeNull()
+  })
+
+  it('has nothing to hand back once the turn has begun answering or was interrupted', () => {
+    const thinking = new ChatTranscript()
+    thinking.push(line({ type: 'user', uuid: 'u1', message: { content: 'Go' } }))
+    thinking.push(line({ type: 'assistant', uuid: 'a1', message: { content: [{ type: 'thinking', thinking: '…' }] } }))
+    expect(thinking.unanswered).toBeNull()
+
+    const stopped = new ChatTranscript()
+    stopped.push(line({ type: 'user', uuid: 'u1', message: { content: 'Go' } }))
+    stopped.push(line({ type: 'user', uuid: 'i', message: { content: [{ type: 'text', text: '[Request interrupted by user]' }] } }))
+    expect(stopped.unanswered).toBeNull()
+
+    const local = new ChatTranscript()
+    local.push(line({ type: 'user', uuid: 'c', message: { content: '<command-name>/cost</command-name>' } }))
+    local.push(line({ type: 'system', uuid: 'o', content: '<local-command-stdout>$0.12</local-command-stdout>' }))
+    expect(local.unanswered).toBeNull()
+  })
+
   it('folds a tool result into its call', () => {
     const t = new ChatTranscript()
     t.push(line({ type: 'assistant', uuid: 'a', message: { content: [{ type: 'tool_use', id: 'tu1', name: 'Bash', input: { command: 'ls -la\necho' } }] } }))

@@ -52,6 +52,25 @@ export function getChatSnapshot(terminalId: string): ChatSnapshot {
   return transcript ? snapshot(transcript) : { entries: [], queue: [] }
 }
 
+/**
+ * Whether the transcript, read up to now, ends on a prompt nothing has answered yet: the
+ * one Escape takes back without a word (see `ChatTranscript.unanswered`).
+ */
+export function hasUnansweredPrompt(terminalId: string): boolean {
+  const watch = watches.get(terminalId)
+  if (!watch) return false
+  readNew(terminalId, watch)
+  return watch.transcript.unanswered !== null
+}
+
+/** Takes that prompt out of the chat, and answers its text (null when there was none). */
+export function dropUnansweredPrompt(terminalId: string): string | null {
+  const watch = watches.get(terminalId)
+  const text = watch?.transcript.dropUnanswered() ?? null
+  if (watch && text !== null) scheduleEmit(terminalId, watch)
+  return text
+}
+
 function snapshot(transcript: ChatTranscript): ChatSnapshot {
   return { entries: transcript.entries.slice(), queue: transcript.queue }
 }

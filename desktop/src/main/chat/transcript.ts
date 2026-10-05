@@ -51,6 +51,12 @@ export class ChatTranscript {
    * trace of it: see `settleInterruptedTurn` in terminal-manager.ts.
    */
   interruptedAt: number | null = null
+  /**
+   * The prompt the transcript ends on while nothing has come back for it yet, or null.
+   * Escape at that point leaves no line at all: Claude Code takes the prompt back into
+   * its input box, as if it had never been sent. See `dropUnanswered`.
+   */
+  unanswered: { ids: string[]; text: string } | null = null
   /** The prompts still waiting, oldest first. Replaced on every change, never mutated. */
   queue: ChatQueuedPrompt[] = []
   private readonly tools = new Map<string, Extract<ChatEntry, { kind: 'tool' }>>()
@@ -84,6 +90,8 @@ export class ChatTranscript {
     const raw = typeof data.message?.content === 'string' ? data.message.content : typeof data.content === 'string' ? data.content : null
     const output = raw !== null && (data.type === 'user' || data.type === 'system') ? localCommandOutput(raw) : null
     if (output !== null) {
+      // A local command answered its prompt: there is nothing left for Escape to take back.
+      this.unanswered = null
       if (!output) return false
       this.entries.push({ kind: 'notice', id, text: output })
       return true
@@ -97,11 +105,15 @@ export class ChatTranscript {
     if (interrupt) {
       const at = typeof data.timestamp === 'string' ? Date.parse(data.timestamp) : NaN
       this.interruptedAt = Number.isFinite(at) ? at : Date.now()
+      this.unanswered = null
       this.entries.push({ kind: 'notice', id, text: interrupt.text!.trim().slice(1, -1) })
       return true
     }
     // Anything else said after it means the session moved on.
     this.interruptedAt = null
+    // A thinking block counts: the turn has begun answering, even if nothing is shown.
+    if (data.type === 'assistant') this.unanswered = null
+    const prompt: { ids: string[]; texts: string[] } = { ids: [], texts: [] }
 
     let changed = false
     blocks.forEach((block, i) => {
@@ -112,6 +124,8 @@ export class ChatTranscript {
         if (data.type === 'user') {
           const at = typeof data.timestamp === 'string' ? Date.parse(data.timestamp) : NaN
           this.entries.push({ kind: 'user', id: blockId, text, ...(Number.isFinite(at) ? { at } : {}) })
+          prompt.ids.push(blockId)
+          prompt.texts.push(text)
         } else {
           this.entries.push({ kind: 'assistant', id: blockId, text })
         }
@@ -144,7 +158,23 @@ export class ChatTranscript {
         changed = true
       }
     })
+    if (prompt.ids.length) this.unanswered = { ids: prompt.ids, text: prompt.texts.join('\n') }
     return changed
+  }
+
+  /**
+   * Takes the unanswered prompt out of the entries, the way Claude Code took it back into
+   * its input box, and answers its text (null when there is none).
+   */
+  dropUnanswered(): string | null {
+    const prompt = this.unanswered
+    if (!prompt) return null
+    this.unanswered = null
+    for (const id of prompt.ids) {
+      const index = this.entries.findIndex((e) => e.id === id)
+      if (index >= 0) this.entries.splice(index, 1)
+    }
+    return prompt.text
   }
 
   /**

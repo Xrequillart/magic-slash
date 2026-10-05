@@ -101,6 +101,13 @@ export interface ChatViewProps {
   initialDraft?: string
   onDraftChange?: (draft: string) => void
   /**
+   * A prompt handed back to the composer, as Claude Code hands one back to its input box
+   * when Escape stops a turn before anything came back. Put before what is being typed,
+   * then `onDraftRestored`, after which the caller sets it back to null.
+   */
+  restoredDraft?: string | null
+  onDraftRestored?: () => void
+  /**
    * The size code is set in, in px: the diff cards and the fenced blocks, as the file
    * preview sets it. Handed down as `--chat-code-size`, which both read.
    */
@@ -138,7 +145,7 @@ const STICK_PX = 48
 export function ChatView({
   entries, working, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
   question, onAnswer, answering, commands = [], highlightLines, onPickFiles, resolveFile,
-  initialDraft, onDraftChange, codeFontSize, claudeCodeVersion, startedLabel, queue = [],
+  initialDraft, onDraftChange, restoredDraft, onDraftRestored, codeFontSize, claudeCodeVersion, startedLabel, queue = [],
 }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -148,6 +155,18 @@ export function ChatView({
   const onDraftChangeRef = useRef(onDraftChange)
   onDraftChangeRef.current = onDraftChange
   useEffect(() => onDraftChangeRef.current?.(draft), [draft])
+  const onDraftRestoredRef = useRef(onDraftRestored)
+  onDraftRestoredRef.current = onDraftRestored
+  // Applied once per hand-back, even under StrictMode's doubled mount effects.
+  const restoredRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (restoredRef.current === (restoredDraft ?? null)) return
+    restoredRef.current = restoredDraft ?? null
+    if (!restoredDraft) return
+    setDraft((current) => (current ? `${restoredDraft}\n${current}` : restoredDraft))
+    onDraftRestoredRef.current?.()
+    inputRef.current?.focus()
+  }, [restoredDraft])
 
   // THE `/` MENU is open while the draft is a slash and a name with no space yet, the
   // way Claude Code's own is, and until Escape closes it for this draft.

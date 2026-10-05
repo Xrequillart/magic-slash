@@ -16,11 +16,12 @@ import {
   updateTerminalMetadataFromHook,
   updateTerminalRepositoriesFromHook,
   noteTerminalUserInput,
+  settleInterruptedTurn,
   syncTerminalCwd,
   relaunchTerminalInResolvedCwd,
   type TerminalMetadata,
 } from '../pty/terminal-manager'
-import { noteTerminalInput, isUserInput, releaseHeld } from '../questions/pending-questions'
+import { noteTerminalInput, isUserInput, releaseHeld, clearPendingQuestion } from '../questions/pending-questions'
 import { agentNotification, type AgentSubjectInput } from '../notifications/agent-message'
 import { resolveAgentCwd } from '../pty/agent-cwd'
 import {
@@ -38,7 +39,7 @@ import { expandPath } from '../config/validation'
 import { isValidAgentType, isValidLaunchMode, DEFAULT_AGENT_TYPE } from '../config/defaults'
 import { checkRepoPath } from '../config/repo-validation'
 import { ensureHydrated } from '../store/hydrate'
-import { getChatSnapshot } from '../chat/transcript-watcher'
+import { getChatSnapshot, hasUnansweredPrompt, dropUnansweredPrompt } from '../chat/transcript-watcher'
 import { savePastedImage } from '../chat/attachments'
 import { flushPlanSpec } from '../store/plan-sync'
 import type { HistoryAction, LaunchMetadata } from '../../types'
@@ -49,6 +50,12 @@ import type { HistoryAction, LaunchMetadata } from '../../types'
  * exists AND has .git). Throws a descriptive error otherwise so the renderer can
  * prompt the user to re-point the folder instead of creating a broken agent.
  */
+/**
+ * How long after Escape the transcript is read for what it did. Claude Code writes its
+ * "[Request interrupted…]" line within milliseconds; this is room for a busy disk.
+ */
+const INTERRUPT_GRACE_MS = 500
+
 function assertLaunchTargetValid(cwd: unknown): void {
   if (typeof cwd !== 'string' || cwd.length === 0) return
   const expanded = expandPath(cwd)
@@ -748,6 +755,26 @@ export function setupTerminalHandlers(
   ipcMain.handle('terminal:getChat', async (_event, { id }) => {
     if (typeof id !== 'string') return { entries: [], queue: [] }
     return getChatSnapshot(id)
+  })
+
+  // Escape from the chat view, and what it did. Answers the prompt it took back, if any.
+  //
+  // Escape after Claude has started answering writes an "[Request interrupted…]" line,
+  // which the transcript watcher turns into a settled turn (see settleInterruptedTurn).
+  // Escape BEFORE anything came back leaves no line at all: Claude Code takes the prompt
+  // back into its input box, as if it had never been sent, and fires no hook either. So
+  // a transcript still ending on that prompt, once Escape has had time to land, is the
+  // sign: the turn is settled here, the prompt leaves the chat, and the input box it
+  // went back to is emptied (Ctrl+C, which clears it whole, however many lines it has)
+  // so that it is the chat's composer that holds it, not text the next send would be
+  // typed after.
+  ipcMain.handle('terminal:interrupt', async (_event, { id }) => {
+    if (typeof id !== 'string' || !writeToTerminal(id, '\x1b')) return null
+    await new Promise((resolve) => setTimeout(resolve, INTERRUPT_GRACE_MS))
+    if (!hasUnansweredPrompt(id) || !settleInterruptedTurn(id, Date.now())) return null
+    clearPendingQuestion(id)
+    writeToTerminal(id, '\x03')
+    return dropUnansweredPrompt(id)
   })
 
   // Get terminal display buffer (for reconnection after refresh)

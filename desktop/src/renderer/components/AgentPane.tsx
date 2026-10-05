@@ -40,6 +40,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   const { entries, queue } = useChat(terminal.id)
   const question = usePendingQuestion(terminal.id)
   const [answering, setAnswering] = useState(false)
+  const [restored, setRestored] = useState<string | null>(null)
 
   const send = useCallback((text: string, attachments: string[]) => {
     // A newline in the TUI's input box is a line feed (Shift+Enter in the terminal view
@@ -55,9 +56,12 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
     if (opensInTerminal(text)) setDisplayMode(id, 'terminal')
   }, [terminal.id, setDisplayMode])
 
-  // The ESC byte, which is what the TUI reads as Escape: it interrupts the turn.
+  // The ESC byte, which is what the TUI reads as Escape: it interrupts the turn. Before
+  // anything came back, Claude Code takes the prompt back instead, and so does the chat.
   const interrupt = useCallback(() => {
-    void window.electronAPI.terminal.write(terminal.id, '\x1b')
+    window.electronAPI.terminal.interrupt(terminal.id)
+      .then((text) => { if (text) setRestored(text) })
+      .catch(() => {})
   }, [terminal.id])
 
   // The menu bar panel's own path: the same token check, the same paced keystrokes.
@@ -130,6 +134,8 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
             commands={commands}
             initialDraft={drafts.get(terminal.id)}
             onDraftChange={keepDraft}
+            restoredDraft={restored}
+            onDraftRestored={() => setRestored(null)}
             codeFontSize={codeFontSize}
             claudeCodeVersion={terminal.metadata?.usage?.version}
             startedLabel={startedLabel}

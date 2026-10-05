@@ -336,6 +336,10 @@ const terminalApi = {
   savePastedImage: (bytes: Uint8Array, mime: string): Promise<string | null> =>
     ipcRenderer.invoke('chat:savePastedImage', { bytes, mime }),
 
+  // Escape from the chat: answers the prompt Claude Code took back, if it took one.
+  interrupt: (id: string): Promise<string | null> =>
+    ipcRenderer.invoke('terminal:interrupt', { id }),
+
   getChat: (id: string): Promise<ChatSnapshot> =>
     ipcRenderer.invoke('terminal:getChat', { id }),
 
