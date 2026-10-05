@@ -1,7 +1,8 @@
 import type { CSSProperties, ReactNode, RefObject } from 'react'
 import { ButtonIcon } from './ButtonIcon'
-import { Archive, CircleUserRound, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Settings2 } from './icons'
+import { Archive, CircleUserRound, History, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Settings2 } from './icons'
 import { Label } from './Label'
+import { SelectIcon, type SelectIconProps } from './SelectIcon'
 import type { IconComponent } from './types'
 
 /**
@@ -161,6 +162,13 @@ export interface TitleBarAction {
   icon?: IconComponent
 }
 
+/**
+ * A MENU in the agent's group: the agent's Claude Code sessions, one of which can be
+ * resumed. `SelectIcon`'s own arguments, less what the bar decides — the size and the
+ * mark (`History` unless the caller says otherwise).
+ */
+export type TitleBarMenu = Omit<SelectIconProps, 'icon' | 'size' | 'className'> & { icon?: IconComponent }
+
 /** An icon-only control: the mark and its tooltip, which is also its accessible name. */
 export interface TitleBarIconAction {
   icon: IconComponent
@@ -244,6 +252,8 @@ export interface AppTitleBarProps {
    * toggles' marks are, so it changes with the view rather than lighting up.
    */
   view?: TitleBarIconAction
+  /** Before `view`: the agent's sessions, to resume one. See `TitleBarMenu`. */
+  history?: TitleBarMenu
   /** The action before the right toggle. */
   action?: TitleBarAction
   /** The toggle for the panel on the right, after the action. */
@@ -291,6 +301,7 @@ export function AppTitleBar({
   back,
   titles = [],
   view,
+  history,
   action,
   right,
   settings,
@@ -299,7 +310,7 @@ export function AppTitleBar({
   account,
   className = '',
 }: AppTitleBarProps) {
-  const hasRight = Boolean(view || action || right || settings || notice || zoom || account)
+  const hasRight = Boolean(view || history || action || right || settings || notice || zoom || account)
 
   return (
     <div
@@ -342,6 +353,7 @@ export function AppTitleBar({
 
       {hasRight && (
         <Controls>
+          {history && <SelectIcon {...history} icon={history.icon ?? History} />}
           {view && <ButtonIcon icon={view.icon} title={view.title} onClick={view.onClick} />}
           {action && <Action {...action} />}
           {right && (

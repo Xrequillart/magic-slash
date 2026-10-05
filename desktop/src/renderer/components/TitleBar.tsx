@@ -10,6 +10,7 @@ import { LoginScreen } from './LoginScreen'
 import { BellOff, MessageSquare, SquareTerminal } from '@ds/desktop/icons'
 import { useConfig } from '../hooks/useConfig'
 import { useZoom } from '../hooks/useZoom'
+import { useSessionHistory } from '../hooks/useSessionHistory'
 import { resolveDisplayMode } from '../utils/displayMode'
 import { DEFAULT_ZOOM } from '../../types'
 
@@ -101,6 +102,9 @@ export function TitleBar() {
   // nothing to say about it. Rounded the way Settings → Appearance prints it, which also
   // absorbs a factor that arrives as 0.9999. The click puts it back.
   const { zoom, set: setZoom } = useZoom()
+
+  // The agent's Claude Code sessions, beside its view switch: one of them resumed in place.
+  const history = useSessionHistory(inspectedTerminal?.id)
   const zoomPercent = Math.round(zoom * 100)
 
   // One title normally, two when the window is split: the component draws a rule between
@@ -139,6 +143,7 @@ export function TitleBar() {
       // info sidebar no longer has a header to carry it — and the action belongs
       // to the agent, not to a panel that may be collapsed.
       // The agent's view, beside its archive: the mark is where the click takes you.
+      history={history}
       view={inspectedTerminal ? (resolveDisplayMode(inspectedTerminal, config) === 'chat'
         ? { icon: SquareTerminal, title: t('chat.mode.toTerminal'), onClick: () => setDisplayMode(inspectedTerminal.id, 'terminal') }
         : { icon: MessageSquare, title: t('chat.mode.toChat'), onClick: () => setDisplayMode(inspectedTerminal.id, 'chat') }

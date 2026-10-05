@@ -18,6 +18,7 @@ export type {
   TitleBarAccount,
   TitleBarAction,
   TitleBarIconAction,
+  TitleBarMenu,
   TitleBarSwitch,
   TitleBarSwitchOption,
   TitleBarTitle,

@@ -19,11 +19,14 @@ import {
   settleInterruptedTurn,
   syncTerminalCwd,
   relaunchTerminalInResolvedCwd,
+  listTerminalSessions,
+  resumeTerminalSession,
   type TerminalMetadata,
 } from '../pty/terminal-manager'
 import { noteTerminalInput, isUserInput, releaseHeld, clearPendingQuestion } from '../questions/pending-questions'
 import { agentNotification, type AgentSubjectInput } from '../notifications/agent-message'
 import { resolveAgentCwd } from '../pty/agent-cwd'
+import { resumableSessionId } from '../pty/resume-session'
 import {
   saveAgent,
   archiveAgent,
@@ -467,7 +470,12 @@ export function restoreAgents() {
         callbacks.onMetadataChange,
         agent.metadata as TerminalMetadata | undefined,
         callbacks.onRepositoriesChange,
-        agent.repositories
+        agent.repositories,
+        undefined,
+        undefined,
+        undefined,
+        // The conversation the app was quit on, when this machine still has it.
+        resumableSessionId(agent.metadata?.claudeTranscriptPath, cwd) ?? undefined
       )
 
       // Save the TERMINAL's metadata, not the agent's. launchClaude folds the
@@ -819,6 +827,18 @@ export function setupTerminalHandlers(
   ipcMain.handle('terminal:relaunchInCwd', async (_event, { id }) => {
     if (typeof id !== 'string') return null
     return relaunchTerminalInResolvedCwd(id)
+  })
+
+  // The title bar's session history: every Claude Code session the agent has been on,
+  // and resuming one of them in its terminal.
+  ipcMain.handle('terminal:listSessions', async (_event, { id }) => {
+    if (typeof id !== 'string') return []
+    return listTerminalSessions(id)
+  })
+
+  ipcMain.handle('terminal:resumeSession', async (_event, { id, transcriptPath }) => {
+    if (typeof id !== 'string' || typeof transcriptPath !== 'string') return false
+    return resumeTerminalSession(id, transcriptPath)
   })
 }
 

@@ -1074,6 +1074,42 @@ export interface TerminalMetadata {
   relatedWorktrees?: string[]
   repositoryMetadata?: Record<string, RepositoryMetadata>
   usage?: TerminalUsage
+  /**
+   * The JSONL of the Claude Code session this agent is on, so that quitting the app and
+   * opening it again resumes the conversation (`claude --resume`) instead of starting a
+   * new one. Persisted, unlike `usage.transcriptPath` it mirrors: written when the
+   * statusLine reports a DIFFERENT file (a `/clear` does), and dropped whenever the app
+   * replaces Claude Code with a fresh one — the restart button, a double Ctrl+C — so a
+   * conversation thrown away on purpose stays thrown away. See `resumableSessionId`.
+   */
+  claudeTranscriptPath?: string
+  /**
+   * Every Claude Code session this agent has been on, oldest first, so the title bar can
+   * list them and resume any one. Grows when the statusLine reports a file it has not seen
+   * (see `withSession`), capped at `MAX_AGENT_SESSIONS`. In the cloud with the agent; the
+   * files themselves stay on the machine that wrote them.
+   */
+  claudeSessions?: ClaudeSessionRef[]
+}
+
+/** One Claude Code session an agent has been on: its JSONL, and when the agent met it. */
+export interface ClaudeSessionRef {
+  transcriptPath: string
+  startedAt: number
+}
+
+/** A session as the title bar's history lists it (`terminal:listSessions`). */
+export interface ClaudeSessionEntry {
+  transcriptPath: string
+  /** `/rename`'s title, else Claude Code's own, else the last prompt. */
+  title?: string
+  startedAt: number
+  /** The file's last write. Absent when the file is not on this machine. */
+  lastActiveAt?: number
+  /** The session the agent is on right now. */
+  current: boolean
+  /** Whether it can be resumed HERE: its file exists, in a directory the agent has. */
+  available: boolean
 }
 
 /**

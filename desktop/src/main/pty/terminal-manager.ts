@@ -15,7 +15,8 @@ import { expandPath } from '../config/validation'
 import { resolveAgentCwd } from './agent-cwd'
 import { getCommonPaths } from '../utils/paths'
 import { clearPendingQuestion, clearAllPendingQuestions } from '../questions/pending-questions'
-import type { TerminalMetadata, TerminalState, LaunchMode, TerminalUsage, InitialPromptMode } from '../../types'
+import { cwdForTranscript, readSessionTitle, sessionIdOf, withSession } from './resume-session'
+import type { ClaudeSessionEntry, TerminalMetadata, TerminalState, LaunchMode, TerminalUsage, InitialPromptMode } from '../../types'
 import { isValidModelName } from '../../types'
 export type { TerminalMetadata, TerminalState }
 
@@ -223,9 +224,14 @@ export interface Terminal {
    *  object — more than one entry means a /model switch happened mid-session and
    *  the end-of-session snapshot describes only the last model. */
   modelIds?: Set<string>
-  /** Replaces the running Claude Code with a fresh one in a given directory.
-   *  Only set for agents (launchClaude), not for plain shells. */
-  respawn?: (cwd: string, notice?: string) => void
+  /** Transcripts of the sessions this agent has replaced. A Claude Code being killed
+   *  can still have a statusLine report in flight, and it must not put back the
+   *  session the respawn just dropped. */
+  retiredTranscripts?: Set<string>
+  /** Replaces the running Claude Code with a fresh one in a given directory, or with
+   *  the session `resumeId` names. Only set for agents (launchClaude), not for plain
+   *  shells. */
+  respawn?: (cwd: string, notice?: string, resumeId?: string) => void
 }
 
 const terminals = new Map<string, Terminal>()
@@ -529,7 +535,8 @@ export function launchClaude(
   initialRepositories?: string[],
   initialPrompt?: string,
   launchModeOverride?: LaunchMode,
-  initialPromptMode: InitialPromptMode = 'run'
+  initialPromptMode: InitialPromptMode = 'run',
+  resumeSessionId?: string
 ): Terminal {
   const shell = getDefaultShell()
   const expandedCwd = expandPath(cwd)
@@ -548,6 +555,9 @@ export function launchClaude(
   // into the input box once the TUI is up. See `InitialPromptMode`.
   let pendingPrompt = initialPromptMode === 'run' ? (initialPrompt || null) : null
   let pendingDraft = initialPromptMode === 'draft' ? (initialPrompt || null) : null
+  // The session to pick up, on the first spawn only (`restoreAgents`). Any later spawn
+  // is a respawn, and a respawn means a fresh Claude Code — see `respawnInCwd`.
+  let pendingResume = resumeSessionId || null
 
   // The model is read ONCE, when the agent is created, unlike the launch mode and the
   // theme below: an agent that restarts after a crash must come back on the model it was
@@ -585,10 +595,12 @@ export function launchClaude(
      * next caller to build a prompt gets it for free, and a filter would have to
      * enumerate shell metacharacters correctly forever.
      */
+    const resumeFlag = pendingResume ? ` --resume ${shQuote(pendingResume)}` : ''
     const claudeCmd = pendingPrompt
       ? `claude${modeFlag}${modelFlag}${themeFlag} ${shQuote(pendingPrompt)}`
-      : `claude${modeFlag}${modelFlag}${themeFlag}`
+      : `claude${modeFlag}${modelFlag}${themeFlag}${resumeFlag}`
     pendingPrompt = null
+    pendingResume = null
     const ptyProcess = pty.spawn(shell, ['-li', '-c', claudeCmd], {
       name: 'xterm-256color',
       cols,
@@ -759,11 +771,15 @@ export function launchClaude(
    * the old listeners are disposed BEFORE the kill, or the dying PTY's own exit
    * handler fires and cascades into a second, competing restart.
    */
-  const respawnInCwd = (targetCwd: string, notice?: string) => {
+  const respawnInCwd = (targetCwd: string, notice?: string, resumeId?: string) => {
     // Nothing can answer a question whose process is about to be replaced. The
     // crash path has already done this from its exit handler; the deliberate
     // relaunch has no exit handler left to run, and needs it done here.
     clearPendingQuestion(id)
+
+    // The session being replaced is not the one to resume at the next launch: the new
+    // Claude Code reports its own as soon as it has one.
+    forgetSession(terminal)
 
     if (notice) {
       onData(notice)
@@ -783,6 +799,7 @@ export function launchClaude(
     }
 
     const previousState = terminal.state
+    pendingResume = resumeId ?? null
     terminal.pty = createPtyProcess(targetCwd, terminal.cols, terminal.rows)
     terminal.cwd = targetCwd
     terminal.state = 'idle'
@@ -841,8 +858,9 @@ export function launchClaude(
     // conversation it starts is just as real as a typed one, and just as lost on
     // a relaunch — even though no keystroke ever reached the PTY. True of a `draft`
     // too, and for a plainer reason: a relaunch would wipe the text out of the input
-    // box, along with whatever the person had added to it.
-    hasUserInput: Boolean(initialPrompt),
+    // box, along with whatever the person had added to it. And true of a resumed
+    // session, which holds the whole conversation it was quit on.
+    hasUserInput: Boolean(initialPrompt) || Boolean(resumeSessionId),
     respawn: respawnInCwd
   }
 
@@ -887,6 +905,117 @@ export function updateTerminalUsageFromHook(terminalId: string, usage: TerminalU
   if (usage.modelId) {
     if (!terminal.modelIds) terminal.modelIds = new Set()
     terminal.modelIds.add(usage.modelId)
+  }
+
+  // The one field of a report that IS persisted, and only when it changes: a new session
+  // (the first report, a `/clear`) is rare, the report itself is not. Into the history
+  // whatever happens to it next; as the session to resume only if the app has not just
+  // walked away from it.
+  const transcript = usage.transcriptPath
+  if (!transcript) return
+  const patch: Partial<TerminalMetadata> = {}
+  const sessions = withSession(terminal.metadata.claudeSessions, transcript, Date.now())
+  if (sessions) patch.claudeSessions = sessions
+  if (transcript !== terminal.metadata.claudeTranscriptPath && !terminal.retiredTranscripts?.has(transcript)) {
+    patch.claudeTranscriptPath = transcript
+  }
+  if (Object.keys(patch).length === 0) return
+  terminal.metadata = { ...terminal.metadata, ...patch }
+  try {
+    updateAgentMetadata(terminalId, patch)
+  } catch (e) {
+    console.error('[updateTerminalUsageFromHook] Failed to persist the session transcript:', e)
+  }
+}
+
+/** The directories an agent's sessions may have been started in, most likely first. */
+function sessionCwds(terminal: Terminal): string[] {
+  return [terminal.cwd, ...terminal.repositories.map(expandPath), terminal.launchDir]
+}
+
+/**
+ * The agent's sessions for the title bar's history, most recently active first. The
+ * session it was restored on before the history existed counts too.
+ */
+export async function listTerminalSessions(terminalId: string): Promise<ClaudeSessionEntry[]> {
+  const terminal = terminals.get(terminalId)
+  if (!terminal) return []
+  const { claudeSessions, claudeTranscriptPath, usage } = terminal.metadata
+  const current = usage?.transcriptPath ?? claudeTranscriptPath
+  const refs = (claudeTranscriptPath && withSession(claudeSessions, claudeTranscriptPath, terminal.createdAt.getTime())) || claudeSessions || []
+  const cwds = sessionCwds(terminal)
+
+  const entries = await Promise.all(refs.map(async (ref): Promise<ClaudeSessionEntry> => {
+    let lastActiveAt: number | undefined
+    try {
+      lastActiveAt = (await fs.promises.stat(ref.transcriptPath)).mtimeMs
+    } catch {
+      // Not on this machine, or not written yet.
+    }
+    const available = lastActiveAt !== undefined && Boolean(sessionIdOf(ref.transcriptPath)) && Boolean(cwdForTranscript(ref.transcriptPath, cwds))
+    return {
+      transcriptPath: ref.transcriptPath,
+      title: lastActiveAt !== undefined ? await readSessionTitle(ref.transcriptPath) : undefined,
+      startedAt: ref.startedAt,
+      lastActiveAt,
+      current: ref.transcriptPath === current,
+      available,
+    }
+  }))
+  return entries.sort((a, b) => (b.lastActiveAt ?? b.startedAt) - (a.lastActiveAt ?? a.startedAt))
+}
+
+/**
+ * Replaces the agent's Claude Code with one resumed on a session from its history.
+ * Only a session the agent has recorded: the path comes from the renderer, and the
+ * history is what says it is one of this agent's. Returns false when it cannot be done.
+ */
+export function resumeTerminalSession(terminalId: string, transcriptPath: string): boolean {
+  const terminal = terminals.get(terminalId)
+  if (!terminal || !terminal.respawn) return false
+  const known = terminal.metadata.claudeSessions?.some((s) => s.transcriptPath === transcriptPath)
+    || terminal.metadata.claudeTranscriptPath === transcriptPath
+  const id = sessionIdOf(transcriptPath)
+  const cwd = cwdForTranscript(transcriptPath, sessionCwds(terminal))
+  if (!known || !id || !cwd || !fs.existsSync(transcriptPath)) return false
+
+  try {
+    terminal.respawn(cwd, `\x1b[2J\x1b[H\x1b[33m--- Resuming a Claude Code session ---\x1b[0m\r\n\r\n`, id)
+  } catch (e) {
+    console.error(`[resumeTerminalSession] Failed for terminal ${terminalId}:`, e)
+    return false
+  }
+
+  // The respawn retired the session it left; this one is the agent's again, even if it
+  // was left on purpose earlier, and it is the one to come back to after a quit.
+  terminal.retiredTranscripts?.delete(transcriptPath)
+  terminal.metadata = { ...terminal.metadata, claudeTranscriptPath: transcriptPath }
+  try {
+    updateAgentMetadata(terminalId, { claudeTranscriptPath: transcriptPath })
+  } catch (e) {
+    console.error(`[resumeTerminalSession] Failed to persist for terminal ${terminalId}:`, e)
+  }
+  terminal.hasUserInput = true
+  restartTrackers.delete(terminalId)
+  return true
+}
+
+/**
+ * Drops the session an agent would resume at the next launch. Called when the app
+ * replaces its Claude Code with a fresh one: that conversation was left on purpose.
+ */
+function forgetSession(terminal: Terminal): void {
+  const current = terminal.metadata.claudeTranscriptPath ?? terminal.metadata.usage?.transcriptPath
+  if (current) {
+    if (!terminal.retiredTranscripts) terminal.retiredTranscripts = new Set()
+    terminal.retiredTranscripts.add(current)
+  }
+  if (!terminal.metadata.claudeTranscriptPath) return
+  terminal.metadata = mergeMetadata(terminal.metadata, { claudeTranscriptPath: undefined })
+  try {
+    updateAgentMetadata(terminal.id, { claudeTranscriptPath: undefined })
+  } catch (e) {
+    console.error(`[forgetSession] Failed for terminal ${terminal.id}:`, e)
   }
 }
 

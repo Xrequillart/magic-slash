@@ -3,7 +3,7 @@ import type { AvatarSourceResult, AvatarWriteResult } from '../avatar'
 import type { UsernameCheckResult, UsernameSaveResult } from '../username'
 import type { ResolvedWorkflow } from '../workflow/model'
 import type { WorkflowOverlay } from '../workflow/overlay'
-import type { AccountSettings, AgentDisplayMode, AgentSortMode, ChatSnapshot, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, GhCliStatus, McpServerId, McpHealthReport, McpServerState, PrerequisiteId, TrayState, TrayQuestion, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanLiveChange, PlanOverview, PlanPresence, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata, RepositoryWorkflowOverlay, RepositoryWorkflowSaveResult, SkillShareResult, WorkflowChange, WorkflowHistoryRead, WorkflowSettings } from '../types'
+import type { AccountSettings, AgentDisplayMode, AgentSortMode, ChatSnapshot, ClaudeSessionEntry, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, GhCliStatus, McpServerId, McpHealthReport, McpServerState, PrerequisiteId, TrayState, TrayQuestion, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanLiveChange, PlanOverview, PlanPresence, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata, RepositoryWorkflowOverlay, RepositoryWorkflowSaveResult, SkillShareResult, WorkflowChange, WorkflowHistoryRead, WorkflowSettings } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -311,6 +311,12 @@ const terminalApi = {
 
   relaunchInCwd: (id: string): Promise<string | null> =>
     ipcRenderer.invoke('terminal:relaunchInCwd', { id }),
+
+  listSessions: (id: string): Promise<ClaudeSessionEntry[]> =>
+    ipcRenderer.invoke('terminal:listSessions', { id }),
+
+  resumeSession: (id: string, transcriptPath: string): Promise<boolean> =>
+    ipcRenderer.invoke('terminal:resumeSession', { id, transcriptPath }),
 
   updateDisplayMode: (id: string, mode: AgentDisplayMode) =>
     ipcRenderer.invoke('terminal:updateDisplayMode', { id, mode }),
