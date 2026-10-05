@@ -1007,6 +1007,27 @@ export function resumeTerminalSession(terminalId: string, transcriptPath: string
 }
 
 /**
+ * Replaces the agent's Claude Code with a fresh one, in the directory it runs in now.
+ * The conversation it leaves stays in the history, to be resumed from there.
+ */
+export function newTerminalSession(terminalId: string): boolean {
+  const terminal = terminals.get(terminalId)
+  if (!terminal || !terminal.respawn) return false
+
+  try {
+    terminal.respawn(terminal.cwd, `\x1b[2J\x1b[H\x1b[33m--- Starting a new Claude Code session ---\x1b[0m\r\n\r\n`)
+  } catch (e) {
+    console.error(`[newTerminalSession] Failed for terminal ${terminalId}:`, e)
+    return false
+  }
+
+  // Nobody has spoken to the new process yet, and a deliberate restart is not a crash.
+  terminal.hasUserInput = false
+  restartTrackers.delete(terminalId)
+  return true
+}
+
+/**
  * Drops the session an agent would resume at the next launch. Called when the app
  * replaces its Claude Code with a fresh one: that conversation was left on purpose.
  */

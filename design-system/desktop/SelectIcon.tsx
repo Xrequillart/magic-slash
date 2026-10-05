@@ -82,6 +82,13 @@ export interface SelectIconGroup {
   items: SelectIconItem[]
 }
 
+/** The command `SelectIconProps.action` draws above the list. */
+export interface SelectIconAction {
+  label: string
+  icon: IconComponent
+  onSelect: () => void
+}
+
 /**
  * What the trigger turns, at rest and while open.
  *
@@ -205,6 +212,15 @@ export interface SelectIconProps {
    */
   emptyIcon?: IconComponent
   /**
+   * ONE ROW ABOVE THE LIST that is not one of its items: a command beside the choices.
+   *
+   * The session history is the case: its rows are conversations to go back to, and
+   * "New session" is not one of them — it belongs to no group and must stay reachable
+   * while the list loads or when it is empty, which is exactly when a row in `groups`
+   * would be gone. Drawn like a row, in its own mark, with a rule under it.
+   */
+  action?: SelectIconAction
+  /**
    * FORCES THE PANEL OPEN OR SHUT, taking the state out of this component's hands.
    *
    * `undefined` is the normal case and the default: the control owns whether it is
@@ -273,6 +289,7 @@ export function SelectIcon({
   loadingLabel,
   emptyLabel,
   emptyIcon,
+  action,
   size = 'sm',
   tone = 'neutral',
   panelWidth = DEFAULT_PANEL_WIDTH,
@@ -430,6 +447,19 @@ export function SelectIcon({
             }}
             className="z-[60] overflow-y-auto bg-bg-tertiary rounded-lg shadow-xl"
           >
+            {action && (
+              <div className="border-b border-ink/10">
+                <Row
+                  item={{ id: 'action', label: action.label, icon: action.icon }}
+                  icon={action.icon}
+                  panel={panel}
+                  onSelect={() => {
+                    action.onSelect()
+                    close()
+                  }}
+                />
+              </div>
+            )}
             {loading ? (
               <Message panel={panel}>{loadingLabel ?? ''}</Message>
             ) : !hasItems ? (

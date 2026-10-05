@@ -80,6 +80,12 @@ const PROPS: PropRow[] = [
   { name: 'loadingLabel', type: 'string', description: 'Translated. Shown while onOpen’s work is in flight.' },
   { name: 'emptyLabel', type: 'string', description: 'Translated. Shown when no group has an item.' },
   {
+    name: 'action',
+    type: '{ label: string; icon: IconComponent; onSelect: () => void }',
+    description:
+      'One command above the list, outside its groups: the session history’s “New session”. Drawn like a row with a rule under it, and still there while the list loads or when it is empty.',
+  },
+  {
     name: 'size',
     type: "'xs' | 'sm' | 'md' | 'lg'",
     fallback: "'sm'",

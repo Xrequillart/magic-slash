@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { TitleBarMenu } from '@ds/desktop'
-import { ClaudeCode } from '@ds/desktop/icons'
+import { ClaudeCode, Plus } from '@ds/desktop/icons'
 import type { ClaudeSessionEntry } from '../../types'
 import { useT } from '../i18n'
 import { showToast } from '../components/Toast'
@@ -37,6 +37,13 @@ export function useSessionHistory(terminalId: string | undefined): TitleBarMenu 
     })
   }, [terminalId, t])
 
+  const onNew = useCallback(() => {
+    if (!terminalId) return
+    void window.electronAPI.terminal.newSession(terminalId).then((ok) => {
+      if (!ok) showToast(t('sessions.newFailed'), 'error')
+    })
+  }, [terminalId, t])
+
   if (!terminalId) return undefined
   const list = Array.isArray(sessions) ? sessions : []
   const now = Date.now()
@@ -62,6 +69,7 @@ export function useSessionHistory(terminalId: string | undefined): TitleBarMenu 
     loadingLabel: t('sessions.loading'),
     emptyLabel: t('sessions.empty'),
     emptyIcon: ClaudeCode,
+    action: { label: t('sessions.new'), icon: Plus, onSelect: onNew },
     panelWidth: 320,
   }
 }

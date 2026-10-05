@@ -21,6 +21,7 @@ import {
   relaunchTerminalInResolvedCwd,
   listTerminalSessions,
   resumeTerminalSession,
+  newTerminalSession,
   type TerminalMetadata,
 } from '../pty/terminal-manager'
 import { noteTerminalInput, isUserInput, releaseHeld, clearPendingQuestion } from '../questions/pending-questions'
@@ -839,6 +840,11 @@ export function setupTerminalHandlers(
   ipcMain.handle('terminal:resumeSession', async (_event, { id, transcriptPath }) => {
     if (typeof id !== 'string' || typeof transcriptPath !== 'string') return false
     return resumeTerminalSession(id, transcriptPath)
+  })
+
+  ipcMain.handle('terminal:newSession', async (_event, { id }) => {
+    if (typeof id !== 'string') return false
+    return newTerminalSession(id)
   })
 }
 

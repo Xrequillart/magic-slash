@@ -2231,6 +2231,8 @@ export const fr: Record<keyof typeof en, string> = {
   'sessions.untitled': 'Session sans titre',
   'sessions.elsewhere': 'Autre machine',
   'sessions.resumeFailed': 'Impossible de reprendre cette session',
+  'sessions.new': 'Nouvelle session',
+  'sessions.newFailed': 'Impossible de démarrer une nouvelle session',
   'agentInfo.model.loading': 'Claude Code liste ses modèles…',
   'agentInfo.model.unavailable': 'Claude Code n’a pas répondu',
   'agentInfo.noActiveAgent': 'Aucune session active',

@@ -318,6 +318,9 @@ const terminalApi = {
   resumeSession: (id: string, transcriptPath: string): Promise<boolean> =>
     ipcRenderer.invoke('terminal:resumeSession', { id, transcriptPath }),
 
+  newSession: (id: string): Promise<boolean> =>
+    ipcRenderer.invoke('terminal:newSession', { id }),
+
   updateDisplayMode: (id: string, mode: AgentDisplayMode) =>
     ipcRenderer.invoke('terminal:updateDisplayMode', { id, mode }),
 

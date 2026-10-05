@@ -2337,6 +2337,8 @@ export const en = {
   'sessions.untitled': 'Untitled session',
   'sessions.elsewhere': 'Other machine',
   'sessions.resumeFailed': 'Could not resume this session',
+  'sessions.new': 'New session',
+  'sessions.newFailed': 'Could not start a new session',
   'agentInfo.model.loading': 'Claude Code is listing its models…',
   'agentInfo.model.unavailable': 'Claude Code did not answer',
   'agentInfo.noActiveAgent': 'No active session',
