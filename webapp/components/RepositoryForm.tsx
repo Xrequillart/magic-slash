@@ -448,6 +448,8 @@ export function RepositoryForm({
   const bodyVerbosity = options.bodyVerbosity.some((o) => o.value === storedBodyVerbosity)
     ? storedBodyVerbosity
     : DEFAULTS.bodyVerbosity
+  // Only the literal `false` turns it off, the way the skill reads it.
+  const hideIrrelevantSections = repo.pullRequest.hideIrrelevantSections !== false
   const commentOnPR = repo.issues.commentOnPR ?? DEFAULTS.commentOnPR
   // The language tickets are WRITTEN IN falls back to the comment language before
   // English: with only `?? DEFAULTS.language` this row would claim English while
@@ -1235,6 +1237,7 @@ export function RepositoryForm({
             testAccountsSource: repo.pullRequest.testAccountsSource ?? '',
             templateCheckboxes,
             bodyVerbosity,
+            hideIrrelevantSections,
             commentOnPR,
             watchCI,
           })}
@@ -1253,6 +1256,14 @@ export function RepositoryForm({
               onChange={(bodyVerbosity) => onPatch({ pullRequest: { bodyVerbosity } })}
               width={240}
               className="w-52"
+            />
+          </SettingRow>
+
+          <SettingRow label={t('repo.pr.hideIrrelevantSections')} description={t('repo.pr.hideIrrelevantSectionsHelp')}>
+            <Toggle
+              label={t('repo.pr.hideIrrelevantSections')}
+              checked={hideIrrelevantSections}
+              onChange={(hideIrrelevantSections) => onPatch({ pullRequest: { hideIrrelevantSections } })}
             />
           </SettingRow>
 

@@ -415,7 +415,8 @@ edit by hand:
         "testAccounts": "off",
         "testAccountsSource": "",
         "templateCheckboxes": "never",
-        "bodyVerbosity": "concise"
+        "bodyVerbosity": "concise",
+        "hideIrrelevantSections": true
       },
       "issues": {
         "commentOnPR": true,
@@ -488,6 +489,7 @@ folder path stays yours:
 | `testAccountsSource` | Explicit file path or project skill name holding the accounts (auto-detected when empty)                | `""`    |
 | `templateCheckboxes` | Which boxes of the repository's PR template `/magic:pr` may tick: `never`, `type` (one box in the "Type of Change" group), or `all` | `never` |
 | `bodyVerbosity`      | How long the PR body `/magic:pr` writes may be: `concise`, `normal`, or `detailed` | `concise` |
+| `hideIrrelevantSections` | Leave out the sections of the repository's PR template that the change does not touch (browsers on a backend-only change, data model on a front-only one) | `true` |
 
 When `testAccounts` is not `off`, `/magic:pr` adds the account a reviewer should log in with to the "How to test" prerequisites of the PR body, and `/magic:start` reports it in its final summary. The accounts are looked up in this order, stopping at the first hit: `testAccountsSource`, a project-local skill under the project's `.claude/skills/`, then documented files (`TESTING.md`, `docs/test*account*`, the test section of `CONTRIBUTING.md`). If nothing is found, the PR says so — no account is ever invented.
 
@@ -496,6 +498,8 @@ When `testAccounts` is not `off`, `/magic:pr` adds the account a reviewer should
 `templateCheckboxes` decides how much of a repository's own PR template checklist `/magic:pr` is allowed to tick. With `never`, the default, every line the template ships as `- [ ]` comes out of the PR still empty: the checklist is the reviewer's, and a list the author's agent has already ticked tells the reviewer nothing. `type` opens a single exception, the categorisation group ("Type of Change", "Type de changement", "Change type"), where exactly one box may be ticked because it only restates what the PR is; any other heading falls back to `never`. `all` restores the earlier behaviour, where the agent ticks the boxes it considers verified. The setting is ignored on a repository with no template of its own, as the built-in PR templates carry no checkboxes to begin with.
 
 `bodyVerbosity` decides how much `/magic:pr` writes into the pull request body. With `concise`, the default, the body is bullets rather than paragraphs: a summary of one or two sentences, three to seven one-line bullets grouped by intent, and a test scenario of two to five one-line steps — roughly one screen, which is what a reviewer reads before they start skimming. The commit list is not repeated, since it is already a tab on the PR. `normal` keeps the same skeleton with room for the reasoning behind each bullet, and `detailed` lifts the caps for teams whose PR is the archive of the decision. The setting governs a repository's own PR template exactly as it governs the built-in one: the template decides which sections exist, `bodyVerbosity` decides how much goes into each.
+
+`hideIrrelevantSections` lets `/magic:pr` leave out the parts of a repository's own PR template that the change has nothing to say about. A backend-only PR comes out without the "Browsers tested" or "Mobile / tablet breakpoints" sections, a front-only one without "Data model" or "Permissions". The section is gone, heading included, rather than kept with an "N/A". The summary, the changes, the testing section, the type-of-change group and the linked issues always stay, and a section `/magic:pr` cannot pin to a single surface is kept. Set it to `false` to keep every section of the template, each one that does not apply saying so in a line.
 
 When `watchCI` finishes and the project publishes a per-PR preview deployment (Vercel, Amplify, Netlify...), `/magic:pr` adds that deployment's URL to the "How to test" prerequisites **and turns the routes named in the test steps into clickable links against it** (`/admin/dashboard` becomes `[/admin/dashboard](https://<preview>/admin/dashboard)`), so the reviewer tests this PR's actual deployed code instead of rebuilding locally — silently skipped when no such preview exists. File paths are never linked, and when the head commit moves the links follow the new deployment; when no preview can be named they revert to plain paths. When one commit deploys several previews (a monorepo with one app per project), it asks which one to write, once per PR. With `watchCI` off, nothing waits for the deployment, so the URL is never looked up and the test scenarios stay local-only.
 

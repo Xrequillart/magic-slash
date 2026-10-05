@@ -768,6 +768,8 @@ export const en = {
   'repo.pr.tail.checkboxesAll': 'ticks the PR template boxes it considers verified',
   'repo.pr.tail.bodyNormal': 'writes a longer description, with the reasoning on each bullet',
   'repo.pr.tail.bodyDetailed': 'writes a full description, with no length cap',
+  // Only emitted when the setting is off: leaving out what does not apply is the default.
+  'repo.pr.tail.keepAllSections': 'keeps every section of the PR template, even those the change does not touch',
   'repo.pr.languageHelp': 'Language used for PR titles and descriptions',
   'repo.pr.autoLink': 'Auto-link tickets',
   'repo.pr.autoLinkHelp': 'Add Jira / GitHub ticket links in the PR description',
@@ -806,6 +808,8 @@ export const en = {
   'repo.pr.bodyVerbosityNormalHelp': 'The bullets, plus the reasoning behind them',
   'repo.pr.bodyVerbosityDetailed': 'Detailed',
   'repo.pr.bodyVerbosityDetailedHelp': 'The full write-up, no length cap',
+  'repo.pr.hideIrrelevantSections': 'Hide sections that do not apply',
+  'repo.pr.hideIrrelevantSectionsHelp': 'Leave out the PR template sections the change does not touch: browsers and breakpoints on a backend-only change, data model and permissions on a front-only one',
   'repo.pr.template': 'PR template',
   'repo.pr.templateHelp':
     'Edited in the desktop app — the template is a file in the repository (.github/pull_request_template.md), not a setting.',

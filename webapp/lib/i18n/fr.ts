@@ -786,6 +786,7 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.tail.checkboxesAll': 'coche les cases du modèle de PR qu’il estime vérifiées',
   'repo.pr.tail.bodyNormal': 'écrit une description plus longue, avec le raisonnement sur chaque puce',
   'repo.pr.tail.bodyDetailed': 'écrit une description complète, sans limite de longueur',
+  'repo.pr.tail.keepAllSections': 'garde toutes les sections du modèle de PR, même celles que le changement ne touche pas',
   'repo.pr.languageHelp': 'Langue des titres et descriptions de pull request',
   'repo.pr.autoLink': 'Lier automatiquement les tickets',
   'repo.pr.autoLinkHelp':
@@ -825,6 +826,8 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.bodyVerbosityNormalHelp': 'Les puces, plus le raisonnement derrière',
   'repo.pr.bodyVerbosityDetailed': 'Détaillée',
   'repo.pr.bodyVerbosityDetailedHelp': 'Le compte rendu complet, sans limite de longueur',
+  'repo.pr.hideIrrelevantSections': 'Masquer les sections non concernées',
+  'repo.pr.hideIrrelevantSectionsHelp': 'Retirer les sections du modèle de PR que le changement ne touche pas : navigateurs et breakpoints sur une tâche back only, modèle de données et permissions sur une tâche front only',
   'repo.pr.template': 'Modèle de PR',
   'repo.pr.templateHelp':
     'Modifié dans l’application desktop — le modèle est un fichier du dépôt (.github/pull_request_template.md), pas un réglage.',

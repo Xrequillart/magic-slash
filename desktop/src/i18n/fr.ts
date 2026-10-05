@@ -1080,6 +1080,7 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.tail.checkboxesAll': 'coche les cases du modèle de PR qu’il estime vérifiées',
   'repo.pr.tail.bodyNormal': 'écrit une description plus longue, avec le raisonnement sur chaque puce',
   'repo.pr.tail.bodyDetailed': 'écrit une description complète, sans limite de longueur',
+  'repo.pr.tail.keepAllSections': 'garde toutes les sections du modèle de PR, même celles que le changement ne touche pas',
   'repo.pr.languageHelp': 'Langue des titres et descriptions de pull request',
   'repo.pr.autoLink': 'Lier automatiquement les tickets',
   'repo.pr.autoLinkHelp': 'Ajouter les liens des tickets Jira/GitHub dans la description de la PR',
@@ -1114,6 +1115,8 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.bodyVerbosityConcise': 'Concise',
   'repo.pr.bodyVerbosityNormal': 'Normale',
   'repo.pr.bodyVerbosityDetailed': 'Détaillée',
+  'repo.pr.hideIrrelevantSections': 'Masquer les sections non concernées',
+  'repo.pr.hideIrrelevantSectionsHelp': 'Retirer les sections du modèle de PR que le changement ne touche pas : navigateurs et breakpoints sur une tâche back only, modèle de données et permissions sur une tâche front only',
 
   'repo.issues.commentLang': 'Langue des commentaires de ticket',
   'repo.issues.commentLangHelp': 'Langue des commentaires que /magic:pr et /magic:done publient sur le ticket',

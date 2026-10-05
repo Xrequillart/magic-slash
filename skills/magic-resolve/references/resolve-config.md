@@ -22,6 +22,7 @@ Detail of the resolve parameters of `/magic:resolve` and of Step 0.7, which pins
 | Re-request review | `.repositories.<name>.resolve.autoReRequestReview` | `true`  |
 | Template checkboxes | `.repositories.<name>.pullRequest.templateCheckboxes` | `"never"` |
 | Body verbosity      | `.repositories.<name>.pullRequest.bodyVerbosity`      | `"concise"` |
+| Hide irrelevant sections | `.repositories.<name>.pullRequest.hideIrrelevantSections` | `true` |
 
 **Logic:**
 - `commitMode: "new"` (default) → create new commit + `git push`
@@ -38,6 +39,7 @@ Detail of the resolve parameters of `/magic:resolve` and of Step 0.7, which pins
 - `autoReRequestReview: false` → skip Step 7.5, suggest manual re-request in summary
 - `templateCheckboxes` (default `"never"`) → read from the `pullRequest` block, not `resolve`, the way `useCommitConfig` reads the `commit` one. Listed here **defensively**: this skill writes no PR body today, so nothing reads it yet; do not go looking for the code path. It is a **hard invariant**, not a soft default: should this skill ever write a PR body, a project template's checkbox state must come out byte-for-byte as this setting allows, exactly as in `/magic:pr` Step 6.1
 - `bodyVerbosity` (default `"concise"`) → read from the `pullRequest` block, and listed here **defensively for the same reason**, under the same invariant: this skill writes no PR body today. Should it ever write one, that body obeys the length contract of `/magic:pr` Step 6.1 — bullets rather than paragraphs, capped per section — rather than inventing a second house style for the same repository
+- `hideIrrelevantSections` (default `true`) → read from the `pullRequest` block, **defensively for the same reason**: should this skill ever write a PR body, a project template's sections about a surface the diff does not touch are left out exactly as in `/magic:pr` Step 6.1
 
 ## Pin the values (Step 0.7)
 

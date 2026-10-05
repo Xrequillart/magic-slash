@@ -16,6 +16,51 @@ or `* [ ]`):
 - Every mode wins over the template's own instruction comments (`<!-- Mark the appropriate option with an "x" -->` and the like), and is inert on a repo with no template of its own: **`MSG_PR_TEMPLATE_EN`** / **`MSG_PR_TEMPLATE_FR`** ship no checkboxes of their own, and no mode invents one to have something to tick
 - The test-step boxes you write in the testing section (`- [ ] 1. …`) are outside every mode: they belong to the reviewer and ship empty even at `all`, because nobody has run the scenario yet
 
+## Sections that do not apply (Step 6.1)
+
+Applies only when a project PR template exists: **`MSG_PR_TEMPLATE_EN`** / **`MSG_PR_TEMPLATE_FR`**
+only carry sections every change has. Read `pullRequest.hideIrrelevantSections` from the config
+already loaded in Step 0 as `$PR_HIDE_IRRELEVANT`: **`true` by default**, and only the literal
+`false` turns it off.
+
+A team template is written for every kind of change, so most PRs only touch part of it: a
+backend-only change has nothing to say under "Browsers tested" or "Mobile / tablet breakpoints", a
+front-only change nothing under "Data model changes" or "Permissions". The reviewer gains nothing
+from a heading followed by "N/A".
+
+**At `true`, leave such a section out of the body entirely**: its heading, its text, its checkbox
+lines and its HTML comments, down to the next heading of the same or a higher level. No "N/A", no
+"Nothing changed here", no empty heading kept for form. To decide, take the surfaces the diff of
+Step 4.1 actually touches:
+
+| Surface | What in the diff touches it |
+| --- | --- |
+| UI | components, pages, styles, templates, assets, client-side state, copy shown to a user |
+| Backend | API routes, controllers, services, jobs, server-side logic |
+| Data model | migrations, schemas, ORM models, seeds, columns or tables added or changed |
+| Permissions | roles, policies (RLS included), auth guards, access rules, scopes |
+| Infra / CI | pipelines, deployment, environment, Docker, IaC |
+| Dependencies | lockfiles, package manifests |
+
+A section whose **whole subject** is a surface the diff does not touch is left out (browsers,
+devices, breakpoints, screenshots, accessibility of the UI → UI; migrations, data model, schema →
+Data model; permissions, roles, security rules → Permissions; and so on). The same goes for a
+single checkbox line whose label names such a surface inside a mixed checklist ("Tested on Safari",
+"Migration is reversible"): drop the line, keep the checklist.
+
+**Never left out**, whatever the diff: the summary or description, the changes, the testing
+section (Step 5 records its heading, and a change with no manual surface says so there), the
+type-of-change group, the Linked Issues section, and any generic self-review checklist whose items
+apply to every change. A section left with no line at all after its surface lines are dropped goes
+with them.
+
+**When in doubt, keep it.** A section is left out only when the diff plainly does not touch its
+surface: a full-stack change keeps everything, a heading whose subject you cannot pin to one
+surface stays, and a section the change does touch is filled as usual.
+
+At `false`, every section of the template stays, as before: one that does not apply says so in a
+single line.
+
 ## Body length and shape (Step 6.1)
 
 Read on every run, before writing the body.
