@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.111.7] - 2026-10-05
+
+### Added
+
+- **Desktop**: Add a setting to turn the pinned chat prompt off, on by default
+- **Desktop**: Keep the prompt of the turn being read pinned at the top of the chat
+
+### Fixed
+
+- **Desktop**: Ignore the hooks of a claude an agent runs itself
+- **Desktop**: Hand back a prompt escape cancels before claude answers in the chat
+
 ## [0.111.6] - 2026-10-04
 
 ### Added
@@ -3774,6 +3786,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.111.7]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.7
 [0.111.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.6
 [0.111.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.5
 [0.111.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.4
