@@ -1,5 +1,5 @@
 import * as fs from 'fs'
-import type { ChatSnapshot } from '../../types'
+import type { ChatDiff, ChatSnapshot } from '../../types'
 import { ChatTranscript } from './transcript'
 
 /**
@@ -73,6 +73,12 @@ export function dropUnansweredPrompt(terminalId: string): string | null {
 
 function snapshot(transcript: ChatTranscript): ChatSnapshot {
   return { entries: transcript.entries.slice(), queue: transcript.queue }
+}
+
+/** What a shell command changed on disk (see command-diff.ts), onto its line in the chat. */
+export function attachCommandDiffs(terminalId: string, toolUseId: string, diffs: ChatDiff[]): void {
+  const watch = watches.get(terminalId)
+  if (watch?.transcript.attachDiffs(toolUseId, diffs)) scheduleEmit(terminalId, watch)
 }
 
 export function watchTranscript(terminalId: string, path: string): void {

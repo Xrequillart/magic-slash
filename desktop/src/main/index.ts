@@ -4,7 +4,8 @@ import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupRepoHandlers } from './ipc/repo-handlers'
 import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
 import { setChatListener, setInterruptListener, watchTranscript } from './chat/transcript-watcher'
-import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setAskCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setWorkflowNextProvider, setWorkflowActionProvider, setCustomSkillContextProvider, setUserPromptListener, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback, setReporterCheck } from './hooks/status-server'
+import { commandEnded, commandStarting } from './chat/command-diff'
+import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setCommandDiffCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setAskCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setWorkflowNextProvider, setWorkflowActionProvider, setCustomSkillContextProvider, setUserPromptListener, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback, setReporterCheck } from './hooks/status-server'
 import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion, setPendingQuestionListener, holdAsk, answerHeld } from './questions/pending-questions'
 import { answerPendingQuestion } from './questions/answer-question'
 import { recordSkillInvocation } from './usage/skill-invocations'
@@ -792,6 +793,9 @@ async function initializeHooksAndSessions() {
     setChatListener((terminalId, chat) => {
       if (mainWindow) mainWindow.webContents.send('terminal:chat', { id: terminalId, ...chat })
     })
+    // What an agent's shell commands change on disk, shown under them in the chat.
+    setCommandDiffCallback((phase, terminalId, body) =>
+      phase === 'before' ? commandStarting(body) : commandEnded(terminalId, body))
     // Escape fires no hook: the transcript is what says the turn stopped, and whatever
     // question it was blocked on went with it.
     setInterruptListener((terminalId, at) => {

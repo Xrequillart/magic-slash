@@ -60,6 +60,26 @@ export class ChatTranscript {
   /** The prompts still waiting, oldest first. Replaced on every change, never mutated. */
   queue: ChatQueuedPrompt[] = []
   private readonly tools = new Map<string, Extract<ChatEntry, { kind: 'tool' }>>()
+  /** What a command changed, measured by the app (see command-diff.ts), for a call not read yet. */
+  private readonly commandDiffs = new Map<string, ChatDiff[]>()
+
+  /**
+   * What a shell command changed on disk, onto its tool entry. The hook may land before
+   * the transcript line of the call is read, so it waits for it then. Returns whether
+   * the entries changed.
+   */
+  attachDiffs(toolUseId: string, diffs: ChatDiff[]): boolean {
+    const entry = this.tools.get(toolUseId)
+    if (!entry) {
+      this.commandDiffs.set(toolUseId, diffs)
+      return false
+    }
+    const updated = { ...entry, diffs }
+    const index = this.entries.indexOf(entry)
+    if (index >= 0) this.entries[index] = updated
+    this.tools.set(toolUseId, updated)
+    return true
+  }
 
   /** Returns whether the entries changed. */
   push(line: string): boolean {
@@ -137,6 +157,11 @@ export class ChatTranscript {
           name: block.name ?? 'Tool',
           summary: toolSummary(block.input),
           status: 'running',
+        }
+        const diffs = block.id ? this.commandDiffs.get(block.id) : undefined
+        if (diffs && block.id) {
+          entry.diffs = diffs
+          this.commandDiffs.delete(block.id)
         }
         this.entries.push(entry)
         if (block.id) this.tools.set(block.id, entry)
@@ -274,6 +299,11 @@ export function diffFrom(result: unknown): ChatDiff | null {
     const lines = r.content.replace(/\n$/, '').split('\n')
     hunks = [{ oldStart: 0, newStart: 1, lines: lines.map((l) => `+${l}`) }]
   }
+  return toChatDiff(r.filePath, hunks)
+}
+
+/** Hunks as a diff card: counted on the whole change, cut for drawing. Null when empty. */
+export function toChatDiff(filePath: string, hunks: ChatDiff['hunks']): ChatDiff | null {
   if (hunks.length === 0) return null
 
   let added = 0
@@ -294,5 +324,5 @@ export function diffFrom(result: unknown): ChatDiff | null {
     budget -= lines.length
     kept.push({ ...h, lines })
   }
-  return { path: r.filePath, added, removed, hunks: kept, ...(truncated ? { truncated } : {}) }
+  return { path: filePath, added, removed, hunks: kept, ...(truncated ? { truncated } : {}) }
 }

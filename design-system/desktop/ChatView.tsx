@@ -39,7 +39,13 @@ export type ChatViewEntry =
   | { kind: 'user'; id: string; text: string; at?: number }
   | { kind: 'assistant'; id: string; text: string }
   | { kind: 'notice'; id: string; text: string }
-  | { kind: 'tool'; id: string; name: string; summary: string; status: 'running' | 'done' | 'error'; output?: string; diff?: ChatDiffData }
+  | {
+      kind: 'tool'; id: string; name: string; summary: string; status: 'running' | 'done' | 'error'; output?: string
+      /** The file an editing tool changed: the card stands in for the tool's line. */
+      diff?: ChatDiffData
+      /** What a command changed on disk (a script, a `sed -i`): drawn under its line. */
+      diffs?: ChatDiffData[]
+    }
 
 export interface ChatViewLabels {
   placeholder: string
@@ -447,6 +453,14 @@ export function ChatView({
             const lines = turn.entries.map((entry) =>
               entry.kind === 'tool' && entry.diff ? (
                 <ChatDiffCard key={entry.id} diff={entry.diff} highlightLines={highlightLines} truncatedLabel={labels.diffTruncated} />
+              )
+              : entry.kind === 'tool' && entry.diffs?.length ? (
+                <div key={entry.id} className="flex flex-col gap-2">
+                  <ToolLine entry={entry} />
+                  {entry.diffs.map((diff) => (
+                    <ChatDiffCard key={diff.path} diff={diff} highlightLines={highlightLines} truncatedLabel={labels.diffTruncated} />
+                  ))}
+                </div>
               )
               : entry.kind === 'tool' ? <ToolLine key={entry.id} entry={entry} />
                 : entry.kind === 'notice' ? <NoticeLine key={entry.id} text={entry.text} />

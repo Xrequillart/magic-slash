@@ -596,6 +596,20 @@ function getAskHookConfig(): HookConfig {
 }
 
 /**
+ * What a shell command changed on disk, for the chat (see main/chat/command-diff.ts).
+ *
+ * `before` is synchronous by design: Claude Code waits for a PreToolUse hook, so the app
+ * writes the working tree as it was before the command runs. It is bounded by
+ * `--max-time` like every hook here, and a timeout only loses that one diff. `after`
+ * answers at once and measures behind it. Both send the hook's stdin, which carries
+ * the tool use id, the cwd and the command.
+ */
+function getCommandDiffHookConfig(phase: 'before' | 'after'): HookConfig {
+  const command = `[ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ] && curl -sf --max-time 5 -X POST --data-binary @- "http://127.0.0.1:$MAGIC_SLASH_PORT/command-diff/${phase}?id=$MAGIC_SLASH_TERMINAL_ID&pid=$PPID" > /dev/null 2>&1 || true # ${MAGIC_SLASH_HOOK_MARKER}`
+  return { matcher: 'Bash', hooks: [{ type: 'command', command, timeout: 10 }] }
+}
+
+/**
  * The hooks that drive the menu bar panel's pending-question card.
  *
  * `question` ships the hook's own stdin to the app, so the panel can show WHAT the
@@ -798,6 +812,10 @@ export function configureClaudeHooks(options?: { atlassian?: boolean }): void {
     // fires on every tool), and Notification, which is how a permission prompt
     // announces itself.
     settings.hooks.PreToolUse!.push(getAskHookConfig())
+
+    // What a shell command changed on disk, for the chat: measured around every Bash call.
+    settings.hooks.PreToolUse!.push(getCommandDiffHookConfig('before'))
+    settings.hooks.PostToolUse!.push(getCommandDiffHookConfig('after'))
     settings.hooks.Notification!.push(getQuestionHookConfig('question', { post: true }))
     // Clear: the question was answered in the terminal (its PostToolUse), the user
     // moved on to something else, or the turn ended.

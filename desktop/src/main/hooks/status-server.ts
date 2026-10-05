@@ -50,6 +50,8 @@ type StateCallback = (terminalId: string, state: string) => void
 type MetadataCallback = (terminalId: string, metadata: Record<string, string | string[] | Record<string, { prUrl?: string }>>) => void
 type CommandStartCallback = (terminalId: string, command: string) => void
 type CommandEndCallback = (terminalId: string, exitCode: number) => void
+/** Around an agent's Bash call: the hook's stdin, raw. `before` is awaited, the command waits on it. */
+type CommandDiffCallback = (phase: 'before' | 'after', terminalId: string, body: string) => Promise<void>
 type RepositoriesCallback = (terminalId: string, repositories: string[]) => void
 type UsageCallback = (terminalId: string, usage: TerminalUsage) => void
 /**
@@ -160,6 +162,7 @@ let stateCallback: StateCallback | null = null
 let metadataCallback: MetadataCallback | null = null
 let commandStartCallback: CommandStartCallback | null = null
 let commandEndCallback: CommandEndCallback | null = null
+let commandDiffCallback: CommandDiffCallback | null = null
 let repositoriesCallback: RepositoriesCallback | null = null
 let usageCallback: UsageCallback | null = null
 let questionCallback: QuestionCallback | null = null
@@ -210,7 +213,7 @@ export function setReporterCheck(check: ReporterCheck) {
  * `claude` is listened to; a report without a pid (hooks written by an older release)
  * still is, as before.
  */
-const AGENT_HOOK_ROUTES = new Set(['/usage', '/status', '/question', '/question/ask', '/question/clear'])
+const AGENT_HOOK_ROUTES = new Set(['/usage', '/status', '/question', '/question/ask', '/question/clear', '/command-diff/before', '/command-diff/after'])
 
 function fromAnotherClaude(url: URL): boolean {
   const terminalId = url.searchParams.get('id')
@@ -246,6 +249,10 @@ export function setPlanTicketsCallback(callback: PlanTicketsCallback) {
 
 export function setJiraCallbackHandler(callback: JiraCallbackHandler) {
   jiraCallbackHandler = callback
+}
+
+export function setCommandDiffCallback(callback: CommandDiffCallback) {
+  commandDiffCallback = callback
 }
 
 export function setCommandStartCallback(callback: CommandStartCallback) {
@@ -842,6 +849,33 @@ export function startStatusServer(): Promise<number> {
 
           res.writeHead(200)
           res.end('OK')
+        } else if (url.pathname === '/command-diff/before' || url.pathname === '/command-diff/after') {
+          // Around an agent's Bash call, for the chat's diff of what it changed. Before is
+          // answered once the tree is written, since the command waits on it; after at once.
+          // Never fails loudly: whatever goes wrong is a command shown without its diff.
+          const terminalId = url.searchParams.get('id')
+          const phase = url.pathname.endsWith('before') ? 'before' : 'after'
+          const done = () => {
+            res.writeHead(200)
+            res.end('OK')
+          }
+          readRequestBody(req)
+            .then((body) => {
+              if (!terminalId || terminalId.startsWith('sidebar-') || !body || !commandDiffCallback) return
+              const measured = commandDiffCallback(phase, terminalId, body)
+              if (phase === 'after') {
+                done()
+                return measured.then(() => undefined)
+              }
+              return measured
+            })
+            .catch((e) => {
+              console.error('[CommandDiff] Failed to measure a command:', e)
+            })
+            .finally(() => {
+              if (!res.headersSent) done()
+            })
+          return
         } else if (url.pathname === '/command/start') {
           const terminalId = url.searchParams.get('id')
           const command = url.searchParams.get('cmd')

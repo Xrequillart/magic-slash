@@ -956,6 +956,8 @@ export type ChatEntry =
       output?: string
       /** A file the call changed (Edit, MultiEdit, Write), drawn as a diff card. */
       diff?: ChatDiff
+      /** What a shell command changed on disk, measured around it (main/chat/command-diff.ts). */
+      diffs?: ChatDiff[]
     }
 
 /**

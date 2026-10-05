@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { diffFrom } from './transcript'
+import { ChatTranscript, diffFrom } from './transcript'
 
 describe('diffFrom', () => {
   it('reads an edit from its structured patch', () => {
@@ -22,5 +22,25 @@ describe('diffFrom', () => {
     expect(diff?.added).toBe(1000)
     expect(diff?.hunks[0].lines).toHaveLength(400)
     expect(diff?.truncated).toBe(true)
+  })
+})
+
+describe('ChatTranscript.attachDiffs', () => {
+  const diff = { path: '/r/a.ts', added: 1, removed: 0, hunks: [{ oldStart: 0, newStart: 1, lines: ['+x'] }] }
+  const call = JSON.stringify({ type: 'assistant', uuid: 'u1', message: { content: [{ type: 'tool_use', id: 'toolu_1', name: 'Bash', input: { command: 'python3 x.py' } }] } })
+  const result = JSON.stringify({ type: 'user', uuid: 'u2', message: { content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: 'ok' }] } })
+
+  it('lands on a call already read, and survives its result', () => {
+    const t = new ChatTranscript()
+    t.push(call)
+    expect(t.attachDiffs('toolu_1', [diff])).toBe(true)
+    t.push(result)
+    expect(t.entries[0]).toMatchObject({ kind: 'tool', status: 'done', diffs: [diff] })
+  })
+  it('waits for a call not read yet', () => {
+    const t = new ChatTranscript()
+    expect(t.attachDiffs('toolu_1', [diff])).toBe(false)
+    t.push(call)
+    expect(t.entries[0]).toMatchObject({ kind: 'tool', diffs: [diff] })
   })
 })
