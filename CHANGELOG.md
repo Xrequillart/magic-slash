@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.113.0] - 2026-10-05
+
+### Added
+
+- **Desktop**: Resume claude code sessions on launch and from a title bar history
+- **Desktop**: Restart claude code from the context card
+
+### Changed
+
+- **Desktop**: Restore the applied chat compact composer migrations
+
 ## [0.112.0] - 2026-10-05
 
 ### Added
@@ -3826,6 +3837,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.113.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.113.0
 [0.112.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.112.0
 [0.111.10]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.10
 [0.111.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.111.9
