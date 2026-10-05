@@ -4,13 +4,13 @@ import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupRepoHandlers } from './ipc/repo-handlers'
 import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
 import { setChatListener, setInterruptListener, watchTranscript } from './chat/transcript-watcher'
-import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setAskCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setWorkflowNextProvider, setWorkflowActionProvider, setCustomSkillContextProvider, setUserPromptListener, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback } from './hooks/status-server'
+import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setAskCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorkflowProvider, setWorkflowNextProvider, setWorkflowActionProvider, setCustomSkillContextProvider, setUserPromptListener, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback, setReporterCheck } from './hooks/status-server'
 import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion, setPendingQuestionListener, holdAsk, answerHeld } from './questions/pending-questions'
 import { answerPendingQuestion } from './questions/answer-question'
 import { recordSkillInvocation } from './usage/skill-invocations'
 import { installShellIntegration } from './hooks/shell-integration'
 import { configureClaudeHooks, configureStatusLine } from './hooks/claude-hooks-config'
-import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook, settleInterruptedTurn, writeToTerminal, getTerminalBuffer } from './pty/terminal-manager'
+import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook, settleInterruptedTurn, writeToTerminal, getTerminalBuffer, isAgentClaude } from './pty/terminal-manager'
 import type { MenuCommand, TerminalMetadata, TerminalUsage, TrayAnswerChoice, TrayAnswerResult, TrayState, TrayUpdate } from '../types'
 import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, checkForUpdates, isUpdating, getUpdateStatus } from './updater'
 import { updateSkills } from './skills-updater'
@@ -730,6 +730,8 @@ async function initializeHooksAndSessions() {
     setInnerStatusLine(configureStatusLine())
 
     // Set up callbacks for status updates
+    // Only the agent's own `claude` reports on it, not one it ran itself.
+    setReporterCheck(isAgentClaude)
     setStateCallback((terminalId: string, state: string) => {
       updateTerminalStateFromHook(terminalId, state)
       if (mainWindow) {

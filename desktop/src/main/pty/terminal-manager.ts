@@ -136,6 +136,36 @@ export function settleInterruptedTurn(terminalId: string, at: number): boolean {
   return true
 }
 
+/** The verdicts of `isAgentClaude`, by terminal and pid: a process does not change parents. */
+const claudeVerdicts = new Map<string, boolean>()
+
+/**
+ * Whether `pid`, the `claude` a hook reported from, is this agent's own rather than one
+ * it started (see AGENT_HOOK_ROUTES in status-server.ts). The agent's is the PTY's
+ * process itself (the shell `exec`s it) or, in a shell terminal where `claude` was
+ * typed, a child of it. A `claude` the agent ran is further down: the agent's Bash tool
+ * starts a shell, which starts it.
+ */
+export function isAgentClaude(terminalId: string, pid: number): boolean {
+  const terminal = terminals.get(terminalId)
+  if (!terminal) return true
+  const own = terminal.pty.pid
+  if (pid === own) return true
+  const key = `${terminalId}:${pid}`
+  let verdict = claudeVerdicts.get(key)
+  if (verdict === undefined) {
+    try {
+      verdict = Number(execFileSync('ps', ['-o', 'ppid=', '-p', String(pid)], { encoding: 'utf-8', timeout: 1000 }).trim()) === own
+    } catch {
+      // Gone already, or no `ps`: nothing to tell it apart by, so it is listened to as before.
+      verdict = true
+    }
+    if (claudeVerdicts.size > 500) claudeVerdicts.clear()
+    claudeVerdicts.set(key, verdict)
+  }
+  return verdict
+}
+
 // Get the default shell for the current platform
 function getDefaultShell(): string {
   if (process.platform === 'win32') {

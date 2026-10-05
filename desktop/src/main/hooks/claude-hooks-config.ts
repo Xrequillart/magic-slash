@@ -96,7 +96,7 @@ function buildStatusLineScript(innerCommand: string): string {
 input=$(cat)
 if [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ]; then
   printf '%s' "$input" | curl -s -X POST --data-binary @- \\
-    "http://127.0.0.1:$MAGIC_SLASH_PORT/usage?id=$MAGIC_SLASH_TERMINAL_ID" >/dev/null 2>&1 || true
+    "http://127.0.0.1:$MAGIC_SLASH_PORT/usage?id=$MAGIC_SLASH_TERMINAL_ID&pid=$PPID" >/dev/null 2>&1 || true
 fi
 # Relay the user's original statusline. The env var (set by the desktop app) wins;
 # otherwise fall back to the command baked in at configuration time.
@@ -440,7 +440,7 @@ function getHookConfig(event: string): HookConfig {
       state = 'working'
   }
 
-  const command = `[ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/status?id=$MAGIC_SLASH_TERMINAL_ID&state=${state}" > /dev/null 2>&1 || true # ${MAGIC_SLASH_HOOK_MARKER}`
+  const command = `[ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/status?id=$MAGIC_SLASH_TERMINAL_ID&pid=$PPID&state=${state}" > /dev/null 2>&1 || true # ${MAGIC_SLASH_HOOK_MARKER}`
 
   return {
     ...(event === 'Notification' ? { matcher: NEEDS_THE_USER } : {}),
@@ -588,7 +588,7 @@ const ASK_HOOK_TIMEOUT_S = 3600
  * an error page out of stdout, where Claude Code would read it as the hook's answer.
  */
 function getAskHookConfig(): HookConfig {
-  const command = `[ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ] && curl -sf --max-time ${ASK_HOOK_TIMEOUT_S - 10} -X POST --data-binary @- "http://127.0.0.1:$MAGIC_SLASH_PORT/question/ask?id=$MAGIC_SLASH_TERMINAL_ID" 2>/dev/null || true # ${MAGIC_SLASH_HOOK_MARKER}`
+  const command = `[ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ] && curl -sf --max-time ${ASK_HOOK_TIMEOUT_S - 10} -X POST --data-binary @- "http://127.0.0.1:$MAGIC_SLASH_PORT/question/ask?id=$MAGIC_SLASH_TERMINAL_ID&pid=$PPID" 2>/dev/null || true # ${MAGIC_SLASH_HOOK_MARKER}`
   return {
     matcher: 'AskUserQuestion',
     hooks: [{ type: 'command', command, timeout: ASK_HOOK_TIMEOUT_S }],
@@ -630,7 +630,7 @@ function getQuestionHookConfig(
   options: { post?: boolean; matcher?: string } = {}
 ): HookConfig {
   const body = options.post ? '-X POST --data-binary @- ' : ''
-  const command = `[ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ] && curl -s --max-time 2 ${body}"http://127.0.0.1:$MAGIC_SLASH_PORT/${route}?id=$MAGIC_SLASH_TERMINAL_ID" > /dev/null 2>&1 || true # ${MAGIC_SLASH_HOOK_MARKER}`
+  const command = `[ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ] && curl -s --max-time 2 ${body}"http://127.0.0.1:$MAGIC_SLASH_PORT/${route}?id=$MAGIC_SLASH_TERMINAL_ID&pid=$PPID" > /dev/null 2>&1 || true # ${MAGIC_SLASH_HOOK_MARKER}`
 
   return {
     ...(options.matcher ? { matcher: options.matcher } : {}),

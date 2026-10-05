@@ -65,6 +65,8 @@ type QuestionCallback = (terminalId: string, body: string) => void
 type AskCallback = (terminalId: string, body: string) => Promise<string | null>
 /** The agent is no longer blocked — see the clear hooks in claude-hooks-config. */
 type ClearQuestionCallback = (terminalId: string) => void
+/** Whether the `claude` whose hook reported (its pid) is the agent's own. */
+type ReporterCheck = (terminalId: string, pid: number) => boolean
 /** terminalId is undefined for sessions started outside the app (no agent). */
 type SkillCallback = (terminalId: string | undefined, skill: string) => void
 // Read-back providers: unlike the callbacks above (terminal → app writes), these let a
@@ -163,6 +165,7 @@ let usageCallback: UsageCallback | null = null
 let questionCallback: QuestionCallback | null = null
 let askCallback: AskCallback | null = null
 let clearQuestionCallback: ClearQuestionCallback | null = null
+let reporterCheck: ReporterCheck | null = null
 let skillCallback: SkillCallback | null = null
 let configProvider: ConfigProvider | null = null
 let agentProvider: AgentProvider | null = null
@@ -190,6 +193,31 @@ const lastSeenSpecPaths = new Map<string, string>()
 
 export function getServerPort(): number {
   return serverPort
+}
+
+export function setReporterCheck(check: ReporterCheck) {
+  reporterCheck = check
+}
+
+/**
+ * The routes Claude Code's own hooks and statusline call, each with the pid of the
+ * `claude` running them (`$PPID`, see claude-hooks-config.ts).
+ *
+ * WHY: the terminal id comes from the environment, and every process the agent starts
+ * inherits it, a `claude` the agent runs itself included (a test, a script, a subagent
+ * run by hand). Its hooks then report under the agent's id: its transcript replaces
+ * the agent's in the chat, its turns set the agent's state. Only the agent's own
+ * `claude` is listened to; a report without a pid (hooks written by an older release)
+ * still is, as before.
+ */
+const AGENT_HOOK_ROUTES = new Set(['/usage', '/status', '/question', '/question/ask', '/question/clear'])
+
+function fromAnotherClaude(url: URL): boolean {
+  const terminalId = url.searchParams.get('id')
+  const pid = Number(url.searchParams.get('pid'))
+  if (!terminalId || !reporterCheck || !AGENT_HOOK_ROUTES.has(url.pathname)) return false
+  if (!Number.isInteger(pid) || pid <= 0) return false
+  return !reporterCheck(terminalId, pid)
 }
 
 export function setStateCallback(callback: StateCallback) {
@@ -572,6 +600,15 @@ export function startStatusServer(): Promise<number> {
 
       try {
         const url = new URL(req.url, `http://localhost:${serverPort}`)
+
+        // Answered as if heard, and dropped. Empty for /question/ask: the nested
+        // `claude` then shows its own dialog, as it would outside the app.
+        if (fromAnotherClaude(url)) {
+          req.resume()
+          res.writeHead(200)
+          res.end(url.pathname === '/question/ask' ? '' : 'OK')
+          return
+        }
 
         if (url.pathname === '/usage') {
           // Statusline usage report — carries cost/context/model as a raw JSON body (POST).

@@ -36,6 +36,7 @@ import {
   setPlanSpecCallback,
   setPlanTicketsCallback,
   setJiraCallbackHandler,
+  setReporterCheck,
   parsePlanTickets,
 } from './status-server'
 
@@ -842,6 +843,30 @@ describe('read-back endpoints', () => {
     it('GET /question/clear ignores sidebar terminals', async () => {
       await httpGet('/question/clear?id=sidebar-1')
       expect(cleared).toHaveLength(0)
+    })
+
+    // A `claude` the agent ran itself inherits its terminal id: its hooks must not
+    // report on the agent.
+    describe('from a claude the agent started', () => {
+      beforeEach(() => setReporterCheck((_id, pid) => pid === 100))
+      afterEach(() => setReporterCheck(() => true))
+
+      it('drops its reports, and listens to the agent\'s own and to one without a pid', async () => {
+        await httpGet('/question/clear?id=term-1&pid=200')
+        await httpPost('/question?id=term-1&pid=200', '{"a":1}')
+        expect(cleared).toHaveLength(0)
+        expect(received).toHaveLength(0)
+        await httpGet('/question/clear?id=term-1&pid=100')
+        await httpGet('/question/clear?id=term-2')
+        expect(cleared).toEqual(['term-1', 'term-2'])
+      })
+
+      it('answers its ask with nothing, so it shows its own dialog', async () => {
+        const ask = vi.fn(async () => '{"answer":1}')
+        setAskCallback(ask)
+        expect(await httpPost('/question/ask?id=term-1&pid=200', '{}')).toEqual({ status: 200, body: '' })
+        expect(ask).not.toHaveBeenCalled()
+      })
     })
   })
 })
