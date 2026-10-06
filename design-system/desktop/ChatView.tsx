@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
-import { ArrowUp, ChevronRight, CircleAlert, Check, FileText, Image as ImageIcon, Info, ListOrdered, Paperclip, SquareTerminal, Wrench, X } from './icons'
+import { ArrowUp, ChevronRight, CircleAlert, Check, FileText, History, Image as ImageIcon, Info, ListOrdered, Paperclip, SquareTerminal, Wrench, X } from './icons'
 import { Button } from './Button'
 import { ButtonIcon } from './ButtonIcon'
 import { Loader } from './Loader'
@@ -169,6 +169,23 @@ export interface ChatViewProps {
    */
   timestamps?: 'never' | 'hover' | 'always'
   formatTime?: (at: number) => string
+  /**
+   * AN OFFER UNDER THE EMPTY VIEW: hand the new session what the earlier ones said. The
+   * caller decides when it stands (a new session, earlier ones to read) and what accepting
+   * does; this draws the question and its two answers, and nothing once a word is said.
+   */
+  contextOffer?: ChatContextOffer
+}
+
+export interface ChatContextOffer {
+  /** The question, translated, with the number of conversations in it. */
+  text: string
+  accept: string
+  decline: string
+  onAccept: () => void
+  onDecline: () => void
+  /** The digest is being written: the accept button waits. */
+  busy?: boolean
 }
 
 /** The tools whose line `toolDetail: 'changes'` keeps: they change files or run commands. */
@@ -228,7 +245,7 @@ export function ChatView({
   entries, working, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
   question, onAnswer, answering, commands = [], highlightLines, onPickFiles, resolveFile,
   initialDraft, onDraftChange, restoredDraft, onDraftRestored, stickyPrompt = true, codeFontSize, claudeCodeVersion, startedLabel, queue = [], loading = false,
-  sendKey = 'enter', toolDetail = 'all', diffs = 'preview', timestamps = 'never', formatTime,
+  sendKey = 'enter', toolDetail = 'all', diffs = 'preview', timestamps = 'never', formatTime, contextOffer,
 }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -618,6 +635,19 @@ export function ChatView({
             <ClaudeCodeTitle version={claudeCodeVersion} className="text-base" />
             <p className="text-sm text-text-secondary/60">{labels.empty}</p>
           </div>
+          {/* The overlay lets clicks through; the offer is the one thing on it to press. */}
+          {contextOffer && (
+            <div className={`pointer-events-auto flex max-w-sm flex-col items-center gap-3 rounded-xl border border-line ${RAISED_PLATE} px-4 py-3 animate-fade-in motion-reduce:animate-none`}>
+              <div className="flex items-start gap-2 text-left">
+                <History className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
+                <p className="text-sm text-ink">{contextOffer.text}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="xs" tone="ghost" onClick={contextOffer.onDecline} disabled={contextOffer.busy}>{contextOffer.decline}</Button>
+                <Button size="xs" tone="accent" onClick={contextOffer.onAccept} busy={contextOffer.busy}>{contextOffer.accept}</Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

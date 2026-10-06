@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChatView, type ChatCommand, type MenuBarAnswer } from '@ds/desktop'
+import { ChatView, type ChatCommand, type ChatContextOffer, type MenuBarAnswer } from '@ds/desktop'
 import { DEFAULT_CODE_FONT_SIZE, type ChatSnapshot, type TerminalInfo, type TrayQuestion } from '../../types'
 import { builtInCommands, mergeCommands, opensInTerminal, skillCommands } from './chatCommands'
 import { useStore } from '../store'
@@ -44,8 +44,8 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   const t = useT()
   const setDisplayMode = useStore((s) => s.setDisplayMode)
   const mode = useStore((s) => resolveDisplayMode(terminal, s.config))
-  const { entries, queue, pushes } = useChat(terminal.id)
-  const resuming = useResumeLoader(terminal, pushes)
+  const { entries, queue, pushes, loaded } = useChat(terminal.id)
+  const resuming = useResumeLoader(terminal.id, pushes)
   const question = usePendingQuestion(terminal.id)
   const [answering, setAnswering] = useState(false)
   const [restored, setRestored] = useState<string | null>(null)
@@ -104,7 +104,14 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   )
 
   const showChat = mode === 'chat'
+  const keptChat = useKeptChat(terminal.id, isVisible && showChat)
   useDoubleCtrlC(terminal.id, isVisible && isFocused && showChat)
+  const contextOffer = useContextOffer(
+    terminal.id,
+    entries.length,
+    isVisible && showChat && loaded && !resuming && terminal.state !== 'working',
+    send,
+  )
 
   // When the conversation began: its first prompt's own time.
   const locale = useLocale()
@@ -134,12 +141,15 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
       <div className={`absolute inset-0 ${showChat ? 'invisible' : ''}`}>
         <TerminalView terminal={terminal} isVisible={isVisible} isFocused={isFocused && !showChat} />
       </div>
-      {isVisible && showChat && (
-        <div className="absolute inset-0 z-[5]">
+      {(isVisible || keptChat) && showChat && (
+        <div className={`absolute inset-0 z-[5] ${isVisible ? '' : 'invisible'}`}>
           <ChatView
             entries={entries}
             queue={queue}
-            loading={resuming}
+            // A resume under way, or the first read not back yet: either way the empty
+            // view would claim a conversation that has simply not arrived.
+            loading={resuming || !loaded}
+            contextOffer={contextOffer}
             working={terminal.state === 'working'}
             waiting={terminal.state === 'waiting'}
             onSend={send}
@@ -173,7 +183,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
               empty: t('chat.empty'),
               greeting: t('chat.greeting'),
               working: t('chat.working'),
-              loading: t('chat.resuming'),
+              loading: t(resuming ? 'chat.resuming' : 'chat.loadingConversation'),
               waiting: t('chat.waiting'),
               showTerminal: t('chat.showTerminal'),
               interactiveCommand: t('chat.command.interactive'),
@@ -206,6 +216,121 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
 }
 
 const EMPTY_CHAT: ChatSnapshot = { entries: [], queue: [] }
+
+/**
+ * THE CHATS KEPT MOUNTED WHILE HIDDEN, most recently shown last.
+ *
+ * A chat that mounts renders its whole conversation and asks the main process to colour
+ * every code block and diff in it: switching agents with ⌘↑/⌘↓ paid that on every key.
+ * The last few chats shown stay mounted and `invisible` instead, as the terminal under
+ * them does: coming back to one is a style change, and since it keeps its layout it keeps
+ * its scroll position and goes on following the end of the conversation while hidden. Bounded, because each one
+ * holds a conversation's DOM: the one shown longest ago is let go first.
+ */
+const KEPT_CHATS = 5
+const keptChats: string[] = []
+const releaseKept = new Map<string, () => void>()
+
+function keepChat(terminalId: string): void {
+  const at = keptChats.indexOf(terminalId)
+  if (at >= 0) keptChats.splice(at, 1)
+  keptChats.push(terminalId)
+  while (keptChats.length > KEPT_CHATS) {
+    const dropped = keptChats.shift()!
+    releaseKept.get(dropped)?.()
+  }
+}
+
+/** Whether this agent's chat stays mounted while hidden (see `keptChats`). */
+function useKeptChat(terminalId: string, shown: boolean): boolean {
+  const [kept, setKept] = useState(false)
+  useEffect(() => {
+    releaseKept.set(terminalId, () => setKept(false))
+    return () => {
+      releaseKept.delete(terminalId)
+      const at = keptChats.indexOf(terminalId)
+      if (at >= 0) keptChats.splice(at, 1)
+    }
+  }, [terminalId])
+  useEffect(() => {
+    if (!shown) return
+    keepChat(terminalId)
+    setKept(true)
+  }, [shown, terminalId])
+  return kept
+}
+
+/** The agents whose context offer was answered, until their chat has something in it. */
+const offerAnswered = new Set<string>()
+
+/**
+ * THE OFFER ON A NEW SESSION'S EMPTY CHAT: hand Claude what this agent's earlier
+ * conversations said (`terminal:writeContextDigest`, main/chat/session-digest.ts). Asked
+ * once per new session, never as a setting: it stands while the chat is empty and the
+ * agent has earlier conversations on this machine, goes once answered, and comes back on
+ * the next new session (the chat filling up is what clears the answer).
+ *
+ * Accepting sends a prompt that mentions the digest with `@`, which Claude Code attaches
+ * to the message itself: nothing for Claude to go and read, no permission to ask.
+ */
+function useContextOffer(
+  terminalId: string,
+  entryCount: number,
+  active: boolean,
+  send: (text: string, attachments: string[]) => void,
+): ChatContextOffer | undefined {
+  const t = useT()
+  const [count, setCount] = useState(0)
+  const [busy, setBusy] = useState(false)
+  const [, setAnswered] = useState(0)
+  const empty = entryCount === 0
+
+  useEffect(() => {
+    if (!empty) offerAnswered.delete(terminalId)
+  }, [empty, terminalId])
+
+  const shown = active && empty && !offerAnswered.has(terminalId)
+  useEffect(() => {
+    if (!shown) return
+    let live = true
+    window.electronAPI.terminal.contextSessions(terminalId)
+      .then((n) => { if (live) setCount(n) })
+      .catch(() => { if (live) setCount(0) })
+    return () => { live = false }
+  }, [shown, terminalId])
+
+  const answer = useCallback(() => {
+    offerAnswered.add(terminalId)
+    setAnswered((n) => n + 1)
+  }, [terminalId])
+
+  const accept = useCallback(() => {
+    setBusy(true)
+    window.electronAPI.terminal.writeContextDigest(terminalId)
+      .then((digest) => {
+        if (!digest) {
+          showToast(t('chat.context.failed'), 'error')
+          return
+        }
+        send(t('chat.context.prompt', { count: String(digest.count), path: `@${digest.path}` }), [])
+      })
+      .catch(() => showToast(t('chat.context.failed'), 'error'))
+      .finally(() => {
+        setBusy(false)
+        answer()
+      })
+  }, [terminalId, send, t, answer])
+
+  if (!shown || count === 0) return undefined
+  return {
+    text: t(count === 1 ? 'chat.context.offer.one' : 'chat.context.offer.other', { count: String(count) }),
+    accept: t('chat.context.accept'),
+    decline: t('chat.context.decline'),
+    onAccept: accept,
+    onDecline: answer,
+    busy,
+  }
+}
 
 /**
  * ⌃C TWICE IN THE CHAT STARTS A NEW SESSION, what it does in the terminal view: there
@@ -243,15 +368,13 @@ function useDoubleCtrlC(terminalId: string, active: boolean): void {
 /**
  * Whether the chat is waiting on a resumed session (see `resumingSessions` in the store).
  *
- * THE SWAP IS OVER IN TWO STEPS, in this order: the statusLine names a transcript other
- * than the one being left (`usage.transcriptPath`, which also starts the main process
- * watching it), then that transcript's entries arrive as a chat push, a debounce later.
- * Clearing on the first alone would flash the old conversation for that debounce.
+ * The main process starts reading the resumed conversation as soon as it relaunches
+ * Claude Code on it (`resumeTerminalSession`), and pushes it a debounce later: the swap
+ * is over with the first push after the click.
  */
-function useResumeLoader(terminal: TerminalInfo, pushes: number): boolean {
-  const resuming = useStore((s) => s.resumingSessions[terminal.id])
+function useResumeLoader(terminalId: string, pushes: number): boolean {
+  const resuming = useStore((s) => Boolean(s.resumingSessions[terminalId]))
   const setResuming = useStore((s) => s.setResumingSession)
-  const transcript = terminal.metadata?.usage?.transcriptPath
   const armedAt = useRef<number | null>(null)
 
   useEffect(() => {
@@ -259,20 +382,19 @@ function useResumeLoader(terminal: TerminalInfo, pushes: number): boolean {
       armedAt.current = null
       return
     }
-    if (transcript === resuming.from) return
     if (armedAt.current === null) armedAt.current = pushes
-    else if (pushes > armedAt.current) setResuming(terminal.id, null)
-  }, [resuming, transcript, pushes, terminal.id, setResuming])
+    else if (pushes > armedAt.current) setResuming(terminalId, false)
+  }, [resuming, pushes, terminalId, setResuming])
 
-  // A session that never reports (Claude Code failed to start, say) must not leave the
-  // chat behind a loader for good: the terminal under it says what happened.
+  // A resume that never answers must not leave the chat behind a loader for good: the
+  // terminal under it says what happened.
   useEffect(() => {
     if (!resuming) return
-    const timer = setTimeout(() => setResuming(terminal.id, null), RESUME_TIMEOUT_MS)
+    const timer = setTimeout(() => setResuming(terminalId, false), RESUME_TIMEOUT_MS)
     return () => clearTimeout(timer)
-  }, [resuming, terminal.id, setResuming])
+  }, [resuming, terminalId, setResuming])
 
-  return Boolean(resuming)
+  return resuming
 }
 
 /**
@@ -280,10 +402,13 @@ function useResumeLoader(terminal: TerminalInfo, pushes: number): boolean {
  * then every update. The main process sends the whole of both each time (they are
  * small, and a list that is replaced cannot drift from the one it came from).
  */
-function useChat(terminalId: string): ChatSnapshot & { pushes: number } {
+function useChat(terminalId: string): ChatSnapshot & { pushes: number; loaded: boolean } {
   const [chat, setChat] = useState<ChatSnapshot>(EMPTY_CHAT)
   // How many pushes have landed: the resume loader waits for one after the swap.
   const [pushes, setPushes] = useState(0)
+  // Whether anything has been read yet: until then an empty list means "not known", and
+  // the chat shows a loader rather than the empty session's greeting.
+  const [loaded, setLoaded] = useState(false)
   useEffect(() => {
     let live = true
     let pushed = false
@@ -292,17 +417,19 @@ function useChat(terminalId: string): ChatSnapshot & { pushes: number } {
       pushed = true
       setChat({ entries, queue })
       setPushes((n) => n + 1)
+      setLoaded(true)
     })
+    setLoaded(false)
     window.electronAPI.terminal.getChat(terminalId).then((initial) => {
       // A push that landed first is newer than this read.
       if (live && !pushed) setChat(initial)
-    }).catch(() => {})
+    }).catch(() => {}).finally(() => { if (live) setLoaded(true) })
     return () => {
       live = false
       unsubscribe()
     }
   }, [terminalId])
-  return { ...chat, pushes }
+  return { ...chat, pushes, loaded }
 }
 
 /** The question the agent is blocked on, kept current by `terminal:question`. */

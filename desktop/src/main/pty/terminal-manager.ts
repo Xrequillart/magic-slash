@@ -1,5 +1,7 @@
 import * as pty from 'node-pty'
-import { unwatchTranscript } from '../chat/transcript-watcher'
+import { resetTranscript, unwatchTranscript, watchTranscript, watchedTranscript } from '../chat/transcript-watcher'
+import { ChatTranscript } from '../chat/transcript'
+import { DIGEST_SESSIONS, digestSessions } from '../chat/session-digest'
 import * as os from 'os'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -836,6 +838,9 @@ export function launchClaude(
 
     const previousState = terminal.state
     pendingResume = resumeId ?? null
+    // A fresh session starts on an empty chat. A resumed one keeps the old conversation
+    // on screen, behind the renderer's loader, until its own arrives.
+    if (!resumeId) resetTranscript(id)
     terminal.pty = createPtyProcess(targetCwd, terminal.cols, terminal.rows)
     terminal.cwd = targetCwd
     terminal.state = 'idle'
@@ -1010,6 +1015,71 @@ export async function listTerminalSessions(terminalId: string): Promise<ClaudeSe
 }
 
 /**
+ * The agent's EARLIER conversations on this machine: every session it recorded whose file
+ * is here and holds something, but the one the chat shows now. Newest first.
+ */
+function earlierSessions(terminal: Terminal): { transcriptPath: string; startedAt: number }[] {
+  const { claudeSessions, claudeTranscriptPath } = terminal.metadata
+  const refs = (claudeTranscriptPath && withSession(claudeSessions, claudeTranscriptPath, terminal.createdAt.getTime())) || claudeSessions || []
+  const watched = watchedTranscript(terminal.id)
+  return refs
+    .filter((ref) => ref.transcriptPath !== watched)
+    .filter((ref) => {
+      try {
+        return fs.statSync(ref.transcriptPath).size > 0
+      } catch {
+        return false
+      }
+    })
+    .sort((a, b) => b.startedAt - a.startedAt)
+}
+
+/**
+ * How many earlier conversations a new session's chat may offer as context (see
+ * `chat/session-digest.ts`), capped at what the digest takes. Zero hides the offer.
+ */
+export function countContextSessions(terminalId: string): number {
+  const terminal = terminals.get(terminalId)
+  return terminal ? Math.min(earlierSessions(terminal).length, DIGEST_SESSIONS) : 0
+}
+
+/** Where the digests are written: beside the chat's pasted images, in the OS temp dir. */
+const DIGEST_DIR = path.join(os.tmpdir(), 'magic-slash-chat')
+
+/**
+ * Writes the digest of the agent's earlier conversations to a file and answers its path
+ * and how many conversations it covers, or null when none has a prompt in it. The chat
+ * hands the path to Claude Code as an `@` mention, which attaches the file to the prompt:
+ * no tool call, so no permission asked for a file outside the repository.
+ */
+export async function writeContextDigest(terminalId: string): Promise<{ path: string; count: number } | null> {
+  const terminal = terminals.get(terminalId)
+  if (!terminal) return null
+  const sessions = await Promise.all(earlierSessions(terminal).slice(0, DIGEST_SESSIONS * 2).map(async (ref) => {
+    const transcript = new ChatTranscript()
+    try {
+      const content = await fs.promises.readFile(ref.transcriptPath, 'utf8')
+      for (const line of content.split('\n')) if (line) transcript.push(line)
+    } catch {
+      // Gone since it was counted: it simply has nothing to say.
+    }
+    return { title: await readSessionTitle(ref.transcriptPath), startedAt: ref.startedAt, entries: transcript.entries }
+  }))
+  const digest = digestSessions(sessions)
+  if (!digest) return null
+  const count = Math.min(sessions.filter((s) => s.entries.some((e) => e.kind === 'user')).length, DIGEST_SESSIONS)
+  try {
+    fs.mkdirSync(DIGEST_DIR, { recursive: true, mode: 0o700 })
+    const file = path.join(DIGEST_DIR, `context-${terminalId.replace(/[^a-zA-Z0-9-]/g, '')}-${Date.now()}.md`)
+    fs.writeFileSync(file, digest, { mode: 0o600 })
+    return { path: file, count }
+  } catch (e) {
+    console.error(`[writeContextDigest] Failed for terminal ${terminalId}:`, e)
+    return null
+  }
+}
+
+/**
  * Replaces the agent's Claude Code with one resumed on a session from its history.
  * Only a session the agent has recorded: the path comes from the renderer, and the
  * history is what says it is one of this agent's. Returns false when it cannot be done.
@@ -1033,6 +1103,8 @@ export function resumeTerminalSession(terminalId: string, transcriptPath: string
   // The respawn retired the session it left; this one is the agent's again, even if it
   // was left on purpose earlier, and it is the one to come back to after a quit.
   terminal.retiredTranscripts?.delete(transcriptPath)
+  // Shown at once, as at launch: the chat need not wait for the statusLine to name it.
+  watchTranscript(terminalId, transcriptPath)
   terminal.metadata = { ...terminal.metadata, claudeTranscriptPath: transcriptPath }
   try {
     updateAgentMetadata(terminalId, { claudeTranscriptPath: transcriptPath })

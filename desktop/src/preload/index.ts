@@ -325,6 +325,12 @@ const terminalApi = {
   newSession: (id: string): Promise<boolean> =>
     ipcRenderer.invoke('terminal:newSession', { id }),
 
+  contextSessions: (id: string): Promise<number> =>
+    ipcRenderer.invoke('terminal:contextSessions', { id }),
+
+  writeContextDigest: (id: string): Promise<{ path: string; count: number } | null> =>
+    ipcRenderer.invoke('terminal:writeContextDigest', { id }),
+
   updateDisplayMode: (id: string, mode: AgentDisplayMode) =>
     ipcRenderer.invoke('terminal:updateDisplayMode', { id, mode }),
 

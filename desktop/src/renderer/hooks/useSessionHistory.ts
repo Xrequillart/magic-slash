@@ -34,13 +34,10 @@ export function useSessionHistory(terminalId: string | undefined): TitleBarMenu 
   const setResuming = useStore((s) => s.setResumingSession)
   const onSelect = useCallback((transcriptPath: string) => {
     if (!terminalId) return
-    // Read now, before the respawn: the chat's loader waits for the statusLine to name
-    // another transcript than this one.
-    const from = useStore.getState().terminals.find((x) => x.id === terminalId)?.metadata?.usage?.transcriptPath
-    setResuming(terminalId, { from })
+    setResuming(terminalId, true)
     void window.electronAPI.terminal.resumeSession(terminalId, transcriptPath).then((ok) => {
       if (ok) return
-      setResuming(terminalId, null)
+      setResuming(terminalId, false)
       showToast(t('sessions.resumeFailed'), 'error')
     })
   }, [terminalId, t, setResuming])

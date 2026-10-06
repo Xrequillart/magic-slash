@@ -47,6 +47,11 @@ export function setInterruptListener(listener: InterruptListener): void {
   interruptListener = listener
 }
 
+/** The transcript the chat is showing for an agent, if any. */
+export function watchedTranscript(terminalId: string): string | null {
+  return watches.get(terminalId)?.path ?? null
+}
+
 export function getChatSnapshot(terminalId: string): ChatSnapshot {
   const transcript = watches.get(terminalId)?.transcript
   return transcript ? snapshot(transcript) : { entries: [], queue: [] }
@@ -108,6 +113,17 @@ export function watchTranscript(terminalId: string, path: string): void {
   // left showing the previous session until the first line arrives.
   scheduleEmit(terminalId, watch)
   readNew(terminalId, watch)
+}
+
+/**
+ * Stops showing the agent's conversation and tells the renderer its chat is empty: the
+ * session was replaced by a fresh one, which has said nothing yet. Without it the chat
+ * kept the old conversation until the new session's statusLine named its file.
+ */
+export function resetTranscript(terminalId: string): void {
+  if (!watches.has(terminalId)) return
+  unwatchTranscript(terminalId)
+  chatListener?.(terminalId, { entries: [], queue: [] })
 }
 
 export function unwatchTranscript(terminalId: string): void {

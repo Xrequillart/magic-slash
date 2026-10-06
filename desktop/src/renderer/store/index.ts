@@ -261,12 +261,11 @@ interface AppState {
   quickSettingsOpen: boolean
   accountMenuOpen: boolean
   /**
-   * The agents whose Claude Code is being swapped for a resumed session, by terminal id,
-   * with the transcript they were on when it was asked. Their chat shows a loader until
-   * the statusLine reports another transcript and its entries arrive (see AgentPane).
-   * Never persisted: a swap does not outlive the window.
+   * The agents whose Claude Code is being swapped for a resumed session, by terminal id.
+   * Their chat shows a loader until the resumed conversation's entries arrive (see
+   * AgentPane). Never persisted: a swap does not outlive the window.
    */
-  resumingSessions: Record<string, { from?: string }>
+  resumingSessions: Record<string, true>
   settingsTab: SettingsTab | null
   // When set, the Tasks page opens on this ticket rather than on the backlog, then
   // resets it to null. Same one-shot deep link as `settingsInitialTab`, and one-shot
@@ -464,7 +463,7 @@ interface AppState {
   moveTerminalToPane: (id: string, pane: 'left' | 'right') => void
 
   setQuickSettingsOpen: (open: boolean) => void
-  setResumingSession: (id: string, from: { from?: string } | null) => void
+  setResumingSession: (id: string, resuming: boolean) => void
   /** ⌘, — the same key puts the sheet away again. */
   toggleQuickSettings: () => void
   setAccountMenuOpen: (open: boolean) => void
@@ -853,7 +852,7 @@ export const useStore = create<AppState>()(
         },
         setResumingSession: (id, resuming) => set((s) => {
           const next = { ...s.resumingSessions }
-          if (resuming) next[id] = resuming
+          if (resuming) next[id] = true
           else delete next[id]
           return { resumingSessions: next }
         }),

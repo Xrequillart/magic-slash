@@ -22,6 +22,8 @@ import {
   listTerminalSessions,
   resumeTerminalSession,
   newTerminalSession,
+  countContextSessions,
+  writeContextDigest,
   type TerminalMetadata,
 } from '../pty/terminal-manager'
 import { noteTerminalInput, isUserInput, releaseHeld, clearPendingQuestion } from '../questions/pending-questions'
@@ -43,7 +45,7 @@ import { expandPath } from '../config/validation'
 import { isValidAgentType, isValidLaunchMode, DEFAULT_AGENT_TYPE } from '../config/defaults'
 import { checkRepoPath } from '../config/repo-validation'
 import { ensureHydrated } from '../store/hydrate'
-import { getChatSnapshot, hasUnansweredPrompt, dropUnansweredPrompt } from '../chat/transcript-watcher'
+import { getChatSnapshot, hasUnansweredPrompt, dropUnansweredPrompt, watchTranscript } from '../chat/transcript-watcher'
 import { savePastedImage } from '../chat/attachments'
 import { flushPlanSpec } from '../store/plan-sync'
 import type { HistoryAction, LaunchMetadata } from '../../types'
@@ -458,6 +460,8 @@ export function restoreAgents() {
 
     for (const agent of agents) {
       const cwd = resolveAgentCwd(agent.repositories, os.homedir())
+      // The conversation the app was quit on, when this machine still has it.
+      const resumeId = resumableSessionId(agent.metadata?.claudeTranscriptPath, cwd)
 
       const callbacks = createTerminalCallbacks(agent.id, agent.name)
       const terminal = launchClaude(
@@ -475,9 +479,13 @@ export function restoreAgents() {
         undefined,
         undefined,
         undefined,
-        // The conversation the app was quit on, when this machine still has it.
-        resumableSessionId(agent.metadata?.claudeTranscriptPath, cwd) ?? undefined
+        resumeId ?? undefined
       )
+      // The chat reads that conversation NOW, from the file the agent recorded, rather
+      // than when the resumed Claude Code's statusLine first names it, seconds later:
+      // until then the chat stood empty, then filled at once. `--resume` goes on writing
+      // to the same file, so the statusLine's report is a no-op when it comes.
+      if (resumeId && agent.metadata?.claudeTranscriptPath) watchTranscript(agent.id, agent.metadata.claudeTranscriptPath)
 
       // Save the TERMINAL's metadata, not the agent's. launchClaude folds the
       // branch it just detected into the metadata it returns (initialMetadataFor),
@@ -845,6 +853,18 @@ export function setupTerminalHandlers(
   ipcMain.handle('terminal:newSession', async (_event, { id }) => {
     if (typeof id !== 'string') return false
     return newTerminalSession(id)
+  })
+
+  // A new session's offer to hand Claude the agent's earlier conversations: how many
+  // there are, then the digest of them, written to a file the prompt mentions.
+  ipcMain.handle('terminal:contextSessions', async (_event, { id }) => {
+    if (typeof id !== 'string') return 0
+    return countContextSessions(id)
+  })
+
+  ipcMain.handle('terminal:writeContextDigest', async (_event, { id }) => {
+    if (typeof id !== 'string') return null
+    return writeContextDigest(id)
   })
 }
 
