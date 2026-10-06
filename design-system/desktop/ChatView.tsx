@@ -7,7 +7,7 @@ import { RAISED_PLATE } from './plate'
 import { CLAUDE_CORAL, ClaudeCode } from './brand'
 import { ClaudeCodeMascot } from './ClaudeCodeMascot'
 import { ChatMarkdown, type ChatHighlighter } from './ChatMarkdown'
-import { ChatDiffCard, type ChatDiffData, type ChatLineHighlighter } from './ChatDiffCard'
+import { ChatDiffCard, type ChatDiffData, type ChatDiffDisplay, type ChatLineHighlighter } from './ChatDiffCard'
 import { ChatInsightCard } from './ChatInsightCard'
 import { splitInsights } from './chatInsights'
 import { ChatQuestion, type ChatQuestionData, type ChatQuestionLabels } from './ChatQuestion'
@@ -40,7 +40,7 @@ import type { MenuBarAnswer } from './MenuBarQuestion'
 
 export type ChatViewEntry =
   | { kind: 'user'; id: string; text: string; at?: number }
-  | { kind: 'assistant'; id: string; text: string }
+  | { kind: 'assistant'; id: string; text: string; at?: number }
   | { kind: 'notice'; id: string; text: string }
   | {
       kind: 'tool'; id: string; name: string; summary: string; status: 'running' | 'done' | 'error'; output?: string
@@ -69,6 +69,8 @@ export interface ChatViewLabels {
   diffShowAll: string
   /** The close button of a diff card grown into a dialog. */
   diffClose: string
+  /** A run of tool calls folded into one line (`toolDetail: 'grouped'`). `{count}`: how many. */
+  toolGroup: string
   attach: string
   removeAttachment: string
   dropFiles: string
@@ -145,6 +147,61 @@ export interface ChatViewProps {
    * the empty view stands, until the caller has the new session's entries.
    */
   loading?: boolean
+  /**
+   * WHICH KEY SENDS. `enter` (the default, as in the terminal): Enter sends and Shift+Enter
+   * breaks the line. `mod-enter`: ⌘Enter (Ctrl+Enter) sends and Enter breaks the line, for
+   * prompts written over several paragraphs. The placeholder that says so is the caller's.
+   */
+  sendKey?: 'enter' | 'mod-enter'
+  /**
+   * WHICH TOOL CALLS GET A LINE. `all` (the default): every one. `changes`: only what
+   * changed something (an edit, a write, a command) or failed; reading and searching are
+   * the agent finding its way, and a long task drowned its answers in them. `grouped`:
+   * every run of calls folded into one line that opens on the run. Diff cards always show.
+   */
+  toolDetail?: 'all' | 'changes' | 'grouped'
+  /** How a diff card opens. See `ChatDiffCard`'s `display`. */
+  diffs?: ChatDiffDisplay
+  /**
+   * WHEN A MESSAGE SHOWS ITS TIME: `never` (the default), `hover`, or `always`. Only the
+   * prompts and Claude's text carry one; it is `formatTime` that writes it, in the
+   * caller's locale.
+   */
+  timestamps?: 'never' | 'hover' | 'always'
+  formatTime?: (at: number) => string
+}
+
+/** The tools whose line `toolDetail: 'changes'` keeps: they change files or run commands. */
+const CHANGE_TOOLS = new Set(['Edit', 'MultiEdit', 'Write', 'NotebookEdit', 'Bash'])
+
+type ChatToolEntry = Extract<ChatViewEntry, { kind: 'tool' }>
+
+/** A tool call drawn as a card of its own (a diff), which no filter or group swallows. */
+const hasCard = (entry: ChatToolEntry) => Boolean(entry.diff || entry.diffs?.length)
+
+/** A turn's entries, the tool calls kept or folded as `toolDetail` says. */
+function shapeEntries(entries: ChatViewEntry[], toolDetail: 'all' | 'changes' | 'grouped'): (ChatViewEntry | { kind: 'group'; id: string; tools: ChatToolEntry[] })[] {
+  if (toolDetail === 'changes') {
+    return entries.filter((e) => e.kind !== 'tool' || hasCard(e) || CHANGE_TOOLS.has(e.name) || e.status === 'error')
+  }
+  if (toolDetail === 'all') return entries
+  const out: (ChatViewEntry | { kind: 'group'; id: string; tools: ChatToolEntry[] })[] = []
+  let run: ChatToolEntry[] = []
+  const flush = () => {
+    if (run.length === 1) out.push(run[0])
+    else if (run.length > 1) out.push({ kind: 'group', id: `group-${run[0].id}`, tools: run })
+    run = []
+  }
+  for (const entry of entries) {
+    if (entry.kind === 'tool' && !hasCard(entry)) {
+      run.push(entry)
+      continue
+    }
+    flush()
+    out.push(entry)
+  }
+  flush()
+  return out
 }
 
 /** What the textarea and its mirror share: anything that moves a glyph must be here. */
@@ -171,6 +228,7 @@ export function ChatView({
   entries, working, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
   question, onAnswer, answering, commands = [], highlightLines, onPickFiles, resolveFile,
   initialDraft, onDraftChange, restoredDraft, onDraftRestored, stickyPrompt = true, codeFontSize, claudeCodeVersion, startedLabel, queue = [], loading = false,
+  sendKey = 'enter', toolDetail = 'all', diffs = 'preview', timestamps = 'never', formatTime,
 }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -422,13 +480,19 @@ export function ChatView({
       event.preventDefault()
       return
     }
-    // Enter sends and Shift+Enter is a new line, as in the terminal. Not while an IME
-    // is composing: that Enter picks the candidate.
-    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+    // Enter sends and Shift+Enter is a new line, as in the terminal; with `mod-enter` it is
+    // ⌘Enter that sends and a bare Enter is left to the box. Not while an IME is
+    // composing: that Enter picks the candidate.
+    const sends = sendKey === 'mod-enter' ? event.metaKey || event.ctrlKey : !event.shiftKey
+    if (event.key === 'Enter' && sends && !event.nativeEvent.isComposing) {
       event.preventDefault()
       send()
     }
   }
+
+  // A message's time, as `timestamps` says, or nothing.
+  const stamp = (at: number | undefined): Stamp | undefined =>
+    timestamps === 'never' || at === undefined || !formatTime ? undefined : { text: formatTime(at), hover: timestamps === 'hover' }
 
   // THE TERMINAL'S OWN GROUND, the same sunken veil over the window's ground: the
   // caller hides the terminal underneath (see the app's AgentPane), so nothing of it
@@ -467,26 +531,27 @@ export function ChatView({
             </div>
           )}
           {turns.map((turn) => {
-            const lines = turn.entries.map((entry) =>
-              entry.kind === 'tool' && entry.diff ? (
-                <ChatDiffCard key={entry.id} diff={entry.diff} highlightLines={highlightLines} truncatedLabel={labels.diffTruncated} showAllLabel={labels.diffShowAll} closeLabel={labels.diffClose} />
+            const lines = shapeEntries(turn.entries, toolDetail).map((entry) =>
+              entry.kind === 'group' ? <ToolGroup key={entry.id} tools={entry.tools} label={labels.toolGroup} />
+              : entry.kind === 'tool' && entry.diff ? (
+                <ChatDiffCard key={entry.id} diff={entry.diff} highlightLines={highlightLines} truncatedLabel={labels.diffTruncated} showAllLabel={labels.diffShowAll} closeLabel={labels.diffClose} display={diffs} />
               )
               : entry.kind === 'tool' && entry.diffs?.length ? (
                 <div key={entry.id} className="flex flex-col gap-2">
                   <ToolLine entry={entry} />
                   {entry.diffs.map((diff) => (
-                    <ChatDiffCard key={diff.path} diff={diff} highlightLines={highlightLines} truncatedLabel={labels.diffTruncated} showAllLabel={labels.diffShowAll} closeLabel={labels.diffClose} />
+                    <ChatDiffCard key={diff.path} diff={diff} highlightLines={highlightLines} truncatedLabel={labels.diffTruncated} showAllLabel={labels.diffShowAll} closeLabel={labels.diffClose} display={diffs} />
                   ))}
                 </div>
               )
               : entry.kind === 'tool' ? <ToolLine key={entry.id} entry={entry} />
                 : entry.kind === 'notice' ? <NoticeLine key={entry.id} text={entry.text} />
-                  : <MessageLine key={entry.id} entry={entry} highlight={highlight} />
+                  : <MessageLine key={entry.id} entry={entry} highlight={highlight} stamp={stamp(entry.at)} />
             )
             if (!turn.prompt) return lines
             return stickyPrompt
-              ? <ChatTurn key={turn.prompt.id} prompt={turn.prompt} scrollRef={scrollRef}>{lines}</ChatTurn>
-              : [<MessageLine key={turn.prompt.id} entry={turn.prompt} />, ...lines]
+              ? <ChatTurn key={turn.prompt.id} prompt={turn.prompt} scrollRef={scrollRef} stamp={stamp(turn.prompt.at)}>{lines}</ChatTurn>
+              : [<MessageLine key={turn.prompt.id} entry={turn.prompt} stamp={stamp(turn.prompt.at)} />, ...lines]
           })}
           {question && onAnswer && (
             <ChatQuestion
@@ -719,7 +784,7 @@ function groupTurns(entries: ChatViewEntry[]): { prompt: ChatUserEntry | null; e
  * of its own measured height, on what follows it): it shows and hides as the bubble goes out and comes back,
  * and the thread under it must not move when it does.
  */
-function ChatTurn({ prompt, scrollRef, children }: { prompt: ChatUserEntry; scrollRef: RefObject<HTMLDivElement>; children: ReactNode }) {
+function ChatTurn({ prompt, scrollRef, stamp, children }: { prompt: ChatUserEntry; scrollRef: RefObject<HTMLDivElement>; stamp?: Stamp; children: ReactNode }) {
   const bubbleRef = useRef<HTMLDivElement>(null)
   const pinRef = useRef<HTMLDivElement>(null)
   const [pinned, setPinned] = useState(false)
@@ -779,7 +844,7 @@ function ChatTurn({ prompt, scrollRef, children }: { prompt: ChatUserEntry; scro
           box of no height would ride over the next turn's prompt before leaving. */}
       <div className="flex flex-col gap-3" style={{ marginTop: -pinHeight }}>
         <div ref={bubbleRef} className="scroll-mt-3">
-          <MessageLine entry={prompt} />
+          <MessageLine entry={prompt} stamp={stamp} />
         </div>
         {children}
       </div>
@@ -787,26 +852,93 @@ function ChatTurn({ prompt, scrollRef, children }: { prompt: ChatUserEntry; scro
   )
 }
 
-function MessageLine({ entry, highlight }: { entry: Extract<ChatViewEntry, { kind: 'user' | 'assistant' }>; highlight?: ChatHighlighter }) {
+/** A message's time, written by the caller, and whether it waits for the pointer. */
+interface Stamp {
+  text: string
+  hover: boolean
+}
+
+/** The time under a message, on its side of the thread. */
+function StampLine({ stamp, align }: { stamp: Stamp; align: 'start' | 'end' }) {
+  return (
+    <span
+      className={`text-[10px] tabular-nums text-text-secondary/50 ${align === 'end' ? 'self-end' : 'self-start'} ${
+        stamp.hover ? 'opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none' : ''
+      }`}
+    >
+      {stamp.text}
+    </span>
+  )
+}
+
+function MessageLine({ entry, highlight, stamp }: { entry: Extract<ChatViewEntry, { kind: 'user' | 'assistant' }>; highlight?: ChatHighlighter; stamp?: Stamp }) {
   if (entry.kind === 'user') {
     return (
-      <div className="flex justify-end">
-        <div className="max-w-[80%] whitespace-pre-wrap break-words rounded-2xl bg-accent/10 px-3.5 py-2 text-sm text-ink">
-          {entry.text}
+      <div className="group flex flex-col gap-1">
+        <div className="flex justify-end">
+          <div className="max-w-[80%] whitespace-pre-wrap break-words rounded-2xl bg-accent/10 px-3.5 py-2 text-sm text-ink">
+            {entry.text}
+          </div>
         </div>
+        {stamp && <StampLine stamp={stamp} align="end" />}
       </div>
     )
   }
   // The `★ Insight` asides Claude frames in its text are cards of their own.
   const parts = splitInsights(entry.text)
-  if (parts.length === 1 && parts[0].kind === 'text') {
-    return <div className="min-w-0 break-words"><ChatMarkdown text={entry.text} highlight={highlight} /></div>
-  }
+  const body = parts.length === 1 && parts[0].kind === 'text'
+    ? <div className="min-w-0 break-words"><ChatMarkdown text={entry.text} highlight={highlight} /></div>
+    : (
+      <div className="flex min-w-0 flex-col gap-3 break-words">
+        {parts.map((part, i) => part.kind === 'insight'
+          ? <ChatInsightCard key={i} text={part.text} highlight={highlight} />
+          : <ChatMarkdown key={i} text={part.text} highlight={highlight} />)}
+      </div>
+    )
+  if (!stamp) return body
   return (
-    <div className="flex min-w-0 flex-col gap-3 break-words">
-      {parts.map((part, i) => part.kind === 'insight'
-        ? <ChatInsightCard key={i} text={part.text} highlight={highlight} />
-        : <ChatMarkdown key={i} text={part.text} highlight={highlight} />)}
+    <div className="group flex min-w-0 flex-col gap-1">
+      {body}
+      <StampLine stamp={stamp} align="start" />
+    </div>
+  )
+}
+
+/**
+ * A RUN OF TOOL CALLS ON ONE LINE (`toolDetail: 'grouped'`): how many, which tools, and
+ * how the run is going: a spinner while one runs, the error mark if one failed. It opens
+ * on the run's own lines, each as `ToolLine` draws it.
+ */
+function ToolGroup({ tools, label }: { tools: ChatToolEntry[]; label: string }) {
+  const [open, setOpen] = useState(false)
+  const running = tools.some((t) => t.status === 'running')
+  const failed = tools.some((t) => t.status === 'error')
+  const names = [...new Set(tools.map((t) => t.name))].join(', ')
+  return (
+    <div className="text-xs">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        className="flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-1 text-left text-text-secondary hover:bg-ink/5"
+      >
+        {running ? (
+          <Loader variant="spin" size="xs" tone="muted" className="flex-shrink-0" />
+        ) : failed ? (
+          <CircleAlert className="w-3.5 h-3.5 flex-shrink-0 text-red" />
+        ) : (
+          <Check className="w-3.5 h-3.5 flex-shrink-0 text-green" />
+        )}
+        <Wrench className="w-3 h-3 flex-shrink-0 text-icon" />
+        <span className="flex-shrink-0 font-medium text-ink">{label.replace('{count}', String(tools.length))}</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-text-secondary/70" title={names}>{names}</span>
+        <ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 text-icon transition-transform ${open ? 'rotate-90' : ''}`} />
+      </button>
+      {open && (
+        <div className="ml-5 mt-0.5 flex flex-col border-l border-line-subtle pl-2">
+          {tools.map((tool) => <ToolLine key={tool.id} entry={tool} />)}
+        </div>
+      )}
     </div>
   )
 }

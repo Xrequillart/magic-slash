@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { ButtonIcon } from './ButtonIcon'
 import { DiffStat } from './DiffStat'
-import { Maximize2, X } from './icons'
+import { ChevronRight, Maximize2, X } from './icons'
 import { Modal } from './Modal'
 
 /**
@@ -58,7 +58,17 @@ export interface ChatDiffCardProps {
   showAllLabel: string
   /** The dialog's close button. Translated. */
   closeLabel: string
+  /**
+   * HOW THE CARD OPENS IN THE THREAD. `preview` (the default) is the first
+   * `PREVIEW_LINES` lines and the rest on request, as described above; `full` draws every
+   * line in place, for a reader who wants the change without a click; `collapsed` is the
+   * header alone, the file and its counts, and a press on it opens the preview. The
+   * reader's choice, from the chat view's settings.
+   */
+  display?: ChatDiffDisplay
 }
+
+export type ChatDiffDisplay = 'preview' | 'full' | 'collapsed'
 
 type Row =
   | { kind: 'line'; sign: '+' | '-' | ' '; text: string; oldNo?: number; newNo?: number; index: number }
@@ -78,7 +88,7 @@ interface Box { top: number; left: number; width: number; height: number }
 const reducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-export function ChatDiffCard({ diff, highlightLines, truncatedLabel, showAllLabel, closeLabel }: ChatDiffCardProps) {
+export function ChatDiffCard({ diff, highlightLines, truncatedLabel, showAllLabel, closeLabel, display = 'preview' }: ChatDiffCardProps) {
   const name = diff.path.slice(diff.path.lastIndexOf('/') + 1)
   const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : undefined
 
@@ -130,7 +140,11 @@ export function ChatDiffCard({ diff, highlightLines, truncatedLabel, showAllLabe
     while (out.length > 0 && out[out.length - 1].kind === 'fold') out.pop()
     return { preview: out, lineCount: total }
   }, [rows])
-  const cut = lineCount > PREVIEW_LINES
+  const full = display === 'full'
+  const cut = !full && lineCount > PREVIEW_LINES
+  // A collapsed card opened by its header shows the preview from then on.
+  const [unfolded, setUnfolded] = useState(false)
+  const folded = display === 'collapsed' && !unfolded
 
   const cardRef = useRef<HTMLDivElement>(null)
   const scrollerRef = useRef<HTMLDivElement>(null)
@@ -241,12 +255,25 @@ export function ChatDiffCard({ diff, highlightLines, truncatedLabel, showAllLabe
         // The dialog IS the card while it is out: two of it on screen would read as a copy.
         style={phase === 'closed' ? undefined : { visibility: 'hidden' }}
       >
-        {header}
-        <div className="overflow-hidden py-1 font-mono text-[length:var(--chat-code-size,11px)] leading-[1.6]">
-          <DiffRows rows={preview} tokens={tokens} />
-          {diff.truncated && !cut && <p className="px-3 py-1 text-text-secondary/60">{truncatedLabel}</p>}
-        </div>
-        {cut && (
+        {display === 'collapsed' ? (
+          <button
+            type="button"
+            onClick={() => setUnfolded(!unfolded)}
+            aria-expanded={!folded}
+            className={`flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-ink/5 ${folded ? '' : 'border-b border-line-subtle'}`}
+          >
+            <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 text-icon transition-transform ${folded ? '' : 'rotate-90'}`} />
+            <span className="min-w-0 flex-1 truncate font-mono text-xs font-medium text-ink" title={diff.path}>{name}</span>
+            <DiffStat additions={diff.added} deletions={diff.removed} />
+          </button>
+        ) : header}
+        {!folded && (
+          <div className="overflow-hidden py-1 font-mono text-[length:var(--chat-code-size,11px)] leading-[1.6]">
+            <DiffRows rows={full ? rows : preview} tokens={tokens} />
+            {diff.truncated && !cut && <p className="px-3 py-1 text-text-secondary/60">{truncatedLabel}</p>}
+          </div>
+        )}
+        {cut && !folded && (
           <button
             type="button"
             onClick={open}

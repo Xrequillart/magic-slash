@@ -44,6 +44,7 @@ import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '.
 import {
   AGENT_SORT_MODES, EMPTY_WORKFLOW_HISTORY, codeSyntaxTheme, DEFAULT_CODE_SYNTAX, DEFAULT_CODE_FONT_SIZE, isValidAgentSort,
   cleanQuickSettings, cleanSidebarPages, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidDisplayMode, isValidTheme,
+  isValidChatSendKey, isValidChatToolDetail, isValidChatDiffDisplay, isValidChatTimestamps,
   type CodeSample, type Config, type FilePreviewResult, type ChangedLines, type RepositoryWorkflowOverlay, type RepositoryWorkflowSaveResult, type WorkflowHistoryRead,
   isValidWorkflowChainLimit, isValidWorkflowConfirmChain, isValidWorkflowMissingSkill, type WorkflowSettings,
 } from '../../types'
@@ -621,6 +622,31 @@ export function setupConfigHandlers() {
     if (typeof sticky !== 'boolean') throw new Error('Invalid chatStickyPrompt value: must be a boolean')
     const config = readConfig()
     config.chatStickyPrompt = sticky
+    writeConfig(config)
+    return { config }
+  })
+
+  // The chat view's own settings, any of them alone. See CHAT_SEND_KEYS in types.ts.
+  ipcMain.handle('config:setChatSettings', async (_event, patch: unknown) => {
+    if (typeof patch !== 'object' || patch === null) throw new Error('Invalid chat settings')
+    const { sendKey, toolDetail, diffs, timestamps } = patch as Record<string, unknown>
+    const config = readConfig()
+    if (sendKey !== undefined) {
+      if (!isValidChatSendKey(sendKey)) throw new Error('Invalid chatSendKey value')
+      config.chatSendKey = sendKey
+    }
+    if (toolDetail !== undefined) {
+      if (!isValidChatToolDetail(toolDetail)) throw new Error('Invalid chatToolDetail value')
+      config.chatToolDetail = toolDetail
+    }
+    if (diffs !== undefined) {
+      if (!isValidChatDiffDisplay(diffs)) throw new Error('Invalid chatDiffs value')
+      config.chatDiffs = diffs
+    }
+    if (timestamps !== undefined) {
+      if (!isValidChatTimestamps(timestamps)) throw new Error('Invalid chatTimestamps value')
+      config.chatTimestamps = timestamps
+    }
     writeConfig(config)
     return { config }
   })

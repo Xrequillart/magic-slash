@@ -113,6 +113,10 @@ export interface AdminUserSettings extends UserSettings {
   agentSort: string | null
   infoSidebarOnCreate: boolean | null
   chatStickyPrompt: boolean | null
+  chatSendKey: string | null
+  chatToolDetail: string | null
+  chatDiffs: string | null
+  chatTimestamps: string | null
 }
 
 /**
@@ -154,6 +158,11 @@ export const SETTING_DEFAULTS: Record<keyof AdminUserSettings, string | number |
   agentSort: 'recent',
   infoSidebarOnCreate: true,
   chatStickyPrompt: true,
+  // The first value of each list in desktop/src/types.ts (CHAT_SEND_KEYS and siblings).
+  chatSendKey: 'enter',
+  chatToolDetail: 'all',
+  chatDiffs: 'preview',
+  chatTimestamps: 'never',
 }
 
 export interface SettingGroup {
@@ -215,6 +224,10 @@ export const SETTING_GROUPS: SettingGroup[] = [
       { field: 'infoSidebarOnCreate', label: 'Info panel open' },
       { field: 'defaultDisplayMode', label: 'Shown as' },
       { field: 'chatStickyPrompt', label: 'Prompt pinned in the chat' },
+      { field: 'chatSendKey', label: 'Chat send key' },
+      { field: 'chatToolDetail', label: 'Chat tool calls' },
+      { field: 'chatDiffs', label: 'Chat diffs' },
+      { field: 'chatTimestamps', label: 'Chat timestamps' },
     ],
   },
   {

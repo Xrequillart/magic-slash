@@ -3,6 +3,7 @@ import type { AvatarSourceResult, AvatarWriteResult } from '../avatar'
 import type { UsernameCheckResult, UsernameSaveResult } from '../username'
 import type { ResolvedWorkflow } from '../workflow/model'
 import type { WorkflowOverlay } from '../workflow/overlay'
+import type { ChatSendKey, ChatToolDetail, ChatDiffDisplay, ChatTimestamps } from '../types'
 import type { AccountSettings, AgentDisplayMode, AgentSortMode, ChatSnapshot, ClaudeSessionEntry, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, GhCliStatus, McpServerId, McpHealthReport, McpServerState, PrerequisiteId, TrayState, TrayQuestion, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanLiveChange, PlanOverview, PlanPresence, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata, RepositoryWorkflowOverlay, RepositoryWorkflowSaveResult, SkillShareResult, WorkflowChange, WorkflowHistoryRead, WorkflowSettings } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
@@ -114,6 +115,9 @@ const configApi = {
     ipcRenderer.invoke('config:setDefaultDisplayMode', { mode }),
   setChatStickyPrompt: (sticky: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setChatStickyPrompt', { sticky }),
+
+  setChatSettings: (patch: { sendKey?: ChatSendKey; toolDetail?: ChatToolDetail; diffs?: ChatDiffDisplay; timestamps?: ChatTimestamps }): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setChatSettings', patch),
 
   setSplitNewAgentPane: (pane: SplitNewAgentPane): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setSplitNewAgentPane', { pane }),

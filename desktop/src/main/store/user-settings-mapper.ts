@@ -1,5 +1,5 @@
 import type { Config, SpotlightConfig } from '../../types'
-import { cleanQuickSettings, cleanSidebarPages, isValidAgentSort, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidDisplayMode, isValidTheme, isValidWorkflowChainLimit, isValidWorkflowConfirmChain, isValidWorkflowMissingSkill } from '../../types'
+import { cleanQuickSettings, cleanSidebarPages, isValidAgentSort, isValidCodeFontSize, isValidCodeSyntax, isValidLanguage, isValidModelName, isValidQuickLaunchRepo, isValidSplitNewAgentPane, isValidDisplayMode, isValidTheme, isValidWorkflowChainLimit, isValidWorkflowConfirmChain, isValidWorkflowMissingSkill, isValidChatSendKey, isValidChatToolDetail, isValidChatDiffDisplay, isValidChatTimestamps } from '../../types'
 import { isValidAgentType, isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 
 // ---------------------------------------------------------------------------
@@ -38,6 +38,10 @@ export interface UserSettingsRow {
   split_new_agent_pane: string | null
   default_display_mode: string | null
   chat_sticky_prompt: boolean | null
+  chat_send_key: string | null
+  chat_tool_detail: string | null
+  chat_diffs: string | null
+  chat_timestamps: string | null
   notifications_enabled: boolean | null
   notification_agent_waiting: boolean | null
   notification_agent_completed: boolean | null
@@ -86,7 +90,7 @@ export const USER_SETTINGS_COLUMNS =
   'notification_pr_changes_requested, split_enabled, split_active, pr_reviews_enabled, ' +
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
   'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
-  'language, sync_claude_theme, code_syntax, code_font_size, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, default_display_mode, chat_sticky_prompt, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, quick_settings_enabled, quick_settings_items, sidebar_order, sidebar_hidden, sidebar_shown, sidebar_compact, agent_sort, tasks_repo, ' +
+  'language, sync_claude_theme, code_syntax, code_font_size, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, default_display_mode, chat_sticky_prompt, chat_send_key, chat_tool_detail, chat_diffs, chat_timestamps, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, quick_settings_enabled, quick_settings_items, sidebar_order, sidebar_hidden, sidebar_shown, sidebar_compact, agent_sort, tasks_repo, ' +
   'plans_repo, workflow_confirm_chain, workflow_chain_limit, workflow_missing_skill, workflow_run_actions'
 
 /**
@@ -108,6 +112,10 @@ export const SETTINGS_KEYS = [
   'infoSidebarOnCreate',
   'defaultDisplayMode',
   'chatStickyPrompt',
+  'chatSendKey',
+  'chatToolDetail',
+  'chatDiffs',
+  'chatTimestamps',
   'planSyncEnabled',
   'dailyDigest',
   'notifications',
@@ -168,6 +176,10 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     split_new_agent_pane: orNull(config.splitNewAgentPane),
     default_display_mode: orNull(config.defaultDisplayMode),
     chat_sticky_prompt: orNull(config.chatStickyPrompt),
+    chat_send_key: orNull(config.chatSendKey),
+    chat_tool_detail: orNull(config.chatToolDetail),
+    chat_diffs: orNull(config.chatDiffs),
+    chat_timestamps: orNull(config.chatTimestamps),
     notifications_enabled: orNull(config.notifications?.enabled),
     notification_agent_waiting: orNull(config.notifications?.agentWaiting),
     notification_agent_completed: orNull(config.notifications?.agentCompleted),
@@ -232,6 +244,11 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   if (isValidSplitNewAgentPane(row.split_new_agent_pane)) config.splitNewAgentPane = row.split_new_agent_pane
   if (isValidDisplayMode(row.default_display_mode)) config.defaultDisplayMode = row.default_display_mode
   if (isSet(row.chat_sticky_prompt)) config.chatStickyPrompt = row.chat_sticky_prompt
+  // Re-validated like the display mode: a value a newer build stored reads as unset.
+  if (isValidChatSendKey(row.chat_send_key)) config.chatSendKey = row.chat_send_key
+  if (isValidChatToolDetail(row.chat_tool_detail)) config.chatToolDetail = row.chat_tool_detail
+  if (isValidChatDiffDisplay(row.chat_diffs)) config.chatDiffs = row.chat_diffs
+  if (isValidChatTimestamps(row.chat_timestamps)) config.chatTimestamps = row.chat_timestamps
   if (isSet(row.auto_start_at_login)) config.autoStartAtLogin = row.auto_start_at_login
   if (isValidLaunchMode(row.launch_mode)) config.launchMode = row.launch_mode
   if (isValidQuickLaunchRepo(row.quick_launch_repo)) config.quickLaunchRepo = row.quick_launch_repo

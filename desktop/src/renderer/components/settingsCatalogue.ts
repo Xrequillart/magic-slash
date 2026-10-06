@@ -3,7 +3,7 @@ import { LEVEL_LABEL_KEYS, ROLE_LABEL_KEYS, STYLE_LABEL_KEYS } from '../i18n'
 import { LANGUAGES } from '../languages'
 import { THEMES, THEME_IDS } from '../theme'
 import { CODE_FONT_SIZES, CODE_SYNTAX_FAMILIES, CODE_SYNTAX_FAMILY_IDS, WORKFLOW_CHAIN_LIMITS, type McpServerId } from '../../types'
-import { AGENT_TYPE_OPTIONS, DISPLAY_MODE_OPTIONS, LAUNCH_MODE_OPTIONS, SORT_LABEL } from '../pages/Config/AgentsPage'
+import { AGENT_TYPE_OPTIONS, CHAT_DIFFS_LABEL, CHAT_SEND_KEY_LABEL, CHAT_TIMESTAMPS_LABEL, CHAT_TOOL_DETAIL_LABEL, DISPLAY_MODE_OPTIONS, LAUNCH_MODE_OPTIONS, SORT_LABEL } from '../pages/Config/AgentsPage'
 import { PR_WATCHER_INTERVAL_LABEL } from '../pages/Config/CodeReviewsPage'
 import { MCP_SERVER_HINTS, MCP_SERVER_NAMES } from '../pages/Config/McpServersCard'
 import { SPOTLIGHT_OPTIONS } from '../pages/Config/QuickLaunchPage'
@@ -228,6 +228,30 @@ export const SETTINGS_CATALOGUE: readonly SettingsSearchEntry[] = [
     tab: 'agents',
     labelKey: 'settings.chat.stickyPrompt.label',
     helpKey: 'settings.chat.stickyPrompt.help',
+  },
+  {
+    tab: 'agents',
+    labelKey: 'settings.chat.sendKey.label',
+    helpKey: 'settings.chat.sendKey.help',
+    options: keys(Object.values(CHAT_SEND_KEY_LABEL)),
+  },
+  {
+    tab: 'agents',
+    labelKey: 'settings.chat.toolDetail.label',
+    helpKey: 'settings.chat.toolDetail.help',
+    options: keys(Object.values(CHAT_TOOL_DETAIL_LABEL)),
+  },
+  {
+    tab: 'agents',
+    labelKey: 'settings.chat.diffs.label',
+    helpKey: 'settings.chat.diffs.help',
+    options: keys(Object.values(CHAT_DIFFS_LABEL)),
+  },
+  {
+    tab: 'agents',
+    labelKey: 'settings.chat.timestamps.label',
+    helpKey: 'settings.chat.timestamps.help',
+    options: keys(Object.values(CHAT_TIMESTAMPS_LABEL)),
   },
   {
     tab: 'agents',

@@ -279,6 +279,10 @@ interface AdminUserDetailRpcRow {
   agent_sort: string | null
   info_sidebar_on_create: boolean | null
   chat_sticky_prompt: boolean | null
+  chat_send_key: string | null
+  chat_tool_detail: string | null
+  chat_diffs: string | null
+  chat_timestamps: string | null
 }
 
 interface AdminOrgRpcRow {
@@ -452,6 +456,10 @@ function toUserDetail(r: AdminUserDetailRpcRow): AdminUserDetail {
       agentSort: r.agent_sort,
       infoSidebarOnCreate: r.info_sidebar_on_create,
       chatStickyPrompt: r.chat_sticky_prompt,
+      chatSendKey: r.chat_send_key,
+      chatToolDetail: r.chat_tool_detail,
+      chatDiffs: r.chat_diffs,
+      chatTimestamps: r.chat_timestamps,
     },
   }
 }

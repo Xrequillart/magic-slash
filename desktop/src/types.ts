@@ -937,13 +937,39 @@ export function isValidDisplayMode(value: unknown): value is AgentDisplayMode {
 }
 
 /**
+ * THE CHAT VIEW'S OWN SETTINGS (Settings → Sessions → Chat view). Each absent value reads
+ * as the first of its list, which is how the chat behaved before it could be set.
+ *
+ *   - send key: `enter` sends (Shift+Enter is a new line), or `mod-enter` sends on ⌘Enter
+ *     and leaves Enter to the new line, for long prompts.
+ *   - tool detail: every tool call on its line, only the ones that change something
+ *     (edits, commands, failures), or each run of calls folded into one line.
+ *   - diffs: the card's first lines with the rest on request, the whole diff, or the
+ *     file's name and counts only until opened.
+ *   - timestamps: on no message, on the one under the pointer, or on every one.
+ */
+export const CHAT_SEND_KEYS = ['enter', 'mod-enter'] as const
+export type ChatSendKey = (typeof CHAT_SEND_KEYS)[number]
+export const CHAT_TOOL_DETAILS = ['all', 'changes', 'grouped'] as const
+export type ChatToolDetail = (typeof CHAT_TOOL_DETAILS)[number]
+export const CHAT_DIFF_DISPLAYS = ['preview', 'full', 'collapsed'] as const
+export type ChatDiffDisplay = (typeof CHAT_DIFF_DISPLAYS)[number]
+export const CHAT_TIMESTAMPS = ['never', 'hover', 'always'] as const
+export type ChatTimestamps = (typeof CHAT_TIMESTAMPS)[number]
+
+export const isValidChatSendKey = (v: unknown): v is ChatSendKey => (CHAT_SEND_KEYS as readonly unknown[]).includes(v)
+export const isValidChatToolDetail = (v: unknown): v is ChatToolDetail => (CHAT_TOOL_DETAILS as readonly unknown[]).includes(v)
+export const isValidChatDiffDisplay = (v: unknown): v is ChatDiffDisplay => (CHAT_DIFF_DISPLAYS as readonly unknown[]).includes(v)
+export const isValidChatTimestamps = (v: unknown): v is ChatTimestamps => (CHAT_TIMESTAMPS as readonly unknown[]).includes(v)
+
+/**
  * One line of the chat view, built from the transcript (see main/chat/transcript.ts).
  * A tool call and its result are ONE entry: the result arrives later and updates it.
  */
 export type ChatEntry =
   /** `at`: when it was sent, epoch ms, from the transcript line. */
   | { kind: 'user'; id: string; text: string; at?: number }
-  | { kind: 'assistant'; id: string; text: string }
+  | { kind: 'assistant'; id: string; text: string; at?: number }
   /** What a local slash command printed (`/cost`, `/model`, `/mcp`…): Claude Code's, not Claude's. */
   | { kind: 'notice'; id: string; text: string }
   | {
@@ -2188,6 +2214,11 @@ export interface Config {
    * ON by default, so absent = never touched = pinned, and the gate tests `!== false`.
    */
   chatStickyPrompt?: boolean
+  /** See CHAT_SEND_KEYS and its siblings. Absent = the first value of each list. */
+  chatSendKey?: ChatSendKey
+  chatToolDetail?: ChatToolDetail
+  chatDiffs?: ChatDiffDisplay
+  chatTimestamps?: ChatTimestamps
   /**
    * Whether `/magic:plan` sessions (the spec and the tickets it produced) are
    * uploaded to the cloud. ON by default, like usageLogsEnabled above, so only an

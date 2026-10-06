@@ -151,7 +151,8 @@ export class ChatTranscript {
           prompt.ids.push(blockId)
           prompt.texts.push(text)
         } else {
-          this.entries.push({ kind: 'assistant', id: blockId, text })
+          const at = typeof data.timestamp === 'string' ? Date.parse(data.timestamp) : NaN
+          this.entries.push({ kind: 'assistant', id: blockId, text, ...(Number.isFinite(at) ? { at } : {}) })
         }
         changed = true
       } else if (block?.type === 'tool_use' && data.type === 'assistant') {

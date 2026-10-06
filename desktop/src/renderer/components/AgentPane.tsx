@@ -89,6 +89,11 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   const codeFontSize = useStore((s) => s.config?.codeFontSize) ?? DEFAULT_CODE_FONT_SIZE
   // On unless turned off (Settings → New sessions).
   const stickyPrompt = useStore((s) => s.config?.chatStickyPrompt) !== false
+  // The chat view's settings (Settings → Sessions → Chat view); absent is the first value.
+  const sendKey = useStore((s) => s.config?.chatSendKey) ?? 'enter'
+  const toolDetail = useStore((s) => s.config?.chatToolDetail) ?? 'all'
+  const diffs = useStore((s) => s.config?.chatDiffs) ?? 'preview'
+  const timestamps = useStore((s) => s.config?.chatTimestamps) ?? 'never'
   const highlight = useCallback(
     (code: string, lang: string | undefined) => window.electronAPI.terminal.highlightCode(code, lang, shikiTheme),
     [shikiTheme]
@@ -110,6 +115,11 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
       time: new Date(startedAt.at).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
     })
     : undefined
+
+  const formatTime = useCallback(
+    (at: number) => new Date(at).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
+    [locale]
+  )
 
   const keepDraft = useCallback((draft: string) => {
     if (draft) drafts.set(terminal.id, draft)
@@ -149,11 +159,16 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
             restoredDraft={restored}
             onDraftRestored={() => setRestored(null)}
             stickyPrompt={stickyPrompt}
+            sendKey={sendKey}
+            toolDetail={toolDetail}
+            diffs={diffs}
+            timestamps={timestamps}
+            formatTime={formatTime}
             codeFontSize={codeFontSize}
             claudeCodeVersion={terminal.metadata?.usage?.version}
             startedLabel={startedLabel}
             labels={{
-              placeholder: t('chat.placeholder'),
+              placeholder: t(sendKey === 'mod-enter' ? 'chat.placeholder.modEnter' : 'chat.placeholder'),
               send: t('chat.send'),
               empty: t('chat.empty'),
               greeting: t('chat.greeting'),
@@ -165,6 +180,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
               diffTruncated: t('chat.diff.truncated'),
               diffShowAll: t('chat.diff.showAll'),
               diffClose: t('chat.diff.close'),
+              toolGroup: t('chat.toolGroup'),
               attach: t('chat.attach'),
               removeAttachment: t('chat.attach.remove'),
               dropFiles: t('chat.attach.drop'),

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, Archive, Bot, ListOrdered, PanelRight } from '@ds/desktop/icons'
+import { AlertTriangle, Archive, Bot, ListOrdered, MessageSquare, PanelRight } from '@ds/desktop/icons'
 import { SectionHeader, SettingsCard } from '@ds/desktop'
 import { useToggleRow } from './ToggleRow'
 import { useFormatSelect } from './FormatSelect'
@@ -9,7 +9,8 @@ import { useT, type MessageKey } from '../../i18n'
 import { SELECT_WIDTH } from '../../theme/controls'
 import { showToast } from '../../components/Toast'
 import {
-  AGENT_SORT_MODES, DEFAULT_AGENT_SORT,
+  AGENT_SORT_MODES, DEFAULT_AGENT_SORT, CHAT_SEND_KEYS, CHAT_TOOL_DETAILS, CHAT_DIFF_DISPLAYS, CHAT_TIMESTAMPS,
+  type ChatSendKey, type ChatToolDetail, type ChatDiffDisplay, type ChatTimestamps,
   type AgentDisplayMode, type AgentSortMode, type AgentType, type ClaudeModelOption, type LaunchMode,
 } from '../../../types'
 
@@ -159,17 +160,6 @@ function NewAgentsSection() {
     errorMessage: t('toast.settingUpdateFailed'),
   })
 
-  const stickyPromptRow = useToggleRow({
-    label: t('settings.chat.stickyPrompt.label'),
-    help: t('settings.chat.stickyPrompt.help'),
-    value: config?.chatStickyPrompt,
-    onChange: async (next) => {
-      const result = await window.electronAPI.config.setChatStickyPrompt(next)
-      setConfig(result.config)
-    },
-    errorMessage: t('toast.settingUpdateFailed'),
-  })
-
   const list = Array.isArray(models) ? models : []
   // The stored model stays offered even when the CLI no longer lists it (a model retired
   // since it was picked, or the list not in yet), so the picker never shows a value it
@@ -251,7 +241,6 @@ function NewAgentsSection() {
               width: SELECT_WIDTH,
             },
           },
-          { id: 'chatStickyPrompt', ...stickyPromptRow },
           { id: 'infoSidebar', ...infoSidebarRow },
         ]}
         alert={
@@ -276,6 +265,105 @@ export const DISPLAY_MODE_OPTIONS: { value: AgentDisplayMode; labelKey: MessageK
   { value: 'terminal', labelKey: 'settings.displayMode.terminal' },
   { value: 'chat', labelKey: 'settings.displayMode.chat' },
 ]
+
+/** The chat view's choices, by value. Exported for the settings search. */
+export const CHAT_SEND_KEY_LABEL: Record<ChatSendKey, MessageKey> = {
+  enter: 'settings.chat.sendKey.enter',
+  'mod-enter': 'settings.chat.sendKey.modEnter',
+}
+export const CHAT_TOOL_DETAIL_LABEL: Record<ChatToolDetail, MessageKey> = {
+  all: 'settings.chat.toolDetail.all',
+  changes: 'settings.chat.toolDetail.changes',
+  grouped: 'settings.chat.toolDetail.grouped',
+}
+export const CHAT_DIFFS_LABEL: Record<ChatDiffDisplay, MessageKey> = {
+  preview: 'settings.chat.diffs.preview',
+  full: 'settings.chat.diffs.full',
+  collapsed: 'settings.chat.diffs.collapsed',
+}
+export const CHAT_TIMESTAMPS_LABEL: Record<ChatTimestamps, MessageKey> = {
+  never: 'settings.chat.timestamps.never',
+  hover: 'settings.chat.timestamps.hover',
+  always: 'settings.chat.timestamps.always',
+}
+
+/**
+ * THE CHAT VIEW, how it reads and how it sends: its own section rather than rows under
+ * the new-session defaults, since none of it is about how a session starts. The pinned
+ * prompt moved here from there for the same reason.
+ *
+ * Each choice is written as made and the config that comes back is the one shown, so the
+ * chat behind the dialog follows at once.
+ */
+function ChatSection() {
+  const t = useT()
+  const config = useStore((s) => s.config)
+  const setConfig = useStore((s) => s.setConfig)
+
+  const write = async (patch: Parameters<typeof window.electronAPI.config.setChatSettings>[0]) => {
+    try {
+      const result = await window.electronAPI.config.setChatSettings(patch)
+      setConfig(result.config)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t('toast.settingUpdateFailed'), 'error')
+    }
+  }
+
+  const stickyPromptRow = useToggleRow({
+    label: t('settings.chat.stickyPrompt.label'),
+    help: t('settings.chat.stickyPrompt.help'),
+    value: config?.chatStickyPrompt,
+    onChange: async (next) => {
+      const result = await window.electronAPI.config.setChatStickyPrompt(next)
+      setConfig(result.config)
+    },
+    errorMessage: t('toast.settingUpdateFailed'),
+  })
+
+  const select = <V extends string>(value: V, values: readonly V[], labels: Record<V, MessageKey>, label: string, onChange: (next: V) => void) => ({
+    kind: 'select' as const,
+    value,
+    options: values.map((v) => ({ value: v, label: t(labels[v]) })),
+    onChange: (next: string) => { if (next !== value) onChange(next as V) },
+    ariaLabel: label,
+    width: SELECT_WIDTH,
+  })
+
+  return (
+    <div>
+      <SectionHeader icon={MessageSquare} title={t('settings.chat.section')} />
+      <SettingsCard
+        rows={[
+          {
+            id: 'chatSendKey',
+            label: t('settings.chat.sendKey.label'),
+            hint: t('settings.chat.sendKey.help'),
+            control: select(config?.chatSendKey ?? 'enter', CHAT_SEND_KEYS, CHAT_SEND_KEY_LABEL, t('settings.chat.sendKey.label'), (sendKey) => write({ sendKey })),
+          },
+          {
+            id: 'chatToolDetail',
+            label: t('settings.chat.toolDetail.label'),
+            hint: t('settings.chat.toolDetail.help'),
+            control: select(config?.chatToolDetail ?? 'all', CHAT_TOOL_DETAILS, CHAT_TOOL_DETAIL_LABEL, t('settings.chat.toolDetail.label'), (toolDetail) => write({ toolDetail })),
+          },
+          {
+            id: 'chatDiffs',
+            label: t('settings.chat.diffs.label'),
+            hint: t('settings.chat.diffs.help'),
+            control: select(config?.chatDiffs ?? 'preview', CHAT_DIFF_DISPLAYS, CHAT_DIFFS_LABEL, t('settings.chat.diffs.label'), (diffs) => write({ diffs })),
+          },
+          {
+            id: 'chatTimestamps',
+            label: t('settings.chat.timestamps.label'),
+            hint: t('settings.chat.timestamps.help'),
+            control: select(config?.chatTimestamps ?? 'never', CHAT_TIMESTAMPS, CHAT_TIMESTAMPS_LABEL, t('settings.chat.timestamps.label'), (timestamps) => write({ timestamps })),
+          },
+          { id: 'chatStickyPrompt', ...stickyPromptRow },
+        ]}
+      />
+    </div>
+  )
+}
 
 function ListSection() {
   const t = useT()
@@ -360,6 +448,7 @@ export function AgentsPage() {
   return (
     <div className="flex flex-col gap-8">
       <NewAgentsSection />
+      <ChatSection />
       <ListSection />
       <PanelSection />
       <ArchiveSection />
