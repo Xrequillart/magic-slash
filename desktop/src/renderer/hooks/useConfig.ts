@@ -214,7 +214,7 @@ export function useConfig() {
     return result
   }, [setConfig])
 
-  const updateSidebarPages = useCallback(async (patch: { order?: SidebarPageId[]; hidden?: SidebarPageId[]; compact?: boolean }) => {
+  const updateSidebarPages = useCallback(async (patch: { order?: SidebarPageId[]; hidden?: SidebarPageId[]; shown?: SidebarPageId[]; compact?: boolean }) => {
     const result = await window.electronAPI.config.setSidebarPages(patch)
     setConfig(result.config)
     return result

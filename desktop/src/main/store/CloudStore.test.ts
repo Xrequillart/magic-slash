@@ -2499,6 +2499,7 @@ describe('user settings', () => {
       quick_settings_items: null,
       sidebar_order: null,
       sidebar_hidden: null,
+      sidebar_shown: null,
       sidebar_compact: null,
     })
   })

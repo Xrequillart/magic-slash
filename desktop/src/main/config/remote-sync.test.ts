@@ -66,6 +66,7 @@ const emptyRow = (): UserSettingsRow => ({
   quick_settings_items: null,
   sidebar_order: null,
   sidebar_hidden: null,
+  sidebar_shown: null,
   sidebar_compact: null,
   default_agent_type: null,
   agent_sort: null,

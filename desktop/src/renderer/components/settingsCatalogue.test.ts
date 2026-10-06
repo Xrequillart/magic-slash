@@ -49,6 +49,7 @@ const NOT_SETTINGS: readonly string[] = [
   'org.colRole',
   // The pages listed in the sidebar modal, behind the catalogued sidebar row.
   'sidebar.plans', 'sidebar.tasks', 'sidebar.skills', 'settings.tab.repositories',
+  'accountMenu.settings', 'settings.tab.account',
 ]
 
 /** Each tab's files: the page the modal mounts for it, and what that page imports from its folder. */

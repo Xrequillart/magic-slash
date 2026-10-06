@@ -268,6 +268,7 @@ interface AdminUserDetailRpcRow {
   quick_settings_items: string[] | null
   sidebar_order: string[] | null
   sidebar_hidden: string[] | null
+  sidebar_shown: string[] | null
   sidebar_compact: boolean | null
   atlassian_integration_enabled: boolean | null
   theme: string | null
@@ -440,6 +441,7 @@ function toUserDetail(r: AdminUserDetailRpcRow): AdminUserDetail {
       quickSettingsItems: r.quick_settings_items,
       sidebarOrder: r.sidebar_order,
       sidebarHidden: r.sidebar_hidden,
+      sidebarShown: r.sidebar_shown,
       sidebarCompact: r.sidebar_compact,
       atlassianIntegrationEnabled: r.atlassian_integration_enabled,
       theme: r.theme,

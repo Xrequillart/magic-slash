@@ -35,6 +35,7 @@ const EVERY_FIELD: (keyof AdminUserSettings)[] = [
   'quickSettingsItems',
   'sidebarOrder',
   'sidebarHidden',
+  'sidebarShown',
   'sidebarCompact',
   'agentSort',
   'infoSidebarOnCreate',

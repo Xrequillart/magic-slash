@@ -1853,11 +1853,29 @@ export function cleanQuickSettings(value: unknown): QuickSettingId[] | undefined
 
 /**
  * The pages of the sidebar's menu, in the order it drew them before it could be arranged:
- * the order the work happens in (plan, pick up, reference), then the account's entry.
+ * the order the work happens in (plan, pick up, reference), then the account's entry,
+ * then the two the menu only draws on request (see SIDEBAR_OPT_IN_PAGES).
  */
-export const SIDEBAR_PAGE_IDS = ['plans', 'tasks', 'skills', 'repositories'] as const
+export const SIDEBAR_PAGE_IDS = ['plans', 'tasks', 'skills', 'repositories', 'settings', 'account'] as const
 
 export type SidebarPageId = (typeof SIDEBAR_PAGE_IDS)[number]
+
+/**
+ * THE PAGES THE MENU LEAVES OUT UNTIL ASKED. Settings and Account have their own way in
+ * (the title bar's account menu), so a menu that drew them for everyone would be two rows
+ * nobody asked for. Their visibility is `sidebarShown`'s, never `sidebarHidden`'s: the
+ * other pages are shown unless taken off, these are hidden unless put on.
+ */
+export const SIDEBAR_OPT_IN_PAGES: readonly SidebarPageId[] = ['settings', 'account']
+
+/** Whether the menu draws a page, by the rule `SIDEBAR_OPT_IN_PAGES` gives. */
+export function isSidebarPageShown(
+  id: SidebarPageId,
+  hidden: readonly SidebarPageId[] | undefined,
+  shown: readonly SidebarPageId[] | undefined,
+): boolean {
+  return SIDEBAR_OPT_IN_PAGES.includes(id) ? Boolean(shown?.includes(id)) : !hidden?.includes(id)
+}
 
 export function isValidSidebarPageId(value: unknown): value is SidebarPageId {
   return typeof value === 'string' && (SIDEBAR_PAGE_IDS as readonly string[]).includes(value)
@@ -2079,6 +2097,8 @@ export interface Config {
   sidebarOrder?: SidebarPageId[]
   /** The pages the sidebar menu leaves out. Absent or empty = all shown. */
   sidebarHidden?: SidebarPageId[]
+  /** The opt-in pages (SIDEBAR_OPT_IN_PAGES) the menu draws. Absent or empty = none. */
+  sidebarShown?: SidebarPageId[]
   /** The sidebar drawn as icons only. Absent = false, the wide column. */
   sidebarCompact?: boolean
   launchMode?: LaunchMode

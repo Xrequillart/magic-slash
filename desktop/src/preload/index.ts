@@ -108,7 +108,7 @@ const configApi = {
     ipcRenderer.invoke('config:setQuickLaunch', patch),
   setQuickSettings: (patch: { enabled?: boolean; items?: QuickSettingId[] }): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setQuickSettings', patch),
-  setSidebarPages: (patch: { order?: SidebarPageId[]; hidden?: SidebarPageId[]; compact?: boolean }): Promise<{ config: Config }> =>
+  setSidebarPages: (patch: { order?: SidebarPageId[]; hidden?: SidebarPageId[]; shown?: SidebarPageId[]; compact?: boolean }): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setSidebarPages', patch),
   setDefaultDisplayMode: (mode: AgentDisplayMode): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setDefaultDisplayMode', { mode }),

@@ -84,9 +84,11 @@ export const DEFAULTS = {
   // NULL = the five the sheet carried before it could be arranged.
   quickSettingsItems: 'notifications, quick-launch, usage-card, agent-context, split-view',
   // NULL = the order the menu always had; a page missing from a stored list keeps its place.
-  sidebarOrder: 'plans, tasks, skills, repositories',
+  sidebarOrder: 'plans, tasks, skills, repositories, settings, account',
   // NULL = every page shown.
   sidebarHidden: 'none',
+  // NULL = no opt-in page (settings, account) on the menu.
+  sidebarShown: 'none',
   sidebarCompact: false,
 } as const
 
@@ -277,6 +279,7 @@ export const SETTING_GROUPS: SettingGroup[] = [
     fields: [
       { field: 'sidebarOrder', label: 'Pages, in order' },
       { field: 'sidebarHidden', label: 'Hidden pages' },
+      { field: 'sidebarShown', label: 'Opt-in pages shown' },
       { field: 'sidebarCompact', label: 'Icons only' },
     ],
   },

@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useState } from 'react'
-import { Plus, Sparkles, NotebookPen, ListTodo } from '@ds/desktop/icons'
+import { Plus, Sparkles, NotebookPen, ListTodo, Cog, CircleUserRound } from '@ds/desktop/icons'
 import { Sidebar as SidebarColumn, type MenuSidebarEntry, type SidebarAgentRow, type SidebarList } from '@ds/desktop'
 import { useStore, type ModalId } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
@@ -9,7 +9,7 @@ import { useAgentSortAction } from './AgentSort'
 import { useSidebarUsageCard } from './SidebarUsageCard'
 import { useRepositoriesMenuEntry } from './SidebarAccount'
 import { useT } from '../i18n'
-import { sidebarPageOrder, type SidebarPageId } from '../../types'
+import { isSidebarPageShown, sidebarPageOrder, type SidebarPageId } from '../../types'
 
 /**
  * The left column, WIRED — and nothing else.
@@ -57,7 +57,7 @@ function attentionCount(terminals: TerminalWithRepos[]): number {
 }
 
 export function Sidebar() {
-  const { terminals, activeTerminalId, config, leftSidebarVisible, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, moveTerminalToPane, rightPaneTerminalIds, openModal, closeModal, toggleModal, toggleQuickSettings } = useStore()
+  const { terminals, activeTerminalId, config, leftSidebarVisible, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, moveTerminalToPane, rightPaneTerminalIds, openModal, closeModal, toggleModal, toggleQuickSettings, setSettingsTab } = useStore()
   const { setActiveTerminal } = useTerminals()
   const t = useT()
 
@@ -333,10 +333,15 @@ export function Sidebar() {
       tasks: { id: 'tasks', icon: ListTodo, label: t('sidebar.tasks'), shortcut: tasksShortcutKey, onClick: () => openModal('tasks') },
       skills: { id: 'skills', icon: Sparkles, label: t('sidebar.skills'), shortcut: skillsShortcutKey, onClick: () => openModal('skills') },
       repositories: accountEntry,
+      // Opt-in: drawn only once put on the menu (SIDEBAR_OPT_IN_PAGES). The pages the
+      // account menu opens, by the same doors.
+      settings: { id: 'settings', icon: Cog, label: t('accountMenu.settings'), onClick: () => setSettingsTab('application') },
+      account: { id: 'account', icon: CircleUserRound, label: t('settings.tab.account'), onClick: () => setSettingsTab('account') },
     }
-    const hidden = config?.sidebarHidden ?? []
-    return sidebarPageOrder(config?.sidebarOrder).filter((id) => !hidden.includes(id)).map((id) => entries[id])
-  }, [t, plansShortcutKey, tasksShortcutKey, skillsShortcutKey, openModal, accountEntry, config?.sidebarOrder, config?.sidebarHidden])
+    return sidebarPageOrder(config?.sidebarOrder)
+      .filter((id) => isSidebarPageShown(id, config?.sidebarHidden, config?.sidebarShown))
+      .map((id) => entries[id])
+  }, [t, plansShortcutKey, tasksShortcutKey, skillsShortcutKey, openModal, setSettingsTab, accountEntry, config?.sidebarOrder, config?.sidebarHidden, config?.sidebarShown])
 
   return (
     <>

@@ -75,6 +75,7 @@ export interface UserSettings {
   quickSettingsItems: string[] | null
   sidebarOrder: string[] | null
   sidebarHidden: string[] | null
+  sidebarShown: string[] | null
   sidebarCompact: boolean | null
 }
 
@@ -116,11 +117,12 @@ interface UserSettingsRow {
   quick_settings_items: string[] | null
   sidebar_order: string[] | null
   sidebar_hidden: string[] | null
+  sidebar_shown: string[] | null
   sidebar_compact: boolean | null
 }
 
 const COLUMNS =
-  'theme, sync_claude_theme, code_syntax, code_font_size, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_active, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, default_display_mode, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, quick_settings_enabled, quick_settings_items, sidebar_order, sidebar_hidden, sidebar_compact'
+  'theme, sync_claude_theme, code_syntax, code_font_size, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_active, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type, default_model, confirm_agent_archive, split_new_agent_pane, default_display_mode, quick_launch_repo, quick_launch_background, quick_launch_launch_mode, quick_settings_enabled, quick_settings_items, sidebar_order, sidebar_hidden, sidebar_shown, sidebar_compact'
 
 /** Maps a camelCase field to its column. Also the list of writable fields. */
 const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
@@ -159,6 +161,7 @@ const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
   quickSettingsItems: 'quick_settings_items',
   sidebarOrder: 'sidebar_order',
   sidebarHidden: 'sidebar_hidden',
+  sidebarShown: 'sidebar_shown',
   sidebarCompact: 'sidebar_compact',
 }
 
@@ -199,6 +202,7 @@ export const EMPTY_SETTINGS: UserSettings = {
   quickSettingsItems: null,
   sidebarOrder: null,
   sidebarHidden: null,
+  sidebarShown: null,
   sidebarCompact: null,
 }
 
@@ -240,6 +244,7 @@ function toSettings(row: UserSettingsRow): UserSettings {
     quickSettingsItems: row.quick_settings_items,
     sidebarOrder: row.sidebar_order,
     sidebarHidden: row.sidebar_hidden,
+    sidebarShown: row.sidebar_shown,
     sidebarCompact: row.sidebar_compact,
   }
 }
