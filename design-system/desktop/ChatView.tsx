@@ -9,6 +9,7 @@ import { ClaudeCodeMascot } from './ClaudeCodeMascot'
 import { ChatMarkdown, type ChatHighlighter } from './ChatMarkdown'
 import { ChatDiffCard, type ChatDiffData, type ChatDiffDisplay, type ChatLineHighlighter } from './ChatDiffCard'
 import { ChatInsightCard } from './ChatInsightCard'
+import { ChatBannerCard } from './ChatBannerCard'
 import { splitInsights } from './chatInsights'
 import { ChatQuestion, type ChatQuestionData, type ChatQuestionLabels } from './ChatQuestion'
 import { ChatCommandMenu } from './ChatCommandMenu'
@@ -981,7 +982,8 @@ function MessageLine({ entry, highlight, stamp }: { entry: Extract<ChatViewEntry
       </div>
     )
   }
-  // The `★ Insight` asides Claude frames in its text are cards of their own.
+  // The `★ Insight` asides Claude frames in its text, and the documents a skill frames
+  // in `━━━` rules, are cards of their own.
   const parts = splitInsights(entry.text)
   const body = parts.length === 1 && parts[0].kind === 'text'
     ? <div className="min-w-0 break-words"><ChatMarkdown text={entry.text} highlight={highlight} /></div>
@@ -989,7 +991,9 @@ function MessageLine({ entry, highlight, stamp }: { entry: Extract<ChatViewEntry
       <div className="flex min-w-0 flex-col gap-3 break-words">
         {parts.map((part, i) => part.kind === 'insight'
           ? <ChatInsightCard key={i} text={part.text} highlight={highlight} />
-          : <ChatMarkdown key={i} text={part.text} highlight={highlight} />)}
+          : part.kind === 'banner'
+            ? <ChatBannerCard key={i} title={part.title} text={part.text} highlight={highlight} />
+            : <ChatMarkdown key={i} text={part.text} highlight={highlight} />)}
       </div>
     )
   if (!stamp) return body

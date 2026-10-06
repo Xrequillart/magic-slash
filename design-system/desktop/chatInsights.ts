@@ -2,6 +2,10 @@
  * Where Claude Code's explanatory output style frames an insight in a message: between a
  * `★ Insight ───` rule and a closing `───` rule. Drawn by `ChatInsightCard`. Apart from it
  * so it can be tested without React.
+ *
+ * And where a magic skill frames a document of its own (an implementation plan): a title
+ * between two `━━━` rules, then its body down to the next `━━━` rule or the message's end.
+ * Drawn by `ChatBannerCard`.
  */
 
 /** `★ Insight ─────`, the backticks Claude Code wraps it in optional. */
@@ -9,7 +13,12 @@ const OPENER = /^\s*`?\s*★\s*Insight\s*─+\s*`?\s*$/
 /** The closing rule: nothing but box-drawing dashes, backticked or not. */
 const CLOSER = /^\s*`?\s*─{5,}\s*`?\s*$/
 
-export type ChatMessagePart = { kind: 'text' | 'insight'; text: string }
+/** A heavy box-drawing rule standing alone on its line, as the skills' templates draw it. */
+const BANNER_RULE = /^\s*━{10,}\s*$/
+
+export type ChatMessagePart =
+  | { kind: 'text' | 'insight'; text: string }
+  | { kind: 'banner'; title: string; text: string }
 
 /**
  * A message of Claude's cut into its plain parts and its insights, in order. An opener
@@ -26,6 +35,15 @@ export function splitInsights(text: string): ChatMessagePart[] {
     plain = []
   }
   for (let i = 0; i < lines.length; i++) {
+    const title = lines[i + 1]?.trim()
+    if (BANNER_RULE.test(lines[i]) && title && !BANNER_RULE.test(lines[i + 1]) && BANNER_RULE.test(lines[i + 2] ?? '')) {
+      flush()
+      const close = lines.findIndex((line, j) => j > i + 2 && BANNER_RULE.test(line))
+      const end = close < 0 ? lines.length : close
+      parts.push({ kind: 'banner', title, text: lines.slice(i + 3, end).join('\n').trim() })
+      i = end
+      continue
+    }
     if (!OPENER.test(lines[i])) {
       plain.push(lines[i])
       continue
