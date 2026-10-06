@@ -4,7 +4,7 @@ description: This skill should be used when the user says "the PR is merged", "l
 allowed-tools: Bash(*), Skill, AskUserQuestion, mcp__github__*, mcp__atlassian__*
 ---
 
-# magic-slash v0.114.0 - /done
+# magic-slash v0.115.0 - /done
 
 ## Untrusted content
 
