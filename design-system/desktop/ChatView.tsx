@@ -12,7 +12,7 @@ import { ChatInsightCard } from './ChatInsightCard'
 import { splitInsights } from './chatInsights'
 import { ChatQuestion, type ChatQuestionData, type ChatQuestionLabels } from './ChatQuestion'
 import { ChatCommandMenu } from './ChatCommandMenu'
-import { matchCommands, type ChatCommand } from './chatCommandMatch'
+import { commandSpans, matchCommands, slashTokenAt, type ChatCommand } from './chatCommandMatch'
 import { ChatQueueCard, type ChatQueuedPromptData } from './ChatQueueCard'
 import type { MenuBarAnswer } from './MenuBarQuestion'
 
@@ -251,11 +251,14 @@ export function ChatView({
     inputRef.current?.focus()
   }, [restoredDraft])
 
-  // THE `/` MENU is open while the draft is a slash and a name with no space yet, the
-  // way Claude Code's own is, and until Escape closes it for this draft.
+  // THE `/` MENU is open while the caret is in a word that starts with a slash, anywhere
+  // in the prompt (`slashTokenAt`), and until Escape closes it for this draft. The caret
+  // is followed through every change and every move of the selection.
+  const [caret, setCaret] = useState(draft.length)
   const [menuClosedFor, setMenuClosedFor] = useState<string | null>(null)
   const [highlighted, setHighlighted] = useState(0)
-  const query = /^\/(\S*)$/.exec(draft)?.[1]
+  const token = useMemo(() => slashTokenAt(draft, caret), [draft, caret])
+  const query = token?.query
   const matches = useMemo(() => (query === undefined ? [] : matchCommands(commands, query)), [commands, query])
   const menuOpen = matches.length > 0 && menuClosedFor !== draft
   useEffect(() => setHighlighted(0), [query])
@@ -276,12 +279,16 @@ export function ChatView({
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [queueShown])
 
-  // A `/name` the menu knows, at the very start: what the mirror colours.
-  const typedName = /^\/(\S+)/.exec(draft)?.[1]
-  const knownCommand = typedName && commands.some((c) => c.name === typedName) ? `/${typedName}` : null
+  // Every `/name` the menu knows, wherever it stands: what the mirror colours.
+  const commandNames = useMemo(() => new Set(commands.map((c) => c.name)), [commands])
+  const spans = useMemo(() => commandSpans(draft, commandNames), [draft, commandNames])
   // The rest of the highlighted command's name, after what was typed, when it extends it.
+  // Only at the very end of the prompt: drawn anywhere else, it would push the text after
+  // it out from under the textarea's own.
   const chosen = menuOpen ? matches[highlighted] : undefined
-  const ghost = chosen && query !== undefined && chosen.name.startsWith(query) ? chosen.name.slice(query.length) : ''
+  const ghost = chosen && token && token.end === draft.length && caret === draft.length && chosen.name.startsWith(token.query)
+    ? chosen.name.slice(token.query.length)
+    : ''
   // THE PROMPT HISTORY, as in the CLI: ↑ in an empty box brings back what was sent
   // before, newest first, ↓ walks back down to the empty box. Read off the conversation
   // itself, so it is this session's prompts whichever view they were typed in.
@@ -294,7 +301,9 @@ export function ChatView({
   const [historyStep, setHistoryStep] = useState<number | null>(null)
   const recall = (step: number | null) => {
     setHistoryStep(step)
-    setDraft(step === null ? '' : history[history.length - 1 - step])
+    const recalled = step === null ? '' : history[history.length - 1 - step]
+    setDraft(recalled)
+    setCaret(recalled.length)
     requestAnimationFrame(() => {
       const el = inputRef.current
       if (el) el.selectionStart = el.selectionEnd = el.value.length
@@ -364,9 +373,22 @@ export function ChatView({
     return () => observer.disconnect()
   }, [])
 
+  // The slash word becomes the command and a space, in place: what was before and after
+  // it stays, and the caret lands after the space.
   const pick = (command: ChatCommand) => {
-    setDraft(`/${command.name} `)
-    inputRef.current?.focus()
+    const at = token ?? { start: 0, end: 0 }
+    const after = draft.slice(at.end)
+    const inserted = `/${command.name}${after.startsWith(' ') ? '' : ' '}`
+    const next = `${draft.slice(0, at.start)}${inserted}${after}`
+    const position = at.start + inserted.length + (after.startsWith(' ') ? 1 : 0)
+    setDraft(next)
+    setCaret(position)
+    requestAnimationFrame(() => {
+      const el = inputRef.current
+      if (!el) return
+      el.focus()
+      el.selectionStart = el.selectionEnd = position
+    })
   }
 
   const turns = useMemo(() => groupTurns(entries), [entries])
@@ -417,6 +439,7 @@ export function ChatView({
     if (!text && attachments.length === 0) return
     onSend(text, attachments.map((a) => a.path))
     setDraft('')
+    setCaret(0)
     setHistoryStep(null)
     setAttachments([])
     stickRef.current = true
@@ -440,7 +463,7 @@ export function ChatView({
       }
       // Tab always takes the row. Enter takes it too, unless the name is already typed
       // in full: then it is the Enter that runs it.
-      if (event.key === 'Tab' || (event.key === 'Enter' && !event.shiftKey && chosen && draft !== `/${chosen.name}`)) {
+      if (event.key === 'Tab' || (event.key === 'Enter' && !event.shiftKey && chosen && draft.slice(token?.start ?? 0, token?.end ?? 0) !== `/${chosen.name}`)) {
         event.preventDefault()
         if (chosen) pick(chosen)
         return
@@ -476,7 +499,7 @@ export function ChatView({
     }
     // A Tab with no menu to take from stays in the box rather than walking the focus
     // out of it, as it would in the terminal.
-    if (event.key === 'Tab' && draft.startsWith('/')) {
+    if (event.key === 'Tab' && token) {
       event.preventDefault()
       return
     }
@@ -667,12 +690,7 @@ export function ChatView({
                     aria-hidden
                     className={`pointer-events-none absolute inset-0 overflow-hidden ${FIELD_TEXT} text-ink`}
                   >
-                    {knownCommand ? (
-                      <>
-                        <span className="text-accent">{knownCommand}</span>
-                        {draft.slice(knownCommand.length)}
-                      </>
-                    ) : draft}
+                    {spans.map((span, i) => (span.command ? <span key={i} className="text-accent">{span.text}</span> : span.text))}
                     {ghost && <span className="text-text-secondary/40">{ghost}</span>}
                     {/* A trailing newline would collapse in the mirror and not in the textarea. */}
                     {draft.endsWith('\n') && '\u200b'}
@@ -681,7 +699,8 @@ export function ChatView({
                     ref={inputRef}
                     value={draft}
                     rows={1}
-                    onChange={(e) => setDraft(e.target.value)}
+                    onChange={(e) => { setDraft(e.target.value); setCaret(e.target.selectionStart) }}
+                    onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
                     onKeyDown={onKeyDown}
                     onPaste={onPaste}
                     onScroll={(e) => { if (mirrorRef.current) mirrorRef.current.scrollTop = e.currentTarget.scrollTop }}
