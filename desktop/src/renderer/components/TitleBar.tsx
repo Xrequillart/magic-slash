@@ -103,6 +103,32 @@ export function TitleBar() {
   // absorbs a factor that arrives as 0.9999. The click puts it back.
   const { zoom, set: setZoom } = useZoom()
 
+  // ⌘E FLIPS THE INSPECTED AGENT between its chat and its terminal, the view switch's own
+  // click. ⇧⌘A opens the settings window on the account, and puts it away again: ⌘, is
+  // the quick settings sheet's and ⌘P the repositories', so the window takes the letter
+  // of the page it opens on. Ctrl aimed at a terminal is the shell's (Ctrl+E is
+  // end-of-line in readline), the same guard as ⌘W above.
+  const settingsTab = useStore((s) => s.settingsTab)
+  const viewTerminal = inspectedTerminal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!e.metaKey && !e.ctrlKey) return
+      if (!e.metaKey && e.target instanceof Element && e.target.closest('.xterm')) return
+      const key = e.key.toLowerCase()
+      if (key === 'e' && !e.shiftKey && !e.altKey && viewTerminal) {
+        e.preventDefault()
+        setDisplayMode(viewTerminal.id, resolveDisplayMode(viewTerminal, config) === 'chat' ? 'terminal' : 'chat')
+        return
+      }
+      if (key === 'a' && e.shiftKey && !e.altKey) {
+        e.preventDefault()
+        setSettingsTab(settingsTab ? null : 'account')
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [viewTerminal, config, setDisplayMode, settingsTab, setSettingsTab])
+
   // The agent's Claude Code sessions, beside its view switch: one of them resumed in place.
   const history = useSessionHistory(inspectedTerminal?.id)
   const zoomPercent = Math.round(zoom * 100)
@@ -145,8 +171,8 @@ export function TitleBar() {
       // The agent's view, beside its archive: the mark is where the click takes you.
       history={history}
       view={inspectedTerminal ? (resolveDisplayMode(inspectedTerminal, config) === 'chat'
-        ? { icon: SquareTerminal, title: t('chat.mode.toTerminal'), onClick: () => setDisplayMode(inspectedTerminal.id, 'terminal') }
-        : { icon: MessageSquare, title: t('chat.mode.toChat'), onClick: () => setDisplayMode(inspectedTerminal.id, 'chat') }
+        ? { icon: SquareTerminal, title: `${t('chat.mode.toTerminal')} ⌘E`, onClick: () => setDisplayMode(inspectedTerminal.id, 'terminal') }
+        : { icon: MessageSquare, title: `${t('chat.mode.toChat')} ⌘E`, onClick: () => setDisplayMode(inspectedTerminal.id, 'chat') }
       ) : undefined}
       action={closeableTerminal ? {
         label: t('agentInfo.closeAgent'),

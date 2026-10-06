@@ -8,6 +8,7 @@ import { TerminalView } from './TerminalView'
 import { useCodeAppearance } from '../hooks/useCodeAppearance'
 import { resolveDisplayMode } from '../utils/displayMode'
 import { formatPaths } from '../utils/formatDroppedPaths'
+import { showToast } from './Toast'
 
 /**
  * One agent's pane: its terminal, and the chat view over it when that is the view chosen
@@ -23,6 +24,9 @@ interface AgentPaneProps {
   isVisible: boolean
   isFocused: boolean
 }
+
+/** How long the second ⌃C has to follow the first, as in Claude Code's own TUI. */
+const DOUBLE_CTRL_C_MS = 1_000
 
 /** How long a resume may keep the chat behind its loader before it is shown anyway. */
 const RESUME_TIMEOUT_MS = 20_000
@@ -95,6 +99,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   )
 
   const showChat = mode === 'chat'
+  useDoubleCtrlC(terminal.id, isVisible && isFocused && showChat)
 
   // When the conversation began: its first prompt's own time.
   const locale = useLocale()
@@ -185,6 +190,39 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
 }
 
 const EMPTY_CHAT: ChatSnapshot = { entries: [], queue: [] }
+
+/**
+ * ⌃C TWICE IN THE CHAT STARTS A NEW SESSION, what it does in the terminal view: there
+ * Claude Code exits on the second one and the app starts it again. The chat has no TUI to
+ * read the keys, so it asks for the new session itself, and says after the first press
+ * what the second will do, as the TUI does.
+ *
+ * Not while text is selected: ⌃C is copy off the Mac, and a copy is not half a restart.
+ */
+function useDoubleCtrlC(terminalId: string, active: boolean): void {
+  const t = useT()
+  const firstAt = useRef(0)
+  useEffect(() => {
+    if (!active) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'c') return
+      if (window.getSelection()?.toString()) return
+      e.preventDefault()
+      const now = Date.now()
+      if (now - firstAt.current > DOUBLE_CTRL_C_MS) {
+        firstAt.current = now
+        showToast(t('chat.newSessionHint'), 'warning')
+        return
+      }
+      firstAt.current = 0
+      void window.electronAPI.terminal.newSession(terminalId).then((ok) => {
+        if (!ok) showToast(t('sessions.newFailed'), 'error')
+      })
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [terminalId, active, t])
+}
 
 /**
  * Whether the chat is waiting on a resumed session (see `resumingSessions` in the store).

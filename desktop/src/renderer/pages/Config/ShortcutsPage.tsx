@@ -29,10 +29,11 @@ import { useT, type MessageKey } from '../../i18n'
  * of explanation.
  */
 
-/** The thirteen chords, each ⌘ plus one key: its name, what it does, the key. Message
- *  KEYS, resolved in the render path: module scope is evaluated once at import, so a
- *  `t()` here would pin the list to whatever language the app booted in. */
-export const CHORDS: readonly (readonly [MessageKey, MessageKey, string])[] = [
+/** The chords: name, what it does, the keys. A plain string is ⌘ plus that one key, a
+ *  list is every cap as drawn. Message KEYS, resolved in the render path: module scope is
+ *  evaluated once at import, so a `t()` here would pin the list to whatever language the
+ *  app booted in. */
+export const CHORDS: readonly (readonly [MessageKey, MessageKey, string | readonly string[]])[] = [
   ['sidebar.newAgent', 'settings.shortcuts.help.newAgent', 'N'],
   ['settings.shortcuts.duplicateAgent', 'settings.shortcuts.help.duplicateAgent', 'D'],
   ['settings.shortcuts.closeAgent', 'settings.shortcuts.help.closeAgent', 'W'],
@@ -41,6 +42,9 @@ export const CHORDS: readonly (readonly [MessageKey, MessageKey, string])[] = [
   ['settings.shortcuts.toggleAgentInfo', 'settings.shortcuts.help.toggleAgentInfo', 'I'],
   ['settings.shortcuts.toggleAgentsList', 'settings.shortcuts.help.toggleAgentsList', 'B'],
   ['settings.shortcuts.toggleSplit', 'settings.shortcuts.help.toggleSplit', '/'],
+  ['settings.shortcuts.toggleView', 'settings.shortcuts.help.toggleView', 'E'],
+  // ⌃ and not ⌘, twice: the chord Claude Code's own TUI reads, carried over to the chat.
+  ['settings.shortcuts.newSession', 'settings.shortcuts.help.newSession', ['⌃', 'C', 'C']],
   // The four windows the sidebar opens, in its own order. Tasks and Plans were missing
   // from this list for as long as it existed — a page claiming to be every shortcut,
   // quietly short by two. See `PAGE_SHORTCUTS` in `Sidebar.tsx` for why these letters.
@@ -51,6 +55,8 @@ export const CHORDS: readonly (readonly [MessageKey, MessageKey, string])[] = [
   // Not a window: ⌘, pulls the quick settings sheet down, where the platform's own
   // "preferences" chord belongs.
   ['controlCenter.title', 'settings.shortcuts.help.controlCenter', ','],
+  // The settings window itself, on the account: ⌘, and ⌘P were taken.
+  ['settings.shortcuts.settings', 'settings.shortcuts.help.settings', ['⇧', '⌘', 'A']],
 ]
 
 export function ShortcutsPage() {
@@ -73,7 +79,7 @@ export function ShortcutsPage() {
               id: labelKey,
               label: t(labelKey),
               hint: t(helpKey),
-              control: { kind: 'kbd' as const, keys: ['⌘', key] },
+              control: { kind: 'kbd' as const, keys: typeof key === 'string' ? ['⌘', key] : [...key] },
             })),
             {
               id: 'quickLaunch',
