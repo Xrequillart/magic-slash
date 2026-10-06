@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.114.0] - 2026-10-06
+
+### Added
+
+- **Desktop**: Offer a new session the context of earlier ones and load chats without waiting
+- **Desktop**: Suggest and highlight slash commands anywhere in a chat prompt
+- **Desktop**: Add chat view settings for the send key, tool calls, diffs and timestamps
+- **Desktop**: Add shortcuts for a new session, the chat/terminal switch and settings
+- **Desktop**: Offer settings and account as opt-in sidebar pages
+
+### Changed
+
+- **Desktop**: Align the chat working loader with the tool line marks
+
+### Fixed
+
+- **Desktop**: Kill a terminal's whole process group so no claude is left orphaned
+- **Desktop**: Hide prompts claude code writes itself from the chat view
+
 ## [0.113.3] - 2026-10-05
 
 ### Added
@@ -3859,6 +3878,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.114.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.114.0
 [0.113.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.113.3
 [0.113.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.113.2
 [0.113.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.113.1
