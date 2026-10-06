@@ -442,7 +442,7 @@ export function killTerminal(id: string): void {
       for (const d of disposables) d.dispose()
       ptyDisposables.delete(id)
     }
-    terminal.pty.kill()
+    killPty(terminal.pty)
     terminals.delete(id)
     displayBuffers.delete(id)
     lastActivityTime.delete(id)
@@ -450,6 +450,42 @@ export function killTerminal(id: string): void {
     clearPendingQuestion(id)
     unwatchTranscript(id)
   }
+}
+
+/** How long a PTY's processes get to leave on their own before they are killed outright. */
+const KILL_GRACE_MS = 3_000
+
+/**
+ * ENDS A PTY AND EVERYTHING IN IT, not just its shell.
+ *
+ * `pty.kill()` sends SIGHUP to the shell the PTY runs, and that was all: a `claude` that
+ * did not take the hint was left behind, adopted by launchd, still writing to a terminal
+ * nobody reads, and one was found spinning a core for eight hours on a session a live
+ * agent had resumed since. node-pty makes the shell a session leader, so its pid is the
+ * group of everything it started: the group gets SIGTERM now, and SIGKILL once
+ * `KILL_GRACE_MS` has passed if anything in it is still there.
+ */
+function killPty(ptyProcess: pty.IPty): void {
+  const group = ptyProcess.pid
+  try {
+    ptyProcess.kill()
+  } catch {
+    // Already gone.
+  }
+  // Never a group this is not sure of: `process.kill(-0)` would signal the app's own.
+  if (!Number.isInteger(group) || group <= 1) return
+  const signal = (sig: NodeJS.Signals | 0) => {
+    try {
+      process.kill(-group, sig)
+      return true
+    } catch {
+      return false
+    }
+  }
+  if (!signal('SIGTERM')) return
+  setTimeout(() => {
+    if (signal(0)) signal('SIGKILL')
+  }, KILL_GRACE_MS).unref()
 }
 
 export function getTerminal(id: string): Terminal | undefined {
@@ -501,7 +537,7 @@ export function cleanupAllTerminals(): void {
       if (disposables) {
         for (const d of disposables) d.dispose()
       }
-      terminal.pty.kill()
+      killPty(terminal.pty)
     } catch (e) {
       console.error(`Error killing terminal ${id}:`, e)
     }
@@ -793,7 +829,7 @@ export function launchClaude(
 
     // Kill the old PTY process
     try {
-      terminal.pty.kill()
+      killPty(terminal.pty)
     } catch {
       // Already dead, ignore
     }
