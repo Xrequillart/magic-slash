@@ -18,6 +18,14 @@ describe('ChatTranscript', () => {
     ])
   })
 
+  it('drops a prompt Claude Code wrote itself, keeps the one a human typed', () => {
+    const t = new ChatTranscript()
+    t.push(line({ type: 'user', uuid: 'h', origin: { kind: 'human' }, message: { content: 'Coucou' } }))
+    t.push(line({ type: 'user', uuid: 'n', origin: { kind: 'task-notification' }, promptSource: 'system', message: { content: '<task-notification>\n<task-id>a1</task-id>\n</task-notification>' } }))
+    t.push(line({ type: 'user', uuid: 'c', origin: { kind: 'coordinator' }, message: { content: 'next' } }))
+    expect(t.entries).toEqual([{ kind: 'user', id: 'h:0', text: 'Coucou' }])
+  })
+
   it('dates a prompt from its line, and skips a timestamp it cannot read', () => {
     const t = new ChatTranscript()
     t.push(line({ type: 'user', uuid: 'u1', timestamp: '2026-10-03T08:00:00.000Z', message: { content: 'Bonjour' } }))

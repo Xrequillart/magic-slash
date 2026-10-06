@@ -83,7 +83,7 @@ export class ChatTranscript {
 
   /** Returns whether the entries changed. */
   push(line: string): boolean {
-    let data: { type?: string; uuid?: string; timestamp?: unknown; isMeta?: boolean; isSidechain?: boolean; content?: unknown; message?: { content?: unknown }; toolUseResult?: unknown; operation?: unknown; attachment?: QueuedAttachment }
+    let data: { type?: string; uuid?: string; timestamp?: unknown; isMeta?: boolean; isSidechain?: boolean; content?: unknown; message?: { content?: unknown }; toolUseResult?: unknown; operation?: unknown; attachment?: QueuedAttachment; origin?: { kind?: string } }
     try {
       data = JSON.parse(line)
     } catch {
@@ -117,6 +117,10 @@ export class ChatTranscript {
       return true
     }
     if (data.type !== 'user' && data.type !== 'assistant') return false
+    // A prompt Claude Code wrote for itself — a background task's `<task-notification>`,
+    // a coordinator's turn — is a `user` line too, and only its origin says nobody typed
+    // it. Lines with no origin (tool results, older versions) are read as they always were.
+    if (data.type === 'user' && data.origin && data.origin.kind !== 'human') return false
 
     const content = data.message?.content
     const blocks: Block[] = typeof content === 'string' ? [{ type: 'text', text: content }] : Array.isArray(content) ? content : []
