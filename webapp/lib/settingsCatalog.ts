@@ -161,7 +161,7 @@ export const SETTING_DEFAULTS: Record<keyof AdminUserSettings, string | number |
   // The first value of each list in desktop/src/types.ts (CHAT_SEND_KEYS and siblings).
   chatSendKey: 'enter',
   chatToolDetail: 'all',
-  chatDiffs: 'preview',
+  chatDiffs: 'collapsed',
   chatTimestamps: 'never',
 }
 

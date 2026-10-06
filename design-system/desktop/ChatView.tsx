@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { ArrowUp, ChevronRight, CircleAlert, Check, FileText, History, Image as ImageIcon, Info, ListOrdered, Paperclip, SquareTerminal, Wrench, X } from './icons'
 import { Button } from './Button'
 import { ButtonIcon } from './ButtonIcon'
@@ -77,6 +77,8 @@ export interface ChatViewLabels {
   diffClose: string
   /** A run of tool calls folded into one line (`toolDetail: 'grouped'`). `{count}`: how many. */
   toolGroup: string
+  /** Over the thread, while earlier turns are not mounted. */
+  earlier: string
   attach: string
   removeAttachment: string
   dropFiles: string
@@ -258,6 +260,11 @@ function hasFiles(e: DragEvent): boolean {
 /** Within this many pixels of the bottom, new entries keep the view pinned there. */
 const STICK_PX = 48
 
+/** How many entries one page of the thread's window holds. */
+const WINDOW_ENTRIES = 120
+/** Within this many pixels of the top, the next page of earlier turns is mounted. */
+const EARLIER_PX = 400
+
 export function ChatView({
   entries, working, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
   question, onAnswer, answering, commands = [], highlightLines, onPickFiles, resolveFile,
@@ -434,6 +441,38 @@ export function ChatView({
 
   const turns = useMemo(() => groupTurns(entries), [entries])
 
+  // ONLY THE LAST TURNS ARE MOUNTED: a long session drew thousands of nodes, and every
+  // line the agent wrote re-rendered them all. The window opens from the end, a page of
+  // entries at a time, as the top of the thread is reached. Its start is fixed when the
+  // session or the page count changes, never as entries arrive: what is above a reader
+  // who scrolled up is not taken away under them. A new session closes it again.
+  const [pages, setPages] = useState(1)
+  const firstId = entries[0]?.id
+  useEffect(() => setPages(1), [firstId])
+  const windowRef = useRef<{ session: string | undefined; pages: number; start: number } | null>(null)
+  if (!windowRef.current || windowRef.current.session !== firstId || windowRef.current.pages !== pages) {
+    let budget = pages * WINDOW_ENTRIES
+    let start = turns.length
+    while (start > 0 && budget > 0) budget -= turns[--start].entries.length + 1
+    windowRef.current = { session: firstId, pages, start }
+  }
+  const firstShown = Math.min(windowRef.current.start, turns.length)
+  const hiddenTurns = firstShown
+  const shownTurns = useMemo(() => turns.slice(firstShown), [turns, firstShown])
+  // What grows above the reader is paid back in scroll, so the line they were on stays put.
+  const anchorRef = useRef<number | null>(null)
+  const showEarlier = useCallback(() => {
+    if (anchorRef.current !== null) return
+    anchorRef.current = scrollRef.current?.scrollHeight ?? null
+    setPages((n) => n + 1)
+  }, [])
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el || anchorRef.current === null) return
+    el.scrollTop += el.scrollHeight - anchorRef.current
+    anchorRef.current = null
+  }, [pages])
+
   useLayoutEffect(() => {
     const el = scrollRef.current
     if (el && stickRef.current) el.scrollTop = el.scrollHeight
@@ -554,10 +593,6 @@ export function ChatView({
     }
   }
 
-  // A message's time, as `timestamps` says, or nothing.
-  const stamp = (at: number | undefined): Stamp | undefined =>
-    timestamps === 'never' || at === undefined || !formatTime ? undefined : { text: formatTime(at), hover: timestamps === 'hover' }
-
   // THE TERMINAL'S OWN GROUND, the same sunken veil over the window's ground: the
   // caller hides the terminal underneath (see the app's AgentPane), so nothing of it
   // shows through.
@@ -579,6 +614,7 @@ export function ChatView({
         onScroll={(e) => {
           const el = e.currentTarget
           stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_PX
+          if (hiddenTurns > 0 && el.scrollTop < EARLIER_PX) showEarlier()
         }}
         className={`h-full overflow-y-auto ${loading ? 'invisible' : ''}`}
       >
@@ -594,29 +630,29 @@ export function ChatView({
               </div>
             </div>
           )}
-          {turns.map((turn) => {
-            const lines = shapeEntries(turn.entries, toolDetail).map((entry) =>
-              entry.kind === 'group' ? <ToolGroup key={entry.id} tools={entry.tools} label={labels.toolGroup} />
-              : entry.kind === 'tool' && entry.diff ? (
-                <ChatDiffCard key={entry.id} diff={entry.diff} highlightLines={highlightLines} truncatedLabel={labels.diffTruncated} showAllLabel={labels.diffShowAll} closeLabel={labels.diffClose} display={diffs} />
-              )
-              : entry.kind === 'tool' && entry.diffs?.length ? (
-                <div key={entry.id} className="flex flex-col gap-2">
-                  <ToolLine entry={entry} />
-                  {entry.diffs.map((diff) => (
-                    <ChatDiffCard key={diff.path} diff={diff} highlightLines={highlightLines} truncatedLabel={labels.diffTruncated} showAllLabel={labels.diffShowAll} closeLabel={labels.diffClose} display={diffs} />
-                  ))}
-                </div>
-              )
-              : entry.kind === 'tool' ? <ToolLine key={entry.id} entry={entry} />
-                : entry.kind === 'notice' ? <NoticeLine key={entry.id} text={entry.text} />
-                  : <MessageLine key={entry.id} entry={entry} highlight={highlight} stamp={stamp(entry.at)} />
-            )
-            if (!turn.prompt) return lines
-            return stickyPrompt
-              ? <ChatTurn key={turn.prompt.id} prompt={turn.prompt} scrollRef={scrollRef} stamp={stamp(turn.prompt.at)}>{lines}</ChatTurn>
-              : [<MessageLine key={turn.prompt.id} entry={turn.prompt} stamp={stamp(turn.prompt.at)} />, ...lines]
-          })}
+          {hiddenTurns > 0 && (
+            <div className="flex justify-center pb-2">
+              <Button size="xs" tone="ghost" onClick={showEarlier}>{labels.earlier}</Button>
+            </div>
+          )}
+          {shownTurns.map((turn) => (
+            <TurnBlock
+              key={turn.prompt?.id ?? `head-${turn.entries[0]?.id}`}
+              turn={turn}
+              toolDetail={toolDetail}
+              diffs={diffs}
+              highlight={highlight}
+              highlightLines={highlightLines}
+              stickyPrompt={stickyPrompt}
+              scrollRef={scrollRef}
+              timestamps={timestamps}
+              formatTime={formatTime}
+              toolGroupLabel={labels.toolGroup}
+              diffTruncatedLabel={labels.diffTruncated}
+              diffShowAllLabel={labels.diffShowAll}
+              diffCloseLabel={labels.diffClose}
+            />
+          ))}
           {question && onAnswer && (
             <ChatQuestion
               key={question.token}
@@ -955,6 +991,66 @@ interface Stamp {
   text: string
   hover: boolean
 }
+
+type ChatTurnData = ReturnType<typeof groupTurns>[number]
+
+interface TurnBlockProps {
+  turn: ChatTurnData
+  toolDetail: 'all' | 'changes' | 'grouped'
+  diffs: ChatDiffDisplay
+  highlight?: ChatHighlighter
+  highlightLines?: ChatLineHighlighter
+  stickyPrompt: boolean
+  scrollRef: RefObject<HTMLDivElement>
+  timestamps: 'never' | 'hover' | 'always'
+  formatTime?: (at: number) => string
+  toolGroupLabel: string
+  diffTruncatedLabel: string
+  diffShowAllLabel: string
+  diffCloseLabel: string
+}
+
+/**
+ * ONE TURN, RE-RENDERED ONLY WHEN IT CHANGED. Every push hands the view a new list,
+ * regrouped into new turn objects: a turn is the same when its prompt and each of its
+ * entries are the same objects (the transcript replaces an entry, never mutates it),
+ * and the turns before the one being written are, so they are skipped.
+ */
+const TurnBlock = memo(function TurnBlock({
+  turn, toolDetail, diffs, highlight, highlightLines, stickyPrompt, scrollRef, timestamps, formatTime,
+  toolGroupLabel, diffTruncatedLabel, diffShowAllLabel, diffCloseLabel,
+}: TurnBlockProps) {
+  // A message's time, as `timestamps` says, or nothing.
+  const stamp = (at: number | undefined): Stamp | undefined =>
+    timestamps === 'never' || at === undefined || !formatTime ? undefined : { text: formatTime(at), hover: timestamps === 'hover' }
+  const card = (diff: ChatDiffData, key?: string) => (
+    <ChatDiffCard key={key} diff={diff} highlightLines={highlightLines} truncatedLabel={diffTruncatedLabel} showAllLabel={diffShowAllLabel} closeLabel={diffCloseLabel} display={diffs} />
+  )
+  const lines = shapeEntries(turn.entries, toolDetail).map((entry) =>
+    entry.kind === 'group' ? <ToolGroup key={entry.id} tools={entry.tools} label={toolGroupLabel} />
+    : entry.kind === 'tool' && entry.diff ? card(entry.diff, entry.id)
+    : entry.kind === 'tool' && entry.diffs?.length ? (
+      <div key={entry.id} className="flex flex-col gap-2">
+        <ToolLine entry={entry} />
+        {entry.diffs.map((diff) => card(diff, diff.path))}
+      </div>
+    )
+    : entry.kind === 'tool' ? <ToolLine key={entry.id} entry={entry} />
+      : entry.kind === 'notice' ? <NoticeLine key={entry.id} text={entry.text} />
+        : <MessageLine key={entry.id} entry={entry} highlight={highlight} stamp={stamp(entry.at)} />
+  )
+  if (!turn.prompt) return <>{lines}</>
+  return stickyPrompt
+    ? <ChatTurn prompt={turn.prompt} scrollRef={scrollRef} stamp={stamp(turn.prompt.at)}>{lines}</ChatTurn>
+    : <><MessageLine entry={turn.prompt} stamp={stamp(turn.prompt.at)} />{lines}</>
+}, (a, b) => {
+  for (const key of Object.keys(a) as (keyof TurnBlockProps)[]) {
+    if (key === 'turn') continue
+    if (a[key] !== b[key]) return false
+  }
+  if (a.turn.prompt !== b.turn.prompt || a.turn.entries.length !== b.turn.entries.length) return false
+  return a.turn.entries.every((e, i) => e === b.turn.entries[i])
+})
 
 /** The time under a message, on its side of the thread. */
 function StampLine({ stamp, align }: { stamp: Stamp; align: 'start' | 'end' }) {

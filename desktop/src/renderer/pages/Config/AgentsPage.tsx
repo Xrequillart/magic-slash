@@ -350,7 +350,9 @@ function ChatSection() {
             id: 'chatDiffs',
             label: t('settings.chat.diffs.label'),
             hint: t('settings.chat.diffs.help'),
-            control: select(config?.chatDiffs ?? 'preview', CHAT_DIFF_DISPLAYS, CHAT_DIFFS_LABEL, t('settings.chat.diffs.label'), (diffs) => write({ diffs })),
+            // Open cards are what a long conversation pays for most: said where it is chosen.
+            note: (config?.chatDiffs ?? 'collapsed') !== 'collapsed' ? t('settings.chat.diffs.slow') : undefined,
+            control: select(config?.chatDiffs ?? 'collapsed', CHAT_DIFF_DISPLAYS, CHAT_DIFFS_LABEL, t('settings.chat.diffs.label'), (diffs) => write({ diffs })),
           },
           {
             id: 'chatTimestamps',

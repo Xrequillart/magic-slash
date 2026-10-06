@@ -92,7 +92,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   // The chat view's settings (Settings → Sessions → Chat view); absent is the first value.
   const sendKey = useStore((s) => s.config?.chatSendKey) ?? 'enter'
   const toolDetail = useStore((s) => s.config?.chatToolDetail) ?? 'all'
-  const diffs = useStore((s) => s.config?.chatDiffs) ?? 'preview'
+  const diffs = useStore((s) => s.config?.chatDiffs) ?? 'collapsed'
   const timestamps = useStore((s) => s.config?.chatTimestamps) ?? 'never'
   const highlight = useCallback(
     (code: string, lang: string | undefined) => window.electronAPI.terminal.highlightCode(code, lang, shikiTheme),
@@ -192,6 +192,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
               diffShowAll: t('chat.diff.showAll'),
               diffClose: t('chat.diff.close'),
               toolGroup: t('chat.toolGroup'),
+              earlier: t('chat.earlier'),
               attach: t('chat.attach'),
               removeAttachment: t('chat.attach.remove'),
               dropFiles: t('chat.attach.drop'),
