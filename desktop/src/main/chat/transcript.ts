@@ -1,4 +1,4 @@
-import type { ChatDiff, ChatEntry, ChatQueuedPrompt } from '../../types'
+import type { ChatBackgroundAgent, ChatDiff, ChatEntry, ChatQueuedPrompt } from '../../types'
 import { stripAnsi } from '../../strip-ansi'
 
 /**
@@ -28,6 +28,13 @@ import { stripAnsi } from '../../strip-ansi'
  * input box. Replayed in order, they leave what is still waiting. What Claude Code queues
  * for itself (task notifications, subagent hand-backs) comes wrapped in a tag and is not
  * shown: it is not the user's.
+ *
+ * THE BACKGROUND AGENTS. An Agent call with `run_in_background` returns at once, its
+ * result saying `async_launched`; the subagent goes on, out of the conversation, until a
+ * `<task-notification>` naming the call says it ended. Between the two it is running,
+ * which nothing else in the transcript shows. Unless the process that launched it is
+ * gone: a subagent lives inside its `claude`, and dies with it without a notification
+ * (see `liveBackground`).
  */
 
 /** Long tool outputs are clipped: the chat shows a glimpse, the terminal has the rest. */
@@ -59,6 +66,8 @@ export class ChatTranscript {
   unanswered: { ids: string[]; text: string } | null = null
   /** The prompts still waiting, oldest first. Replaced on every change, never mutated. */
   queue: ChatQueuedPrompt[] = []
+  /** The background agents still running, oldest first. Replaced on every change, never mutated. */
+  background: ChatBackgroundAgent[] = []
   private readonly tools = new Map<string, Extract<ChatEntry, { kind: 'tool' }>>()
   /** What a command changed, measured by the app (see command-diff.ts), for a call not read yet. */
   private readonly commandDiffs = new Map<string, ChatDiff[]>()
@@ -90,7 +99,11 @@ export class ChatTranscript {
       return false
     }
     if (!data || data.isMeta || data.isSidechain) return false
-    if (data.type === 'queue-operation') return this.moveQueue(data.operation, data.content, data.timestamp)
+    if (data.type === 'queue-operation') {
+      // A notification is queued before it is read in as a turn: the first word of an end.
+      const ended = data.operation === 'enqueue' && this.endBackground(data.content)
+      return this.moveQueue(data.operation, data.content, data.timestamp) || ended
+    }
     const id = data.uuid ?? String(this.entries.length)
 
     // A queued prompt taken in mid-turn is not written as a user message but as an
@@ -120,7 +133,9 @@ export class ChatTranscript {
     // A prompt Claude Code wrote for itself — a background task's `<task-notification>`,
     // a coordinator's turn — is a `user` line too, and only its origin says nobody typed
     // it. Lines with no origin (tool results, older versions) are read as they always were.
-    if (data.type === 'user' && data.origin && data.origin.kind !== 'human') return false
+    if (data.type === 'user' && data.origin && data.origin.kind !== 'human') {
+      return data.origin.kind === 'task-notification' && this.endBackground(data.message?.content)
+    }
 
     const content = data.message?.content
     const blocks: Block[] = typeof content === 'string' ? [{ type: 'text', text: content }] : Array.isArray(content) ? content : []
@@ -185,6 +200,7 @@ export class ChatTranscript {
         const index = this.entries.indexOf(entry)
         if (index >= 0) this.entries[index] = updated
         this.tools.set(block.tool_use_id, updated)
+        this.startBackground(block.tool_use_id, data.toolUseResult, entry.summary, data.timestamp)
         changed = true
       }
     })
@@ -205,6 +221,23 @@ export class ChatTranscript {
       if (index >= 0) this.entries.splice(index, 1)
     }
     return prompt.text
+  }
+
+  /** An Agent call's result that says it went on in the background. */
+  private startBackground(toolUseId: string, result: unknown, summary: string, timestamp: unknown): void {
+    const r = result as { status?: unknown; description?: unknown } | null
+    if (r?.status !== 'async_launched' || this.background.some((a) => a.id === toolUseId)) return
+    const at = typeof timestamp === 'string' ? Date.parse(timestamp) : NaN
+    const description = typeof r.description === 'string' && r.description.trim() ? r.description.trim() : summary
+    this.background = [...this.background, { id: toolUseId, description, ...(Number.isFinite(at) ? { at } : {}) }]
+  }
+
+  /** A `<task-notification>` that says a background agent ended. Returns whether one did. */
+  private endBackground(content: unknown): boolean {
+    const id = typeof content === 'string' ? endedTask(content) : null
+    if (!id || !this.background.some((a) => a.id === id)) return false
+    this.background = this.background.filter((a) => a.id !== id)
+    return true
   }
 
   /**
@@ -235,6 +268,31 @@ export class ChatTranscript {
     this.queue = next
     return true
   }
+}
+
+/**
+ * The background agents that can still be running, given when the agent's current
+ * `claude` process started: a subagent lives inside the process that launched it, so one
+ * launched before it (a session resumed after a crash, a restart of the app) is gone,
+ * and none is left once the process has exited (`null`). One with no launch time cannot
+ * be placed and is dropped: a ghost is worse than a miss. `undefined`: the process is not
+ * known, and the transcript is taken at its word.
+ */
+export function liveBackground(agents: ChatBackgroundAgent[], processStart: number | null | undefined): ChatBackgroundAgent[] {
+  if (processStart === undefined) return agents
+  if (processStart === null) return []
+  return agents.filter((a) => a.at !== undefined && a.at >= processStart)
+}
+
+/**
+ * The tool call a `<task-notification>` says has ended, or null: not a notification, or
+ * one that says the task still runs.
+ */
+export function endedTask(raw: string): string | null {
+  if (!raw.trimStart().startsWith('<task-notification>')) return null
+  const id = raw.match(/<tool-use-id>([^<]+)<\/tool-use-id>/)?.[1]?.trim()
+  const status = raw.match(/<status>([^<]+)<\/status>/)?.[1]?.trim()
+  return id && status !== 'running' ? id : null
 }
 
 type QueuedAttachment = { type?: string; prompt?: unknown; commandMode?: string; origin?: { kind?: string } }

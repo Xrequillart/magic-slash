@@ -44,7 +44,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   const t = useT()
   const setDisplayMode = useStore((s) => s.setDisplayMode)
   const mode = useStore((s) => resolveDisplayMode(terminal, s.config))
-  const { entries, queue, pushes, loaded } = useChat(terminal.id)
+  const { entries, queue, background, pushes, loaded } = useChat(terminal.id)
   const resuming = useResumeLoader(terminal.id, pushes)
   const question = usePendingQuestion(terminal.id)
   const [answering, setAnswering] = useState(false)
@@ -146,6 +146,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
           <ChatView
             entries={entries}
             queue={queue}
+            background={background}
             // A resume under way, or the first read not back yet: either way the empty
             // view would claim a conversation that has simply not arrived.
             loading={resuming || !loaded}
@@ -199,6 +200,11 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
                 title: t('chat.queue.title'),
                 hint: t('chat.queue.hint'),
               },
+              background: {
+                open: t('chat.background.open'),
+                title: t('chat.background.title'),
+                hint: t('chat.background.hint'),
+              },
               question: {
                 allow: t('tray.question.allow'),
                 deny: t('tray.question.deny'),
@@ -215,7 +221,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   )
 }
 
-const EMPTY_CHAT: ChatSnapshot = { entries: [], queue: [] }
+const EMPTY_CHAT: ChatSnapshot = { entries: [], queue: [], background: [] }
 
 /**
  * THE CHATS KEPT MOUNTED WHILE HIDDEN, most recently shown last.
@@ -412,10 +418,10 @@ function useChat(terminalId: string): ChatSnapshot & { pushes: number; loaded: b
   useEffect(() => {
     let live = true
     let pushed = false
-    const unsubscribe = window.electronAPI.terminal.onChat(({ id, entries, queue }) => {
+    const unsubscribe = window.electronAPI.terminal.onChat(({ id, entries, queue, background }) => {
       if (id !== terminalId) return
       pushed = true
-      setChat({ entries, queue })
+      setChat({ entries, queue, background })
       setPushes((n) => n + 1)
       setLoaded(true)
     })

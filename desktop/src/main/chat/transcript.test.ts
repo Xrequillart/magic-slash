@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ChatTranscript, toolSummary, userText } from './transcript'
+import { ChatTranscript, liveBackground, toolSummary, userText } from './transcript'
 
 const line = (o: unknown) => JSON.stringify(o)
 
@@ -143,5 +143,53 @@ describe('ChatTranscript queue', () => {
     t.push(line({ type: 'attachment', uuid: 'a1', attachment: { type: 'queued_command', prompt: 'Plus grand ?', commandMode: 'prompt', origin: { kind: 'human' } } }))
     t.push(line({ type: 'attachment', uuid: 'a2', attachment: { type: 'queued_command', prompt: '<task-notification/>', commandMode: 'task-notification' } }))
     expect(t.entries).toEqual([{ kind: 'user', id: 'a1', text: 'Plus grand ?' }])
+  })
+})
+
+describe('ChatTranscript background agents', () => {
+  const launch = (id: string, description: string) => [
+    line({ type: 'assistant', uuid: `a-${id}`, message: { content: [{ type: 'tool_use', id, name: 'Agent', input: { description, run_in_background: true } }] } }),
+    line({ type: 'user', uuid: `r-${id}`, timestamp: '2026-10-06T08:00:00.000Z', toolUseResult: { isAsync: true, status: 'async_launched', description }, message: { content: [{ type: 'tool_result', tool_use_id: id, content: 'Async agent launched successfully.' }] } }),
+  ]
+  const notification = (id: string, status: string) => `<task-notification>\n<task-id>x</task-id>\n<tool-use-id>${id}</tool-use-id>\n<status>${status}</status>\n</task-notification>`
+
+  it('holds an agent from its launch until its notification', () => {
+    const t = new ChatTranscript()
+    for (const l of [...launch('t1', 'Watch CI'), ...launch('t2', 'Audit docs')]) t.push(l)
+    expect(t.background).toEqual([
+      { id: 't1', description: 'Watch CI', at: Date.parse('2026-10-06T08:00:00.000Z') },
+      { id: 't2', description: 'Audit docs', at: Date.parse('2026-10-06T08:00:00.000Z') },
+    ])
+    expect(t.push(line({ type: 'queue-operation', operation: 'enqueue', content: notification('t1', 'completed') }))).toBe(true)
+    expect(t.background.map((a) => a.id)).toEqual(['t2'])
+    t.push(line({ type: 'user', uuid: 'n', origin: { kind: 'task-notification' }, message: { content: notification('t2', 'killed') } }))
+    expect(t.background).toEqual([])
+    expect(t.entries.every((e) => e.kind !== 'user')).toBe(true)
+  })
+
+  it('leaves a foreground agent and a notification that it still runs alone', () => {
+    const t = new ChatTranscript()
+    t.push(line({ type: 'assistant', uuid: 'a', message: { content: [{ type: 'tool_use', id: 'f', name: 'Agent', input: { description: 'Sync' } }] } }))
+    t.push(line({ type: 'user', uuid: 'r', toolUseResult: { status: 'completed' }, message: { content: [{ type: 'tool_result', tool_use_id: 'f', content: 'done' }] } }))
+    expect(t.background).toEqual([])
+    for (const l of launch('t1', 'Watch CI')) t.push(l)
+    t.push(line({ type: 'queue-operation', operation: 'enqueue', content: notification('t1', 'running') }))
+    expect(t.background.map((a) => a.id)).toEqual(['t1'])
+  })
+})
+
+describe('liveBackground', () => {
+  const agents = [{ id: 'old', description: 'Before', at: 1000 }, { id: 'new', description: 'After', at: 3000 }, { id: 'undated', description: '?' }]
+
+  it('keeps only what the current process launched', () => {
+    expect(liveBackground(agents, 2000).map((a) => a.id)).toEqual(['new'])
+  })
+
+  it('keeps nothing once the process has exited', () => {
+    expect(liveBackground(agents, null)).toEqual([])
+  })
+
+  it('takes the transcript at its word when the process is not known', () => {
+    expect(liveBackground(agents, undefined)).toBe(agents)
   })
 })

@@ -1,6 +1,6 @@
 import * as fs from 'fs'
 import type { ChatDiff, ChatSnapshot } from '../../types'
-import { ChatTranscript } from './transcript'
+import { ChatTranscript, liveBackground } from './transcript'
 
 /**
  * Tails each agent's transcript and keeps its chat entries in memory.
@@ -37,6 +37,11 @@ type InterruptListener = (terminalId: string, at: number) => void
 const watches = new Map<string, Watch>()
 let chatListener: ChatListener | null = null
 let interruptListener: InterruptListener | null = null
+/**
+ * When each agent's current `claude` process started (epoch ms), or null once it has
+ * exited. Kept apart from the watches: the process starts before its transcript is named.
+ */
+const processStarts = new Map<string, number | null>()
 
 export function setChatListener(listener: ChatListener): void {
   chatListener = listener
@@ -54,7 +59,7 @@ export function watchedTranscript(terminalId: string): string | null {
 
 export function getChatSnapshot(terminalId: string): ChatSnapshot {
   const transcript = watches.get(terminalId)?.transcript
-  return transcript ? snapshot(transcript) : { entries: [], queue: [] }
+  return transcript ? snapshot(terminalId, transcript) : { entries: [], queue: [], background: [] }
 }
 
 /**
@@ -76,8 +81,30 @@ export function dropUnansweredPrompt(terminalId: string): string | null {
   return text
 }
 
-function snapshot(transcript: ChatTranscript): ChatSnapshot {
-  return { entries: transcript.entries.slice(), queue: transcript.queue }
+function snapshot(terminalId: string, transcript: ChatTranscript): ChatSnapshot {
+  return { entries: transcript.entries.slice(), queue: transcript.queue, background: liveBackground(transcript.background, processStarts.get(terminalId)) }
+}
+
+/**
+ * A new `claude` process is running the agent: a background agent launched before it
+ * belonged to one that is gone, and died with it (see `liveBackground`).
+ */
+export function markClaudeStarted(terminalId: string, at: number = Date.now()): void {
+  processStarts.set(terminalId, at)
+  const watch = watches.get(terminalId)
+  if (watch) scheduleEmit(terminalId, watch)
+}
+
+/** The agent's `claude` process exited: none of its background agents is left. */
+export function markClaudeExited(terminalId: string): void {
+  processStarts.set(terminalId, null)
+  const watch = watches.get(terminalId)
+  if (watch) scheduleEmit(terminalId, watch)
+}
+
+/** The agent is closed: nothing more to know about its process. */
+export function forgetClaudeProcess(terminalId: string): void {
+  processStarts.delete(terminalId)
 }
 
 /** What a shell command changed on disk (see command-diff.ts), onto its line in the chat. */
@@ -123,7 +150,7 @@ export function watchTranscript(terminalId: string, path: string): void {
 export function resetTranscript(terminalId: string): void {
   if (!watches.has(terminalId)) return
   unwatchTranscript(terminalId)
-  chatListener?.(terminalId, { entries: [], queue: [] })
+  chatListener?.(terminalId, { entries: [], queue: [], background: [] })
 }
 
 export function unwatchTranscript(terminalId: string): void {
@@ -166,6 +193,6 @@ function scheduleEmit(terminalId: string, watch: Watch): void {
   if (watch.emitTimer) return
   watch.emitTimer = setTimeout(() => {
     watch.emitTimer = null
-    if (watches.get(terminalId) === watch) chatListener?.(terminalId, snapshot(watch.transcript))
+    if (watches.get(terminalId) === watch) chatListener?.(terminalId, snapshot(terminalId, watch.transcript))
   }, EMIT_DEBOUNCE_MS)
 }

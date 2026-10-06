@@ -1,5 +1,5 @@
 import * as pty from 'node-pty'
-import { resetTranscript, unwatchTranscript, watchTranscript, watchedTranscript } from '../chat/transcript-watcher'
+import { forgetClaudeProcess, markClaudeExited, markClaudeStarted, resetTranscript, unwatchTranscript, watchTranscript, watchedTranscript } from '../chat/transcript-watcher'
 import { ChatTranscript } from '../chat/transcript'
 import { DIGEST_SESSIONS, digestSessions } from '../chat/session-digest'
 import * as os from 'os'
@@ -451,6 +451,7 @@ export function killTerminal(id: string): void {
     restartTrackers.delete(id)
     clearPendingQuestion(id)
     unwatchTranscript(id)
+    forgetClaudeProcess(id)
   }
 }
 
@@ -658,6 +659,9 @@ export function launchClaude(
         ...(innerStatusLine ? { MAGIC_SLASH_INNER_STATUSLINE: innerStatusLine } : {}),
       }
     })
+    // Every spawn, the first and each restart: the background agents of the process
+    // before this one died with it (see `liveBackground`).
+    markClaudeStarted(id)
 
     ptyStartTime = Date.now()
 
@@ -729,6 +733,8 @@ export function launchClaude(
       // restarted Claude Code has no memory of the prompt either, so keystrokes aimed
       // at it would land in a fresh session.
       clearPendingQuestion(id)
+      // Its background agents went with it, whether or not a restart follows.
+      markClaudeExited(id)
 
       // Check if this was an intentional kill
       if (intentionallyKilled.has(id)) {

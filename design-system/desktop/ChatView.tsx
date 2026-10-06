@@ -14,6 +14,8 @@ import { ChatQuestion, type ChatQuestionData, type ChatQuestionLabels } from './
 import { ChatCommandMenu } from './ChatCommandMenu'
 import { commandSpans, matchCommands, slashTokenAt, type ChatCommand } from './chatCommandMatch'
 import { ChatQueueCard, type ChatQueuedPromptData } from './ChatQueueCard'
+import { ChatBackgroundCard, type ChatBackgroundAgentData } from './ChatBackgroundCard'
+import type { IconComponent } from './types'
 import type { MenuBarAnswer } from './MenuBarQuestion'
 
 /**
@@ -33,6 +35,9 @@ import type { MenuBarAnswer } from './MenuBarQuestion'
  *
  * What was typed while the agent worked waits in Claude Code's queue: a button beside
  * Send says how many, and opens the list (see `ChatQueueCard`).
+ *
+ * The subagents running in the background get a wave left of the paperclip, which opens
+ * their names (see `ChatBackgroundCard`).
  *
  * Claude's text is rendered as the Markdown it is (see `ChatMarkdown`); what the user
  * typed is shown as typed.
@@ -75,6 +80,12 @@ export interface ChatViewLabels {
   removeAttachment: string
   dropFiles: string
   queue: {
+    /** The button's name, its tooltip. */
+    open: string
+    title: string
+    hint: string
+  }
+  background: {
     /** The button's name, its tooltip. */
     open: string
     title: string
@@ -141,6 +152,8 @@ export interface ChatViewProps {
   commands?: ChatCommand[]
   /** The prompts Claude Code holds until the turn lets them in, oldest first. */
   queue?: ChatQueuedPromptData[]
+  /** The subagents running in the background, oldest first. None: no button. */
+  background?: ChatBackgroundAgentData[]
   /**
    * THE CONVERSATION IS BEING SWAPPED — another session resumed in this pane — and what
    * is on screen is the one being left. The thread gives way to a loader centred where
@@ -227,6 +240,9 @@ const FIELD_TEXT = 'py-1 text-sm leading-5 whitespace-pre-wrap break-words'
 /** Between the thread's last line and the top of the floating composer. */
 const DOCK_GAP_PX = 24
 
+/** The background button's mark: the wave that says an agent is at work, not a glyph. */
+const WaveMark: IconComponent = ({ className }) => <Loader variant="wave" size="sm" tone="accent" className={className} />
+
 const IMAGE_FILE = /\.(png|jpe?g|gif|webp|heic|bmp|tiff?)$/i
 
 interface ChatAttachment {
@@ -244,7 +260,7 @@ const STICK_PX = 48
 export function ChatView({
   entries, working, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
   question, onAnswer, answering, commands = [], highlightLines, onPickFiles, resolveFile,
-  initialDraft, onDraftChange, restoredDraft, onDraftRestored, stickyPrompt = true, codeFontSize, claudeCodeVersion, startedLabel, queue = [], loading = false,
+  initialDraft, onDraftChange, restoredDraft, onDraftRestored, stickyPrompt = true, codeFontSize, claudeCodeVersion, startedLabel, queue = [], background = [], loading = false,
   sendKey = 'enter', toolDetail = 'all', diffs = 'preview', timestamps = 'never', formatTime, contextOffer,
 }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -280,21 +296,28 @@ export function ChatView({
   const menuOpen = matches.length > 0 && menuClosedFor !== draft
   useEffect(() => setHighlighted(0), [query])
 
-  // THE QUEUE CARD opens on its button and closes on it, on Escape, on a click anywhere
-  // else, and by itself once nothing is left waiting. The `/` menu takes its place
-  // while it is open: one card over the composer at a time.
-  const [queueOpen, setQueueOpen] = useState(false)
-  const queueShown = queueOpen && queue.length > 0 && !menuOpen
-  useEffect(() => { if (queue.length === 0) setQueueOpen(false) }, [queue.length])
+  // THE QUEUE CARD AND THE BACKGROUND CARD open on their buttons and close on them, on
+  // Escape, on a click anywhere else, and by themselves once their list is empty. The `/`
+  // menu takes their place while it is open: one card over the composer at a time.
+  const [openCard, setOpenCard] = useState<'queue' | 'background' | null>(null)
+  const queueShown = openCard === 'queue' && queue.length > 0 && !menuOpen
+  const backgroundShown = openCard === 'background' && background.length > 0 && !menuOpen
+  const cardShown = queueShown || backgroundShown
+  useEffect(() => { if (queue.length === 0) setOpenCard((c) => (c === 'queue' ? null : c)) }, [queue.length])
+  useEffect(() => { if (background.length === 0) setOpenCard((c) => (c === 'background' ? null : c)) }, [background.length])
+  const toggleCard = (card: 'queue' | 'background') => {
+    setOpenCard((c) => (c === card ? null : card))
+    inputRef.current?.focus()
+  }
   const composerRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    if (!queueShown) return
+    if (!cardShown) return
     const onPointerDown = (e: PointerEvent) => {
-      if (!composerRef.current?.contains(e.target as Node)) setQueueOpen(false)
+      if (!composerRef.current?.contains(e.target as Node)) setOpenCard(null)
     }
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [queueShown])
+  }, [cardShown])
 
   // Every `/name` the menu knows, wherever it stands: what the mirror colours.
   const commandNames = useMemo(() => new Set(commands.map((c) => c.name)), [commands])
@@ -486,13 +509,13 @@ export function ChatView({
         return
       }
     }
-    if (event.key === 'Escape' && queueShown) {
+    if (event.key === 'Escape' && cardShown) {
       event.preventDefault()
-      setQueueOpen(false)
+      setOpenCard(null)
       return
     }
-    // Escape stops the agent at work, as in the terminal. Only once the menu (or the
-    // queue) has had its Escape: the one that closes it must not also cut the turn short.
+    // Escape stops the agent at work, as in the terminal. Only once the menu (or a
+    // card) has had its Escape: the one that closes it must not also cut the turn short.
     if (event.key === 'Escape' && working && onInterrupt) {
       event.preventDefault()
       onInterrupt()
@@ -672,6 +695,11 @@ export function ChatView({
                 <ChatQueueCard prompts={queue} labels={labels.queue} />
               </div>
             )}
+            {backgroundShown && (
+              <div className="absolute inset-x-0 bottom-full z-20 pb-2 animate-fade-in motion-reduce:animate-none">
+                <ChatBackgroundCard agents={background} labels={labels.background} />
+              </div>
+            )}
             {menuOpen && (
               // Rises into place from the card it belongs to, on opening only: filtering
               // as the name is typed keeps it mounted, so it does not replay.
@@ -706,6 +734,27 @@ export function ChatView({
                 </div>
               )}
               <div className="flex items-end gap-1.5">
+                {/* THE AGENTS AT WORK IN THE BACKGROUND, first in the row: a wave rather
+                    than a glyph, since what it says is that something is running. How
+                    many, on its corner, as the queue's button says it. */}
+                {background.length > 0 && (
+                  <span className="relative flex-shrink-0 animate-fade-in motion-reduce:animate-none">
+                    <ButtonIcon
+                      icon={WaveMark}
+                      title={labels.background.open}
+                      onClick={() => toggleCard('background')}
+                      tone="ghost"
+                      size="md"
+                      active={backgroundShown}
+                      round
+                    />
+                    {background.length > 1 && (
+                      <span className="pointer-events-none absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-medium tabular-nums leading-none text-on-brand">
+                        {background.length}
+                      </span>
+                    )}
+                  </span>
+                )}
                 {onPickFiles && (
                   <ButtonIcon icon={Paperclip} title={labels.attach} onClick={pickFiles} tone="ghost" size="md" round />
                 )}
@@ -714,7 +763,7 @@ export function ChatView({
                     `/command` is drawn in the accent, with the rest of the highlighted
                     completion greyed after it for Tab to take. Both share every class that
                     decides where a glyph lands. */}
-                <div className={`relative min-w-0 flex-1 ${onPickFiles ? '' : 'pl-2'}`}>
+                <div className={`relative min-w-0 flex-1 ${onPickFiles || background.length > 0 ? '' : 'pl-2'}`}>
                   <div
                     ref={mirrorRef}
                     aria-hidden
@@ -745,10 +794,7 @@ export function ChatView({
                     <ButtonIcon
                       icon={ListOrdered}
                       title={labels.queue.open}
-                      onClick={() => {
-                        setQueueOpen(!queueOpen)
-                        inputRef.current?.focus()
-                      }}
+                      onClick={() => toggleCard('queue')}
                       tone="solid"
                       size="md"
                       active={queueShown}

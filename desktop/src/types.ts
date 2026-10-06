@@ -997,10 +997,24 @@ export interface ChatQueuedPrompt {
   at?: number
 }
 
+/**
+ * A subagent the session launched in the background (an Agent call with
+ * `run_in_background`), from its launch until Claude Code notifies its end. Read off the
+ * transcript (see main/chat/transcript.ts). `id`: the launching tool call's id. `at`:
+ * when it was launched, epoch ms.
+ */
+export interface ChatBackgroundAgent {
+  id: string
+  description: string
+  at?: number
+}
+
 /** What the chat view is drawn from: the conversation, and what waits to join it. */
 export interface ChatSnapshot {
   entries: ChatEntry[]
   queue: ChatQueuedPrompt[]
+  /** The subagents still running in the background, oldest first. */
+  background: ChatBackgroundAgent[]
 }
 
 /**
