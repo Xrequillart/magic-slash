@@ -1,4 +1,6 @@
+import { TriangleAlert } from './icons'
 import { ChatMarkdown, type ChatHighlighter } from './ChatMarkdown'
+import { splitRisks } from './chatInsights'
 
 /**
  * A DOCUMENT A SKILL FRAMED IN ITS MESSAGE, in the chat: the implementation plan
@@ -12,6 +14,10 @@ import { ChatMarkdown, type ChatHighlighter } from './ChatMarkdown'
  * THE TITLE IS TIDIED, NOT TRANSLATED: the emoji leading it becomes the card's mark, a
  * name in capitals is set in sentence case, and what follows its last ` - ` (the ticket)
  * becomes a chip.
+ *
+ * THE PLAN'S RISKS ARE A WARNING: its `## Risques et points d'attention` section is drawn
+ * in an orange card of its own inside the plan, where it is read before approving it
+ * rather than lost under the steps (see `splitRisks`).
  */
 
 export interface ChatBannerCardProps {
@@ -58,11 +64,31 @@ export function ChatBannerCard({ title, text, highlight }: ChatBannerCardProps) 
           </span>
         )}
       </div>
-      {text && (
-        <div className="min-w-0 break-words px-3.5 py-3">
-          <ChatMarkdown text={text} highlight={highlight} />
-        </div>
-      )}
+      {text && <BannerBody text={text} highlight={highlight} />}
+    </div>
+  )
+}
+
+function BannerBody({ text, highlight }: { text: string; highlight?: ChatHighlighter }) {
+  const cut = splitRisks(text)
+  if (!cut) {
+    return (
+      <div className="min-w-0 break-words px-3.5 py-3">
+        <ChatMarkdown text={text} highlight={highlight} />
+      </div>
+    )
+  }
+  return (
+    <div className="flex min-w-0 flex-col gap-3 break-words px-3.5 py-3">
+      {cut.before && <ChatMarkdown text={cut.before} highlight={highlight} />}
+      <div className="rounded-lg border border-orange/30 bg-orange/10 px-3 py-2.5">
+        <p className="mb-1 flex items-center gap-1.5 text-sm font-medium text-orange">
+          <TriangleAlert className="h-4 w-4 flex-shrink-0" />
+          {cut.title}
+        </p>
+        {cut.risks && <ChatMarkdown text={cut.risks} highlight={highlight} />}
+      </div>
+      {cut.after && <ChatMarkdown text={cut.after} highlight={highlight} />}
     </div>
   )
 }

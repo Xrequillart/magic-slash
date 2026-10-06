@@ -61,3 +61,29 @@ export function splitInsights(text: string): ChatMessagePart[] {
   flush()
   return parts
 }
+
+/** A plan's risks heading, in the words of `/magic:start`'s templates, either language. */
+const RISKS_HEADING = /^##\s+(Risques?\b|Risks?\b)/i
+
+/**
+ * A banner's body cut around its risks section (`## Risques et points d'attention`,
+ * `## Risks and Considerations`), which `ChatBannerCard` draws as a warning: what comes
+ * before it, its heading and items, and what follows down to the next `##` heading.
+ * Null when there is none. The `⚠️` each item opens with is dropped: the card says it.
+ */
+export function splitRisks(text: string): { before: string; title: string; risks: string; after: string } | null {
+  const lines = text.split('\n')
+  const start = lines.findIndex((line) => RISKS_HEADING.test(line))
+  if (start < 0) return null
+  const next = lines.findIndex((line, i) => i > start && /^##\s/.test(line))
+  const end = next < 0 ? lines.length : next
+  const risks = lines.slice(start + 1, end)
+    .map((line) => line.replace(/^(\s*[-*]\s+)⚠️?\uFE0F?\s*/u, '$1'))
+    .join('\n').trim()
+  return {
+    before: lines.slice(0, start).join('\n').trim(),
+    title: lines[start].replace(/^##\s+/, '').trim(),
+    risks,
+    after: lines.slice(end).join('\n').trim(),
+  }
+}

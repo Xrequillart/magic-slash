@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { splitInsights } from './chatInsights'
+import { splitInsights, splitRisks } from './chatInsights'
 
 describe('splitInsights', () => {
   it('cuts the insight out of the text around it', () => {
@@ -34,5 +34,23 @@ describe('splitInsights', () => {
     const rule = '━'.repeat(54)
     const text = `${rule}\n\n✅ Done\n\n${rule}`
     expect(splitInsights(text)).toEqual([{ kind: 'text', text }])
+  })
+})
+
+describe('splitRisks', () => {
+  it('cuts the risks section out, down to the next heading, and drops the warning signs', () => {
+    const text = "## Résumé\nDo it.\n\n## Risques et points d'attention\n- ⚠️ **One.** Careful.\n- ⚠️ Two.\n\n## Après\nMore."
+    expect(splitRisks(text)).toEqual({
+      before: '## Résumé\nDo it.',
+      title: "Risques et points d'attention",
+      risks: '- **One.** Careful.\n- Two.',
+      after: '## Après\nMore.',
+    })
+  })
+  it('runs the section to the end, in English too', () => {
+    expect(splitRisks('Intro.\n## Risks and Considerations\n- ⚠️ One.')).toEqual({ before: 'Intro.', title: 'Risks and Considerations', risks: '- One.', after: '' })
+  })
+  it('is null without a risks section', () => {
+    expect(splitRisks('## Summary\nDo it.')).toBeNull()
   })
 })
