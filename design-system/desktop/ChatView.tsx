@@ -564,8 +564,10 @@ export function ChatView({
             />
           )}
           {working && !waiting && !question && (
-            <div className="flex items-center gap-2 py-1 text-xs text-text-secondary/70">
-              <Loader variant="wave" size="sm" tone="accent" />
+            // A tool line's own box (px-2 py-1, a 14px mark first), so the wave stands in
+            // the column of the marks above it and at their height.
+            <div className="flex items-center gap-2 px-2 py-1 text-xs text-text-secondary/70">
+              <Loader variant="wave" size="sm" tone="accent" className="flex-shrink-0" />
               <span>{labels.working}</span>
             </div>
           )}
