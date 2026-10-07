@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.117.0] - 2026-10-07
+
+### Added
+
+- **Desktop**: Draw the jira, notion, slack and github logos on their mcp tool lines in the chat
+
 ## [0.116.0] - 2026-10-07
 
 ### Added
@@ -3898,6 +3904,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.117.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.117.0
 [0.116.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.116.0
 [0.115.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.115.0
 [0.114.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.114.0
