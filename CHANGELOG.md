@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.116.0] - 2026-10-07
+
+### Added
+
+- **Desktop**: Show a question's header and its options' previews in the chat card
+- **Desktop**: Fade the chat thread out at its top edge and under the composer
+- **Video**: Add the product film rendered with remotion from the design system
+
 ## [0.115.0] - 2026-10-06
 
 ### Added
@@ -3890,6 +3898,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.116.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.116.0
 [0.115.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.115.0
 [0.114.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.114.0
 [0.113.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.113.3
