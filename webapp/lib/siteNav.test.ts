@@ -83,13 +83,13 @@ describe('the site header nav', () => {
   it('leaves `/application` to the app host', () => {
     // THE ONE PATH THIS NAV DELIBERATELY DOES NOT USE, and the assertion is here because
     // the mistake is so easy to make from the outside: the menu row reads "Application",
-    // so the obvious path for it is `/application` — which the PRODUCT owns. That is the
-    // app's own settings section (`app/application/`, on `app.magic-slash.io`), decided
-    // by `PUBLIC_PATHS`' default of "absent → the app host", and two route branches
-    // resolving one path is a build question rather than a naming one.
+    // so the obvious path for it is `/application` — which the PRODUCT owned. It was the
+    // app's own settings section on `app.magic-slash.io`, and since its deletion it
+    // redirects bookmarks to the dashboard there, decided by `PUBLIC_PATHS`' default of
+    // "absent → the app host".
     //
     // So the page is `/desktop`, and adding `/application` to that list would quietly
-    // move a signed-in section of the product onto the public site.
+    // send those bookmarks to the public site instead.
     expect(routing()).not.toContain("'/application',")
     expect(DESKTOP_PATH).toBe('/desktop')
   })

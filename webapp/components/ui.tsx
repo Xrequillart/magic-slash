@@ -18,11 +18,8 @@ import { useT } from '@/lib/i18n/useLanguage'
  * loses on an alphabetical accident nobody here chose.
  *
  * Additive layout — `mt-6`, `ml-auto`, `w-full`, `shrink-0` — is safe, and is
- * MOST of what call sites pass; it is not all of it. `app/plans/page.tsx` and
- * `ProfileSection` both hand a `Card` a `hover:border-black/10` that argues with
- * `SURFACE`'s `border-black/5` (it happens to land, since the two differ only in
- * the variant), and until `Card` grew a `shadow` slot `SkillHoursOptIn` handed it
- * a second shadow the same way. Anything that would fight the recipe belongs in a
+ * MOST of what call sites pass; it is not all of it. Until `Card` grew a `shadow`
+ * slot, `SkillHoursOptIn` handed it a second shadow on top of the recipe's. Anything that would fight the recipe belongs in a
  * slot inside it instead: `BUTTON_SIZES`, `Eyebrow`'s `spacing`, and `Card`'s
  * `shadow` are the three that exist.
  */
@@ -138,9 +135,8 @@ const BUTTON_ICON_SIZES = {
  *   • `danger` — enough fill that dimming the whole thing still reads as a button.
  *
  * The RANKING is the point, not any one recipe. `primary` and its neighbour sit
- * side by side in every modal footer and settings row (`app/organization/page.tsx`,
- * `CloudAccountSection`, `ClaudeCodeSettings`, `app/application/repository/[id]`),
- * so the distance between them is what makes either legible. Give `ghost` an edge
+ * side by side in every modal footer and settings row, so the distance between
+ * them is what makes either legible. Give `ghost` an edge
  * or a plate of its own and it collapses into `secondary`; that is the failure this
  * ladder is arranged to prevent.
  */

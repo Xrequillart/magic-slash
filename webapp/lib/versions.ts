@@ -14,10 +14,8 @@
  * is enough to answer "is this machine behind another one?" — the only question
  * asked of it.
  *
- * One definition, because the back-office asks the same question of the whole
- * fleet as `/application` does of one user's machines. A second implementation
- * would be the same coarseness decided twice, and the two would drift the first
- * time one of them learned about pre-release suffixes.
+ * In a module that imports nothing, so the back-office's rollups can be tested
+ * without the Supabase client (see vitest.config.ts).
  */
 export function compareVersions(a: string, b: string): number {
   const pa = a.split('.')
@@ -33,9 +31,8 @@ export function compareVersions(a: string, b: string): number {
 /**
  * The newest version any of these machines runs, or null when there are none.
  *
- * Structurally typed for the same reason `compareVersions` is shared: the
- * back-office asks this of the whole fleet (`AdminInstallation`) and
- * `/application` asks it of one user's machines (`Installation`).
+ * Structurally typed, so it takes the back-office's `AdminInstallation` as readily
+ * as anything else that carries an `appVersion`.
  */
 export function highestVersion(installs: { appVersion: string }[]): string | null {
   if (installs.length === 0) return null

@@ -181,9 +181,9 @@ export type SiteNavRow = {
  * the component. So the path lives with the menu that names it, and `siteNav.test.ts`
  * pins it against `PUBLIC_PATHS` and against the page like every other row.
  *
- * `/desktop` AND NOT `/application`, though the row is labelled "Application": the
- * product owns `/application/*` on `app.magic-slash.io` — its own settings section — and
- * two route branches resolving one path is a build question rather than a naming one.
+ * `/desktop` AND NOT `/application`, though the row is labelled "Application": that path
+ * was the product's own settings section on `app.magic-slash.io`, and since its deletion
+ * it still redirects bookmarks to the dashboard there (`next.config.mjs`).
  */
 export const DESKTOP_PATH = '/desktop'
 

@@ -27,10 +27,6 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * the app: without the entry, `magic-slash.io/features` does not 404 on production — it
  * 307s the reader to a login form on `app.magic-slash.io`, which is worse. That is
  * acceptance criterion 1 of #269, and `hostRouting.test.ts` pins it.
- *
- * NOT `app/application/features/page.tsx`, which already exists and is the signed-in
- * product's own Features tab. Different route, different audience, no conflict — but the
- * two are one grep apart, so this note is here to save the next reader the detour.
  */
 
 export const metadata: Metadata = {

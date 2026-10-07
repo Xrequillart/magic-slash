@@ -91,8 +91,9 @@ const PUBLIC_PATHS = new Set([
   // `siteNav.test.ts` reads this file to pin each one against its page.
   //
   // `/desktop` is the showcase page for the macOS app, and it is NOT `/application`:
-  // that path belongs to the app's own settings section on `app.magic-slash.io`, where
-  // it is decided by this list's own default (absent → the app host).
+  // that path was the app's own settings section on `app.magic-slash.io` and still
+  // redirects bookmarks to the dashboard there, decided by this list's own default
+  // (absent → the app host).
   //
   // TWO PATHS HAVE BEEN CUT FROM HERE, and neither is in `RETIRED_PATHS`: `/skills`,
   // dropped with its page for duplicating `/workflow`, and `/best-practices`, deleted by

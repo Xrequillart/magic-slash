@@ -3,10 +3,8 @@
 import { useState } from 'react'
 import {
   ArrowRight,
-  Bell,
   Check,
   GitPullRequest,
-  Languages,
   Palette,
   Plus,
   Rocket,
@@ -127,16 +125,14 @@ const VIEW_TABS = [
 ]
 
 /**
- * A navigation strip, pointing at the real Application routes so the shape is the
- * genuine one. Anchors rather than those routes would misrepresent it — but note
- * that clicking one here does navigate away.
+ * A navigation strip, pointing at the design system's own routes so the shape is the
+ * genuine one, and so the pathname of this very page decides the active tab. Note that
+ * clicking one here does navigate away.
  */
 const ROUTE_TABS = [
-  { key: '/application/features', href: '/application/features', label: 'Features', icon: Sparkles },
-  { key: '/application/claude-code', href: '/application/claude-code', label: 'Claude Code', icon: SquareTerminal },
-  { key: '/application/notifications', href: '/application/notifications', label: 'Notifications', icon: Bell },
-  { key: '/application/appearance', href: '/application/appearance', label: 'Appearance', icon: Palette },
-  { key: '/application/language', href: '/application/language', label: 'Language', icon: Languages },
+  { key: '/design-system', href: '/design-system', label: 'Prestige', icon: Sparkles },
+  { key: '/design-system/desktop', href: '/design-system/desktop', label: 'Desktop', icon: SquareTerminal },
+  { key: '/design-system/webapp', href: '/design-system/webapp', label: 'Webapp', icon: Palette },
 ]
 
 function Block({ title, why, children }: { title: string; why: string; children: React.ReactNode }) {
@@ -565,11 +561,10 @@ export function Gallery() {
               <p className="mb-4 font-mono text-[11px] text-muted">
                 navigation — items carry href, so each tab is a Link and the pathname decides
               </p>
-              <TabStrip ariaLabel="Application settings, demo" items={ROUTE_TABS} activeKey={undefined} />
+              <TabStrip ariaLabel="Design system pages, demo" items={ROUTE_TABS} activeKey={undefined} />
               <p className="mt-4 max-w-xl text-sm text-muted">
-                The pill sits on the first tab because no href matches this page&apos;s pathname — the documented
-                fallback for an unmatched key, rather than a strip with no active tab. On{' '}
-                <code className="font-mono text-ink">/application</code> the real one lands on the route you are on.
+                The pill sits on Webapp because its href is this page&apos;s pathname. A pathname no tab matches
+                falls back to the first tab, rather than a strip with no active tab.
               </p>
             </Card>
 

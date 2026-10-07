@@ -17,11 +17,10 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * `'use client'` module. The same split `/features`, `/faq`, `/changelog` and
  * `/workflow` make.
  *
- * `/desktop` AND NOT `/application`, though the header's row says "Application": the
- * product already owns `/application/*` on `app.magic-slash.io` — its own settings
- * section, under `app/application/` — and two route branches resolving one path is a
- * build question rather than a naming one. `DESKTOP_PATH` in `lib/siteNav.ts` owns the
- * path and says the same thing at greater length.
+ * `/desktop` AND NOT `/application`, though the header's row says "Application": that
+ * path was the product's own settings section on `app.magic-slash.io`, and since its
+ * deletion it still redirects bookmarks to the dashboard there (`next.config.mjs`).
+ * `DESKTOP_PATH` in `lib/siteNav.ts` owns the path and says the same thing.
  *
  * WHAT THE PAGE OWED, once it was a page rather than a promise of one — what the split
  * view is for, how the app keeps several agents apart, the info sidebar, the checks the

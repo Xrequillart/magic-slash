@@ -127,17 +127,12 @@ describe('message catalogues', () => {
     // to anyone who also reads English, and this is the only thing that notices.
     const SAME_IN_BOTH: Record<(typeof PAIRS)[number]['name'], string[]> = {
       app: [
-      'nav.application',
       'nav.admin',
       // "Plans" is the product's own name for the page, in both languages, and
       // "Epic" is the word the French Jira and the French spec both use.
-      'nav.plans',
       'plans.title',
-      'plans.kind.epic',
       // Ticket counts, same reason as the agent counts below: "1 ticket" and
       // "{count} tickets" are spelled identically in French.
-      'plans.tickets.one',
-      'plans.tickets.many',
       'team.agents.one',
       'team.agents.many',
       'profile.role.dev',
@@ -147,65 +142,15 @@ describe('message catalogues', () => {
       'profile.role.manager',
       'profile.level.expert',
       'profile.style.simple',
-      'application.title',
       'theme.espresso',
       // "Notifications" and "Format" are the same word in both languages, and
       // "Pull requests" is left in English on purpose — it is what the GitHub UI
       // says, in both.
-      'settings.notifications.section',
-      'settings.notifications.pr.section',
-      'settings.sidebars.format.label',
-      'settings.prWatcher.interval1m',
-      'settings.prWatcher.interval2m',
-      'settings.prWatcher.interval5m',
-      'settings.claudeCode',
       'settings.launchMode.plan',
       'settings.launchMode.default',
       'settings.launchMode.auto',
       'settings.launchMode.bypass',
-      'org.joinModal.placeholder',
-      'org.role.admin',
       'org.colActions',
-      'org.invitations',
-      // Section and tab titles French borrows whole. "Repository", "Tickets",
-      // "Skills" and "Danger" are the words the French UI uses too.
-      'repo.repository.section',
-      // Two of the Repository tab's three group headings: a "branch" is a branche but
-      // "Branches" heads the same box either way, and a worktree is a worktree — it is
-      // git's own word, which is why the help line under it uses it in French too.
-      'repo.repository.groupBranches',
-      'repo.repository.groupWorktrees',
-      'repo.tickets.section',
-      // The two trackers, named after the products: "GitHub" and "Jira" in both
-      // languages. Every other tab is labelled by its own section key, which is
-      // already listed above wherever French borrows it whole.
-      'repo.tracker.modeGithub',
-      'repo.tracker.modeJira',
-      // The Tracker tab's two product groups, headed by the products themselves.
-      'repo.tracker.groupGithub',
-      'repo.tracker.groupJira',
-      // Two of the three Languages groups: "Conversation" and "Tickets" are the same
-      // word either way. The third, "Code et pull requests", is not.
-      'repo.langs.groupChat',
-      'repo.langs.groupTickets',
-      // Same again for three of the skill-tab groups: "Message", "Branches" and
-      // "Description" are spelled identically in both languages.
-      'repo.commit.groupMessage',
-      'repo.commit.groupBranches',
-      'repo.pr.groupDescription',
-      'repo.commit.section',
-      'repo.commit.style',
-      'repo.commit.format',
-      'repo.commit.formatConventional',
-      'repo.commit.formatAngular',
-      'repo.commit.formatGitmoji',
-      'repo.resolve.section',
-      'repo.resolve.askNoticeAmend',
-      'repo.review.section',
-      'repo.pr.section',
-      // "Concise" is the same word in both languages; "Normale" and "Détaillée" are
-      // not, which is why only this one of the three levels is listed.
-      'repo.pr.bodyVerbosityConcise',
       // Two duration units. "{count}h" is the form the banner was specified with in
       // both languages, and "min" is the same abbreviation in French.
       'skillHours.hours',
@@ -375,7 +320,7 @@ describe('translation', () => {
 
   it('substitutes named placeholders', () => {
     expect(t('dashboard.greeting', 'en', { name: 'Xavier' })).toBe('Hey Xavier.')
-    expect(t('org.archiveModal.confirm', 'fr', { name: 'Poppins' })).toBe('Archiver Poppins ?')
+    expect(t('org.inviteModal.title', 'fr', { name: 'Poppins' })).toBe('Inviter dans Poppins')
   })
 
   it('leaves a placeholder alone when no value is given for it', () => {

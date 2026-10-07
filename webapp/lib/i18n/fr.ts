@@ -14,11 +14,9 @@ export const fr: Record<keyof typeof en, string> = {
   // ── Commun ─────────────────────────────────────────────────────────────────
   'common.loading': 'Chargement…',
   'common.cancel': 'Annuler',
-  'common.save': 'Enregistrer',
   'common.saving': 'Enregistrement…',
   'common.create': 'Créer',
   'common.creating': 'Création…',
-  'common.copy': 'Copier',
   'common.copied': 'Copié',
   'common.close': 'Fermer',
   'common.download': 'Télécharger',
@@ -26,8 +24,6 @@ export const fr: Record<keyof typeof en, string> = {
   'common.next': 'Suivant',
   'common.back': 'Retour',
   'common.finish': 'Terminer',
-  'common.deleting': 'Suppression…',
-  'common.select': 'Sélectionner…',
   'common.saveFailed': 'Échec de l’enregistrement.',
   'common.remove': 'Retirer {item}',
   'common.notSignedIn': 'Vous n’êtes pas connecté.',
@@ -37,10 +33,6 @@ export const fr: Record<keyof typeof en, string> = {
   'language.hint': 'S’applique à ce site, dans ce navigateur.',
 
   // ── Navigation ─────────────────────────────────────────────────────────────
-  'nav.application': 'Application',
-  'nav.plans': 'Plans',
-  'nav.organization': 'Organisation',
-  'nav.account': 'Compte',
   'nav.admin': 'Admin',
   'nav.signOut': 'Se déconnecter',
 
@@ -149,37 +141,7 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Plans ──────────────────────────────────────────────────────────────────
   'plans.title': 'Plans',
-  'plans.subtitle':
-    'Toutes les sessions /magic:plan sur un dépôt visible pour vous — la spec produite et les tickets créés. Les vôtres, et celles de votre équipe.',
-  'plans.filter.label': 'Dépôt',
-  'plans.filter.all': 'Tous les dépôts',
-  'plans.status.planning': 'En cours d’écriture',
-  'plans.status.planned': 'Tickets créés',
-  'plans.tickets.none': 'aucun ticket',
-  'plans.tickets.one': '1 ticket',
-  'plans.tickets.many': '{count} tickets',
   'plans.noRepo': 'Dépôt inconnu',
-  'plans.you': 'Vous',
-  'plans.kind.epic': 'Epic',
-  'plans.empty.title': 'Aucun plan pour l’instant',
-  'plans.empty.body':
-    'Lancez /magic:plan dans Claude Code : il transforme une idée en spec relisible, puis en epic et en stories. Chaque session arrive ici au fil de son écriture, avec sa spec et les tickets créés.',
-  'plans.empty.filteredTitle': 'Rien sur ce dépôt',
-  'plans.empty.filteredBody':
-    'Aucun plan n’a encore été écrit sur ce dépôt. Choisissez-en un autre.',
-  'plans.detail.back': 'Tous les plans',
-  'plans.detail.notFound': 'Ce plan n’est pas accessible',
-  'plans.detail.notFoundHint':
-    'Il n’existe pas, ou il appartient à un dépôt qu’aucune de vos organisations ne partage.',
-  'plans.detail.idea': 'Idée',
-  'plans.detail.tickets': 'Tickets créés',
-  'plans.detail.noTickets': 'Aucun ticket n’a encore été créé depuis ce plan.',
-  'plans.detail.noEpic': 'Sans epic',
-  'plans.detail.spec': 'Spécification',
-  'plans.detail.specPending':
-    'La spec n’a pas encore été envoyée. Elle apparaît ici à mesure que la session l’écrit.',
-  'plans.detail.syncedAt': 'Spec mise à jour {when}',
-  'plans.detail.statusForbidden': 'Vous ne pouvez pas changer le statut de ce plan.',
 
   // ── Statistiques des skills ────────────────────────────────────────────────
   'skills.title': 'Skills exécutés',
@@ -213,52 +175,12 @@ export const fr: Record<keyof typeof en, string> = {
   'skillHours.optIn.savedBody':
     'Vos heures apparaîtront ici après votre prochaine exécution de skill. L’app desktop suit ce réglage en direct, il n’y a rien à redémarrer.',
   'skillHours.optIn.note':
-    'Il s’agit du réglage « Partager mon activité avec mon équipe ». Le détail de ce qui est enregistré est dans Application → Fonctionnalités, où vous pouvez le désactiver à nouveau quand vous le souhaitez.',
-
-  // ── Compte ─────────────────────────────────────────────────────────────────
-  'account.title': 'Compte',
+    'Il s’agit du réglage « Partager mon activité avec mon équipe ». Le détail de ce qui est enregistré est dans l’app desktop, sous Réglages → Application, où vous pouvez le désactiver à nouveau quand vous le souhaitez.',
 
   // ── Compte cloud ───────────────────────────────────────────────────────────
-  'cloud.title': 'Compte cloud',
-  'cloud.signedIn': 'Connecté au cloud Magic Slash',
   'cloud.signOut': 'Se déconnecter',
-  'cloud.changePassword': 'Changer de mot de passe',
-  'cloud.changeEmail': 'Changer d’e-mail',
-  'cloud.deleteAccount': 'Supprimer mon compte',
-  'cloud.password.newPlaceholder': 'Nouveau mot de passe',
-  'cloud.password.confirmPlaceholder': 'Confirmer le nouveau mot de passe',
-  'cloud.password.submit': 'Mettre à jour le mot de passe',
-  'cloud.password.tooShort': 'Utilisez au moins 8 caractères.',
-  'cloud.password.mismatch': 'Les mots de passe ne correspondent pas.',
-  'cloud.password.failed': 'Impossible de mettre à jour le mot de passe.',
-  'cloud.email.requestHint':
-    'Nous enverrons un code de confirmation à 6 chiffres à votre nouvelle adresse.',
-  'cloud.email.newPlaceholder': 'Nouvel e-mail',
-  'cloud.email.confirmBefore': 'Relevez le code de confirmation envoyé à',
-  'cloud.email.confirmAfter': ', puis saisissez-le ci-dessous.',
-  'cloud.email.codePlaceholder': 'Code à 6 chiffres',
-  'cloud.email.sendCode': 'Envoyer le code',
-  'cloud.email.confirmChange': 'Confirmer le changement',
-  'cloud.email.working': 'En cours…',
-  'cloud.email.codeSent': 'Code envoyé. Consultez votre nouvelle boîte mail.',
-  'cloud.email.failed': 'Impossible de changer l’e-mail.',
-  'cloud.email.noSession':
-    'Le changement d’e-mail n’a pas renvoyé de session — reconnectez-vous.',
-  'cloud.delete.submit': 'Supprimer définitivement',
-  'cloud.delete.warning':
-    'Cette action supprime définitivement votre compte et vos données personnelles.',
-  'cloud.delete.body':
-    'Les organisations que vous avez créées seront supprimées avec leurs données. L’opération est irréversible. Magic Slash continue de fonctionner en local sans compte.',
-  'cloud.delete.failed': 'Impossible de supprimer le compte.',
 
   // ── Profil ─────────────────────────────────────────────────────────────────
-  'profile.title': 'Profil',
-  'profile.clickToEdit': 'Cliquer pour modifier',
-  'profile.editAria': 'Modifier votre profil',
-  'profile.fillAria': 'Compléter votre profil',
-  'profile.fillTitle': 'Compléter votre profil',
-  'profile.fillHint':
-    'Quelques questions pour que Claude adapte son ton et son niveau de détail à votre façon de travailler.',
   'profile.role.product': 'Produit',
   'profile.role.dev': 'Dev',
   'profile.role.design': 'Design',
@@ -301,22 +223,6 @@ export const fr: Record<keyof typeof en, string> = {
     'ex. : je préfère les réponses courtes, je travaille sur des apps mobiles…',
   'profile.wizard.failed': 'Impossible d’enregistrer le profil.',
 
-  // ── Appareils ──────────────────────────────────────────────────────────────
-  'devices.title': 'Appareils',
-  'devices.empty':
-    'Aucun appareil pour l’instant. Installez l’application et connectez-vous pour le voir ici.',
-  'devices.unknown': 'Appareil inconnu',
-  'devices.lastSeen': 'vu {when}',
-
-  // ── État de l’application desktop ──────────────────────────────────────────
-  'appStatus.title': 'Application desktop',
-  'appStatus.notInUse': 'Pas encore utilisée',
-  'appStatus.notInUseHint':
-    'Installez l’application desktop et connectez-vous — elle apparaîtra ici à son premier lancement.',
-  'appStatus.inUse': 'Active',
-  'appStatus.updateAvailable': 'v{version} disponible',
-  'appStatus.lastActive': 'actif {when}',
-
   // ── Temps relatif ──────────────────────────────────────────────────────────
   'time.unknown': 'inconnu',
   'time.justNow': 'à l’instant',
@@ -327,33 +233,11 @@ export const fr: Record<keyof typeof en, string> = {
   'time.days.one': 'il y a 1 jour',
   'time.days.many': 'il y a {count} jours',
 
-  // ── Page Application ───────────────────────────────────────────────────────
-  'application.title': 'Application',
-  'application.footnote':
-    'Ces réglages appartiennent à l’application desktop et suivent votre compte sur toutes les machines où vous vous connectez. Une application déjà lancée les applique immédiatement.',
+  // ── Réglages ──────────────────────────────────────────────────────────────
   'settings.saveFailed':
     'Vos réglages n’ont pas pu être enregistrés — reconnectez-vous puis réessayez.',
 
   // ── Réglages · Apparence ───────────────────────────────────────────────────
-  'settings.appearance': 'Apparence',
-  'settings.appearance.note':
-    'Le thème habille l’application Magic Slash, pas ce site. Il suit votre compte — il s’applique sur toutes les machines où vous vous connectez. L’échelle de l’interface reste propre à chaque machine, puisqu’elle compense cet écran-là.',
-  'settings.appearance.claudeTheme.label': 'Accorder Claude Code au thème',
-  'settings.appearance.claudeTheme.help':
-    'Claude Code adopte les couleurs du thème choisi dans les terminaux de l’app. Les sessions déjà ouvertes se repeignent aussi. Votre Claude Code lancé depuis un vrai terminal n’est pas touché.',
-  'settings.appearance.codeSyntax.label': 'Thème du code',
-  'settings.appearance.codeSyntax.help':
-    'La palette dans laquelle l’app desktop colore le code. Sa variante claire ou sombre suit toujours le thème.',
-  'settings.appearance.codeSyntax.auto': 'Assorti au thème',
-  'settings.appearance.codeFontSize.label': 'Taille du code',
-  'settings.appearance.codeFontSize.help': 'Aperçus de fichiers, diffs et historique des plans dans l’app desktop.',
-  'settings.sidebars.section': 'Barres latérales',
-  'settings.sidebars.agentContext.label': 'Contexte de l’agent',
-  'settings.sidebars.agentContext.help':
-    'La jauge de contexte de l’agent sélectionné, son modèle, son coût et sa durée, en haut de la barre latérale droite.',
-  'settings.sidebars.format.label': 'Format',
-  'settings.sidebars.format.full': 'Complet',
-  'settings.sidebars.format.minimized': 'Réduit',
   'theme.dark': 'Sombre',
   'theme.dark.help': 'L’original, presque noir.',
   'theme.midnight': 'Minuit',
@@ -372,98 +256,11 @@ export const fr: Record<keyof typeof en, string> = {
   'theme.daylight.help': 'Noir sur blanc, arêtes franches.',
 
   // ── Réglages · Langue et région ────────────────────────────────────────────
-  'settings.language.section': 'Langue et région',
   'settings.language.label': 'Langue de l’interface',
   'settings.language.help':
     'La langue de l’application elle-même — menus, réglages, notifications, et la façon d’écrire les dates et les nombres.',
-  'settings.language.noteBefore':
-    'Ce n’est pas la langue dans laquelle Claude écrit : les messages de commit, les pull requests et les commentaires Jira suivent',
-  'settings.language.noteLink': 'les réglages de langue de chaque dépôt',
-  'settings.language.noteAfter':
-    ', et les langues de votre profil décident de la façon dont Claude vous parle.',
-
-  // ── Réglages · Fonctionnalités ─────────────────────────────────────────────
-  'settings.features': 'Fonctionnalités',
-  'settings.usageCard.label': 'Carte d’usage',
-  'settings.usageCard.help':
-    'Le compte connecté et les jauges Session (5 h) / Semaine (7 j), en bas de la barre latérale gauche.',
-  'settings.usageLogs.label': 'Partager mon activité avec mon équipe',
-  'settings.usageLogs.help':
-    'Activé par défaut, et vous pouvez le couper à tout moment. Ce que vous faites avec vos agents est envoyé au cloud Magic Slash pour que le tableau de bord de votre équipe reflète votre travail. Le couper arrête les nouveaux enregistrements ; ce qui a déjà été envoyé est conservé.',
-  'settings.usageLogs.collected': 'Collecté',
-  'settings.usageLogs.excluded': 'Jamais collecté',
-  'settings.usageLogs.collected.activity':
-    'L’activité des agents : tickets, commits, PR, revues',
-  'settings.usageLogs.collected.skills':
-    'Les skills que vous lancez (/magic:start, /magic:pr, …), la durée de chaque exécution et comment elle s’est terminée',
-  'settings.usageLogs.collected.session':
-    'Le résumé de fin de session : coût estimé, lignes ajoutées/supprimées, durée, modèle',
-  'settings.usageLogs.collected.context':
-    'L’identifiant et le titre du ticket, et les dépôts sur lesquels vous travaillez',
-  'settings.usageLogs.excluded.prompts': 'Vos prompts et les réponses de Claude',
-  'settings.usageLogs.excluded.code': 'Votre code, vos diffs, le contenu de vos fichiers',
-  'settings.usageLogs.excluded.terminal':
-    'La sortie du terminal et l’historique des commandes',
-  'settings.usageLogs.excluded.secrets': 'Vos jetons, vos clés et vos identifiants',
-  'settings.usageLogs.excluded.args': 'Ce que vous tapez après le nom d’un skill',
-  'settings.usageLogs.excluded.otherSkills': 'Les skills dont le nom ne commence pas par « magic- »',
-  'settings.usageLogs.footnote':
-    'Chaque membre de votre organisation voit ces chiffres par personne sur la page Équipe.',
-  'settings.usageLogs.footnoteAgents':
-    'Quoi que dise ce réglage, vos agents (nom, branche, ticket, dépôts) se synchronisent avec votre équipe — c’est ce qui alimente la vue temps réel.',
-  'settings.digest.label': 'Résumé quotidien de l’équipe',
-  'settings.digest.help':
-    'Désactivé par défaut. Une fois activé, vous recevez une notification à 9 h résumant l’activité de votre équipe sur les dernières 24 heures (PR livrées, tickets passés en Terminé). Rien n’est envoyé s’il n’y a eu aucune activité.',
-  'settings.split.label': 'Activer la vue divisée',
-  'settings.split.help': 'Affiche deux agents côte à côte sur les écrans larges.',
-  'settings.spotlight.label': 'Activer Spotlight',
-  'settings.spotlight.help':
-    'Ouvre le panneau de lancement rapide depuis n’importe où avec un raccourci clavier. Le choix des touches se fait dans l’application : il dépend de ce qui est installé sur cette machine-là.',
-  'settings.planSync.label': 'Synchroniser les specs de plan',
-  'settings.planSync.help':
-    'Activé par défaut. Envoie la spec écrite par /magic:plan et les tickets qu’elle crée, pour qu’ils apparaissent sur la page Plans — les vôtres, et ceux de votre équipe sur un dépôt partagé. Désactivé, rien ne quitte la machine : la spec est toujours écrite dans le dépôt comme d’habitude.',
-  'settings.usageLogs.section': 'Enregistrement de l’activité',
-
-  // ── Réglages · Surveillance des revues de PR ───────────────────────────────
-  // ── Réglages · Notifications ───────────────────────────────────────────────
-  'settings.notifications.section': 'Notifications',
-  'settings.notifications.master.label': 'Activer les notifications',
-  'settings.notifications.master.help':
-    'Tout ce qui suit, ainsi que celles qui n’ont pas d’interrupteur propre : un collègue qui reprend un ticket sur lequel vous êtes. Aucune notification n’apparaît quand la fenêtre de l’app est au premier plan.',
-  'settings.notifications.allOff':
-    'Tout est en sourdine. Vos choix par type sont conservés — réactivez pour les revoir.',
-  'settings.notifications.agents.section': 'Vos agents',
-  'settings.notifications.agentWaiting.label': 'Agent en attente',
-  'settings.notifications.agentWaiting.help':
-    'Un agent s’est arrêté et attend une réponse ou une autorisation pour continuer.',
-  'settings.notifications.agentCompleted.label': 'Agent terminé',
-  'settings.notifications.agentCompleted.help': 'Un agent a terminé la tâche qui lui a été confiée.',
-  'settings.notifications.pr.section': 'Pull requests',
-  'settings.notifications.prReview.label': 'Statut de revue modifié',
-  'settings.notifications.prReview.help':
-    'La surveillance des PR a vu le statut de revue d’une de vos PR ouvertes changer : approuvée, modifications demandées, retour en attente. Uniquement sur un vrai changement : activer la surveillance ou redémarrer l’app ne déclenche plus rien.',
-  'settings.notifications.prChangesRequested.label': 'Modifications demandées sur votre PR',
-  'settings.notifications.prChangesRequested.help':
-    'Un relecteur a demandé des modifications sur une de vos PR. Vient de l’activité de votre équipe : elle arrive donc même pour une PR qu’aucun agent de cette machine ne surveille.',
-  'settings.notifications.team.section': 'Équipe',
-  'settings.notifications.team.footnote':
-    'Un collègue qui reprend un ticket sur lequel vous avez aussi un agent suit l’interrupteur principal ci-dessus — c’est assez rare pour ne pas mériter le sien.',
-
-  'settings.prWatcher.label': 'Surveiller les revues de PR',
-  'settings.prWatcher.help':
-    'Interroge GitHub pour suivre l’état des revues sur les pull requests des agents.',
-  'settings.prWatcher.intervalLabel': 'Fréquence d’interrogation',
-  'settings.prWatcher.intervalHelp': 'Fréquence des appels à l’API GitHub.',
-  'settings.prWatcher.interval30s': '30 secondes',
-  'settings.prWatcher.interval1m': '1 minute',
-  'settings.prWatcher.interval2m': '2 minutes',
-  'settings.prWatcher.interval5m': '5 minutes',
-  'settings.prWatcher.autoLaunchLabel': 'Lancer les skills automatiquement',
-  'settings.prWatcher.autoLaunchHelp':
-    'Envoie /magic:resolve ou /magic:done directement dans le terminal de l’agent. Désactivé par défaut, par prudence.',
 
   // ── Réglages · Claude Code ─────────────────────────────────────────────────
-  'settings.claudeCode': 'Claude Code',
   'settings.launchMode.label': 'Mode de permissions',
   'settings.launchMode.help':
     'Détermine le niveau d’autonomie de tous les agents Claude Code.',
@@ -482,444 +279,32 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.launchMode.bypass': 'Bypass',
   'settings.launchMode.bypass.help':
     'Aucune vérification de permission — réservé aux environnements isolés',
-  'settings.launchMode.bypassInline':
-    'Le mode Bypass désactive toutes les vérifications de permission. À n’utiliser que dans un environnement isolé, sans accès à Internet.',
-  'settings.launchMode.bypassTitle': 'Activer le mode Bypass ?',
-  'settings.launchMode.bypassConfirm': 'J’ai compris, activer Bypass',
-  'settings.launchMode.bypassWarning':
-    'Avertissement de sécurité : le mode Bypass désactive toutes les vérifications de permission. Tous les agents, sur toutes les machines où vous vous connectez, lanceront des commandes et modifieront des fichiers sans jamais demander. À n’utiliser que dans un environnement isolé, sans accès à Internet.',
 
-  // ── Page Organisations ─────────────────────────────────────────────────────
-  'org.title': 'Organisations',
-  'org.yourOrgs': 'Vos organisations',
-  'org.yourOrgsCount': 'Vos organisations ({count})',
-  'org.emptyTitle': 'Vous n’appartenez à aucune organisation.',
-  'org.emptyHint': 'Créez-en une, ou rejoignez-en une avec une invitation.',
-  'org.create': 'Créer une organisation',
-  'org.join': 'Rejoindre une organisation',
+  // ── Organisations ──────────────────────────────────────────────────────────
   'org.inviteModal.title': 'Inviter dans {name}',
-  'org.inviteModal.titleFallback': 'Inviter',
   'org.inviteModal.help':
     'Un lien d’invitation est généré — copiez-le depuis la liste et envoyez-le à votre collègue.',
   'org.inviteModal.emailPlaceholder': 'collegue@exemple.com',
-  'org.inviteModal.role': 'Rôle',
   'org.inviteModal.send': 'Envoyer l’invitation',
-  'org.inviteModal.sending': 'Envoi…',
-  'org.createModal.help':
-    'Vous en devenez l’admin et pouvez inviter des membres immédiatement.',
-  'org.createModal.namePlaceholder': 'Nom de l’organisation',
-  'org.joinModal.help': 'Collez le lien d’invitation reçu, ou seulement son token.',
-  'org.joinModal.placeholder': 'https://invite.magic-slash.io/…',
-  'org.joinModal.submitting': 'En cours…',
-  'org.archiveModal.title': 'Archiver l’organisation',
-  'org.archiveModal.confirm': 'Archiver {name} ?',
-  'org.archiveModal.thisOrganization': 'cette organisation',
-  'org.archiveModal.body':
-    'L’organisation et ses membres perdent l’accès — elle disparaît pour tout le monde. Ses données sont conservées, pas supprimées, mais l’opération est irréversible depuis l’application.',
-  'org.archiveModal.archiving': 'Archivage…',
-  'org.error.role': 'Impossible de mettre à jour le rôle.',
-  'org.error.removeMember': 'Impossible de retirer le membre.',
-  'org.error.leave': 'Impossible de quitter l’organisation.',
-  'org.error.deleteInvitation': 'Impossible de supprimer l’invitation.',
-  'org.error.createInvitation': 'Impossible de créer l’invitation.',
-  'org.error.createOrg': 'Impossible de créer l’organisation.',
-  'org.error.join': 'Impossible de rejoindre l’organisation.',
-  'org.error.archive': 'Impossible d’archiver l’organisation.',
   'org.error.nameRequired': 'Une organisation doit avoir un nom.',
 
   // ── Carte d’organisation ───────────────────────────────────────────────────
-  'org.role.admin': 'Admin',
-  'org.role.member': 'Membre',
-  'org.role.member.help': 'Peut voir l’équipe et travailler sur les dépôts partagés',
-  'org.role.admin.help': 'Peut inviter, changer les rôles et archiver l’organisation',
   'org.members': 'Membres',
   'org.membersEmpty': 'Aucun membre pour l’instant.',
   'org.colMember': 'Membre',
   'org.colRole': 'Rôle',
   'org.colActions': 'Actions',
   'org.you': ' (vous)',
-  'org.removeMember': 'Retirer le membre',
-  'org.repositories': 'Dépôts',
-  'org.reposEmpty':
-    'Aucun dépôt partagé. Les dépôts partagés à cette organisation depuis l’application desktop apparaissent ici.',
-  'org.invitations': 'Invitations',
-  'org.invite': 'Inviter',
-  'org.invitationsEmpty': 'Aucune invitation en attente.',
-  'org.copyInviteLink': 'Copier le lien d’invitation',
-  'org.inviteLink': 'Lien d’invitation',
-  'org.deleteInvitation': 'Supprimer l’invitation',
-  'org.inviteStatus.pending': 'en attente',
-  'org.inviteStatus.accepted': 'acceptée',
-  'org.inviteStatus.expired': 'expirée',
-  'org.inviteStatus.revoked': 'révoquée',
-  'org.soleAdmin':
-    'Vous êtes le dernier admin. Promouvez un autre membre avant de partir, ou archivez l’organisation.',
-  'org.leave': 'Quitter l’organisation',
-  'org.archive': 'Archiver l’organisation',
 
-  // ── Page Dépôt ─────────────────────────────────────────────────────────────
+  // ── Dépôt ──────────────────────────────────────────────────────────────────
   'repo.back': 'Retour aux organisations',
-  'repo.notFound': 'Ce dépôt n’existe pas, ou vous n’y avez pas accès.',
-  'repo.notFoundHint':
-    'Les dépôts d’équipe ne sont visibles que par les membres de l’organisation à laquelle ils appartiennent.',
-  'repo.readOnly.title': 'Lecture seule',
-  'repo.readOnly.body':
-    'Ces réglages sont partagés par tous les membres de {org} : seuls ses administrateurs peuvent les modifier. Votre dossier local se définit dans l’application desktop — il reste sur votre machine et n’est jamais partagé.',
-  'repo.readOnly.theOrganization': 'l’organisation',
-  'repo.delete.title': 'Supprimer le dépôt',
-  'repo.delete.confirmBefore': 'Supprimer',
-  'repo.delete.confirmAfter': ' ?',
-  'repo.delete.thisRepository': 'ce dépôt',
-  'repo.delete.teamBody':
-    'Il disparaît pour tous les membres de l’organisation. L’opération est irréversible.',
-  'repo.delete.personalBody': 'L’opération est irréversible.',
-  'repo.delete.failed': 'Impossible de supprimer le dépôt.',
-  'repo.updateFailed':
-    'Ce dépôt n’a pas pu être mis à jour — vous n’avez peut-être pas la permission de le modifier.',
-  'repo.deleteForbidden':
-    'Ce dépôt n’a pas pu être supprimé — seuls son propriétaire ou un admin de l’organisation peuvent le retirer.',
 
   // ── Réglages du dépôt ──────────────────────────────────────────────────────
-  'repo.scope.section': 'Portée',
-  'repo.scope.team': 'Équipe',
-  'repo.scope.teamNamed': 'Équipe — {name}',
-  'repo.scope.personal': 'Personnel',
-  'repo.scope.teamHelp':
-    'Partagé avec l’organisation — chaque membre le voit et y associe son propre dossier local.',
-  'repo.scope.personalHelp':
-    'Vous seul voyez ce dépôt. Partagez-le avec une organisation pour en faire un dépôt d’équipe.',
-  'repo.scope.makePersonal': 'Rendre personnel',
-  'repo.scope.sharePlaceholder': 'Partager avec une organisation…',
-  'repo.scope.joinOrg': 'Rejoignez une organisation pour partager des dépôts.',
-  'repo.general.section': 'Général',
-  'repo.general.name': 'Nom',
-  'repo.general.nameHelp': 'Nom affiché du dépôt',
-  'repo.general.remoteUrl': 'Adresse de clonage',
-  'repo.general.remoteUrlHelp': 'Partagée avec l’équipe, sert à cloner ce dépôt en un clic',
-  'repo.general.remoteUrlHelpReadOnly': 'Partagée avec l’équipe — un admin peut la modifier',
-  'repo.general.remoteUrlInvalid': 'Doit être https://github.com/owner/repo',
-  'repo.general.remoteUrlRefused': 'Seul le propriétaire ou un admin de l’organisation peut modifier une adresse déjà définie',
   'repo.general.keywords': 'Mots-clés',
   'repo.general.keywordsHelp': 'Mots-clés de détection automatique — un par tag',
-  'repo.general.discussionLang': 'Langue de discussion',
-  'repo.general.discussionLangHelp': 'Langue utilisée par Claude quand il échange avec vous',
-  'repo.general.color': 'Couleur',
-  'repo.general.colorHelp': 'Couleur du projet dans la barre latérale',
-  'repo.general.setColor': 'Choisir la couleur {color}',
-  'repo.tracker.mode': 'Outils de suivi',
-  'repo.tracker.modeHelp': 'L’outil de suivi qui reçoit les tickets de ce repository',
-  'repo.tracker.modeGithub': 'GitHub',
-  'repo.tracker.modeJira': 'Jira',
-  'repo.tracker.askEachTime': 'Demander à chaque plan',
-  'repo.tracker.askEachTimeHelp': 'Laisse /magic:plan demander dans quel outil créer les tickets, au lieu de toujours utiliser Jira',
-  'repo.tracker.jiraLink': 'Lien Jira',
-  'repo.tracker.jiraLinkHelp': 'URL de base des tickets Jira (ex. : PROJ-123)',
-  'repo.tabs.aria': 'Réglages du repository',
-  'repo.langs.groupChat': 'Conversation',
-  'repo.langs.groupCode': 'Code et pull requests',
-  'repo.langs.groupTickets': 'Tickets',
-  'repo.langs.section': 'Langues',
-  'repo.langs.commit': 'Langue des commits',
-  'repo.langs.pullRequest': 'Langue des pull requests',
-  'repo.langs.review': 'Langue des reviews',
-  'repo.repository.section': 'Repository',
-  'repo.repository.groupLocation': 'Emplacement',
-  'repo.repository.groupBranches': 'Branches',
-  'repo.repository.groupWorktrees': 'Worktrees',
-  'repo.tracker.groupDestination': 'Destination des tickets',
-  'repo.tracker.groupGithub': 'GitHub',
-  'repo.tracker.groupJira': 'Jira',
-  'repo.tracker.githubRepoHelpPr': 'Adresse du repository — sert aux pull requests et au clonage, pas aux tickets',
-  'repo.tickets.section': 'Tickets',
-  'repo.tracker.githubRepo': 'Repository GitHub',
-  'repo.tracker.issuesGoTo': 'Les issues sont créées dans {target}',
-  'repo.tracker.githubTargetNone': 'Aucun remote GitHub',
-  'repo.branches.development': 'Branche de développement',
-  'repo.branches.developmentHelp':
-    'Branche de référence pour comparer les commits. Saisie à la main ici — l’application web ne peut pas lister les branches du dépôt.',
-  'repo.worktree.files': 'Fichiers à copier',
-  'repo.worktree.filesHelp':
-    'Fichiers copiés depuis le dépôt principal vers les nouveaux worktrees (ex. : .env, .env.local)',
-  'repo.plan.groupBefore': 'Avant de proposer',
-  'repo.plan.groupBreakdown': 'Découpage',
-  'repo.plan.groupTickets': 'Tickets créés',
-  'repo.commit.groupMessage': 'Message',
-  'repo.commit.groupBranches': 'Branches',
-  'repo.pr.groupDescription': 'Description',
-  'repo.pr.groupAfter': 'Une fois ouverte',
-  'repo.resolve.groupCommits': 'Commits de correction',
-  'repo.resolve.groupReplies': 'Réponses',
-  'repo.commit.section': 'Commit',
-  'repo.commit.intro': 'Transforme vos modifications en commits. Sur ce repository :',
-  'repo.commit.step.atomic':
-    'Découpe ce qui a changé en commits atomiques — un changement logique par commit, sans demander.',
-  'repo.commit.step.formatConventional':
-    'Chaque message est en Conventional : le type, puis le sujet (feat: add login).',
-  'repo.commit.step.formatAngular':
-    'Chaque message est en Angular : le type, le scope, puis le sujet (feat(auth): add login).',
-  'repo.commit.step.formatGitmoji':
-    'Chaque message commence par un gitmoji, puis le sujet (✨ add login).',
-  'repo.commit.step.formatNone': 'Les messages sont libres — ni type, ni scope.',
-  'repo.commit.step.styleSingle': 'Une seule ligne par commit, sans corps.',
-  'repo.commit.step.styleMulti':
-    'Un sujet, puis un corps qui explique pourquoi le changement a été fait.',
-  'repo.commit.step.protectedAsk':
-    'Committer directement sur {branches} est permis, mais il demande confirmation.',
-  'repo.commit.step.protectedBlock':
-    'Ne commite jamais sur {branches} : il déplace d’abord le travail sur une nouvelle branche.',
-  'repo.commit.step.push': 'Pousse la branche juste après le commit.',
-  'repo.commit.tail.coAuthor': 'Claude ajouté en co-auteur',
-  'repo.commit.tail.ticketId': 'id du ticket ajouté au message',
-  'repo.commit.languageHelp': 'Langue des messages de commit',
-  'repo.commit.style': 'Style',
-  'repo.commit.styleHelp': 'Une seule ligne, ou plusieurs lignes avec un corps',
-  'repo.commit.styleSingle': 'Une seule ligne',
-  'repo.commit.styleMulti': 'Plusieurs lignes (avec corps)',
-  'repo.commit.format': 'Format',
-  'repo.commit.formatHelp': 'Format / convention des messages de commit',
-  'repo.commit.formatConventional': 'Conventional',
-  'repo.commit.formatAngular': 'Angular',
-  'repo.commit.formatGitmoji': 'Gitmoji',
-  'repo.commit.formatNone': 'Aucun',
-  'repo.commit.formatNoneHelp': 'Forme libre',
-  'repo.commit.coAuthor': 'Co-auteur',
-  'repo.commit.coAuthorHelp': 'Ajouter Claude comme co-auteur des commits',
-  'repo.commit.ticketId': 'Inclure l’ID du ticket',
-  'repo.commit.ticketIdHelp': 'Ajouter l’ID du ticket lu dans le nom de la branche',
-  'repo.commit.push': 'Pousser après le commit',
-  'repo.commit.pushHelpOn': '/magic:commit pousse la branche dès que le commit est fait',
-  'repo.commit.pushHelpOff': 'Le commit reste local jusqu’à ce que vous le poussiez, ou que /magic:pr le fasse',
-  'repo.commit.protectedBranch': 'Commits sur les branches principales',
-  'repo.commit.protectedBranchHelpOn':
-    'Autorisés sur main, master, develop et la branche de dev de ce dépôt — /magic:commit demande confirmation',
-  'repo.commit.protectedBranchHelpOff':
-    'Bloqués sur main, master, develop et la branche de dev de ce dépôt — /magic:commit déplace le travail sur une nouvelle branche',
   'repo.example': 'Exemple',
-  'repo.review.section': 'Review',
-  'repo.review.intro': 'Relit une pull request, la vôtre ou celle d’un collègue. Sur ce repository :',
-  'repo.review.step.read': 'Lit toute la pull request et le code autour, pas seulement le diff.',
-  'repo.review.step.scoreOn': 'Donne une note de confiance sur 10, et dit ce qu’il manque pour atteindre 10.',
-  'repo.review.step.scoreOff': 'Ne donne pas de note de confiance.',
-  'repo.review.step.modeAsk': 'Vous montre les commentaires qu’il veut poster, puis vous demande ce qui part sur GitHub.',
-  'repo.review.step.modePost': 'Poste directement ses commentaires sur la pull request, sans demander.',
-  'repo.review.languageHelp': 'Langue des commentaires postés par /magic:review. Suit la langue des pull requests si non définie',
-  'repo.review.groupDraft': 'Commentaires',
-  'repo.review.confidenceScore': 'Note de confiance',
-  'repo.review.confidenceScoreHelp': 'Une note sur 10 et la raison des points manquants, dans le brouillon et sur GitHub',
-  'repo.review.mode': 'Avant de poster',
-  'repo.review.modeHelp': 'Si vous validez les commentaires avant qu’ils arrivent sur la pull request',
-  'repo.review.modeAsk': 'Me demander d’abord',
-  'repo.review.modeAskHelp': 'Affiche le brouillon, vous choisissez ce qui est posté',
-  'repo.review.modePost': 'Poster directement',
-  'repo.review.modePostHelp': 'Tous les commentaires partent sur la pull request, sans question',
 
-  'repo.resolve.section': 'Resolve',
-  'repo.resolve.intro': 'Transforme les commentaires de review en correction poussée. Sur ce repository :',
-  'repo.resolve.step.read':
-    'Lit les commentaires de review de la pull request et corrige ce qu’ils demandent.',
-  'repo.resolve.step.commitNew': 'Ajoute un commit de correction, et le pousse normalement.',
-  'repo.resolve.step.commitAmend': 'Amende le dernier commit et pousse avec --force-with-lease.',
-  'repo.resolve.step.commitAsk':
-    'Demande à chaque fois : nouveau commit, ou amend qui pousse avec --force-with-lease.',
-  'repo.resolve.step.formatInherit':
-    'Le message du commit de correction reprend le format de l’onglet Commit.',
-  'repo.resolve.step.formatCustom':
-    'Le commit de correction a son propre format de message : {format}, {style}.',
-  'repo.resolve.step.replyMinimal':
-    'Répond dans chaque fil de review une fois le commentaire traité — une ligne, avec le commit.',
-  'repo.resolve.step.replyNormal':
-    'Répond dans chaque fil de review une fois le commentaire traité, en disant pourquoi dès que le correctif s’écarte de ce qui était demandé.',
-  'repo.resolve.step.replyDetailed':
-    'Répond dans chaque fil de review en détail, en conservant le raisonnement derrière le correctif.',
-  'repo.resolve.step.replyOff': 'Ne poste aucune réponse dans les fils de review.',
-  'repo.resolve.commitMode': 'Mode de commit',
-  'repo.resolve.commitModeHelp': 'Comment committer les corrections de revue',
-  'repo.resolve.modeNew': 'Nouveau commit',
-  'repo.resolve.modeNewHelp': 'Ajoute un commit pour les corrections',
-  'repo.resolve.modeAmend': 'Amender le dernier commit',
-  'repo.resolve.modeAmendHelp': 'Réécrit l’historique, pousse en force',
-  'repo.resolve.modeAsk': 'Demander',
-  'repo.resolve.modeAskHelp': 'Choix au moment voulu, à chaque resolve',
-  'repo.resolve.commitFormat': 'Format de commit',
-  'repo.resolve.commitFormatHelp': 'Source du format des messages de commit de resolve',
-  'repo.resolve.useCommitConfig': 'Utiliser les réglages de commit',
-  'repo.resolve.customConfig': 'Personnalisé',
-  'repo.resolve.reply': 'Répondre aux commentaires',
-  'repo.resolve.replyHelp': 'Répondre dans le fil des commentaires GitHub résolus',
-  'repo.resolve.replyVerbosity': 'Détail des réponses',
-  'repo.resolve.replyVerbosityHelp':
-    'Ce que chaque réponse ajoute au diff que le reviewer peut déjà lire',
-  'repo.resolve.verbosityMinimal': 'Bref — une ligne',
-  'repo.resolve.verbosityNormal': 'Équilibré — plus le pourquoi si le correctif diverge',
-  'repo.resolve.verbosityDetailed': 'Conversationnel — conserve le raisonnement',
-  'repo.resolve.verbosityMinimalHelp': 'Le commit et ce qui a changé, rien de plus',
-  'repo.resolve.verbosityNormalHelp': 'Ajoute le pourquoi, seulement si le correctif s’écarte du commentaire',
-  'repo.resolve.verbosityDetailedHelp': 'Répond au reviewer en détail, raisonnement inclus',
-  'repo.resolve.replyLang': 'Langue des réponses de review',
-  'repo.resolve.replyLangHelp': 'Langue des réponses que /magic:resolve publie dans les fils de review de la pull request',
-  'repo.resolve.amendNotice': 'Le push utilisera',
-  'repo.resolve.askNoticeBefore': 'Il vous sera demandé de choisir entre',
-  'repo.resolve.askNoticeNew': 'nouveau commit',
-  'repo.resolve.askNoticeOr': 'et',
-  'repo.resolve.askNoticeAmend': 'amend',
-  'repo.resolve.askNoticeAfter': 'à chaque resolve. L’amend pousse avec',
-  'repo.pr.section': 'Pull request',
-  'repo.pr.intro': 'Transforme vos commits en pull request. Sur ce repository :',
-  'repo.pr.step.open':
-    'Lance les vérifications du projet, pousse la branche, puis ouvre la pull request avec son titre et sa description.',
-  'repo.pr.step.autoLinkOn': 'La description renvoie vers le ticket {tracker}.',
-  'repo.pr.step.autoLinkOff': 'La description ne contient aucun lien vers le ticket.',
-  'repo.pr.step.accountsOff': 'Ne mentionne aucun compte de test.',
-  'repo.pr.step.accountsReference':
-    'Indique au relecteur où trouver les comptes de test, sans identifiants.',
-  'repo.pr.step.accountsInline':
-    'Colle les identifiants des comptes de test dans la description — et retombe sur une simple référence si le repository est public.',
-  'repo.pr.step.ticketComment':
-    'Met à jour le ticket {tracker} lié et y poste le lien de la pull request.',
-  'repo.pr.step.ticketQuiet': 'Met à jour le ticket {tracker} lié, sans y poster de commentaire.',
-  'repo.pr.step.watchOn':
-    'Reste ensuite sur la pull request : attend les checks, corrige ce qui échoue, traite les retours de review, et ajoute l’URL de preview aux scénarios de test quand le projet en publie une.',
-  'repo.pr.step.watchOff':
-    'S’arrête dès que la pull request est ouverte — aucun check surveillé, aucune URL de preview.',
-  'repo.pr.tail.accountsSource': 'comptes lus depuis {source}',
-  'repo.pr.tail.checkboxesType': 'coche le type de changement dans le modèle de PR',
-  'repo.pr.tail.checkboxesAll': 'coche les cases du modèle de PR qu’il estime vérifiées',
-  'repo.pr.tail.bodyNormal': 'écrit une description plus longue, avec le raisonnement sur chaque puce',
-  'repo.pr.tail.bodyDetailed': 'écrit une description complète, sans limite de longueur',
-  'repo.pr.tail.keepAllSections': 'garde toutes les sections du modèle de PR, même celles que le changement ne touche pas',
-  'repo.pr.languageHelp': 'Langue des titres et descriptions de pull request',
-  'repo.pr.autoLink': 'Lier automatiquement les tickets',
-  'repo.pr.autoLinkHelp':
-    'Ajouter les liens des tickets Jira/GitHub dans la description de la PR',
-  'repo.pr.watchCI': 'Surveiller la CI et la review',
-  'repo.pr.watchCIHelp':
-    'Après création de la PR, attendre les checks, corriger les échecs automatiquement, traiter les retours de review et ajouter l’URL de preview de la PR aux scénarios de test quand le projet en publie une. Sans cela, les scénarios de test restent en local uniquement',
-  'repo.pr.testAccounts': 'Comptes de test',
-  'repo.pr.testAccountsHelp':
-    'Indique si la description de la PR précise avec quel compte se connecter. Le mode référence est sans risque sur n’importe quel dépôt ; le mode en clair copie les identifiants dans le corps de la PR et est ignoré sur les dépôts publics.',
-  'repo.pr.testAccountsOff': 'Désactivé',
-  'repo.pr.testAccountsOffHelp': 'Ne jamais mentionner de compte de test',
-  'repo.pr.testAccountsReference': 'Référence',
-  'repo.pr.testAccountsReferenceHelp': 'Dire où ils sont documentés, sans identifiants',
-  'repo.pr.testAccountsInline': 'En clair',
-  'repo.pr.testAccountsInlineHelp': 'Copier les identifiants dans le corps de la PR',
-  'repo.pr.testAccountsSource': 'Source des comptes de test',
-  'repo.pr.testAccountsSourceHelp':
-    'Chemin de fichier ou nom de skill projet contenant les comptes — détecté automatiquement si vide',
-  'repo.pr.testAccountsPublicWarn':
-    'Les identifiants ne sont jamais copiés sur un dépôt public : le mode en clair y retombe sur le mode référence.',
-  'repo.pr.templateCheckboxes': 'Cases du modèle de PR',
-  'repo.pr.templateCheckboxesHelp':
-    'Autorise ou non /magic:pr à cocher les cases du modèle de PR de votre dépôt. Laissées vides, elles reviennent au relecteur.',
-  'repo.pr.templateCheckboxesNever': 'Ne jamais cocher',
-  'repo.pr.templateCheckboxesNeverHelp': 'Toutes les cases restent vides pour le relecteur',
-  'repo.pr.templateCheckboxesType': 'Type de changement uniquement',
-  'repo.pr.templateCheckboxesTypeHelp': 'Une seule case, dans le groupe de catégorisation',
-  'repo.pr.templateCheckboxesAll': 'Cocher ce qui est vérifié',
-  'repo.pr.templateCheckboxesAllHelp': 'Toutes les cases que l’agent estime avoir vérifiées',
-  'repo.pr.bodyVerbosity': 'Longueur de la description de PR',
-  'repo.pr.bodyVerbosityHelp':
-    'Ce que /magic:pr écrit dans le corps de la pull request. « Concise » tient sur un écran de puces, lu en une minute.',
-  'repo.pr.bodyVerbosityConcise': 'Concise',
-  'repo.pr.bodyVerbosityConciseHelp': 'Un écran de puces courtes, plafonné',
-  'repo.pr.bodyVerbosityNormal': 'Normale',
-  'repo.pr.bodyVerbosityNormalHelp': 'Les puces, plus le raisonnement derrière',
-  'repo.pr.bodyVerbosityDetailed': 'Détaillée',
-  'repo.pr.bodyVerbosityDetailedHelp': 'Le compte rendu complet, sans limite de longueur',
-  'repo.pr.hideIrrelevantSections': 'Masquer les sections non concernées',
-  'repo.pr.hideIrrelevantSectionsHelp': 'Retirer les sections du modèle de PR que le changement ne touche pas : navigateurs et breakpoints sur une tâche back only, modèle de données et permissions sur une tâche front only',
-  'repo.pr.template': 'Modèle de PR',
-  'repo.pr.templateHelp':
-    'Modifié dans l’application desktop — le modèle est un fichier du dépôt (.github/pull_request_template.md), pas un réglage.',
-  'repo.issues.commentLang': 'Langue des commentaires de ticket',
-  'repo.issues.commentLangHelp': 'Langue des commentaires que /magic:pr et /magic:done publient sur le ticket',
-  'repo.issues.ticketLang': 'Langue des tickets',
-  'repo.issues.ticketLangHelp':
-    'Langue de rédaction des nouveaux tickets — suit celle des commentaires tant qu’elle n’est pas définie',
-  'repo.issues.specLang': 'Langue de la spec',
-  'repo.issues.specLangHelp':
-    'Langue de rédaction de la spec écrite par /magic:plan — suit celle des tickets tant qu’elle n’est pas définie',
-  'repo.issues.commentOnPR': 'Commenter le ticket',
-  'repo.issues.commentOnPRHelp':
-    'Publie sur le ticket un commentaire contenant le lien de la pull request, à sa création',
-  'repo.plan.section': 'Planification',
   'repo.plan.intro': 'Transforme une idée en tickets. Sur ce repository :',
-  'repo.plan.step.duplicateOn': 'Cherche d’abord dans le tracker un ticket qui couvre déjà l’idée.',
-  'repo.plan.step.duplicateOff':
-    'Propose une structure directement, sans chercher de ticket existant.',
-  'repo.plan.step.splitConservative':
-    'Découpe le moins possible — une seule story quand l’idée y tient.',
-  'repo.plan.step.splitBalanced':
-    'Découpe dès que deux parties pourraient être finies des jours différents.',
-  'repo.plan.step.splitEager': 'Préfère plusieurs petites stories, chacune livrable seule.',
-  'repo.plan.step.acChecklist':
-    'Chaque story reçoit des critères d’acceptation en checklist, en langage clair.',
-  'repo.plan.step.acGherkin':
-    'Chaque story reçoit des critères d’acceptation en Gherkin — Given / When / Then.',
-  'repo.plan.step.acNone': 'Les stories sont écrites sans critères d’acceptation.',
-  'repo.plan.step.spec':
-    'Écrit une spec à relire et attend votre validation — rien n’est créé avant.',
-  'repo.plan.step.createJira':
-    'Crée ensuite l’epic ({epic}) et ses stories ({story}) dans le projet Jira {project}.',
-  'repo.plan.step.createJiraNoProject':
-    'Crée ensuite l’epic ({epic}) et ses stories ({story}) dans Jira — le projet est demandé pendant le plan.',
-  'repo.plan.step.createGithub': 'Crée ensuite une issue GitHub par story sur {target}.',
-  'repo.plan.step.createGithubNoTarget':
-    'Crée ensuite une issue GitHub par story — aucune adresse GitHub n’est encore renseignée sur ce repository.',
-  'repo.plan.step.createAsk':
-    'Demande à chaque plan où vont les tickets : un epic Jira et ses stories, ou des issues GitHub.',
-  'repo.plan.tail.assign': 'tickets assignés à vous',
-  'repo.plan.tail.labels': 'labels : {labels}',
-  'repo.plan.tail.templates': 'templates d’issue du repo suivis',
-  'repo.plan.trackerJiraHelp': 'Créer l’epic et ses stories dans Jira',
-  'repo.plan.trackerGithubHelp': 'Les créer comme issues sur ce dépôt',
-  'repo.plan.trackerAskHelp': 'Choisir au moment de l’exécution, à chaque plan',
-  'repo.plan.jiraProject': 'Projet Jira',
-  'repo.plan.jiraProjectHelp': 'Clé du projet dans lequel les tickets sont créés (ex. : PROJ)',
-  'repo.plan.epicType': 'Type d’issue pour l’epic',
-  'repo.plan.epicTypeHelp': 'Nom que votre projet Jira donne au type d’issue utilisé pour l’epic',
-  'repo.plan.storyType': 'Type d’issue pour les stories',
-  'repo.plan.storyTypeHelp':
-    'Nom que votre projet Jira donne au type d’issue utilisé pour chaque story',
-  'repo.plan.splitting': 'Niveau de découpage',
-  'repo.plan.splittingHelp':
-    'À quel point une idée devient un epic avec plusieurs stories plutôt qu’un seul ticket',
-  'repo.plan.splittingConservative': 'Prudent',
-  'repo.plan.splittingConservativeHelp':
-    'Un seul ticket, sauf si l’idée couvre clairement des travaux distincts',
-  'repo.plan.splittingBalanced': 'Équilibré',
-  'repo.plan.splittingBalancedHelp':
-    'Découper quand les parties pourraient être terminées des jours différents',
-  'repo.plan.splittingEager': 'Volontaire',
-  'repo.plan.splittingEagerHelp':
-    'Préférer plusieurs petites stories, chacune livrable indépendamment',
-  'repo.plan.acceptanceCriteria': 'Critères d’acceptation',
-  'repo.plan.acceptanceCriteriaHelp':
-    'Format de la liste « comment sait-on que c’est terminé » ajoutée à chaque story',
-  'repo.plan.acceptanceCriteriaChecklist': 'Liste à cocher',
-  'repo.plan.acceptanceCriteriaChecklistHelp': 'Des cases à cocher, écrites en langage courant',
-  'repo.plan.acceptanceCriteriaGherkin': 'Gherkin (Étant donné / Quand / Alors)',
-  'repo.plan.acceptanceCriteriaGherkinHelp':
-    'Un scénario par cas : la situation de départ, l’action, le résultat attendu',
-  'repo.plan.acceptanceCriteriaNone': 'Aucun',
-  'repo.plan.acceptanceCriteriaNoneHelp':
-    'Pas de liste — la description seule dit ce qui est attendu',
-  'repo.plan.useRepoTemplates': 'Utiliser les modèles du dépôt',
-  'repo.plan.useRepoTemplatesHelp':
-    'Remplir les nouveaux tickets à partir des modèles d’issue du dépôt quand il en a',
-  'repo.plan.duplicateCheck': 'Vérifier les doublons',
-  'repo.plan.duplicateCheckHelp':
-    'Chercher dans les tickets existants avant de proposer une structure',
-  'repo.plan.assignToMe': 'M’assigner les tickets',
-  'repo.plan.assignToMeHelp': 'Mettre votre nom sur chaque ticket créé',
-  'repo.plan.defaultLabels': 'Labels par défaut',
-  'repo.plan.defaultLabelsHelp': 'Labels ajoutés à chaque ticket créé par /magic:plan',
-  'repo.danger.section': 'Zone sensible',
-  'repo.danger.delete': 'Supprimer ce dépôt',
-  'repo.danger.deleteTeamHelp': 'Le retire pour tous les membres de l’organisation.',
-  'repo.danger.deletePersonalHelp': 'Le retire de votre configuration Magic Slash.',
-  'repo.danger.deleteAction': 'Supprimer le dépôt',
-  'repo.teamNote': 'Les changements ici s’appliquent à tous les membres de {org}.',
 
   // ── The email-confirmation landing ───────────────────────────────────────
   // Read by components/EmailConfirmed.tsx, which draws over whatever the root of the
