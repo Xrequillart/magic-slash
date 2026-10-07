@@ -1,6 +1,7 @@
 import { useState, type KeyboardEvent } from 'react'
 import { Check, MessageCircleQuestion, ShieldQuestion, SquareTerminal } from './icons'
 import { Button } from './Button'
+import { ChatMarkdown } from './ChatMarkdown'
 import type { MenuBarAnswer } from './MenuBarQuestion'
 
 /**
@@ -21,20 +22,31 @@ import type { MenuBarAnswer } from './MenuBarQuestion'
  * card is then a form (`QuestionForm`): each question with its options and a free-text
  * "other", answered together.
  *
+ * WHAT THE TUI SHOWS, THE CARD SHOWS: the question's `header` as a tag above it, and an
+ * option's `preview` (what picking it produces, a PR body for one) in a box under the
+ * options, the one pointed at or, until then, the first that has one.
+ *
  * THE SELECTION IS LOCAL STATE, so the caller keys this by the question's token.
  */
+
+export interface ChatQuestionOption {
+  label: string
+  description?: string
+  /** Markdown. */
+  preview?: string
+}
 
 export interface ChatQuestionItem {
   prompt: string
   header?: string
-  options: { label: string; description?: string }[]
+  options: ChatQuestionOption[]
   multiSelect?: boolean
 }
 
 export interface ChatQuestionData {
   kind: 'permission' | 'ask'
   prompt: string
-  options: { label: string; description?: string }[]
+  options: ChatQuestionOption[]
   multiSelect?: boolean
   unsupported?: boolean
   /** Every question of an `ask`, the first included. */
@@ -67,6 +79,7 @@ export interface ChatQuestionProps {
 
 export function ChatQuestion({ question, labels, onAnswer, onShowTerminal, busy }: ChatQuestionProps) {
   const [picked, setPicked] = useState<number[]>([])
+  const [shown, setShown] = useState(() => firstPreview(question.options))
   const permission = question.kind === 'permission'
   const MarkIcon = permission ? ShieldQuestion : MessageCircleQuestion
 
@@ -83,7 +96,10 @@ export function ChatQuestion({ question, labels, onAnswer, onShowTerminal, busy 
     <div className="rounded-2xl border border-accent/40 bg-surface p-3" role="group" aria-label={question.prompt}>
       <div className="flex items-start gap-2.5">
         <MarkIcon className="mt-0.5 w-4 h-4 flex-shrink-0 text-accent" />
-        <p className="flex-1 whitespace-pre-wrap text-sm font-medium text-ink">{question.prompt}</p>
+        <div className="min-w-0 flex-1">
+          <QuestionHeader header={question.questions?.[0]?.header} />
+          <p className="whitespace-pre-wrap text-sm font-medium text-ink">{question.prompt}</p>
+        </div>
       </div>
 
       {permission && question.preview && (
@@ -114,6 +130,8 @@ export function ChatQuestion({ question, labels, onAnswer, onShowTerminal, busy 
                   type="button"
                   disabled={busy}
                   aria-pressed={question.multiSelect ? on : undefined}
+                  onMouseEnter={() => setShown((current) => previewOf(question.options, index, current))}
+                  onFocus={() => setShown((current) => previewOf(question.options, index, current))}
                   onClick={() =>
                     question.multiSelect
                       ? setPicked(on ? picked.filter((i) => i !== index) : [...picked, index].sort((a, b) => a - b))
@@ -134,6 +152,7 @@ export function ChatQuestion({ question, labels, onAnswer, onShowTerminal, busy 
               )
             })}
           </div>
+          <OptionPreview option={question.options[shown]} />
           {question.multiSelect && (
             <div className="mt-2.5 flex justify-end">
               <Button size="sm" tone="accent" onClick={() => onAnswer({ kind: 'options', indexes: picked })} disabled={busy || picked.length === 0}>{labels.send}</Button>
@@ -141,6 +160,29 @@ export function ChatQuestion({ question, labels, onAnswer, onShowTerminal, busy 
           )}
         </>
       )}
+    </div>
+  )
+}
+
+/** The first option with a preview, or -1: what the box shows before any is pointed at. */
+function firstPreview(options: ChatQuestionOption[]): number {
+  return options.findIndex((option) => option.preview)
+}
+
+/** Points the box at an option, if it has a preview: one without keeps the box as it was. */
+function previewOf(options: ChatQuestionOption[], index: number, current: number): number {
+  return options[index]?.preview ? index : current
+}
+
+function QuestionHeader({ header }: { header?: string }) {
+  return header ? <p className="text-[11px] font-medium uppercase tracking-wide text-text-secondary/70">{header}</p> : null
+}
+
+function OptionPreview({ option }: { option?: ChatQuestionOption }) {
+  if (!option?.preview) return null
+  return (
+    <div className="mt-2 max-h-80 overflow-auto rounded-xl border border-line bg-surface-sunken px-3 py-2.5">
+      <ChatMarkdown text={option.preview} />
     </div>
   )
 }
@@ -167,6 +209,9 @@ function QuestionForm({ items, labels, onAnswer, busy }: {
   busy?: boolean
 }) {
   const [drafts, setDrafts] = useState<Draft[]>(() => items.map(() => ({ picked: [], other: '' })))
+  const [shown, setShown] = useState<number[]>(() => items.map((item) => firstPreview(item.options)))
+  const point = (index: number, option: number) =>
+    setShown((current) => current.map((s, i) => (i === index ? previewOf(items[index].options, option, s) : s)))
   const oneClick = items.length === 1 && !items[0].multiSelect
 
   const answerOf = (item: ChatQuestionItem, draft: Draft): string => {
@@ -206,7 +251,7 @@ function QuestionForm({ items, labels, onAnswer, busy }: {
           <div className="flex items-start gap-2.5">
             <MessageCircleQuestion className="mt-0.5 w-4 h-4 flex-shrink-0 text-accent" />
             <div className="min-w-0 flex-1">
-              {item.header && items.length > 1 && <p className="text-[11px] font-medium uppercase tracking-wide text-text-secondary/70">{item.header}</p>}
+              <QuestionHeader header={item.header} />
               <p className="whitespace-pre-wrap text-sm font-medium text-ink">{item.prompt}</p>
             </div>
           </div>
@@ -221,6 +266,8 @@ function QuestionForm({ items, labels, onAnswer, busy }: {
                   type="button"
                   disabled={busy}
                   aria-pressed={on}
+                  onMouseEnter={() => point(index, o)}
+                  onFocus={() => point(index, o)}
                   onClick={() => pick(index, o)}
                   className={`flex w-full items-start gap-2.5 rounded-xl border px-3 py-2 text-left transition-colors disabled:opacity-50 ${
                     on ? 'border-accent bg-accent/10' : 'border-line hover:border-accent/40 hover:bg-ink/5'
@@ -236,6 +283,7 @@ function QuestionForm({ items, labels, onAnswer, busy }: {
                 </button>
               )
             })}
+            <OptionPreview option={item.options[shown[index]]} />
             <input
               type="text"
               value={drafts[index].other}

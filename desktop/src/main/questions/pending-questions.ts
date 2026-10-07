@@ -127,6 +127,7 @@ const ANSWERABLE_NOTIFICATION = /permission|approve|allow|autoris/i
 interface AskQuestionOption {
   label?: unknown
   description?: unknown
+  preview?: unknown
 }
 
 interface AskQuestion {
@@ -148,7 +149,8 @@ function parseOptions(raw: unknown): TrayQuestionOption[] {
     const label = asString(option?.label)
     if (!label) continue
     const description = asString(option?.description)
-    options.push(description ? { label, description } : { label })
+    const preview = asString(option?.preview)
+    options.push({ label, ...(description ? { description } : {}), ...(preview ? { preview } : {}) })
   }
   return options
 }

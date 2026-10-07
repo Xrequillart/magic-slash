@@ -3966,6 +3966,8 @@ export interface ScriptTerminalInfo {
 export interface TrayQuestionOption {
   label: string
   description?: string
+  /** What picking it would produce (a PR body, a snippet), markdown: the TUI shows it beside the options. */
+  preview?: string
 }
 
 /**

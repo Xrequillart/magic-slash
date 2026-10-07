@@ -53,6 +53,13 @@ describe('setFromAskQuestion', () => {
     expect(question!.unsupported).toBeUndefined()
   })
 
+  it('keeps the preview an option carries', () => {
+    const question = setFromAskQuestion('term-1', {
+      tool_input: { questions: [{ question: 'Apply?', options: [{ label: 'Yes', preview: '**Title**\n\nBody' }, { label: 'No' }] }] },
+    })
+    expect(question!.options).toEqual([{ label: 'Yes', preview: '**Title**\n\nBody' }, { label: 'No' }])
+  })
+
   it('falls back to the header when the question text is missing', () => {
     const question = setFromAskQuestion('term-1', {
       tool_input: { questions: [{ header: 'Database', options: [{ label: 'Postgres' }] }] },
