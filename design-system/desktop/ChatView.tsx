@@ -243,6 +243,14 @@ const FIELD_TEXT = 'py-1 text-sm leading-5 whitespace-pre-wrap break-words'
 /** Between the thread's last line and the top of the floating composer. */
 const DOCK_GAP_PX = 24
 
+/** How far above the composer the thread starts fading out, and how far under its top
+    edge it is gone: a gradient, never a cut. */
+const FADE_ABOVE_PX = 56
+const FADE_UNDER_PX = 12
+
+/** The same fade at the pane's top edge. The pinned prompt reminder sits just below it. */
+const FADE_TOP_PX = 24
+
 /** The background button's mark: the wave that says an agent is at work, not a glyph. */
 const WaveMark: IconComponent = ({ className }) => <Loader variant="wave" size="sm" tone="accent" className={className} />
 
@@ -600,6 +608,11 @@ export function ChatView({
   // THE COMPOSER FLOATS over the conversation rather than sitting under it: the thread
   // scrolls the full height of the pane, under the card, and is padded at the bottom by
   // the card's own measured height so its last line always clears it.
+  //
+  // THE THREAD FADES OUT as it nears the card, margins included, so nothing reads beside
+  // or under it, and at the pane's top edge the same way. A mask rather than a painted gradient: the pane's ground is a translucent
+  // veil, and no colour laid on top would match it in every theme.
+  const threadFade = `linear-gradient(to bottom, transparent, black ${FADE_TOP_PX}px, black calc(100% - ${dockHeight + FADE_ABOVE_PX}px), transparent calc(100% - ${Math.max(dockHeight - FADE_UNDER_PX, 0)}px))`
   return (
     <div
       className="relative h-full bg-surface-sunken"
@@ -617,6 +630,7 @@ export function ChatView({
           if (hiddenTurns > 0 && el.scrollTop < EARLIER_PX) showEarlier()
         }}
         className={`h-full overflow-y-auto ${loading ? 'invisible' : ''}`}
+        style={{ maskImage: threadFade, WebkitMaskImage: threadFade }}
       >
         <div className="px-6 pt-6 flex flex-col gap-3" style={{ paddingBottom: dockHeight + DOCK_GAP_PX }}>
           {/* THE CONVERSATION OPENS ON WHO IS IN IT, once there is one: the empty view says
@@ -956,7 +970,7 @@ function ChatTurn({ prompt, scrollRef, stamp, children }: { prompt: ChatUserEntr
       <div
         ref={pinRef}
         aria-hidden={!pinned}
-        className={`pointer-events-none sticky top-0 z-10 flex justify-end pt-2 pb-4 transition-opacity duration-150 motion-reduce:transition-none ${pinned ? 'opacity-100' : 'opacity-0'}`}
+        className={`pointer-events-none sticky top-0 z-10 flex justify-end pt-6 pb-4 transition-opacity duration-150 motion-reduce:transition-none ${pinned ? 'opacity-100' : 'opacity-0'}`}
       >
         {/* The thread blurs under it, fading out below, as it does under the composer. */}
         <div
