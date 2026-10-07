@@ -33,7 +33,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "ds:install": "npm --prefix design-system install",
-    "supabase:config:push": "bash scripts/supabase-config-push.sh"
+    "supabase:config:push": "bash scripts/supabase-config-push.sh",
+    "video:install": "npm run ds:install && npm --prefix video install",
+    "video:studio": "npm --prefix video run studio",
+    "video:render": "npm --prefix video run render"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",
