@@ -14,6 +14,7 @@ import { splitInsights } from './chatInsights'
 import { ChatQuestion, type ChatQuestionData, type ChatQuestionLabels } from './ChatQuestion'
 import { ChatCommandMenu } from './ChatCommandMenu'
 import { commandSpans, matchCommands, slashTokenAt, type ChatCommand } from './chatCommandMatch'
+import { completeTrailingShortcode } from './chatEmoji'
 import { ChatQueueCard, type ChatQueuedPromptData } from './ChatQueueCard'
 import { ChatBackgroundCard, type ChatBackgroundAgentData } from './ChatBackgroundCard'
 import type { IconComponent } from './types'
@@ -170,6 +171,12 @@ export interface ChatViewProps {
    */
   sendKey?: 'enter' | 'mod-enter'
   /**
+   * Whether the terminal's prompt completes `:emoji:` shortcodes (Claude Code's
+   * `emojiCompletionEnabled`, on by default). On, Enter on a trailing `:+1` swaps it for 👍
+   * here as it would there; off, it is sent as typed. See chatEmoji.ts.
+   */
+  emojiCompletion?: boolean
+  /**
    * WHICH TOOL CALLS GET A LINE. `all` (the default): every one. `changes`: only what
    * changed something (an edit, a write, a command) or failed; reading and searching are
    * the agent finding its way, and a long task drowned its answers in them. `grouped`:
@@ -301,7 +308,7 @@ export function ChatView({
   entries, working, waiting, onSend, onInterrupt, onShowTerminal, labels, autoFocus, highlight,
   question, onAnswer, answering, commands = [], highlightLines, onPickFiles, resolveFile,
   initialDraft, onDraftChange, restoredDraft, onDraftRestored, stickyPrompt = true, codeFontSize, claudeCodeVersion, startedLabel, queue = [], background = [], loading = false,
-  sendKey = 'enter', toolDetail = 'all', diffs = 'preview', timestamps = 'never', formatTime, contextOffer,
+  sendKey = 'enter', emojiCompletion = true, toolDetail = 'all', diffs = 'preview', timestamps = 'never', formatTime, contextOffer,
 }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -549,6 +556,18 @@ export function ChatView({
   const send = () => {
     const text = draft.trim()
     if (!text && attachments.length === 0) return
+    // `:+1` at the very end: the terminal's Enter would only pick the emoji, so this one
+    // does too (see chatEmoji.ts). Attachments go after the text, so they move the end.
+    const completed = emojiCompletion && attachments.length === 0 ? completeTrailingShortcode(text) : null
+    if (completed !== null) {
+      setDraft(completed)
+      setCaret(completed.length)
+      requestAnimationFrame(() => {
+        const el = inputRef.current
+        if (el) el.selectionStart = el.selectionEnd = el.value.length
+      })
+      return
+    }
     onSend(text, attachments.map((a) => a.path))
     setDraft('')
     setCaret(0)
