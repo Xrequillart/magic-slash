@@ -193,3 +193,21 @@ describe('liveBackground', () => {
     expect(liveBackground(agents, undefined)).toBe(agents)
   })
 })
+
+describe('a compaction', () => {
+  it('shows the boundary as a notice and never the summary as a prompt', () => {
+    const t = new ChatTranscript()
+    t.push(line({ type: 'user', uuid: 'u', message: { content: 'refactor the parser' } }))
+    t.push(line({ type: 'system', subtype: 'compact_boundary', uuid: 'b', content: 'Conversation compacted', isMeta: false }))
+    t.push(line({
+      type: 'user',
+      uuid: 's',
+      isCompactSummary: true,
+      isVisibleInTranscriptOnly: true,
+      message: { role: 'user', content: 'This session is being continued from a previous conversation that ran out of context.' },
+    }))
+    expect(t.entries.map((e) => e.kind)).toEqual(['user', 'notice'])
+    expect(t.entries[1]).toEqual({ kind: 'notice', id: 'b', text: 'Conversation compacted' })
+    expect(t.unanswered).toBeNull()
+  })
+})

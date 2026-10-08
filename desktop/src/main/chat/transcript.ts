@@ -92,13 +92,18 @@ export class ChatTranscript {
 
   /** Returns whether the entries changed. */
   push(line: string): boolean {
-    let data: { type?: string; uuid?: string; timestamp?: unknown; isMeta?: boolean; isSidechain?: boolean; content?: unknown; message?: { content?: unknown }; toolUseResult?: unknown; operation?: unknown; attachment?: QueuedAttachment; origin?: { kind?: string } }
+    let data: { type?: string; subtype?: string; uuid?: string; timestamp?: unknown; isMeta?: boolean; isSidechain?: boolean; isVisibleInTranscriptOnly?: boolean; content?: unknown; message?: { content?: unknown }; toolUseResult?: unknown; operation?: unknown; attachment?: QueuedAttachment; origin?: { kind?: string } }
     try {
       data = JSON.parse(line)
     } catch {
       return false
     }
     if (!data || data.isMeta || data.isSidechain) return false
+    // A compaction writes the summary it starts again from as a `user` line, marked as
+    // shown only in the transcript view (`isCompactSummary` too): Claude Code's own prompt
+    // never shows it, and the chat must not show it as something the user typed. The
+    // `compact_boundary` line just before it is what says it happened, below.
+    if (data.isVisibleInTranscriptOnly) return false
     if (data.type === 'queue-operation') {
       // A notification is queued before it is read in as a turn: the first word of an end.
       const ended = data.operation === 'enqueue' && this.endBackground(data.content)
@@ -127,6 +132,12 @@ export class ChatTranscript {
       this.unanswered = null
       if (!output) return false
       this.entries.push({ kind: 'notice', id, text: output })
+      return true
+    }
+    if (data.type === 'system' && data.subtype === 'compact_boundary') {
+      // Nothing before it is answered any more: Claude goes on from the summary.
+      this.unanswered = null
+      this.entries.push({ kind: 'notice', id, text: typeof data.content === 'string' && data.content.trim() ? data.content.trim() : 'Conversation compacted' })
       return true
     }
     if (data.type !== 'user' && data.type !== 'assistant') return false
