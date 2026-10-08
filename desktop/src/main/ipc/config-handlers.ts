@@ -52,7 +52,6 @@ import { applyLanguage, applyTheme, currentTheme } from '../appearance'
 import { CODE_SAMPLES } from '../code-sample'
 import { listClaudeModels } from '../claude-models'
 import { readEmojiCompletion, writeEmojiCompletion } from '../claude-emoji-completion'
-import { getTerminalCwd } from '../pty/terminal-manager'
 import { unifiedSpecDiff } from '../store/specDiff'
 import {
   validateRepoName,
@@ -611,9 +610,8 @@ export function setupConfigHandlers() {
   ipcMain.handle('claude:listModels', () => listClaudeModels())
 
   // Claude Code's `:emoji:` typeahead, in its own settings rather than the app's (see
-  // claude-emoji-completion.ts). With a terminal id, as that agent's session merges it.
-  ipcMain.handle('claude:getEmojiCompletion', (_event, { terminalId }: { terminalId?: unknown } = {}) =>
-    readEmojiCompletion(typeof terminalId === 'string' ? getTerminalCwd(terminalId) : null))
+  // claude-emoji-completion.ts). The read for one agent's session is in terminal-handlers,
+  // which may reach the PTYs; this file may not (its tests run without node-pty).
   ipcMain.handle('claude:setEmojiCompletion', (_event, { enabled }: { enabled: unknown }) => {
     if (typeof enabled !== 'boolean') throw new Error('Invalid emojiCompletionEnabled value: must be a boolean')
     writeEmojiCompletion(enabled)

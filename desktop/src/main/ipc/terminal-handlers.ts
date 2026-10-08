@@ -26,6 +26,7 @@ import {
   writeContextDigest,
   type TerminalMetadata,
 } from '../pty/terminal-manager'
+import { readEmojiCompletion } from '../claude-emoji-completion'
 import { noteTerminalInput, isUserInput, releaseHeld, clearPendingQuestion } from '../questions/pending-questions'
 import { agentNotification, type AgentSubjectInput } from '../notifications/agent-message'
 import { resolveAgentCwd } from '../pty/agent-cwd'
@@ -793,6 +794,12 @@ export function setupTerminalHandlers(
     writeToTerminal(id, '\x03')
     return dropUnansweredPrompt(id)
   })
+
+  // Claude Code's `:emoji:` typeahead as this agent's session merges it, from its cwd (see
+  // claude-emoji-completion.ts); without an id, the user's own value. Written from Settings
+  // by `claude:setEmojiCompletion` in config-handlers.
+  ipcMain.handle('claude:getEmojiCompletion', (_event, { terminalId }: { terminalId?: unknown } = {}) =>
+    readEmojiCompletion(typeof terminalId === 'string' ? getTerminalCwd(terminalId) : null))
 
   // Get terminal display buffer (for reconnection after refresh)
   ipcMain.handle('terminal:getBuffer', async (_event, { id }) => {
