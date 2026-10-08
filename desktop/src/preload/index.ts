@@ -105,6 +105,10 @@ const configApi = {
   setWorkflowSettings: (patch: WorkflowSettings): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setWorkflowSettings', patch),
   listClaudeModels: (): Promise<ClaudeModelOption[]> => ipcRenderer.invoke('claude:listModels'),
+  getClaudeEmojiCompletion: (terminalId?: string): Promise<boolean> =>
+    ipcRenderer.invoke('claude:getEmojiCompletion', { terminalId }),
+  setClaudeEmojiCompletion: (enabled: boolean): Promise<boolean> =>
+    ipcRenderer.invoke('claude:setEmojiCompletion', { enabled }),
   setQuickLaunch: (patch: { repo?: string; background?: boolean; launchMode?: LaunchMode | null }): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setQuickLaunch', patch),
   setQuickSettings: (patch: { enabled?: boolean; items?: QuickSettingId[] }): Promise<{ config: Config }> =>

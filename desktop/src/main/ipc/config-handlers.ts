@@ -51,6 +51,8 @@ import {
 import { applyLanguage, applyTheme, currentTheme } from '../appearance'
 import { CODE_SAMPLES } from '../code-sample'
 import { listClaudeModels } from '../claude-models'
+import { readEmojiCompletion, writeEmojiCompletion } from '../claude-emoji-completion'
+import { getTerminalCwd } from '../pty/terminal-manager'
 import { unifiedSpecDiff } from '../store/specDiff'
 import {
   validateRepoName,
@@ -607,6 +609,16 @@ export function setupConfigHandlers() {
   // What the installed CLI's `/model` offers, for the default-model picker. An empty list
   // means no `claude` on this machine; a rejection, that it did not answer in time.
   ipcMain.handle('claude:listModels', () => listClaudeModels())
+
+  // Claude Code's `:emoji:` typeahead, in its own settings rather than the app's (see
+  // claude-emoji-completion.ts). With a terminal id, as that agent's session merges it.
+  ipcMain.handle('claude:getEmojiCompletion', (_event, { terminalId }: { terminalId?: unknown } = {}) =>
+    readEmojiCompletion(typeof terminalId === 'string' ? getTerminalCwd(terminalId) : null))
+  ipcMain.handle('claude:setEmojiCompletion', (_event, { enabled }: { enabled: unknown }) => {
+    if (typeof enabled !== 'boolean') throw new Error('Invalid emojiCompletionEnabled value: must be a boolean')
+    writeEmojiCompletion(enabled)
+    return readEmojiCompletion()
+  })
 
   // How an agent nobody has switched is shown. A fallback only: see Agent.displayMode.
   ipcMain.handle('config:setDefaultDisplayMode', async (_event, { mode }: { mode: unknown }) => {

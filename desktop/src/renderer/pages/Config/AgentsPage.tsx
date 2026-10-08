@@ -5,6 +5,7 @@ import { useToggleRow } from './ToggleRow'
 import { useFormatSelect } from './FormatSelect'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
+import { useClaudeEmojiCompletion } from '../../hooks/useClaudeEmojiCompletion'
 import { useT, type MessageKey } from '../../i18n'
 import { SELECT_WIDTH } from '../../theme/controls'
 import { showToast } from '../../components/Toast'
@@ -320,6 +321,16 @@ function ChatSection() {
     errorMessage: t('toast.settingUpdateFailed'),
   })
 
+  // Claude Code's own setting, written to its settings.json: the terminal follows too.
+  const [emojiCompletion, setEmojiCompletion] = useClaudeEmojiCompletion()
+  const emojiCompletionRow = useToggleRow({
+    label: t('settings.chat.emojiCompletion.label'),
+    help: t('settings.chat.emojiCompletion.help'),
+    value: emojiCompletion,
+    onChange: setEmojiCompletion,
+    errorMessage: t('toast.settingUpdateFailed'),
+  })
+
   const select = <V extends string>(value: V, values: readonly V[], labels: Record<V, MessageKey>, label: string, onChange: (next: V) => void) => ({
     kind: 'select' as const,
     value,
@@ -361,6 +372,7 @@ function ChatSection() {
             control: select(config?.chatTimestamps ?? 'never', CHAT_TIMESTAMPS, CHAT_TIMESTAMPS_LABEL, t('settings.chat.timestamps.label'), (timestamps) => write({ timestamps })),
           },
           { id: 'chatStickyPrompt', ...stickyPromptRow },
+          { id: 'chatEmojiCompletion', ...emojiCompletionRow },
         ]}
       />
     </div>

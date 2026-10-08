@@ -359,6 +359,9 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.chat.timestamps.always': 'Toujours',
   'settings.chat.stickyPrompt.label': 'Garder le prompt en vue dans le chat',
   'settings.chat.stickyPrompt.help': 'Pendant le défilement, le prompt à l’origine de ce que vous lisez reste épinglé en haut',
+  'settings.chat.emojiCompletion.label': 'Compléter les emojis (:+1 → 👍)',
+  'settings.chat.emojiCompletion.help':
+    'Entrée transforme un :code en fin de message en emoji au lieu d’envoyer. Réglage de Claude Code : il s’applique aussi au terminal et à vos autres sessions',
   'settings.application.infoSidebar.label': 'Ouvrir le panneau d’informations sur une nouvelle session',
   'settings.application.infoSidebar.help':
     'Chaque session retient ensuite si vous avez laissé son panneau ouvert ou fermé',

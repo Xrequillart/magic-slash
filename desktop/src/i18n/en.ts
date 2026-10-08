@@ -397,6 +397,9 @@ export const en = {
   'settings.chat.timestamps.always': 'Always',
   'settings.chat.stickyPrompt.label': 'Keep the prompt in sight in the chat',
   'settings.chat.stickyPrompt.help': 'While you scroll, the prompt behind what you are reading stays pinned at the top',
+  'settings.chat.emojiCompletion.label': 'Complete emojis (:+1 → 👍)',
+  'settings.chat.emojiCompletion.help':
+    'Enter turns a :code at the end of a message into its emoji instead of sending. A Claude Code setting: it applies to the terminal and your other sessions too',
   'settings.application.infoSidebar.label': 'Open the info panel on a new session',
   'settings.application.infoSidebar.help':
     'Each session then remembers whether you left its panel open or closed',

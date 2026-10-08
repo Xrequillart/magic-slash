@@ -231,6 +231,11 @@ export const SETTINGS_CATALOGUE: readonly SettingsSearchEntry[] = [
   },
   {
     tab: 'agents',
+    labelKey: 'settings.chat.emojiCompletion.label',
+    helpKey: 'settings.chat.emojiCompletion.help',
+  },
+  {
+    tab: 'agents',
     labelKey: 'settings.chat.sendKey.label',
     helpKey: 'settings.chat.sendKey.help',
     options: keys(Object.values(CHAT_SEND_KEY_LABEL)),

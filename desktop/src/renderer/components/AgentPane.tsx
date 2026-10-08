@@ -6,6 +6,7 @@ import { useStore } from '../store'
 import { useLocale, useT } from '../i18n'
 import { TerminalView } from './TerminalView'
 import { useCodeAppearance } from '../hooks/useCodeAppearance'
+import { useClaudeEmojiCompletion } from '../hooks/useClaudeEmojiCompletion'
 import { resolveDisplayMode } from '../utils/displayMode'
 import { formatPaths } from '../utils/formatDroppedPaths'
 import { showToast } from './Toast'
@@ -94,6 +95,8 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   const toolDetail = useStore((s) => s.config?.chatToolDetail) ?? 'all'
   const diffs = useStore((s) => s.config?.chatDiffs) ?? 'collapsed'
   const timestamps = useStore((s) => s.config?.chatTimestamps) ?? 'never'
+  // Claude Code's own setting, as this agent's session reads it: the chat mirrors its prompt.
+  const [emojiCompletion] = useClaudeEmojiCompletion(terminal.id)
   const highlight = useCallback(
     (code: string, lang: string | undefined) => window.electronAPI.terminal.highlightCode(code, lang, shikiTheme),
     [shikiTheme]
@@ -171,6 +174,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
             onDraftRestored={() => setRestored(null)}
             stickyPrompt={stickyPrompt}
             sendKey={sendKey}
+            emojiCompletion={emojiCompletion}
             toolDetail={toolDetail}
             diffs={diffs}
             timestamps={timestamps}
