@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageMetadata } from '@/lib/pageMetadata'
 import { pageTitle } from '@/lib/pageTitles'
 import { FeaturesContent } from '@/components/site/features/FeaturesContent'
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
@@ -29,10 +30,10 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * acceptance criterion 1 of #269, and `hostRouting.test.ts` pins it.
  */
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: pageTitle('/features'),
   description: 'Every command, every panel, every switch — grouped the way the app groups them.',
-}
+})
 
 export default function FeaturesPage() {
   return (

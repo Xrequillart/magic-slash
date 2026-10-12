@@ -56,7 +56,7 @@ const DESIGN_PAGES: Record<string, string> = {
 const DESIGN_PREFIX = '/design-system'
 
 /** The domain every host of the product shares. */
-const SHARED_DOMAIN = 'magic-slash.io'
+export const SHARED_DOMAIN = 'magic-slash.io'
 
 /**
  * The paths the PUBLIC site owns. Everything not listed here belongs to the app.

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageMetadata } from '@/lib/pageMetadata'
 import { pageTitle } from '@/lib/pageTitles'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { SiteFooter } from '@/components/site/SiteFooter'
@@ -31,10 +32,12 @@ import { DocumentTitle } from '@/components/site/DocumentTitle'
  * to `/login` by `middleware.ts`, so the product keeps its front door.
  */
 
-export const metadata: Metadata = {
+// Through the helper like every page: this is the card a future showcase route that
+// sets no metadata of its own inherits, so it has to match its `<title>` too.
+export const metadata: Metadata = pageMetadata({
   title: pageTitle('/'),
   description: 'From ticket to merge — without the busywork.',
-}
+})
 
 export default function ShowcaseLayout({ children }: { children: React.ReactNode }) {
   return (

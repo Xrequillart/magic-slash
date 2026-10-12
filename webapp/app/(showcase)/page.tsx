@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageMetadata, SITE_URL } from '@/lib/pageMetadata'
 import { pageTitle } from '@/lib/pageTitles'
 import { HeroSection } from '@/components/site/home/HeroSection'
 import { PillarsSection } from '@/components/site/home/PillarsSection'
@@ -209,11 +210,14 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * hero's decorative overflow from widening the document, and nothing here overflows.
  */
 
-export const metadata: Metadata = {
+const DESCRIPTION =
+  'From idea to merged PR. Eight Claude Code skills write the spec, create the tickets, open and review the PR. All you do is make the calls.'
+
+export const metadata: Metadata = pageMetadata({
   title: pageTitle('/'),
-  description:
-    'From idea to merged PR. Eight Claude Code skills write the spec, create the tickets, open and review the PR. All you do is make the calls.',
-}
+  description: DESCRIPTION,
+  url: SITE_URL,
+})
 
 export default function Home() {
   return (

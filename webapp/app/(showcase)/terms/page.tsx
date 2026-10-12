@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageMetadata } from '@/lib/pageMetadata'
 import { pageTitle } from '@/lib/pageTitles'
 import { TermsContent } from '@/components/site/terms/TermsContent'
 
@@ -32,11 +33,11 @@ import { TermsContent } from '@/components/site/terms/TermsContent'
  * liability reads as a punchline.
  */
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: pageTitle('/terms'),
   description:
     'The terms the Magic Slash app and the hosted account are provided under, and what they do not promise.',
-}
+})
 
 export default function TermsPage() {
   return <TermsContent />

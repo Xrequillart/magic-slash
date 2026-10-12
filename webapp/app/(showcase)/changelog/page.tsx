@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageMetadata } from '@/lib/pageMetadata'
 import { pageTitle } from '@/lib/pageTitles'
 import { ChangelogContent } from '@/components/site/changelog/ChangelogContent'
 import { loadChangelog } from '@/lib/changelog'
@@ -41,10 +42,10 @@ import { loadChangelog } from '@/lib/changelog'
  * them to download something at the bottom of that answer is the wrong ask.
  */
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: pageTitle('/changelog'),
   description: 'Every release of magic-slash — what was added, what changed, what was fixed.',
-}
+})
 
 export default function ChangelogPage() {
   return <ChangelogContent versions={loadChangelog()} />
