@@ -23,6 +23,7 @@ no value is defined, use the default value.
 | Template checkboxes  | `.repositories.<name>.pullRequest.templateCheckboxes` | `'never'` | Which boxes of a project PR template may be ticked: `never` / `type` / `all` (Step 6.1) |
 | Body verbosity       | `.repositories.<name>.pullRequest.bodyVerbosity`      | `'concise'` | How long the PR body may be: `concise` / `normal` / `detailed` (Step 6.1) |
 | Hide irrelevant sections | `.repositories.<name>.pullRequest.hideIrrelevantSections` | `true` | Leave out the project template's sections about a surface the diff does not touch (Step 6.1) |
+| Draft                | `.repositories.<name>.pullRequest.draft`              | `false` | Open the PR as a draft instead of ready for review (Step 6.3) |
 
 ## Issues parameters
 

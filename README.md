@@ -416,7 +416,8 @@ edit by hand:
         "testAccountsSource": "",
         "templateCheckboxes": "never",
         "bodyVerbosity": "concise",
-        "hideIrrelevantSections": true
+        "hideIrrelevantSections": true,
+        "draft": false
       },
       "issues": {
         "commentOnPR": true,
@@ -490,6 +491,7 @@ folder path stays yours:
 | `templateCheckboxes` | Which boxes of the repository's PR template `/magic:pr` may tick: `never`, `type` (one box in the "Type of Change" group), or `all` | `never` |
 | `bodyVerbosity`      | How long the PR body `/magic:pr` writes may be: `concise`, `normal`, or `detailed` | `concise` |
 | `hideIrrelevantSections` | Leave out the sections of the repository's PR template that the change does not touch (browsers on a backend-only change, data model on a front-only one) | `true` |
+| `draft`              | Open the pull request as a draft instead of ready for review (the CI watch does not run on a draft) | `false` |
 
 When `testAccounts` is not `off`, `/magic:pr` adds the account a reviewer should log in with to the "How to test" prerequisites of the PR body, and `/magic:start` reports it in its final summary. The accounts are looked up in this order, stopping at the first hit: `testAccountsSource`, a project-local skill under the project's `.claude/skills/`, then documented files (`TESTING.md`, `docs/test*account*`, the test section of `CONTRIBUTING.md`). If nothing is found, the PR says so — no account is ever invented.
 

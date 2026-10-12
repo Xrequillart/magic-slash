@@ -248,6 +248,8 @@ export interface PrSummaryInput {
   bodyVerbosity: string
   /** True is the default, and says nothing. */
   hideIrrelevantSections: boolean
+  /** False is the default, and says nothing. */
+  draft: boolean
 }
 
 export function prSummary(input: PrSummaryInput): SkillSummary {
@@ -281,6 +283,7 @@ export function prSummary(input: PrSummaryInput): SkillSummary {
   const verbosity = BODY_VERBOSITY_TAILS[input.bodyVerbosity]
   if (verbosity) tail.push({ key: verbosity })
   if (!input.hideIrrelevantSections) tail.push({ key: 'repo.pr.tail.keepAllSections' })
+  if (input.draft) tail.push({ key: 'repo.pr.tail.draft' })
 
   return { steps, tail }
 }

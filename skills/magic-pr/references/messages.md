@@ -277,6 +277,7 @@ Choix (1/2) :
 
 Title: {title}
 Base:  {base_branch} ← {head_branch}
+State: {pr_state}
 
 Description:
 {description_preview}
@@ -296,6 +297,7 @@ Create this PR? (Y/n/edit)
 
 Titre : {title}
 Base :  {base_branch} ← {head_branch}
+État :  {pr_state}
 
 Description :
 {description_preview}

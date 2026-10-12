@@ -688,6 +688,7 @@ export function updateRepositoryPullRequestSettings(name: string, settings: Sett
   applySetting(pullRequest, 'templateCheckboxes', settings.templateCheckboxes, isOneOf(['never', 'type', 'all']))
   applySetting(pullRequest, 'bodyVerbosity', settings.bodyVerbosity, isOneOf(['concise', 'normal', 'detailed']))
   applySetting(pullRequest, 'hideIrrelevantSections', settings.hideIrrelevantSections, isBool)
+  applySetting(pullRequest, 'draft', settings.draft, isBool)
 
   if (Object.keys(pullRequest).length === 0) {
     delete config.repositories[name].pullRequest

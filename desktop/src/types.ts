@@ -1405,6 +1405,11 @@ export interface RepositoryConfig {
      * resolved at read time like the two keys above.
      */
     hideIrrelevantSections?: boolean
+    /**
+     * Whether /magic:pr opens the pull request as a draft rather than ready for review.
+     * Absent means false, resolved at read time like the keys above.
+     */
+    draft?: boolean
   }
   issues?: {
     commentOnPR?: boolean
@@ -3582,6 +3587,7 @@ export interface OrgSharedConfig {
     templateCheckboxes?: string  // 'never' | 'type' | 'all'
     bodyVerbosity?: string       // 'concise' | 'normal' | 'detailed'
     hideIrrelevantSections?: boolean
+    draft?: boolean
   }
   repoKeywords?: Record<string, string[]>
 }

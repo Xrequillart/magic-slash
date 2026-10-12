@@ -532,6 +532,28 @@ describe('updateRepositoryPullRequestSettings — hideIrrelevantSections', () =>
   })
 })
 
+describe('updateRepositoryPullRequestSettings — draft', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  it('persists both values and ignores a non-boolean', () => {
+    updateRepositoryPullRequestSettings('api', { draft: true })
+    expect(readConfig().repositories.api.pullRequest?.draft).toBe(true)
+
+    updateRepositoryPullRequestSettings('api', { draft: 'yes' as unknown as boolean })
+    expect(readConfig().repositories.api.pullRequest?.draft).toBe(true)
+
+    updateRepositoryPullRequestSettings('api', { draft: false })
+    expect(readConfig().repositories.api.pullRequest?.draft).toBe(false)
+  })
+})
+
 describe('updateRepositoryLanguages — ticket', () => {
   beforeEach(async () => {
     resetConfigCache()

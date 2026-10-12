@@ -310,7 +310,7 @@ The exact markdown for both cases (the Jira link, adapted to the user's domain f
 
 ### 6.2: Preview and confirm before creation
 
-Use `AskUserQuestion` with the text from **`MSG_PR_PREVIEW`** (substituting `{title}`, `{base_branch}`, `{head_branch}`, and `{description_preview}` — first 10 lines of the description). Options:
+Use `AskUserQuestion` with the text from **`MSG_PR_PREVIEW`** (substituting `{title}`, `{base_branch}`, `{head_branch}`, `{pr_state}` — `Draft` / `Brouillon` when `pullRequest.draft` is `true`, else `Ready for review` / `Prête pour la review` — and `{description_preview}` — first 10 lines of the description). Options:
 - **Y/O** or Enter: Proceed with creation
 - **n**: Abort
 - **edit**: Let the user modify the title or description before creation
@@ -326,6 +326,8 @@ If any check fails, follow the failure procedure at the end of `references/pr-bo
 ### 6.3: Create the PR
 
 Use `mcp__github__create_pull_request` with **Base** set to the branch resolved in step 6.0 and **Head** set to the current branch.
+
+Read `pullRequest.draft` from the config already loaded in Step 0 (default `false`; only the literal `true` turns it on). When it is `true`, pass `draft: true` so the PR opens as a draft; otherwise pass `draft: false` and it opens ready for review. The user's answer in Step 6.2 wins over the config: a "draft" or "brouillon" there opens a draft, a "ready" or "prête" opens it ready.
 
 If the PR creation fails, retry once. If it fails again, display **`MSG_PR_CREATION_FAILED`** and ask the user if they want to: (1) Retry, (2) Create the PR manually on GitHub. Display the branch name and base branch to help with manual creation.
 

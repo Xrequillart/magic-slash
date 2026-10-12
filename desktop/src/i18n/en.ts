@@ -1149,9 +1149,13 @@ export const en = {
   'repo.pr.tail.bodyDetailed': 'writes a full description, with no length cap',
   // Only emitted when the setting is off: leaving out what does not apply is the default.
   'repo.pr.tail.keepAllSections': 'keeps every section of the PR template, even those the change does not touch',
+  'repo.pr.tail.draft': 'opens the pull request as a draft',
   'repo.pr.languageHelp': 'Language used for pull request titles and descriptions',
   'repo.pr.autoLink': 'Auto-link Tickets',
   'repo.pr.autoLinkHelp': 'Add Jira/GitHub ticket links in PR description',
+  'repo.pr.draft': 'Open as draft',
+  'repo.pr.draftHelp': 'Create the pull request as a draft, to be marked ready for review on GitHub when you choose. Off, it opens ready for review',
+  'repo.pr.watchCIDraftNote': 'Not run on a draft pull request',
   'repo.pr.watchCI': 'Watch CI & Review',
   'repo.pr.watchCIHelp': 'After creating the PR, wait for the checks, fix failures automatically, address review feedback, and add the PR preview URL to the test scenarios when the project publishes one. Without it, the test scenarios stay local-only',
   'repo.pr.testAccounts': 'Test Accounts',

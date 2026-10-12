@@ -2284,6 +2284,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
     BODY_VERBOSITY_MODES.find((mode) => mode === prSettings.bodyVerbosity) ?? 'concise'
   // Only the literal `false` turns it off, the way the skill reads it.
   const hideIrrelevantSectionsVal = prSettings.hideIrrelevantSections !== false
+  // And only the literal `true` turns this one on.
+  const draftVal = prSettings.draft === true
   const commentOnPRVal = issuesSettings.commentOnPR !== undefined ? issuesSettings.commentOnPR : true
   const planTrackerVal = planSettings.tracker || 'ask'
   // Resolved, not read: both keys fall back to the legacy `issues.jiraUrl` /
@@ -2822,14 +2824,21 @@ export function RepoPage({ repoName }: RepoPageProps) {
       id: 'after',
       title: t('repo.pr.groupAfter'),
       rows: [
+        switchRow('draft', t('repo.pr.draft'), t('repo.pr.draftHelp'),
+          draftVal, (next) => handlePRSettingChange('draft', next)),
         // The comment lands on the TICKET and carries the PR link. It sits here
         // rather than with the tracker's address because it is the pull request that
         // triggers it — the same reason the auto-link row above is on this tab.
         // /magic:review and /magic:done read it too.
         switchRow('commentOnPR', t('repo.issues.commentOnPR'), t('repo.issues.commentOnPRHelp'),
           commentOnPRVal, (next) => handleIssuesSettingChange('commentOnPR', next)),
-        switchRow('watchCI', t('repo.pr.watchCI'), t('repo.pr.watchCIHelp'),
-          watchCIVal, (next) => handlePRSettingChange('watchCI', next)),
+        {
+          ...switchRow('watchCI', t('repo.pr.watchCI'), t('repo.pr.watchCIHelp'),
+            watchCIVal, (next) => handlePRSettingChange('watchCI', next)),
+          // /magic:pr does not watch a draft (Step 7.4.0): said here rather than left to
+          // be found out after thirty minutes of nothing.
+          ...(draftVal && watchCIVal ? { note: t('repo.pr.watchCIDraftNote') } : {}),
+        },
       ],
     },
     languagesGroup([
@@ -2996,6 +3005,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
         templateCheckboxes: templateCheckboxesVal,
         bodyVerbosity: bodyVerbosityVal,
         hideIrrelevantSections: hideIrrelevantSectionsVal,
+        draft: draftVal,
       })),
       settings: prStepSettings,
     },
