@@ -26,6 +26,8 @@ export default defineConfig({
       // Supabase client, at any depth — fails to RESOLVE, which reads as a broken
       // test rather than as a missing install. Test the data, not the data layer.
       'webapp/lib/**/*.test.ts',
+      // The iOS app's theme codegen and its drift guard against `desktop/src/themes.ts`.
+      'ios/**/*.test.ts',
     ],
   },
 })
