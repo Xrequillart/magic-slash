@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AvatarSourceResult, AvatarWriteResult } from '../avatar'
 import type { UsernameCheckResult, UsernameSaveResult } from '../username'
 import type { ResolvedWorkflow } from '../workflow/model'
+import { parseRemotePairing, parseRemoteState } from './remote-guards'
 import type { WorkflowOverlay } from '../workflow/overlay'
 import type { ChatSendKey, ChatToolDetail, ChatDiffDisplay, ChatTimestamps } from '../types'
 import type { AccountSettings, AgentDisplayMode, AgentSortMode, ChatSnapshot, ClaudeSessionEntry, PRReviewThread, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, AccountSession, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeSample, CodeSampleLanguage, CodeSyntaxChoice, ClaudeModelOption, SplitNewAgentPane, LaunchMode, QuickSettingId, SidebarPageId, LanguageId, SetupStatus, GhCliStatus, McpServerId, McpHealthReport, McpServerState, PrerequisiteId, TrayState, TrayQuestion, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, NewPlanComment, NewPlanLink, PlanCollaboratorWriteResult, PlanCommentsRead, PlanLinksRead, PlanHistoryRead, PlanRevisionDiff, PlanDetail, PlanEditPolicy, PlanEditPolicyUpdateResult, PlanLiveChange, PlanOverview, PlanPresence, PlanLocalSpec, PlanSpecUpdate, PlanSpecUpdateResult, PlanStatus, PlanStatusUpdateResult, PlanTicketOrigin, PlanTicketStates, RemotePairing, RemoteState, TasksSnapshot, TaskIssueDetail, JiraTaskIssue, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode, LaunchMetadata, RepositoryWorkflowOverlay, RepositoryWorkflowSaveResult, SkillShareResult, WorkflowChange, WorkflowHistoryRead, WorkflowSettings } from '../types'
@@ -1215,24 +1216,40 @@ const zoomApi = {
 // settings page only flips remote mode, drives a pairing and revokes devices. `onState`
 // follows the relay's health and the device list, `onPairing` the pairing on screen (`null`
 // once it is closed). Remote mode is Mac-local and off by default.
+// What the relay sends back is checked before the page sees it (`remote-guards.ts`): a state
+// that does not pass rejects the call, and a pushed event that does not pass is dropped.
+async function remoteState(call: Promise<unknown>): Promise<RemoteState> {
+  const state = parseRemoteState(await call)
+  if (!state) throw new Error('remote: invalid state from the main process')
+  return state
+}
+
 const remoteApi = {
-  getState: (): Promise<RemoteState> => ipcRenderer.invoke('remote:getState'),
-  setEnabled: (enabled: boolean): Promise<RemoteState> => ipcRenderer.invoke('remote:setEnabled', enabled),
+  getState: (): Promise<RemoteState> => remoteState(ipcRenderer.invoke('remote:getState')),
+  setEnabled: (enabled: boolean): Promise<RemoteState> => remoteState(ipcRenderer.invoke('remote:setEnabled', enabled)),
   // Null when remote mode is off, the relay is not live, or this Mac's identity cannot be
   // stored (no keychain).
-  startPairing: (): Promise<RemotePairing | null> => ipcRenderer.invoke('remote:startPairing'),
+  startPairing: async (): Promise<RemotePairing | null> => parseRemotePairing(await ipcRenderer.invoke('remote:startPairing')),
   /** With an `attemptId`, cancels that attempt only (a no-op once it is replaced). */
   cancelPairing: (attemptId?: string): Promise<void> => ipcRenderer.invoke('remote:cancelPairing', attemptId),
   approvePairing: (): Promise<void> => ipcRenderer.invoke('remote:approvePairing'),
   declinePairing: (): Promise<void> => ipcRenderer.invoke('remote:declinePairing'),
-  revokeDevice: (phoneId: string): Promise<RemoteState> => ipcRenderer.invoke('remote:revokeDevice', phoneId),
+  revokeDevice: (phoneId: string): Promise<RemoteState> => remoteState(ipcRenderer.invoke('remote:revokeDevice', phoneId)),
   onState: (callback: (state: RemoteState) => void) => {
-    const listener = (_event: IpcRendererEvent, state: RemoteState) => callback(state)
+    const listener = (_event: IpcRendererEvent, value: unknown) => {
+      const state = parseRemoteState(value)
+      if (state) callback(state)
+    }
     ipcRenderer.on('remote:state', listener)
     return () => ipcRenderer.removeListener('remote:state', listener)
   },
+  // `null` is a real message here (the pairing closed); anything else must parse.
   onPairing: (callback: (pairing: RemotePairing | null) => void) => {
-    const listener = (_event: IpcRendererEvent, pairing: RemotePairing | null) => callback(pairing)
+    const listener = (_event: IpcRendererEvent, value: unknown) => {
+      if (value === null) return callback(null)
+      const pairing = parseRemotePairing(value)
+      if (pairing) callback(pairing)
+    }
     ipcRenderer.on('remote:pairing', listener)
     return () => ipcRenderer.removeListener('remote:pairing', listener)
   },
