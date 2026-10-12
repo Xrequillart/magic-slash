@@ -19,6 +19,7 @@ import { OrgPage } from '../pages/Config/OrgPage'
 import { ProfilePage } from '../pages/Config/ProfilePage'
 import { QuickLaunchPage } from '../pages/Config/QuickLaunchPage'
 import { QuickSettingsPage } from '../pages/Config/QuickSettingsPage'
+import { RemoteAccessPage } from '../pages/Config/RemoteAccessPage'
 import { SecurityPage } from '../pages/Config/SecurityPage'
 import { ShortcutsPage } from '../pages/Config/ShortcutsPage'
 import { SplitViewPage } from '../pages/Config/SplitViewPage'
@@ -39,6 +40,7 @@ import {
   Plug,
   Settings2,
   ShieldCheck,
+  Smartphone,
   SquareSplitHorizontal,
   SquareTerminal,
   TextCursorInput,
@@ -83,6 +85,7 @@ export type SettingsTab =
   | 'organization'
   | 'connections'
   | 'security'
+  | 'remote'
   | 'claude-code'
   | 'application'
   | 'agents'
@@ -122,6 +125,7 @@ const GROUPS: { id: string; labelKey: MessageKey; pages: SettingsPageEntry[] }[]
       { id: 'claude-code', labelKey: 'settings.tab.claudeCode', icon: SquareTerminal },
       { id: 'connections', labelKey: 'settings.tab.connections', icon: Plug },
       { id: 'security', labelKey: 'settings.tab.security', icon: ShieldCheck },
+      { id: 'remote', labelKey: 'settings.tab.remote', icon: Smartphone },
       { id: 'appearance', labelKey: 'settings.tab.appearance', icon: Palette },
       { id: 'language', labelKey: 'settings.tab.language', icon: Languages },
     ],
@@ -260,6 +264,7 @@ export function SettingsModal() {
           {tab === 'organization' && <OrgPage />}
           {tab === 'connections' && <ConnectionsPage />}
           {tab === 'security' && <SecurityPage />}
+          {tab === 'remote' && <RemoteAccessPage />}
           {tab === 'claude-code' && <ClaudeCodePage />}
           {tab === 'application' && <ApplicationPage />}
           {tab === 'agents' && <AgentsPage />}
