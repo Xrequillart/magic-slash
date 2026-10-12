@@ -21,7 +21,15 @@ final class AgentStore {
   private(set) var loadState: LoadState = .loading
 
   @ObservationIgnored let client: SupabaseClient
+  /// The account this store belongs to: the screen only shows a store whose owner is the
+  /// signed-in user, so a list left over from another account is never visible.
+  @ObservationIgnored let ownerId: UUID
   @ObservationIgnored private let userId: String
+  /// Set once by `stop()`; a start still in flight then gives up instead of reopening.
+  @ObservationIgnored private var stopped = false
+  /// Each subscription gets its own channel name, so removing an old channel can never
+  /// tear down the one that replaced it.
+  @ObservationIgnored private var subscriptionCount = 0
   @ObservationIgnored private var channel: RealtimeChannelV2?
   @ObservationIgnored private var tasks: [Task<Void, Never>] = []
   /// Realtime changes received while a read is in flight, keyed by agent id (nil = gone).
@@ -34,6 +42,7 @@ final class AgentStore {
 
   init(client: SupabaseClient, userId: UUID) {
     self.client = client
+    self.ownerId = userId
     // Lower-cased: Postgres prints uuids that way, and the Realtime check below compares
     // strings.
     self.userId = userId.uuidString.lowercased()
@@ -48,6 +57,7 @@ final class AgentStore {
   }
 
   func stop() async {
+    stopped = true
     await unsubscribe()
   }
 
@@ -67,7 +77,7 @@ final class AgentStore {
         .is("archived_at", value: nil)
         .execute()
         .value
-      guard generation == readGeneration else { return }
+      guard generation == readGeneration, !stopped else { return }
       // One unreadable row is dropped, never the whole list.
       let parsed = rows.compactMap { $0.objectValue.flatMap(Agent.init(row:)) }
       var byId = Dictionary(parsed.filter(isVisible).map { ($0.id, $0) }) { _, last in last }
@@ -89,10 +99,12 @@ final class AgentStore {
 
   private func subscribe() async {
     await unsubscribe()
+    guard !stopped else { return }
 
     // `client.channel` is Realtime V2, whose socket follows the auth token as it is
     // refreshed, so a long-open app keeps receiving after the first hour.
-    let channel = client.channel("ios-agents")
+    subscriptionCount += 1
+    let channel = client.channel("ios-agents-\(subscriptionCount)")
     let mine = RealtimePostgresFilter.eq("owner_id", value: userId)
     let inserts = channel.postgresChange(InsertAction.self, table: "agents", filter: mine)
     let updates = channel.postgresChange(UpdateAction.self, table: "agents", filter: mine)
@@ -117,13 +129,16 @@ final class AgentStore {
     try? await channel.subscribeWithError()
   }
 
+  /// Detaches synchronously, then removes the old channel: nothing set up after this call
+  /// returns control can be undone by it.
   private func unsubscribe() async {
     tasks.forEach { $0.cancel() }
     tasks = []
-    if let channel {
-      await client.removeChannel(channel)
-    }
+    let old = channel
     channel = nil
+    if let old {
+      await client.removeChannel(old)
+    }
   }
 
   private func upsert(record: JSONObject) {

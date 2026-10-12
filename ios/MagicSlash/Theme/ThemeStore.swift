@@ -21,6 +21,12 @@ final class ThemeStore {
   /// Bumped by every Realtime change, so a read that started before one is not applied
   /// over it.
   @ObservationIgnored private var liveRevision = 0
+  /// Bumped by every start and stop, so work begun for one account never lands after the
+  /// next account has taken over.
+  @ObservationIgnored private var session = 0
+  /// Each subscription gets its own channel name, so removing an old channel can never
+  /// tear down the one that replaced it.
+  @ObservationIgnored private var subscriptionCount = 0
 
   private static let cacheKey = "lastThemeID"
 
@@ -29,15 +35,21 @@ final class ThemeStore {
   }
 
   func start(client: SupabaseClient, userId: UUID) async {
+    session += 1
     self.client = client
     self.userId = userId
     await resume()
   }
 
-  func stop() async {
-    await unsubscribe()
+  /// Stops only if `userId` is still the account being followed: a sign-out that finishes
+  /// after the next sign-in must not stop the new account's theme.
+  func stop(for userId: UUID) async {
+    guard self.userId == userId else { return }
+    session += 1
+    let oldClient = client
     client = nil
-    userId = nil
+    self.userId = nil
+    await unsubscribe(using: oldClient)
   }
 
   /// Subscribes, then reads, so no change slips between the two. Also called when the app
@@ -52,6 +64,7 @@ final class ThemeStore {
   private func refresh() async {
     guard let client, let userId else { return }
     let revision = liveRevision
+    let session = session
     do {
       let rows: [JSONObject] = try await client
         .from("user_settings")
@@ -60,7 +73,7 @@ final class ThemeStore {
         .limit(1)
         .execute()
         .value
-      guard revision == liveRevision else { return }
+      guard revision == liveRevision, session == self.session else { return }
       // No row yet means the user never changed anything: the desktop default applies.
       apply(raw: rows.first?["theme"]?.stringValue)
     } catch {
@@ -70,9 +83,12 @@ final class ThemeStore {
 
   private func subscribe() async {
     guard let client, let userId else { return }
-    await unsubscribe()
+    let session = session
+    await unsubscribe(using: client)
+    guard session == self.session else { return }
 
-    let channel = client.channel("ios-user-settings")
+    subscriptionCount += 1
+    let channel = client.channel("ios-user-settings-\(subscriptionCount)")
     let filter = RealtimePostgresFilter.eq("user_id", value: userId.uuidString.lowercased())
     let changes = channel.postgresChange(AnyAction.self, table: "user_settings", filter: filter)
 
@@ -91,13 +107,16 @@ final class ThemeStore {
     try? await channel.subscribeWithError()
   }
 
-  private func unsubscribe() async {
+  /// Detaches synchronously, then removes the old channel: nothing set up after this call
+  /// returns control can be undone by it.
+  private func unsubscribe(using client: SupabaseClient?) async {
     tasks.forEach { $0.cancel() }
     tasks = []
-    if let channel, let client {
-      await client.removeChannel(channel)
-    }
+    let old = channel
     channel = nil
+    if let old, let client {
+      await client.removeChannel(old)
+    }
   }
 
   private func applyLive(raw: String?) {

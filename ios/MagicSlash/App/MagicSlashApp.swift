@@ -32,9 +32,6 @@ private struct RootView: View {
   @State private var auth: AuthModel
   @State private var agents: AgentStore?
   @State private var wentToBackground = false
-  /// The last queued store transition. Each one waits for the previous, so a sign-out still
-  /// stopping the old account's stores can never stop the ones a newer sign-in started.
-  @State private var lastTransition: Task<Void, Never>?
 
   init(client: SupabaseClient, theme: ThemeStore) {
     self.theme = theme
@@ -45,7 +42,7 @@ private struct RootView: View {
     content
       .task { await auth.start() }
       .onChange(of: auth.state) { _, state in
-        enqueue { await apply(state) }
+        apply(state)
       }
       .onChange(of: scenePhase) { _, phase in
         switch phase {
@@ -53,7 +50,7 @@ private struct RootView: View {
           wentToBackground = true
         case .active where wentToBackground:
           wentToBackground = false
-          enqueue {
+          Task {
             async let agentsResumed: Void? = agents?.start()
             async let themeResumed: Void = theme.resume()
             _ = await (agentsResumed, themeResumed)
@@ -73,8 +70,10 @@ private struct RootView: View {
       SignInView(auth: auth)
     case .needsTOTP:
       TOTPView(auth: auth)
-    case .signedIn:
-      if let agents {
+    case .signedIn(let userId):
+      // The owner check covers the frame between a sign-in and `apply`: another account's
+      // list is never drawn under this one.
+      if let agents, agents.ownerId == userId {
         AgentListView(store: agents) {
           Task { await auth.signOut() }
         }
@@ -84,27 +83,34 @@ private struct RootView: View {
     }
   }
 
-  private func enqueue(_ work: @escaping @MainActor () async -> Void) {
-    let previous = lastTransition
-    lastTransition = Task {
-      await previous?.value
-      await work()
-    }
-  }
-
-  private func apply(_ state: AuthState) async {
+  /// Swaps the stores synchronously, so the screen never shows the previous account's
+  /// list, then starts and stops them off the main path. Agent stores are per account and
+  /// the theme store ignores a stale stop, so no transition waits on another one's reads.
+  private func apply(_ state: AuthState) {
     switch state {
     case .signedIn(let userId):
+      guard agents?.ownerId != userId else { return }
+      let previous = agents
       let store = AgentStore(client: auth.client, userId: userId)
       agents = store
-      async let agentsStarted: Void = store.start()
-      async let themeStarted: Void = theme.start(client: auth.client, userId: userId)
-      _ = await (agentsStarted, themeStarted)
+      Task {
+        if let previous {
+          await theme.stop(for: previous.ownerId)
+          await previous.stop()
+        }
+      }
+      Task {
+        async let agentsStarted: Void = store.start()
+        async let themeStarted: Void = theme.start(client: auth.client, userId: userId)
+        _ = await (agentsStarted, themeStarted)
+      }
     case .signedOut:
-      let previous = agents
+      guard let previous = agents else { return }
       agents = nil
-      await previous?.stop()
-      await theme.stop()
+      Task {
+        await theme.stop(for: previous.ownerId)
+        await previous.stop()
+      }
     case .restoring, .needsTOTP:
       break
     }
