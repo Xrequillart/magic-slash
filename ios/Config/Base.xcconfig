@@ -1,0 +1,11 @@
+// Base build settings for the MagicSlash target (Debug and Release).
+//
+// The three values below are empty on purpose: a fresh clone builds, and the app
+// shows a "not configured" screen instead of crashing. Real values live in
+// Secrets.xcconfig, which is git-ignored. Copy Secrets.example.xcconfig to start.
+
+SUPABASE_HOST =
+SUPABASE_ANON_KEY =
+DEVELOPMENT_TEAM =
+
+#include? "Secrets.xcconfig"

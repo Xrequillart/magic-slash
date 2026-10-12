@@ -72,3 +72,10 @@ temp/
 
 # Personal working notes, never part of the repo
 TODO.md
+
+# iOS (Xcode)
+ios/Config/Secrets.xcconfig
+xcuserdata/
+DerivedData/
+*.xcuserstate
+.swiftpm/
