@@ -2239,6 +2239,7 @@ export const en = {
   'chat.attach': 'Attach files',
   'chat.attach.remove': 'Remove',
   'chat.attach.drop': 'Drop to attach',
+  'chat.pastedText': 'Pasted text #{n} +{lines} lines',
   'chat.earlier': 'Show earlier messages',
   'chat.queue.open': 'Queued prompts',
   'chat.queue.title': 'Queued',

@@ -2146,6 +2146,7 @@ export const fr: Record<keyof typeof en, string> = {
   'chat.attach': 'Joindre des fichiers',
   'chat.attach.remove': 'Retirer',
   'chat.attach.drop': 'Déposez pour joindre',
+  'chat.pastedText': 'Texte collé #{n} +{lines} lignes',
   'chat.earlier': 'Afficher les messages précédents',
   'chat.queue.open': 'Prompts en attente',
   'chat.queue.title': 'En attente',

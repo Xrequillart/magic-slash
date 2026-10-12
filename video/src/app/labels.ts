@@ -19,6 +19,7 @@ export const CHAT_LABELS: ChatViewLabels = {
   attach: 'Attach files',
   removeAttachment: 'Remove',
   dropFiles: 'Drop to attach',
+  pastedText: 'Pasted text #{n} +{lines} lines',
   queue: { open: 'Queued prompts', title: 'Queued', hint: 'Sent to Claude in this order as soon as it can take them.' },
   background: { open: 'Agents running in the background', title: 'In the background', hint: 'Each one reports back to Claude when it is done.' },
   question: {

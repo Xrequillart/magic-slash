@@ -15,6 +15,7 @@ import { ChatQuestion, type ChatQuestionData, type ChatQuestionLabels } from './
 import { ChatCommandMenu } from './ChatCommandMenu'
 import { commandSpans, matchCommands, slashTokenAt, type ChatCommand } from './chatCommandMatch'
 import { completeTrailingShortcode } from './chatEmoji'
+import { expandPastes, pasteSpans, pasteToken, shouldFold, type ChatPaste } from './chatPaste'
 import { ChatQueueCard, type ChatQueuedPromptData } from './ChatQueueCard'
 import { ChatBackgroundCard, type ChatBackgroundAgentData } from './ChatBackgroundCard'
 import type { IconComponent } from './types'
@@ -83,6 +84,8 @@ export interface ChatViewLabels {
   attach: string
   removeAttachment: string
   dropFiles: string
+  /** What a long paste shows in the field until it is sent. `{n}`: its number; `{lines}`: its line count. */
+  pastedText: string
   queue: {
     /** The button's name, its tooltip. */
     open: string
@@ -315,9 +318,13 @@ export function ChatView({
   const mirrorRef = useRef<HTMLDivElement>(null)
   const stickRef = useRef(true)
   const [draft, setDraft] = useState(initialDraft ?? '')
+  // The long pastes folded behind a token in the draft (see chatPaste.ts).
+  const [pastes, setPastes] = useState<ChatPaste[]>([])
+  const pasteCount = useRef(0)
   const onDraftChangeRef = useRef(onDraftChange)
   onDraftChangeRef.current = onDraftChange
-  useEffect(() => onDraftChangeRef.current?.(draft), [draft])
+  // Kept unfolded: the pastes live in this component, and the draft has to outlive it.
+  useEffect(() => onDraftChangeRef.current?.(expandPastes(draft, pastes)), [draft, pastes])
   const onDraftRestoredRef = useRef(onDraftRestored)
   onDraftRestoredRef.current = onDraftRestored
   // Applied once per hand-back, even under StrictMode's doubled mount effects.
@@ -416,13 +423,28 @@ export function ChatView({
     Promise.all(files.map((f) => resolveFile(f).catch(() => null))).then(addPaths)
   }
 
-  // A pasted image (a screenshot) is attached rather than pasted as nothing; text pastes
-  // as text.
+  // A pasted image (a screenshot) is attached rather than pasted as nothing; a long text
+  // is folded behind a token, as the terminal folds it; a short one pastes as text.
   const onPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
     const files = Array.from(event.clipboardData.files)
-    if (files.length === 0 || !resolveFile) return
+    if (files.length > 0 && resolveFile) {
+      event.preventDefault()
+      attachFiles(files)
+      return
+    }
+    const text = event.clipboardData.getData('text/plain').replace(/\r\n?/g, '\n')
+    if (!shouldFold(text)) return
     event.preventDefault()
-    attachFiles(files)
+    const el = event.currentTarget
+    const token = pasteToken(labels.pastedText, ++pasteCount.current, text)
+    const position = el.selectionStart + token.length
+    setDraft(`${draft.slice(0, el.selectionStart)}${token}${draft.slice(el.selectionEnd)}`)
+    setPastes((current) => [...current, { token, text }])
+    setCaret(position)
+    requestAnimationFrame(() => {
+      const input = inputRef.current
+      if (input) input.selectionStart = input.selectionEnd = position
+    })
   }
 
   // The drop target is the whole view, counted in and out because every child the
@@ -568,8 +590,10 @@ export function ChatView({
       })
       return
     }
-    onSend(text, attachments.map((a) => a.path))
+    onSend(expandPastes(text, pastes).trim(), attachments.map((a) => a.path))
     setDraft('')
+    setPastes([])
+    pasteCount.current = 0
     setCaret(0)
     setHistoryStep(null)
     setAttachments([])
@@ -863,7 +887,9 @@ export function ChatView({
                     aria-hidden
                     className={`pointer-events-none absolute inset-0 overflow-hidden ${FIELD_TEXT} text-ink`}
                   >
-                    {spans.map((span, i) => (span.command ? <span key={i} className="text-accent">{span.text}</span> : span.text))}
+                    {spans.map((span, i) => (span.command
+                      ? <span key={i} className="text-accent">{span.text}</span>
+                      : pasteSpans(span.text, pastes).map((part, j) => (part.paste ? <span key={`${i}.${j}`} className="text-accent">{part.text}</span> : part.text))))}
                     {ghost && <span className="text-text-secondary/40">{ghost}</span>}
                     {/* A trailing newline would collapse in the mirror and not in the textarea. */}
                     {draft.endsWith('\n') && '\u200b'}

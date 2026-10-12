@@ -9,6 +9,7 @@ import { useCodeAppearance } from '../hooks/useCodeAppearance'
 import { useClaudeEmojiCompletion } from '../hooks/useClaudeEmojiCompletion'
 import { resolveDisplayMode } from '../utils/displayMode'
 import { formatPaths } from '../utils/formatDroppedPaths'
+import { promptBytes, submitDelay } from '../utils/chatPrompt'
 import { showToast } from './Toast'
 
 /**
@@ -32,9 +33,6 @@ const DOUBLE_CTRL_C_MS = 1_000
 /** How long a resume may keep the chat behind its loader before it is shown anyway. */
 const RESUME_TIMEOUT_MS = 20_000
 
-/** Between the text and the Return that submits it, so the TUI takes the text as typed. */
-const SUBMIT_DELAY_MS = 60
-
 /**
  * What was being typed in each agent's chat, by terminal id. The chat unmounts when its
  * agent is left (or its view flipped to the terminal), and the draft has to outlive it.
@@ -52,14 +50,14 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
   const [restored, setRestored] = useState<string | null>(null)
 
   const send = useCallback((text: string, attachments: string[]) => {
-    // A newline in the TUI's input box is a line feed (Shift+Enter in the terminal view
-    // writes the same), and the carriage return after it is the Enter that sends. The
-    // attachments go after the text as paths, the way a file dropped on the terminal
-    // arrives, which is what makes Claude Code read them (and attach an image).
+    // The text as the TUI takes it (see chatPrompt.ts), and the carriage return after it
+    // is the Enter that sends. The attachments go after the text as paths, the way a file
+    // dropped on the terminal arrives, which is what makes Claude Code read them (and
+    // attach an image).
     const id = terminal.id
-    const message = [text.replace(/\r\n?/g, '\n'), formatPaths(attachments)].filter(Boolean).join(' ')
+    const message = [promptBytes(text), formatPaths(attachments)].filter(Boolean).join(' ')
     void window.electronAPI.terminal.write(id, message).then(() => {
-      setTimeout(() => void window.electronAPI.terminal.write(id, '\r'), SUBMIT_DELAY_MS)
+      setTimeout(() => void window.electronAPI.terminal.write(id, '\r'), submitDelay(message))
     })
     // `/mcp`, `/model`…: the answer is a dialog of the TUI, so that is what is shown.
     if (opensInTerminal(text)) setDisplayMode(id, 'terminal')
@@ -199,6 +197,7 @@ export function AgentPane({ terminal, isVisible, isFocused }: AgentPaneProps) {
               earlier: t('chat.earlier'),
               attach: t('chat.attach'),
               removeAttachment: t('chat.attach.remove'),
+              pastedText: t('chat.pastedText'),
               dropFiles: t('chat.attach.drop'),
               queue: {
                 open: t('chat.queue.open'),
